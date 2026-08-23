@@ -94,8 +94,16 @@ def cmd_screen(args):
             print("\nNo crisis bargain candidates found meeting absorption & solvency criteria.")
         return
 
-    print(f"\nRunning Quantitative Multi-Factor Screener for date: {date_str} (Universe: {universe.upper()}, Top {args.top})...\n")
-    df_screened = composite_screener.run_screener(target_date=date_str, top_n=args.top, universe=universe)
+    top_down = getattr(args, "top_down", False)
+    dry_run = getattr(args, "dry_run", False)
+    mode_label = "TOP-DOWN" if top_down else "LEGACY"
+    print(f"\nRunning Quantitative Multi-Factor Screener [{mode_label}] for date: {date_str} (Universe: {universe.upper()}, Top {args.top})...\n")
+    if top_down:
+        df_screened = composite_screener.top_down_screen(target_date=date_str, top_n=args.top, universe=universe, dry_run=dry_run)
+        if not df_screened.empty and dry_run:
+            print(f"Top-down dry-run enriched {len(df_screened)} rows (metrics annotated, no funnel filters). Sample columns: secular_growth_score, total_moat_score, policy_agg_eni, roic_wacc_spread")
+    else:
+        df_screened = composite_screener.run_screener(target_date=date_str, top_n=args.top, universe=universe)
 
     if df_screened.empty:
         print("No screening candidates found for date:", date_str)
@@ -194,8 +202,9 @@ def cmd_run_daily_alpha(args):
     top_n = getattr(args, "top", 20)
     top_theses_count = getattr(args, "top_theses", 5)
 
+    top_down = getattr(args, "top_down", False)
     print("\n" + "=" * 75)
-    print(f"  SYNTHESIZING DAILY ALPHA REPORT FOR {date_str} ({universe.upper()})")
+    print(f"  SYNTHESIZING DAILY ALPHA REPORT FOR {date_str} ({universe.upper()}) {'[TOP-DOWN]' if top_down else ''}")
     print("=" * 75)
 
     orchestrator = AgentOrchestrator()
@@ -203,7 +212,8 @@ def cmd_run_daily_alpha(args):
         target_date=date_str,
         universe=universe,
         top_n=top_theses_count,
-        screener_pool_size=top_n
+        screener_pool_size=top_n,
+        use_top_down=top_down,
     )
 
     writer = ReportWriter()
@@ -845,6 +855,42 @@ def cmd_telegram_scan(args):
     asyncio.run(_run())
 
 
+def cmd_prune_decayed_signals(args):
+    """Prune decayed signals — SQLite fallback compatible (prune_decayed_signals procedure)."""
+    from reality_engine.processing.pruning_engine import prune_decayed_signals, get_decayed_significance_rows
+    dry = getattr(args, "dry_run", False)
+    res = prune_decayed_signals(dry_run=dry)
+    print(json.dumps(res, indent=2, default=str))
+    if getattr(args, "show_decayed", False):
+        rows = get_decayed_significance_rows(limit=getattr(args, "limit", 10))
+        print("\n--- v_ripple_decayed (decayed_significance) ---")
+        for r in rows[:getattr(args, "limit", 10)]:
+            print(json.dumps(r, indent=2, default=str))
+    # Also show cold export count
+    if getattr(args, "show_cold", False):
+        from reality_engine.processing.pruning_engine import cold_export_rows
+        cold = cold_export_rows(months=36)
+        print(f"\nCold-tier >36m rows that would be parquet-exported: {len(cold)}")
+
+
+def cmd_run_distillation(args):
+    """Monthly distillation: 20 YouTube +4 Concall -> moat -> purge 24 vectors -> log distillation_runs."""
+    from reality_engine.processing.distillation_pruner import run_monthly_distillation
+    symbol = getattr(args, "symbol", "HAL").upper()
+    res = run_monthly_distillation(symbol, youtube_n=getattr(args, "youtube", 20), concall_n=getattr(args, "concall", 4))
+    print(json.dumps(res, indent=2, default=str))
+    # Show latest distillation_runs
+    try:
+        from reality_engine.db.database import db_manager
+        with db_manager.session() as conn:
+            row = conn.execute("SELECT * FROM distillation_runs ORDER BY run_id DESC LIMIT 1").fetchone()
+            if row:
+                print("\nLatest distillation_runs row:")
+                print(json.dumps(dict(row), indent=2, default=str))
+    except Exception as exc:
+        print(f"Note fetching distillation_runs: {exc}")
+
+
 # ====================================================================
 # CLI Parser Setup
 # ====================================================================
@@ -869,6 +915,8 @@ def main():
     p_scr.add_argument("--top", type=int, default=20, help="Top N candidates (default: 20)")
     p_scr.add_argument("--crisis", action="store_true", default=False, help="Run crisis bargain panic screener")
     p_scr.add_argument("--date", type=str, default=None, help="Target valuation date YYYY-MM-DD")
+    p_scr.add_argument("--top-down", action="store_true", default=False, dest="top_down", help="Use top-down funnel Industry≥4 → Moat≥3.5 → ENI≥0 → ROIC>WACC (Phase 6 vertical slice)")
+    p_scr.add_argument("--dry-run", action="store_true", default=False, help="Top-down dry-run: enrich with metrics but skip filters (diagnostic)")
     p_scr.set_defaults(func=cmd_screen)
 
     # 3. inspect-stock
@@ -882,6 +930,7 @@ def main():
     p_rda.add_argument("--top", type=int, default=20, help="Number of candidates to evaluate (default: 20)")
     p_rda.add_argument("--top-theses", type=int, default=5, help="Number of top theses to synthesize (default: 5)")
     p_rda.add_argument("--date", type=str, default=None, help="Valuation date YYYY-MM-DD")
+    p_rda.add_argument("--top-down", action="store_true", default=False, dest="top_down", help="Use top-down funnel + Policy→Transmission→Moat→Verdict template (Phase 6)")
     p_rda.set_defaults(func=cmd_run_daily_alpha)
 
     # 5. trace-causal-chain
@@ -996,6 +1045,34 @@ def main():
     p_tg_thr = subparsers.add_parser("telegram-threads", help="List forum topics/threads in a supergroup")
     p_tg_thr.add_argument("--channels", type=str, default=None, help="Comma-separated channel IDs/usernames")
     p_tg_thr.set_defaults(func=cmd_telegram_threads)
+
+    # 19. prune-decayed-signals (Phase 5 Pillar 3B)
+    p_prune = subparsers.add_parser("prune-decayed-signals", help="Prune decayed signals: drop embeddings >12m (retain Milestone), delete ghost ripples, archive macro >24m (SQLite fallback, PG procedure)")
+    p_prune.add_argument("--dry-run", action="store_true", default=False, help="Count without deleting")
+    p_prune.add_argument("--show-decayed", action="store_true", default=False, help="Also show v_ripple_decayed rows")
+    p_prune.add_argument("--show-cold", action="store_true", default=False, help="Also show cold-tier >36m export count")
+    p_prune.add_argument("--limit", type=int, default=10, help="Limit for decayed view when --show-decayed")
+    p_prune.set_defaults(func=cmd_prune_decayed_signals)
+    # alias prune
+    p_prune2 = subparsers.add_parser("prune", help="Alias for prune-decayed-signals")
+    p_prune2.add_argument("--dry-run", action="store_true", default=False, help="Count without deleting")
+    p_prune2.add_argument("--show-decayed", action="store_true", default=False, help="Also show v_ripple_decayed")
+    p_prune2.add_argument("--show-cold", action="store_true", default=False, help="Also show cold-tier")
+    p_prune2.add_argument("--limit", type=int, default=10, help="Limit for decayed view")
+    p_prune2.set_defaults(func=cmd_prune_decayed_signals)
+
+    # 20. run-distillation (Phase 5 Pillar 4)
+    p_dist = subparsers.add_parser("run-distillation", help="Monthly distillation batch 20 YouTube+4 Concall -> UPDATE moat_evaluations -> purge 24 vectors -> log distillation_runs")
+    p_dist.add_argument("symbol", nargs="?", default="HAL", help="Ticker symbol to distill (default HAL)")
+    p_dist.add_argument("--youtube", type=int, default=20, help="YouTube chunks (default 20)")
+    p_dist.add_argument("--concall", type=int, default=4, help="Concall chunks (default 4)")
+    p_dist.set_defaults(func=cmd_run_distillation)
+    # alias distill
+    p_dist2 = subparsers.add_parser("distill", help="Alias for run-distillation")
+    p_dist2.add_argument("symbol", nargs="?", default="HAL", help="Ticker symbol")
+    p_dist2.add_argument("--youtube", type=int, default=20, help="YouTube chunks")
+    p_dist2.add_argument("--concall", type=int, default=4, help="Concall chunks")
+    p_dist2.set_defaults(func=cmd_run_distillation)
 
     parsed_args = parser.parse_args()
     if not parsed_args.command:
