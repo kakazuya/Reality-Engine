@@ -1,0 +1,21 @@
+{
+  "countries": [
+    {"country_id": "IND", "country_name": "India", "political_stability_score": 3.5, "rule_of_law_index": 3.2, "currency": "INR"},
+    {"country_id": "USA", "country_name": "United States", "political_stability_score": 4.0, "rule_of_law_index": 4.5, "currency": "USD"},
+    {"country_id": "CHN", "country_name": "China", "political_stability_score": 3.0, "rule_of_law_index": 2.8, "currency": "CNY"}
+  ],
+  "industries": [
+    {"sector_name": "Information Technology", "industry_name": "Software & SaaS", "secular_growth_score": 4.8, "lifecycle_stage": "Growth", "tam_growth_cagr": 18.5},
+    {"sector_name": "Financials", "industry_name": "Fintech & Payments", "secular_growth_score": 4.6, "lifecycle_stage": "Growth", "tam_growth_cagr": 16.2},
+    {"sector_name": "Healthcare", "industry_name": "Pharmaceuticals & Biotech", "secular_growth_score": 4.5, "lifecycle_stage": "Growth", "tam_growth_cagr": 12.0},
+    {"sector_name": "Industrials", "industry_name": "Capital Goods & Engineering", "secular_growth_score": 4.2, "lifecycle_stage": "Mature", "tam_growth_cagr": 8.5},
+    {"sector_name": "Consumer Discretionary", "industry_name": "E-commerce & Retail Tech", "secular_growth_score": 4.4, "lifecycle_stage": "Growth", "tam_growth_cagr": 14.0},
+    {"sector_name": "Energy", "industry_name": "Renewables & Clean Energy", "secular_growth_score": 4.7, "lifecycle_stage": "Early Adoption", "tam_growth_cagr": 22.0},
+    {"sector_name": "Materials", "industry_name": "Specialty Chemicals", "secular_growth_score": 4.1, "lifecycle_stage": "Growth", "tam_growth_cagr": 9.5},
+    {"sector_name": "Communication", "industry_name": "Digital Platforms", "secular_growth_score": 4.3, "lifecycle_stage": "Growth", "tam_growth_cagr": 13.0},
+    {"sector_name": "Consumer Staples", "industry_name": "FMCG & Branded Foods", "secular_growth_score": 3.5, "lifecycle_stage": "Mature", "tam_growth_cagr": 6.0},
+    {"sector_name": "Utilities", "industry_name": "Power & Transmission", "secular_growth_score": 3.8, "lifecycle_stage": "Mature", "tam_growth_cagr": 7.2},
+    {"sector_name": "Real Estate", "industry_name": "Infrastructure & Development", "secular_growth_score": 4.0, "lifecycle_stage": "Consolidating", "tam_growth_cagr": 8.0},
+    {"sector_name": "Defence", "industry_name": "Defence Manufacturing", "secular_growth_score": 4.9, "lifecycle_stage": "Growth", "tam_growth_cagr": 19.0}
+  ]
+}
