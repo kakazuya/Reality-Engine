@@ -1,10 +1,11 @@
-# Bottom-Up Market Reality Model & Equity Intelligence Engine
+# Fundamental Reality Engine — Top-Down Stock Intelligence & Causal Transmission Engine
 
-An autonomous, multi-layer **Bottom-Up Relational Reality Model & Techno-Funda Intelligence Engine** for Indian equities (NSE & BSE).
+An autonomous **Top-Down Fundamental Reality Engine** for Indian equities (NSE & BSE) that prioritizes **qualitative moats and policy tailwinds before financial validation**.
 
-The primary objective is to construct an interconnected, causal knowledge graph connecting **Stocks $\leftrightarrow$ Sectors $\leftrightarrow$ Supply Chains $\leftrightarrow$ Geographies $\leftrightarrow$ Macro/Geopolitical/Military Factors** through the systematic distillation of corporate concall transcripts, investor presentations, annual reports, deliverable volume flows, and alternative intelligence feeds.
+**Primary Funnel (per Architecture PDFs):**
+`Macro & Geopolitical (stability/rule-of-law) → Industry Secular Growth (CAGR, lifecycle) → Primary Filter: Business Model Archetype + Moat Score (0.25*SC+0.25*NE+0.20*CA+0.20*IA+0.10*ES) + Pricing Power → Secondary Filter: ROIC>WACC & FCF margin` with `Policy ENI = Severity(±5)×Prob` and **recursive ripple DAG** `PN=∏Pi, MN=RawN×PN×β, S=|MN|×20/(1+ln(1+Lag))` propagating shocks across `raw_documents → document_chunks pgvector → macro_events → ripple_effects (self-ref parent_ripple_id)` to stocks.
 
-This deep model provides an asymmetric informational and structural conviction edge—enabling immediate identification of mispriced, resilient companies when market panics and broad corrections occur.
+This provides an asymmetric conviction edge — mispriced wide-moat businesses aligned with structural policy tailwinds are surfaced first, not bottom-up microstructure.
 
 ---
 

@@ -1,3 +1,33 @@
 {
-  "$schema": "https://app.kilo.ai/config.json"
+  "$schema": "https://app.kilo.ai/config.json",
+  "web_search": true,
+  "mcp": {
+    "tavily-heavy": {
+      "type": "remote",
+      "url": "https://mcp.tavily.com/mcp/?tavilyApiKey=${TAVILY_API_KEY}",
+      "headers": {
+        "Authorization": "Bearer ${TAVILY_API_KEY}",
+        "DEFAULT_PARAMETERS": "{\"max_results\": 10, \"search_depth\": \"advanced\", \"include_answer\": true, \"include_images\": false}"
+      },
+      "enabled": true,
+      "timeout": 20000
+    }
+  },
+  "permission": {
+    "tavily-heavy_*": "allow",
+    "tavily_*": "allow",
+    "websearch": "allow",
+    "webfetch": "allow"
+  },
+  "instructions": [".kilo/SEARCH_POLICY.md"],
+  "skills": {
+    "urls": [
+      "https://github.com/addyosmani/agent-skills",
+      "https://github.com/mattpocock/skills"
+    ],
+    "paths": [
+      "./.kilo/skills/addyosmani-agent-skills/skills",
+      "./.kilo/skills/mattpocock-skills/skills"
+    ]
+  }
 }

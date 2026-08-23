@@ -1,6 +1,6 @@
 # Reality Engine — Agent & Developer Guide
 
-Reality Engine is an Indian-equity intelligence platform combining bottom-up market microstructure data, quantitative factor screening, forensic solvency validation, dynamic corporate distillation, causal macro knowledge graphs, and LLM agent orchestration.
+Reality Engine — Fundamental Reality Engine is a top-down Indian-equity intelligence platform prioritizing qualitative business moats and policy tailwinds before financial validation. It fuses macro/geopolitical stability, industry secular growth, business-model archetype & moat quantification (Moat=0.25*SC+0.25*NE+0.20*CA+0.20*IA+0.10*ES), policy Expected Net Impact (ENI=Severity×Probability), and recursive ripple DAG causal transmission (PN=∏Pi, MN=RawN×PN×β, S=|MN|×20/(1+ln(1+Lag))) with secondary ROIC>WACC / FCF validation, multimodal ingestion (Budget/RBI/Concall audio/YouTube via yt-dlp+Whisper), and pgvector hybrid RAG.
 
 ---
 
@@ -9,36 +9,41 @@ Reality Engine is an Indian-equity intelligence platform combining bottom-up mar
 ```
 btask01/
 ├── reality_engine/
-│   ├── db/                 # SQLite WAL schema, indexes, FTS5 virtual tables, repository layer
-│   │   ├── schema.py       # Table definitions, triggers, and migrations
-│   │   └── repository.py   # Query API & atomic persistence helpers
-│   ├── ingestion/          # Data feeds with resilient parsing & offline fallbacks
+│   ├── db/                 # PostgreSQL + pgvector + SQLite WAL (migration), FTS5, repository
+│   │   ├── schema.sql      # SQLite WAL (legacy) + new PG DDL: business_model_profiles, moat_evaluations, geographic_exposure, regulatory_political_risks, raw_documents, document_chunks (VECTOR 1536), macro_events, ripple_effects (self-ref DAG)
+│   │   ├── postgres_schema.sql # Fundamental Reality Engine DDL (countries, industries, companies, business_model_profiles, moat_evaluations, raw_documents, document_chunks ivfflat, macro_events, ripple_effects PN/MN/S, financial_metrics)
+│   │   └── repository.py   # Query API & atomic persistence (moat_score GENERATED, ENI, ripple CTE)
+│   ├── ingestion/          # Multimodal feeds with yt-dlp+Whisper & layout PDF parsing
 │   │   ├── master_sync.py  # NSE & BSE scrip list synchronizer (ISIN anchor)
 │   │   ├── nse_client.py   # NSE Full Bhavcopy, deliverable volume, PIT insider trades
 │   │   ├── bse_client.py   # BSE Bhavcopy, corporate filings, announcements
-│   │   ├── fundamentals_client.py # Quarterly/annual financials & balance sheet metrics
+│   │   ├── fundamentals_client.py # Quarterly/annual financials & balance sheet metrics → peer_financial_metrics
 │   │   ├── financially_free_client.py # Advance/decline & market breadth aggregator
-│   │   └── telegram_client.py # Thread listener with mock/offline fallback mode
-│   ├── processing/         # Analytics, quantitative screening, and causal reasoning
+│   │   ├── telegram_client.py # Thread listener with mock/offline fallback mode
+│   │   ├── youtube_transcriber.py # yt-dlp + Whisper (local) + RapidOCR DirectML diarization (budget/RBI/Concall MP4) — RX 6700 XT, no cloud
+│   │   └── pdf_ingestor.py      # Layout-aware PyMuPDF/Marker for Budget/Economic Survey
+│   ├── processing/         # Analytics, moat/ripple quantification, and causal reasoning
 │   │   ├── technical_engine.py    # Rolling SMAs, RSI(14), delivery spike ratios
-│   │   ├── fundamental_engine.py  # YoY/QoQ revenue & PAT acceleration scores
-│   │   ├── composite_screener.py  # Multi-factor ranker & strict solvency gating
+│   │   ├── fundamental_engine.py  # YoY/QoQ revenue & PAT acceleration scores → financial_metrics
+│   │   ├── composite_screener.py  # Top-down ranker: moat≥3.5 + policy score≥0 + ROIC>WACC (secondary)
+│   │   ├── moat_scorer.py         # Moat=0.25*SC+0.25*NE+0.20*CA+0.20*IA+0.10*ES, width/trajectory
+│   │   ├── policy_engine.py       # ENI=Severity(±5)×Prob, regulatory_political_risks aggregator
 │   │   ├── distillation_engine.py # EAV + JSON business cyclicality & supply chain parameters
-│   │   ├── causal_engine.py       # Recursive multi-hop causal graph traversal
+│   │   ├── causal_engine.py       # Recursive CTE ripple_chain: PN=∏Pi, MN=RawN×PN×β, S=|MN|×20/(1+ln(1+Lag))
 │   │   ├── macro_simulator.py     # Macro policy shock propagation & impact matrix
 │   │   ├── ocr_engine.py          # RapidOCR / DirectML image & document text extractor
-│   │   └── document_parser.py     # PDF & presentation parser with section chunking
+│   │   └── document_parser.py     # PDF & presentation parser with section chunking → document_chunks pgvector
 │   ├── pipeline/           # End-to-end operational pipelines
 │   │   ├── phase1_runner.py       # Ingestion, computation, and checkpoint audit runner
 │   │   ├── backfill.py            # Historical Bhavcopy session backfiller
 │   │   ├── panic_monitor.py       # Market drawdown & crisis bargain absorption scanner
-│   │   └── inbox_runner.py        # Local inbox PDF/image scanning & indexing
+│   │   └── inbox_runner.py        # Local inbox PDF/image scanning & indexing → raw_documents
 │   ├── search/             # Hybrid lexical & vector retrieval
-│   │   └── hybrid_search.py       # LanceDB dense vector embeddings + SQLite FTS5 fallback
+│   │   └── hybrid_search.py       # pgvector cosine ivfflat + LanceDB + SQLite FTS5 fallback
 │   ├── agent/              # High-context AI agent orchestration & deterministic tools
-│   │   ├── schemas.py             # Pydantic structured data contracts
-│   │   ├── tools.py               # Deterministic quantitative & causal tools
-│   │   └── orchestrator.py        # Multi-thesis daily alpha synthesizer
+│   │   ├── schemas.py             # Pydantic structured data contracts (MacroEventExtraction: PrimaryConsequence/RippleConsequence recursive)
+│   │   ├── tools.py               # Deterministic quantitative & causal tools (moat, ENI, ripple CTE)
+│   │   └── orchestrator.py        # Top-down multi-thesis daily alpha synthesizer (Industry→Moat→Policy→ROIC)
 │   ├── reporting/          # Multi-format output exporters
 │   │   └── writer.py              # JSON, Markdown, and HTML report generator
 │   ├── ui/                 # Interactive financial terminal
@@ -138,11 +143,14 @@ python reality_engine/cli.py search-concall --query "order book capex margin gui
 ## 3. Key Design Rules & Conventions
 
 1. **Permanent ISIN Anchor**: All equity records, price history, and fundamentals must link to `master_companies.isin`. Tickers change, demerge, or rename; ISINs remain immutable.
-2. **SQLite WAL Persistence**: Database operations use WAL mode (`PRAGMA journal_mode = WAL;`) with 64 MB memory cache and busy timeout. Maintain transactional integrity.
-3. **Graceful Fallbacks**:
-   - Vector search falls back from LanceDB to SQLite FTS5 when embeddings are unavailable.
-   - OCR falls back to PyMuPDF text extraction when GPU/RapidOCR is absent.
-   - Market breadth falls back to local NSE Bhavcopy aggregation when external web services are unavailable.
-4. **Strict Solvency Gate**: Stocks with promoter pledge $> 15\%$, interest coverage $< 2.5\times$, or debt-to-equity $> 1.5\times$ must be filtered out before thesis synthesis.
-5. **Deterministic Agent Tools**: Agent orchestrators must rely on typed Pydantic tools (`reality_engine/agent/tools.py`) rather than unconstrained free-text generation.
-6. **No Git Stash in Worktrees**: In Agent Manager worktree workflows, never use `git stash` across checkouts as stashes are globally shared.
+2. **PostgreSQL + pgvector Primary, SQLite WAL Fallback**: Production uses PG `postgres_schema.sql` with `vector 1536 ivfflat`; local dev retains WAL `PRAGMA journal_mode = WAL` with 64 MB cache. Maintain transactional integrity.
+3. **Top-Down Funnel Priority**: `Industry secular_growth_score≥4 → Moat total_moat_score≥3.5 + trajectory Stable/Expanding → Policy agg ENI≥0 → ROIC>WACC` `reality_engine/agent/tools.py` must screen in this order; never bottom-up price-only.
+4. **Quantification Rubric (PDF spec)**: `Moat = 0.25*SC+0.25*NE+0.20*CA+0.20*IA+0.10*ES (0-5)` `v_wide_moat_candidates`; `ENI = Severity(±5)×Prob(0-1)` `regulatory_political_risks.net_impact_score` GENERATED; `PN=∏Pi` `MN=RawN×PN×β` `S=|MN|×20/(1+ln(1+Lag))` `ripple_effects` recursive CTE `reality_engine/db/postgres_schema.sql:5` — log scores verbatim from extraction, not prose.
+5. **Graceful Fallbacks**:
+   - Vector search: pgvector `ivfflat cosine` → LanceDB → SQLite FTS5 when embeddings unavailable.
+   - OCR: RapidOCR DirectML → PyMuPDF text extraction when GPU absent.
+   - Market breadth: external web → local NSE Bhavcopy aggregation.
+6. **Strict Solvency Gate (Secondary)**: After moat/policy, filter `promoter pledge >15% OR interest_coverage <2.5× OR D/E >1.5×` before thesis synthesis.
+7. **Multimodal Attribution**: Every `raw_documents` record must store `source_url`, `published_date`, `fiscal_period`; `document_chunks` must retain `timestamp_start_sec/_end_sec` for audio/video diarization via `youtube_transcriber.py` `yt-dlp+Whisper`.
+8. **Deterministic Agent Tools**: Agent must call typed Pydantic tools `MacroEventExtraction{PrimaryConsequence{second_order_effects:[RippleConsequence]}}` `reality_engine/agent/schemas.py` — never free-text graph creation.
+9. **No Git Stash in Worktrees**: In Agent Manager worktree workflows, never use `git stash` across checkouts as stashes are globally shared.

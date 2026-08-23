@@ -301,3 +301,47 @@ class DailyAlphaReport(BaseSchema):
         default_factory=lambda: datetime.now().isoformat(),
         description="Timestamp of report synthesis"
     )
+
+
+# --- Fundamental Reality Engine: Ripple DAG + Visual Alpha (PDF Architecture spec) ---
+class RippleConsequence(BaseSchema):
+    order_level: int = Field(..., ge=2, description="2 for second-order, 3 for third-order")
+    target_type: str = Field(..., description="Sector|Industry|Company")
+    target_name: str = Field(..., description="Ticker if company, otherwise industry/sector name")
+    transmission_channel: str = Field(..., description="Economic mechanism")
+    transmission_elasticity: float = Field(default=1.0, ge=-2.0, le=2.0)
+    raw_magnitude: float = Field(..., ge=-5.0, le=5.0)
+    probability: float = Field(..., ge=0.0, le=1.0)
+    lag_time_months: int = Field(..., ge=0)
+    downstream_ripples: List["RippleConsequence"] = Field(default_factory=list)
+
+class PrimaryConsequence(BaseSchema):
+    target_type: str = Field(..., description="Sector|Industry|Company")
+    target_name: str
+    transmission_channel: str
+    raw_magnitude: float = Field(..., ge=-5.0, le=5.0)
+    probability: float = Field(..., ge=0.0, le=1.0)
+    lag_time_months: int = Field(default=0)
+    second_order_effects: List[RippleConsequence] = Field(default_factory=list)
+
+class MacroEventExtraction(BaseSchema):
+    event_name: str
+    event_category: str
+    primary_effects: List[PrimaryConsequence] = Field(default_factory=list)
+
+class VisualArtifact(BaseSchema):
+    timestamp_seconds: int
+    artifact_type: str = Field(..., description="Financial_Table_Slide|Value_Chain_Diagram|Factory_Floor_Tour|Product_Tear_Down|CapEx_Timeline_Roadmap")
+    on_screen_text_ocr: str
+    visual_insights: str
+    structured_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    target_ticker: Optional[str] = None
+    moat_impact: Optional[str] = None
+    visual_description: str = Field(default="")
+    confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
+    frame_snapshot_url: Optional[str] = None
+
+class VideoIntelligenceExtraction(BaseSchema):
+    video_summary: str
+    spoken_policy_signals: List[Dict[str, Any]] = Field(default_factory=list)
+    visual_artifacts: List[VisualArtifact] = Field(default_factory=list)
