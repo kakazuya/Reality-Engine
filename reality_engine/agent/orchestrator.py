@@ -61,14 +61,21 @@ class AgentOrchestrator:
         universe: str = "nifty200",
         top_n: int = 20,
         use_top_down: bool = False,
+        use_ensemble: bool = False,
         **kwargs,
     ) -> pd.DataFrame:
         """Runs the multi-factor quantitative screener to identify candidate scrips.
 
         Phase 6: set use_top_down=True to route through top_down_screen() funnel
-        (Industry>=4 -> Moat>=3.5 -> ENI>=0 -> ROIC>WACC). Legacy path preserved for tests.
+        (Industry>=4 -> Moat>=3.5 -> ENI>=0 -> ROIC>WACC).
+        Wave D4: set use_ensemble=True to route through ensemble_screen() — the all-peers
+        weighted MoE blend (Σ w_lens * norm(lens_score)) with per-scrip learned noise floors.
+        Legacy path preserved for tests when both flags are False.
         """
         date_str = target_date or self.repo.get_latest_price_delivery_date()
+        if use_ensemble:
+            logger.info("Running Ensemble Screener for date %s (Universe: %s, Top: %d)", date_str, universe, top_n)
+            return self.screener.ensemble_screen(target_date=date_str, top_n=top_n, universe=universe, **kwargs)
         logger.info("Running Quantitative Screener for date %s (Universe: %s, Top: %d, top_down=%s)", date_str, universe, top_n, use_top_down)
         if use_top_down:
             return self.screener.top_down_screen(target_date=date_str, top_n=top_n, universe=universe, **kwargs)
@@ -203,7 +210,7 @@ class AgentOrchestrator:
         catalysts = self._generate_catalysts(symbol, sector, concall, distilled, yoy_rev)
         risks = self._generate_risks(symbol, sector, distilled, debt_to_equity, dist_52w)
 
-        return ScripAlphaThesis(
+        thesis = ScripAlphaThesis(
             symbol=symbol,
             company_name=company_name,
             composite_rank=rank,
@@ -219,17 +226,33 @@ class AgentOrchestrator:
             key_catalysts=catalysts,
             key_risks=risks
         )
+        # Preserve policy coverage/ENI state on thesis for audit (None stays None, never claim pass)
+        try:
+            _pm = self._fetch_topdown_metrics(symbol, candidate_row)
+            object.__setattr__(thesis, "policy_agg_eni", _pm.get("policy_agg_eni"))
+            object.__setattr__(thesis, "policy_coverage", _pm.get("policy_coverage"))
+            object.__setattr__(thesis, "policy_approval", _pm.get("policy_approval"))
+            object.__setattr__(thesis, "policy_agg_eni_calc", _pm.get("policy_agg_eni_calc"))
+        except Exception:
+            pass
+        return thesis
 
     # ------------------------------------------------------------------
     # Phase 6: Top-down template helpers (Policy Catalyst -> Transmission -> Moat -> Verdict)
     # ------------------------------------------------------------------
     def _fetch_topdown_metrics(self, symbol: str, candidate_row: Dict[str, Any]) -> Dict[str, Any]:
-        """Collect moat/policy/monet metrics from candidate_row or via screener lookups (graceful fallback)."""
+        """Collect moat/policy/monet metrics from candidate_row or via screener lookups (graceful fallback).
+
+        Policy ENI is Optional: ``None`` for ``no_template``/``unknown`` coverage is
+        preserved for audit (never coerced to 0). A neutral ``policy_agg_eni_calc``
+        (0.0) is provided solely for arithmetic where a float is required.
+        """
         sym = symbol.upper().strip()
         isin = str(candidate_row.get("isin", "") or "")
         # Prefer enriched columns from top_down_screen, else lookup
         moat_score = candidate_row.get("total_moat_score")
-        if moat_score is None:
+        # Treat pandas NaN as missing
+        if moat_score is None or (isinstance(moat_score, float) and pd.isna(moat_score)):
             try:
                 m = self.screener._lookup_moat_metrics(sym, isin)
                 moat_score = m.get("total_moat_score", 2.5)
@@ -240,37 +263,93 @@ class AgentOrchestrator:
                 moat_score, moat_traj, moat_width, pricing_pwr = 2.5, "Stable", "Narrow", 3
         else:
             moat_traj = candidate_row.get("moat_trajectory", "Stable")
-            moat_width = candidate_row.get("moat_width", "Wide" if float(moat_score) >= 3.5 else "Narrow")
+            try:
+                _ms_f = float(moat_score)
+            except Exception:
+                _ms_f = 2.5
+            moat_width = candidate_row.get("moat_width", "Wide" if _ms_f >= 3.5 else "Narrow")
             pricing_pwr = candidate_row.get("pricing_power_score", 3)
 
-        policy_eni = candidate_row.get("policy_agg_eni")
-        if policy_eni is None:
+        # --- Policy ENI: preserve None for no_template/unknown, provide calc fallback ---
+        policy_eni_raw = candidate_row.get("policy_agg_eni")
+        if policy_eni_raw is None:
+            policy_eni_raw = candidate_row.get("policy_eni")
+        # pandas NaN -> treat as None
+        if policy_eni_raw is not None and pd.isna(policy_eni_raw):
+            policy_eni_raw = None
+        if policy_eni_raw is not None:
             try:
-                policy_eni = self.screener._lookup_policy_agg_eni(sym)
+                policy_eni = float(policy_eni_raw)
             except Exception:
-                policy_eni = 0.0
+                policy_eni = None
+        else:
+            try:
+                looked = self.screener._lookup_policy_agg_eni(sym)
+            except Exception:
+                looked = None
+            if looked is not None and pd.isna(looked):
+                looked = None
+            if looked is None:
+                policy_eni = None
+            else:
+                try:
+                    policy_eni = float(looked)
+                except Exception:
+                    policy_eni = None
+
+        # Resolve coverage (mapped / no_template / unknown)
+        policy_coverage = candidate_row.get("policy_coverage")
+        if policy_coverage is None or (isinstance(policy_coverage, float) and pd.isna(policy_coverage)):
+            policy_coverage = candidate_row.get("policy_coverage_status") or candidate_row.get("coverage_status")
+        if policy_coverage is None or (isinstance(policy_coverage, float) and pd.isna(policy_coverage)):
+            try:
+                policy_coverage = self.repo.get_policy_coverage(sym)
+            except Exception:
+                policy_coverage = None
+        if policy_coverage is None or (isinstance(policy_coverage, float) and pd.isna(policy_coverage)):
+            policy_coverage = "mapped" if policy_eni is not None else "unknown"
+        try:
+            policy_coverage = str(policy_coverage).strip().lower()
+        except Exception:
+            policy_coverage = "unknown"
+        if policy_coverage not in ("mapped", "no_template", "unknown"):
+            policy_coverage = "mapped" if policy_eni is not None else "unknown"
+        # Ensure consistency: numeric ENI must be mapped
+        if policy_eni is not None and policy_coverage in ("no_template", "unknown"):
+            policy_coverage = "mapped"
+
+        policy_eni_calc = 0.0 if policy_eni is None else float(policy_eni)
+        policy_approval = None if policy_eni is None else (policy_eni >= 0)
 
         roic_spread = candidate_row.get("roic_wacc_spread")
-        if roic_spread is None:
+        if roic_spread is None or (isinstance(roic_spread, float) and pd.isna(roic_spread)):
             try:
                 roic_spread = self.screener._lookup_roic_wacc_spread(sym, isin)
             except Exception:
                 roic_spread = 0.06
+        if isinstance(roic_spread, float) and pd.isna(roic_spread):
+            roic_spread = 0.06
 
         secular = candidate_row.get("secular_growth_score")
-        if secular is None:
+        if secular is None or (isinstance(secular, float) and pd.isna(secular)):
             try:
                 comp = self.repo.get_company_by_symbol(sym) or {}
                 secular = self.screener._lookup_secular_growth_score(comp.get("industry"), comp.get("sector"))
             except Exception:
                 secular = 4.0
+        if isinstance(secular, float) and pd.isna(secular):
+            secular = 4.0
 
         return {
             "total_moat_score": float(moat_score),
             "moat_trajectory": str(moat_traj),
             "moat_width": str(moat_width),
             "pricing_power_score": int(pricing_pwr),
-            "policy_agg_eni": float(policy_eni),
+            "policy_agg_eni": policy_eni,  # None for no_template/unknown, preserved for audit
+            "policy_agg_eni_calc": policy_eni_calc,  # 0.0 neutral for arithmetic
+            "policy_coverage": policy_coverage,  # mapped / no_template / unknown
+            "policy_eni": policy_eni,  # alias
+            "policy_approval": policy_approval,  # True/False/None
             "roic_wacc_spread": float(roic_spread),
             "secular_growth_score": float(secular),
         }
@@ -317,7 +396,12 @@ class AgentOrchestrator:
             catalyst = f"Premiumization & urban discretionary consumption tailwind in {industry} (neutral ENI)"
             transmission = "Volume growth (price×units) via brand/licensure pricing power, stable input costs support operating leverage"
         else:
-            catalyst = f"Sector-level policy neutral (ENI {metrics['policy_agg_eni']:+.2f}) in {sector} / {industry}; no headwind"
+            _eni = metrics.get("policy_agg_eni")
+            _cov = metrics.get("policy_coverage", "unknown")
+            if _cov in ("no_template", "unknown") or _eni is None:
+                catalyst = f"Sector-level policy neutral (ENI unknown, coverage {_cov}) in {sector} / {industry}; no mapped policy template"
+            else:
+                catalyst = f"Sector-level policy neutral (ENI {_eni:+.2f}) in {sector} / {industry}; no headwind"
             transmission = "Domestic capex execution & supply-chain positioning channel; pricing power sustains margins across cycles"
 
         # Moat quantification
@@ -328,12 +412,17 @@ class AgentOrchestrator:
             f"secular_growth_score {metrics['secular_growth_score']:.1f}/5 (>=4.0 hurdle)."
         )
 
-        # Verdict (monetisation secondary)
+        # Verdict (monetisation secondary) - unknown never claims tailwind
         verdict_parts = []
-        if metrics["policy_agg_eni"] >= TOPDOWN_MIN_POLICY_ENI:
-            verdict_parts.append(f"policy tailwind ENI {metrics['policy_agg_eni']:+.2f} >=0")
+        _v_eni = metrics.get("policy_agg_eni")
+        _v_cov = metrics.get("policy_coverage", "unknown")
+        if _v_cov == "mapped" and _v_eni is not None:
+            if _v_eni >= TOPDOWN_MIN_POLICY_ENI:
+                verdict_parts.append(f"policy tailwind ENI {_v_eni:+.2f} >=0")
+            else:
+                verdict_parts.append(f"policy headwind ENI {_v_eni:+.2f} (<0, monitor)")
         else:
-            verdict_parts.append(f"policy headwind ENI {metrics['policy_agg_eni']:+.2f} (<0, monitor)")
+            verdict_parts.append(f"policy neutral (ENI unknown, coverage {_v_cov}; no mapped template)")
         if metrics["roic_wacc_spread"] > TOPDOWN_MIN_ROIC_WACC_SPREAD:
             verdict_parts.append(f"ROIC-WACC {metrics['roic_wacc_spread']:+.2%} >5% value-creative")
         else:
@@ -507,22 +596,29 @@ class AgentOrchestrator:
         top_n: int = 5,
         screener_pool_size: int = 20,
         use_top_down: bool = False,
+        use_ensemble: bool = False,
+        investor_majority: str = "all",
+        temperature: float = 0.4,
         **kwargs,
     ) -> DailyAlphaReport:
         """
         Executes end-to-end synthesis:
         1. Market Breadth and Regime Snapshot
-        2. Multi-factor Quantitative Screening (legacy or top-down funnel)
+        2. Multi-factor Quantitative Screening (legacy / top-down funnel / ensemble MoE blend)
         3. Deep Tool Evidence Gathering for Top Candidates (moat/policy/monet aware)
         4. High-Conviction Alpha Thesis Synthesis (Policy Catalyst -> Transmission -> Moat -> Verdict)
         5. Macro Shock Radar Aggregation
         6. Validated DailyAlphaReport Construction
 
         Phase 6: set use_top_down=True to screen via Industry>=4 -> Moat>=3.5 -> ENI>=0 -> ROIC>WACC.
-        Backward compatible: default False preserves legacy screen + thesis generation for tests.
+        Wave D4: set use_ensemble=True to screen via the all-peers weighted MoE blend
+            (ensemble_screen: Σ w_lens * norm(lens_score)) and, for every candidate, fire the
+            sparse MoE gate (ensemble_ranker.fire_lenses) to attach per-scrip lens activation
+            (temperature-controlled explore/exploit) + transient event-graph context.
+        Backward compatible: default (both flags False) preserves legacy screen + thesis for tests.
         """
         date_str = target_date or self.repo.get_latest_price_delivery_date() or "2026-08-14"
-        logger.info("Synthesizing Daily Alpha Report for date: %s (top_down=%s)", date_str, use_top_down)
+        logger.info("Synthesizing Daily Alpha Report for date: %s (top_down=%s, ensemble=%s)", date_str, use_top_down, use_ensemble)
 
         # 1. Market Breadth Overview
         breadth_raw = get_market_breadth_overview()
@@ -533,12 +629,13 @@ class AgentOrchestrator:
             vulnerable_sectors=breadth_raw.get("vulnerable_sectors", [])
         )
 
-        # 2. Run Screener (route top-down if requested)
+        # 2. Run Screener (route ensemble / top-down / legacy)
         df_screened = self.run_quantitative_screening(
             target_date=date_str,
             universe=universe,
             top_n=screener_pool_size,
             use_top_down=use_top_down,
+            use_ensemble=use_ensemble,
             **kwargs,
         )
         # Fallback: if top-down filters too aggressively and returns < top_n, blend with legacy survivors to keep report populated (minimal slice hygiene)
@@ -559,17 +656,53 @@ class AgentOrchestrator:
                     df_screened = pd.concat([df_screened, extra], ignore_index=True)
                     fallback_used = True
 
+        # Ensemble screening carries composite in `ensemble_composite` and learned weights in df.attrs.
+        ensemble_weights = None
+        if use_ensemble and not df_screened.empty:
+            if "ensemble_composite" in df_screened.columns:
+                df_screened = df_screened.copy()
+                df_screened["composite_score"] = df_screened["ensemble_composite"]
+            ensemble_weights = df_screened.attrs.get("ensemble_weights")
+
         # 3. Solvency Disqualifications Count
         disqualified_count = self.count_disqualified_solvency_companies()
 
         # 4. Synthesize Top Theses (always via top-down template, which degrades gracefully)
         theses: List[ScripAlphaThesis] = []
+        activations: List[Dict[str, Any]] = []
+        ranker = None
+        if use_ensemble:
+            try:
+                from reality_engine.processing.ensemble_ranker import EnsembleRanker
+                ranker = EnsembleRanker()
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Ensemble MoE ranker unavailable: %s", exc)
+                ranker = None
+
         if not df_screened.empty:
             top_candidates = df_screened.head(top_n)
             for rank_idx, (_, row) in enumerate(top_candidates.iterrows(), 1):
                 try:
                     candidate_dict = row.to_dict()
                     thesis = self.evaluate_candidate_scrip(candidate_dict, rank=rank_idx, use_topdown_template=True)
+                    # MoE activation: fire the sparse gate per candidate so the pathway is
+                    # revisable (temperature controls explore vs exploit) and audited.
+                    if use_ensemble and ranker is not None:
+                        ctx = {
+                            "stock": thesis.symbol,
+                            "sector": candidate_dict.get("sector") or candidate_dict.get("industry") or "Industrials",
+                            "regime": breadth_summary.market_regime,
+                            "investor_majority": investor_majority,
+                        }
+                        try:
+                            activation = ranker.fire_lenses(float(temperature), context=ctx)
+                        except Exception as e:
+                            logger.exception("MoE activation failed for %s: %s", thesis.symbol, e)
+                            activation = None
+                        if activation is not None:
+                            # pydantic model disallows arbitrary fields; attach via object.__setattr__
+                            object.__setattr__(thesis, "ensemble_activation", activation)
+                            activations.append(activation)
                     theses.append(thesis)
                 except Exception as e:
                     logger.exception("Error synthesizing thesis for row %s: %s", row.get("symbol"), e)
@@ -592,8 +725,58 @@ class AgentOrchestrator:
             report_funnel = df_screened.attrs.get("funnel_stats")
             logger.info("Top-down funnel stats %s (fallback=%s)", report_funnel, fallback_used)
 
-        logger.info("Successfully synthesized Daily Alpha Report for %s with %d theses (top_down=%s).", date_str, len(theses), use_top_down)
+        # Wave D4: attach ensemble synthesis metadata (MoE weights, activation log, transient graph)
+        if use_ensemble:
+            transient = self._collect_transient_graph_context()
+            meta = {
+                "mode": "ensemble",
+                "investor_majority": str(investor_majority),
+                "temperature": float(temperature),
+                "ensemble_weights": ensemble_weights,
+                "n_candidates": len(theses),
+                "avg_fired_weight_sum": round(sum(a["fired_weight_sum"] for a in activations) / len(activations), 6) if activations else None,
+                "avg_n_fired": round(sum(a["n_fired"] for a in activations) / len(activations), 2) if activations else None,
+                "transient_graphs": transient,
+            }
+            object.__setattr__(report, "ensemble_metadata", meta)
+            logger.info("Ensemble metadata attached: %d theses, avg_fired=%s", len(theses), meta["avg_n_fired"])
+
+        logger.info("Successfully synthesized Daily Alpha Report for %s with %d theses (top_down=%s, ensemble=%s).", date_str, len(theses), use_top_down, use_ensemble)
         return report
+
+    def _collect_transient_graph_context(self) -> List[Dict[str, Any]]:
+        """Best-effort collection of recently spawned transient event-graphs (Wave D2).
+
+        Returns up to a few recent macro_events with their biggest-beneficiary ripple (max S).
+        Purely optional enrichment for the ensemble rationale; any failure degrades to [].
+        """
+        try:
+            from reality_engine.processing.event_graph import EventGraphSpawner
+            sp = EventGraphSpawner()
+            with self.repo.db.session() as conn:
+                rows = conn.execute(
+                    "SELECT event_id FROM macro_events ORDER BY event_id DESC LIMIT 5"
+                ).fetchall()
+            out: List[Dict[str, Any]] = []
+            for r in rows:
+                eid = r["event_id"]
+                try:
+                    chain = sp.trace_transient_chain(eid, max_hops=2)
+                except Exception:
+                    continue
+                if chain:
+                    try:
+                        top = max(chain, key=lambda x: float(x.get("s", 0.0) or 0.0))
+                        out.append({
+                            "event_id": eid,
+                            "biggest_beneficiary": top.get("ripple_id"),
+                            "S": top.get("s"),
+                        })
+                    except Exception:
+                        continue
+            return out
+        except Exception:
+            return []
 
     def synthesize_daily_alpha_report_topdown(
         self,
@@ -610,6 +793,28 @@ class AgentOrchestrator:
             top_n=top_n,
             screener_pool_size=screener_pool_size,
             use_top_down=True,
+            **kwargs,
+        )
+
+    def synthesize_daily_alpha_report_ensemble(
+        self,
+        target_date: Optional[str] = None,
+        universe: str = "nifty200",
+        top_n: int = 5,
+        screener_pool_size: int = 20,
+        investor_majority: str = "all",
+        temperature: float = 0.4,
+        **kwargs,
+    ) -> DailyAlphaReport:
+        """Convenience alias for synthesize_daily_alpha_report(use_ensemble=True) MoE blend."""
+        return self.synthesize_daily_alpha_report(
+            target_date=target_date,
+            universe=universe,
+            top_n=top_n,
+            screener_pool_size=screener_pool_size,
+            use_ensemble=True,
+            investor_majority=investor_majority,
+            temperature=temperature,
             **kwargs,
         )
 

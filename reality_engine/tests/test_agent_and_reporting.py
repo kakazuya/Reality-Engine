@@ -235,6 +235,51 @@ class TestAgentAndReporting(unittest.TestCase):
             self.assertIn("Policy Transmission Radar", html_text)
             self.assertIn(report.high_conviction_theses[0].symbol, html_text)
 
+    def test_06_nullable_policy_no_template_GMRAIRPORT_regression(self):
+        """Regression: nullable policy for no-template symbol must not regress to ENI 0 / false tailwind.
+
+        Observed failure case GMRAIRPORT (Services; no mapped policy template) must preserve
+        policy_agg_eni is None, policy_coverage == 'no_template', policy_approval is None
+        via the candidate path used by test_04_agent_orchestrator_synthesis, and the
+        synthesized rationale must be neutral (ENI unknown / no mapped template) without
+        claiming a policy tailwind.
+        """
+        orchestrator = AgentOrchestrator()
+
+        # 1. Direct _fetch_topdown_metrics preserves nullable ENI for GMRAIRPORT
+        metrics = orchestrator._fetch_topdown_metrics("GMRAIRPORT", {"symbol": "GMRAIRPORT", "isin": "INE776C01039"})
+        self.assertIsNone(metrics["policy_agg_eni"])
+        self.assertIsNone(metrics["policy_eni"])
+        self.assertEqual(metrics["policy_coverage"], "no_template")
+        self.assertIsNone(metrics["policy_approval"])
+        # neutral calc helper remains 0.0 for arithmetic but must not overwrite audit None
+        self.assertEqual(metrics["policy_agg_eni_calc"], 0.0)
+
+        # 2. Same via minimal candidate_row shape used by evaluate_candidate_scrip (as in test_04)
+        candidate_row = {"symbol": "GMRAIRPORT", "isin": "INE776C01039", "close": 92.5, "composite_score": 58.0}
+        metrics2 = orchestrator._fetch_topdown_metrics(candidate_row["symbol"], candidate_row)
+        self.assertIsNone(metrics2["policy_agg_eni"])
+        self.assertEqual(metrics2["policy_coverage"], "no_template")
+        self.assertIsNone(metrics2["policy_approval"])
+
+        # 3. Full public path: evaluate_candidate_scrip -> thesis preserves audit fields
+        thesis = orchestrator.evaluate_candidate_scrip(candidate_row, rank=1)
+        self.assertIsNone(getattr(thesis, "policy_agg_eni"))
+        self.assertEqual(getattr(thesis, "policy_coverage"), "no_template")
+        self.assertIsNone(getattr(thesis, "policy_approval"))
+        # alias / calc consistency
+        self.assertIsNone(getattr(thesis, "policy_agg_eni", None))
+        self.assertEqual(getattr(thesis, "policy_agg_eni_calc", 0.0), 0.0)
+
+        # 4. Rationale must be neutral and must not fabricate a tailwind
+        rationale = thesis.causal_macro_rationale
+        self.assertIn("ENI unknown", rationale)
+        self.assertIn("no mapped policy template", rationale)
+        self.assertNotIn("policy tailwind", rationale.lower())
+        # verdict helper also contains the same neutral phrasing
+        self.assertIn("no_template", rationale.lower())
+        self.assertIn("policy neutral", rationale.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
