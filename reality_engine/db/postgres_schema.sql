@@ -146,6 +146,12 @@ CREATE TABLE regulatory_political_risks (
 
  company_id INT REFERENCES companies(company_id),
 
+ ticker VARCHAR(20),
+
+ isin VARCHAR(12),
+
+ symbol VARCHAR(20),
+
  policy_name VARCHAR(255) NOT NULL,
 
  risk_type VARCHAR(20) CHECK (risk_type IN ('Tailwind','Headwind','Auxiliary')),
@@ -160,11 +166,22 @@ CREATE TABLE regulatory_political_risks (
 
  time_horizon VARCHAR(20) CHECK (time_horizon IN ('Short-term','Mid-term','Structural')),
 
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ coverage_status VARCHAR(20) CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped',
+
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(symbol, policy_name)
 
 );
 
-
+-- Migration for existing PG clusters that were created before coverage_status/symbol columns (idempotent)
+ALTER TABLE regulatory_political_risks ADD COLUMN IF NOT EXISTS ticker VARCHAR(20);
+ALTER TABLE regulatory_political_risks ADD COLUMN IF NOT EXISTS isin VARCHAR(12);
+ALTER TABLE regulatory_political_risks ADD COLUMN IF NOT EXISTS symbol VARCHAR(20);
+ALTER TABLE regulatory_political_risks ADD COLUMN IF NOT EXISTS coverage_status VARCHAR(20) CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped';
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='regulatory_political_risks_symbol_policy_name_key') THEN ALTER TABLE regulatory_political_risks ADD CONSTRAINT regulatory_political_risks_symbol_policy_name_key UNIQUE(symbol, policy_name); END IF; END $$;
+CREATE INDEX IF NOT EXISTS idx_regpol_coverage ON regulatory_political_risks(coverage_status);
+CREATE INDEX IF NOT EXISTS idx_regpol_symbol ON regulatory_political_risks(symbol);
 
 -- 4. Multimodal Ingestion: Raw Documents + pgvector Chunks
 
@@ -320,19 +337,26 @@ WHERE m.total_moat_score >= 3.5 AND m.moat_trajectory IN ('Stable','Expanding');
 
 CREATE OR REPLACE VIEW v_policy_adjusted_screen AS
 
-WITH pa AS (SELECT company_id, SUM(net_impact_score) AS agg_policy FROM regulatory_political_risks GROUP BY company_id)
+WITH pa AS (
+  SELECT company_id,
+         SUM(net_impact_score) AS agg_policy,
+         COUNT(*) FILTER (WHERE policy_name != '__NO_POLICY_TEMPLATE__' AND (coverage_status='mapped' OR coverage_status IS NULL) AND net_impact_score IS NOT NULL) AS mapped_cnt
+  FROM regulatory_political_risks
+  WHERE policy_name != '__NO_POLICY_TEMPLATE__' AND (coverage_status='mapped' OR coverage_status IS NULL) AND net_impact_score IS NOT NULL
+  GROUP BY company_id
+)
 
-SELECT c.ticker, m.total_moat_score, COALESCE(pa.agg_policy,0) AS net_policy_score, f.roic_wacc_spread
+SELECT c.ticker, m.total_moat_score, pa.agg_policy AS net_policy_score, f.roic_wacc_spread
 
 FROM companies c
 
 JOIN moat_evaluations m ON c.company_id=m.company_id
 
-LEFT JOIN pa ON c.company_id=pa.company_id
+JOIN pa ON c.company_id=pa.company_id
 
 JOIN financial_metrics f ON c.company_id=f.company_id
 
-WHERE f.fiscal_year=2025 AND f.roic_wacc_spread > 0.05 AND COALESCE(pa.agg_policy,0) >= 0;
+WHERE f.fiscal_year=2025 AND f.roic_wacc_spread > 0.05 AND pa.agg_policy >= 0;
 
 -- Patch to postgres_schema.sql for 4-pillar pruning + visual alpha
 

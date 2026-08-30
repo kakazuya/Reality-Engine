@@ -167,23 +167,110 @@ def _pick_symbols(conn, min_count: int) -> List[str]:
     return syms
 
 
+def _pick_universe_symbols(conn, universe: str, limit: Optional[int]) -> List[str]:
+    """Deterministic full-universe symbol selection (opt-in path).
+
+    Selects active master_companies.nse_symbol ordered deterministically,
+    optionally filtered by is_nifty500 / is_nifty200, and applies limit.
+    This path does NOT cap at MIN_SEED_SYMBOLS — it seeds the full
+    requested universe (used when --universe != nifty200 or
+    --all-investor-cohorts is set). Idempotent and symbol-keyed.
+    """
+    uni = (universe or "nifty200").lower()
+    try:
+        if uni == "all":
+            rows = conn.execute(
+                "SELECT nse_symbol FROM master_companies WHERE is_active=1 AND nse_symbol IS NOT NULL AND TRIM(nse_symbol) != '' ORDER BY nse_symbol ASC"
+            ).fetchall()
+        elif uni == "nifty500":
+            rows = conn.execute(
+                "SELECT nse_symbol FROM master_companies WHERE is_nifty500=1 AND is_active=1 AND nse_symbol IS NOT NULL ORDER BY nse_symbol ASC"
+            ).fetchall()
+            if not rows:
+                rows = conn.execute(
+                    "SELECT nse_symbol FROM master_companies WHERE is_active=1 AND nse_symbol IS NOT NULL AND TRIM(nse_symbol) != '' ORDER BY nse_symbol ASC"
+                ).fetchall()
+        else:  # nifty200
+            rows = conn.execute(
+                "SELECT nse_symbol FROM master_companies WHERE is_nifty200=1 AND is_active=1 AND nse_symbol IS NOT NULL ORDER BY nse_symbol ASC"
+            ).fetchall()
+            if not rows:
+                rows = conn.execute(
+                    "SELECT nse_symbol FROM master_companies WHERE is_active=1 AND nse_symbol IS NOT NULL AND TRIM(nse_symbol) != '' ORDER BY nse_symbol ASC"
+                ).fetchall()
+    except Exception:
+        rows = []
+    syms = [r["nse_symbol"] for r in rows if r["nse_symbol"]]
+    if limit is not None:
+        try:
+            lim = int(limit)
+            if lim >= 0:
+                syms = syms[:lim]
+        except Exception:
+            pass
+    return syms
+
+
+def _parse_args():
+    """Parse opt-in full-universe MoE flags; defaults preserve legacy behavior."""
+    import argparse
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--universe", choices=["nifty200", "nifty500", "all"], default="nifty200")
+    p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--all-investor-cohorts", action="store_true", default=False, dest="all_investor_cohorts")
+    # Alias for seed-peers forwarding compatibility (treated same as --all-investor-cohorts)
+    p.add_argument("--include-derived", action="store_true", default=False, dest="include_derived")
+    try:
+        args, _ = p.parse_known_args()
+    except SystemExit:
+        class _A:
+            universe = "nifty200"
+            limit = None
+            all_investor_cohorts = False
+            include_derived = False
+        args = _A()
+    return args
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
-def main() -> int:
+def main(
+    universe: Optional[str] = None,
+    limit: Optional[int] = None,
+    all_investor_cohorts: Optional[bool] = None,
+) -> int:
+    cli_args = _parse_args()
+    eff_universe = universe if universe is not None else getattr(cli_args, "universe", "nifty200")
+    eff_limit = limit if limit is not None else getattr(cli_args, "limit", None)
+    # all_investor_cohorts may come from either --all-investor-cohorts or --include-derived alias
+    if all_investor_cohorts is not None:
+        eff_all = bool(all_investor_cohorts)
+    else:
+        eff_all = bool(
+            getattr(cli_args, "all_investor_cohorts", False) or getattr(cli_args, "include_derived", False)
+        )
+    use_full_universe = (eff_universe != "nifty200") or eff_all
+
     ranker = EnsembleRanker(db_manager)
     corrector = EODCorrector(db_manager)
     repo = Repository(db_manager)
     ranker.ensure_schema()
 
     with db_manager.session() as conn:
-        syms = _pick_symbols(conn, MIN_SEED_SYMBOLS)
+        if use_full_universe:
+            syms = _pick_universe_symbols(conn, eff_universe, eff_limit)
+        else:
+            syms = _pick_symbols(conn, MIN_SEED_SYMBOLS)
 
     print("=" * 78)
     print("FINAL WAVE - MoE SEEDING & EOD CORRECTION LOOP")
     print("=" * 78)
-    print(f"[setup] seeding {len(syms)} symbols x {len(INVESTOR_MAJORITIES)} investors "
-          f"x {len(LENS_FAMILIES)} lens families = up to {len(syms) * len(INVESTOR_MAJORITIES) * len(LENS_FAMILIES)} rows")
+    if use_full_universe:
+        print(f"[setup] FULL-UNIVERSE seeding universe={eff_universe} limit={eff_limit} all_investor_cohorts={eff_all} -> {len(syms)} symbols x {len(INVESTOR_MAJORITIES)} investors x {len(LENS_FAMILIES)} lens families = up to {len(syms) * len(INVESTOR_MAJORITIES) * len(LENS_FAMILIES)} rows (20 rows/symbol deterministic, floor-signaled coverage)")
+    else:
+        print(f"[setup] seeding {len(syms)} symbols x {len(INVESTOR_MAJORITIES)} investors "
+              f"x {len(LENS_FAMILIES)} lens families = up to {len(syms) * len(INVESTOR_MAJORITIES) * len(LENS_FAMILIES)} rows")
 
     # ---- counts: before seeding ----
     rows_before = _count("model_explainer_rankings")

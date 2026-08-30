@@ -463,6 +463,33 @@ CREATE INDEX IF NOT EXISTS idx_rawdoc_source_type ON raw_documents(source_type);
 CREATE INDEX IF NOT EXISTS idx_rawdoc_published ON raw_documents(published_date DESC);
 
 -- ====================================================================
+-- 19b. Regulatory Political Risks (policy peer) — SQLite fallback mirror of postgres_schema.sql
+-- Coverage status: 'mapped' = has ENI numeric, 'no_template' = sentinel coverage-only,
+-- 'unknown' = no row. Sentinel policy_name='__NO_POLICY_TEMPLATE__' with NULL impacts.
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS regulatory_political_risks (
+    risk_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER,
+    ticker TEXT,
+    isin TEXT,
+    symbol TEXT,
+    policy_name TEXT NOT NULL,
+    risk_type TEXT,
+    factor_type TEXT,
+    severity_score REAL,
+    probability REAL,
+    net_impact_score REAL,
+    time_horizon TEXT,
+    coverage_status TEXT CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(symbol, policy_name)
+);
+CREATE INDEX IF NOT EXISTS idx_regpol_symbol ON regulatory_political_risks(symbol);
+CREATE INDEX IF NOT EXISTS idx_regpol_isin ON regulatory_political_risks(isin);
+CREATE INDEX IF NOT EXISTS idx_regpol_coverage ON regulatory_political_risks(coverage_status);
+CREATE INDEX IF NOT EXISTS idx_regpol_net ON regulatory_political_risks(net_impact_score);
+
+-- ====================================================================
 -- 19. Pruning / Decay Config (Pillar 2) — SQLite parity with postgres_schema.sql
 -- Half-life categories control embedding decay + structural-milestone survival.
 -- ====================================================================

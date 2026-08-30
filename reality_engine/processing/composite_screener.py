@@ -193,22 +193,36 @@ class CompositeScreener:
         unit-tested without a live DB. Missing inputs fall back to neutral defaults.
         """
         df = df.copy()
-        tech = pd.to_numeric(df.get("technical_score", 0.0), errors="coerce").fillna(0.0)
-        funda = pd.to_numeric(df.get("fundamental_score", 0.0), errors="coerce").fillna(0.0)
-        sm = pd.to_numeric(
-            df.get("alt_sentiment_score", df.get("smart_money_score", 0.0)),
-            errors="coerce",
-        ).fillna(0.0)
+        def _series(col, default):
+            if col in df.columns:
+                return pd.to_numeric(df[col], errors="coerce").fillna(default)
+            return pd.Series([default] * len(df), index=df.index, dtype=float)
+        tech = _series("technical_score", 0.0)
+        funda = _series("fundamental_score", 0.0)
+        if "alt_sentiment_score" in df.columns or "smart_money_score" in df.columns:
+            base_col = "alt_sentiment_score" if "alt_sentiment_score" in df.columns else "smart_money_score"
+            sm = pd.to_numeric(df[base_col], errors="coerce").fillna(0.0)
+        else:
+            sm = pd.Series([0.0] * len(df), index=df.index, dtype=float)
         # (a) Factor/Statistical peer: blend of FF5-style flow + acceleration + breadth
         df["lens_factor_statistical"] = (0.40 * tech + 0.35 * funda + 0.25 * sm).clip(0.0, 100.0)
 
         # (c) Business-quality peer: moat total (0-5) scaled to 0-100
-        moat = pd.to_numeric(df.get("total_moat_score", 2.5), errors="coerce").fillna(2.5)
+        if "total_moat_score" in df.columns:
+            moat = pd.to_numeric(df["total_moat_score"], errors="coerce").fillna(2.5)
+        else:
+            moat = pd.Series([2.5] * len(df), index=df.index, dtype=float)
         df["lens_business_quality"] = (moat / 5.0 * 100.0).clip(0.0, 100.0)
 
-        # (b) Macro/Policy peer: aggregate ENI mapped through 50 + ENI*20 (ENI 0 -> 50)
-        eni = pd.to_numeric(df.get("policy_agg_eni", 0.0), errors="coerce").fillna(0.0)
-        df["lens_policy_macro"] = (50.0 + eni * 20.0).clip(0.0, 100.0)
+        # (b) Macro/Policy peer: aggregate ENI mapped through 50 + ENI*20 (ENI 0 -> 50, None -> 50 neutral)
+        # Do NOT coerce NULL eni to 0 in the source column; keep policy_agg_eni as None for audit.
+        # Lens neutral 50.0 is explicit, not via filling eni with 0.
+        if "policy_agg_eni" not in df.columns:
+            df["policy_agg_eni"] = None
+        eni_series = pd.to_numeric(df["policy_agg_eni"], errors="coerce")
+        df["lens_policy_macro"] = eni_series.apply(
+            lambda x: 50.0 if pd.isna(x) else float(np.clip(50.0 + x * 20.0, 0.0, 100.0))
+        )
 
         # (d) Supply-chain peer: ripple significance (neutral 50 when no signal)
         if "lens_supply_chain" not in df.columns:
@@ -693,53 +707,15 @@ class CompositeScreener:
             pass
         return {"total_moat_score": 2.5, "moat_trajectory": "Stable", "moat_width": "Narrow", "pricing_power_score": 3}
 
-    def _lookup_policy_agg_eni(self, symbol: str) -> float:
-        """Aggregate ENI Severity*Prob per regulatory_political_risks (PG) or simulated via causal graph."""
+    def _lookup_policy_agg_eni(self, symbol: str) -> Optional[float]:
+        """Aggregate ENI via repository (mapped rows only). Returns None for unknown/no_template."""
         sym = (symbol or "").upper().strip()
-        # Try PG/SQLite regulatory_political_risks
-        for tbl in ("regulatory_political_risks",):
-            try:
-                with self.repo.db.session() as conn:
-                    row = conn.execute(
-                        f"SELECT COALESCE(SUM(severity_score * probability), 0) FROM {tbl} WHERE company_id IN (SELECT company_id FROM companies WHERE ticker=?)",
-                        (sym,),
-                    ).fetchone()
-                    if row is not None:
-                        # If table exists but zero rows, SUM returns None -> fallback
-                        val = row[0]
-                        if val is not None:
-                            return round(float(val), 2)
-            except Exception:
-                continue
-        # SQLite fallback demo not provisioned -> simulate via causal graph edges / macro_simulator
         try:
-            from reality_engine.processing.causal_engine import causal_engine as ce
-            # If symbol is beneficiary for any canonical policy node, assign + tailwind
-            beneficiary_nodes = set()
-            for shock in ("DEFENCE_INDIGENIZATION_DAP", "UNION_BUDGET_2026_RAIL_CAPEX", "PM_SURYA_GHAR_SOLAR"):
-                try:
-                    traces = ce.trace_causal_chain(shock, max_hops=3, impact_filter="BENEFICIARIES_ONLY")
-                    for t in traces:
-                        if str(t.get("node_id", "")).upper() == sym:
-                            beneficiary_nodes.add(shock)
-                except Exception:
-                    continue
-            if sym in ("HAL",) or "DEFENCE" in beneficiary_nodes:
-                return 1.2
-            if beneficiary_nodes:
-                return 0.8
-            # Check victims
-            for shock in ("COMMODITY_CRUDE_OIL", "GEOPOLITICAL_RED_SEA_ATTACKS"):
-                try:
-                    traces = ce.trace_causal_chain(shock, max_hops=2, impact_filter="VICTIMS_ONLY")
-                    for t in traces:
-                        if str(t.get("node_id", "")).upper() == sym:
-                            return -0.6
-                except Exception:
-                    continue
+            # Delegates to repository which handles coverage semantics (None for unknown)
+            # Do NOT COALESCE NULL to 0; unknown must stay None for explicit gating.
+            return self.repo.get_policy_agg_eni(sym)
         except Exception:
-            pass
-        return 0.0
+            return None
 
     def _lookup_roic_wacc_spread(self, symbol: str, isin: str) -> float:
         """ROIC-WACC spread (>0.05 secondary validation). PG financial_metrics or SQLite annual_financials fallback."""
@@ -775,13 +751,14 @@ class CompositeScreener:
         return 0.06
 
     def _enrich_with_topdown_metrics(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add secular_growth_score, moat_*, policy_agg_eni, roic_wacc_spread columns to scored df."""
+        """Add secular_growth_score, moat_*, policy_agg_eni/policy_coverage, roic_wacc_spread columns."""
         if df.empty:
             return df
-        secular_scores, moat_scores, moat_trajs, moat_widths, pricing_scores, policy_agg, roic_spreads = [], [], [], [], [], [], []
+        secular_scores, moat_scores, moat_trajs, moat_widths, pricing_scores, policy_agg, policy_cov, roic_spreads = [], [], [], [], [], [], [], []
         # Cache per-symbol lookups
         cache_moat: Dict[str, Dict[str, Any]] = {}
-        cache_policy: Dict[str, float] = {}
+        cache_policy: Dict[str, Optional[float]] = {}
+        cache_coverage: Dict[str, str] = {}
         cache_roic: Dict[str, float] = {}
         for _, row in df.iterrows():
             sym = str(row.get("symbol", "")).upper()
@@ -798,10 +775,15 @@ class CompositeScreener:
             moat_trajs.append(m["moat_trajectory"])
             moat_widths.append(m["moat_width"])
             pricing_scores.append(m["pricing_power_score"])
-            # Policy
+            # Policy - explicit coverage + eni (None for unknown/no_template)
             if sym not in cache_policy:
                 cache_policy[sym] = self._lookup_policy_agg_eni(sym)
+                try:
+                    cache_coverage[sym] = self.repo.get_policy_coverage(sym)
+                except Exception:
+                    cache_coverage[sym] = "unknown" if cache_policy[sym] is None else "mapped"
             policy_agg.append(cache_policy[sym])
+            policy_cov.append(cache_coverage[sym])
             # ROIC
             if sym not in cache_roic:
                 cache_roic[sym] = self._lookup_roic_wacc_spread(sym, isin)
@@ -813,6 +795,9 @@ class CompositeScreener:
         df["moat_width"] = moat_widths
         df["pricing_power_score"] = pricing_scores
         df["policy_agg_eni"] = policy_agg
+        df["policy_coverage"] = policy_cov
+        # Aliases for audit consistency: policy_eni mirrors policy_agg_eni, policy_coverage explicit
+        df["policy_eni"] = policy_agg
         df["roic_wacc_spread"] = roic_spreads
         return df
 
@@ -853,9 +838,22 @@ class CompositeScreener:
             stats["after_moat_3_5_stable_exp"] = len(cur)
         if enable_policy:
             before = len(cur)
-            cur = cur[cur["policy_agg_eni"] >= float(min_policy_eni)].copy()
+            # Policy unknown is explicit (policy_coverage, policy_eni=None) and does NOT pass/fail a hard gate.
+            # Only mapped rows are subjected to the ENI threshold; unknown/no_template rows bypass the hard
+            # cutoff (retain neutral ensemble weight) and are not counted as "approved".
+            if "policy_coverage" in cur.columns:
+                # Mapped rows must satisfy threshold; non-mapped bypass
+                mask_mapped = cur["policy_coverage"] == "mapped"
+                # For mapped, check ENI >= threshold (NaN mapped should be filtered as not passing)
+                eni_numeric = pd.to_numeric(cur["policy_agg_eni"], errors="coerce")
+                mask_pass = (~mask_mapped) | (eni_numeric >= float(min_policy_eni))
+                cur = cur[mask_pass].copy()
+            else:
+                # Fallback when coverage column absent (legacy): NaN >= threshold is False, so unknown fails
+                # but we must not coerce None->0; keep as NaN filter.
+                cur = cur[pd.to_numeric(cur["policy_agg_eni"], errors="coerce") >= float(min_policy_eni)].copy()
             stats["after_policy_ENI_ge_0"] = len(cur)
-            logger.info("Top-down Policy filter ENI>=%.1f: %d -> %d", min_policy_eni, before, len(cur))
+            logger.info("Top-down Policy filter ENI>=%.1f (mapped only): %d -> %d", min_policy_eni, before, len(cur))
         else:
             stats["after_policy_ENI_ge_0"] = len(cur)
         if enable_roic:

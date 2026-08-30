@@ -1506,6 +1506,9 @@ class Repository:
     #      touch other sections. Coordinated with B2/B3 via additive,
     #      distinctly-named helpers (get_policy_*, upsert_regulatory_*).
     # -------------------------------------------------------------
+    # Canonical coverage-only sentinel for industries without a template.
+    _NO_POLICY_TEMPLATE = "__NO_POLICY_TEMPLATE__"
+
     def ensure_regulatory_political_risks_schema(self, manager=None) -> None:
         """Create regulatory_political_risks (SQLite fallback) if absent; align with postgres_schema.sql.
 
@@ -1513,6 +1516,12 @@ class Repository:
         fallback has no GENERATED columns, so net_impact_score is computed in Python and
         stored explicitly. Idempotent; also adds any missing columns if a partial earlier
         table exists.
+
+        Migration (Task: policy coverage): adds nullable ``coverage_status`` TEXT with
+        allowed values ``mapped`` / ``no_template`` / ``unknown`` and DEFAULT ``mapped``.
+        For an existing table the column is added via ``ALTER TABLE ... ADD COLUMN`` only
+        when absent (PRAGMA inspect); never recreates/drops data. PostgreSQL path uses
+        ``ADD COLUMN IF NOT EXISTS``.
         """
         mgr = manager or self.db
         _DDL = """
@@ -1529,36 +1538,57 @@ class Repository:
             probability REAL,
             net_impact_score REAL,
             time_horizon TEXT,
+            coverage_status TEXT CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(symbol, policy_name)
         );
         """
         with mgr.session() as conn:
             conn.execute(_DDL)
-            # Idempotent column additions for forward-compat.
+            # Idempotent column additions for forward-compat / migration.
+            _cols = None
+            _is_pg = False
             try:
-                cols = {r[1] for r in conn.execute("PRAGMA table_info('regulatory_political_risks')").fetchall()}
+                _cols = {r[1] for r in conn.execute("PRAGMA table_info('regulatory_political_risks')").fetchall()}
             except Exception:
-                cols = set()
-            for col, ddl in (
-                ("company_id", "INTEGER"),
-                ("ticker", "TEXT"),
-                ("isin", "TEXT"),
-                ("symbol", "TEXT"),
-                ("policy_name", "TEXT"),
-                ("risk_type", "TEXT"),
-                ("factor_type", "TEXT"),
-                ("severity_score", "REAL"),
-                ("probability", "REAL"),
-                ("net_impact_score", "REAL"),
-                ("time_horizon", "TEXT"),
-                ("created_at", "TEXT"),
-            ):
-                if col not in cols:
-                    try:
-                        conn.execute(f"ALTER TABLE regulatory_political_risks ADD COLUMN {col} {ddl}")
-                    except Exception:
-                        pass
+                _cols = None
+                _is_pg = True
+            if _is_pg or _cols is None:
+                # PostgreSQL: migration-safe IF NOT EXISTS
+                try:
+                    conn.execute(
+                        "ALTER TABLE regulatory_political_risks ADD COLUMN IF NOT EXISTS coverage_status VARCHAR(20) "
+                        "CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped'"
+                    )
+                except Exception:
+                    pass
+            else:
+                cols = _cols
+                for col, ddl in (
+                    ("company_id", "INTEGER"),
+                    ("ticker", "TEXT"),
+                    ("isin", "TEXT"),
+                    ("symbol", "TEXT"),
+                    ("policy_name", "TEXT"),
+                    ("risk_type", "TEXT"),
+                    ("factor_type", "TEXT"),
+                    ("severity_score", "REAL"),
+                    ("probability", "REAL"),
+                    ("net_impact_score", "REAL"),
+                    ("time_horizon", "TEXT"),
+                    ("coverage_status", "TEXT CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped'"),
+                    ("created_at", "TEXT"),
+                ):
+                    if col not in cols:
+                        try:
+                            conn.execute(f"ALTER TABLE regulatory_political_risks ADD COLUMN {col} {ddl}")
+                        except Exception:
+                            # Fallback without CHECK/DEFAULT for older SQLite
+                            try:
+                                base_type = ddl.split()[0]
+                                conn.execute(f"ALTER TABLE regulatory_political_risks ADD COLUMN {col} {base_type}")
+                            except Exception:
+                                pass
 
     @staticmethod
     def _policy_risk_type_for(severity: float) -> str:
@@ -1569,25 +1599,88 @@ class Repository:
             return "Headwind"
         return "Auxiliary"
 
-    def upsert_regulatory_political_risk(self, symbol, policy_name, severity_score, probability,
+    def upsert_regulatory_political_risk(self, symbol, policy_name, severity_score=None, probability=None,
                                          risk_type=None, factor_type=None, net_impact_score=None,
                                          time_horizon="Mid-term", isin=None, company_id=None,
-                                         manager=None) -> float:
+                                         manager=None, coverage_status=None) -> Optional[float]:
         """Upsert a policy/regulatory risk row keyed by (symbol, policy_name).
 
         Clamps severity to [-5, +5] and probability to [0, 1]. Computes net_impact_score
         (ENI = severity * probability) in Python for SQLite (no GENERATED column). Resolves
         company_id via master_companies when present; synthetic -1 when absent (still
-        queryable by symbol). Returns the computed net_impact_score.
+        queryable by symbol). Returns the computed net_impact_score, or ``None`` for a
+        coverage-only row.
+
+        Coverage-only rows (``policy_name == '__NO_POLICY_TEMPLATE__'``) MUST have
+        ``severity_score is None``, ``probability is None``, ``net_impact_score is None``
+        and ``coverage_status == 'no_template'``; they are stored with NULL impact fields
+        and never fabricate a risk. Mapped rows retain numeric constraints and default
+        ``coverage_status='mapped'``.
         """
         mgr = manager or self.db
-        sev = max(-5.0, min(5.0, float(severity_score)))
-        prob = max(0.0, min(1.0, float(probability)))
-        net = round(sev * prob, 2) if net_impact_score is None else float(net_impact_score)
-        rt = risk_type or self._policy_risk_type_for(sev)
-        ft = factor_type or "Tariff"
+        _NO_TMPL = self._NO_POLICY_TEMPLATE
+        is_coverage_row = (policy_name == _NO_TMPL) or (coverage_status == "no_template")
+        # --- Validation at the boundary ---
+        if is_coverage_row:
+            if policy_name != _NO_TMPL:
+                raise ValueError("coverage_status='no_template' requires policy_name='__NO_POLICY_TEMPLATE__'")
+            if severity_score is not None or probability is not None or net_impact_score is not None:
+                raise ValueError("coverage-only row MUST use severity_score=None, probability=None, net_impact_score=None")
+            # coverage row: all impact fields stay NULL
+            sev = None
+            prob = None
+            net = None
+            rt = None
+            ft = None
+            # time_horizon is not meaningful for coverage rows; store NULL
+            th = None
+            cov = "no_template"
+        else:
+            # Mapped row: require numeric severity/probability
+            if coverage_status == "no_template":
+                raise ValueError("coverage_status='no_template' requires policy_name='__NO_POLICY_TEMPLATE__'")
+            if severity_score is None or probability is None:
+                raise ValueError("mapped rows require numeric severity_score and probability")
+            try:
+                sev = max(-5.0, min(5.0, float(severity_score)))
+            except Exception as e:
+                raise ValueError(f"severity_score must be numeric: {e}")
+            try:
+                prob = max(0.0, min(1.0, float(probability)))
+            except Exception as e:
+                raise ValueError(f"probability must be numeric: {e}")
+            if net_impact_score is None:
+                net = round(sev * prob, 2)
+            else:
+                # Explicit net provided must be numeric; validate
+                try:
+                    net = float(net_impact_score)
+                except Exception as e:
+                    raise ValueError(f"net_impact_score must be numeric or None: {e}")
+            rt = risk_type or self._policy_risk_type_for(sev)
+            ft = factor_type or "Tariff"
+            th = time_horizon
+            cov = coverage_status or "mapped"
+            if cov not in ("mapped", "unknown", "no_template"):
+                raise ValueError(f"coverage_status must be one of mapped/no_template/unknown, got {cov!r}")
+            # mapped rows must not use sentinel policy name
+            if policy_name == _NO_TMPL:
+                raise ValueError("mapped rows cannot use policy_name='__NO_POLICY_TEMPLATE__'")
 
         with mgr.session() as conn:
+            # Ensure coverage_status column exists (migration idempotent)
+            try:
+                cols = {r[1] for r in conn.execute("PRAGMA table_info('regulatory_political_risks')").fetchall()}
+                if "coverage_status" not in cols:
+                    try:
+                        conn.execute(
+                            "ALTER TABLE regulatory_political_risks ADD COLUMN coverage_status TEXT "
+                            "CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped'"
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
             if isin is None or (isinstance(isin, str) and not isin.strip()):
                 isin = self._resolve_isin(conn, company_id=company_id, symbol=symbol)
             cid = company_id if company_id is not None else self._resolve_company_id(conn, symbol, isin)
@@ -1597,8 +1690,8 @@ class Repository:
                 """
                 INSERT INTO regulatory_political_risks
                     (company_id, ticker, isin, symbol, policy_name, risk_type, factor_type,
-                     severity_score, probability, net_impact_score, time_horizon, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                     severity_score, probability, net_impact_score, time_horizon, coverage_status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(symbol, policy_name) DO UPDATE SET
                     company_id = COALESCE(excluded.company_id, regulatory_political_risks.company_id),
                     ticker = excluded.ticker,
@@ -1608,9 +1701,10 @@ class Repository:
                     severity_score = excluded.severity_score,
                     probability = excluded.probability,
                     net_impact_score = excluded.net_impact_score,
-                    time_horizon = excluded.time_horizon
+                    time_horizon = excluded.time_horizon,
+                    coverage_status = excluded.coverage_status
                 """,
-                (cid, symbol, isin, symbol, policy_name, rt, ft, sev, prob, net, time_horizon),
+                (cid, symbol, isin, symbol, policy_name, rt, ft, sev, prob, net, th, cov),
             )
             return net
 
@@ -1626,37 +1720,155 @@ class Repository:
             ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_policy_agg_eni(self, symbol, manager=None) -> float:
-        """Aggregate ENI (sum of net_impact_score) for a symbol/isin. 0.0 when none.
+    def get_policy_agg_eni(self, symbol, manager=None) -> Optional[float]:
+        """Aggregate ENI (sum of net_impact_score) for a symbol/isin.
 
-        Mirrors the PostgreSQL v_policy_adjusted_screen aggregate so composite_screener's
-        ``SUM(severity_score * probability)`` and our ``SUM(net_impact_score)`` agree.
+        Returns ``None`` when the symbol has no *mapped* risk (only a coverage-only
+        ``__NO_POLICY_TEMPLATE__`` row or no rows at all). Returns the numeric sum
+        (rounded to 2dp) when at least one mapped row exists. This replaces the old
+        ``COALESCE(...,0)`` behavior which incorrectly turned unknown into a positive
+        signal.
+
+        Mapped rows are those with ``policy_name != '__NO_POLICY_TEMPLATE__'`` and a
+        non-NULL ``net_impact_score`` (and, when the ``coverage_status`` column exists,
+        ``coverage_status='mapped'``). Coverage-only rows are intentionally excluded.
         """
         with (manager or self.db).session() as conn:
             cid = self._resolve_company_id(conn, symbol, None)
-            row = conn.execute(
-                "SELECT COALESCE(SUM(net_impact_score), 0) AS agg "
-                "FROM regulatory_political_risks WHERE symbol=? OR isin=? OR company_id=?",
-                (symbol, symbol, cid if cid is not None else -1),
-            ).fetchone()
-            val = row["agg"] if row and row["agg"] is not None else 0.0
-            return round(float(val), 2)
+            # Detect whether coverage_status column exists to filter correctly
+            has_cov = False
+            try:
+                cols = {r[1] for r in conn.execute("PRAGMA table_info('regulatory_political_risks')").fetchall()}
+                has_cov = "coverage_status" in cols
+            except Exception:
+                has_cov = False
+            if has_cov:
+                # Prefer coverage_status aware query
+                try:
+                    row = conn.execute(
+                        "SELECT SUM(net_impact_score) AS agg, COUNT(*) AS cnt "
+                        "FROM regulatory_political_risks "
+                        "WHERE (symbol=? OR isin=? OR company_id=?) "
+                        "AND policy_name != ? AND net_impact_score IS NOT NULL "
+                        "AND (coverage_status='mapped' OR coverage_status IS NULL)",
+                        (symbol, symbol, cid if cid is not None else -1, self._NO_POLICY_TEMPLATE),
+                    ).fetchone()
+                except Exception:
+                    row = conn.execute(
+                        "SELECT SUM(net_impact_score) AS agg, COUNT(*) AS cnt "
+                        "FROM regulatory_political_risks "
+                        "WHERE (symbol=? OR isin=? OR company_id=?) "
+                        "AND policy_name != ? AND net_impact_score IS NOT NULL",
+                        (symbol, symbol, cid if cid is not None else -1, self._NO_POLICY_TEMPLATE),
+                    ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT SUM(net_impact_score) AS agg, COUNT(*) AS cnt "
+                    "FROM regulatory_political_risks "
+                    "WHERE (symbol=? OR isin=? OR company_id=?) "
+                    "AND policy_name != ? AND net_impact_score IS NOT NULL",
+                    (symbol, symbol, cid if cid is not None else -1, self._NO_POLICY_TEMPLATE),
+                ).fetchone()
+            if not row or row["cnt"] is None or int(row["cnt"]) == 0 or row["agg"] is None:
+                return None
+            return round(float(row["agg"]), 2)
+
+    def get_policy_coverage(self, symbol, manager=None) -> str:
+        """Return policy coverage status for a symbol/isin.
+
+        Returns ``mapped`` if at least one mapped risk exists,
+        ``no_template`` if only a coverage-only ``__NO_POLICY_TEMPLATE__`` row exists,
+        otherwise ``unknown`` (no rows).
+        """
+        with (manager or self.db).session() as conn:
+            cid = self._resolve_company_id(conn, symbol, None)
+            try:
+                cols = {r[1] for r in conn.execute("PRAGMA table_info('regulatory_political_risks')").fetchall()}
+                has_cov = "coverage_status" in cols
+            except Exception:
+                has_cov = False
+                cols = set()
+            # Fetch all rows for this symbol to classify
+            try:
+                rows = conn.execute(
+                    "SELECT policy_name, coverage_status, net_impact_score FROM regulatory_political_risks "
+                    "WHERE symbol=? OR isin=? OR company_id=?",
+                    (symbol, symbol, cid if cid is not None else -1),
+                ).fetchall()
+            except Exception:
+                rows = []
+            if not rows:
+                return "unknown"
+            # Has at least one mapped row?
+            for r in rows:
+                pn = r["policy_name"]
+                cov = r["coverage_status"] if has_cov else None
+                net = r["net_impact_score"]
+                # Mapped: not sentinel, net not null, coverage mapped or null (legacy)
+                if pn != self._NO_POLICY_TEMPLATE and net is not None:
+                    if cov is None or cov == "mapped":
+                        return "mapped"
+                    # Even if cov is not mapped but pn is not sentinel, treat as mapped (legacy)
+                    if cov not in ("no_template",):
+                        return "mapped"
+            # No mapped, check for coverage-only
+            for r in rows:
+                pn = r["policy_name"]
+                cov = r["coverage_status"] if has_cov else None
+                if pn == self._NO_POLICY_TEMPLATE and (cov == "no_template" or cov is None):
+                    return "no_template"
+            # Rows exist but neither classification -> treat as unknown? But fallback to mapped if any row has coverage no_template?
+            # Check any no_template cov
+            for r in rows:
+                cov = r["coverage_status"] if has_cov else None
+                if cov == "no_template":
+                    return "no_template"
+            return "unknown"
 
     def query_policy_adjusted_screen(self, min_agg_eni: float = 0.0, manager=None) -> List[Dict[str, Any]]:
         """Emulate PostgreSQL v_policy_adjusted_screen for SQLite (graceful fallback).
 
-        Aggregates net_policy_score per company, then LEFT JOINs moat_evaluations
-        (total_moat_score) and financial_metrics (roic_wacc_spread) when those tables
-        exist; otherwise returns NULLs for the missing enrichments. Filters agg >= min_agg_eni.
+        Aggregates ``net_policy_score`` per company from *mapped* rows only
+        (excludes ``__NO_POLICY_TEMPLATE__`` / ``coverage_status='no_template'`` rows).
+        Unknown / coverage-only symbols have ``net_policy_score=None`` and
+        ``policy_coverage`` in ``{'no_template','unknown'}`` and are **not** treated as
+        ``>=0`` — they do not pass/fail a hard policy gate.
+
+        LEFT JOINs ``moat_evaluations`` / ``financial_metrics`` when present for enrichment.
+        Filters to rows where the mapped aggregate exists and ``agg >= min_agg_eni``.
+        Rows with no mapped aggregate (``None``) are excluded from the >= filter but
+        callers can inspect coverage via ``get_policy_coverage``.
         """
         mgr = manager or self.db
         out: List[Dict[str, Any]] = []
         with mgr.session() as conn:
             try:
-                pa_rows = conn.execute(
-                    "SELECT company_id, symbol, COALESCE(SUM(net_impact_score),0) AS agg "
-                    "FROM regulatory_political_risks GROUP BY company_id, symbol"
-                ).fetchall()
+                # Detect coverage_status column to filter correctly
+                try:
+                    cols = {r[1] for r in conn.execute("PRAGMA table_info('regulatory_political_risks')").fetchall()}
+                    has_cov = "coverage_status" in cols
+                except Exception:
+                    has_cov = False
+                if has_cov:
+                    pa_rows = conn.execute(
+                        "SELECT company_id, symbol, "
+                        "SUM(CASE WHEN policy_name != ? AND net_impact_score IS NOT NULL "
+                        "AND (coverage_status='mapped' OR coverage_status IS NULL) THEN net_impact_score ELSE NULL END) AS agg, "
+                        "COUNT(CASE WHEN policy_name != ? AND net_impact_score IS NOT NULL "
+                        "AND (coverage_status='mapped' OR coverage_status IS NULL) THEN 1 END) AS mapped_cnt, "
+                        "MAX(CASE WHEN policy_name = ? THEN 1 ELSE 0 END) AS has_no_template "
+                        "FROM regulatory_political_risks GROUP BY company_id, symbol",
+                        (self._NO_POLICY_TEMPLATE, self._NO_POLICY_TEMPLATE, self._NO_POLICY_TEMPLATE),
+                    ).fetchall()
+                else:
+                    pa_rows = conn.execute(
+                        "SELECT company_id, symbol, "
+                        "SUM(CASE WHEN policy_name != ? AND net_impact_score IS NOT NULL THEN net_impact_score END) AS agg, "
+                        "COUNT(CASE WHEN policy_name != ? AND net_impact_score IS NOT NULL THEN 1 END) AS mapped_cnt, "
+                        "MAX(CASE WHEN policy_name = ? THEN 1 ELSE 0 END) AS has_no_template "
+                        "FROM regulatory_political_risks GROUP BY company_id, symbol",
+                        (self._NO_POLICY_TEMPLATE, self._NO_POLICY_TEMPLATE, self._NO_POLICY_TEMPLATE),
+                    ).fetchall()
             except Exception:
                 return []
             # Schema-agnostic presence checks; degrade gracefully when absent.
@@ -1670,8 +1882,29 @@ class Repository:
             moat_ok = _has("moat_evaluations")
             fin_ok = _has("financial_metrics")
             for r in pa_rows:
-                agg = float(r["agg"]) if r["agg"] is not None else 0.0
-                if agg < min_agg_eni:
+                mapped_cnt = int(r["mapped_cnt"] or 0)
+                has_no_template = int(r["has_no_template"] or 0)
+                agg_raw = r["agg"]
+                # Determine coverage and net_policy_score
+                if mapped_cnt > 0 and agg_raw is not None:
+                    agg = float(agg_raw)
+                    coverage = "mapped"
+                    net_policy_score = round(agg, 2)
+                    # Hard gate: only mapped aggregates are filtered >= threshold
+                    if net_policy_score < min_agg_eni:
+                        continue
+                elif has_no_template:
+                    # Coverage-only row: explicit unknown, do not pass hard gate
+                    coverage = "no_template"
+                    net_policy_score = None
+                    # Do not treat as >=0: skip when filtering for >=0 (positive screen)
+                    # The policy_adjusted_screen is defined as net_policy_score >=0, so coverage-only
+                    # rows must not be returned for min_agg_eni >=0.
+                    continue
+                else:
+                    # No mapped rows and no coverage row? Should not happen in GROUP BY, but treat as unknown
+                    coverage = "unknown"
+                    net_policy_score = None
                     continue
                 symbol = r["symbol"]
                 moat = None
@@ -1698,7 +1931,9 @@ class Repository:
                         pass
                 out.append({
                     "symbol": symbol,
-                    "net_policy_score": round(agg, 2),
+                    "net_policy_score": net_policy_score,
+                    "policy_coverage": coverage,
+                    "policy_eni": net_policy_score,
                     "total_moat_score": moat,
                     "roic_wacc_spread": spread,
                 })
@@ -1710,8 +1945,10 @@ class Repository:
 
         Only references relations that actually exist (regulatory_political_risks is
         required; moat_evaluations / financial_metrics are LEFT JOINed when present).
-        Filters to net_policy_score >= 0 (matching the PostgreSQL view definition).
-        Returns True if the view exists/was created. Wrapped so it never raises.
+        Filters to net_policy_score >= 0 over *mapped* rows only (excludes coverage-only
+        ``__NO_POLICY_TEMPLATE__``). Coverage-only rows have ``net_policy_score`` NULL
+        and are not considered ``>=0``. Returns True if the view exists/was created.
+        Wrapped so it never raises.
         """
         mgr = manager or self.db
         try:
@@ -1729,7 +1966,18 @@ class Repository:
                 moat_ok = _has("moat_evaluations")
                 fin_ok = _has("financial_metrics")
 
-                sel = "SELECT r.symbol, COALESCE(SUM(r.net_impact_score),0) AS net_policy_score"
+                # Aggregate only mapped rows: exclude sentinel and NULL net_impact_score
+                # Also respect coverage_status when present.
+                try:
+                    cols = {r[1] for r in conn.execute("PRAGMA table_info('regulatory_political_risks')").fetchall()}
+                    has_cov = "coverage_status" in cols
+                except Exception:
+                    has_cov = False
+                if has_cov:
+                    sum_expr = f"SUM(CASE WHEN r.policy_name != '{self._NO_POLICY_TEMPLATE}' AND r.net_impact_score IS NOT NULL AND (r.coverage_status='mapped' OR r.coverage_status IS NULL) THEN r.net_impact_score END)"
+                else:
+                    sum_expr = f"SUM(CASE WHEN r.policy_name != '{self._NO_POLICY_TEMPLATE}' AND r.net_impact_score IS NOT NULL THEN r.net_impact_score END)"
+                sel = f"SELECT r.symbol, {sum_expr} AS net_policy_score"
                 joins = "FROM regulatory_political_risks r"
                 if moat_ok:
                     sel += ", m.total_moat_score"
@@ -1743,9 +1991,14 @@ class Repository:
                     sel += ", NULL AS roic_wacc_spread"
                 sel += (
                     f" {joins} GROUP BY r.symbol, r.company_id "
-                    "HAVING COALESCE(SUM(r.net_impact_score),0) >= 0"
+                    f"HAVING {sum_expr} >= 0"
                 )
-                conn.execute(f"CREATE VIEW IF NOT EXISTS v_policy_adjusted_screen AS {sel}")
+                # Drop existing view to ensure updated definition (IF NOT EXISTS would keep old COALESCE version)
+                try:
+                    conn.execute("DROP VIEW IF EXISTS v_policy_adjusted_screen")
+                except Exception:
+                    pass
+                conn.execute(f"CREATE VIEW v_policy_adjusted_screen AS {sel}")
                 return True
         except Exception:
             return False

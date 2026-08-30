@@ -258,8 +258,11 @@ def seed_canonical_policy_risks_full(r: Optional[Repository] = None, manager=Non
             n += 1
         counts[symbol] = n
     total = sum(counts.values())
-    approved = [s for s in counts if is_policy_approved(s, r=rr, manager=manager)]
-    rejected = [s for s in counts if not is_policy_approved(s, r=rr, manager=manager)]
+    # is_policy_approved now returns Optional[bool] (None for unknown); for this
+    # canonical canon every symbol is mapped, so results are True/False. Use strict
+    # identity checks so unknown (None) would be excluded from both lists.
+    approved = [s for s in counts if is_policy_approved(s, r=rr, manager=manager) is True]
+    rejected = [s for s in counts if is_policy_approved(s, r=rr, manager=manager) is False]
     return {
         "rows_inserted": total,
         "symbols_seeded": len(counts),
@@ -339,15 +342,48 @@ def seed_steel_duty_case(r: Optional[Repository] = None, manager=None) -> Dict[s
 seed_canonical_policy_risks = seed_steel_duty_case
 
 
-def get_agg_eni(symbol: str, r: Optional[Repository] = None, manager=None) -> float:
-    """Aggregate ENI (sum of net_impact_score) for a symbol/isin. 0.0 when none."""
+def get_agg_eni(symbol: str, r: Optional[Repository] = None, manager=None) -> Optional[float]:
+    """Aggregate ENI (sum of net_impact_score) for a symbol/isin.
+
+    Returns ``None`` when the symbol has no *mapped* risk (only coverage-only
+    ``__NO_POLICY_TEMPLATE__`` or no rows). Numeric sum otherwise. Previously
+    returned ``0.0`` for unknown which incorrectly became a positive signal.
+    """
     rr = r or (Repository(manager) if manager else repo)
     return rr.get_policy_agg_eni(symbol, manager=manager)
 
 
-def is_policy_approved(symbol: str, r: Optional[Repository] = None, manager=None) -> bool:
-    """Policy peer passes when AggENI >= 0 (non-negative net regulatory impact)."""
-    return get_agg_eni(symbol, r=r, manager=manager) >= 0.0
+def get_policy_coverage(symbol: str, r: Optional[Repository] = None, manager=None) -> str:
+    """Return policy coverage status: ``mapped`` / ``no_template`` / ``unknown``."""
+    rr = r or (Repository(manager) if manager else repo)
+    # Prefer repository helper if present; otherwise infer via helper.
+    try:
+        return rr.get_policy_coverage(symbol, manager=manager)
+    except Exception:
+        # Fallback: infer from agg
+        agg = rr.get_policy_agg_eni(symbol, manager=manager)
+        if agg is not None:
+            return "mapped"
+        rows = rr.get_policy_risks_for_symbol(symbol, manager=manager)
+        if any(row.get("policy_name") == "__NO_POLICY_TEMPLATE__" for row in rows):
+            return "no_template"
+        return "unknown"
+
+
+def is_policy_approved(symbol: str, r: Optional[Repository] = None, manager=None, *, coerce_unknown_to_bool: Optional[bool] = None) -> Optional[bool]:
+    """Policy peer gate: ``True``/``False`` for mapped ENI, ``None`` for unknown/no_template.
+
+    ``coerce_unknown_to_bool`` is a documented compatibility knob: when set to a bool,
+    unknown/no_template is coerced to that bool (e.g. ``True`` to restore the legacy
+    ``0→approved`` behaviour). Internal callers should leave it as ``None`` and handle
+    ``None`` explicitly rather than treating unknown as approved.
+    """
+    agg = get_agg_eni(symbol, r=r, manager=manager)
+    if agg is None:
+        if coerce_unknown_to_bool is not None:
+            return bool(coerce_unknown_to_bool)
+        return None
+    return agg >= 0.0
 
 
 def list_policy_risks(symbol: str, r: Optional[Repository] = None, manager=None) -> List[Dict[str, Any]]:
@@ -425,10 +461,17 @@ def seed_derived_policy_risks(universe: str = "nifty200", limit: Optional[int] =
     Severity band 2-4, probability 0.4-0.7, time_horizon Mid-term/Structural.
     Idempotent via UNIQUE(symbol, policy_name).
 
+    When no template matches, insert one idempotent coverage-only row with
+    ``policy_name='__NO_POLICY_TEMPLATE__'`` and ``coverage_status='no_template'``
+    (no severity/probability/net impact) so every active company becomes queryable
+    without fabricating a risk. Coverage rows are counted separately as
+    ``coverage_rows_inserted``.
+
     Skip companies already having any regulatory row unless overwrite=True
     (or include_derived forces overwrite of derived-only detection).
 
-    Returns dict with inserted / skipped_existing / scanned.
+    Returns dict with inserted / skipped_existing / scanned + coverage_rows_inserted.
+    For backward compatibility ``skipped_no_template`` is retained as 0.
     """
     rr = r or (Repository(manager) if manager else repo)
     rr.ensure_regulatory_political_risks_schema(manager)
@@ -460,8 +503,9 @@ def seed_derived_policy_risks(universe: str = "nifty200", limit: Optional[int] =
 
     scanned = len(comps)
     inserted = 0
+    coverage_rows_inserted = 0
     skipped_existing = 0
-    skipped_no_template = 0
+    skipped_no_template = 0  # retained for compat, always 0 now (coverage rows replace it)
 
     mgr = manager or rr.db
     for c in comps:
@@ -481,10 +525,6 @@ def seed_derived_policy_risks(universe: str = "nifty200", limit: Optional[int] =
                 continue
 
         tmpl = _template_for_industry(c.get("industry", ""), c.get("sector", ""))
-        if tmpl is None:
-            skipped_no_template += 1
-            continue
-
         # Resolve isin if missing
         if not isin:
             try:
@@ -495,6 +535,23 @@ def seed_derived_policy_risks(universe: str = "nifty200", limit: Optional[int] =
             except Exception:
                 pass
 
+        if tmpl is None:
+            # Insert coverage-only sentinel so this symbol is queryable without fabricating ENI
+            try:
+                rr.upsert_regulatory_political_risk(
+                    symbol=symbol,
+                    policy_name="__NO_POLICY_TEMPLATE__",
+                    severity_score=None,
+                    probability=None,
+                    net_impact_score=None,
+                    coverage_status="no_template",
+                    isin=isin,
+                )
+                coverage_rows_inserted += 1
+            except Exception:
+                continue
+            continue
+
         try:
             rr.upsert_regulatory_political_risk(
                 symbol=symbol,
@@ -503,6 +560,7 @@ def seed_derived_policy_risks(universe: str = "nifty200", limit: Optional[int] =
                 probability=tmpl["probability"],
                 factor_type=tmpl["factor_type"],
                 time_horizon=tmpl["time_horizon"],
+                coverage_status="mapped",
                 isin=isin,
             )
             inserted += 1
@@ -510,7 +568,8 @@ def seed_derived_policy_risks(universe: str = "nifty200", limit: Optional[int] =
             continue
 
     return {"inserted": inserted, "rows_inserted": inserted, "skipped_existing": skipped_existing,
-            "skipped_no_template": skipped_no_template, "scanned": scanned, "symbols_seeded": inserted}
+            "skipped_no_template": skipped_no_template, "scanned": scanned, "symbols_seeded": inserted,
+            "coverage_rows_inserted": coverage_rows_inserted}
 
 
 # Alias for harness expecting alternate name
@@ -523,7 +582,10 @@ if __name__ == "__main__":
     print("Seeded canonical policy risks:", seeded)
     for symbol in ("TATASTEEL", "HAL", "POLYPLEX", "RELIANCE"):
         agg = get_agg_eni(symbol)
-        print(f"{symbol}: AggENI={agg:+.2f} approved={agg >= 0}")
-    print("v_policy_adjusted_screen rows (AggENI>=0):")
+        cov = get_policy_coverage(symbol)
+        appr = is_policy_approved(symbol)
+        agg_str = f"{agg:+.2f}" if agg is not None else "None"
+        print(f"{symbol}: AggENI={agg_str} coverage={cov} approved={appr}")
+    print("v_policy_adjusted_screen rows (AggENI>=0, mapped only):")
     for row in query_policy_adjusted_screen():
         print("  ", row)

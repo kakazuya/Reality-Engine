@@ -1464,17 +1464,25 @@ def cmd_seed_supply_peer(args):
 
 
 def cmd_run_moe_eod(args):
-    """Delegate to reality_engine/scripts/run_moe_eod.py (subprocess)."""
-    # run_moe_eod currently takes no passthrough args; invoke plain.
-    # If a concurrent lane adds --universe/--limit/--include-derived to the
-    # script, this handler forwards only args that are present in this CLI's
-    # parser (today none) so unknown-arg failures still surface via stderr.
+    """Delegate to reality_engine/scripts/run_moe_eod.py (subprocess).
+
+    Accepts --universe {nifty200,nifty500,all} (default nifty200), --limit,
+    and --all-investor-cohorts (opt-in full 20 rows/symbol for every active
+    master symbol). Preserves no-argument backward compatibility: default
+    invocation still seeds the legacy MIN_SEED_SYMBOLS + EOD universe set.
+    Full-universe path is triggered when --universe != nifty200 or
+    --all-investor-cohorts / --include-derived is set. Subprocess stderr is
+    surfaced on failure.
+    """
     present = set(vars(args).keys())
     filtered: List[str] = []
     if "universe" in present and getattr(args, "universe", None) is not None:
         filtered += ["--universe", str(args.universe)]
-    if "include_derived" in present and getattr(args, "include_derived", False):
-        filtered += ["--include-derived"]
+    # Forward the opt-in full-cohort flag (support both dest names for compat)
+    if "all_investor_cohorts" in present and getattr(args, "all_investor_cohorts", False):
+        filtered += ["--all-investor-cohorts"]
+    elif "include_derived" in present and getattr(args, "include_derived", False):
+        filtered += ["--all-investor-cohorts"]
     if "limit" in present and getattr(args, "limit", None) is not None:
         filtered += ["--limit", str(args.limit)]
     rc = _run_peer_subprocess("run_moe_eod.py", filtered)
@@ -1527,12 +1535,24 @@ def cmd_seed_peers(args):
             extra += ["--limit", str(limit)]
         return extra
 
+    def _args_for_moe() -> List[str]:
+        extra: List[str] = []
+        if universe is not None:
+            extra += ["--universe", str(universe)]
+        if limit is not None:
+            extra += ["--limit", str(limit)]
+        # seed-peers --include-derived forwards as MoE full-cohort flag;
+        # also any non-default universe implicitly triggers full-universe in the runner
+        if include_derived:
+            extra += ["--all-investor-cohorts"]
+        return extra
+
     steps = [
         ("supply", "run_supply_peer.py", _args_for_supply),
         ("quality", "run_quality_peer.py", _args_for_quality_policy_factor),
         ("policy", "run_policy_peer.py", _args_for_quality_policy_factor),
         ("factor", "run_factor_peer.py", _args_for_quality_policy_factor),
-        ("moe", "run_moe_eod.py", lambda: []),
+        ("moe", "run_moe_eod.py", _args_for_moe),
     ]
 
     results: Dict[str, str] = {}
@@ -2006,6 +2026,13 @@ def main():
         "run-moe-eod",
         help="Run MoE seeding & EOD correction loop (model_explainer_rankings + lens_activation_log) via run_moe_eod.py",
     )
+    p_moe.add_argument("--universe", type=str, default="nifty200", choices=["nifty200", "nifty500", "all"],
+                       help="Universe to seed (default: nifty200)")
+    p_moe.add_argument("--limit", type=int, default=None, help="Limit symbols to seed (forwarded to script)")
+    p_moe.add_argument("--all-investor-cohorts", action="store_true", default=False, dest="all_investor_cohorts",
+                       help="Seed all 5 investor cohorts for every symbol (full-universe MoE, 20 rows/symbol)")
+    # Alias for seed-peers forwarding compatibility (maps to --all-investor-cohorts)
+    p_moe.add_argument("--include-derived", action="store_true", default=False, dest="include_derived", help=argparse.SUPPRESS)
     p_moe.set_defaults(func=cmd_run_moe_eod)
 
     # 33. seed-peers orchestrator (lane-code-cli: supply -> quality -> policy -> factor -> moe)
