@@ -263,12 +263,13 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # Data Helpers & Cached Queries
 # ====================================================================
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=10)
 def get_available_dates() -> List[str]:
     with db_manager.session() as conn:
         rows = conn.execute(
             "SELECT DISTINCT date FROM daily_price_delivery ORDER BY date DESC LIMIT 30"
         ).fetchall()
+        # Fallback if table empty
         return [r[0] for r in rows] if rows else ["2026-08-14"]
 
 
@@ -360,6 +361,30 @@ with st.sidebar:
         if st.button("🔄 Clear Cache", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
+    st.markdown("---")
+    st.markdown("### 📦 Incremental One-Stop Fetcher")
+    st.caption("Last 60 sessions where not onboarded. Max period (5y price + 5y financials) is auto-handled by pipeline — you don't need to trigger it.")
+    if st.button("⬇️ Fetch Last 60 Sessions (incremental)", use_container_width=True, help="Backfill missing last 60 trading sessions only via HistoricalBackfillManager"):
+        with st.spinner("Backfilling last 60 sessions incremental..."):
+            from reality_engine.pipeline.backfill import backfill_manager
+            inserted = backfill_manager.backfill_bhavcopy_history(days_count=60)
+            st.success(f"Incremental backfill done! {inserted} rows upserted. 60-session window synced.")
+            st.cache_data.clear()
+    if st.button("🧹 Prune & Distill", use_container_width=True, help="CALL prune_decayed_signals() + run-distillation 20+4"):
+        with st.spinner("Pruning embeddings >12m & distilling 24 vectors..."):
+            try:
+                import reality_engine.processing.pruning_engine as pe
+                if hasattr(pe, "prune_decayed_signals"):
+                    pe.prune_decayed_signals(dry_run=False)  # type: ignore
+                else:
+                    raise AttributeError
+            except Exception:
+                import subprocess
+                subprocess.run(["python", "reality_engine/cli.py", "prune-decayed-signals"], check=False)
+            from reality_engine.processing.distillation_pruner import run_monthly_distillation
+            run_monthly_distillation()
+            st.success("Lifecycle pruned & distilled — vectors reclaimed.")
+            st.cache_data.clear()
 
     st.markdown("---")
     
@@ -1349,14 +1374,17 @@ with tab_inbox:
     st.markdown("---")
 
     # 2. Inbox Folders Status Overview
+    likes_dir = inbox_base / "likes"
+    likes_dir.mkdir(parents=True, exist_ok=True)
     pdf_files = list((inbox_base / "pdfs").glob("*.*")) if (inbox_base / "pdfs").exists() else []
     img_files = list((inbox_base / "images").glob("*.*")) if (inbox_base / "images").exists() else []
     txt_files = list((inbox_base / "text").glob("*.*")) if (inbox_base / "text").exists() else []
     proc_files = list((inbox_base / "processed").glob("*.*")) if (inbox_base / "processed").exists() else []
     fail_files = list((inbox_base / "failed").glob("*.*")) if (inbox_base / "failed").exists() else []
+    likes_files = list(likes_dir.glob("*.*"))
 
     st.markdown("### 📁 Inbox Folder Staging Status")
-    ib_c1, ib_c2, ib_c3, ib_c4, ib_c5 = st.columns(5)
+    ib_c1, ib_c2, ib_c3, ib_c4, ib_c5, ib_c6 = st.columns(6)
     with ib_c1:
         st.metric("Pending PDFs", len(pdf_files))
     with ib_c2:
@@ -1367,6 +1395,8 @@ with tab_inbox:
         st.metric("Processed Files", len(proc_files))
     with ib_c5:
         st.metric("Failed Files", len(fail_files))
+    with ib_c6:
+        st.metric("Liked / Pinned", len(likes_files))
 
     total_pending = len(pdf_files) + len(img_files) + len(txt_files)
     

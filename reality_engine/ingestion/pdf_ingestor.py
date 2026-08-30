@@ -260,8 +260,31 @@ class PDFIngestor:
         fiscal_period: Optional[str],
         source_url: Optional[str],
         sha256_hash: str,
+        creator_or_ministry: Optional[str] = None,
     ) -> int:
-        # Use INSERT OR IGNORE for SQLite fallback (sha256 unique)
+        # Prefer the repository's upsert (sha256 dedup + transactional) when available
+        # to avoid duplicating raw_documents write logic across the codebase.
+        try:
+            from reality_engine.db.repository import Repository
+
+            repo = Repository(manager=self.db)
+            return repo.upsert_raw_document(
+                {
+                    "title": title or path.stem,
+                    "source_type": source_type,
+                    "published_date": published_date,
+                    "fiscal_period": fiscal_period,
+                    "source_url": source_url,
+                    "creator_or_ministry": creator_or_ministry,
+                    "sha256_hash": sha256_hash,
+                    "local_file_path": str(path),
+                    "file_size_bytes": path.stat().st_size if path.exists() else None,
+                }
+            )
+        except Exception as exc:  # pragma: no cover - fallback path
+            logger.debug("repo upsert unavailable, using local insert: %s", exc)
+
+        # Fallback: local INSERT OR IGNORE for SQLite fallback (sha256 unique)
         conn.execute(
             """
             INSERT OR IGNORE INTO raw_documents
@@ -274,7 +297,7 @@ class PDFIngestor:
                 published_date,
                 fiscal_period,
                 source_url,
-                None,
+                creator_or_ministry,
                 sha256_hash,
                 str(path),
                 path.stat().st_size if path.exists() else None,
@@ -298,10 +321,15 @@ class PDFIngestor:
         isin: Optional[str] = None,
         sector_id: Optional[int] = None,
         industry_id: Optional[int] = None,
+        creator_or_ministry: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Ingest single PDF: extract -> chunk -> embed -> persist.
-        Idempotent via sha256_hash; does NOT re-ingest if hash exists (preserves 40 filings).
-        Returns {doc_id, chunks, status}.
+
+        ``source_type`` accepts ANY string (macro peer types such as
+        ``Union_Budget``, ``Economic_Survey``, ``State_Budget_UP``, ``PIB_Circular``,
+        ``RBI_Annual_Report`` are first-class — there is no source_type whitelist
+        rejection). Idempotent via sha256_hash; does NOT re-ingest if the hash
+        already exists. Returns {doc_id, chunks, status}.
         """
         path = Path(path)
         if not path.exists():
@@ -318,14 +346,20 @@ class PDFIngestor:
 
         with self.db.session() as conn:
             _ensure_raw_tables(conn)
-            # Skip if already ingested (preserve existing 40 filings + POLYPLEX PPT)
+            # Skip only if the dense substrate already holds chunks for this doc.
+            # A raw_documents row may exist (registered upstream by the fetcher) while
+            # document_chunks is still empty; in that case we must still ingest below
+            # (idempotent re-ingest reusing the existing doc_id). This fixes the
+            # fetch-then-ingest chicken-and-egg that left macro PDFs with 0 chunks.
             existing = conn.execute("SELECT doc_id FROM raw_documents WHERE sha256_hash=?", (sha,)).fetchone()
             if existing:
                 doc_id = int(existing[0] if isinstance(existing, tuple) else existing["doc_id"])
                 cnt = conn.execute("SELECT COUNT(*) FROM document_chunks WHERE doc_id=?", (doc_id,)).fetchone()[0]
                 fts_cnt = conn.execute("SELECT COUNT(*) FROM intelligence_fts WHERE chunk_id LIKE ?", (f"{doc_id}-%",)).fetchone()[0] if self._fts_exists(conn) else 0
-                logger.info("PDF already ingested %s -> doc_id %d (%d chunks, %d fts)", path.name, doc_id, cnt, fts_cnt)
-                return {"doc_id": doc_id, "chunks": int(cnt), "status": "skipped_duplicate", "sha256": sha}
+                if cnt > 0 or fts_cnt > 0:
+                    logger.info("PDF already ingested %s -> doc_id %d (%d chunks, %d fts)", path.name, doc_id, cnt, fts_cnt)
+                    return {"doc_id": doc_id, "chunks": int(cnt), "status": "skipped_duplicate", "sha256": sha}
+                # else: fall through to extract + chunk + persist (raw row reused)
 
         text = self.extract_text(path)
         if not text or len(text.strip()) < 10:
@@ -348,7 +382,7 @@ class PDFIngestor:
         # Persist
         with self.db.session() as conn:
             _ensure_raw_tables(conn)
-            doc_id = self._insert_raw_document(conn, path, title, source_type, published_date, fiscal_period, source_url, sha)
+            doc_id = self._insert_raw_document(conn, path, title, source_type, published_date, fiscal_period, source_url, sha, creator_or_ministry)
             # Insert chunks with embedding JSON + FTS + LanceDB
             fts_records = []
             lancedb_records = []
@@ -453,6 +487,142 @@ class PDFIngestor:
                 logger.warning("Directory ingest skip %s: %s", pdf.name, exc)
                 results.append({"path": str(pdf), "status": "failed", "error": str(exc)})
         return results
+
+    # ------------------------------------------------------------------
+    # Macro-policy peer PDFs (treat-as-peer dense-substrate ingestion)
+    # ------------------------------------------------------------------
+    _KNOWN_MACRO_CATEGORIES = {"central_budgets", "central_surveys", "pib", "rbi"}
+
+    def ingest_macro_file(
+        self,
+        path: str | Path,
+        source_type: str,
+        fiscal_period: Optional[str] = None,
+        source_url: Optional[str] = None,
+        title: Optional[str] = None,
+        published_date: Optional[str] = None,
+        creator_or_ministry: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Thin, attribution-rich wrapper around :meth:`ingest_pdf` for macro PDFs.
+
+        Guarantees the ``source_type`` is registered in ``pruning_decay_config``
+        (so the document decays under the correct half-life rather than as an
+        unknown type) and persists creator/ministry attribution into
+        ``raw_documents``. All other behaviour (sha256 idempotency, chunking,
+        FTS, vector store) is inherited from :meth:`ingest_pdf`.
+        """
+        # Ensure the decay config has a row for this macro source_type (idempotent).
+        try:
+            from reality_engine.processing.pruning_engine import ensure_decay_category_for_source
+
+            ensure_decay_category_for_source(source_type, manager=self.db)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.debug("decay-category ensure note: %s", exc)
+        return self.ingest_pdf(
+            path,
+            title=title,
+            source_type=source_type,
+            published_date=published_date,
+            fiscal_period=fiscal_period,
+            source_url=source_url,
+            creator_or_ministry=creator_or_ministry,
+        )
+
+    def ingest_macro_directory(
+        self,
+        directory: str | Path,
+        recursive: bool = True,
+        dry_run: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Scan the macro PDF directory (recursively) and ingest any not yet present.
+
+        Idempotent via sha256: :meth:`ingest_pdf` skips files already in
+        ``raw_documents``/``document_chunks``. If a ``raw_documents`` row exists
+        for the file path (registered by the fetcher) its metadata is reused;
+        otherwise best-effort metadata is derived from the category directory name.
+        """
+        directory = Path(directory)
+        pdfs = directory.rglob("*.pdf") if recursive else directory.glob("*.pdf")
+        raw_by_path = self._load_raw_documents_index()
+        results: List[Dict[str, Any]] = []
+        for pdf in pdfs:
+            if not pdf.exists():
+                continue
+            try:
+                rec = raw_by_path.get(str(pdf).lower())
+                if rec:
+                    meta = {
+                        "source_type": rec.get("source_type"),
+                        "title": rec.get("title"),
+                        "fiscal_period": rec.get("fiscal_period"),
+                        "source_url": rec.get("source_url"),
+                        "published_date": rec.get("published_date"),
+                        "creator_or_ministry": rec.get("creator_or_ministry"),
+                    }
+                else:
+                    meta = self._derive_macro_metadata(pdf)
+                if dry_run:
+                    results.append({"path": str(pdf), "status": "would_ingest", "meta": meta})
+                    continue
+                res = self.ingest_macro_file(pdf, **meta)
+                results.append({"path": str(pdf), **res})
+            except Exception as exc:
+                logger.warning("Macro directory ingest skip %s: %s", pdf.name, exc)
+                results.append({"path": str(pdf), "status": "failed", "error": str(exc)})
+        return results
+
+    def _load_raw_documents_index(self) -> Dict[str, Dict[str, Any]]:
+        """Build a ``lower(local_file_path) -> raw_documents row`` index for lookup."""
+        out: Dict[str, Dict[str, Any]] = {}
+        try:
+            with self.db.session() as conn:
+                rows = conn.execute(
+                    "SELECT doc_id, source_type, title, fiscal_period, source_url, "
+                    "published_date, creator_or_ministry, local_file_path "
+                    "FROM raw_documents WHERE local_file_path IS NOT NULL"
+                ).fetchall()
+                for r in rows:
+                    lp = r["local_file_path"]
+                    if lp:
+                        out[str(lp).lower()] = dict(r)
+        except Exception as exc:
+            logger.debug("raw_documents index note: %s", exc)
+        return out
+
+    @staticmethod
+    def _derive_macro_metadata(path: Path) -> Dict[str, Any]:
+        """Best-effort metadata when a macro PDF has no ``raw_documents`` record.
+
+        Derives ``source_type`` from the category directory name (e.g. a parent
+        folder ``state_UP`` -> ``State_Budget_UP``). Used only as a fallback by
+        :meth:`ingest_macro_directory` for files fetched outside the fetcher.
+        """
+        path = Path(path)
+        category = None
+        for ancestor in path.parents:
+            name = ancestor.name
+            if name in PDFIngestor._KNOWN_MACRO_CATEGORIES or name.startswith("state_"):
+                category = name
+                break
+        source_type = "Macro_Document"
+        if category == "central_budgets":
+            source_type = "Union_Budget"
+        elif category == "central_surveys":
+            source_type = "Economic_Survey"
+        elif category == "pib":
+            source_type = "PIB_Circular"
+        elif category == "rbi":
+            source_type = "RBI_Annual_Report"
+        elif category and category.startswith("state_"):
+            source_type = f"State_Budget_{category[len('state_'):]}"
+        return {
+            "source_type": source_type,
+            "title": path.stem,
+            "fiscal_period": None,
+            "source_url": None,
+            "published_date": None,
+            "creator_or_ministry": None,
+        }
 
 
 # Singleton for convenience

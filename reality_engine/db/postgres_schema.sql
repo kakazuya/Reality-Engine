@@ -2,7 +2,7 @@
 
 -- Combines Architecture PDFs: Moat/ENI/Ripple quantification + Multimodal ingestion
 
--- Migration target: replaces SQLite WAL for top-down funnel; SQLite retained as local fallback
+-- Migration target: replaces SQLite WAL for dense-substrate all-peers ensemble with continuous self-correction; SQLite WAL retained as local fallback
 
 
 
@@ -174,7 +174,7 @@ CREATE TABLE raw_documents (
 
  title VARCHAR(255) NOT NULL,
 
- source_type VARCHAR(50) NOT NULL, -- Union_Budget, Economic_Survey, RBI_MPC, Earnings_Concall, YouTube_Analysis
+  source_type VARCHAR(50) NOT NULL, -- Union_Budget, Economic_Survey, State_Budget_UP, State_Budget_Tamil_Nadu, State_Budget_Maharashtra, State_Budget_Karnataka, State_Budget_Telangana, State_Budget_Gujarat, State_Budget_Haryana, State_Budget_Andhra_Pradesh, PIB_Circular, RBI_Annual_Report, RBI_Financial_Stability_Report, RBI_MPC, Earnings_Concall, YouTube_Analysis
 
  published_date DATE NOT NULL,
 
@@ -420,7 +420,15 @@ INSERT INTO pruning_decay_config (category, half_life_months) VALUES
 
  ('Quarterly Concall / MPC Stance', 6),
 
- ('Union Budget / Tax Reform', 12)
+ ('Union Budget / Tax Reform', 12),
+
+ ('State Budget', 12),
+
+ ('PIB Circular', 3),
+
+ ('RBI Report / Economic Survey', 6),
+
+ ('Economic Survey', 12)
 
 ON CONFLICT DO NOTHING;
 
@@ -652,7 +660,11 @@ CREATE TABLE pruning_decay_config (
 INSERT INTO pruning_decay_config (category, half_life_months) VALUES
  ('Analyst Commentary / YouTube', 3),
  ('Quarterly Concall / MPC Stance', 6),
- ('Union Budget / Tax Reform', 12)
+ ('Union Budget / Tax Reform', 12),
+ ('State Budget', 12),
+ ('PIB Circular', 3),
+ ('RBI Report / Economic Survey', 6),
+ ('Economic Survey', 12)
 ON CONFLICT DO NOTHING;
 
 -- 10. Visual Evidence Artifacts (Pillar: Multimodal Vision)
@@ -744,5 +756,90 @@ LEFT JOIN pruning_decay_config d ON (
 LEFT JOIN companies c ON r.target_company_id=c.company_id
 LEFT JOIN industries ind ON r.target_industry_id=ind.industry_id;
 
+
+-- 15. Corporate Documents / Actions / Status Mirrors (SQLite parity)
+-- Mirrors reality_engine/db/schema.sql sections 12, 12b, 12c for PostgreSQL so the
+-- production PG store and the local SQLite WAL fallback share an identical entity model.
+
+CREATE TABLE IF NOT EXISTS corporate_documents (
+    doc_id SERIAL PRIMARY KEY,
+    isin TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    doc_type TEXT NOT NULL,              -- 'CONCALL_TRANSCRIPT', 'INVESTOR_PRESENTATION', 'ANNUAL_REPORT', 'ANNOUNCEMENT'
+    title TEXT NOT NULL,
+    doc_date DATE NOT NULL,
+    source_url TEXT,
+    source TEXT,                         -- provenance: 'bse_official' | 'nse_official' | 'screener_discovery'
+    discovery_source TEXT,               -- where the link was discovered: 'screener_discovery' etc.
+    local_file_path TEXT,
+    file_size_bytes BIGINT,
+    sha256_hash TEXT,
+    is_processed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (source_url)                  -- idempotent upsert key (mirrors SQLite UNIQUE(source_url))
+);
+
+CREATE INDEX IF NOT EXISTS idx_corp_docs_symbol ON corporate_documents(symbol);
+CREATE INDEX IF NOT EXISTS idx_corp_docs_isin ON corporate_documents(isin);
+CREATE INDEX IF NOT EXISTS idx_corp_docs_doc_date ON corporate_documents(doc_date DESC);
+CREATE INDEX IF NOT EXISTS idx_corp_docs_source_url ON corporate_documents(source_url);
+
+
+CREATE TABLE IF NOT EXISTS corporate_actions (
+    action_id SERIAL PRIMARY KEY,
+    isin TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    company_name TEXT,
+    subject TEXT,                        -- raw NSE subject line
+    action_type TEXT NOT NULL,           -- normalized: DIVIDEND, BONUS, SPLIT, RIGHTS, BUYBACK, MERGER, DEMERGER, INTEREST, AGM, OTHER
+    ex_date DATE,
+    rec_date DATE,
+    bc_start_date DATE,                  -- book-closure start
+    bc_end_date DATE,                    -- book-closure end
+    nd_start_date DATE,                  -- no-delivery start
+    nd_end_date DATE,                    -- no-delivery end
+    broadcast_date DATE,
+    face_value NUMERIC(10,2),
+    series TEXT,
+    industry TEXT,
+    source TEXT DEFAULT 'nse_official',
+    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (isin, subject, ex_date, action_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ca_isin ON corporate_actions(isin);
+CREATE INDEX IF NOT EXISTS idx_ca_symbol ON corporate_actions(symbol);
+CREATE INDEX IF NOT EXISTS idx_ca_type ON corporate_actions(action_type);
+
+
+CREATE TABLE IF NOT EXISTS corporate_status_flags (
+    flag_id SERIAL PRIMARY KEY,
+    isin TEXT,
+    symbol TEXT NOT NULL,
+    status_type TEXT NOT NULL,           -- DELISTED | SUSPENDED | NCLT_CIRP | INSOLVENCY_RISK
+    source TEXT NOT NULL,                -- nse_official | bse_official | announcement_scan | derived
+    detail TEXT,                         -- free-text reason / proceeding reference
+    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (symbol, status_type, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_csf_symbol ON corporate_status_flags(symbol);
+CREATE INDEX IF NOT EXISTS idx_csf_type ON corporate_status_flags(status_type);
+
+
 -- 14. Cold-tier export helper (example: monthly cron dumps >36m chunks to parquet)
 -- COPY (SELECT * FROM document_chunks WHERE published_date < CURRENT_DATE - INTERVAL '36 months') TO '/s3/parquet/...' (FORMAT PARQUET);
+
+
+-- 16. Wave C — Structural-milestone survival migration (additive; half-life INF).
+-- STRUCTURAL_THEORY milestones (profit-jump spotting, cheap-value traps) carry
+-- is_structural_milestone=1 and must NEVER be decayed nor pruned. Additive ALTERs
+-- (safe on a populated PG cluster; no-op if the columns already exist).
+ALTER TABLE pruning_decay_config ADD COLUMN IF NOT EXISTS is_structural_milestone INTEGER DEFAULT 0;
+ALTER TABLE raw_documents ADD COLUMN IF NOT EXISTS is_structural_milestone INTEGER DEFAULT 0;
+-- A dedicated structural-milestone decay category (T½ INF -> lambda 0) so the
+-- v_ripple_decayed view keeps S(t) == S0 for permanent priors.
+INSERT INTO pruning_decay_config (category, half_life_months, is_structural_milestone)
+VALUES ('Structural Milestone', 9999, 1)
+ON CONFLICT (category) DO UPDATE SET is_structural_milestone = 1;
+

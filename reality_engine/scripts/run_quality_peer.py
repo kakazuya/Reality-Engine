@@ -38,7 +38,26 @@ SAMPLE_CATALOG = ["HAL", "TITAGARH", "POLYPLEX", "RELIANCE", "TCS"]
 SAMPLE_NON_CATALOG = "SBIN"  # Nifty200, not in curated BACKFILL_CATALOG
 
 
-def main():
+def _parse_args():
+    import argparse
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--universe", choices=["nifty200", "nifty500", "all"], default="nifty200")
+    p.add_argument("--include-derived", action="store_true", default=False, dest="include_derived")
+    p.add_argument("--limit", type=int, default=None)
+    try:
+        args, _ = p.parse_known_args()
+    except SystemExit:
+        class _A: universe="nifty200"; include_derived=False; limit=None
+        args=_A()
+    return args
+
+
+def main(universe: str | None = None, limit: int | None = None, include_derived: bool | None = None):
+    cli_args = _parse_args()
+    eff_universe = universe if universe is not None else cli_args.universe
+    eff_limit = limit if limit is not None else cli_args.limit
+    eff_include_derived = include_derived if include_derived is not None else getattr(cli_args, "include_derived", False)
+
     repo = Repository()
     repo.ensure_moat_schema()
     repo.ensure_business_profile_schema()
@@ -52,6 +71,19 @@ def main():
     # Full Nifty200 quality backfill (curated + deterministic industry-derived).
     counts = backfill_nifty200(r=repo)
     logger.info("backfill_nifty200 -> %s", counts)
+
+    # Derived universe path: when universe != nifty200 OR --include-derived
+    derived_profiles = None
+    derived_moats = None
+    if eff_universe != "nifty200" or eff_include_derived:
+        from reality_engine.processing.business_profiler import derive_universe_profiles
+        from reality_engine.processing.moat_scorer import derive_universe_moats
+        derived_profiles = derive_universe_profiles(universe=eff_universe, limit=eff_limit, r=repo)
+        derived_moats = derive_universe_moats(universe=eff_universe, limit=eff_limit, r=repo)
+        logger.info("derive_universe_profiles (universe=%s, limit=%s) -> %s", eff_universe, eff_limit, derived_profiles)
+        logger.info("derive_universe_moats (universe=%s, limit=%s) -> %s", eff_universe, eff_limit, derived_moats)
+        print(f"derived profiles: {derived_profiles}")
+        print(f"derived moats: {derived_moats}")
 
     with repo.db.session() as conn:
         after_moat = conn.execute("SELECT COUNT(*) FROM moat_evaluations").fetchone()[0]
@@ -85,6 +117,10 @@ def main():
     print(f"business_model_profiles after : {after_bp}")
     print(f"rows upserted (moat)         : {counts['moat']}")
     print(f"rows upserted (profiles)     : {counts['business_profile']}")
+    if derived_profiles is not None:
+        print(f"derived profiles (universe={eff_universe}, limit={eff_limit}) : {derived_profiles}")
+    if derived_moats is not None:
+        print(f"derived moats (universe={eff_universe}, limit={eff_limit})    : {derived_moats}")
     print("sample catalog queries (HAL/TITAGARH/POLYPLEX/RELIANCE/TCS): queryable = YES")
     print(f"sample non-catalog query ({SAMPLE_NON_CATALOG}): queryable = YES")
     print("quality peer dense: YES (covers full Nifty200)")

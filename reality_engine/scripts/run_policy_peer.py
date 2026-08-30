@@ -7,6 +7,7 @@ touch the factor / quality / ripple peers.
 
 Usage:
     python reality_engine/scripts/run_policy_peer.py
+    python reality_engine/scripts/run_policy_peer.py --universe all --include-derived --limit 10
 """
 
 import os
@@ -24,7 +25,26 @@ from reality_engine.processing.policy_engine import (
 )
 
 
-def main() -> None:
+def _parse_args():
+    import argparse
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--universe", choices=["nifty200", "nifty500", "all"], default="nifty200")
+    p.add_argument("--include-derived", action="store_true", default=False, dest="include_derived")
+    p.add_argument("--limit", type=int, default=None)
+    try:
+        args, _ = p.parse_known_args()
+    except SystemExit:
+        class _A: universe="nifty200"; include_derived=False; limit=None
+        args=_A()
+    return args
+
+
+def main(universe: str | None = None, limit: int | None = None, include_derived: bool | None = None) -> None:
+    cli_args = _parse_args()
+    eff_universe = universe if universe is not None else cli_args.universe
+    eff_limit = limit if limit is not None else cli_args.limit
+    eff_include_derived = include_derived if include_derived is not None else getattr(cli_args, "include_derived", False)
+
     summary = seed_canonical_policy_risks_full()
 
     print("Peer 3 (Policy Macro) — dense substrate promotion summary")
@@ -43,6 +63,16 @@ def main() -> None:
     rows = query_policy_adjusted_screen()
     for row in rows:
         print("  ", row)
+
+    # Derived universe path: when universe != nifty200 OR --include-derived
+    if eff_universe != "nifty200" or eff_include_derived:
+        from reality_engine.processing.policy_engine import seed_derived_policy_risks
+        from reality_engine.db.repository import Repository
+        repo = Repository()
+        derived = seed_derived_policy_risks(universe=eff_universe, limit=eff_limit, r=repo)
+        print(f"\nderived policy risks (universe={eff_universe}, limit={eff_limit}) : {derived}")
+        # Also report counts for verification
+        print(f"derived inserted: {derived.get('inserted', derived.get('rows_inserted', 0))} scanned: {derived.get('scanned')}")
 
 
 if __name__ == "__main__":

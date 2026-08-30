@@ -42,6 +42,25 @@ class FundamentalEngine:
         return float(np.clip(raw_score, 0.0, 100.0))
 
     @staticmethod
+    def lens_score(
+        yoy_rev_growth: float,
+        yoy_pat_growth: float,
+        opm_delta_bps: float = 0.0,
+        roce_pct: float = 0.0,
+    ) -> float:
+        """All-peers ensemble lens wrapper for the Factor/Statistical peer (S_Funda).
+
+        Thin, stable interface over :meth:`compute_fundamental_score`. The underlying
+        computation is unchanged.
+        """
+        return FundamentalEngine.compute_fundamental_score(
+            yoy_rev_growth=yoy_rev_growth,
+            yoy_pat_growth=yoy_pat_growth,
+            opm_delta_bps=opm_delta_bps,
+            roce_pct=roce_pct,
+        )
+
+    @staticmethod
     def evaluate_forensic_solvency(
         promoter_pledge_pct: float,
         interest_coverage_ratio: float,

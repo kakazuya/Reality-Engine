@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import math
 import uuid
 from typing import Any, Dict, List, Optional
 
 from reality_engine.db.database import db_manager
+from reality_engine.db.repository import Repository
 
 
 class CausalGraphEngine:
@@ -14,6 +16,7 @@ class CausalGraphEngine:
 
     def __init__(self, manager=None):
         self.db = manager or db_manager
+        self.repo = Repository(self.db)
 
     def get_all_nodes(self) -> List[Dict[str, Any]]:
         with self.db.session() as conn:
@@ -120,43 +123,233 @@ class CausalGraphEngine:
             rows = conn.execute(query, (start_node_id, start_node_id, start_node_id, max_hops)).fetchall()
             return [dict(row) for row in rows]
 
-    # --- Fundamental Reality Engine: Ripple DAG PN/MN/S (PDF p5) ---
+    # ------------------------------------------------------------------
+    # Fundamental Reality Engine: Ripple DAG PN/MN/S (PDF p5)
+    #
+    #   PN = ∏ Pi            (product of probabilities along the path root->node)
+    #   MN = RawN × PN × β   (β = transmission_elasticity)
+    #   S  = |MN| × 20 / (1 + ln(1 + Lag))   (Lag = cumulative lag along path)
+    #
+    # A recursive CTE (PostgreSQL / SQLite-with-math-functions) is attempted
+    # first; if ln() is unavailable the same math is computed in Python over the
+    # real ripple_effects rows. When an event has no ripple rows we fall back to
+    # the canonical steel-duty demo chain so callers always get a deterministic
+    # ordered S DESC result.
+    # ------------------------------------------------------------------
+    def ensure_ripple_schema(self, manager=None) -> None:
+        """Idempotently ensure ripple_effects + geographic_exposure tables exist."""
+        mgr = manager or self.db
+        self.repo.ensure_ripple_effects_schema(mgr)
+        self.repo.ensure_geographic_exposure_schema(mgr)
+
     def trace_ripple_chain(self, event_id: int, max_hops: int = 3) -> List[Dict[str, Any]]:
-        """Recursive CTE for PG ripple_effects: PN=∏Pi, MN=RawN×PN×β, S=|MN|×20/(1+ln(1+Lag)). SQLite demo uses in-memory math."""
-        import math
-        # Demo: compute chain for steel duty example if PG not yet provisioned
-        # For SQLite fallback, synthesize demo chain from graph_causal_edges if ripple_effects empty
-        with self.db.session() as conn:
-            # Try PG ripple table first
-            try:
-                rows = conn.execute("SELECT ripple_id, parent_ripple_id, order_level, raw_magnitude, probability, lag_time_months, transmission_elasticity FROM ripple_effects WHERE event_id=? ORDER BY order_level", (event_id,)).fetchall()
-                if rows:
-                    chain=[]
-                    pn=1.0
-                    total_lag=0
-                    for r in rows:
-                        pn *= r["probability"] if r["probability"] else 1.0
-                        mn = r["raw_magnitude"] * pn * (r["transmission_elasticity"] or 1.0)
-                        total_lag += r["lag_time_months"] or 0
-                        S = abs(mn) * 20.0 / (1.0 + math.log(1+total_lag) if total_lag>0 else 1.0)
-                        chain.append(dict(ripple_id=r["ripple_id"], order_level=r["order_level"], raw=r["raw_magnitude"], prob=r["probability"], pn=round(pn,4), mn=round(mn,2), lag=total_lag, S=round(S,2)))
-                    return sorted(chain, key=lambda x: x["S"], reverse=True)
-            except Exception:
-                pass
-            # Fallback demo steel duty 3-level case study
-            demo=[{"raw":3.8,"prob":1.0,"beta":1.0,"lag":0},{"raw":-2.43,"prob":1.0,"beta":1.0,"lag":3},{"raw":-1.41,"prob":1.0,"beta":1.0,"lag":6}]
-            chain=[]
-            pn=1.0
-            total_lag=0
-            for i,d in enumerate(demo, start=1):
-                pn*=d["prob"]
-                mn=d["raw"]*pn*d["beta"]
-                total_lag+=d["lag"] - (demo[i-2]["lag"] if i>1 else 0)  # cumulative
-                # Actually total_lag is cumulative
-                tot=sum(x["lag"] for x in demo[:i])
-                S=abs(mn)*20/(1+math.log(1+tot) if tot>0 else 1)
-                chain.append({"order_level":i,"raw":d["raw"],"pn":pn,"mn":round(mn,2),"lag":tot,"S":round(S,2)})
-            return sorted(chain, key=lambda x: x["S"], reverse=True)
+        """Recursive CTE for ripple_effects: PN=∏Pi, MN=RawN×PN×β, S=|MN|×20/(1+ln(1+Lag)).
+
+        Returns the chain ordered by S DESC. Uses the real ripple_effects table
+        when rows exist for ``event_id``; otherwise falls back to the steel-duty
+        demo chain. Each entry carries ``pn``, ``mn``, ``lag`` (cumulative), ``s``
+        and a ``pruned`` flag (PN < 0.08 or S < 5.0).
+        """
+        return self._compute_chain(event_id, max_hops)
+
+    def get_ripple_chain_for_event(self, event_id: Any, max_hops: int = 3) -> List[Dict[str, Any]]:
+        """Return the full PN/MN/lag/S chain for an event (additive alias of trace)."""
+        return self._compute_chain(event_id, max_hops)
+
+    def should_prune_ripple_row(self, pn: float, s: float,
+                                pn_cutoff: float = 0.08, s_floor: float = 5.0) -> bool:
+        """Wave B2 pruning rule: prune when PN<0.08 or S(t)<5.0.
+
+        Distinct from pruning_engine.should_prune_ripple (which also gates on
+        raw*prob<0.5); here the gate is purely the PN and S thresholds per the
+        causal DAG spec.
+        """
+        return (pn is not None and pn < pn_cutoff) or (s is not None and s < s_floor)
+
+    # --- geographic_exposure stubs (supply-chain peer) -----------------
+    def ensure_geographic_exposure_schema(self, manager=None) -> None:
+        self.repo.ensure_geographic_exposure_schema(manager or self.db)
+
+    def upsert_geographic_exposure(self, company_id: int, country_id: Any,
+                                   revenue_share_pct: float = 0.0,
+                                   asset_exposure_pct: float = 0.0,
+                                   manager=None) -> None:
+        self.repo.upsert_geographic_exposure(
+            company_id, country_id, revenue_share_pct, asset_exposure_pct,
+            manager or self.db,
+        )
+
+    # ------------------------------------------------------------------
+    # Internal chain computation
+    # ------------------------------------------------------------------
+    def _fetch_ripple_rows(self, event_id: Any) -> List[Dict[str, Any]]:
+        self.ensure_ripple_schema()
+        try:
+            with self.db.session() as conn:
+                rows = conn.execute(
+                    """SELECT ripple_id, parent_ripple_id, order_level, raw_magnitude,
+                              probability, lag_time_months, transmission_elasticity
+                       FROM ripple_effects WHERE event_id=?""",
+                    (event_id,),
+                ).fetchall()
+                return [dict(r) for r in rows]
+        except Exception:
+            return []
+
+    def _compute_chain(self, event_id: Any, max_hops: int) -> List[Dict[str, Any]]:
+        rows = self._fetch_ripple_rows(event_id)
+        if not rows:
+            return self._demo_chain()
+        # Attempt the recursive CTE (PG / SQLite-with-ln). Fall back to Python.
+        try:
+            with self.db.session() as conn:
+                cte_rows = self._run_ripple_cte(conn, event_id, max_hops)
+            if cte_rows:
+                return cte_rows
+        except Exception:
+            pass
+        return self._python_chain(rows, max_hops)
+
+    def _run_ripple_cte(self, conn, event_id: Any, max_hops: int) -> List[Dict[str, Any]]:
+        # Probe ln() availability; raises if the math functions are not compiled in.
+        conn.execute("SELECT ln(1.0)").fetchone()
+        query = """
+            WITH RECURSIVE ripple_chain(
+                ripple_id, parent_ripple_id, order_level, raw_magnitude, probability,
+                lag_time_months, transmission_elasticity, depth, pn, cumulative_lag, mn, s
+            ) AS (
+                SELECT ripple_id, parent_ripple_id, order_level, raw_magnitude, probability,
+                       lag_time_months, transmission_elasticity, 1,
+                       CAST(probability AS REAL),
+                       CAST(lag_time_months AS REAL),
+                       raw_magnitude * probability * COALESCE(transmission_elasticity, 1.0),
+                       ABS(raw_magnitude * probability * COALESCE(transmission_elasticity, 1.0))
+                           * 20.0 / (1.0 + ln(1.0 + lag_time_months))
+                FROM ripple_effects
+                WHERE event_id = ? AND parent_ripple_id IS NULL
+                UNION ALL
+                SELECT r.ripple_id, r.parent_ripple_id, r.order_level, r.raw_magnitude,
+                       r.probability, r.lag_time_months, r.transmission_elasticity,
+                       rc.depth + 1,
+                       rc.pn * r.probability,
+                       rc.cumulative_lag + r.lag_time_months,
+                       r.raw_magnitude * rc.pn * r.probability * COALESCE(r.transmission_elasticity, 1.0),
+                       ABS(r.raw_magnitude * rc.pn * r.probability * COALESCE(r.transmission_elasticity, 1.0))
+                           * 20.0 / (1.0 + ln(1.0 + rc.cumulative_lag + r.lag_time_months))
+                FROM ripple_effects r
+                JOIN ripple_chain rc ON r.parent_ripple_id = rc.ripple_id
+                WHERE rc.depth < ?
+            )
+            SELECT * FROM ripple_chain WHERE depth <= ? ORDER BY s DESC
+        """
+        rows = conn.execute(query, (event_id, max_hops, max_hops)).fetchall()
+        out: List[Dict[str, Any]] = []
+        for r in rows:
+            pn = float(r["pn"])
+            s = float(r["s"])
+            out.append({
+                "ripple_id": r["ripple_id"],
+                "order_level": r["order_level"],
+                "raw": r["raw_magnitude"],
+                "prob": r["probability"],
+                "beta": r["transmission_elasticity"],
+                "lag": r["cumulative_lag"],
+                "pn": round(pn, 6),
+                "mn": round(float(r["mn"]), 4),
+                "s": round(s, 4),
+                "pn_raw": pn,
+                "s_raw": s,
+                "pruned": self.should_prune_ripple_row(pn, s),
+            })
+        return out
+
+    def _python_chain(self, rows: List[Dict[str, Any]], max_hops: int) -> List[Dict[str, Any]]:
+        by_id = {r["ripple_id"]: r for r in rows}
+        children: Dict[Any, List[Any]] = {}
+        roots: List[Any] = []
+        for r in rows:
+            pid = r["parent_ripple_id"]
+            if pid is None or pid not in by_id:
+                roots.append(r["ripple_id"])
+            children.setdefault(pid, []).append(r["ripple_id"])
+
+        out: List[Dict[str, Any]] = []
+
+        def rec(rid, cum_pn, cum_lag, depth):
+            if depth > max_hops or rid not in by_id:
+                return
+            r = by_id[rid]
+            prob = float(r["probability"]) if r["probability"] is not None else 1.0
+            beta = float(r["transmission_elasticity"]) if r["transmission_elasticity"] is not None else 1.0
+            raw = float(r["raw_magnitude"]) if r["raw_magnitude"] is not None else 0.0
+            lag = int(r["lag_time_months"]) if r["lag_time_months"] is not None else 0
+
+            pn = cum_pn * prob
+            cum_lag2 = cum_lag + lag
+            mn = raw * pn * beta
+            denom = (1.0 + math.log(1.0 + cum_lag2)) if cum_lag2 > 0 else 1.0
+            s = abs(mn) * 20.0 / denom
+
+            out.append({
+                "ripple_id": rid,
+                "order_level": r["order_level"],
+                "raw": raw,
+                "prob": prob,
+                "beta": beta,
+                "lag": cum_lag2,
+                "pn": round(pn, 6),
+                "mn": round(mn, 4),
+                "s": round(s, 4),
+                "pn_raw": pn,
+                "s_raw": s,
+                "pruned": self.should_prune_ripple_row(pn, s),
+            })
+            for child in children.get(rid, []):
+                rec(child, pn, cum_lag2, depth + 1)
+
+        for root in roots:
+            rec(root, 1.0, 0, 1)
+
+        out.sort(key=lambda x: x["s_raw"], reverse=True)
+        return out
+
+    @staticmethod
+    def _demo_chain() -> List[Dict[str, Any]]:
+        """Canonical steel-duty 3-level demo chain (used when no ripple rows exist)."""
+        demo = [
+            {"raw": 3.8, "prob": 1.0, "beta": 1.0, "lag": 0, "order_level": 1},
+            {"raw": -2.43, "prob": 1.0, "beta": 1.0, "lag": 3, "order_level": 2},
+            {"raw": -1.41, "prob": 1.0, "beta": 1.0, "lag": 6, "order_level": 3},
+        ]
+        out: List[Dict[str, Any]] = []
+        cum_pn = 1.0
+        cum_lag = 0
+        for i, d in enumerate(demo, start=1):
+            prob = d["prob"]
+            beta = d["beta"]
+            raw = d["raw"]
+            cum_pn *= prob
+            cum_lag += d["lag"]
+            mn = raw * cum_pn * beta
+            denom = (1.0 + math.log(1.0 + cum_lag)) if cum_lag > 0 else 1.0
+            s = abs(mn) * 20.0 / denom
+            out.append({
+                "ripple_id": f"demo_{i}",
+                "order_level": d["order_level"],
+                "raw": raw,
+                "prob": prob,
+                "beta": beta,
+                "lag": cum_lag,
+                "pn": round(cum_pn, 6),
+                "mn": round(mn, 4),
+                "s": round(s, 4),
+                "pn_raw": cum_pn,
+                "s_raw": s,
+                "pruned": False,
+                "is_demo": True,
+            })
+        out.sort(key=lambda x: x["s_raw"], reverse=True)
+        return out
 
 
 causal_engine = CausalGraphEngine()

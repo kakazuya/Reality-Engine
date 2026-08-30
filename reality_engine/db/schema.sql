@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS quarterly_financials (
     concall_pdf_path TEXT,
     investor_presentation_path TEXT,
     has_concall_transcript BOOLEAN DEFAULT 0,
+    source TEXT DEFAULT 'yfinance',   -- provenance: yfinance | nse_official | bse_official | fixture
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (isin) REFERENCES master_companies(isin),
     UNIQUE(isin, quarter_end_date)
@@ -99,6 +100,7 @@ CREATE TABLE IF NOT EXISTS annual_financials (
     interest_coverage REAL,
     operating_cash_flow_inr_cr REAL,
     free_cash_flow_inr_cr REAL,
+    source TEXT DEFAULT 'yfinance',   -- provenance: yfinance | nse_official | bse_official | fixture
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (isin) REFERENCES master_companies(isin),
     UNIQUE(isin, fiscal_year)
@@ -240,13 +242,59 @@ CREATE TABLE IF NOT EXISTS corporate_documents (
     title TEXT NOT NULL,
     doc_date DATE NOT NULL,
     source_url TEXT,
+    source TEXT,                       -- provenance: 'bse_official' | 'nse_official' | 'screener_discovery'
+    discovery_source TEXT,             -- where the link was discovered: 'screener_discovery' etc.
     local_file_path TEXT,
     file_size_bytes INTEGER,
     sha256_hash TEXT,
     is_processed BOOLEAN DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (isin) REFERENCES master_companies(isin)
+    FOREIGN KEY (isin) REFERENCES master_companies(isin),
+    UNIQUE(source_url)   -- idempotent upsert key for repository.upsert_corporate_documents
 );
+
+-- 12b. Corporate Actions Registry (official NSE corporate-actions feed)
+CREATE TABLE IF NOT EXISTS corporate_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    isin TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    company_name TEXT,
+    subject TEXT,                      -- raw NSE subject line
+    action_type TEXT NOT NULL,         -- normalized: DIVIDEND, BONUS, SPLIT, RIGHTS,
+                                        -- BUYBACK, MERGER, DEMERGER, INTEREST, AGM, OTHER
+    ex_date DATE,
+    rec_date DATE,
+    bc_start_date DATE,                -- book-closure start
+    bc_end_date DATE,                  -- book-closure end
+    nd_start_date DATE,                -- no-delivery start
+    nd_end_date DATE,                  -- no-delivery end
+    broadcast_date DATE,
+    face_value REAL,
+    series TEXT,
+    industry TEXT,
+    source TEXT DEFAULT 'nse_official',
+    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(isin, subject, ex_date, action_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ca_isin ON corporate_actions(isin);
+CREATE INDEX IF NOT EXISTS idx_ca_symbol ON corporate_actions(symbol);
+CREATE INDEX IF NOT EXISTS idx_ca_type ON corporate_actions(action_type);
+
+-- 12c. Corporate Status Flags (delisting / suspension / NCLT-CIRP insolvency)
+CREATE TABLE IF NOT EXISTS corporate_status_flags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    isin TEXT,
+    symbol TEXT NOT NULL,
+    status_type TEXT NOT NULL,        -- DELISTED | SUSPENDED | NCLT_CIRP | INSOLVENCY_RISK
+    source TEXT NOT NULL,             -- nse_official | bse_official | announcement_scan | derived
+    detail TEXT,                       -- free-text reason / proceeding reference
+    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(symbol, status_type, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_csf_symbol ON corporate_status_flags(symbol);
+CREATE INDEX IF NOT EXISTS idx_csf_type ON corporate_status_flags(status_type);
 
 -- 13. Knowledge Graph and Macro Event Intelligence
 CREATE TABLE IF NOT EXISTS graph_nodes (
@@ -386,3 +434,53 @@ CREATE INDEX IF NOT EXISTS idx_edge_type ON graph_causal_edges(relationship_type
 CREATE INDEX IF NOT EXISTS idx_macro_event_date ON macro_events(event_date DESC);
 CREATE INDEX IF NOT EXISTS idx_macro_event_category_date ON macro_events(category, event_date DESC);
 CREATE INDEX IF NOT EXISTS idx_manifest_entity ON inbox_ingestion_manifest(detected_entity_type, target_entity_key);
+
+-- ====================================================================
+-- 18. Raw Document Registry (audit trail / replay source for macro PDFs)
+-- Second-tier peer data: Central/State Budgets, PIB circulars, RBI reports.
+-- Mirrors postgres_schema.sql raw_documents; source_type enum includes:
+--   Union_Budget, Economic_Survey, State_Budget_UP, State_Budget_Tamil_Nadu,
+--   State_Budget_Maharashtra, State_Budget_Karnataka, State_Budget_Telangana,
+--   State_Budget_Gujarat, State_Budget_Haryana, State_Budget_Andhra_Pradesh,
+--   PIB_Circular, RBI_Annual_Report, RBI_Financial_Stability_Report
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS raw_documents (
+    doc_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    published_date TEXT NOT NULL,
+    fiscal_period TEXT,
+    source_url TEXT UNIQUE,
+    creator_or_ministry TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    sha256_hash TEXT UNIQUE,
+    local_file_path TEXT,
+    file_size_bytes INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_rawdoc_hash ON raw_documents(sha256_hash);
+CREATE INDEX IF NOT EXISTS idx_rawdoc_source_type ON raw_documents(source_type);
+CREATE INDEX IF NOT EXISTS idx_rawdoc_published ON raw_documents(published_date DESC);
+
+-- ====================================================================
+-- 19. Pruning / Decay Config (Pillar 2) — SQLite parity with postgres_schema.sql
+-- Half-life categories control embedding decay + structural-milestone survival.
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS pruning_decay_config (
+    category TEXT PRIMARY KEY,
+    half_life_months REAL NOT NULL,
+    lambda REAL,
+    significance_floor REAL DEFAULT 5.0,
+    prob_cutoff REAL DEFAULT 0.08
+);
+
+-- Seed macro + policy decay categories (idempotent; base 3 rows managed by
+-- pruning_engine.ensure_pruning_schema). Lambda is left NULL here and
+-- back-filled by the migration helper in database.py so it matches the
+-- computed LN(2)/half_life value exactly.
+INSERT OR IGNORE INTO pruning_decay_config (category, half_life_months) VALUES
+    ('State Budget', 12),
+    ('PIB Circular', 3),
+    ('RBI Report / Economic Survey', 6),
+    ('Economic Survey', 12),
+    ('Union Budget / Tax Reform', 12);

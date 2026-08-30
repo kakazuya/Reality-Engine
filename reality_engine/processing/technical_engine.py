@@ -112,6 +112,15 @@ class TechnicalEngine:
         )
         return float(np.clip(score, 0.0, 100.0))
 
+    def lens_score(self, row: pd.Series) -> float:
+        """All-peers ensemble lens wrapper for the Factor/Statistical peer (S_TechFlow).
+
+        Thin, stable interface over :meth:`compute_technical_flow_score` so the ensemble
+        (and future MoE gating) can treat each engine as a pluggable peer lens. The
+        underlying computation is unchanged.
+        """
+        return self.compute_technical_flow_score(row)
+
 
 # Singleton technical engine
 technical_engine = TechnicalEngine()

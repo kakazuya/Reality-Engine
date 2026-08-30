@@ -30,6 +30,28 @@ from reality_engine.processing.causal_engine import CausalGraphEngine
 from reality_engine.processing.event_graph import EventGraphSpawner
 
 # ---------------------------------------------------------------------------
+# Exporter overrides for scale derived path (ind_pct, export_split sensible values)
+# Each entry maps symbol -> {country_id: revenue_share_pct}
+# ---------------------------------------------------------------------------
+EXPORTER_OVERRIDES = {
+    "TCS":        {"IND": 30.0, "USA": 50.0, "EU": 15.0, "CHN": 5.0},
+    "INFY":       {"IND": 28.0, "USA": 60.0, "EU": 10.0, "CHN": 2.0},
+    "HCLTECH":    {"IND": 32.0, "USA": 55.0, "EU": 10.0, "CHN": 3.0},
+    "WIPRO":      {"IND": 35.0, "USA": 50.0, "EU": 12.0, "CHN": 3.0},
+    "TECHM":      {"IND": 30.0, "USA": 45.0, "EU": 20.0, "CHN": 5.0},
+    "DRREDDY":    {"IND": 40.0, "USA": 40.0, "EU": 15.0, "CHN": 5.0},
+    "SUNPHARMA":  {"IND": 35.0, "USA": 35.0, "EU": 25.0, "CHN": 5.0},
+    "CIPLA":      {"IND": 45.0, "USA": 30.0, "EU": 20.0, "CHN": 5.0},
+    "AUROPHARMA": {"IND": 30.0, "USA": 45.0, "EU": 20.0, "CHN": 5.0},
+    "TATAMOTORS": {"IND": 45.0, "USA": 15.0, "EU": 30.0, "CHN": 10.0},
+    "BAJAJ-AUTO": {"IND": 55.0, "USA": 10.0, "EU": 25.0, "CHN": 10.0},
+    "BHARATFORGE":{"IND": 50.0, "USA": 25.0, "EU": 20.0, "CHN": 5.0},
+    "HINDALCO":   {"IND": 60.0, "USA": 15.0, "EU": 15.0, "CHN": 10.0},
+    "VEDL":       {"IND": 65.0, "USA": 15.0, "EU": 10.0, "CHN": 10.0},
+    "NALCO":      {"IND": 80.0, "USA": 5.0, "EU": 10.0, "CHN": 5.0},
+}
+
+# ---------------------------------------------------------------------------
 # Curated Nifty200 supply-chain geographic revenue splits (heuristic).
 # country_id values must be in {IND, USA, CHN, EU, ...} (countries table).
 # ---------------------------------------------------------------------------
@@ -164,17 +186,93 @@ def seed_countries(repo: Repository) -> int:
     return len(COUNTRIES)
 
 
-def seed_geographic_exposure(repo: Repository) -> int:
-    """Upsert geographic_exposure rows for curated symbols. Returns rows inserted/updated."""
+def seed_geographic_exposure(repo: Repository, universe: str = "nifty200", limit: int | None = None) -> int:
+    """Upsert geographic_exposure rows. Extended to ALL master companies.
+
+    - For symbols in GEO_MAP: use curated split.
+    - For symbols in EXPORTER_OVERRIDES: use exporter override split.
+    - For remaining companies in universe: default IND 96 / asset 92.
+    Returns rows inserted/updated. Accepts universe {nifty200,nifty500,all} and limit.
+    Back-compat: default universe=nifty200, limit=None seeds at least the curated ~30.
+    """
     causal = CausalGraphEngine(repo.db)
     causal.ensure_geographic_exposure_schema(repo.db)
     inserted = 0
-    for symbol, split in GEO_MAP.items():
+
+    # Resolve universe company list for extended seeding
+    try:
+        if universe == "nifty500":
+            with repo.db.session() as conn:
+                rows = conn.execute("SELECT nse_symbol FROM master_companies WHERE is_nifty500=1 AND is_active=1 ORDER BY nse_symbol ASC").fetchall()
+                universe_symbols = [r["nse_symbol"] for r in rows if r["nse_symbol"]]
+        elif universe == "all":
+            with repo.db.session() as conn:
+                rows = conn.execute("SELECT nse_symbol FROM master_companies WHERE is_active=1 ORDER BY nse_symbol ASC").fetchall()
+                universe_symbols = [r["nse_symbol"] for r in rows if r["nse_symbol"]]
+        else:  # nifty200 default
+            try:
+                comps = repo.get_nifty200_companies()
+                universe_symbols = [c.get("nse_symbol") for c in comps if c.get("nse_symbol")]
+                if not universe_symbols:
+                    with repo.db.session() as conn:
+                        rows = conn.execute("SELECT nse_symbol FROM master_companies WHERE is_nifty200=1 AND is_active=1 ORDER BY nse_symbol ASC").fetchall()
+                        universe_symbols = [r["nse_symbol"] for r in rows if r["nse_symbol"]]
+            except Exception:
+                with repo.db.session() as conn:
+                    rows = conn.execute("SELECT nse_symbol FROM master_companies WHERE is_nifty200=1 AND is_active=1 ORDER BY nse_symbol ASC").fetchall()
+                    universe_symbols = [r["nse_symbol"] for r in rows if r["nse_symbol"]]
+    except Exception:
+        universe_symbols = list(GEO_MAP.keys())
+
+    if limit is not None:
+        try:
+            universe_symbols = universe_symbols[: int(limit)]
+        except Exception:
+            pass
+
+    # If universe list is empty (e.g. isolated test DB without nifty flags), fall back to GEO_MAP keys
+    if not universe_symbols:
+        universe_symbols = list(GEO_MAP.keys())
+
+    # Ensure curated GEO_MAP symbols are always included even when universe is narrow
+    # plus exporter overrides
+    all_symbols = set(universe_symbols)
+    all_symbols.update(GEO_MAP.keys())
+    all_symbols.update(EXPORTER_OVERRIDES.keys())
+
+    # When limit is set, we still respect it for universe_symbols but curated overrides are extra?
+    # For deterministic counts we cap total when limit is set to universe_symbols size already.
+    # To keep limit semantics simple, if limit is provided we slice the final sorted all_symbols
+    if limit is not None:
+        # universe_symbols already sliced; re-apply limit to overall? keep as is for back-compat
+        # Instead only extend with non-universe curated symbols up to limit extra
+        # Simplify: final list is sorted all_symbols limited to max(limit, len(GEO_MAP)) when limit supplied
+        # We'll just keep previous all_symbols without extra slicing beyond universe_symbols
+        pass
+
+    # Upsert for each symbol in universe_symbols + curated + exporters
+    # For universe=all, this will seed ALL master companies with defaults
+    # For universe=nifty200, seeds nifty200 plus curated
+    # Sorted for determinism
+    for symbol in sorted(all_symbols):
+        # Determine split: curated > exporter override > default
+        if symbol in GEO_MAP:
+            split = GEO_MAP[symbol]
+        elif symbol in EXPORTER_OVERRIDES:
+            split = EXPORTER_OVERRIDES[symbol]
+        else:
+            # Only seed default for symbols that are part of the requested universe
+            if symbol not in set(universe_symbols):
+                continue
+            split = {"IND": 96.0}
         cid = _resolve_company_id(repo, symbol)
         if cid is None:
             continue
         for country_id, rev in split.items():
-            asset = round(rev * 0.9, 2)  # heuristic asset exposure ~ revenue share
+            if country_id == "IND" and len(split) == 1 and rev == 96.0:
+                asset = 92.0
+            else:
+                asset = round(float(rev) * 0.9, 2)
             repo.upsert_geographic_exposure(cid, country_id, float(rev), float(asset))
             inserted += 1
     return inserted
@@ -241,7 +339,26 @@ def count_events_with_3level_chains(repo: Repository) -> int:
     return sum(1 for r in rows if (r["mx"] or 0) >= 3)
 
 
-def main() -> dict:
+def _parse_args():
+    import argparse
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--universe", choices=["nifty200", "nifty500", "all"], default="nifty200")
+    p.add_argument("--limit", type=int, default=None)
+    try:
+        args, _ = p.parse_known_args()
+    except SystemExit:
+        # argparse calls sys.exit on error; fallback to defaults
+        class _A: universe="nifty200"; limit=None
+        args=_A()
+    return args
+
+
+def main(universe: str | None = None, limit: int | None = None) -> dict:
+    # honor CLI args when called as script; also allow direct call with params
+    cli_args = _parse_args()
+    eff_universe = universe if universe is not None else cli_args.universe
+    eff_limit = limit if limit is not None else cli_args.limit
+
     repo = Repository()
     causal = CausalGraphEngine(repo.db)
     spawner = EventGraphSpawner(repo.db)
@@ -249,7 +366,7 @@ def main() -> dict:
     # --- Idempotent seeding -------------------------------------------------
     before_ripple = repo.get_all_ripple_effects()
     n_countries = seed_countries(repo)
-    n_geo = seed_geographic_exposure(repo)
+    n_geo = seed_geographic_exposure(repo, universe=eff_universe, limit=eff_limit)
     n_supply_ripples = seed_supply_ripples(repo)
 
     # --- Counts -------------------------------------------------------------

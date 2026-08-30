@@ -22,7 +22,7 @@ class InboxRunner:
         self.vector_store = vector_store or VectorStoreManager()
         self.parser = DocumentParser()
         self.ocr = FinancialOCREngine()
-        for name in ("images", "pdfs", "text", "processed", "failed"):
+        for name in ("images", "pdfs", "text", "processed", "failed", "likes"):
             (self.inbox / name).mkdir(parents=True, exist_ok=True)
 
     @staticmethod

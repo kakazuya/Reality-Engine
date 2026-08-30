@@ -160,13 +160,40 @@ class NSEClient:
         url = NSE_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str)
         local_file = BHAVCOPY_DIR / f"sec_bhavdata_full_{date_str}.csv"
 
-        # Check local cache first
-        if local_file.exists() and local_file.stat().st_size > 1000:
-            logger.info("Loading cached Bhavcopy from %s", local_file)
-            df = pd.read_csv(local_file)
-        else:
-            logger.info("Downloading Bhavcopy for %s from %s", target_date.strftime('%Y-%m-%d'), url)
-            res = self.session.get(url, headers=NSE_HEADERS, timeout=20)
+        # Minimum expected schema for a valid full deliverable bhavcopy.
+        # NOTE: the raw NSE file has no literal 'DATE' column (it ships 'DATE1'),
+        # so validation targets the columns that are actually present plus a
+        # column-count floor. 'DATE' is synthesized later in this method.
+        REQUIRED_COLUMNS = ["SYMBOL", "SERIES", "CLOSE_PRICE", "DELIV_QTY", "DELIV_PER"]
+        MIN_COLUMNS = 10
+
+        def _validate_bhavcopy(frame: pd.DataFrame) -> bool:
+            """Validates that a parsed bhavcopy has the expected schema."""
+            if frame is None or len(frame) == 0:
+                return False
+            cols = frame.columns.str.strip().tolist() if hasattr(frame.columns, "str") else list(frame.columns)
+            if len(cols) < MIN_COLUMNS:
+                return False
+            for needed in REQUIRED_COLUMNS:
+                if needed not in cols:
+                    return False
+            return True
+
+        def _quarantine_cache(path):
+            """Deletes a corrupted cached bhavcopy so it is not reused."""
+            try:
+                path.unlink()
+                logger.warning("Quarantined (deleted) corrupted Bhavcopy cache: %s", path)
+            except Exception as ue:  # pragma: no cover - best-effort cleanup
+                logger.warning("Could not delete corrupted Bhavcopy cache %s: %s", path, ue)
+
+        def _download_and_parse() -> Optional[pd.DataFrame]:
+            """Downloads the bhavcopy from NSE, writes an atomic cache, and parses it."""
+            try:
+                res = self.session.get(url, headers=NSE_HEADERS, timeout=20)
+            except Exception as e:
+                logger.warning("Network error fetching Bhavcopy for %s: %s", date_str, e)
+                return None
             if res.status_code != 200:
                 logger.warning("Bhavcopy for %s not found (HTTP %d)", date_str, res.status_code)
                 return None
@@ -176,11 +203,62 @@ class NSEClient:
                 logger.warning("Invalid or empty Bhavcopy payload for %s", date_str)
                 return None
 
-            # Cache locally
-            with open(local_file, "w", encoding="utf-8") as f:
-                f.write(text)
+            # Write cache atomically: temp file then atomic rename.
+            tmp_file = local_file.with_name(local_file.name + ".tmp")
+            try:
+                with open(tmp_file, "w", encoding="utf-8") as f:
+                    f.write(text)
+                tmp_file.replace(local_file)
+            except Exception as we:
+                logger.warning("Failed to write Bhavcopy cache for %s: %s", date_str, we)
+                # Cache write is best-effort; continue with in-memory text below.
 
-            df = pd.read_csv(io.StringIO(text))
+            try:
+                return pd.read_csv(io.StringIO(text))
+            except (pd.errors.ParserError, ValueError, KeyError, Exception) as e:
+                logger.warning("Failed to parse downloaded Bhavcopy for %s: %s", date_str, e)
+                return None
+
+        df: Optional[pd.DataFrame] = None
+        used_cache = False
+
+        # 1. Try local cache first (guarded read)
+        if local_file.exists() and local_file.stat().st_size > 1000:
+            logger.info("Loading cached Bhavcopy from %s", local_file)
+            try:
+                df = pd.read_csv(local_file)
+                used_cache = True
+            except (pd.errors.ParserError, ValueError, KeyError, Exception) as e:
+                logger.warning("Failed to parse cached Bhavcopy %s (%s). Quarantining and re-downloading.", local_file, e)
+                _quarantine_cache(local_file)
+                df = None
+
+        # 2. If cache missing/corrupt, download from network
+        if df is None:
+            logger.info("Downloading Bhavcopy for %s from %s", target_date.strftime('%Y-%m-%d'), url)
+            df = _download_and_parse()
+
+        # 3. Validate schema; on cache path, quarantine and attempt exactly one re-download
+        if not _validate_bhavcopy(df):
+            if used_cache and df is not None:
+                # Cache parsed but failed schema validation -> retry from network once.
+                logger.warning(
+                    "Bhavcopy for %s parsed from cache but failed schema validation "
+                    "(cols=%d). Quarantining cache and attempting one re-download.",
+                    date_str, len(df.columns),
+                )
+                _quarantine_cache(local_file)
+                df = _download_and_parse()
+            else:
+                logger.warning(
+                    "Bhavcopy for %s failed schema validation or could not be obtained; skipping.",
+                    date_str,
+                )
+                return None
+
+        if not _validate_bhavcopy(df):
+            logger.warning("Re-downloaded Bhavcopy for %s still failed schema validation; skipping.", date_str)
+            return None
 
         # Standardize columns and whitespace
         df.columns = df.columns.str.strip()
@@ -214,18 +292,23 @@ class NSEClient:
         url = NSE_INDEX_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str)
         local_file = BHAVCOPY_DIR / f"ind_close_all_{date_str}.csv"
 
-        if local_file.exists() and local_file.stat().st_size > 500:
-            df = pd.read_csv(local_file)
-        else:
-            res = self.session.get(url, headers=NSE_HEADERS, timeout=15)
-            if res.status_code != 200:
-                logger.warning("Index Bhavcopy for %s returned HTTP %d", date_str, res.status_code)
-                return None
+        df: Optional[pd.DataFrame] = None
+        try:
+            if local_file.exists() and local_file.stat().st_size > 500:
+                df = pd.read_csv(local_file)
+            else:
+                res = self.session.get(url, headers=NSE_HEADERS, timeout=15)
+                if res.status_code != 200:
+                    logger.warning("Index Bhavcopy for %s returned HTTP %d", date_str, res.status_code)
+                    return None
 
-            with open(local_file, "w", encoding="utf-8") as f:
-                f.write(res.text)
+                with open(local_file, "w", encoding="utf-8") as f:
+                    f.write(res.text)
 
-            df = pd.read_csv(io.StringIO(res.text))
+                df = pd.read_csv(io.StringIO(res.text))
+        except (pd.errors.ParserError, ValueError, KeyError, OSError, Exception) as e:
+            logger.warning("Failed to fetch/parse Index Bhavcopy for %s (%s); skipping.", date_str, e)
+            return None
 
         df.columns = df.columns.str.strip()
         for col in df.select_dtypes(include="object").columns:

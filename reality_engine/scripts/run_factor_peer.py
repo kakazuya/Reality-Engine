@@ -11,6 +11,10 @@ Owns ONLY the financial_metrics dense substrate for the Factor/Statistical peer.
 - Prints before/after counts and sample factor signals.
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
 import logging
 
 import numpy as np

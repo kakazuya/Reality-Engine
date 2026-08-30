@@ -1,0 +1,3083 @@
+[
+  {
+    "symbol": "ADANIPORTS",
+    "isin": "INE742F01042",
+    "confidence": 0.9,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Trade Volume & Port Concession Cycle / Secular Logistics Infrastructure",
+        "cycle_duration_years": 7.0,
+        "cycle_current_stage": "Cargo Supercycle & Logistics Integration",
+        "key_revenue_drivers": [
+          "Container & bulk cargo handling - Mundra, Hazira, Kattupalli anchor ports",
+          "Logistics, warehousing & SEZ (Adani Logistics & Agri Logistics)",
+          "Marine services, harbour craft & coastal shipping",
+          "International concessions - Haifa Israel & Colombo West Terminal"
+        ],
+        "margin_sensitivities": {
+          "Global Trade Volume & Baltic Dry Index": 0.28,
+          "Coal & Crude Cargo Mix Realization": 0.22,
+          "Concession Royalties & Forex (USD-ILS)": 0.15
+        },
+        "stage_conviction": 0.9,
+        "stage_rationale": "Cargo throughput 420+ MMT as_of FY26 with 46% container share; logistics EBITDA share rising to 18% and Haifa/Colombo ramp plus Ganga waterway synergies sustaining 16% revenue CAGR into FY27."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "EXIM containerization & transshipment demand",
+          "Dry bulk tied to coal imports & steel exports",
+          "Adani Logistics rail & ICD network scale-up",
+          "Haifa & Colombo international tariff monetization"
+        ],
+        "raw_material_sensitivities": {
+          "Marine Fuel & Dredging Energy Costs": 0.22,
+          "Port Equipment & Cranes (China/Korea Heavy Industry)": 0.18,
+          "Rail Haulage & Last-Mile Logistics Subcontracting": 0.14
+        },
+        "pricing_power_assessment": "Strong pricing power on west-coast dominance at Mundra with 25% pan-India share; CPI-linked concession tariffs allow 5-7% annual hikes with negligible cargo diversion.",
+        "moat_rating": 8.8
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 26500.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 12000.0,
+        "expected_commercialization_quarter": "FY27Q2",
+        "deleveraging_trend": "Net Debt/EBITDA ~2.1x as_of FY26; Vizhinjam transshipment & WCT Colombo capex via internal accruals, logistics asset-light monetization underway"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic Ports & Logistics": 88.0,
+          "International (Haifa, Colombo & Haifa JV)": 12.0
+        },
+        "supply_chain_dependencies": [
+          "Mundra & Hazira deep-draft port infrastructure and DFC rail linkage",
+          "Chinese & Korean quay crane and dredger OEMs",
+          "Global shipping lines - MSC, Maersk, CMA CGM alliances"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "India EXIM trade & coastal shipping policy (Sagarmala)",
+          "Middle East stability for Haifa port operations & Red Sea disruption",
+          "Coal & crude import duty and energy transition cargo mix"
+        ],
+        "transit_route_risks": [
+          "Red Sea & Suez routing disruption for Mediterranean transshipment",
+          "Arabian Sea bulk carrier freight & monsoon dredging windows"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "APOLLOHOSP",
+    "isin": "INE437A01024",
+    "confidence": 0.89,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Secular Healthcare / Hospital & Pharmacy Structural Growth",
+        "cycle_duration_years": 12.0,
+        "cycle_current_stage": "Occupancy Uptrend & Pharmacy Omni Scale-up",
+        "key_revenue_drivers": [
+          "Hospitals - owned & managed (Apollo Chennai, Delhi, Hyderabad clusters)",
+          "Apollo 24/7 & offline pharmacy distribution",
+          "Diagnostics & primary clinics (Apollo Clinics)",
+          "HealthCo - insurance, wellness & emerging AHLL"
+        ],
+        "margin_sensitivities": {
+          "Doctor & Nursing Talent Costs": 0.32,
+          "Pharmaceutical & Consumable Procurement": 0.18,
+          "Occupancy & ARPOB Mix": 0.22
+        },
+        "stage_conviction": 0.89,
+        "stage_rationale": "Hospital occupancy 68-70% as_of FY26 with ARPOB Rs 60k+ growing 9-10% YoY; 24/7 pharmacy GMV 2x in 2 years and Apollo HealthCo EBITDA breakeven advancing with diagnostics consolidation."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Tertiary care occupancy & case-mix premiumization",
+          "Apollo 24/7 online pharmacy & tele-consult scale",
+          "Diagnostics B2C expansion in South & East",
+          "International patient & insurance TPA volumes"
+        ],
+        "raw_material_sensitivities": {
+          "Imported Implants & Oncology Drugs (USD)": 0.2,
+          "Nursing & Specialist Doctor Costs": 0.28,
+          "Diagnostic Reagents & Lab Equipment": 0.12
+        },
+        "pricing_power_assessment": "High pricing power via clinical brand & JCI accreditation allowing 6-8% annual ARPOB hikes; pharmacy discounts offset by private label and insurer tie-ups.",
+        "moat_rating": 8.7
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 19200.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1800.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net Debt/EBITDA ~1.4x; brownfield tower additions at Chennai & Hyderabad funded via operating cash, HealthCo listing value unlocking planned"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic - South & West Clusters": 96.5,
+          "International Patients & Exports": 3.5
+        },
+        "supply_chain_dependencies": [
+          "Tertiary hospital clusters in Chennai, Hyderabad, Delhi, Kolkata",
+          "Global med-device OEMs - Siemens, GE HealthCare, Medtronic",
+          "Apollo Pharmacy 6,200+ store pan-India last-mile network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Clinical talent migration & NPPA stent/drug price controls",
+          "Health insurance penetration & regulator IRDAI pricing",
+          "Import duty on high-end med-devices & USD-INR"
+        ],
+        "transit_route_risks": [
+          "Cold-chain pharma road logistics across southern hubs",
+          "Medical tourism air-corridor via Middle East & SAARC"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "AXISBANK",
+    "isin": "INE238A01034",
+    "confidence": 0.89,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Credit & Interest Rate Cycle / Private Bank",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "NIM Defence & Asset Quality Benign",
+        "key_revenue_drivers": [
+          "Retail secured loans - home & LAP",
+          "SME & corporate working capital advances",
+          "Net interest margin & treasury gains",
+          "Fee income - cards, payments & wealth"
+        ],
+        "margin_sensitivities": {
+          "Repo Rate & Deposit Costs": 0.42,
+          "Credit Costs - Unsecured GNPA Provisions": 0.28,
+          "Treasury G-Sec Yields": 0.12
+        },
+        "stage_conviction": 0.88,
+        "stage_rationale": "NIM under pressure as_of FY26 near 3.9-4.0% due to CASA dilution and repricing lag; asset quality at cyclical best with NNPA ~0.33% and RoA ~1.8% sustentative."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Retail and SME loan momentum via Bharat Banking",
+          "Corporate capex and supply-chain finance demand",
+          "Credit card and Axis Burgundy wealth fee scaling",
+          "Subsidiaries - Axis Finance, AMC & Capital"
+        ],
+        "raw_material_sensitivities": {
+          "Cost of Funds (CASA & Term Deposit Mix)": 0.38,
+          "Regulatory Risk Weights on Unsecured": 0.18,
+          "Technology & Branch Expansion Costs": 0.14
+        },
+        "pricing_power_assessment": "Strong pricing power via affluent retail franchise and corporate transaction banking; NIM premium 30-40 bps over PSBs though deposit competition caps upside.",
+        "moat_rating": 8.4
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 130000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 2800.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "CAR ~16.7%; well-capitalized via internal accruals, no fresh equity need, Citi retail integration complete"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 98.8,
+          "International (GIFT IFSC, Singapore, DIFC)": 1.2
+        },
+        "supply_chain_dependencies": [
+          "Domestic CASA deposit base (90M+ customers)",
+          "RBI bond market & LCR funding",
+          "Global correspondent banking & SWIFT network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "RBI repo rate & liquidity stance",
+          "Domestic credit cycle & corporate asset quality",
+          "Global FII flows & INR volatility"
+        ],
+        "transit_route_risks": [
+          "Negligible physical transit - branch & digital network pan-India",
+          "SWIFT & cyber-network dependency"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "BAJAJFINSV",
+    "isin": "INE918K01018",
+    "confidence": 0.87,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Financial Holding Cycle / Insurance & Lending Conglomerate",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "Insurance Leadership & Lending Holdco Value Unlock",
+        "key_revenue_drivers": [
+          "Bajaj Allianz Life - protection & ULIP new business premium",
+          "Bajaj Allianz General - motor, health & crop insurance",
+          "Bajaj Finance & Housing Finance associate dividends (39% stake)",
+          "Bajaj Finserv Health, AMC & technology services"
+        ],
+        "margin_sensitivities": {
+          "10Y G-Sec Yield & Solvency Margins": 0.32,
+          "Equity Markets (ULIP VNB & AUM Fees)": 0.25,
+          "Combined Ratio - Health & Motor Claims": 0.22
+        },
+        "stage_conviction": 0.87,
+        "stage_rationale": "Holdco discount narrowing as_of FY26 with Bajaj Allianz Life VNB margin 26% and General combined ratio 97-98%; associate Bajaj Finance 30%+ RoE and Bajaj Housing Finance IPO unlocking SOTP re-rating."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Life protection & annuity demand via bancassurance",
+          "General insurance motor & health pricing discipline",
+          "Bajaj Finance associate earnings compounding",
+          "AMC AUM scale & Finserv Health platform traction"
+        ],
+        "raw_material_sensitivities": {
+          "G-Sec & Corporate Bond Yields (Asset Backing)": 0.3,
+          "Reinsurance Treaty Costs (Munich, Swiss Re)": 0.18,
+          "Equity Market Linked ULIP Acquisition Costs": 0.15
+        },
+        "pricing_power_assessment": "Moderate-to-Strong; top-3 private life and general franchises allow 5-8% premium pricing on health and term but ULIP and motor OD remain competitive and commission regulated.",
+        "moat_rating": 8.5
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 100500.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 900.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Holdco debt minimal ~Rs 1,200 cr; insurance solvency 300%+ (Life) and 155%+ (General), no capital raise needed, dividend upstream steady"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic Insurance & AMC": 99.0,
+          "Reinsurance Inward & Allianz Global Support": 1.0
+        },
+        "supply_chain_dependencies": [
+          "Bajaj Allianz joint venture with Allianz SE technology & reinsurance",
+          "Bajaj Finance cross-sell & agency 12k+ branch network",
+          "Digital stack - Finserv Health cloud on AWS Azure"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "IRDAI commission, surrender & solvency reform",
+          "RBI repo & bond yield curve shape for insurance reserves",
+          "Health insurance claims inflation post-pandemic"
+        ],
+        "transit_route_risks": [
+          "No physical transit - digital policy issuance pan-India",
+          "Domestic courier for claim surveyor & health TPA docs only"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "BAJFINANCE",
+    "isin": "INE296A01024",
+    "confidence": 0.89,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Credit Cycle / Consumer Finance NBFC",
+        "cycle_duration_years": 5.5,
+        "cycle_current_stage": "Mid-Cycle Growth Moderation",
+        "key_revenue_drivers": [
+          "Retail consumer durable & personal loans",
+          "Housing finance via Bajaj Housing Finance",
+          "SME & commercial lending",
+          "Fee income & cross-sell insurance"
+        ],
+        "margin_sensitivities": {
+          "Cost of Funds - Repo Rate": 0.45,
+          "Credit Cost - GNPA Provisions": 0.3,
+          "Operating Cost Ratio": 0.12
+        },
+        "stage_conviction": 0.89,
+        "stage_rationale": "AUM growth moderating to 26-28% YoY as_of FY26 after 30%+ supercycle; RBI risk-weight tightening and deposit competition compressing NIMs but asset quality benign at GNPA ~1.1%."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Retail consumer lending momentum",
+          "Bajaj Housing Finance mortgage scale-up",
+          "SME commercial portfolio",
+          "Insurance & wealth fee cross-sell"
+        ],
+        "raw_material_sensitivities": {
+          "Cost of Borrowing (AAA Bond Spreads)": 0.4,
+          "Regulatory Risk Weights & Capital": 0.2,
+          "Customer Acquisition Costs": 0.15
+        },
+        "pricing_power_assessment": "Strong pricing power via risk-based underwriting and prime customer cross-sell, though capped by competitive fintech and bank pricing on prime housing loans.",
+        "moat_rating": 8.8
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 62000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1500.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Well-capitalized; CAR ~24% and steady leverage, IPO value unlocking via Bajaj Housing Finance listing"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 99.5,
+          "International (Middle East Remittance Corridor)": 0.5
+        },
+        "supply_chain_dependencies": [
+          "Domestic bank & bond market funding (CRISIL AAA)",
+          "Global institutional debt investor appetite",
+          "Technology stack - cloud data centres & credit engines"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "RBI repo rate & liquidity stance",
+          "NBFC sector regulatory tightening (risk weights)",
+          "Domestic consumption & employment cycle"
+        ],
+        "transit_route_risks": [
+          "Minimal physical transit - primarily digital operations risk",
+          "Domestic road/courier network for collections"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "BHARTIARTL",
+    "isin": "INE397D01024",
+    "confidence": 0.91,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Secular Telecom Consolidation / Digital Infrastructure",
+        "cycle_duration_years": 10.0,
+        "cycle_current_stage": "ARPU Uptrend Monetization",
+        "key_revenue_drivers": [
+          "Wireless mobile ARPU & 5G FWA monetization",
+          "Airtel Africa & mobile money",
+          "Enterprise & Airtel Business (Nxtra data centres)",
+          "Home broadband & DTH convergence"
+        ],
+        "margin_sensitivities": {
+          "Spectrum Amortization": 0.25,
+          "Network Energy & Diesel Costs": 0.2,
+          "Interconnect & Regulatory Levies": 0.1
+        },
+        "stage_conviction": 0.91,
+        "stage_rationale": "Tariff hike cycle flowing through as_of FY26 with ARPU at Rs 233-245; 5G SA rollout and Airtel Africa listing supporting 55%+ EBITDA margin expansion."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Wireless subscriber ARPU uplift",
+          "Africa mobile money growth",
+          "Enterprise connectivity & cloud",
+          "Broadband subscriber additions"
+        ],
+        "raw_material_sensitivities": {
+          "Network Equipment (Ericsson/Nokia 5G Radios)": 0.18,
+          "Diesel & Tower Energy Costs": 0.15,
+          "Fibre & Device Procurement": 0.12
+        },
+        "pricing_power_assessment": "High pricing power in telecom duopoly; demonstrated 15-20% tariff hike absorption with negligible churn as_of FY26.",
+        "moat_rating": 8.8
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 150300.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 28000.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Rapid deleveraging; Net debt/EBITDA down to ~1.9x post tariff hikes, 5G capex peak behind"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Mobile & Enterprise": 78.0,
+          "Airtel Africa Operations": 22.0
+        },
+        "supply_chain_dependencies": [
+          "Ericsson & Nokia 5G radio access network",
+          "Submarine cable consortiums (SEA-ME-WE, 2Africa)",
+          "Semiconductor chipsets for devices & CPE"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Telecom regulatory & AGR jurisprudence",
+          "African currency volatility (Nigerian Naira)",
+          "US-China 5G equipment trade restrictions"
+        ],
+        "transit_route_risks": [
+          "Subsea cable cuts in Red Sea corridor",
+          "Cross-border fibre disruption risk"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "BRITANNIA",
+    "isin": "INE216A01022",
+    "confidence": 0.9,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Defensive Staples / Biscuits & Bakery Consumption",
+        "cycle_duration_years": 12.0,
+        "cycle_current_stage": "Rural Recovery & Premium Innovation Scale-up",
+        "key_revenue_drivers": [
+          "Biscuits - Good Day, Tiger, Milk Bikis & premium cookies",
+          "Bread, cakes, rusk & dairy (cheese, yogurt)",
+          "Adjacent categories - croissant, wafers & salty snacks",
+          "International & modern trade / e-commerce premium packs"
+        ],
+        "margin_sensitivities": {
+          "Wheat Flour & Palm Oil": 0.32,
+          "Sugar & Dairy Solids": 0.18,
+          "HDPE Packaging & Crude Logistics": 0.14
+        },
+        "stage_conviction": 0.9,
+        "stage_rationale": "Volume growth 4-5% recovering as_of FY26 after two-year rural stress and wheat inflation; premium portfolio (Good Day Harmony, Bourbon) growing 1.8x mass and EBITDA margins 19-20% defended via 2% pricing and in-house wheat cost program."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Rural biscuit volume recovery tied to monsoon & MNREGA wages",
+          "Premium cookie & croissant innovation pipeline",
+          "Dairy adjacency scale-up via Ranjangaon & Perundurai plants",
+          "Direct reach expansion to 6M outlets & quick-commerce"
+        ],
+        "raw_material_sensitivities": {
+          "Wheat Flour & Palm Oil Import Prices": 0.3,
+          "Sugar & Milk Powder": 0.18,
+          "Packaging Polymers & Freight": 0.12
+        },
+        "pricing_power_assessment": "Very strong pricing power in biscuits with 32-33% market share; ability to take 3-4% annual price hikes across Good Day & Tiger with minimal elasticity, though dairy remains competitive.",
+        "moat_rating": 8.9
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 16800.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 650.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Debt-free; ROCE >45%, FCF conversion >90%, capex for Ranjangaon snacks and dairy backward integration funded internally with high dividend payout"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 97.0,
+          "International (Middle East, Africa & US Ethnic)": 3.0
+        },
+        "supply_chain_dependencies": [
+          "Wheat & palm oil via domestic mandis and Indonesia/Malaysia imports",
+          "Ranjangaon & Mundra manufacturing clusters with captive solar",
+          "Pan-India 5.8M retail outlet distribution & cold chain for dairy"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Monsoon & wheat MSP inflation",
+          "Indonesian palm oil export duty regime",
+          "Rural wage & food inflation policy (PDS, MNREGA)"
+        ],
+        "transit_route_risks": [
+          "Domestic road & rail FMCG distribution across states",
+          "Palm oil container freight via Strait of Malacca"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "CIPLA",
+    "isin": "INE059A01026",
+    "confidence": 0.88,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Structural Pharma / Branded Generics & Respiratory Specialty",
+        "cycle_duration_years": 10.0,
+        "cycle_current_stage": "India Chronic Leadership & US Respiratory Traction",
+        "key_revenue_drivers": [
+          "India branded prescriptions - respiratory, urology & chronic therapies",
+          "US generics - Albuterol, gRevlimid & peptide injectables",
+          "South Africa & Emerging Markets private market",
+          "API & consumer wellness (Cipla Health)"
+        ],
+        "margin_sensitivities": {
+          "US Generic Price Erosion": 0.28,
+          "India Price Control (NPPA NLEM)": 0.15,
+          "API & Solvent Costs (China Link)": 0.18
+        },
+        "stage_conviction": 0.87,
+        "stage_rationale": "India business 43-44% share as_of FY26 growing 11-12% on chronic mix; US revenue $210-230M quarterly with Albuterol market share 18% and gRevlimid traction sustaining 24-25% EBITDA."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "India respiratory & cardiac branded growth",
+          "US complex generics - inhalers & injectables pipeline",
+          "South Africa tender & private anti-retroviral mix",
+          "Digital & OTC wellness scale-up"
+        ],
+        "raw_material_sensitivities": {
+          "APIs & Intermediates (China 35-40%)": 0.22,
+          "US Distribution & Chargeback Fees": 0.16,
+          "Freight & Cold Chain for Inhalers": 0.1
+        },
+        "pricing_power_assessment": "Moderate-to-Strong in India branded where doctors sticky and chronic therapies allow annual price take; US generics is price-taker with 9-11% erosion offset by inhaler complexity barrier.",
+        "moat_rating": 8.2
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 27300.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1350.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net cash positive ~Rs 7,200 cr; zero net debt, Indore & Goa USFDA plant upgrades funded via FCF, ROCE ~18% improving"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 43.0,
+          "North America (US)": 30.0,
+          "South Africa & Sub-Saharan Africa": 14.0,
+          "International - Europe & Emerging": 13.0
+        },
+        "supply_chain_dependencies": [
+          "Indore, Goa & Kurkumbh USFDA-approved formulation plants",
+          "China intermediates for penems & inhaler propellants",
+          "US 3PL distribution (McKesson, AmerisourceBergen)"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "USFDA inspection & 483 observations",
+          "NPPA price ceiling & Ayushman Bharat procurement",
+          "Rand-USD volatility for South Africa business"
+        ],
+        "transit_route_risks": [
+          "Air freight for high-value APIs & inhaler devices",
+          "US port and cold chain distribution dependency"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "COALINDIA",
+    "isin": "INE522F01014",
+    "confidence": 0.88,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Commodity Coal Cycle / Regulated Monopoly Fossil Fuel",
+        "cycle_duration_years": 7.0,
+        "cycle_current_stage": "Volume Plateau & E-auction Premium Normalization",
+        "key_revenue_drivers": [
+          "Thermal coal to power utilities (CIL FSA & e-auction)",
+          "Coal to steel, cement & captive power (non-power sector)",
+          "Coking coal washery & coal beneficiation",
+          "First-mile connectivity & wagon loading monetization"
+        ],
+        "margin_sensitivities": {
+          "E-auction Premium over Notified Price": 0.35,
+          "Diesel & Heavy Earthmoving Machinery Costs": 0.22,
+          "Coal Grade Slippage & Washed Coal Yield": 0.12
+        },
+        "stage_conviction": 0.87,
+        "stage_rationale": "Production 770-780 MT as_of FY26 with 12% e-auction mix at 70-80% premium over FSA; power demand 6-7% YoY but renewable displacement caps growth, first-mile connectivity 90 MTPA commissioned reducing evacuation costs."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Power sector coal offtake linked to thermal PLF",
+          "E-auction realization vs international Newcastle index",
+          "Steel & cement non-power premium demand",
+          "MDO & first-mile connectivity fee income"
+        ],
+        "raw_material_sensitivities": {
+          "High-Speed Diesel for Excavators & Dumpers": 0.3,
+          "Explosives & Heavy Machinery (BEML, Caterpillar)": 0.18,
+          "Rail Freight & Wagon Availability (Indian Railways)": 0.15
+        },
+        "pricing_power_assessment": "Administered pricing power as 80%+ monopoly; FSA prices notified by coal ministry allow periodic hikes but e-auction is market-linked and global seaborne coal remains price cap.",
+        "moat_rating": 8.6
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 145000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 16500.0,
+        "expected_commercialization_quarter": "FY27Q3",
+        "deleveraging_trend": "Zero net debt; net cash >Rs 25,000 cr, ROCE >38%, heavy dividend payout 50%+ with capex for first-mile & solar diversification internally funded"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic - Power & Non-Power": 99.0,
+          "Coal Exports & International Consultancy (Mozambique)": 1.0
+        },
+        "supply_chain_dependencies": [
+          "Mahanadi, SECL & ECL opencast coal belts (Odisha, Chhattisgarh)",
+          "Indian Railways & Mahanadi Coal Railway first-mile evacuation",
+          "Global HEMM suppliers - Caterpillar, Komatsu, BEML"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Coal ministry FSA pricing & e-auction policy reform",
+          "Power ministry thermal vs renewables dispatch merit order",
+          "Coal import duty & seaborne coal price parity"
+        ],
+        "transit_route_risks": [
+          "Rail rake shortage during peak power season",
+          "Monsoon overburden flooding & first-mile road washout"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "DLF",
+    "isin": "INE271C01023",
+    "confidence": 0.86,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Real Estate Cycle / Luxury Residential & Commercial Annuity",
+        "cycle_duration_years": 8.0,
+        "cycle_current_stage": "Luxury Supercycle & Commercial Occupancy Recovery",
+        "key_revenue_drivers": [
+          "Luxury residential - The Arbour, Privana & Valley Garden Gurugram",
+          "Commercial annuity - Cyber City & DLF Downtown (DCCDL REIT)",
+          "Retail malls - Emporio & Mall of India",
+          "Land bank monetization - Goa & Chennai plotted development"
+        ],
+        "margin_sensitivities": {
+          "Gurugram Luxury Realization & Absorption": 0.32,
+          "Cement & Steel Construction Costs": 0.25,
+          "Office Leasing Traction & WACC": 0.18
+        },
+        "stage_conviction": 0.86,
+        "stage_rationale": "Pre-sales Rs 20,000+ cr as_of FY26 with super-luxury The Arbour Rs 8,000 cr sold-out in 72 hours; DCCDL REIT rental income Rs 4,800 cr with 92% occupancy and Gurugram luxury inventory 3-year visibility."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "NCR luxury & super-luxury housing demand (Rs 5-25 cr ticket)",
+          "Cyber City Grade-A office leasing & REIT yield compression",
+          "Retail footfall & rental reversion at Emporio",
+          "Plotted & low-rise township launches (Panchkula, Chennai)"
+        ],
+        "raw_material_sensitivities": {
+          "Ready-Mix Concrete, Steel Rebar & Cement": 0.28,
+          "Labour & Contractor Costs (NCR)": 0.18,
+          "Interest Rates on Construction Finance (Repo)": 0.15
+        },
+        "pricing_power_assessment": "Exceptional pricing power in Gurugram super-luxury where DLF commands 20-30% premium over competing builders; annuity portfolio allows 5-7% annual rental escalation pass-through.",
+        "moat_rating": 8.4
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 6500.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 5500.0,
+        "expected_commercialization_quarter": "FY27Q3",
+        "deleveraging_trend": "Net cash positive post QIP Rs 9,000 cr; DCCDL REIT debt ~Rs 18,000 cr at 7.5% with rental cover 1.6x, residential capex self-funded via customer advances"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "NCR Gurugram & Delhi": 92.0,
+          "Pan-India (Chennai, Chandigarh, Goa & Hyderabad)": 8.0
+        },
+        "supply_chain_dependencies": [
+          "Gurugram 3,000-acre land bank & Haryana regulatory approvals",
+          "Turnkey EPC contractors - L&T, Shapoorji & Leighton",
+          "Global property consultants - CBRE, JLL & Cushman"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "RBI repo & housing loan rates for luxury affordability",
+          "Haryana RERA & Gurugram circle rate policy",
+          "IT/ITES GCC office demand & REIT yield trajectory"
+        ],
+        "transit_route_risks": [
+          "NCR construction material road logistics & crusher sand supply",
+          "Negligible ocean transit - domestic cement & steel sourcing"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "DRREDDY",
+    "isin": "INE089A01023",
+    "confidence": 0.87,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Structural Generics / US Complex Injectables & India Branded",
+        "cycle_duration_years": 10.0,
+        "cycle_current_stage": "US gRevlimid Tail & Biosimilars Investment Phase",
+        "key_revenue_drivers": [
+          "US generics - Revlimid, Suboxone & recent injectable launches",
+          "India branded & NCE (2-DG legacy, chronic portfolio)",
+          "Emerging Markets & Europe - branded generics Russia, Brazil",
+          "PSA - custom synthesis & biologics services"
+        ],
+        "margin_sensitivities": {
+          "US Price Erosion on Base Generics": 0.3,
+          "gRevlimid Volume Concentration": 0.22,
+          "R&D & Bioequivalence Trial Costs": 0.18
+        },
+        "stage_conviction": 0.86,
+        "stage_rationale": "Peak Revlimid contribution as_of FY26 at ~30% of US sales with phased generic entry in FY27; base business EBITDA 21-22% cushioned by India 10% growth and 8-10 new US launches annualized."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "gRevlimid exclusivity monetization runway through FY27",
+          "India chronic & oncology branded share expansion",
+          "Russia/CIS branded generics resilience despite sanctions",
+          "Biosimilars & peptides pipeline (semaglutide filing)"
+        ],
+        "raw_material_sensitivities": {
+          "Oncology APIs & Peptide Intermediates": 0.24,
+          "China KSM for Small Molecules": 0.18,
+          "US Litigation & Legal Settlement Costs": 0.12
+        },
+        "pricing_power_assessment": "Limited pricing power in US commoditized generics; selective power in India branded portfolio via doctor loyalty and in Revlimid quasi-duopoly until FY27.",
+        "moat_rating": 8.0
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 31400.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1800.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net cash ~Rs 5,800 cr; Biologics Hyderabad capex and visual biosimilar injectables funded internally, no leverage build"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "North America (US & Canada)": 46.0,
+          "India Domestic": 17.0,
+          "Emerging Markets (Russia, Brazil, LATAM)": 19.0,
+          "Europe & PSA": 18.0
+        },
+        "supply_chain_dependencies": [
+          "Bachupally & Srikakulam USFDA formulation & API plants",
+          "China KSMs for oncology & antivirals (35% dependency)",
+          "Russia distribution JV and rouble-hedged supply chain"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "USFDA warning letter resurfacing risk (Bachupally)",
+          "Russia-Ukraine sanction & currency volatility",
+          "US IRA generic pricing & Medicaid rebates"
+        ],
+        "transit_route_risks": [
+          "High-value oncology air freight & cold chain",
+          "Russia trade settlement via rupee-rouble & Dubai shipping"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "EICHERMOT",
+    "isin": "INE066A01013",
+    "confidence": 0.89,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Premium Auto Cycle / Mid-Size Motorcycle & CV JV",
+        "cycle_duration_years": 7.0,
+        "cycle_current_stage": "650cc Premiumization & VECV CV Supercycle",
+        "key_revenue_drivers": [
+          "Royal Enfield mid-size motorcycles (Classic, Hunter, Himalayan) domestic",
+          "Royal Enfield international - Thailand, UK, US & Brazil",
+          "VE Commercial Vehicles (Eicher JV with Volvo) - HD trucks, buses & engines",
+          "Spares, apparel & motorcycle accessories"
+        ],
+        "margin_sensitivities": {
+          "Steel & Aluminium Castings": 0.28,
+          "Semiconductors & ABS Components": 0.14,
+          "Commercial Vehicle Discount Intensity": 0.18
+        },
+        "stage_conviction": 0.88,
+        "stage_rationale": "Royal Enfield market share >93% in >250cc as_of FY26 with 1M+ annual volume run-rate; Hunter + Meteor drive 35% mix, VECV EBITDA margin 9.5% peak on replacement plus mining tippers cycle."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "250-650cc leisure motorcycling discretionary demand",
+          "VECV heavy-duty truck replacement & bus orders (STU)",
+          "International premium store expansion (1,200+ touchpoints)",
+          "Spares & lifestyle revenue per vehicle"
+        ],
+        "raw_material_sensitivities": {
+          "Cold Rolled Steel & Engine Alloy Castings": 0.26,
+          "Rubber Tyres & Paint": 0.12,
+          "Volvo Engine Technology Royalty": 0.1
+        },
+        "pricing_power_assessment": "High pricing power in mid-size motorcycles; Royal Enfield ability to take 1.5-2% annual hikes and premium pricing on 650cc twins with 6-month waiting, limited competitive intensity above 250cc.",
+        "moat_rating": 8.7
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 16500.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1400.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Zero debt, net cash >Rs 14,000 cr; Vallam Vadagal new plant & CKD Thailand investment funded via FCF, ROCE >28%"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic Motorcycles & VECV": 89.0,
+          "International Motorcycles (UK, Thailand, Americas & Europe)": 11.0
+        },
+        "supply_chain_dependencies": [
+          "Chennai Oragadam & Vallam engine & assembly hub",
+          "VECV Pithampur truck plant with Volvo powertrain tech",
+          "Global CKD kits via Thailand & Brazil assembly"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Premium discretionary consumption & credit penetration",
+          "BS-VI / OBD2 emission & SAF regulation for 2W",
+          "Steel and aluminium commodity cycle"
+        ],
+        "transit_route_risks": [
+          "Domestic motorcycle dispatch via road & rail stockyards",
+          "Sea freight CKD containers to Thailand & US"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "GRASIM",
+    "isin": "INE047A01013",
+    "confidence": 0.86,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Conglomerate Cyclical / VSF, Chemicals & Building Materials",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "Paints Birla Opus Ramp & VSF Downcycle Trough",
+        "key_revenue_drivers": [
+          "Viscose Staple Fibre (VSF) & filament yarn - global leader",
+          "Chlor-alkali & advanced materials (epoxy)",
+          "UltraTech Cement subsidiary consolidation (57% stake)",
+          "Birla Opus decorative paints pan-India rollout"
+        ],
+        "margin_sensitivities": {
+          "Caustic Soda & VSF Spreads vs Cotton": 0.32,
+          "Viscose Pulp Wood Price": 0.22,
+          "Crude Derivatives (epoxy & chlorine)": 0.18
+        },
+        "stage_conviction": 0.85,
+        "stage_rationale": "VSF spreads near cyclical trough as_of FY26 at $1,350-1,450/t due to Chinese rayon glut; paints Opus Rs 10,000 cr capex commercialized with 6 plants at 40% utilization targeting EBITDA breakeven by FY27, chemicals ECU stable."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "VSF demand recovery linked to global apparel & China supply",
+          "Chlor-alkali ECU realizations vs energy costs",
+          "UltraTech cement consolidation & volume growth",
+          "Birla Opus dealer tinting machine adoption vs Asian Paints"
+        ],
+        "raw_material_sensitivities": {
+          "Dissolving Wood Pulp (Sweden, South Africa)": 0.25,
+          "Salt & Power (Captive Lignite & Coal)": 0.2,
+          "Titanium Dioxide for Paints": 0.18
+        },
+        "pricing_power_assessment": "Moderate pricing power; VSF partially price-taker globally but scale allows cost leadership; paints entering entrenched duopoly requires competitive pricing and tinting machine subsidization initially.",
+        "moat_rating": 7.8
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 135000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 16500.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net Debt ~Rs 42,000 cr at standalone ex-UltraTech; Opus paints peak capex behind, deleveraging tied to paints operating leverage and VSF spread recovery"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic (incl UltraTech)": 92.0,
+          "Exports - VSF & Chemicals (Europe, Asia)": 8.0
+        },
+        "supply_chain_dependencies": [
+          "Vilayat & Nagda VSF & chemical complexes",
+          "Birla Cellulosic pulp JVs in Sweden & Canada (Domsjo, AV Group)",
+          "Pan-India 200+ Birla Opus depots & tinting network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "China VSF dumping & anti-dumping duty policy",
+          "EU deforestation regulation on wood pulp traceability",
+          "Decorative paints demand vs real estate completions"
+        ],
+        "transit_route_risks": [
+          "Pulp woodchip bulk shipping via Indian Ocean",
+          "Paints road logistics for tinting machines & emulsion drums"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "HCLTECH",
+    "isin": "INE860A01027",
+    "confidence": 0.88,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Demand Cyclical / Enterprise IT Spend Cycle",
+        "cycle_duration_years": 5.0,
+        "cycle_current_stage": "Recovery After Discretionary Slowdown",
+        "key_revenue_drivers": [
+          "IT Services - Financial Services & Manufacturing verticals",
+          "Engineering & R&D Services (ER&D)",
+          "Software Products & HCL Software suite",
+          "Cloud & GenAI modernization deals"
+        ],
+        "margin_sensitivities": {
+          "US Wage Inflation & Attrition": 0.35,
+          "USD/INR FX Rate": 0.25,
+          "Subcontractor Costs": 0.12
+        },
+        "stage_conviction": 0.88,
+        "stage_rationale": "FY25 discretionary spending trough bottoming as_of FY26; deal TCV robust at $9-10B annualized and ER&D + software mix cushioning BFSI weakness."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Global IT outsourcing demand recovery",
+          "Engineering services in auto/aero",
+          "HCL Software license renewal",
+          "GenAI & cloud migration programmes"
+        ],
+        "raw_material_sensitivities": {
+          "Talent Costs (US Onsite & Lateral Hiring)": 0.3,
+          "Data Centre & Hyperscaler Cloud Costs": 0.12,
+          "Software Resale & IP Costs": 0.1
+        },
+        "pricing_power_assessment": "Moderate pricing power; strong engineering depth allows premium on ER&D but large AMS deals remain price competitive.",
+        "moat_rating": 7.8
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 110900.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1200.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Net cash positive; zero net debt, free cash flow >90% of net income"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "North America": 64.0,
+          "Europe": 28.0,
+          "Rest of World including India": 8.0
+        },
+        "supply_chain_dependencies": [
+          "US H1B visa & immigration regime",
+          "Hyperscaler alliances (Microsoft Azure, AWS, Google Cloud)",
+          "Global delivery centres in India & Eastern Europe"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "US BFSI discretionary budgets & Fed policy",
+          "EU data sovereignty & Digital Services Act",
+          "USD-INR & EUR-INR volatility"
+        ],
+        "transit_route_risks": [
+          "Low physical transit risk - people mobility & visa delays",
+          "Undersea cable digital transit dependency"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "HDFCBANK",
+    "isin": "INE040A01034",
+    "confidence": 0.93,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Credit Cycle / Interest Rate Cycle",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "Post-Merger Integration & NIM Stabilization",
+        "key_revenue_drivers": [
+          "Retail loans - mortgages (ex-HDFC Ltd), auto & personal",
+          "Wholesale corporate lending & working capital",
+          "Net interest margin (NIM) & treasury spreads",
+          "Fee income - payments, cards & wealth"
+        ],
+        "margin_sensitivities": {
+          "Repo Rate & Deposit Costs": 0.5,
+          "Credit Cost - GNPA Provisions": 0.25,
+          "Liquidity Coverage Costs": 0.12
+        },
+        "stage_conviction": 0.92,
+        "stage_rationale": "Merger overhang clearing as_of FY26; NIM trough near 3.4% with CASA recovery and PSL securitization, GNPA stable at ~1.3% despite unsecured book vigilance."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Mortgage & retail secured lending growth",
+          "Corporate capex credit demand",
+          "Payments & credit card fee scaling",
+          "Wealth & insurance distribution"
+        ],
+        "raw_material_sensitivities": {
+          "Cost of Deposits (CASA vs Term Deposit Mix)": 0.45,
+          "Regulatory SLR/CRR & Bond Yields": 0.15,
+          "Operating Expenses - Branch & Digital": 0.12
+        },
+        "pricing_power_assessment": "High pricing power as largest private bank; best-in-class liability franchise allows 15-20 bps NIM premium over peers.",
+        "moat_rating": 9.2
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 257000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 4000.0,
+        "expected_commercialization_quarter": "FY27Q2",
+        "deleveraging_trend": "CAR 19.1%+; excess liquidity absorption via loan growth, no deleveraging pressure"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 99.0,
+          "International (GIFT IFSC, Bahrain, Hong Kong)": 1.0
+        },
+        "supply_chain_dependencies": [
+          "Domestic CASA deposit base (150M+ customers)",
+          "RBI repo & bond market funding",
+          "Global correspondent banking network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "RBI monetary & regulatory risk weights on unsecured",
+          "Domestic credit cycle & real estate mortgage demand",
+          "Global FII flows & INR stability"
+        ],
+        "transit_route_risks": [
+          "No material physical transit - branch & digital network within India",
+          "SWIFT network cyber risk"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "HDFCLIFE",
+    "isin": "INE795G01024",
+    "confidence": 0.88,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Structural Insurance Penetration / Interest Rate & Protection Cycle",
+        "cycle_duration_years": 8.0,
+        "cycle_current_stage": "Protection Ramp & ULIP Renewal Strength",
+        "key_revenue_drivers": [
+          "Unit-linked (ULIP) new business premium (NBP)",
+          "Non-par guaranteed savings & annuities",
+          "Protection term & credit life (HDFC Bank bancassurance)",
+          "Renewal premium persistency & group employee benefits"
+        ],
+        "margin_sensitivities": {
+          "10Y G-Sec Yield & Solvency Discount Rates": 0.35,
+          "Equity Market Level (ULIP AUM Fees)": 0.25,
+          "Mortality & Persistency Variance": 0.18
+        },
+        "stage_conviction": 0.87,
+        "stage_rationale": "VNB margin 26-27% as_of FY26 after GST-exempt product pivot; protection APE growing 22-24% YoY and ULIP mix recovering to 28% with private sector APE market share ~16.5% and persistency 13M 86%."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "HDFC Bank bancassurance cross-sell momentum",
+          "Protection & annuity demand from growing affluent base",
+          "Capital market buoyancy for ULIP sales",
+          "Persistency improvement via digital servicing (Insta PPF)"
+        ],
+        "raw_material_sensitivities": {
+          "G-Sec Yields & Credit Spreads (Asset Backing)": 0.28,
+          "Reinsurance Treaty Pricing (Swiss Re, Hannover)": 0.15,
+          "Distribution Commission & Acquisition Costs": 0.18
+        },
+        "pricing_power_assessment": "Moderate pricing power; strong HDFC brand allows 8-10% premium over mid-tier private insurers on term plans but ULIP charges remain regulated and savings products face comparison with mutual funds.",
+        "moat_rating": 8.8
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 70500.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 550.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Solvency ratio 187-192%; zero debt at operating level, no capital raise needed, EV accretion ~18% CAGR with dividend upstream"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic - Agency, Banca & Direct": 99.8,
+          "NRI & Reinsurance Inward (UAE, Singapore)": 0.2
+        },
+        "supply_chain_dependencies": [
+          "HDFC Bank 6,500+ branch bancassurance network (60%+ APE)",
+          "Reinsurers - Swiss Re, Munich Re for protection risk",
+          "Technology - data centres for policy admin & digital issuance"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "IRDAI surrender & commission reform & GST on insurance",
+          "RBI rate trajectory & bond yield curve shape",
+          "Equity market volatility impacting ULIP AUM & VNB"
+        ],
+        "transit_route_risks": [
+          "No physical transit - digital policy issuance & e-KYC network",
+          "Domestic courier for physical policy & claims docs only"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "HEROMOTOCO",
+    "isin": "INE158A01026",
+    "confidence": 0.9,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Two-Wheeler Mass Mobility Cycle / Entry & Executive Segment",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "Entry Recovery & Premium 125cc+ Up-trading",
+        "key_revenue_drivers": [
+          "Motorcycles - Splendor, Passion (entry 100-110cc) & Glamour 125cc",
+          "Scooters - Destini, Pleasure & Xoom 110/125",
+          "Premium & EV - Xpulse, Harley X440 collab & Vida electric scooters",
+          "Global exports - Latin America, Africa & SAARC and spares"
+        ],
+        "margin_sensitivities": {
+          "Steel, Aluminium & Rubber": 0.28,
+          "Entry Segment Discount & Finance Subvention": 0.18,
+          "EV Battery Cell Price": 0.15
+        },
+        "stage_conviction": 0.88,
+        "stage_rationale": "Market share ~36.5% as_of FY26 defending entry after 3-year rural downturn; premium 125cc+ mix rising to 22% and Vida V1 crossing 30k quarterly sales, plant utilization 75% at Dharuhera-Gurgaon cluster."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Rural entry replacement demand & monsoon wages",
+          "125cc executive premiumization (Glamour, Xtreme)",
+          "Harley X440 & Mavrick 440 premium collaboration",
+          "Vida electric scooter penetration & battery cost curve"
+        ],
+        "raw_material_sensitivities": {
+          "Mild Steel & Aluminium Castings": 0.24,
+          "Lithium-ion Battery Cells (imports)": 0.16,
+          "Tyres & Components (MRF, TVS Srichakra)": 0.1
+        },
+        "pricing_power_assessment": "Moderate pricing power in entry where Splendor is reference brand but price elasticity high; premium 125cc+ and Harley collaboration enable 2-3% price hikes.",
+        "moat_rating": 8.3
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 39800.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1100.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Net cash >Rs 9,500 cr; zero net debt, Vida and Chittoor plant capex covered by FCF, ROCE >32%"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 94.0,
+          "Exports & Global Business (Bangladesh, LATAM, Africa)": 6.0
+        },
+        "supply_chain_dependencies": [
+          "Dharuhera, Gurgaon & Neemrana manufacturing belt",
+          "Hero FinCorp captive financing (45% retail financing share)",
+          "Lithium cell sourcing - CATL / Farasis via Hero MotoCorp JV"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Rural incomes & monsoon linkage for entry demand",
+          "FAME-II subsidy & EV import duty policy",
+          "Steel & lithium carbonate price cycle"
+        ],
+        "transit_route_risks": [
+          "Domestic road dispatch to 8,500+ touchpoints",
+          "Sea freight CKD to Bangladesh & LATAM"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "HINDALCO",
+    "isin": "INE038A01020",
+    "confidence": 0.88,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Metals Commodity Cycle / Aluminium-Copper Integrated & Novelis Rolling",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "Mid-Cycle Spread Compression - Novelis Automotive Recovery",
+        "key_revenue_drivers": [
+          "Novelis flat-rolled aluminium - auto body sheet & beverage cans (USA/Europe)",
+          "India aluminium upstream & value-added extrusions",
+          "Copper - TC/RC smelter plus CCR & DAP byproducts",
+          "Utkal alumina & captive coal integration"
+        ],
+        "margin_sensitivities": {
+          "LME Aluminium & Midwest Premium": 0.35,
+          "Coal & Carbon CPC Costs": 0.22,
+          "Copper TC/RC Treatment Charges": 0.18
+        },
+        "stage_conviction": 0.87,
+        "stage_rationale": "LME aluminium $2,350-2,500/t as_of FY26 with Midwest premium $400+ sustaining India EBITDA despite coal uptick; Novelis shipments 950kt quarterly with auto sheet destocking bottoming and Bay Minette capex 60% complete."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Novelis automotive & sustainable beverage can demand",
+          "India domestic aluminium semis & extrusions infra demand",
+          "Copper refined sales & sulphuric acid credits",
+          "Utkal alumina & renewable captive energy cost hedge"
+        ],
+        "raw_material_sensitivities": {
+          "Alumina & Bauxite (Utkal Captive vs Spot)": 0.25,
+          "Thermal Coal & Carbon Anode (CPC/Pitch)": 0.22,
+          "Scrap Aluminium & Copper Concentrate": 0.18
+        },
+        "pricing_power_assessment": "Limited LME-taker on upstream but Novelis commands conversion premium of $1,000+/t on automotive body sheet via closed-loop contracts with Ford, Coca-Cola.",
+        "moat_rating": 7.9
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 220000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 18500.0,
+        "expected_commercialization_quarter": "FY27Q2",
+        "deleveraging_trend": "Net Debt/EBITDA ~1.6x; Bay Minette $4.1B Novelis plant 65% spent with 50% debt and 50% cash, India Aditya smelter expansion funded via FCF"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "Novelis (North America & Europe)": 62.0,
+          "India Aluminium & Copper Domestic": 33.0,
+          "Rest of World": 5.0
+        },
+        "supply_chain_dependencies": [
+          "Utkal alumina refinery & captive Mahan & Aditya smelters + coal mines",
+          "Novelis Kentucky & Oswego rolling mills + global scrap collection",
+          "Copper concentrate imports via Dahej from Chile/Peru (Codelco)"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "US beverage can & auto demand plus EU CBAM on aluminium",
+          "LME coal & carbon price plus India coal auction policy",
+          "Copper TC/RC benchmark negotiated by Freeport & Antofagasta"
+        ],
+        "transit_route_risks": [
+          "Bauxite & coal bulk carriers via East Coast ports (Haldia, Dhamra)",
+          "Atlantic scrap & concentrate shipping via Red Sea-Suez rerouting"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "HINDUNILVR",
+    "isin": "INE030A01027",
+    "confidence": 0.9,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Defensive Consumer Staples / Premiumization Cycle",
+        "cycle_duration_years": 10.0,
+        "cycle_current_stage": "Volume Recovery & Premiumization",
+        "key_revenue_drivers": [
+          "Home Care (Surf, Vim, Domex)",
+          "Beauty & Personal Care (Skin, Hair, Colour)",
+          "Foods & Refreshment (Tea, Ice Cream, Nutrition)",
+          "Premium & Digital Commerce (D2C & Modern Trade)"
+        ],
+        "margin_sensitivities": {
+          "Palm Oil & Crude Derivatives": 0.3,
+          "HDPE Packaging & Logistics": 0.15,
+          "Tea & Dairy Commodity Uptick": 0.12
+        },
+        "stage_conviction": 0.9,
+        "stage_rationale": "Rural demand recovery underway as_of FY26 after El Nino stress; volume growth 4-5% with premium portfolio growing 1.5x mass and 23-24% EBITDA resilience."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Rural monsoon recovery & volume offtake",
+          "Premium beauty & wellbeing innovation",
+          "Foods portfolio premiumization",
+          "E-commerce & modern trade expansion"
+        ],
+        "raw_material_sensitivities": {
+          "Palm Oil & Tea Commodity Prices": 0.28,
+          "Crude & Packaging Polymers (HDPE)": 0.18,
+          "Linear Alkyl Benzene (LAB)": 0.12
+        },
+        "pricing_power_assessment": "Extreme pricing power; category leadership allows calibrated price hikes with minimal volume elasticity across 9/10 product categories.",
+        "moat_rating": 9.3
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 62000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 900.0,
+        "expected_commercialization_quarter": "FY26Q3",
+        "deleveraging_trend": "Debt Free; ROCE >35%, cash conversion >95%, liberal dividend payout"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 99.0,
+          "Exports & Allied Businesses": 1.0
+        },
+        "supply_chain_dependencies": [
+          "Global palm oil estates (Indonesia, Malaysia)",
+          "Packaging converters & chemical suppliers",
+          "9M+ retail outlet distribution network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Rural income & monsoon variability",
+          "Crude oil & palm oil import duties",
+          "Indonesian palm oil export policy"
+        ],
+        "transit_route_risks": [
+          "Domestic road logistics across Indian states",
+          "Container freight for palm oil imports"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "ICICIBANK",
+    "isin": "INE090A01021",
+    "confidence": 0.92,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Credit & Interest Rate Cycle / Private Bank RoA Expansion",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "High RoA Expansion - Asset Quality Benign",
+        "key_revenue_drivers": [
+          "Retail & SME lending (mortgage, business banking)",
+          "Corporate project finance & working capital",
+          "Treasury & NIM spreads",
+          "Subsidiaries (life, general, AMC, securities)"
+        ],
+        "margin_sensitivities": {
+          "Repo Rate & Bond Yields": 0.4,
+          "Credit Costs - Retail & Corporate NPAs": 0.25,
+          "Deposit Beta & CASA Costs": 0.18
+        },
+        "stage_conviction": 0.92,
+        "stage_rationale": "Best-in-class RoA ~2.4% as_of FY26; credit costs benign at 35-45 bps, NIM resilient near 4.3% despite repricing lags, tech-led deposit franchise scaling."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Retail secured loan growth",
+          "SME business banking & supply chain finance",
+          "Corporate capex cycle lending",
+          "Fee from insurance, AMC & investment banking"
+        ],
+        "raw_material_sensitivities": {
+          "Cost of Funds (Term Deposits & Bonds)": 0.35,
+          "Technology & Digital Acquisition Costs": 0.15,
+          "Regulatory Capital (CRR/SLR)": 0.12
+        },
+        "pricing_power_assessment": "Very strong pricing power via risk-calibrated lending and low-cost CASA; NIM consistently 60-80 bps above system average.",
+        "moat_rating": 9.0
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 186000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 3200.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "CAR ~16.5%; strong internal accruals, dividend uptick, no capital raise needed"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 98.5,
+          "International (UK, Canada, Singapore)": 1.5
+        },
+        "supply_chain_dependencies": [
+          "Domestic retail deposit franchise",
+          "Global bond investor base for Tier-2 capital",
+          "iMobile Pay digital ecosystem"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "RBI rate trajectory & liquidity",
+          "Corporate capex & asset quality cycle",
+          "Global risk appetite for EM banking"
+        ],
+        "transit_route_risks": [
+          "Negligible physical transit risk - nationwide branch & digital",
+          "Correspondent banking SWIFT dependency"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "INDUSINDBK",
+    "isin": "INE095A01012",
+    "confidence": 0.85,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Credit Cycle / Commercial Vehicle & Microfinance Bank",
+        "cycle_duration_years": 5.5,
+        "cycle_current_stage": "Asset Quality Normalization - MFI & CV Stress Moderating",
+        "key_revenue_drivers": [
+          "Vehicle finance - commercial vehicles, MHCV & tractors",
+          "Microfinance & Bharat Financial Inclusion network",
+          "Retail other - LAP, gold & personal loans",
+          "Corporate & gems & jewellery working capital advances"
+        ],
+        "margin_sensitivities": {
+          "Repo Rate & MFI/CV Credit Costs": 0.4,
+          "GNPA Provisions - MFI & CV Delinquency": 0.35,
+          "CASA & Bulk Deposit Funding Costs": 0.18
+        },
+        "stage_conviction": 0.84,
+        "stage_rationale": "GNPA elevated at 1.9% as_of FY26 due to MFI over-leverage in UP-Bihar and CV operator stress; coverage 70%+ and RoA 1.3% with Bharat Financial recovery and CV replacement demand sustaining 16-18% loan CAGR."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Commercial vehicle replacement & operator fleet utilization",
+          "Bharat Financial microfinance disbursement & collection efficiency",
+          "Gems & jewellery trade finance spreads",
+          "Affluent pioneer banking & fee from BFIL BC model"
+        ],
+        "raw_material_sensitivities": {
+          "Cost of Funds - CASA vs Certificate of Deposits": 0.35,
+          "MFI Credit Guarantee & Collection Costs": 0.22,
+          "Technology - Indus Mobile & digital origination costs": 0.12
+        },
+        "pricing_power_assessment": "Moderate pricing power in CV and MFI niche where vehicle collateral and JLG pricing allow 150-200 bps premium but bulk funding dependence compresses NIM near 4.1%.",
+        "moat_rating": 7.3
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 55000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1200.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "CAR ~17.8% well above regulatory; provision cover building via internal accruals, branch & digital capex funded via FCF, no equity dilution planned"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic - Pan-India via BFIL": 99.5,
+          "International (DIFC Dubai - Gems & Jewellery Trade)": 0.5
+        },
+        "supply_chain_dependencies": [
+          "Bharat Financial 3,900+ branch BC network for rural MFI",
+          "Domestic bulk & CASA deposit franchise (35M+ customers)",
+          "Gems & jewellery correspondent banking (Antwerp, Dubai)"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "RBI microfinance & vehicle finance risk weights",
+          "Rural monsoon & farm cash flows for CV & MFI collections",
+          "Gujarat-Dubai gems trade & kimberley certification"
+        ],
+        "transit_route_risks": [
+          "MFI field collection via rural road & monsoon disruption",
+          "Negligible physical transit - cash & gold logistics via secured vaults"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "INFY",
+    "isin": "INE009A01021",
+    "confidence": 0.87,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Global IT Services Cyclical / Digital Transformation",
+        "cycle_duration_years": 5.0,
+        "cycle_current_stage": "Early Recovery - GenAI Led Deal Pipeline",
+        "key_revenue_drivers": [
+          "Digital services - cloud, data & AI",
+          "Core IT outsourcing (ADM & maintenance)",
+          "Infosys Finacle banking platform",
+          "Consulting via Infosys Cobalt & Topaz"
+        ],
+        "margin_sensitivities": {
+          "US & Europe Wage Inflation": 0.32,
+          "USD/EUR-INR FX": 0.22,
+          "Travel & Onsite Mix": 0.1
+        },
+        "stage_conviction": 0.87,
+        "stage_rationale": "Discretionary spend thaw visible as_of FY26 with large-deal TCV $4-5B quarterly; GenAI Topaz pipeline + cost-takeout programmes driving volume despite soft BFSI budgets."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "North America BFSI & Hi-tech budgets",
+          "European manufacturing digitization",
+          "Finacle platform modernization",
+          "Large cost-efficiency deals"
+        ],
+        "raw_material_sensitivities": {
+          "Lateral Talent & Subcontractor Costs": 0.28,
+          "Hyperscaler Cloud Resale Margins": 0.12,
+          "Visa & Mobility Costs": 0.1
+        },
+        "pricing_power_assessment": "Moderate-to-Strong; premium positioning on digital but large consolidation deals face competitive pricing pressure.",
+        "moat_rating": 8.5
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 162000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1800.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Zero Debt; FCF payout >70%, liberal buybacks and dividends"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "North America": 59.0,
+          "Europe": 27.5,
+          "Rest of World including India": 13.5
+        },
+        "supply_chain_dependencies": [
+          "US corporate tech budgets",
+          "European GDPR & compliance demand",
+          "Hyperscaler & SaaS partnerships"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "US Fed & recession risk to discretionary spend",
+          "Europe energy & manufacturing sentiment",
+          "INR cross-currency volatility"
+        ],
+        "transit_route_risks": [
+          "People mobility & H1B cap risks",
+          "Low physical goods transit dependency"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "ITC",
+    "isin": "INE154A01025",
+    "confidence": 0.89,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Diversified Defensive / FMCG & Tobacco Cash Cow",
+        "cycle_duration_years": 12.0,
+        "cycle_current_stage": "FMCG Scale-up & Hotels Demerger Value Unlock",
+        "key_revenue_drivers": [
+          "Cigarettes & tobacco (cash cow)",
+          "FMCG Other (Atta, Bingo, personal care)",
+          "Paperboards, paper & packaging",
+          "Agri business & leaf tobacco exports"
+        ],
+        "margin_sensitivities": {
+          "Leaf Tobacco & Wheat Inflation": 0.25,
+          "Pulp & Paperboard Prices": 0.15,
+          "Crude Packaging & Logistics": 0.12
+        },
+        "stage_conviction": 0.89,
+        "stage_rationale": "Hotels demerged as_of FY26 crystallizing value; cigarette volume steady at 4-5%, FMCG EBITDA margin expanding past 12% and paper cycle stabilizing post destocking."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Cigarette volume & premium mix",
+          "FMCG branded staples & foods penetration",
+          "Paperboards exports & e-commerce packaging",
+          "Agri commodity trading & value chain"
+        ],
+        "raw_material_sensitivities": {
+          "Leaf Tobacco & Agri Commodities": 0.22,
+          "Wood Pulp & Chemicals": 0.15,
+          "Edible Oil & Wheat": 0.12
+        },
+        "pricing_power_assessment": "Exceptional pricing power in cigarettes with taxation pass-through; growing but moderate in FMCG staples amid intense competition.",
+        "moat_rating": 9.1
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 75100.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 2200.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net cash surplus > Rs 20,000 cr; zero net debt, FMCG & paper capex funded internally"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 88.0,
+          "Exports (Agri, Paper, Leaf Tobacco)": 12.0
+        },
+        "supply_chain_dependencies": [
+          "Indian leaf tobacco farming belt (AP, Karnataka)",
+          "Paper pulp mills & eucalyptus plantations",
+          "Extensive rural-to-urban distribution (6M retailers)"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Tobacco taxation & GST policy",
+          "Agri monsoon & food inflation",
+          "Global pulp & paper cycle"
+        ],
+        "transit_route_risks": [
+          "Domestic FMCG road & rail logistics",
+          "Leaf tobacco export container routes"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "JSWSTEEL",
+    "isin": "INE019A01038",
+    "confidence": 0.87,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Global Steel Commodity Cycle / Integrated Steel",
+        "cycle_duration_years": 5.0,
+        "cycle_current_stage": "Mid-Cycle Margin Compression - Domestic Demand Resilient",
+        "key_revenue_drivers": [
+          "Flat steel for automotive & appliances (HRC/CRC)",
+          "Long steel for construction & infrastructure",
+          "Coated & value-added products (galvanized, colour-coated)",
+          "Bhushan Power Steel subsidiary integration"
+        ],
+        "margin_sensitivities": {
+          "Coking Coal Import Price": 0.38,
+          "Iron Ore Domestic Premium": 0.28,
+          "Hot Rolled Coil Global Spread": 0.32
+        },
+        "stage_conviction": 0.86,
+        "stage_rationale": "Global steel downcycle as_of FY26 with Chinese export surge pressuring HRC at $480-520/t; domestic demand +12% YoY cushioning via government infra capex and auto uptick, Vijayanagar expansion ramping."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Domestic auto & construction steel offtake",
+          "Value-added galvanized & electrical steel mix",
+          "Raw material integration (iron ore mines captive)",
+          "Export arbitrage to Europe & Middle East"
+        ],
+        "raw_material_sensitivities": {
+          "Coking Coal (Australia Spot)": 0.38,
+          "Iron Ore (Odisha & Karnataka Mines)": 0.25,
+          "Logistics & Power (Coal/Energy)": 0.15
+        },
+        "pricing_power_assessment": "Moderate pricing power domestically as second-largest producer; global steel is price-taker to China export flows and import duty protection critical.",
+        "moat_rating": 7.6
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 175000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 18500.0,
+        "expected_commercialization_quarter": "FY27Q2",
+        "deleveraging_trend": "Net Debt/EBITDA ~2.8x as_of FY26; Vijayanagar 5 MTPA expansion funded via debt, deleveraging tied to steel spread recovery"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 86.0,
+          "Exports (Europe, Middle East & USA)": 14.0
+        },
+        "supply_chain_dependencies": [
+          "Captive iron ore mines in Karnataka & Odisha",
+          "Australian coking coal imports via Paradip & Jaigarh ports",
+          "Global slab & met coke trading network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "China steel exports & safeguard duty policy",
+          "EU CBAM carbon border levy on steel",
+          "Iron ore & coking coal royalty and auction regime"
+        ],
+        "transit_route_risks": [
+          "Dry bulk freight via Indian Ocean & Cape routing",
+          "Coal import dependency on Australian port strikes"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "KOTAKBANK",
+    "isin": "INE237A01028",
+    "confidence": 0.91,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Credit Cycle / Conservative Private Bank",
+        "cycle_duration_years": 6.5,
+        "cycle_current_stage": "Cautious Growth & RBI Embargo Resolution",
+        "key_revenue_drivers": [
+          "Retail affluent lending - home & personal",
+          "Corporate & SME secured working capital",
+          "Net interest margin & treasury",
+          "Subsidiaries - Kotak Life, AMC, Securities & Prime"
+        ],
+        "margin_sensitivities": {
+          "Repo Rate & CASA Costs": 0.38,
+          "Credit Costs - Retail & Microfinance": 0.22,
+          "Bond Yields & Treasury MTM": 0.12
+        },
+        "stage_conviction": 0.9,
+        "stage_rationale": "Conservative underwriting as_of FY26 with GNPA ~1.4% and PCR >75%; growth throttled by RBI IT embargo in FY25 now lifting, NIM resilient near 5.0% on high CASA premium."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Affluent 811 & private banking customer acquisition",
+          "Secured retail and corporate loan growth",
+          "Asset management & life insurance AUM fees",
+          "Securities broking & investment banking mandates"
+        ],
+        "raw_material_sensitivities": {
+          "Cost of Deposits (Premium CASA Franchise)": 0.35,
+          "Technology & Compliance Costs": 0.18,
+          "Regulatory Capital & Liquidity Buffers": 0.12
+        },
+        "pricing_power_assessment": "Very strong pricing power via premium CASA at 45%+ and conservative risk pricing; lowest credit costs among private banks enables selective price leadership.",
+        "moat_rating": 8.9
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 90000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 2200.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "CAR >21% strongest among large banks; excess capital for growth, dividend and opportunistic stake monetization"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 99.2,
+          "International (GIFT, Dubai, Mauritius)": 0.8
+        },
+        "supply_chain_dependencies": [
+          "Premium domestic deposit franchise & Kotak 811",
+          "RBI-regulated funding & bond market",
+          "Promoter & institutional capital network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "RBI tech & risk governance directives",
+          "Affluent consumption & capital market buoyancy",
+          "Domestic credit & real estate cycle"
+        ],
+        "transit_route_risks": [
+          "Minimal physical transit - digital & branch network",
+          "Cyber-resilience & data centre dependency"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "LT",
+    "isin": "INE018A01030",
+    "confidence": 0.91,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Infrastructure EPC & Capex Cycle",
+        "cycle_duration_years": 7.0,
+        "cycle_current_stage": "Peak Inflow Execution & Middle East Expansion",
+        "key_revenue_drivers": [
+          "Infrastructure EPC (transport, power T&D & water)",
+          "Energy hydrocarbon & green hydrogen projects",
+          "Defence, heavy engineering & precision manufacturing",
+          "Services subsidiaries (LTTS, LTIMindtree, Finance)"
+        ],
+        "margin_sensitivities": {
+          "Steel & Cement": 0.35,
+          "Labour & Subcontracting Costs": 0.2,
+          "Commodity - Copper & Crude for Hydrocarbon": 0.12
+        },
+        "stage_conviction": 0.92,
+        "stage_rationale": "Prospect pipeline Rs 9 lakh cr+ and order book ~Rs 5.4 lakh cr as_of FY26; NIP & Saudi giga-projects sustaining 15%+ order inflow, domestic infra tailwinds into FY27."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Central & state capex (NIP, rail, defence)",
+          "Middle East hydrocarbon & renewables capex",
+          "Private industrial capex recovery",
+          "Services arm monetization (IT & finance)"
+        ],
+        "raw_material_sensitivities": {
+          "Structural Steel & Rebar": 0.3,
+          "Cement & Aggregates": 0.15,
+          "Electrical & Mechanical Equipment": 0.12
+        },
+        "pricing_power_assessment": "Moderate pricing power; EPC competitive bidding but technical pre-qualification and scale enable margin protection via claims & variation management.",
+        "moat_rating": 8.6
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": 545000.0,
+        "ttm_revenue_inr_cr": 240000.0,
+        "order_book_to_bill_ratio": 2.27,
+        "execution_visibility_years": 3.5
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 5500.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Asset-light divestments (roads, Nabha) complete; Net debt/equity <0.15, green hydrogen & data centre capex funded via operating cash"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 70.0,
+          "Middle East & Africa": 22.0,
+          "Americas & Europe (via subsidiaries)": 8.0
+        },
+        "supply_chain_dependencies": [
+          "Middle East EPC subcontractors & labour",
+          "Global steel & critical equipment suppliers",
+          "Domestic cement & aggregate quarries"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Indian NIP & Union Budget capex",
+          "Saudi & UAE hydrocarbon capex cycle",
+          "INR - Middle East currency peg volatility"
+        ],
+        "transit_route_risks": [
+          "Heavy equipment sea freight via Arabian Sea & Red Sea",
+          "Cross-border project logistics to GCC sites"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "M&M",
+    "isin": "INE101A01026",
+    "confidence": 0.9,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Auto & Farm Equipment Cycle / SUV Leadership",
+        "cycle_duration_years": 7.0,
+        "cycle_current_stage": "SUV Supercycle & Order Backlog Normalization",
+        "key_revenue_drivers": [
+          "Auto SUV portfolio (Scorpio, Thar, 3XO, XUV700)",
+          "Farm equipment tractors & implements",
+          "Mahindra Finance & Tech Mahindra services",
+          "Electric SUV launch (INGLO platform)"
+        ],
+        "margin_sensitivities": {
+          "Commodity Steel & Alloy Steel": 0.28,
+          "Semiconductor & Battery Cells": 0.18,
+          "Tractor Subsidy & Monsoon Variance": 0.15
+        },
+        "stage_conviction": 0.9,
+        "stage_rationale": "Auto standalone RoCE >18% as_of FY26; SUV order book ~1.5 lakh units with 60k monthly production, tractor market share 42%+ and EV INGLO capex monetizing from FY27."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "SUV demand & waiting list conversion",
+          "Rural tractor demand linked to monsoon & MSP",
+          "Tech Mahindra turnaround & BFSI deal wins",
+          "Finance subsidiary disbursement recovery"
+        ],
+        "raw_material_sensitivities": {
+          "Hot Rolled & Cold Rolled Steel": 0.25,
+          "Lithium Battery Cells & Semiconductors": 0.18,
+          "Rubber & Casting Components": 0.12
+        },
+        "pricing_power_assessment": "High pricing power in SUVs with 9-12 month waiting for Thar/Scorpio and ability to take 1.5-2% annual price hikes without demand loss.",
+        "moat_rating": 8.2
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 100000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 10500.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Auto net cash positive ~Rs 8,000 cr; aggressive EV and capacity capex funded via operating cash, TechM restructuring underway"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 88.0,
+          "International (Farm Equipment US, Europe & Africa)": 12.0
+        },
+        "supply_chain_dependencies": [
+          "Chakan & Nashik auto manufacturing clusters",
+          "Global semiconductor & battery cell sourcing (Korea, China)",
+          "North America tractor distribution network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Monsoon & rural cash flows for tractors",
+          "Steel and lithium carbonate price cycle",
+          "US farm equipment tariffs & emissions norms"
+        ],
+        "transit_route_risks": [
+          "Container freight for CKD & electronics",
+          "Domestic automotive logistics via road & rail"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "MARUTI",
+    "isin": "INE585B01010",
+    "confidence": 0.92,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Passenger Vehicle Cycle / Market Leader Scale",
+        "cycle_duration_years": 7.0,
+        "cycle_current_stage": "Hybrid & CNG Leadership - Export Expansion",
+        "key_revenue_drivers": [
+          "Compact hatch & mini (Alto, Swift, Baleno)",
+          "SUV & utility (Brezza, Fronx, Grand Vitara, Jimny)",
+          "CNG & strong hybrid powertrains",
+          "Exports to Africa, Latin America & Middle East"
+        ],
+        "margin_sensitivities": {
+          "Steel & Precious Metals (Rhodium)": 0.32,
+          "Forex JPY/INR & USD/INR": 0.18,
+          "Discounts & Small Car Mix Pressure": 0.15
+        },
+        "stage_conviction": 0.91,
+        "stage_rationale": "Market share 41-42% as_of FY26 defending entry segment; CNG mix 35%+ and hybrid tech via Toyota JV, Kharkhoda plant ramping to 1M units cumulative capacity by FY27."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Entry hatchback replacement demand & first-time buyers",
+          "SUV premiumization & hybrid adoption",
+          "CNG cost arbitrage vs petrol",
+          "Africa & Middle East export momentum"
+        ],
+        "raw_material_sensitivities": {
+          "Cold Rolled Steel & Aluminium": 0.28,
+          "Precious Metals for Catalysts": 0.15,
+          "Semiconductor Chipsets": 0.12
+        },
+        "pricing_power_assessment": "Moderate-to-Strong; leadership scale allows calibrated price hikes but entry segment elasticity and competition from Tata/Mahindra constrain premium.",
+        "moat_rating": 9.0
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 140000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 9000.0,
+        "expected_commercialization_quarter": "FY27Q2",
+        "deleveraging_trend": "Zero debt; net cash >Rs 45,000 cr funding Kharkhoda & Gujarat expansion internally, ROCE >28%"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 86.0,
+          "Exports (Africa, Latin America, Middle East)": 14.0
+        },
+        "supply_chain_dependencies": [
+          "Suzuki Japan hybrid technology transfer",
+          "Gurugram-Manesar-Gujarat supplier belt (80% localization)",
+          "Global semiconductor supply (Renesas, Infineon)"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Small car taxation & GST slabs",
+          "Crude oil & CNG price parity policy",
+          "JPY-INR & Suzuki royalty regime"
+        ],
+        "transit_route_risks": [
+          "RoRo vessel export routes to Africa & Middle East",
+          "Domestic rail & road stockyard logistics"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "NESTLEIND",
+    "isin": "INE239A01016",
+    "confidence": 0.9,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Defensive Staples / Premium Packaged Foods",
+        "cycle_duration_years": 12.0,
+        "cycle_current_stage": "Premiumization & Rural Recovery",
+        "key_revenue_drivers": [
+          "Prepared dishes & cooking aids (Maggi)",
+          "Milk & nutrition (Cerelac, NAN, Everyday)",
+          "Confectionery (KitKat, Munch)",
+          "Beverages (Nescafe) & pet care (Purina)"
+        ],
+        "margin_sensitivities": {
+          "Milk Powder & Edible Oils": 0.28,
+          "Wheat Flour & Sugar": 0.18,
+          "Coffee & Cocoa Commodity": 0.15
+        },
+        "stage_conviction": 0.9,
+        "stage_rationale": "Mid-single-digit volume growth as_of FY26 with premium KitKat and Nescafe Gold growing double-digit; 25-26% EBITDA margin defended via 2-3% pricing and in-house sourcing."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Urban premium & e-commerce penetration",
+          "Rural Maggi & dairy volume recovery",
+          "Nescafe coffee premiumization",
+          "Pet care Purina super-premium expansion"
+        ],
+        "raw_material_sensitivities": {
+          "Fresh Milk & Milk Solids (Cooperatives)": 0.25,
+          "Wheat & Palm Oil": 0.15,
+          "Coffee Beans & Cocoa": 0.14
+        },
+        "pricing_power_assessment": "High pricing power with trusted brands commanding 20-30% premium over private label; calibrated 3-5% annual hikes historically with no volume loss.",
+        "moat_rating": 9.2
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 20200.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1600.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Virtually debt-free; ROCE >60%, 90%+ dividend payout, Odisha & Gujarat brownfield expansion"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 98.5,
+          "Exports to SAARC & Middle East": 1.5
+        },
+        "supply_chain_dependencies": [
+          "Punjab & Gujarat milk districts (Moga model)",
+          "Wheat & coffee plantation suppliers (Karnataka)",
+          "5M retail outlet & cold chain network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Monsoon & milk flush seasonality",
+          "Government food regulation (FSSAI) & HFSS taxation",
+          "Global coffee & cocoa price surge"
+        ],
+        "transit_route_risks": [
+          "Ambient & cold-chain road logistics pan-India",
+          "Low ocean freight exposure"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "NTPC",
+    "isin": "INE733E01010",
+    "confidence": 0.91,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Regulated Utility & Renewable Transition / Cost-Plus Generation",
+        "cycle_duration_years": 10.0,
+        "cycle_current_stage": "Regulated RoE Stability & 60 GW Renewables Pivot",
+        "key_revenue_drivers": [
+          "Regulated coal generation - 75 GW thermal with cost-plus PPA",
+          "Renewables - NTPC Green 3.3 GW operating scaling to 60 GW pipeline",
+          "Coal mining - Pakri-Barwadih, Dulanga captive blocks & commercial",
+          "Power trading, consultancy & NTPC-SAIL JV"
+        ],
+        "margin_sensitivities": {
+          "Coal Linkage & Imported Coal Pass-through": 0.28,
+          "Renewable CUF & Green Hydrogen Incentives": 0.18,
+          "Regulated Equity RoE & Incentive PLF": 0.12
+        },
+        "stage_conviction": 0.91,
+        "stage_rationale": "Regulated equity Rs 85,000 cr+ as_of FY26 delivering 15.5% RoE with 86% PLF; NTPC Green IPO unlocked value and 9 GW renewables under construction sustain 9-10% earnings CAGR despite thermal plateau."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Thermal regulated capacity & plant load factor incentives",
+          "NTPC Green solar/wind & hybrid SECI auction conversion",
+          "Captive coal production & commercial mining monetization",
+          "Power trading & GH2/chemical storage pilots"
+        ],
+        "raw_material_sensitivities": {
+          "Coal India Linkage & Imported Coal (Indonesian)": 0.28,
+          "Solar Modules, Polysilicon & Battery Storage Costs": 0.18,
+          "Rail Freight & Water for Thermal Stations": 0.1
+        },
+        "pricing_power_assessment": "Regulated cost-plus pricing power with 100% PPA pass-through of fuel and O&M; merchant renewables face competitive SECI bidding at Rs 2.60-2.90/kWh but hybrid adds premium.",
+        "moat_rating": 8.3
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 170000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 35000.0,
+        "expected_commercialization_quarter": "FY27Q3",
+        "deleveraging_trend": "Net Debt/Equity ~1.15x; 60 GW renewables & thermal FGD capex 75% debt 25% internal with Green IPO proceeds buffering leverage, D/E trending to 0.9x by FY28"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic - Pan-India Generation & Mining": 99.8,
+          "International Consultancy (Sri Lanka, Bangladesh)": 0.2
+        },
+        "supply_chain_dependencies": [
+          "Coal India linkages & Pakri-Barwadih captive mines",
+          "BHEL & L&T thermal EPC and solar module suppliers (Adani, Waaree)",
+          "PGCIL transmission grid & SECI/SJVNL PPA offtakers"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "CERC regulated RoE & environmental FGD compliance timeline",
+          "MNRE solar ALMM & green hydrogen mission PLI",
+          "State DISCOM payment discipline & coal import policy"
+        ],
+        "transit_route_risks": [
+          "Coal linkage rail via Indian Railways rake corridors (Chhattisgarh-Odisha)",
+          "Solar module road freight to Rajasthan-Gujarat desert parks"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "ONGC",
+    "isin": "INE213A01029",
+    "confidence": 0.89,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Upstream Oil & Gas Commodity Cycle / Integrated National Oil Company",
+        "cycle_duration_years": 8.0,
+        "cycle_current_stage": "Crude Plateau & KG Basin Gas Monetization",
+        "key_revenue_drivers": [
+          "Crude oil - Mumbai High, Heera & Western Offshore",
+          "Natural gas - KG-DWN 98/2, Tripura & CBM blocks",
+          "Value-added products - LPG, Naptha, C2-C3 via OPaL",
+          "Subsidiaries - HPCL refining & ONGC Videsh overseas equity"
+        ],
+        "margin_sensitivities": {
+          "Brent Crude Price ( $75-85/bbl band )": 0.42,
+          "Windfall Tax & Administered Gas Price": 0.28,
+          "Rupee Oil Jack-up Rig & Services Costs": 0.15
+        },
+        "stage_conviction": 0.88,
+        "stage_rationale": "Oil production ~19-20 MMT as_of FY26 flat with Mumbai High decline offset by KG 98/2 peak 45k boepd; APM gas price $6.5/MMBtu and Brent $78-82 sustains 28-30% EBITDA margin despite OVL impairments and windfall levy."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "KG-DWN 98/2 oil & gas ramp & Eastern Offshore plateau",
+          "Mumbai High annual well intervention & recovery factor",
+          "HPCL refining GRM & marketing Delhi pipeline integration",
+          "OVL overseas barrels - Brazil, Mozambique & Sakhalin"
+        ],
+        "raw_material_sensitivities": {
+          "Oil Field Services - Jack-ups & Subsea (Baker, Halliburton)": 0.3,
+          "Imported Line Pipes & Platform Steel": 0.15,
+          "HPCL Crude Slate Procurement Premium": 0.18
+        },
+        "pricing_power_assessment": "Price-taker on global crude but administered gas pricing (Kirit Parikh formula) and excise plus windfall structure cap upside; integrated refining via HPCL provides margin hedge.",
+        "moat_rating": 7.8
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 650000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 29500.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net Debt ~Rs 8,000 cr standalone ex-HPCL; consolidated debt ~Rs 75,000 cr via HPCL, KG deepwater capex peak behind, free cash post dividend Rs 12k cr"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic - Offshore & Onshore E&P": 86.0,
+          "Overseas OVL & HPCL International Lube": 14.0
+        },
+        "supply_chain_dependencies": [
+          "Bombay High & KG Basin deepwater drilling rigs & FPSOs",
+          "Global oilfield services - Schlumberger, Baker Hughes, Indian yards",
+          "HPCL Mumbai & Vizag refineries & pan-India product pipeline"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Brent crude & windfall special additional excise duty regime",
+          "Administered Price Mechanism gas ceiling & city gas distribution",
+          "Sanctions on Russian oil & OVL asset impairment risk (Venezuela, Sudan)"
+        ],
+        "transit_route_risks": [
+          "Bombay High crude via subsea pipeline to Uran & Hazira",
+          "LNG & deepwater equipment supply via Arabian Sea monsoon window"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "SBIN",
+    "isin": "INE062A01020",
+    "confidence": 0.88,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Systemic Bank Credit & Sovereign Rate Cycle",
+        "cycle_duration_years": 7.0,
+        "cycle_current_stage": "Credit Growth Leadership & NIM Resilience",
+        "key_revenue_drivers": [
+          "Corporate advances & infrastructure loans",
+          "Retail home, auto & Xpress Credit",
+          "Treasury & sovereign bond book",
+          "Subsidiaries (SBI Life, Cards, AMC, General)"
+        ],
+        "margin_sensitivities": {
+          "Repo Rate & G-Sec Yields": 0.45,
+          "Credit Costs - Corporate & Agri NPAs": 0.3,
+          "Wage Bipartite Settlement": 0.12
+        },
+        "stage_conviction": 0.88,
+        "stage_rationale": "Largest systemic bank leading system credit at 15-16% YoY as_of FY26; GNPA at generational low ~2% and RoA >1% with treasury gains cushioning NIM compression."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "System credit growth & Infra revival",
+          "Retail mortgage penetration via YONO",
+          "Corporate bond substitution demand",
+          "Subsidiary value & dividend upstream"
+        ],
+        "raw_material_sensitivities": {
+          "Deposit Costs (CASA vs Bulk Deposits)": 0.4,
+          "G-Sec Mark-to-Market Yields": 0.18,
+          "Priority Sector Lending Costs": 0.12
+        },
+        "pricing_power_assessment": "High systemic pricing power; largest CASA franchise enables lowest cost of funds and ability to price corporate risk finely.",
+        "moat_rating": 8.4
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 408000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 6000.0,
+        "expected_commercialization_quarter": "FY27Q2",
+        "deleveraging_trend": "CAR ~14.3%; well above regulatory min, internal accruals fund growth, no equity dilution planned"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 97.5,
+          "International (Global branches)": 2.5
+        },
+        "supply_chain_dependencies": [
+          "India sovereign deposit base (22k+ branches)",
+          "RBI & sovereign bond market",
+          "Global trade finance network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Sovereign fiscal & monetary policy transmission",
+          "Infrastructure & MSME policy lending",
+          "Global banking contagion & INR reserves"
+        ],
+        "transit_route_risks": [
+          "Domestic branch network logistics",
+          "Negligible cross-border physical transit"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "SUNPHARMA",
+    "isin": "INE044A01036",
+    "confidence": 0.88,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Secular Pharma / Specialty & Generics Mix Transition",
+        "cycle_duration_years": 10.0,
+        "cycle_current_stage": "Global Specialty Acceleration",
+        "key_revenue_drivers": [
+          "US generics & Taro subsidiary",
+          "Global specialty (Ilumya, Winlevi, Cequa)",
+          "India branded formulations (largest domestic share)",
+          "Emerging markets & ROW branded generics"
+        ],
+        "margin_sensitivities": {
+          "US Generic Price Erosion": 0.28,
+          "Specialty R&D & Clinical Costs": 0.18,
+          "API & Solvent Import Prices": 0.12
+        },
+        "stage_conviction": 0.88,
+        "stage_rationale": "Specialty sales ~18-19% of revenue as_of FY26 growing 15%+; Ilumya blockbuster >$600M, domestic branded 32% share supports 26-27% EBITDA despite US pricing pressure."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Ilumya & specialty dermatology ramp in US",
+          "India chronic therapies (cardiac, neuro, diabetes)",
+          "Taro US derma recovery",
+          "New specialty pipeline (fibrosis, oncology)"
+        ],
+        "raw_material_sensitivities": {
+          "Active Pharma Ingredients (APIs) - China": 0.22,
+          "Specialty Clinical Trial & CMO Costs": 0.16,
+          "US Distribution & Chargeback Fees": 0.12
+        },
+        "pricing_power_assessment": "Strong pricing power in specialty branded where patented; US generics remains price-taker with 8-10% annual erosion offset by specialty premium.",
+        "moat_rating": 8.7
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 48000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 2100.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net cash positive ~Rs 8,500 cr; specialty capex & Concert Pharma debt largely self-funded, deleveraging complete"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "United States (incl Taro)": 33.0,
+          "India Domestic": 32.0,
+          "Emerging Markets & ROW": 18.0,
+          "Europe & Rest of World": 17.0
+        },
+        "supply_chain_dependencies": [
+          "Halol & Mohali USFDA-approved plants",
+          "China API intermediates (40-45% dependency)",
+          "US specialty distribution (CVS, Walgreens)"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "USFDA compliance & import alerts",
+          "US generic pricing & IRA negotiation risk",
+          "China API supply & PLI localization incentives"
+        ],
+        "transit_route_risks": [
+          "Air freight for high-value APIs & specialty",
+          "US port & cold chain distribution"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "TATAMOTORS",
+    "isin": "INE155A01022",
+    "confidence": 0.91,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Global Auto Cycle / PV, CV & Luxury JLR",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "JLR Range Rover Supercycle & India PV-CV Recovery",
+        "key_revenue_drivers": [
+          "Jaguar Land Rover - Range Rover, Defender & Discovery (UK/EU/China)",
+          "India passenger vehicles - Harrier, Safari, Nexon & Punch (ICE + EV)",
+          "India commercial vehicles - M&HCV, ILCV, SCV & buses",
+          "Tata Motors Finance & spares"
+        ],
+        "margin_sensitivities": {
+          "JLR ASP & Mix (Range Rover >60% EBITDA)": 0.35,
+          "Steel & Battery Cells": 0.22,
+          "UK/EU Energy & Labour Costs": 0.12
+        },
+        "stage_conviction": 0.9,
+        "stage_rationale": "Consolidated EBIT margin 10-11% as_of FY26 led by JLR EBIT 9.5% with Range Rover order book 150k+ units; India CV market share 45% on infra upcycle and PV 13.8% share with EV portfolio >70k annual sales."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "JLR Defender & Range Rover order conversion & China recovery",
+          "India CV replacement & fleet operator credit cycle",
+          "Nexon/Harrier EV penetration & PLI battery localization",
+          "Tata Finance restructuring & CV financing spreads"
+        ],
+        "raw_material_sensitivities": {
+          "High-Strength Steel & Aluminium (JLR Body)": 0.22,
+          "Lithium Battery Cells - Tata AutoComp / Agratas": 0.2,
+          "Semiconductors & Wiring Harnesses": 0.14
+        },
+        "pricing_power_assessment": "High pricing power at JLR luxury end with Range Rover transaction prices £110k+ and 8% price hikes absorbed; India PV/CV pricing power moderate with competitive discounting.",
+        "moat_rating": 7.9
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 438000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 28500.0,
+        "expected_commercialization_quarter": "FY27Q3",
+        "deleveraging_trend": "Net auto debt down to ~Rs 16,000 cr from Rs 48k peak; deleveraging via JLR FCF £2B+ and India PV breakeven, demerger into CV and PV-JLR entities planned"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "Jaguar Land Rover (UK, Europe, China, North America)": 68.0,
+          "India Domestic PV & CV": 28.0,
+          "International CV Exports & ASEAN": 4.0
+        },
+        "supply_chain_dependencies": [
+          "Solihull & Halewood UK JLR plants + Pune & Jamshedpur India plants",
+          "Agratas gigafactory Somerset & Sanand battery sourcing",
+          "Global semiconductor & aluminium supply (Alcoa, CATL)"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "UK-EU trade & China luxury demand cycle",
+          "EV subsidy & CAFE norms (India) & ZEV mandate (UK)",
+          "GBP-INR & EUR-INR hedging & steel tariffs"
+        ],
+        "transit_route_risks": [
+          "RoRo vessel exports via Southampton & Mumbai ports",
+          "Battery mineral sea freight & Europe land corridor to UK"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "TATAPOWER",
+    "isin": "INE245A01021",
+    "confidence": 0.87,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Regulated Utility & Renewable Energy Transition",
+        "cycle_duration_years": 8.0,
+        "cycle_current_stage": "Renewables 4.5 GW Rollout & Distribution Efficiency Scale-up",
+        "key_revenue_drivers": [
+          "Regulated generation - Mundra UMPP & Maithon/MPL coal",
+          "Renewables - solar, wind, hybrid & rooftop EPC + utility scale",
+          "Transmission & distribution - Mumbai, Odisha DISCOMs & Delhi",
+          "Solar manufacturing - TP Solar 4.3 GW cell-module Tirunelveli"
+        ],
+        "margin_sensitivities": {
+          "Imported Coal Price (Mundra Loss Pass-through)": 0.32,
+          "Solar Module Price & PLI Incentive": 0.22,
+          "DISCOM AT&C Loss & Regulatory Allowed RoE": 0.18
+        },
+        "stage_conviction": 0.86,
+        "stage_rationale": "Renewable capacity 4.5 GW operational as_of FY26 scaling to 9 GW by FY28; Mundra Section 11 merchant pass-through stabilizes coal profitability, Mumbai distribution RoE 15.5% and cell-module plant ramp cushions EPC margins."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Utility-scale solar & wind EPC order conversion (SECI, SJVN)",
+          "Odisha DISCOM AT&C loss reduction 28% → 18% trajectory",
+          "TP Solar cell-module captive vs merchant sales",
+          "Regulated tariff true-up & late payment surcharge recovery"
+        ],
+        "raw_material_sensitivities": {
+          "Imported Indonesian Coal & Freight": 0.28,
+          "Polysilicon & Wafer for Cell Manufacturing": 0.2,
+          "Copper & Aluminium for T&D Network": 0.1
+        },
+        "pricing_power_assessment": "Low merchant pricing power due to 25-year PPA tariffs; regulated RoE framework gives assured returns, EPC bidding competitive but integrated cell-module offers 150-200 bps cost edge.",
+        "moat_rating": 7.6
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 61400.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 18500.0,
+        "expected_commercialization_quarter": "FY27Q3",
+        "deleveraging_trend": "Net Debt ~Rs 45,000 cr, Debt/EBITDA ~3.0x moderating; 4.3 GW solar fab & renewables funded via 75% debt 25% internal, asset monetization via renewables InvIT planned"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic - Generation, T&D, Solar EPC": 99.5,
+          "International (Singapore & Bhutan Hydro Imports)": 0.5
+        },
+        "supply_chain_dependencies": [
+          "Mundra UMPP Indonesian coal via Adani ports",
+          "Tirunelveli 4.3 GW TOPCon cell-module fab (PLI)",
+          "Odisha & Mumbai distribution grid infra & smart meters"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Coal import duty & SEBI PPAC pass-through adjudication",
+          "MNRE solar ALMM & PLI localization mandate",
+          "State DISCOM payment discipline & RDSS reform funding"
+        ],
+        "transit_route_risks": [
+          "Indonesian coal bulk carriers via Indian Ocean & Mundra port",
+          "Module road freight to solar park sites across Rajasthan & Gujarat"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "TATASTEEL",
+    "isin": "INE081A01012",
+    "confidence": 0.86,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Integrated Steel Commodity / Global Cyclical",
+        "cycle_duration_years": 5.0,
+        "cycle_current_stage": "Trough Transition - Europe Drag Moderating",
+        "key_revenue_drivers": [
+          "India flat & long steel (Jamshedpur, Kalinganagar)",
+          "Tata Steel Europe (Netherlands & UK) - transitioning",
+          "Mining - iron ore & coal captive linkages",
+          "Downstream & branded products (Tata Tiscon, Pravesh)"
+        ],
+        "margin_sensitivities": {
+          "Coking Coal & Iron Ore": 0.35,
+          "European Power & Carbon Credits": 0.22,
+          "Steel HRC Benchmark Realization": 0.4
+        },
+        "stage_conviction": 0.85,
+        "stage_rationale": "Consolidated EBITDA under pressure as_of FY26 with Europe losses narrowing post UK EAF transition; India business ~70% EBITDA share with Kalinganagar Phase-2 adding 5 MTPA resilience."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "India domestic infrastructure & auto steel demand",
+          "Europe restructuring to electric arc furnace green steel",
+          "Captive mine cost advantage",
+          "Value-added branded retail steel"
+        ],
+        "raw_material_sensitivities": {
+          "Coking Coal (Imported) & Thermal Coal": 0.32,
+          "Iron Ore (Noamundi, Joda Captive)": 0.18,
+          "European Natural Gas & EU ETS": 0.15
+        },
+        "pricing_power_assessment": "Limited global pricing power; domestic leadership with auto OEM contracts gives quarterly pass-through but global benchmark taker.",
+        "moat_rating": 7.2
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 230000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 16000.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net Debt ~Rs 78,000 cr, Debt/EBITDA ~3.2x; focused deleveraging via Europe cash closure and India cash pooling"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 65.0,
+          "Europe (UK & Netherlands)": 28.0,
+          "South East Asia & Others": 7.0
+        },
+        "supply_chain_dependencies": [
+          "Captive iron ore in Jharkhand-Odisha belt",
+          "Imported coking coal from Australia & Canada",
+          "European EAF technology & scrap supply"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "China dumping & India safeguard duty regime",
+          "EU CBAM & UK decarbonization subsidy",
+          "Coal & iron ore auction policy"
+        ],
+        "transit_route_risks": [
+          "Bulk carrier coking coal via Indian Ocean",
+          "Europe energy corridor & North Sea power volatility"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "TCS",
+    "isin": "INE467B01029",
+    "confidence": 0.92,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Enterprise IT Spending Cyclical / Structural Digital",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "Resilient Growth - BFSI & GenAI Traction",
+        "key_revenue_drivers": [
+          "BFSI & insurance application services",
+          "Cloud, data & enterprise GenAI (WisdomNext)",
+          "Engineering & IoT manufacturing vertical",
+          "BSNL & India public sector digital deals"
+        ],
+        "margin_sensitivities": {
+          "Employee Pyramid & Wage Hikes": 0.32,
+          "USD/GBP/EUR-INR FX": 0.2,
+          "Travel & Onsite Deployment Mix": 0.1
+        },
+        "stage_conviction": 0.92,
+        "stage_rationale": "Industry-leading 24-25% EBIT margin defended as_of FY26; BFSI discretionary recovery plus $10B+ TCV and BSNL 4G/5G roll-out sustain double-digit order momentum."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Global BFSI digital modernization",
+          "Manufacturing & life sciences ER&D",
+          "India BSNL/state digitization contracts",
+          "AI.Cloud & cybersecurity offerings"
+        ],
+        "raw_material_sensitivities": {
+          "Talent Acquisition & Attrition Costs": 0.3,
+          "Cloud Infrastructure Resale (AWS/Azure)": 0.12,
+          "Facilities & Delivery Centre Costs": 0.08
+        },
+        "pricing_power_assessment": "Strong pricing power via scale, proprietary platforms and sticky long-tenure contracts enabling consistent margin leadership.",
+        "moat_rating": 9.0
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 242000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 2500.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Net cash rich > Rs 50,000 cr; zero net debt, FCF ~100% conversion funding buybacks"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "North America": 50.5,
+          "UK & Europe": 31.0,
+          "India & Asia Pacific": 18.5
+        },
+        "supply_chain_dependencies": [
+          "US BFSI & healthcare client budgets",
+          "Global delivery network (India 80%+ headcount)",
+          "Hyperscaler co-sell partnerships"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "US tech spending & Fed rate cycle",
+          "UK-EU outsourcing sentiment post-Brexit",
+          "INR volatility & wage arbitrage sustainability"
+        ],
+        "transit_route_risks": [
+          "Minimal goods transit - talent mobility & visa dependence",
+          "Subsea cable digital data transit"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "TECHM",
+    "isin": "INE669C01036",
+    "confidence": 0.86,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Demand Cyclical / Telecom & Enterprise IT Services",
+        "cycle_duration_years": 5.0,
+        "cycle_current_stage": "Turnaround - Margin Reset & Telecom Recovery",
+        "key_revenue_drivers": [
+          "Communications (CME) - Tier1 telcos 5G & network modernization",
+          "Enterprise BFSI & healthcare digital",
+          "Manufacturing & automotive engineering",
+          "AI & next-gen services (TechM VerifAI, GenAI)"
+        ],
+        "margin_sensitivities": {
+          "US & Europe Wage Inflation": 0.32,
+          "USD/EUR-INR FX": 0.22,
+          "Telecom Vendor Consolidation Pricing Pressure": 0.18
+        },
+        "stage_conviction": 0.85,
+        "stage_rationale": "EBIT margin trough 7.5% in FY25 recovering to 10-11% as_of FY26 under turnaround plan; telecom 38% share stabilizing with BT & AT&T vendor consolidation risk moderating and deal TCV $700M+ quarterly."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Global telco capex recovery (5G core & OSS/BSS)",
+          "BFSI vendor consolidation large deals",
+          "Auto ER&D (Mahindra group & European OEMs)",
+          "Cost-takeout & automation-led deal wins"
+        ],
+        "raw_material_sensitivities": {
+          "Lateral Talent & Subcontractor Costs (15-18% subcontract)": 0.28,
+          "Visa & Onsite Deployment Costs": 0.12,
+          "Hyperscaler Cloud Resale Margins": 0.1
+        },
+        "pricing_power_assessment": "Weak-to-Moderate near term; turnaround relies on cost-corrective pricing in telecom but premium limited until margin credibility rebuilds, though ER&D niche allows selective premium.",
+        "moat_rating": 7.4
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 52500.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 900.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Net cash positive ~Rs 4,200 cr; zero net debt, restructuring provision absorption complete, FCF payout via dividends steady"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "Americas": 49.0,
+          "Europe": 27.0,
+          "Rest of World including India": 24.0
+        },
+        "supply_chain_dependencies": [
+          "Pune, Hyderabad & Noida large delivery centres",
+          "BT Group & AT&T telco anchor accounts",
+          "Hyperscaler partnerships (AWS, Microsoft, Google for telco cloud)"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "US telco consolidation (T-Mobile, Verizon capex discipline)",
+          "European telco 5G monetization & regulatory cost pressure",
+          "USD-INR & GBP-INR volatility and H1B wage rule changes"
+        ],
+        "transit_route_risks": [
+          "Low physical transit - people mobility & visa dependency",
+          "Subsea cable & data centre digital delivery dependency"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "TITAN",
+    "isin": "INE280A01028",
+    "confidence": 0.91,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": false,
+        "cyclicality_type": "Discretionary Luxury Consumption / Jewellery Structural",
+        "cycle_duration_years": 10.0,
+        "cycle_current_stage": "Premiumization & Network Scale-up",
+        "key_revenue_drivers": [
+          "Jewellery - Tanishq, Zoya & Mia (85%+ revenue)",
+          "Watches & wearables (Titan, Fastrack, Sonata)",
+          "Eyewear - Titan Eye+",
+          "Emerging - Taneira sarees & fragrances"
+        ],
+        "margin_sensitivities": {
+          "Gold Price Volatility & Lease Rates": 0.35,
+          "Diamond Rough & Polished Spread": 0.15,
+          "Wedding Season & Gold Lease Costs": 0.12
+        },
+        "stage_conviction": 0.91,
+        "stage_rationale": "Organized jewellery shift accelerating to 40%+ share as_of FY26; Tanishq studded ratio improving to 35%, 1,000+ jewellery stores with CaratLane omni growth 40%+."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Wedding & festive gold jewellery demand",
+          "Diamond studded premium mix & making charges",
+          "Store expansion in Tier-2/3 & CaratLane digital",
+          "International jewellery (UAE & USA pilot)"
+        ],
+        "raw_material_sensitivities": {
+          "Gold Bullion (LBMA) Price & Import Duty": 0.35,
+          "Cut & Polished Diamonds": 0.18,
+          "Watch Components & Movements": 0.08
+        },
+        "pricing_power_assessment": "High pricing power via trusted hallmarking and diamond certification; making charges 12-22% allow gold price pass-through seamlessly.",
+        "moat_rating": 9.0
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 50000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 950.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Zero net debt; ROCE >35%, inventory funded via gold-on-lease, cash conversion >80%"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 97.5,
+          "International (UAE, USA - Nascent)": 2.5
+        },
+        "supply_chain_dependencies": [
+          "LBMA gold bullion banks (gold on lease)",
+          "De Beers & Alrosa diamond pipeline",
+          "Hosur jewellery manufacturing hub"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Gold import duty & hallmarking regulation",
+          "Diamond sanctions on Russian supply",
+          "Wedding calendar & rural gold financing NBFCs"
+        ],
+        "transit_route_risks": [
+          "Secure bullion air freight & vault logistics",
+          "Negligible ocean freight dependency"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "ULTRACEMCO",
+    "isin": "INE481G01011",
+    "confidence": 0.89,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Cement & Building Materials Cycle / Infra-Linked",
+        "cycle_duration_years": 7.0,
+        "cycle_current_stage": "Capacity Consolidation & Price Recovery",
+        "key_revenue_drivers": [
+          "Grey cement (OPC/PPC) pan-India",
+          "Ready-mix concrete & white cement (Birla White)",
+          "Building solutions & waterproofing",
+          "Captured acquisitions - Kesoram & India Cements assets"
+        ],
+        "margin_sensitivities": {
+          "Petcoke & Thermal Coal": 0.32,
+          "Diesel & Freight Costs": 0.18,
+          "Limestone Royalty": 0.1
+        },
+        "stage_conviction": 0.88,
+        "stage_rationale": "Largest cement player 135+ MTPA as_of FY26 expanding to 200 MTPA by FY28; pricing recovery post monsoon with EBITDA/t Rs 1,050-1,100 and clinker utilization ~78%."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Housing & real estate cement demand (55% mix)",
+          "Government infra (roads, metro, housing PMAY)",
+          "East & South India consolidation pricing power",
+          "Energy cost via WHRS & renewable captive"
+        ],
+        "raw_material_sensitivities": {
+          "Petcoke & Imported Coal": 0.28,
+          "Diesel for Road Dispatch": 0.15,
+          "Limestone & Gypsum": 0.1
+        },
+        "pricing_power_assessment": "Oligopolistic pricing power as #1 with 22% market share; regional price discipline re-emerging post consolidation though monsoon temporally pressures realizations.",
+        "moat_rating": 8.8
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 70000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 12500.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Net Debt/EBITDA ~1.1x; 35 MTPA organic + inorganic expansion internally funded, ROCE ~13% expanding to 15%+ post ramp"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic": 99.5,
+          "Exports (Sri Lanka & Indian Ocean Islands)": 0.5
+        },
+        "supply_chain_dependencies": [
+          "Captive limestone mines across Rajasthan, MP & AP",
+          "Petcoke & coal imports via Mundra & coastal plants",
+          "Pan-India 200+ RMC & grinding unit network"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "Union Budget infra & PMAY housing allocation",
+          "Petcoke & coal price & carbon cess",
+          "State mining lease & limestone auction policy"
+        ],
+        "transit_route_risks": [
+          "Rail rake availability for clinker & cement",
+          "Road freight & coastal shipping via Indian coastline"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "VEDL",
+    "isin": "INE205A01025",
+    "confidence": 0.86,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Diversified Metals & Mining Commodity Cycle / Aluminium-Zinc-Oil",
+        "cycle_duration_years": 6.0,
+        "cycle_current_stage": "Aluminium Expansion & Zinc Premium Deleveraging",
+        "key_revenue_drivers": [
+          "Zinc India & international - Hindustan Zinc 80% share (Udaipur mines)",
+          "Aluminium - Jharsuguda & Korba smelters with captive bauxite/coal",
+          "Oil & gas - Cairn Rajasthan Mangala & Ravva fields",
+          "Copper Tuticorin (care & maintenance) & iron ore Karnataka"
+        ],
+        "margin_sensitivities": {
+          "LME Zinc & Aluminium Prices": 0.38,
+          "Brent Crude & Rajasthan Royalty": 0.22,
+          "Coal & Alumina Input Costs": 0.25
+        },
+        "stage_conviction": 0.85,
+        "stage_rationale": "Zinc LME $2,650-2,850/t as_of FY26 with 50%+ EBITDA margins funding group; aluminium cost Rs 178k/t with captive coal ramp at Chotia, Cairn production 122k boepd stable and demerger into 5 entities de-risking debt overhang."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "Hindustan Zinc mined metal & silver byproduct premium",
+          "Aluminium LME plus Jharsuguda value-added billet sales",
+          "Cairn oil & gas infill drilling & OALP blocks",
+          "Iron ore & steel pig iron merchant spreads"
+        ],
+        "raw_material_sensitivities": {
+          "Alumina & Bauxite (Lanjigarh Refinery)": 0.22,
+          "Coal & Carbon (Captive Chotia & Jharsuguda)": 0.25,
+          "Cairn Imported Diluent & Drilling Rigs": 0.15
+        },
+        "pricing_power_assessment": "Commodity price-taker except Hindustan Zinc where 78% domestic share allows zinc pricing premium over LME import parity; aluminium downstream billets allow modest 3-4% conversion premium.",
+        "moat_rating": 7.1
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 140000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 14500.0,
+        "expected_commercialization_quarter": "FY27Q1",
+        "deleveraging_trend": "Holdco debt ~$12B as_of FY26 down from $14B; demerger into Vedanta Alu, Zinc, Oil & Iron unlocks asset monetization, FCF to debt reduction Rs 8k-10k cr annually"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "India Domestic - Zinc, Aluminium & Oil": 88.0,
+          "Exports - Zinc & Aluminium Value-Added": 12.0
+        },
+        "supply_chain_dependencies": [
+          "Udaipur zinc-lead mines & Rajasthan Cairn oil blocks",
+          "Jharsuguda 1.7 MTPA aluminium smelter & Lanjigarh alumina",
+          "Captive Chotia, Jamkhani coal mines & merchant power"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "LME metals & Brent crude cyclicality plus windfall tax",
+          "Hindustan Zinc royalty & Rajasthan oil PSC extension",
+          "Tuticorin smelter judicial clearance & bauxite forest rights"
+        ],
+        "transit_route_risks": [
+          "Zinc concentrate road to Debari & Vizag smelters via rural road",
+          "Alumina & coal rake via East Coast rail & Paradip port exposure"
+        ]
+      }
+    }
+  },
+  {
+    "symbol": "WIPRO",
+    "isin": "INE075A01022",
+    "confidence": 0.85,
+    "source_document_ref": "Curated_Intelligence_FY26",
+    "parameters": {
+      "cyclicality_profile": {
+        "is_cyclical": true,
+        "cyclicality_type": "Demand Cyclical / Global IT Services Spend",
+        "cycle_duration_years": 5.0,
+        "cycle_current_stage": "Turnaround & Margin Reset",
+        "key_revenue_drivers": [
+          "IT Services - BFSI, Healthcare & Energy verticals",
+          "Consulting via Capco & Designit",
+          "Cloud, AI & data engineering (Wipro FullStride)",
+          "Engineering - Wipro Engineering Edge"
+        ],
+        "margin_sensitivities": {
+          "US & Europe Wage Inflation": 0.34,
+          "USD-INR & GBP-INR FX": 0.22,
+          "Subcontractor & Bench Utilization": 0.14
+        },
+        "stage_conviction": 0.84,
+        "stage_rationale": "Revenue flat to -1% CC as_of FY26 in turnaround under new CEO; EBIT margin 16.5-17% after restructuring, deal TCV ~$3.5B quarterly and Capco consulting mix aiding recovery."
+      },
+      "business_sensitivities": {
+        "key_revenue_drivers": [
+          "BFSI & healthcare modernization deals",
+          "Capco financial consulting demand",
+          "Hyperscaler cloud migration (AWS, Azure)",
+          "Cost-takeout & vendor consolidation wins"
+        ],
+        "raw_material_sensitivities": {
+          "Talent Costs & Attrition (18-20%)": 0.3,
+          "Hyperscaler Resale & Alliance Fees": 0.12,
+          "Visa & Onsite Deployment Costs": 0.1
+        },
+        "pricing_power_assessment": "Moderate pricing power; turnaround reliance on large cost-takeout deals with competitive pricing, premium limited to Capco niche consulting.",
+        "moat_rating": 7.0
+      },
+      "order_book_metrics": {
+        "executable_order_book_inr_cr": null,
+        "ttm_revenue_inr_cr": 90000.0,
+        "order_book_to_bill_ratio": null,
+        "execution_visibility_years": null
+      },
+      "capital_allocation": {
+        "in_progress_capex_inr_cr": 1400.0,
+        "expected_commercialization_quarter": "FY26Q4",
+        "deleveraging_trend": "Net cash >Rs 18,000 cr; zero net debt, FCF payout via buybacks steady despite growth investments in AI labs"
+      },
+      "geopolitical_supply_chain": {
+        "geographic_revenue_split": {
+          "Americas (US & Canada)": 61.0,
+          "Europe & UK": 29.5,
+          "Asia Pacific & India": 9.5
+        },
+        "supply_chain_dependencies": [
+          "US BFSI & healthcare client concentration",
+          "Global delivery from India (65% headcount)",
+          "Capco London & Designit Europe studios"
+        ],
+        "macro_geopolitical_sensitivities": [
+          "US discretionary IT budgets & Fed pivot",
+          "EU wage inflation & Works Council constraints",
+          "INR-USD volatility & visa policy"
+        ],
+        "transit_route_risks": [
+          "Low physical transit - people mobility & visa delays",
+          "Digital subsea cable dependence for delivery"
+        ]
+      }
+    }
+  }
+]

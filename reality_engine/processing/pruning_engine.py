@@ -17,9 +17,17 @@ import os
 import json
 import logging
 import sqlite3
+import sys
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import Path
 from typing import Literal, Optional, List, Dict, Any, Tuple
+
+# Allow running this module directly (python reality_engine/processing/pruning_engine.py)
+# by ensuring the repository root is importable.
+_REPO_ROOT = str(Path(__file__).resolve().parents[2])
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 logger = logging.getLogger("reality_engine.pruning")
 
@@ -28,6 +36,11 @@ HALF_LIVES: dict[str, float] = {
     "Analyst Commentary / YouTube": 3.0,   # months -> lambda 0.231049...
     "Quarterly Concall / MPC Stance": 6.0,  # -> 0.115524 (spec truncated 0.115, PG NUMERIC(6,4) 0.1155)
     "Union Budget / Tax Reform": 12.0,      # -> 0.057762 (spec 0.058)
+    # Macro-policy peer PDFs ingested via the dense-substrate pipeline.
+    "State Budget": 12.0,                   # state budgets decay slowly (annual re-budget)
+    "PIB Circular": 3.0,                    # press/circular news decays fast
+    "RBI Report / Economic Survey": 6.0,    # RBI reports + Economic Survey
+    "Economic Survey": 12.0,                # Economic Survey tracks the Budget half-life
 }
 
 # Spec-truncated display Lambdas (for docs/tests expecting 0.231/0.115/0.058)
@@ -35,16 +48,132 @@ LAMBDA_SPEC_TRUNCATED: dict[str, float] = {
     "Analyst Commentary / YouTube": 0.231,
     "Quarterly Concall / MPC Stance": 0.115,
     "Union Budget / Tax Reform": 0.058,
+    "State Budget": 0.058,
+    "PIB Circular": 0.231,
+    "RBI Report / Economic Survey": 0.115,
+    "Economic Survey": 0.058,
 }
+
+# ---------------------------------------------------------------------------
+# Structural-milestone survival (Half-life = INF -> never decayed / never pruned)
+# ---------------------------------------------------------------------------
+# Per Architecture: STRUCTURAL_THEORY milestones (profit-jump spotting, cheap-value
+# traps) carry is_structural_milestone=1 with half-life INF — permanent priors that
+# are never decayed and never pruned. Detection is done on BOTH the source_type string
+# (legacy convention '...Structural Milestone...') and the explicit column flag so old
+# and new ingestion paths agree.
+STRUCTURAL_MILESTONE_MARKER = "structural milestone"
+STRUCTURAL_HALF_LIFE_INF = float("inf")
+
+
+def is_structural_milestone(source_type: Optional[str]) -> bool:
+    """Return True if a raw_documents.source_type denotes a structural milestone.
+
+    Matches the legacy free-form convention ``*Structural Milestone*`` (case-insensitive).
+    The explicit ``raw_documents.is_structural_milestone`` column flag is checked by the
+    prune/decay helpers via SQL ``COALESCE(rd.is_structural_milestone,0) <> 1``; this
+    function covers the string-only path (and is used by tests / callers without a DB).
+    """
+    if not source_type:
+        return False
+    return STRUCTURAL_MILESTONE_MARKER in (source_type or "").lower()
+
+
+def effective_lambda(category: str, source_type: Optional[str] = None) -> float:
+    """Lambda for a category, but 0.0 (T½ INF) when the source is a structural milestone.
+
+    Structural milestones are permanent priors and must never decay, so S(t) == S0.
+    """
+    if source_type is not None and is_structural_milestone(source_type):
+        return 0.0
+    return lambda_for(category)
+
+# ---------------------------------------------------------------------------
+# Macro source_type -> pruning_decay_config.category mapping
+# ---------------------------------------------------------------------------
+# raw_documents.source_type values for macro PDFs use a free-form convention
+# (e.g. "State_Budget_UP", "RBI_Annual_Report", "Union_Budget"). Decay config
+# rows are keyed by the canonical category names seeded in database.py /
+# postgres_schema.sql. The mapping below uses prefix matching so any new
+# variant (e.g. a future "State_Budget_Maharashtra") resolves correctly.
+_MACRO_SOURCE_TYPE_CATEGORY: List[Tuple[str, str]] = [
+    ("state_budget", "State Budget"),
+    ("pib", "PIB Circular"),
+    ("rbi", "RBI Report / Economic Survey"),
+    ("economic_survey", "Economic Survey"),
+    ("union_budget", "Union Budget / Tax Reform"),
+]
+
+
+def macro_source_type_to_category(source_type: str) -> str:
+    """Map a raw_documents.source_type to a pruning_decay_config.category.
+
+    Prefix matching keeps variants like ``State_Budget_UP`` -> ``State Budget``.
+    Falls back to ``Union Budget / Tax Reform`` for unknown macro types and to
+    the closest canonical category for concall / youtube / analyst sources.
+    """
+    st = (source_type or "").lower()
+    for prefix, category in _MACRO_SOURCE_TYPE_CATEGORY:
+        if st == prefix or st.startswith(prefix) or prefix in st:
+            return category
+    if "concall" in st or "mpc" in st:
+        return "Quarterly Concall / MPC Stance"
+    if "youtube" in st or "analyst" in st:
+        return "Analyst Commentary / YouTube"
+    # Unknown macro source -> treat under the Budget half-life (conservative).
+    return "Union Budget / Tax Reform"
+
+
+def ensure_decay_category_for_source(source_type: str, manager=None) -> Optional[str]:
+    """Ensure pruning_decay_config has a row for ``source_type`` (idempotent).
+
+    Resolves the canonical category via :func:`macro_source_type_to_category`
+    and inserts it (with computed lambda) if missing. Returns the category name.
+    """
+    category = macro_source_type_to_category(source_type)
+    from reality_engine.db.database import db_manager as _mgr
+
+    mgr = manager or _mgr
+    hl = HALF_LIVES.get(category)
+    if hl is None:
+        hl = {
+            "State Budget": 12.0,
+            "PIB Circular": 3.0,
+            "RBI Report / Economic Survey": 6.0,
+            "Economic Survey": 12.0,
+            "Union Budget / Tax Reform": 12.0,
+        }.get(category, 6.0)
+    try:
+        with mgr.session() as conn:
+            row = conn.execute(
+                "SELECT category FROM pruning_decay_config WHERE category=?", (category,)
+            ).fetchone()
+            if row:
+                return category
+            lam = math.log(2) / hl
+            conn.execute(
+                "INSERT OR IGNORE INTO pruning_decay_config "
+                "(category, half_life_months, lambda, significance_floor, prob_cutoff) "
+                "VALUES (?, ?, ?, 5.0, 0.08)",
+                (category, hl, lam),
+            )
+    except Exception as exc:  # pragma: no cover - best effort
+        logger.debug("ensure_decay_category_for_source note: %s", exc)
+    return category
 
 def lambda_for(category: str) -> float:
     """Precise lambda = ln(2)/half_life. Use LAMBDA_SPEC_TRUNCATED for spec display."""
     hl = HALF_LIVES.get(category, 6.0)
     return math.log(2) / hl
 
-def decayed_significance(S0: float, category: str, months_elapsed: float) -> float:
-    """S(t) = S0 * e^{-lambda * delta_t}  (postgres_schema.sql:13 v_ripple_decayed)."""
-    lam = lambda_for(category)
+def decayed_significance(S0: float, category: str, months_elapsed: float, source_type: Optional[str] = None) -> float:
+    """S(t) = S0 * e^{-lambda * delta_t}  (postgres_schema.sql:13 v_ripple_decayed).
+
+    When ``source_type`` is a structural milestone the effective lambda is 0 (T½ INF),
+    so S(t) == S0 (never decayed). This keeps the emulated v_ripple_decayed view
+    returning the original significance for structural rows.
+    """
+    lam = effective_lambda(category, source_type)
     return S0 * math.exp(-lam * months_elapsed)
 
 @dataclass
@@ -93,7 +222,8 @@ FROM raw_documents rd
 WHERE dc.doc_id = rd.doc_id
   AND rd.published_date < CURRENT_DATE - INTERVAL '12 months'
   AND dc.embedding IS NOT NULL
-  AND COALESCE(rd.source_type,'') NOT ILIKE '%Structural Milestone%';
+  AND COALESCE(rd.source_type,'') NOT ILIKE '%Structural Milestone%'
+  AND COALESCE(rd.is_structural_milestone,0) <> 1;
 """
 
 PRUNE_RIPPLES_SQL = """
@@ -120,6 +250,7 @@ WHERE embedding IS NOT NULL
     SELECT doc_id FROM raw_documents
     WHERE published_date < date('now','-12 months')
       AND COALESCE(source_type,'') NOT LIKE '%Structural Milestone%'
+      AND COALESCE(is_structural_milestone,0) <> 1
   );
 """
 
@@ -286,6 +417,20 @@ def ensure_pruning_schema(manager=None) -> None:
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_ripple_targets ON ripple_effects(target_company_id, target_industry_id)")
             except Exception:
                 pass
+            # Wave C: structural-milestone survival columns (T½ INF, never pruned/decayed).
+            # pruning_decay_config.is_structural_milestone marks a decay CATEGORY as permanent;
+            # raw_documents.is_structural_milestone flags an individual document as a permanent
+            # prior. Both are additive migrations guarded by _column_exists.
+            try:
+                if not _column_exists(conn, "pruning_decay_config", "is_structural_milestone"):
+                    conn.execute("ALTER TABLE pruning_decay_config ADD COLUMN is_structural_milestone INTEGER DEFAULT 0")
+            except Exception:
+                pass
+            try:
+                if _table_exists(conn, "raw_documents") and not _column_exists(conn, "raw_documents", "is_structural_milestone"):
+                    conn.execute("ALTER TABLE raw_documents ADD COLUMN is_structural_milestone INTEGER DEFAULT 0")
+            except Exception:
+                pass
     except Exception as exc:
         logger.debug("ensure_pruning_schema note: %s", exc)
 
@@ -329,7 +474,7 @@ def prune_decayed_signals(manager=None, dry_run: bool = False) -> Dict[str, Any]
                 with conn.cursor() as cur:
                     if dry_run:
                         # Count what would be pruned
-                        cur.execute("SELECT count(*) FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE rd.published_date < CURRENT_DATE - INTERVAL '12 months' AND dc.embedding IS NOT NULL AND COALESCE(rd.source_type,'') NOT ILIKE '%Structural Milestone%'")
+                        cur.execute("SELECT count(*) FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE rd.published_date < CURRENT_DATE - INTERVAL '12 months' AND dc.embedding IS NOT NULL AND COALESCE(rd.source_type,'') NOT ILIKE '%Structural Milestone%' AND COALESCE(rd.is_structural_milestone,0) <> 1")
                         vectors = cur.fetchone()[0]
                         cur.execute("SELECT count(*) FROM ripple_effects WHERE parent_ripple_id IS NOT NULL AND (probability <0.10 OR ABS(raw_magnitude)*probability<0.50)")
                         ripples = cur.fetchone()[0]
@@ -366,6 +511,7 @@ def prune_decayed_signals(manager=None, dry_run: bool = False) -> Dict[str, Any]
             WHERE dc.embedding IS NOT NULL
               AND rd.published_date < date('now','-12 months')
               AND COALESCE(rd.source_type,'') NOT LIKE '%Structural Milestone%'
+              AND COALESCE(rd.is_structural_milestone,0) <> 1
             """
             row = conn.execute(count_sql).fetchone()
             to_purge = int(row[0] if row else 0) if row else 0
@@ -556,6 +702,7 @@ def get_decayed_significance_rows(manager=None, limit: int = 100, significance_f
                 if has_rd and has_rd_cols:
                     # Try to find raw_documents source_type for this event
                     source_type = None
+                    _structural_flag = False
                     try:
                         # Try doc_id match if event_id numeric
                         try_event_id_int = None
@@ -564,9 +711,11 @@ def get_decayed_significance_rows(manager=None, limit: int = 100, significance_f
                         except Exception:
                             pass
                         if try_event_id_int is not None and "doc_id" in has_rd_cols:
-                            srow = conn.execute("SELECT source_type FROM raw_documents WHERE doc_id=? LIMIT 1", (try_event_id_int,)).fetchone()
+                            srow = conn.execute("SELECT source_type, is_structural_milestone FROM raw_documents WHERE doc_id=? LIMIT 1", (try_event_id_int,)).fetchone()
                             if srow:
                                 source_type = srow["source_type"]
+                                if srow["is_structural_milestone"]:
+                                    _structural_flag = True
                         # raw_document_path may be in me.* or missing; check safely
                         rdp = None
                         try:
@@ -575,9 +724,11 @@ def get_decayed_significance_rows(manager=None, limit: int = 100, significance_f
                         except Exception:
                             rdp = None
                         if not source_type and rdp:
-                            srow = conn.execute("SELECT source_type FROM raw_documents WHERE local_file_path=? LIMIT 1", (rdp,)).fetchone()
+                            srow = conn.execute("SELECT source_type, is_structural_milestone FROM raw_documents WHERE local_file_path=? LIMIT 1", (rdp,)).fetchone()
                             if srow:
                                 source_type = srow["source_type"]
+                                if srow["is_structural_milestone"]:
+                                    _structural_flag = True
                     except Exception:
                         pass
                     if source_type:
@@ -591,6 +742,9 @@ def get_decayed_significance_rows(manager=None, limit: int = 100, significance_f
                     else:
                         # fallback by ripple order? keep default
                         lam = lam_map.get("Quarterly Concall / MPC Stance", lam)
+                    # Structural milestones carry T½ INF -> lambda 0 -> S(t)==S0 (never decayed)
+                    if _structural_flag or is_structural_milestone(source_type):
+                        lam = 0.0
                 sig = float(r["significance_rank"]) if r["significance_rank"] is not None else 0.0
                 decayed = sig * math.exp(-lam * months_elapsed)
                 out.append({

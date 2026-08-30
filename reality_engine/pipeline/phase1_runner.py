@@ -42,7 +42,8 @@ class Phase1PipelineRunner:
         self,
         bhavcopy_sessions: int = 25,
         target_universe_count: int = TOP_UNIVERSE_LIMIT,
-        max_workers: int = 8
+        max_workers: int = 8,
+        fundamentals_rate_limit_sec: float = 0.0
     ) -> Dict[str, Any]:
         """
         Executes complete Phase 1 data pipeline:
@@ -101,12 +102,14 @@ class Phase1PipelineRunner:
                 logger.error("Error fetching fundamentals for %s: %s", sym, e)
                 return sym, {}
 
-        # Concurrently fetch fundamentals with thread pool
+        # Concurrently fetch fundamentals with thread pool (rate-limited submission)
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_stock = {
-                executor.submit(fetch_single_stock_fundamentals, scrip): scrip
-                for scrip in nifty200_stocks
-            }
+            future_to_stock = {}
+            for scrip in nifty200_stocks:
+                future_to_stock[executor.submit(fetch_single_stock_fundamentals, scrip)] = scrip
+                # Throttle the rate at which new requests start to avoid hammering yfinance.
+                if fundamentals_rate_limit_sec and fundamentals_rate_limit_sec > 0:
+                    time.sleep(fundamentals_rate_limit_sec)
 
             completed_count = 0
             for future in concurrent.futures.as_completed(future_to_stock):

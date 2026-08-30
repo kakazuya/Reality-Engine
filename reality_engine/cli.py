@@ -9,10 +9,14 @@ from __future__ import annotations
 import sys
 import json
 import argparse
+import logging
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import pandas as pd
+
+logger = logging.getLogger("reality_engine.cli")
 
 # Add project root to Python path
 ENGINE_DIR = Path(__file__).resolve().parent
@@ -22,6 +26,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from reality_engine.db.repository import repo
 from reality_engine.ingestion.master_sync import master_sync
+from reality_engine.ingestion.fundamentals_client import fundamentals_client
 from reality_engine.pipeline.backfill import backfill_manager
 from reality_engine.pipeline.phase1_runner import phase1_runner
 from reality_engine.pipeline.panic_monitor import panic_monitor
@@ -35,6 +40,8 @@ from reality_engine.search.hybrid_search import HybridSearchEngine
 from reality_engine.agent.orchestrator import AgentOrchestrator
 from reality_engine.reporting.writer import ReportWriter
 from reality_engine.ingestion.telegram_client import TelegramListener, telegram_listener
+from reality_engine.processing.event_graph import cmd_spawn_event_graph
+from reality_engine.processing.eod_corrector import cmd_correct_eod, cmd_correct_event, cmd_noise_floor
 
 
 # ====================================================================
@@ -95,7 +102,29 @@ def cmd_screen(args):
         return
 
     top_down = getattr(args, "top_down", False)
+    ensemble = getattr(args, "ensemble", False)
     dry_run = getattr(args, "dry_run", False)
+
+    # Wave D4: all-peers weighted ensemble screen (Σ w_lens * norm(lens_score) + per-scrip noise floor).
+    if ensemble:
+        print(f"\nRunning All-Peers Weighted Ensemble Screener (MoE blend) for date: {date_str} "
+              f"(Universe: {universe.upper()}, Top {args.top})...\n")
+        df_screened = composite_screener.ensemble_screen(target_date=date_str, top_n=args.top, universe=universe)
+        if df_screened.empty:
+            print("No ensemble candidates cleared the per-scrip learned noise floor for date:", date_str)
+            return
+        cols = [
+            "composite_rank", "symbol", "close", "ensemble_composite",
+            "weight_factor_statistical", "weight_business_quality",
+            "weight_policy_macro", "weight_supply_chain",
+            "noise_floor", "clears_noise_floor", "is_solvency_approved",
+        ]
+        avail_cols = [c for c in cols if c in df_screened.columns]
+        pd.set_option("display.max_columns", 15)
+        pd.set_option("display.width", 1000)
+        print(df_screened[avail_cols].to_string(index=False))
+        return
+
     mode_label = "TOP-DOWN" if top_down else "LEGACY"
     print(f"\nRunning Quantitative Multi-Factor Screener [{mode_label}] for date: {date_str} (Universe: {universe.upper()}, Top {args.top})...\n")
     if top_down:
@@ -195,6 +224,40 @@ def cmd_inspect_stock(args):
             print(f"    \"{h.text[:220]}...\"")
 
 
+def cmd_rank_models(args):
+    """Shows per-stock / per-investor-majority MoE lens rankings (Wave D sparse MoE)."""
+    symbol = args.symbol.upper().strip()
+    investor = (args.investor_majority or "all").lower()
+    if investor not in ("promoter", "fii", "dii", "retail", "all"):
+        investor = "all"
+
+    from reality_engine.processing.ensemble_ranker import EnsembleRanker
+    ranker = EnsembleRanker()
+    rows = ranker.rank_models(symbol, investor)
+
+    print("\n" + "=" * 75)
+    print(f"  MoE LENS RANKINGS: {symbol} (investor_majority={investor})")
+    print("=" * 75)
+    if not rows:
+        print("No learned model_explainer_rankings for this symbol/investor context yet.")
+        print("Seed rankings via the ensemble_ranker API, then re-run.")
+        return
+    for r in rows:
+        print(
+            f"  #{r['rank']}  {r['lens_family']:<22} "
+            f"explain_power={float(r['explain_power']):.4f} "
+            f"p_value={r['p_value']} weight={float(r['weight']):.4f}"
+        )
+    # Surface the most recent MoE activation audit for this context, if any.
+    log = [e for e in ranker.get_activation_log(limit=20)
+           if e.get("context_parsed", {}).get("stock") == symbol
+           and str(e.get("context_parsed", {}).get("investor_majority", "all")).lower() == investor]
+    if log:
+        latest = log[0]
+        print(f"\n  Last MoE activation (log_id={latest['log_id']}, temp={latest['temperature']}): "
+              f"fired {latest['fired_lenses_parsed']}")
+
+
 def cmd_run_daily_alpha(args):
     """Synthesizes high-conviction daily alpha theses and exports multi-format reports."""
     date_str = args.date or repo.get_latest_price_delivery_date()
@@ -203,8 +266,15 @@ def cmd_run_daily_alpha(args):
     top_theses_count = getattr(args, "top_theses", 5)
 
     top_down = getattr(args, "top_down", False)
+    ensemble = getattr(args, "ensemble", False)
+    investor_majority = (getattr(args, "investor_majority", "all") or "all").lower()
+    if investor_majority not in ("promoter", "fii", "dii", "retail", "all"):
+        investor_majority = "all"
+    temperature = float(getattr(args, "temperature", 0.4) or 0.4)
+
+    mode_tag = "[TOP-DOWN]" if top_down else ("[ENSEMBLE MoE]" if ensemble else "")
     print("\n" + "=" * 75)
-    print(f"  SYNTHESIZING DAILY ALPHA REPORT FOR {date_str} ({universe.upper()}) {'[TOP-DOWN]' if top_down else ''}")
+    print(f"  SYNTHESIZING DAILY ALPHA REPORT FOR {date_str} ({universe.upper()}) {mode_tag}")
     print("=" * 75)
 
     orchestrator = AgentOrchestrator()
@@ -214,6 +284,9 @@ def cmd_run_daily_alpha(args):
         top_n=top_theses_count,
         screener_pool_size=top_n,
         use_top_down=top_down,
+        use_ensemble=ensemble,
+        investor_majority=investor_majority,
+        temperature=temperature,
     )
 
     writer = ReportWriter()
@@ -225,11 +298,21 @@ def cmd_run_daily_alpha(args):
     print(f"Top Sectors         : {', '.join(mb.top_performing_sectors[:3])}")
     print(f"Solvency Filtered   : {report.disqualified_solvency_count} disqualified")
 
+    # Wave D4: surface ensemble metadata summary when present.
+    ems = getattr(report, "ensemble_metadata", None)
+    if ems is not None:
+        print(f"Ensemble Mode       : {ems.get('mode')} | investor={ems.get('investor_majority')} | temp={ems.get('temperature')}")
+        print(f"Avg Lenses Fired    : {ems.get('avg_n_fired')} | fired-weight-sum={ems.get('avg_fired_weight_sum')}")
+
     print("\n" + "-" * 75)
     print("  HIGH-CONVICTION ALPHA THESES")
     print("-" * 75)
     theses_data = []
     for t in report.high_conviction_theses:
+        act = getattr(t, "ensemble_activation", None)
+        conv = t.conviction_level
+        if act is not None:
+            conv = f"{conv} [MoE:{','.join(act.get('fired_lenses', []))}]"
         theses_data.append({
             "Rank": f"#{t.composite_rank}",
             "Symbol": t.symbol,
@@ -238,7 +321,7 @@ def cmd_run_daily_alpha(args):
             "Target (INR)": f"{t.target_price:,.2f}",
             "SL (INR)": f"{t.stop_loss:,.2f}",
             "R:R": f"{t.risk_reward_ratio:.1f}x",
-            "Conviction": t.conviction_level,
+            "Conviction": conv,
         })
     df_theses = pd.DataFrame(theses_data)
     pd.set_option("display.width", 1000)
@@ -482,6 +565,241 @@ def cmd_backfill(args):
     print(f"Backfilled {count} total price delivery records.")
 
 
+def cmd_fetch_fundamentals(args):
+    """Bulk-fetches 5y fundamentals with a rate-limited worker pool (resilient)."""
+    if args.universe == "nifty200":
+        companies = repo.get_nifty200_companies()
+    else:
+        companies = repo.get_all_companies(active_only=True)
+    if args.top:
+        companies = companies[:args.top]
+
+    print(
+        f"Fetching fundamentals for {len(companies)} companies "
+        f"(workers={args.workers}, rate_limit={args.rate_limit}s, persist={not args.no_persist})..."
+    )
+    result = fundamentals_client.fetch_all_fundamentals(
+        companies,
+        max_workers=args.workers,
+        rate_limit_sec=args.rate_limit,
+        max_companies=(None if args.top <= 0 else args.top),
+        persist=not args.no_persist,
+    )
+    summary = {k: v for k, v in result.items() if k != "failed_symbols"}
+    print(json.dumps(summary, indent=2, default=str))
+    if result["failed_symbols"]:
+        print(f"\nFailed {result['failed']} symbol(s) (first 20 shown):")
+        for f in result["failed_symbols"][:20]:
+            print(f"  - {f.get('symbol')}: {f.get('error')}")
+    if result["failed"]:
+        print(f"\nWARNING: {result['failed']} company(ies) failed — see logs for full tracebacks.")
+
+
+def cmd_discover_filings(args):
+    """Discover raw official NSE/BSE filing links via Screener (link discovery only)."""
+    from reality_engine.ingestion.filing_discovery import filing_discovery_client
+    from reality_engine.db.repository import repo as _repo
+
+    if args.symbol:
+        companies = [{"nse_symbol": args.symbol, "bse_code": args.bse_code}]
+    else:
+        # Ingest-wide scope: default to the FULL active universe, never a filtered subset.
+        companies = _repo.get_all_companies(active_only=True)
+        if args.sample:
+            # Safe smoke-test slice drawn from outside the Nifty 200 by default.
+            non_nifty200 = [c for c in companies if not c.get("is_nifty200")]
+            companies = (non_nifty200 if non_nifty200 else companies)[: args.sample]
+
+    print(f"Discovering raw official filing links for {len(companies)} symbol(s) "
+          f"(rate_limit={args.rate_limit}s)...")
+    discoveries = []
+    for c in companies:
+        sym = (c.get("nse_symbol") or c.get("symbol") or "").strip().upper()
+        if not sym:
+            continue
+        disc = filing_discovery_client.discover_filings(
+            sym, bse_code=c.get("bse_code"), consolidated=not args.standalone
+        )
+        discoveries.append(disc)
+        n = len(disc.get("links", []))
+        flag = "ERROR" if disc.get("error") else "ok"
+        print(f"  {sym}: {n} official link(s) [{flag}]")
+        for ln in disc.get("links", [])[:5]:
+            print(f"      - {ln['doc_type']:20s} {ln['source']:16s} {ln['source_url']}")
+
+    if args.persist:
+        # Register discovered links into corporate_documents (no file download yet).
+        recs = []
+        for d in discoveries:
+            for ln in d.get("links", []):
+                recs.append({
+                    "isin": None, "symbol": d["symbol"], "doc_type": ln["doc_type"],
+                    "title": ln["doc_type"], "doc_date": d.get("discovered_at", "1970-01-01"),
+                    "source_url": ln["source_url"], "source": ln["source"],
+                    "discovery_source": ln["discovery_source"],
+                    "local_file_path": None, "file_size_bytes": 0,
+                    "sha256_hash": None, "is_processed": 0,
+                })
+        # Resolve ISIN where possible for FK integrity.
+        sym_to_isin = {c.get("nse_symbol"): c.get("isin") for c in companies if c.get("nse_symbol")}
+        for r in recs:
+            r["isin"] = sym_to_isin.get(r["symbol"])
+        n = _repo.upsert_corporate_documents(recs)
+        print(f"\nPersisted {n} discovered filing link record(s) to corporate_documents.")
+
+    total_links = sum(len(d.get("links", [])) for d in discoveries)
+    print(f"\nSUMMARY: {len(discoveries)} symbol(s) -> {total_links} raw official filing link(s) discovered.")
+    print("NOTE: Screener tables were NOT copied. Only raw bseindia.com / nseindia.com URLs were harvested.")
+
+
+def cmd_fetch_filings(args):
+    """Download & archive the raw official NSE/BSE filings discovered for a symbol/universe."""
+    from reality_engine.ingestion.filing_discovery import filing_discovery_client
+    from reality_engine.ingestion.official_filing_client import official_filing_client
+    from reality_engine.db.repository import repo as _repo
+
+    # Bulk mode: archive already-discovered links directly from corporate_documents.
+    if args.from_db:
+        print(f"Archiving discovered links from DB (doc_type={args.doc_type or 'ALL'}, "
+              f"max_links={args.max_links or 'unlimited'}, workers={args.workers}, "
+              f"rate_limit={args.rate_limit}s)...")
+        with _repo.db.session() as conn:
+            q = (
+                "SELECT symbol, doc_type, source_url, source, discovery_source, isin "
+                "FROM corporate_documents WHERE discovery_source='screener_discovery' "
+                "AND local_file_path IS NULL"
+            )
+            if args.doc_type:
+                q += f" AND doc_type='{args.doc_type}'"
+            q += " ORDER BY id"
+            if args.max_links:
+                q += f" LIMIT {int(args.max_links)}"
+            rows = conn.execute(q).fetchall()
+        discoveries = []
+        for r in rows:
+            discoveries.append({
+                "symbol": r["symbol"],
+                "bse_code": None,
+                "links": [{
+                    "source_url": r["source_url"],
+                    "doc_type": r["doc_type"],
+                    "source": r["source"] or "bse_official",
+                    "discovery_source": r["discovery_source"] or "screener_discovery",
+                }],
+            })
+        result = official_filing_client.archive_many(
+            discoveries, max_workers=args.workers, progress=True
+        )
+        print(json.dumps({k: v for k, v in result.items() if k != "per_symbol"}, indent=2))
+        if args.persist:
+            # Update each archived row's local path + hash by source_url.
+            updated = 0
+            with _repo.db.session() as conn:
+                for sym_res in result.get("per_symbol", []):
+                    for r in sym_res.get("results", []):
+                        if r.get("ok") and r.get("local_file_path"):
+                            conn.execute(
+                                "UPDATE corporate_documents SET local_file_path=?, file_size_bytes=?, "
+                                "sha256_hash=?, is_processed=1 WHERE source_url=?",
+                                (r["local_file_path"], r.get("file_size_bytes", 0),
+                                 r.get("sha256_hash"), r["source_url"]),
+                            )
+                            updated += 1
+                conn.commit()
+            print(f"\nUpdated {updated} archived filing record(s) in corporate_documents.")
+        return
+
+    if args.symbol:
+        companies = [{"nse_symbol": args.symbol, "bse_code": args.bse_code}]
+    else:
+        companies = _repo.get_all_companies(active_only=True)
+        if args.sample:
+            non_nifty200 = [c for c in companies if not c.get("is_nifty200")]
+            companies = (non_nifty200 if non_nifty200 else companies)[: args.sample]
+
+    print(f"Discovering + archiving raw official filings for {len(companies)} symbol(s) "
+          f"(workers={args.workers}, rate_limit={args.rate_limit}s)...")
+    discoveries = []
+    for c in companies:
+        sym = (c.get("nse_symbol") or c.get("symbol") or "").strip().upper()
+        if not sym:
+            continue
+        disc = filing_discovery_client.discover_filings(
+            sym, bse_code=c.get("bse_code"), consolidated=not args.standalone
+        )
+        discoveries.append(disc)
+
+    result = official_filing_client.archive_many(
+        discoveries, max_workers=args.workers, progress=True
+    )
+    print(json.dumps({k: v for k, v in result.items() if k != "per_symbol"}, indent=2))
+    if args.persist:
+        recs = []
+        for sym_res in result.get("per_symbol", []):
+            sym = sym_res.get("symbol")
+            for r in sym_res.get("results", []):
+                recs.append({
+                    "isin": None, "symbol": sym, "doc_type": r.get("doc_type"),
+                    "title": r.get("doc_type"), "doc_date": "1970-01-01",
+                    "source_url": r.get("source_url"), "source": r.get("source"),
+                    "discovery_source": r.get("discovery_source"),
+                    "local_file_path": r.get("local_file_path"),
+                    "file_size_bytes": r.get("file_size_bytes", 0),
+                    "sha256_hash": r.get("sha256_hash"),
+                    "is_processed": 1 if r.get("ok") else 0,
+                })
+        # Resolve ISIN for FK integrity.
+        sym_to_isin = {c.get("nse_symbol"): c.get("isin") for c in companies if c.get("nse_symbol")}
+        for rr in recs:
+            rr["isin"] = sym_to_isin.get(rr["symbol"])
+        n = _repo.upsert_corporate_documents(recs)
+        print(f"\nPersisted {n} filing record(s) (archived + provenance) to corporate_documents.")
+
+
+def cmd_fetch_corporate_actions(args):
+    """Ingest NSE corporate actions (bonus/split/rights/buyback/merger/demerger/dividend) for full universe."""
+    from reality_engine.ingestion.corporate_actions_client import corporate_actions_client
+    from reality_engine.db.repository import repo as _repo
+
+    print(f"Fetching NSE corporate actions from {args.from_date} to today "
+          f"(slice_days={args.slice_days}, persist={not args.no_persist})...")
+    result = corporate_actions_client.fetch_range(args.from_date, datetime.now().strftime("%Y-%m-%d"))
+    print(f"  slices={result['slices']} raw_records={result['raw_records']} "
+          f"normalized={len(result['normalized'])} slice_errors={result['errors']}")
+
+    if not args.no_persist:
+        n = _repo.upsert_corporate_actions(result["normalized"])
+        print(f"  persisted {n} corporate action record(s) to corporate_actions.")
+    else:
+        # Print a small sample of normalized types.
+        from collections import Counter
+        c = Counter(r["action_type"] for r in result["normalized"])
+        for k, v in c.most_common():
+            print(f"    {k}: {v}")
+
+    print("NOTE: Delisting is NOT covered by the NSE corporate-actions feed; "
+          "a separate delisting source is required and must not be fabricated.")
+
+
+def cmd_fetch_corporate_status(args):
+    """Compose delisting / NCLT (insolvency) status flags from derived + announcement-scan signals."""
+    from reality_engine.ingestion.delisting_nclt_client import delisting_nclt_client
+
+    print("Building delisting / NCLT status flags (derived + announcement-scan)...")
+    result = delisting_nclt_client.build_flags()
+    print(f"  official feed (reachable): {result['counts']['official']}")
+    print(f"  derived delisted (is_active=0): {result['counts']['derived_delisted']}")
+    print(f"  announcement-scan NCLT/CIRP/suspend hits: {result['counts']['scanned']}")
+    print(f"  TOTAL flags: {result['counts']['total']}")
+    if not args.no_persist:
+        n = delisting_nclt_client.persist_flags()
+        print(f"  persisted {n} flag record(s) to corporate_status_flags.")
+    else:
+        # Show a few examples.
+        for f in result["all"][:8]:
+            print(f"    {f['symbol']:14s} {f['status_type']:12s} {f['source']:20s} {f['detail'][:50]}")
+
+
 def cmd_bootstrap(args):
     """Executes deterministic database initialization and test-data fixture bootstrapping."""
     print("\n" + "=" * 75)
@@ -525,6 +843,21 @@ def cmd_verify_checkpoint(args):
     print("  CHECKPOINT AUDIT RESULT")
     print("=" * 75)
     print(json.dumps(summary, indent=2))
+
+
+def cmd_audit_data(args):
+    """Runs the read-only data pipeline readiness audit."""
+    from reality_engine.pipeline.data_audit import main as audit_main
+
+    argv: List[str] = []
+    if getattr(args, "net", False):
+        argv.append("--net")
+    if getattr(args, "json", False):
+        argv.append("--json")
+    rc = audit_main(argv)
+    if rc != 0:
+        # Non-zero means at least one CRITICAL section; surface it to the shell.
+        raise SystemExit(rc)
 
 
 def cmd_listen_telegram(args):
@@ -891,6 +1224,368 @@ def cmd_run_distillation(args):
         print(f"Note fetching distillation_runs: {exc}")
 
 
+def cmd_fetch_macro(args):
+    """Fetch macro-policy PDFs (Central/State Budgets, PIB circulars, RBI reports).
+
+    Second-tier peer data below core company data. Writes to raw_documents audit
+    trail via the repository; gracefully skips browser-only hosts when the Playwright
+    fallback is unavailable. Supports --dry-run (plan only, no download/DB write).
+    """
+    from reality_engine.ingestion.macro_pdf_fetcher import MacroPDFFetcher
+
+    source = (getattr(args, "source", "all") or "all").lower()
+    years = getattr(args, "years", None) or ["2024-25", "2025-26"]
+    if isinstance(years, str):
+        years = [y.strip() for y in years.split(",") if y.strip()]
+    state_filter = getattr(args, "state_filter", None)
+    if state_filter:
+        state_filter = [s.strip() for s in state_filter.split(",") if s.strip()]
+    workers = getattr(args, "workers", 4)
+    dry_run = getattr(args, "dry_run", False)
+    pib_limit = getattr(args, "pib_limit", 10)
+    since_date = getattr(args, "since_date", None)
+    rate_limit = getattr(args, "rate_limit", 1.0)
+    ingest = getattr(args, "ingest", False)
+
+    print("\n" + "=" * 75)
+    print("  MACRO PDF FETCHER (second-tier peer data)")
+    print("=" * 75)
+    print(f"  Source : {source}")
+    print(f"  Years  : {', '.join(years)}")
+    if state_filter:
+        print(f"  States : {', '.join(state_filter)}")
+    print(f"  Dry-run: {dry_run}")
+
+    fetcher = MacroPDFFetcher(rate_limit_sec=rate_limit)
+
+    if dry_run:
+        plan = fetcher.plan(source=source, years=years, states=state_filter)
+        total = plan.pop("_total", 0)
+        print(f"\nPlanned {total} URL(s) for source='{source}':")
+        for grp, items in plan.items():
+            print(f"  - {grp}: {len(items)}")
+            for it in items[:25]:
+                print(f"      * [{it.get('source_type')}] {it.get('url')}")
+        print("\nDRY-RUN: no downloads or database writes performed.")
+        return
+
+    summary: Dict[str, Any] = {}
+    if source in ("central", "all"):
+        summary["central"] = fetcher.fetch_central_budgets(years=years)
+    if source in ("states", "all"):
+        summary["states"] = fetcher.fetch_state_budgets(states=state_filter, years=years)
+    if source in ("pib", "all"):
+        summary["pib"] = fetcher.fetch_pib_circulars(limit=pib_limit, since_date=since_date)
+    if source in ("rbi", "all"):
+        summary["rbi"] = fetcher.fetch_rbi_reports(years=years)
+
+    # Optional dense-substrate ingestion of freshly downloaded macro PDFs.
+    ingested_total = 0
+    if ingest and not dry_run:
+        from reality_engine.ingestion.pdf_ingestor import PDFIngestor
+
+        ingestor = PDFIngestor()
+        for grp, res in summary.items():
+            if not isinstance(res, dict):
+                continue
+            for d in res.get("details", []):
+                p = d.get("path")
+                if not p:  # failed download / no local file -> nothing to ingest
+                    continue
+                try:
+                    meta = {
+                        "source_type": d.get("source_type"),
+                        "title": d.get("title"),
+                        "fiscal_period": d.get("fiscal_period"),
+                        "source_url": d.get("source_url"),
+                        "published_date": d.get("published_date"),
+                        "creator_or_ministry": d.get("creator_or_ministry"),
+                    }
+                    r = ingestor.ingest_macro_file(Path(p), **meta)
+                    ingested_total += 1 if r.get("status") == "ingested" else 0
+                    logger.info("Ingested macro PDF %s -> %s (chunks=%s)", p, r.get("status"), r.get("chunks"))
+                except Exception as exc:
+                    logger.warning("Ingest failed for %s: %s", p, exc)
+        print(f"\nIngested {ingested_total} macro PDF(s) into document_chunks (TEXT/FTS).")
+
+    print("\n" + "-" * 75)
+    print("  MACRO PDF FETCH SUMMARY")
+    print("-" * 75)
+    grand = {"total": 0, "fetched": 0, "skipped": 0, "failed": 0}
+    for grp, res in summary.items():
+        if not isinstance(res, dict):
+            continue
+        print(f"  {grp:>10s}: total={res.get('total', 0)} fetched={res.get('fetched', 0)} "
+              f"skipped={res.get('skipped', 0)} failed={res.get('failed', 0)}")
+        for k in grand:
+            grand[k] += res.get(k, 0)
+    print(f"  {'TOTAL':>10s}: total={grand['total']} fetched={grand['fetched']} "
+          f"skipped={grand['skipped']} failed={grand['failed']}")
+    if grand["failed"]:
+        print(f"\nNOTE: {grand['failed']} fetch(es) skipped/failed (e.g. JS/TSPD-blocked host "
+              "without browser fallback) — these are logged and do NOT crash the run.")
+
+
+def cmd_process_macro(args):
+    """Scan MACRO_PDFS_DIR recursively for *.pdf and ingest any not yet in the substrate.
+
+    Idempotent via sha256: files already present in raw_documents/document_chunks are
+    skipped. Reuses metadata from the raw_documents audit row when available (written by
+    fetch-macro), otherwise derives a best-effort source_type from the category folder.
+    """
+    from reality_engine.ingestion.pdf_ingestor import PDFIngestor
+    from reality_engine.config import MACRO_PDFS_DIR
+
+    ingestor = PDFIngestor()
+    dry_run = getattr(args, "dry_run", False)
+    directory = getattr(args, "directory", None)
+    scan_dir = Path(directory) if directory else MACRO_PDFS_DIR
+
+    print("\n" + "=" * 75)
+    print("  PROCESS MACRO PDFs (scan + ingest into dense substrate)")
+    print("=" * 75)
+    print(f"  Scan dir: {scan_dir}")
+    print(f"  Dry-run : {dry_run}")
+
+    results = ingestor.ingest_macro_directory(scan_dir, recursive=True, dry_run=dry_run)
+
+    ingested = [r for r in results if r.get("status") == "ingested"]
+    skipped = [r for r in results if r.get("status") == "skipped_duplicate"]
+    failed = [r for r in results if r.get("status") == "failed"]
+    would = [r for r in results if r.get("status") == "would_ingest"]
+
+    print(f"\nTotal PDFs scanned : {len(results)}")
+    if dry_run:
+        print(f"Would ingest       : {len(would)}")
+    else:
+        print(f"Freshly ingested  : {len(ingested)}")
+        print(f"Skipped (exists)  : {len(skipped)}")
+        print(f"Failed            : {len(failed)}")
+
+    shown = would if dry_run else ingested
+    for r in shown:
+        try:
+            print(f"  [OK] {Path(r['path']).name} -> {r.get('chunks')} chunks "
+                  f"(source_type={r.get('source_type')})")
+        except Exception:
+            pass
+    for r in failed:
+        print(f"  [FAIL] {Path(r['path']).name} -> {r.get('error')}")
+
+
+# --------------------------------------------------------------------
+# Peer substrate runners (lane-code-cli): subprocess delegation to
+# reality_engine/scripts/run_*.py so script-level argparse/env is reused.
+# --------------------------------------------------------------------
+
+def _peer_script_path(script_name: str) -> Path:
+    """Resolve a peer runner script path relative to cli.py."""
+    return Path(__file__).parent / "scripts" / script_name
+
+
+def _run_peer_subprocess(script_name: str, extra_args: List[str]) -> int:
+    """Run a peer script via subprocess, forwarding extra_args.
+
+    Uses [sys.executable, script_path, *extra_args] so script-level argparse
+    is reused. Streams stdout/stderr directly (no capture) so unknown-arg
+    failures print the script's stderr clearly. Returns exit code.
+    """
+    script_path = _peer_script_path(script_name)
+    cmd = [sys.executable, str(script_path)] + list(extra_args or [])
+    print(f"\n>>> Running {script_name} {' '.join(extra_args) if extra_args else ''} ...")
+    try:
+        result = subprocess.run(cmd)
+        return result.returncode
+    except Exception as exc:
+        print(f"[FAIL] {script_name} exception: {exc}", file=sys.stderr)
+        return 1
+
+
+def cmd_seed_quality_peer(args):
+    """Delegate to reality_engine/scripts/run_quality_peer.py (subprocess)."""
+    extra: List[str] = []
+    if getattr(args, "universe", None) is not None:
+        extra += ["--universe", str(args.universe)]
+    if getattr(args, "include_derived", False):
+        extra += ["--include-derived"]
+    if getattr(args, "limit", None) is not None:
+        extra += ["--limit", str(args.limit)]
+    rc = _run_peer_subprocess("run_quality_peer.py", extra)
+    if rc != 0:
+        print(f"[FAIL] run_quality_peer.py exited with code {rc}", file=sys.stderr)
+        raise SystemExit(rc)
+    print("[OK] run_quality_peer.py completed successfully")
+
+
+def cmd_seed_policy_peer(args):
+    """Delegate to reality_engine/scripts/run_policy_peer.py (subprocess)."""
+    extra: List[str] = []
+    if getattr(args, "universe", None) is not None:
+        extra += ["--universe", str(args.universe)]
+    if getattr(args, "include_derived", False):
+        extra += ["--include-derived"]
+    if getattr(args, "limit", None) is not None:
+        extra += ["--limit", str(args.limit)]
+    rc = _run_peer_subprocess("run_policy_peer.py", extra)
+    if rc != 0:
+        print(f"[FAIL] run_policy_peer.py exited with code {rc}", file=sys.stderr)
+        raise SystemExit(rc)
+    print("[OK] run_policy_peer.py completed successfully")
+
+
+def cmd_seed_factor_peer(args):
+    """Delegate to reality_engine/scripts/run_factor_peer.py (subprocess)."""
+    extra: List[str] = []
+    if getattr(args, "universe", None) is not None:
+        extra += ["--universe", str(args.universe)]
+    if getattr(args, "include_derived", False):
+        extra += ["--include-derived"]
+    if getattr(args, "limit", None) is not None:
+        extra += ["--limit", str(args.limit)]
+    rc = _run_peer_subprocess("run_factor_peer.py", extra)
+    if rc != 0:
+        print(f"[FAIL] run_factor_peer.py exited with code {rc}", file=sys.stderr)
+        raise SystemExit(rc)
+    print("[OK] run_factor_peer.py completed successfully")
+
+
+def cmd_seed_supply_peer(args):
+    """Delegate to reality_engine/scripts/run_supply_peer.py (subprocess)."""
+    extra: List[str] = []
+    if getattr(args, "universe", None) is not None:
+        extra += ["--universe", str(args.universe)]
+    if getattr(args, "limit", None) is not None:
+        extra += ["--limit", str(args.limit)]
+    rc = _run_peer_subprocess("run_supply_peer.py", extra)
+    if rc != 0:
+        print(f"[FAIL] run_supply_peer.py exited with code {rc}", file=sys.stderr)
+        raise SystemExit(rc)
+    print("[OK] run_supply_peer.py completed successfully")
+
+
+def cmd_run_moe_eod(args):
+    """Delegate to reality_engine/scripts/run_moe_eod.py (subprocess)."""
+    # run_moe_eod currently takes no passthrough args; invoke plain.
+    # If a concurrent lane adds --universe/--limit/--include-derived to the
+    # script, this handler forwards only args that are present in this CLI's
+    # parser (today none) so unknown-arg failures still surface via stderr.
+    present = set(vars(args).keys())
+    filtered: List[str] = []
+    if "universe" in present and getattr(args, "universe", None) is not None:
+        filtered += ["--universe", str(args.universe)]
+    if "include_derived" in present and getattr(args, "include_derived", False):
+        filtered += ["--include-derived"]
+    if "limit" in present and getattr(args, "limit", None) is not None:
+        filtered += ["--limit", str(args.limit)]
+    rc = _run_peer_subprocess("run_moe_eod.py", filtered)
+    if rc != 0:
+        print(f"[FAIL] run_moe_eod.py exited with code {rc}", file=sys.stderr)
+        raise SystemExit(rc)
+    print("[OK] run_moe_eod.py completed successfully")
+
+
+def cmd_seed_peers(args):
+    """Orchestrator: supply -> quality -> policy -> factor -> moe, try/except isolated."""
+    skip_raw = getattr(args, "skip", "") or ""
+    # Normalize --skip a,b,c (comma-separated, case-insensitive, aliases)
+    if isinstance(skip_raw, (list, tuple)):
+        skip_tokens = [str(s).strip() for s in skip_raw if str(s).strip()]
+    else:
+        skip_tokens = [s.strip() for s in str(skip_raw).split(",") if s.strip()]
+    alias = {
+        "supply": "supply", "seed-supply-peer": "supply", "run_supply_peer": "supply", "run-supply-peer": "supply",
+        "quality": "quality", "seed-quality-peer": "quality",
+        "policy": "policy", "seed-policy-peer": "policy",
+        "factor": "factor", "seed-factor-peer": "factor",
+        "moe": "moe", "run-moe-eod": "moe", "run_moe_eod": "moe", "moe-eod": "moe",
+    }
+    skip_set = set()
+    for tok in skip_tokens:
+        key = tok.lower().strip()
+        skip_set.add(alias.get(key, key))
+
+    # Build per-step extra args from shared CLI options (if present)
+    universe = getattr(args, "universe", None)
+    limit = getattr(args, "limit", None)
+    include_derived = getattr(args, "include_derived", False)
+
+    def _args_for_supply() -> List[str]:
+        extra: List[str] = []
+        if universe is not None:
+            extra += ["--universe", str(universe)]
+        if limit is not None:
+            extra += ["--limit", str(limit)]
+        return extra
+
+    def _args_for_quality_policy_factor() -> List[str]:
+        extra: List[str] = []
+        if universe is not None:
+            extra += ["--universe", str(universe)]
+        if include_derived:
+            extra += ["--include-derived"]
+        if limit is not None:
+            extra += ["--limit", str(limit)]
+        return extra
+
+    steps = [
+        ("supply", "run_supply_peer.py", _args_for_supply),
+        ("quality", "run_quality_peer.py", _args_for_quality_policy_factor),
+        ("policy", "run_policy_peer.py", _args_for_quality_policy_factor),
+        ("factor", "run_factor_peer.py", _args_for_quality_policy_factor),
+        ("moe", "run_moe_eod.py", lambda: []),
+    ]
+
+    results: Dict[str, str] = {}
+    print("\n" + "=" * 75)
+    print("  SEED-PEERS ORCHESTRATOR (supply -> quality -> policy -> factor -> moe)")
+    print("=" * 75)
+    if skip_set:
+        print(f"  Skip filter: {', '.join(sorted(skip_set))}")
+    if universe is not None:
+        print(f"  Shared args: --universe {universe}  --limit {limit}  --include-derived {include_derived}")
+
+    for name, script, args_fn in steps:
+        if name in skip_set:
+            print(f"\n[SKIP] {name} ({script}) -- skipped via --skip")
+            results[name] = "SKIPPED"
+            continue
+        extra = args_fn()
+        script_path = _peer_script_path(script)
+        cmd = [sys.executable, str(script_path)] + extra
+        print(f"\n[seed-peers] Step: {name} -> {' '.join(cmd)}")
+        try:
+            result = subprocess.run(cmd)
+            rc = result.returncode
+            if rc == 0:
+                print(f"[OK] {name} ({script}) completed successfully")
+                results[name] = "OK"
+            else:
+                print(f"[FAIL] {name} ({script}) exited with code {rc}", file=sys.stderr)
+                results[name] = f"FAIL:{rc}"
+        except Exception as exc:
+            print(f"[FAIL] {name} ({script}) exception: {exc}", file=sys.stderr)
+            results[name] = "FAIL:exception"
+
+    # Final summary
+    print("\n" + "=" * 75)
+    print("  SEED-PEERS SUMMARY")
+    print("=" * 75)
+    for name, script, _ in steps:
+        status = results.get(name, "UNKNOWN")
+        print(f"  {name:10s} ({script:22s}) : {status}")
+    ok = sum(1 for v in results.values() if v == "OK")
+    skipped = sum(1 for v in results.values() if v == "SKIPPED")
+    failed = sum(1 for v in results.values() if isinstance(v, str) and v.startswith("FAIL"))
+    print(f"\nTotal: {len(steps)} | OK: {ok} | FAILED: {failed} | SKIPPED: {skipped}")
+    if ok == 0 and failed > 0:
+        active = len(steps) - skipped
+        if failed == active and active > 0:
+            print("All active steps FAILED -- orchestrator exiting with error", file=sys.stderr)
+            raise SystemExit(1)
+    elif failed > 0:
+        print(f"{failed} step(s) failed but at least one succeeded -- continuing with OK")
+
+
 # ====================================================================
 # CLI Parser Setup
 # ====================================================================
@@ -916,6 +1611,7 @@ def main():
     p_scr.add_argument("--crisis", action="store_true", default=False, help="Run crisis bargain panic screener")
     p_scr.add_argument("--date", type=str, default=None, help="Target valuation date YYYY-MM-DD")
     p_scr.add_argument("--top-down", action="store_true", default=False, dest="top_down", help="Use top-down funnel Industry≥4 → Moat≥3.5 → ENI≥0 → ROIC>WACC (Phase 6 vertical slice)")
+    p_scr.add_argument("--ensemble", action="store_true", default=False, dest="ensemble", help="Use all-peers weighted ensemble (MoE blend Σ w*norm) + per-scrip learned noise floor (Wave D4)")
     p_scr.add_argument("--dry-run", action="store_true", default=False, help="Top-down dry-run: enrich with metrics but skip filters (diagnostic)")
     p_scr.set_defaults(func=cmd_screen)
 
@@ -931,6 +1627,12 @@ def main():
     p_rda.add_argument("--top-theses", type=int, default=5, help="Number of top theses to synthesize (default: 5)")
     p_rda.add_argument("--date", type=str, default=None, help="Valuation date YYYY-MM-DD")
     p_rda.add_argument("--top-down", action="store_true", default=False, dest="top_down", help="Use top-down funnel + Policy→Transmission→Moat→Verdict template (Phase 6)")
+    p_rda.add_argument("--ensemble", action="store_true", default=False, dest="ensemble", help="Use all-peers weighted ensemble (MoE blend) + per-candidate MoE activation (Wave D4)")
+    p_rda.add_argument("--investor-majority", type=str, default="all", dest="investor_majority",
+                       choices=["promoter", "FII", "DII", "retail", "all"],
+                       help="Investor-majority cohort that drives price (default: all)")
+    p_rda.add_argument("--temperature", type=float, default=0.4, dest="temperature",
+                       help="MoE gating temperature 0=exploit .. 1=explore (default: 0.4)")
     p_rda.set_defaults(func=cmd_run_daily_alpha)
 
     # 5. trace-causal-chain
@@ -996,8 +1698,75 @@ def main():
     p_bf.add_argument("--days", type=int, default=25, help="Number of sessions (default: 25)")
     p_bf.set_defaults(func=cmd_backfill)
 
+    # bulk fundamentals fetch
+    p_ff = subparsers.add_parser(
+        "fetch-fundamentals",
+        help="Bulk-fetch 5y fundamentals for a universe via rate-limited worker pool",
+    )
+    p_ff.add_argument("--top", type=int, default=200, help="Max companies to fetch (default: 200)")
+    p_ff.add_argument("--workers", type=int, default=4, help="Concurrent worker threads (default: 4)")
+    p_ff.add_argument("--rate-limit", type=float, default=0.5, help="Seconds to sleep between submissions (default: 0.5)")
+    p_ff.add_argument("--universe", type=str, default="all", choices=["all", "nifty200"], help="Company universe (default: all)")
+    p_ff.add_argument("--no-persist", action="store_true", default=False, help="Fetch but do not write to DB")
+    p_ff.set_defaults(func=cmd_fetch_fundamentals)
+
+    # bulk raw official filing discovery (Screener link discovery layer only)
+    p_df = subparsers.add_parser(
+        "discover-filings",
+        help="Discover raw official NSE/BSE filing links via Screener (NO table copying; only official URLs)",
+    )
+    p_df.add_argument("--symbol", type=str, default=None, help="Single symbol e.g. RELIANCE")
+    p_df.add_argument("--bse-code", type=str, default=None, help="BSE scrip code (optional, speeds BSE match)")
+    p_df.add_argument("--sample", type=int, default=0, help="Safe smoke-test: process N symbols (drawn from outside Nifty200 by default)")
+    p_df.add_argument("--standalone", action="store_true", default=False, help="Use Screener standalone (non-consolidated) page")
+    p_df.add_argument("--rate-limit", type=float, default=1.0, help="Seconds between Screener requests (default: 1.0)")
+    p_df.add_argument("--persist", action="store_true", default=False, help="Register discovered links into corporate_documents")
+    p_df.set_defaults(func=cmd_discover_filings)
+
+    # bulk raw official filing download + archive
+    p_fch = subparsers.add_parser(
+        "fetch-filings",
+        help="Discover AND archive raw official NSE/BSE filings (PDF/XBRL) with provenance",
+    )
+    p_fch.add_argument("--symbol", type=str, default=None, help="Single symbol e.g. RELIANCE")
+    p_fch.add_argument("--bse-code", type=str, default=None, help="BSE scrip code (optional)")
+    p_fch.add_argument("--sample", type=int, default=0, help="Safe smoke-test: process N symbols (outside Nifty200 by default)")
+    p_fch.add_argument("--standalone", action="store_true", default=False, help="Use Screener standalone (non-consolidated) page")
+    p_fch.add_argument("--workers", type=int, default=4, help="Concurrent download threads (default: 4)")
+    p_fch.add_argument("--rate-limit", type=float, default=0.8, help="Seconds between requests (default: 0.8)")
+    p_fch.add_argument("--persist", action="store_true", default=False, help="Persist archived filings + provenance to corporate_documents")
+    p_fch.add_argument("--from-db", action="store_true", default=False,
+                       help="Bulk mode: archive already-discovered links from corporate_documents (no re-discovery)")
+    p_fch.add_argument("--max-links", type=int, default=0, help="Bulk mode cap: max links to archive (0=unlimited)")
+    p_fch.add_argument("--doc-type", type=str, default=None,
+                       help="Bulk mode filter: ANNUAL_REPORT | CONCALL_TRANSCRIPT | INVESTOR_PRESENTATION | FINANCIAL_RESULT | OTHER_FILING")
+    p_fch.set_defaults(func=cmd_fetch_filings)
+
+    # bulk NSE corporate actions ingestion
+    p_ca = subparsers.add_parser(
+        "fetch-corporate-actions",
+        help="Ingest NSE corporate actions (bonus/split/rights/buyback/merger/demerger/dividend) for full universe",
+    )
+    p_ca.add_argument("--from-date", type=str, default="2023-01-01", help="Start date YYYY-MM-DD (default: 2023-01-01)")
+    p_ca.add_argument("--slice-days", type=int, default=180, help="Date-range slice size to avoid API limits (default: 180)")
+    p_ca.add_argument("--no-persist", action="store_true", default=False, help="Fetch but do not write to DB")
+    p_ca.set_defaults(func=cmd_fetch_corporate_actions)
+
+    # corporate status flags (delisting / NCLT / suspension)
+    p_cs = subparsers.add_parser(
+        "fetch-corporate-status",
+        help="Compose delisting / NCLT (insolvency) status flags from derived + announcement-scan signals",
+    )
+    p_cs.add_argument("--no-persist", action="store_true", default=False, help="Build but do not write to DB")
+    p_cs.set_defaults(func=cmd_fetch_corporate_status)
+
     p_chk = subparsers.add_parser("verify-checkpoint", help="Validate Top 200 reality checkpoint")
     p_chk.set_defaults(func=cmd_verify_checkpoint)
+
+    p_audit = subparsers.add_parser("audit-data", help="Read-only data pipeline readiness audit (freshness, coverage, gaps, funnel tables)")
+    p_audit.add_argument("--net", action="store_true", default=False, help="Also probe NSE/BSE ingestion reachability")
+    p_audit.add_argument("--json", action="store_true", default=False, dest="json", help="Emit machine-readable JSON")
+    p_audit.set_defaults(func=cmd_audit_data)
 
     # 13. listen-telegram
     p_tg_listen = subparsers.add_parser("listen-telegram", help="Start Telegram MTProto listener (live or mock)")
@@ -1073,6 +1842,185 @@ def main():
     p_dist2.add_argument("--youtube", type=int, default=20, help="YouTube chunks")
     p_dist2.add_argument("--concall", type=int, default=4, help="Concall chunks")
     p_dist2.set_defaults(func=cmd_run_distillation)
+
+    # 21. fetch-macro (second-tier macro PDF peer data)
+    p_fm = subparsers.add_parser(
+        "fetch-macro",
+        help="Fetch macro-policy PDFs (Central/State Budgets, PIB circulars, RBI reports) into raw_documents",
+    )
+    p_fm.add_argument("--source", type=str, default="all",
+                      choices=["central", "states", "pib", "rbi", "all"],
+                      help="Macro source subset (default: all)")
+    p_fm.add_argument("--years", type=str, default="2024-25,2025-26",
+                      help="Comma-separated fiscal years (default: 2024-25,2025-26)")
+    p_fm.add_argument("--state-filter", type=str, default=None,
+                      help="Comma-separated state codes (UP,Tamil_Nadu,Maharashtra,Karnataka,Telangana,Gujarat,Haryana,Andhra_Pradesh)")
+    p_fm.add_argument("--workers", type=int, default=4, help="Reserved (sequential fetch; rate-limited)")
+    p_fm.add_argument("--pib-limit", type=int, default=10, help="Max PIB circulars to fetch")
+    p_fm.add_argument("--since-date", type=str, default=None, help="PIB since-date filter YYYY-MM-DD")
+    p_fm.add_argument("--rate-limit", type=float, default=1.0, help="Seconds between requests (default 1.0)")
+    p_fm.add_argument("--dry-run", action="store_true", default=False,
+                      help="Plan URLs and report counts without downloading or writing to DB")
+    p_fm.add_argument("--ingest", action="store_true", default=False,
+                      help="After download, ingest each PDF into document_chunks + FTS (dense substrate). "
+                           "Ignored when --dry-run is set.")
+    p_fm.set_defaults(func=cmd_fetch_macro)
+
+    # Alias: fetch-headless (AGENTS.md compat — headless macro feed fetch)
+    p_fh = subparsers.add_parser(
+        "fetch-headless",
+        help="Alias for fetch-macro (headless macro PDF feeds: budgets/PIB/RBI)",
+    )
+    p_fh.add_argument("--source", type=str, default="all",
+                      choices=["central", "states", "pib", "rbi", "all"],
+                      help="Macro source subset (default: all)")
+    p_fh.add_argument("--years", type=str, default="2024-25,2025-26",
+                      help="Comma-separated fiscal years (default: 2024-25,2025-26)")
+    p_fh.add_argument("--state-filter", type=str, default=None, help="Comma-separated state codes")
+    p_fh.add_argument("--workers", type=int, default=4, help="Reserved (sequential fetch)")
+    p_fh.add_argument("--pib-limit", type=int, default=10, help="Max PIB circulars to fetch")
+    p_fh.add_argument("--since-date", type=str, default=None, help="PIB since-date filter YYYY-MM-DD")
+    p_fh.add_argument("--rate-limit", type=float, default=1.0, help="Seconds between requests")
+    p_fh.add_argument("--dry-run", action="store_true", default=False,
+                      help="Plan URLs and report counts without downloading or writing to DB")
+    p_fh.add_argument("--ingest", action="store_true", default=False,
+                      help="After download, ingest each PDF into document_chunks + FTS (dense substrate). "
+                           "Ignored when --dry-run is set.")
+    p_fh.set_defaults(func=cmd_fetch_macro)
+
+    # 22. process-macro (scan MACRO_PDFS_DIR and ingest into dense substrate)
+    p_pm = subparsers.add_parser(
+        "process-macro",
+        help="Scan MACRO_PDFS_DIR recursively for *.pdf and ingest into document_chunks + FTS (idempotent)",
+    )
+    p_pm.add_argument("--dry-run", action="store_true", default=False,
+                     help="List files that would be ingested without ingesting")
+    p_pm.add_argument("--directory", type=str, default=None,
+                      help="Custom macro PDF directory to scan (default: MACRO_PDFS_DIR)")
+    p_pm.set_defaults(func=cmd_process_macro)
+
+    # 23. rank-models (Wave D sparse MoE per-stock / per-investor-majority lens rankings)
+    p_rm = subparsers.add_parser(
+        "rank-models",
+        help="Show per-stock / per-investor-majority MoE lens rankings (model_explainer_rankings)",
+    )
+    p_rm.add_argument("--symbol", type=str, required=True, help="Ticker symbol, e.g. HAL")
+    p_rm.add_argument(
+        "--investor-majority", type=str, default="all",
+        choices=["promoter", "FII", "DII", "retail", "all"],
+        help="Investor majority cohort that drives price (default: all)",
+    )
+    p_rm.set_defaults(func=cmd_rank_models)
+
+    # 24. spawn-event-graph (Wave D2 transient event-graph spawner)
+    p_seg = subparsers.add_parser(
+        "spawn-event-graph",
+        help="Spawn a transient macro/event graph (macro_events + ripple_effects DAG) into the dense substrate",
+    )
+    p_seg.add_argument("--event", type=str, default="US_TARIFF_TEXTILE_RELIEF",
+                       help="Transient event id to spawn (default: US_TARIFF_TEXTILE_RELIEF)")
+    p_seg.add_argument("--max-hops", type=int, default=3, dest="max_hops",
+                       help="Max ripple depth to trace after spawn (default: 3)")
+    p_seg.set_defaults(func=cmd_spawn_event_graph)
+
+    # 25. correct-eod (Wave D3 continuous self-correction: EOD batch)
+    p_ce = subparsers.add_parser(
+        "correct-eod",
+        help="Run EOD self-correction batch (learned noise floor + MoE lens re-rank + substrate drift)",
+    )
+    p_ce.add_argument("--universe", type=str, default="nifty200", help="Universe selector (default: nifty200)")
+    p_ce.add_argument("--date", type=str, default=None, help="Closed-session EOD date YYYY-MM-DD (default: latest)")
+    p_ce.add_argument("--dry-run", action="store_true", default=False, dest="dry_run", help="Compute but do not persist corrections")
+    p_ce.add_argument("--update-substrate", action="store_true", default=False, dest="update_substrate", help="Nudge moat trajectory toward realized regime on drift")
+    p_ce.add_argument("--symbols", type=str, default=None, help="Comma-separated symbol override (default: whole universe)")
+    p_ce.set_defaults(func=cmd_correct_eod)
+
+    # 26. correct-event (Wave D3 event-driven correction)
+    p_cv = subparsers.add_parser(
+        "correct-event",
+        help="Run event-driven self-correction (refresh transient graph + re-rank impacted lenses)",
+    )
+    p_cv.add_argument("--event", type=str, required=True, help="Event id e.g. US_TARIFF_TEXTILE_RELIEF")
+    p_cv.add_argument("--symbols", type=str, default=None, help="Comma-separated impacted symbols override")
+    p_cv.add_argument("--dry-run", action="store_true", default=False, dest="dry_run", help="Compute but do not persist corrections")
+    p_cv.set_defaults(func=cmd_correct_event)
+
+    # 27. noise-floor (Wave D3 per-scrip learned noise floor)
+    p_nf = subparsers.add_parser(
+        "noise-floor",
+        help="Show the vol/liquidity-adaptive per-scrip learned noise floor for a symbol",
+    )
+    p_nf.add_argument("--symbol", type=str, required=True, help="Ticker symbol e.g. TITAGARH")
+    p_nf.add_argument("--turnover", type=float, default=None, help="Turnover (lacs) override for the adaptive stub")
+    p_nf.add_argument("--change", type=float, default=None, help="Change %% override for the adaptive stub")
+    p_nf.set_defaults(func=cmd_noise_floor)
+
+    # 28. seed-quality-peer (lane-code-cli: Business Quality peer via run_quality_peer.py)
+    p_qp = subparsers.add_parser(
+        "seed-quality-peer",
+        help="Seed Business Quality peer (moat_evaluations + business_model_profiles) via run_quality_peer.py",
+    )
+    p_qp.add_argument("--universe", type=str, default="nifty200", choices=["nifty200", "nifty500", "all"],
+                      help="Universe to seed (default: nifty200)")
+    p_qp.add_argument("--include-derived", action="store_true", default=False, dest="include_derived",
+                      help="Include derived industry-arch mapping (forwarded to script)")
+    p_qp.add_argument("--limit", type=int, default=None, help="Limit symbols to seed (forwarded to script)")
+    p_qp.set_defaults(func=cmd_seed_quality_peer)
+
+    # 29. seed-policy-peer (lane-code-cli: Policy Macro peer via run_policy_peer.py)
+    p_pp = subparsers.add_parser(
+        "seed-policy-peer",
+        help="Seed Policy Macro peer (regulatory_political_risks + ENI) via run_policy_peer.py",
+    )
+    p_pp.add_argument("--universe", type=str, default="nifty200", choices=["nifty200", "nifty500", "all"],
+                      help="Universe to seed (default: nifty200)")
+    p_pp.add_argument("--include-derived", action="store_true", default=False, dest="include_derived",
+                      help="Include derived mapping (forwarded to script)")
+    p_pp.add_argument("--limit", type=int, default=None, help="Limit symbols to seed (forwarded to script)")
+    p_pp.set_defaults(func=cmd_seed_policy_peer)
+
+    # 30. seed-factor-peer (lane-code-cli: Factor/Statistical peer via run_factor_peer.py)
+    p_fp = subparsers.add_parser(
+        "seed-factor-peer",
+        help="Seed Factor/Statistical peer (financial_metrics) via run_factor_peer.py",
+    )
+    p_fp.add_argument("--universe", type=str, default="nifty200", choices=["nifty200", "nifty500", "all"],
+                      help="Universe to seed (default: nifty200)")
+    p_fp.add_argument("--include-derived", action="store_true", default=False, dest="include_derived",
+                      help="Include derived mapping (forwarded to script)")
+    p_fp.add_argument("--limit", type=int, default=None, help="Limit symbols to seed (forwarded to script)")
+    p_fp.set_defaults(func=cmd_seed_factor_peer)
+
+    # 31. seed-supply-peer (lane-code-cli: Supply Chain peer via run_supply_peer.py)
+    p_sp = subparsers.add_parser(
+        "seed-supply-peer",
+        help="Seed Supply Chain peer (geographic_exposure + ripple_effects) via run_supply_peer.py",
+    )
+    p_sp.add_argument("--universe", type=str, default="nifty200", choices=["nifty200", "nifty500", "all"],
+                      help="Universe to seed (default: nifty200)")
+    p_sp.add_argument("--limit", type=int, default=None, help="Limit symbols to seed (forwarded to script)")
+    p_sp.set_defaults(func=cmd_seed_supply_peer)
+
+    # 32. run-moe-eod (lane-code-cli: MoE seeding & EOD correction via run_moe_eod.py)
+    p_moe = subparsers.add_parser(
+        "run-moe-eod",
+        help="Run MoE seeding & EOD correction loop (model_explainer_rankings + lens_activation_log) via run_moe_eod.py",
+    )
+    p_moe.set_defaults(func=cmd_run_moe_eod)
+
+    # 33. seed-peers orchestrator (lane-code-cli: supply -> quality -> policy -> factor -> moe)
+    p_peers = subparsers.add_parser(
+        "seed-peers",
+        help="Orchestrator: seed supply -> quality -> policy -> factor -> moe (subprocess, per-step OK/FAIL, continue on failure)",
+    )
+    p_peers.add_argument("--universe", type=str, default="nifty200", choices=["nifty200", "nifty500", "all"],
+                         help="Universe forwarded to peers (default: nifty200)")
+    p_peers.add_argument("--include-derived", action="store_true", default=False, dest="include_derived",
+                         help="Forward --include-derived to quality/policy/factor steps")
+    p_peers.add_argument("--limit", type=int, default=None, help="Forward --limit to peers")
+    p_peers.add_argument("--skip", type=str, default="",
+                         help="Comma-separated steps to skip: supply,quality,policy,factor,moe (e.g. --skip supply,moe)")
+    p_peers.set_defaults(func=cmd_seed_peers)
 
     parsed_args = parser.parse_args()
     if not parsed_args.command:

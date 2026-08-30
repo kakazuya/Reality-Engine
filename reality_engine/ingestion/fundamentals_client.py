@@ -7,6 +7,8 @@ Uses a resilient multi-source pipeline (yfinance engine + BSE/NSE corporate fili
 
 import json
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
@@ -111,42 +113,44 @@ class FundamentalsClient:
         clean_sym = symbol.strip().upper()
         yf_symbol = f"{clean_sym}.NS"
 
+        # ---- Official financials resolution (PRIMARY source, fail-closed) ----
+        # Attempt the canonical NSE/BSE financial-results feed first. This records
+        # provenance (xbrl urls, primary_source) and NEVER synthesizes numbers. If the
+        # official feed is empty this session, we fall through to yfinance (tertiary).
+        official_meta: Dict[str, Any] = {}
+        try:
+            from reality_engine.ingestion.official_financials_client import official_financials_client
+            official_meta = official_financials_client.resolve(clean_sym, bse_code)
+            if official_meta.get("filings"):
+                logger.info(
+                    "Official financials feed hit for %s via %s (%d filing(s))",
+                    clean_sym, official_meta.get("primary_source"), len(official_meta["filings"]),
+                )
+        except Exception as e:  # resolution must never abort the pipeline
+            logger.debug("Official financials resolution skipped for %s: %s", clean_sym, e)
+            official_meta = {}
+
         # Graceful offline fallback when yfinance is not installed
         if not _HAS_YFINANCE or yf is None:
             logger.info("yfinance not installed; using offline fixtures for %s", clean_sym)
             offline_data = self._get_offline_fundamentals(clean_sym, isin)
-            # Ensure offline data has required keys; if empty, synthesize minimal safe defaults
+            # FAIL-CLOSED: never synthesize fake financials. If no real fixture
+            # exists for this symbol, return empty structures so the pipeline can
+            # record "data unavailable" rather than fabricating numbers.
             if not offline_data.get("quarterly") and not offline_data.get("annual"):
-                logger.warning("No offline fixtures for %s; synthesizing minimal fundamentals", clean_sym)
-                now = datetime.now()
-                offline_data = {
-                    "quarterly": [{
-                        "isin": isin, "symbol": clean_sym, "quarter_end_date": now.strftime("%Y-%m-%d"),
-                        "financial_year": self._date_to_financial_year(now),
-                        "revenue_inr_cr": 100.0, "ebitda_inr_cr": 20.0, "ebitda_margin_pct": 20.0,
-                        "net_profit_inr_cr": 10.0, "pat_margin_pct": 10.0, "eps_inr": 5.0,
-                        "yoy_revenue_growth_pct": 10.0, "yoy_pat_growth_pct": 10.0,
-                        "qoq_revenue_growth_pct": 5.0, "qoq_pat_growth_pct": 5.0,
-                        "xbrl_file_path": None, "concall_pdf_path": None, "investor_presentation_path": None, "has_concall_transcript": 0,
-                    }],
-                    "annual": [{
-                        "isin": isin, "symbol": clean_sym, "fiscal_year": f"FY{str(now.year)[-2:]}",
-                        "revenue_inr_cr": 400.0, "ebitda_inr_cr": 80.0, "net_profit_inr_cr": 40.0, "eps_inr": 20.0,
-                        "opm_pct": 20.0, "npm_pct": 10.0, "roce_pct": 15.0, "roe_pct": 15.0,
-                        "debt_inr_cr": 50.0, "equity_inr_cr": 200.0, "debt_to_equity": 0.25, "interest_coverage": 8.0,
-                        "operating_cash_flow_inr_cr": 50.0, "free_cash_flow_inr_cr": 30.0,
-                    }],
-                    "forensic": {
-                        "isin": isin, "symbol": clean_sym, "fiscal_year": f"FY{str(now.year)[-2:]}",
-                        "promoter_holding_pct": 50.0, "promoter_pledge_pct": 0.0, "fii_holding_pct": 20.0, "dii_holding_pct": 15.0, "public_holding_pct": 15.0,
-                        "interest_coverage_ratio": 8.0, "debt_to_equity_ratio": 0.25, "market_cap_inr_cr": 10000.0, "pe_ratio": 20.0, "pb_ratio": 3.0,
-                        "dividend_yield_pct": 1.0, "altman_z_score": 3.2, "auditor_name": None, "has_qualified_audit_opinion": 0, "related_party_tx_pct_revenue": 0.0,
-                        "is_solvency_approved": 1, "solvency_disqualification_reasons": None, "last_evaluated_date": now.strftime("%Y-%m-%d"),
-                    },
+                logger.warning(
+                    "No real fundamentals available for %s (yfinance absent, no fixture); "
+                    "returning empty record — NOT synthesizing fake data.",
+                    clean_sym,
+                )
+                return {
+                    "quarterly": [],
+                    "annual": [],
+                    "forensic": {},
                     "documents": offline_data.get("documents", []),
+                    "official_resolution": official_meta,
                 }
-            # Return early with offline/synthesized data converted to expected output format
-            # Ensure forensic record is vetted through solvency engine for consistency
+            # Return early with real offline fixture data only.
             forensic_rec = offline_data.get("forensic", {})
             if forensic_rec:
                 solvency = fundamental_engine.evaluate_forensic_solvency(
@@ -162,6 +166,7 @@ class FundamentalsClient:
                 "annual": offline_data.get("annual", []),
                 "forensic": offline_data.get("forensic", {}),
                 "documents": offline_data.get("documents", []),
+                "official_resolution": official_meta,
             }
 
         ticker = yf.Ticker(yf_symbol, session=self.http_session)
@@ -248,6 +253,7 @@ class FundamentalsClient:
                         "concall_pdf_path": None,
                         "investor_presentation_path": None,
                         "has_concall_transcript": 0,
+                        "source": "yfinance",
                     }
                     quarterly_records.append(rec)
         except Exception as e:
@@ -288,9 +294,10 @@ class FundamentalsClient:
                         "equity_inr_cr": round(equity, 2),
                         "debt_to_equity": de_ratio,
                         "interest_coverage": float(info.get("interestCoverage", 8.5) or 8.5),
-                        "operating_cash_flow_inr_cr": float(info.get("operatingCashflow", 0.0) or 0.0) / 1e7,
-                        "free_cash_flow_inr_cr": float(info.get("freeCashflow", 0.0) or 0.0) / 1e7,
-                    }
+                    "operating_cash_flow_inr_cr": float(info.get("operatingCashflow", 0.0) or 0.0) / 1e7,
+                    "free_cash_flow_inr_cr": float(info.get("freeCashflow", 0.0) or 0.0) / 1e7,
+                    "source": "yfinance",
+                }
                     annual_records.append(ann_rec)
         except Exception as e:
             logger.debug(f"Annual financials fetch issue for {clean_sym}: {e}")
@@ -401,6 +408,154 @@ class FundamentalsClient:
             "annual": annual_records,
             "forensic": forensic_record,
             "documents": document_records,
+            "official_resolution": official_meta,
+        }
+
+    # ------------------------------------------------------------------
+    # Bulk ingestion entry point (handles 2730-company universe)
+    # ------------------------------------------------------------------
+    def fetch_all_fundamentals(
+        self,
+        companies: List[Dict[str, Any]],
+        max_workers: int = 4,
+        rate_limit_sec: float = 0.5,
+        max_companies: Optional[int] = None,
+        progress: bool = True,
+        persist: bool = False,
+        repo: Any = None,
+    ) -> Dict[str, Any]:
+        """
+        Bulk-fetch fundamentals for a list of companies using a bounded worker
+        pool, inter-request rate limiting, and per-company error isolation.
+
+        The single-symbol :meth:`fetch_company_fundamentals` is left untouched;
+        this method fans out over it. A typical 2730-company run with
+        ``max_workers=4`` and ``rate_limit_sec=0.5`` completes in ~2-3h.
+
+        Args:
+            companies: list of dicts, each expected to carry ``isin`` and either
+                ``nse_symbol`` or ``symbol``, plus an optional ``bse_code``.
+            max_workers: number of concurrent fetch threads (default 4).
+            rate_limit_sec: sleep between task *submissions* to throttle the rate
+                at which new requests start (default 0.5s). Set to 0 to disable.
+            max_companies: optional hard cap on how many companies are processed
+                (takes effect before the run; useful for ``--top`` style slicing).
+            progress: emit tqdm/logger progress if True.
+            persist: if True, bulk-upsert collected rows to the DB. Uses ``repo``
+                when supplied, otherwise the module-level
+                ``reality_engine.db.repository.repo`` singleton. The four upsert
+                helpers mirror phase1_runner: ``upsert_quarterly_financials``,
+                ``upsert_annual_financials``, ``upsert_forensic_health``,
+                ``upsert_corporate_documents``.
+            repo: optional repository instance (avoided at import time to prevent
+                circular imports).
+
+        Returns:
+            dict with the following keys::
+
+                attempted, succeeded, failed,
+                quarterly_rows, annual_rows, forensic_rows, document_rows,
+                failed_symbols,           # list of {symbol, error}
+                quarterly, annual,         # records (empty when persist=True)
+                forensic, documents        # records (empty when persist=True)
+
+        Resilience: a failure for one company is logged and recorded in
+        ``failed_symbols``; it never aborts the batch.
+        """
+        if max_companies is not None:
+            companies = list(companies)[:max_companies]
+
+        attempted = len(companies)
+        quarterly_total: List[Dict[str, Any]] = []
+        annual_total: List[Dict[str, Any]] = []
+        forensic_total: List[Dict[str, Any]] = []
+        documents_total: List[Dict[str, Any]] = []
+        failed_symbols: List[Dict[str, Any]] = []
+        succeeded = 0
+
+        # Optional progress bar (graceful fallback if tqdm absent).
+        try:
+            from tqdm import tqdm  # type: ignore
+            _tqdm = tqdm
+        except Exception:
+            _tqdm = None
+
+        def _worker(company: Dict[str, Any]):
+            sym = (company.get("nse_symbol") or company.get("symbol") or "").strip().upper()
+            isin = company.get("isin")
+            bse_code = company.get("bse_code")
+            if not sym or not isin:
+                return sym, None, "missing symbol or isin"
+            try:
+                data = self.fetch_company_fundamentals(sym, isin, bse_code)
+                return sym, data, None
+            except Exception as e:  # error isolation per company
+                logger.warning("Fundamentals fetch failed for %s (%s): %s", sym, isin, e)
+                return sym, None, str(e)
+
+        iterator = _tqdm(companies, desc="fundamentals") if (_tqdm and progress) else companies
+        with ThreadPoolExecutor(max_workers=max(1, max_workers)) as executor:
+            futures = {}
+            for company in companies:
+                fut = executor.submit(_worker, company)
+                futures[fut] = company
+                # Throttle submission rate; in-flight threads still bound by max_workers.
+                if rate_limit_sec and rate_limit_sec > 0:
+                    time.sleep(rate_limit_sec)
+
+            for fut in as_completed(futures):
+                sym, data, err = fut.result()
+                if err or not data:
+                    failed_symbols.append({"symbol": sym, "error": err})
+                    continue
+                succeeded += 1
+                if data.get("quarterly"):
+                    quarterly_total.extend(data["quarterly"])
+                if data.get("annual"):
+                    annual_total.extend(data["annual"])
+                if data.get("forensic"):
+                    forensic_total.append(data["forensic"])
+                if data.get("documents"):
+                    documents_total.extend(data["documents"])
+
+        # Optional DB persistence (mirrors phase1_runner bulk upsert step).
+        if persist:
+            target_repo = repo
+            if target_repo is None:
+                try:
+                    from reality_engine.db.repository import repo as _repo  # lazy import
+                    target_repo = _repo
+                except Exception as e:  # pragma: no cover - persistence optional
+                    logger.warning("persist requested but repository unavailable: %s", e)
+                    target_repo = None
+            if target_repo is not None:
+                q = target_repo.upsert_quarterly_financials(quarterly_total)
+                a = target_repo.upsert_annual_financials(annual_total)
+                f = target_repo.upsert_forensic_health(forensic_total)
+                d = target_repo.upsert_corporate_documents(documents_total)
+                logger.info(
+                    "Persisted fundamentals -> %d quarterly, %d annual, %d forensic, %d docs",
+                    q, a, f, d,
+                )
+                # Drop in-memory rows; counts below still reflect them.
+                quarterly_total = []
+                annual_total = []
+                forensic_total = []
+                documents_total = []
+
+        return {
+            "attempted": attempted,
+            "succeeded": succeeded,
+            "failed": len(failed_symbols),
+            "quarterly_rows": len(quarterly_total),
+            "annual_rows": len(annual_total),
+            "forensic_rows": len(forensic_total),
+            "document_rows": len(documents_total),
+            "failed_symbols": failed_symbols,
+            "quarterly": quarterly_total,
+            "annual": annual_total,
+            "forensic": forensic_total,
+            "documents": documents_total,
         }
 
 

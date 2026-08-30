@@ -47,7 +47,14 @@ class HistoricalBackfillManager:
             date_str = day.strftime("%Y-%m-%d")
             logger.info("Processing Bhavcopy for session: %s", date_str)
 
-            df_bhav = self.nse.fetch_bhavcopy(day)
+            # Isolate per-day failures so one bad/malformed session cannot abort
+            # the entire multi-day backfill run.
+            try:
+                df_bhav = self.nse.fetch_bhavcopy(day)
+            except Exception as e:
+                logger.warning("Bhavcopy fetch raised for %s (%s). Skipping session.", date_str, e)
+                continue
+
             if df_bhav is None or df_bhav.empty:
                 logger.warning("Bhavcopy empty for %s, skipping", date_str)
                 continue
@@ -161,7 +168,11 @@ class HistoricalBackfillManager:
 
         # 2. Ingest Index Bhavcopy for the most recent trading days
         for day in trading_days[-5:]:
-            df_idx = self.nse.fetch_index_bhavcopy(day)
+            try:
+                df_idx = self.nse.fetch_index_bhavcopy(day)
+            except Exception as e:
+                logger.warning("Index Bhavcopy fetch failed for %s (%s); skipping day.", day.strftime("%Y-%m-%d"), e)
+                continue
             if df_idx is not None and not df_idx.empty:
                 idx_records: List[Dict[str, Any]] = []
                 for _, r in df_idx.iterrows():

@@ -23,7 +23,7 @@ class DatabaseManager:
         """Create an optimized SQLite connection with configured PRAGMAs."""
         conn = sqlite3.connect(
             str(self.db_path),
-            timeout=10.0,
+            timeout=30.0,
             check_same_thread=False
         )
         conn.row_factory = sqlite3.Row
@@ -69,6 +69,129 @@ class DatabaseManager:
                 conn.execute("ALTER TABLE telegram_posts ADD COLUMN button_links_json TEXT")
         except Exception as exc:
             # Table may not exist yet (fresh DB handled by schema.sql); ignore.
+            pass
+        # Provenance columns for the corporate_documents registry (raw official
+        # exchange filings discovered via Screener). Idempotent across runs.
+        try:
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(corporate_documents)").fetchall()}
+            for new_col in ("source", "discovery_source"):
+                if new_col not in cols:
+                    conn.execute(f"ALTER TABLE corporate_documents ADD COLUMN {new_col} TEXT")
+        except Exception:
+            # Fresh DB: schema.sql already creates these columns; ignore.
+            pass
+        # Idempotent UNIQUE index on corporate_documents.source_url so that
+        # repository.upsert_corporate_documents ON CONFLICT(source_url) works on
+        # pre-existing databases built before the UNIQUE constraint landed in schema.sql.
+        try:
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_corp_docs_source_url "
+                "ON corporate_documents(source_url)"
+            )
+        except Exception:
+            # Pre-existing rows may carry duplicate or NULL source_url; never crash init_db.
+            pass
+        # Defensive idempotent creation of corporate_status_flags for very old DB files.
+        # Fresh installs already get this table (CREATE TABLE IF NOT EXISTS) from schema.sql.
+        try:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS corporate_status_flags ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, isin TEXT, symbol TEXT NOT NULL, "
+                "status_type TEXT NOT NULL, source TEXT NOT NULL, detail TEXT, "
+                "detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+                "UNIQUE(symbol, status_type, source))"
+            )
+        except Exception:
+            pass
+        # Provenance columns on financials tables (where each number came from).
+        for tbl in ("quarterly_financials", "annual_financials"):
+            try:
+                tcols = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})").fetchall()}
+                if "source" not in tcols:
+                    conn.execute(f"ALTER TABLE {tbl} ADD COLUMN source TEXT DEFAULT 'yfinance'")
+            except Exception:
+                pass
+
+        # Raw document registry (macro PDF audit trail). Ensure table + columns +
+        # UNIQUE source_url index so repository.upsert_raw_document dedups cleanly.
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS raw_documents (
+                    doc_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    source_type TEXT NOT NULL,
+                    published_date TEXT NOT NULL,
+                    fiscal_period TEXT,
+                    source_url TEXT,
+                    creator_or_ministry TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    sha256_hash TEXT,
+                    local_file_path TEXT,
+                    file_size_bytes INTEGER
+                )
+                """
+            )
+            rcols = {r[1] for r in conn.execute("PRAGMA table_info(raw_documents)").fetchall()}
+            for col, ddl in (
+                ("source_url", "TEXT"),
+                ("creator_or_ministry", "TEXT"),
+                ("sha256_hash", "TEXT"),
+                ("local_file_path", "TEXT"),
+                ("file_size_bytes", "INTEGER"),
+            ):
+                if col not in rcols:
+                    try:
+                        conn.execute(f"ALTER TABLE raw_documents ADD COLUMN {col} {ddl}")
+                    except Exception:
+                        pass
+            # Idempotent UNIQUE constraints (created once; harmless if they exist).
+            try:
+                conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rawdoc_url ON raw_documents(source_url)")
+            except Exception:
+                pass
+            try:
+                conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rawdoc_hash ON raw_documents(sha256_hash)")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        # Decay config: ensure table + seed macro/policy categories with computed lambda.
+        try:
+            import math
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pruning_decay_config (
+                    category TEXT PRIMARY KEY,
+                    half_life_months REAL NOT NULL,
+                    lambda REAL,
+                    significance_floor REAL DEFAULT 5.0,
+                    prob_cutoff REAL DEFAULT 0.08
+                )
+                """
+            )
+            _decay_seed = [
+                ("State Budget", 12),
+                ("PIB Circular", 3),
+                ("RBI Report / Economic Survey", 6),
+                ("Economic Survey", 12),
+                ("Union Budget / Tax Reform", 12),
+                ("Analyst Commentary / YouTube", 3),
+                ("Quarterly Concall / MPC Stance", 6),
+            ]
+            for cat, hl in _decay_seed:
+                conn.execute(
+                    "INSERT OR IGNORE INTO pruning_decay_config (category, half_life_months) VALUES (?, ?)",
+                    (cat, hl),
+                )
+                lam = math.log(2) / hl
+                conn.execute(
+                    "UPDATE pruning_decay_config SET lambda=? WHERE category=? AND (lambda IS NULL OR abs(lambda-?)>0.0001)",
+                    (lam, cat, lam),
+                )
+        except Exception:
             pass
 
     def vacuum(self) -> None:
