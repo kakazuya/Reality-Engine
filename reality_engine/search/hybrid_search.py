@@ -97,7 +97,7 @@ class HybridSearchEngine:
             norm = math.sqrt(sum(x * x for x in vector)) or 1.0
             return [x / norm for x in vector]
 
-    def _pgvector_search(self, query: str, symbol: Optional[str], top_k: int) -> Optional[list[dict[str, Any]]]:
+    def _pgvector_search(self, query: str, symbol: Optional[str], top_k: int, industry_id: Optional[int] = None) -> Optional[list[dict[str, Any]]]:
         """Try PG ivfflat cosine 1536. Returns None if PG unavailable/fails so caller falls back."""
         if not self.pg_dsn:
             return None
@@ -126,6 +126,9 @@ class HybridSearchEngine:
                 # Symbol stored in document_chunks.symbol or via doc join; we filter on symbol column for partitioned table
                 sql += " AND symbol = %s"
                 params.append(symbol)
+            if industry_id is not None:
+                sql += " AND industry_id = %s"
+                params.append(industry_id)
             sql += " ORDER BY embedding <=> %s::vector LIMIT %s"
             params.extend([qvec, top_k * 3])
 
@@ -149,7 +152,8 @@ class HybridSearchEngine:
             logger.debug("pgvector search fallback (will use LanceDB): %s", exc)
             return None
 
-    def _ft5_lexical(self, query: str, symbol: Optional[str], top_k: int) -> list[Any]:
+    def _ft5_lexical(self, query: str, symbol: Optional[str], top_k: int, industry_id: Optional[int] = None) -> list[Any]:
+        # industry_id is accepted for API parity but FTS5 table has no industry column; guard ensures NULL does not break
         try:
             with self.db.session() as conn:
                 sql = "SELECT rowid, chunk_id, symbol, document_date, document_text, bm25(intelligence_fts) AS rank FROM intelligence_fts WHERE intelligence_fts MATCH ?"
@@ -158,23 +162,45 @@ class HybridSearchEngine:
                     sql += " AND symbol = ?"
                     params.append(symbol)
                 rows = conn.execute(sql + " ORDER BY rank LIMIT ?", (*params, top_k * 3)).fetchall()
+                # Optional post-filter by industry_id when requested: join to document_chunks if needed
+                if industry_id is not None and rows:
+                    try:
+                        cids = [r["chunk_id"] for r in rows if r["chunk_id"]]
+                        if cids:
+                            placeholders = ",".join("?" for _ in cids)
+                            keep = {r[0] for r in conn.execute(f"SELECT chunk_id FROM document_chunks WHERE chunk_id IN ({placeholders}) AND industry_id=?", (*cids, industry_id)).fetchall()}
+                            rows = [r for r in rows if r["chunk_id"] in keep]
+                    except Exception:
+                        pass
                 return rows
         except Exception as exc:
             logger.debug("FTS5 lexical note: %s", exc)
             return []
 
-    def search(self, query: str, symbol: Optional[str] = None, top_k: int = 10) -> list[HybridHit]:
-        lexical = self._ft5_lexical(query, symbol, top_k)
+    def search(self, query: str, symbol: Optional[str] = None, top_k: int = 10, industry_id: Optional[int] = None) -> list[HybridHit]:
+        lexical = self._ft5_lexical(query, symbol, top_k, industry_id=industry_id)
 
         # Dense: try pgvector first, then LanceDB
         dense: list[dict[str, Any]] = []
-        pg_res = self._pgvector_search(query, symbol, top_k)
+        pg_res = self._pgvector_search(query, symbol, top_k, industry_id=industry_id)
         if pg_res is not None:
             dense = pg_res
             logger.info("Hybrid search dense tier: pgvector ivfflat (1536)")
         else:
             try:
+                # LanceDB VectorStoreManager currently filters by symbol only; industry filter applied post if needed
                 dense = self.vector_store.search(query, symbol, top_k * 3)
+                if industry_id is not None and dense:
+                    # optional post-filter via document_chunks join when industry_id provided
+                    try:
+                        with self.db.session() as conn:
+                            cids = [str(r.get("id", r.get("chunk_id", ""))) for r in dense]
+                            if cids:
+                                placeholders = ",".join("?" for _ in cids)
+                                keep = {str(r[0]) for r in conn.execute(f"SELECT chunk_id FROM document_chunks WHERE chunk_id IN ({placeholders}) AND industry_id=?", (*cids, industry_id)).fetchall()}
+                                dense = [r for r in dense if str(r.get("id", r.get("chunk_id", ""))) in keep]
+                    except Exception:
+                        pass
                 if dense:
                     logger.info("Hybrid search dense tier: LanceDB fallback (%d hits)", len(dense))
                 else:

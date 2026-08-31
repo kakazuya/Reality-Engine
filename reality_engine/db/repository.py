@@ -10,6 +10,23 @@ import pandas as pd
 
 from reality_engine.db.database import db_manager
 
+# Instrument classification (ETF/BEES/liquid/rights filtering for denominator)
+try:
+    from reality_engine.processing.instrument_classifier import (
+        classify_instrument_type,
+        is_operating_equity,
+        is_synthetic_instrument,
+    )
+except Exception:  # pragma: no cover — classifier not yet available in minimal bootstrap
+    def classify_instrument_type(record):  # type: ignore
+        return "operating_equity"
+
+    def is_operating_equity(record):  # type: ignore
+        return True
+
+    def is_synthetic_instrument(record):  # type: ignore
+        return False
+
 
 class Repository:
     """Handles CRUD operations and analytical queries across the database schema."""
@@ -97,15 +114,159 @@ class Repository:
             rows = conn.execute(query).fetchall()
             return [dict(r) for r in rows]
 
+    # BERGEPAINT / BERGERPAINT canonical spelling alias (diff in policy source vs master)
+    _SYMBOL_ALIASES: Dict[str, str] = {"BERGERPAINT": "BERGEPAINT", "BERGEPAINT": "BERGEPAINT"}
+
     def get_company_by_symbol(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """Fetch company by NSE symbol or BSE code."""
+        """Fetch company by NSE symbol or BSE code (with BERGEPAINT alias fallback)."""
         query = """
         SELECT * FROM master_companies 
         WHERE nse_symbol = ? OR bse_code = ? OR isin = ?
         """
         with self.db.session() as conn:
             row = conn.execute(query, (symbol, symbol, symbol)).fetchone()
-            return dict(row) if row else None
+            if row:
+                return dict(row)
+            # alias fallback
+            norm = str(symbol).strip().upper()
+            alt = self._SYMBOL_ALIASES.get(norm)
+            if alt and alt != norm:
+                row = conn.execute(query, (alt, alt, alt)).fetchone()
+                if row:
+                    return dict(row)
+            return None
+
+    # -------------------------------------------------------------
+    # 1b. Instrument Classification Helpers (ETF/BEES/liquid/rights filter)
+    #     Additive only; does not alter existing get_all_companies etc.
+    # -------------------------------------------------------------
+    def is_operating_equity(self, record: Dict[str, Any]) -> bool:
+        """Wrapper around instrument_classifier.is_operating_equity for repository consumers.
+
+        Delegates to the deterministic classifier so all denominator queries share
+        one rule set. Exists so callers can do repo.is_operating_equity(row).
+        """
+        try:
+            return bool(is_operating_equity(record))
+        except Exception:
+            return True
+
+    def classify_instrument_type(self, record: Dict[str, Any]) -> str:
+        """Return 'operating_equity' or 'synthetic' for a master_companies row."""
+        try:
+            return str(classify_instrument_type(record))
+        except Exception:
+            return "operating_equity"
+
+    def get_operating_equity_universe(self, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Return operating-equity companies only (synthetic ETFs/BEES/liquid/rights excluded).
+
+        Filters in Python via is_operating_equity so the rule set stays in one
+        place (instrument_classifier). Order preserved by nse_symbol ASC.
+        """
+        comps = self.get_all_companies(active_only=active_only)
+        return [c for c in comps if self.is_operating_equity(c)]
+
+    def get_synthetic_instrument_list(self, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Return synthetic instruments (ETFs/BEES/liquid/rights/INE_AUTO placeholders).
+
+        Complement of get_operating_equity_universe.
+        """
+        comps = self.get_all_companies(active_only=active_only)
+        return [c for c in comps if not self.is_operating_equity(c)]
+
+    def get_annual_financial_denominator_counts(self) -> Dict[str, Any]:
+        """Operating-equity-aware annual-financial coverage denominator.
+
+        Returns dict with:
+            operating_total: active operating equities
+            synthetic_total: active synthetic instruments
+            total_active: operating + synthetic
+            covered: operating equities with at least one annual_financials row
+            missing: operating_total - covered
+            coverage_pct_operating: 100*covered/operating_total (0.0 if none)
+            synthetic_excluded: synthetic_total (audit)
+
+        Uses Python-side classification so INE_AUTO / BEES / LIQUID / RIGHTS are
+        excluded from the denominator, never filled with zeros. Joins on both
+        isin and nse_symbol (symbol) since some annual rows may lack isin.
+        Never fabricates financial facts; counts only what exists.
+        """
+        operating = self.get_operating_equity_universe(active_only=True)
+        synthetic = self.get_synthetic_instrument_list(active_only=True)
+        operating_total = len(operating)
+        synthetic_total = len(synthetic)
+        # Determine covered operating ISINs/symbols
+        covered = 0
+        try:
+            with self.db.session() as conn:
+                # DistinctAnnual keys
+                try:
+                    rows = conn.execute("SELECT DISTINCT isin, symbol FROM annual_financials").fetchall()
+                except Exception:
+                    rows = []
+                annual_isins = {str(r["isin"]).strip().upper() for r in rows if r["isin"]}
+                annual_symbols = {str(r["symbol"]).strip().upper() for r in rows if r["symbol"]}
+                for c in operating:
+                    isin_u = str(c.get("isin") or "").strip().upper()
+                    sym_u = str(c.get("nse_symbol") or "").strip().upper()
+                    if (isin_u and isin_u in annual_isins) or (sym_u and sym_u in annual_symbols):
+                        covered += 1
+        except Exception:
+            covered = 0
+        missing = max(0, operating_total - covered)
+        coverage_pct = round(100.0 * covered / operating_total, 2) if operating_total else 0.0
+        return {
+            "operating_total": operating_total,
+            "synthetic_total": synthetic_total,
+            "total_active": operating_total + synthetic_total,
+            "covered": covered,
+            "missing": missing,
+            "coverage_pct_operating": coverage_pct,
+            "synthetic_excluded": synthetic_total,
+        }
+
+    def discover_microcap_official_filing_candidates(self, limit: int = 12) -> List[Dict[str, Any]]:
+        """Targeted recovery: operating equities missing annual_financials.
+
+        Returns up to *limit* (default 12) active operating companies with no
+        annual_financials row, ordered by nse_symbol ASC for determinism.
+        Each dict is the full master_companies row plus a recovery hint:
+            suggested_source: "bse_official" or "nse_official"
+            reason_missing: "no_annual_row"
+        Does no network I/O; just identifies candidates for official filing fetch
+        (BSE/NSE XBRL) since yfinance returns empty for these microcaps.
+        Never fabricates zeros.
+        """
+        limit = max(1, int(limit))
+        operating = self.get_operating_equity_universe(active_only=True)
+        if not operating:
+            return []
+        try:
+            with self.db.session() as conn:
+                try:
+                    rows = conn.execute("SELECT DISTINCT isin, symbol FROM annual_financials").fetchall()
+                except Exception:
+                    rows = []
+                annual_isins = {str(r["isin"]).strip().upper() for r in rows if r["isin"]}
+                annual_symbols = {str(r["symbol"]).strip().upper() for r in rows if r["symbol"]}
+        except Exception:
+            annual_isins = set()
+            annual_symbols = set()
+        missing: List[Dict[str, Any]] = []
+        for c in operating:
+            isin_u = str(c.get("isin") or "").strip().upper()
+            sym_u = str(c.get("nse_symbol") or "").strip().upper()
+            has_annual = (isin_u and isin_u in annual_isins) or (sym_u and sym_u in annual_symbols)
+            if not has_annual:
+                rec = dict(c)
+                # Hint: prefer BSE when bse_code present else NSE
+                rec["suggested_source"] = "bse_official" if rec.get("bse_code") else "nse_official"
+                rec["reason_missing"] = "no_annual_row"
+                missing.append(rec)
+                if len(missing) >= limit:
+                    break
+        return missing
 
     # -------------------------------------------------------------
     # 2. Daily Price & Delivery Ingestion
@@ -2355,6 +2516,41 @@ class Repository:
                 (company_id,),
             ).fetchall()
             return [dict(r) for r in rows]
+
+    def get_geographic_exposure_by_symbol(self, symbol: str) -> List[Dict[str, Any]]:
+        """Join-preserving helper: symbol -> master_companies.rowid -> geographic_exposure."""
+        with self.db.session() as conn:
+            cid = self._resolve_company_id(conn, symbol, None)
+            if cid is None:
+                norm = str(symbol).strip().upper()
+                alt = self._SYMBOL_ALIASES.get(norm)
+                if alt:
+                    cid = self._resolve_company_id(conn, alt, None)
+                if cid is None:
+                    return []
+            rows = conn.execute(
+                "SELECT * FROM geographic_exposure WHERE company_id = ? ORDER BY revenue_share_pct DESC",
+                (cid,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    # Additive ISIN mapping for rankings (backward compat: stock_id remains symbol-keyed)
+    def get_model_explainer_rankings_by_isin(self, isin: str, investor_majority: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Additive ISIN/company mapping: resolve symbol via master then delegate to stock_id lookup.
+
+        Does NOT change the existing stock_id=nse_symbol key; provides an ISIN-aware accessor
+        so callers that hold only ISIN can still query rankings.
+        """
+        with self.db.session() as conn:
+            try:
+                r = conn.execute("SELECT nse_symbol FROM master_companies WHERE isin=? LIMIT 1", (isin,)).fetchone()
+                if r:
+                    sym = r["nse_symbol"] if hasattr(r, "__getitem__") else r[0]
+                    if sym:
+                        return self.get_model_explainer_rankings(stock_id=sym, investor_majority=investor_majority)
+            except Exception:
+                pass
+            return self.get_model_explainer_rankings(stock_id=isin, investor_majority=investor_majority)
 
     # -------------------------------------------------------------
     # 11. Wave B3 — All-Peers Ensemble helpers (additive; Wave D fills these)

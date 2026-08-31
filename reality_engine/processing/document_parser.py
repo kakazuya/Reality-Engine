@@ -20,6 +20,7 @@ class DocumentChunk:
     page_start: Optional[int] = None
     page_end: Optional[int] = None
     source_path: str = ""
+    industry_id: Optional[int] = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -72,7 +73,7 @@ class DocumentParser:
             chunk_id = f"{metadata.get('symbol', 'DOCUMENT')}-{start // step}"
             chunks.append(DocumentChunk(chunk_id, f"{header}\n{body}", source_path=source_path, **{
                 k: metadata.get(k, "") for k in ("symbol", "isin", "fiscal_year", "doc_type", "document_date")
-            }))
+            }, industry_id=metadata.get("industry_id")))
             if start + self.chunk_tokens >= len(words):
                 break
         return chunks

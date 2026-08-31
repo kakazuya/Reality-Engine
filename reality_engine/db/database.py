@@ -58,7 +58,48 @@ class DatabaseManager:
             schema_sql = f.read()
 
         with self.session() as conn:
-            conn.executescript(schema_sql)
+            try:
+                conn.executescript(schema_sql)
+            except sqlite3.OperationalError as e:
+                # Production DB may predate the latest schema.sql additions
+                # (e.g. regulatory_political_risks.coverage_status). The fresh
+                # temp DB path always succeeds, but a stale production file
+                # would fail on CREATE INDEX referencing a missing column.
+                # Repair in-place and continue; do not crash import or tests.
+                msg = str(e)
+                if "coverage_status" in msg:
+                    try:
+                        cols = {r[1] for r in conn.execute("PRAGMA table_info(regulatory_political_risks)").fetchall()}
+                        if cols and "coverage_status" not in cols:
+                            conn.execute(
+                                "ALTER TABLE regulatory_political_risks ADD COLUMN coverage_status TEXT CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped'"
+                            )
+                        # Create the covering indexes that previously failed
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_coverage ON regulatory_political_risks(coverage_status)")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_symbol ON regulatory_political_risks(symbol)")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_isin ON regulatory_political_risks(isin)")
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_net ON regulatory_political_risks(net_impact_score)")
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
+                    # Retry the remaining schema (IF NOT EXISTS makes it idempotent)
+                    try:
+                        conn.executescript(schema_sql)
+                    except Exception:
+                        pass
+                else:
+                    raise
             self._apply_runtime_migrations(conn)
 
     def _apply_runtime_migrations(self, conn: sqlite3.Connection) -> None:
@@ -152,6 +193,33 @@ class DatabaseManager:
                 pass
             try:
                 conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rawdoc_hash ON raw_documents(sha256_hash)")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        # Regulatory policy coverage_status (added in latest schema.sql) — backfill for stale production DBs
+        try:
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(regulatory_political_risks)").fetchall()}
+            if cols and "coverage_status" not in cols:
+                conn.execute(
+                    "ALTER TABLE regulatory_political_risks ADD COLUMN coverage_status TEXT CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped'"
+                )
+            # Ensure indexes exist even if the initial executescript failed partway
+            try:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_coverage ON regulatory_political_risks(coverage_status)")
+            except Exception:
+                pass
+            try:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_symbol ON regulatory_political_risks(symbol)")
+            except Exception:
+                pass
+            try:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_isin ON regulatory_political_risks(isin)")
+            except Exception:
+                pass
+            try:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_net ON regulatory_political_risks(net_impact_score)")
             except Exception:
                 pass
         except Exception:

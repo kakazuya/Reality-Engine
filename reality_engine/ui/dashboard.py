@@ -1076,7 +1076,16 @@ with tab_dossier:
         # 3. Distilled Parameters & Business Sensitivities
         st.markdown("### 🧩 Distilled Parameters & Structural Sensitivities")
         distilled = distillation_engine.get_distilled_parameters(selected_stock)
-        
+        # Quality peer coverage indicator : sparse vs dense
+        has_quality = False
+        try:
+            bm = repo.get_business_model_profile(selected_stock)
+            moat = repo.get_moat_evaluation(selected_stock)
+            has_quality = bool(bm or moat)
+        except Exception:
+            has_quality = bool(distilled and any(dp.get("confidence_score",0)>=0.85 for dp in distilled))
+        if not has_quality:
+            st.warning(f"⚠️ {selected_stock} has no quality-peer data (business profiles / moat / factor metrics). It retains identity, price, distilled fallback parameters (confidence ≤0.70), policy coverage state and MoE floor signals — but NO manufactured moat or financial scores. Representative sparse case: AARNAV. Dense cases: TCS / TITAGARH.")
         if distilled:
             d_cols = st.columns(len(distilled) if len(distilled) <= 3 else 3)
             for idx, dp in enumerate(distilled):
@@ -1084,13 +1093,15 @@ with tab_dossier:
                 with target_col:
                     pkey = dp.get("parameter_key", "").replace("_", " ").title()
                     pval = dp.get("value")
+                    src = dp.get("source_document_ref","")
+                    badge_extra = f" · {src}" if src else ""
                     with st.container():
                         st.markdown(
                             f"""
                             <div class="terminal-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <span style="font-weight: 700; color: #58a6ff; font-size: 13px;">{pkey}</span>
-                                    <span class="badge badge-info">{dp.get('confidence_score', 1.0)*100:.0f}% Conf</span>
+                                    <span class="badge badge-info">{dp.get('confidence_score', 1.0)*100:.0f}% Conf{badge_extra}</span>
                                 </div>
                             """,
                             unsafe_allow_html=True
@@ -1104,6 +1115,16 @@ with tab_dossier:
                         st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("No dynamic distilled parameters seeded for this symbol. Click 'Seed Graph' in the sidebar to populate standard parameters.")
+        # Policy coverage state
+        try:
+            cov = repo.get_policy_coverage(selected_stock)
+            eni = repo.get_policy_agg_eni(selected_stock)
+            if cov == "no_template":
+                st.info(f"Policy peer: coverage_status='no_template' (ENI=NULL) — no template mapped for {selected_stock}; not interpreted as approved.")
+            elif cov == "mapped" and eni is not None:
+                st.caption(f"Policy peer: coverage='mapped' ENI={eni}")
+        except Exception:
+            pass
 
         st.markdown("---")
 

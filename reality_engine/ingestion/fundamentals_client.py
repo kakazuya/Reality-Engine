@@ -32,6 +32,13 @@ from reality_engine.config import (
 )
 from reality_engine.processing.fundamental_engine import fundamental_engine
 
+# Instrument classification for microcap recovery identification (no network, deterministic).
+try:
+    from reality_engine.processing.instrument_classifier import is_operating_equity  # noqa: F401
+except Exception:  # pragma: no cover
+    def is_operating_equity(record):  # type: ignore
+        return True
+
 urllib3.disable_warnings()
 logger = logging.getLogger("reality_engine.fundamentals_client")
 
@@ -557,6 +564,35 @@ class FundamentalsClient:
             "forensic": forensic_total,
             "documents": documents_total,
         }
+
+
+def discover_microcap_official_filing_candidates(limit: int = 12, repo=None) -> List[Dict[str, Any]]:
+    """Targeted microcap recovery: operating equities missing annual_financials.
+
+    Delegates to repository helper (operating-equity filter + annual absence).
+    Does not fetch network; identifies candidates for official BSE/NSE filing fetch
+    (yfinance returns empty for these microcaps). Never fabricates zeros.
+
+    Args:
+        limit: max candidates (default 12).
+        repo: optional Repository instance (uses singleton otherwise).
+    """
+    try:
+        from reality_engine.db.repository import repo as _repo
+        target = repo or _repo
+        # Prefer repository helper if available (shares single classifier)
+        if hasattr(target, "discover_microcap_official_filing_candidates"):
+            return target.discover_microcap_official_filing_candidates(limit=limit)
+    except Exception:
+        pass
+    # Fallback: direct DB query via processing validator
+    try:
+        from reality_engine.processing.financial_validator import discover_microcap_official_filing_candidates as _disc
+        from reality_engine.db.database import db_manager
+        with db_manager.session() as conn:
+            return _disc(conn, limit=limit)
+    except Exception:
+        return []
 
 
 # Singleton client

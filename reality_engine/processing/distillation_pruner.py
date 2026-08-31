@@ -191,6 +191,13 @@ def fetch_distillation_candidates(manager=None, symbol: Optional[str] = None, yo
             # Source_type patterns: YouTube_Analysis / Analyst Commentary / YouTube  vs  Earnings_Concall / Quarterly Concall / MPC Stance / CONCALL_TRANSCRIPT
             youtube_where = "(lower(COALESCE(rd.source_type,'')) LIKE '%youtube%' OR lower(COALESCE(rd.source_type,'')) LIKE '%analyst%')"
             concall_where = "(lower(COALESCE(rd.source_type,'')) LIKE '%concall%' OR lower(COALESCE(rd.source_type,'')) LIKE '%mpc%' OR lower(COALESCE(rd.source_type,'')) LIKE '%earnings%' OR lower(COALESCE(rd.source_type,'')) LIKE '%transcript%')"
+            # Wave C: structural milestones (T½ INF) are permanent priors and must
+            # NEVER be purged by distill-before-delete. Exclude both the legacy
+            # source_type marker and the explicit is_structural_milestone column flag.
+            structural_excl = (
+                " AND COALESCE(rd.is_structural_milestone,0) <> 1 "
+                " AND rd.source_type NOT LIKE '%Structural Milestone%'"
+            )
             symbol_filter = ""
             params_y: List[Any] = []
             params_c: List[Any] = []
@@ -208,13 +215,13 @@ def fetch_distillation_candidates(manager=None, symbol: Optional[str] = None, yo
                     # Filter via FTS not available; try raw_documents title? fallback no filter
                     pass
             # Fetch youtube
-            q_y = f"SELECT dc.chunk_id, dc.doc_id, dc.content, rd.source_type FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE {youtube_where} {symbol_filter} AND dc.embedding IS NOT NULL ORDER BY dc.chunk_id LIMIT ?"
+            q_y = f"SELECT dc.chunk_id, dc.doc_id, dc.content, rd.source_type FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE {youtube_where} {symbol_filter} AND dc.embedding IS NOT NULL {structural_excl} ORDER BY dc.chunk_id LIMIT ?"
             rows_y = conn.execute(q_y, (*params_y, youtube_n)).fetchall()
             for r in rows_y:
                 out.append(dict(chunk_id=str(r["chunk_id"]), doc_id=r["doc_id"], content=r["content"] or "", source_type=r["source_type"]))
 
             # Fetch concall
-            q_c = f"SELECT dc.chunk_id, dc.doc_id, dc.content, rd.source_type FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE {concall_where} {symbol_filter} AND dc.embedding IS NOT NULL ORDER BY dc.chunk_id LIMIT ?"
+            q_c = f"SELECT dc.chunk_id, dc.doc_id, dc.content, rd.source_type FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE {concall_where} {symbol_filter} AND dc.embedding IS NOT NULL {structural_excl} ORDER BY dc.chunk_id LIMIT ?"
             # Avoid duplicates already fetched
             existing_ids = {x["chunk_id"] for x in out}
             rows_c = conn.execute(q_c, (*params_c, concall_n)).fetchall()
@@ -232,11 +239,11 @@ def fetch_distillation_candidates(manager=None, symbol: Optional[str] = None, yo
                 try:
                     if existing_ids:
                         placeholders = ",".join(["?"]*len(existing_ids))
-                        q_any = f"SELECT dc.chunk_id, dc.doc_id, dc.content, rd.source_type FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE dc.embedding IS NOT NULL AND dc.chunk_id NOT IN ({placeholders}) ORDER BY dc.chunk_id LIMIT ?"
+                        q_any = f"SELECT dc.chunk_id, dc.doc_id, dc.content, rd.source_type FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE dc.embedding IS NOT NULL AND dc.chunk_id NOT IN ({placeholders}) {structural_excl} ORDER BY dc.chunk_id LIMIT ?"
                         params_any = list(existing_ids) + [needed]
                         rows_any = conn.execute(q_any, params_any).fetchall()
                     else:
-                        q_any = "SELECT dc.chunk_id, dc.doc_id, dc.content, rd.source_type FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE dc.embedding IS NOT NULL ORDER BY dc.chunk_id LIMIT ?"
+                        q_any = "SELECT dc.chunk_id, dc.doc_id, dc.content, rd.source_type FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id WHERE dc.embedding IS NOT NULL {structural_excl} ORDER BY dc.chunk_id LIMIT ?"
                         rows_any = conn.execute(q_any, (needed,)).fetchall()
                     for r in rows_any:
                         out.append(dict(chunk_id=str(r["chunk_id"]), doc_id=r["doc_id"], content=r["content"] or "", source_type=r["source_type"]))
@@ -427,6 +434,39 @@ def synthesize_and_update(symbol: str, chunks: List[str], manager=None, llm_clie
                         moat_updated = True
                     except Exception as e:
                         logger.debug("moat update failed %s", e)
+                # 1b. Mirror distilled quality deltas into business_model_profiles (Wave C:
+                # distill-before-delete updates BOTH moat_evaluations and business_model_profiles
+                # before any vector is purged). Additive; keyed by symbol/company_id.
+                if _table_exists(conn, "business_model_profiles"):
+                    try:
+                        bp_row = conn.execute(
+                            "SELECT * FROM business_model_profiles WHERE symbol=? OR company_id=? LIMIT 1",
+                            (sym, cid),
+                        ).fetchone()
+                        if bp_row:
+                            cur_pps = int(bp_row["pricing_power_score"]) if bp_row["pricing_power_score"] is not None else 3
+                            cur_cis = int(bp_row["capital_intensity_score"]) if bp_row["capital_intensity_score"] is not None else 3
+                            cur_ols = int(bp_row["operating_leverage_score"]) if bp_row["operating_leverage_score"] is not None else 3
+                            new_pps = max(0, min(5, cur_pps + int(moat_updates.get("switching_costs_delta", 0))))
+                            new_cis = max(0, min(5, cur_cis + int(moat_updates.get("cost_advantage_delta", 0))))
+                            new_ols = max(0, min(5, cur_ols + int(moat_updates.get("efficient_scale_delta", 0))))
+                            conn.execute(
+                                "UPDATE business_model_profiles SET pricing_power_score=?, capital_intensity_score=?, "
+                                "operating_leverage_score=?, updated_at=CURRENT_TIMESTAMP WHERE symbol=? OR company_id=?",
+                                (new_pps, new_cis, new_ols, sym, cid),
+                            )
+                        else:
+                            conn.execute(
+                                "INSERT OR IGNORE INTO business_model_profiles "
+                                "(company_id, symbol, pricing_power_score, capital_intensity_score, operating_leverage_score, updated_at) "
+                                "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                                (cid, sym,
+                                 max(0, min(5, 3 + int(moat_updates.get("switching_costs_delta", 0)))),
+                                 max(0, min(5, 3 + int(moat_updates.get("cost_advantage_delta", 0)))),
+                                 max(0, min(5, 3 + int(moat_updates.get("efficient_scale_delta", 0))))),
+                            )
+                    except Exception as e:
+                        logger.debug("business_model_profiles update failed %s", e)
             # 2. Purge vectors: UPDATE document_chunks SET embedding=NULL WHERE chunk_id IN (...)
             # Only if chunk_ids are real DB ids (not mock_)
             real_ids = [cid for cid in chunk_ids if not str(cid).startswith("mock_")]
@@ -513,6 +553,31 @@ def run_monthly_distillation(symbol: str, manager=None, youtube_n: int = 20, con
         return synthesize_and_update(symbol, mock_chunks, manager=mgr, llm_client=llm_client)
     chunk_ids = [c["chunk_id"] for c in candidates]
     return synthesize_and_update(symbol, chunk_ids, manager=mgr, llm_client=llm_client)
+
+def run_monthly_batch_with_prune_check(symbol: str, manager=None, youtube_n: int = 20,
+                                       concall_n: int = 4, chunk_ids_override: Optional[List[str]] = None,
+                                       llm_client: Optional[Any] = None) -> Dict[str, Any]:
+    """Wave C lifecycle wrapper: distill then verify the 24 vectors were actually purged.
+
+    Builds on :func:`run_monthly_distillation` and adds a ``prune_verified`` flag that is
+    True only when the distill-before-delete contract reclaimed exactly the embedded
+    vectors it distilled (vectors_purged == chunks_distilled and > 0). Structural-milestone
+    vectors are excluded upstream by :func:`fetch_distillation_candidates`, so they are
+    never counted here.
+    """
+    res = run_monthly_distillation(
+        symbol, manager=manager, youtube_n=youtube_n, concall_n=concall_n,
+        chunk_ids_override=chunk_ids_override, llm_client=llm_client,
+    )
+    prune_verified = False
+    try:
+        vp = int(res.get("vectors_purged", 0) or 0)
+        cd = int(res.get("chunks_distilled", 0) or 0)
+        prune_verified = (vp == cd) and (vp > 0)
+    except Exception:
+        prune_verified = False
+    res["prune_verified"] = prune_verified
+    return res
 
 # Legacy alias for backwards compatibility
 def run_distillation_batch(symbol: str, chunk_ids: List[str], manager=None) -> Dict[str, Any]:

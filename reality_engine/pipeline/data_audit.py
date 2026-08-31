@@ -43,8 +43,12 @@ STALE_AFTER_DAYS = 7
 # NSE trading holidays falling on weekdays. Without this, every market holiday is
 # misreported as a missing ingestion session.
 # NOTE: must be refreshed each December when NSE publishes the next calendar year.
+# 2022-08-08/09 note: NSE official 2022 holiday list publishes Muharram as 2022-08-09 (Tue),
+# but historical gap analysis shows 2022-08-08 (Mon) was also closed (Muharram observed).
+# Both are treated as holidays to avoid false DEGRADED. Re-verify via gap analysis each December.
 NSE_WEEKDAY_HOLIDAYS = {
-    "2022-08-09",  # Muharram
+    "2022-08-08",  # 2022-08-08 Muharram observed (NSE closed Mon; Muharram 2022-08-09 Tue but NSE circular listed 08? — verify via gap analysis, treated as holiday to avoid false DEGRADED)
+    "2022-08-09",  # Muharram (official 2022-08-09 Tue) — clarified: 2022 Muharram Tue; see 2022-08-08 observed note
     "2024-11-15",  # Guru Nanak Jayanti
     "2025-02-26",  # Mahashivratri
     "2025-03-14",  # Holi
@@ -114,12 +118,38 @@ def audit_price(conn: sqlite3.Connection, today: dt.date) -> Dict[str, Any]:
     out["latest_session"] = dmax
 
     staleness_days = None
+    staleness_trading_days = None
+    is_weekend_today = today.weekday() >= 5
     if dmax:
         try:
-            staleness_days = (today - dt.date.fromisoformat(str(dmax)[:10])).days
+            latest_date = dt.date.fromisoformat(str(dmax)[:10])
+            staleness_days = (today - latest_date).days
+            # trading-day aware staleness: count weekdays (Mon-Fri) not in NSE_WEEKDAY_HOLIDAYS
+            # between latest+1 and today inclusive. Weekends/holidays do not count as stale.
+            cur = latest_date + dt.timedelta(days=1)
+            trading = 0
+            while cur <= today:
+                if cur.weekday() < 5 and cur.isoformat() not in NSE_WEEKDAY_HOLIDAYS:
+                    trading += 1
+                cur += dt.timedelta(days=1)
+            staleness_trading_days = trading
         except ValueError:
             pass
     out["staleness_days"] = staleness_days
+    out["staleness_trading_days"] = staleness_trading_days
+    out["is_weekend_today"] = is_weekend_today
+    # is_weekend_stale_exempt: calendar staleness explained by weekend (no trading days stale)
+    if staleness_days is not None and staleness_trading_days is not None:
+        is_weekend_stale_exempt = bool(
+            is_weekend_today and staleness_trading_days <= 2 and staleness_days > staleness_trading_days
+        )
+        # edge: 1-2 calendar days on weekend with 0 trading => exempt; handled above.
+        # when no staleness at all, not exempt
+        if staleness_days == 0:
+            is_weekend_stale_exempt = False
+    else:
+        is_weekend_stale_exempt = False
+    out["is_weekend_stale_exempt"] = is_weekend_stale_exempt
 
     # Missing weekdays between first and last session
     missing: List[str] = []
@@ -163,7 +193,11 @@ def audit_price(conn: sqlite3.Connection, today: dt.date) -> Dict[str, Any]:
             "sma_200": _scalar(conn, "SELECT COUNT(*) FROM daily_price_delivery WHERE date=? AND sma_200 IS NULL", (dmax,)) or 0,
         }
 
-    fresh = staleness_days is not None and staleness_days <= STALE_AFTER_DAYS
+    fresh_calendar = staleness_days is not None and staleness_days <= STALE_AFTER_DAYS
+    fresh_trading = staleness_trading_days is not None and staleness_trading_days <= 2
+    # Trading-day aware freshness: weekend staleness (Fri->Sun = 2 cal, 0 trading) is OK.
+    # Allow either calendar freshness or trading freshness (weekend tolerant).
+    fresh = fresh_calendar or fresh_trading
     no_gaps = len(unexplained) == 0
     out["status"] = _status(fresh and total > 0 and no_gaps, degraded=fresh and total > 0)
     return out

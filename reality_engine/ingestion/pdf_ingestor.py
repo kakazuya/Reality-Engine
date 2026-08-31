@@ -69,6 +69,101 @@ except ImportError:
 # SQLite fallback keeps non-partitioned table with JSON embedding.
 
 
+def derive_industry_id_for_symbol(symbol: Optional[str], conn) -> Optional[int]:
+    """Derive industries.industry_id for a symbol via master_companies.industry TEXT.
+
+    Looks up master_companies where nse_symbol/bse_code/isin matches symbol
+    (trim + upper), then matches that industry string against industries.industry_name.
+    Returns None if lookup fails or industries table absent. Never raises.
+    """
+    if not symbol:
+        return None
+    try:
+        norm = str(symbol).strip().upper()
+        if not norm:
+            return None
+    except Exception:
+        return None
+    try:
+        # check tables exist
+        row = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='master_companies'").fetchone()
+        if not row:
+            return None
+        row = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='industries'").fetchone()
+        if not row:
+            return None
+        # find industry TEXT for this symbol
+        m = conn.execute(
+            "SELECT industry FROM master_companies WHERE UPPER(TRIM(nse_symbol))=? OR UPPER(TRIM(bse_code))=? OR UPPER(TRIM(isin))=? LIMIT 1",
+            (norm, norm, norm),
+        ).fetchone()
+        # fallback exact
+        if not m:
+            try:
+                m = conn.execute("SELECT industry FROM master_companies WHERE nse_symbol=? OR bse_code=? OR isin=? LIMIT 1", (symbol, symbol, symbol)).fetchone()
+            except Exception:
+                m = None
+        if not m:
+            return None
+        # sqlite3.Row or tuple
+        try:
+            industry_name = m["industry"] if hasattr(m, "__getitem__") and "industry" in m.keys() else m[0]  # type: ignore
+        except Exception:
+            try:
+                industry_name = m[0]
+            except Exception:
+                return None
+        if not industry_name:
+            return None
+        industry_name = str(industry_name).strip()
+        if not industry_name:
+            return None
+        r = conn.execute("SELECT industry_id FROM industries WHERE industry_name=? LIMIT 1", (industry_name,)).fetchone()
+        if not r:
+            return None
+        try:
+            return int(r["industry_id"] if hasattr(r, "__getitem__") and "industry_id" in r.keys() else r[0])  # type: ignore
+        except Exception:
+            return int(r[0])
+    except Exception:
+        return None
+
+
+def backfill_document_chunk_industry_tags(limit: int = 1000, manager=None) -> int:
+    """Backfill NULL industry_id on document_chunks via symbol -> master_companies -> industries.
+
+    Bounded by limit, idempotent. Returns count updated.
+    """
+    from reality_engine.db.database import db_manager as _dbm
+    mgr = manager or _dbm
+    updated = 0
+    try:
+        with mgr.session() as conn:
+            _ensure_raw_tables(conn)
+            # check tables
+            try:
+                conn.execute("SELECT 1 FROM industries LIMIT 1")
+            except Exception:
+                return 0
+            rows = conn.execute(
+                "SELECT chunk_id, symbol FROM document_chunks WHERE industry_id IS NULL AND symbol IS NOT NULL AND TRIM(symbol)!='' LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+            for r in rows:
+                try:
+                    cid = int(r["chunk_id"] if hasattr(r, "__getitem__") else r[0])
+                    sym = r["symbol"] if hasattr(r, "__getitem__") else r[1]
+                except Exception:
+                    continue
+                iid = derive_industry_id_for_symbol(sym, conn)
+                if iid is not None:
+                    conn.execute("UPDATE document_chunks SET industry_id=? WHERE chunk_id=?", (iid, cid))
+                    updated += 1
+    except Exception:
+        pass
+    return updated
+
+
 def _ensure_raw_tables(conn) -> None:
     """Create raw_documents + document_chunks for SQLite fallback if missing.
     PG cluster already has these via postgres_schema.sql; this is SQLite WAL only.
@@ -382,12 +477,23 @@ class PDFIngestor:
         # Persist
         with self.db.session() as conn:
             _ensure_raw_tables(conn)
+            # auto-derive industry_id if not provided
+            derived_iid = industry_id
+            if derived_iid is None and symbol:
+                try:
+                    derived_iid = derive_industry_id_for_symbol(symbol, conn)
+                except Exception:
+                    derived_iid = None
             doc_id = self._insert_raw_document(conn, path, title, source_type, published_date, fiscal_period, source_url, sha, creator_or_ministry)
             # Insert chunks with embedding JSON + FTS + LanceDB
             fts_records = []
             lancedb_records = []
             for idx, ch in enumerate(chunks):
                 content = ch.text
+                # chunk-level industry override from parser metadata if present
+                chunk_iid = getattr(ch, "industry_id", None)
+                if chunk_iid is None:
+                    chunk_iid = derived_iid
                 # Preserve timestamp_start_sec for compatibility (PDFs = NULL/0)
                 # Embed via VectorStoreManager (hash fallback if no model)
                 try:
@@ -403,7 +509,7 @@ class PDFIngestor:
                         (doc_id, chunk_index, content, embedding, published_date, timestamp_start_sec, timestamp_end_sec, sector_id, industry_id, symbol, isin)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (doc_id, idx, content, vec_json, published_date, None, None, sector_id, industry_id, symbol or "", isin or ""),
+                    (doc_id, idx, content, vec_json, published_date, None, None, sector_id, chunk_iid, symbol or "", isin or ""),
                 )
                 # Resolve chunk_id for FTS/Vectors
                 row = conn.execute("SELECT chunk_id FROM document_chunks WHERE doc_id=? AND chunk_index=?", (doc_id, idx)).fetchone()
