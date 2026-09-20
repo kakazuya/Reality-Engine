@@ -160,6 +160,13 @@ class Phase1PipelineRunner:
         logger.info("\n>>> [STEP 6/6] Validating Checkpoint Integrity for Top 200 Stocks...")
         checkpoint_summary = self.validate_top_200_checkpoint(target_date=latest_date)
 
+        # Refresh planner statistics while we are the writer. Serialized deliberately: this
+        # opens the DB write path, so it runs after all ingest writes have completed.
+        try:
+            self.repo.db.optimize()
+        except Exception as exc:  # pragma: no cover - optimization must never fail the run
+            logger.warning("PRAGMA optimize skipped: %s", exc)
+
         elapsed_time = round(time.time() - start_time, 2)
         logger.info("\n" + "=" * 75)
         logger.info("PHASE 1 EXECUTION COMPLETE IN %.2f SECONDS", elapsed_time)

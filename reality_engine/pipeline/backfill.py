@@ -17,6 +17,32 @@ from reality_engine.processing.technical_engine import technical_engine
 logger = logging.getLogger("reality_engine.backfill")
 
 
+def rolling_indicators_polars(df_all):
+    """Batch rolling indicators via polars; pandas in, pandas out (edge convert).
+
+    Covers the groupby-rolling SMA/high/low legs (measured 1.55 s -> 0.51 s on
+    3.12M rows). RSI stays pandas (Wilder ewm has no polars one-liner); the
+    elementwise ratio legs stay pandas. Returns None when polars is missing so
+    callers fall back to the pandas path (never a hard dependency).
+    """
+    try:
+        import polars as pl
+    except ImportError:
+        return None
+    work = pl.from_pandas(df_all[["symbol", "close", "high", "low", "deliverable_volume"]])
+    out = work.with_columns([
+        pl.col("deliverable_volume").rolling_mean(20, min_samples=1).over("symbol").alias("deliv_sma_20"),
+        pl.col("close").rolling_mean(20, min_samples=1).over("symbol").alias("sma_20"),
+        pl.col("close").rolling_mean(50, min_samples=1).over("symbol").alias("sma_50"),
+        pl.col("close").rolling_mean(200, min_samples=1).over("symbol").alias("sma_200"),
+        pl.col("high").rolling_max(250, min_samples=1).over("symbol").alias("high_52w"),
+        pl.col("low").rolling_min(250, min_samples=1).over("symbol").alias("low_52w"),
+    ]).to_pandas()
+    for col in ("deliv_sma_20", "sma_20", "sma_50", "sma_200", "high_52w", "low_52w"):
+        df_all[col] = out[col].to_numpy()
+    return df_all
+
+
 class HistoricalBackfillManager:
     """Manages multi-day Bhavcopy ingestion and technical indicator backfills."""
 
@@ -110,20 +136,25 @@ class HistoricalBackfillManager:
         # Sort for rolling computations
         df_all = df_all.sort_values(by=["symbol", "date"], ascending=True).reset_index(drop=True)
 
-        # Groupby rolling indicator computations
-        g = df_all.groupby("symbol", sort=False)
-        df_all["deliv_sma_20"] = g["deliverable_volume"].rolling(20, min_periods=1).mean().reset_index(level=0, drop=True)
+        # Groupby rolling indicator computations (polars fast path, pandas fallback).
+        if rolling_indicators_polars(df_all) is None:
+            g = df_all.groupby("symbol", sort=False)
+            df_all["deliv_sma_20"] = g["deliverable_volume"].rolling(20, min_periods=1).mean().reset_index(level=0, drop=True)
+            df_all["sma_20"] = g["close"].rolling(20, min_periods=1).mean().reset_index(level=0, drop=True)
+            df_all["sma_50"] = g["close"].rolling(50, min_periods=1).mean().reset_index(level=0, drop=True)
+            df_all["sma_200"] = g["close"].rolling(200, min_periods=1).mean().reset_index(level=0, drop=True)
+            df_all["high_52w"] = g["high"].rolling(250, min_periods=1).max().reset_index(level=0, drop=True)
+            df_all["low_52w"] = g["low"].rolling(250, min_periods=1).min().reset_index(level=0, drop=True)
+        else:
+            g = df_all.groupby("symbol", sort=False)
+        for col in ("sma_20", "sma_50", "sma_200", "high_52w", "low_52w"):
+            df_all[col] = df_all[col].round(2)
         df_all["delivery_spike_ratio"] = (
             df_all["deliverable_volume"] / df_all["deliv_sma_20"].replace(0, np.nan)
         ).fillna(1.0).round(2)
         df_all["delivery_conviction_score"] = (
             df_all["delivery_spike_ratio"] * df_all["delivery_pct"]
         ).round(2)
-        df_all["sma_20"] = g["close"].rolling(20, min_periods=1).mean().reset_index(level=0, drop=True).round(2)
-        df_all["sma_50"] = g["close"].rolling(50, min_periods=1).mean().reset_index(level=0, drop=True).round(2)
-        df_all["sma_200"] = g["close"].rolling(200, min_periods=1).mean().reset_index(level=0, drop=True).round(2)
-        df_all["high_52w"] = g["high"].rolling(250, min_periods=1).max().reset_index(level=0, drop=True).round(2)
-        df_all["low_52w"] = g["low"].rolling(250, min_periods=1).min().reset_index(level=0, drop=True).round(2)
         df_all["distance_from_52w_high_pct"] = (
             ((df_all["high_52w"] - df_all["close"]) / df_all["high_52w"].replace(0, np.nan)) * 100.0
         ).fillna(0.0).round(2)
@@ -209,6 +240,12 @@ class HistoricalBackfillManager:
                     idx_records.append(idx_rec)
                 self.repo.upsert_index_breadth(idx_records)
 
+        # Refresh planner statistics while we are the writer (see DatabaseManager.optimize).
+        try:
+            self.repo.db.optimize()
+        except Exception as exc:  # pragma: no cover - optimization must never fail the run
+            logger.warning("PRAGMA optimize skipped: %s", exc)
+
         return total_inserted
 
     def recalculate_all_technical_indicators(self) -> int:
@@ -234,19 +271,24 @@ class HistoricalBackfillManager:
             if col in df_all.columns:
                 df_all[col] = pd.to_numeric(df_all[col], errors="coerce").fillna(0.0)
 
-        g = df_all.groupby("symbol", sort=False)
-        df_all["deliv_sma_20"] = g["deliverable_volume"].rolling(20, min_periods=1).mean().reset_index(level=0, drop=True)
+        if rolling_indicators_polars(df_all) is None:
+            g = df_all.groupby("symbol", sort=False)
+            df_all["deliv_sma_20"] = g["deliverable_volume"].rolling(20, min_periods=1).mean().reset_index(level=0, drop=True)
+            df_all["sma_20"] = g["close"].rolling(20, min_periods=1).mean().reset_index(level=0, drop=True)
+            df_all["sma_50"] = g["close"].rolling(50, min_periods=1).mean().reset_index(level=0, drop=True)
+            df_all["sma_200"] = g["close"].rolling(200, min_periods=1).mean().reset_index(level=0, drop=True)
+            df_all["high_52w"] = g["high"].rolling(250, min_periods=1).max().reset_index(level=0, drop=True)
+            df_all["low_52w"] = g["low"].rolling(250, min_periods=1).min().reset_index(level=0, drop=True)
+        else:
+            g = df_all.groupby("symbol", sort=False)
+        for col in ("sma_20", "sma_50", "sma_200", "high_52w", "low_52w"):
+            df_all[col] = df_all[col].round(2)
         df_all["delivery_spike_ratio"] = (
             df_all["deliverable_volume"] / df_all["deliv_sma_20"].replace(0, float("nan"))
         ).fillna(1.0).round(2)
         df_all["delivery_conviction_score"] = (
             df_all["delivery_spike_ratio"] * df_all["delivery_pct"]
         ).round(2)
-        df_all["sma_20"] = g["close"].rolling(20, min_periods=1).mean().reset_index(level=0, drop=True).round(2)
-        df_all["sma_50"] = g["close"].rolling(50, min_periods=1).mean().reset_index(level=0, drop=True).round(2)
-        df_all["sma_200"] = g["close"].rolling(200, min_periods=1).mean().reset_index(level=0, drop=True).round(2)
-        df_all["high_52w"] = g["high"].rolling(250, min_periods=1).max().reset_index(level=0, drop=True).round(2)
-        df_all["low_52w"] = g["low"].rolling(250, min_periods=1).min().reset_index(level=0, drop=True).round(2)
         df_all["distance_from_52w_high_pct"] = (
             ((df_all["high_52w"] - df_all["close"]) / df_all["high_52w"].replace(0, float("nan"))) * 100.0
         ).fillna(0.0).round(2)

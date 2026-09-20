@@ -6,6 +6,9 @@
 # Ingestion, quantitative calculations, SQLite repository, CLI, and dashboard
 
 pandas>=2.0.0
+# Optional pandas accelerators (auto-detected; big groupby/nanop speedups)
+numexpr>=2.14.0
+bottleneck>=1.6.0
 numpy>=1.24.0
 streamlit>=1.30.0
 curl_cffi>=0.7.0

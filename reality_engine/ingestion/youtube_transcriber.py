@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -271,7 +272,40 @@ class YouTubeTranscriber:
             logger.info("Whisper mock transcribe %s -> %d segments (no binary/model)", media_path.name, len(segments))
             return segments
 
-        # Try local whisper
+        # Try faster-whisper first (CTranslate2 int8, CPU — no torch/CUDA needed on this box)
+        try:
+            from faster_whisper import WhisperModel  # type: ignore
+
+            if not hasattr(self, "_fw_model_obj"):
+                try:
+                    self._fw_model_obj = WhisperModel(
+                        self.whisper_model,
+                        device="cpu",
+                        compute_type="int8",
+                        cpu_threads=max(2, (os.cpu_count() or 4) - 2),
+                    )
+                except Exception as exc:
+                    logger.warning("faster-whisper model load failed (%s): %s", self.whisper_model, exc)
+                    self._fw_model_obj = None
+            if getattr(self, "_fw_model_obj", None) is not None:
+                segments_iter, _info = self._fw_model_obj.transcribe(str(media_path), language="en", vad_filter=False)
+                out = []
+                for s in segments_iter:
+                    out.append({
+                        "start": int(float(s.start)),
+                        "end": int(float(s.end)),
+                        "text": s.text.strip(),
+                        "confidence": float(s.avg_logprob),
+                    })
+                if out:
+                    logger.info("faster-whisper transcribe %s -> %d segments", media_path.name, len(out))
+                    return out
+        except ImportError:
+            logger.debug("faster-whisper not installed; trying openai-whisper")
+        except Exception as exc:
+            logger.warning("faster-whisper transcribe failed (%s): %s", media_path.name, exc)
+
+        # Try openai-whisper (torch) if faster-whisper unavailable
         try:
             import whisper  # type: ignore
 

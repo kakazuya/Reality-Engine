@@ -22,8 +22,21 @@ from reality_engine.processing.fundamental_engine import fundamental_engine
 
 logger = logging.getLogger("reality_engine.agent.tools")
 
-# Singleton hybrid search engine instance
-_search_engine = HybridSearchEngine(db_manager)
+# Shared hybrid search engine instance, built on first use.
+#
+# This used to be constructed at import time (`_search_engine = HybridSearchEngine(db_manager)`),
+# which loaded the vector store (vectors.json + LanceDB) before any tool ran and cost ~5.8s of
+# every CLI and test-module start. It is still one shared instance per process; only the moment
+# of construction moved.
+_search_engine: Optional[HybridSearchEngine] = None
+
+
+def get_search_engine() -> HybridSearchEngine:
+    """Return the process-wide hybrid search engine, constructing it on first use."""
+    global _search_engine
+    if _search_engine is None:
+        _search_engine = HybridSearchEngine(db_manager)
+    return _search_engine
 
 
 # ====================================================================
@@ -208,7 +221,7 @@ def search_concall_guidance(symbol: str, query: str, top_k: int = 5) -> Dict[str
     and investor presentations for a specific stock.
     """
     clean_sym = str(symbol).upper().strip()
-    hits = _search_engine.search(query=query, symbol=clean_sym, top_k=max(1, int(top_k)))
+    hits = get_search_engine().search(query=query, symbol=clean_sym, top_k=max(1, int(top_k)))
     return {
         "symbol": clean_sym,
         "query": query,

@@ -1,6 +1,7 @@
 # Agent Manager Run Script (Windows PowerShell)
-# Starts the Streamlit financial terminal dashboard, or runs the catch-up scheduler
-# when invoked with the "catchup" argument (used by the scheduled tasks).
+# Starts the Streamlit financial terminal dashboard, runs the catch-up scheduler
+# when invoked with the "catchup" argument (used by the scheduled tasks),
+# or runs the Wave A nightly chain with the "nightly" argument.
 param(
     [string]$Task = ""
 )
@@ -21,6 +22,12 @@ if (-not $PyExe) { $PyExe = "python" }
 if ($Task -eq "catchup") {
     Write-Host "[Kilo Run] Running Reality Engine missed-days catcher..." -ForegroundColor Cyan
     & $PyExe -m reality_engine.pipeline.catchup_scheduler
+    exit $LASTEXITCODE
+}
+
+if ($Task -eq "nightly") {
+    Write-Host "[Kilo Run] Running Reality Engine Wave A nightly chain..." -ForegroundColor Cyan
+    & $PyExe reality_engine/cli.py nightly --part all
     exit $LASTEXITCODE
 }
 

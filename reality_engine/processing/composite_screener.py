@@ -609,7 +609,13 @@ class CompositeScreener:
         return 4.0
 
     def _lookup_moat_metrics(self, symbol: str, isin: str) -> Dict[str, Any]:
-        """Return {total_moat_score, moat_width, moat_trajectory, pricing_power_score} with SQLite fallbacks."""
+        """Return {total_moat_score, moat_width, moat_trajectory, pricing_power_score, moat_source}.
+
+        ``moat_source`` reports which tier answered: ``moat_evaluations`` (stored substrate),
+        ``archetype_heuristic`` / ``distilled_param`` / ``text_heuristic`` (derived),
+        or ``default`` (nothing available). Consumers must not present a derived or default
+        score as if it were the stored substrate.
+        """
         sym = (symbol or "").upper().strip()
         # 1. Try PG moat_evaluations + business_model_profiles join
         try:
@@ -634,11 +640,44 @@ class CompositeScreener:
                     }
         except Exception:
             pass
-        # 2. SQLite demo business_model_profiles_demo (4 rows: HAL, TITAGARH, POLYPLEX, RELIANCE)
+        # 2. SQLite canonical moat_evaluations, joined to the canonical business_model_profiles.
+        #    The tier above joins `companies`, which exists only in PostgreSQL, so on SQLite it
+        #    always raised and every lookup fell through to the archetype heuristic below --
+        #    76% of the nifty200 disagreed with the stored substrate and 67 crossed the
+        #    TOPDOWN_MIN_MOAT_SCORE gate. This tier reads what is actually stored.
         try:
             with self.repo.db.session() as conn:
                 row = conn.execute(
-                    "SELECT archetype, revenue_recurrence_pct, pricing_power_score FROM business_model_profiles_demo WHERE symbol=? LIMIT 1",
+                    """
+                    SELECT m.total_moat_score, m.moat_trajectory, m.moat_width,
+                           b.pricing_power_score
+                    FROM moat_evaluations m
+                    LEFT JOIN business_model_profiles b ON b.symbol = m.ticker
+                    WHERE m.ticker = ? LIMIT 1
+                    """,
+                    (sym,),
+                ).fetchone()
+                if row and row[0] is not None:
+                    return {
+                        "total_moat_score": float(row[0]),
+                        "moat_trajectory": str(row[1] or "Stable"),
+                        "moat_width": str(row[2] or ("Wide" if float(row[0]) >= 3.5 else "Narrow")),
+                        "pricing_power_score": int(row[3] or 3),
+                        "moat_source": "moat_evaluations",
+                    }
+        except Exception:
+            pass
+        # 3. SQLite canonical business_model_profiles -> archetype heuristic.
+        #    This read `business_model_profiles_demo` until 2026-09-20. That table is a 1:1
+        #    mirror of the canonical one (2,592 symbols in both, same values, populated from
+        #    canonical by repository.upsert_business_model_profile), so reading canonical
+        #    changes no behaviour and removes the mirror's only remaining reader -- which is
+        #    the precondition repository.py names for retiring it ("Remove the mirror once
+        #    composite_screener is migrated to the canonical table").
+        try:
+            with self.repo.db.session() as conn:
+                row = conn.execute(
+                    "SELECT archetype, revenue_recurrence_pct, pricing_power_score FROM business_model_profiles WHERE symbol=? LIMIT 1",
                     (sym,),
                 ).fetchone()
                 if row:
@@ -656,10 +695,11 @@ class CompositeScreener:
                         "moat_trajectory": "Stable" if sym in ("HAL", "RELIANCE") else ("Expanding" if pwr >= 4 else "Stable"),
                         "moat_width": width,
                         "pricing_power_score": pwr,
+                        "moat_source": "archetype_heuristic",
                     }
         except Exception:
             pass
-        # 3. Distilled params moat_rating (0-10) -> 0-5
+        # 4. Distilled params moat_rating (0-10) -> 0-5
         try:
             rows = self.repo.get_distilled_parameters(sym, parameter_key="business_sensitivities")
             for r in rows:
@@ -684,12 +724,13 @@ class CompositeScreener:
                             "moat_trajectory": traj,
                             "moat_width": width,
                             "pricing_power_score": 4 if total >= 3.5 else 3,
+                            "moat_source": "distilled_param",
                         }
                 except Exception:
                     continue
         except Exception:
             pass
-        # 4. Deterministic heuristic via moat_scorer.score_from_text
+        # 5. Deterministic heuristic via moat_scorer.score_from_text
         try:
             from reality_engine.processing.moat_scorer import score_from_text  # local import to avoid cycle
             # Build pseudo-text from symbol/industry
@@ -702,10 +743,17 @@ class CompositeScreener:
                 "moat_trajectory": "Stable",
                 "moat_width": ms.width(),
                 "pricing_power_score": 3,
+                "moat_source": "text_heuristic",
             }
         except Exception:
             pass
-        return {"total_moat_score": 2.5, "moat_trajectory": "Stable", "moat_width": "Narrow", "pricing_power_score": 3}
+        return {
+            "total_moat_score": 2.5,
+            "moat_trajectory": "Stable",
+            "moat_width": "Narrow",
+            "pricing_power_score": 3,
+            "moat_source": "default",
+        }
 
     def _lookup_policy_agg_eni(self, symbol: str) -> Optional[float]:
         """Aggregate ENI via repository (mapped rows only). Returns None for unknown/no_template."""
@@ -717,8 +765,17 @@ class CompositeScreener:
         except Exception:
             return None
 
-    def _lookup_roic_wacc_spread(self, symbol: str, isin: str) -> float:
-        """ROIC-WACC spread (>0.05 secondary validation). PG financial_metrics or SQLite annual_financials fallback."""
+    def _roic_wacc_spread_impl(self, symbol: str, isin: str) -> Tuple[float, str]:
+        """(spread, status) with status in ``measured | proxy | unknown``.
+
+        The status exists so consumers can distinguish a sourced number from the terminal
+        constant. On SQLite the PostgreSQL tier cannot run -- it selects from ``companies``,
+        which exists only in PostgreSQL -- so for most names the value returned is the
+        constant, which the thesis template used to render as
+        "ROIC-WACC +6.00% >5% value-creative". Numeric behaviour is deliberately unchanged
+        (the constant keeps the top-down funnel populated); only the *claim* is now gated
+        on provenance. See guardrail G2 in tasks/optimization_findings_2026-09-20.md.
+        """
         sym = (symbol or "").upper().strip()
         # PG financial_metrics
         try:
@@ -728,7 +785,7 @@ class CompositeScreener:
                     (sym,),
                 ).fetchone()
                 if row and row[0] is not None:
-                    return float(row[0])
+                    return float(row[0]), "measured"
         except Exception:
             pass
         # SQLite annual_financials: roce as proxy for ROIC, assume WACC 10% (conservative)
@@ -744,22 +801,40 @@ class CompositeScreener:
                     if roce > 1.5:  # e.g., 14.0 means 14%
                         roce = roce / 100.0
                     wacc = 0.10
-                    return round(roce - wacc, 4)
+                    return round(roce - wacc, 4), "proxy"
         except Exception:
             pass
-        # Fallback: use quarterly roce-like inference from yoy_pat or assume passing for minimal slice
-        return 0.06
+        # No source. The constant is a deliberate fence: it keeps the funnel populated until
+        # roic/wacc is genuinely computed. It is reported as unknown and never asserted.
+        return 0.06, "unknown"
+
+    def _lookup_roic_wacc_spread(self, symbol: str, isin: str) -> float:
+        """ROIC-WACC spread (>0.05 secondary validation). Numeric contract unchanged."""
+        return self._roic_wacc_spread_impl(symbol, isin)[0]
+
+    def roic_wacc_status(self, symbol: str, isin: str = "") -> str:
+        """Provenance of the ROIC-WACC spread: ``measured | proxy | unknown``.
+
+        Mirrors the ``policy_coverage`` vocabulary (mapped / no_template / unknown) so
+        consumers have one convention for "how much does this number actually know".
+        """
+        return self._roic_wacc_spread_impl(symbol, isin)[1]
 
     def _enrich_with_topdown_metrics(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add secular_growth_score, moat_*, policy_agg_eni/policy_coverage, roic_wacc_spread columns."""
+        """Add secular_growth_score, moat_*, policy_agg_eni/policy_coverage, roic_wacc_spread columns.
+
+        Also adds ``roic_wacc_status`` (measured | proxy | unknown) so downstream text
+        generation can tell a sourced spread from the terminal constant.
+        """
         if df.empty:
             return df
-        secular_scores, moat_scores, moat_trajs, moat_widths, pricing_scores, policy_agg, policy_cov, roic_spreads = [], [], [], [], [], [], [], []
+        secular_scores, moat_scores, moat_trajs, moat_widths, pricing_scores, policy_agg, policy_cov, roic_spreads, roic_statuses = [], [], [], [], [], [], [], [], []
         # Cache per-symbol lookups
         cache_moat: Dict[str, Dict[str, Any]] = {}
         cache_policy: Dict[str, Optional[float]] = {}
         cache_coverage: Dict[str, str] = {}
         cache_roic: Dict[str, float] = {}
+        cache_roic_status: Dict[str, str] = {}
         for _, row in df.iterrows():
             sym = str(row.get("symbol", "")).upper()
             isin = str(row.get("isin", ""))
@@ -786,8 +861,11 @@ class CompositeScreener:
             policy_cov.append(cache_coverage[sym])
             # ROIC
             if sym not in cache_roic:
-                cache_roic[sym] = self._lookup_roic_wacc_spread(sym, isin)
+                spread, status = self._roic_wacc_spread_impl(sym, isin)
+                cache_roic[sym] = spread
+                cache_roic_status[sym] = status
             roic_spreads.append(cache_roic[sym])
+            roic_statuses.append(cache_roic_status[sym])
         df = df.copy()
         df["secular_growth_score"] = secular_scores
         df["total_moat_score"] = moat_scores
@@ -799,6 +877,7 @@ class CompositeScreener:
         # Aliases for audit consistency: policy_eni mirrors policy_agg_eni, policy_coverage explicit
         df["policy_eni"] = policy_agg
         df["roic_wacc_spread"] = roic_spreads
+        df["roic_wacc_status"] = roic_statuses
         return df
 
     def _apply_topdown_funnel(

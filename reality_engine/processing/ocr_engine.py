@@ -14,24 +14,62 @@ logger = logging.getLogger("reality_engine.ocr_engine")
 class FinancialOCREngine:
     def __init__(self, confidence_threshold: float = 0.60, use_rapidocr: bool = True, prefer_gpu: bool = True):
         self.confidence_threshold = confidence_threshold
-        self.engine = None
-        self.provider = "NONE"
-        if use_rapidocr:
+        # Engine construction imports onnxruntime/rapidocr and probes execution providers
+        # (~1.2s). Every process that merely imported the ingestion stack used to pay it at
+        # import time. It now happens on first use.
+        #
+        # ``engine`` and ``provider`` are lazy properties so the existing availability
+        # probes (`inst.engine is not None`, `inst.provider`) still report the truth
+        # instead of a pre-init stub -- they simply trigger construction when asked.
+        self._use_rapidocr = use_rapidocr
+        self._prefer_gpu = prefer_gpu
+        self._engine = None
+        self._provider = "NONE"
+        self._v3 = False
+        self._initialized = False
+
+    def _ensure_engine(self) -> None:
+        """Build the OCR engine on first use. Idempotent; failures degrade to no engine."""
+        if self._initialized:
+            return
+        # Set before building: the builders read/write self.engine (the property), and this
+        # flag is what stops that read from recursing back into _ensure_engine.
+        self._initialized = True
+        if not self._use_rapidocr:
+            return
+        try:
+            # RapidOCR v3 (rapidocr package): DirectML-compatible (AMD RX 6700 XT via D3D12)
             try:
-                # RapidOCR v3 (rapidocr package): DirectML-compatible (AMD RX 6700 XT via D3D12)
-                try:
-                    from rapidocr import RapidOCR
-                    self._build_engine_v3(RapidOCR, prefer_gpu)
-                    self._v3 = True
-                except ImportError:
-                    self._v3 = False
-                if self.engine is None:
-                    # Legacy rapidocr_onnxruntime fallback (v1.x)
-                    from rapidocr_onnxruntime import RapidOCR as _LegacyRapidOCR
-                    self._build_engine_legacy(_LegacyRapidOCR)
-                    self._v3 = False
+                from rapidocr import RapidOCR
+                self._build_engine_v3(RapidOCR, self._prefer_gpu)
+                self._v3 = True
             except ImportError:
-                self.engine = None
+                self._v3 = False
+            if self._engine is None:
+                # Legacy rapidocr_onnxruntime fallback (v1.x)
+                from rapidocr_onnxruntime import RapidOCR as _LegacyRapidOCR
+                self._build_engine_legacy(_LegacyRapidOCR)
+                self._v3 = False
+        except ImportError:
+            self._engine = None
+
+    @property
+    def engine(self):
+        self._ensure_engine()
+        return self._engine
+
+    @engine.setter
+    def engine(self, value) -> None:
+        self._engine = value
+
+    @property
+    def provider(self) -> str:
+        self._ensure_engine()
+        return self._provider
+
+    @provider.setter
+    def provider(self, value) -> None:
+        self._provider = value
 
     def _gpu_available(self) -> bool:
         try:

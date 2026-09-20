@@ -71,7 +71,18 @@ class TestCLIAndDashboard(unittest.TestCase):
 
         output = buf.getvalue()
         self.assertIn("Running Quantitative Multi-Factor Screener", output)
-        self.assertIn("HAL", output)
+        # Structural contract: a ranked table carrying the documented columns was printed.
+        # Deliberately NOT asserting that a particular symbol appears -- the ranks, the
+        # solvency gate and the universe all move as the live database is refreshed, so
+        # "HAL in output" pinned fixture data rather than behaviour (it broke on 2026-09-20
+        # when HAL fell out of the top 5 for 2026-08-14).
+        for column in ("composite_rank", "symbol", "composite_score", "delivery_spike_ratio"):
+            self.assertIn(column, output, f"screener table missing column {column}")
+        ranked_rows = [
+            line for line in output.splitlines()
+            if line.strip() and line.strip()[0].isdigit() and line.strip().split()[0].isdigit()
+        ]
+        self.assertGreater(len(ranked_rows), 0, "screener printed no ranked rows")
 
         # Crisis mode
         args_crisis = argparse.Namespace(universe="nifty200", top=5, crisis=True, date="2026-08-14")

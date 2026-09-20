@@ -4,11 +4,21 @@ Provides typed data access, bulk upserts, and specialized query methods for all 
 """
 
 import json
+import logging
 from datetime import date
 from typing import List, Dict, Any, Optional
 import pandas as pd
 
 from reality_engine.db.database import db_manager
+
+logger = logging.getLogger("reality_engine.repository")
+
+
+def _is_placeholder_isin(isin: Any) -> bool:
+    """True for synthetic backfill/fixture ISINs (empty or INE_AUTO*)."""
+    if not isin:
+        return True
+    return str(isin).startswith("INE_AUTO")
 
 # Instrument classification (ETF/BEES/liquid/rights filtering for denominator)
 try:
@@ -63,6 +73,48 @@ class Repository:
         }
         companies = [{**defaults, **company} for company in companies]
 
+        # --- Intra-batch dedupe: one row per ISIN (keep last) and one row per
+        # nse_symbol (keep-rule: real ISIN beats INE_AUTO placeholder, then a
+        # row carrying bse_code, then the latest occurrence). A single
+        # ON CONFLICT(isin) upsert cannot resolve two distinct ISINs sharing
+        # one UNIQUE(nse_symbol), so the loser must be dropped here.
+        by_isin: Dict[Any, Dict[str, Any]] = {}
+        for company in companies:
+            isin_key = company.get("isin")
+            if isin_key:
+                by_isin[isin_key] = company
+            else:
+                by_isin[object()] = company  # type: ignore[index]
+        companies = list(by_isin.values())
+        sym_groups: Dict[str, List[int]] = {}
+        for idx, company in enumerate(companies):
+            sym = company.get("nse_symbol")
+            if sym and str(sym).strip():
+                sym_groups.setdefault(str(sym).strip().upper(), []).append(idx)
+        drop_idxs = set()
+        for sym_u, idxs in sym_groups.items():
+            distinct_isins = {companies[i].get("isin") for i in idxs}
+            if len(distinct_isins) > 1:
+                winner = min(
+                    idxs,
+                    key=lambda i: (
+                        _is_placeholder_isin(companies[i].get("isin")),
+                        not companies[i].get("bse_code"),
+                        -i,
+                    ),
+                )
+                for i in idxs:
+                    if i != winner:
+                        drop_idxs.add(i)
+                logger.warning(
+                    "upsert_master_companies: intra-batch nse_symbol collision "
+                    "%s across ISINs %s; keeping %s",
+                    sym_u, sorted(str(x) for x in distinct_isins),
+                    companies[winner].get("isin"),
+                )
+        if drop_idxs:
+            companies = [c for i, c in enumerate(companies) if i not in drop_idxs]
+
         query = """
         INSERT INTO master_companies (
             isin, nse_symbol, bse_code, company_name, industry, sector,
@@ -89,19 +141,207 @@ class Repository:
             updated_at = CURRENT_TIMESTAMP;
         """
         with self.db.session() as conn:
+            companies, promotions = self._resolve_symbol_collisions(conn, companies)
+            if not companies:
+                return 0
             cursor = conn.executemany(query, companies)
+            # Post-insert: re-link the retired placeholder's price history to
+            # the real ISIN (parent now exists, so FK holds). Row COUNT and
+            # MAX(date) are unchanged — only the ISIN label moves.
+            for old_isin, new_isin in promotions:
+                try:
+                    conn.execute(
+                        "UPDATE daily_price_delivery SET isin = ? WHERE isin = ?",
+                        (new_isin, old_isin),
+                    )
+                except Exception:
+                    pass
             return cursor.rowcount
 
-    def get_all_companies(self, active_only: bool = True) -> List[Dict[str, Any]]:
-        """Retrieves list of all master companies."""
+    @staticmethod
+    def _resolve_symbol_collisions(conn, companies: List[Dict[str, Any]]):
+        """Free UNIQUE(nse_symbol)/UNIQUE(bse_code) slots held by other ISINs.
+
+        The upsert targets ON CONFLICT(isin), so a fresh ISIN reusing an
+        existing symbol (backfill INE_AUTO_* placeholder promoted to its real
+        ISIN, or a genuine corporate-action ISIN change) would otherwise abort
+        the whole executemany with UNIQUE constraint failed. Keep-rule: a real
+        ISIN always beats a placeholder; between two real ISINs the incoming
+        row wins and the stale row is deactivated with its symbol freed (price
+        history keeps the old ISIN for provenance). No rows are deleted (other
+        child tables may still reference a retired stub), so this is FK-safe.
+        Returns (kept_companies, promotions) where promotions are
+        (old_placeholder_isin, new_real_isin) pairs whose price history the
+        caller re-links after the insert. Runs inside the caller's transaction.
+        """
+        promotions: List[Any] = []
+        if not companies:
+            return companies, promotions
+        syms = sorted({str(c["nse_symbol"]).strip() for c in companies if c.get("nse_symbol") and str(c["nse_symbol"]).strip()})
+        codes = sorted({str(c["bse_code"]).strip() for c in companies if c.get("bse_code") and str(c["bse_code"]).strip()})
+
+        def _lookup(col: str, values: List[str]) -> Dict[str, Dict[str, Any]]:
+            found: Dict[str, Dict[str, Any]] = {}
+            for i in range(0, len(values), 500):
+                chunk = values[i:i + 500]
+                try:
+                    rows = conn.execute(
+                        f"SELECT isin, nse_symbol, bse_code FROM master_companies WHERE {col} IN ({','.join('?' * len(chunk))})",
+                        chunk,
+                    ).fetchall()
+                except Exception:
+                    return {}
+                for r in rows:
+                    found[str(r["nse_symbol"]).strip() if col == "nse_symbol" else str(r["bse_code"]).strip()] = dict(r)
+            return found
+
+        try:
+            existing_by_sym = _lookup("nse_symbol", syms) if syms else {}
+            existing_by_code = _lookup("bse_code", codes) if codes else {}
+        except Exception:
+            return companies, promotions
+
+        kept: List[Dict[str, Any]] = []
+        for company in companies:
+            sym = str(company.get("nse_symbol") or "").strip()
+            isin = company.get("isin")
+            if sym:
+                hit = existing_by_sym.get(sym)
+                if hit and hit.get("isin") != isin:
+                    old_isin = hit.get("isin")
+                    if _is_placeholder_isin(old_isin) and not _is_placeholder_isin(isin):
+                        # Placeholder promotion: retire the stub (free the
+                        # symbol) and remember to re-link its price history
+                        # after the real row is inserted.
+                        try:
+                            conn.execute(
+                                "UPDATE master_companies SET nse_symbol = NULL, is_active = 0, updated_at = CURRENT_TIMESTAMP "
+                                "WHERE isin = ? AND nse_symbol = ?",
+                                (old_isin, sym),
+                            )
+                        except Exception:
+                            pass
+                        promotions.append((old_isin, isin))
+                        logger.info("upsert_master_companies: promoted placeholder %s -> real ISIN %s", sym, isin)
+                    elif _is_placeholder_isin(isin) and not _is_placeholder_isin(old_isin):
+                        logger.warning("upsert_master_companies: skipping placeholder %s for symbol held by real ISIN %s", isin, old_isin)
+                        continue
+                    else:
+                        # Genuine ISIN change reusing the symbol: deactivate
+                        # the stale row and free the symbol (history untouched).
+                        try:
+                            conn.execute(
+                                "UPDATE master_companies SET nse_symbol = NULL, is_active = 0, updated_at = CURRENT_TIMESTAMP "
+                                "WHERE isin = ? AND nse_symbol = ?",
+                                (old_isin, sym),
+                            )
+                        except Exception:
+                            pass
+                        logger.info("upsert_master_companies: freed symbol %s from superseded ISIN %s for %s", sym, old_isin, isin)
+            code = str(company.get("bse_code") or "").strip()
+            if code:
+                hit = existing_by_code.get(code)
+                if hit and hit.get("isin") != isin:
+                    try:
+                        conn.execute("UPDATE master_companies SET bse_code = NULL, updated_at = CURRENT_TIMESTAMP WHERE isin = ?", (hit.get("isin"),))
+                    except Exception:
+                        pass
+                    logger.info("upsert_master_companies: freed bse_code %s from ISIN %s for %s", code, hit.get("isin"), isin)
+            kept.append(company)
+        return kept, promotions
+
+    def get_all_companies(self, active_only: bool = True,
+                          screenable_only: bool = False) -> List[Dict[str, Any]]:
+        """Retrieves list of all master companies.
+
+        ``screenable_only`` is opt-in (default False) so every pre-existing
+        caller is byte-identical: when True it additionally excludes rows the
+        BSE-only admission path marked ``is_screenable = 0``. Pre-provenance
+        rows carry NULL and are treated as screenable (COALESCE → 1).
+        """
         query = "SELECT * FROM master_companies"
+        clauses: List[str] = []
         if active_only:
-            query += " WHERE is_active = 1"
+            clauses.append("is_active = 1")
+        if screenable_only:
+            clauses.append("COALESCE(is_screenable, 1) = 1")
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
         query += " ORDER BY nse_symbol ASC"
 
         with self.db.session() as conn:
             rows = conn.execute(query).fetchall()
             return [dict(r) for r in rows]
+
+    # -------------------------------------------------------------
+    # 1a-2. Universe provenance (listing_source / is_screenable)
+    #       Additive only; does not alter existing master behaviour.
+    # -------------------------------------------------------------
+    #: (column, DDL) pairs added on demand. ``listing_source`` records which
+    #: exchange(s) verified the row; ``is_screenable`` gates the screened
+    #: universe so BSE-only admissions can never leak into screens silently.
+    _UNIVERSE_PROVENANCE_COLUMNS = (
+        ("listing_source", "TEXT CHECK (listing_source IN ('NSE','DUAL','BSE_ONLY'))"),
+        ("is_screenable", "INTEGER DEFAULT 1"),
+    )
+
+    def ensure_universe_provenance_schema(self, manager=None) -> None:
+        """Additively add master_companies provenance columns (idempotent).
+
+        Same contract as :meth:`ensure_validation_schema`: additive ALTER TABLE
+        only, safe to call on every sync, no-op when the columns already exist.
+        The table is never rewritten and no other column is touched.
+        """
+        mgr = manager or self.db
+        with mgr.session() as conn:
+            info = conn.execute("PRAGMA table_info(master_companies)").fetchall()
+            if not info:
+                # Table absent (minimal bootstrap); schema.sql owns creation.
+                return
+            cols = {r[1] for r in info}
+            for name, ddl in self._UNIVERSE_PROVENANCE_COLUMNS:
+                if name in cols:
+                    continue
+                try:
+                    conn.execute(f"ALTER TABLE master_companies ADD COLUMN {name} {ddl}")
+                    logger.info("ensure_universe_provenance_schema: added master_companies.%s", name)
+                except Exception as exc:  # pragma: no cover — defensive
+                    logger.warning("ensure_universe_provenance_schema: %s not added: %s", name, exc)
+
+    def set_screenable(self, isin: str, value: Any) -> int:
+        """Set ``master_companies.is_screenable`` for one ISIN; returns rows hit."""
+        self.ensure_universe_provenance_schema()
+        with self.db.session() as conn:
+            cursor = conn.execute(
+                "UPDATE master_companies SET is_screenable = ?, updated_at = CURRENT_TIMESTAMP WHERE isin = ?",
+                (1 if value else 0, isin),
+            )
+            return cursor.rowcount
+
+    def count_universe_by_provenance(self) -> Dict[str, int]:
+        """Active-row counts per listing_source plus the screenable subset.
+
+        Legacy rows written before the provenance columns existed have a NULL
+        ``listing_source``; they were all NSE-ingested, so NULL is folded into
+        'NSE'. Always returns the four documented keys.
+        """
+        self.ensure_universe_provenance_schema()
+        counts: Dict[str, int] = {"NSE": 0, "DUAL": 0, "BSE_ONLY": 0, "screenable": 0}
+        with self.db.session() as conn:
+            rows = conn.execute(
+                "SELECT COALESCE(listing_source, 'NSE') AS src, COUNT(*) AS n "
+                "FROM master_companies WHERE is_active = 1 GROUP BY src"
+            ).fetchall()
+            for r in rows:
+                src = str(r["src"])
+                if src not in counts:
+                    # Unrecognised label (pre-CHECK legacy value) counts as NSE.
+                    src = "NSE"
+                counts[src] += int(r["n"])
+            counts["screenable"] = int(conn.execute(
+                "SELECT COUNT(*) FROM master_companies WHERE is_active = 1 AND COALESCE(is_screenable, 1) = 1"
+            ).fetchone()[0])
+        return counts
 
     def get_nifty200_companies(self) -> List[Dict[str, Any]]:
         """Retrieves Top 200 (Nifty 200) companies."""
@@ -3145,6 +3385,192 @@ class Repository:
                 )
             n = conn.execute("SELECT COUNT(*) FROM industries").fetchone()[0]
         return int(n)
+
+
+    # -------------------------------------------------------------
+    # 14. Wave B — Model-validation loop (additive only; owned by
+    #     processing/validation_harness.py + reporting/notifier.py).
+    #     Mirrors the ensure/upsert/get pattern of
+    #     model_explainer_rankings (§11). Never touches existing tables.
+    # -------------------------------------------------------------
+    _VALIDATION_SCORES_DDL = """
+    CREATE TABLE IF NOT EXISTS model_validation_scores (
+        score_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        asof_date DATE NOT NULL,
+        horizon_days INTEGER NOT NULL,
+        mode TEXT NOT NULL,
+        lens_family TEXT,
+        regime_tag TEXT NOT NULL DEFAULT 'unknown',
+        investor_majority TEXT NOT NULL DEFAULT 'all',
+        n INTEGER NOT NULL DEFAULT 0,
+        hit_rate REAL,
+        mean_fwd_ret REAL,
+        universe_mean_ret REAL,
+        ic REAL,
+        thesis_hit_rate REAL,
+        thesis_n INTEGER,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(asof_date, horizon_days, mode, lens_family, regime_tag, investor_majority)
+    );
+    """
+
+    _LENS_WEIGHT_PROPOSALS_DDL = """
+    CREATE TABLE IF NOT EXISTS model_lens_weight_proposals (
+        proposal_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        regime_tag TEXT NOT NULL,
+        investor_majority TEXT NOT NULL DEFAULT 'all',
+        lens_family TEXT NOT NULL,
+        weight REAL NOT NULL,
+        basis_json TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(regime_tag, investor_majority, lens_family)
+    );
+    """
+
+    def ensure_validation_schema(self, manager=None) -> None:
+        """Create Wave B validation tables (idempotent; additive only)."""
+        mgr = manager or self.db
+        with mgr.session() as conn:
+            conn.execute(self._VALIDATION_SCORES_DDL)
+            conn.execute(self._LENS_WEIGHT_PROPOSALS_DDL)
+            for idx, ddl in (
+                ("idx_val_asof",
+                 "CREATE INDEX IF NOT EXISTS idx_val_asof ON model_validation_scores(asof_date DESC)"),
+                ("idx_val_mode_horizon",
+                 "CREATE INDEX IF NOT EXISTS idx_val_mode_horizon ON model_validation_scores(mode, horizon_days)"),
+                ("idx_val_lens",
+                 "CREATE INDEX IF NOT EXISTS idx_val_lens ON model_validation_scores(lens_family)"),
+                ("idx_val_regime",
+                 "CREATE INDEX IF NOT EXISTS idx_val_regime ON model_validation_scores(regime_tag)"),
+                ("idx_val_scores_upsert",
+                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_val_scores_upsert ON model_validation_scores(asof_date, horizon_days, mode, COALESCE(lens_family,'__all__'), regime_tag, investor_majority)"),
+            ):
+                try:
+                    conn.execute(ddl)
+                except Exception:
+                    pass
+
+    def upsert_validation_scores(self, records: List[Dict[str, Any]]) -> int:
+        """Persist model_validation_scores rows (Wave B harness output)."""
+        if not records:
+            return 0
+        self.ensure_validation_schema()
+        query = """
+        INSERT INTO model_validation_scores (
+            asof_date, horizon_days, mode, lens_family, regime_tag,
+            investor_majority, n, hit_rate, mean_fwd_ret,
+            universe_mean_ret, ic, thesis_hit_rate, thesis_n
+        ) VALUES (
+            :asof_date, :horizon_days, :mode, :lens_family, :regime_tag,
+            :investor_majority, :n, :hit_rate, :mean_fwd_ret,
+            :universe_mean_ret, :ic, :thesis_hit_rate, :thesis_n
+        )
+        ON CONFLICT(asof_date, horizon_days, mode, COALESCE(lens_family,'__all__'), regime_tag, investor_majority)
+        DO UPDATE SET n=excluded.n, hit_rate=excluded.hit_rate,
+                      mean_fwd_ret=excluded.mean_fwd_ret,
+                      universe_mean_ret=excluded.universe_mean_ret,
+                      ic=excluded.ic, thesis_hit_rate=excluded.thesis_hit_rate,
+                      thesis_n=excluded.thesis_n
+        """
+        defaults = {
+            "lens_family": "__all__", "regime_tag": "unknown", "investor_majority": "all",
+            "n": 0, "hit_rate": None, "mean_fwd_ret": None, "universe_mean_ret": None,
+            "ic": None, "thesis_hit_rate": None, "thesis_n": None,
+        }
+        rows = [{**defaults, **r} for r in records]
+        for row in rows:
+            if row.get("lens_family") is None:
+                row["lens_family"] = "__all__"
+        with self.db.session() as conn:
+            cursor = conn.executemany(query, rows)
+            return cursor.rowcount
+
+    def get_validation_scores(
+        self,
+        asof_date: Optional[str] = None,
+        mode: Optional[str] = None,
+        horizon_days: Optional[int] = None,
+        regime_tag: Optional[str] = None,
+        investor_majority: Optional[str] = None,
+        lens_family: Optional[Any] = "__any__",
+        limit: int = 1000,
+    ) -> List[Dict[str, Any]]:
+        """Return model_validation_scores rows filtered by provided keys.
+
+        lens_family="__any__" (default) skips the lens filter; pass
+        lens_family=None to match whole-cohort (NULL lens) rows only, or a
+        family name for one per-lens bucket.
+        """
+        self.ensure_validation_schema()
+        sql = "SELECT * FROM model_validation_scores WHERE 1=1"
+        params: List[Any] = []
+        for col, val in (
+            ("asof_date", asof_date), ("mode", mode), ("horizon_days", horizon_days),
+            ("regime_tag", regime_tag), ("investor_majority", investor_majority),
+        ):
+            if val is not None:
+                sql += f" AND {col}=?"
+                params.append(val)
+        if lens_family != "__any__":
+            if lens_family is None:
+                sql += " AND (lens_family IS NULL OR lens_family='__all__')"
+            else:
+                sql += " AND lens_family=?"
+                params.append(str(lens_family))
+        sql += " ORDER BY asof_date DESC, horizon_days ASC"
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(int(limit))
+        try:
+            with self.db.session() as conn:
+                return [dict(r) for r in conn.execute(sql, params).fetchall()]
+        except Exception:
+            return []
+
+    def upsert_lens_weight_proposals(self, records: List[Dict[str, Any]]) -> int:
+        """Persist fit_lens_weights() proposals (never rankings — see harness)."""
+        if not records:
+            return 0
+        self.ensure_validation_schema()
+        query = """
+        INSERT INTO model_lens_weight_proposals (
+            regime_tag, investor_majority, lens_family, weight, basis_json
+        ) VALUES (
+            :regime_tag, :investor_majority, :lens_family, :weight, :basis_json
+        )
+        ON CONFLICT(regime_tag, investor_majority, lens_family)
+        DO UPDATE SET weight=excluded.weight, basis_json=excluded.basis_json,
+                      created_at=CURRENT_TIMESTAMP
+        """
+        defaults = {"investor_majority": "all", "basis_json": None}
+        rows = [{**defaults, **r} for r in records]
+        with self.db.session() as conn:
+            cursor = conn.executemany(query, rows)
+            return cursor.rowcount
+
+    def get_lens_weight_proposals(
+        self,
+        regime_tag: Optional[str] = None,
+        investor_majority: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Return lens-weight proposals filtered by regime/investor (newest last)."""
+        self.ensure_validation_schema()
+        sql = "SELECT * FROM model_lens_weight_proposals WHERE 1=1"
+        params: List[Any] = []
+        for col, val in (("regime_tag", regime_tag), ("investor_majority", investor_majority)):
+            if val is not None:
+                sql += f" AND {col}=?"
+                params.append(str(val))
+        sql += " ORDER BY proposal_id ASC"
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(int(limit))
+        try:
+            with self.db.session() as conn:
+                return [dict(r) for r in conn.execute(sql, params).fetchall()]
+        except Exception:
+            return []
 
 
 # Singleton repository instance

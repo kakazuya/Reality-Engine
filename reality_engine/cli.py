@@ -753,7 +753,289 @@ def cmd_fetch_filings(args):
         for rr in recs:
             rr["isin"] = sym_to_isin.get(rr["symbol"])
         n = _repo.upsert_corporate_documents(recs)
-        print(f"\nPersisted {n} filing record(s) (archived + provenance) to corporate_documents.")
+def cmd_fetch_offer_docs(args):
+    """Discover SEBI DRHP/Prospectus filings and archive the offer PDFs.
+
+    Discovery via ``sebi_offer_client`` (ajax listing search, no browser);
+    archival reuses ``official_filing_client`` unchanged — the discovery record
+    matches the ``filing_discovery`` shape. Persist gated by ``--persist`` like
+    the sibling fetch commands. ``--doc-date`` falls back to the listing date
+    carried on each link; unknown dates persist as NULL (never 1970-01-01).
+    """
+    from reality_engine.ingestion.sebi_offer_client import sebi_offer_client
+    from reality_engine.ingestion.official_filing_client import official_filing_client
+    from reality_engine.db.repository import repo as _repo
+
+    stage = (getattr(args, "stage", "both") or "both").lower()
+    company_arg = (getattr(args, "company_name", None) or "").strip() or None
+    symbol_arg = (getattr(args, "symbol", None) or "").strip().upper() or None
+    if symbol_arg or company_arg:
+        companies = [{
+            "nse_symbol": symbol_arg or company_arg.upper().replace(" ", "_")[:32],
+            "company_name": company_arg,
+        }]
+    else:
+        companies = _repo.get_all_companies(active_only=True)
+        if getattr(args, "sample", None):
+            non_nifty200 = [c for c in companies if not c.get("is_nifty200")]
+            companies = (non_nifty200 if non_nifty200 else companies)[: args.sample]
+
+    print(f"Discovering SEBI offer documents for {len(companies)} symbol(s) (stage={stage})...")
+    discoveries = []
+    for c in companies:
+        sym = (c.get("nse_symbol") or c.get("symbol") or "").strip().upper()
+        if not sym:
+            continue
+        name = c.get("company_name") or c.get("companyName")
+        disc = sebi_offer_client.discover_offer_documents(
+            sym, company_name=name, stage=stage, max_results=getattr(args, "max_results", 10),
+        )
+        discoveries.append(disc)
+        flag = "ERROR" if disc.get("error") else "ok"
+        print(f"  {sym}: {len(disc.get('links', []))} offer doc(s) [{flag}]")
+        for ln in disc.get("links", [])[:5]:
+            print(f"      - {ln.get('offer_stage', '?'):5s} {ln.get('title', '')[:80]}")
+
+    result = official_filing_client.archive_many(
+        discoveries, max_workers=getattr(args, "workers", 2), progress=True
+    )
+    print(json.dumps({k: v for k, v in result.items() if k != "per_symbol"}, indent=2))
+    if args.persist:
+        recs = []
+        for sym_res in result.get("per_symbol", []):
+            sym = sym_res.get("symbol")
+            for r in sym_res.get("results", []):
+                recs.append({
+                    "isin": None, "symbol": sym, "doc_type": r.get("doc_type"),
+                    "title": r.get("title") or r.get("doc_type"),
+                    "doc_date": r.get("doc_date"),
+                    "source_url": r.get("source_url"), "source": r.get("source"),
+                    "discovery_source": r.get("discovery_source"),
+                    "local_file_path": r.get("local_file_path"),
+                    "file_size_bytes": r.get("file_size_bytes", 0),
+                    "sha256_hash": r.get("sha256_hash"),
+                    "is_processed": 1 if r.get("ok") else 0,
+                })
+        sym_to_isin = {c.get("nse_symbol"): c.get("isin") for c in companies if c.get("nse_symbol")}
+        for rr in recs:
+            rr["isin"] = sym_to_isin.get(rr["symbol"])
+        n = _repo.upsert_corporate_documents(recs)
+        print(f"\nPersisted {n} offer document record(s) to corporate_documents.")
+    else:
+        print("Dry run: pass --persist to write to corporate_documents.")
+def cmd_offer_backfill(args):
+    """Run the SEBI DRHP/Prospectus bulk backfill (crawl -> match -> archive -> ingest -> distill)."""
+    from reality_engine.pipeline.offer_backfill import run_once
+    from pathlib import Path as _P
+    stage_arg = getattr(args, "stage", "both") or "both"
+    stages = ("final", "draft") if stage_arg == "both" else (stage_arg,)
+    result = run_once(
+        loop_dir=_P(args.loop_dir) if getattr(args, "loop_dir", None) else None,
+        dry_run=not getattr(args, "apply", False),
+        stages=stages,
+        max_pages=getattr(args, "max_pages", 0) or 0,
+        max_archive=getattr(args, "max_archive", 0) or 0,
+        max_workers=getattr(args, "workers", 8) or 8,
+    )
+    print(json.dumps(result, indent=2, default=str))
+
+
+def cmd_embed_setup(args):
+    """Download the ONNX embedding model (bge-small-en-v1.5) into data/models."""
+    from reality_engine.ingestion.onnx_embedder import onnx_embedder
+    ok = onnx_embedder.ensure_downloaded()
+    print(json.dumps({"ok": ok, **onnx_embedder.status()}, indent=2))
+
+
+def cmd_embed_status(args):
+    """Show ONNX embedding backend status (provider, files, dimension)."""
+    from reality_engine.ingestion.onnx_embedder import embed_status
+    print(json.dumps(embed_status(), indent=2))
+
+
+def cmd_reembed_chunks(args):
+    """Re-embed document_chunks rows with the ONNX backend (batched, idempotent).
+
+    Default scope is OFFER_DOCUMENT rows whose embedding is missing or looks
+    like the 384-dim hash fallback. --all extends to every chunk row.
+    --limit caps rows per run; re-runs resume (completed rows are skipped).
+    """
+    import json as _json
+    from reality_engine.db.database import db_manager
+    from reality_engine.db.vector_store import VectorStoreManager
+    limit = int(getattr(args, "limit", 0) or 0)
+    scope_all = bool(getattr(args, "all", False))
+    batch = int(getattr(args, "batch", 64) or 64)
+    vs = VectorStoreManager()
+    where = "" if scope_all else "WHERE rd.source_type = 'OFFER_DOCUMENT'"
+    with db_manager.session() as conn:
+        rows = conn.execute(
+            "SELECT dc.chunk_id, dc.content FROM document_chunks dc "
+            "JOIN raw_documents rd ON dc.doc_id = rd.doc_id "
+            f"{where} ORDER BY dc.chunk_id",  # nosec - where is a static literal
+        ).fetchall()
+    todo = []
+    for cid, content in rows:
+        if not content:
+            continue
+        todo.append((cid, content))
+        if limit and len(todo) >= limit:
+            break
+    done, skipped, total = 0, 0, len(todo)
+    for i in range(0, len(todo), batch):
+        sl = todo[i : i + batch]
+        vecs = vs.embed_many([t for _, t in sl])
+        with db_manager.session() as conn:
+            for (cid, _), vec in zip(sl, vecs):
+                try:
+                    conn.execute(
+                        "UPDATE document_chunks SET embedding=? WHERE chunk_id=?",
+                        (_json.dumps(vec), cid),
+                    )
+                    done += 1
+                except Exception:
+                    skipped += 1
+            conn.commit()
+    print(_json.dumps({"total": total, "reembedded": done, "skipped": skipped,
+                       "provider": vs.embed("probe") is not None}, indent=2))
+
+
+LLM_SERVER_PROC_NAME = "llama-server"
+LLM_DEFAULT_PORT = 8080
+LLM_REPO_ID = "prism-ml/Ternary-Bonsai-2-27B-gguf"
+LLM_FILENAME = "Ternary-Bonsai-2-27B-PQ2_0.gguf"
+
+
+def _llm_paths():
+    """llama-server binary + GGUF model locations (data dir, git-ignored)."""
+    from pathlib import Path as _P
+    from reality_engine import config as _cfg
+    bindir = _P(_cfg.DATA_DIR) / "llama-bonsai"
+    modeldir = _P(_cfg.DATA_DIR) / "models" / "bonsai-27b"
+    server = bindir / "llama-server.exe"
+    gguf = modeldir / LLM_FILENAME
+    cached = list(modeldir.glob(f"**/{LLM_FILENAME}"))
+    if not gguf.exists() and cached:
+        gguf = cached[0]
+    return server, gguf
+
+
+def cmd_llm_setup(args):
+    """Download the Bonsai PQ2_0 GGUF model (~6.7 GB) into data/models (resumable)."""
+    from huggingface_hub import hf_hub_download
+    from pathlib import Path as _P
+    from reality_engine import config as _cfg
+    dest = _P(_cfg.DATA_DIR) / "models" / "bonsai-27b"
+    dest.mkdir(parents=True, exist_ok=True)
+    target = dest / LLM_FILENAME
+    if target.exists() and target.stat().st_size > 5_000_000_000:
+        print(json.dumps({"ok": True, "path": str(target), "cached": True}, indent=2))
+        return
+    got = hf_hub_download(repo_id=LLM_REPO_ID, filename=LLM_FILENAME,
+                          local_dir=str(dest))
+    got_p = _P(got)
+    if got_p.resolve() != target.resolve() and got_p.exists():
+        try:
+            got_p.replace(target)
+        except OSError:
+            target = got_p
+    print(json.dumps({"ok": target.exists(), "path": str(target)}, indent=2))
+
+
+def cmd_llm_serve(args):
+    """Start llama-server (Vulkan, full GPU offload) as a supervised process."""
+    from reality_engine import config as _cfg
+    server, gguf = _llm_paths()
+    if not server.exists():
+        print(json.dumps({"ok": False, "error": f"missing {server}; see docs for the b11064 vulkan build"}, indent=2))
+        return
+    if not gguf.exists():
+        print(json.dumps({"ok": False, "error": f"missing model; run `cli.py llm-setup` first"}, indent=2))
+        return
+    port = int(getattr(args, "port", LLM_DEFAULT_PORT) or LLM_DEFAULT_PORT)
+    ctx = max(32768, int(getattr(args, "ctx", 32768) or 32768))
+    import subprocess
+    log_path = _llm_paths()[0].parent / f"llama-server-{port}.log"
+    with open(log_path, "ab") as logfh:
+        proc = subprocess.Popen(
+            [str(server), "--model", str(gguf), "--host", "127.0.0.1",
+             "--port", str(port), "--ctx-size", str(ctx), "--n-gpu-layers", "99",
+             "--device", "Vulkan0", "--jinja", "--threads", "-1",
+             "--load-mode", "mmap", "--reasoning-budget", "512",
+             "--temp", "0.5", "--top-p", "0.85", "--top-k", "20", "--min-p", "0.0"],
+            stdout=logfh, stderr=subprocess.STDOUT,
+            creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+        )
+    from reality_engine.ingestion.llm_lens_client import LensLLMClient
+    import time
+    client = LensLLMClient(base_url=f"http://127.0.0.1:{port}")
+    ready = False
+    for _ in range(120):
+        if client.health():
+            ready = True
+            break
+        time.sleep(2)
+    print(json.dumps({"ok": ready, "pid": proc.pid, "port": port,
+                      "model": str(gguf), "log": str(log_path)}, indent=2))
+
+
+def cmd_llm_status(args):
+    """Probe the running llama-server (/health + a 1-token generation)."""
+    from reality_engine.ingestion.llm_lens_client import LensLLMClient
+    port = int(getattr(args, "port", LLM_DEFAULT_PORT) or LLM_DEFAULT_PORT)
+    client = LensLLMClient(base_url=f"http://127.0.0.1:{port}")
+    ok = client.health()
+    print(json.dumps({"ok": ok, "base_url": client.base_url}, indent=2))
+
+
+def cmd_lens_extract(args):
+    """Run one lens pass over stored chunks (macro or moat) via the local LLM.
+
+    ``--kind macro`` distills one OFFER_DOCUMENT raw doc into macro_events +
+    ripple_effects; ``--kind moat`` synthesizes one symbol's moat deltas.
+    Dry-run (default) prints the lens dict without writing; ``--apply`` writes.
+    """
+    from reality_engine.db.database import db_manager
+    from reality_engine.ingestion.llm_lens_client import LensLLMClient
+    port = int(getattr(args, "port", LLM_DEFAULT_PORT) or LLM_DEFAULT_PORT)
+    client = LensLLMClient(base_url=f"http://127.0.0.1:{port}")
+    kind = (getattr(args, "kind", "moat") or "moat").lower()
+    apply = bool(getattr(args, "apply", False))
+    if kind == "macro":
+        from reality_engine.processing.distillation_engine import DistillationEngine
+        doc_id = getattr(args, "doc_id", None)
+        if doc_id is None:
+            with db_manager.session() as conn:
+                row = conn.execute("SELECT doc_id FROM raw_documents WHERE source_type='OFFER_DOCUMENT' ORDER BY doc_id LIMIT 1").fetchone()
+            if not row:
+                print(json.dumps({"ok": False, "error": "no OFFER_DOCUMENT rows"}, indent=2))
+                return
+            doc_id = int(row[0] if isinstance(row, tuple) else row["doc_id"])
+        if not apply:
+            raw = DistillationEngine().repo.get_raw_document_by_id(doc_id)
+            chunks = DistillationEngine().repo.get_document_chunks_for_doc(doc_id, limit=6)
+            out = client.extract_macro("\n".join(chunks), raw or {})
+            print(json.dumps({"ok": True, "doc_id": doc_id, "lens": out}, indent=2, default=str))
+            return
+        res = DistillationEngine().distill_macro_document(int(doc_id), llm_client=client)
+        print(json.dumps({"ok": True, **res}, indent=2, default=str))
+        return
+    symbol = (getattr(args, "symbol", None) or "HAL").upper()
+    if not apply:
+        with db_manager.session() as conn:
+            rows = conn.execute("SELECT dc.content FROM document_chunks dc JOIN raw_documents rd ON dc.doc_id=rd.doc_id "
+                                "WHERE dc.symbol=? AND rd.source_type='OFFER_DOCUMENT' ORDER BY dc.chunk_index LIMIT 6",
+                                (symbol,)).fetchall()
+        texts = [r[0] for r in rows if r and r[0]]
+        if not texts:
+            print(json.dumps({"ok": False, "error": f"no OFFER_DOCUMENT chunks for {symbol}"}, indent=2))
+            return
+        out = client.synthesize(symbol, texts)
+        print(json.dumps({"ok": True, "symbol": symbol, "lens": out}, indent=2, default=str))
+        return
+    from reality_engine.processing.distillation_pruner import synthesize_and_update
+    res = synthesize_and_update(symbol, [], manager=db_manager, llm_client=client)
+    print(json.dumps({"ok": True, **res}, indent=2, default=str))
 
 
 def cmd_fetch_corporate_actions(args):
@@ -1606,6 +1888,515 @@ def cmd_seed_peers(args):
         print(f"{failed} step(s) failed but at least one succeeded -- continuing with OK")
 
 
+def cmd_nightly(args):
+    """Run the Wave A unattended nightly chain (fetch -> predict -> correct)."""
+    from reality_engine.pipeline.nightly_alpha import run_nightly
+
+    summary = run_nightly(
+        dry_run=bool(getattr(args, "dry_run", False)),
+        part=getattr(args, "part", "all"),
+        date_str=getattr(args, "date", None),
+        universe=getattr(args, "universe", "nifty200"),
+        top_n=int(getattr(args, "top", 20) or 20),
+    )
+    rc = int(summary.get("exit_code", 0))
+    if rc != 0:
+        raise SystemExit(rc)
+
+
+# ====================================================================
+# News-feed v1 (Tier-0 + Tier-1): read-only explain + lazy slice imports
+# ====================================================================
+
+def cmd_fetch_announcements(args):
+    """Fetch NSE announcements for a date window (persist gated by --persist)."""
+    from_date = getattr(args, "from_date", None)
+    to_date = getattr(args, "to_date", None)
+    index = getattr(args, "index", "equities") or "equities"
+    persist = bool(getattr(args, "persist", False))
+    try:
+        from reality_engine.ingestion.news_announcements_client import news_announcements_client
+        raw = news_announcements_client.fetch_window(from_date, to_date, index=index)
+        records, stats = news_announcements_client.normalize(raw)
+    except Exception as exc:
+        print(f"fetch-announcements miss ({from_date}..{to_date}): {exc}")
+        return
+    skipped = (stats or {}).get("skipped", 0) if isinstance(stats, dict) else 0
+    print(f"Fetched {len(raw)} raw announcement(s), {len(records)} normalized, {skipped} skipped.")
+    if persist:
+        try:
+            n = news_announcements_client.persist(records)
+            print(f"Persisted {n} announcement record(s) to corporate_documents.")
+        except Exception as exc:
+            print(f"fetch-announcements persist miss: {exc}")
+    else:
+        print("Dry run: pass --persist to write to corporate_documents.")
+
+
+def cmd_fetch_deals(args):
+    """Fetch NSE bulk + block deals for today (persist gated by --persist)."""
+    persist = bool(getattr(args, "persist", False))
+    try:
+        from reality_engine.ingestion.deals_client import deals_client
+        all_records = []
+        total_skipped = 0
+        for kind in ("BULK", "BLOCK"):
+            try:
+                text = deals_client.fetch_csv(kind)
+                records, stats = deals_client.normalize(text, kind)
+            except Exception as exc:
+                print(f"fetch-deals miss for {kind}: {exc}")
+                continue
+            skipped = (stats or {}).get("skipped", 0) if isinstance(stats, dict) else 0
+            total_skipped += skipped
+            all_records.extend(records)
+            print(f"  {kind}: {len(records)} normalized, {skipped} skipped.")
+    except Exception as exc:
+        print(f"fetch-deals miss: {exc}")
+        return
+    print(f"Fetched {len(all_records)} deal record(s), {total_skipped} skipped.")
+    if persist:
+        try:
+            from reality_engine.ingestion.deals_client import deals_client as _dc
+            n = _dc.persist(all_records)
+            print(f"Persisted {n} deal record(s) to bulk_block_deals.")
+        except Exception as exc:
+            print(f"fetch-deals persist miss: {exc}")
+    else:
+        print("Dry run: pass --persist to write to bulk_block_deals.")
+
+
+def cmd_explain_move(args):
+    """Explain a symbol's move on a date from Tier-0 tables (read-only)."""
+    from reality_engine.processing.news_explainer import explain_move
+    symbol = str(getattr(args, "symbol", "") or "").upper()
+    date = getattr(args, "date", None)
+    window = int(getattr(args, "window", 2) or 2)
+    out = explain_move(symbol, date, window_days=window)
+    verdict = out.get("verdict", {}) or {}
+    print(f"{out.get('symbol')} @ {out.get('target_date')}: {verdict.get('severity', 'LOW')}")
+    for d in verdict.get("drivers", []) or []:
+        print(f"  - {d}")
+    price = out.get("price")
+    if price is None:
+        print("Price: n/a (no daily_price_delivery row)")
+    else:
+        print(f"Price: close={price.get('close')} prev={price.get('prev_close')} "
+              f"chg%={price.get('change_pct')} del_spike={price.get('delivery_spike_ratio')}")
+    print(f"Announcements ({len(out.get('announcements', []))}):")
+    for a in out.get("announcements", []) or []:
+        print(f"  [{a.get('doc_date')}] {a.get('title')} ({a.get('source_url')})")
+    print(f"Corporate actions ({len(out.get('corp_actions', []))}):")
+    for c in out.get("corp_actions", []) or []:
+        print(f"  [{c.get('ex_date')}] {c.get('action_type')}: {c.get('subject')}")
+    print(f"Deals ({len(out.get('deals', []))}):")
+    for t in out.get("deals", []) or []:
+        print(f"  [{t.get('deal_date')}] {t.get('deal_type')} {t.get('buy_sell')} "
+              f"{t.get('client_name')} {t.get('quantity')} @ {t.get('trade_price')}")
+
+
+def cmd_search_intel(args):
+    """Tier-filtered search over intelligence_fts (fail-closed if module absent)."""
+    try:
+        from reality_engine.search.intel_search import search_intel
+    except Exception as exc:
+        print(f"search-intel unavailable: {exc}")
+        return
+    tiers_raw = getattr(args, "tiers", "0,1") or "0,1"
+    try:
+        tiers = tuple(int(t.strip()) for t in str(tiers_raw).split(",") if t.strip() != "")
+    except ValueError:
+        print(f"search-intel: bad --tiers value {tiers_raw!r}, expected e.g. 0,1")
+        return
+    hits = search_intel(
+        getattr(args, "query", ""),
+        symbol=getattr(args, "symbol", None),
+        since=getattr(args, "since", None),
+        tiers=tiers or (0, 1),
+        top_k=int(getattr(args, "top_k", 10) or 10),
+    )
+    if not hits:
+        print("No intelligence hits.")
+        return
+    for h in hits:
+        print(f"[{h.get('tier')}] {h.get('source_type')} {h.get('symbol')} "
+              f"{h.get('document_date')} score={h.get('score'):.3f} :: {h.get('chunk_id')}")
+        print(f"  {(h.get('text') or '')[:300]}")
+
+# ====================================================================
+# News-feed Tier-2 (rumor corroboration) + Tier-3 (attention digest):
+# read-only, lazy slice imports, fail-closed.
+# ====================================================================
+
+def cmd_rumor_scan(args):
+    """Tier-2 rumor scan: corroborate telegram claims for a symbol (read-only)."""
+    try:
+        from reality_engine.processing.rumor_scorer import corroborate
+    except Exception as exc:
+        print(f"rumor-scan unavailable: {exc}")
+        return
+    try:
+        rows = corroborate(
+            symbol=getattr(args, "symbol", None),
+            since=getattr(args, "since", None),
+            window_hours=int(getattr(args, "window_hours", 72) or 72),
+            min_confirm=int(getattr(args, "min_confirm", 2) or 2),
+        )
+    except Exception as exc:
+        print(f"rumor-scan miss: {exc}")
+        return
+    if not rows:
+        print("No corroborated rumors.")
+        return
+    for r in rows:
+        print(f"[{r.get('status')}] {r.get('symbol')} n={r.get('n_sources')} "
+              f"tier0={r.get('tier0_hit')} first={r.get('first_seen')} :: {(r.get('claim') or '')[:200]}")
+        for s in r.get("sources", []) or []:
+            print(f"    - {s}")
+
+
+def cmd_rumor_resolve(args):
+    """Tier-2 rumor resolve: confirmed/unconfirmed claims for a symbol on a date (read-only)."""
+    try:
+        from reality_engine.processing.rumor_scorer import score_rumor
+    except Exception as exc:
+        print(f"rumor-resolve unavailable: {exc}")
+        return
+    try:
+        out = score_rumor(
+            getattr(args, "symbol", None),
+            getattr(args, "date", None),
+        )
+    except Exception as exc:
+        print(f"rumor-resolve miss: {exc}")
+        return
+    rumors = (out or {}).get("rumors", []) or []
+    print(f"{out.get('symbol')} @ {out.get('target_date')}: "
+          f"{out.get('n_confirmed', 0)} confirmed, {out.get('n_unconfirmed', 0)} unconfirmed")
+    for r in rumors:
+        print(f"  [{r.get('status')}] n={r.get('n_sources')} :: {(r.get('claim') or '')[:200]}")
+
+
+def cmd_attention_rank(args):
+    """Tier-3 attention ranking for a date (read-only)."""
+    try:
+        from reality_engine.processing.attention_ranker import rank_attention
+    except Exception as exc:
+        print(f"attention-rank unavailable: {exc}")
+        return
+    try:
+        rows = rank_attention(
+            getattr(args, "date", None),
+            top_n=int(getattr(args, "top", 10) or 10),
+        )
+    except Exception as exc:
+        print(f"attention-rank miss: {exc}")
+        return
+    if not rows:
+        print("No attention rows.")
+        return
+    for r in rows:
+        comps = r.get("components", {}) or {}
+        comp_str = " ".join(f"{k}={v}" for k, v in comps.items())
+        print(f"  {r.get('symbol')}: score={r.get('score')} {comp_str}")
+
+
+def cmd_morning_digest(args):
+    """Tier-3 morning digest text for a date (read-only)."""
+    try:
+        from reality_engine.processing.attention_ranker import morning_digest
+    except Exception as exc:
+        print(f"morning-digest unavailable: {exc}")
+        return
+    try:
+        text = morning_digest(getattr(args, "date", None))
+    except Exception as exc:
+        print(f"morning-digest miss: {exc}")
+        return
+    print(text or "No digest.")
+
+
+# ====================================================================
+# News-feed ingestion v2: official outlet RSS (Mint, Business Standard,
+# BusinessLine, Economic Times, NDTV Profit) + brief + retention.
+# Read-only except fetch-news --persist / prune-news --apply; lazy slice
+# imports, per-outlet fail-closed, no tracebacks.
+# ====================================================================
+
+def cmd_fetch_news(args):
+    """Fetch OFFICIAL outlet RSS feeds, normalize to raw_documents records.
+
+    Per feed: items (entries the outlet published), fetched (entries kept by
+    --limit), normalized (records built), skipped (undated), dupes (in-feed
+    repeats). Persistence only with --persist; one bad feed never aborts the rest.
+    --images additionally OCRs each article's infographics through news_vision
+    after the persist step; those bitmaps are unlinked once their OCR chunk and
+    artifact row are written unless --keep-images is passed.
+    """
+    try:
+        from reality_engine.ingestion import news_feed_client as nfc
+    except Exception as exc:
+        print(f"fetch-news unavailable: {exc}")
+        return
+    feeds_raw = getattr(args, "feeds", None) or ",".join(nfc.FEEDS.keys())
+    keys = [k.strip() for k in str(feeds_raw).split(",") if k.strip()]
+    unknown = [k for k in keys if k not in nfc.FEEDS]
+    if unknown:
+        print(f"fetch-news: unknown feed(s) {','.join(unknown)}; "
+              f"known: {','.join(nfc.FEEDS)}")
+        return
+    limit = int(getattr(args, "limit", 40) or 40)
+    persist = bool(getattr(args, "persist", False))
+    all_records: List[Dict[str, Any]] = []
+    totals = {"items": 0, "fetched": 0, "normalized": 0, "skipped": 0, "dupes": 0}
+    for key in keys:
+        try:
+            raw = nfc.fetch_feed(nfc.FEEDS[key]) or []
+            items = raw[:limit] if limit > 0 else raw
+            records, stats = nfc.normalize(items, key)
+        except Exception as exc:
+            print(f"  {key}: miss ({exc})")
+            continue
+        stats = stats or {}
+        skipped = int(stats.get("skipped_no_date", 0) or 0)
+        dupes = int(stats.get("duplicates", 0) or 0)
+        print(f"  {key}: items={len(raw)} fetched={len(items)} normalized={len(records)} "
+              f"skipped={skipped} dupes={dupes}")
+        totals["items"] += len(raw)
+        totals["fetched"] += len(items)
+        totals["normalized"] += len(records)
+        totals["skipped"] += skipped
+        totals["dupes"] += dupes
+        all_records.extend(records)
+    print(f"Totals over {len(keys)} feed(s): items={totals['items']} "
+          f"fetched={totals['fetched']} normalized={totals['normalized']} "
+          f"skipped={totals['skipped']} dupes={totals['dupes']}")
+    if not persist:
+        print("Dry run: pass --persist to write to raw_documents.")
+        return
+    if not all_records:
+        print("fetch-news: nothing to persist.")
+        return
+    try:
+        out = nfc.persist(all_records, repo=repo) or {}
+    except Exception as exc:
+        print(f"fetch-news persist miss: {exc}")
+        return
+    print(f"Persisted {out.get('raw_written', 0)} new raw_document(s), "
+          f"{out.get('raw_updated', 0)} updated, "
+          f"{out.get('fts_written', 0)} FTS chunk(s).")
+    if bool(getattr(args, "images", False)):
+        _capture_news_images(
+            all_records,
+            limit=int(getattr(args, "image_limit", 20) or 20),
+            keep_files=bool(getattr(args, "keep_images", False)),
+            label="fetch-news images",
+        )
+
+
+def cmd_news_brief(args):
+    """Rank recent official-outlet news rows (raw_documents news_*) into a brief.
+
+    Read-only. Windows by published_date; ranks by extractor importance.
+    """
+    try:
+        from reality_engine.processing.news_extractor import (
+            build_brief, extract_item, rank_importance,
+        )
+    except Exception as exc:
+        print(f"news-brief unavailable: {exc}")
+        return
+    days = int(getattr(args, "days", 3) or 3)
+    top = int(getattr(args, "top", 15) or 15)
+    as_json = bool(getattr(args, "json", False))
+    from datetime import date as _date, timedelta
+    cutoff = (_date.today() - timedelta(days=days)).isoformat()
+    try:
+        tag_by_doc = {}
+        with repo.db.session() as conn:
+            rows = conn.execute(
+                "SELECT * FROM raw_documents WHERE source_type LIKE 'news_%' "
+                "AND published_date >= ? ORDER BY published_date DESC, doc_id DESC",
+                (cutoff,),
+            ).fetchall()
+            # Symbol tags live on the FTS chunk (raw_documents has no symbols
+            # column); attach them so the brief can show which scrips a
+            # headline names.
+            for r in conn.execute(
+                "SELECT chunk_id, symbol FROM intelligence_fts "
+                "WHERE source_type LIKE 'news_%' AND symbol != ''"
+            ).fetchall():
+                cid = str(r[0] or "")
+                parts = cid.split(":")
+                if len(parts) >= 3 and parts[-2].isdigit():
+                    tag_by_doc[int(parts[-2])] = str(r[1])
+        rows = [dict(r) for r in rows]
+        for r in rows:
+            sym = tag_by_doc.get(int(r.get("doc_id") or 0))
+            if sym:
+                r["symbols"] = [sym]
+    except Exception as exc:
+        print(f"news-brief miss: {exc}")
+        return
+    if not rows:
+        print(f"No recent news since {cutoff} (days={days}).")
+        return
+    try:
+        items = rank_importance([extract_item(r) for r in rows])[:top]
+        brief = build_brief(items, top_n=top)
+    except Exception as exc:
+        print(f"news-brief miss: {exc}")
+        return
+    if as_json:
+        print(json.dumps({"cutoff": cutoff, "days": days, "top": top,
+                          "count": len(items), "items": items, "brief": brief},
+                         indent=2, default=str))
+        return
+    print(f"News brief since {cutoff}: {len(items)} item(s) of {len(rows)} row(s) "
+          f"(days={days}, top={top}).")
+    print(brief or "No brief.")
+
+
+def cmd_prune_news(args):
+    """Prune aged news raw_documents rows per the retention rule (dry-run default).
+
+    Retention rule: news rows older than --before-days are prunable only once
+    extracted; structural (never-extracted) rows are retained. --apply performs
+    the delete; --delete-files also removes each pruned row's local file.
+    """
+    try:
+        from reality_engine.pipeline.news_retention import prune_news
+    except Exception as exc:
+        print(f"prune-news unavailable: {exc}")
+        return
+    before_days = int(getattr(args, "before_days", 30) or 30)
+    apply_change = bool(getattr(args, "apply", False))
+    delete_files = bool(getattr(args, "delete_files", False))
+    try:
+        counts = prune_news(
+            before_days=before_days,
+            dry_run=not apply_change,
+            delete_files=delete_files,
+        ) or {}
+    except Exception as exc:
+        print(f"prune-news miss: {exc}")
+        return
+    print(f"prune-news [{'APPLIED' if apply_change else 'DRY RUN - pass --apply to delete'}]: "
+          f"before_days={before_days} delete_files={delete_files}")
+    for key, value in counts.items():
+        if key == "errors":
+            print(f"  errors: {len(value or [])}")
+            for err in value or []:
+                print(f"    - {err}")
+        else:
+            print(f"  {key}: {value}")
+
+
+# --------------------------------------------------------------------
+# News infographics (the INFOGRAPHIC layer of the daily feeds).
+#
+# An article's chart/table is a bitmap whose numbers never appear in the RSS
+# text. news_vision downloads it, OCRs it with FinancialOCREngine and writes
+# two dense records: the OCR text as an intelligence_fts chunk
+# ('<source_type>:<doc_id>:img') and an artifact row (ocr_text + media_url).
+# At ~2 MB per bitmap the file itself is the disposable part, so the CLI
+# default is to unlink it right after those writes; --keep-images opts out.
+# Note raw_documents does NOT store media_url, so re-capturing an
+# already-persisted article requires re-fetching the feed (see news-images).
+# --------------------------------------------------------------------
+
+def _print_news_image_counts(title: str, counts: Dict[str, Any]) -> None:
+    """Print a news_vision / prune_news_images counts dict (errors expanded)."""
+    print(title)
+    for key, value in (counts or {}).items():
+        if key == "errors":
+            errors = value or []
+            print(f"  errors: {len(errors)}")
+            for err in errors:
+                print(f"    - {err}")
+        else:
+            print(f"  {key}: {value}")
+
+
+def _capture_news_images(records: List[Dict[str, Any]], limit: int, keep_files: bool,
+                         label: str = "news-images") -> None:
+    """OCR + persist infographics for ``records`` via news_vision (fail-closed).
+
+    ``keep_files=False`` (the CLI default) unlinks each bitmap right after its
+    OCR chunk + artifact row are written; news_vision only deletes after those
+    writes succeed and only inside DATA_DIR, so the numbers survive in
+    intelligence_fts and the image stays re-fetchable from media_url.
+    """
+    try:
+        from reality_engine.processing import news_vision as nv
+    except Exception as exc:
+        print(f"{label} unavailable: {exc}")
+        return
+    try:
+        counts = nv.capture_images(
+            records, repo=repo, limit=limit, keep_files=keep_files
+        ) or {}
+    except Exception as exc:
+        print(f"{label} miss: {exc}")
+        return
+    _print_news_image_counts(
+        f"{label} [{'bitmaps kept' if keep_files else 'bitmaps deleted after OCR'}]: "
+        f"limit={limit} records={len(records)}",
+        counts,
+    )
+
+
+def cmd_news_images(args):
+    """Re-capture infographics for RECENT news rows by re-fetching the feeds.
+
+    media_url is not stored in raw_documents, so re-fetching the outlet RSS is
+    the only source of an image URL for an already-persisted article: recent
+    news rows (published_date >= today - --days) are selected first, then only
+    re-fetched records matching one of them are handed to news_vision. Per feed
+    fail-closed; the counts dict is always printed.
+    """
+    try:
+        from reality_engine.ingestion import news_feed_client as nfc
+    except Exception as exc:
+        print(f"news-images unavailable: {exc}")
+        return
+    from datetime import date as _date, timedelta
+    days = int(getattr(args, "days", 3) or 3)
+    limit = int(getattr(args, "limit", 20) or 20)
+    keep_files = bool(getattr(args, "keep_images", False))
+    cutoff = (_date.today() - timedelta(days=days)).isoformat()
+    try:
+        with repo.db.session() as conn:
+            rows = conn.execute(
+                "SELECT sha256_hash FROM raw_documents "
+                "WHERE LOWER(source_type) LIKE 'news_%' AND published_date >= ?",
+                (cutoff,),
+            ).fetchall()
+    except Exception as exc:
+        print(f"news-images miss: {exc}")
+        return
+    recent = {str(r[0]) for r in rows if r[0]}
+    print(f"news-images: {len(recent)} recent news row(s) since {cutoff} (days={days}); "
+          f"re-fetching {len(nfc.FEEDS)} feed(s) for media_url.")
+    records: List[Dict[str, Any]] = []
+    for key in nfc.FEEDS:
+        try:
+            raw = nfc.fetch_feed(nfc.FEEDS[key]) or []
+            feed_records, _stats = nfc.normalize(raw, key)
+        except Exception as exc:
+            print(f"  {key}: miss ({exc})")
+            continue
+        kept = [r for r in (feed_records or [])
+                if str((r or {}).get("sha256_hash") or "") in recent]
+        print(f"  {key}: fetched={len(raw)} recent={len(kept)}")
+        records.extend(kept)
+    if not records:
+        print("news-images: no recent news row matched the re-fetched feeds; "
+              "nothing captured.")
+        return
+    _capture_news_images(records, limit=limit, keep_files=keep_files)
+
+
 # ====================================================================
 # CLI Parser Setup
 # ====================================================================
@@ -1761,6 +2552,84 @@ def main():
     p_fch.add_argument("--doc-type", type=str, default=None,
                        help="Bulk mode filter: ANNUAL_REPORT | CONCALL_TRANSCRIPT | INVESTOR_PRESENTATION | FINANCIAL_RESULT | OTHER_FILING")
     p_fch.set_defaults(func=cmd_fetch_filings)
+
+    # SEBI DRHP / Prospectus offer-document discovery + archive
+    p_od = subparsers.add_parser(
+        "fetch-offer-docs",
+        help="Discover SEBI DRHP/Prospectus filings and archive the offer PDFs with provenance",
+    )
+    p_od.add_argument("--symbol", type=str, default=None, help="Single symbol e.g. AIRFLOA (company-name search preferred)")
+    p_od.add_argument("--company-name", type=str, default=None, help="Full company name for SEBI title search e.g. 'Airfloa Rail Technology Limited'")
+    p_od.add_argument("--stage", type=str, default="both", choices=["draft", "final", "both"],
+                      help="Offer stage: draft (DRHP) | final (Prospectus/RHP) | both (default)")
+    p_od.add_argument("--sample", type=int, default=0, help="Safe smoke-test: process N symbols (outside Nifty200 by default)")
+    p_od.add_argument("--max-results", type=int, default=10, help="Max listing hits per stage/query (default: 10)")
+    p_od.add_argument("--workers", type=int, default=2, help="Concurrent download threads (default: 2, SEBI WAF is stricter than BSE)")
+    p_od.add_argument("--persist", action="store_true", default=False, help="Persist archived offer docs + provenance to corporate_documents")
+    p_od.set_defaults(func=cmd_fetch_offer_docs)
+
+    # SEBI DRHP bulk backfill: crawl -> match -> archive -> ingest -> distill
+    p_ob = subparsers.add_parser(
+        "offer-backfill",
+        help="Bulk SEBI DRHP/Prospectus backfill: crawl listings, match universe, archive, ingest, distill",
+    )
+    p_ob.add_argument("--apply", action="store_true", default=False, help="DELIBERATE: run archive -> ingest -> distill writes (default: dry-run crawl+match)")
+    p_ob.add_argument("--stage", type=str, default="both", choices=["draft", "final", "both"])
+    p_ob.add_argument("--max-pages", type=int, default=0, help="Cap listing pages per stage (0=all, ~63 final + ~89 draft)")
+    p_ob.add_argument("--max-archive", type=int, default=0, help="Cap PDFs archived this run (0=all matched; resume-safe)")
+    p_ob.add_argument("--workers", type=int, default=8, help="Concurrent download threads (default: 8; resolve pool = 2x, ingest pool = min(8, 2x))")
+    p_ob.add_argument("--loop-dir", type=str, default=None, help="Override backfill state dir")
+    p_ob.set_defaults(func=cmd_offer_backfill)
+
+    # local ONNX embeddings (DirectML) + chunk re-embedding
+    p_es = subparsers.add_parser(
+        "embed-setup",
+        help="Download the bge-small-en-v1.5 ONNX model into data/models",
+    )
+    p_es.set_defaults(func=cmd_embed_setup)
+    p_est = subparsers.add_parser(
+        "embed-status",
+        help="Show ONNX embedding backend status (provider, files, dimension)",
+    )
+    p_est.set_defaults(func=cmd_embed_status)
+    p_re = subparsers.add_parser(
+        "reembed-chunks",
+        help="Re-embed document_chunks with the ONNX backend (batched, resume-safe)",
+    )
+    p_re.add_argument("--all", action="store_true", default=False, help="All chunks (default: OFFER_DOCUMENT only)")
+    p_re.add_argument("--limit", type=int, default=0, help="Cap rows per run (0=all)")
+    p_re.add_argument("--batch", type=int, default=64, help="ONNX batch size (default: 64)")
+    p_re.set_defaults(func=cmd_reembed_chunks)
+
+    # local LLM lens backend (llama.cpp Vulkan server + GGUF model)
+    p_ls = subparsers.add_parser(
+        "llm-setup",
+        help="Download the Bonsai PQ2_0 GGUF model (~6.7 GB) into data/models",
+    )
+    p_ls.set_defaults(func=cmd_llm_setup)
+    p_srv = subparsers.add_parser(
+        "llm-serve",
+        help="Start llama-server (Vulkan, full GPU offload) as a supervised process",
+    )
+    p_srv.add_argument("--port", type=int, default=8080, help="Server port (default: 8080)")
+    p_srv.add_argument("--ctx", type=int, default=32768, help="Context size (floor: 32768)")
+    p_srv.set_defaults(func=cmd_llm_serve)
+    p_st = subparsers.add_parser(
+        "llm-status",
+        help="Probe the running llama-server health endpoint",
+    )
+    p_st.add_argument("--port", type=int, default=8080, help="Server port (default: 8080)")
+    p_st.set_defaults(func=cmd_llm_status)
+    p_lx = subparsers.add_parser(
+        "lens-extract",
+        help="Run one macro/moat lens pass over stored chunks via the local LLM (dry-run default)",
+    )
+    p_lx.add_argument("--kind", type=str, default="moat", choices=["macro", "moat"])
+    p_lx.add_argument("--symbol", type=str, default=None, help="Symbol for --kind moat (default: HAL)")
+    p_lx.add_argument("--doc-id", type=int, default=None, help="raw_documents id for --kind macro (default: first OFFER_DOCUMENT)")
+    p_lx.add_argument("--apply", action="store_true", default=False, help="Write to the dense substrate (default: print only)")
+    p_lx.add_argument("--port", type=int, default=8080, help="Server port (default: 8080)")
+    p_lx.set_defaults(func=cmd_lens_extract)
 
     # bulk NSE corporate actions ingestion
     p_ca = subparsers.add_parser(
@@ -2048,6 +2917,180 @@ def main():
     p_peers.add_argument("--skip", type=str, default="",
                          help="Comma-separated steps to skip: supply,quality,policy,factor,moe (e.g. --skip supply,moe)")
     p_peers.set_defaults(func=cmd_seed_peers)
+
+    # 34. nightly (Wave A: unattended fetch -> predict -> correct chain)
+    p_nightly = subparsers.add_parser(
+        "nightly",
+        help="Run Wave A unattended nightly chain (master sync -> backfill -> fundamentals -> checkpoint gate -> screens -> daily-alpha -> EOD correct)",
+    )
+    p_nightly.add_argument("--dry-run", action="store_true", default=False, help="Resolve dates, print planned stages, zero DB/network writes")
+    p_nightly.add_argument("--part", type=str, default="all", choices=["fetch_predict", "correct_validate", "all"],
+                           help="Split work across slots: fetch_predict (19:45) | correct_validate (23:00) | all (default: all)")
+    p_nightly.add_argument("--date", type=str, default=None, help="Override IST run date YYYY-MM-DD")
+    p_nightly.add_argument("--universe", type=str, default="nifty200", help="EOD correction universe (default: nifty200). Screens always run full-universe.")
+    p_nightly.add_argument("--top", type=int, default=20, help="Top N for both screens (default: 20)")
+    p_nightly.set_defaults(func=cmd_nightly)
+
+    # 35. fetch-announcements (news-feed v1 Tier-0)
+    p_fa = subparsers.add_parser(
+        "fetch-announcements",
+        help="Fetch NSE corporate announcements for a date window",
+    )
+    p_fa.add_argument("--from", type=str, required=True, dest="from_date", help="Start date YYYY-MM-DD")
+    p_fa.add_argument("--to", type=str, required=True, dest="to_date", help="End date YYYY-MM-DD")
+    p_fa.add_argument("--index", type=str, default="equities", help="NSE index filter (default: equities)")
+    p_fa.add_argument("--persist", action="store_true", default=False, help="Persist to corporate_documents")
+    p_fa.set_defaults(func=cmd_fetch_announcements)
+
+    # 36. fetch-deals (news-feed v1 Tier-0)
+    p_fd = subparsers.add_parser(
+        "fetch-deals",
+        help="Fetch NSE bulk + block deals",
+    )
+    p_fd.add_argument("--persist", action="store_true", default=False, help="Persist to bulk_block_deals")
+    p_fd.set_defaults(func=cmd_fetch_deals)
+
+    # 37. explain-move (news-feed v1 read-only explainer)
+    p_em = subparsers.add_parser(
+        "explain-move",
+        help="Explain a symbol's move on a date from Tier-0 tables",
+    )
+    p_em.add_argument("--symbol", type=str, required=True, help="Ticker symbol e.g. RELIANCE")
+    p_em.add_argument("--date", type=str, required=True, help="Target date YYYY-MM-DD")
+    p_em.add_argument("--window", type=int, default=2, help="Lookback window in days (default: 2)")
+    p_em.set_defaults(func=cmd_explain_move)
+
+    # 38. search-intel (news-feed v1 FTS)
+    p_si = subparsers.add_parser(
+        "search-intel",
+        help="Tier-filtered search over intelligence FTS",
+    )
+    p_si.add_argument("--query", type=str, required=True, help="Search query string")
+    p_si.add_argument("--symbol", type=str, default=None, help="Symbol filter")
+    p_si.add_argument("--since", type=str, default=None, help="Earliest document date YYYY-MM-DD")
+    p_si.add_argument("--tiers", type=str, default="0,1", help="Comma-separated tiers (default: 0,1)")
+    p_si.add_argument("--top-k", type=int, default=10, dest="top_k", help="Max hits (default: 10)")
+    p_si.set_defaults(func=cmd_search_intel)
+
+    # 39. rumor-scan (news-feed Tier-2 rumor corroboration)
+    p_rs = subparsers.add_parser(
+        "rumor-scan",
+        help="Tier-2 rumor scan: corroborate telegram claims for a symbol",
+    )
+    p_rs.add_argument("--symbol", type=str, required=True, help="Ticker symbol e.g. RELIANCE")
+    p_rs.add_argument("--since", type=str, default=None, help="Earliest post date YYYY-MM-DD")
+    p_rs.add_argument("--window-hours", type=int, default=72, dest="window_hours",
+                      help="Corroboration window in hours (default: 72)")
+    p_rs.add_argument("--min-confirm", type=int, default=2, dest="min_confirm",
+                      help="Min independent sources to confirm (default: 2)")
+    p_rs.set_defaults(func=cmd_rumor_scan)
+
+    # 40. rumor-resolve (news-feed Tier-2 rumor resolution)
+    p_rr = subparsers.add_parser(
+        "rumor-resolve",
+        help="Tier-2 rumor resolve: confirmed/unconfirmed claims for a symbol on a date",
+    )
+    p_rr.add_argument("--symbol", type=str, required=True, help="Ticker symbol e.g. RELIANCE")
+    p_rr.add_argument("--date", type=str, required=True, help="Target date YYYY-MM-DD")
+    p_rr.set_defaults(func=cmd_rumor_resolve)
+
+    # 41. attention-rank (news-feed Tier-3 attention digest)
+    p_ar = subparsers.add_parser(
+        "attention-rank",
+        help="Tier-3 attention ranking for a date",
+    )
+    p_ar.add_argument("--date", type=str, required=True, help="Target date YYYY-MM-DD")
+    p_ar.add_argument("--top", type=int, default=10, help="Top N symbols (default: 10)")
+    p_ar.set_defaults(func=cmd_attention_rank)
+
+    # 42. morning-digest (news-feed Tier-3 attention digest)
+    p_md = subparsers.add_parser(
+        "morning-digest",
+        help="Tier-3 morning digest text for a date",
+    )
+    p_md.add_argument("--date", type=str, required=True, help="Target date YYYY-MM-DD")
+    p_md.set_defaults(func=cmd_morning_digest)
+
+    # 43. fetch-news (official outlet RSS ingestion -> raw_documents)
+    p_fn = subparsers.add_parser(
+        "fetch-news",
+        help="Fetch OFFICIAL outlet RSS feeds (Mint, Business Standard, BusinessLine, "
+             "Economic Times, NDTV Profit)",
+    )
+    p_fn.add_argument(
+        "--feeds", type=str, default=None,
+        help="Comma-separated outlet keys, default all official outlets: "
+             "livemint,livemint_co,bs,businessline,et,ndtvprofit",
+    )
+    p_fn.add_argument("--limit", type=int, default=40,
+                      help="Max RSS entries kept per outlet (default: 40)")
+    p_fn.add_argument("--persist", action="store_true",
+                      help="Write normalized records to raw_documents (default: dry run)")
+    p_fn.add_argument(
+        "--images", action="store_true",
+        help="After persisting, OCR each article's infographics via news_vision into "
+             "intelligence_fts (chunk_id '<source_type>:<doc_id>:img')",
+    )
+    p_fn.add_argument("--image-limit", type=int, default=20, dest="image_limit",
+                      help="Max infographic images OCR'd per run (default: 20)")
+    p_fn.add_argument(
+        "--keep-images", action="store_true", dest="keep_images",
+        help="Keep the downloaded bitmaps (~2 MB each) under DATA_DIR/news_images. "
+             "DEFAULT is to unlink each bitmap right after its OCR chunk + artifact "
+             "row are written: the OCR text lives in intelligence_fts and the "
+             "artifact row keeps ocr_text + media_url, so the image is re-fetchable "
+             "from the publisher CDN at any time",
+    )
+    p_fn.set_defaults(func=cmd_fetch_news)
+
+    # 44. news-brief (ranked brief over recent official-outlet news)
+    p_nb = subparsers.add_parser(
+        "news-brief",
+        help="Rank recent OFFICIAL outlet RSS news rows (raw_documents news_*) into a brief",
+    )
+    p_nb.add_argument("--days", type=int, default=3,
+                      help="Lookback window in days over published_date (default: 3)")
+    p_nb.add_argument("--top", type=int, default=15,
+                      help="Top-N ranked items in the brief (default: 15)")
+    p_nb.add_argument("--json", action="store_true",
+                      help="Emit JSON (items + brief) instead of text")
+    p_nb.set_defaults(func=cmd_news_brief)
+
+    # 45. prune-news (news retention: age out extracted news rows)
+    p_pn = subparsers.add_parser(
+        "prune-news",
+        help="Prune news raw_documents by retention rule: older than --before-days "
+             "AND already extracted (structural rows retained)",
+    )
+    p_pn.add_argument("--before-days", type=int, default=30, dest="before_days",
+                      help="Retention window: news rows older than N days are prunable (default: 30)")
+    p_pn.add_argument("--apply", action="store_true",
+                      help="Delete for real (default: dry run, counts only)")
+    p_pn.add_argument("--delete-files", action="store_true", dest="delete_files",
+                      help="Also delete each pruned row's local_file_path file")
+    p_pn.set_defaults(func=cmd_prune_news)
+
+    # 46. news-images (re-capture infographics for recent news rows)
+    p_ni = subparsers.add_parser(
+        "news-images",
+        help="Re-capture infographic images for recent news rows by RE-FETCHING the "
+             "outlet RSS feeds: raw_documents stores no media_url, so a re-fetch is "
+             "the only source of the image URL for an already-persisted article",
+    )
+    p_ni.add_argument("--days", type=int, default=3,
+                      help="Lookback window in days over published_date; re-fetched "
+                           "records are matched against those recent news rows "
+                           "(default: 3)")
+    p_ni.add_argument("--limit", type=int, default=20,
+                      help="Max infographic images OCR'd per run (default: 20)")
+    p_ni.add_argument(
+        "--keep-images", action="store_true", dest="keep_images",
+        help="Keep the downloaded bitmaps (~2 MB each). DEFAULT is to unlink each "
+             "bitmap right after its OCR chunk '<source_type>:<doc_id>:img' + "
+             "artifact row are written; the artifact row keeps ocr_text + media_url, "
+             "so the image is re-fetchable from the publisher CDN at any time",
+    )
+    p_ni.set_defaults(func=cmd_news_images)
 
     parsed_args = parser.parse_args()
     if not parsed_args.command:

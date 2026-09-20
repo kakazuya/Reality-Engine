@@ -19,6 +19,24 @@ INBOX_DIR = Path(os.environ.get("REALITY_ENGINE_INBOX_DIR", DATA_DIR / "inbox"))
 TELEGRAM_IMAGES_DIR = INBOX_DIR / "images"
 INBOX_LIKES_DIR = INBOX_DIR / "likes"
 BROWSER_PROFILE_DIR = DATA_DIR / "browser_profile"
+
+# Verified Indian financial-news Telegram channels (handles checked live
+# 2026-09-19 via t.me/s previews; every one posted that day). Media-house
+# channels — news, not anonymous tips — so they outrank the general Tier-2
+# rumor layer. Pass explicitly via `--channels "@ndtvprofitnews,@livemint,..."`
+# or TELEGRAM_TARGET_CHANNELS. Deliberately NOT a listener default: bulk-joining
+# channels stays an explicit operator choice.
+# Handles that LOOK right but are NOT these outlets (do not add):
+#   cnbctv18, ndtvprofit, businessstandardnews, ZeeBusinessOfficial -> do not exist
+#   ETMarkets -> squatted (Ethiopian marketplace); the_economic_times_0 -> e-paper clone
+#   EconomictimesOfficial -> dead (last post 2023-02); OfficialZeeBusiness -> stale clone
+TELEGRAM_NEWS_CHANNELS = [
+    "@ndtvprofitnews",       # NDTV Profit
+    "@HinduBusinessLine",    # BusinessLine (The Hindu)
+    "@livemint",             # Mint Business News (official)
+    "@bsindiaofficial",      # Business Standard Official
+    "@moneycontrolcom",      # Moneycontrol
+]
 FIXTURES_DIR = Path(os.environ.get("REALITY_ENGINE_FIXTURES_DIR", DATA_DIR / "fixtures"))
 LANCEDB_DIR = Path(os.environ.get("REALITY_ENGINE_LANCEDB_DIR", DATA_DIR / "lancedb"))
 
@@ -287,7 +305,8 @@ SQLITE_PRAGMAS = [
     "PRAGMA cache_size = -64000;",      # 64 MB page cache
     "PRAGMA temp_store = MEMORY;",
     "PRAGMA foreign_keys = ON;",
-    "PRAGMA busy_timeout = 30000;"       # 30 second timeout on locks (raised for concurrent fetcher)
+    "PRAGMA busy_timeout = 30000;",       # 30 second timeout on locks (raised for concurrent fetcher)
+    "PRAGMA mmap_size = 1073741824;",     # 1 GB file-backed mmap (OS-evictable, not pinned RAM)
 ]
 
 # Network Request Headers & Defaults

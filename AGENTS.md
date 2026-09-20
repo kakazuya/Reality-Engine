@@ -43,6 +43,8 @@ btask01/
 │   │   ├── event_graph.py         # (planned — Task 15/16) Transient event-graph spawner: parse %/date/exceptions, 2nd-order fwd/back supply chain
 │   │   ├── ensemble_ranker.py     # (planned — Task 15/16) Per-stock/sector/geo/time+conditions + investor-majority model_explainer_rankings
 │   │   ├── eod_corrector.py       # (planned — Task 15/16) Continuous self-correction: EOD price+FII/DII+event batch, per-scrip learned noise floor
+│   │   ├── substrate_hygiene.py   # Trust layer: quarantines test/demo/synthetic-ISIN rows, reports structural degradation (constant features, template-less policy coverage); owns substrate_quarantine
+│   │   ├── peer_graph.py          # Analog peer graph: precomputed nearest neighbours over quantified substrate with feature-signal gating, per-pair coverage, drivers and anchor baselines; owns company_peer_graph/company_peer_features/company_peer_runs
 │   │   └── structural_theories.py # (planned — Task 15/16) Abstraction for permanent priors (profit-jump spotting, cheap-value traps); concept already defined in pruning_decay_config.is_structural_milestone, not a separate module yet
 │   ├── pipeline/           # End-to-end operational pipelines
 │   │   ├── phase1_runner.py       # Ingestion, distillation to dense substrate, and checkpoint audit runner
@@ -87,7 +89,8 @@ python -m unittest reality_engine.tests.test_phase1
 python -m unittest reality_engine.tests.test_quant_hardening
 python -m unittest reality_engine.tests.test_agent_and_reporting
 python -m unittest reality_engine.tests.test_cli_and_dashboard
-python -m unittest reality_engine.tests.test_new_funnel
+python -m unittest reality_engine.tests.test_derived_substrate
+python -m unittest reality_engine.tests.test_peer_graph_and_hygiene
 ```
 
 ### B. Bootstrap & Data Ingestion
@@ -171,6 +174,20 @@ python reality_engine/cli.py fetch-headless --feeds vahan,mf,rbi,pib
 python reality_engine/cli.py search-concall --query "order book capex margin guidance" --symbol TITAGARH
 ```
 
+### H. Substrate Trust & Analog Peers
+```bash
+# Materialize the quarantine key set and print the degradation report
+# (test fixtures, demo seeds, synthetic-ISIN companies; constant features, etc.)
+python -m reality_engine.scripts.run_substrate_hygiene
+
+# Precompute analog nearest neighbours over the dense substrate (structural families)
+python -m reality_engine.scripts.run_peer_graph --top-k 20
+python -m reality_engine.scripts.run_peer_graph --dry-run    # gate report only, no writes
+```
+Both scripts print an `ALL CHECKS PASSED` block and are idempotent. Read peers back with
+`peer_graph.neighbours(conn, "TITAGARH")` — every row carries similarity, coverage, shared
+families, the anchor's baseline (so `lift` is interpretable) and the features that drove the match.
+
 ---
 
 ## 3. Key Design Rules & Conventions
@@ -191,3 +208,4 @@ python reality_engine/cli.py search-concall --query "order book capex margin gui
 10. **Deterministic Agent Tools (Generalized Pydantic Lenses)**: Agent must call typed Pydantic tools for ANY lens — `MacroEventExtraction{PrimaryConsequence{second_order_effects:[RippleConsequence]}}`, `AdjacentPossibleExtraction{...}`, `VideoIntelligenceExtraction{...}` — never free-text graph/lens creation. `reality_engine/agent/schemas.py` is the contract source; `repository.py` persists transactionally.
 11. **Strict Solvency Gate (Secondary)**: After ensemble ranking, filter `promoter pledge >15% OR interest_coverage <2.5× OR D/E >1.5×` before thesis synthesis.
 12. **No Git Stash in Worktrees**: In Agent Manager worktree workflows, never use `git stash` across checkouts as stashes are globally shared.
+13. **Trust Layer Before Substrate Reads**: Any consumer that presents substrate rows to an inference model (analysis, dossier, brief, ranking) must first exclude rows keyed in `substrate_quarantine` (test fixtures, `PHASE5_DEMO_*` seeds, `INE_AUTO*` synthetic ISINs) and exclude the `*_demo` / `seed_*_demo` tables wholesale. Quarantine never deletes source rows; it is re-materialized idempotently by `substrate_hygiene.apply()`. Degradation counts (constant features, template-less policy coverage, single-country geo splits, unconditional `regime_tag='*'` rankings) are *reported alongside* answers, never hidden — they state how much of the answer the substrate can actually support. `peer_graph.py` applies the same rule: it drops near-constant features instead of weighting them, refuses to emit neighbours when fewer than `MIN_ACTIVE_FEATURES` survive gating (recording the refusal in `company_peer_runs`), and never imputes a missing feature to zero.

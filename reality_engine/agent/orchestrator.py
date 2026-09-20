@@ -177,18 +177,40 @@ class AgentOrchestrator:
         interest_cov = forensic.get("interest_coverage_ratio", 0.0)
         debt_to_equity = forensic.get("debt_to_equity_ratio", 0.0)
 
-        # Enrich with top-down monetisation (ROIC>WACC) if available in candidate_row
+        # Enrich with top-down monetisation (ROIC>WACC) if available in candidate_row.
+        # The spread carries a provenance status (measured | proxy | unknown); the claim is
+        # only made when the number is actually sourced. It used to be asserted for every
+        # name from a terminal constant, printing "ROIC-WACC +6.00% >5% value-creative"
+        # with no data behind it.
         roic_spread = candidate_row.get("roic_wacc_spread")
+        roic_status = candidate_row.get("roic_wacc_status")
         if roic_spread is None:
             try:
                 roic_spread = self.screener._lookup_roic_wacc_spread(symbol, str(candidate_row.get("isin", "")))
             except Exception:
                 roic_spread = 0.06
+        if roic_status is None:
+            try:
+                roic_status = self.screener.roic_wacc_status(symbol, str(candidate_row.get("isin", "")))
+            except Exception:
+                roic_status = "unknown"
 
-        monet_line = (
-            f" Secondary validation ROIC-WACC spread {float(roic_spread):+.2%} (>5% hurdle, value-creative)."
-            if isinstance(roic_spread, (int, float)) else ""
-        )
+        if not isinstance(roic_spread, (int, float)):
+            monet_line = ""
+        elif roic_status == "measured":
+            monet_line = (
+                f" Secondary validation ROIC-WACC spread {float(roic_spread):+.2%} (>5% hurdle, value-creative)."
+            )
+        elif roic_status == "proxy":
+            monet_line = (
+                f" Monetisation indicated by ROCE proxy {float(roic_spread):+.2%} "
+                "(WACC assumed 10%; not a measured ROIC-WACC spread)."
+            )
+        else:
+            monet_line = (
+                " Monetisation not measured (no ROIC/WACC source for this name); "
+                "any spread quoted elsewhere for it is a placeholder, not evidence."
+            )
 
         funda_thesis = (
             f"Quarterly earnings acceleration in {latest_period}: Revenue reached INR {rev_cr:,.2f} Cr (YoY +{yoy_rev:.1f}%), "
@@ -322,13 +344,22 @@ class AgentOrchestrator:
         policy_approval = None if policy_eni is None else (policy_eni >= 0)
 
         roic_spread = candidate_row.get("roic_wacc_spread")
+        roic_status = candidate_row.get("roic_wacc_status")
         if roic_spread is None or (isinstance(roic_spread, float) and pd.isna(roic_spread)):
             try:
-                roic_spread = self.screener._lookup_roic_wacc_spread(sym, isin)
+                if roic_status is None:
+                    roic_spread, roic_status = self.screener._roic_wacc_spread_impl(sym, isin)
+                else:
+                    roic_spread = self.screener._lookup_roic_wacc_spread(sym, isin)
             except Exception:
                 roic_spread = 0.06
         if isinstance(roic_spread, float) and pd.isna(roic_spread):
             roic_spread = 0.06
+        if roic_status is None:
+            try:
+                roic_status = self.screener.roic_wacc_status(sym, isin)
+            except Exception:
+                roic_status = "unknown"
 
         secular = candidate_row.get("secular_growth_score")
         if secular is None or (isinstance(secular, float) and pd.isna(secular)):
@@ -351,6 +382,7 @@ class AgentOrchestrator:
             "policy_eni": policy_eni,  # alias
             "policy_approval": policy_approval,  # True/False/None
             "roic_wacc_spread": float(roic_spread),
+            "roic_wacc_status": str(roic_status),  # measured / proxy / unknown
             "secular_growth_score": float(secular),
         }
 
@@ -423,8 +455,16 @@ class AgentOrchestrator:
                 verdict_parts.append(f"policy headwind ENI {_v_eni:+.2f} (<0, monitor)")
         else:
             verdict_parts.append(f"policy neutral (ENI unknown, coverage {_v_cov}; no mapped template)")
-        if metrics["roic_wacc_spread"] > TOPDOWN_MIN_ROIC_WACC_SPREAD:
-            verdict_parts.append(f"ROIC-WACC {metrics['roic_wacc_spread']:+.2%} >5% value-creative")
+        _v_roic_status = metrics.get("roic_wacc_status", "unknown")
+        if _v_roic_status == "unknown":
+            verdict_parts.append(
+                "monetisation unmeasured (no ROIC/WACC source; spread is not evidence)"
+            )
+        elif metrics["roic_wacc_spread"] > TOPDOWN_MIN_ROIC_WACC_SPREAD:
+            _v_label = "" if _v_roic_status == "measured" else " (from ROCE proxy)"
+            verdict_parts.append(
+                f"ROIC-WACC {metrics['roic_wacc_spread']:+.2%} >5% value-creative{_v_label}"
+            )
         else:
             verdict_parts.append(f"ROIC-WACC {metrics['roic_wacc_spread']:+.2%} <=5% (secondary validation soft)")
         if metrics["total_moat_score"] >= TOPDOWN_MIN_MOAT_SCORE and metrics["moat_trajectory"] in ("Stable", "Expanding"):

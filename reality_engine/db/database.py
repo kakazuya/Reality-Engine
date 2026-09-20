@@ -3,12 +3,15 @@ Database Engine Module
 Manages SQLite connection lifecycle, PRAGMA optimization, WAL mode, and schema migrations.
 """
 
+import logging
 import sqlite3
 from pathlib import Path
-from typing import Optional, Generator
+from typing import Dict, Optional, Generator
 from contextlib import contextmanager
 
 from reality_engine.config import DB_PATH, SQLITE_PRAGMAS
+
+logger = logging.getLogger("reality_engine.database")
 
 
 class DatabaseManager:
@@ -132,6 +135,24 @@ class DatabaseManager:
         except Exception:
             # Pre-existing rows may carry duplicate or NULL source_url; never crash init_db.
             pass
+        # Symbol/ISIN-scoped chunk lookup indexes.
+        #
+        # document_chunks was indexed only by (doc_id, chunk_index), which is the original
+        # doc-scoped access pattern. Symbol-scoped reads (pdf_ingestor's industry backfill,
+        # tests, and any new consumer) therefore scanned the whole table including the wide
+        # embedding/content columns: measured 5,045 ms per symbol lookup and 623 ms per ISIN
+        # lookup on the live DB, versus ~0.03 ms with an index.
+        #
+        # These live here rather than in schema.sql so one code path covers both fresh and
+        # pre-existing databases (init_db runs schema.sql and then these migrations).
+        for idx_name, col in (("idx_docchunks_symbol", "symbol"), ("idx_docchunks_isin", "isin")):
+            try:
+                conn.execute(
+                    f"CREATE INDEX IF NOT EXISTS {idx_name} ON document_chunks({col})"
+                )
+            except Exception:
+                # Table absent on a minimal bootstrap; never crash init_db.
+                pass
         # Defensive idempotent creation of corporate_status_flags for very old DB files.
         # Fresh installs already get this table (CREATE TABLE IF NOT EXISTS) from schema.sql.
         try:
@@ -261,6 +282,96 @@ class DatabaseManager:
                 )
         except Exception:
             pass
+
+    # Tables whose statistics are never worth re-analysing (FTS5 shadow tables, internal).
+    _SKIP_ANALYZE_PREFIXES = ("sqlite_", "intelligence_fts", "inbox_fts")
+    _ANALYZE_DRIFT_THRESHOLD = 0.25
+    _ANALYZE_MIN_ROWS = 1000
+
+    def optimize(self, force: bool = False) -> Dict[str, str]:
+        """Refresh SQLite planner statistics for tables whose estimates have drifted.
+
+        ``PRAGMA optimize`` alone is not sufficient here. Measured 2026-09-20 on the
+        production DB: ``PRAGMA optimize`` (0.00s) and ``PRAGMA optimize=0x10002`` (2.11s)
+        both left ``sqlite_stat1`` reporting 3,474 rows for ``master_companies`` against an
+        actual 6,438, and 2,715,255 against 3,121,803 for ``daily_price_delivery`` -- its
+        heuristics key off changes made by the *current* connection, not drift already on
+        disk. Only a real ``ANALYZE`` refreshed them, at 32.8s for the whole DB, which is
+        too expensive to run unconditionally after every ingest.
+
+        So: run the cheap optimisation first (it covers tables that have never been analyzed
+        at all), then compare each table's stored row estimate to its actual count and
+        ``ANALYZE`` only what has drifted beyond the threshold (or, with ``force``,
+        everything that is big enough to matter).
+
+        Returns ``{table: action}`` for observability; empty when nothing needed work.
+        """
+        actions: Dict[str, str] = {}
+        with self.session() as conn:
+            try:
+                conn.execute("PRAGMA optimize;")
+            except Exception:
+                pass
+            try:
+                tables = [
+                    r[0] for r in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table'"
+                    ).fetchall()
+                ]
+                # sqlite_stat1 holds one row per *index*, and the first number in each
+                # row's ``stat`` is that index's row count -- which for a non-partial index
+                # equals the table's. Prefer an explicit table-level row (idx IS NULL) when
+                # present; otherwise take the largest first-token across the table's index
+                # rows. Keying only on idx IS NULL silently reported "no stats" for tables
+                # whose indexes are all explicitly named (e.g. corporate_documents), so
+                # they were re-analyzed on every call and never converged.
+                estimates: Dict[str, int] = {}
+                for tbl, idx, stat in conn.execute(
+                    "SELECT tbl, idx, stat FROM sqlite_stat1"
+                ).fetchall():
+                    try:
+                        first = int(str(stat).split()[0])
+                    except (ValueError, IndexError):
+                        continue
+                    if idx is None or tbl not in estimates:
+                        estimates[tbl] = first
+                    else:
+                        estimates[tbl] = max(estimates[tbl], first)
+            except Exception as exc:  # pragma: no cover - never fail an ingest run
+                logger.debug("optimize(): table scan failed: %s", exc)
+                return actions
+
+            for table in tables:
+                if any(table.startswith(p) for p in self._SKIP_ANALYZE_PREFIXES):
+                    continue
+                try:
+                    actual = int(conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0])
+                except Exception:
+                    continue
+                stat = estimates.get(table)
+                estimated = stat if stat is not None else None
+                if actual < self._ANALYZE_MIN_ROWS and estimated is not None:
+                    continue
+                if force:
+                    needs = actual >= self._ANALYZE_MIN_ROWS
+                    action = "analyzed (forced)"
+                elif estimated is None:
+                    needs = actual >= self._ANALYZE_MIN_ROWS
+                    action = "analyzed (no stats)"
+                else:
+                    drift = abs(estimated - actual) / max(actual, 1)
+                    needs = drift > self._ANALYZE_DRIFT_THRESHOLD
+                    action = f"analyzed (drift {drift:.0%})"
+                if not needs:
+                    continue
+                try:
+                    conn.execute(f'ANALYZE "{table}"')
+                    actions[table] = action
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.debug("ANALYZE %s failed: %s", table, exc)
+        if actions:
+            logger.info("Refreshed planner statistics for %d table(s): %s", len(actions), actions)
+        return actions
 
     def vacuum(self) -> None:
         """Optimizes and re-indexes the SQLite database."""

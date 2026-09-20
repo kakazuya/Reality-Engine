@@ -62,6 +62,25 @@ class TestRepoIdentity(unittest.TestCase):
             self.assertEqual(len(by_isin), 2)
             self.assertEqual({r["lens_family"] for r in by_isin}, {"business_quality", "policy_macro"})
 
+    def test_validation_scores_upsert_preserves_created_at(self):
+        import time
+        with tempfile.TemporaryDirectory() as td:
+            mgr = DatabaseManager(db_path=Path(td) / "test.db")
+            repo = Repository(manager=mgr)
+            rec = {"asof_date": "2026-09-01", "horizon_days": 5, "mode": "ensemble",
+                   "lens_family": None, "regime_tag": "unknown", "investor_majority": "all",
+                   "n": 8, "hit_rate": 1.0}
+            repo.upsert_validation_scores([rec])
+            with mgr.session() as conn:
+                first = conn.execute("SELECT created_at FROM model_validation_scores").fetchone()[0]
+            time.sleep(1.05)
+            repo.upsert_validation_scores([{**rec, "hit_rate": 0.5}])
+            with mgr.session() as conn:
+                rows = conn.execute("SELECT created_at, hit_rate FROM model_validation_scores").fetchall()
+            self.assertEqual(len(rows), 1, "conflict must upsert, not duplicate")
+            self.assertEqual(rows[0][0], first, "created_at must survive conflict-update")
+            self.assertAlmostEqual(rows[0][1], 0.5, "metrics must still refresh")
+
     def test_document_chunks_no_industry_tags_backfill(self):
         # relies on pdf_ingestor backfill tested elsewhere, just check repo helper exists
         from reality_engine.ingestion.pdf_ingestor import backfill_document_chunk_industry_tags

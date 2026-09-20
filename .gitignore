@@ -60,6 +60,24 @@ reality_engine/data/lancedb/*
 reality_engine/data/reports/*
 !reality_engine/data/**/.gitkeep
 
+# Continuous loop runtime state (briefs, run log, agent transcripts, sessions)
+reality_engine/data/logs/loop/*
+reality_engine/data/logs/offer_backfill/*
+
+# Local model binaries (re-downloadable via embed-setup / llm-setup)
+reality_engine/data/models/*
+!reality_engine/data/models/.gitkeep
+reality_engine/data/llama-bin/*
+!reality_engine/data/llama-bin/.gitkeep
+reality_engine/data/llama-bonsai/*
+!reality_engine/data/llama-bonsai/.gitkeep
+reality_engine/data/llama-hip/*
+!reality_engine/data/llama-hip/.gitkeep
+gguf_dl.log
+bonsai_dl.log
+bonsai_v1_dl.log
+aria2_v1.log
+
 # Ingestion inbox scratch/processed files (preserve sample tests)
 reality_engine/data/inbox/processed/*
 reality_engine/data/inbox/failed/*

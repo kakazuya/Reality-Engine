@@ -238,7 +238,7 @@ CREATE TABLE IF NOT EXISTS corporate_documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     isin TEXT NOT NULL,
     symbol TEXT NOT NULL,
-    doc_type TEXT NOT NULL,              -- 'CONCALL_TRANSCRIPT', 'INVESTOR_PRESENTATION', 'ANNUAL_REPORT', 'ANNOUNCEMENT'
+    doc_type TEXT NOT NULL,              -- 'CONCALL_TRANSCRIPT', 'INVESTOR_PRESENTATION', 'ANNUAL_REPORT', 'ANNOUNCEMENT', 'FINANCIAL_RESULT', 'OFFER_DOCUMENT' (SEBI DRHP/Prospectus)
     title TEXT NOT NULL,
     doc_date DATE NOT NULL,
     source_url TEXT,
@@ -511,3 +511,49 @@ INSERT OR IGNORE INTO pruning_decay_config (category, half_life_months) VALUES
     ('RBI Report / Economic Survey', 6),
     ('Economic Survey', 12),
     ('Union Budget / Tax Reform', 12);
+
+-- ====================================================================
+-- 20. Wave B — Model-validation loop (prediction scoring + calibration)
+-- Additive only. Scored by reality_engine/processing/validation_harness.py.
+-- lens_family NULL = whole-cohort row; set = per-dominant-lens bucket row.
+-- investor_majority 'all' = whole-cohort row; else per-holder-cohort split.
+-- thesis_hit_rate/thesis_n are NULL except on whole-cohort ('all' investor,
+-- NULL lens) rows where alpha theses with entry/target/SL were available.
+-- model_lens_weight_proposals holds fit_lens_weights() proposals only;
+-- model_explainer_rankings is NEVER auto-updated (apply_calibration is
+-- a deliberate later call via EnsembleRanker.upsert_ranking).
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS model_validation_scores (
+    score_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asof_date DATE NOT NULL,
+    horizon_days INTEGER NOT NULL,
+    mode TEXT NOT NULL,
+    lens_family TEXT,
+    regime_tag TEXT NOT NULL DEFAULT 'unknown',
+    investor_majority TEXT NOT NULL DEFAULT 'all',
+    n INTEGER NOT NULL DEFAULT 0,
+    hit_rate REAL,
+    mean_fwd_ret REAL,
+    universe_mean_ret REAL,
+    ic REAL,
+    thesis_hit_rate REAL,
+    thesis_n INTEGER,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(asof_date, horizon_days, mode, lens_family, regime_tag, investor_majority)
+);
+
+CREATE INDEX IF NOT EXISTS idx_val_asof ON model_validation_scores(asof_date DESC);
+CREATE INDEX IF NOT EXISTS idx_val_mode_horizon ON model_validation_scores(mode, horizon_days);
+CREATE INDEX IF NOT EXISTS idx_val_lens ON model_validation_scores(lens_family);
+CREATE INDEX IF NOT EXISTS idx_val_regime ON model_validation_scores(regime_tag);
+
+CREATE TABLE IF NOT EXISTS model_lens_weight_proposals (
+    proposal_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    regime_tag TEXT NOT NULL,
+    investor_majority TEXT NOT NULL DEFAULT 'all',
+    lens_family TEXT NOT NULL,
+    weight REAL NOT NULL,
+    basis_json TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(regime_tag, investor_majority, lens_family)
+);
