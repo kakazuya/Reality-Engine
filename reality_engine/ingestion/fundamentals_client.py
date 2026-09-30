@@ -382,12 +382,23 @@ class FundamentalsClient:
                         elif "financial result" in sub_lower or "result" in category.lower():
                             doc_type = "FINANCIAL_RESULT"
 
+                        # Exchange timestamps only. Never stamp crawl time as the document
+                        # date: a row without any feed timestamp is skipped, not misdated.
+                        dissem_ts = item.get("DissemDT") or item.get("DT_TM") or item.get("NEWS_DT")
+                        news_dt = item.get("NEWS_DT") or dissem_ts
+                        if not news_dt:
+                            continue
+
                         doc_rec = {
                             "isin": isin,
                             "symbol": clean_sym,
                             "doc_type": doc_type,
                             "title": news_sub[:200],
-                            "doc_date": str(item.get("NEWS_DT", datetime.now().strftime("%Y-%m-%d")))[:10],
+                            "doc_date": str(news_dt)[:10],
+                            "bse_newsid": item.get("NEWSID"),
+                            "bse_dissem_ts": dissem_ts,
+                            "bse_news_dt": item.get("NEWS_DT"),
+                            "bse_subcat": item.get("SUBCATNAME"),
                             "source_url": pdf_url,
                             "local_file_path": None,
                             "file_size_bytes": item.get("Fld_Attachsize", 0),

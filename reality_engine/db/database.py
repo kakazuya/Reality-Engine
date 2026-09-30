@@ -3,8 +3,11 @@ Database Engine Module
 Manages SQLite connection lifecycle, PRAGMA optimization, WAL mode, and schema migrations.
 """
 
+import hashlib
 import logging
+import os
 import sqlite3
+import time
 from pathlib import Path
 from typing import Dict, Optional, Generator
 from contextlib import contextmanager
@@ -12,6 +15,22 @@ from contextlib import contextmanager
 from reality_engine.config import DB_PATH, SQLITE_PRAGMAS
 
 logger = logging.getLogger("reality_engine.database")
+
+
+# Single read contract for "when did the market know about this document". Precedence:
+# BSE exchange dissemination timestamp (IST, second resolution) > date parsed from the
+# filing body > NULL. Never falls back to doc_date/event_date (crawl stamps on legacy rows).
+_V_DOCUMENT_PIT_SQL = """
+CREATE VIEW v_document_pit AS
+SELECT id, isin, symbol, doc_type, title, source_url,
+       COALESCE(bse_dissem_ts, publication_date) AS pit_ts,
+       substr(COALESCE(bse_dissem_ts, publication_date), 1, 10) AS pit_date,
+       CASE WHEN bse_dissem_ts IS NOT NULL THEN 'bse_feed'
+            WHEN publication_date IS NOT NULL THEN COALESCE(pit_source, 'body_publication_date')
+            ELSE 'unknown' END AS pit_basis,
+       call_date, fiscal_period_end, doc_date AS crawl_doc_date
+FROM corporate_documents
+"""
 
 
 class DatabaseManager:
@@ -30,7 +49,16 @@ class DatabaseManager:
             check_same_thread=False
         )
         conn.row_factory = sqlite3.Row
-        
+
+        # busy_timeout MUST be in force before any lock-taking statement
+        # (journal_mode switch, DDL): SQLite can return SQLITE_BUSY for those
+        # without invoking the busy handler at all when another connection holds
+        # a snapshot, in which case the timeout in the PRAGMA list below would
+        # never apply and a concurrent writer would fail instantly.
+        _busy = next((p for p in SQLITE_PRAGMAS if p.strip().lower().startswith("pragma busy_timeout")), None)
+        if _busy:
+            conn.execute(_busy)
+
         # Apply performance PRAGMAs
         with conn:
             for pragma in SQLITE_PRAGMAS:
@@ -61,48 +89,109 @@ class DatabaseManager:
             schema_sql = f.read()
 
         with self.session() as conn:
-            try:
-                conn.executescript(schema_sql)
-            except sqlite3.OperationalError as e:
+            # Schema DDL needs exclusive access; with other writers active SQLite
+            # may refuse without waiting, so retry with backoff rather than
+            # failing the whole process (this killed a scheduled run mid-ingest).
+            # Fast path: schema DDL needs an exclusive lock, so running the whole
+            # idempotent script on every process start costs ~60s of contention
+            # while ingest writers are active (measured). Skip it when the schema
+            # file is unchanged AND every required table still exists — the
+            # existence check is what keeps this correct for callers that drop
+            # tables (e.g. rebuilding the FTS index) while sharing the DB.
+            _required = (
+                "master_companies", "raw_documents", "document_chunks", "intelligence_fts",
+                "moat_evaluations", "business_model_profiles", "company_distilled_parameters",
+                "daily_price_delivery", "regulatory_political_risks",
+            )
+            _skip_schema = False
+            if not os.environ.get("REALITY_ENGINE_FORCE_SCHEMA"):
+                try:
+                    _digest = hashlib.sha256(schema_sql.encode("utf-8")).hexdigest()
+                    conn.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT)")
+                    _row = conn.execute("SELECT value FROM schema_meta WHERE key='schema_sha256'").fetchone()
+                    _present = {r[0] for r in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
+                    _skip_schema = bool(_row) and _row[0] == _digest and all(t in _present for t in _required)
+                except Exception:
+                    _skip_schema = False
+
+            last_exc = None
+            for _attempt in range(5 if not _skip_schema else 0):
+                try:
+                    conn.executescript(schema_sql)
+                    last_exc = None
+                    break
+                except sqlite3.OperationalError as exc:
+                    last_exc = exc
+                    if "locked" in str(exc).lower() and _attempt < 4:
+                        time.sleep(1.5 * (_attempt + 1))
+                        continue
+                    break
+            if last_exc is not None:
                 # Production DB may predate the latest schema.sql additions
-                # (e.g. regulatory_political_risks.coverage_status). The fresh
+                # (e.g. regulatory_political_risks.coverage_status,
+                # document_chunks.fiscal_* + idx_chunks_fiscal). The fresh
                 # temp DB path always succeeds, but a stale production file
-                # would fail on CREATE INDEX referencing a missing column.
+                # would fail on CREATE INDEX referencing a missing column
+                # (CREATE TABLE IF NOT EXISTS is a no-op on the old table).
                 # Repair in-place and continue; do not crash import or tests.
-                msg = str(e)
-                if "coverage_status" in msg:
+                msg = str(last_exc)
+                if "fiscal_period" in msg or "fiscal_confidence" in msg or "fiscal_source" in msg:
                     try:
-                        cols = {r[1] for r in conn.execute("PRAGMA table_info(regulatory_political_risks)").fetchall()}
-                        if cols and "coverage_status" not in cols:
+                        _dcols = {r[1] for r in conn.execute("PRAGMA table_info(document_chunks)").fetchall()}
+                        if _dcols:
+                            for _col, _ddl in (
+                                ("fiscal_period", "TEXT"),
+                                ("fiscal_confidence", "REAL"),
+                                ("fiscal_source", "TEXT"),
+                            ):
+                                if _col not in _dcols:
+                                    conn.execute(f"ALTER TABLE document_chunks ADD COLUMN {_col} {_ddl}")
                             conn.execute(
-                                "ALTER TABLE regulatory_political_risks ADD COLUMN coverage_status TEXT CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped'"
+                                "CREATE INDEX IF NOT EXISTS idx_chunks_fiscal "
+                                "ON document_chunks(fiscal_period, fiscal_confidence)"
                             )
-                        # Create the covering indexes that previously failed
-                        try:
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_coverage ON regulatory_political_risks(coverage_status)")
-                        except Exception:
-                            pass
-                        try:
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_symbol ON regulatory_political_risks(symbol)")
-                        except Exception:
-                            pass
-                        try:
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_isin ON regulatory_political_risks(isin)")
-                        except Exception:
-                            pass
-                        try:
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_regpol_net ON regulatory_political_risks(net_impact_score)")
-                        except Exception:
-                            pass
                     except Exception:
                         pass
-                    # Retry the remaining schema (IF NOT EXISTS makes it idempotent)
                     try:
                         conn.executescript(schema_sql)
+                        last_exc = None
                     except Exception:
                         pass
-                else:
-                    raise
+                if last_exc is not None:
+                    if "coverage_status" in str(last_exc):
+                        try:
+                            cols = {r[1] for r in conn.execute("PRAGMA table_info(regulatory_political_risks)").fetchall()}
+                            if cols and "coverage_status" not in cols:
+                                conn.execute(
+                                    "ALTER TABLE regulatory_political_risks ADD COLUMN coverage_status TEXT CHECK (coverage_status IN ('mapped','no_template','unknown')) DEFAULT 'mapped'"
+                                )
+                            for stmt in (
+                                "CREATE INDEX IF NOT EXISTS idx_regpol_coverage ON regulatory_political_risks(coverage_status)",
+                                "CREATE INDEX IF NOT EXISTS idx_regpol_symbol ON regulatory_political_risks(symbol)",
+                                "CREATE INDEX IF NOT EXISTS idx_regpol_isin ON regulatory_political_risks(isin)",
+                                "CREATE INDEX IF NOT EXISTS idx_regpol_net ON regulatory_political_risks(net_impact_score)",
+                            ):
+                                try:
+                                    conn.execute(stmt)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+                        try:
+                            conn.executescript(schema_sql)
+                        except Exception:
+                            pass
+                    else:
+                        raise last_exc
+            if not _skip_schema and last_exc is None:
+                try:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_sha256', ?)",
+                        (hashlib.sha256(schema_sql.encode("utf-8")).hexdigest(),),
+                    )
+                except Exception:
+                    pass
             self._apply_runtime_migrations(conn)
 
     def _apply_runtime_migrations(self, conn: sqlite3.Connection) -> None:
@@ -121,6 +210,19 @@ class DatabaseManager:
             for new_col in ("source", "discovery_source"):
                 if new_col not in cols:
                     conn.execute(f"ALTER TABLE corporate_documents ADD COLUMN {new_col} TEXT")
+            # Point-in-time columns. doc_date/event_date can be crawl stamps; readers that need
+            # "when did the market know" must use v_document_pit, never those two.
+            for new_col, ddl in (
+                ("call_date", "TEXT"), ("publication_date", "TEXT"),
+                ("pit_source", "TEXT"), ("pit_tier", "INTEGER"), ("pit_applied_at", "TEXT"),
+                ("bse_newsid", "TEXT"), ("bse_dissem_ts", "TEXT"),
+                ("bse_news_dt", "TEXT"), ("bse_subcat", "TEXT"), ("bse_joined_at", "TEXT"),
+                ("fiscal_period_end", "TEXT"),
+            ):
+                if new_col not in cols:
+                    conn.execute(f"ALTER TABLE corporate_documents ADD COLUMN {new_col} {ddl}")
+            conn.execute("DROP VIEW IF EXISTS v_document_pit")
+            conn.execute(_V_DOCUMENT_PIT_SQL)
         except Exception:
             # Fresh DB: schema.sql already creates these columns; ignore.
             pass
@@ -153,6 +255,29 @@ class DatabaseManager:
             except Exception:
                 # Table absent on a minimal bootstrap; never crash init_db.
                 pass
+        # Fiscal-period labels on document_chunks (findings §11) — ADDITIVE ONLY.
+        # Body-genuine labels stamped at insert by pdf_ingestor via
+        # processing/document_parser.extract_fiscal_period on the header-stripped
+        # body (content after first newline). content/embedding are NEVER
+        # rewritten. Canonical DDL: schema.sql section 22. Idempotent: ALTER
+        # TABLE ADD COLUMN skips present columns; index is IF NOT EXISTS.
+        try:
+            _fcols = {r[1] for r in conn.execute("PRAGMA table_info(document_chunks)").fetchall()}
+            if _fcols:
+                for _col, _ddl in (
+                    ("fiscal_period", "TEXT"),
+                    ("fiscal_confidence", "REAL"),
+                    ("fiscal_source", "TEXT"),
+                ):
+                    if _col not in _fcols:
+                        conn.execute(f"ALTER TABLE document_chunks ADD COLUMN {_col} {_ddl}")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_chunks_fiscal "
+                    "ON document_chunks(fiscal_period, fiscal_confidence)"
+                )
+        except Exception:
+            # Table absent on a minimal bootstrap; never crash init_db.
+            pass
         # Defensive idempotent creation of corporate_status_flags for very old DB files.
         # Fresh installs already get this table (CREATE TABLE IF NOT EXISTS) from schema.sql.
         try:
@@ -280,6 +405,166 @@ class DatabaseManager:
                     "UPDATE pruning_decay_config SET lambda=? WHERE category=? AND (lambda IS NULL OR abs(lambda-?)>0.0001)",
                     (lam, cat, lam),
                 )
+        except Exception:
+            pass
+        # Substrate versioning (P0b peers-speak) — ADDITIVE ONLY (canonical DDL: schema.sql section 21).
+        # History tables sit beside the live level tables, which are NEVER altered here.
+        # Created here as well as in schema.sql so pre-existing DBs (schema digest skipped)
+        # still gain them. Backfill is INSERT OR IGNORE (idempotent): one row per live level
+        # row with asof = earliest EOD date (per-row created_at date part for ripples/edges),
+        # so delta predictors have a day-one baseline. Best-effort: never crash init.
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS moat_history (
+                    history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    symbol TEXT NOT NULL,
+                    asof_date TEXT NOT NULL,
+                    moat_score REAL,
+                    moat_width TEXT,
+                    trajectory TEXT,
+                    source TEXT DEFAULT 'backfill',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(symbol, asof_date)
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_moat_hist_sym_date ON moat_history(symbol, asof_date DESC)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_moat_hist_date ON moat_history(asof_date DESC)")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS policy_eni_history (
+                    history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    symbol TEXT NOT NULL,
+                    policy_name TEXT NOT NULL,
+                    asof_date TEXT NOT NULL,
+                    net_impact_score REAL,
+                    severity REAL,
+                    source TEXT DEFAULT 'backfill',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(symbol, policy_name, asof_date)
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_policy_hist_sym_date ON policy_eni_history(symbol, asof_date DESC)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_policy_hist_sym_pol_date ON policy_eni_history(symbol, policy_name, asof_date DESC)")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS ripple_history (
+                    history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    edge_key TEXT NOT NULL,
+                    symbol TEXT,
+                    event_id TEXT,
+                    source_node_id TEXT,
+                    target_node_id TEXT,
+                    asof_date TEXT NOT NULL,
+                    significance REAL,
+                    beta REAL,
+                    revision_count INTEGER DEFAULT 0,
+                    source TEXT DEFAULT 'revision',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(edge_key, asof_date)
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ripple_hist_sym_date ON ripple_history(symbol, asof_date DESC)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ripple_hist_edge_date ON ripple_history(edge_key, asof_date DESC)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ripple_hist_event ON ripple_history(event_id)")
+        except Exception:
+            pass
+        try:
+            from datetime import date as _date
+            try:
+                _erow = conn.execute("SELECT MIN(date) AS d FROM daily_price_delivery").fetchone()
+                _asof = str(_erow["d"])[:10] if _erow and _erow["d"] else _date.today().isoformat()
+            except Exception:
+                _asof = _date.today().isoformat()
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO moat_history (symbol, asof_date, moat_score, moat_width, trajectory, source) "
+                    "SELECT UPPER(ticker), ?, total_moat_score, moat_width, moat_trajectory, 'backfill' "
+                    "FROM moat_evaluations WHERE ticker IS NOT NULL",
+                    (_asof,),
+                )
+            except Exception:
+                pass
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO policy_eni_history (symbol, policy_name, asof_date, net_impact_score, severity, source) "
+                    "SELECT UPPER(symbol), policy_name, ?, net_impact_score, severity_score, 'backfill' "
+                    "FROM regulatory_political_risks WHERE symbol IS NOT NULL AND policy_name IS NOT NULL",
+                    (_asof,),
+                )
+            except Exception:
+                pass
+            try:
+                _rcols = {r[1] for r in conn.execute("PRAGMA table_info('ripple_effects')").fetchall()}
+            except Exception:
+                _rcols = set()
+            if _rcols:
+                try:
+                    _rrows = conn.execute("SELECT * FROM ripple_effects").fetchall()
+                except Exception:
+                    _rrows = []
+                for _r in _rrows:
+                    try:
+                        _rd = dict(_r)
+                        _cid = _rd.get("target_company_id")
+                        _sym = None
+                        if _cid is not None:
+                            try:
+                                _b = conn.execute("SELECT symbol FROM financial_metrics WHERE company_id = ? LIMIT 1", (_cid,)).fetchone()
+                                if _b and _b[0]:
+                                    _sym = str(_b[0]).strip().upper()
+                                else:
+                                    _b2 = conn.execute("SELECT ticker FROM moat_evaluations WHERE company_id = ? LIMIT 1", (_cid,)).fetchone()
+                                    if _b2 and _b2[0]:
+                                        _sym = str(_b2[0]).strip().upper()
+                            except Exception:
+                                _sym = None
+                        _created = _rd.get("created_at")
+                        _ad = str(_created)[:10] if _created else _asof
+                        _ekey = "ripple:{}:L{}:C{}:S{}:I{}:{}".format(
+                            _rd.get("event_id") if _rd.get("event_id") is not None else "?",
+                            _rd.get("order_level") if _rd.get("order_level") is not None else 1,
+                            _cid if _cid is not None else "-",
+                            _rd.get("target_sector_id") if _rd.get("target_sector_id") is not None else "-",
+                            _rd.get("target_industry_id") if _rd.get("target_industry_id") is not None else "-",
+                            _rd.get("transmission_channel") or "direct",
+                        )
+                        conn.execute(
+                            "INSERT OR IGNORE INTO ripple_history (edge_key, symbol, event_id, asof_date, significance, beta, revision_count, source) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, 'backfill')",
+                            (_ekey, _sym, _rd.get("event_id"), _ad,
+                             _rd.get("significance_rank"), _rd.get("transmission_elasticity", 1.0),
+                             int(_rd.get("revision_count") or 0)),
+                        )
+                    except Exception:
+                        continue
+            try:
+                _ecols = {r[1] for r in conn.execute("PRAGMA table_info('graph_causal_edges')").fetchall()}
+            except Exception:
+                _ecols = set()
+            if _ecols and "edge_id" in _ecols:
+                try:
+                    _erows = conn.execute("SELECT * FROM graph_causal_edges").fetchall()
+                except Exception:
+                    _erows = []
+                for _e in _erows:
+                    try:
+                        _ed = dict(_e)
+                        if not _ed.get("edge_id"):
+                            continue
+                        _ecreated = _ed.get("created_at")
+                        _ead = str(_ecreated)[:10] if _ecreated else _asof
+                        conn.execute(
+                            "INSERT OR IGNORE INTO ripple_history (edge_key, source_node_id, target_node_id, asof_date, significance, beta, revision_count, source) "
+                            "VALUES (?, ?, ?, ?, ?, ?, 0, 'backfill')",
+                            (str(_ed.get("edge_id")), _ed.get("source_node_id"), _ed.get("target_node_id"),
+                             _ead, _ed.get("elasticity_score"), _ed.get("elasticity_score")),
+                        )
+                    except Exception:
+                        continue
         except Exception:
             pass
 

@@ -934,16 +934,21 @@ class Repository:
             "doc_date": None, "source_url": None, "source": None,
             "discovery_source": None, "local_file_path": None,
             "file_size_bytes": 0, "sha256_hash": None, "is_processed": 0,
+            # PIT columns: filled only by feeds that carry the exchange timestamp.
+            "bse_newsid": None, "bse_dissem_ts": None, "bse_news_dt": None,
+            "bse_subcat": None, "call_date": None, "publication_date": None,
         }
         records = [{**defaults, **record} for record in records]
 
         query = """
         INSERT INTO corporate_documents (
             isin, symbol, doc_type, title, doc_date, source_url, source,
-            discovery_source, local_file_path, file_size_bytes, sha256_hash, is_processed
+            discovery_source, local_file_path, file_size_bytes, sha256_hash, is_processed,
+            bse_newsid, bse_dissem_ts, bse_news_dt, bse_subcat, call_date, publication_date
         ) VALUES (
             :isin, :symbol, :doc_type, :title, :doc_date, :source_url, :source,
-            :discovery_source, :local_file_path, :file_size_bytes, :sha256_hash, :is_processed
+            :discovery_source, :local_file_path, :file_size_bytes, :sha256_hash, :is_processed,
+            :bse_newsid, :bse_dissem_ts, :bse_news_dt, :bse_subcat, :call_date, :publication_date
         )
         ON CONFLICT(source_url) DO UPDATE SET
             isin = COALESCE(excluded.isin, corporate_documents.isin),
@@ -956,7 +961,13 @@ class Repository:
             local_file_path = COALESCE(excluded.local_file_path, corporate_documents.local_file_path),
             file_size_bytes = COALESCE(excluded.file_size_bytes, corporate_documents.file_size_bytes),
             sha256_hash = COALESCE(excluded.sha256_hash, corporate_documents.sha256_hash),
-            is_processed = COALESCE(excluded.is_processed, corporate_documents.is_processed);
+            is_processed = COALESCE(excluded.is_processed, corporate_documents.is_processed),
+            bse_newsid = COALESCE(corporate_documents.bse_newsid, excluded.bse_newsid),
+            bse_dissem_ts = COALESCE(corporate_documents.bse_dissem_ts, excluded.bse_dissem_ts),
+            bse_news_dt = COALESCE(corporate_documents.bse_news_dt, excluded.bse_news_dt),
+            bse_subcat = COALESCE(corporate_documents.bse_subcat, excluded.bse_subcat),
+            call_date = COALESCE(corporate_documents.call_date, excluded.call_date),
+            publication_date = COALESCE(corporate_documents.publication_date, excluded.publication_date);
         """
         with self.db.session() as conn:
             cursor = conn.executemany(query, records)
@@ -1074,7 +1085,7 @@ class Repository:
         with self.db.session() as conn:
             return conn.executemany(query, values).rowcount
 
-    def upsert_causal_edges(self, records: List[Dict[str, Any]]) -> int:
+    def upsert_causal_edges(self, records: List[Dict[str, Any]], asof_date=None) -> int:
         if not records:
             return 0
         query = """
@@ -1109,7 +1120,57 @@ class Repository:
             "confidence_score": record.get("confidence_score"),
         } for record in records]
         with self.db.session() as conn:
-            return conn.executemany(query, values).rowcount
+            n = conn.executemany(query, values).rowcount
+            # P0b versioning: dated snapshot beside the live edge levels.
+            # New asof_date on genuine significance change; same-day rewrites
+            # collapse via the (edge_key, asof_date) day-key.
+            try:
+                for stmt in self._SUBSTRATE_HISTORY_DDL:
+                    try:
+                        conn.execute(stmt)
+                    except Exception:
+                        pass
+                try:
+                    asof = self._history_asof(asof_date)
+                except Exception:
+                    asof = date.today().isoformat()
+                for record in records:
+                    try:
+                        if not record.get("edge_id"):
+                            continue
+                        edge_key = str(record.get("edge_id"))
+                        latest = conn.execute(
+                            "SELECT significance, asof_date FROM ripple_history "
+                            "WHERE edge_key=? ORDER BY asof_date DESC LIMIT 1",
+                            (edge_key,),
+                        ).fetchone()
+                        skip = False
+                        if latest is not None:
+                            try:
+                                new_sig = None if record.get("elasticity_score") is None else float(record.get("elasticity_score"))
+                                old_sig = None if latest["significance"] is None else float(latest["significance"])
+                                same_sig = (new_sig is None and old_sig is None) or (new_sig is not None and old_sig is not None and abs(new_sig - old_sig) < 1e-9)
+                            except Exception:
+                                same_sig = latest["significance"] == record.get("elasticity_score")
+                            same_day = str(latest["asof_date"] or "")[:10] == str(asof)[:10]
+                            if same_sig and not same_day:
+                                skip = True
+                        if skip:
+                            continue
+                        conn.execute(
+                            "INSERT INTO ripple_history (edge_key, symbol, event_id, source_node_id, target_node_id, asof_date, significance, beta, revision_count, source) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'upsert') "
+                            "ON CONFLICT(edge_key, asof_date) DO UPDATE SET source_node_id=excluded.source_node_id, "
+                            "target_node_id=excluded.target_node_id, significance=excluded.significance, beta=excluded.beta, source=excluded.source",
+                            (edge_key, None, record.get("evidence_document_ref"),
+                             record.get("source_node_id"), record.get("target_node_id"), asof,
+                             record.get("elasticity_score"), record.get("elasticity_score")),
+                        )
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+            return n
 
     def upsert_macro_event(self, record: Dict[str, Any]) -> int:
         """Insert/update a macro_events row, tolerant of SQLite vs PostgreSQL schemas.
@@ -1272,7 +1333,7 @@ class Repository:
             ).fetchall()
             return [dict(r) for r in rows]
 
-    def upsert_ripple_effects(self, event_id: Any, ripples: List[Dict[str, Any]]) -> int:
+    def upsert_ripple_effects(self, event_id: Any, ripples: List[Dict[str, Any]], asof_date=None) -> int:
         """Replace all ripple_effects for ``event_id`` with the supplied ordered list.
 
         Idempotent: existing rows for the event are deleted first, then re-inserted
@@ -1280,6 +1341,8 @@ class Repository:
         private ``_ref`` and ``_parent_ref`` (referencing a parent's ``_ref``) so the
         self-referential ``parent_ripple_id`` is resolved to the freshly assigned
         autoincrement id. Column usage is schema-tolerant (SQLite vs PostgreSQL).
+        History: appends a ripple_history snapshot dated ``asof_date`` (today when
+        absent); same-day rewrites collapse via the (edge_key, asof_date) day-key.
         """
         if not ripples:
             with self.db.session() as conn:
@@ -1325,6 +1388,12 @@ class Repository:
                 if r.get("_ref") is not None:
                     ref_map[r["_ref"]] = cur.lastrowid
                 inserted += 1
+            # P0b versioning: dated snapshot beside the replaced level DAG
+            # (event-graph revision path). Same-day rewrites collapse to latest.
+            try:
+                self._snapshot_ripple_history(conn, event_id, asof_date, "upsert")
+            except Exception:
+                pass
             return inserted
 
     def get_graph_node(self, node_id: str) -> Optional[Dict[str, Any]]:
@@ -1677,17 +1746,275 @@ class Repository:
             isin = None
         self._resolve_isin_cache[cache_key] = isin
         return isin
+    # -------------------------------------------------------------
+    # 21. Substrate versioning history (P0b peers-speak) — ADDITIVE ONLY.
+    #      moat_history / policy_eni_history / ripple_history sit BESIDE the
+    #      live level tables, which are NEVER altered here. Writers append one
+    #      row per upsert/revision (UNIQUE day-granularity keys collapse
+    #      same-day rewrites to latest); history is never rewritten across
+    #      days. Dated predictors in eod_corrector vote on these deltas;
+    #      levels keep gating action quality. Canonical DDL: schema.sql section 21.
+    # -------------------------------------------------------------
+    _SUBSTRATE_HISTORY_DDL = (
+        """
+        CREATE TABLE IF NOT EXISTS moat_history (
+            history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            asof_date TEXT NOT NULL,
+            moat_score REAL,
+            moat_width TEXT,
+            trajectory TEXT,
+            source TEXT DEFAULT 'backfill',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(symbol, asof_date)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_moat_hist_sym_date ON moat_history(symbol, asof_date DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_moat_hist_date ON moat_history(asof_date DESC)",
+        """
+        CREATE TABLE IF NOT EXISTS policy_eni_history (
+            history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            policy_name TEXT NOT NULL,
+            asof_date TEXT NOT NULL,
+            net_impact_score REAL,
+            severity REAL,
+            source TEXT DEFAULT 'backfill',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(symbol, policy_name, asof_date)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_policy_hist_sym_date ON policy_eni_history(symbol, asof_date DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_policy_hist_sym_pol_date ON policy_eni_history(symbol, policy_name, asof_date DESC)",
+        """
+        CREATE TABLE IF NOT EXISTS ripple_history (
+            history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            edge_key TEXT NOT NULL,
+            symbol TEXT,
+            event_id TEXT,
+            source_node_id TEXT,
+            target_node_id TEXT,
+            asof_date TEXT NOT NULL,
+            significance REAL,
+            beta REAL,
+            revision_count INTEGER DEFAULT 0,
+            source TEXT DEFAULT 'revision',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(edge_key, asof_date)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_ripple_hist_sym_date ON ripple_history(symbol, asof_date DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_ripple_hist_edge_date ON ripple_history(edge_key, asof_date DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_ripple_hist_event ON ripple_history(event_id)",
+    )
+
+    def ensure_substrate_history_schema(self, manager=None) -> None:
+        """Create the three substrate history tables + indexes if absent. Idempotent; never touches live level tables."""
+        mgr = manager or self.db
+        with mgr.session() as conn:
+            for stmt in self._SUBSTRATE_HISTORY_DDL:
+                try:
+                    conn.execute(stmt)
+                except Exception:
+                    pass
+
+    @staticmethod
+    def _history_asof(asof_date=None) -> str:
+        """Normalize a history asof to YYYY-MM-DD (wall-clock today when absent/garbage)."""
+        if asof_date:
+            try:
+                return str(asof_date).strip()[:10]
+            except Exception:
+                pass
+        return date.today().isoformat()
+
+    @staticmethod
+    def _ripple_history_edge_key(event_id, order_level, target_company_id,
+                                 target_sector_id, target_industry_id,
+                                 transmission_channel) -> str:
+        """Stable edge key for ripple_history (matches the database.py day-one backfill format)."""
+        def _s(v, default="-"):
+            return str(v) if v is not None else default
+        return "ripple:{}:L{}:C{}:S{}:I{}:{}".format(
+            _s(event_id, "?"), _s(order_level, 1), _s(target_company_id),
+            _s(target_sector_id), _s(target_industry_id),
+            transmission_channel or "direct",
+        )
+
+    def _history_symbol_for_company(self, conn, company_id) -> Optional[str]:
+        """Bridge a ripple target_company_id to its UPPER symbol via peer tables (None when unresolvable)."""
+        if company_id is None:
+            return None
+        try:
+            b = conn.execute("SELECT symbol FROM financial_metrics WHERE company_id = ? LIMIT 1", (company_id,)).fetchone()
+            if b and b[0]:
+                return str(b[0]).strip().upper() or None
+            b2 = conn.execute("SELECT ticker FROM moat_evaluations WHERE company_id = ? LIMIT 1", (company_id,)).fetchone()
+            if b2 and b2[0]:
+                return str(b2[0]).strip().upper() or None
+        except Exception:
+            pass
+        return None
+
+    def backfill_substrate_history(self, manager=None) -> Dict[str, int]:
+        """Idempotent day-one baseline: one history row per live level row.
+
+        moat/policy rows take ``asof`` = earliest EOD date; ripple/edge rows take
+        their own created_at date part (fallback: earliest EOD). INSERT OR IGNORE
+        so re-runs never duplicate. Returns per-table inserted counts.
+        """
+        self.ensure_substrate_history_schema(manager)
+        mgr = manager or self.db
+        counts = {"moat": 0, "policy": 0, "ripple": 0, "edges": 0}
+        with mgr.session() as conn:
+            try:
+                erow = conn.execute("SELECT MIN(date) AS d FROM daily_price_delivery").fetchone()
+                asof = str(erow["d"])[:10] if erow and erow["d"] else date.today().isoformat()
+            except Exception:
+                asof = date.today().isoformat()
+            try:
+                cur = conn.execute(
+                    "INSERT OR IGNORE INTO moat_history (symbol, asof_date, moat_score, moat_width, trajectory, source) "
+                    "SELECT UPPER(ticker), ?, total_moat_score, moat_width, moat_trajectory, 'backfill' "
+                    "FROM moat_evaluations WHERE ticker IS NOT NULL",
+                    (asof,),
+                )
+                counts["moat"] = int(cur.rowcount or 0)
+            except Exception:
+                pass
+            try:
+                cur = conn.execute(
+                    "INSERT OR IGNORE INTO policy_eni_history (symbol, policy_name, asof_date, net_impact_score, severity, source) "
+                    "SELECT UPPER(symbol), policy_name, ?, net_impact_score, severity_score, 'backfill' "
+                    "FROM regulatory_political_risks WHERE symbol IS NOT NULL AND policy_name IS NOT NULL",
+                    (asof,),
+                )
+                counts["policy"] = int(cur.rowcount or 0)
+            except Exception:
+                pass
+            try:
+                rrows = conn.execute("SELECT * FROM ripple_effects").fetchall()
+            except Exception:
+                rrows = []
+            for r in rrows:
+                try:
+                    d = dict(r)
+                    cid = d.get("target_company_id")
+                    created = d.get("created_at")
+                    ad = str(created)[:10] if created else asof
+                    cur = conn.execute(
+                        "INSERT OR IGNORE INTO ripple_history (edge_key, symbol, event_id, asof_date, significance, beta, revision_count, source) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, 'backfill')",
+                        (self._ripple_history_edge_key(d.get("event_id"), d.get("order_level"), cid, d.get("target_sector_id"), d.get("target_industry_id"), d.get("transmission_channel")),
+                         self._history_symbol_for_company(conn, cid), d.get("event_id"), ad, d.get("significance_rank"),
+                         d.get("transmission_elasticity", 1.0), int(d.get("revision_count") or 0)),
+                    )
+                    counts["ripple"] += int(cur.rowcount or 0)
+                except Exception:
+                    continue
+            try:
+                erows = conn.execute("SELECT * FROM graph_causal_edges").fetchall()
+            except Exception:
+                erows = []
+            for e in erows:
+                try:
+                    ed = dict(e)
+                    if not ed.get("edge_id"):
+                        continue
+                    ecreated = ed.get("created_at")
+                    ead = str(ecreated)[:10] if ecreated else asof
+                    cur = conn.execute(
+                        "INSERT OR IGNORE INTO ripple_history (edge_key, source_node_id, target_node_id, asof_date, significance, beta, revision_count, source) "
+                        "VALUES (?, ?, ?, ?, ?, ?, 0, 'backfill')",
+                        (str(ed.get("edge_id")), ed.get("source_node_id"), ed.get("target_node_id"),
+                         ead, ed.get("elasticity_score"), ed.get("elasticity_score")),
+                    )
+                    counts["edges"] += int(cur.rowcount or 0)
+                except Exception:
+                    continue
+        return counts
+
+    def _snapshot_ripple_history(self, conn, event_id, asof_date, source, min_order=None) -> int:
+        """Append one ripple_history row per current ripple_effects row for ``event_id``.
+
+        Same-day rewrites collapse to latest via ON CONFLICT(edge_key, asof_date);
+        cross-day snapshots accumulate on genuine significance/beta/revision
+        change; identical content on a new date is skipped so revision deltas
+        stay votable. Best-effort.
+        """
+        try:
+            rows = conn.execute("SELECT * FROM ripple_effects WHERE event_id = ?", (event_id,)).fetchall()
+        except Exception:
+            return 0
+        for stmt in self._SUBSTRATE_HISTORY_DDL:
+            try:
+                conn.execute(stmt)
+            except Exception:
+                pass
+        asof = self._history_asof(asof_date)
+        n = 0
+        for r in rows:
+            try:
+                d = dict(r)
+                if min_order is not None and int(d.get("order_level") or 1) < int(min_order):
+                    continue
+                cid = d.get("target_company_id")
+                try:
+                    rev = int(d.get("revision_count") or 0)
+                except Exception:
+                    rev = 0
+                edge_key = self._ripple_history_edge_key(d.get("event_id"), d.get("order_level"), cid, d.get("target_sector_id"), d.get("target_industry_id"), d.get("transmission_channel"))
+                latest = conn.execute(
+                    "SELECT significance, beta, revision_count, asof_date FROM ripple_history "
+                    "WHERE edge_key=? ORDER BY asof_date DESC LIMIT 1",
+                    (edge_key,),
+                ).fetchone()
+                if latest is not None:
+                    try:
+                        new_sig = None if d.get("significance_rank") is None else float(d.get("significance_rank"))
+                        old_sig = None if latest["significance"] is None else float(latest["significance"])
+                        same_sig = (new_sig is None and old_sig is None) or (new_sig is not None and old_sig is not None and abs(new_sig - old_sig) < 1e-9)
+                    except Exception:
+                        same_sig = latest["significance"] == d.get("significance_rank")
+                    try:
+                        new_beta = None if d.get("transmission_elasticity") is None else float(d.get("transmission_elasticity"))
+                        old_beta = None if latest["beta"] is None else float(latest["beta"])
+                        same_beta = (new_beta is None and old_beta is None) or (new_beta is not None and old_beta is not None and abs(new_beta - old_beta) < 1e-9)
+                    except Exception:
+                        same_beta = latest["beta"] == d.get("transmission_elasticity")
+                    try:
+                        same_rev = int(latest["revision_count"] or 0) == int(rev)
+                    except Exception:
+                        same_rev = latest["revision_count"] == rev
+                    same_day = str(latest["asof_date"] or "")[:10] == str(asof)[:10]
+                    if same_sig and same_beta and same_rev and not same_day:
+                        continue
+                conn.execute(
+                    "INSERT INTO ripple_history (edge_key, symbol, event_id, asof_date, significance, beta, revision_count, source) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+                    "ON CONFLICT(edge_key, asof_date) DO UPDATE SET symbol=excluded.symbol, event_id=excluded.event_id, "
+                    "significance=excluded.significance, beta=excluded.beta, revision_count=excluded.revision_count, source=excluded.source",
+                    (edge_key,
+                     self._history_symbol_for_company(conn, cid), d.get("event_id"), asof,
+                     d.get("significance_rank"), d.get("transmission_elasticity", 1.0), rev, source),
+                )
+                n += 1
+            except Exception:
+                continue
+        return n
 
     def upsert_moat_evaluation(self, ticker: str, switching_costs: int,
                                network_effects: int, cost_advantage: int,
                                intangible_assets: int, efficient_scale: int,
                                moat_trajectory: str = "Stable", isin=None,
-                               company_id=None, manager=None) -> float:
+                               company_id=None, manager=None, asof_date=None) -> float:
         """Upsert a moat evaluation, computing total_moat_score and moat_width in Python.
 
         SQLite fallback has no GENERATED columns, so the score/width are computed here.
         Keyed by ticker (UNIQUE); company_id resolves via master_companies when present.
-        Returns the computed total_moat_score.
+        History: appends a moat_history row dated ``asof_date`` (today when absent)
+        on genuine content change; same-day same-content upserts collapse via the
+        (symbol, asof_date) day-key. Returns the computed total_moat_score.
         """
         total = round(
             float(switching_costs) * 0.25 + float(network_effects) * 0.25
@@ -1722,6 +2049,53 @@ class Repository:
                 (cid, ticker, isin, switching_costs, network_effects, cost_advantage,
                  intangible_assets, efficient_scale, total, width, moat_trajectory),
             )
+            # P0b versioning: append a dated snapshot beside the live level row.
+            # New asof_date on genuine content change (score/width/trajectory
+            # differs from the latest history row); same-day rewrites collapse
+            # to latest via the (symbol, asof_date) day-key.
+            try:
+                for stmt in self._SUBSTRATE_HISTORY_DDL:
+                    try:
+                        conn.execute(stmt)
+                    except Exception:
+                        pass
+                try:
+                    asof = self._history_asof(asof_date)
+                except Exception:
+                    asof = date.today().isoformat()
+                sym_u = str(ticker).strip().upper()
+                latest = conn.execute(
+                    "SELECT moat_score, moat_width, trajectory, asof_date FROM moat_history "
+                    "WHERE symbol=? ORDER BY asof_date DESC LIMIT 1",
+                    (sym_u,),
+                ).fetchone()
+                skip = False
+                if latest is not None:
+                    try:
+                        same_score = (latest["moat_score"] is not None and abs(float(latest["moat_score"]) - float(total)) < 1e-9)
+                    except Exception:
+                        same_score = latest["moat_score"] == total
+                    same_content = (
+                        same_score
+                        and (latest["moat_width"] or None) == (width or None)
+                        and (latest["trajectory"] or None) == (moat_trajectory or None)
+                    )
+                    same_day = str(latest["asof_date"] or "")[:10] == str(asof)[:10]
+                    # Identical content on a new date: skip so revision
+                    # deltas stay votable (flat rows would read as no-vote
+                    # and add no signal); same-day rewrites collapse below.
+                    if same_content and not same_day:
+                        skip = True
+                if not skip:
+                    conn.execute(
+                        "INSERT INTO moat_history (symbol, asof_date, moat_score, moat_width, trajectory, source) "
+                        "VALUES (?, ?, ?, ?, ?, 'upsert') "
+                        "ON CONFLICT(symbol, asof_date) DO UPDATE SET moat_score=excluded.moat_score, "
+                        "moat_width=excluded.moat_width, trajectory=excluded.trajectory, source=excluded.source",
+                        (sym_u, asof, total, width, moat_trajectory),
+                    )
+            except Exception:
+                pass
             return total
 
     def upsert_business_model_profile(self, symbol: str, archetype: str,
@@ -2003,14 +2377,15 @@ class Repository:
     def upsert_regulatory_political_risk(self, symbol, policy_name, severity_score=None, probability=None,
                                          risk_type=None, factor_type=None, net_impact_score=None,
                                          time_horizon="Mid-term", isin=None, company_id=None,
-                                         manager=None, coverage_status=None) -> Optional[float]:
+                                         manager=None, coverage_status=None, asof_date=None) -> Optional[float]:
         """Upsert a policy/regulatory risk row keyed by (symbol, policy_name).
 
         Clamps severity to [-5, +5] and probability to [0, 1]. Computes net_impact_score
-        (ENI = severity * probability) in Python for SQLite (no GENERATED column). Resolves
-        company_id via master_companies when present; synthetic -1 when absent (still
-        queryable by symbol). Returns the computed net_impact_score, or ``None`` for a
-        coverage-only row.
+        (ENI = severity * probability) in Python for SQLite (no GENERATED column).
+        History: appends a policy_eni_history row dated ``asof_date`` (today when
+        absent) on genuine ENI/severity change; same-day rewrites collapse via the
+        (symbol, policy_name, asof_date) day-key. Returns the computed
+        net_impact_score, or ``None`` for a coverage-only row.
 
         Coverage-only rows (``policy_name == '__NO_POLICY_TEMPLATE__'``) MUST have
         ``severity_score is None``, ``probability is None``, ``net_impact_score is None``
@@ -2107,6 +2482,54 @@ class Repository:
                 """,
                 (cid, symbol, isin, symbol, policy_name, rt, ft, sev, prob, net, th, cov),
             )
+            # P0b versioning: append a dated snapshot beside the live level row.
+            # New asof_date on genuine ENI/severity change; same-day rewrites
+            # collapse via the (symbol, policy_name, asof_date) day-key.
+            # Identical content on a new date is skipped so revision deltas
+            # stay votable. Coverage-only rows (NULL ENI) leave no history:
+            # unknown is not a flow and must never vote direction.
+            if not is_coverage_row and net is not None:
+                try:
+                    for stmt in self._SUBSTRATE_HISTORY_DDL:
+                        try:
+                            conn.execute(stmt)
+                        except Exception:
+                            pass
+                    try:
+                        asof = self._history_asof(asof_date)
+                    except Exception:
+                        asof = date.today().isoformat()
+                    sym_u = str(symbol).strip().upper()
+                    latest = conn.execute(
+                        "SELECT net_impact_score, severity, asof_date FROM policy_eni_history "
+                        "WHERE symbol=? AND policy_name=? ORDER BY asof_date DESC LIMIT 1",
+                        (sym_u, policy_name),
+                    ).fetchone()
+                    skip = False
+                    if latest is not None:
+                        try:
+                            same_net = (latest["net_impact_score"] is not None and abs(float(latest["net_impact_score"]) - float(net)) < 1e-9)
+                        except Exception:
+                            same_net = latest["net_impact_score"] == net
+                        try:
+                            sev_f = None if sev is None else float(sev)
+                            lat_sev = None if latest["severity"] is None else float(latest["severity"])
+                            same_sev = (sev_f is None and lat_sev is None) or (sev_f is not None and lat_sev is not None and abs(sev_f - lat_sev) < 1e-9)
+                        except Exception:
+                            same_sev = latest["severity"] == sev
+                        same_day = str(latest["asof_date"] or "")[:10] == str(asof)[:10]
+                        if same_net and same_sev and not same_day:
+                            skip = True
+                    if not skip:
+                        conn.execute(
+                            "INSERT INTO policy_eni_history (symbol, policy_name, asof_date, net_impact_score, severity, source) "
+                            "VALUES (?, ?, ?, ?, ?, 'upsert') "
+                            "ON CONFLICT(symbol, policy_name, asof_date) DO UPDATE SET net_impact_score=excluded.net_impact_score, "
+                            "severity=excluded.severity, source=excluded.source",
+                            (sym_u, policy_name, asof, net, sev),
+                        )
+                except Exception:
+                    pass
             return net
 
     def get_policy_risks_for_symbol(self, symbol, manager=None) -> List[Dict[str, Any]]:
@@ -2590,7 +3013,7 @@ class Repository:
     #      (additive; distinct from every other wave's helpers).
     # -------------------------------------------------------------
     def upsert_event_graph(self, event_id: Any, macro_record: Dict[str, Any],
-                           ripples: List[Dict[str, Any]], manager=None) -> int:
+                           ripples: List[Dict[str, Any]], manager=None, asof_date=None) -> int:
         """Atomically create/update a ``macro_events`` row + its full ``ripple_effects`` DAG.
 
         Both writes happen inside ONE transaction so an invalid extraction (validated by
@@ -2665,7 +3088,6 @@ class Repository:
                     f"INSERT INTO macro_events ({col_sql}) VALUES ({ph_sql}) {conflict_sql}",
                     present,
                 )
-
             # Replace the entire ripple DAG for this event inside the same transaction.
             conn.execute("DELETE FROM ripple_effects WHERE event_id = ?", (event_id,))
             rcols = None
@@ -2704,6 +3126,11 @@ class Repository:
                 if r.get("_ref") is not None:
                     ref_map[r["_ref"]] = cur.lastrowid
                 inserted += 1
+            # P0b versioning: dated snapshot beside the spawned level DAG.
+            try:
+                self._snapshot_ripple_history(conn, event_id, asof_date, "spawn")
+            except Exception:
+                pass
         return inserted
 
     def ensure_geographic_exposure_schema(self, manager=None) -> None:
@@ -3111,7 +3538,7 @@ class Repository:
         except Exception:
             return []
 
-    def apply_event_revision(self, event_id: Any, manager=None) -> Dict[str, Any]:
+    def apply_event_revision(self, event_id: Any, manager=None, asof_date=None) -> Dict[str, Any]:
         """Revise the 2nd-order (and deeper) ripple_effects for ``event_id``.
 
         Recomputes each order_level >= 2 ripple's ``significance_rank`` from the canonical
@@ -3171,6 +3598,13 @@ class Repository:
                     "revised_significance": round(s, 4),
                     "revision_count": new_rev,
                 })
+            # P0b versioning: today's snapshot beside the revised level rows
+            # (revision path). Snapshots only order_level >= 2 so the history
+            # delta reflects genuine revisions, not respawned order-1 carries.
+            try:
+                self._snapshot_ripple_history(conn, event_id, asof_date, "revision", min_order=2)
+            except Exception:
+                pass
         return {"event_id": event_id, "n_revised": n_revised, "rows": rows_out}
 
     # -------------------------------------------------------------
@@ -3571,6 +4005,107 @@ class Repository:
                 return [dict(r) for r in conn.execute(sql, params).fetchall()]
         except Exception:
             return []
+
+    # -------------------------------------------------------------
+    # Factor spine — reality_engine/processing/factor_spine.py
+    #
+    # ADDITIONS ONLY: nothing above this point is modified.
+    #
+    # The spine owns its own DDL (db/factor_spine_schema.sql) because the
+    # live DB is ahead of schema.sql — editing schema.sql alone creates
+    # nothing there, so this idempotent helper is the migration path
+    # (same precedent as ensure_validation_schema above). The accessors
+    # below are deliberately THIN: the repository forwards the processing
+    # module's public functions and never re-implements a temporal
+    # predicate. A second copy of `as_of_date <= T` in this file is a
+    # second chance to get look-ahead wrong.
+    # -------------------------------------------------------------
+    def ensure_factor_spine_schema(self, manager=None) -> None:
+        """Create the factor spine tables + indexes. Idempotent, additive only.
+
+        Safe to call on every start-up. Never modifies an existing table.
+        """
+        from reality_engine.processing.factor_spine import (
+            ensure_factor_spine_schema as _ensure,
+        )
+
+        _ensure(manager or self.db)
+
+    def register_factor_series(self, entries=None, manager=None) -> int:
+        """Write factor_series definitions from the registry (or ``entries``)."""
+        from reality_engine.processing.factor_spine import register_series
+
+        return register_series(manager or self.db, entries)
+
+    def upsert_factor_observations(
+        self, series_key: str, rows: List[Dict[str, Any]],
+        retrieved_at: Optional[str] = None, manager=None,
+    ) -> int:
+        """Insert/refresh dated factor observations (load-time guards apply)."""
+        from reality_engine.processing.factor_spine import upsert_observations
+
+        return upsert_observations(manager or self.db, series_key, rows, retrieved_at)
+
+    def resolve_factor_as_of(
+        self, series_key: Any, asof_date: str,
+        max_lookback_override_days: Optional[int] = None, manager=None,
+    ) -> Dict[str, Any]:
+        """One factor series as it was knowable on ``asof_date``. Always one row.
+
+        ``value_usable`` is non-NULL iff ``status == 'ok'``; never read
+        ``raw_value`` as if it were usable.
+        """
+        from reality_engine.processing.factor_spine import resolve_as_of
+
+        return resolve_as_of(manager or self.db, series_key, asof_date,
+                             max_lookback_override_days)
+
+    def resolve_factor_panel(
+        self, asof_date: str, series_keys: Optional[List[str]] = None,
+        max_lookback_override_days: Optional[int] = None, manager=None,
+    ) -> List[Dict[str, Any]]:
+        """One row per REQUESTED factor key at ``asof_date``; nothing is dropped."""
+        from reality_engine.processing.factor_spine import resolve_panel
+
+        return resolve_panel(manager or self.db, asof_date, series_keys,
+                             max_lookback_override_days)
+
+    def get_factor_releases(
+        self, asof_date: str, series_keys: Optional[List[str]] = None, manager=None,
+    ) -> List[Dict[str, Any]]:
+        """Every (period, vintage) KNOWN at ``asof_date`` — audit, not decision path."""
+        from reality_engine.processing.factor_spine import factor_releases
+
+        return factor_releases(manager or self.db, asof_date, series_keys)
+
+    def get_factor_gap_audit(
+        self, series_key: str, asof_date: str, manager=None,
+    ) -> List[Dict[str, Any]]:
+        """Consecutive known periods as of ``asof_date``, with gap_days between them."""
+        from reality_engine.processing.factor_spine import gap_audit
+
+        return gap_audit(manager or self.db, series_key, asof_date)
+
+    def get_factor_lookahead_audit(
+        self, series_key: str, asof_date: str, manager=None,
+    ) -> Dict[str, Any]:
+        """Anti-look-ahead assertion. ``is_vacuous`` says when 0 proves nothing."""
+        from reality_engine.processing.factor_spine import lookahead_audit
+
+        return lookahead_audit(manager or self.db, series_key, asof_date)
+
+    def backfill_substrate_from_factor_spine(
+        self, asof_date: Optional[str] = None, series_keys: Optional[List[str]] = None,
+        dry_run: bool = True, limit: Optional[int] = None, manager=None,
+    ) -> Dict[str, Any]:
+        """Seed macro_events/ripple_effects from spine event windows.
+
+        DRY-RUN BY DEFAULT. Never called implicitly from a resolve_* read.
+        """
+        from reality_engine.processing.factor_spine import backfill_substrate_from_spine
+
+        return backfill_substrate_from_spine(manager or self.db, asof_date, series_keys,
+                                             dry_run, limit)
 
 
 # Singleton repository instance

@@ -249,6 +249,12 @@ CREATE TABLE IF NOT EXISTS corporate_documents (
     sha256_hash TEXT,
     is_processed BOOLEAN DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Point-in-time columns. doc_date/event_date may be crawl stamps; use v_document_pit for "known as of".
+    call_date TEXT,                    -- date the call/meeting was held (body-derived), NOT publication
+    publication_date TEXT,             -- date the filing was published (body-derived letterhead)
+    pit_source TEXT, pit_tier INTEGER, pit_applied_at TEXT,
+    bse_newsid TEXT, bse_dissem_ts TEXT, bse_news_dt TEXT, bse_subcat TEXT, bse_joined_at TEXT,
+    fiscal_period_end TEXT,            -- period the report covers (annual reports: parsed from BSE filename); NOT a publication date
     FOREIGN KEY (isin) REFERENCES master_companies(isin),
     UNIQUE(source_url)   -- idempotent upsert key for repository.upsert_corporate_documents
 );
@@ -557,3 +563,90 @@ CREATE TABLE IF NOT EXISTS model_lens_weight_proposals (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(regime_tag, investor_majority, lens_family)
 );
+-- ====================================================================
+-- 21. Substrate versioning (P0b peers-speak) — ADDITIVE ONLY.
+-- Dated evidence for mute-lens voting. Live level tables
+-- (moat_evaluations, regulatory_political_risks, ripple_effects /
+-- graph_causal_edges) are NEVER altered/migrated in place; these history
+-- tables sit beside them. Writers append one row per upsert/revision
+-- (UNIQUE day-granularity keys collapse same-day rewrites to latest);
+-- history rows are NEVER overwritten across days.
+-- Levels keep gating action quality via the resolver; only dated deltas
+-- vote direction in move attribution (eod_corrector predictors).
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS moat_history (
+    history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    asof_date TEXT NOT NULL,
+    moat_score REAL,
+    moat_width TEXT,
+    trajectory TEXT,
+    source TEXT DEFAULT 'backfill',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(symbol, asof_date)
+);
+CREATE INDEX IF NOT EXISTS idx_moat_hist_sym_date ON moat_history(symbol, asof_date DESC);
+CREATE INDEX IF NOT EXISTS idx_moat_hist_date ON moat_history(asof_date DESC);
+CREATE TABLE IF NOT EXISTS policy_eni_history (
+    history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    policy_name TEXT NOT NULL,
+    asof_date TEXT NOT NULL,
+    net_impact_score REAL,
+    severity REAL,
+    source TEXT DEFAULT 'backfill',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(symbol, policy_name, asof_date)
+);
+CREATE INDEX IF NOT EXISTS idx_policy_hist_sym_date ON policy_eni_history(symbol, asof_date DESC);
+CREATE INDEX IF NOT EXISTS idx_policy_hist_sym_pol_date ON policy_eni_history(symbol, policy_name, asof_date DESC);
+CREATE TABLE IF NOT EXISTS ripple_history (
+    history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    edge_key TEXT NOT NULL,
+    symbol TEXT,
+    event_id TEXT,
+    source_node_id TEXT,
+    target_node_id TEXT,
+    asof_date TEXT NOT NULL,
+    significance REAL,
+    beta REAL,
+    revision_count INTEGER DEFAULT 0,
+    source TEXT DEFAULT 'revision',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(edge_key, asof_date)
+);
+CREATE INDEX IF NOT EXISTS idx_ripple_hist_sym_date ON ripple_history(symbol, asof_date DESC);
+CREATE INDEX IF NOT EXISTS idx_ripple_hist_edge_date ON ripple_history(edge_key, asof_date DESC);
+CREATE INDEX IF NOT EXISTS idx_ripple_hist_event ON ripple_history(event_id);
+
+-- ====================================================================
+-- 22. Fiscal-period labels on document_chunks (findings §11) — ADDITIVE ONLY.
+-- Body-genuine labels stamped at insert by pdf_ingestor via
+-- processing/document_parser.extract_fiscal_period on the header-stripped
+-- body (content after first newline). content/embedding are NEVER rewritten.
+-- fiscal_period: FY{YY} annual grain or QnFY{YY}/HnFY{YY} sub-annual grain;
+-- NULL when no body-genuine signal (source NONE) or conflicting signals
+-- (source MULTI). Backtest scope: fiscal_confidence >= 0.5.
+-- (Pre-existing DBs gain these via database._apply_runtime_migrations;
+-- merge_lane_db copies them by column intersection.)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS document_chunks (
+    chunk_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_id INTEGER REFERENCES raw_documents(doc_id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    embedding TEXT,
+    published_date TEXT,
+    timestamp_start_sec INTEGER,
+    timestamp_end_sec INTEGER,
+    sector_id INTEGER,
+    industry_id INTEGER,
+    symbol TEXT,
+    isin TEXT,
+    fiscal_period TEXT,
+    fiscal_confidence REAL,
+    fiscal_source TEXT,
+    UNIQUE(doc_id, chunk_index)
+);
+CREATE INDEX IF NOT EXISTS idx_docchunks_doc ON document_chunks(doc_id, chunk_index);
+CREATE INDEX IF NOT EXISTS idx_chunks_fiscal ON document_chunks(fiscal_period, fiscal_confidence);
