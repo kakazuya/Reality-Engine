@@ -6,6 +6,7 @@ from pathlib import Path
 from reality_engine.db.database import DatabaseManager
 from reality_engine.db.repository import Repository
 from reality_engine.ingestion.pdf_ingestor import PDFIngestor, backfill_document_chunk_industry_tags, derive_industry_id_for_symbol
+from reality_engine.tests.conftest import get_shared_ocr_engine
 
 
 def _make_pdf(path: Path, text: str = "Hello world financial report revenue growth"):
@@ -63,7 +64,7 @@ class TestDocumentIndustryTag(unittest.TestCase):
             # ingest PDF with symbol HAL -> chunk should have industry_id
             pdf = Path(td) / "hal.pdf"
             _make_pdf(pdf, "HAL Defence order book capex guidance")
-            ingestor = PDFIngestor(db=mgr, vector_store=StubVectorStore())
+            ingestor = PDFIngestor(db=mgr, vector_store=StubVectorStore(), ocr_engine=get_shared_ocr_engine())
             res = ingestor.ingest_pdf(pdf, symbol="HAL", isin="INE066F01020", source_type="Investor_Presentation")
             self.assertIn(res["status"], ("ingested", "skipped_duplicate"))
             with mgr.session() as conn:
@@ -95,7 +96,7 @@ class TestDocumentIndustryTag(unittest.TestCase):
             mgr, repo, cg_id, _ = self._setup_db(td)
             pdf = Path(td) / "hal2.pdf"
             _make_pdf(pdf, "HAL duplicate ingest test")
-            ingestor = PDFIngestor(db=mgr, vector_store=StubVectorStore())
+            ingestor = PDFIngestor(db=mgr, vector_store=StubVectorStore(), ocr_engine=get_shared_ocr_engine())
             r1 = ingestor.ingest_pdf(pdf, symbol="HAL", isin="INE066F01020")
             self.assertEqual(r1["status"], "ingested")
             with mgr.session() as conn:

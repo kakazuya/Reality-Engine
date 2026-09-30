@@ -270,6 +270,81 @@ def simulate_macro_shock(shock_scenario: str, sector_filter: str = "ALL") -> Dic
     )
 
 
+def get_entity_graph(
+    symbol: Optional[str] = None,
+    theme_kind: Optional[str] = None,
+    theme_key: Optional[str] = None,
+    families: Optional[List[str]] = None,
+    top_k: int = 10,
+) -> Dict[str, Any]:
+    """One cross-map for company, theme, and supply questions — A + B + C together.
+
+    Give a ``symbol`` to get everything connected to one company (its financial
+    and business analogs, its sector/industry membership, its policy tailwinds
+    and headwinds, and its distilled supply-chain signals). Give ``theme_kind``
+    + ``theme_key`` instead to invert the query: all companies linked to one
+    theme — e.g. kind ``theme_policy`` key ``"Defence Indigenization DAP"``
+    returns every mapped beneficiary with direction and severity; kind
+    ``theme_sector``/``theme_industry`` keyed by an AMFI sector/industry name
+    returns every member company.
+
+    ``families`` optionally narrows to ``financial_analog``, ``business_analog``,
+    ``sector``, ``industry``, ``policy``, or ``supply``. Every edge carries its
+    evidence (drivers, shared terms, ENI direction, supply idf) and nothing is
+    invented: sector hits that cannot resolve to real companies, blank target
+    literals, and fixture/test rows were excluded when the graph was built.
+    """
+    notes: List[str] = []
+    out: Dict[str, Any] = {}
+    try:
+        from reality_engine.processing import entity_graph as eg
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "ERROR", "error": f"entity graph module unavailable: {str(exc)[:160]}"}
+    try:
+        with repo.db.session() as conn:
+            if symbol:
+                clean_sym = str(symbol).upper().strip()
+                out["symbol"] = clean_sym
+                edges = eg.neighbours(clean_sym, top_k=top_k, families=families, conn=conn)
+                out["edges"] = edges
+                fin = [e for e in edges if e["family"] == "financial_analog"]
+                bus = [e for e in edges if e["family"] == "business_analog"]
+                out["convergent"] = sorted(
+                    {e["key"] for e in fin} & {e["key"] for e in bus}
+                )
+                if not edges:
+                    out["status"] = "NO_ANALOGUES"
+                    notes.append(
+                        "no edges for this symbol: needs an analog-map run covering it "
+                        "(or >=8 embedded chunks), plus at least one policy/supply/sector row"
+                    )
+                else:
+                    out["status"] = "OK"
+            elif theme_kind and theme_key:
+                out["theme"] = {"kind": theme_kind, "key": theme_key}
+                out["companies"] = eg.query_theme(theme_kind, theme_key, top_k=top_k,
+                                                  family=families[0] if families else None, conn=conn)
+                out["status"] = "OK" if out["companies"] else "NO_MATCHES"
+                if not out["companies"]:
+                    notes.append(
+                        "no companies linked to this theme key in the materialised graph "
+                        "(macro/ripple targets resolve through the AMFI sector index; "
+                        "blank 'Sector'/'Industry'/'Company' literals are excluded by design)"
+                    )
+            else:
+                return {"status": "ERROR",
+                        "error": "pass symbol= for a company view or theme_kind=+theme_key= for a theme view"}
+            run = eg.latest_run(conn)
+            if run:
+                out["graph_run"] = {"n_src_symbols": run["n_symbols"] if "n_symbols" in run else run.get("n_src_symbols"),
+                                    "n_edges": run["n_edges"], "computed_at": run["computed_at"],
+                                    "families": run.get("families")}
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "ERROR", "error": str(exc)[:200]}
+    out["notes"] = notes
+    return out
+
+
 def trace_macro_causal_chain(
     macro_event_or_policy: str,
     impact_filter: str = "BENEFICIARIES_ONLY",
@@ -511,6 +586,38 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
         }
     },
     {
+        "name": "get_entity_graph",
+        "description": "One cross-map for company, theme, and supply questions. Pass symbol= for everything connected to one company (financial and business analogs, sector/industry membership, policy tailwinds and headwinds with ENI direction, distilled supply-chain signals). Or pass theme_kind + theme_key to invert: every company linked to one theme, e.g. kind 'theme_policy' key 'Defence Indigenization DAP', or kind 'theme_sector' keyed by an AMFI sector name. Every edge carries its evidence; unresolved sector/event labels and fixture rows were excluded when the graph was built.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "NSE Ticker Symbol (company view)"
+                },
+                "theme_kind": {
+                    "type": "string",
+                    "description": "Theme view: 'theme_policy', 'theme_sector', 'theme_industry', or 'theme_supply'"
+                },
+                "theme_key": {
+                    "type": "string",
+                    "description": "Theme node key, e.g. 'Defence Indigenization DAP' or an AMFI sector name"
+                },
+                "families": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional edge-family filter: financial_analog, business_analog, sector, industry, policy, supply"
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "Maximum edges to return (default 10)",
+                    "default": 10
+                }
+            },
+            "required": []
+        }
+    },
+    {
         "name": "get_market_breadth_overview",
         "description": "Fetch market-wide sector advance/decline ratios, sector momentum scores, and market breadth snapshot.",
         "parameters": {
@@ -534,10 +641,8 @@ TOOL_ROUTER = {
     "get_scrip_techno_delivery": get_scrip_techno_delivery,
     "get_quarterly_financials": get_quarterly_financials,
     "search_concall_guidance": search_concall_guidance,
-    "get_distilled_parameters": get_distilled_parameters,
-    "simulate_macro_shock": simulate_macro_shock,
-    "trace_macro_causal_chain": trace_macro_causal_chain,
     "get_market_breadth_overview": get_market_breadth_overview,
+    "get_entity_graph": get_entity_graph,
 }
 
 

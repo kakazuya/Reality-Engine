@@ -2,19 +2,79 @@
 Unit & Integration Test Suite for Phase 1 Reality Engine
 Verifies Database WAL mode, Master Synchronization, Technical Flow Analytics,
 Fundamental Acceleration, Forensic Solvency Gates, Composite Screening, and Checkpoint Validation.
+
+Live-data integration tests (opt-in)
+-----------------------------------
+`test_02_master_companies_universe` and `test_05_top_200_reality_checkpoint`
+are NOT unit tests. They assert that the real production database holds >=200
+`is_nifty200=1` master rows and that the Phase-1 Top-200 checkpoint passes at
+>=95% technical/fundamental completeness. Those facts only exist in the
+populated production DB (`reality_engine/data/equity_intelligence.db`), which
+is built by `sync-master` + `backfill` + `run-phase1`.
+
+The singleton-isolation redirect above (lines 24-27) intentionally points this
+module at a throwaway temp DB so that merely importing the module cannot touch
+the live 33 GB database. Against that temp DB the two live-data assertions are
+meaningless -- they can only ever fail, and "fixing" them would mean weakening
+real production assertions. So they are gated behind an explicit opt-in env
+gate rather than run as unit tests.
+
+Run them deliberately, against the populated production DB:
+
+    # PowerShell
+    $env:REALITY_ENGINE_INTEGRATION_TESTS = "1"
+    $env:REALITY_ENGINE_DB_PATH = "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db"
+    & "C:\\Users\\warri\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" -m unittest reality_engine.tests.test_phase1 -v
+
+Note the `os.environ.setdefault` above honours a pre-set REALITY_ENGINE_DB_PATH,
+so setting it explicitly is what actually points the gate-enabled run at the
+live DB. When REALITY_ENGINE_INTEGRATION_TESTS is unset (the default) both tests
+report as SKIPPED and the rest of the suite runs against the temp DB.
 """
 
+import os
+import tempfile
 import unittest
 from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from reality_engine.db.database import db_manager
-from reality_engine.db.repository import repo
-from reality_engine.processing.technical_engine import technical_engine
-from reality_engine.processing.fundamental_engine import fundamental_engine
-from reality_engine.processing.composite_screener import composite_screener
-from reality_engine.pipeline.phase1_runner import phase1_runner
+# Singleton isolation (repo convention: test_factor_spine.py:36-48,
+# test_onnx_embedder.py:21-24, test_offer_backfill.py:21-24, ...).
+# reality_engine/db/database.py:639 runs `db_manager = DatabaseManager()` at
+# IMPORT time, and DatabaseManager.__init__ -> init_db() applies PRAGMAs and
+# CREATE TABLE IF NOT EXISTS (database.py:94, :635) to config.DB_PATH. Without
+# this redirect, merely importing reality_engine.db.database below writes to the
+# live 33 GB reality_engine/data/equity_intelligence.db -- a setUpModule
+# singleton swap is too late, it runs after the import-time write has already
+# happened. Must be set BEFORE any reality_engine import; config.py:14 honours
+# it.
+_TEMP_DB_DIR = tempfile.mkdtemp(prefix="reality_phase1_test_db_")
+os.environ.setdefault(
+    "REALITY_ENGINE_DB_PATH", str(Path(_TEMP_DB_DIR) / "singleton_isolated.db")
+)
+
+from reality_engine.db.database import db_manager  # noqa: E402
+from reality_engine.db.repository import repo  # noqa: E402
+from reality_engine.processing.technical_engine import technical_engine  # noqa: E402
+from reality_engine.processing.fundamental_engine import fundamental_engine  # noqa: E402
+from reality_engine.processing.composite_screener import composite_screener  # noqa: E402
+from reality_engine.pipeline.phase1_runner import phase1_runner  # noqa: E402
+
+# Opt-in gate for the live-data integration tests (see module docstring).
+# Repo-wide there was no pre-existing skipUnless/INTEGRATION convention, so this
+# establishes one using the same REALITY_ENGINE_* env prefix the DB-redirect
+# convention already uses across reality_engine/tests/.
+INTEGRATION_TESTS_ENABLED = os.environ.get(
+    "REALITY_ENGINE_INTEGRATION_TESTS", ""
+).strip() in ("1", "true", "TRUE", "yes", "on")
+
+_INTEGRATION_SKIP_REASON = (
+    "live-data integration test: requires the populated production DB "
+    "(>=200 is_nifty200 rows). Set REALITY_ENGINE_INTEGRATION_TESTS=1 and "
+    "REALITY_ENGINE_DB_PATH=<path to reality_engine/data/equity_intelligence.db> "
+    "to run it."
+)
 
 
 class TestPhase1RealityEngine(unittest.TestCase):
@@ -52,6 +112,7 @@ class TestPhase1RealityEngine(unittest.TestCase):
             for rt in required_tables:
                 self.assertIn(rt, table_names, f"Table {rt} missing from SQLite schema")
 
+    @unittest.skipUnless(INTEGRATION_TESTS_ENABLED, _INTEGRATION_SKIP_REASON)
     def test_02_master_companies_universe(self):
         """Verifies master companies are populated with Nifty 200 members."""
         nifty200 = self.repo.get_nifty200_companies()
@@ -143,6 +204,7 @@ class TestPhase1RealityEngine(unittest.TestCase):
         self.assertGreaterEqual(score, 30.0)
         self.assertLessEqual(score, 100.0)
 
+    @unittest.skipUnless(INTEGRATION_TESTS_ENABLED, _INTEGRATION_SKIP_REASON)
     def test_05_top_200_reality_checkpoint(self):
         """Validates that all Top 200 stocks have complete technical and fundamental data."""
         summary = phase1_runner.validate_top_200_checkpoint()

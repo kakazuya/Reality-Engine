@@ -289,6 +289,7 @@ def upsert_policy_risk(
     isin: Optional[str] = None,
     r: Optional[Repository] = None,
     manager=None,
+    asof_date: Optional[str] = None,
 ) -> float:
     """Persist a single policy/regulatory risk for ``symbol`` into the dense substrate.
 
@@ -315,6 +316,7 @@ def upsert_policy_risk(
         time_horizon=time_horizon,
         isin=isin,
         manager=manager,
+        asof_date=asof_date,
     )
 
 

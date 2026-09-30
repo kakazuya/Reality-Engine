@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from reality_engine.config import DATA_DIR
 from reality_engine.db.database import db_manager
 from reality_engine.db.vector_store import VectorStoreManager
-from reality_engine.processing.document_parser import DocumentParser
+from reality_engine.processing.document_parser import DocumentParser, chunk_body, extract_fiscal_period
 from reality_engine.processing.ocr_engine import FinancialOCREngine
 
 logger = logging.getLogger("reality_engine.youtube_transcriber")
@@ -66,16 +66,28 @@ def _ensure_raw_tables(conn) -> None:
             industry_id INTEGER,
             symbol TEXT,
             isin TEXT,
+            fiscal_period TEXT,
+            fiscal_confidence REAL,
+            fiscal_source TEXT,
             UNIQUE(doc_id, chunk_index)
         )
         """
     )
+    # Additive fiscal-label migration (findings §11) for pre-existing DBs.
     try:
+        _cols = {r[1] for r in conn.execute("PRAGMA table_info(document_chunks)").fetchall()}
+        for _col, _ddl in (
+            ("fiscal_period", "TEXT"),
+            ("fiscal_confidence", "REAL"),
+            ("fiscal_source", "TEXT"),
+        ):
+            if _col not in _cols:
+                conn.execute(f"ALTER TABLE document_chunks ADD COLUMN {_col} {_ddl}")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_fiscal ON document_chunks(fiscal_period, fiscal_confidence)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_docchunks_doc ON document_chunks(doc_id, chunk_index)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_rawdoc_hash ON raw_documents(sha256_hash)")
     except Exception:
         pass
-    # visual_evidence_artifacts for Task 11 (created if missing)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS visual_evidence_artifacts (
@@ -282,7 +294,7 @@ class YouTubeTranscriber:
                         self.whisper_model,
                         device="cpu",
                         compute_type="int8",
-                        cpu_threads=max(2, (os.cpu_count() or 4) - 2),
+                        cpu_threads=min(8, max(2, (os.cpu_count() or 4) - 2)),
                     )
                 except Exception as exc:
                     logger.warning("faster-whisper model load failed (%s): %s", self.whisper_model, exc)
@@ -558,14 +570,28 @@ class YouTubeTranscriber:
             fts_records = []
             lancedb_records = []
             for idx, ch in enumerate(all_chunks):
-                conn.execute(
-                    """
-                    INSERT OR IGNORE INTO document_chunks
-                        (doc_id, chunk_index, content, embedding, published_date, timestamp_start_sec, timestamp_end_sec, sector_id, industry_id, symbol, isin)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (doc_id, idx, ch["content"], ch["vec_json"], published_date, ch["start"], ch["end"], None, None, symbol or "", isin or ""),
-                )
+                try:
+                    fy_period, fy_conf, fy_src = extract_fiscal_period(chunk_body(ch["content"]))
+                except Exception:
+                    fy_period, fy_conf, fy_src = (None, 0.0, "NONE")
+                try:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO document_chunks
+                            (doc_id, chunk_index, content, embedding, published_date, timestamp_start_sec, timestamp_end_sec, sector_id, industry_id, symbol, isin, fiscal_period, fiscal_confidence, fiscal_source)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (doc_id, idx, ch["content"], ch["vec_json"], published_date, ch["start"], ch["end"], None, None, symbol or "", isin or "", fy_period, fy_conf, fy_src),
+                    )
+                except Exception:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO document_chunks
+                            (doc_id, chunk_index, content, embedding, published_date, timestamp_start_sec, timestamp_end_sec, sector_id, industry_id, symbol, isin)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (doc_id, idx, ch["content"], ch["vec_json"], published_date, ch["start"], ch["end"], None, None, symbol or "", isin or ""),
+                    )
                 # Resolve chunk_id
                 r = conn.execute("SELECT chunk_id FROM document_chunks WHERE doc_id=? AND chunk_index=?", (doc_id, idx)).fetchone()
                 chunk_id_str = str(r[0] if isinstance(r, tuple) else r["chunk_id"]) if r else f"{doc_id}-{idx}"

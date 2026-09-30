@@ -356,6 +356,7 @@ def ingest_records(
     persist: bool = False,
     manager: Any = None,
     max_workers: int = 2,
+    ingest_workers: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Ingest archived PDFs into raw_documents + document_chunks.
 
@@ -372,7 +373,7 @@ def ingest_records(
     # (RapidOCR DirectML on the RX 6700 XT) is the only GPU stage and fires
     # only for scanned pages (<300 chars). ThreadPool keeps N PDFs in flight;
     # SQLite writes serialize inside ingest_pdf's session (single-writer safe).
-    ingest_workers = max(2, min(8, (max_workers or 2) * 2))
+    ingest_workers = max(1, int(ingest_workers)) if ingest_workers else max(2, min(8, (max_workers or 2) * 2))
     def _ingest_one(rec: Dict[str, Any]):
         arch = rec.get("archive") or {}
         path = arch.get("local_file_path")
@@ -547,6 +548,23 @@ def distill_records(
         symbol = (rec.get("symbol") or "").upper()
         isin = rec.get("isin")
         if not symbol:
+            continue
+        # Backfill/CLI records frequently carry no ISIN; the substrate tables are
+        # FK-bound to master_companies(isin), so resolve it (never substitute the
+        # symbol — that violates the FK and silently loses the distilled rows).
+        if not isin:
+            try:
+                with mgr.session() as _conn:
+                    _row = _conn.execute(
+                        "select isin from master_companies where nse_symbol = ? or bse_code = ? limit 1",
+                        (symbol, symbol),
+                    ).fetchone()
+                isin = _row[0] if _row else None
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("offer distill isin lookup miss %s: %s", symbol, exc)
+                isin = None
+        if not isin:
+            logger.warning("offer distill skip %s: no ISIN in master_companies", symbol)
             continue
         texts = _chunk_texts_for_symbol(symbol, mgr)
         if not texts:

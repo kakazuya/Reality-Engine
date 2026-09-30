@@ -25,6 +25,7 @@ from reality_engine.db.database import DatabaseManager
 from reality_engine.db.repository import Repository
 from reality_engine.ingestion.pdf_ingestor import PDFIngestor
 from reality_engine.processing.pruning_engine import macro_source_type_to_category
+from reality_engine.tests.conftest import get_shared_ocr_engine
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +85,7 @@ class TestMacroIngest(unittest.TestCase):
             "infrastructure and railways by the Government of India.",
         )
 
-        ingestor = PDFIngestor(db=mgr, vector_store=_StubVectorStore())
+        ingestor = PDFIngestor(db=mgr, vector_store=_StubVectorStore(), ocr_engine=get_shared_ocr_engine())
         res = ingestor.ingest_macro_file(
             pdf,
             source_type="Union_Budget",
@@ -131,7 +132,7 @@ class TestMacroIngest(unittest.TestCase):
             "effective FY2025-26 for domestic manufacturers.",
         )
 
-        ingestor = PDFIngestor(db=mgr, vector_store=_StubVectorStore())
+        ingestor = PDFIngestor(db=mgr, vector_store=_StubVectorStore(), ocr_engine=get_shared_ocr_engine())
         r1 = ingestor.ingest_macro_file(
             pdf, source_type="PIB_Circular", published_date="2025-02-10"
         )
@@ -167,7 +168,7 @@ class TestMacroIngest(unittest.TestCase):
         _make_pdf(p1, "PIB circular about export incentive scheme for textiles sector announced.")
         _make_pdf(p2, "RBI annual report highlights inflation targeting and monetary policy stance.")
 
-        ingestor = PDFIngestor(db=mgr, vector_store=_StubVectorStore())
+        ingestor = PDFIngestor(db=mgr, vector_store=_StubVectorStore(), ocr_engine=get_shared_ocr_engine())
         results = ingestor.ingest_macro_directory(scan_dir, recursive=True, dry_run=False)
 
         self.assertEqual(len(results), 2, "both PDFs should be scanned")

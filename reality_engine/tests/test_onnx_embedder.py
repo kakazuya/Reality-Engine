@@ -29,7 +29,7 @@ from reality_engine.ingestion import onnx_embedder as oe  # noqa: E402
 
 class OnnxEmbedderTest(unittest.TestCase):
     def test_unavailable_without_files(self):
-        emb = oe.OnnxEmbedder(model_dir=Path(tempfile.mkdtemp()), prefer_gpu=False)
+        emb = oe.OnnxEmbedder(model_dir=Path(tempfile.mkdtemp()), prefer_gpu=False, backend="onnx")
         self.assertFalse(emb.available)
         self.assertIsNone(emb.provider)
         self.assertIsNone(emb.embed("hello"))
@@ -40,11 +40,11 @@ class OnnxEmbedderTest(unittest.TestCase):
         (tmp / "onnx").mkdir(parents=True)
         (tmp / "onnx" / "model.onnx").write_bytes(b"fake")
         (tmp / "tokenizer.json").write_text("{}", encoding="utf-8")
-        emb = oe.OnnxEmbedder(model_dir=tmp, prefer_gpu=False)
+        emb = oe.OnnxEmbedder(model_dir=tmp, prefer_gpu=False, backend="onnx")
         self.assertTrue(emb.ensure_downloaded())
 
     def test_batched_inference_shape(self):
-        emb = oe.OnnxEmbedder(model_dir=Path(tempfile.mkdtemp()), prefer_gpu=False)
+        emb = oe.OnnxEmbedder(model_dir=Path(tempfile.mkdtemp()), prefer_gpu=False, backend="onnx")
         emb._probed = True
         emb._available = True
         emb._provider = "CPU"

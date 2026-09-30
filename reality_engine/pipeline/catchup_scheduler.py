@@ -427,6 +427,50 @@ def _fetch_aux_feeds(manager, mode: str, dry_run: bool, logger) -> Dict[str, Any
         return {"fetched": False, "error": str(exc)}
 
 
+def _maybe_rebuild_chunk_index(db, dry_run: bool, logger, index_dir=None, db_path=None) -> Dict[str, Any]:
+    """Best-effort chunk-vector index refresh after ingest (never fatal).
+
+    ``chunk_index_meta.source_chunks_at_build`` rots on every ingest pass, so
+    the BLAS snapshot is rebuilt only when ``document_chunks`` grew past the
+    marker. The stale marker already lets callers detect drift, therefore any
+    failure here is swallowed with a warning and never fails the nightly.
+    ``index_dir``/``db_path`` are test hooks; production callers leave them
+    unset (default index dir + the manager's own DB path).
+    """
+    if dry_run:
+        return {"rebuilt": False, "skipped": True, "reason": "dry_run"}
+    try:
+        from reality_engine.search.chunk_vector_index import ChunkVectorIndex
+
+        resolved_db = Path(db_path) if db_path else Path(getattr(db, "db_path", None) or config.DB_PATH)
+        idx = ChunkVectorIndex(index_dir) if index_dir else ChunkVectorIndex()
+        with db.session() as conn:
+            row = conn.execute("SELECT COUNT(*) FROM document_chunks").fetchone()
+        current = int(row[0])
+        baseline = None
+        if idx.exists():
+            try:
+                meta = json.loads(idx.paths[2].read_text(encoding="utf-8"))
+                if meta.get("db_path") and Path(meta["db_path"]) != resolved_db:
+                    baseline = None  # marker belongs to another DB; force a rebuild
+                else:
+                    baseline = meta.get("source_chunks_at_build")
+            except Exception:
+                baseline = None
+        if baseline is not None and current <= int(baseline):
+            logger.info("[chunk-index] index fresh: %d chunks (built at %s)", current, baseline)
+            return {"rebuilt": False, "reason": "index fresh",
+                    "chunks": current, "source_chunks_at_build": int(baseline)}
+        meta = idx.build(db_path=resolved_db)
+        logger.info("[chunk-index] rebuilt: rows=%s source_chunks_at_build=%s",
+                    meta.get("rows"), meta.get("source_chunks_at_build"))
+        return {"rebuilt": True, "rows": meta.get("rows"),
+                "source_chunks_at_build": meta.get("source_chunks_at_build")}
+    except Exception as exc:
+        logger.warning("[chunk-index] rebuild skipped (best-effort): %s", exc)
+        return {"rebuilt": False, "error": str(exc)}
+
+
 # ---------------------------------------------------------------------------
 # 5. Top-level catchup orchestrator
 # ---------------------------------------------------------------------------
@@ -513,6 +557,9 @@ def run_catchup(
     summary["actions"]["event_corrections"] = _run_event_corrections(
         ec, event_ids, dry_run, logger
     )
+
+    # ---- Chunk vector index refresh (best-effort; stale marker detects drift) ----
+    summary["actions"]["chunk_index"] = _maybe_rebuild_chunk_index(db, dry_run, logger)
 
     return summary
 

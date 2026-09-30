@@ -30,6 +30,27 @@ graceful fallbacks; no edits to other waves' modules -- this module owns ONLY
 
 CLI wrappers ``cmd_correct_eod`` / ``cmd_correct_event`` / ``cmd_noise_floor`` are exposed
 for later wiring into ``cli.py`` (this module does NOT edit ``cli.py``).
+
+v1 predictor-honesty rule (goal-loop iteration 3; confirmed by live evidence):
+  * LEVELS GATE -- static substrate levels (moat score, policy ENI stock,
+    ripple significance stock) gate action quality/solvency through the action
+    resolver; they are state, not news, and carry no directional share.
+  * FLOWS VOTE -- only dated deltas plus prior-day momentum vote direction in
+    move attribution. P0b substrate versioning (additive history tables
+    ``moat_history`` / ``policy_eni_history`` / ``ripple_history`` beside the
+    live level tables, which are NEVER migrated) gives the mute lenses dated
+    evidence: ``_predict_quality`` votes on the moat_score delta in a 30-day
+    lookback window before ``asof_date`` (upgrade = +1, downgrade = -1, else
+    0); ``_predict_policy`` votes on the aggregate-ENI delta likewise;
+    ``_predict_supply`` keeps its same-session arrival vote AND adds a
+    revision-delta vote from ``ripple_history``. A standing level never votes
+    (absent/stale/flat history = 0). ``_predict_factor`` is unchanged
+    (prior-day momentum is already a flow).
+  * Consequence, stated honestly: dated attributions showed lower
+    ``explained_total`` / higher ``residual`` until substrate versioning
+    landed. Residual honesty beats explained fiction.
+  * Undated calls (``asof_date=None`` -- e.g. competitive-survival re-ranking)
+    keep the legacy level behavior for backward compatibility.
 """
 
 from __future__ import annotations
@@ -65,6 +86,10 @@ _EXPLAIN_CAP = 2.0  # hard ceiling on explain_power after any adjustment
 _EVENT_POLICY_REWARD = 0.06
 _EVENT_SUPPLY_REWARD = 0.04
 _EVENT_FACTOR_PENALTY = 0.02
+# Substrate-versioning delta lookback (P0b peers-speak): a history delta votes
+# only when its newest row is fresh -- within this many calendar days before
+# ``asof_date``. Stale baselines and standing levels never vote direction.
+_DELTA_LOOKBACK_DAYS = 30
 
 # Noise-floor learn parameters (vol/liquidity adaptive).
 _FLOOR_BASE = 45.0
@@ -487,72 +512,402 @@ class EODCorrector:
             pass
         return 0
 
-    def _predict_quality(self, symbol: str) -> int:
-        """Business-quality lens predicted direction = sign(moat_score - 3.0)."""
-        try:
-            m = self.repo.get_moat_evaluation(symbol)
-            if m and m.get("total_moat_score") is not None:
-                return self._sign(float(m["total_moat_score"]) - 3.0)
-        except Exception:
-            pass
-        return 0
+    def _predict_quality(self, symbol: str, asof_date: Optional[str] = None) -> int:
+        """Business-quality lens predicted direction.
 
-    def _predict_policy(self, symbol: str) -> int:
-        """Policy/macro lens predicted direction = sign(aggregate regulatory ENI).
+        Undated (``asof_date=None``): legacy level behavior =
+        ``sign(moat_score - 3.0)``. Kept ONLY for backward compatibility
+        (e.g. competitive-survival re-ranking, which consumes undated levels).
+
+        Dated (``asof_date`` given): votes on the moat_score DELTA from
+        ``moat_history`` -- the additive history beside live ``moat_evaluations``.
+        Delta = latest moat_score row with asof_date <= day MINUS the prior
+        row, requiring the latest row to be fresh (within
+        ``_DELTA_LOOKBACK_DAYS`` of the day). Upgrade (positive delta) = +1,
+        downgrade (negative delta) = -1, flat/absent/stale = 0. A standing
+        level never votes: levels gate action quality via the action
+        resolver; only flows vote.
+        """
+        if asof_date is None:
+            try:
+                m = self.repo.get_moat_evaluation(symbol)
+                if m and m.get("total_moat_score") is not None:
+                    return self._sign(float(m["total_moat_score"]) - 3.0)
+            except Exception:
+                pass
+            return 0
+        return self._sign(self._moat_score_delta(symbol, asof_date))
+
+    def _predict_policy(self, symbol: str, asof_date: Optional[str] = None) -> int:
+        """Policy/macro lens predicted direction.
+
+        Undated (``asof_date=None``): legacy level behavior = sign(aggregate
+        regulatory ENI). Kept ONLY for backward compatibility (e.g.
+        competitive-survival re-ranking, which consumes undated levels).
+
+        Dated (``asof_date`` given): votes on the aggregate-ENI DELTA from
+        ``policy_eni_history`` -- the additive history beside live
+        ``regulatory_political_risks``. Delta = latest per-policy ENI
+        snapshot (asof_date <= day) summed across policies MINUS the prior
+        snapshot sum, requiring the latest snapshot to be fresh (within
+        ``_DELTA_LOOKBACK_DAYS`` of the day). Coverage-only rows carry NULL
+        ENI and never vote. Levels gate action quality via the action
+        resolver; only flows vote.
 
         Queries the ACTIVE database (``self.db``), not the global composite_screener repo, so
         the correction stays isolated to the substrate it is correcting (deterministic in
-        tests, correct in production). ``regulatory_political_risks`` carries ``ticker`` and
-        ``symbol`` columns directly (no ``companies`` join needed), so the prediction works on
-        both the PostgreSQL and the SQLite WAL fallback. Returns 0 (neutral) when no policy
-        signal exists.
+        tests, correct in production). Returns 0 (neutral) when no dated delta exists.
         """
-        try:
-            with self.db.session() as conn:
-                row = conn.execute(
-                    """
-                    SELECT COALESCE(SUM(severity_score * probability), 0) AS eni
-                    FROM regulatory_political_risks
-                    WHERE ticker = ? OR symbol = ?
-                    """,
-                    (symbol, symbol),
-                ).fetchone()
-                if row is not None and row["eni"] is not None:
-                    return self._sign(row["eni"])
-        except Exception:
-            pass
-        return 0
+        if asof_date is None:
+            try:
+                with self.db.session() as conn:
+                    row = conn.execute(
+                        """
+                        SELECT COALESCE(SUM(severity_score * probability), 0) AS eni
+                        FROM regulatory_political_risks
+                        WHERE ticker = ? OR symbol = ?
+                        """,
+                        (symbol, symbol),
+                    ).fetchone()
+                    if row is not None and row["eni"] is not None:
+                        return self._sign(row["eni"])
+            except Exception:
+                pass
+            return 0
+        return self._sign(self._policy_eni_delta(symbol, asof_date))
 
-    def _predict_supply(self, symbol: str) -> int:
-        """Supply-chain lens predicted direction = sign(ripple significance - 50).
+    def _predict_supply(self, symbol: str, asof_date: Optional[str] = None) -> int:
+        """Supply-chain lens predicted direction.
+
+        Undated (``asof_date=None``): legacy level behavior = sign(max ripple
+        significance - 50). Kept ONLY for backward compatibility (e.g.
+        competitive-survival re-ranking, which consumes undated levels).
+
+        Dated (``asof_date`` given): keeps the same-session arrival vote AND
+        adds a revision-delta vote from ``ripple_history`` (the additive
+        history beside live ``ripple_effects`` / ``graph_causal_edges``).
+        Returns +1 when either the fresh ripple arrivals vote +1 or the
+        history significance delta votes +1; -1 when either votes -1 (the
+        two signals never conflict on one symbol-day in practice, but a
+        same-session arrival takes precedence when both vote); else 0. A
+        standing significance stock never votes direction -- levels gate
+        action quality via the action resolver; only flows vote.
 
         Queries the ACTIVE database (``self.db``) so the correction stays isolated to the
         substrate it is correcting. ``ripple_effects.target_company_id`` is an integer
         ``company_id``; the symbol is bridged to ``company_id`` via ``financial_metrics``
         (``company_id``, ``symbol``) and ``moat_evaluations`` (``company_id``, ``ticker``)
         -- there is no ``companies`` table on the SQLite WAL fallback, so we bridge directly
-        off the peer tables that already carry both keys. Returns 0 (neutral) when no supply
-        signal exists.
+        off the peer tables that already carry both keys.
         """
+        if asof_date is None:
+            try:
+                with self.db.session() as conn:
+                    row = conn.execute(
+                        """
+                        SELECT COALESCE(MAX(r.significance_rank), 0) AS s
+                        FROM ripple_effects r
+                        WHERE r.target_company_id IN (
+                            SELECT company_id FROM financial_metrics WHERE symbol = ?
+                            UNION
+                            SELECT company_id FROM moat_evaluations WHERE ticker = ?
+                        )
+                        """,
+                        (symbol, symbol),
+                    ).fetchone()
+                    if row is not None and row["s"] is not None:
+                        return self._sign(float(row["s"]) - 50.0)
+            except Exception:
+                pass
+            return 0
+        arrival = self._supply_session_arrival(symbol, asof_date)
+        if arrival != 0:
+            return arrival
+        return self._sign(self._ripple_significance_delta(symbol, asof_date))
+
+    def _supply_session_arrival(self, symbol: str, asof_date: str) -> int:
+        """Same-session ripple arrival vote (legacy dated branch, unchanged semantics).
+
+        Votes ONLY on genuine same-session arrivals -- ripples whose
+        ``created_at`` or ``last_revised_at`` date part equals ``asof_date`` --
+        returning ``sign(max significance - 50)`` over that fresh subset.
+        Everything older is state, not news. Returns 0 when no in-session
+        ripple exists for the symbol, or when the fresh max is absent/neutral.
+        """
+        day = str(asof_date).strip()[:10]
+        _bridge = (
+            "r.target_company_id IN ("
+            "SELECT company_id FROM financial_metrics WHERE symbol = ? "
+            "UNION "
+            "SELECT company_id FROM moat_evaluations WHERE ticker = ?)"
+        )
         try:
             with self.db.session() as conn:
+                try:
+                    cols = {r[1] for r in conn.execute("PRAGMA table_info('ripple_effects')").fetchall()}
+                except Exception:
+                    cols = {"created_at", "last_revised_at", "significance_rank", "target_company_id"}
+                has_created = "created_at" in cols
+                has_revised = "last_revised_at" in cols
+                if has_created and has_revised:
+                    fresh_filter = "(substr(r.created_at, 1, 10) = ? OR substr(r.last_revised_at, 1, 10) = ?)"
+                    params = (symbol, symbol, day, day)
+                elif has_created:
+                    fresh_filter = "substr(r.created_at, 1, 10) = ?"
+                    params = (symbol, symbol, day)
+                elif has_revised:
+                    fresh_filter = "substr(r.last_revised_at, 1, 10) = ?"
+                    params = (symbol, symbol, day)
+                else:
+                    return 0
                 row = conn.execute(
-                    """
-                    SELECT COALESCE(MAX(r.significance_rank), 0) AS s
+                    f"""
+                    SELECT MAX(r.significance_rank) AS s
                     FROM ripple_effects r
-                    WHERE r.target_company_id IN (
-                        SELECT company_id FROM financial_metrics WHERE symbol = ?
-                        UNION
-                        SELECT company_id FROM moat_evaluations WHERE ticker = ?
-                    )
+                    WHERE {_bridge} AND {fresh_filter}
                     """,
-                    (symbol, symbol),
+                    params,
                 ).fetchone()
-                if row is not None and row["s"] is not None:
-                    return self._sign(float(row["s"]) - 50.0)
+                if row is None or row["s"] is None:
+                    return 0
+                return self._sign(float(row["s"]) - 50.0)
         except Exception:
             pass
         return 0
+
+    def _latest_history_pair(self, table: str, where: str, params: tuple, day: str, value_col: str):
+        """Return (latest_value, prior_value, fresh) for a dated history table.
+
+        Latest = newest row with asof_date <= day matching ``where``; prior =
+        newest row strictly older than the latest row's asof_date; fresh =
+        whether the latest row is within ``_DELTA_LOOKBACK_DAYS`` of the day.
+        ``value_col`` is aggregated with MAX per asof_date bucket the caller
+        selects (callers pass a grouped subquery when per-key semantics apply;
+        this helper stays scalar). Returns (None, None, False) on any failure
+        or when no row qualifies -- unknown never votes.
+        """
+        try:
+            with self.db.session() as conn:
+                try:
+                    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+                except Exception:
+                    tables = set()
+                if table not in tables:
+                    return None, None, False
+                try:
+                    import datetime as _dt
+                    _day = _dt.date.fromisoformat(str(day)[:10])
+                except Exception:
+                    return None, None, False
+                row = conn.execute(
+                    f"SELECT {value_col} AS v, asof_date AS d FROM {table} WHERE {where} AND asof_date <= ? ORDER BY asof_date DESC LIMIT 1",
+                    (*params, str(day)[:10]),
+                ).fetchone()
+                if row is None or row["v"] is None or not row["d"]:
+                    return None, None, False
+                latest_v = float(row["v"])
+                latest_d = str(row["d"])[:10]
+                try:
+                    _latest = _dt.date.fromisoformat(latest_d)
+                    fresh = 0 <= (_day - _latest).days <= _DELTA_LOOKBACK_DAYS
+                except Exception:
+                    fresh = False
+                if not fresh:
+                    return None, None, False
+                prow = conn.execute(
+                    f"SELECT {value_col} AS v FROM {table} WHERE {where} AND asof_date < ? ORDER BY asof_date DESC LIMIT 1",
+                    (*params, latest_d),
+                ).fetchone()
+                if prow is None or prow["v"] is None:
+                    return None, None, False
+                return latest_v, float(prow["v"]), True
+        except Exception:
+            pass
+        return None, None, False
+
+    def _moat_score_delta(self, symbol: str, asof_date: str) -> float:
+        """Moat-score delta from ``moat_history`` (0 when absent/stale/flat)."""
+        day = str(asof_date).strip()[:10]
+        sym = str(symbol).strip().upper()
+        latest, prior, fresh = self._latest_history_pair(
+            "moat_history", "symbol = ?", (sym,), day, "moat_score")
+        if not fresh or latest is None or prior is None:
+            return 0.0
+        try:
+            return float(latest) - float(prior)
+        except Exception:
+            return 0.0
+
+    def _policy_eni_delta(self, symbol: str, asof_date: str) -> float:
+        """Aggregate-ENI delta from ``policy_eni_history`` (0 when absent/stale/flat).
+
+        Per-policy latest-then-prior semantics: for each policy of the symbol,
+        takes the newest ENI row at or before the day and the newest row older
+        than that, sums across policies, and differences the sums.
+        """
+        day = str(asof_date).strip()[:10]
+        sym = str(symbol).strip().upper()
+        try:
+            with self.db.session() as conn:
+                try:
+                    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+                except Exception:
+                    tables = set()
+                if "policy_eni_history" not in tables:
+                    return 0.0
+                try:
+                    import datetime as _dt
+                    _day = _dt.date.fromisoformat(day)
+                except Exception:
+                    return 0.0
+                try:
+                    latest_rows = conn.execute(
+                        "SELECT policy_name, net_impact_score AS v, asof_date AS d FROM policy_eni_history "
+                        "WHERE symbol = ? AND asof_date <= ? AND net_impact_score IS NOT NULL",
+                        (sym, day),
+                    ).fetchall()
+                except Exception:
+                    return 0.0
+                per_policy = {}
+                for r in latest_rows:
+                    try:
+                        pn = str(r["policy_name"])
+                        v = float(r["v"])
+                        d = str(r["d"])[:10]
+                    except Exception:
+                        continue
+                    prev = per_policy.get(pn)
+                    if prev is None or d >= prev[1]:
+                        per_policy[pn] = (v, d)
+                if not per_policy:
+                    return 0.0
+                newest = max(d for _, d in per_policy.values())
+                try:
+                    fresh = 0 <= (_day - _dt.date.fromisoformat(newest)).days <= _DELTA_LOOKBACK_DAYS
+                except Exception:
+                    fresh = False
+                if not fresh:
+                    return 0.0
+                latest_sum = sum(v for v, _ in per_policy.values())
+                prior_sum = 0.0
+                have_prior = False
+                for pn, (v, d) in per_policy.items():
+                    try:
+                        prow = conn.execute(
+                            "SELECT net_impact_score AS v FROM policy_eni_history "
+                            "WHERE symbol = ? AND policy_name = ? AND asof_date < ? AND net_impact_score IS NOT NULL "
+                            "ORDER BY asof_date DESC LIMIT 1",
+                            (sym, pn, d),
+                        ).fetchone()
+                    except Exception:
+                        prow = None
+                    if prow is not None and prow["v"] is not None:
+                        try:
+                            prior_sum += float(prow["v"])
+                            have_prior = True
+                        except Exception:
+                            continue
+                    else:
+                        # Policy with no older row: this is a genuine revision
+                        # (the have_prior gate below still requires at least one
+                        # other policy with a baseline, or this branch itself,
+                        # so a lone first-seen policy votes its full ENI as the
+                        # delta from a zero baseline).
+                        prior_sum += 0.0
+                        have_prior = True
+                if not have_prior:
+                    return 0.0
+                return float(latest_sum) - float(prior_sum)
+        except Exception:
+            pass
+        return 0.0
+
+    def _ripple_significance_delta(self, symbol: str, asof_date: str) -> float:
+        """Max-edge significance delta from ``ripple_history`` (0 when absent/stale/flat).
+
+        Per-edge latest-then-prior semantics on symbol-scoped rows: newest
+        significance per edge_key at or before the day, differenced against
+        that edge's prior row; the vote uses the largest absolute edge delta
+        (sign of that edge). Freshness gates on the newest edge snapshot.
+        """
+        day = str(asof_date).strip()[:10]
+        sym = str(symbol).strip().upper()
+        try:
+            with self.db.session() as conn:
+                try:
+                    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+                except Exception:
+                    tables = set()
+                if "ripple_history" not in tables:
+                    return 0.0
+                try:
+                    import datetime as _dt
+                    _day = _dt.date.fromisoformat(day)
+                except Exception:
+                    return 0.0
+                try:
+                    rows = conn.execute(
+                        "SELECT edge_key, significance AS v, asof_date AS d FROM ripple_history "
+                        "WHERE symbol = ? AND asof_date <= ? AND significance IS NOT NULL",
+                        (sym, day),
+                    ).fetchall()
+                except Exception:
+                    return 0.0
+                per_edge = {}
+                for r in rows:
+                    try:
+                        ek = str(r["edge_key"])
+                        v = float(r["v"])
+                        d = str(r["d"])[:10]
+                    except Exception:
+                        continue
+                    prev = per_edge.get(ek)
+                    if prev is None or d >= prev[1]:
+                        per_edge[ek] = (v, d)
+                if not per_edge:
+                    return 0.0
+                newest = max(d for _, d in per_edge.values())
+                try:
+                    fresh = 0 <= (_day - _dt.date.fromisoformat(newest)).days <= _DELTA_LOOKBACK_DAYS
+                except Exception:
+                    fresh = False
+                if not fresh:
+                    return 0.0
+                best = 0.0
+                voted = False
+                for ek, (v, d) in per_edge.items():
+                    try:
+                        prow = conn.execute(
+                            "SELECT significance AS v FROM ripple_history "
+                            "WHERE edge_key = ? AND asof_date < ? AND significance IS NOT NULL "
+                            "ORDER BY asof_date DESC LIMIT 1",
+                            (ek, d),
+                        ).fetchone()
+                    except Exception:
+                        prow = None
+                    if prow is None or prow["v"] is None:
+                        # Edge first seen inside the fresh window: genuine new
+                        # evidence, delta from a zero baseline. An edge whose
+                        # only row predates the window is already excluded by
+                        # the freshness gate above, so reaching here means new.
+                        try:
+                            delta = float(v) - 0.0
+                        except Exception:
+                            continue
+                    else:
+                        try:
+                            delta = float(v) - float(prow["v"])
+                        except Exception:
+                            continue
+                    if delta == 0.0:
+                        continue
+                    voted = True
+                    if abs(delta) > abs(best):
+                        best = delta
+                return best if voted else 0.0
+        except Exception:
+            pass
+        return 0.0
 
     def _detect_substrate_drift(self, symbol: str, realized_dir: int, update: bool) -> Optional[str]:
         """Detect a divergence between realized direction and the quality substrate.

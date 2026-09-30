@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 from reality_engine.config import DATA_DIR
 from reality_engine.db.database import db_manager
 from reality_engine.db.vector_store import VectorStoreManager
-from reality_engine.processing.document_parser import DocumentParser
+from reality_engine.processing.document_parser import DocumentParser, PUA_POISON_THRESHOLD, chunk_body, extract_fiscal_period, is_pua_poisoned, pua_rate
 from reality_engine.processing.ocr_engine import FinancialOCREngine
 
 logger = logging.getLogger("reality_engine.pdf_ingestor")
@@ -203,10 +203,28 @@ def _ensure_raw_tables(conn) -> None:
             industry_id INTEGER,
             symbol TEXT,
             isin TEXT,
+            fiscal_period TEXT,
+            fiscal_confidence REAL,
+            fiscal_source TEXT,
             UNIQUE(doc_id, chunk_index)
         )
         """
     )
+    # Additive fiscal-label migration for pre-existing SQLite files: columns
+    # must exist before _persist_chunks stamps them; index serves backtest
+    # scope reads (fiscal_period, fiscal_confidence). Idempotent.
+    try:
+        _cols = {r[1] for r in conn.execute("PRAGMA table_info(document_chunks)").fetchall()}
+        for _col, _ddl in (
+            ("fiscal_period", "TEXT"),
+            ("fiscal_confidence", "REAL"),
+            ("fiscal_source", "TEXT"),
+        ):
+            if _col not in _cols:
+                conn.execute(f"ALTER TABLE document_chunks ADD COLUMN {_col} {_ddl}")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_fiscal ON document_chunks(fiscal_period, fiscal_confidence)")
+    except Exception:
+        pass
     # Helpful index for hybrid search fallback
     try:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_docchunks_doc ON document_chunks(doc_id, chunk_index)")
@@ -233,10 +251,12 @@ class PDFIngestor:
         ocr_engine: Optional[FinancialOCREngine] = None,
         chunk_tokens: int = 512,
         overlap_tokens: int = 64,
+        resource_guard=None,
     ):
         self.db = db or db_manager
         self.vector_store = vector_store or VectorStoreManager()
         self.ocr = ocr_engine or FinancialOCREngine()
+        self.resource_guard = resource_guard
         self.parser = DocumentParser(ocr_engine=self.ocr.process_image if self.ocr else None, chunk_tokens=chunk_tokens, overlap_tokens=overlap_tokens)
         # Ensure tables exist for SQLite fallback (idempotent)
         try:
@@ -272,6 +292,29 @@ class PDFIngestor:
             logger.debug("Marker extraction fallback (%s): %s", path.name, exc)
             return None
 
+    def _ocr_pages(self, doc, fitz) -> list:
+        """Run the scanned-image OCR path (RapidOCR pixmap) over every page."""
+        ocr_pages = []
+        for page in doc:
+            if self.resource_guard:
+                self.resource_guard.wait_for_headroom("ocr-page")
+            try:
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                # Save pixmap to temp for ocr_engine
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                    pix.save(tmp.name)
+                    res = self.ocr.process_image(tmp.name)
+                    ocr_pages.append(res.get("raw_text", ""))
+                    try:
+                        Path(tmp.name).unlink(missing_ok=True)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.debug("OCR page fallback: %s", e)
+                ocr_pages.append("")
+        return ocr_pages
+
     def _extract_with_pymupdf(self, path: Path) -> tuple[str, bool]:
         """Returns (text, is_scanned_heuristic). is_scanned if text length <300."""
         pages_text: List[str] = []
@@ -279,34 +322,34 @@ class PDFIngestor:
         try:
             import fitz  # type: ignore
             with fitz.open(path) as doc:
+                if self.resource_guard:
+                    self.resource_guard.wait_for_headroom("pdf-extract")
                 for page in doc:
                     try:
                         pages_text.append(page.get_text("text") or "")
                     except Exception:
                         pages_text.append("")
                 full = "\n\n".join(pages_text)
+                # PUA-poison guard: an unembedded custom font can yield a long
+                # text layer of U+E000-U+F8FF codepoints (proven: 314k chars,
+                # 299,549 PUA, 0 ASCII) that the BPE tokenizer collapses to 2
+                # ids with empty decode -> 0 chunks. Route the whole PDF to
+                # the scanned-image OCR path instead of trusting the layer.
+                if is_pua_poisoned(full):
+                    logger.warning(
+                        "PDF %s PUA-poisoned text layer (PUA rate %.3f >= %.2f); routing to OCR pixmap path",
+                        path.name, pua_rate(full), PUA_POISON_THRESHOLD,
+                    )
+                    if self.ocr and self.ocr.engine is not None:
+                        ocr_pages = self._ocr_pages(doc, fitz)
+                        if any((t or "").strip() for t in ocr_pages):
+                            return "\n\n".join(ocr_pages), True
+                    return "", True
                 if len(full.strip()) < 300:
                     is_scanned = True
                     # If scanned and OCR available, attempt RapidOCR per page pixmap
                     if self.ocr and self.ocr.engine is not None:
-                        ocr_pages = []
-                        for page in doc:
-                            try:
-                                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                                # Save pixmap to temp for ocr_engine
-                                # Use preprocess-less direct: write to PNG bytes
-                                import tempfile
-                                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                                    pix.save(tmp.name)
-                                    res = self.ocr.process_image(tmp.name)
-                                    ocr_pages.append(res.get("raw_text", ""))
-                                    try:
-                                        Path(tmp.name).unlink(missing_ok=True)
-                                    except Exception:
-                                        pass
-                            except Exception as e:
-                                logger.debug("OCR page fallback: %s", e)
-                                ocr_pages.append("")
+                        ocr_pages = self._ocr_pages(doc, fitz)
                         if any(ocr_pages):
                             return "\n\n".join(ocr_pages), True
                 return full, is_scanned
@@ -314,12 +357,20 @@ class PDFIngestor:
             pass
         except Exception as exc:
             logger.debug("PyMuPDF extraction note %s: %s", path.name, exc)
-        # Fallback pdfplumber
+        # Fallback pdfplumber (no pixmap OCR available here; a PUA-poisoned
+        # layer is still reported as unusable so ingest honours no_text_layer
+        # instead of conflating it with no_chunks).
         try:
             import pdfplumber  # type: ignore
             with pdfplumber.open(path) as pdf:
                 pages_text = [(p.extract_text() or "") for p in pdf.pages]
             full = "\n\n".join(pages_text)
+            if is_pua_poisoned(full):
+                logger.warning(
+                    "PDF %s PUA-poisoned text layer (pdfplumber, PUA rate %.3f); no pixmap OCR on this path",
+                    path.name, pua_rate(full),
+                )
+                return "", True
             return full, len(full.strip()) < 300
         except ImportError:
             raise RuntimeError("Install PyMuPDF (fitz) or pdfplumber to parse PDFs")
@@ -331,7 +382,7 @@ class PDFIngestor:
         path = Path(path)
         # 1) Marker layout-aware if available
         marker_text = self._extract_with_marker(path)
-        if marker_text and len(marker_text.strip()) > 200:
+        if marker_text and len(marker_text.strip()) > 200 and not is_pua_poisoned(marker_text):
             logger.info("PDF extracted via Marker: %s (%d chars)", path.name, len(marker_text))
             return marker_text
         # 2) PyMuPDF + RapidOCR DirectML per AGENTS.md:5 (RX 6700 XT, no cloud)
@@ -372,8 +423,8 @@ class PDFIngestor:
                     "source_url": source_url,
                     "creator_or_ministry": creator_or_ministry,
                     "sha256_hash": sha256_hash,
-                    "local_file_path": str(path),
-                    "file_size_bytes": path.stat().st_size if path.exists() else None,
+                    "local_file_path": str(path) if path else None,
+                    "file_size_bytes": path.stat().st_size if (path and path.exists()) else None,
                 }
             )
         except Exception as exc:  # pragma: no cover - fallback path
@@ -387,15 +438,15 @@ class PDFIngestor:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                title or path.stem,
+                title or (path.stem if path else source_type),
                 source_type,
                 published_date,
                 fiscal_period,
                 source_url,
                 creator_or_ministry,
                 sha256_hash,
-                str(path),
-                path.stat().st_size if path.exists() else None,
+                str(path) if path else None,
+                path.stat().st_size if (path and path.exists()) else None,
             ),
         )
         row = conn.execute("SELECT doc_id FROM raw_documents WHERE sha256_hash=?", (sha256_hash,)).fetchone()
@@ -403,6 +454,263 @@ class PDFIngestor:
             return int(row[0] if isinstance(row, tuple) else row["doc_id"])
         # Fallback: last row id
         return int(conn.execute("SELECT last_insert_rowid()").fetchone()[0])
+
+    def _persist_chunks(
+        self,
+        *,
+        chunks,
+        path: Optional[Path],
+        title: Optional[str],
+        source_type: str,
+        published_date: Optional[str],
+        fiscal_period: Optional[str],
+        source_url: Optional[str],
+        sha: str,
+        symbol: Optional[str],
+        isin: Optional[str],
+        sector_id: Optional[int],
+        industry_id: Optional[int],
+        creator_or_ministry: Optional[str],
+    ) -> int:
+        """Register raw_documents + document_chunks (+ FTS + vectors) for one document.
+
+        Shared by the PDF and text ingestion paths so the persistence contract
+        (chunk rows, batched embeddings, FTS records, corporate_documents compat
+        row) exists in exactly one place. ``path`` is None for text-only sources
+        (e.g. PIB HTML releases).
+        """
+        label = path.name if path else (title or source_type)
+        size_bytes = path.stat().st_size if (path and path.exists()) else None
+        if self.resource_guard:
+            self.resource_guard.wait_for_headroom("db-persist")
+        # Start embedding before opening SQLite so the write transaction is
+        # never held while waiting on the GPU.
+        from concurrent.futures import ThreadPoolExecutor
+        # Keep the original dense-store coverage: boilerplate remains searchable
+        # by vector, while its SQLite embedding column stays empty.
+        db_positions = [
+            i for i, c in enumerate(chunks)
+            if not getattr(c, "is_boilerplate", False)
+            and (getattr(c, "embed_text", "") or c.text or "").strip()
+        ]
+        vector_positions = [
+            i for i, c in enumerate(chunks)
+            if (getattr(c, "embed_text", "") or c.text or "").strip()
+        ]
+        embed_texts = [(getattr(chunks[i], "embed_text", "") or chunks[i].text) for i in vector_positions]
+        skipped_boiler = len(vector_positions) - len(db_positions)
+        if skipped_boiler:
+            logger.info("keeping %d boilerplate chunks in the vector store; omitting them only from document_chunks.embedding (%s)",
+                        skipped_boiler, label)
+        embed_method = getattr(self.vector_store, "embed_many", None)
+        embed_executor = ThreadPoolExecutor(max_workers=1) if embed_texts and callable(embed_method) else None
+        embed_future = embed_executor.submit(embed_method, embed_texts) if embed_executor else None
+        with self.db.session() as conn:
+            _ensure_raw_tables(conn)
+            # auto-derive industry_id if not provided
+            derived_iid = industry_id
+            if derived_iid is None and symbol:
+                try:
+                    derived_iid = derive_industry_id_for_symbol(symbol, conn)
+                except Exception:
+                    derived_iid = None
+            doc_id = self._insert_raw_document(conn, path, title, source_type, published_date, fiscal_period, source_url, sha, creator_or_ministry)
+            chunk_rows = []
+            for idx, ch in enumerate(chunks):
+                content = ch.text
+                chunk_iid = getattr(ch, "industry_id", None)
+                if chunk_iid is None:
+                    chunk_iid = derived_iid
+                # Findings §11: stamp the body-genuine fiscal label at insert.
+                # Body = content after the first newline (header holds a literal
+                # "FY:" on every chunk — matching raw content is 100% noise).
+                try:
+                    fy_period, fy_conf, fy_src = extract_fiscal_period(chunk_body(content))
+                except Exception:
+                    fy_period, fy_conf, fy_src = (None, 0.0, "NONE")
+                chunk_rows.append((
+                    doc_id, idx, content, None, published_date, None, None,
+                    sector_id, chunk_iid, symbol or "", isin or "",
+                    fy_period, fy_conf, fy_src,
+                ))
+            # Fiscal columns may predate the label migration on very old DBs;
+            # fall back to the legacy 11-column insert so ingest never fails.
+            try:
+                conn.executemany(
+                    """
+                    INSERT OR IGNORE INTO document_chunks
+                        (doc_id, chunk_index, content, embedding, published_date, timestamp_start_sec, timestamp_end_sec, sector_id, industry_id, symbol, isin, fiscal_period, fiscal_confidence, fiscal_source)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    chunk_rows,
+                )
+            except Exception:
+                conn.executemany(
+                    """
+                    INSERT OR IGNORE INTO document_chunks
+                        (doc_id, chunk_index, content, embedding, published_date, timestamp_start_sec, timestamp_end_sec, sector_id, industry_id, symbol, isin)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [row[:11] for row in chunk_rows],
+                )
+            id_rows = conn.execute(
+                "SELECT chunk_index, chunk_id FROM document_chunks WHERE doc_id=?",
+                (doc_id,),
+            ).fetchall()
+            chunk_ids = {
+                int(row[0] if isinstance(row, tuple) else row["chunk_index"]):
+                str(row[1] if isinstance(row, tuple) else row["chunk_id"])
+                for row in id_rows
+            }
+            fts_records = []
+            for idx, ch in enumerate(chunks):
+                fts_records.append({
+                    "chunk_id": chunk_ids.get(idx, f"{doc_id}-{idx}"),
+                    "symbol": symbol or "",
+                    "isin": isin or "",
+                    "source_type": source_type,
+                    "document_date": published_date,
+                    "document_text": ch.text,
+                })
+            # Commit chunk rows before waiting on the GPU; the connection remains
+            # available for the embedding update transaction below, but the single
+            # SQLite writer lock is not held during the wait.
+            conn.commit()
+            # The embedding worker ran while the chunk rows and IDs were written.
+            try:
+                vecs = embed_future.result() if embed_future else []
+            except Exception as exc:
+                logger.warning("embedding batch note %s: %s", label, str(exc)[:160])
+                vecs = [None] * len(embed_texts)
+            finally:
+                if embed_executor:
+                    embed_executor.shutdown(wait=True)
+            if not vecs or len(vecs) != len(vector_positions):
+                vecs = [None] * len(vector_positions)
+            vec_by_pos = {pos: (vecs[k] if k < len(vecs) else None) for k, pos in enumerate(vector_positions)}
+            lancedb_records = []
+            for pos in vector_positions:
+                vec = vec_by_pos.get(pos)
+                if not vec:
+                    continue
+                ch = chunks[pos]
+                lancedb_records.append({
+                    "id": chunk_ids.get(pos, f"{doc_id}-{pos}"),
+                    "symbol": symbol or "",
+                    "isin": isin or "",
+                    "text": ch.text,
+                    "document_date": published_date,
+                    "source_type": source_type,
+                    "vector": vec,
+                })
+            db_vec_by_pos = {pos: vec_by_pos.get(pos) for pos in db_positions}
+            embedding_rows = [
+                (json.dumps(db_vec_by_pos.get(idx)) if db_vec_by_pos.get(idx) else None, doc_id, idx)
+                for idx in range(len(chunks))
+            ]
+            try:
+                conn.executemany(
+                    "UPDATE document_chunks SET embedding=? WHERE doc_id=? AND chunk_index=?",
+                    embedding_rows,
+                )
+            except Exception as exc:
+                logger.debug("batched embed update note %s: %s", label, exc)
+            # FTS5 insert (SQLite)
+            if fts_records and self._fts_exists(conn):
+                try:
+                    conn.executemany(
+                        "INSERT INTO intelligence_fts(chunk_id, symbol, isin, source_type, document_date, document_text) VALUES (:chunk_id, :symbol, :isin, :source_type, :document_date, :document_text)",
+                        fts_records,
+                    )
+                except Exception as exc:
+                    logger.warning("FTS insert note %s: %s", label, exc)
+            # LanceDB / JSON fallback
+            try:
+                self.vector_store.add_chunks(lancedb_records)
+            except Exception as exc:
+                logger.warning("Vector store add note %s: %s", label, exc)
+
+            # Also register in corporate_documents for backward compat (preserve existing 4003)
+            # Insert minimal corporate_documents entry if not exists (title+doc_date uniqueness not enforced)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO corporate_documents (isin, symbol, doc_type, title, doc_date, source_url, local_file_path, file_size_bytes, sha256_hash, is_processed)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                    """,
+                    (
+                        isin or symbol or "UNKNOWN",
+                        symbol or "UNKNOWN",
+                        source_type,
+                        title or path.stem,
+                        published_date,
+                        source_url,
+                        str(path) if path else None,
+                        size_bytes,
+                        sha,
+                    ),
+                )
+            except Exception as exc:
+                logger.debug("corporate_documents compat insert note: %s", exc)
+
+        return doc_id
+
+    def ingest_text(
+        self,
+        text: str,
+        title: Optional[str] = None,
+        source_type: str = "PIB_Press_Release",
+        published_date: Optional[str] = None,
+        source_url: Optional[str] = None,
+        symbol: Optional[str] = None,
+        isin: Optional[str] = None,
+        fiscal_period: Optional[str] = None,
+        creator_or_ministry: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Ingest a TEXT document (HTML/plain sources such as PIB releases).
+
+        Shares ``_persist_chunks`` with the PDF path, so chunks, embeddings, FTS
+        rows and the corporate_documents compat row are identical in shape.
+        Idempotent on the SHA-256 of the text itself.
+        """
+        import hashlib as _hashlib
+
+        text = (text or "").strip()
+        if len(text) < 40:
+            return {"doc_id": None, "chunks": 0, "status": "no_text", "sha256": None}
+        sha = _hashlib.sha256(text.encode("utf-8")).hexdigest()
+        published_date = published_date or "2026-08-14"
+        if published_date and not re.match(r"^\d{4}-\d{2}-\d{2}$", str(published_date)):
+            published_date = "2026-08-14"
+
+        with self.db.session() as conn:
+            _ensure_raw_tables(conn)
+            existing = conn.execute("SELECT doc_id FROM raw_documents WHERE sha256_hash=?", (sha,)).fetchone()
+            if existing:
+                doc_id = int(existing[0] if isinstance(existing, tuple) else existing["doc_id"])
+                cnt = conn.execute("SELECT COUNT(*) FROM document_chunks WHERE doc_id=?", (doc_id,)).fetchone()[0]
+                if cnt > 0:
+                    return {"doc_id": doc_id, "chunks": int(cnt), "status": "skipped_duplicate", "sha256": sha}
+
+        metadata = {
+            "symbol": symbol or "",
+            "isin": isin or "",
+            "fiscal_year": fiscal_period or "",
+            "doc_type": source_type,
+            "document_date": published_date,
+        }
+        chunks = self.parser.chunk_text(text, metadata, source_url or "text")
+        if not chunks:
+            return {"doc_id": None, "chunks": 0, "status": "no_chunks", "sha256": sha}
+
+        doc_id = self._persist_chunks(
+            chunks=chunks, path=None, title=title, source_type=source_type,
+            published_date=published_date, fiscal_period=fiscal_period, source_url=source_url,
+            sha=sha, symbol=symbol, isin=isin, sector_id=None, industry_id=None,
+            creator_or_ministry=creator_or_ministry,
+        )
+        logger.info("TEXT ingested %s -> doc_id %s (%d chunks)", (title or source_type)[:60], doc_id, len(chunks))
+        return {"doc_id": doc_id, "chunks": len(chunks), "status": "ingested", "sha256": sha}
 
     def ingest_pdf(
         self,
@@ -458,8 +766,13 @@ class PDFIngestor:
 
         text = self.extract_text(path)
         if not text or len(text.strip()) < 10:
-            logger.warning("PDF %s produced no text (scanned image only, OCR may have failed)", path.name)
-            text = f"[No extractable text from {path.name}; OCR fallback returned empty]"
+            # Honest cause split: PUA-poison-with-dead-OCR means the text
+            # layer existed but was unusable (quarantine candidate), which is
+            # distinct from a genuinely short/empty extraction (no_chunks).
+            # The queue treats any non-ingested status as failure; the
+            # distinct status only prevents conflating the two causes.
+            logger.warning("PDF %s produced no usable text layer (poison text or dead OCR)", path.name)
+            return {"doc_id": None, "chunks": 0, "status": "no_text_layer", "sha256": sha}
 
         # Chunk via DocumentParser (512 / 64)
         metadata = {
@@ -474,100 +787,12 @@ class PDFIngestor:
             logger.warning("No chunks produced for %s", path.name)
             return {"doc_id": None, "chunks": 0, "status": "no_chunks", "sha256": sha}
 
-        # Persist
-        with self.db.session() as conn:
-            _ensure_raw_tables(conn)
-            # auto-derive industry_id if not provided
-            derived_iid = industry_id
-            if derived_iid is None and symbol:
-                try:
-                    derived_iid = derive_industry_id_for_symbol(symbol, conn)
-                except Exception:
-                    derived_iid = None
-            doc_id = self._insert_raw_document(conn, path, title, source_type, published_date, fiscal_period, source_url, sha, creator_or_ministry)
-            # Insert chunks with embedding JSON + FTS + LanceDB
-            fts_records = []
-            lancedb_records = []
-            for idx, ch in enumerate(chunks):
-                content = ch.text
-                # chunk-level industry override from parser metadata if present
-                chunk_iid = getattr(ch, "industry_id", None)
-                if chunk_iid is None:
-                    chunk_iid = derived_iid
-                # Preserve timestamp_start_sec for compatibility (PDFs = NULL/0)
-                # Embed via VectorStoreManager (hash fallback if no model)
-                try:
-                    vec = self.vector_store.embed(content)
-                except Exception:
-                    vec = []
-                vec_json = json.dumps(vec) if vec else None
-                # SQLite document_chunks
-                # Use INSERT OR IGNORE for idempotency
-                conn.execute(
-                    """
-                    INSERT OR IGNORE INTO document_chunks
-                        (doc_id, chunk_index, content, embedding, published_date, timestamp_start_sec, timestamp_end_sec, sector_id, industry_id, symbol, isin)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (doc_id, idx, content, vec_json, published_date, None, None, sector_id, chunk_iid, symbol or "", isin or ""),
-                )
-                # Resolve chunk_id for FTS/Vectors
-                row = conn.execute("SELECT chunk_id FROM document_chunks WHERE doc_id=? AND chunk_index=?", (doc_id, idx)).fetchone()
-                chunk_id_str = str(row[0] if isinstance(row, tuple) else row["chunk_id"]) if row else f"{doc_id}-{idx}"
-                fts_records.append({
-                    "chunk_id": chunk_id_str,
-                    "symbol": symbol or "",
-                    "isin": isin or "",
-                    "source_type": source_type,
-                    "document_date": published_date,
-                    "document_text": content,
-                })
-                lancedb_records.append({
-                    "id": chunk_id_str,
-                    "symbol": symbol or "",
-                    "isin": isin or "",
-                    "text": content,
-                    "document_date": published_date,
-                    "source_type": source_type,
-                })
-            # FTS5 insert (SQLite)
-            if fts_records and self._fts_exists(conn):
-                try:
-                    conn.executemany(
-                        "INSERT INTO intelligence_fts(chunk_id, symbol, isin, source_type, document_date, document_text) VALUES (:chunk_id, :symbol, :isin, :source_type, :document_date, :document_text)",
-                        fts_records,
-                    )
-                except Exception as exc:
-                    logger.warning("FTS insert note %s: %s", path.name, exc)
-            # LanceDB / JSON fallback
-            try:
-                self.vector_store.add_chunks(lancedb_records)
-            except Exception as exc:
-                logger.warning("Vector store add note %s: %s", path.name, exc)
-
-            # Also register in corporate_documents for backward compat (preserve existing 4003)
-            # Insert minimal corporate_documents entry if not exists (title+doc_date uniqueness not enforced)
-            try:
-                conn.execute(
-                    """
-                    INSERT INTO corporate_documents (isin, symbol, doc_type, title, doc_date, source_url, local_file_path, file_size_bytes, sha256_hash, is_processed)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                    """,
-                    (
-                        isin or symbol or "UNKNOWN",
-                        symbol or "UNKNOWN",
-                        source_type,
-                        title or path.stem,
-                        published_date,
-                        source_url,
-                        str(path),
-                        path.stat().st_size if path.exists() else None,
-                        sha,
-                    ),
-                )
-            except Exception as exc:
-                logger.debug("corporate_documents compat insert note: %s", exc)
-
+        doc_id = self._persist_chunks(
+            chunks=chunks, path=path, title=title, source_type=source_type,
+            published_date=published_date, fiscal_period=fiscal_period, source_url=source_url,
+            sha=sha, symbol=symbol, isin=isin, sector_id=sector_id, industry_id=industry_id,
+            creator_or_ministry=creator_or_ministry,
+        )
         logger.info("PDF ingested %s -> doc_id %d (%d chunks) via %s", path.name, doc_id, len(chunks), "Marker" if _MARKER_AVAILABLE else "PyMuPDF+RapidOCR" if self.ocr and self.ocr.provider != "NONE" else "PyMuPDF")
         return {"doc_id": doc_id, "chunks": len(chunks), "status": "ingested", "sha256": sha, "provider": self.ocr.provider if self.ocr else "NONE"}
 

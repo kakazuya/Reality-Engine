@@ -493,6 +493,24 @@ class CompositeScreener:
         logger.info("[ensemble] Screened top %d (of %d approved) for %s", min(top_n, len(df)), len(df), date_str)
         return df.head(top_n)
 
+    def _vol_scaled_call_bracket(self, symbol: str, cmp: float,
+                                 date_str: str) -> tuple:
+        """Trailing-sigma (target, stop) for a call row; fixed 18/6 on fallback.
+
+        Reads up to 20 sessions of ``daily_price_delivery`` history at/before
+        ``date_str`` through ``portfolio_ledger.vol_scaled_bracket`` (BUY
+        framing: target above entry, stop below). Any failure (no history,
+        bad price, missing table) falls back to the legacy fixed
+        1.18/0.94 so screening never crashes on a thin name.
+        """
+        try:
+            from reality_engine.processing import portfolio_ledger as _pl
+            b = _pl.vol_scaled_bracket(str(symbol), float(cmp), "BUY",
+                                       str(date_str), manager=self.repo.db)
+            return float(b["target_price"]), float(b["stop_loss"])
+        except Exception:
+            return round(cmp * 1.18, 2), round(cmp * 0.94, 2)
+
     def _persist_ensemble_calls(self, df: pd.DataFrame, date_str: str) -> None:
         """Persist ensemble top_n to eod_scrip_calls using only schema-stable columns."""
         if df.empty:
@@ -502,8 +520,7 @@ class CompositeScreener:
             cmp = float(r.get("close", 0.0) or 0.0)
             entry_low = round(cmp * 0.985, 2)
             entry_high = round(cmp * 1.015, 2)
-            target = round(cmp * 1.18, 2)
-            sl = round(cmp * 0.94, 2)
+            target, sl = self._vol_scaled_call_bracket(str(r["symbol"]), cmp, date_str)
             rr = round((target - cmp) / (cmp - sl), 2) if (cmp - sl) > 0 else 3.0
             score = float(r["ensemble_composite"])
             conviction = "HIGH_CONVICTION" if score >= 75 else ("MODERATE" if score >= 55 else "SPECULATIVE")
@@ -1158,8 +1175,7 @@ class CompositeScreener:
             cmp = float(r["close"])
             entry_low = round(cmp * 0.985, 2)
             entry_high = round(cmp * 1.015, 2)
-            target = round(cmp * 1.18, 2)        # 18% upside
-            sl = round(cmp * 0.94, 2)            # 6% stop loss
+            target, sl = self._vol_scaled_call_bracket(str(r["symbol"]), cmp, date_str)
             rr = round((target - cmp) / (cmp - sl), 2) if (cmp - sl) > 0 else 3.0
 
             score = float(r["composite_score"])
@@ -1371,8 +1387,7 @@ class CompositeScreener:
             cmp = float(r["close"])
             entry_low = round(cmp * 0.985, 2)
             entry_high = round(cmp * 1.015, 2)
-            target = round(cmp * 1.18, 2)
-            sl = round(cmp * 0.94, 2)
+            target, sl = self._vol_scaled_call_bracket(str(r["symbol"]), cmp, date_str)
             rr = round((target - cmp) / (cmp - sl), 2) if (cmp - sl) > 0 else 3.0
             score = float(r["composite_score"])
             conviction = "HIGH_CONVICTION" if score >= 75 else ("MODERATE" if score >= 55 else "SPECULATIVE")

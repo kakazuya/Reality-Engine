@@ -1,5 +1,5 @@
 """
-Wave A — Unattended Nightly Run Chain (fetch -> predict -> correct).
+Wave A — Unattended Nightly Run Chain (fetch -> predict -> correct -> track).
 
 Sequential stages with per-stage try/except and JSON status:
 
@@ -21,6 +21,15 @@ Sequential stages with per-stage try/except and JSON status:
   correct_validate part (23:00 slot):
     EOD self-correction via ``EODCorrector.correct_eod`` (closed-session
     guard intact — never bypassed, never reimplemented here)
+    track_record portfolio step (attribution close-out):
+    ``move_attributor.attribute_universe(universe, days=1)`` for the closed
+    EOD session, resolve+record BUY/SELL/HOLD for material rows with
+    ``eod_scrip_calls`` terms via ``AgentOrchestrator._resolve_thesis_action``
+    (same resolver path as the theses; HOLDs recorded too), then
+    ``portfolio_ledger.mark_to_market`` + ``summarize``.
+    ``CORRECT_STAGES`` stays ``("eod_correct",)`` — the track step is additive
+    (``TRACK_STAGES`` appended in the correct_validate branch) so existing
+    ``plan_stages`` prefixes stay intact.
 
 Health summary ``data/logs/nightly_<YYYY-MM-DD>.json`` carries stage
 statuses, row deltas, checkpoint %, top-20 overlap and exit_code.
@@ -78,6 +87,10 @@ FETCH_STAGES: Tuple[str, ...] = (
     "daily_alpha_legacy",
 )
 CORRECT_STAGES: Tuple[str, ...] = ("eod_correct",)
+# Additive track stage. CORRECT_STAGES is frozen ("eod_correct",) — plan tests
+# assert exact lists — so plan_stages appends TRACK_STAGES in the
+# correct_validate branch instead of extending CORRECT_STAGES.
+TRACK_STAGES: Tuple[str, ...] = ("track_record",)
 
 DELTA_TABLES: Tuple[str, ...] = (
     "master_companies",
@@ -183,12 +196,17 @@ def release_lock(fd: int, lock_path: Path) -> None:
 # Planning helpers
 # ---------------------------------------------------------------------------
 def plan_stages(part: str) -> List[str]:
-    """Ordered stage names for a --part value."""
+    """Ordered stage names for a --part value.
+
+    ``CORRECT_STAGES`` is frozen; the ``track_record`` step is additive
+    (``TRACK_STAGES``), so ``correct_validate``/``all`` plans extend — never
+    reorder — the existing stage prefixes.
+    """
     if part == "fetch_predict":
         return list(FETCH_STAGES)
     if part == "correct_validate":
-        return list(CORRECT_STAGES)
-    return list(FETCH_STAGES) + list(CORRECT_STAGES)
+        return list(CORRECT_STAGES) + list(TRACK_STAGES)
+    return list(FETCH_STAGES) + list(CORRECT_STAGES) + list(TRACK_STAGES)
 
 
 def resolve_backfill_days(missing_count: int) -> int:
@@ -414,6 +432,171 @@ def _rename_alpha_outputs(exported: Dict[str, Any], mode: str) -> Dict[str, str]
     return renamed
 
 
+def _track_usable_price(x: Any) -> Optional[float]:
+    """Finite price > 0, else None (mirrors record_action level validation)."""
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    import math as _math
+
+    return v if _math.isfinite(v) and v > 0 else None
+
+
+def _track_call_row(conn: Any, symbol: str, day: str) -> Optional[Dict[str, Any]]:
+    """The eod_scrip_calls terms row for one (symbol, date) pair, if any."""
+    try:
+        row = conn.execute(
+            "SELECT date, symbol, isin, current_market_price, target_price, "
+            "stop_loss, is_solvency_approved FROM eod_scrip_calls "
+            "WHERE symbol = ? AND date = ? LIMIT 1",
+            (symbol, day),
+        ).fetchone()
+    except Exception:
+        return None
+    return dict(row) if row else None
+
+
+def _track_next_close(conn: Any, symbol: str, after_date: str) -> Any:
+    """Next-session close after ``after_date`` for ``symbol`` (None if none)."""
+    try:
+        row = conn.execute(
+            "SELECT close FROM daily_price_delivery "
+            "WHERE symbol = ? AND date > ? ORDER BY date ASC LIMIT 1",
+            (symbol, after_date),
+        ).fetchone()
+    except Exception:
+        return None
+    return row["close"] if row else None
+
+
+def _track_material_rows(db: Any, day: str) -> List[Dict[str, Any]]:
+    """Material move_attribution rows for one closed date (symbol order)."""
+    try:
+        with db.session() as conn:
+            rows = conn.execute(
+                "SELECT * FROM move_attribution "
+                "WHERE attribution_date = ? AND is_material = 1 ORDER BY symbol ASC",
+                (day,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Track-record stage (closed-session attribution close-out)
+# ---------------------------------------------------------------------------
+def _run_track_record_stage(
+    db: Any,
+    eod_date: str,
+    universe: str,
+    move_attributor_obj: Any = None,
+    portfolio_ledger_obj: Any = None,
+    track_orchestrator_obj: Any = None,
+) -> Dict[str, Any]:
+    """Run the additive track_record step; raise on any sub-step failure."""
+    # (a) Attribute the closed EOD session (days=1 — one session, not a backfill).
+    if move_attributor_obj is None:
+        from reality_engine.processing import move_attributor as move_attributor_obj
+    attrib = move_attributor_obj.attribute_universe(universe, days=1, manager=db)
+
+    # (b) Resolve + record material rows with call-row terms (HOLDs too).
+    if portfolio_ledger_obj is None:
+        from reality_engine.processing import portfolio_ledger as portfolio_ledger_obj
+    orch = track_orchestrator_obj
+    if orch is None:
+        from reality_engine.agent.orchestrator import AgentOrchestrator
+        from reality_engine.db.repository import Repository
+
+        try:
+            orch = AgentOrchestrator(repository=Repository(db))
+        except Exception:
+            orch = AgentOrchestrator()
+    recorded = {"BUY": 0, "SELL": 0, "HOLD": 0}
+    for attr in _track_material_rows(db, eod_date):
+        symbol = str(attr.get("symbol") or "").strip().upper()
+        if not symbol:
+            continue
+        try:
+            with db.session() as conn:
+                call = _track_call_row(conn, symbol, eod_date)
+        except Exception:
+            continue
+        if call is None:
+            continue
+        try:
+            with db.session() as conn:
+                nxt = _track_next_close(conn, symbol, eod_date)
+        except Exception:
+            nxt = None
+        entry = _track_usable_price(nxt)
+        if entry is None:
+            entry = _track_usable_price(call.get("current_market_price"))
+        target = _track_usable_price(call.get("target_price"))
+        stop = _track_usable_price(call.get("stop_loss"))
+        if entry is None:
+            continue
+        try:
+            approved = int(call.get("is_solvency_approved") or 0)
+        except (TypeError, ValueError):
+            approved = 0
+        funda = {"forensic_solvency": {"is_solvency_approved": approved}}
+        try:
+            action, _block = orch._resolve_thesis_action(
+                symbol,
+                candidate_row={
+                    "symbol": symbol,
+                    "isin": str(call.get("isin") or ""),
+                },
+                attribution=attr,
+                attribution_date=eod_date,
+                funda=funda,
+            )
+        except Exception:
+            continue
+        if action not in ("BUY", "SELL", "HOLD"):
+            continue
+        try:
+            portfolio_ledger_obj.record_action(
+                symbol,
+                action,
+                eod_date,
+                entry,
+                target,
+                stop,
+                thesis_ref=f"nightly_track:{eod_date}",
+                manager=db,
+            )
+        except Exception:
+            continue
+        recorded[action] += 1
+
+    # (c) MTM + book summary at the closed session.
+    mtm = portfolio_ledger_obj.mark_to_market(eod_date, manager=db)
+    book_full = portfolio_ledger_obj.summarize(manager=db)
+    return {
+        "status": "ok",
+        "universe": universe,
+        "target_date": eod_date,
+        "attribution": {
+            "rows_written": int((attrib or {}).get("rows_written", 0)),
+            "material_count": int((attrib or {}).get("material_count", 0)),
+            "median_residual": float((attrib or {}).get("median_residual", 0.0)),
+        },
+        "recorded": recorded,
+        "mtm": {
+            "marked": int((mtm or {}).get("marked", 0)),
+            "closed": int((mtm or {}).get("closed", 0)),
+            "open_pnl_sum": float((mtm or {}).get("open_pnl_sum", 0.0)),
+        },
+        "book": {
+            "win_rate": (book_full or {}).get("win_rate"),
+            "mean_pnl": (book_full or {}).get("mean_pnl"),
+            "total_pnl": float((book_full or {}).get("total_pnl", 0.0)),
+        },
+    }
+
 # ---------------------------------------------------------------------------
 # Top-level orchestrator
 # ---------------------------------------------------------------------------
@@ -433,6 +616,9 @@ def run_nightly(
     orchestrator: Any = None,
     report_writer: Any = None,
     eod_corrector_obj: Any = None,
+    move_attributor_obj: Any = None,
+    portfolio_ledger_obj: Any = None,
+    track_orchestrator_obj: Any = None,
     log_dir: Optional[Path] = None,
     lock_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
@@ -741,6 +927,7 @@ def run_nightly(
                 stages[name] = {"status": "skipped", "reason": f"part={part}"}
 
         # ================= correct_validate =================
+        track_eod_date: Optional[str] = None
         if do_correct:
             try:
                 ec = eod_corrector_obj
@@ -751,6 +938,7 @@ def run_nightly(
                 # Closed-session anchor: latest price date carries rows by
                 # definition, so the corrector's guard stays intact.
                 eod_date = _resolve_target_date(db, date_iso)
+                track_eod_date = eod_date
                 res = ec.correct_eod(universe=universe, target_date=eod_date, dry_run=False)
                 stages["eod_correct"] = {
                     "status": "ok",
@@ -763,8 +951,25 @@ def run_nightly(
                 # Guard intact: intraday/missing dates raise ValueError here
                 # and surface as a failed stage (non-zero exit), never silent.
                 _mark_failed("eod_correct", exc)
+            # track_record runs even when eod_correct failed (sibling isolation —
+            # whole-stage try/except like every other stage; per-pair problems
+            # skip inside _run_track_record_stage), sharing the anchor on success.
+            try:
+                eod_date = track_eod_date or _resolve_target_date(db, date_iso)
+                track_orch = track_orchestrator_obj if track_orchestrator_obj is not None else orchestrator
+                stages["track_record"] = _run_track_record_stage(
+                    db,
+                    eod_date,
+                    universe,
+                    move_attributor_obj=move_attributor_obj,
+                    portfolio_ledger_obj=portfolio_ledger_obj,
+                    track_orchestrator_obj=track_orch,
+                )
+            except Exception as exc:
+                _mark_failed("track_record", exc)
         else:
             stages["eod_correct"] = {"status": "skipped", "reason": f"part={part}"}
+            stages["track_record"] = {"status": "skipped", "reason": f"part={part}"}
 
         counts_after = snapshot_counts(db) if do_fetch else dict(counts_before)
         row_deltas = diff_counts(counts_before, counts_after)
@@ -811,7 +1016,7 @@ def run_nightly(
 # ---------------------------------------------------------------------------
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Wave A unattended nightly chain: fetch -> predict -> correct."
+        description="Wave A unattended nightly chain: fetch -> predict -> correct -> track."
     )
     parser.add_argument("--dry-run", action="store_true", help="Plan stages, zero DB/network writes.")
     parser.add_argument(

@@ -94,7 +94,7 @@ class TestAgentAndReporting(unittest.TestCase):
     def test_02_tool_declarations_and_dispatcher(self):
         """Verifies function schemas and dynamic tool call routing."""
         declarations = get_tool_declarations()
-        self.assertEqual(len(declarations), 7)
+        self.assertEqual(len(declarations), 8)
         tool_names = [d["name"] for d in declarations]
         expected_tools = [
             "get_scrip_techno_delivery",
@@ -104,6 +104,7 @@ class TestAgentAndReporting(unittest.TestCase):
             "simulate_macro_shock",
             "trace_macro_causal_chain",
             "get_market_breadth_overview",
+            "get_entity_graph",
         ]
         for et in expected_tools:
             self.assertIn(et, tool_names)
@@ -121,9 +122,8 @@ class TestAgentAndReporting(unittest.TestCase):
         # Test error handling
         res_err = dispatch_tool_call("non_existent_tool", {})
         self.assertEqual(res_err["status"], "ERROR")
-
     def test_03_individual_tools_execution(self):
-        """Tests all 7 tools against the local database."""
+        """Tests all 8 tools against the local database."""
         # 1. Technical & Delivery
         t1 = get_scrip_techno_delivery("HAL", lookback_days=10)
         self.assertEqual(t1["status"], "SUCCESS")
@@ -160,6 +160,23 @@ class TestAgentAndReporting(unittest.TestCase):
         t7 = get_market_breadth_overview()
         self.assertGreater(t7["total_traded_stocks"], 0)
         self.assertGreater(t7["advance_decline_ratio"], 0)
+
+        # 8. Entity graph: company view (deterministic read over materialised edges)
+        t8 = dispatch_tool_call("get_entity_graph", {"symbol": "HAL", "top_k": 8})
+        self.assertEqual(t8["symbol"], "HAL")
+        self.assertIn(t8["status"], ("OK", "NO_ANALOGUES"))
+        if t8["status"] == "OK":
+            self.assertGreaterEqual(len(t8["edges"]), 1)
+            fams = {e["family"] for e in t8["edges"]}
+            self.assertTrue(fams & {"financial_analog", "business_analog", "sector", "policy", "supply"})
+
+        # 8b. Entity graph: theme view (mailroom-sorted policy exposure)
+        t8b = dispatch_tool_call("get_entity_graph", {
+            "theme_kind": "theme_policy", "theme_key": "Defence Indigenization DAP", "top_k": 5})
+        self.assertIn(t8b["status"], ("OK", "NO_MATCHES"))
+        if t8b["status"] == "OK":
+            self.assertGreaterEqual(len(t8b["companies"]), 1)
+            self.assertIn("HAL", [c["symbol"] for c in t8b["companies"]])
 
     def test_04_agent_orchestrator_synthesis(self):
         """Tests end-to-end report synthesis by AgentOrchestrator."""

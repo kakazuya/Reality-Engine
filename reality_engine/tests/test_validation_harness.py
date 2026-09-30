@@ -20,15 +20,32 @@ import unittest
 from datetime import date, timedelta
 from pathlib import Path
 
-from reality_engine.db.database import DatabaseManager
-from reality_engine.db.repository import Repository
-from reality_engine.processing.ensemble_ranker import EnsembleRanker
-from reality_engine.processing.validation_harness import (
+# Singleton isolation (repo convention: test_factor_spine.py:36-48,
+# test_onnx_embedder.py:21-24, test_offer_backfill.py:21-24, ...).
+# reality_engine/db/database.py:639 runs `db_manager = DatabaseManager()` at
+# IMPORT time, and DatabaseManager.__init__ -> init_db() applies PRAGMAs and
+# CREATE TABLE IF NOT EXISTS (database.py:94, :635) to config.DB_PATH. Without
+# this redirect, merely importing reality_engine.db.database below writes to the
+# live reality_engine/data/equity_intelligence.db -- a setUpModule singleton
+# swap is too late, it runs after the import-time write has already happened.
+# Must be set BEFORE any reality_engine import; config.py:14 honours it.
+_TEMP_DB_DIR = tempfile.mkdtemp(prefix="reality_validation_harness_test_db_")
+os.environ.setdefault(
+    "REALITY_ENGINE_DB_PATH", str(Path(_TEMP_DB_DIR) / "singleton_isolated.db")
+)
+
+from reality_engine.db.database import DatabaseManager  # noqa: E402
+from reality_engine.db.repository import Repository  # noqa: E402
+from reality_engine.processing.ensemble_ranker import EnsembleRanker  # noqa: E402
+from reality_engine.processing.validation_harness import (  # noqa: E402
     EXPLAIN_FLOOR,
     ValidationHarness,
     fit_lens_weights,
 )
-from reality_engine.reporting.notifier import format_nightly_digest, send_telegram
+from reality_engine.reporting.notifier import (  # noqa: E402
+    format_nightly_digest,
+    send_telegram,
+)
 
 
 def _mk_mgr():

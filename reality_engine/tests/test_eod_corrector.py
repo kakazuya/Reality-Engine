@@ -66,11 +66,16 @@ class EODCorrectorTestBase(unittest.TestCase):
         self._fh.close()
         self.mgr = DatabaseManager(Path(self._fh.name))  # runs schema.sql
         self.repo = Repository(self.mgr)
+        # Ripple table FIRST: ensure_eod_corrector_schema ALTERs revision_count /
+        # last_revised_at onto it, which only works when the table already exists.
+        self.repo.ensure_ripple_effects_schema(self.mgr)
         self.repo.ensure_eod_corrector_schema(self.mgr)
         self.repo.ensure_ensemble_ranking_schema(self.mgr)
         self.repo.ensure_moat_schema(self.mgr)
-        # ripple_effects + macro_events for event tests
-        self.repo.ensure_ripple_effects_schema(self.mgr)
+        self.repo.ensure_financial_metrics_schema(self.mgr)
+        self.repo.ensure_regulatory_political_risks_schema(self.mgr)
+        self.repo.ensure_substrate_history_schema(self.mgr)
+        # macro_events for event tests
         self.repo.ensure_macro_event_doc_id(self.mgr)
         self.corrector = EODCorrector(self.mgr)
         self.ranker = EnsembleRanker(self.mgr)
@@ -311,6 +316,241 @@ class TestCLIDispatchers(EODCorrectorTestBase):
         finally:
             ec._default_corrector = orig
         self.assertEqual(res["symbols_corrected"], 1)
+class TestDatedPredictorHonesty(EODCorrectorTestBase):
+    """Goal-loop iteration 3: LEVELS GATE, FLOWS VOTE (dated deltas + momentum only).
+
+    Dated quality/policy predictors return 0 on static fixtures (levels are
+    state, not news); dated supply votes only on genuine same-session ripple
+    arrivals; undated (None) calls keep legacy level behavior for
+    competitive-survival re-ranking; factor momentum is untouched.
+    """
+
+    def _seed_static_substrate(self, sym="HAL", isin="INEH", score=4.0,
+                               significance=80.0, severity=2.0, prob=0.9):
+        with self.mgr.session() as conn:
+            _insert_company(conn, sym, isin, 1)
+            _insert_price(conn, sym, isin, "2026-08-26", 100.0, 98.0, turnover=300.0)
+            _insert_price(conn, sym, isin, "2026-08-27", 98.0, 102.0, turnover=300.0)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO moat_evaluations
+                    (company_id, ticker, total_moat_score, moat_trajectory)
+                VALUES ((SELECT rowid FROM master_companies WHERE nse_symbol=?), ?, ?, 'Expanding')
+                """,
+                (sym, sym, float(score)),
+            )
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO financial_metrics
+                    (company_id, isin, symbol, fiscal_year, roic, wacc,
+                     roic_wacc_spread, fcf_margin, debt_to_ebitda, gross_margin_peer_percentile)
+                VALUES ((SELECT rowid FROM master_companies WHERE nse_symbol=?), ?, ?, 2025,
+                        0.15, 0.10, 0.05, 0.12, 1.0, 70)
+                """,
+                (sym, isin, sym),
+            )
+            conn.execute(
+                """
+                INSERT INTO regulatory_political_risks
+                    (company_id, ticker, symbol, policy_name, risk_type, factor_type,
+                     severity_score, probability, net_impact_score, coverage_status)
+                VALUES ((SELECT rowid FROM master_companies WHERE nse_symbol=?), ?, ?, 'POLICY_A',
+                        'Tailwind', 'Tariff', ?, ?, ?, 'mapped')
+                """,
+                (sym, sym, sym, float(severity), float(prob), float(severity) * float(prob)),
+            )
+            conn.execute(
+                """
+                INSERT INTO ripple_effects
+                    (event_id, target_company_id, order_level, significance_rank,
+                     transmission_elasticity, raw_magnitude, probability, lag_time_months,
+                     created_at)
+                VALUES ('OLD_EVENT',
+                        (SELECT rowid FROM master_companies WHERE nse_symbol=?),
+                        1, ?, 1.0, 0.10, 0.9, 0, '2026-01-05 09:00:00')
+                """,
+                (sym, float(significance)),
+            )
+
+    def test_dated_quality_policy_supply_return_zero_on_static_fixtures(self):
+        self._seed_static_substrate()
+        # Sanity: undated level behavior still votes (backward compat baseline).
+        self.assertEqual(self.corrector._predict_quality("HAL"), 1)
+        self.assertEqual(self.corrector._predict_policy("HAL"), 1)
+        self.assertEqual(self.corrector._predict_supply("HAL"), 1)
+        # Dated: static stale substrate is state, not news -> all three vote 0.
+        self.assertEqual(self.corrector._predict_quality("HAL", "2026-08-27"), 0)
+        self.assertEqual(self.corrector._predict_policy("HAL", "2026-08-27"), 0)
+        self.assertEqual(self.corrector._predict_supply("HAL", "2026-08-27"), 0)
+
+    def test_dated_supply_votes_on_fresh_arrival_ripple(self):
+        self._seed_static_substrate()
+        with self.mgr.session() as conn:
+            conn.execute(
+                """
+                INSERT INTO ripple_effects
+                    (event_id, target_company_id, order_level, significance_rank,
+                     transmission_elasticity, raw_magnitude, probability, lag_time_months,
+                     created_at)
+                VALUES ('FRESH_EVENT',
+                        (SELECT rowid FROM master_companies WHERE nse_symbol=?),
+                        1, 80.0, 1.0, 0.10, 0.9, 0, '2026-08-27 10:15:00')
+                """,
+                ("HAL",),
+            )
+        # Fresh same-session arrival votes by sign(significance - 50) = +1.
+        self.assertEqual(self.corrector._predict_supply("HAL", "2026-08-27"), 1)
+        # ... but not for a different session date (no arrival that day).
+        self.assertEqual(self.corrector._predict_supply("HAL", "2026-08-28"), 0)
+        # Quality/policy still vote 0 even with fresh supply (levels never vote dated).
+        self.assertEqual(self.corrector._predict_quality("HAL", "2026-08-27"), 0)
+        self.assertEqual(self.corrector._predict_policy("HAL", "2026-08-27"), 0)
+
+    def test_dated_supply_votes_on_revised_ripple(self):
+        self._seed_static_substrate()
+        with self.mgr.session() as conn:
+            conn.execute(
+                """
+                UPDATE ripple_effects SET last_revised_at = '2026-08-27 15:30:00'
+                WHERE event_id = 'OLD_EVENT'
+                """,
+            )
+        # Same-session revision is a genuine flow -> votes +1 (significance 80).
+        self.assertEqual(self.corrector._predict_supply("HAL", "2026-08-27"), 1)
+
+    def test_undated_backward_compat_preserved(self):
+        self._seed_static_substrate()
+        # None-date keeps legacy level semantics for existing callers
+        # (competitive-survival re-ranking path).
+        self.assertEqual(self.corrector._predict_quality("HAL", None), 1)
+        self.assertEqual(self.corrector._predict_policy("HAL", None), 1)
+    def test_factor_momentum_untouched(self):
+        self._seed_static_substrate()
+        # Prior-day momentum is already a flow: down day -> -1, unaffected by dating.
+        self.assertEqual(self.corrector._predict_factor("HAL", -2.0), -1)
+        self.assertEqual(self.corrector._predict_factor("HAL", 1.5), 1)
+        # No explicit prior: falls back to price history; whatever history says,
+        # the explicit-prev contract above is what attribution consumes. Here the
+        # history DataFrame path yields a defined int (no crash, no None-date gap).
+        hist_val = self.corrector._predict_factor("HAL", None)
+        self.assertIn(hist_val, (-1, 0, 1))
+
+
+class TestSubstrateHistoryDeltaVotes(EODCorrectorTestBase):
+    """P0b peers-speak: dated deltas vote -1/+1/0 on fixed fixtures; levels gate."""
+
+    def _seed_company(self, sym="HAL", isin="INEH"):
+        with self.mgr.session() as conn:
+            _insert_company(conn, sym, isin, 1)
+            _insert_price(conn, sym, isin, "2026-08-26", 100.0, 98.0, turnover=300.0)
+            _insert_price(conn, sym, isin, "2026-08-27", 98.0, 102.0, turnover=300.0)
+
+    def test_quality_history_write_and_delta_votes(self):
+        self._seed_company()
+        self.repo.upsert_moat_evaluation(
+            ticker="HAL", switching_costs=2, network_effects=2, cost_advantage=2,
+            intangible_assets=2, efficient_scale=2, moat_trajectory="Stable", isin="INEH")
+        with self.mgr.session() as conn:
+            conn.execute("UPDATE moat_history SET asof_date='2026-08-20' WHERE symbol='HAL'")
+        self.repo.upsert_moat_evaluation(
+            ticker="HAL", switching_costs=5, network_effects=5, cost_advantage=5,
+            intangible_assets=5, efficient_scale=5, moat_trajectory="Expanding", isin="INEH")
+        with self.mgr.session() as conn:
+            rows = conn.execute("SELECT * FROM moat_history WHERE symbol='HAL'").fetchall()
+            self.assertGreaterEqual(len(rows), 1)
+            conn.execute("UPDATE moat_history SET asof_date='2026-08-26' WHERE symbol='HAL' AND moat_score >= 4.5")
+        self.assertEqual(self.corrector._predict_quality("HAL", "2026-08-27"), 1)
+        self.assertEqual(self.corrector._predict_quality("HAL"), 1)
+        with self.mgr.session() as conn:
+            conn.execute("DELETE FROM moat_history WHERE symbol='HAL' AND asof_date='2026-08-26'")
+            conn.execute("INSERT INTO moat_history (symbol, asof_date, moat_score, moat_width, trajectory, source) "
+                         "VALUES ('HAL', '2026-08-26', 2.0, 'None', 'Stable', 'test')")
+            conn.execute("INSERT INTO moat_history (symbol, asof_date, moat_score, moat_width, trajectory, source) "
+                         "VALUES ('HAL', '2026-08-28', 1.0, 'None', 'Deteriorating', 'test')")
+        self.assertEqual(self.corrector._predict_quality("HAL", "2026-08-28"), -1)
+        with self.mgr.session() as conn:
+            conn.execute("DELETE FROM moat_history WHERE symbol='HAL' AND asof_date='2026-08-28'")
+            conn.execute("INSERT INTO moat_history (symbol, asof_date, moat_score, moat_width, trajectory, source) "
+                         "VALUES ('HAL', '2026-08-28', 2.0, 'None', 'Stable', 'test')")
+        self.assertEqual(self.corrector._predict_quality("HAL", "2026-08-28"), 0)
+
+    def test_policy_history_write_and_delta_votes(self):
+        self._seed_company()
+        self.repo.upsert_regulatory_political_risk(
+            symbol="HAL", policy_name="POLICY_A", severity_score=1.0, probability=0.5, coverage_status="mapped")
+        with self.mgr.session() as conn:
+            conn.execute("UPDATE policy_eni_history SET asof_date='2026-08-20' WHERE symbol='HAL'")
+        self.repo.upsert_regulatory_political_risk(
+            symbol="HAL", policy_name="POLICY_A", severity_score=4.0, probability=0.9, coverage_status="mapped")
+        with self.mgr.session() as conn:
+            rows = conn.execute("SELECT * FROM policy_eni_history WHERE symbol='HAL'").fetchall()
+            self.assertGreaterEqual(len(rows), 1)
+            conn.execute("UPDATE policy_eni_history SET asof_date='2026-08-26' WHERE symbol='HAL' AND net_impact_score > 1.0")
+        self.assertEqual(self.corrector._predict_policy("HAL", "2026-08-27"), 1)
+        self.assertEqual(self.corrector._predict_policy("HAL"), 1)
+        with self.mgr.session() as conn:
+            conn.execute("DELETE FROM policy_eni_history WHERE symbol='HAL' AND asof_date='2026-08-26'")
+            conn.execute("INSERT INTO policy_eni_history (symbol, policy_name, asof_date, net_impact_score, severity, source) "
+                         "VALUES ('HAL', 'POLICY_A', '2026-08-26', 3.6, 4.0, 'test')")
+            conn.execute("INSERT INTO policy_eni_history (symbol, policy_name, asof_date, net_impact_score, severity, source) "
+                         "VALUES ('HAL', 'POLICY_A', '2026-08-28', -3.6, -4.0, 'test')")
+        self.assertEqual(self.corrector._predict_policy("HAL", "2026-08-28"), -1)
+        with self.mgr.session() as conn:
+            conn.execute("DELETE FROM policy_eni_history WHERE symbol='HAL' AND asof_date='2026-08-28'")
+            conn.execute("INSERT INTO policy_eni_history (symbol, policy_name, asof_date, net_impact_score, severity, source) "
+                         "VALUES ('HAL', 'POLICY_A', '2026-08-28', 3.6, 4.0, 'test')")
+        self.assertEqual(self.corrector._predict_policy("HAL", "2026-08-28"), 0)
+
+    def test_supply_history_revision_delta_votes(self):
+        self._seed_company()
+        with self.mgr.session() as conn:
+            conn.execute(
+                "INSERT INTO financial_metrics (company_id, isin, symbol, fiscal_year, roic, wacc, "
+                "roic_wacc_spread, fcf_margin, debt_to_ebitda, gross_margin_peer_percentile) "
+                "VALUES ((SELECT rowid FROM master_companies WHERE nse_symbol='HAL'), 'INEH', 'HAL', 2025, "
+                "0.15, 0.10, 0.05, 0.12, 1.0, 70)")
+            conn.execute(
+                "INSERT INTO moat_evaluations (company_id, ticker, total_moat_score, moat_trajectory) "
+                "VALUES ((SELECT rowid FROM master_companies WHERE nse_symbol='HAL'), 'HAL', 4.0, 'Expanding')")
+        n = self.repo.upsert_ripple_effects("EV1", [
+            {"order_level": 1, "target_company_id": 1, "transmission_channel": "direct",
+             "significance_rank": 80.0, "transmission_elasticity": 1.0,
+             "raw_magnitude": 0.5, "probability": 0.9, "lag_time_months": 0},
+            {"order_level": 2, "target_company_id": 1, "transmission_channel": "direct",
+             "significance_rank": 70.0, "transmission_elasticity": 1.0,
+             "raw_magnitude": 0.4, "probability": 0.8, "lag_time_months": 0},
+        ])
+        self.assertEqual(n, 2)
+        with self.mgr.session() as conn:
+            hist = conn.execute("SELECT * FROM ripple_history").fetchall()
+            self.assertGreaterEqual(len(hist), 2)
+            conn.execute("UPDATE ripple_history SET asof_date='2026-08-20'")
+        rev = self.repo.apply_event_revision("EV1", manager=self.mgr)
+        self.assertGreaterEqual(rev["n_revised"], 1)
+        # Day-one revision snapshot lands fresh: revision-delta votes (no
+        # same-session arrival on 2026-08-27, so this is the history vote).
+        self.assertEqual(self.corrector._supply_session_arrival("HAL", "2026-08-27"), 0)
+        self.assertNotEqual(self.corrector._ripple_significance_delta("HAL", "2026-08-27"), 0.0)
+        self.assertIn(self.corrector._predict_supply("HAL", "2026-08-27"), (-1, 1))
+        self.assertEqual(self.corrector._predict_supply("HAL"), 1)
+
+    def test_stale_levels_never_vote_dated(self):
+        # High moat / positive ENI / high significance with no dated history:
+        # legacy undated levels vote +1, but dated predictors vote 0.
+        self._seed_company()
+        with self.mgr.session() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO moat_evaluations (company_id, ticker, total_moat_score, moat_trajectory) "
+                "VALUES ((SELECT rowid FROM master_companies WHERE nse_symbol='HAL'), 'HAL', 4.0, 'Expanding')")
+            conn.execute(
+                "INSERT INTO regulatory_political_risks (company_id, ticker, symbol, policy_name, risk_type, factor_type, "
+                "severity_score, probability, net_impact_score, coverage_status) "
+                "VALUES ((SELECT rowid FROM master_companies WHERE nse_symbol='HAL'), 'HAL', 'HAL', 'POLICY_A', "
+                "'Tailwind', 'Tariff', 2.0, 0.9, 1.8, 'mapped')")
+        self.assertEqual(self.corrector._predict_quality("HAL"), 1)
+        self.assertEqual(self.corrector._predict_policy("HAL"), 1)
+        self.assertEqual(self.corrector._predict_quality("HAL", "2026-08-27"), 0)
+        self.assertEqual(self.corrector._predict_policy("HAL", "2026-08-27"), 0)
 
 
 if __name__ == "__main__":

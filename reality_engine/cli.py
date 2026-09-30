@@ -856,28 +856,45 @@ def cmd_embed_status(args):
 def cmd_reembed_chunks(args):
     """Re-embed document_chunks rows with the ONNX backend (batched, idempotent).
 
-    Default scope is OFFER_DOCUMENT rows whose embedding is missing or looks
-    like the 384-dim hash fallback. --all extends to every chunk row.
-    --limit caps rows per run; re-runs resume (completed rows are skipped).
+    Scope defaults to OFFER_DOCUMENT; ``--source-type ALL`` covers every family.
+    Only rows whose embedding is MISSING or empty are touched (the previous
+    implementation re-embedded the entire scope regardless, which silently meant
+    220k+ chunk inferences where the docstring promised a gap fill).
+    ``--force`` re-embeds in-scope rows even when an embedding exists.
+    ``--limit`` caps rows per run; re-runs resume because completed rows no longer
+    match the filter.
     """
     import json as _json
     from reality_engine.db.database import db_manager
     from reality_engine.db.vector_store import VectorStoreManager
     limit = int(getattr(args, "limit", 0) or 0)
     scope_all = bool(getattr(args, "all", False))
+    force = bool(getattr(args, "force", False))
+    source_type = str(getattr(args, "source_type", "") or "").strip()
     batch = int(getattr(args, "batch", 64) or 64)
     vs = VectorStoreManager()
-    where = "" if scope_all else "WHERE rd.source_type = 'OFFER_DOCUMENT'"
+
+    clauses = ["dc.content IS NOT NULL", "dc.content <> ''"]
+    params: list = []
+    if not scope_all:
+        clauses.append("rd.source_type = ?")
+        params.append(source_type or "OFFER_DOCUMENT")
+    elif source_type and source_type.upper() != "ALL":
+        clauses.append("rd.source_type = ?")
+        params.append(source_type)
+    if not force:
+        clauses.append("(dc.embedding IS NULL OR dc.embedding = '')")
+    where = "WHERE " + " AND ".join(clauses)
+
     with db_manager.session() as conn:
         rows = conn.execute(
             "SELECT dc.chunk_id, dc.content FROM document_chunks dc "
             "JOIN raw_documents rd ON dc.doc_id = rd.doc_id "
-            f"{where} ORDER BY dc.chunk_id",  # nosec - where is a static literal
+            f"{where} ORDER BY dc.chunk_id",  # nosec - clauses are static literals
+            tuple(params),
         ).fetchall()
     todo = []
     for cid, content in rows:
-        if not content:
-            continue
         todo.append((cid, content))
         if limit and len(todo) >= limit:
             break
@@ -911,21 +928,22 @@ def _llm_paths():
     from pathlib import Path as _P
     from reality_engine import config as _cfg
     bindir = _P(_cfg.DATA_DIR) / "llama-bonsai"
-    modeldir = _P(_cfg.DATA_DIR) / "models" / "bonsai-27b"
+    modelsdir = _P(_cfg.DATA_DIR) / "models"
     server = bindir / "llama-server.exe"
-    gguf = modeldir / LLM_FILENAME
-    cached = list(modeldir.glob(f"**/{LLM_FILENAME}"))
-    if not gguf.exists() and cached:
-        gguf = cached[0]
+    gguf = modelsdir / "bonsai-27b-v1" / LLM_FILENAME
+    cached = sorted(modelsdir.glob("**/*.gguf"))
+    preferred = [p for p in cached if "bonsai" in p.name.lower()] or cached
+    if not gguf.exists() and preferred:
+        gguf = preferred[0]
     return server, gguf
 
 
 def cmd_llm_setup(args):
-    """Download the Bonsai PQ2_0 GGUF model (~6.7 GB) into data/models (resumable)."""
+    """Download the Bonsai GGUF model into data/models/bonsai-27b-v1 (resumable)."""
     from huggingface_hub import hf_hub_download
     from pathlib import Path as _P
     from reality_engine import config as _cfg
-    dest = _P(_cfg.DATA_DIR) / "models" / "bonsai-27b"
+    dest = _P(_cfg.DATA_DIR) / "models" / "bonsai-27b-v1"
     dest.mkdir(parents=True, exist_ok=True)
     target = dest / LLM_FILENAME
     if target.exists() and target.stat().st_size > 5_000_000_000:
@@ -953,14 +971,15 @@ def cmd_llm_serve(args):
         print(json.dumps({"ok": False, "error": f"missing model; run `cli.py llm-setup` first"}, indent=2))
         return
     port = int(getattr(args, "port", LLM_DEFAULT_PORT) or LLM_DEFAULT_PORT)
-    ctx = max(32768, int(getattr(args, "ctx", 32768) or 32768))
+    ctx = int(getattr(args, "ctx", 16384) or 16384)
+    threads = int(getattr(args, "threads", 8) or 8)
     import subprocess
     log_path = _llm_paths()[0].parent / f"llama-server-{port}.log"
     with open(log_path, "ab") as logfh:
         proc = subprocess.Popen(
             [str(server), "--model", str(gguf), "--host", "127.0.0.1",
              "--port", str(port), "--ctx-size", str(ctx), "--n-gpu-layers", "99",
-             "--device", "Vulkan0", "--jinja", "--threads", "-1",
+             "--device", "Vulkan0", "--jinja", "--threads", str(threads),
              "--load-mode", "mmap", "--reasoning-budget", "512",
              "--temp", "0.5", "--top-p", "0.85", "--top-k", "20", "--min-p", "0.0"],
             stdout=logfh, stderr=subprocess.STDOUT,
@@ -2397,6 +2416,151 @@ def cmd_news_images(args):
     _capture_news_images(records, limit=limit, keep_files=keep_files)
 
 
+def cmd_attribute_move(args):
+    """Attribute one move or backfill a universe window (Slice 1 entry points).
+
+    Single: ``attribute-move --symbol X --date YYYY-MM-DD`` calls
+    ``attribute_move`` and prints realized/floor/material + 4x(dir x w x share)
+    + explained/residual as JSON. Batch: with ``--universe`` +
+    ``--universe-days N`` runs ``attribute_universe`` and prints the summary.
+    Lazy imports; prints ``{"ok": False, "error": "unavailable"}`` when the
+    module is absent. No other CLI regions touched.
+    """
+    try:
+        from reality_engine.processing import move_attributor as _ma
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": "unavailable", "detail": str(exc)}))
+        return
+    universe = getattr(args, "universe", None)
+    universe_days = getattr(args, "universe_days", None)
+    if universe or universe_days is not None:
+        try:
+            days = int(universe_days if universe_days is not None else 25)
+        except (TypeError, ValueError):
+            days = 25
+        try:
+            summary = _ma.attribute_universe(universe=universe or "nifty200", days=days)
+        except Exception as exc:
+            print(json.dumps({"ok": False, "error": "unavailable", "detail": str(exc)}))
+            return
+        print(json.dumps({"ok": True, **summary}, indent=2, default=str))
+        return
+    symbol = str(getattr(args, "symbol", "") or "").upper().strip()
+    date = str(getattr(args, "date", "") or "").strip()
+    if not symbol or not date:
+        print(json.dumps({"ok": False, "error": "unavailable", "detail": "attribute-move requires --symbol and --date, or --universe/--universe-days"}))
+        return
+    try:
+        row = _ma.attribute_move(symbol, date)
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": "unavailable", "detail": str(exc)}))
+        return
+    try:
+        fams = tuple(_ma.LENS_FAMILIES)
+    except Exception:
+        fams = ("factor_statistical", "business_quality", "policy_macro", "supply_chain")
+    payload = {
+        "ok": True,
+        "symbol": row.get("symbol", symbol),
+        "date": row.get("attribution_date", date),
+        "realized_move_pct": row.get("realized_move_pct"),
+        "noise_floor": row.get("noise_floor"),
+        "is_material": row.get("is_material"),
+        "explained_total": row.get("explained_total"),
+        "residual": row.get("residual"),
+        "per_lens": [
+            {
+                "family": fam,
+                "predicted_direction": row.get(f"lens_{fam}_dir"),
+                "weight": row.get(f"lens_{fam}_w"),
+                "share": row.get(f"lens_{fam}_share"),
+            }
+            for fam in fams
+        ],
+        "investor_majority": row.get("investor_majority"),
+        "regime_tag": row.get("regime_tag"),
+    }
+    print(json.dumps(payload, indent=2, default=str))
+
+
+def _parse_ledger_horizons(raw: object) -> tuple:
+    """Parse '--horizons 30,90,180,365' -> (30, 90, 180, 365). None -> defaults."""
+    if raw is None:
+        from reality_engine.processing.portfolio_ledger import HORIZON_DEFAULTS
+        return HORIZON_DEFAULTS
+    parts = [p.strip() for p in str(raw).split(",") if p.strip()]
+    if not parts:
+        raise ValueError("portfolio-ledger: --horizons needs at least one horizon, got %r" % (raw,))
+    out = tuple(int(p) for p in parts)
+    if any(h <= 0 for h in out):
+        raise ValueError("portfolio-ledger: --horizons must be positive ints, got %r" % (raw,))
+    return out
+
+
+def _parse_ledger_universes(raw: object):
+    """Parse '--universes nifty50,midcap150,...' -> [keys]. None -> all four."""
+    if raw is None:
+        return None
+    parts = [p.strip() for p in str(raw).split(",") if p.strip()]
+    if not parts:
+        raise ValueError("portfolio-ledger: --universes needs at least one universe, got %r" % (raw,))
+    return parts
+
+
+def cmd_portfolio_ledger(args):
+    """Show open actions with mark-to-market vs forward close (thin stub).
+
+    Default (no --horizons/--universes): today's summarize output, unchanged.
+    Flagged: horizon-excess 4x4 table JSON with weekly cohort detail.
+    """
+    try:
+        from reality_engine.processing import portfolio_ledger as _pl
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": "unavailable", "detail": str(exc)}))
+        return
+    try:
+        horizons_raw = getattr(args, "horizons", None)
+        universes_raw = getattr(args, "universes", None)
+        if horizons_raw is not None or universes_raw is not None:
+            try:
+                horizons = _parse_ledger_horizons(horizons_raw)
+                universes = _parse_ledger_universes(universes_raw)
+                table = _pl.excess_table(
+                    horizons=horizons, universes=universes)
+            except Exception as exc:
+                print(json.dumps({"ok": False, "error": "unavailable", "detail": str(exc)}))
+                return
+            print(json.dumps({"ok": True, **table}, indent=2, default=str))
+            return
+        asof = getattr(args, "asof", None) or getattr(args, "date", None)
+        summary = _pl.summarize()
+        payload = {"ok": True, **summary}
+        if asof:
+            try:
+                payload["mark_to_market"] = _pl.mark_to_market(str(asof))
+            except Exception as exc:
+                payload["mark_to_market"] = {"ok": False, "error": "unavailable", "detail": str(exc)}
+        print(json.dumps(payload, indent=2, default=str))
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": "unavailable", "detail": str(exc)}))
+
+
+def cmd_run_calibration(args):
+    """Run one attribution-calibration round (thin stub over Slice 3)."""
+    try:
+        from reality_engine.processing import portfolio_ledger as _pl
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": "unavailable", "detail": str(exc)}))
+        return
+    try:
+        mode = str(getattr(args, "mode", "ensemble") or "ensemble")
+        horizon = int(getattr(args, "horizon_days", 5) or 5)
+        result = _pl.run_attribution_calibration(mode=mode, horizon_days=horizon)
+        print(json.dumps({"ok": True, **result}, indent=2, default=str))
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": "unavailable", "detail": str(exc)}))
+
+
 # ====================================================================
 # CLI Parser Setup
 # ====================================================================
@@ -2597,6 +2761,10 @@ def main():
         help="Re-embed document_chunks with the ONNX backend (batched, resume-safe)",
     )
     p_re.add_argument("--all", action="store_true", default=False, help="All chunks (default: OFFER_DOCUMENT only)")
+    p_re.add_argument("--source-type", dest="source_type", type=str, default="OFFER_DOCUMENT",
+                      help="raw_documents.source_type to scope (use ALL with --all for every family)")
+    p_re.add_argument("--force", action="store_true", default=False,
+                      help="Re-embed rows that already have an embedding (default: only fill gaps)")
     p_re.add_argument("--limit", type=int, default=0, help="Cap rows per run (0=all)")
     p_re.add_argument("--batch", type=int, default=64, help="ONNX batch size (default: 64)")
     p_re.set_defaults(func=cmd_reembed_chunks)
@@ -2604,7 +2772,7 @@ def main():
     # local LLM lens backend (llama.cpp Vulkan server + GGUF model)
     p_ls = subparsers.add_parser(
         "llm-setup",
-        help="Download the Bonsai PQ2_0 GGUF model (~6.7 GB) into data/models",
+        help="Download the Bonsai GGUF model into data/models/bonsai-27b-v1",
     )
     p_ls.set_defaults(func=cmd_llm_setup)
     p_srv = subparsers.add_parser(
@@ -2612,7 +2780,8 @@ def main():
         help="Start llama-server (Vulkan, full GPU offload) as a supervised process",
     )
     p_srv.add_argument("--port", type=int, default=8080, help="Server port (default: 8080)")
-    p_srv.add_argument("--ctx", type=int, default=32768, help="Context size (floor: 32768)")
+    p_srv.add_argument("--ctx", type=int, default=16384, help="Context size (default: 16384)")
+    p_srv.add_argument("--threads", type=int, default=8, help="CPU threads (default: 8)")
     p_srv.set_defaults(func=cmd_llm_serve)
     p_st = subparsers.add_parser(
         "llm-status",
@@ -3091,6 +3260,41 @@ def main():
              "so the image is re-fetchable from the publisher CDN at any time",
     )
     p_ni.set_defaults(func=cmd_news_images)
+
+    # 47. attribute-move (Slice 2: single + batch backfill in one verb)
+    p_am = subparsers.add_parser(
+        "attribute-move",
+        help="Attribute one (symbol, date) move or backfill a universe window",
+    )
+    p_am.add_argument("--symbol", type=str, default=None, help="Ticker symbol e.g. HAL")
+    p_am.add_argument("--date", type=str, default=None, help="Closed EOD date YYYY-MM-DD")
+    p_am.add_argument("--universe", type=str, default=None, help="Batch universe e.g. nifty200")
+    p_am.add_argument("--universe-days", type=int, default=None, dest="universe_days",
+                      help="Batch window: last N closed EOD sessions (default: 25)")
+    p_am.set_defaults(func=cmd_attribute_move)
+
+    # 48. portfolio-ledger (Slice 3 stub: open actions with MTM)
+    p_pled = subparsers.add_parser(
+        "portfolio-ledger",
+        help="Show open actions with mark-to-market vs forward close",
+    )
+    p_pled.add_argument("--asof", type=str, default=None, help="MTM as-of date YYYY-MM-DD")
+    p_pled.add_argument("--date", type=str, default=None, help="Alias for --asof")
+    p_pled.add_argument("--horizons", type=str, default=None,
+                        help="Horizon-excess table: comma horizons e.g. 30,90,180,365")
+    p_pled.add_argument("--universes", type=str, default=None,
+                        help="Horizon-excess table: comma universes e.g. nifty50,midcap150,smallcap250,microcap250")
+    p_pled.set_defaults(func=cmd_portfolio_ledger)
+
+    # 49. run-calibration (Slice 3 stub: one attribution-calibration round)
+    p_cal = subparsers.add_parser(
+        "run-calibration",
+        help="Run one attribution-calibration round (gated learned weights)",
+    )
+    p_cal.add_argument("--mode", type=str, default="ensemble", help="Calibration mode (default: ensemble)")
+    p_cal.add_argument("--horizon-days", type=int, default=5, dest="horizon_days",
+                       help="Forward horizon in sessions (default: 5)")
+    p_cal.set_defaults(func=cmd_run_calibration)
 
     parsed_args = parser.parse_args()
     if not parsed_args.command:

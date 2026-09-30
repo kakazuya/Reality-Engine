@@ -2,9 +2,8 @@ $ErrorActionPreference = "Stop"
 
 $Url  = "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10685-7dffb15/llama-prism-b10685-7dffb15-bin-win-vulkan-x64.zip"
 $Zip  = Join-Path $env:USERPROFILE "Downloads\llama-prism-b10685-7dffb15-bin-win-vulkan-x64.zip"
-$Dest = "C:\Users\warri\prism-llama-bonsai2"
-$MODEL  = "C:\Users\warri\.lmstudio\models\prism-ml\Ternary-Bonsai-2-27B-gguf\Ternary-Bonsai-2-27B-PTQ1_0.gguf"
-$MMPROJ = "C:\Users\warri\.lmstudio\models\prism-ml\Ternary-Bonsai-2-27B-gguf\Ternary-Bonsai-2-27B-mmproj-BF16.gguf"
+$Dest = "reality_engine/data/llama-bonsai"
+$MODEL  = "reality_engine/data/models/bonsai-27b-v1/Ternary-Bonsai-27B-Q2_g64.gguf"
 
 Write-Host "URL : $Url"
 Write-Host "ZIP : $Zip"
@@ -54,7 +53,6 @@ Write-Host "BIN: $BIN"
 # 4) Verify
 Write-Host ("Test-Path BIN    ({0}): {1}" -f $BIN, (Test-Path $BIN))
 Write-Host ("Test-Path MODEL  ({0}): {1}" -f $MODEL, (Test-Path -LiteralPath $MODEL))
-Write-Host ("Test-Path MMPROJ ({0}): {1}" -f $MMPROJ, (Test-Path -LiteralPath $MMPROJ))
 if (!(Test-Path $BIN)) { throw "llama-server.exe not found under $Dest" }
 
 Write-Host "Running version check..."
@@ -63,5 +61,5 @@ Write-Host "Running version check..."
 # 5) Tier-1 conservative server command (manual start only - NOT auto-started here)
 Write-Host ""
 Write-Host "TIER-1 CONSERVATIVE (RX 6700 XT 12GB-safe, manual start):"
-$cmd = "& `"$BIN`" -m `"$MODEL`" --mmproj `"$MMPROJ`" --host 127.0.0.1 --port 8080 -c 4096 --n-gpu-layers 45 --threads 8 --temp 0.7 --top-p 0.9 --repeat-penalty 1.1"
+$cmd = "& `"$BIN`" -m `"$MODEL`" --host 127.0.0.1 --port 8080 -c 4096 --n-gpu-layers 45 --threads 8 --temp 0.7 --top-p 0.9 --repeat-penalty 1.1"
 Write-Host $cmd

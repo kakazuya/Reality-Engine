@@ -293,7 +293,7 @@ def score_from_text(text: str) -> MoatScores:
 
 def score_and_persist(symbol: str, isin: Optional[str], scores: MoatScores,
                       trajectory: str = "Stable", r: Optional[Repository] = None,
-                      manager=None) -> tuple:
+                      manager=None, asof_date: Optional[str] = None) -> tuple:
     """Compute and persist a moat evaluation for a symbol/isin.
 
     Returns (total_moat_score, moat_width). Resolves company_id via master_companies
@@ -305,7 +305,7 @@ def score_and_persist(symbol: str, isin: Optional[str], scores: MoatScores,
         ticker=symbol, switching_costs=scores.switching_costs,
         network_effects=scores.network_effects, cost_advantage=scores.cost_advantage,
         intangible_assets=scores.intangible_assets, efficient_scale=scores.efficient_scale,
-        moat_trajectory=trajectory, isin=isin,
+        moat_trajectory=trajectory, isin=isin, asof_date=asof_date,
     )
     return scores.total(), scores.width()
 

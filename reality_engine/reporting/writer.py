@@ -18,6 +18,129 @@ from reality_engine.agent.schemas import DailyAlphaReport, ScripAlphaThesis, Mar
 logger = logging.getLogger("reality_engine.reporting.writer")
 
 
+def _thesis_action(thesis: Any) -> str:
+    """Action attached by the orchestrator (BUY/SELL/HOLD); HOLD default."""
+    try:
+        action = getattr(thesis, "action", "HOLD")
+    except Exception:
+        return "HOLD"
+    try:
+        text = str(action).upper().strip()
+    except Exception:
+        return "HOLD"
+    return text if text in ("BUY", "SELL", "HOLD") else "HOLD"
+
+def _thesis_attribution(thesis: Any) -> Optional[Dict[str, Any]]:
+    """Attribution block attached by the orchestrator; None when no ledger row."""
+    try:
+        block = getattr(thesis, "attribution", None)
+    except Exception:
+        return None
+    return block if isinstance(block, dict) else None
+
+def _format_attribution_markdown(block: Optional[Dict[str, Any]]) -> List[str]:
+    """Render the attribution block as Markdown lines (additive, never empty)."""
+    if not isinstance(block, dict):
+        return ["- Attribution: no ledger row for this valuation date (default HOLD)."]
+    try:
+        realized = float(block.get("realized_move_pct", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        realized = 0.0
+    try:
+        floor = float(block.get("noise_floor", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        floor = 0.0
+    material = bool(block.get("is_material", False))
+    try:
+        explained = float(block.get("explained_total", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        explained = 0.0
+    try:
+        residual = float(block.get("residual", 1.0))
+    except (TypeError, ValueError):
+        residual = 1.0
+    lines = [
+        f"- Realized move: {realized:+.2f}% | Noise floor: {floor:.2f} | Material: {'yes' if material else 'no'} | Explained: {explained:.4f} | Residual: {residual:.4f}",
+    ]
+    per_lens = block.get("per_lens") or []
+    if isinstance(per_lens, list) and per_lens:
+        lines.append("- Per-lens direction x weight x share:")
+        for lens in per_lens:
+            if not isinstance(lens, dict):
+                continue
+            try:
+                direction = int(lens.get("predicted_direction", 0) or 0)
+            except (TypeError, ValueError):
+                direction = 0
+            try:
+                weight = float(lens.get("weight", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                weight = 0.0
+            try:
+                share = float(lens.get("share", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                share = 0.0
+            family = str(lens.get("family", "?"))
+            dir_txt = "+1" if direction > 0 else ("-1" if direction < 0 else "0")
+            lines.append(f"  - `{family}`: dir {dir_txt} x w {weight:.4f} x share {share:.4f}")
+        lines.append(f"- Investor majority: `{block.get('investor_majority', 'all')}` | Regime: `{block.get('regime_tag', '*')}`")
+    return lines
+
+def _format_attribution_html(block: Optional[Dict[str, Any]]) -> str:
+    """Render the attribution block as an HTML snippet (escaped, additive)."""
+    if not isinstance(block, dict):
+        return '<p class="section-text text-muted">No ledger row for this valuation date (default HOLD).</p>'
+    try:
+        realized = float(block.get("realized_move_pct", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        realized = 0.0
+    try:
+        floor = float(block.get("noise_floor", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        floor = 0.0
+    material = "yes" if bool(block.get("is_material", False)) else "no"
+    try:
+        explained = float(block.get("explained_total", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        explained = 0.0
+    try:
+        residual = float(block.get("residual", 1.0))
+    except (TypeError, ValueError):
+        residual = 1.0
+    per_lens = block.get("per_lens") or []
+    lens_items = ""
+    if isinstance(per_lens, list):
+        parts = []
+        for lens in per_lens:
+            if not isinstance(lens, dict):
+                continue
+            try:
+                direction = int(lens.get("predicted_direction", 0) or 0)
+            except (TypeError, ValueError):
+                direction = 0
+            try:
+                weight = float(lens.get("weight", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                weight = 0.0
+            try:
+                share = float(lens.get("share", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                share = 0.0
+            family = html.escape(str(lens.get("family", "?")))
+            dir_txt = "+1" if direction > 0 else ("-1" if direction < 0 else "0")
+            parts.append(f"<li>{family}: dir {dir_txt} &times; w {weight:.4f} &times; share {share:.4f}</li>")
+        if parts:
+            lens_items = '<ul class="cat-risk-list">' + "".join(parts) + "</ul>"
+    investor = html.escape(str(block.get("investor_majority", "all")))
+    regime = html.escape(str(block.get("regime_tag", "*")))
+    return (
+        f'<p class="section-text">Realized {realized:+.2f}% | Floor {floor:.2f} | '
+        f"Material {material} | Explained {explained:.4f} | Residual {residual:.4f}</p>"
+        f"{lens_items}"
+        f'<p class="section-text text-muted">Investor majority {investor} | Regime {regime}</p>'
+    )
+
+
 class ReportWriter:
     """
     Exports DailyAlphaReport to JSON, Markdown, and self-contained HTML dashboards.
@@ -69,12 +192,16 @@ class ReportWriter:
             data["ensemble_metadata"] = ems
 
         # Per-thesis MoE activation (attached via object.__setattr__ by the orchestrator).
+        # Slice 2: action + attribution dicts pass through identically (None stays None).
         theses_objs = getattr(report, "high_conviction_theses", []) or []
         tlist = data.get("high_conviction_theses", []) or []
         for i, t in enumerate(theses_objs):
             act = getattr(t, "ensemble_activation", None)
             if act is not None and i < len(tlist):
                 tlist[i]["ensemble_activation"] = act
+            if i < len(tlist):
+                tlist[i]["action"] = _thesis_action(t)
+                tlist[i]["attribution"] = _thesis_attribution(t)
 
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, default=str)
@@ -123,8 +250,10 @@ class ReportWriter:
         ])
 
         for t in report.high_conviction_theses:
+            action_txt = _thesis_action(t)
             md_lines.extend([
                 f"### #{t.composite_rank} {t.symbol} - {t.company_name}",
+                f"Action: {action_txt}",
                 f"**Conviction Level:** `{t.conviction_level}` | **Current Market Price:** `₹{t.current_market_price:,.2f}`",
                 "",
                 "> **Trade Setup Matrix:**",
@@ -154,6 +283,8 @@ class ReportWriter:
             for risk in t.key_risks:
                 md_lines.append(f"- {risk}")
 
+            md_lines.extend(["", "#### Move Attribution & Mispricing Action", ""])
+            md_lines.extend(_format_attribution_markdown(_thesis_attribution(t)))
             md_lines.extend(["", "---", ""])
 
         # Macro Shock Radar section
@@ -253,6 +384,9 @@ class ReportWriter:
             upside_pct = ((t.target_price - t.current_market_price) / max(0.01, t.current_market_price)) * 100.0
             downside_pct = ((t.current_market_price - t.stop_loss) / max(0.01, t.current_market_price)) * 100.0
             conv_pill_class = "pill-high" if t.conviction_level == "HIGH_CONVICTION" else ("pill-mod" if t.conviction_level == "MODERATE" else "pill-spec")
+            action_txt = _thesis_action(t)
+            action_pill = "pill-high" if action_txt == "BUY" else ("pill-sl" if action_txt == "SELL" else "pill-mod")
+            attribution_html = _format_attribution_html(_thesis_attribution(t))
 
             catalysts_li = "".join(f"<li><span class=\"bullet-icon bullet-green\">✓</span> {html.escape(c)}</li>" for c in t.key_catalysts)
             risks_li = "".join(f"<li><span class=\"bullet-icon bullet-amber\">⚠</span> {html.escape(r)}</li>" for r in t.key_risks)
@@ -267,6 +401,7 @@ class ReportWriter:
                         </div>
                     </div>
                     <div>
+                        <span class="pill {action_pill}">Action: {html.escape(action_txt)}</span>
                         <span class="pill {conv_pill_class}">{html.escape(t.conviction_level)}</span>
                     </div>
                 </div>
@@ -322,6 +457,10 @@ class ReportWriter:
                             {risks_li}
                         </ul>
                     </div>
+                </div>
+                <div class="thesis-section-block">
+                    <h4 class="section-subtitle"><span class="icon">🎯</span> Move Attribution & Mispricing Action: {html.escape(action_txt)}</h4>
+                    {attribution_html}
                 </div>
             </div>
             """)

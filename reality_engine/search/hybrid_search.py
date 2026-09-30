@@ -177,7 +177,82 @@ class HybridSearchEngine:
             logger.debug("FTS5 lexical note: %s", exc)
             return []
 
-    def search(self, query: str, symbol: Optional[str] = None, top_k: int = 10, industry_id: Optional[int] = None) -> list[HybridHit]:
+    def _chunk_index_search(self, query: str, symbol: Optional[str], top_k: int, industry_id: Optional[int] = None, query_vec: Optional[list[float]] = None) -> list[dict[str, Any]]:
+        """Dense tier over ``document_chunks.embedding`` via the local vector index.
+
+        This is the local replacement for pgvector ivfflat: without PostgreSQL the
+        documented chain (pgvector -> LanceDB -> FTS5) leaves ~240k chunk
+        embeddings unread, making DRHP/concall retrieval lexical-only. Returns []
+        when no index has been built (``build_chunk_vector_index``), so the
+        fallback chain is preserved exactly.
+
+        ``query_vec`` reuses the caller's already-embedded query vector (single
+        embed per ``search()``); when None, embeds inside for backward compat.
+        """
+        try:
+            from reality_engine.search.chunk_vector_index import get_index
+
+            idx = get_index()
+            if idx is None:
+                return []
+            if query_vec is None:
+                from reality_engine.ingestion.onnx_embedder import onnx_embedder
+
+                vec = onnx_embedder.embed(query, is_query=True)
+            else:
+                vec = query_vec
+            if not vec:
+                return []
+            hits = idx.search(vec, top_k=top_k * 2, symbol=symbol)
+            if not hits:
+                return []
+            ids = [h["chunk_id"] for h in hits]
+            placeholders = ",".join("?" for _ in ids)
+            with self.db.session() as conn:
+                rows = conn.execute(
+                    f"""SELECT dc.chunk_id, dc.symbol, dc.content, dc.published_date,
+                               rd.source_type, dc.industry_id
+                        FROM document_chunks dc LEFT JOIN raw_documents rd ON rd.doc_id = dc.doc_id
+                        WHERE dc.chunk_id IN ({placeholders})""",
+                    ids,
+                ).fetchall()
+            by_id = {int(r["chunk_id"]): r for r in rows}
+            out: list[dict[str, Any]] = []
+            for h in hits:
+                r = by_id.get(int(h["chunk_id"]))
+                if r is None:
+                    continue
+                if industry_id is not None and r["industry_id"] != industry_id:
+                    continue
+                out.append({
+                    "chunk_id": int(h["chunk_id"]),
+                    "id": int(h["chunk_id"]),
+                    "text": r["content"] or "",
+                    "symbol": r["symbol"] or "",
+                    "document_date": r["published_date"] or "",
+                    "source_type": r["source_type"] or "",
+                    "vector_score": h["vector_score"],
+                })
+            if out:
+                logger.info("Hybrid search dense tier: local chunk index (%d hits)", len(out))
+            return out
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("local chunk index note: %s", exc)
+            return []
+
+    def search(self, query: str, symbol: Optional[str] = None, top_k: int = 10, industry_id: Optional[int] = None,
+               min_dense_score: float = 0.35, max_per_symbol: int = 3) -> list[HybridHit]:
+        """Hybrid retrieval: lexical (FTS5) + dense (pgvector | local chunk index).
+
+        ``min_dense_score`` discards weak dense lists before fusion. Reciprocal
+        rank fusion weights every *list position* equally, so an uninformative
+        dense list (cosine ~0.15 noise) otherwise ranks level with a strong one
+        (cosine ~0.7). ``max_per_symbol`` caps per-company redundancy so one
+        company cannot occupy the whole result page.
+        """
+        # Single embed per search(): the memoized vector feeds both dense tiers
+        # (VectorStore + local chunk index) so one query costs one ONNX call.
+        query_vec = self.vector_store.embed(query, is_query=True)
         lexical = self._ft5_lexical(query, symbol, top_k, industry_id=industry_id)
 
         # Dense: try pgvector first, then LanceDB
@@ -189,7 +264,7 @@ class HybridSearchEngine:
         else:
             try:
                 # LanceDB VectorStoreManager currently filters by symbol only; industry filter applied post if needed
-                dense = self.vector_store.search(query, symbol, top_k * 3)
+                dense = self.vector_store.search_by_vector(query_vec, symbol, top_k * 3)
                 if industry_id is not None and dense:
                     # optional post-filter via document_chunks join when industry_id provided
                     try:
@@ -208,6 +283,23 @@ class HybridSearchEngine:
             except Exception as exc:
                 logger.debug("LanceDB search note: %s", exc)
                 dense = []
+
+        # Local dense tier over document_chunks (replaces pgvector on this box).
+        # Kept as its own ranked list so RRF fuses it rather than averaging away
+        # either signal.
+        local_dense: list[dict[str, Any]] = []
+        if pg_res is None:
+            local_dense = self._chunk_index_search(query, symbol, top_k, industry_id=industry_id, query_vec=query_vec)
+
+        # Score gate: drop uninformative dense lists before rank fusion. RRF
+        # weights list *position*, not magnitude, so cosine-noise lists diluted
+        # the strong ones.
+        if dense:
+            max_score = max(float(r.get("vector_score", 0.0) or 0.0) for r in dense)
+            if max_score > 0:      # scores populated => gate is meaningful
+                dense = [r for r in dense if float(r.get("vector_score", 0.0) or 0.0) >= min_dense_score]
+        if local_dense:
+            local_dense = [r for r in local_dense if float(r.get("vector_score", 0.0) or 0.0) >= min_dense_score]
 
         # If both dense and lexical empty, return empty
         merged: dict[str, HybridHit] = {}
@@ -230,6 +322,26 @@ class HybridSearchEngine:
             # vector_score already cosine similarity 0-1 (pgvector) or hash cosine (LanceDB)
             hit.vector_score = float(row.get("vector_score", 0.0) or 0.0)
             hit.score += 1 / (60 + rank)
+        for rank, row in enumerate(local_dense, 1):
+            key = str(row.get("chunk_id"))
+            hit = merged.setdefault(key, HybridHit(
+                key, row.get("text", ""), row.get("symbol", ""),
+                f"{row.get('symbol', '')} {row.get('document_date', '')} {row.get('source_type', '')}".strip(),
+            ))
+            hit.vector_score = max(hit.vector_score, float(row.get("vector_score", 0.0) or 0.0))
+            hit.score += 1 / (60 + rank)
         # If no lexical at all but dense exists, ensure sorting by vector_score weighted RRF already done
         # FTS5 is final fallback guaranteed even when embeddings unavailable per AGENTS.md:5
-        return sorted(merged.values(), key=lambda h: h.score, reverse=True)[:top_k]
+        ranked = sorted(merged.values(), key=lambda h: h.score, reverse=True)
+        if max_per_symbol and max_per_symbol > 0:
+            capped: list[HybridHit] = []
+            seen: dict[str, int] = {}
+            for h in ranked:
+                sym = (h.symbol or "").upper()
+                if sym and seen.get(sym, 0) >= max_per_symbol:
+                    continue
+                if sym:
+                    seen[sym] = seen.get(sym, 0) + 1
+                capped.append(h)
+            ranked = capped
+        return ranked[:top_k]

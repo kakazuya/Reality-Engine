@@ -45,6 +45,129 @@ from reality_engine.agent.tools import (
 logger = logging.getLogger("reality_engine.agent.orchestrator")
 
 
+# ------------------------------------------------------------------
+# Slice 2 — deterministic action table (mispricing -> BUY/SELL/HOLD).
+# Pure function over (sign(realized) x residual>0.5 x quality_intact x
+# solvency_ok x dislocation_confirmed x factor_agrees): 16 cells x
+# dislocation x factor-gate. BUY iff unexplained weakness + intact quality
+# + solvent + dislocation (|realized| >= 2.0 x noise floor — genuine
+# dislocation, not 1-sigma noise; live median was 1.43x, min 1.01x) +
+# factor_agrees (the factor_statistical/momentum lens points WITH the entry
+# direction). A dip without dislocation is HOLD (wait for confirmation/next
+# session, never SELL); a dislocation without factor agreement is HOLD too
+# (selection, not timing: goal-loop iteration 4 — BUY hit 1/44 at mean −5%,
+# buying weakness where momentum says keep falling; only 6/34 closed BUYs
+# had a flow lens agreeing and losers ran 26/34 next-day-down, so a lone
+# residual is not a thesis — reversal entries need at least one flow lens
+# confirming stabilization). SELL iff unexplained strength + broken quality
+# (exit/avoid, solvency AND dislocation irrelevant); HOLD otherwise
+# (explained moves, don't-chase strength with intact quality, flat prints,
+# insolvent never BUY).
+# quality_broken = (trajectory == 'Deteriorating') OR (total_moat_score <
+# 2.5) OR (agg ENI < 0) — substrate-natural bands, not threshold-shopped:
+# 1/2,653 moats Deteriorating (TATASTEEL), <2.5 is the stored None-width
+# band (Narrow 1526 / None 949 / Wide 178), neg-ENI covers 35 distinct
+# tickers in the 1,758 material unexplained-strength rows (28 low-moat).
+# solvency_ok = existing forensic gate result (config: pledge>15% OR IC<2.5x
+# OR D/E>1.5x).
+# ------------------------------------------------------------------
+def decide_action(realized_sign, residual_gt_half, quality_intact, solvency_ok,
+                   dislocation_confirmed=True, factor_agrees=True) -> str:
+    """Return BUY/SELL/HOLD for one action-table combination (pure, no I/O).
+
+    The 5th dimension, ``dislocation_confirmed`` (|realized| >= 2.0 x noise
+    floor), distinguishes a dip (HOLD — wait for confirmation/next session)
+    from a dislocation (BUY now). The 6th, ``factor_agrees``
+    (factor_statistical lens direction == sign(realized) on weakness legs),
+    distinguishes a lone-residual dip from one where at least one flow lens
+    confirms stabilization. Both gate BUY only; SELL cells are unaffected.
+    Both default True so existing 4-arg/5-arg callers keep prior behavior.
+    """
+    try:
+        r = float(realized_sign)
+    except (TypeError, ValueError):
+        return "HOLD"
+    residual = bool(residual_gt_half)
+    quality = bool(quality_intact)
+    solvent = bool(solvency_ok)
+    dislocation = bool(dislocation_confirmed)
+    factor = bool(factor_agrees)
+    if r < 0 and residual and quality and solvent and dislocation and factor:
+        return "BUY"
+    if r > 0 and residual and (not quality):
+        return "SELL"
+    return "HOLD"
+
+
+def _ledger_row_to_attribution_block(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert a move_attribution ledger row (22-col DDL) to a thesis block."""
+    try:
+        from reality_engine.processing.move_attributor import LENS_FAMILIES as _FAMS
+        fams = tuple(_FAMS)
+    except Exception:
+        fams = ("factor_statistical", "business_quality", "policy_macro", "supply_chain")
+    per_lens = []
+    for fam in fams:
+        try:
+            direction = int(row.get(f"lens_{fam}_dir", 0) or 0)
+        except (TypeError, ValueError):
+            direction = 0
+        try:
+            weight = float(row.get(f"lens_{fam}_w", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            weight = 0.0
+        try:
+            share = float(row.get(f"lens_{fam}_share", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            share = 0.0
+        per_lens.append({
+            "family": fam,
+            "predicted_direction": direction,
+            "weight": weight,
+            "share": share,
+        })
+    try:
+        material = bool(int(row.get("is_material", 0)))
+    except (TypeError, ValueError):
+        material = bool(row.get("is_material", False))
+    try:
+        realized = float(row.get("realized_move_pct", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        realized = 0.0
+    try:
+        floor = float(row.get("noise_floor", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        floor = 0.0
+    try:
+        explained = float(row.get("explained_total", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        explained = 0.0
+    try:
+        residual_raw = row.get("residual", 1.0)
+        residual = float(residual_raw) if residual_raw is not None else 1.0
+    except (TypeError, ValueError):
+        residual = 1.0
+    try:
+        _floor_raw = row.get("noise_floor", None)
+        if _floor_raw is None:
+            dislocation_confirmed = True
+        elif floor <= 0:
+            dislocation_confirmed = True
+        else:
+            dislocation_confirmed = abs(realized) >= 2.0 * floor
+    except (TypeError, ValueError):
+        dislocation_confirmed = True
+    return {
+        "realized_move_pct": realized,
+        "noise_floor": floor,
+        "is_material": material,
+        "explained_total": explained,
+        "residual": residual,
+        "dislocation_confirmed": bool(dislocation_confirmed),
+        "per_lens": per_lens,
+        "investor_majority": str(row.get("investor_majority", "all") or "all"),
+        "regime_tag": str(row.get("regime_tag", "*") or "*"),
+    }
 class AgentOrchestrator:
     """
     Autonomous multi-step equity intelligence orchestrator that queries tool
@@ -98,6 +221,8 @@ class AgentOrchestrator:
         candidate_row: Dict[str, Any],
         rank: int,
         use_topdown_template: bool = True,
+        attribution: Optional[Dict[str, Any]] = None,
+        attribution_date: Optional[str] = None,
     ) -> ScripAlphaThesis:
         """
         Performs multi-angle tool inspections for a candidate scrip and synthesizes
@@ -108,6 +233,12 @@ class AgentOrchestrator:
         are used for the Policy Catalyst -> Transmission -> Moat -> Verdict template.
         Otherwise fallback lookups via composite_screener helpers are performed.
         The template is always produced (backward compatible) but can be disabled with use_topdown_template=False.
+        Slice 2: optional ``attribution`` (a move_attribution ledger row, or a
+        pre-formed block with ``per_lens``) or ``attribution_date`` (ledger lookup
+        for (symbol, date), defensive — empty/missing table yields HOLD/null).
+        Attaches ``action`` (BUY/SELL/HOLD via decide_action) + ``attribution``
+        block; without ledger evidence attaches ``action="HOLD"`` and
+        ``attribution=None`` with rationale unchanged. Never raises for attribution.
         """
         symbol = str(candidate_row.get("symbol", "")).upper().strip()
         cmp = float(candidate_row.get("close", candidate_row.get("current_market_price", 0.0)) or 0.0)
@@ -130,11 +261,18 @@ class AgentOrchestrator:
         industry = comp_info.get("industry", "Diversified") if comp_info else "Diversified"
         sector = comp_info.get("sector", "Industrials") if comp_info else "Industrials"
 
-        # Trade setup calculations
+        # Trade setup calculations (vol-scaled bracket: trailing-20σ, clamped;
+        # SELL framing is enforced at record_action, thesis terms stay BUY-framed).
         entry_low = round(cmp * 0.985, 2)
         entry_high = round(cmp * 1.015, 2)
-        target = round(cmp * 1.18, 2)       # 18% upside
-        sl = round(cmp * 0.94, 2)           # 6% stop loss
+        try:
+            from reality_engine.processing import portfolio_ledger as _pl
+            _br = _pl.vol_scaled_bracket(symbol, cmp, "BUY",
+                                         str(attribution_date or ""), manager=self.repo.db)
+            target, sl = float(_br["target_price"]), float(_br["stop_loss"])
+        except Exception:
+            target = round(cmp * 1.18, 2)
+            sl = round(cmp * 0.94, 2)
         rr = round((target - cmp) / max(0.01, cmp - sl), 2)
 
         composite_score = float(candidate_row.get("composite_score") or 0.0)
@@ -257,7 +395,143 @@ class AgentOrchestrator:
             object.__setattr__(thesis, "policy_agg_eni_calc", _pm.get("policy_agg_eni_calc"))
         except Exception:
             pass
+        # Slice 2: deterministic action + attribution block (graceful, never crash).
+        try:
+            action, block = self._resolve_thesis_action(
+                symbol,
+                candidate_row=candidate_row,
+                attribution=attribution,
+                attribution_date=attribution_date,
+                funda=funda,
+            )
+            object.__setattr__(thesis, "action", action)
+            object.__setattr__(thesis, "attribution", block)
+        except Exception as exc:
+            logger.debug("thesis action attach failed for %s: %s", symbol, exc)
+            try:
+                object.__setattr__(thesis, "action", "HOLD")
+                object.__setattr__(thesis, "attribution", None)
+            except Exception:
+                pass
         return thesis
+    # ------------------------------------------------------------------
+    # Slice 2: attribution lookup + action derivation (defensive, no writes).
+    # ------------------------------------------------------------------
+    def _lookup_attribution_row(self, symbol: str, attribution_date: Optional[str]) -> Optional[Dict[str, Any]]:
+        """Fetch one move_attribution row for (symbol, date); None when absent."""
+        if not attribution_date:
+            return None
+        try:
+            with self.repo.db.session() as conn:
+                row = conn.execute(
+                    "SELECT * FROM move_attribution WHERE symbol = ? AND attribution_date = ? LIMIT 1",
+                    (str(symbol).upper().strip(), str(attribution_date).strip()),
+                ).fetchone()
+                return dict(row) if row else None
+        except Exception as exc:
+            logger.debug("attribution lookup failed for %s @ %s: %s", symbol, attribution_date, exc)
+            return None
+
+    def _resolve_thesis_action(
+        self,
+        symbol: str,
+        candidate_row: Optional[Dict[str, Any]] = None,
+        attribution: Optional[Dict[str, Any]] = None,
+        attribution_date: Optional[str] = None,
+        funda: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        """Derive (action, block) for a thesis; (HOLD, None) without evidence."""
+        row = attribution
+        if row is None and attribution_date:
+            row = self._lookup_attribution_row(symbol, attribution_date)
+        if row is None:
+            return "HOLD", None
+        block = row if isinstance(row, dict) and "per_lens" in row else _ledger_row_to_attribution_block(row)
+        try:
+            realized = float(block.get("realized_move_pct", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            realized = 0.0
+        realized_sign = 1 if realized > 0 else (-1 if realized < 0 else 0)
+        try:
+            residual = float(block.get("residual", 1.0))
+        except (TypeError, ValueError):
+            residual = 1.0
+        residual_gt_half = residual > 0.5
+        # dislocation_confirmed: |realized| >= 2.0 x noise floor — genuine
+        # dislocation, not 1-sigma noise. Missing/non-positive floor: True
+        # (graceful, preserves prior behavior). A pre-formed block carrying
+        # the flag is honored as-is.
+        if "dislocation_confirmed" in block:
+            try:
+                dislocation = bool(block.get("dislocation_confirmed", True))
+            except (TypeError, ValueError):
+                dislocation = True
+        else:
+            try:
+                _raw_floor = block.get("noise_floor", None)
+                _floor = float(_raw_floor) if _raw_floor is not None else 0.0
+            except (TypeError, ValueError):
+                _floor = 0.0
+                _raw_floor = 0.0
+            if _raw_floor is None or _floor <= 0:
+                dislocation = True
+            else:
+                dislocation = abs(realized) >= 2.0 * _floor
+            try:
+                block["dislocation_confirmed"] = bool(dislocation)
+            except (TypeError, ValueError):
+                pass
+        # quality: widened broken-thesis via the shared helper — SAME screener
+        # lookup paths as before (moat trajectory/score + agg ENI, no new data
+        # sources). (traj == Deteriorating) OR (score < 2.5) OR (ENI < 0).
+        quality_intact = True
+        quality_reason = "intact"
+        try:
+            from reality_engine.processing.move_attributor import (
+                quality_broken_reason as _quality_broken_reason,
+            )
+            metrics = self._fetch_topdown_metrics(symbol, candidate_row or {})
+            traj = str(metrics.get("moat_trajectory", "Stable") or "Stable")
+            broken, quality_reason = _quality_broken_reason(
+                traj, metrics.get("total_moat_score"), metrics.get("policy_agg_eni"),
+            )
+            quality_intact = not broken
+        except Exception:
+            quality_intact = True
+            quality_reason = "intact"
+        # Stamp audit flags on the block (resolver-owned; ledger DDL untouched).
+        try:
+            block["quality_broken"] = bool(not quality_intact)
+            block["quality_reason"] = str(quality_reason or "intact")
+        except (TypeError, ValueError):
+            pass
+        # factor_agrees: the factor_statistical (momentum) lens points WITH the
+        # entry direction on weakness legs (block per_lens dirs, stored by the
+        # ledger already). Missing/neutral (0) -> HOLD (graceful, never assume).
+        factor_agrees = False
+        try:
+            _factor_dir = 0
+            for _lens in block.get("per_lens", []) or []:
+                if isinstance(_lens, dict) and _lens.get("family") == "factor_statistical":
+                    _factor_dir = int(_lens.get("predicted_direction", 0) or 0)
+                    break
+            factor_agrees = bool(realized_sign != 0 and _factor_dir == realized_sign)
+        except (TypeError, ValueError):
+            factor_agrees = False
+        # solvency_ok: reuse the existing forensic gate result (funda tool
+        # summary), never recomputed thresholds here. Missing evidence: HOLD.
+        solvency_ok = False
+        try:
+            forensic = (funda or {}).get("forensic_solvency", {}) or {}
+            flag = forensic.get("is_solvency_approved", None)
+            if flag is None:
+                solvency_ok = False
+            else:
+                solvency_ok = int(flag) == 1
+        except Exception:
+            solvency_ok = False
+        action = decide_action(realized_sign, residual_gt_half, quality_intact, solvency_ok, dislocation, factor_agrees)
+        return action, block
 
     # ------------------------------------------------------------------
     # Phase 6: Top-down template helpers (Policy Catalyst -> Transmission -> Moat -> Verdict)
@@ -724,7 +998,7 @@ class AgentOrchestrator:
             for rank_idx, (_, row) in enumerate(top_candidates.iterrows(), 1):
                 try:
                     candidate_dict = row.to_dict()
-                    thesis = self.evaluate_candidate_scrip(candidate_dict, rank=rank_idx, use_topdown_template=True)
+                    thesis = self.evaluate_candidate_scrip(candidate_dict, rank=rank_idx, use_topdown_template=True, attribution_date=date_str)
                     # MoE activation: fire the sparse gate per candidate so the pathway is
                     # revisable (temperature controls explore vs exploit) and audited.
                     if use_ensemble and ranker is not None:

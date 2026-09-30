@@ -315,10 +315,24 @@ def extract_distilled(conn) -> Dict[str, Dict[str, float]]:
                 coeffs = [c for c in (_finite(v) for v in rm.values()) if c is not None]
                 if coeffs:
                     out[sym]["distilled.max_input_elasticity"] = max(coeffs)
+            # --- DRHP/offer-backfill shape (offer_backfill.distill_records) ---
+            # That writer stores lists of *distinct signal terms* rather than the
+            # legacy dict/list fields, so read the counts from what it emits.
+            # Only counts are taken; no elasticity coefficient is invented.
+            if "distilled.n_revenue_drivers" not in out[sym]:
+                desc = payload.get("business_description")
+                if isinstance(desc, list) and desc:
+                    out[sym]["distilled.n_revenue_drivers"] = float(len(set(desc)))
+            if "distilled.n_raw_material_links" not in out[sym]:
+                sig = payload.get("supply_chain_signals")
+                if isinstance(sig, list) and sig:
+                    out[sym]["distilled.n_raw_material_links"] = float(len(set(sig)))
         elif key == "geopolitical_supply_chain":
             risks = payload.get("transit_route_risks")
             if isinstance(risks, list):
                 out[sym]["distilled.n_supply_risks"] = float(len(risks))
+            elif isinstance(payload.get("supply_chain_signals"), list) and payload.get("supply_chain_signals"):
+                out[sym]["distilled.n_supply_risks"] = float(len(set(payload["supply_chain_signals"])))
     return out
 
 

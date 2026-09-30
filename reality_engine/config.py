@@ -302,10 +302,10 @@ for path in [DATA_DIR, BHAVCOPY_DIR, PDFS_DIR, REPORTS_DIR, INBOX_DIR, TELEGRAM_
 SQLITE_PRAGMAS = [
     "PRAGMA journal_mode = WAL;",
     "PRAGMA synchronous = NORMAL;",
-    "PRAGMA cache_size = -64000;",      # 64 MB page cache
+    "PRAGMA cache_size = -256000;",     # 256 MB page cache (post-drain read burst)
     "PRAGMA temp_store = MEMORY;",
     "PRAGMA foreign_keys = ON;",
-    "PRAGMA busy_timeout = 30000;",       # 30 second timeout on locks (raised for concurrent fetcher)
+    "PRAGMA busy_timeout = 180000;",      # 3 min: a large PDF ingest holds one write txn ~50s
     "PRAGMA mmap_size = 1073741824;",     # 1 GB file-backed mmap (OS-evictable, not pinned RAM)
 ]
 

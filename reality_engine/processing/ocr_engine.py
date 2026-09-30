@@ -6,13 +6,26 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger("reality_engine.ocr_engine")
 
 
 class FinancialOCREngine:
     def __init__(self, confidence_threshold: float = 0.60, use_rapidocr: bool = True, prefer_gpu: bool = True):
+        # GPU-first is the operator's call: OCR stays on the fastest backend
+        # this engine supports. NOTE on "Vulkan": RapidOCR is an ONNX Runtime
+        # session, and ONNX Runtime ships no Vulkan execution provider
+        # (get_available_providers() -> Dml + CPU on this box), so Vulkan is
+        # not a configuration that exists for this component. The GPU options
+        # here are DirectML or none; CPU fallback is via prefer_gpu=False or
+        # REALITY_ENGINE_OCR_GPU=0.
+        import os
+        _env = os.environ.get("REALITY_ENGINE_OCR_GPU", "").strip().lower()
+        if _env in ("0", "false", "no", "cpu"):
+            prefer_gpu = False
+        elif _env in ("1", "true", "yes", "dml", "gpu"):
+            prefer_gpu = True
         self.confidence_threshold = confidence_threshold
         # Engine construction imports onnxruntime/rapidocr and probes execution providers
         # (~1.2s). Every process that merely imported the ingestion stack used to pay it at

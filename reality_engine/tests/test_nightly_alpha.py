@@ -6,9 +6,14 @@ Covers the task acceptance:
   * exclusive lock blocks a second instance (incl. 6h stale break)
   * checkpoint-fail aborts predict stages (mocked)
   * snapshot naming matches prior manual runs
+  * track_record stage: ok path, failed-substep isolation, dry-run zero-write
 
 All dependencies are injected fakes; the temp DatabaseManager only
 exercises local schema reads/writes inside a throwaway file.
+
+Stage-plan contract: CORRECT_STAGES stays ("eod_correct",) — the track step
+is additive (TRACK_STAGES), so correct_validate/all plans extend (never
+reorder) the existing prefixes.
 """
 
 from __future__ import annotations
@@ -195,6 +200,102 @@ class FakeEOD:
         return {"symbols_corrected": 1, "noise_floors_updated": 1, "lens_rank_changes": 0}
 
 
+class FakeAttributor:
+    """Fake move_attributor.attribute_universe (records calls, optional fail)."""
+
+    def __init__(self, rows_written=2, material_count=2, median_residual=0.4, fail=False):
+        self.calls = []
+        self.rows_written = rows_written
+        self.material_count = material_count
+        self.median_residual = median_residual
+        self.fail = fail
+
+    def attribute_universe(self, universe="nifty200", days=1, manager=None):
+        self.calls.append({"universe": universe, "days": days})
+        if self.fail:
+            raise RuntimeError("boom-attribution")
+        return {
+            "symbols": [],
+            "dates": [],
+            "rows_written": self.rows_written,
+            "median_residual": self.median_residual,
+            "material_count": self.material_count,
+        }
+
+
+class FakeLedger:
+    """Fake portfolio_ledger (record/upsert-free; MTM + summarize fakes)."""
+
+    def __init__(self, action="BUY", fail_mtm=False, fail_summarize=False):
+        self.records = []
+        self.action = action
+        self.fail_mtm = fail_mtm
+        self.fail_summarize = fail_summarize
+
+    def record_action(self, symbol, action, action_date, entry_price,
+                      target_price, stop_loss, thesis_ref=None, manager=None):
+        self.records.append({
+            "symbol": symbol, "action": action, "action_date": action_date,
+            "entry_price": entry_price, "target_price": target_price,
+            "stop_loss": stop_loss, "thesis_ref": thesis_ref,
+        })
+        return {"symbol": symbol, "action": action, "status": "open"}
+
+    def mark_to_market(self, asof_date, manager=None):
+        if self.fail_mtm:
+            raise RuntimeError("boom-mtm")
+        return {"marked": 1, "closed": 0, "open_pnl_sum": 1.5}
+
+    def summarize(self, manager=None):
+        if self.fail_summarize:
+            raise RuntimeError("boom-summary")
+        return {"open_count": 1, "closed_count": 0, "win_rate": None,
+                "mean_pnl": None, "total_pnl": 0.0}
+
+
+class FakeTrackOrchestrator:
+    """Fake thesis-action resolver: always returns the configured action."""
+
+    def __init__(self, action="BUY"):
+        self.calls = []
+        self.action = action
+
+    def _resolve_thesis_action(self, symbol, candidate_row=None, attribution=None,
+                               attribution_date=None, funda=None):
+        self.calls.append({"symbol": symbol, "funda": funda})
+        return self.action, {"stub": True}
+
+
+def _insert_call(conn, symbol, isin, d, cmp_price=102.0, target=120.0, stop=96.0,
+                 approved=1):
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO eod_scrip_calls
+            (date, symbol, isin, composite_rank, technical_score, fundamental_score,
+             alt_sentiment_score, composite_score, current_market_price,
+             recommended_entry_range, target_price, stop_loss, conviction_level,
+             is_solvency_approved)
+        VALUES (?, ?, ?, 1, 70.0, 60.0, 50.0, 65.0, ?, 'INR 100 - INR 104',
+                ?, ?, 'MODERATE', ?)
+        """,
+        (d, symbol, isin, cmp_price, target, stop, approved),
+    )
+
+
+def _insert_attribution(conn, symbol, d, material=1, residual=0.4, realized=2.0):
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS move_attribution ("
+        "symbol TEXT, attribution_date TEXT, realized_move_pct REAL, "
+        "residual REAL, is_material INTEGER)"
+    )
+    conn.execute(
+        "INSERT OR REPLACE INTO move_attribution "
+        "(symbol, attribution_date, realized_move_pct, residual, is_material) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (symbol, d, realized, residual, material),
+    )
+
+
 # ---------------------------------------------------------------------------
 # 1. Dry-run plans correctly, zero writes
 # ---------------------------------------------------------------------------
@@ -221,6 +322,9 @@ class TestDryRunPlan(unittest.TestCase):
             "orchestrator": FakeOrchestrator(),
             "report_writer": FakeWriter(self.log_dir),
             "eod_corrector_obj": FakeEOD(),
+            "move_attributor_obj": FakeAttributor(),
+            "portfolio_ledger_obj": FakeLedger(),
+            "track_orchestrator_obj": FakeTrackOrchestrator(),
         }
 
     def tearDown(self):
@@ -254,14 +358,33 @@ class TestDryRunPlan(unittest.TestCase):
         self.assertEqual(self.fakes["screener"].ensemble_calls, [])
         self.assertEqual(self.fakes["orchestrator"].calls, [])
         self.assertEqual(self.fakes["eod_corrector_obj"].calls, [])
+        self.assertEqual(self.fakes["move_attributor_obj"].calls, [])
+        self.assertEqual(self.fakes["portfolio_ledger_obj"].records, [])
+        self.assertEqual(self.fakes["track_orchestrator_obj"].calls, [])
         # No lock file, no health JSON on dry-run.
         self.assertFalse(lock_p.exists())
         self.assertEqual(list(self.log_dir.glob("nightly_*.json")), [])
 
     def test_dry_run_part_split(self):
         self.assertEqual(na.plan_stages("fetch_predict"), list(na.FETCH_STAGES))
-        self.assertEqual(na.plan_stages("correct_validate"), list(na.CORRECT_STAGES))
-        self.assertEqual(na.plan_stages("all"), list(na.FETCH_STAGES) + list(na.CORRECT_STAGES))
+        # CORRECT_STAGES frozen; track is additive via TRACK_STAGES.
+        self.assertEqual(na.CORRECT_STAGES, ("eod_correct",))
+        self.assertEqual(
+            na.plan_stages("correct_validate"),
+            list(na.CORRECT_STAGES) + list(na.TRACK_STAGES),
+        )
+        self.assertEqual(
+            na.plan_stages("all"),
+            list(na.FETCH_STAGES) + list(na.CORRECT_STAGES) + list(na.TRACK_STAGES),
+        )
+        # Existing prefixes stay intact at the head of the extended plans.
+        self.assertEqual(
+            na.plan_stages("correct_validate")[: len(na.CORRECT_STAGES)],
+            list(na.CORRECT_STAGES),
+        )
+        self.assertEqual(
+            na.plan_stages("all")[: len(na.FETCH_STAGES)], list(na.FETCH_STAGES)
+        )
         # resolve_backfill_days: missing + 5 buffer, cap 60.
         self.assertEqual(na.resolve_backfill_days(0), 0)
         self.assertEqual(na.resolve_backfill_days(3), 8)
@@ -454,6 +577,148 @@ class TestSnapshotNaming(unittest.TestCase):
     def test_snapshot_rejects_bad_mode(self):
         with self.assertRaises(ValueError):
             na.snapshot_top20([], "bogus", "2026-09-18", self.log_dir)
+
+
+# ---------------------------------------------------------------------------
+# 5. track_record stage (closed-session attribution close-out)
+# ---------------------------------------------------------------------------
+class TestTrackRecordStage(unittest.TestCase):
+    def setUp(self):
+        self.mgr, self.db_path = _make_db()
+        with self.mgr.session() as conn:
+            # Single closed session: latest price date == run date, so the
+            # track stage anchors on 2026-08-27 (entry falls back to the
+            # call-row CMP — no forward bar exists yet at close-out time).
+            _insert_price(conn, "HAL", "INE1", "2026-08-27")
+            _insert_call(conn, "HAL", "INE1", "2026-08-27")
+            _insert_attribution(conn, "HAL", "2026-08-27")
+        self.tmp = tempfile.TemporaryDirectory()
+        self.log_dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+        try:
+            os.unlink(self.db_path)
+        except OSError:
+            pass
+
+    def _run(self, **kw):
+        args = {
+            "dry_run": False,
+            "part": "correct_validate",
+            "date_str": "2026-08-27",
+            "db_manager": self.mgr,
+            "eod_corrector_obj": FakeEOD(),
+            "move_attributor_obj": FakeAttributor(),
+            "portfolio_ledger_obj": FakeLedger(),
+            "track_orchestrator_obj": FakeTrackOrchestrator(),
+            "log_dir": self.log_dir,
+            "lock_path": self.log_dir / "nightly.lock",
+        }
+        args.update(kw)
+        return na.run_nightly(**args)
+
+    def test_track_ok_shape(self):
+        attrib, ledger = FakeAttributor(), FakeLedger()
+        track_orch = FakeTrackOrchestrator(action="BUY")
+        summary = self._run(move_attributor_obj=attrib,
+                            portfolio_ledger_obj=ledger,
+                            track_orchestrator_obj=track_orch)
+        self.assertEqual(summary["stages"]["eod_correct"]["status"], "ok")
+        stage = summary["stages"]["track_record"]
+        self.assertEqual(stage["status"], "ok")
+        # Attribution ran for the closed session only (days=1).
+        self.assertEqual(attrib.calls, [{"universe": "nifty200", "days": 1}])
+        self.assertEqual(stage["attribution"],
+                         {"rows_written": 2, "material_count": 2, "median_residual": 0.4})
+        # Material row resolved via the thesis path and recorded (HOLDs too).
+        self.assertEqual(stage["recorded"], {"BUY": 1, "SELL": 0, "HOLD": 0})
+        self.assertEqual(len(ledger.records), 1)
+        rec = ledger.records[0]
+        self.assertEqual((rec["symbol"], rec["action"], rec["action_date"]),
+                         ("HAL", "BUY", "2026-08-27"))
+        self.assertEqual(rec["thesis_ref"], "nightly_track:2026-08-27")
+        # Funda carries the call-row solvency flag (same shape as the seed path).
+        self.assertEqual(
+            track_orch.calls[0]["funda"],
+            {"forensic_solvency": {"is_solvency_approved": 1}},
+        )
+        self.assertEqual(stage["mtm"], {"marked": 1, "closed": 0, "open_pnl_sum": 1.5})
+        self.assertEqual(stage["book"],
+                         {"win_rate": None, "mean_pnl": None, "total_pnl": 0.0})
+        self.assertEqual(summary["exit_code"], 0)
+
+    def test_track_failed_substep_marks_stage(self):
+        for bad in ("attrib", "mtm", "summary"):
+            with self.subTest(bad=bad):
+                attrib = FakeAttributor(fail=(bad == "attrib"))
+                ledger = FakeLedger(fail_mtm=(bad == "mtm"),
+                                    fail_summarize=(bad == "summary"))
+                tmp = tempfile.TemporaryDirectory()
+                try:
+                    summary = na.run_nightly(
+                        dry_run=False,
+                        part="correct_validate",
+                        date_str="2026-08-27",
+                        db_manager=self.mgr,
+                        eod_corrector_obj=FakeEOD(),
+                        move_attributor_obj=attrib,
+                        portfolio_ledger_obj=ledger,
+                        track_orchestrator_obj=FakeTrackOrchestrator(),
+                        log_dir=Path(tmp.name),
+                        lock_path=Path(tmp.name) / "nightly.lock",
+                    )
+                finally:
+                    tmp.cleanup()
+                stage = summary["stages"]["track_record"]
+                self.assertEqual(stage["status"], "failed")
+                self.assertIn("boom", stage.get("error", ""))
+                # Sibling stage unaffected by the track failure.
+                self.assertEqual(summary["stages"]["eod_correct"]["status"], "ok")
+                self.assertEqual(summary["exit_code"], 1)
+
+    def test_track_dry_run_zero_write(self):
+        attrib, ledger = FakeAttributor(), FakeLedger()
+        track_orch = FakeTrackOrchestrator()
+        summary = na.run_nightly(
+            dry_run=True,
+            part="correct_validate",
+            date_str="2026-08-27",
+            db_manager=self.mgr,
+            log_dir=self.log_dir,
+            lock_path=self.log_dir / "nightly.lock",
+            eod_corrector_obj=FakeEOD(),
+            move_attributor_obj=attrib,
+            portfolio_ledger_obj=ledger,
+            track_orchestrator_obj=track_orch,
+        )
+        self.assertEqual(summary["planned_stages"], na.plan_stages("correct_validate"))
+        self.assertIn("track_record", summary["planned_stages"])
+        self.assertEqual(attrib.calls, [])
+        self.assertEqual(ledger.records, [])
+        self.assertEqual(track_orch.calls, [])
+
+    def test_track_skipped_when_part_excludes_correct(self):
+        summary = na.run_nightly(
+            dry_run=False,
+            part="fetch_predict",
+            date_str="2026-08-27",
+            db_manager=self.mgr,
+            master_sync_mgr=FakeMaster(),
+            backfill_mgr=FakeBackfill(),
+            phase1_runner_obj=FakePhase1Pass(),
+            fundamentals_client_obj=FakeFundamentals(),
+            screener=FakeScreener(n=0),
+            orchestrator=FakeOrchestrator(),
+            report_writer=FakeWriter(self.log_dir),
+            eod_corrector_obj=FakeEOD(),
+            move_attributor_obj=FakeAttributor(),
+            portfolio_ledger_obj=FakeLedger(),
+            track_orchestrator_obj=FakeTrackOrchestrator(),
+            log_dir=self.log_dir,
+            lock_path=self.log_dir / "nightly.lock",
+        )
+        self.assertEqual(summary["stages"]["track_record"]["status"], "skipped")
 
 
 if __name__ == "__main__":
