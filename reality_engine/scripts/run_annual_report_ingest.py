@@ -1,0 +1,150 @@
+"""Annual-report ingestion: turn the 26k indexed-but-never-downloaded filings into substrate.
+
+Why this is the highest-leverage ingestion left: `corporate_documents` already
+*indexes* 26,614 annual reports (all screenable-universe, 2,430 Nifty200) with
+real BSE URLs — but `local_file_path` is NULL on every one of them, so none is
+ingested. Meanwhile the embedded chunk corpus covers only 54 of 200 Nifty200
+names (it is dominated by SME prospectuses), which is exactly why large caps like
+HAL have no business-substance cross-map at all.
+
+Annual reports are the fundamental text for already-listed companies, so this
+closes both gaps at once: retrieval coverage and cross-map anchors.
+
+Ordering: Nifty200 first, then Nifty500, then the rest, newest filing first —
+so the most valuable text lands first if the run is ever cut short.
+
+Resumable: the candidate query skips any row whose ``local_file_path`` is set, so
+re-running continues where it stopped. Each row is independent: one failure never
+stops the batch.
+
+    python -m reality_engine.scripts.run_annual_report_ingest --limit 5      # trial
+    python -m reality_engine.scripts.run_annual_report_ingest               # full, resumable
+"""
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from reality_engine import config as cfg  # noqa: E402
+
+LOG_PATH = cfg.DATA_DIR / "logs" / "annual_report_ingest.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[logging.FileHandler(LOG_PATH, encoding="utf-8"), logging.StreamHandler()],
+)
+log = logging.getLogger("annual_report_ingest")
+
+CANDIDATE_SQL = """
+SELECT cd.id, cd.symbol, cd.isin, cd.title, cd.doc_date, cd.source_url,
+       COALESCE(mc.is_nifty200, 0) AS pri200,
+       COALESCE(mc.is_nifty500, 0) AS pri500
+FROM corporate_documents cd
+LEFT JOIN master_companies mc ON mc.isin = cd.isin
+WHERE cd.doc_type = ?
+  AND cd.source_url IS NOT NULL AND cd.source_url <> ''
+  AND (cd.local_file_path IS NULL OR cd.local_file_path = '')
+  AND cd.symbol IS NOT NULL AND cd.symbol <> ''
+  AND COALESCE(cd.is_processed, 0) <> 2
+  AND (? = 0 OR COALESCE(mc.is_nifty200, 0) = 1)
+  AND (? = 0 OR COALESCE(mc.is_nifty50, 0) = 1)
+ORDER BY pri200 DESC, pri500 DESC, cd.doc_date DESC
+LIMIT ?
+"""
+
+
+def _candidates(conn, limit: int, doc_type: str = "ANNUAL_REPORT", nifty200_only: bool = False, nifty50_only: bool = False) -> List[Dict[str, Any]]:
+    rows = conn.execute(CANDIDATE_SQL, (doc_type, 1 if nifty200_only else 0, 1 if nifty50_only else 0, limit)).fetchall()
+    return [dict(zip(("id", "symbol", "isin", "title", "doc_date", "source_url", "pri200", "pri500"), r)) for r in rows]
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    ap = argparse.ArgumentParser(description="Ingest indexed annual reports into raw_documents/chunks.")
+    ap.add_argument("--limit", type=int, default=0, help="max documents this run (0 = all pending)")
+    ap.add_argument("--batch", type=int, default=10)
+    ap.add_argument("--ingest-workers", type=int, default=1)
+    ap.add_argument("--workers", type=int, default=2, help="download workers")
+    ap.add_argument("--doc-type", dest="doc_type", default="ANNUAL_REPORT",
+                    help="corporate_documents.doc_type to ingest (ANNUAL_REPORT, CONCALL_TRANSCRIPT, OTHER_FILING, ...)")
+    ap.add_argument("--nifty200-only", action="store_true", dest="nifty200_only",
+                    help="restrict to Nifty200 issuers (large-cap coverage first)")
+    ap.add_argument("--nifty50-only", action="store_true", dest="nifty50_only",
+                    help="restrict to Nifty50 issuers (test-ground slice)")
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args(argv)
+
+    from reality_engine.db.database import db_manager
+    from reality_engine.ingestion.official_filing_client import official_filing_client as fc
+    from reality_engine.ingestion.pdf_ingestor import PDFIngestor
+    from reality_engine.ingestion.resource_guard import ResourceGuard
+
+    started = time.time()
+    with db_manager.session() as conn:
+        todo = _candidates(conn, args.limit or 100000, args.doc_type, args.nifty200_only, args.nifty50_only)
+    n200 = sum(1 for r in todo if r["pri200"])
+    log.info("pending %s: %d (nifty200: %d) | ingest_workers=%d", args.doc_type, len(todo), n200, args.ingest_workers)
+    if args.dry_run or not todo:
+        return 0
+
+    guard = ResourceGuard.from_env(root=cfg.PROJECT_ROOT)
+    ingestor = PDFIngestor(db=db_manager, resource_guard=guard)
+    ok = failed = 0
+    for i in range(0, len(todo), args.batch):
+        sl = todo[i : i + args.batch]
+        t0 = time.time()
+        for rec in sl:
+            t1 = time.time()
+            try:
+                guard.wait_for_headroom("download")
+                arch = fc.archive_link(rec["symbol"], {
+                    "source_url": rec["source_url"],
+                    "doc_type": args.doc_type,
+                    "source": "bse_official",
+                    "discovery_source": "filing_backfill",
+                    "title": rec["title"],
+                    "doc_date": rec["doc_date"],
+                })
+                if not arch.get("ok") or not arch.get("local_file_path"):
+                    failed += 1
+                    log.warning("download failed %s %s: %s", rec["symbol"], rec["doc_date"], str(arch.get("error"))[:120])
+                    continue
+                res = ingestor.ingest_pdf(
+                    Path(arch["local_file_path"]),
+                    title=rec["title"], source_type=args.doc_type,
+                    published_date=rec["doc_date"], source_url=rec["source_url"],
+                    symbol=rec["symbol"], isin=rec["isin"],
+                )
+                status = (res or {}).get("status")
+                if status not in ("ingested", "skipped_duplicate"):
+                    failed += 1
+                    log.warning("ingest %s %s: %s %s", rec["symbol"], rec["doc_date"], status,
+                                str((res or {}).get("error"))[:120])
+                    continue
+                with db_manager.session() as conn:
+                    conn.execute(
+                        "UPDATE corporate_documents SET local_file_path=?, file_size_bytes=?, sha256_hash=?, is_processed=1 WHERE id=?",
+                        (arch.get("local_file_path"), arch.get("file_size_bytes"),
+                         arch.get("sha256_hash"), rec["id"]),
+                    )
+                ok += 1
+                log.info("[%d/%d] %s %s -> %s chunks (%.0fs)",
+                         i + sl.index(rec) + 1, len(todo), rec["symbol"], rec["doc_date"],
+                         (res or {}).get("chunks"), time.time() - t1)
+            except Exception as exc:  # noqa: BLE001
+                failed += 1
+                log.warning("row error %s: %s", rec["symbol"], str(exc)[:160])
+        log.info("batch %d-%d done: ok=%d failed=%d (%.0fs) cumulative ok=%d",
+                 i, i + len(sl), ok, failed, time.time() - t0, ok)
+
+    log.info("RUN_COMPLETE ingested=%d failed=%d seconds=%.0f", ok, failed, time.time() - started)
+    return 0 if ok or failed == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
