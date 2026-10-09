@@ -106,8 +106,16 @@ MODELS = {
     # Kilo gateway (free, own rate limit, KILO_API_KEY). 40-page test 2026-10-09: 90.4% identifiable, units 68.6%,
     # no misreads, ~11 s median; 1 of 40 calls returned a provider error. Prompts may be used for training (public filings).
     "dots-studio/dots-3-note-preview:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
-                                             "price": (0.0, 0.0), "capped": False, "ceiling": 20,
+                                             "price": (0.0, 0.0), "capped": False, "ceiling": 30,
                                              "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    # Same Dots model on a second Kilo account (KILO_API_KEY_2), own adaptive limiter. Probe 2026-10-10: the throttle is
+    # shared across both keys (extra load on key 2 also drew 429s on key 1): clean at 60 in flight in total, 16% 429 at
+    # 80, 46% at 100. Hence 30 per key.
+    # "id" is the model name sent to the gateway; the entry name (with @kilo2) is what outputs and logs record.
+    "dots-studio/dots-3-note-preview:free@kilo2": {"api": "chat", "id": "dots-studio/dots-3-note-preview:free",
+                                                   "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY_2",
+                                                   "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                                   "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
     # Claude Haiku 5.5, run as Claude Code helper agents through scripts/claude_page_queue.py (export -> agents ->
     # import), not called from this process. Best reader on the 40-page test: 100% identifiable, units 90.8%, no misreads.
     "claude-haiku-5-5": {"api": "agent", "price": (0.0, 0.0), "capped": False, "ceiling": 0,
@@ -121,12 +129,18 @@ PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview-free"   # overrida
 # Ornith (local GPU) was dropped 2026-10-09: ~0.11 pages/s for 85.6% identifiable, and the GPU is kept for the RapidOCR
 # page gate. Add mimo-v2.6-flash etc. to spend plan budget.
 ALSO_PRIMARY = ["dots-studio/dots-3-note-preview:free"]
+if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
+    ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
 ALSO_SECOND = []     # e.g. muse-spark-1.3-contributor: takes second readings whenever the second reader is at its limit
 RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900
 # Second readings run in their own pool from the persistent second_queue table, so a slow or throttled second reader
 # no longer holds primary workers (2026-10-09: Step throttled to 10 in flight left ~90 of 110 workers waiting on it and
 # cut the run to 0.5 pages/s). Above SECOND_QUEUE_MAX waiting pages (~150 KB JPEG each) workers wait inline again.
-SECOND_QUEUE_MAX = 5000
+# 2026-10-10: Step answered every call with an upstream HTTP 429 for over an hour; at the old 5,000 cap workers waited
+# inline again and the run fell to 0.5 pages/s. Cap raised to 100,000 (~15 GB) and a 429 pauses second readings
+# (pages stay queued, no try is spent) instead of burning their retries.
+SECOND_QUEUE_MAX = 100_000
+SECOND_PAUSE_429 = 300
 SECOND_TRIES = 3   # a queued page whose second reading keeps failing keeps its primary reading after this many tries
 BENCH_402_SEC = 30 * 60
 CAPS = {5 * 3600: 12.0, 7 * 86400: 30.0, 30 * 86400: 60.0}   # rolling window (s) -> $ cap, per capped model
@@ -453,7 +467,7 @@ class Client:
         if MODELS[model]["api"] == "agent":
             raise RuntimeError(f"{model} runs through scripts/claude_page_queue.py, not the extractor")
         if MODELS[model]["api"] == "chat":
-            body = {"model": model, **MODELS[model]["body"],
+            body = {"model": MODELS[model].get("id", model), **MODELS[model]["body"],
                     "messages": [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": url}},
                                                               {"type": "text", "text": prompt}]}]}
             r = self.http.post(f"{MODELS[model].get('base', BASE)}/chat/completions", headers=hdr, json=body, timeout=self.timeout)
@@ -864,7 +878,7 @@ def main():
                 log.info("pages %d (ok %d, skipped %d, error %d, second reads %d, second queue %d) | %.1f pages/s | in flight/limit %s | capped spend %s",
                          stats["pages"], stats["ok"], stats["skipped"], stats["error"], stats["second"], store.second_queue_size(),
                          stats["pages"] / el,
-                         {m.split("-")[0]: f"{l.inflight}/{l.limit}" for m, l in limiters.items()},
+                         {m.split("-")[0] + m.partition("@")[1] + m.partition("@")[2]: f"{l.inflight}/{l.limit}" for m, l in limiters.items()},
                          {m.split("-")[0]: ledger.summary(m)["5h"] for m in limiters if MODELS[m]["capped"]})
 
     turns = itertools.count()
@@ -877,10 +891,16 @@ def main():
             store.enqueue_second(task, b64, res)
 
     reading2, lock2, stop2 = set(), threading.Lock(), threading.Event()
+    pause2 = [0.0]   # second readings wait until this time after an upstream 429
 
     def second_job(sha, pg, task, b64, res, tries):
         try:
             res = second_read(task, b64, client, res, seconds)
+            if "HTTP 429" in (res.get("error") or ""):   # throttled, not a bad page: keep it queued, pause the pool
+                if time.time() >= pause2[0]:
+                    log.warning("second reader throttled (HTTP 429); second readings paused %d s", SECOND_PAUSE_429)
+                pause2[0] = time.time() + SECOND_PAUSE_429
+                return
             if res.get("error") and tries + 1 < SECOND_TRIES:
                 store.bump_second(sha, pg); return
             store.save_page(task, res); store.drop_second(sha, pg)
@@ -898,6 +918,10 @@ def main():
         primary pass is over, drains the queue and returns."""
         with ThreadPoolExecutor(max(1, ceil_s)) as ex2:
             while True:
+                if time.time() < pause2[0]:
+                    if stop2.is_set():
+                        return   # throttled at the end of a pass: the queue persists for the next pass
+                    time.sleep(5); continue
                 with lock2:
                     room = sum(limiters[m].limit for m in dict.fromkeys(seconds)) - len(reading2)
                     rows = store.next_second(set(reading2), room) if room > 0 else []
