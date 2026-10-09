@@ -1,5 +1,7 @@
 # Reality Engine — Agent & Developer Guide
 
+> **Read `tasks/FRAMEWORK.md` first.** It is the authority file (set by Shivam, 2026-10-08) and overrides this guide wherever they disagree: cash-only long book, risk limits, benchmark, proof rules, and the order of work. Live status and next steps are in `tasks/STATE.md`. Moat / ENI / ripple seeds are set aside until a tested strategy beats them. Note: rule 1 below ("ISINs remain immutable") is wrong in practice. ISINs change on splits and face-value changes, so price history needs an ISIN-history map.
+
 Reality Engine — Fundamental Reality Engine is a **dense-substrate, all-peers ensemble** Indian-equity intelligence platform with **continuous self-correction**. It ingests a lot of data (price, financials, concalls/PPT/Vahan/MF/RBI/Budget/PIB/YouTube) but does NOT reason over raw inside the limited LLM context window — raw is kept only as audit trail / replay source. Every signal is **quantized into a dense feature substrate**, then reasoned over by a competing ensemble of peer lenses (FF5 is one peer among many, not the trunk). Decisions are revisable continuously: the market-closed window is used to densely process/reason whatever data exists, even if incomplete — that is the stock-prediction ballgame. Multimodal ingestion (Budget/RBI/Concall audio/YouTube via yt-dlp+Whisper) and pgvector hybrid RAG feed the substrate, not the decision context directly.
 
 ---

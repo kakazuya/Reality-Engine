@@ -1,1 +1,0 @@
-drain-annual-all-resume: process running session-bound (persist=false detached=false) — restart me persist+detached before session close, or park me cleanly. Single writer, do not duplicate.

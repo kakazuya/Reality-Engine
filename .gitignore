@@ -139,3 +139,19 @@ analysis/pit_validate_final.txt
 reality_engine/scripts/bench_method_*.json
 .kilo/skills/addyosmani-agent-skills/
 .kilo/skills/mattpocock-skills/
+
+# derived outputs of the price-side diffusion study (regenerate with analysis/diffusion_study/0*.py)
+analysis/diffusion_study/out/
+
+# raw downloaded market files (fetch_market_raw.py); kept locally as audit/replay copy
+reality_engine/data/raw_market/
+
+# dated research snapshots (build_truth_snapshot.py)
+reality_engine/data/snapshots/
+
+# downloaded investor decks (fetch_decks.py) and the Claude page-reading queue (claude_page_queue.py): local data
+reality_engine/data/decks/
+reality_engine/data/claude_queue/
+
+# personal remote-access notes
+Remote_Connection_Setup_Notes.pdf
