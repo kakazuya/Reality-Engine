@@ -232,5 +232,33 @@ class DeferredSecondTests(unittest.TestCase):
             store.con.close()
 
 
+class BenchedReaderTests(unittest.TestCase):
+    def test_free_quota_429_benches_reader_without_retries(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = x.Store(os.path.join(d, "t.db"))
+            m = "space-bunny-free"
+            c = x.Client(x.SpendLedger(store, margin=1.0, est_usd=0.0), {m: x.AdaptiveLimiter(5, 1, 5, pause=0)})
+            calls = []
+            def post(model, b64, prompt):
+                calls.append(model)
+                return 429, '{"error":{"type":"FreeUsageLimitError","message":"Rate limit exceeded."}}', None
+            c._post = post
+            with self.assertRaises(x.CapReached):
+                c.read(m, "b64", "p")
+            self.assertEqual(calls, [m]); self.assertFalse(c.ledger.has_room(m))
+            store.con.close()
+
+    def test_second_read_skips_benched_reader(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = x.Store(os.path.join(d, "t.db"))
+            p, s1, s2 = "longcat-2.5-preview-free", "step-5-preview-free", "step-5-preview@stepfun"
+            c = FakeClient(store, {p: WEAK, s1: STRONG, s2: STRONG}, {p: 5, s1: 5, s2: 5})
+            res = x.process(dict(TASK), "b64", c, True, [p], [s1, s2], defer=lambda: True)
+            c.ledger.block(s1, 300, "HTTP 429 as second reader")
+            r = x.second_read(TASK, "b64", c, res, [s1, s2])
+            self.assertEqual(c.calls, [p, s2]); self.assertEqual((r["final_model"], r["second_tried"]), (s2, s2))
+            store.con.close()
+
+
 if __name__ == "__main__":
     unittest.main()

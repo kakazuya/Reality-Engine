@@ -170,6 +170,11 @@ SECOND_PAUSE_429 = 300
 SECOND_DEFERRED = "second reading deferred (queue paused)"
 SECOND_TRIES = 3   # a queued page whose second reading keeps failing keeps its primary reading after this many tries
 BENCH_402_SEC = 30 * 60
+# 2026-10-11: Space Bunny (OpenCode Zen free) ran out of its free allowance around 01:00 and answered every call with
+# HTTP 429 "FreeUsageLimitError"; each page then retried it six times before falling back. A 429 whose body says the
+# free/daily quota is used up now benches that reader like a 402; the other readers take its pages.
+BENCH_QUOTA_SEC = 30 * 60
+QUOTA_429 = re.compile(r"FreeUsageLimit|usage limit|quota|per day|daily limit", re.I)
 CAPS = {5 * 3600: 12.0, 7 * 86400: 30.0, 30 * 86400: 60.0}   # rolling window (s) -> $ cap, per capped model
 # The version identifies what was asked and how the page was rendered, not which model answered (outputs store the
 # model), so switching readers does not re-read pages that are already done.
@@ -329,14 +334,14 @@ class SpendLedger:
         self.lock_choice = threading.Lock()
         self.blocked_until = {}   # model -> time; set when OpenCode itself refuses with HTTP 402
 
-    def block(self, model, seconds):
+    def block(self, model, seconds, reason="HTTP 402, plan limit"):
         """OpenCode's own accounting runs ahead of this ledger (2026-10-09: MiMo refused with 402 'Insufficient account
         funds' when the ledger showed ~$7.6 of the $12 5-hour cap), so a 402 benches the model for a while."""
         with self.lock:
             first = self.blocked_until.get(model, 0) < time.time()
             self.blocked_until[model] = max(self.blocked_until.get(model, 0), time.time() + seconds)
         if first:
-            log.warning("%s refused by OpenCode (HTTP 402, plan limit); benched for %.0f min", model, seconds / 60)
+            log.warning("%s refused (%s); benched for %.0f min", model, reason, seconds / 60)
 
     def _spent(self, model, window, now):
         return self.db.query("SELECT COALESCE(SUM(usd),0) FROM spend WHERE model=? AND ts>=?", (model, now - window))[0][0]
@@ -590,6 +595,9 @@ class Client:
             if code == 402 or (code in (400, 403) and re.search(r"balance|insufficient|recharge|arrears|quota", str(out), re.I)):
                 self.ledger.block(model, BENCH_402_SEC)
                 raise CapReached(f"{model}: HTTP {code} plan limit / balance")
+            if throttled and QUOTA_429.search(str(out)):
+                self.ledger.block(model, BENCH_QUOTA_SEC, "HTTP 429, free quota used up")
+                raise CapReached(f"{model}: HTTP 429 free quota used up")
             if code == -1 and "127.0.0.1" in MODELS[model].get("base", ""):
                 self.ledger.block(model, 600)   # local server not running: set it aside, the others take the pages
                 raise CapReached(f"{model}: local server unreachable")
@@ -795,7 +803,8 @@ def process(task, jpeg_b64, client, use_second, primaries=None, seconds=None, de
             if defer is not None and defer():
                 res["second_pending"] = True
                 return res
-            return second_read(task, jpeg_b64, client, res, seconds, prompt)
+            res = second_read(task, jpeg_b64, client, res, seconds, prompt)
+            res.pop("second_tried", None); res.pop("second_capped", None)
         return res
     except CapReached as e:   # an alternate primary ran out of cap between the choice and the call: retry next pass
         return {"readings": readings, "status": "error", "error": f"cap reached: {e}", "final_model": None}
@@ -812,8 +821,9 @@ def second_read(task, jpeg_b64, client, res, seconds, prompt=None):
     prompt = prompt or build_prompt(task)
     res.pop("second_pending", None); res["error"] = None
     second = choose(client, seconds[0], [m for m in seconds[1:] if m != first])
-    if second == first:
-        second = next((m for m in seconds if m != first), None)
+    if second == first or (second and not client.ledger.has_room(second)):   # never wait on a benched reader
+        second = next((m for m in seconds if m != first and client.ledger.has_room(m)), None)
+    res["second_tried"] = second
     try:
         if second is None:
             raise CapReached("no second reader")
@@ -821,6 +831,7 @@ def second_read(task, jpeg_b64, client, res, seconds, prompt=None):
     except Exception as e:   # the primary reading stands; the page is not failed because a second read did not happen
         res["second_recall"] = None; res["n_facts"] = len(p["facts"])
         res["error"] = f"second reader skipped: {str(e)[:200]}"
+        res["second_capped"] = isinstance(e, CapReached)   # benched / out of balance: not the page's fault
         return res
     readings[second] = s
     sr = recall(fact_numbers(s["facts"]), task["truth"])
@@ -969,15 +980,20 @@ def main():
             store.enqueue_second(task, b64, res)
 
     reading2, lock2, stop2 = set(), threading.Lock(), threading.Event()
-    pause2 = [0.0]   # second readings wait until this time after an upstream 429
+    seconds_u = list(dict.fromkeys(seconds))
+    # 2026-10-11: a 429 used to pause the whole second pool for 5 min, so a throttled free Step also idled the paid
+    # StepFun slots (49 readings in an hour against ~250 possible). Now only the reader that drew the 429 is benched;
+    # the pool waits only while every second reader is benched.
+    free2 = lambda: [m for m in seconds_u if client.ledger.has_room(m)]
 
     def second_job(sha, pg, task, b64, res, tries):
         try:
             res = second_read(task, b64, client, res, seconds)
-            if "HTTP 429" in (res.get("error") or ""):   # throttled, not a bad page: keep it queued, pause the pool
-                if time.time() >= pause2[0]:
-                    log.warning("second reader throttled (HTTP 429); second readings paused %d s", SECOND_PAUSE_429)
-                pause2[0] = time.time() + SECOND_PAUSE_429
+            tried = res.pop("second_tried", None); capped = res.pop("second_capped", False)
+            if "HTTP 429" in (res.get("error") or "") or capped:   # throttled or benched, not a bad page: keep it queued
+                if tried and "HTTP 429" in res["error"] and not capped:
+                    client.ledger.block(tried, SECOND_PAUSE_429, "HTTP 429 as second reader")
+                time.sleep(2)   # no free reader for this page right now: do not spin on it
                 return
             if res.get("error") and tries + 1 < SECOND_TRIES:
                 store.bump_second(sha, pg); return
@@ -996,12 +1012,13 @@ def main():
         primary pass is over, drains the queue and returns."""
         with ThreadPoolExecutor(max(1, ceil_s)) as ex2:
             while True:
-                if time.time() < pause2[0]:
+                usable = free2()
+                if not usable:
                     if stop2.is_set():
-                        return   # throttled at the end of a pass: the queue persists for the next pass
+                        return   # every second reader benched at the end of a pass: the queue persists for the next pass
                     time.sleep(5); continue
                 with lock2:
-                    room = sum(limiters[m].limit for m in dict.fromkeys(seconds)) - len(reading2)
+                    room = sum(limiters[m].limit for m in usable) - len(reading2)
                     rows = store.next_second(set(reading2), room) if room > 0 else []
                     reading2.update((r[0], r[1]) for r in rows)
                 for r in rows:
