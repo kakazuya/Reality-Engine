@@ -116,6 +116,12 @@ MODELS = {
                                                    "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY_2",
                                                    "price": (0.0, 0.0), "capped": False, "ceiling": 30,
                                                    "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    # Step 5 Preview (free) through Kilo: same model as the OpenCode second reader, so its quality is known; Kilo answered
+    # 14/40 on 2026-10-10 (median 41 s; 94.9% identifiable, 98.8% of Haiku's numbers, no unsupported numbers), the rest
+    # refused by StepFun's own shared cap ("TPM limit 250,000,000"), which every gateway's free Step traffic hits.
+    "stepfun/step-5-preview-free@kilo": {"api": "chat", "id": "stepfun/step-5-preview-free", "base": "https://api.kilo.ai/api/gateway",
+                                         "key_env": "KILO_API_KEY", "price": (0.0, 0.0), "capped": False, "ceiling": 10,
+                                         "body": {"max_tokens": 32000, "reasoning": {"effort": "low"}}},
     # Claude Haiku 5.5, run as Claude Code helper agents through scripts/claude_page_queue.py (export -> agents ->
     # import), not called from this process. Best reader on the 40-page test: 100% identifiable, units 90.8%, no misreads.
     "claude-haiku-5-5": {"api": "agent", "price": (0.0, 0.0), "capped": False, "ceiling": 0,
@@ -131,7 +137,9 @@ PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview-free"   # overrida
 ALSO_PRIMARY = ["dots-studio/dots-3-note-preview:free"]
 if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
     ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
-ALSO_SECOND = []     # e.g. muse-spark-1.3-contributor: takes second readings whenever the second reader is at its limit
+ALSO_SECOND = ["stepfun/step-5-preview-free@kilo"]   # takes second readings whenever the OpenCode Step reader is at its limit
+# Kilo routes free models through its own OpenRouter account: every Kilo key shares one quota per model (a 1,000/day cap on
+# Inkling Small was already used up on 2026-10-10 for both keys), so extra Kilo accounts add no free-model capacity.
 RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900
 # Second readings run in their own pool from the persistent second_queue table, so a slow or throttled second reader
 # no longer holds primary workers (2026-10-09: Step throttled to 10 in flight left ~90 of 110 workers waiting on it and
