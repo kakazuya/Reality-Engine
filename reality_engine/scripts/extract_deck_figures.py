@@ -116,6 +116,13 @@ MODELS = {
                                                    "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY_2",
                                                    "price": (0.0, 0.0), "capped": False, "ceiling": 30,
                                                    "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    # "Space Bunny" (free, OpenCode Zen; the only Zen free model the API accepts: the others answer "free tier can only be
+    # used from within OpenCode"). 2026-10-11, 40-page test vs Haiku with reasoning_effort low: 40/40 answered, ~97%
+    # identifiable, ~99.7% of Haiku's numbers, no unsupported numbers, median ~6 s; with the default effort 13/40 came
+    # back empty (reasoning used the whole budget). Load test: no refusals up to 80 in flight (~6.2 pages/s alone).
+    # Unannounced model: availability may end without notice; prompts may be logged (public filings only).
+    "space-bunny-free": {"api": "chat", "base": "https://opencode.ai/zen/v1", "price": (0.0, 0.0), "capped": False, "ceiling": 80,
+                         "body": {"max_tokens": 32000, "reasoning_effort": "low"}},
     # Step 5 Preview (free) through Kilo: same model as the OpenCode second reader, so its quality is known; Kilo answered
     # 14/40 on 2026-10-10 (median 41 s; 94.9% identifiable, 98.8% of Haiku's numbers, no unsupported numbers), the rest
     # refused by StepFun's own shared cap ("TPM limit 250,000,000"), which every gateway's free Step traffic hits.
@@ -134,10 +141,10 @@ PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview-free"   # overrida
 # first full run used 99% of the weekly and 93% of the monthly allowance. Opt in per run with --also-primary/--also-second.
 # Ornith (local GPU) was dropped 2026-10-09: ~0.11 pages/s for 85.6% identifiable, and the GPU is kept for the RapidOCR
 # page gate. Add mimo-v2.6-flash etc. to spend plan budget.
-ALSO_PRIMARY = ["dots-studio/dots-3-note-preview:free"]
+ALSO_PRIMARY = ["space-bunny-free", "dots-studio/dots-3-note-preview:free"]
 if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
     ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
-ALSO_SECOND = ["stepfun/step-5-preview-free@kilo"]   # takes second readings whenever the OpenCode Step reader is at its limit
+ALSO_SECOND = ["space-bunny-free", "stepfun/step-5-preview-free@kilo"]   # take second readings whenever Step is at its limit
 # Kilo routes free models through its own OpenRouter account: every Kilo key shares one quota per model (a 1,000/day cap on
 # Inkling Small was already used up on 2026-10-10 for both keys), so extra Kilo accounts add no free-model capacity.
 RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900
