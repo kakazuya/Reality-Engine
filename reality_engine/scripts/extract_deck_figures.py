@@ -123,6 +123,13 @@ MODELS = {
     # Unannounced model: availability may end without notice; prompts may be logged (public filings only).
     "space-bunny-free": {"api": "chat", "base": "https://opencode.ai/zen/v1", "price": (0.0, 0.0), "capped": False, "ceiling": 80,
                          "body": {"max_tokens": 32000, "reasoning_effort": "low"}},
+    # Step 5 Preview on StepFun's own API (STEPFUN_API_KEY, international platform). PAID from the account balance:
+    # 10 test pages cost $0.1337 (~$0.013/page, mostly output tokens) on 2026-10-11, taken from a $5 voucher; Shivam
+    # asked to use it up and will recharge if needed. Account level V0: 5 concurrent, 100 RPM, 500k TPM.
+    # An empty balance should come back as an error that benches the model; the free readers carry on.
+    "step-5-preview@stepfun": {"api": "chat", "id": "step-5-preview", "base": "https://api.stepfun.ai/v1", "key_env": "STEPFUN_API_KEY",
+                               "price": (1.0, 2.7), "capped": False, "ceiling": 5,
+                               "body": {"max_tokens": 32000, "reasoning_effort": "low"}},
     # Step 5 Preview (free) through Kilo: same model as the OpenCode second reader, so its quality is known; Kilo answered
     # 14/40 on 2026-10-10 (median 41 s; 94.9% identifiable, 98.8% of Haiku's numbers, no unsupported numbers), the rest
     # refused by StepFun's own shared cap ("TPM limit 250,000,000"), which every gateway's free Step traffic hits.
@@ -144,7 +151,7 @@ PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview-free"   # overrida
 ALSO_PRIMARY = ["space-bunny-free", "dots-studio/dots-3-note-preview:free"]
 if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
     ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
-ALSO_SECOND = ["space-bunny-free", "stepfun/step-5-preview-free@kilo"]   # take second readings whenever Step is at its limit
+ALSO_SECOND = ["step-5-preview@stepfun", "space-bunny-free", "stepfun/step-5-preview-free@kilo"]   # used in this order when Step is full
 # Kilo routes free models through its own OpenRouter account: every Kilo key shares one quota per model (a 1,000/day cap on
 # Inkling Small was already used up on 2026-10-10 for both keys), so extra Kilo accounts add no free-model capacity.
 RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900
@@ -578,9 +585,10 @@ class Client:
                         "facts": parse_facts(out)}
             self.ledger.release(model)
             last = f"HTTP {code}: {out}"
-            if code == 402:
+            # an empty prepaid balance (StepFun) may come back as 400/403 with a balance message instead of 402
+            if code == 402 or (code in (400, 403) and re.search(r"balance|insufficient|recharge|arrears|quota", str(out), re.I)):
                 self.ledger.block(model, BENCH_402_SEC)
-                raise CapReached(f"{model}: HTTP 402 plan limit")
+                raise CapReached(f"{model}: HTTP {code} plan limit / balance")
             if code == -1 and "127.0.0.1" in MODELS[model].get("base", ""):
                 self.ledger.block(model, 600)   # local server not running: set it aside, the others take the pages
                 raise CapReached(f"{model}: local server unreachable")
