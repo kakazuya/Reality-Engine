@@ -447,6 +447,9 @@ CREATE INDEX IF NOT EXISTS ix_spend ON spend(model, ts);
 CREATE TABLE IF NOT EXISTS second_queue (
   sha256 TEXT, page_no INTEGER, prompt_version TEXT, task TEXT, jpeg TEXT, primary_res TEXT, queued_ts TEXT, tries INTEGER DEFAULT 0,
   PRIMARY KEY (sha256, page_no, prompt_version));
+-- 2026-10-11: without this index every next_second() read and sorted all ~27k queued rows, JPEGs included (~5 GB),
+-- about once a second: ~135 MB/s of disk reads from the extractor alone.
+CREATE INDEX IF NOT EXISTS second_queue_order ON second_queue(prompt_version, tries, queued_ts);
 """
 
 
@@ -511,14 +514,18 @@ class Store:
 
     def next_second(self, exclude, n):
         """Oldest queued pages not already being read: (sha256, page_no, task, jpeg_b64, primary result, tries)."""
-        rows = self.query("SELECT sha256, page_no, task, jpeg, primary_res, tries FROM second_queue WHERE prompt_version=? "
-                          "ORDER BY tries, queued_ts LIMIT ?", (PROMPT_VERSION, n + len(exclude)))
+        # keys first (walks the index), then the large rows only for the pages handed out
+        keys = self.query("SELECT sha256, page_no FROM second_queue WHERE prompt_version=? ORDER BY tries, queued_ts LIMIT ?",
+                          (PROMPT_VERSION, n + len(exclude)))
         out = []
-        for sha, pg, t, jpeg, r, tries in rows:
-            if (sha, pg) not in exclude:
+        for sha, pg in [k for k in keys if tuple(k) not in exclude][:n]:
+            row = self.query("SELECT task, jpeg, primary_res, tries FROM second_queue WHERE sha256=? AND page_no=? AND prompt_version=?",
+                             (sha, pg, PROMPT_VERSION))
+            if row:
+                t, jpeg, r, tries = row[0]
                 task = json.loads(t); task["truth"] = set(task["truth"])
                 out.append((sha, pg, task, jpeg, json.loads(r), tries))
-        return out[:n]
+        return out
 
     def drop_second(self, sha, page_no):
         self.execute("DELETE FROM second_queue WHERE sha256=? AND page_no=? AND prompt_version=?", (sha, page_no, PROMPT_VERSION))
