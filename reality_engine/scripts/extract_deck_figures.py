@@ -141,6 +141,10 @@ RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900
 # (pages stay queued, no try is spent) instead of burning their retries.
 SECOND_QUEUE_MAX = 100_000
 SECOND_PAUSE_429 = 300
+# 2026-10-10: Step's queue reached ~20,800 pages while it cleared ~1,000 a night. New pages no longer join the queue
+# (the pool keeps draining it); a page that wanted a second reading keeps its primary one and is marked with this
+# error text (status stays 'ok') so a later pass can find it. --enqueue-second turns queueing back on.
+SECOND_DEFERRED = "second reading deferred (queue paused)"
 SECOND_TRIES = 3   # a queued page whose second reading keeps failing keeps its primary reading after this many tries
 BENCH_402_SEC = 30 * 60
 CAPS = {5 * 3600: 12.0, 7 * 86400: 30.0, 30 * 86400: 60.0}   # rolling window (s) -> $ cap, per capped model
@@ -167,12 +171,16 @@ def keep(v):
 
 def parse_number(s):
     """'28,00,000' -> 2800000.0; '(1.44)' -> -1.44; 'Rs 18.2%' -> 18.2. Commas are dropped, so lakh grouping
-    cannot shift the magnitude."""
+    cannot shift the magnitude. A single comma followed by 1-2 digits and no dot ('9,7', '-7,95') is a decimal comma:
+    no thousands or lakh grouping ends in fewer than 3 digits."""
     s = re.sub(r"^(₹|Rs\.?|INR)\s*", "", s.strip().lstrip("~≈+"))
     m = re.search(r"-?\d[\d,]*\.?\d*", s)
     if not m:
         return None
-    v = float(m.group(0).replace(",", "").rstrip(".") or "nan")
+    tok = m.group(0).rstrip(",")
+    if re.fullmatch(r"-?\d+,\d{1,2}", tok):
+        tok = tok.replace(",", ".")
+    v = float(tok.replace(",", "").rstrip(".") or "nan")
     return -abs(v) if s.startswith("(") and s.rstrip("%").endswith(")") else v
 
 
@@ -191,9 +199,50 @@ def parse_facts(output):
             if not cand:
                 continue
             raw = cand[0]
+        unit = parts[3] if len(parts) > 3 else "-"
         facts.append({"metric": parts[0], "period": parts[1], "raw": raw, "value": parse_number(raw),
-                      "unit": parts[3] if len(parts) > 3 else "-"})
+                      "unit": currency_scale_unit(parts[0], raw, unit) or unit})
     return facts
+
+
+# Readers often write a bare currency unit ("Rs", "₹", "INR") when the scale is printed elsewhere: as a suffix on the
+# number ("7,571MM"), in the label ("Capex (Mn)") or in a table/chart header ("Rs. in Lacs"). 2026-10-10: ~67k final
+# facts had a bare currency unit; checked samples show most are genuine rupee amounts (prices, ADR, ticket size), so
+# a scale is only added when one is printed in the number, the label or (page-level) the page's text layer.
+BARE_CURRENCY = re.compile(r"^\s*(rs\.?|₹|inr|rupees?)\s*$", re.I)
+SCALE_WORDS = [("lakh", r"lakhs?|lacs?|lkh"), ("crore", r"crores?|crs?"), ("million", r"mn|mm|million|mio"),
+               ("billion", r"bn|billion"), ("thousand", r"thousands?|'000|000s")]
+SCALE_NAME = {"lakh": "Rs Lakh", "crore": "Rs Cr", "million": "Rs Mn", "billion": "Rs Bn", "thousand": "Rs '000"}
+PER_UNIT = re.compile(r"eps|per share|dividend|price|cmp|nav\b|book value|mrp|asp\b|arp|adr\b|average daily rate|ticket|"
+                      r"realis|realiz|per |/|rate\b|fare|rent", re.I)
+
+
+def _scale_in(text, where):
+    """Scales named in `text`: where='number' a suffix on a digit; 'label' also 'in Mn' / '(Mn)'; 'page' only a scale
+    tied to a currency word ('Rs. in Lacs', '₹ Cr', 'INR Mn') or a bracketed '(Cr)', so 'in million tonnes' is ignored."""
+    found = set()
+    for name, pat in SCALE_WORDS:
+        cur = rf"(?:rs\.?|₹|inr|rupees?)\s*(?:in\s*)?(?:{pat})\b|\((?:{pat})\.?\)"
+        rx = {"number": rf"\d\s*(?:{pat})\b", "label": rf"{cur}|\bin\s*(?:{pat})\b", "page": cur}[where]
+        if re.search(rx, text, re.I):
+            found.add(name)
+    return found
+
+
+NOT_MONEY = re.compile(r"shares|o/s|volume|lakh\s*crore|units|nos\b", re.I)
+
+
+def currency_scale_unit(metric, raw, unit, page_text=None):
+    """A unit with the scale for a fact whose unit is a bare currency, or None: the number's own suffix ('7,571MM')
+    wins, then the label ('Capex (Mn)'). A scale found only in the page text is NOT used: tried 2026-10-10 on 6.3k
+    facts, a spot check showed EPS, face value and per-unit prices wrongly scaled. `page_text` is kept for the call
+    signature only. Share counts, volumes and 'lakh crore' amounts are left alone."""
+    if not BARE_CURRENCY.match(unit or "") or NOT_MONEY.search(f"{metric} {raw}"):
+        return None
+    for found in (_scale_in(raw or "", "number"), _scale_in(metric or "", "label")):
+        if len(found) == 1:
+            return SCALE_NAME[found.pop()]
+    return None
 
 
 def fact_numbers(facts):
@@ -411,9 +460,11 @@ class Store:
                            r["seconds"], r["in_tok"], r["out_tok"], r["usd"], r["output"]))
                 c.execute("DELETE FROM facts WHERE sha256=? AND page_no=? AND prompt_version=? AND model=?",
                           (task["sha256"], task["page_no"], PROMPT_VERSION, model))
+                text = task.get("text") or ""
                 c.executemany("INSERT INTO facts VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                               [(task["sha256"], task["page_no"], PROMPT_VERSION, model, i, f["metric"], f["period"], f["raw"],
-                                f["value"], f["unit"], int(model == res.get("final_model"))) for i, f in enumerate(r["facts"])])
+                                f["value"], currency_scale_unit(f["metric"], f["raw"], f["unit"], text) or f["unit"],
+                                int(model == res.get("final_model"))) for i, f in enumerate(r["facts"])])
             c.execute("INSERT OR REPLACE INTO pages VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (task["sha256"], task["page_no"], PROMPT_VERSION, task["doc_id"], task["isin"], task["symbol"], task["doc_type"],
                        task["known_at"], task["route"], task["text_chars"], len(task["truth"]), task["img_cov"],
@@ -815,6 +866,7 @@ def main():
     ap.add_argument("--also-second", default=",".join(ALSO_SECOND), help="comma list; '' to use the second reader alone")
     ap.add_argument("--workers", type=int, default=0, help="starting parallel requests for the primary (default: its ceiling)")
     ap.add_argument("--min-workers", type=int, default=10)
+    ap.add_argument("--enqueue-second", action="store_true", help="queue new pages for the second reader (paused by default)")
     ap.add_argument("--cap-margin", type=float, default=0.85, help="fraction of each OpenCode Go $ cap this run may use")
     ap.add_argument("--no-second-reader", action="store_true")
     ap.add_argument("--include-intimations", action="store_true", help="also read 'Investor Meet - Intimation' letters")
@@ -886,6 +938,8 @@ def main():
 
     def work(task, b64):
         res = process(task, b64, client, not a.no_second_reader, primaries, seconds, defer=defer, turn=next(turns))
+        if res.get("second_pending") and not a.enqueue_second:   # queue paused: keep the primary reading, mark the page
+            res.pop("second_pending"); res["error"] = SECOND_DEFERRED
         finish(task, res)   # saved first, so a quick second reading can never be overwritten by the primary one
         if res.get("second_pending"):
             store.enqueue_second(task, b64, res)

@@ -14,6 +14,18 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(x.parse_number("(1.44)"), -1.44)
         self.assertEqual(x.parse_number("₹4.8"), 4.8)
         self.assertEqual(x.parse_number("18.2%"), 18.2)
+        self.assertEqual(x.parse_number("9,7"), 9.7)        # decimal comma
+        self.assertEqual(x.parse_number("-7,95%"), -7.95)
+        self.assertEqual(x.parse_number("1,000"), 1000.0)   # thousands grouping unchanged
+        self.assertEqual(x.parse_number("12,34,567"), 1234567.0)
+
+    def test_currency_scale_unit(self):
+        self.assertEqual(x.currency_scale_unit("Revenue", "7,571MM", "INR"), "Rs Mn")            # suffix on the number
+        self.assertEqual(x.currency_scale_unit("Planned Capex (Mn)", "11,920", "Rs."), "Rs Mn")  # scale in the label
+        self.assertIsNone(x.currency_scale_unit("Revenue", "1,234", "Rs", "Figures Rs. in Lacs"))  # page text not used
+        self.assertIsNone(x.currency_scale_unit("Shares O/S (Mn)", "9.7", "INR"))               # a count, not money
+        self.assertIsNone(x.currency_scale_unit("Infra plan", "Rs. 9.15 lakh crore", "Rs."))     # lakh crore: leave
+        self.assertIsNone(x.currency_scale_unit("Revenue", "1,234 Cr", "Rs Cr"))                # unit already scaled
 
     def test_header_skipped_but_literal_metric_label_kept(self):
         out = ("TITLE | New Project Launches\n"
