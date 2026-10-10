@@ -55,17 +55,20 @@ WHERE cd.doc_type = ?
   AND (? = 0 OR COALESCE(mc.is_nifty200, 0) = 1)
   AND (? = 0 OR COALESCE(mc.is_nifty50, 0) = 1)
   AND (? = '' OR COALESCE(cd.bse_dissem_ts, cd.publication_date, '') >= ?)
+  AND (? = '' OR cd.isin IN (SELECT isin FROM mkt_bse_eq_daily WHERE date >= ? AND isin LIKE 'INE%'
+                             UNION SELECT isin FROM daily_price_delivery WHERE date >= ? AND isin LIKE 'INE%'))
 ORDER BY pri200 DESC, pri500 DESC, COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.doc_date) DESC
 LIMIT ?
 """
 
 
 def _candidates(conn, limit: int, doc_type: str = "ANNUAL_REPORT", nifty200_only: bool = False, nifty50_only: bool = False,
-                since: str = "") -> List[Dict[str, Any]]:
+                since: str = "", active_since: str = "") -> List[Dict[str, Any]]:
     """`since` (YYYY-MM-DD) keeps rows filed on/after that date by their real filing time (BSE feed or BSE annual-report
-    list); rows with no known filing date are left out when `since` is set, because doc_date is the crawl date."""
+    list); rows with no known filing date are left out when `since` is set, because doc_date is the crawl date.
+    `active_since` keeps companies that traded on/after that date (BSE or NSE), i.e. skips delisted ones."""
     rows = conn.execute(CANDIDATE_SQL, (doc_type, 1 if nifty200_only else 0, 1 if nifty50_only else 0,
-                                        since, since, limit)).fetchall()
+                                        since, since, active_since, active_since, active_since, limit)).fetchall()
     return [dict(zip(("id", "symbol", "isin", "title", "doc_date", "source_url", "pri200", "pri500"), r)) for r in rows]
 
 
@@ -123,6 +126,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     help="restrict to Nifty50 issuers (test-ground slice)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--since", default="", help="only rows filed on/after YYYY-MM-DD (real filing date; undated rows skipped)")
+    ap.add_argument("--active-since", default="", dest="active_since",
+                    help="only companies that traded on/after YYYY-MM-DD (skips delisted ones)")
     ap.add_argument("--download-only", action="store_true", dest="download_only",
                     help="fetch PDFs and record paths without chunking them (chunking strategy decided separately)")
     args = ap.parse_args(argv)
@@ -134,7 +139,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     started = time.time()
     with db_manager.session() as conn:
-        todo = _candidates(conn, args.limit or 100000, args.doc_type, args.nifty200_only, args.nifty50_only, args.since)
+        todo = _candidates(conn, args.limit or 100000, args.doc_type, args.nifty200_only, args.nifty50_only, args.since,
+                           args.active_since)
     n200 = sum(1 for r in todo if r["pri200"])
     log.info("pending %s: %d (nifty200: %d, since %s) | ingest_workers=%d%s", args.doc_type, len(todo), n200,
              args.since or "-", args.ingest_workers, " | download only" if args.download_only else "")
