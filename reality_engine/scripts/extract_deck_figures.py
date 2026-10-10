@@ -142,7 +142,7 @@ MODELS = {
                          "body": {"via": "Claude Code subagent, scripts/claude_page_queue.py"}},
 }
 CLAIM_HOURS = 24   # pages exported to the Claude queue are left to it this long before the extractor takes them back
-PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview-free"   # overridable with --primary / --second
+PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview@stepfun"   # overridable with --primary / --second
 # Paid overflow readers are off by default. The OpenCode Go limits are one budget for the whole account (rolling 5 h,
 # weekly, monthly; console screenshot 2026-10-09), not per model, and the same budget serves Shivam's own coding: the
 # first full run used 99% of the weekly and 93% of the monthly allowance. Opt in per run with --also-primary/--also-second.
@@ -151,7 +151,8 @@ PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview-free"   # overrida
 ALSO_PRIMARY = ["space-bunny-free", "dots-studio/dots-3-note-preview:free"]
 if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
     ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
-ALSO_SECOND = ["step-5-preview@stepfun", "space-bunny-free", "stepfun/step-5-preview-free@kilo"]   # used in this order when Step is full
+# StepFun (paid, 5 slots) is the default second reader so its slots are always used; then the free readers in this order
+ALSO_SECOND = ["step-5-preview-free", "space-bunny-free", "stepfun/step-5-preview-free@kilo"]
 # Kilo routes free models through its own OpenRouter account: every Kilo key shares one quota per model (a 1,000/day cap on
 # Inkling Small was already used up on 2026-10-10 for both keys), so extra Kilo accounts add no free-model capacity.
 RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900
