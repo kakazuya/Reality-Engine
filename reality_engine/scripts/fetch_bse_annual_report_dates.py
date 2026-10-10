@@ -42,9 +42,16 @@ def file_key(name):
 
 def fetch(db, pause):
     db.executescript(SCHEMA)
-    codes = [r[0] for r in db.execute(
+    codes = {str(r[0]) for r in db.execute(
         "SELECT DISTINCT m.bse_code FROM corporate_documents d JOIN master_companies m ON m.isin=d.isin "
-        "WHERE d.doc_type='ANNUAL_REPORT' AND m.bse_code IS NOT NULL AND m.bse_code<>''")]
+        "WHERE d.doc_type='ANNUAL_REPORT' AND m.bse_code IS NOT NULL AND m.bse_code<>''")}
+    # companies missing a bse_code in master_companies (often delisted or suspended): the scrip code is in the
+    # PDF's path, .../bseplus/AnnualReport/<scrip code>/<file>.pdf
+    for (u,) in db.execute("SELECT source_url FROM corporate_documents WHERE doc_type='ANNUAL_REPORT' AND source_url LIKE '%/AnnualReport/%'"):
+        m = re.search(r"/AnnualReport/(\d{6})/", u or "")
+        if m:
+            codes.add(m.group(1))
+    codes = sorted(codes)
     done = {r[0] for r in db.execute("SELECT scripcode FROM bse_annual_reports_fetch WHERE status=200")}
     todo = [c for c in codes if str(c) not in done]
     print(f"scrip codes {len(codes)}, to fetch {len(todo)}", flush=True)
