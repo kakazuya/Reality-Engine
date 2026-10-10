@@ -40,9 +40,13 @@ def file_key(name):
     return re.sub(r"(\.pdf)+$", "", base, flags=re.I).lower()
 
 
-def fetch(db, pause):
+def fetch(db, pause, all_scrips=False):
     db.executescript(SCHEMA)
-    codes = {str(r[0]) for r in db.execute(
+    if all_scrips:   # every equity scrip that traded on BSE since 2019, not only companies we already hold ARs for
+        codes = {str(r[0]) for r in db.execute("SELECT DISTINCT sc_code FROM mkt_bse_eq_daily WHERE date >= '2019-01-01'")}
+    else:
+        codes = set()
+    codes |= {str(r[0]) for r in db.execute(
         "SELECT DISTINCT m.bse_code FROM corporate_documents d JOIN master_companies m ON m.isin=d.isin "
         "WHERE d.doc_type='ANNUAL_REPORT' AND m.bse_code IS NOT NULL AND m.bse_code<>''")}
     # companies missing a bse_code in master_companies (often delisted or suspended): the scrip code is in the
@@ -90,6 +94,44 @@ def apply(db):
     print(f"undated annual reports {len(rows)}, dated now {len(upd)}")
 
 
+def bse_pdf_url(scripcode, file_name):
+    """BSE file name -> download URL: UUID names live under corpfiling/AttachHis, numeric ones under bseplus/AnnualReport
+    (checked against the URLs already in corporate_documents)."""
+    key = file_key(file_name)
+    if re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", key):
+        return f"https://www.bseindia.com/xml-data/corpfiling/AttachHis/{key}.pdf"
+    return f"https://www.bseindia.com/bseplus/AnnualReport/{scripcode}/{key}.pdf"
+
+
+def discover(db, since):
+    """Add annual reports BSE lists (filed on/after `since`) that corporate_documents does not have yet, for every
+    fetched scrip code, so the download job picks them up. ISIN/symbol come from BSE's bhavcopy or master_companies;
+    scrips with no known ISIN are skipped and counted."""
+    have = {file_key(u) for (u,) in db.execute("SELECT source_url FROM corporate_documents WHERE doc_type='ANNUAL_REPORT'")}
+    code2 = {}
+    for c, i, s in db.execute("SELECT sc_code, MAX(isin), MAX(symbol) FROM mkt_bse_eq_daily WHERE isin LIKE 'INE%' GROUP BY sc_code"):
+        code2[str(c)] = (i, s)
+    for c, i, s in db.execute("SELECT bse_code, isin, COALESCE(nse_symbol, '') FROM master_companies WHERE bse_code IS NOT NULL AND isin LIKE 'INE%'"):
+        code2[str(c)] = (i, s or code2.get(str(c), (None, None))[1])
+    rows = db.execute("SELECT scripcode, year, file_name, dt_tm FROM bse_annual_reports WHERE dt_tm >= ?", (since,)).fetchall()
+    now = datetime.now().isoformat(timespec="seconds")
+    new, no_isin = [], 0
+    for code, year, fname, dt in rows:
+        if file_key(fname) in have:
+            continue
+        isin, sym = code2.get(str(code), (None, None))
+        if not isin:
+            no_isin += 1
+            continue
+        new.append((isin, sym or str(code), "ANNUAL_REPORT", "ANNUAL_REPORT", dt[:10], bse_pdf_url(code, fname), "bse_official",
+                    "bse_ar_api", dt, "bse_ar_api", 1, now))
+        have.add(file_key(fname))
+    with db:
+        db.executemany("""INSERT OR IGNORE INTO corporate_documents (isin, symbol, doc_type, title, doc_date, source_url, source,
+                          discovery_source, publication_date, pit_source, pit_tier, pit_applied_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""", new)
+    print(f"BSE-listed reports filed since {since}: {len(rows)}; added {len(new)}; skipped (no ISIN) {no_isin}")
+
+
 def report(db):
     q = lambda s: db.execute(s).fetchall()
     print("fetch status", q("SELECT status, COUNT(*) FROM bse_annual_reports_fetch GROUP BY 1"))
@@ -99,11 +141,14 @@ def report(db):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("what", choices=["fetch", "apply", "report"])
+    ap.add_argument("what", choices=["fetch", "apply", "discover", "report"])
     ap.add_argument("--pause", type=float, default=0.8, help="seconds between API calls")
+    ap.add_argument("--all-scrips", action="store_true", help="fetch every scrip that traded on BSE since 2019")
+    ap.add_argument("--since", default="2019-04-01", help="discover: reports filed on/after this date")
     a = ap.parse_args()
     db = sqlite3.connect(DB, timeout=120)
-    {"fetch": lambda: fetch(db, a.pause), "apply": lambda: apply(db), "report": lambda: report(db)}[a.what]()
+    {"fetch": lambda: fetch(db, a.pause, a.all_scrips), "apply": lambda: apply(db), "discover": lambda: discover(db, a.since),
+     "report": lambda: report(db)}[a.what]()
 
 
 if __name__ == "__main__":

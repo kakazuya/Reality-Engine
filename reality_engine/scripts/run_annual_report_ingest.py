@@ -54,14 +54,59 @@ WHERE cd.doc_type = ?
   AND COALESCE(cd.is_processed, 0) <> 2
   AND (? = 0 OR COALESCE(mc.is_nifty200, 0) = 1)
   AND (? = 0 OR COALESCE(mc.is_nifty50, 0) = 1)
-ORDER BY pri200 DESC, pri500 DESC, cd.doc_date DESC
+  AND (? = '' OR COALESCE(cd.bse_dissem_ts, cd.publication_date, '') >= ?)
+ORDER BY pri200 DESC, pri500 DESC, COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.doc_date) DESC
 LIMIT ?
 """
 
 
-def _candidates(conn, limit: int, doc_type: str = "ANNUAL_REPORT", nifty200_only: bool = False, nifty50_only: bool = False) -> List[Dict[str, Any]]:
-    rows = conn.execute(CANDIDATE_SQL, (doc_type, 1 if nifty200_only else 0, 1 if nifty50_only else 0, limit)).fetchall()
+def _candidates(conn, limit: int, doc_type: str = "ANNUAL_REPORT", nifty200_only: bool = False, nifty50_only: bool = False,
+                since: str = "") -> List[Dict[str, Any]]:
+    """`since` (YYYY-MM-DD) keeps rows filed on/after that date by their real filing time (BSE feed or BSE annual-report
+    list); rows with no known filing date are left out when `since` is set, because doc_date is the crawl date."""
+    rows = conn.execute(CANDIDATE_SQL, (doc_type, 1 if nifty200_only else 0, 1 if nifty50_only else 0,
+                                        since, since, limit)).fetchall()
     return [dict(zip(("id", "symbol", "isin", "title", "doc_date", "source_url", "pri200", "pri500"), r)) for r in rows]
+
+
+def _download_only(todo, doc_type, workers, fc, guard, db_manager) -> int:
+    """Fetch the PDFs and record their path, without chunking them (is_processed stays 0, so a later ingest pass can
+    pick them up once the chunking strategy for the document type is settled). Downloads run in `workers` threads;
+    each row is independent."""
+    from concurrent.futures import ThreadPoolExecutor
+    fc._download_via_browser = lambda *a, **k: None   # no headless-browser fallback from worker threads
+    started = time.time()
+    counts = {"ok": 0, "failed": 0}
+
+    def one(rec):
+        # any exception must stay inside this row: an exception escaping ex.map ended the whole 2026-10-10 run
+        # silently after ~430 of 12,778 reports
+        try:
+            guard.wait_for_headroom("download")
+            # plain download only: archive_link also runs a content classifier that can start the DirectML OCR, which is
+            # not safe across threads (two 2026-10-10 runs died with no traceback after ~400 files)
+            arch = fc._download(rec["source_url"], fc._local_path(rec["symbol"], doc_type, rec["source_url"]))
+            if not arch.get("ok") or not arch.get("local_file_path"):
+                return rec, None, arch.get("error")
+            with db_manager.session() as conn:
+                conn.execute("UPDATE corporate_documents SET local_file_path=?, file_size_bytes=?, sha256_hash=? WHERE id=?",
+                             (arch.get("local_file_path"), arch.get("file_size_bytes"), arch.get("sha256_hash"), rec["id"]))
+            return rec, arch, None
+        except Exception as exc:  # noqa: BLE001
+            return rec, None, f"{type(exc).__name__}: {exc}"
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
+        for n, (rec, arch, err) in enumerate(ex.map(one, todo), 1):
+            if arch is None:
+                counts["failed"] += 1
+                log.warning("download failed %s %s: %s", rec["symbol"], rec["doc_date"], str(err)[:120])
+            else:
+                counts["ok"] += 1
+            if n % 50 == 0:
+                log.info("[%d/%d] downloaded ok=%d failed=%d (%.1f docs/min)", n, len(todo), counts["ok"], counts["failed"],
+                         n / max(1e-9, (time.time() - started) / 60))
+    log.info("DOWNLOAD_COMPLETE ok=%d failed=%d seconds=%.0f", counts["ok"], counts["failed"], time.time() - started)
+    return 0 if counts["ok"] or not counts["failed"] else 1
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -77,6 +122,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--nifty50-only", action="store_true", dest="nifty50_only",
                     help="restrict to Nifty50 issuers (test-ground slice)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--since", default="", help="only rows filed on/after YYYY-MM-DD (real filing date; undated rows skipped)")
+    ap.add_argument("--download-only", action="store_true", dest="download_only",
+                    help="fetch PDFs and record paths without chunking them (chunking strategy decided separately)")
     args = ap.parse_args(argv)
 
     from reality_engine.db.database import db_manager
@@ -86,13 +134,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     started = time.time()
     with db_manager.session() as conn:
-        todo = _candidates(conn, args.limit or 100000, args.doc_type, args.nifty200_only, args.nifty50_only)
+        todo = _candidates(conn, args.limit or 100000, args.doc_type, args.nifty200_only, args.nifty50_only, args.since)
     n200 = sum(1 for r in todo if r["pri200"])
-    log.info("pending %s: %d (nifty200: %d) | ingest_workers=%d", args.doc_type, len(todo), n200, args.ingest_workers)
+    log.info("pending %s: %d (nifty200: %d, since %s) | ingest_workers=%d%s", args.doc_type, len(todo), n200,
+             args.since or "-", args.ingest_workers, " | download only" if args.download_only else "")
     if args.dry_run or not todo:
         return 0
 
     guard = ResourceGuard.from_env(root=cfg.PROJECT_ROOT)
+    if args.download_only:
+        return _download_only(todo, args.doc_type, args.workers, fc, guard, db_manager)
     ingestor = PDFIngestor(db=db_manager, resource_guard=guard)
     ok = failed = 0
     for i in range(0, len(todo), args.batch):
