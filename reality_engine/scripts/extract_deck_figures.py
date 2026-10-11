@@ -161,6 +161,14 @@ for _n, _env in enumerate(GEMINI_KEYS, 1):
     MODELS[f"gemini-3.1-flash-lite@g{_n}"] = {"api": "chat", "id": "gemini-3.1-flash-lite", "base": GEMINI_BASE, "key_env": _env,
                                              "price": (0.0, 0.0), "capped": False, "ceiling": 4, "rpm": 14, "rpd": 490,
                                              "body": {"max_tokens": 16000, "reasoning_effort": "none"}}
+    # Gemma 4 31B: 30 requests/min, 14.4k/day, but 16k tokens/min; a page is ~920 tokens with minimal thinking (~42 s),
+    # so the token limit allows ~17 pages/min per key. Native API only.
+    MODELS[f"gemma-4-31b@g{_n}"] = {"api": "gemini_native", "id": "gemma-4-31b-it", "key_env": _env,
+                                   "price": (0.0, 0.0), "capped": False, "ceiling": 12, "rpm": 15, "rpd": 14000,
+                                   "body": {"maxOutputTokens": 8000, "thinkingConfig": {"thinkingLevel": "minimal"}}}
+    MODELS[f"gemini-3.8-flash@g{_n}"] = {"api": "chat", "id": "gemini-3.8-flash", "base": GEMINI_BASE, "key_env": _env,
+                                        "price": (0.0, 0.0), "capped": False, "ceiling": 2, "rpm": 4, "rpd": 20,
+                                        "body": {"max_tokens": 32000, "reasoning_effort": "none"}}
 ALSO_PRIMARY = ["dots-studio/dots-3-note-preview:free"]
 if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
     ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
@@ -636,6 +644,18 @@ class Client:
         url = "data:image/jpeg;base64," + jpeg_b64
         if MODELS[model]["api"] == "agent":
             raise RuntimeError(f"{model} runs through scripts/claude_page_queue.py, not the extractor")
+        if MODELS[model]["api"] == "gemini_native":   # Google's own API (Gemma: its OpenAI-compatible route returns 500)
+            body = {"contents": [{"parts": [{"inline_data": {"mime_type": "image/jpeg", "data": jpeg_b64}}, {"text": prompt}]}],
+                    "generationConfig": MODELS[model]["body"]}
+            r = self.http.post(f"https://generativelanguage.googleapis.com/v1beta/models/{MODELS[model]['id']}:generateContent",
+                               headers={"x-goog-api-key": key, "Content-Type": "application/json"}, json=body, timeout=self.timeout)
+            if r.status_code != 200:
+                return r.status_code, r.text[:300], None
+            j = r.json(); u = j.get("usageMetadata", {})
+            if not j.get("candidates") or "content" not in j["candidates"][0]:
+                return 502, r.text[:300], None
+            text = "".join(p.get("text", "") for p in j["candidates"][0]["content"].get("parts", []) if not p.get("thought"))
+            return 200, text, (u.get("promptTokenCount", 0), u.get("candidatesTokenCount", 0) + u.get("thoughtsTokenCount", 0))
         if MODELS[model]["api"] == "chat":
             body = {"model": MODELS[model].get("id", model), **MODELS[model]["body"],
                     "messages": [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": url}},

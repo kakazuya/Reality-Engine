@@ -58,13 +58,14 @@ def variant(name):
 
 
 def run(models):
-    for m in models:
+    for m in [r for mm in models for r in mm.split("|")]:
         variant(m)
     OUT.mkdir(parents=True, exist_ok=True)
     pages = pick_pages()
     store = x.Store(str(OUT / "test.db"))
     ledger = x.SpendLedger(store, margin=1.0)
-    client = x.Client(ledger, {m: x.AdaptiveLimiter(x.MODELS[m]["ceiling"], 1, x.MODELS[m]["ceiling"]) for m in models})
+    readers = [r for m in models for r in m.split("|")]
+    client = x.Client(ledger, {m: x.AdaptiveLimiter(x.MODELS[m]["ceiling"], 1, x.MODELS[m]["ceiling"]) for m in readers})
     tasks = []
     for pg in pages:
         doc = pymupdf.open(pg["path"]); page = doc[pg["page_no"] - 1]
@@ -76,12 +77,14 @@ def run(models):
 
     def one(args):
         m, (pg, task, b64, img) = args
-        f = OUT / "answers" / m.replace("/", "_").replace(":", "_") / f"{img.stem}.json"
-        if f.exists():
+        f = OUT / "answers" / m.replace("/", "_").replace(":", "_").replace("|", "+") / f"{img.stem}.json"
+        if f.exists() and "error" not in json.loads(f.read_text(encoding="utf-8")):
             return m, pg, img, json.loads(f.read_text(encoding="utf-8"))
         f.parent.mkdir(parents=True, exist_ok=True)
+        # "a|b": one model on several keys, pages split between them (tight free quotas, e.g. 20/day)
+        keys = m.split("|"); reader = keys[tasks.index((pg, task, b64, img)) % len(keys)]
         try:
-            res = client.read(m, b64, x.build_prompt(task), tries=3)
+            res = client.read(reader, b64, x.build_prompt(task), tries=5)
             res = {"output": res["output"], "seconds": res["seconds"]}
         except Exception as e:
             res = {"error": str(e)[:300]}
