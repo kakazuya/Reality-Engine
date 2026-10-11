@@ -125,6 +125,7 @@ Morning list:
 4. Free-LLM slice test once the Kilo throttle is free.
 
 ## Known data gaps
+- **Retrieval and labelling gaps** (audit 2026-10-12, deferred until the AR pipeline is done): no single point-in-time price/delivery view (6 tables, 3 keys, no ISIN history map); 47 companies' deck figures on placeholder `INE_AUTO_*` ISINs; index membership is a single 2026-09-30 snapshot of 3 indices (not point-in-time); some documents lack publication time. Details and fixes: `tasks/RETRIEVAL_GAPS.md`.
 BSE insider 2023+ (paged API); MCX blocked; NSDL company-level limits need a form post; NSE FII derivative stats file ends Oct 2024 (participant OI covers after).
 
 **OPEN, needs an owner (found 2026-10-10 by the AR study session; Shivam to pick up in another session):**
