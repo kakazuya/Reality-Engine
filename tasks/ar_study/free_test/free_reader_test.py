@@ -34,13 +34,15 @@ from reality_engine.scripts.resource_watchdog import user_env   # noqa: E402
 OUT = HERE / "outputs"
 READERS = {"longcat": "longcat-2.5-preview-free", "dots": "dots-studio/dots-3-note-preview:free@kilo2",
            "nemotron-ultra": "nemotron-ultra@kilo", "nemotron-super": "nemotron-super@kilo2",
-           "nim-ultra": "nemotron-ultra@nim", "nim-super": "nemotron-super@nim"}
+           "nim-ultra": "nemotron-ultra@nim", "nim-super": "nemotron-super@nim", "glyph": "glyph@kilo"}
 NIM = "https://integrate.api.nvidia.com/v1"
 NO_THINK = {"chat_template_kwargs": {"enable_thinking": False}}   # 2026-10-11: with thinking, Super spent 80% of output on it
 KILO = "https://api.kilo.ai/api/gateway"
 # text-only readers (not in the deck extractor). Nemotron Super uses its whole output budget on reasoning unless
 # effort is low (2026-10-11 probe: default effort -> no CSV; low -> 98 rows).
-EXTRA = {"nemotron-ultra@kilo": {"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "base": KILO, "key_env": "KILO_API_KEY", "body": {}},
+EXTRA = {"glyph@kilo": {"id": "stealth/glyph-cluster", "base": KILO, "key_env": "KILO_API_KEY",
+                        "body": {"reasoning": {"effort": "low"}}},   # free stealth reasoning model (text only, 256k context)
+         "nemotron-ultra@kilo": {"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "base": KILO, "key_env": "KILO_API_KEY", "body": {}},
          "nemotron-super@kilo2": {"id": "nvidia/nemotron-3-super-120b-a12b:free", "base": KILO, "key_env": "KILO_API_KEY_2",
                                   "body": {"reasoning": {"effort": "low"}}},
          "nemotron-ultra@nim": {"id": "nvidia/nemotron-3-ultra-550b-a55b", "base": NIM, "key_env": "NVIDIA_API_KEY", "body": NO_THINK},
@@ -110,13 +112,71 @@ MUST = [
 ]
 
 
-def parts(report):
+# Readers whose request size is capped (Gemma: 16k tokens/min per project, so a request must stay well under that):
+# sections are cut at page markers into pieces of at most this many characters (~9k tokens), named "<part>#<k>".
+SPLIT = {"gemma": 36000}
+GEMMA_KEYS = ["gemma-4-31b@g1", "gemma-4-31b@g2"]
+
+
+def parts(report, max_chars=None):
     files = sorted((STUDY / "text").glob(f"{report}_FY24_AR_*.txt"))
-    return [(f.stem.replace(f"{report}_FY24_AR_", ""), f.read_text(encoding="utf-8", errors="replace")) for f in files]
+    out = [(f.stem.replace(f"{report}_FY24_AR_", ""), f.read_text(encoding="utf-8", errors="replace")) for f in files]
+    if not max_chars:
+        return out
+    pieces = []
+    for name, text in out:
+        pages = re.split(r"(?=^=== PAGE \d+ ===)", text, flags=re.M)
+        buf, k = "", 1
+        for pg in pages:
+            if buf and len(buf) + len(pg) > max_chars:
+                pieces.append((f"{name}#{k}", buf)); buf, k = "", k + 1
+            buf += pg
+        if buf.strip():
+            pieces.append((f"{name}#{k}", buf))
+    return pieces
+
+
+class TokenPacer:
+    """Keeps each key under its tokens-per-minute limit (estimated from prompt length)."""
+    def __init__(self, tpm=15000):
+        import threading
+        self.tpm, self.lock, self.log = tpm, threading.Lock(), {}
+
+    def wait(self, key, tokens):
+        while True:
+            with self.lock:
+                now = time.time(); log = [(t, n) for t, n in self.log.get(key, []) if now - t < 60]
+                if sum(n for _, n in log) + tokens <= self.tpm or not log:
+                    log.append((now, tokens)); self.log[key] = log; return
+                wait = 60 - (now - log[0][0]) + 0.5
+            time.sleep(wait)
+
+
+PACER = TokenPacer()
 
 
 def call(model, prompt, env, tries=4):
     cfg = EXTRA.get(model) or x.MODELS[model]
+    if cfg.get("api") == "gemini_native":
+        key = env[cfg["key_env"]]; last = None
+        for a in range(6):
+            PACER.wait(cfg["key_env"], int(len(prompt) / 3.2) + 1500)
+            t = time.time()
+            try:
+                r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{cfg['id']}:generateContent",
+                                  headers={"x-goog-api-key": key}, timeout=900,
+                                  json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {**cfg["body"], "maxOutputTokens": 32000}})
+                if r.status_code == 200 and r.json().get("candidates"):
+                    j = r.json(); u = j.get("usageMetadata", {}); c = j["candidates"][0]
+                    text = "".join(p.get("text", "") for p in c.get("content", {}).get("parts", []) if not p.get("thought"))
+                    return {"text": text, "seconds": round(time.time() - t, 1), "in_tok": u.get("promptTokenCount"),
+                            "out_tok": u.get("candidatesTokenCount"), "finish": "length" if c.get("finishReason") == "MAX_TOKENS" else "stop",
+                            "key": cfg["key_env"]}
+                last = f"HTTP {r.status_code}: {r.text[:300]}"
+            except requests.RequestException as e:
+                last = str(e)[:300]
+            time.sleep(65 if "429" in str(last) else 20 * (a + 1))
+        return {"error": last}
     hdr = {"Authorization": f"Bearer {env[cfg.get('key_env', 'OPENCODE_GO_API_KEY')]}", "Content-Type": "application/json",
            "x-opencode-session": str(uuid.uuid4()), "User-Agent": "reality-engine-ar-test/1.0"}
     body = {"model": cfg.get("id", model), **cfg["body"], "messages": [{"role": "user", "content": prompt}]}
@@ -140,7 +200,7 @@ def call(model, prompt, env, tries=4):
 
 def run(models, reports):
     env = user_env()
-    jobs = [(m, rep, name, text) for m in models for rep in reports for name, text in parts(rep)]
+    jobs = [(m, rep, name, text) for m in models for rep in reports for name, text in parts(rep, SPLIT.get(m))]
 
     def one(job):
         m, rep, name, text = job
@@ -148,7 +208,8 @@ def run(models, reports):
         if f.exists() and "error" not in json.loads(f.read_text(encoding="utf-8")):
             return f"skip {f.name}"
         f.parent.mkdir(parents=True, exist_ok=True)
-        res = call(READERS[m], PROMPT.format(company=COMPANY[rep], text=text), env)
+        reader = GEMMA_KEYS[jobs.index(job) % len(GEMMA_KEYS)] if m == "gemma" else READERS[m]
+        res = call(reader, PROMPT.format(company=COMPANY[rep], text=text), env)
         f.write_text(json.dumps(res, indent=1), encoding="utf-8")
         return f"{m} {rep} {name}: " + (res.get("error") or f"{res['seconds']}s in {res['in_tok']} out {res['out_tok']} {res['finish']}")
 
@@ -194,7 +255,7 @@ def score():
         found = {}
         tot_num = tot_bad = tot_rows = 0
         for rep in COMPANY:
-            for name, text in parts(rep):
+            for name, text in parts(rep, SPLIT.get(m)):
                 f = mdir / f"{rep}_{name}.json"
                 if not f.exists():
                     continue

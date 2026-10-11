@@ -59,6 +59,197 @@
 - OK  GES-csr-unspent S7_standalone_fs_notes p116
 - OK  GES-eu-ets S1_agm_notice p14
 
+## gemma
+
+| report | part | rows | numbers checked | not in text | pages outside | notes |
+|---|---|---|---|---|---|---|
+| GESHIP | S1_agm_notice#1 | 7 | 0 | 0 | 0 |  |
+| GESHIP | S1_agm_notice#2 | 7 | 6 | 0 | 0 |  |
+| GESHIP | S2_chairman_esg_highlights#1 | 29 | 28 | 0 | 0 |  |
+| GESHIP | S2_chairman_esg_highlights#2 | 22 | 17 | 0 | 0 |  |
+| GESHIP | S3_boards_report_annexures_secretarial#1 | 64 | 64 | 0 | 10 |  |
+| GESHIP | S3_boards_report_annexures_secretarial#2 | 15 | 14 | 0 | 4 |  |
+| GESHIP | S3_boards_report_annexures_secretarial#3 | 22 | 21 | 0 | 0 | 11 malformed rows |
+| GESHIP | S3_boards_report_annexures_secretarial#4 | 49 | 46 | 0 | 0 | 3 malformed rows |
+| GESHIP | S4_corp_governance#1 | 13 | 12 | 0 | 0 | 1 malformed rows |
+| GESHIP | S4_corp_governance#2 | 9 | 9 | 0 | 0 | 7 malformed rows |
+| GESHIP | S4_corp_governance#3 | 21 | 15 | 0 | 0 |  |
+| GESHIP | S5_brsr#1 | 52 | 51 | 0 | 0 | 1 malformed rows |
+| GESHIP | S5_brsr#2 | 38 | 38 | 0 | 0 |  |
+| GESHIP | S5_brsr#3 | 16 | 16 | 0 | 0 |  |
+| GESHIP | S6_fleet_auditor_caro#1 | 22 | 18 | 0 | 0 |  |
+| GESHIP | S6_fleet_auditor_caro#2 | 19 | 18 | 0 | 0 |  |
+| GESHIP | S7_standalone_fs_notes#1 | 13 | 13 | 0 | 0 |  |
+| GESHIP | S7_standalone_fs_notes#2 | 12 | 12 | 0 | 0 |  |
+| GESHIP | S7_standalone_fs_notes#3 | 37 | 34 | 0 | 0 |  |
+| GESHIP | S7_standalone_fs_notes#4 | 51 | 51 | 0 | 0 |  |
+| GESHIP | S7_standalone_fs_notes#5 | 65 | 64 | 0 | 0 |  |
+| GESHIP | S8a_consolidated_p135-150#1 | 75 | 68 | 0 | 0 |  |
+| GESHIP | S8a_consolidated_p135-150#2 | 19 | 19 | 0 | 0 |  |
+| GESHIP | S8a_consolidated_p135-150#3 | 20 | 20 | 0 | 0 |  |
+| GESHIP | S8a_consolidated_p135-150#4 | 22 | 22 | 0 | 0 |  |
+| GESHIP | S8b_consolidated_p151-171#1 | 36 | 36 | 0 | 0 |  |
+| GESHIP | S8b_consolidated_p151-171#2 | 45 | 45 | 1 | 0 |  |
+| GESHIP | S8b_consolidated_p151-171#3 | 54 | 53 | 0 | 0 |  |
+| CONCOR | p1-50#1 | 20 | 20 | 0 | 0 |  |
+| CONCOR | p1-50#2 | 20 | 17 | 1 | 0 | 2 malformed rows |
+| CONCOR | p1-50#3 | 14 | 10 | 0 | 0 |  |
+| CONCOR | p1-50#4 | 33 | 33 | 0 | 0 | 33 malformed rows |
+| CONCOR | p1-50#5 | 26 | 26 | 0 | 0 |  |
+| CONCOR | p101-150#1 | 16 | 15 | 0 | 0 |  |
+| CONCOR | p101-150#2 | 24 | 21 | 0 | 0 |  |
+| CONCOR | p101-150#3 | 26 | 24 | 0 | 0 |  |
+| CONCOR | p101-150#4 | 50 | 50 | 0 | 0 |  |
+| CONCOR | p151-200#1 | 22 | 22 | 0 | 0 |  |
+| CONCOR | p151-200#2 | 36 | 36 | 0 | 0 |  |
+| CONCOR | p151-200#3 | 27 | 19 | 0 | 0 |  |
+| CONCOR | p151-200#4 | 0 | 0 | 0 | 0 |  |
+| CONCOR | p201-250#1 | 13 | 13 | 0 | 0 |  |
+| CONCOR | p201-250#2 | 27 | 26 | 0 | 0 |  |
+| CONCOR | p201-250#3 | 39 | 39 | 0 | 0 |  |
+| CONCOR | p201-250#4 | 29 | 29 | 0 | 0 |  |
+| CONCOR | p251-300#1 | 34 | 33 | 1 | 0 |  |
+| CONCOR | p251-300#2 | 123 | 123 | 0 | 0 |  |
+| CONCOR | p251-300#3 | 26 | 25 | 0 | 0 |  |
+| CONCOR | p251-300#4 | 10 | 8 | 0 | 0 |  |
+| CONCOR | p301-350#1 | 26 | 15 | 0 | 0 |  |
+| CONCOR | p301-350#2 | 7 | 7 | 0 | 0 |  |
+| CONCOR | p301-350#3 | 23 | 23 | 3 | 0 |  |
+| CONCOR | p301-350#4 | 63 | 63 | 0 | 0 |  |
+| CONCOR | p351-400#1 | 33 | 33 | 0 | 0 |  |
+| CONCOR | p351-400#2 | 40 | 40 | 0 | 0 |  |
+| CONCOR | p351-400#3 | 35 | 35 | 0 | 0 | 2 malformed rows |
+| CONCOR | p351-400#4 | 21 | 21 | 0 | 0 |  |
+| CONCOR | p401-432#1 | 31 | 31 | 0 | 0 |  |
+| CONCOR | p401-432#2 | 18 | 8 | 0 | 0 | 18 malformed rows |
+| CONCOR | p401-432#3 | 14 | 0 | 0 | 0 | 1 malformed rows |
+| CONCOR | p51-100#1 | 22 | 21 | 0 | 0 |  |
+| CONCOR | p51-100#2 | 19 | 13 | 1 | 0 |  |
+| CONCOR | p51-100#3 | 26 | 23 | 2 | 0 |  |
+| CONCOR | p51-100#4 | 12 | 12 | 0 | 0 |  |
+| CONCOR | p51-100#5 | 4 | 3 | 0 | 0 |  |
+| COCHINSHIP | p1-50#1 | 25 | 24 | 0 | 5 |  |
+| COCHINSHIP | p1-50#2 | 31 | 29 | 0 | 0 |  |
+| COCHINSHIP | p1-50#3 | 37 | 37 | 0 | 0 |  |
+| COCHINSHIP | p1-50#4 | 13 | 13 | 0 | 2 |  |
+| COCHINSHIP | p1-50#5 | 32 | 26 | 0 | 0 | 2 malformed rows |
+| COCHINSHIP | p1-50#6 | 39 | 39 | 0 | 0 |  |
+| COCHINSHIP | p101-150#1 | 38 | 38 | 0 | 0 | 1 malformed rows |
+| COCHINSHIP | p101-150#2 | 29 | 29 | 0 | 0 |  |
+| COCHINSHIP | p101-150#3 | 15 | 11 | 0 | 0 |  |
+| COCHINSHIP | p101-150#4 | 13 | 11 | 0 | 0 |  |
+| COCHINSHIP | p151-200#1 | 41 | 40 | 0 | 0 |  |
+| COCHINSHIP | p151-200#2 | 6 | 5 | 0 | 0 |  |
+| COCHINSHIP | p151-200#3 | 15 | 12 | 0 | 15 |  |
+| COCHINSHIP | p151-200#4 | 51 | 51 | 0 | 2 |  |
+| COCHINSHIP | p151-200#5 | 25 | 24 | 0 | 0 |  |
+| COCHINSHIP | p201-250#1 | 34 | 34 | 0 | 0 |  |
+| COCHINSHIP | p201-250#2 | 70 | 70 | 0 | 0 |  |
+| COCHINSHIP | p201-250#3 | 30 | 26 | 0 | 0 |  |
+| COCHINSHIP | p201-250#4 | 18 | 15 | 0 | 0 |  |
+| COCHINSHIP | p251-300#1 | 9 | 7 | 0 | 0 | 1 malformed rows |
+| COCHINSHIP | p251-300#2 | 2 | 1 | 0 | 0 |  |
+| COCHINSHIP | p251-300#3 | 28 | 24 | 0 | 28 |  |
+| COCHINSHIP | p251-300#4 | 46 | 46 | 1 | 0 |  |
+| COCHINSHIP | p251-300#5 | 33 | 33 | 0 | 0 |  |
+| COCHINSHIP | p301-350#1 | 50 | 50 | 0 | 0 |  |
+| COCHINSHIP | p301-350#2 | 35 | 35 | 0 | 0 |  |
+| COCHINSHIP | p301-350#3 | 32 | 32 | 0 | 0 |  |
+| COCHINSHIP | p301-350#4 | 17 | 17 | 0 | 0 |  |
+| COCHINSHIP | p351-362#1 | 4 | 3 | 0 | 0 |  |
+| COCHINSHIP | p51-100#1 | 7 | 6 | 0 | 0 |  |
+| COCHINSHIP | p51-100#2 | 21 | 21 | 0 | 0 |  |
+| COCHINSHIP | p51-100#3 | 20 | 14 | 0 | 0 | 4 malformed rows |
+| COCHINSHIP | p51-100#4 | 29 | 27 | 0 | 0 |  |
+| COCHINSHIP | p51-100#5 | 41 | 41 | 0 | 0 |  |
+
+**Must-find recall: 25/25**; numbers not found in the text: 10/2638 (0.4%); rows 2799
+
+- OK  CSL-ocf-standalone p151-200#1 p156
+- OK  CSL-ocf-fy23 p151-200#1 p156
+- OK  CSL-ocf-consolidated p201-250#4 p248
+- OK  CSL-contract-liab p151-200#5 p197
+- OK  CSL-1200-pax-vessels p1-50#3 p24
+- OK  CSL-sbfa-reversal p1-50#5 p37
+- OK  CSL-sap-edit-log p101-150#3 p143
+- OK  CON-kam-tughlakabad p251-300#3 p293
+- OK  CON-kam-phillaur p251-300#3 p293
+- OK  CON-kam-moradabad p251-300#3 p293
+- OK  CON-land-lease-rou p251-300#1 p262
+- OK  CON-seis-861 p201-250#3 p237
+- OK  CON-receivables p1-50#1 p7
+- OK  CON-brsr-rpt-purchases p151-200#1 p161
+- OK  GES-audit-trail S6_fleet_auditor_caro#1 p102
+- OK  GES-capcom-standalone S7_standalone_fs_notes#4 p128
+- OK  GES-capcom-consolidated S8b_consolidated_p151-171#2 p162
+- OK  GES-care-aaa S4_corp_governance#3 p75
+- OK  GES-tc-receivables S8b_consolidated_p151-171#3 p167
+- OK  GES-brsr-loans-rp S5_brsr#1 p79
+- OK  GES-brsr-invest-rp S5_brsr#1 p83
+- OK  GES-csr-obligation S3_boards_report_annexures_secretarial#1 p47
+- OK  GES-csr-spent S3_boards_report_annexures_secretarial#1 p47
+- OK  GES-csr-unspent S7_standalone_fs_notes#3 p116
+- OK  GES-eu-ets S2_chairman_esg_highlights#1 p34
+
+## glyph
+
+| report | part | rows | numbers checked | not in text | pages outside | notes |
+|---|---|---|---|---|---|---|
+| GESHIP | S1_agm_notice | 21 | 12 | 1 | 0 |  |
+| GESHIP | S2_chairman_esg_highlights | 67 | 49 | 1 | 0 |  |
+| GESHIP | S3_boards_report_annexures_secretarial | 128 | 121 | 10 | 2 |  |
+| GESHIP | S4_corp_governance | - | - | - | - | ERROR HTTP 408: {"error":"The upstream provider was unable to process the request","er |
+| GESHIP | S5_brsr | - | - | - | - | ERROR HTTP 408: {"error":"The upstream provider was unable to process the request","er |
+| GESHIP | S6_fleet_auditor_caro | 110 | 100 | 3 | 0 |  |
+| GESHIP | S7_standalone_fs_notes | 108 | 106 | 1 | 0 |  |
+| GESHIP | S8a_consolidated_p135-150 | - | - | - | - | ERROR HTTP 408: {"error":"The upstream provider was unable to process the request","er |
+| GESHIP | S8b_consolidated_p151-171 | 82 | 75 | 3 | 0 | 3 malformed rows |
+| CONCOR | p1-50 | 30 | 23 | 0 | 0 |  |
+| CONCOR | p101-150 | 134 | 118 | 17 | 0 | 9 malformed rows |
+| CONCOR | p151-200 | 115 | 111 | 0 | 0 |  |
+| CONCOR | p201-250 | 86 | 72 | 1 | 0 |  |
+| CONCOR | p251-300 | 68 | 64 | 12 | 14 |  |
+| CONCOR | p301-350 | 89 | 69 | 0 | 0 | 1 malformed rows |
+| CONCOR | p351-400 | - | - | - | - | ERROR HTTP 408: {"error":"The upstream provider was unable to process the request","er |
+| CONCOR | p401-432 | 86 | 71 | 20 | 0 |  |
+| CONCOR | p51-100 | 73 | 47 | 1 | 0 |  |
+| COCHINSHIP | p1-50 | 141 | 98 | 5 | 6 | 4 malformed rows |
+| COCHINSHIP | p101-150 | - | - | - | - | ERROR HTTP 408: {"error":"The upstream provider was unable to process the request","er |
+| COCHINSHIP | p151-200 | - | - | - | - | ERROR HTTP 408: {"error":"The upstream provider was unable to process the request","er |
+| COCHINSHIP | p201-250 | - | - | - | - | ERROR HTTP 408: {"error":"The upstream provider was unable to process the request","er |
+| COCHINSHIP | p251-300 | 79 | 47 | 1 | 0 |  |
+| COCHINSHIP | p301-350 | 61 | 58 | 8 | 15 |  |
+| COCHINSHIP | p351-362 | 0 | 0 | 0 | 0 |  |
+| COCHINSHIP | p51-100 | 121 | 91 | 2 | 0 |  |
+
+**Must-find recall: 18/25**; numbers not found in the text: 86/1332 (6.5%); rows 1599
+
+- MISS CSL-ocf-standalone 
+- MISS CSL-ocf-fy23 
+- MISS CSL-ocf-consolidated 
+- MISS CSL-contract-liab 
+- OK  CSL-1200-pax-vessels p1-50 p24
+- OK  CSL-sbfa-reversal p1-50 p37
+- OK  CSL-sap-edit-log p301-350 p341
+- OK  CON-kam-tughlakabad p251-300 p292
+- OK  CON-kam-phillaur p251-300 p292
+- OK  CON-kam-moradabad p251-300 p292
+- OK  CON-land-lease-rou p251-300 p291
+- OK  CON-seis-861 p201-250 p235
+- OK  CON-receivables p251-300 p230
+- OK  CON-brsr-rpt-purchases p151-200 p159
+- OK  GES-audit-trail S6_fleet_auditor_caro p102
+- OK  GES-capcom-standalone S7_standalone_fs_notes p128
+- OK  GES-capcom-consolidated S8b_consolidated_p151-171 p162
+- MISS GES-care-aaa 
+- OK  GES-tc-receivables S8b_consolidated_p151-171 p167
+- MISS GES-brsr-loans-rp 
+- MISS GES-brsr-invest-rp 
+- OK  GES-csr-obligation S3_boards_report_annexures_secretarial p47
+- OK  GES-csr-spent S3_boards_report_annexures_secretarial p47
+- OK  GES-csr-unspent S3_boards_report_annexures_secretarial p67
+- OK  GES-eu-ets S2_chairman_esg_highlights p28
+
 ## longcat
 
 | report | part | rows | numbers checked | not in text | pages outside | notes |

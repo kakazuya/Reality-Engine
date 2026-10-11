@@ -114,3 +114,10 @@ Takeaway: V2 + guards is at ~89% fully right on unseen verified rows, against 90
 alone. The remaining errors are label context, not number/unit/year corruption. To pass 90% cleanly: a second reader
 when the two readings disagree on the label, and a check that a label naming a different measure (fair vs carrying,
 gross vs net) is supported by the column header.
+
+## Gemma 4 31B and Glyph Cluster on the AR test (2026-10-12)
+- **Gemma 4 31B (Google AI Studio free keys, native API, thinking minimal): PASSES.** 25/25 must-find, 0.4% of 2,638
+  numbers not in the text (LongCat: 25/25, 0.6%). Sections cut into ~10-page pieces (99 pieces) because the free tier is
+  16k tokens/min per project; ~75 s per piece. Throughput: ~15 report pages/min per key (~20k pages/day per account).
+- **Glyph Cluster (Kilo free, stealth reasoning model): FAILS.** 18/25 must-find, 6.5% of 1,332 numbers not in the text
+  (~10x Gemma/LongCat), and 7 of 26 sections timed out upstream (HTTP 408).
