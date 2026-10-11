@@ -36,10 +36,10 @@ READERS = {"longcat": "longcat-2.5-preview-free", "dots": "dots-studio/dots-3-no
            "nemotron-ultra": "nemotron-ultra@kilo", "nemotron-super": "nemotron-super@kilo2",
            "nim-ultra": "nemotron-ultra@nim", "nim-super": "nemotron-super@nim"}
 NIM = "https://integrate.api.nvidia.com/v1"
-NO_THINK = {"chat_template_kwargs": {"enable_thinking": False}}   # 2026-10-12: with thinking, Super spent 80% of output on it
+NO_THINK = {"chat_template_kwargs": {"enable_thinking": False}}   # 2026-10-11: with thinking, Super spent 80% of output on it
 KILO = "https://api.kilo.ai/api/gateway"
 # text-only readers (not in the deck extractor). Nemotron Super uses its whole output budget on reasoning unless
-# effort is low (2026-10-12 probe: default effort -> no CSV; low -> 98 rows).
+# effort is low (2026-10-11 probe: default effort -> no CSV; low -> 98 rows).
 EXTRA = {"nemotron-ultra@kilo": {"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "base": KILO, "key_env": "KILO_API_KEY", "body": {}},
          "nemotron-super@kilo2": {"id": "nvidia/nemotron-3-super-120b-a12b:free", "base": KILO, "key_env": "KILO_API_KEY_2",
                                   "body": {"reasoning": {"effort": "low"}}},

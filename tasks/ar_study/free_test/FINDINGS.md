@@ -1,4 +1,4 @@
-# Free-reader AR test, baseline (2026-10-12, test only, nothing stored)
+# Free-reader AR test, baseline (2026-10-11, test only, nothing stored)
 
 Whole sections (GESHIP v2 split) or 50-page chunks (COCHINSHIP, CONCOR) of the 3 gold FY24 reports, sent in the
 prompt to LongCat 2.5 Preview (OpenCode Go, free) and Dots 3 Note (Kilo key 2, free). Each returns every storable
@@ -35,7 +35,7 @@ Problems:
 Takeaway: LongCat reads AR text well enough to find every checked fact, with few unsupported numbers. Dots needs a
 loop guard. Next is the approved design's row-mode test (suggestion 1) on the 39+39 hand-checked rows.
 
-## Nemotron and NVIDIA NIM (2026-10-12): dropped
+## Nemotron and NVIDIA NIM (2026-10-11): dropped
 
 - Nemotron Ultra via Kilo: 4 of 26 parts answered in ~50 min; the rest were NVIDIA "overloaded" (503) or dropped
   connections.
@@ -52,7 +52,7 @@ loop guard. Next is the approved design's row-mode test (suggestion 1) on the 39
 - Decision (Shivam's rule "if slow, drop"): NIM is too slow or too weak for bulk AR reading. Keep the OpenCode Go and
   Kilo free models (LongCat passed 25/25).
 
-## Row clean-up test (protocol gate 1), LongCat, 2026-10-12
+## Row clean-up test (protocol gate 1), LongCat, 2026-10-11
 
 `row_cleanup_test.py`; side-by-side answers in `row_cleanup_results.md`. 78 hand-checked rows (39 cpu_ok + 39
 row-verified), one call per table block (64 calls per variant, ~2-15 s each). V1 = the table's rows only; V2 = rows plus
@@ -84,7 +84,7 @@ Cost: V2 sends one page of text per table block, which is ~100-150 page-equivale
 for rows only). A hybrid keeps it lower: V1 for clean rows, V2 only for suspicious ones (long or merged labels, short
 labels like "Others"/"Total", currency units on pages without a currency header).
 
-## Guards built + fresh page-checked confirmation (2026-10-12)
+## Guards built + fresh page-checked confirmation (2026-10-11)
 
 Guards are now pipeline code: `reality_engine/processing/ar_row_guards.py` (tests: `reality_engine/tests/test_ar_row_guards.py`,
 12 cases from both rounds). The model's own label never counts as evidence, and the model may not change scope.

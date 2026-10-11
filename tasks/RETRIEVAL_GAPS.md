@@ -1,4 +1,4 @@
-# Retrieval and labelling gaps (audit 2026-10-12, deferred by Shivam until the AR pipeline is done)
+# Retrieval and labelling gaps (audit 2026-10-11, deferred by Shivam until the AR pipeline is done)
 
 Goal: every stored fact resolves to its stock, its publication time, the indices the stock was in on that date, and
 price/delivery data before and after. Measured on equity_intelligence.db and deck_figures.db.

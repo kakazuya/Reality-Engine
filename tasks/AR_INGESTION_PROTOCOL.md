@@ -1,11 +1,11 @@
-# Annual-report ingestion: protocol and pipeline (draft 2026-10-12)
+# Annual-report ingestion: protocol and pipeline (draft 2026-10-11)
 
 Owner: main session (the AR study hand-off is `tasks/ar_study/HANDOFF_AR_PIPELINE.md`; its prototypes are in
 `tasks/ar_study/challenger/`). Goal (Shivam): **every relevant AR fact stored at true quality, labelled to stock and
 filing time**. Efficiency is secondary. No bulk reading by Claude; bulk LLM work goes to free models that passed the
 quality test.
 
-Decisions so far (Shivam, 2026-10-11/12):
+Decisions so far (Shivam, 2026-10-11):
 - Statements come from XBRL; AR tables are parsed on CPU; an LLM gets only what the CPU cannot verify.
 - Row-mode clean-up pass: **yes**. Prose-slice tightening (28% -> 12-15%): **no**, the wide slice stays.
 - Readers need not be vision models. Any free text model that passes the must-find test may be used.

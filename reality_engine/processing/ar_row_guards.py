@@ -1,7 +1,7 @@
 """Guards for the annual-report row clean-up pass (tasks/AR_INGESTION_PROTOCOL.md, LLM stage a).
 
 A free model gets CPU-parsed table rows and returns a cleaner label, unit and period for each. It fixes most parser
-errors, but in the 2026-10-12 test (tasks/ar_study/free_test/FINDINGS.md) it also introduced three kinds of
+errors, but in the 2026-10-11 test (tasks/ar_study/free_test/FINDINGS.md) it also introduced three kinds of
 corruption that must never reach storage:
   1. currency scale changed (a crore table relabelled "rupees"): the value would be off by 10^7;
   2. year changed against the column header ("As at 31/03/2023" turned into 2024);

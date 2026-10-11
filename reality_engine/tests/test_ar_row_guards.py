@@ -1,4 +1,4 @@
-"""Row clean-up guards: cases taken from the 2026-10-12 LongCat test (tasks/ar_study/free_test/FINDINGS.md)."""
+"""Row clean-up guards: cases taken from the 2026-10-11 LongCat test (tasks/ar_study/free_test/FINDINGS.md)."""
 import unittest
 
 from reality_engine.processing import ar_row_guards as g
