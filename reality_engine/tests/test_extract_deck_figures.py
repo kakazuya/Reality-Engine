@@ -260,6 +260,29 @@ class BenchedReaderTests(unittest.TestCase):
             store.con.close()
 
 
+class RatePacerTests(unittest.TestCase):
+    def setUp(self):
+        x.MODELS["test-rpm@g9"] = {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 2, "rpm": 600, "rpd": 3, "body": {}}
+
+    def tearDown(self):
+        x.MODELS.pop("test-rpm@g9", None)
+
+    def test_spacing_and_daily_cap_bench(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = x.Store(os.path.join(d, "t.db")); ledger = x.SpendLedger(store, margin=1.0, est_usd=0.0)
+            p = x.RatePacer(store, ledger); m = "test-rpm@g9"
+            t0 = time.time()
+            for _ in range(3):
+                p.acquire(m)
+            self.assertGreaterEqual(time.time() - t0, 0.18)   # 600/min = 0.1 s apart: 3 calls take >= 0.2 s
+            self.assertFalse(p.has_room(m))                    # daily cap of 3 reached
+            with self.assertRaises(x.CapReached):
+                p.acquire(m)
+            self.assertFalse(ledger.has_room(m))               # benched until midnight Pacific
+            self.assertTrue(p.has_room("longcat-2.5-preview-free"))   # readers without quotas are not paced
+            store.con.close()
+
+
 class RedoDeferredTests(unittest.TestCase):
     def test_deferred_page_rebuilds_primary_result_for_second_reading(self):
         with tempfile.TemporaryDirectory() as d:

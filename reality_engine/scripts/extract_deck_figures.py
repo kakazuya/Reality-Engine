@@ -136,6 +136,7 @@ MODELS = {
     "stepfun/step-5-preview-free@kilo": {"api": "chat", "id": "stepfun/step-5-preview-free", "base": "https://api.kilo.ai/api/gateway",
                                          "key_env": "KILO_API_KEY", "price": (0.0, 0.0), "capped": False, "ceiling": 10,
                                          "body": {"max_tokens": 32000, "reasoning": {"effort": "low"}}},
+    # Gemini entries (one per Google AI Studio key) are added below the dict: see GEMINI_KEYS.
     # Claude Haiku 5.5, run as Claude Code helper agents through scripts/claude_page_queue.py (export -> agents ->
     # import), not called from this process. Best reader on the 40-page test: 100% identifiable, units 90.8%, no misreads.
     "claude-haiku-5-5": {"api": "agent", "price": (0.0, 0.0), "capped": False, "ceiling": 0,
@@ -150,6 +151,16 @@ PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview@stepfun"   # overr
 # page gate. Add mimo-v2.6-flash etc. to spend plan budget.
 # 2026-10-11 afternoon: Space Bunny's free tier now answers API calls with 403 "FreeTierError ... only within OpenCode"
 # (the Go docs list it as a paid model, $0.15/$0.60 per 1M), so it left the default free readers.
+# Gemini (Google AI Studio, OpenAI-compatible endpoint, 2026-10-11). Free tier limits are per project and per model
+# (AI Studio rate-limit page): 3.1 Flash-Lite 15 requests/min, 500/day; the Flash models 5/min, 20/day. A reader entry
+# per key that is set (GEMINI_API_KEY, GEMINI_API_KEY_2..5); `rpm`/`rpd` are paced by RatePacer, kept just under the
+# limits. Not in the default readers until it passes the 40-page quality test: opt in with --also-second.
+GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai"
+GEMINI_KEYS = [k for k in ["GEMINI_API_KEY"] + [f"GEMINI_API_KEY_{i}" for i in range(2, 6)] if os.environ.get(k)]
+for _n, _env in enumerate(GEMINI_KEYS, 1):
+    MODELS[f"gemini-3.1-flash-lite@g{_n}"] = {"api": "chat", "id": "gemini-3.1-flash-lite", "base": GEMINI_BASE, "key_env": _env,
+                                             "price": (0.0, 0.0), "capped": False, "ceiling": 4, "rpm": 14, "rpd": 490,
+                                             "body": {"max_tokens": 16000, "reasoning_effort": "none"}}
 ALSO_PRIMARY = ["dots-studio/dots-3-note-preview:free"]
 if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
     ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
@@ -444,6 +455,8 @@ CREATE TABLE IF NOT EXISTS facts (
   metric TEXT, period TEXT, raw_number TEXT, value REAL, unit TEXT, is_final INTEGER);
 CREATE INDEX IF NOT EXISTS ix_facts_page ON facts(sha256, page_no);
 CREATE TABLE IF NOT EXISTS spend (ts REAL, model TEXT, in_tok INTEGER, out_tok INTEGER, usd REAL);
+CREATE TABLE IF NOT EXISTS call_log (ts REAL, model TEXT);   -- every request to a reader with a daily cap (rpd)
+CREATE INDEX IF NOT EXISTS call_log_model_ts ON call_log(model, ts);
 CREATE TABLE IF NOT EXISTS bad_docs (sha256 TEXT PRIMARY KEY, path TEXT, strikes INTEGER, last_page INTEGER, ts TEXT);
 CREATE TABLE IF NOT EXISTS doc_pages (sha256 TEXT PRIMARY KEY, n_pages INTEGER);
 CREATE INDEX IF NOT EXISTS ix_spend ON spend(model, ts);
@@ -564,9 +577,52 @@ class Store:
 
 
 # ---------------------------------------------------------------- model calls
+def seconds_to_pacific_midnight(now=None):
+    """Gemini's daily quotas reset at midnight Pacific time."""
+    from zoneinfo import ZoneInfo
+    t = datetime.fromtimestamp(now or time.time(), ZoneInfo("America/Los_Angeles"))
+    nxt = (t + timedelta(days=1)).replace(hour=0, minute=0, second=5, microsecond=0)
+    return (nxt - t).total_seconds()
+
+
+class RatePacer:
+    """Requests-per-minute and requests-per-day pacing for readers with fixed quotas (MODELS[m]['rpm'/'rpd']).
+    Calls are spaced 60/rpm seconds apart; every request is logged in call_log (it survives restarts), and a reader
+    at its daily cap is benched until midnight Pacific. Readers without rpm/rpd pass straight through."""
+
+    def __init__(self, store, ledger):
+        self.store, self.ledger = store, ledger
+        self.lock = threading.Lock()
+        self.next_at = {}
+
+    def _today(self, model):
+        since = time.time() - (86400 - seconds_to_pacific_midnight())
+        return self.store.query("SELECT COUNT(*) FROM call_log WHERE model=? AND ts>=?", (model, since))[0][0]
+
+    def has_room(self, model):
+        cfg = MODELS[model]
+        if not cfg.get("rpm"):
+            return True
+        return self.next_at.get(model, 0) <= time.time() + 1 and (not cfg.get("rpd") or self._today(model) < cfg["rpd"])
+
+    def acquire(self, model):
+        cfg = MODELS[model]
+        if not cfg.get("rpm"):
+            return
+        with self.lock:
+            if cfg.get("rpd") and self._today(model) >= cfg["rpd"]:
+                self.ledger.block(model, seconds_to_pacific_midnight(), f"daily cap of {cfg['rpd']} requests")
+                raise CapReached(f"{model}: daily cap")
+            slot = max(time.time(), self.next_at.get(model, 0))
+            self.next_at[model] = slot + 60.0 / cfg["rpm"]
+        time.sleep(max(0.0, slot - time.time()))
+        self.store.execute("INSERT INTO call_log VALUES (?,?)", (time.time(), model))
+
+
 class Client:
     def __init__(self, ledger, limiters, timeout=300):
         self.ledger, self.limiters, self.timeout = ledger, limiters, timeout   # one adaptive limiter per model
+        self.pacer = RatePacer(ledger.db, ledger)
         self.session_id = str(uuid.uuid4())
         self.http = requests.Session()
         self.http.mount("https://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=256))
@@ -613,6 +669,7 @@ class Client:
                 log.warning("spend cap reached for %s (%s); pausing %.0f min", model, self.ledger.summary(model), wait / 60)
                 time.sleep(min(wait, 1800))
                 continue
+            self.pacer.acquire(model)   # fixed-quota readers (Gemini): spacing + daily cap; raises CapReached at the cap
             limiter.acquire(); t = time.time(); throttled = False
             try:
                 code, out, usage = self._post(model, jpeg_b64, prompt)
@@ -630,6 +687,12 @@ class Client:
             if code == 402 or (code in (400, 403) and re.search(r"balance|insufficient|recharge|arrears|quota|FreeTier", str(out), re.I)):
                 self.ledger.block(model, BENCH_402_SEC)
                 raise CapReached(f"{model}: HTTP {code} plan limit / balance")
+            if throttled and re.search(r"PerMinute|per minute", str(out)):   # Gemini per-minute quota: a short bench
+                self.ledger.block(model, 65, "HTTP 429, per-minute quota")
+                raise CapReached(f"{model}: HTTP 429 per-minute quota")
+            if throttled and re.search(r"PerDay|per day", str(out)):   # Gemini daily quota: until midnight Pacific
+                self.ledger.block(model, seconds_to_pacific_midnight(), "HTTP 429, daily quota")
+                raise CapReached(f"{model}: HTTP 429 daily quota")
             if throttled and QUOTA_429.search(str(out)):
                 self.ledger.block(model, BENCH_QUOTA_SEC, "HTTP 429, free quota used up")
                 raise CapReached(f"{model}: HTTP 429 free quota used up")
@@ -806,7 +869,8 @@ def choose(client, preferred, alternates):
     order = [preferred] + [m for m in alternates if m != preferred]
     with client.ledger.lock_choice:
         for m in order:
-            if m in client.limiters and client.limiters[m].has_room() and client.ledger.has_room(m):
+            pacer = getattr(client, "pacer", None)
+            if m in client.limiters and client.limiters[m].has_room() and client.ledger.has_room(m) and (pacer is None or pacer.has_room(m)):
                 return m
     return preferred
 
