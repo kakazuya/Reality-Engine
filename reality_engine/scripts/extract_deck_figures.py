@@ -148,11 +148,13 @@ PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview@stepfun"   # overr
 # first full run used 99% of the weekly and 93% of the monthly allowance. Opt in per run with --also-primary/--also-second.
 # Ornith (local GPU) was dropped 2026-10-09: ~0.11 pages/s for 85.6% identifiable, and the GPU is kept for the RapidOCR
 # page gate. Add mimo-v2.6-flash etc. to spend plan budget.
-ALSO_PRIMARY = ["space-bunny-free", "dots-studio/dots-3-note-preview:free"]
+# 2026-10-11 afternoon: Space Bunny's free tier now answers API calls with 403 "FreeTierError ... only within OpenCode"
+# (the Go docs list it as a paid model, $0.15/$0.60 per 1M), so it left the default free readers.
+ALSO_PRIMARY = ["dots-studio/dots-3-note-preview:free"]
 if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
     ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
 # StepFun (paid, 5 slots) is the default second reader so its slots are always used; then the free readers in this order
-ALSO_SECOND = ["step-5-preview-free", "space-bunny-free", "stepfun/step-5-preview-free@kilo"]
+ALSO_SECOND = ["step-5-preview-free", "stepfun/step-5-preview-free@kilo"]
 # Kilo routes free models through its own OpenRouter account: every Kilo key shares one quota per model (a 1,000/day cap on
 # Inkling Small was already used up on 2026-10-10 for both keys), so extra Kilo accounts add no free-model capacity.
 RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900
@@ -175,6 +177,7 @@ BENCH_402_SEC = 30 * 60
 # free/daily quota is used up now benches that reader like a 402; the other readers take its pages.
 BENCH_QUOTA_SEC = 30 * 60
 QUOTA_429 = re.compile(r"FreeUsageLimit|usage limit|quota|per day|daily limit", re.I)
+REDO_QUEUE_TARGET = 3000   # --redo-deferred renders more pages only while fewer than this wait for a second reading
 CAPS = {5 * 3600: 12.0, 7 * 86400: 30.0, 30 * 86400: 60.0}   # rolling window (s) -> $ cap, per capped model
 # The version identifies what was asked and how the page was rendered, not which model answered (outputs store the
 # model), so switching readers does not re-read pages that are already done.
@@ -527,6 +530,31 @@ class Store:
                 out.append((sha, pg, task, jpeg, json.loads(r), tries))
         return out
 
+    def deferred_pages(self):
+        """Pages that kept only their primary reading because the second queue was paused, and are not queued now."""
+        out = {}
+        for sha, pg in self.query("SELECT p.sha256, p.page_no FROM pages p WHERE p.prompt_version=? AND p.status='ok' AND p.error=? "
+                                  "AND NOT EXISTS (SELECT 1 FROM second_queue q WHERE q.sha256=p.sha256 AND q.page_no=p.page_no "
+                                  "AND q.prompt_version=p.prompt_version)", (PROMPT_VERSION, SECOND_DEFERRED)):
+            out.setdefault(sha, set()).add(pg)
+        return out
+
+    def primary_result(self, sha, page_no):
+        """The stored primary result of a page, shaped like process() returns it (for a later second reading)."""
+        row = self.query("SELECT final_model, primary_recall FROM pages WHERE sha256=? AND page_no=? AND prompt_version=?",
+                         (sha, page_no, PROMPT_VERSION))
+        if not row or not row[0][0]:
+            return None
+        model, pr = row[0]
+        o = self.query("SELECT seconds, in_tok, out_tok, usd, raw_output FROM outputs WHERE sha256=? AND page_no=? AND prompt_version=? "
+                       "AND model=?", (sha, page_no, PROMPT_VERSION, model))
+        if not o:
+            return None
+        sec, it, ot, usd, raw = o[0]
+        facts = parse_facts(raw or "")
+        return {"readings": {model: {"output": raw, "seconds": sec, "in_tok": it, "out_tok": ot, "usd": usd, "facts": facts}},
+                "primary_recall": pr, "final_model": model, "status": "ok", "n_facts": len(facts)}
+
     def drop_second(self, sha, page_no):
         self.execute("DELETE FROM second_queue WHERE sha256=? AND page_no=? AND prompt_version=?", (sha, page_no, PROMPT_VERSION))
 
@@ -599,7 +627,7 @@ class Client:
             self.ledger.release(model)
             last = f"HTTP {code}: {out}"
             # an empty prepaid balance (StepFun) may come back as 400/403 with a balance message instead of 402
-            if code == 402 or (code in (400, 403) and re.search(r"balance|insufficient|recharge|arrears|quota", str(out), re.I)):
+            if code == 402 or (code in (400, 403) and re.search(r"balance|insufficient|recharge|arrears|quota|FreeTier", str(out), re.I)):
                 self.ledger.block(model, BENCH_402_SEC)
                 raise CapReached(f"{model}: HTTP {code} plan limit / balance")
             if throttled and QUOTA_429.search(str(out)):
@@ -909,6 +937,9 @@ def main():
     ap.add_argument("--workers", type=int, default=0, help="starting parallel requests for the primary (default: its ceiling)")
     ap.add_argument("--min-workers", type=int, default=10)
     ap.add_argument("--enqueue-second", action="store_true", help="queue new pages for the second reader (paused by default)")
+    ap.add_argument("--redo-deferred", action="store_true",
+                    help="second readings for pages marked 'second reading deferred': re-render only those pages, reuse the "
+                         "stored primary reading, queue them for the second readers (no new primary readings)")
     ap.add_argument("--cap-margin", type=float, default=0.85, help="fraction of each OpenCode Go $ cap this run may use")
     ap.add_argument("--no-second-reader", action="store_true")
     ap.add_argument("--include-intimations", action="store_true", help="also read 'Investor Meet - Intimation' letters")
@@ -967,6 +998,12 @@ def main():
         with slock:
             stats["pages"] += 1; stats[res["status"]] = stats.get(res["status"], 0) + 1
             stats["second"] += len(res.get("readings", {})) > 1
+        report()
+
+    def report():
+        """Progress line every 30 s (also from second readings, so a --redo-deferred run, which saves no primary
+        pages, still shows progress; the resource watchdog treats a silent log as a hung job)."""
+        with slock:
             if time.time() - last_report[0] > 30:
                 last_report[0] = time.time(); el = time.time() - t0
                 log.info("pages %d (ok %d, skipped %d, error %d, second reads %d, second queue %d) | %.1f pages/s | in flight/limit %s | capped spend %s",
@@ -1007,6 +1044,7 @@ def main():
             store.save_page(task, res); store.drop_second(sha, pg)
             with slock:
                 stats["second"] += len(res["readings"]) > 1
+            report()
         except Exception as e:
             log.error("second reading crashed on %s p%s: %s", sha[:12], pg, e)
             store.bump_second(sha, pg)
@@ -1053,6 +1091,13 @@ def main():
         MARKER.unlink()
     bad = {r[0] for r in store.query("SELECT sha256 FROM bad_docs WHERE strikes >= ?", (MAX_STRIKES,))}
     complete = store.complete_docs()
+    redo = store.deferred_pages() if a.redo_deferred else {}
+    if a.redo_deferred:   # only the deferred pages are rendered; every other page counts as done
+        complete -= set(redo)
+        for sha, pgs in redo.items():
+            done.difference_update((sha, pg) for pg in pgs)
+        log.info("redo-deferred: %d pages in %d documents get a second reading", sum(map(len, redo.values())), len(redo))
+        docs = [d for d in docs if d["sha256"] in redo]
     todo = [d for d in docs if d["sha256"] not in bad and d["sha256"] not in complete]
     log.info("%d documents already complete, %d skipped as unrenderable, %d to open", sum(d["sha256"] in complete for d in docs),
              sum(d["sha256"] in bad for d in docs), len(todo))
@@ -1065,8 +1110,16 @@ def main():
         with ThreadPoolExecutor(ceil_p * 2) as ex:
             for d, n_pages, pages in renderer.run(todo, lambda d: done_pages.get(d["sha256"], set())):
                 store.execute("INSERT OR REPLACE INTO doc_pages VALUES (?,?)", (d["sha256"], n_pages))
+                if redo:
+                    while store.second_queue_size() > REDO_QUEUE_TARGET:   # keep the queue (and the DB) small
+                        time.sleep(10)
                 for t in pages:
                     task = {**d, **{k: v for k, v in t.items() if k != "jpeg"}}
+                    if redo:
+                        res = store.primary_result(d["sha256"], t["page_no"]) if t.get("jpeg") else None
+                        if res and t["page_no"] in redo.get(d["sha256"], ()):
+                            store.enqueue_second(task, t["jpeg"], res)
+                        continue
                     if task["route"].startswith("skip"):
                         finish(task, {"status": "skipped"}); continue
                     pending.acquire()
@@ -1080,7 +1133,9 @@ def main():
         t2.join()
     el = time.time() - t0
     log.info("finished: %s in %.1f min | spend %s (primary) %s (second)", stats, el / 60, ledger.summary(PRIMARY), ledger.summary(SECOND))
-    return 3 if stats["pages"] else 0   # 3 = did work this pass; run_deck_extract.cmd goes round again for new files
+    # 3 = did work this pass, or second readings are still queued (pool stopped while every reader was benched);
+    # run_deck_extract.cmd goes round again
+    return 3 if stats["pages"] or (not a.no_second_reader and store.second_queue_size()) else 0
 
 
 if __name__ == "__main__":

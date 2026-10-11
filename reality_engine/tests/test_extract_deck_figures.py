@@ -260,5 +260,25 @@ class BenchedReaderTests(unittest.TestCase):
             store.con.close()
 
 
+class RedoDeferredTests(unittest.TestCase):
+    def test_deferred_page_rebuilds_primary_result_for_second_reading(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = x.Store(os.path.join(d, "t.db"))
+            p, s = "longcat-2.5-preview-free", "step-5-preview-free"
+            c = FakeClient(store, {p: WEAK, s: STRONG}, {p: 5, s: 5})
+            res = x.process(dict(TASK), "b64", c, True, [p], [s], defer=lambda: True)
+            res.pop("second_pending"); res["error"] = x.SECOND_DEFERRED
+            store.save_page(TASK, res)
+            self.assertEqual(store.deferred_pages(), {"s1": {3}})
+            r = store.primary_result("s1", 3)
+            self.assertEqual((r["final_model"], r["n_facts"]), (p, res["n_facts"]))
+            store.enqueue_second(TASK, "b64", r)
+            self.assertEqual(store.deferred_pages(), {})   # queued pages are not picked up twice
+            r = x.second_read(dict(TASK), "b64", c, r, [s])
+            store.save_page(TASK, r)
+            self.assertEqual(store.query("SELECT final_model, error FROM pages"), [(s, None)])
+            store.con.close()
+
+
 if __name__ == "__main__":
     unittest.main()
