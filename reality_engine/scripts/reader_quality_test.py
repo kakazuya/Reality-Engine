@@ -50,7 +50,12 @@ def numbers(facts):
 
 
 def variant(name):
-    """'<model>+low' / '+medium' tests a reader with that reasoning effort (same key, same quotas)."""
+    """'<model>+low' / '+medium' tests a reader with that reasoning effort (same key, same quotas).
+    'cc:<id>' tests a CodeCraft API model (CODECRAFT_API_KEY; test only, never a production reader)."""
+    if name.startswith("cc:") and name not in x.MODELS:
+        x.MODELS[name] = {"api": "chat", "id": name[3:], "base": "https://codecraftapi.com/v1", "key_env": "CODECRAFT_API_KEY",
+                          "price": (0.0, 0.0), "capped": False, "ceiling": 4, "body": {"max_tokens": 16000}}
+        return
     if "+" in name and name not in x.MODELS:
         base, effort = name.split("+", 1)
         cfg = dict(x.MODELS[base]); cfg["body"] = {**cfg["body"], "reasoning_effort": effort}
