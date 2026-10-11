@@ -156,7 +156,7 @@ PRIMARY, SECOND = "longcat-2.5-preview-free", "step-5-preview@stepfun"   # overr
 # per key that is set (GEMINI_API_KEY, GEMINI_API_KEY_2..5); `rpm`/`rpd` are paced by RatePacer, kept just under the
 # limits. Not in the default readers until it passes the 40-page quality test: opt in with --also-second.
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai"
-GEMINI_KEYS = [k for k in ["GEMINI_API_KEY"] + [f"GEMINI_API_KEY_{i}" for i in range(2, 6)] if os.environ.get(k)]
+GEMINI_KEYS = [k for k in ["GEMINI_API_KEY"] + [f"GEMINI_API_KEY_{i}" for i in range(2, 9)] if os.environ.get(k)]
 for _n, _env in enumerate(GEMINI_KEYS, 1):
     MODELS[f"gemini-3.1-flash-lite@g{_n}"] = {"api": "chat", "id": "gemini-3.1-flash-lite", "base": GEMINI_BASE, "key_env": _env,
                                              "price": (0.0, 0.0), "capped": False, "ceiling": 4, "rpm": 14, "rpd": 490,
@@ -164,6 +164,10 @@ for _n, _env in enumerate(GEMINI_KEYS, 1):
     # Gemma 4 31B: 30 requests/min, 14.4k/day, but 16k tokens/min; a page is ~920 tokens with minimal thinking (~42 s),
     # so the token limit allows ~17 pages/min per key. Native API only.
     MODELS[f"gemma-4-31b@g{_n}"] = {"api": "gemini_native", "id": "gemma-4-31b-it", "key_env": _env,
+                                   "price": (0.0, 0.0), "capped": False, "ceiling": 12, "rpm": 15, "rpd": 14000,
+                                   "body": {"maxOutputTokens": 8000, "thinkingConfig": {"thinkingLevel": "minimal"}}}
+    # Gemma 4 26B-A4B (mixture of experts): its own free quota, separate from the 31B's. Not yet quality-tested.
+    MODELS[f"gemma-4-26b@g{_n}"] = {"api": "gemini_native", "id": "gemma-4-26b-a4b-it", "key_env": _env,
                                    "price": (0.0, 0.0), "capped": False, "ceiling": 12, "rpm": 15, "rpd": 14000,
                                    "body": {"maxOutputTokens": 8000, "thinkingConfig": {"thinkingLevel": "minimal"}}}
     MODELS[f"gemini-3.8-flash@g{_n}"] = {"api": "chat", "id": "gemini-3.8-flash", "base": GEMINI_BASE, "key_env": _env,
