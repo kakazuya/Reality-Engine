@@ -1,0 +1,1005 @@
+{
+ "symbol": "KPIGREEN",
+ "n_xbrl_facts": {
+  "consolidated": 115,
+  "standalone": 112
+ },
+ "n_hits": {
+  "consolidated": 50,
+  "standalone": 36
+ },
+ "key": {
+  "consolidated": {
+   "RevenueFromOperations": [
+    true,
+    true
+   ],
+   "ProfitLossForPeriod": [
+    true,
+    true
+   ],
+   "CashFlowsFromUsedInOperatingActivities": [
+    true,
+    false
+   ],
+   "Assets": [
+    true,
+    true
+   ],
+   "EquityAndLiabilities": [
+    true,
+    true
+   ],
+   "Equity": [
+    true,
+    false
+   ],
+   "TradeReceivablesCurrent": [
+    true,
+    true
+   ],
+   "BorrowingsNoncurrent": [
+    true,
+    false
+   ],
+   "BorrowingsCurrent": [
+    true,
+    true
+   ],
+   "Inventories": [
+    true,
+    false
+   ],
+   "ProfitBeforeTax": [
+    true,
+    true
+   ],
+   "DepreciationDepletionAndAmortisationExpense": [
+    true,
+    true
+   ],
+   "FinanceCosts": [
+    true,
+    true
+   ]
+  },
+  "standalone": {
+   "RevenueFromOperations": [
+    true,
+    true
+   ],
+   "ProfitLossForPeriod": [
+    true,
+    true
+   ],
+   "CashFlowsFromUsedInOperatingActivities": [
+    true,
+    false
+   ],
+   "Assets": [
+    true,
+    false
+   ],
+   "EquityAndLiabilities": [
+    true,
+    false
+   ],
+   "Equity": [
+    true,
+    false
+   ],
+   "TradeReceivablesCurrent": [
+    true,
+    false
+   ],
+   "BorrowingsNoncurrent": [
+    true,
+    true
+   ],
+   "BorrowingsCurrent": [
+    true,
+    false
+   ],
+   "Inventories": [
+    true,
+    false
+   ],
+   "ProfitBeforeTax": [
+    true,
+    true
+   ],
+   "DepreciationDepletionAndAmortisationExpense": [
+    true,
+    true
+   ],
+   "FinanceCosts": [
+    true,
+    true
+   ]
+  }
+ },
+ "hits": [
+  {
+   "scope": "consolidated",
+   "concept": "RevenueFromOperations",
+   "xbrl_inr": 10239001000.0,
+   "page": 57,
+   "label": "Revenue from operations",
+   "raw": "1,02,390.01",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherIncome",
+   "xbrl_inr": 69155000.0,
+   "page": 57,
+   "label": "Other Income",
+   "raw": "691.55",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Income",
+   "xbrl_inr": 10308156000.0,
+   "page": 57,
+   "label": "Total Income",
+   "raw": "1,03,081.56",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "PurchasesOfStockInTrade",
+   "xbrl_inr": 31876000.0,
+   "page": 163,
+   "label": "",
+   "raw": "318.76",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade",
+   "xbrl_inr": -2952000.0,
+   "page": 163,
+   "label": "Details of Changes in Inventory Stock-in-Trade",
+   "raw": "(29.52)",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "FinanceCosts",
+   "xbrl_inr": 860621000.0,
+   "page": 57,
+   "label": "Finance Cost",
+   "raw": "8,606.21",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "DepreciationDepletionAndAmortisationExpense",
+   "xbrl_inr": 403741000.0,
+   "page": 57,
+   "label": "Depreciation",
+   "raw": "4,037.41",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ExceptionalItemsBeforeTax",
+   "xbrl_inr": -3054000.0,
+   "page": 57,
+   "label": "Extraordinary items/ Prior Period Items",
+   "raw": "30.54",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitBeforeTax",
+   "xbrl_inr": 2170174000.0,
+   "page": 57,
+   "label": "Profit Before Taxation",
+   "raw": "21,701.74",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CurrentTax",
+   "xbrl_inr": 356160000.0,
+   "page": 225,
+   "label": "Provision For Income Tax",
+   "raw": "3,561.60",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "DeferredTax",
+   "xbrl_inr": 197446000.0,
+   "page": 225,
+   "label": "Deferred Tax",
+   "raw": "1,974.46",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "TaxExpense",
+   "xbrl_inr": 553606000.0,
+   "page": 57,
+   "label": "Tax expenses",
+   "raw": "5,536.06",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitLossForPeriodFromContinuingOperations",
+   "xbrl_inr": 1616568000.0,
+   "page": 57,
+   "label": "Profit for the period",
+   "raw": "16,165.68",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitLossForPeriod",
+   "xbrl_inr": 1616568000.0,
+   "page": 57,
+   "label": "Profit for the period",
+   "raw": "16,165.68",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitOrLossAttributableToOwnersOfParent",
+   "xbrl_inr": 1616568000.0,
+   "page": 57,
+   "label": "Profit for the period",
+   "raw": "16,165.68",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "PaidUpValueOfEquityShareCapital",
+   "xbrl_inr": 602826000.0,
+   "page": 135,
+   "label": "Balance as at March 31, 2024 B. Other Equity",
+   "raw": "6,028.26",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ReserveExcludingRevaluationReserves",
+   "xbrl_inr": 7754012000.0,
+   "page": 193,
+   "label": "Balance as at March 31, 2024",
+   "raw": "77,540.12",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "NoncurrentInvestments",
+   "xbrl_inr": 1000.0,
+   "page": 147,
+   "label": "100 (100) Unquoted Equity Shares of `10 Each Fully Paid Up in Evergreen Mahuva W",
+   "raw": "0.01",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherNoncurrentFinancialAssets",
+   "xbrl_inr": 211275000.0,
+   "page": 205,
+   "label": "",
+   "raw": "2,112.75",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherNoncurrentAssets",
+   "xbrl_inr": 1800000.0,
+   "page": 239,
+   "label": "Current Service Cost",
+   "raw": "18.00",
+   "unit": "lakh",
+   "period": "2024-03-31*"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "TradeReceivablesCurrent",
+   "xbrl_inr": 4271317000.0,
+   "page": 227,
+   "label": "Trade receivables Level",
+   "raw": "42,713.17",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashAndCashEquivalents",
+   "xbrl_inr": 543049000.0,
+   "page": 207,
+   "label": "12. Bank balances other than (iii) above Deposit Accounts",
+   "raw": "5,430.49",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "BankBalanceOtherThanCashAndCashEquivalents",
+   "xbrl_inr": 1157091000.0,
+   "page": 207,
+   "label": "Fixed Deposit",
+   "raw": "11,570.91",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "LoansCurrent",
+   "xbrl_inr": 3107000.0,
+   "page": 167,
+   "label": "Loans Level",
+   "raw": "31.07",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CurrentAssets",
+   "xbrl_inr": 13338770000.0,
+   "page": 237,
+   "label": "Current Assets (a) in lakhs",
+   "raw": "1,33,387.70",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Assets",
+   "xbrl_inr": 24359343000.0,
+   "page": 231,
+   "label": "Total Segment Assets",
+   "raw": "2,43,593.43",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "EquityShareCapital",
+   "xbrl_inr": 602826000.0,
+   "page": 135,
+   "label": "Balance as at March 31, 2024 B. Other Equity",
+   "raw": "6,028.26",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherEquity",
+   "xbrl_inr": 7754012000.0,
+   "page": 193,
+   "label": "Balance as at March 31, 2024",
+   "raw": "77,540.12",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "DeferredTaxLiabilitiesNet",
+   "xbrl_inr": 824522000.0,
+   "page": 217,
+   "label": "Deferred Tax (Liabilities) transferred to Balance sheet 23. Borrowings",
+   "raw": "8,245.22",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "BorrowingsCurrent",
+   "xbrl_inr": 4147306000.0,
+   "page": 217,
+   "label": "",
+   "raw": "41,473.06",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherCurrentFinancialLiabilities",
+   "xbrl_inr": 267898000.0,
+   "page": 221,
+   "label": "26. Other Current liabilities Revenue Received in Advance",
+   "raw": "2,678.98",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherCurrentLiabilities",
+   "xbrl_inr": 178363000.0,
+   "page": 221,
+   "label": "27. Provisions Employee Benefits Gratuity",
+   "raw": "1,783.63",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProvisionsCurrent",
+   "xbrl_inr": 684000.0,
+   "page": 221,
+   "label": "28. Current Tax Liabilities (net) Tax Provision Current Tax",
+   "raw": "6.84",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CurrentTaxLiabilities",
+   "xbrl_inr": 188844000.0,
+   "page": 221,
+   "label": "Provision For Income Tax",
+   "raw": "1,888.44",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Liabilities",
+   "xbrl_inr": 16002505000.0,
+   "page": 231,
+   "label": "Total Segment Liabilities",
+   "raw": "1,60,025.05",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "EquityAndLiabilities",
+   "xbrl_inr": 24359343000.0,
+   "page": 231,
+   "label": "Total Segment Assets",
+   "raw": "2,43,593.43",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "SegmentProfitLossBeforeTaxAndFinanceCosts",
+   "xbrl_inr": 2694371000.0,
+   "page": 231,
+   "label": "Total Segment Results",
+   "raw": "26,943.71",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "SegmentFinanceCosts",
+   "xbrl_inr": 204600000.0,
+   "page": 231,
+   "label": "Less: Finance Costs",
+   "raw": "2,046.00",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "SegmentProfitBeforeTax",
+   "xbrl_inr": 2170174000.0,
+   "page": 231,
+   "label": "Profit/(Loss) Before Tax 3. Segment Assets",
+   "raw": "21,701.74",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "UnAllocableAssets",
+   "xbrl_inr": 2318932000.0,
+   "page": 231,
+   "label": "Unallocable Assets",
+   "raw": "23,189.32",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "NetSegmentAssets",
+   "xbrl_inr": 24359343000.0,
+   "page": 231,
+   "label": "Total Segment Assets",
+   "raw": "2,43,593.43",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "UnAllocableLiabilities",
+   "xbrl_inr": 2065793000.0,
+   "page": 231,
+   "label": "Unallocable Assets",
+   "raw": "20,657.93",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "NetSegmentLiabilities",
+   "xbrl_inr": 16002505000.0,
+   "page": 231,
+   "label": "Total Segment Liabilities",
+   "raw": "1,60,025.05",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AdjustmentsForFinanceCosts",
+   "xbrl_inr": 860621000.0,
+   "page": 57,
+   "label": "Finance Cost",
+   "raw": "8,606.21",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AdjustmentsForOtherFinancialAssetsCurrent",
+   "xbrl_inr": 15638000.0,
+   "page": 135,
+   "label": "",
+   "raw": "156",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AdjustmentsForDepreciationAndAmortisationExpense",
+   "xbrl_inr": 403741000.0,
+   "page": 57,
+   "label": "Depreciation",
+   "raw": "4,037.41",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProceedsFromSalesOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
+   "xbrl_inr": 2524000.0,
+   "page": 217,
+   "label": "Insurance claim received",
+   "raw": "25.24",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashAdvancesAndLoansMadeToOtherPartiesClassifiedAsInvestingActivities",
+   "xbrl_inr": 2100266000.0,
+   "page": 151,
+   "label": "Advance Given to Suppliers Advances other than capital advances",
+   "raw": "21,002.66",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "DividendsPaidClassifiedAsFinancingActivities",
+   "xbrl_inr": 18432000.0,
+   "page": 163,
+   "label": "",
+   "raw": "184",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "IncomeTaxRelatingToItmesThatWillNotBeReclassifiedToProfitOrLoss",
+   "xbrl_inr": 191000.0,
+   "page": 165,
+   "label": "Deferred Tax",
+   "raw": "(1.91)",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "RevenueFromOperations",
+   "xbrl_inr": 7237596000.0,
+   "page": 57,
+   "label": "Revenue from operations",
+   "raw": "72,375.96",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherIncome",
+   "xbrl_inr": 57871000.0,
+   "page": 57,
+   "label": "Other Income",
+   "raw": "578.71",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Income",
+   "xbrl_inr": 7295467000.0,
+   "page": 57,
+   "label": "Total Income",
+   "raw": "72,954.67",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CostOfMaterialsConsumed",
+   "xbrl_inr": 3585145000.0,
+   "page": 163,
+   "label": "32. Purchase of Stock-in-Trade Stock-in-Trade",
+   "raw": "35,851.45",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "PurchasesOfStockInTrade",
+   "xbrl_inr": 31876000.0,
+   "page": 163,
+   "label": "",
+   "raw": "318.76",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade",
+   "xbrl_inr": -2952000.0,
+   "page": 163,
+   "label": "Details of Changes in Inventory Stock-in-Trade",
+   "raw": "(29.52)",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "FinanceCosts",
+   "xbrl_inr": 763859000.0,
+   "page": 57,
+   "label": "Finance Cost",
+   "raw": "7,638.59",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "DepreciationDepletionAndAmortisationExpense",
+   "xbrl_inr": 354699000.0,
+   "page": 57,
+   "label": "Depreciation",
+   "raw": "3,546.99",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ExceptionalItemsBeforeTax",
+   "xbrl_inr": -3054000.0,
+   "page": 57,
+   "label": "Extraordinary items/ Prior Period Items",
+   "raw": "30.54",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitBeforeTax",
+   "xbrl_inr": 1405870000.0,
+   "page": 57,
+   "label": "Profit Before Taxation",
+   "raw": "14,058.70",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CurrentTax",
+   "xbrl_inr": 208637000.0,
+   "page": 165,
+   "label": "Provision For Income Tax",
+   "raw": "2,086.37",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "DeferredTax",
+   "xbrl_inr": 160073000.0,
+   "page": 165,
+   "label": "Deferred Tax",
+   "raw": "1,600.73",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "TaxExpense",
+   "xbrl_inr": 368710000.0,
+   "page": 57,
+   "label": "Tax expenses",
+   "raw": "3,687.10",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossForPeriodFromContinuingOperations",
+   "xbrl_inr": 1037160000.0,
+   "page": 57,
+   "label": "Profit for the period",
+   "raw": "10,371.60",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossForPeriod",
+   "xbrl_inr": 1037160000.0,
+   "page": 57,
+   "label": "Profit for the period",
+   "raw": "10,371.60",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "PaidUpValueOfEquityShareCapital",
+   "xbrl_inr": 602826000.0,
+   "page": 135,
+   "label": "Balance as at March 31, 2024 B. Other Equity",
+   "raw": "6,028.26",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ReserveExcludingRevaluationReserves",
+   "xbrl_inr": 6879684000.0,
+   "page": 135,
+   "label": "Balance as at March 31, 2024 In terms of our attached report of even date ICAI F",
+   "raw": "68,796.84",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "NoncurrentInvestments",
+   "xbrl_inr": 2139183000.0,
+   "page": 167,
+   "label": "Investments Level",
+   "raw": "21,391.83",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherNoncurrentAssets",
+   "xbrl_inr": 1800000.0,
+   "page": 239,
+   "label": "Current Service Cost",
+   "raw": "18.00",
+   "unit": "lakh",
+   "period": "2024-03-31*"
+  },
+  {
+   "scope": "standalone",
+   "concept": "LoansCurrent",
+   "xbrl_inr": 3107000.0,
+   "page": 167,
+   "label": "Loans Level",
+   "raw": "31.07",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherCurrentFinancialAssets",
+   "xbrl_inr": 2302000.0,
+   "page": 151,
+   "label": "15. Other current assets Capital advances",
+   "raw": "23.02",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherCurrentAssets",
+   "xbrl_inr": 3811121000.0,
+   "page": 151,
+   "label": "16. Equity share capital Authorised share capital",
+   "raw": "38,111.21",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "EquityShareCapital",
+   "xbrl_inr": 602826000.0,
+   "page": 135,
+   "label": "Balance as at March 31, 2024 B. Other Equity",
+   "raw": "6,028.26",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherEquity",
+   "xbrl_inr": 6879684000.0,
+   "page": 135,
+   "label": "Balance as at March 31, 2024 In terms of our attached report of even date ICAI F",
+   "raw": "68,796.84",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "BorrowingsNoncurrent",
+   "xbrl_inr": 3776938000.0,
+   "page": 153,
+   "label": "",
+   "raw": "37,769.38",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProvisionsNoncurrent",
+   "xbrl_inr": 5591000.0,
+   "page": 157,
+   "label": "Gratuity Payable and others",
+   "raw": "55.91",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "DeferredTaxLiabilitiesNet",
+   "xbrl_inr": 677703000.0,
+   "page": 157,
+   "label": "Calculation of Deferred Tax Deferred Tax Liabilities",
+   "raw": "6,777.03",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "TradePayablesCurrent",
+   "xbrl_inr": 2730313000.0,
+   "page": 167,
+   "label": "Trade payables Level",
+   "raw": "27,303.13",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherCurrentFinancialLiabilities",
+   "xbrl_inr": 152017000.0,
+   "page": 161,
+   "label": "26. Other Current liabilities Revenue Received in Advance",
+   "raw": "1,520.17",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherCurrentLiabilities",
+   "xbrl_inr": 112662000.0,
+   "page": 161,
+   "label": "",
+   "raw": "1,126.62",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "SegmentProfitBeforeTax",
+   "xbrl_inr": 1405870000.0,
+   "page": 57,
+   "label": "Profit Before Taxation",
+   "raw": "14,058.70",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "AdjustmentsForFinanceCosts",
+   "xbrl_inr": 763859000.0,
+   "page": 57,
+   "label": "Finance Cost",
+   "raw": "7,638.59",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "AdjustmentsForDepreciationAndAmortisationExpense",
+   "xbrl_inr": 354699000.0,
+   "page": 57,
+   "label": "Depreciation",
+   "raw": "3,546.99",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CashAdvancesAndLoansMadeToOtherPartiesClassifiedAsInvestingActivities",
+   "xbrl_inr": 2100266000.0,
+   "page": 151,
+   "label": "Advance Given to Suppliers Advances other than capital advances",
+   "raw": "21,002.66",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "DividendsPaidClassifiedAsFinancingActivities",
+   "xbrl_inr": 18432000.0,
+   "page": 163,
+   "label": "",
+   "raw": "184",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "IncomeTaxRelatingToItmesThatWillNotBeReclassifiedToProfitOrLoss",
+   "xbrl_inr": 191000.0,
+   "page": 165,
+   "label": "Deferred Tax",
+   "raw": "(1.91)",
+   "unit": "lakh",
+   "period": "2024-03-31"
+  }
+ ],
+ "table_hits": {
+  "57": 26,
+  "163": 7,
+  "225": 2,
+  "135": 7,
+  "193": 2,
+  "147": 1,
+  "205": 1,
+  "239": 2,
+  "227": 1,
+  "207": 2,
+  "167": 4,
+  "237": 1,
+  "231": 10,
+  "217": 3,
+  "221": 4,
+  "151": 4,
+  "165": 4,
+  "153": 1,
+  "157": 2,
+  "161": 2
+ }
+}

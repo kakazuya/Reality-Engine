@@ -1,0 +1,81 @@
+set,report,page,label,value,verdict,issue,suggested_fix
+# Verdicts by the AR study session, 2026-10-11. Judged from the row fields (label / column / period / unit / value) and knowledge of AR layouts; pages were NOT re-opened, so 'suggested_fix' is a best guess to confirm against the page.
+# set A = 39 random cpu_ok rows from the final run_step4.py (listed in step4_report.md). set B = 39 row-verified rows from row_verify.py (seed 21; rerun it to get the same sample with column/period/unit).
+A,COCHINSHIP,319,Balance at the end of the year Note 49: CONTINGENT LIABILITI,(3578.40),wrong,label merged with next note heading,label = 'Balance at the end of the year' (provision movement table)
+A,COCHINSHIP,192,Equity Shares outstanding at the end of the year,131540390,wrong,unit: share count tagged lakh,unit = count
+A,COCHINSHIP,224,Interest accrued but not due on NCD,263.27,right,,
+A,CONCOR,365,rental income Fair valuation of,(0.03),wrong,label fragment,label = full row label from page (investment property / rental income line)
+A,CONCOR,353,Profit / (Loss) for the year,5.51,right,,
+A,CONCOR,375,Segment Assets Unallocated,3828.25,right,,
+A,GESHIP,160,Fair value of plan assets at the end of the year,284.41,right,,
+A,GESHIP,152,Co. Ltd. [Refer Notes (ii) and (iii) below],356.60,wrong,label fragment (lender/borrower name cut),label = full borrowing line from page
+A,GESHIP,141,Loss on principal settlement of derivative contracts related,(59.69),right,,
+A,AXISBANK,213,Other interest income,2431,right,,
+A,AXISBANK,409,Net cash generated from financing activities 406 Integrated,6640.54,wrong,period: header says year ended 31-03-2023 but tagged 2024; page-number text in label,check column; label = 'Net cash generated from financing activities'
+A,AXISBANK,348,Provision held,0.02,right,,
+A,BAJFINANCE,443,Other non-financial assets,38.95,right,,
+A,BAJFINANCE,53,Profit after tax (PAT),26%,right,(% change column),
+A,BAJFINANCE,248,Finance costs,13843.44,right,,
+A,INFY,207,Communication,28,wrong,unclear metric (segment table; value 28 probably % or count not crore),check page; likely unit % or count
+A,INFY,292,other comprehensive income,7632,wrong,label fragment; period from 2-col default,label = full OCI line; confirm period
+A,INFY,323,Interest expense,121,right,(gratuity/benefit table),
+A,DABUR,411,Total non-current liabilities,889.17,right,,
+A,DABUR,457,Re-measurement loss on the defined benefit plans through OCI,3.24,right,,
+A,DABUR,349,Units of face value of 100 each BY 8.05% Tamil Nadu State,2000000,right,unit count correct,
+A,CIPLA,387,Samina Hamied,2.22%,right,,
+A,CIPLA,289,M K Hamied,3.45%,right,,
+A,CIPLA,90,Associates / Non-Management,29.66,right,,
+A,CUMMINSIND,314,Other timing differences,4.98,right,,
+A,CUMMINSIND,187,Intangible assets under development,(2.16),right,(cash-flow line),
+A,CUMMINSIND,240,i) Current service cost March 31 2024,16.79,right,date in label is harmless,
+A,ATUL,184,D Inventories ` cr Balance Sheet (refer Note,563.20,wrong,unit tagged thousand (should be crore); label carries header text,unit = crore; label = 'Inventories'
+A,ATUL,156,Osia Infrastructure Ltd,0.10,right,,
+A,ATUL,219,Indian Oil Corporation Ltd,0.28,right,,
+A,EXIDEIND,145,Permanent,1532,right,count,
+A,EXIDEIND,309,Profit on sale of property,6.48,right,,
+A,EXIDEIND,310,Clearing and forwarding expenses,49.82,right,,
+A,SOBHA,184,(iii) Loans,230.02,right,,
+A,SOBHA,209,(v) Sobha Assets Private Limited (^),10000,wrong,likely number of shares tagged million,unit = count (check column header 'No. of shares')
+A,SOBHA,349,Unbilled Revenue,0.00%,right,(probability of default %),
+A,JKCEMENT,143,b. Term loans from banks in local currency,4246.83,right,,
+A,JKCEMENT,126,(v) Other financial assets,792.16,right,,
+A,JKCEMENT,65,Specific water intensity m3/tonne of cement,0.16,wrong,physical unit (m3/tonne) tagged crore; period FY2020-21 from multi-year column,unit = m3/tonne
+B,ATUL,156,Atul Biospace Ltd,0.22,right,,
+B,ATUL,227,a) Provision for compensated absences,31.12,right,,
+B,ATUL,196,Total expenses,4342.95,right,,
+B,AXISBANK,416,Additions on account of acquisition of Citibank India Consum,0.86,right,label truncated only,
+B,AXISBANK,346,4 Personal loans,2789.48,right,(gross NPA column),
+B,AXISBANK,415,(ii) Public Sector,17719.94,right,,
+B,BAJFINANCE,443,Financial liabilities LIABILITIES Derivative financial instr,4.01,partial,headings merged into label,label = 'Derivative financial instruments' (liabilities)
+B,BAJFINANCE,287,Recovery costs,1624.54,right,,
+B,BAJFINANCE,443,Investments,6460.66,right,,
+B,CIPLA,394,liabilities/discounts and others Deferred government grant (,3.09,partial,label fragment,label = 'Deferred government grant'
+B,CIPLA,296,Power and fuel,257.07,right,,
+B,CIPLA,94,Female,5295,right,count,
+B,COCHINSHIP,14,Turnover,2355.12,right,10-year table FY2017-18 (crore),
+B,COCHINSHIP,284,Opening balance,10439.67,partial,label vague (which provision/account),prefix label with table title
+B,COCHINSHIP,303,Attrition Rate,2.00%,right,,
+B,CONCOR,226,Total aggregate quoted investments (A) B. Unquoted investmen,491.63,partial,next heading merged into label,label = 'Total aggregate quoted investments (A)'
+B,CONCOR,236,Unamortized Contract Cost,27.39,right,,
+B,CONCOR,399,Railway Siding,8.00,right,,
+B,CUMMINSIND,228,Performance obligations satisfied in previous years Reconcil,0.06,right,label truncated only,
+B,CUMMINSIND,229,- On bonds (non -current/current investments),0.05,right,,
+B,CUMMINSIND,143,Other than permanent,100%,right,,
+B,DABUR,412,Others,1319.83,partial,label vague,prefix label with parent line
+B,DABUR,474,D. Other segments,71.51,right,,
+B,DABUR,479,Net assets (A+B+C),926.60,right,,
+B,EXIDEIND,276,(iii) Cash and cash equivalents,322.99,right,,
+B,EXIDEIND,310,Finished goods,1541.92,right,,
+B,EXIDEIND,277,Finance costs,116.00,right,,
+B,GESHIP,41,Shareholders' Funds Equity Share Capital,142.77,wrong,unit tagged count (should be crore); header from ratio row,unit = crore
+B,GESHIP,129,-Cash and Cash Equivalents,2317.13,right,,
+B,GESHIP,152,[Refer Note (iii) below] (b) Term Loans from Banks :,1900.00,partial,label fragment,label = 'Term Loans from Banks'
+B,INFY,290,Gross carrying value as at March 31 2023,1,wrong,value 1 is too small to verify (coincidental match likely),require >= 3 significant digits for row verification
+B,INFY,323,Interest income,105,partial,ambiguous table (gratuity plan),prefix label with table title
+B,INFY,193,Expenses Employee benefit expenses,65139,right,,
+B,JKCEMENT,151,Equity shares of listed companies,0.55%,right,,
+B,JKCEMENT,78,2 Mr. Ajay Kumar Dy Managing Director & Saraogi Chief Financ,91336000,wrong,unit: absolute rupees tagged lakh,unit = rupee
+B,JKCEMENT,64,Captive fly ash Tonnes,0,wrong,physical unit (tonnes) tagged crore,unit = tonnes
+B,SOBHA,227,Others,247.54,partial,label vague,prefix label with parent line
+B,SOBHA,209,(iii) Sobha Nandambakkam Developers STATEMENTS Limited (^),100%,right,% holding (page header word in label),
+B,SOBHA,216,17 Equity share capital Authorised shares (*),4718.79,right,,

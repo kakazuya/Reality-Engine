@@ -1,0 +1,19 @@
+[
+ {"symbol":"COCHINSHIP","id":"C1","page":156,"kind":"number","value":"17282.73","what":"Operating cash flow negative (standalone, lakh)"},
+ {"symbol":"COCHINSHIP","id":"C2","page":248,"kind":"number","value":"17159.36","what":"Operating cash flow negative (consolidated, lakh)"},
+ {"symbol":"COCHINSHIP","id":"C3","page":197,"kind":"number","value":"487527.27","what":"Contract liability for other works (lakh)"},
+ {"symbol":"COCHINSHIP","id":"C4","page":138,"kind":"prose","keywords":["1200 Passenger","reallocation"],"what":"Two 1,200-pax vessels past delivery date, customer asks reallocation"},
+ {"symbol":"COCHINSHIP","id":"C5","page":51,"kind":"prose","keywords":["Comptroller","Financial Assistance"],"what":"C&AG comment: SBFA not reported by auditor"},
+ {"symbol":"COCHINSHIP","id":"C6","page":234,"kind":"prose","keywords":["audit trail"],"what":"Audit trail / edit log enabled only from Mar-2024"},
+ {"symbol":"CONCOR","id":"K1","page":413,"kind":"number","value":"677.68","what":"KAM: Tughlakabad land licence fee demand"},
+ {"symbol":"CONCOR","id":"K2","page":415,"kind":"prose","keywords":["Emphasis of Matter"],"what":"EoM: railway land leases not recognised as ROU/lease liability"},
+ {"symbol":"CONCOR","id":"K3","page":237,"kind":"number","value":"861.05","what":"SEIS claim disallowed, fully provided"},
+ {"symbol":"CONCOR","id":"K4","page":233,"kind":"number","value":"329.45","what":"Trade receivables FY24 (213.10 FY23)"},
+ {"symbol":"CONCOR","id":"K5","page":161,"kind":"number","value":"73.65","what":"BRSR related-party purchases share"},
+ {"symbol":"GESHIP","id":"G1","page":102,"kind":"prose","keywords":["audit trail"],"what":"Auditor modification: audit trail not verifiable"},
+ {"symbol":"GESHIP","id":"G2","page":128,"kind":"number","value":"518.88","what":"Capital commitments standalone"},
+ {"symbol":"GESHIP","id":"G3","page":75,"kind":"prose","keywords":["CARE AAA"],"what":"Credit rating upgraded AA+ to AAA"},
+ {"symbol":"GESHIP","id":"G4","page":167,"kind":"number","value":"1142.46","what":"Time-charter receivables < 1 year"},
+ {"symbol":"GESHIP","id":"G5","page":83,"kind":"number","value":"4.69","what":"BRSR loans to related parties share"},
+ {"symbol":"GESHIP","id":"G6","page":84,"kind":"prose","keywords":["EUA"],"what":"EU ETS: broker for EUAs, registry account expected"}
+]

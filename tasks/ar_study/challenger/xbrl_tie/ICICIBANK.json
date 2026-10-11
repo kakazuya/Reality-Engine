@@ -1,0 +1,244 @@
+{
+ "symbol": "ICICIBANK",
+ "n_xbrl_facts": {
+  "consolidated": 88,
+  "standalone": 89
+ },
+ "n_hits": {
+  "consolidated": 1,
+  "standalone": 19
+ },
+ "key": {
+  "consolidated": {
+   "CashFlowsFromUsedInOperatingActivities": [
+    true,
+    false
+   ],
+   "Assets": [
+    true,
+    false
+   ]
+  },
+  "standalone": {
+   "CashFlowsFromUsedInOperatingActivities": [
+    true,
+    false
+   ],
+   "Assets": [
+    true,
+    true
+   ]
+  }
+ },
+ "hits": [
+  {
+   "scope": "consolidated",
+   "concept": "TaxExpense",
+   "xbrl_inr": 154276200000.0,
+   "page": 395,
+   "label": "The provision for income tax (including deferred tax) for the year ended March 3",
+   "raw": "154,276.2",
+   "unit": "million",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Income",
+   "xbrl_inr": 1658487100000.0,
+   "page": 258,
+   "label": "Total",
+   "raw": "1,658,487.1",
+   "unit": "million",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "TaxExpense",
+   "xbrl_inr": 135995600000.0,
+   "page": 299,
+   "label": "43. Provision for income tax The provision for income tax (including deferred ta",
+   "raw": "135,995.6",
+   "unit": "million",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossFromOrdinaryActivitiesAfterTax",
+   "xbrl_inr": 408882700000.0,
+   "page": 252,
+   "label": "of Basic and Diluted EPS",
+   "raw": "408,882.7",
+   "unit": "million",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossForThePeriod",
+   "xbrl_inr": 408882700000.0,
+   "page": 252,
+   "label": "of Basic and Diluted EPS",
+   "raw": "408,882.7",
+   "unit": "million",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossAfterTaxesMinorityInterestAndShareOfProfitLossOfAssociates",
+   "xbrl_inr": 408882700000.0,
+   "page": 252,
+   "label": "of Basic and Diluted EPS",
+   "raw": "408,882.7",
+   "unit": "million",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "GrossNonPerformingAssets",
+   "xbrl_inr": 279616800000.0,
+   "page": 213,
+   "label": "Total non-performing assets1",
+   "raw": "279.62",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Capital",
+   "xbrl_inr": 28100000000.0,
+   "page": 207,
+   "label": "Equity share capital",
+   "raw": "28.10",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ReservesAndSurplus",
+   "xbrl_inr": 2355893200000.0,
+   "page": 207,
+   "label": "Reserves",
+   "raw": "2,355.89",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Deposits",
+   "xbrl_inr": 14128249500000.0,
+   "page": 207,
+   "label": "Deposits",
+   "raw": "14,128.25",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherLiabilitiesAndProvisions",
+   "xbrl_inr": 953227300000.0,
+   "page": 207,
+   "label": "",
+   "raw": "953.23",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CapitalAndLiabilities",
+   "xbrl_inr": 18715145800000.0,
+   "page": 207,
+   "label": "Total liabilities",
+   "raw": "18,715.15",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Investments",
+   "xbrl_inr": 4619422700000.0,
+   "page": 206,
+   "label": "Investments",
+   "raw": "4,619.42",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Advances",
+   "xbrl_inr": 11844063900000.0,
+   "page": 206,
+   "label": "Advances (net of BRDS/IBPC)2",
+   "raw": "11,844.06",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "FixedAssets",
+   "xbrl_inr": 108598400000.0,
+   "page": 206,
+   "label": "Fixed assets (including leased assets)",
+   "raw": "108.60",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Assets",
+   "xbrl_inr": 18715145800000.0,
+   "page": 206,
+   "label": "Total assets",
+   "raw": "18,715.15",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "SegmentRevenueFromOperations",
+   "xbrl_inr": 1658487100000.0,
+   "page": 258,
+   "label": "Total",
+   "raw": "1,658,487.1",
+   "unit": "million",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "NetSegmentAssets",
+   "xbrl_inr": 18715145800000.0,
+   "page": 206,
+   "label": "Total assets",
+   "raw": "18,715.15",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "NetSegmentLiabilities",
+   "xbrl_inr": 18715145800000.0,
+   "page": 207,
+   "label": "Total liabilities",
+   "raw": "18,715.15",
+   "unit": "billion",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CashAndCashEquivalentsCashFlowStatement",
+   "xbrl_inr": 1399260100000.0,
+   "page": 206,
+   "label": "Cash and bank balances",
+   "raw": "1,399.26",
+   "unit": "billion",
+   "period": "2024-03-31"
+  }
+ ],
+ "table_hits": {
+  "395": 1,
+  "258": 2,
+  "299": 1,
+  "252": 3,
+  "213": 1,
+  "207": 6,
+  "206": 6
+ }
+}

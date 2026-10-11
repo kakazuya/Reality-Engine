@@ -1,0 +1,112 @@
+{
+ "AXISBANK": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\AXISBANK\\ANNUAL_REPORT\\20260923_26bba6ae_93457ea2-9cfe-4d6c-98ec-12e62c07ff0b.pdf",
+  "filed": "2024-06-28",
+  "sector": "Financial Services",
+  "mb": 11.3,
+  "yf": [
+   "FY24",
+   76603.04,
+   26386.2
+  ]
+ },
+ "BAJFINANCE": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\BAJFINANCE\\ANNUAL_REPORT\\20260923_ee419f94_23ae9a75-9bfa-49c2-89e4-5e1ee7a20f8c.pdf",
+  "filed": "2024-06-26",
+  "sector": "Financial Services",
+  "mb": 19.8,
+  "yf": [
+   "FY24",
+   34326.32,
+   14451.17
+  ]
+ },
+ "INFY": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\INFY\\ANNUAL_REPORT\\20260923_93193cd1_25cc7fbc-154b-4463-928d-c95f2d8c5c9c.pdf",
+  "filed": "2024-06-03",
+  "sector": "Information Technology",
+  "mb": 11.4,
+  "yf": [
+   "FY24",
+   1856.2,
+   316.7
+  ]
+ },
+ "DABUR": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\DABUR\\ANNUAL_REPORT\\20260923_9a8506d5_b6f3ff71-f4ec-428e-a42f-7cb240b20049.pdf",
+  "filed": "2024-07-10",
+  "sector": "Fast Moving Consumer Goods",
+  "mb": 20.9,
+  "yf": [
+   "FY24",
+   12261.65,
+   1842.68
+  ]
+ },
+ "CIPLA": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\CIPLA\\ANNUAL_REPORT\\20260923_b22e1c33_9ec11f08-4ca3-4060-8cd4-2cfad0af4959.pdf",
+  "filed": "2024-07-26",
+  "sector": "Healthcare",
+  "mb": 13.9,
+  "yf": [
+   "FY24",
+   25446.63,
+   4121.55
+  ]
+ },
+ "CUMMINSIND": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\CUMMINSIND\\ANNUAL_REPORT\\20260923_a0f1420f_d9045abb-ad59-41e5-93c6-9f8993918f1c.pdf",
+  "filed": "2024-07-12",
+  "sector": "Capital Goods",
+  "mb": 18.7,
+  "yf": [
+   "FY24",
+   8859.99,
+   1720.58
+  ]
+ },
+ "ATUL": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\ATUL\\ANNUAL_REPORT\\20261010_23b090a3_76e53124-ad31-40e6-962e-853a903fc49b.pdf",
+  "filed": "2024-07-03",
+  "sector": "Chemicals",
+  "mb": 5.7,
+  "yf": [
+   "FY24",
+   4668.02,
+   323.02
+  ]
+ },
+ "EXIDEIND": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\EXIDEIND\\ANNUAL_REPORT\\20260923_38f4e98e_a0e99c85-cd97-4de3-9b2d-e98643c6e5b8.pdf",
+  "filed": "2024-07-04",
+  "sector": "Automobile and Auto Components",
+  "mb": 18.6,
+  "yf": [
+   "FY24",
+   16672.96,
+   876.68
+  ]
+ },
+ "SOBHA": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\SOBHA\\ANNUAL_REPORT\\20260926_84bb7563_a26623d5-3216-45e0-840b-d86525ba62f0.pdf",
+  "filed": "2024-07-15",
+  "sector": "Realty",
+  "mb": 7.7,
+  "yf": [
+   "FY24",
+   3063.2,
+   49.11
+  ]
+ },
+ "JKCEMENT": {
+  "pdf": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\pdfs\\JKCEMENT\\ANNUAL_REPORT\\20261010_732921f4_acb957b0-3db6-4d0b-b622-b0bc2f92afa8.pdf",
+  "filed": "2024-06-27",
+  "sector": "Construction Materials",
+  "mb": 16.7,
+  "yf": [
+   "FY24",
+   11202.55,
+   790.83
+  ]
+ }
+}

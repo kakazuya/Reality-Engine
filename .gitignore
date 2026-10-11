@@ -155,3 +155,19 @@ reality_engine/data/claude_queue/
 
 # personal remote-access notes
 Remote_Connection_Setup_Notes.pdf
+
+# regenerable test artefacts (2026-10-12)
+reality_engine/data/reader_tests/*/*.png
+reality_engine/data/reader_tests/*/test.db*
+reality_engine/data/reader_tests/*/answers/
+reality_engine/data/ar_facts.db*
+tasks/ar_study/src/*.pdf
+tasks/ar_study/free_test/fresh_out/
+tasks/ar_study/free_test/outputs/
+tasks/ar_study/free_test/fresh_reads/
+tasks/ar_study/free_test/fresh_vreads/
+tasks/ar_study/free_test/row_outputs/
+tasks/ar_study/free_test/*.log
+tasks/ar_study/challenger/out/
+tasks/ar_study/challenger/out_step4/
+tasks/ar_study/challenger/out_unseen/

@@ -1,0 +1,7066 @@
+
+=== concall_Q3_2024-01-31 PAGE 1 ===
+www.greatship.com 
+Our Ref.: S/2024/JMT 
+                         February 05, 2024 
+BSE Limited 
+ 
+     National Stock Exchange of India Limited  
+1st Floor, Phiroze Jeejeebhoy Towers, 
+     Exchange Plaza, 5th Floor, Plot No. C/1, 
+Dalal Street,   
+     Bandra Kurla Complex, Bandra (East), 
+Mumbai – 400 001 
+ 
+     Mumbai – 400 051 
+BSE Scrip code: 500620
+                 Trading Symbol – GESHIP 
+Sub: Transcripts of Earnings call conducted on January 31, 2024 
+Dear Sir/Madam, 
+Further to our letters dated January 24, 2024 and January 31, 2024, please find enclosed 
+transcripts of the earnings call held on January 31, 2024. 
+We request you to take the same on record. 
+Thanking You, 
+Yours faithfully, 
+For The Great Eastern Shipping Company Limited
+Anand Punde 
+Company Secretary 
+Email ID: anand_punde@greatship.com
+Digitally signed by: 
+Anand Prabhakar 
+Punde
+DN: CN = Anand 
+Prabhakar Punde C = 
+IN O = Personal
+Date: 2024.02.05 16:32:
+33 +05'30'
+Anand 
+Prabhak
+ar Punde
+
+=== concall_Q3_2024-01-31 PAGE 2 ===
+ 
+ 
+Page 1 of 18 
+ 
+ 
+ 
+“The Great Eastern Shipping Company Limited Q3 FY-
+24 Earnings Conference Call” 
+ 
+January 31, 2024 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+MANAGEMENT: MR. G. SHIVKUMAR – EXECUTIVE DIRECTOR AND 
+CFO, THE GREAT EASTERN SHIPPING COMPANY 
+LIMITED 
+
+=== concall_Q3_2024-01-31 PAGE 3 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 2 of 18 
+Moderator: 
+Good evening, ladies and gentlemen. Welcome to the GE Shipping Earnings Call on declaration 
+of its Financial Results for the quarter ended December 31st, 2023. 
+At this moment, all participants are in the listen only mode. Later we will conduct a question-
+and-answer session. 
+I now hand over the conference to Mr. G. Shivakumar – Executive Director and CFO at the 
+Great Eastern Shipping Company Limited to start the proceedings. Thank you and over to you, 
+sir.   
+G. Shivakumar: 
+Thank you. Good evening, everyone and welcome to the conference call to discuss the results 
+for the quarter and nine months ended 31st December 2023. Thank you for joining us today. 
+We'll run through the presentation quickly and then we'll throw the floor open for questions and 
+as always, we'll be happy to discuss any questions you may have on our business. Customary 
+disclaimers apply, we don't know what the market is going to do. We are not giving earnings 
+guidance. So please keep that in mind.  
+Highlights: 
+We had a net profit of 538 crores on a consolidated basis. Our consolidated NAV has moved up 
+past Rs. 1,300 per share as of 31st December, 2023. We declared the third interim dividend of 
+Rs. 6.30 paisa per share for Q3, therefore taking the total dividend for nine months to Rs. 25.5 
+per share. This is the 8th consecutive quarter of dividend payments that we are doing. 
+Looking at the Results and let's go to the normalized numbers and you know what the normalized 
+means, where we strip out the effect of derivatives and currency. So, we had a standalone net 
+profit of 514 crores in the quarter as opposed to 605 crores in the corresponding quarter of the 
+previous year. Tanker markets were significantly weaker than in the previous year and therefore 
+the results were a little bit worse. This was offset by higher treasury income etc. But the main 
+story is that tanker markets were not as strong as they were in the previous year October to 
+December, that's October to December 2022. 
+Coming to Consolidated: 
+Again, the same thing is translated more or less into the consolidated numbers as well. We have 
+a drop from 640 crores of last year to 552 crores of this year. And you can see for the nine 
+months as well that we are a little bit weaker than in the previous year. Again, we've seen, I 
+mentioned the net asset value on a consolidated basis, on a standalone basis net asset value was 
+assessed at Rs. 1,068 per share. These are the key ratios. I won't dwell too much on them. This 
+is what I was mentioning. 
+
+=== concall_Q3_2024-01-31 PAGE 4 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 3 of 18 
+So, we had $60,000 a day average earnings TCYs for the crude carriers, which came down to 
+just about $45,000 a day in October to December 2023. Product tankers also were much weaker 
+from $36,000 a day to $28,000 a day. LPG carriers, we had one repricing which took the average 
+rate up slightly. All of our LPG carriers are engaged in time charters. Dry bulk, we had slightly 
+weaker earnings than in the previous corresponding quarter. However, in relation to the 
+immediately preceding quarter, earnings were a little bit better. Crude tankers $45,000 versus 
+$40,000, product tankers marginal improvement by about $1,000 a day. Dry bulk a significant 
+improvement because we had a very strong December. I think late November to mid-December 
+was a very strong period, especially for the Capesizes. 
+Coming to what contributed to our net asset value: 
+And lest you think that this is only coming about by the change in the values of the ships, that's 
+a very small contributor. So, in the last 12 months between December ‘22 and December ‘23, 
+we've had an increase from 892 to 1068. And the (-35) is a dividend paid out so, 1068 is despite 
+paying out Rs. 35 of dividend. A large contributor is Rs. 188 of cash profit. So that's actual cash 
+accrual to the company. A small part is from the fleet value increase which is 24. So that's 
+something to keep in mind that a large part of the improvement in the value has come from 
+cashflows. This is the 5-year movement. In March ‘18 we were at Rs. 357 a share. Now we are 
+just about 3X of that which is Rs. 1068 per share. This is not taking into account the dividends 
+which have been paid in the interim. Similarly, for the consolidated NAV, we moved from just 
+under Rs. 1,050 per share to 1,300 per share where Rs. 88 per share has come from the 
+appreciation in the value of the assets. This is because the offshore assets have moved up 
+significantly in value during this period. But Rs. 220 has come from actual cash profits. 
+Coming to what happened in the shipping market: 
+First, let's look at the tankers, both crude and product tankers. On a nine-month basis the crude 
+tankers have been more or less the same as they were in the nine months of FY23. So about 
+$51,000-$52,000 a day. This is just a Suezmax that I'm talking about. They took some time to 
+pick up after the war started. So, you can see the orange line actually went down in May-June. 
+It wasn't very high and then it picked up and was very strong as the winter started. However, this 
+year started stronger. So, you can see the black line even in April and May was at very strong 
+numbers, excess of $50,000 a day. 
+The MR product tankers on the other hand, had a very strong FY23 first nine months which 
+came down a little bit in FY24 and you can see the change in the averages. Again, these are the 
+market averages I'm talking about. These are not necessarily our earnings. So, what drove this, 
+just for the Quarter, tanker earnings were lower year-on-year. I mentioned that $60,000 came 
+down to $45,000 due to a drop in Middle eastern exports. However, we also saw 
+counterbalancing impact of increased exports from north and South America. Product tanker 
+earnings were also lower year-on-year. 
+
+=== concall_Q3_2024-01-31 PAGE 5 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 4 of 18 
+Again, refining turnaround. So, refinery turnarounds in the east reduced the amount of product, 
+which was available for export, which led to lesser cargoes for product tankers. Similarly, the 
+Chinese exports came down significantly. Last year December, that is December ‘22 saw very 
+high exports from China. This time it was more normalized and therefore there was less demand 
+for product tankers in the east. However, west of Suez earnings were reasonably strong, also 
+because of the Panama Canal disruption and good product exports out of the United States. Fleet 
+supply has not been very strong. It was only about 2% year-on-year. Asset prices continue to 
+remain firm because even at slightly lower earnings, these are very strong earnings and therefore 
+asset prices continue to remain firm at their highest levels since 2008. 
+The order book for crude and product tanker; for crude tankers remains exceptionally low at 
+below 5%, product tankers is a little higher at about 12.5%. However, it is still quite low 
+considering the fleet profile. Also, some of the product tankers which have been ordered are 
+Aframax sized product tankers which can switch between dirty, which is crude carriage and 
+product carriage. And therefore, some of it might actually swing to carrying crude cargoes 
+eventually, depending on which market is stronger. Dry bulk again, last year was not a very 
+strong year. Capesizes improved during the year in the nine months versus last year nine months 
+and thanks mainly to the end of the year being exceptionally strong. So, December averaged 
+something like $30,000 a day which pulled up the average. Therefore, Capesizes have done 
+better than they did in FY23 first nine months. 
+On the other hand, you can see the Supramax index on the right. The smaller vessels had 
+outperformed. So, this is unusual. You can see FY23, nine months, 16,711 average for the capes 
+while the smaller size, the Supramax, averaged 21,100. That's a very unusual situation and that 
+reversed in this year. So, it came down to 12,000 while Capesizes went up to $20,000 a day, on 
+average for the nine-month period. So, we had significant increase in ton mile demand. The fleet 
+supply growth has been only 3%. Chinese imports have been pretty strong, especially in 
+December. The reason ascribed for the strength in December was big iron ore and bauxite 
+imports into China, both of which were long haul trades. So, bauxite typically coming from 
+Guinea which is in West Africa and iron ore coming from Brazil which is again a very long-haul 
+trade. Coal imports also and we've been saying this for the last couple of quarters, coal imports 
+into China have been at their all-time highs. This was because they had an issue with hydropower 
+generation, so they were running their coal fired plants more.  
+The order book continues to be quite low at below 9% of the existing fleet. So going to LPG 
+while our ships are on time charter, the spot market does affect us when we reprice the ships and 
+it's not necessary that we stay on time charter only. 
+But let's look at what the spot markets did. So, the nine months of FY24 were fantastic for the 
+spot markets averaging $100,000 a day. Again, driven by high US exports, especially the US-
+Asia trade. Now this US-Asia trade typically goes through the Panama Canal. The Panama Canal 
+was suffering from low water levels because of a weak monsoon and therefore they reduced the 
+
+=== concall_Q3_2024-01-31 PAGE 6 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 5 of 18 
+number of transits. When they reduced the number of transits, quite a few gas carriers took the 
+long route for coming to Asia from the US Gulf, resulting in a requirement for more ships and 
+the market became tighter. So that's what happened and that's why the markets were very strong. 
+The order book is in excess of 20%. In a historical context, it's a pretty high number. Now, I 
+mentioned already what the order books are. So, you have less than 5% order book for crude 
+tankers, you have under 9% for bulk carriers and (+12%) for product tankers. Even 12% is a 
+pretty low order book.  
+Asset price movements, as you can imagine, asset prices have been strong across the board. Dry 
+bulk had a short period where prices dropped a bit from end of December ‘22 to the middle of 
+‘23. However, they have now recovered and are still pretty strong. All other tanker sectors all of 
+them, the prices are very strong indeed. In fact, for LPG, the prices are at all-time highs. 
+Scrapping has been very minimal, as you would imagine because the markets have been strong. 
+Even though dry bulk was not very strong in Cal ‘23, still we had very minimal scrapping. And 
+remember, this is 0.5 million deadweights on a fleet which is about a billion deadweight. So, we 
+are talking about 0.5% scrapping even in the market, which was not very strong, that is dry bulk. 
+Coming to the oil field services business: 
+Greatship India Limited, fleet supply again continues to be restricted. There are the usual stories, 
+there are a lot of assets which are more than 30 years old in the rigs and there are a lot of cold-
+stacked assets. The order book is very low because there are hardly any assets ordered for the 
+last 7 or 8 years ever since the market dropped in 2015. Our utilization has been improving very 
+gradually. So, we saw a flurry of fixing happening in the Middle East, that was in ‘21-22 and 
+they are still absorbing all the new rigs which were going into contract there. After that we have 
+been seeing a little bit of a lull. Pricing, however, continues to improve. With every pricing 
+which happens for a tender for term business is done at a higher level than before. So typically, 
+these are done when you are coming off a 3-year contract. Typically, these assets in India are 
+getting priced between 50% and 100% higher than their previous contracts. This is across the 
+board. Whether we are talking of vessels or jack-up rigs.  
+Looking at broad financials: 
+We have mentioned this before. We had levered up to buy ships and then now we've levered 
+down because we've had very strong cashflows. We now have $250 million of net cash that's 
+just standalone. If you go to consolidated that's even higher.  
+Now coming to the share price to NAV: 
+While the stock price has gone up quite a bit, you will see that it still trades at a significant 
+discount to NAV. So, we are still at 0.75 of the consolidated NAV at today's price, while the 
+price has gone up 3x in the last 2 years. So apart from doing the shipping and oil field services 
+
+=== concall_Q3_2024-01-31 PAGE 7 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 6 of 18 
+business, we are also a socially responsible company. You can find details of all the good causes 
+that we support on our website, and these are some of those names. Thank you. That brings me 
+to the end of the presentation, and we are happy to take your questions now.  
+Moderator: 
+Thank you. We will now begin the question-and-answer session. The first question is from Amit 
+Khetan from Laburnum Capital.  
+Amit Khetan: 
+My first question is on capital allocation. Are you seeing better opportunities for capital 
+allocation than what you have been seeing in the last three or four quarters? And secondly, for 
+the recent ships that we've purchased, are we still underwriting, earlier we were sort of 
+underwriting to a 10% unleveraged dollar IRR. Is that the same underwriting criteria we are 
+following, or have we sort of relaxed this a bit?  
+G. Shivkumar: 
+Your first question was, are we seeing better opportunities for purchasing, not really. In terms 
+of we are not seeing cheaper prices and cheaper entry points for our purchases. As you can see 
+in the asset price chart, it's not getting cheaper and therefore it's not as attractive to buy as we 
+would like. We don't know the returns that can be made and this 10%, we would have had a 
+much higher degree of confidence at lower prices. These investments are getting subsidized by 
+the sales of older assets. You may notice we bought one bulk carrier, and we bought one product 
+tanker, an MR Tanker and we sold one of each. We sold a smaller bulk carrier, and we sold one 
+of our older product tanker as well. What we are doing is capturing the premium again. Even the 
+older assets have a significant premium. So, we are capturing the premium on the older assets 
+and using it to subsidize in our minds the new assets that we are buying. So, if you look at the 
+new asset by itself, it may or may not provide that return. However, we know that we have 
+derisked to some extent by selling off the old assets also in the same market. So that's what we 
+are doing. Again, this is part of modernizing. We had some old assets. We need to get out of 
+them at some point. So, we said, let's modernize, move towards modernizing our fleet a little bit. 
+That's the whole idea. But your point is valid. It's tough to put a number or with great confidence 
+as to what we can earn on these projects standalone.  
+Amit Khetan: 
+But for any new purchases which are not sort of replacement, are we going to still follow the 
+same criteria as earlier?  
+G. Shivkumar: 
+We'll be a little slow to make new purchases. These purchases have been done as replacements 
+more than anything. So, we'll be slow to make new investments, that is to do growth investments 
+in this market.  
+Amit Khetan: 
+Second question was on the offshore segment. So, this quarter's EBITDA seems to be a little bit 
+off compared to what we've seen last two-three quarters. Has there been some one-off element 
+here?  
+
+=== concall_Q3_2024-01-31 PAGE 8 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 7 of 18 
+G. Shivkumar: 
+That's right, yes, that's well noticed. So, we had one of our rigs, the “Greatdrill Chaaru”, came 
+off her old contract, which was at a cheaper price, obviously. She came off her contract. She was 
+off hired on 1st of November and for two months, little over two months, she was undergoing 
+the work required for her next contract. She had, of course, got her next contract at a much higher 
+level. So, for two months she was off hire and not just off hire. So that's no earnings for those 
+two months. She also had expenses towards getting her ready for the next contract. So, both of 
+which sort of was a double whammy to the results. So last quarter's results are not an indicator 
+of what the market is. As you called it, it's a one off. This will happen from time to time, typically 
+you'll have rigs coming off contract, doing work for about 60 days before they go on to the next 
+contract. In which time you will not have revenue and you will have expenditure. So that will 
+happen from time to time. Typically, once in 3 years that will happen to every rig.  
+Amit Khetan: 
+And this rig is now, when does the new contract start?  
+G. Shivkumar: 
+The new contract has started. We went on hire in middle of January. So, she's now on contract 
+at the higher rate, which was a rate higher by about 75% or so.  
+Amit Khetan: 
+And we have two rigs coming up for repricing in FY25. ONGC has recently floated a tender for 
+four rigs. Are we eligible to participate in those?  
+G. Shivkumar: 
+Yes, we are. In fact, for one of the rigs we have already bid, and the price bids have also opened. 
+The usual procedure is going on. So, we haven't got an award yet, but we are in a reasonably 
+good position to get that award. And for the second tender which has already come out, we are 
+eligible to bid for that contract.  
+Moderator: 
+Our next question is from the line of Vaibhav Badjatya from Honesty and Integrity Investment.  
+Vaibhav Badjatya: 
+I just have one question. As you said during your presentation that the utilization and rates were 
+for the rigs market and for basically oil and gas assets market improved in last few years because 
+of increased activity in Middle East. Now we have also seen the recent announcement by 
+Aramco, under which they are going to stop spending on increasing their capacity. I just wanted 
+to have your thoughts on how this can impact this market and on an overall basis this can be a 
+huge impact.  
+G. Shivkumar: 
+So, this question has occurred to us also and I think there are quite a few analysts who are 
+speculating on it. We don't know how it's going to play out. They've already taken a lot of assets 
+on hire, a lot of rates on hire as I mentioned since 2021, they've been in the market. So 
+presumably those will go on hire. So, they've already absorbed a lot of capacities. So even 
+without additional investment, the market is tight. So, so long as they don't reduce the number 
+and there's no reason for them to reduce. If they're saying that, okay, we are going to go to a 
+certain level. We don't know what their announcement implies in terms of the number of Jackups 
+they require. So, it's too early to tell what impact it can have. But they've already taken a lot of 
+
+=== concall_Q3_2024-01-31 PAGE 9 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 8 of 18 
+assets and presumably those will start working, have already started, some have started working, 
+others will start working soon. We'll see. It'll play out over the next few months, I suppose. But 
+the market is tight enough. We don't need them to take more assets, really for the market to get 
+tight. 
+Vaibhav Badjatya: 
+But in terms of, can they return the asset, I don't know how the contractual terms work in this 
+scenario? 
+G. Shivkumar: 
+Yes, I don't know. I don't know what the provisions are in the contracts? I won't comment on it 
+because we don't know what the provisions are in their contracts.  
+Moderator: 
+The next question is from the line of Aashish Upganlawar from InvesQ Investment Managers 
+LLP.  
+Aashish Upganlawar: 
+On the rigs part you mentioned that the repricing of one of the rigs is at about 75% higher than 
+what it used to be. I think we have a couple of rigs coming up for contract renewals. You 
+mentioned one is undergoing a bidding process again. What would be the kind of benchmark or 
+maybe just a feeler as to how it would be repriced? I mean, how's the market like now?  
+What should we expect? 
+G. Shivkumar: 
+The last pricing which happened and we were not in that tender. The last pricing which happened 
+which was awarded also was 10% to 15% higher than the 175% price that I told you. That was 
+100% it went to 175% when we priced. So, the last pricing was 10% to 15% higher than that 
+price. The market has only got stronger since then. The effect of the repricing should be seen in 
+your subsidy numbers in terms of much better profitability over the coming 12 months kind of 
+horizon.  
+G. Shivkumar: 
+Not so much in the 12 months. The one rig will have the impact and it's already having an impact 
+because she's gone on hire. But the other two rigs which are due for repricing in FY25 will get 
+repriced very late in FY25. It will be only for a small part of the year. We are looking at more 
+like FY26 for the impact of three rigs repriced at stronger rates to get fully filtered through the 
+P&L account.  
+Aashish Upganlawar: 
+And just wanted some feeler on how the standalone operations in terms of what you mentioned 
+on the rates that on a YOY basis for Q3 on an average, the rates were lower. What is it looking 
+like for maybe in January and going into February-March? 
+G. Shivkumar: 
+Rates across the board are stronger than they were in December. So that's the headline news for 
+tankers the rates are stronger. That's the headline news.  
+Aashish Upganlawar: 
+But if I recollect, last year the rates were pretty strong. On a YOY basis, we'll still have a negative 
+impact in Q4. 
+
+=== concall_Q3_2024-01-31 PAGE 10 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 9 of 18 
+G. Shivkumar: 
+No, I think they are probably at or higher than those levels, especially for the product tankers.  
+Moderator: 
+The next question is from the line of Yash Jain from Ambit Capital.  
+Yash Jain: 
+I have a data related question. What I wanted to know is since in a presentation we give the 
+amount of change due to rise in fleet value, but can we get a data point where we can see how 
+the fleet value or the percent of NAV has moved over the last 3 years?  
+G. Shivkumar: 
+So, Yash, let me tell you what I gathered. What you want to know is, over the last 3 years how 
+much of the NAV growth is due to increase in fleet value? 
+Yash Jain: 
+Right. 
+G. Shivkumar: 
+We'll need to work that. Maybe we can connect on that. I think we have mentioned this for the 
+last couple of years, we have been mentioning putting this slide in. I think this is just a summation 
+of all those. But yes, we can look at it.  
+Moderator: 
+Our next question is from the line of Shreyans Gathani from SG securities.  
+Shreyans Gathani: 
+My question was actually on scrapping. The last year or two, we've just seen very low scrapping 
+levels. At some point, shipowners will be forced to scrap as the ships age. So just wanted to get 
+your outlook on when we expect some scrapping levels to go up it.  
+G. Shivkumar: 
+So just one thing I'd like to correct you. You're never forced to scrap because of age. You are 
+only forced to scrap when your vessel becomes too expensive to operate or your vessel is not 
+acceptable to a large number of customers and therefore, you're not able to earn enough revenue 
+to keep the vessel going. There is no statutory drop-dead date for vessels. Now people are starting 
+to put in. So, I'll caveat this a little bit. Now, individual flags are starting to put in restrictions on 
+the age of ships but that is quite a liberal. For instance, you can operate a crude tanker till 25 
+years of age. Typically, beyond 20 it becomes a little difficult to operate, little less acceptable in 
+the market. But you can still run it till 25 years of age. So only at 25, you may be forced to scrap 
+or sell it to somebody whose flag permits them to operate beyond the age of 25 also. Scrapping 
+is typically a function of, as I said, when it becomes too expensive to continue to operate and 
+you are not able to recover the continued cost of operation from the revenues that you are likely 
+to earn. Currently, the scenario is that you are making enough money to even run very old ships. 
+You can continue to run the ships so long as the market remains like this and it doesn't have to 
+be very strong. This is a very strong market. Dry bulk market was not very strong and you saw 
+last year's averages they're not huge. But with those numbers, you can make a living and you 
+can continue to run your ships. What you need for scrapping is a weak market or if a large 
+proportion of customers do not accept vessels beyond a certain age or for whatever reason, not 
+well maintained ships. That's the only trigger you can have for scrapping. If you're looking at 
+age, there are already a lot of ships which are above the age at which you would say, this ship 
+
+=== concall_Q3_2024-01-31 PAGE 11 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 10 of 18 
+needs to be scrapped. For instance, we take 20 as the age as the useful life of a crude tanker. But 
+a significant proportion of the fleet of crude tankers is beyond the age of 20. So, they are still 
+operating. It's not an issue so long as you are able to get employment for the ship and you're able 
+to run the ship at a reasonable cost.  
+Shreyans Gathani:  
+So just a follow up, what would be for example, crude product and dry bulk, like certain 
+breakeven levels where for example, you mentioned 20 years for crude? So, what would be 
+prices that would force people to increase their scrapping level?  
+G. Shivkumar: 
+The other thing here and again, I may have oversimplified it a little bit. We had a very weak 
+market, and you may remember it in calendar ’21, post-COVID from second half of 2020 and 
+through calendar ’21, the tanker markets were exceptionally weak. In fact, we had the weakest 
+tanker market of the previous 30 years. It was weaker than we had seen for the previous 30 years 
+and still scrapping was very minimal in calendar ‘21 as well. It's tough to put a number on that. 
+But if you have very weak market earnings just about OPEX or you have a very large expenditure 
+coming up on your ship, you may think of scrapping it. There are also some environmental 
+regulations which have kicked in from this year which is with regard to the fuel efficiency of the 
+ship, which may push some ships into being forced to scrap. Again, if the market is strong 
+nobody will be forced to scrap because the customer will take the ship. If you need the ship, if 
+the customer needs the ship, they will take the ship. Otherwise, there's going to be a shortage of 
+ships. If ships get scrapped irrespective of a strong market. So, there is no number. But if you 
+have a repeat of calendar ‘21 in terms of earnings, which was just marginally above operating 
+expenses, then you could have some scrapping. But even that is not a given. You need at least 
+that in order to kick scrapping off in a big way. And last 8 years, I've seen minimal scrapping in 
+tankers. 
+Shreyans Gathani:  
+ That's why my question came in. So that is the basis of my question. That's very helpful.  
+Moderator: 
+The next question is from the line of Devesh Jhawar, who's an investor.  
+Devesh Jhawar: 
+My question was regarding the issue at Red Sea. The current tanker rates are inching close to—
+in some of the routes they are inching close to—$100,000 a day. You were also mentioning 
+earlier in this call that the tanker rates are strong, and they are close to where they were in Q3 
+FY23, if I'm not wrong. So, do you think this is just a temporary blip that can reverse back in a 
+quarter's time, or this can stay for longer? Just not a permanent statement but what's your view 
+on it?  
+G. Shivkumar: 
+This is geopolitics. Nobody knows what's going to happen tomorrow or even this evening. So, 
+we just don't have a comment on it. It was unexpected when it started and who knows what will 
+bring it to a stop.  
+Devesh Jhawar:  
+For now, the ton miles are going off and they are not coming back as of now.  
+
+=== concall_Q3_2024-01-31 PAGE 12 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 11 of 18 
+G. Shivkumar: 
+Yes, as of now transits have dropped significantly through the Suez Canal.  
+Moderator: 
+The next question is from the line of Vaibhav Badjatya from Honesty and Integrity Investment.  
+Vaibhav Badjatya: 
+When we are showing that different value of our asset. I'm sure all of our asset will be of different 
+vintage, some will be 11-year, 12 year, 13 years old. So is the valuation of these assets based on 
+exactly the same vintage or it is like we take like for 10 to 15 years of age, we take the 15-year-
+old asset value and then include it in our asset value. How does it exactly work?  
+G. Shivkumar: 
+The valuation of the ship is for the specific—not just the same vintage, it is for that specific—
+ship taking into account all the conditions around that ship. So, this is not our assessment. This 
+is an assessment by two brokers, ship brokers, who  give us the assessment, their assessment of 
+the value of the ship and we take the average of the brokers. Sometimes we do three brokers 
+also. So, this is their assessment of the value. This is not our estimate or assessment of the value. 
+Vaibhav Badjatya: 
+I understand. So, it is exactly for this specific ship. 
+G. Shivakumar: 
+That is right. 
+Moderator: 
+Our next question is from the line of Himanshu Upadhyay from O3 PMS. 
+Himanshu Upadhyay: 
+My question is regarding what we stated about replacement. The first question here on call also 
+and in the last one also, one of the observations was, in last five year, whatever ships we have 
+acquired have been generally ten-year-old from 2018 onwards. And generally, we want to mean 
+crude carrier product and we are outside India or operating most of our ships outside India. 
+Generally, clients don't want to be in ships beyond 16-17 years. And then we need to replace 
+them or find some other opportunities for them. And again, if we are buying ten years, so what 
+we are having is only five to six years of ability to charter those ships. That is one point. And 
+the second is generally, let's say, this market… 
+Moderator: 
+We have lost the connection for Mr. Himanshu. We move to the next question. Our next question 
+is from the line of Roshan Nair from B&K Securities. 
+Roshan Nair: 
+I just wanted to understand that, is it fair to assume that the day rates that we have for Q3 doesn't 
+capture the rising day rates because of the Suez Canal issue? Is it fair to assume that this quarter 
+hasn't captured any of those impacts? 
+G. Shivakumar: 
+That's right, because that happened only late in December. And. Yes, more like January, actually, 
+where the serious rerouting started. 
+Roshan Nair: 
+Another question that I had is on the offshore support vessels. So close to nine vessels were 
+about to be repriced this quarter. So, has it been done and is it at the higher rates versus the 
+previously contracted day rates? 
+
+=== concall_Q3_2024-01-31 PAGE 13 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 12 of 18 
+G. Shivakumar: 
+In India, the rates have been between 50% and 90% higher. These are typically three-year 
+contracts. So, between their last three-year contract and the current three-year contract. Few of 
+the vessels are operating overseas, which had already got an improved pricing. But even there, 
+the pricing between beginning of last year, that's beginning of one year ago, and say three months 
+ago when they repriced is up by at least 20% to 25%. Every repricing is happening at a higher 
+level than the previous. So that's the broad message. 
+Moderator: 
+We have a text question from Ashish Gotham, who's an investor. I will read out the question to 
+you. Could you throw a light on the current pricing scenario, especially in the product tankers 
+market, and also, what percentage of fleet will take advantage of the sharp rise in the prices? Do 
+we expect Q4 to be the best quarter of the year? Congratulations on the consistent performance. 
+G. Shivakumar: 
+The current pricing is at very strong levels. I mentioned that earlier. Again, it's sometimes 
+location dependent. In December, the MR product tanker in the west was much higher than the 
+product tanker market in the east. So, when I talk about what the current pricing scenario is, it is 
+across all regions, sort of an average. It is very high, they're very strong rates. So, if you had to 
+put a number, you’d be talking of $35,000 to $40,000 for a product tanker, an MR tanker. And 
+larger product tankers are doing much better than that. Typically, 75% to 80% of our tanker fleet 
+operates on the spot market and is therefore in a position to take advantage of the rise in freight 
+rates in the tanker market. Again, there may be leads and lags, because if you're already on a 
+voyage, you can only reprice after a certain amount of time when the next voyage is to be fixed. 
+As to whether we expect Q4 to be the best quarter, we don't give guidance. We don't know also 
+whether it's going to be the best quarter of the year, because we don't know what rates could be 
+tomorrow when we go to fix our ship the next. And thank you for the question. 
+Moderator: 
+The next text question is from Yash Jain. How has the fleet value as a percentage of NAV moved 
+over the last three years? 
+G. Shivakumar: 
+I think Yash asked that question in person when he spoke also, so that we will look at and it'll 
+be there in the previous presentations. 
+Moderator: 
+We have a text question from Shivan Sarvaiya from Humiviction Investment Advisers LLP. 
+G. Shivakumar: 
+I can see the question. The question was on the repricing schedule of the three VLGCs, one of 
+them has already got repriced. She's just gone onto a new contract at a significantly higher rate 
+than the previous one. The other two will be repriced somewhere between March and June of 
+this year. 
+Moderator: 
+Next text question is from Rajesh Khater, who's an investor. Why has Mr. Bharat Sheth not been 
+joining the recent calls? Earlier he used to join every call. Going forward over the next two to 
+three years, how much percentage will your offshore business contribute to your pat? 
+
+=== concall_Q3_2024-01-31 PAGE 14 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 13 of 18 
+G. Shivakumar: 
+On the first question, it's a matter of choice that he has decided not to join the calls. He is busy 
+with other things and therefore he is not joining the calls. I hope we are able to answer your 
+questions sufficiently though, because we have the team available to answer your questions. And 
+going forward, we don't know this number because we don't know what our PAT will be in the 
+first place with 75% to 80% of our fleet in the spot market. So, we don't even know what the 
+PAT will be. We don't know what the re-pricings will be. So, I won't be able to answer the 
+question how much. But the contribution should increase because till a year ago there was no 
+contribution coming from offshore business. They were going through a very bad market. Now 
+that the market is improving so progressively it should improve. That's a broad takeaway we can 
+have. 
+Moderator: 
+The next question is from Pritesh Chheda from Lucky Investment. In segment finance, the 
+offshore assets has insignificant ROIC. With all the repricing of assets in OSV plus rigs, will the 
+ROIC rise 15%? 
+G. Shivakumar: 
+Again, this is a forecast. We are not going to make a forecast because again, we don't know what 
+these numbers could be, the next repricing could be. A lot of it is tender driven business. It 
+depends on the competition and specific tenders. When the market was strong and the strongest 
+year we had was 2015-2016, the ROIC was well in excess of 15%. And that's all I can say that 
+it can be above 15%. The rates might be different from what they were at that time. Cost 
+structures can be different, but that's all we can say because we don't know what next year's 
+profits can be because we don't know the pricing that we can have. 
+Moderator: 
+We have an audio question from the line of Archan Pathak from Centra Insights LLP. 
+Archan Pathak: 
+My question is regarding our offshore segment. When I was trying to find the offshore revenue 
+for this quarter, which is the difference between the consol and standalone, it comes around 200-
+250 crores, right? So, on a yearly basis, if I assume it to be 1000 crore revenue, and now with 
+large part of our fleet getting repriced in the next year at 50% to 60% higher prices, would it be 
+fair to assume that the hike in the top line will be equally passed in the bottom line, so we can 
+say that an additional cash flow of 400-500 crores by repricing can come in our cash, in our 
+balance sheet? 
+G. Shivakumar: 
+When all the assets are repriced, so again, it's important to understand that the assets don't get 
+repriced all at the same time. I mentioned the repricing schedule. Two rigs are getting repriced 
+late FY25. So, we will have three rigs repriced into the new rate in FY26. But yes, your broad 
+question on repricing and the impact on the bottom line. Because the cost base is reasonably 
+fixed except for normal cost inflation. So, it should translate into bottom line impact net of tax. 
+There is tax payable on the drilling business. So, you have to take out  tax and then it should 
+translate. But broadly, yes, it should translate to a reasonable contribution. 
+Moderator: 
+The next question is from the line of Forum Makim from JHP Securities. 
+
+=== concall_Q3_2024-01-31 PAGE 15 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 14 of 18 
+Forum Makim: 
+Just wanted to know if the current situation at Red Sea affects our fleet utilization at the moment. 
+G. Shivakumar: 
+It doesn't affect the utilization of the fleet. In a sense, the global fleet utilization has gone up 
+because ships are rerouting around Africa to go from east to west. But it's not affecting our fleet 
+utilization. 
+Forum Makim: 
+And we would be able to take advantage of the higher prices, right? 
+G. Shivakumar: 
+Yes. Because the next time we fix for a voyage, we will get the benefit of higher prices. 
+Forum Makim: 
+Are the rates higher than the FY23 rates that we saw last year. 
+G. Shivakumar: 
+You mean current rates, are they higher than the year ago rates? 
+Forum Makim: 
+Yes. 
+G. Shivakumar: 
+For product tankers, yes. In fact, they are at the highest levels since that one month, which was 
+when COVID hit and there was a huge storage demand. For product tankers, rates are higher 
+than that. For crude tankers, they are still very high and probably getting close to the rates of last 
+year. 
+Moderator: 
+Our next question is from the line of Himanshu Upadhyay from O3 PMS. 
+Himanshu Upadhyay: 
+The question is, on the fleet renewable. One of the observations which… 
+G. Shivakumar: 
+You mentioned that ships become less marketable after 16 or so, and therefore we don't get much 
+time if you buy ten-year-old ships, that broadly was your question, if I remember right. 
+Himanshu Upadhyay: 
+And again, the price of the older ships falls much sharper. Let's say three, four years down the 
+line, when the cycle goes down, if we let us say, do the back testing that in 2005, 2006, 2007, 
+2008 if we would have replaced our 20-year ships not with new, but let's say this ten year old 
+ships, how would it have done, let’s say at 2015, post eight, nine years, then what strategy we 
+followed in the last cycle? And some thoughts on that and the working of IRRs. 
+G. Shivakumar: 
+First on the marketability and tradability of ships, it's not just on the age, it's on how well you 
+maintain your ship. We have found that our ships, and we are running our MR tankers, we have 
+quite a few ships which are (+) 18 years of age. We are able to trade them worldwide. These 
+ships are trading worldwide, so there is not much restriction in their tradability, because we 
+ensure that they are maintained to the standards required. So, it's not just that at certain  age 
+vessel getsknocked off. So that's one. Some customers will say beyond 20, I can't take it, some 
+terminals will not accept, etc., but that is at 20, not at 16 or 17. 
+
+=== concall_Q3_2024-01-31 PAGE 16 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 15 of 18 
+Second, coming to the past. So, in back testing, and it's interesting that you should mention back 
+testing, because that is exactly what we looked at. So, in back testing, you will find that a ten-
+year-old ship will give you a better return than a more modern ship. And in these old ships, 
+typically, what you're doing is you're earning in a hot market, so in a strong market, the 
+differential in earnings between, let's say a 17-year-old ship, which is worth, and let's say for an 
+MR tanker, may be worth $18-20 million, and a twelve-year-old ship, which may be worth $32 
+million. Just giving numbers as an example, the differential in earnings is not much, unless one 
+of them is Eco, in which case then you have to pay a premium for that Eco also. The differential 
+in earnings in a strong market is not much between these ships. We saw this actually in the boom 
+where we had bought single hull tankers and we got tremendous bank for the buck for buying 
+those ships, because you could buy two for the price of one five-year-old ship. And so, you made 
+twice the earnings on buying those cheaper ships. Obviously, those were 15-year-old ships, and 
+that was more extreme. So, in back testing, you do best if you buy older ships, even 15-year-old 
+ships, obviously, we'll not buy too many 15-year-old ships. But ten-year-old ships work perfectly 
+fine. They are acceptable for at least eight years after you buy them for a tanker. And they give 
+you very good cash flows, which enables you also to reinvest in the business because they are 
+producing such significant cash flows as a proportion of the capital employed in that ship. Again, 
+we are not going to only go with ten-year-olds. Don't get me wrong. We may buy even younger 
+ships. And last time actually crude tankers we bought; we bought five crude tankers in 2016-
+2017. Of those five, four were between five and seven years of age. Only one was an older ship, 
+which was actually a 17-year-old ship, which was available very cheap, but we actually bought 
+between five and seven years of age. So, while in an excel sheet, it looks great to buy a ten-year-
+old ship, but we'll not be restricting ourselves. If we get a good ship which is seven years old or 
+six years old, we'll buy that also at a good price. 
+Moderator: 
+Next question is from the line of Roshan Nair from B&K Securities. 
+Roshan Nair: 
+I just wanted to understand, how are situations panning out at Panama Canal? It still continues 
+to be a key driver for higher day rates across the globe. 
+G. Shivakumar: 
+Actually, the Panama Canal situation has got eased a little bit. I think maybe the fact that Suez 
+Canal transits were reduced, maybe some pressure was there on them. They have not dropped. 
+They were going to drop to, I think, 20 transits or something like that, but they are still at 22 to 
+24 transits per day. So currently the LPG market, and again, also because LPG trade has not 
+been very strong, so LPG market has dropped off, but that's not because of Panama Canal. But 
+Panama Canal transits have picked up slightly in the last month or so. They announced that 
+they're going to relax and have more transits. But, Yes, the water levels have not increased. 
+Ideally, the water level should be 85 plus, but now it's still at 81 or 82. It's recovered a little bit 
+from 81 to 82, but they are permitting more transits currently. 
+Moderator: 
+Our next question is from the line of Anuj Sharma from M3 Investment. 
+
+=== concall_Q3_2024-01-31 PAGE 17 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 16 of 18 
+Anuj Sharma: 
+Sorry, my connectivity was intermittent, so pardon me if I'm repeating the question. I was just 
+trying to understand how the capacity is evolving at the shipyards. 
+G. Shivakumar: 
+Capacity at shipyards, there's not much capacity available to produce ships in the short term. So, 
+I think we are 2024 and 2025 fully booked. I don't think you can find a slot there. Basically, all 
+of this has been booked building LNG ships and container ships. So, it's not really available for 
+conventional tankers and bulk carriers. In fact, there was a report which said that there are hardly 
+any slots available even in 2026 for building large crude tankers. So capacity is still quite 
+restricted for ordering new ships. In the foreseeable future, there is unlikely to be a significant 
+amount of new supply of ships into the market, at least the dry bulk and tanker sectors. It's not 
+that any large amount of capacity is being added, if that is a question you're asking. 
+Anuj Sharma: 
+Just a corollary, we see some order book rise in the product tanker market. Anything to read into 
+that? 
+G. Shivakumar: 
+In fact, even the crude tankers have seen quite significant ordering in December, but it's still a 
+pretty low order book. It's been building up. But 12% order book for product tankers is not that 
+much, and if you just take tankers as a whole. And as I mentioned earlier that a lot of the product 
+tanker orders are Aframax size ships which are called LR2s. You build them with the coating so 
+that they're able to carry products, but that can actually swing between the crude trade and the 
+product trade. If you take the entire tanker order book as a whole, divided by the tanker fleet, we 
+are still talking about 6% to 7% order book really. So not a huge number. 
+Moderator: 
+We have a text question from the line of Gaurav Chopra from Lemon International. How do you 
+see the freight rates trajectory in the next year? 
+G. Shivakumar: 
+We don't give outlook because the main reason is that we don't know what these rates can be. 
+We don't give an outlook on the freight rates. 
+Moderator: 
+The next question is from Abhishek Nigam. What is the amount of the one-off expenses booked 
+in offshore in this quarter? 
+G. Shivakumar: 
+The amount was a little above 40 crores, about $5 million. 
+Moderator: 
+The next question is from Anil Thakkar from Jalansh Advisors. What is the bifurcation of 
+contracted ships versus spot ships in your fleet? 
+G. Shivakumar: 
+Typically, about 80% of our fleet is running on spot or spot related rates. Contracted is 20% or 
+less of the fleet. 
+Moderator: 
+The next question is from Forum Makim. Does the rescue situation… 
+
+=== concall_Q3_2024-01-31 PAGE 18 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 17 of 18 
+G. Shivakumar: 
+This question was already taken on the voice call. And I think the next one also was taken from 
+a gentleman. 
+Moderator: 
+Sir, the next question is from Rajesh Khater, who's an investor. Rephrasing my question. If the 
+average freight across all ship categories by… 
+G. Shivakumar: 
+This one is too much of a hypothetical because all of these rates, we don't know. When we are 
+talking about rigs and vessels, how much the repricing could give a bump up in the results, we 
+don't know those rates so it's impossible to give an answer to that. We don't know what the 
+number could be. 
+Moderator: 
+The next question is from Vikram Suryavanshi from PhillipCapital India Pvt Ltd. What is dry 
+docking schedule in fourth quarter FY24? 
+G. Shivakumar: 
+I think we have two or three vessels being dry docked and some of these can spill one month 
+here and there. So, two to three ships being dry docked in this quarter. 
+Moderator: 
+The next question is from Himanshu Upadhyay. Are we looking for opportunities for offshore 
+support vessels outside of India as generally the rates are high there and we are seeing two-year 
+contracts being signed. How many offshore support vessels will be outside India? 
+G. Shivakumar: 
+Out of our 19, we have five vessels currently outside India, if I'm not mistaken. And yes, we 
+always look for opportunities. Whenever vessels come up for pricing, we look for opportunities. 
+Some of the vessels are more suitable for some regions, so there are some limitations there. But 
+we do actively look. We have a marketing team which is capable of marketing internationally 
+and which has relationships with customers overseas. In the last year and a half, we have taken 
+two vessels out of India. So Yes, we are always looking for opportunities. But it's rare to get 
+two-year contracts outside India. 
+Moderator: 
+Ladies and gentlemen, as there are no further questions, I would now like to hand the conference 
+over to Ms. Anjali Kumar, Head of Corporate Communications and Finance, for closing 
+comments. 
+Anjali Kumar: 
+Thank you very much everyone for that really engaging session. And I do realize that we had a 
+lot of forward-looking questions which as you should understand in our business is very difficult 
+for us to make any calls beyond the very-very near term. However, please do keep engaging 
+with us and reach out to our team with whatever other queries you may have, and we will be 
+very happy to meet with you. The transcript of this call will, of course, be uploaded very shortly. 
+Thank you everybody again for joining. 
+G. Shivakumar: 
+Thank you everyone. 
+
+=== concall_Q3_2024-01-31 PAGE 19 ===
+ 
+The Great Eastern Shipping Company Limited 
+January 31, 2024 
+ 
+ 
+Page 18 of 18 
+Moderator: 
+Thank you. Ladies and gentlemen, that concludes this conference call. Thank you for joining us 
+and you may now exit the meeting. 
+
+=== concall_Q4_2024-05-10 PAGE 1 ===
+THE GREAT EASTERN 
+SHIPPING COMPANY LIMITED 
+CIN: L35110MH1948PLC006472 
+OCEAN HOOSE, 1 34/A, DG Annie Besant Road, Wadi, Mumbai • 400 018, INDIA. Tel.: +91(22) 6661 3000/ 2492 2100 Fax : +91(22) 2498 5335 
+www.greatship.com 
+Our Ref.: S/2024/JMT 
+                                    May 14, 2024 
+BSE Limited 
+ 
+     National Stock Exchange of India Limited  
+1st Floor, Phiroze Jeejeebhoy Towers, 
+     Exchange Plaza, 5th Floor, Plot No. C/1, 
+Dalal Street,   
+     Bandra Kurla Complex, Bandra (East), 
+Mumbai – 400 001 
+ 
+     Mumbai – 400 051 
+BSE Scrip code: 500620
+                 Trading Symbol – GESHIP 
+Sub: Transcripts of Earnings call conducted on May 10, 2024 
+Dear Sir/Madam, 
+Further to our letters dated May 06, 2024 and May 10, 2024, please find enclosed 
+transcripts of the earnings call held on May 10, 2024. 
+We request you to take the same on record. 
+Thanking You, 
+Yours faithfully, 
+For The Great Eastern Shipping Company Limited
+Anand Punde 
+Company Secretary 
+Email ID: anand_punde@greatship.com
+Digitally signed by: 
+Anand Prabhakar 
+Punde
+DN: CN = Anand 
+Prabhakar Punde C
+= IN O = Personal
+Date: 2024.05.14 
+15:07:08 +05'30'
+Anand 
+Prabhak
+ar Punde
+
+=== concall_Q4_2024-05-10 PAGE 2 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+ 
+Page 1 of 20 
+ 
+ 
+ 
+“The Great Eastern Shipping Company Limited Earnings Call 
+on Declaration of its Financial Results for the Quarter and 
+Year-ended March 31st, 2024.” 
+ 
+May 10, 2024 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+MANAGEMENT: MR. G. SHIVAKUMAR – EXECUTIVE DIRECTOR & CHIEF 
+FINANCIAL OFFICER, THE GREAT EASTERN SHIPPING 
+COMPANY LIMITED 
+MR. RAHUL SHETH – THE GREAT EASTERN SHIPPING 
+COMPANY LIMITED 
+MS. 
+ANJALI 
+KUMAR 
+– 
+HEAD, 
+CORPORATE 
+COMMUNICATIONS, THE GREAT EASTERN SHIPPING 
+COMPANY LIMITED 
+ 
+ 
+, 
+ 
+
+=== concall_Q4_2024-05-10 PAGE 3 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 2 of 20 
+Moderator: 
+Good Evening, Ladies and Gentlemen. Welcome to GE Shipping Earnings Call on Declaration 
+of its Financial Results for the Quarter and Year-ended March 31st, 2024. 
+At this moment, all participants are in the listen-only mode. Later we will conduct a question-
+and-answer session. 
+I now hand over the conference to Ms. Anjali Kumar, Head of Corporate Communications at 
+The Great Eastern Shipping Company Limited, to start the proceedings. Over to you. 
+Anjali Kumar: 
+Thank you, everybody for joining in today and welcome to the Earnings Call for our Q4 & FY'24 
+Results. 
+I would just like to take a minute to introduce our panel today. The Presentation will be made by 
+our Executive Director and CFO – Mr. G. Shivakumar and followed by Questions and Answers 
+from all of you. 
+To handle the questions, we have of course Mr. Shivakumar, and we also have from the 
+Management Team Mr. Rahul Sheth, who will also take questions along with him. So, handing 
+over to you, Mr. Shivakumar. 
+G. Shivakumar: 
+Thank you, Anjali. Good evening, everyone and thank you for being here for our Conference 
+Call for the Q4 and FY'24 Earnings Presentation. 
+First of all, a standard disclaimer: 
+We are not intending to forecast, and we don't intend to give guidance on future profitability. 
+Please keep that in mind when we have our Q&A. 
+Highlights are that we had our highest ever reported net profits of 2,614 crores consolidated. 
+Our consolidated NAV has moved up to about Rs.1,400 per share as of March'24. We have 
+declared a fourth interim dividend of Rs.10.80 per share, taking the dividend for the year FY'24 
+to Rs.36.30 per share, which includes a special dividend of Rs.7.50 per share on the occasion of 
+our 75th Anniversary. 
+You would have seen our P&L. I am not going to spend too much time on it. We are of course 
+net cash on a standalone and a consolidated level. On a normalized basis, the last quarter was 
+our highest ever quarter in terms of net profit. The previous highest quarter in our history was 
+Q4 FY'23 where we had a net profit of Rs.662 crores, this quarter we had a standalone net profit 
+of Rs.701 crores. On a consolidated basis also, this is our best quarter at Rs.851 crores net profit. 
+Looking at the NAV per share, on a standalone basis, we have gone up from Rs.962 per share in 
+March '23 to Rs.1,127 per share in March '24. This is after paying significant dividends during 
+the year. On a consolidated basis, as I mentioned earlier, our NAV has moved up from around 
+
+=== concall_Q4_2024-05-10 PAGE 4 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 3 of 20 
+Rs.1,160 per share, mid-point of the range to around Rs.1,400 per share. I will not go through 
+the next slides. This is just the trend of the quarterly EPS. 
+Looking at what happened during the quarter, just in terms of the rates and then we'll go into 
+what went into those rates as well. Crude tankers, product tankers, even LPG did significantly 
+better than they did in Q3 FY'24. In the case of crude and product tankers it was because of the 
+spot markets being high. In the case of LPG, it's because we went off contract at a certain rate 
+and we repriced that contract at a significantly higher rate. All our LPG ships are on time charter. 
+Dry bulk rates were a little lower than they were in the October-December quarter, but the 
+tankers more than made up for it. 
+Looking at the year, you can see that crude tankers were marginally better in FY'24 than in 
+FY'23. Product tankers were a little worse, though still at very profitable levels and LPG carriers 
+because of the repricing of contracts to slightly higher level, did a little better than in FY'23, but 
+dry bulk was significantly weaker in FY'24 versus FY'23. 
+Looking at the standalone NAV, I mentioned that 960 went up to 1127. Rs.190 came from cash 
+profit which is PAT plus depreciation. Fleet value change contribution to this was insignificant. 
+So, a large part of the NAV accretion has come from cash flows and cash accruals. Out of this, 
+we paid out Rs.35 in dividends during the year and therefore the NAV went up by about Rs.165 
+per share. 
+Five years movement in standalone NAV. So, we have a CAGR of 25% between March '19 and 
+March '24. If you look at consolidated also it is a similar CAGR because we were at about Rs.450 
+per share in March '19 and we are at about Rs.1,400 per share in March '24. This does not take 
+into account the dividends that have been paid in the interim. 
+Changes in consolidated NAV, again Rs.226 per share in cash profits. We had some fleet value 
+improvements on the offshore side, so that contributed Rs.41 per share. 
+Let's take a quick look at what happened in the shipping markets. As I said, the spot markets 
+were possibly slightly weaker than they were in the previous year. So, in Q4, we had a year-on-
+year drop in earnings for crude tankers, basically because we had a very strong Q4 of last year. 
+However, it was stronger than in the immediately preceding quarter. 
+Product tankers earnings were higher year-on-year. One of the factors which came into play was 
+the tension in the Red Sea which led to significant rerouting of global tonnage around the Cape 
+of Good Hope. Red Sea transits for tankers dropped by about 40% in Jan-to-March quarter as 
+compared to the previous quarter, which means more tonne-miles for tankers. Overall, the trade 
+declined slightly for crude tankers, however, made up by the tonne-mile impact. Order book for 
+crude and product tankers have built up but are still quite low and we will see that in perspective 
+in a couple of slides. 
+
+=== concall_Q4_2024-05-10 PAGE 5 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 4 of 20 
+Dry bulk, we saw the markets recovering a little bit for the larger sized ships. So, we saw the 
+capesize going up from $15,000 on average in FY'23 to $21,000 on average in FY'24. You will 
+recall that the previous year was the year of the sub-cape performing well because of the minor 
+bulk commodities doing well. Now, it's large commodities which have done well and therefore 
+the capes have outperformed. So, we saw the Supramax earnings drop from $18,000 a day to 
+about $12,000 a day from FY'23 to FY'24. Again, I must reiterate, these are not our earnings, 
+these are market earnings that I am talking about, these are market indices. 
+So, we had an unseasonally strong quarter in Jan-March, traditionally a very weak quarter. 
+Typically, the Chinese New Year, Brazilian weather impacts tend to push rates down in Jan-to-
+March. However, this quarter was very strong and therefore capesize spot earnings. You can see 
+this number, 175% higher year-on-year. Even the sub-capes were much higher compared to the 
+previous year. So, we had significant supply of iron ore coming from Brazil, which moved into 
+China and Chinese iron ore imports continue to be strong. Coal imports into China also continue 
+to grow strongly as a result of lower domestic coal production in China and greater coal demand 
+for electricity generation. So, the Red Sea disruption also impacted here where again you have 
+between 40% and 50% of ships routing around the Cape of Good Hope. 
+Asset prices here firmed up, 10% to 15%, in line with the growth in earnings. The order book 
+continues to be fairly low at less than 10% of the fleet. 
+In LPG, just to reiterate, our ships are not in the spot market, they are on time charters, but the 
+market was strong, FY'24 was much stronger than FY'23 and the order book has built up quite 
+significantly; we are at above 20% order book for LPG. Asset prices are at all-time high levels 
+for LPG carriers. 
+One of the significant factors over the last six months has been the two canal disruptions and 
+two very important maritime potential choke points. As I mentioned, Suez Canal trade dropped 
+by 40% to 50% from a year earlier, while trade through the Panama Canal also has been affected. 
+This happened since October. Drought at the Panama Canal has posed restrictions on the number 
+of ships that can pass through the Panama Canal on a daily basis. So, that came down from about 
+32 to 34 transits per day, down to at its lowest point, 20 transits per day. Now it's coming back 
+up because they've had some rains and the levels are improving, but you can see the graphs there, 
+if you see the blue line on the right, you can see the increase in transits around the Cape of Good 
+Hope, while the transits through the Suez Canal have dropped off significantly starting in 
+January. On the other side, you can see the gray line, which is the Panama Canal, where you can 
+see from October onwards, the transits have dropped significantly. This mainly affects exports 
+from the US Gulf to the Far East which used to transit through the Panama Canal, especially 
+LPG, which then had big tonne-mile impact and we saw LPG spot rates going up to $100,000 a 
+day in December, January. 
+
+=== concall_Q4_2024-05-10 PAGE 6 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 5 of 20 
+Looking at fleet supply, we have shown this slide very often. As I mentioned, you can see the 
+purple line, the current order book for gas carriers, it is at about 25%, while the order book for 
+the other three kinds of ships are quite low in historical terms. 
+So, on the flip side, there are only two permanent things in shipping. One is new ships coming 
+into the fleet and the other is ships being removed from the fleet due to scrapping. We've seen 
+scrapping being at very low levels. The average scrapping percentage over the last 5-6 years has 
+been only about 1.5% and a lot of old ships are still around because the markets have been 
+reasonably strong. All of this sort of gives a cushion in a weak market where a lot of these older 
+ships, which are only able to operate because of the strong market will have to go or will tend to 
+go first in a very weak market. And we thought we'd put this in a graph. The Y-axis is the 
+percentage of aging fleet, and here we've defined the aging fleet for bulkers and tankers as those 
+above 20-years of age, and for LPG carriers as those above 25-years of age. So, if you see for 
+instance the crude tanker order book, which is at about 7.5%, but the fleet, which is old is 18%. 
+For dry bulk carriers, the order book and the old fleet are about the same. In product tankers 
+also, you will find that, while the order book is 15%, the aging fleet is also a similar number. It's 
+different for LPG. LPG is a commodity which has seen very strong trade growth and where 
+we've actually seen the fleet going up 2.5x in the last 10-years. 
+Looking at asset prices, we have mentioned that asset prices have been very high for quite some 
+time now. So, they continue to go up and in recent months we've seen dry bulk asset prices also 
+move up quite sharply. 
+Looking at Greatship, this is a little bit of background. FY'16 to '21 we had a very challenging 
+period for Greatship and indeed the entire industry worldwide utilization levels across asset 
+classes were very low, charter rates came down to levels which generated basically no EBITDA 
+if you were lucky enough to get a charter and a very large part of the industry went through 
+financial restructuring or reorganization. In our case, we paid down a lot of debt. Thanks to our 
+risk management and having a lot of contract coverage, we were able to come through it 
+unscathed. We had minimal cash depletion. We paid down a lot of debt. And post FY'21 
+utilization levels have improved, the market bottomed out and E&P activities have started to 
+increase, contracts are getting repriced, every contract gets priced at better than the previous 
+employment contract of that asset. So, if you have a vessel coming off a charter, let's say a three-
+year charter at X-dollars per day, typically the repricing would happen at $1.5-2x per day. So, 
+the business has now come back to profitability. 
+Utilization, there's been a gradual improvement. This is up to March. Now in the month of April, 
+we've had a little bit of a setback for the global jack-up market. Saudi Aramco had announced 
+earlier in January that they are scaling back on their target of reaching a 13 million barrels a day 
+production capacity and they're going to take it back to 12 million barrels a day. This has been 
+seen in action in the last month or so where they have either off hired or suspended contracts on 
+
+=== concall_Q4_2024-05-10 PAGE 7 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 6 of 20 
+at last count about 22 jack-up rigs, and leading to a drop in utilization, so that market is in a bit 
+of a state of flux now. It remains to be seen what happens now next to that market. 
+We will not go through fleet supply. Let's look at what assets we have up for pricing. We have 
+12 vessels up for pricing. All of them have been bid into tenders and businesses, whether in India 
+or overseas and are in a reasonably good position to win business. The one thing which has 
+happened is that our rig Greatdrill, Chetna which is scheduled to come off contract in end of 
+June, that's end of next month and where we had bid into a tender in India. We have just received 
+news that the tender has been cancelled. So, we will look at what other options are there. 
+Typically, rigs which are working in India during the southwest monsoon and which are due to 
+complete their contracts during the monsoon period, typically get extended through to the 
+monsoon period because they cannot move during that time. So, let's see what happens with the 
+Chetna and we'll look at what other employment options there are as well. 
+Coming to financials, we've seen this graph before. We levered up to expand between FY'17 and 
+FY'19 and then we reduced our debt just by sheer cash flows coming in from the business. So, 
+we have about $350 million of net cash currently. 
+And share price to consolidated NAV, our consolidated NAV as I mentioned is about Rs.1,400 
+per share and our stock continues to trade at a significant discount to that net asset value. 
+Just touching on what we do on the CSR front, since 2015 when we started our foundation, we 
+have partnered with 49 NGOs. We've helped reach good education outcomes for more than 1.5 
+lakh students, we have helped good health outcomes for almost 1,20,000 women and children, 
+and we have provided for around 42,000 women especially providing entrepreneurship training 
+and helping them to set up small businesses. These are a list of our CSR partners. All details are 
+available on our website, and we would invite you to go and check it out. We are very proud of 
+what we have achieved on the CSR front. 
+The other thing is on our presentation you'll find the link to the coffee table book. We invite you 
+to take a look at that as well. Thank you. And now we can go to Q&A where we'll be happy to 
+take your questions. 
+Moderator: 
+Ladies and gentlemen, we will now begin the question-and-answer session. We have our first 
+question from Rajesh Khater, an individual investor. Please go ahead. 
+Rajesh Khater: 
+Sir, your maximum fleet is in product carriers and dry bulk carriers, almost 34 out of your 44 
+ships are in these two segments. So, I mean, what is the reason that you have positioned yourself 
+more on product carriers and dry bulk carriers so disproportionately especially when you say 
+that LPG trade has been growing significantly over the last many years? 
+
+=== concall_Q4_2024-05-10 PAGE 8 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 7 of 20 
+G. Shivakumar: 
+So, it is not a conscious strategy. We are quite agnostic to what sector we invest in. Actually we 
+entered the VLGC sector specifically and we have three (VLGCs), Very Large Gas Carriers for 
+the first time in 2012. So, we made a start there and yes, we have only four LPG vessels, but 
+they've been very profitable, though it's not that the product tankers have been less profitable 
+than the gas carriers. All I mentioned was that it's been a significantly growing market. And for 
+us, the growing market really doesn't make that much of a difference because we are not that big 
+that we need a much bigger market to grow. There's enough space to grow even when the market 
+doesn’t, since we have very small proportion of the overall global fleet. Rahul, do you have  
+anything to add to it? 
+Rahul Sheth: 
+So, we have seen historically that it's not that one segment has outperformed the other segment 
+materially. At different points in time, different segments have done well. So, whenever we are 
+looking to invest our capital, we are always weighing the decision between one sector or the 
+other. So, it can be a situation where at one point in time you have more crude tankers than 
+product tankers. We are not wedded to one particular sector. 
+Rajesh Khater: 
+So, going forward also when you decide to invest your capital in buying new ships, will you 
+have any affinity for a particular sector or there's no such thing in mind? 
+Rahul Sheth: 
+No, we have no particular affinity to one sector over the other. We will always look at relative 
+pricing between the sectors if the capital is limited and it also depends on where you are able to 
+obtain the ships, because in the second-hand market you also have to have deals that you can 
+transact. However, a broad goal which the company always tries to focus on is to be diversified 
+across various sectors. Now, the level at which you're diversified between different sectors may 
+vary from time-to-time, but we have seen that different markets may do well at different points 
+in time and other markets may do poorly at different points in time, therefore, to be diversified 
+is more important. 
+G. Shivakumar: 
+To answer your question, if you have an opportunity to buy, say, a gas carrier, let's say the 
+markets come to the levels at which we would like to buy. At any point, we will look at which 
+is the ship to buy, which is most likely to give us the best possible return. It's again like a portfolio 
+manager. You have to look at asset giving best possible return when you have scarce capital, you 
+have to try to allocate it accordingly. 
+Rajesh Khater: 
+Because I think you mentioned that LPG trade has grown about 2, 2.5 times over the last many 
+years, whereas the crude trade has probably come down probably, right. So, - 
+G Shivakumar: 
+It's not come down. So, again I will reiterate. It doesn't matter whether the trade has grown or 
+not. What matters is the investment returns that you're making from that business. We are an 
+international shipping company. The crude trade not growing does not mean we can't grow. We 
+can be five times our size in crude tankers without being too big in the market. So, the growth 
+of the actual trade is not really a factor here when we are thinking of purchasing. We are looking 
+purely at what is the return that you can make from that asset. Also one more thing, just keep in 
+
+=== concall_Q4_2024-05-10 PAGE 9 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 8 of 20 
+mind is that when you look at trade, trade is a factor of two things. One is the total amount of 
+cargo that has moved and second is the distance that that cargo has moved. So, you can have a 
+situation and if you see the tanker market before the war and post the war, the amount of oil on 
+water has changed marginally higher. However, the tonne-mile, which is the distance travels 
+times amount of commodity carried, has increased substantially because of the war and the 
+change in the trading pattern, and because of that you have much higher tanker rates. And also, 
+you have to always keep in mind the supply side. You can have higher growth in demand, but 
+you can also have higher growth in the supply of ships, which means that net-net you may not 
+be better off in a trade that just grows faster. So, you have to look at all the factors to determine 
+whether or not the market would be higher or lower. 
+Rajesh Khater: 
+And the 12 vessels that are coming up for repricing and you said that one of the tenders where 
+you intended to participate has been cancelled. So, what are your plans now and how are their 
+prospects looking end of June. 
+G. Shivakumar: 
+The vessels that are coming up for repricing have all been bid into businesses and are likely to 
+get their next contracts at higher than the previous contracts. These are the offshore vessels. 
+They've all been bid into tenders and the market is fairly tight. The one which I referred to the 
+tender being cancelled is on a rig where we have just received the news of that tender being 
+cancelled and therefore we will now evaluate our options with regard to that rig. 
+Rajesh Khater: 
+Sir, this other income of Rs.163 crores, what is it comprising of? 
+G. Shivakumar: 
+A lot of it is treasury income. We have a very large amount of cash because we have generated 
+so much cash. So, that's treasury income. 
+Rajesh Khater: 
+You've mentioned in the slide the order book versus scrapping potential. As an individual 
+investor, I mean just can you help me understand the significance of this, for example, let's say 
+an LPG carrier which has a high order book and a low aging fleet versus a crude tanker, I mean, 
+can you just help me understand the significance of this chart? 
+Rahul Sheth: 
+So, let me just go on to the crude tankers and product tankers where the order book is relatively 
+low as compared to the scrapping potential. So, when we say, it's potential, the point is that 
+largely over the age of 20, tankers find it hard to trade in international markets because either 
+charters or terminals have restriction. Having said that, it is not necessary that those vessels will 
+be untradeable. We often see that in tight markets, you can have a situation whereby the vessels 
+trade longer than age 20. So, as of today you're seeing many vessels above the age of 20 but are 
+not being forced to scrap because the rates are very high, owners are earning much above their 
+costs on those assets and charters are also willing to accept those vessels because the market is 
+very tight. However, if the market comes down and charterers have a lot of choice and those 
+owners with older vessels are unable to trade those vessels or they're unable to employ them 
+sufficiently well, they may then be forced to scrap those ships and therefore there is a potential 
+for the supply of vessels to come down. On LPG, it's the reverse where the order book is high 
+
+=== concall_Q4_2024-05-10 PAGE 10 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 9 of 20 
+enough and there isn't many vessels that are likely to be scrapped, because even if the market 
+comes down and your vessels are relatively young, then you will tend to hold on for a longer 
+period of time before you come up with the decision to scrap the vessel. 
+Rajesh Khater: 
+By order book, what do you mean here, I mean, you're referring to the order for the supply of 
+new carriers? 
+Rahul Sheth: 
+That's right. So, if you see the order book of a crude tankers at 8%, it means you take the total 
+fleet of crude tankers in the water and 8% of that is on order for delivery generally, over the next 
+two to three years. 
+Moderator: 
+We will take our next question from Vaibhav Badjatya from Honesty and Integrity Investment. 
+Please go ahead. 
+Vaibhav Badjatya: 
+So, on this Saudi Aramco changes in the capacity and cancellation of rate, are you also seeing 
+some impact on OSV market or it is largely restricted to rigs? 
+Rahul Sheth: 
+So, at the moment we are not seeing such an impact on the offshore vessels. One thing to note 
+is that the offshore, it's the number of vessels, the number of units are much larger. Also, the 
+offshore vessels supply both the jack up market and the deep sea market and we are seeing 
+sufficient demand in the deep sea market. So, the offshore vessels are well employed all across 
+the globe. So, on that as of today, we are not seeing a major impact. 
+Vaibhav Badjatya: 
+And in the context that get repriced in first half '25? If you can help us understand broadly what 
+is the extent of repricing both on PSVs and anchor handling  supply vessels separately broadly, 
+what is the current rate they're earning, which is coming into our financials and what is the last 
+pricing which is indication of this? 
+G. Shivakumar: 
+We don't give out the rates at which these vessels are earning. Suffice to say that the earning 
+rates and the last contract which have happened are between 50% and 100% higher than the rates 
+at which these vessels are currently earning. And the markets continue to be there at close to 2x 
+what these contracts are running at current. So, there is enough business for offshore vessels. 
+That is something I want to emphasize. 
+Moderator: 
+We will take our next question from Pritesh Chheda from Lucky Investment. Please go ahead. 
+Pritesh Chheda: 
+On the Greatship side, what will be the incremental EBITDA addition that Greatship would have 
+seen, the subsidiary? 
+G. Shivakumar: 
+Are you talking about in the coming year or you're talking about the past year? 
+Pritesh Chheda: 
+No, just the quarter gone by. 
+
+=== concall_Q4_2024-05-10 PAGE 11 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 10 of 20 
+G. Shivakumar: 
+So, if a couple of contracts got repriced you would have had an impact of $8 million to $10 
+million additional EBITDA that is year-on-year Q4. 
+Pritesh Chheda: 
+So, standalone minus consol is largely Greatship EBITDA? 
+G. Shivakumar: 
+No, we will have the segment results there to see that. But we also have a trading subsidiary 
+which does chartering and freight derivatives that also comes in the consolidated, it does not 
+come in the standalone. 
+Pritesh Chheda: 
+Is it fair to assume that when I was listening to your last call or let's say the last couple of 
+presentation had talked about 7 vessels to be repriced in H2 FY'24. So, those would have flown 
+into your EBITDA in the second half of FY'24? 
+G. Shivakumar: 
+Yes, most of them would have flowed through to the EBITDA again for short periods of time. 
+Because all the vessels that were employed as of April. 
+Pritesh Chheda: 
+Incrementally, we'll keep seeing build up on this EBITDA because there are another 15 vessels 
+to be repriced in FY'25? 
+G. Shivakumar: 
+That is correct where the market stands currently, yes. 
+Pritesh Chheda: 
+At whatever the current market and the market stands in, these contracts are usually three years, 
+right? 
+G. Shivakumar: 
+Yes, These OSV contracts usually are for three years. The  rig contracts are also three years. 
+Pritesh Chheda: 
+My other question is, in the first two months of the current financial year on the commercial 
+shipping side or the merchant shipping what are the rate increases, what are the Q4 averages? 
+G Shivakumar: 
+Product tanker rates have stayed around the same level or they've marginally been stronger. The 
+crude tanker rates may be marginally weaker, but not that much, maybe a little bit weaker than 
+they were in the previous quarter, but again this is as of the last one week and this changes from 
+day-to-day. 
+Pritesh Chheda: 
+And the bulk? 
+G Shivakumar: 
+Bulks have been getting much stronger in the last week to 10 days, especially the smaller vessels. 
+Pritesh Chheda: 
+So, Saudi off-hiring 20 rigs means about 5% incremental supply. Do you see that's significant 
+enough to change the mood in the rig market? Because what I heard was the ONGC were looking 
+for rigs and ONGC had this 26 rig plan. So, does it change the dynamics of the rig market, which 
+is in such a short supply and there is no incremental rig getting added. 
+
+=== concall_Q4_2024-05-10 PAGE 12 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 11 of 20 
+G Shivakumar: 
+In practical terms, it does not necessarily change the supply scenario in the Indian market. We 
+are not seeing any of those. 
+Pritesh Chheda: 
+Let's say globally also 5%. 
+G Shivakumar: 
+So, globally, these rigs obviously have to go somewhere else and we've seen I think one or two 
+of the rigs, they've already announced the rig of the drilling operators announced that they've got 
+contracts elsewhere. But they are unlikely to actually come into India to work because of the 
+specifications required in India. But on the other hand, mood is, one never knows. It's difficult 
+to quantify how sentiment will be. 
+Rahul Sheth: 
+But before this news, the market and utilization of the jack-up rigs were above 90%. So, even 
+when you see a 5% reduction, which you're right, it still is about maybe 85%, 87%. So, in the 
+grand scheme of things, the jack up rig market is still quite tight. We've not seen any similar 
+announcements from any of the other oil majors and there is still interest in other oil majors to 
+still contract. So, we'll have to see how this development plays out over the next few quarters. 
+Pritesh Chheda: 
+Our four rigs are on Indian shore to be deployed on Indian shore or outside India? 
+Rahul Sheth: 
+As of now on the Indian shore, but I am not saying that it's restricted to India, they can operate 
+in other places. 
+Pritesh Chheda: 
+As of now, they are in Indian shores deployed? 
+Rahul Sheth: 
+As of now, yes, all four. 
+Moderator: 
+We will take our next question from Himanshu Upadhyay from Buglerock PMS. Please go 
+ahead. 
+Himanshu Upadhyay: 
+This question is a follow up from last quarter, okay, where we stated that the focus currently is 
+on replacing of older vessels with new vessels on product tankers and we have done some deals. 
+But just I had a question was this that we are selling old MR tankers nearly around USD14, 15 
+million approximately and buying new ones for USD30 to USD35 million approximately. We 
+have replaced two MR tankers recently. So, the sunk or invested capital is nearly $60 million. 
+Why not directly buy one MR tanker, which will be again nearly for $30 million and the invested 
+capital will be similar to $60 million, which we are doing by replacing old with the newer one? 
+The question is because the revenue days will be three for $60 million versus two revenue 
+earning days on product tankers what we are doing. Yes, the base assumption is the market will 
+remain good for two, three years, but that is the assumption which we are making even for 
+replacing old vessels with the new vessels, and hence why not directly the additional capital we 
+are doing or adding, we directly buy one more ship for replacement of two ships, where am I 
+wrong in my assumption or I am confused slightly here? 
+
+=== concall_Q4_2024-05-10 PAGE 13 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 12 of 20 
+Rahul Sheth: 
+One is the major assumption that the market will be good for the next two, three years. We don't 
+know that. In the replacement, you're right, we are replacing our older vessels with newer 
+vessels. So, some of the older product tankers which are hitting twenty in Cal'2024, they 
+generally tend to come closer to the end of the economic life. Because the market is very strong 
+and asset values are very high, we are able to capture a premium on those older vessels vis-à-vis 
+what we would have normally gotten if the market was at a much lower level. When we buy a 
+slightly more modern vessel, we buy more life and we are paying a higher price than we would 
+normally like to pay. But the premium that we have captured during the sale is somewhat being 
+recirculated back into the vessel, which is slightly younger. So, when you look at that math, 
+right, we believe we are being conservative in the way we are investing this capital. While we 
+keep exploring the way to deploy our capital, at these price levels, we are a bit cautious in terms 
+of investing and going net long into the business. 
+Himanshu Upadhyay: 
+See, the question is the base capital investment remains $60 million in what we are doing and 
+versus adding one more ship directly, okay. But my IRR will be much more front-ended if I have 
+three ships versus two ships because my day rates or the carriers will be - 
+G. Shivakumar: 
+Himanshu, sorry to interrupt, But yes, I have got your point. So, where we are adding on the one 
+ship of capacity upfront and you're saying why don't you just add that one ship capacity instead 
+of saying that you're going to move out of two old ships and move into two modern less old 
+ships, let's say - 
+Himanshu Upadhyay: 
+The IRRs, how does it impact? I found the IRRs are better. 
+G. Shivakumar: 
+So, what you're saying is why don't you just buy outright a modern product tanker instead of 
+doing these switches. The issue with doing an upright purchase is then you need a very strong 
+market in order to justify it because you know where the asset prices, the asset prices are at their 
+highest level since 2008. So, you need to price in a very strong market for the next three to four 
+years in order to justify it. And what we are doing is simply saying that we don't know if that 
+will happen and we can't bet on that happening and therefore, we are saying in this high part of 
+the market, we are trying to limit the amount of capital that we put to work, we are maintaining 
+our market position, we are ensuring that those couple of vessels which are getting towards being 
+overaged and cannot be traded freely in the international market, we move out of those and 
+maintain our position in the international market with some additional capital, but reducing the 
+amount of capital which could potentially not meet our target. Let me just give an analogy in the 
+market. In the stock market, you can choose to say I am going to put new money to work in this 
+market or you can say I am going to quit out of one of the stocks where I have made money and 
+put it into another, I am just moving my money from one to the other. So, we are just trying to 
+limit the amount of investment we make in the high part of the market. 
+Himanshu Upadhyay: 
+See, I don't agree to the stock market analogy, because here you are getting three rent yielding 
+assets, okay, stock market is not a rent yielding asset, okay. So, there is one point of difference 
+
+=== concall_Q4_2024-05-10 PAGE 14 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 13 of 20 
+in that analogy, okay. And the second is if the base assumption we are not ready to invest 
+incremental because the markets are high and that is the assumption we'll need to make, but then 
+if that is the whole thought process, then why do we renew also the old ship to new because the 
+base capital you are putting is $30 million from the older vessels what you sold and $30 million 
+for the new vessel, what you put in which is $60 million, okay. So, I hope you are getting from 
+where I am coming, okay. The three revenue days you get versus two. And if we are not ready 
+to take the risk of for putting incremental money, but then I think there is some point of difference 
+of opinion here. 
+Rahul Sheth: 
+So, one of the things is just let's talk about the net long position, right, where you're just buying 
+a ship outright. The thing is that we should not get overly carried away with the current yield, 
+right? Because while today the markets could be very strong, they can be very weak in the future 
+and then what looks good on paper today could eventually look very bad in the long-term, right, 
+it is possible, not necessary, but it is possible. And we always play on probabilities. And today, 
+with the way the markets are, the price levels which they are, you need the market to be strong 
+for a longer period of time to make this project justify. However, on the switching, right, yes, 
+okay, that is a fair point that then why even do the switch. But like I mentioned earlier in the 
+conversation, let us just take a very, very crude example. Let's say you're willing to pay a Rs.100 
+for a ship, right, and today because of the way the market is, it's at Rs.150, you are selling that 
+asset and capturing that Rs.50 premium which you normally would not have gotten unless the 
+market was this strong. And then you go buy a younger ship, right, which is let's say priced at 
+Rs.200, that's also priced at a higher price of Rs.250. So, that also has a premium. So, you're 
+recycling the premium from one ship to the other. So, you're being more conservative. What is 
+your other next best option? Your next best option is to lose the capacity entirely. And then what 
+happens is that, if the market does remain stronger for longer then you don't have a ship to take 
+advantage of that. Also another issue as a shipping company, you need to maintain a certain level 
+of exposure in the market because you have charters, customers, employees, you have a whole 
+system to keep running. So, you may not want to be a point shrink your capacity in your market 
+presence. So, you have to balance between the two. It does not need to be a binary outcome 
+where you say, okay, fine, if you're not willing to add additional ships, then why not lose all your 
+current existing capacity? 
+Himanshu Upadhyay: 
+See, there is a third option, okay, which you are not talking about. Let the older ships run in good 
+and in these times when the capacity is scare, the ships can be run for another two or three years 
+and the risk capital which I am saying remains 30, it does not go to 60. 
+G. Shivakumar: 
+That assumption that you are working under is not correct. What you're describing was very true 
+in 2004 to 2008. We ourselves ran 25-year-old ships in the international market. It is not valid 
+today unfortunately or maybe fortunately. There are a lot of trades which are just not available 
+to an older ship. So, your 20-year-old MR or 21-year-old MR tanker irrespective of the condition 
+and we run very good ships. Irrespective of the condition, all they look at is what was the date 
+of build of the ship. If it has crossed so and so age, it is not acceptable at this terminal or it is not 
+
+=== concall_Q4_2024-05-10 PAGE 15 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 14 of 20 
+acceptable to me to carry my cargo. That is one change. What you are saying was very true in 
+2004 to 2008. The market is different today and we will actually not be able to participate in a 
+lot of trades with overage ships. I agree with you, in a hot market, the best ship to have is the 
+oldest ship. You just take the MR rate for the last two years has been probably $33,000, $34,000 
+per day. And if you take your EBITDA, you produce $18 million of EBITDA. Nothing could 
+have been better than having a 20-year-old ship two years ago, which was worth maybe $10, 
+$12 million. No investment could have been better than that. Unfortunately, those are the 
+numbers on an excel sheet. They don't work because a lot of the customers and lot of the trades 
+do not accept 20-year plus ship. 
+Himanshu Upadhyay: 
+And what would be the strategy on product tankers also for us, would we also like to replicate 
+the MR strategy on product tankers where also the -? 
+Rahul Sheth: 
+MR tankers are the other product tankers. 
+G. Shivakumar: 
+Sorry, did you mean -? 
+Himanshu Upadhyay: 
+Sorry, the crude carriers. Okay. I made a statement. 
+Rahul Sheth: 
+So, we will look at that also because like one of the other analysts asked that we do have fewer 
+crude tankers and product tankers and beyond a point, we wouldn't want to lose that capacity as 
+well. So, we will explore switching those as well, but we still have some time before we need to 
+make the decision. 
+Himanshu Upadhyay: 
+See, this Great Drill Chetna, the cancellation of order what has happened, is there any minimum 
+payment or cancellation fee which you will -? 
+G. Shivakumar: 
+Sorry. It's not a cancellation of a contract or an order. It was a tender which was under processing 
+which has got cancelled and is not being awarded. 
+Rahul Sheth: 
+She is currently ready for the next contract, that tender got cancelled. 
+Moderator: 
+We will take our next question from Dhruv Aggarwal from Niveshaay. Please go ahead. 
+Dhruv Aggarwal: 
+Sir, how do you see the demand outlook in the offshore segment on the logistics and the drilling 
+side, sir? 
+G. Shivakumar: 
+So, the demand outlook is fine for the vessels we mentioned earlier. Even for the drilling rigs 
+except for this one event, which is happening because that is such a large global customer, not 
+for us, but in the market they were in the process of having 90 jack-up rigs, which is a very large 
+proportion of the market. Otherwise, the sentiment for the vessels continues to be very strong. 
+The rigs, as somebody previously said, the mood in the market might not be as positive as it was 
+for the last year, year and a half. But again, that's something which changes, with these actions 
+
+=== concall_Q4_2024-05-10 PAGE 16 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 15 of 20 
+that could turn around also. Sentiment continues to be strong because of what's happening with 
+oil prices. Oil prices have remained pretty high and E&P activity also continues to be very strong. 
+Dhruv Aggarwal: 
+On the logistics side, how is it? 
+G. Shivakumar: 
+It's running perfectly fine. The businesses are getting awarded at much higher levels than they 
+were running at previously. So, sentiment is strong in the offshore logistics business. The vessels 
+are running well, are getting priced at very strong rates. 
+Moderator: 
+We will take our next question from Abhishek Nigam from Motilal Oswal. Please go ahead. 
+Abhishek Nigam: 
+So, just on the delivery schedule for product tankers, do you have any visibility because that 
+order book number is 15%-odd. So, I mean, I am just wondering if that segment is running into 
+some trouble. 
+G. Shivakumar: 
+Just one thing there nuance, which you have to see in the product tanker order book, a very large 
+part of the product tanker order book is LR2s and while we talk about aging fleet, etc., typically, 
+LR2s beyond a certain age tend to move, and you know that LR2s are basically Aframax sized 
+tankers which have ability to carry clean petroleum products. Typically, after a certain age, LR2s 
+move into the Aframax freight. So, they switch from being product tankers to crude tankers. And 
+a very large part of the order book is LR2s. Even the ships which are on order, typically, owners, 
+the cost to creating that option to trade as an LR2 is not very high. So, $1.5-2 million, on an 
+Aframax tanker which probably costs $70 million to bid. So, typically people will just put that 
+option onto their ships and build their ships as LR2s, so they can even trade them in the crude 
+tanker market. So, a significant part of the product tanker order book is LR2s and could easily 
+move into the crude tanker market. So, that's something to keep in mind. 
+Abhishek Nigam: 
+And offshore has a pretty good show this quarter. So, is this number sustainable or the other way 
+to ask is, is there any one-off over there which may not get attributed? 
+G. Shivakumar: 
+There's one one-off which was  12-13 crores, which was a reversal of an impairment which we 
+had taken earlier on one of the vessels. But otherwise, the significant event is the repricing of 
+the Greater Charu, where the headline rate went up by about $30,000-odd a day. So, that was the 
+one event. But yes, I think I mentioned earlier that the business is coming back to profitability 
+with all the pricings that have happened in the last year, year and a half. 
+Abhishek Nigam: 
+So, on this issue of rig suspensions in the Middle East, my understanding was that on a lot of 
+those contracts basically they were suspended for a year and mobilizing the rig out of Middle 
+East really takes a while especially if you have to go to say North America or if you have to 
+come to Asia. And so, practically speaking, the incentive is not very high for those guys to move 
+out because there's a big mobilization cost involved and then one year later you would still end 
+up getting employed in the Middle East and everybody wants to be in the Middle East because 
+
+=== concall_Q4_2024-05-10 PAGE 17 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 16 of 20 
+that is really the center of action in oil. So, are you seeing sort of like a rig moving out or is it 
+more like people are sort of more in a wait and watch mode for now? 
+G. Shivakumar: 
+So, I saw at least one rig if I recall, right, being fixed into Egypt, which i's still the Middle East. 
+We haven't followed what's happening with the specific rigs. But what you say is correct that 
+people will tend to stay here unless they land a contract, they're not going to move the rigs into 
+another region of speculation. So, if they bid and they get a contract, they could move, but they're 
+not going to move on speculation. That's not the way the business works. So, they will probably 
+like to stay here for some time and keep their position in we could call it the queue, it's not really 
+a queue, but to just say that we are still hanging around here waiting for the contract. So, if the 
+point you're making is, it's not likely to result in a glut of rigs in other markets, you're right, it is 
+unlikely to result in a shift of rigs. 
+Moderator: 
+We will take our next question from Kunal Tokas from Fair Value Capital. Please go ahead. 
+Kunal Tokas: 
+My question is about the LPG carriers especially the strong order book that we see here, so the 
+strong order book coupled with the relatively young age of each vessel and given how prone the 
+shipping industry is to the capital cycle, do you foresee any risk of the capital cycle turning 
+especially in the VLGC business? 
+G. Shivakumar: 
+Yes, it is a possibility. So, just to give you an update on our business itself, typically our LPG 
+carriers have run on time charters. We have recently repriced two of our vessels on time charter 
+itself on two-year time charters and the repricing has happened at a significantly higher rate than 
+previously. So, they are at about 40% higher than the previous rate. So, these two vessels will 
+come off contract in the coming two to three months and will go on to the higher rates. We're 
+not expressing necessarily a view on what could happen to the market. What we are saying is 
+that our pricing on the contracts has improved significantly. I think what you're hinting at is that 
+there could be an overbuilding of LPG ships. It is possible, it could happen where we don't know 
+what could happen and what could trigger a drop or a change in the demand/supply balance for 
+LPG ships, but it is possible because that happens in shipping cycles, especially very strong 
+shipping cycles. 
+Rahul Sheth: 
+But we have also seen in the past, sometimes the order book for LPG has been strong, but the 
+demand has been stronger, and the market has sustained longer than we expected. But at least 
+from our own position, we have contracted our VLGC fleet. 
+Kunal Tokas: 
+In response to one of the questions you mentioned that you can easily be 5x the size that you are 
+without tempting the overall balance of the market. So, what stops us from doing that and is it 
+fair to assume that you will grow much faster in terms of your capacity, not necessarily the 
+revenues, but in terms of your capacity when the market is in a downturn because then the asset 
+prices will be much more attractive to you? 
+
+=== concall_Q4_2024-05-10 PAGE 18 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 17 of 20 
+G. Shivakumar: 
+Yes, a good question. The answer to your last question is yes, it is our intention, and we have the 
+financial capacity and the balance sheet as well to grow significantly in the next downturn when 
+the prices are right. So, yes, that is our intention. There is a lot of room to grow. And what I 
+mentioned we have six crude tankers currently. Five years ago, we had 12 crude tankers, several 
+of them were old and had to go. So, we were twice the size that we are currently just five years 
+ago. As I said, we can easily grow to five times the size without really causing a dent or becoming 
+too big. So, it can happen and as you rightly identify, it is our intention at the next opportune 
+market, we will look to expand significantly. 
+Moderator: 
+We will take some text questions. We have a text question from Shivan Sarvaiya from 
+Humiviction Investment Advisers LLP. The first question is could you please provide the reasons 
+for the increase in other income? What constitutes other income? And the second question is, as 
+the markets tighten in the offshore segment, how has the cost of operating a rig or a vessel moved 
+over the last 2-3 years, could you please quantify? 
+G. Shivakumar: 
+Thank you for the question, Shivan. Most of the other income is treasury income. As you know, 
+we have very significant cash balances which have built up a lot in the last two years as the 
+markets have been very strong. What has also happened is that a large part of our money is kept 
+in dollars and you know what has happened to dollar interest rates over the last year and a half. 
+Basically, what has happened is that we have more dollars and we have the equivalent of $650 
+million currently including the rupees and the dollar. So, all of that goes into other income. 
+Rahul Sheth: 
+And on the second question, I think maybe costs have gone up by 20%, 30% over the past 2-3 
+years. As the markets have tightened, the demand for the crew onboard the rigs and the offshore 
+vessels has increased. Along with it, even general inflation in spare parts, stores, etc., for the 
+vessels and the rigs have increased. 
+Moderator: 
+The next question is from Narendra Khuthia from RoboCapital. What kind of revenue and 
+margins are we looking at in the next two years? 
+G. Shivakumar: 
+Yes. As I mentioned earlier, we do not forecast and we don't give guidance on revenue or margins 
+or profits. A large part of our capacity is operating in the spot market, especially in shipping. 
+Moderator: 
+The next text question is from Jinit Savla. Instead of paying out dividends, why can't we move 
+towards share buybacks? 
+G. Shivakumar: 
+We don't see the relationship really between dividends and share buybacks. Our buybacks are 
+done as part of capital allocation. We look at buyback as the ability to buy into our business at a 
+very cheap price, whenever those opportunities are available. It is not a replacement for dividend. 
+Dividends are part of our cash flows that we are returning to our shareholders. So, we don't look 
+buyback as a replacement for a dividend. 
+
+=== concall_Q4_2024-05-10 PAGE 19 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 18 of 20 
+Moderator: 
+The next question is from Rajesh Agarwal from Moneyore. Ship bought and sold. Are we net 
+long from previous year 2023-2024 to current 2024-2025 in terms of revenue and absolute 
+EBITDA after normalization in Panama Canal and Suez Canal. Will the overall transit time 
+increase? 
+G. Shivakumar: 
+So, I think there are several questions here. Our capacity for FY’24-25 as it stands today is more 
+or less the same as it was in FY’23-24. That’s the first one. In terms of revenue and absolute 
+EBITDA, we don’t know. As I said, we don’t forecast revenue and EBITDA because the rates 
+are very volatile, and a large part of our capacity is in the spot market. But if you have 
+normalization in Panama Canal and Suez Canal, the transit time will reduce and reduce  tonne-
+mile demand for ships.  
+Rahul Sheth: 
+Panama Canal mainly has an impact on the gas carriers, while the Suez Canal mainly has an 
+impact on the product tankers. So, it depends on. And it also depends to the level at which it is 
+reversed, because is it reversing because there's been a lot of disruption because of the changes 
+in the movement through the canal. 
+Moderator: 
+We have a question from Harsh Chandaliya, an individual investor. Could you please throw some 
+light on shadow fleet in the crude tanker segment and impact of recent U.S. sanctions on crude 
+tanker segment in FY'25? Is the 18% aged fleet in crude tanker segment inclusive of shadow 
+fleet? 
+Rahul Sheth: 
+Yes. So, the 18% includes the shadow fleet of tankers. 
+G. Shivakumar: 
+The U.S. sanctions that we have seen are for I think some small operators. So, far we don't see 
+what impact they have because some of these ships just moved from one operator to the other. I 
+don't think they have been very widespread sanctions. 
+Rahul Sheth: 
+Those are referring to those individual ships sanctions. 
+G. Shivakumar: 
+That's right. 
+Rahul Sheth: 
+But the US has also been tightening the checks because you can carry Russian crude if you're 
+below the price cap. But some operators, especially in the shadow tanker fleet were carrying 
+crude over the price cap. So, the US government has been trying to make it tougher. So, a lot of 
+players who have been trying to carry the Russian crude, there has been some impact with 
+reduced Russian loadings. 
+Moderator: 
+I'll read the next text question from Rajesh Khater, an individual investor. Does the normalized 
+financials exclude the profit from sale of ships? And second question is, please tell more about 
+the subsidiary in GIFT City. 
+
+=== concall_Q4_2024-05-10 PAGE 20 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 19 of 20 
+G. Shivakumar: 
+Noormalized financials include profit from sale of ships. We believe that this is a part of our 
+normal business. The subsidiary in GIFT City is in the process of being set up. It is not yet 
+operational. The intention is to do some shipping business through that subsidiary. 
+Moderator: 
+The next question is from Darshan Patel, an individual investor. The first question is, since the 
+tender for the offshore rig stands cancelled at the onset of monsoon season, how will it affect the 
+operation of that particular rig? And the second question is where do you project the price of 
+bunker oil for the next few quarters as compared to the previous few quarters? 
+G. Shivakumar: 
+Yes, the operation of the rig continues as before. The current contract continues. 
+Rahul Sheth: 
+So, generally we have seen that ONGC tends to extend the rig during the monsoon. We will 
+know that in some time, whether they're going to redeliver it in the early part or the end of the 
+monsoon. Of course, we have to work on the next contract for the rig. And on the bunker prices 
+we actually do not do a forecast of where the prices are going to land up over the next few 
+quarters. 
+Moderator: 
+We will take the live questions now. We have a question from Devesh Jhawar, an individual 
+investor. Please go ahead. 
+Devesh Jhawar: 
+My question is regarding the rates and decision of fixing the vessel on the time charter. So, the 
+rates currently as we are speaking, I think they are probably higher than the last quarter's average. 
+So, would the management take a call on placing some product tankers on time charter, some 
+part of the fleet on time charter? And secondly is in the presentation you pointed out that we are 
+trading at a significant discount to our NAV. So, our cash earning yields are close to 19% and 
+we have a lot of treasury lying idle. So, would we like to do a buyback, after buyback tax also it 
+makes sense to do a part play as a capital allocation measure to do a small buyback, that would 
+yield better in the future. 
+Rahul Sheth: 
+So, on the product tanker fleet or at least in the group tanker fleet, so our preferences are 
+generally to remain on the spot market. We have seen that often it is better to be in the spot than 
+to take time charter cover and our balance sheet is generally very conservatively leveraged so 
+that we can always take advantage of the spot market because that comes with its own risk. 
+Having said that, we have taken some cover on a few of our product tankers as a general call on 
+the market. 
+G. Shivakumar: 
+Where we were getting very good rates, we have fixed out a couple of our ships. And we look 
+at these transactions all the time; it depends on what opportunities come out. Now coming to the 
+issue of the buyback, etc., you pointed out correctly that there is a significant tax leakage there. 
+The cash yield is very tempting, yes. The concern is about what can happen if the prices come 
+down, which is the prices of ships. So, it's not yet. We don't believe that including the cost of the 
+buyback tax, etc., it's very tempting for us to do. We will wait for an opportunity. We believe 
+
+=== concall_Q4_2024-05-10 PAGE 21 ===
+Ila
+The Great Eastern 
+Shipping Co. Ltd. 
+ 
+The Great Eastern Shipping Company Ltd 
+ 
+May 10, 2024 
+ 
+ 
+Page 20 of 20 
+that at some point we will get an opportunity to invest in ships at the prices that we like. So, we 
+will wait for those opportunities for now. 
+Devesh Jhawar: 
+And sir, lastly, not regarding the business of company, but as a sectoral question is, how are ship 
+repair rates going forward, is the ship repair cost significantly higher from pre-COVID levels or 
+no, they are just the pre-COVID cost plus some inflation? 
+Rahul Sheth: 
+Yes, it's broadly pre-COVID cost plus some inflation. 
+Moderator: 
+We will move on to the next question from Rajesh Agarwal from Moneyore. Please go ahead. 
+Rajesh Agarwal: 
+My question is, after the reprising of 12 offshore vessels which is coming now, what can the 
+EBITDA go up incrementally from the last year? 
+G. Shivakumar: 
+Again, I mentioned we don't give any guidance. 
+Rajesh Agarwal: 
+I am not asking for the EBITDA guidance. Just because of repricing because we are already in 
+the verge of repricing na, that is - 
+G. Shivakumar: 
+We just don't have a practice of giving earnings guidance. 
+Rajesh Agarwal: 
+I am not asking for the guidance. If it is repricing because it is difficult to understand, last year 
+the EBITDA was 200 crores in offshore, after repricing it can be 300 or 400 crores, what? 
+G. Shivakumar: 
+We believe that the EBITDA will be significantly higher because of the repricing happening at 
+significantly higher rates. 
+Anjali Kumar: 
+So, thank you everybody for joining in. And as usual, the transcript of this call will be up on our 
+website very shortly. And of course, please feel free to reach out to our corp comm team for any 
+other clarifications or details that you may want and thank you once again for joining. 
+Moderator: 
+Ladies and gentlemen, that concludes this conference call. Thank you for joining us and you 
+may now exit the meeting. 
+
+=== deck_Q3_2024-01-31 PAGE 1 ===
+THE GREAT EASTERN 
+SHIPPING COMPANY LIMITED 
+CIN: L35110MF11948PLC006472 
+OCEAN HOUSE, 134/A, Dr. Annie Besant Road, Worli, Mumbai - 400 018, INDIA. Tel.: +91(22) 6661 3000 / 2492 2100 Fax : +91(22) 2498 5335 
+www.greatship.com 
+Our Ref.: S/2024/JMT 
+            January 31, 2024 
+BSE Limited 
+ 
+National Stock Exchange of India Limited 
+1st Floor, Phiroze Jeejeebhoy Towers, 
+Exchange Plaza, 5th Floor, Plot No. C/1, 
+Dalal Street,   
+Bandra Kurla Complex, Bandra (East), 
+Mumbai – 400 001 
+ 
+Mumbai – 400 051 
+BSE Scrip code: 500620
+            Trading Symbol - GESHIP
+Dear Sir,
+We enclose herewith Investor Presentation pertaining to the Unaudited Financial 
+Results for the quarter ended December 31, 2023. 
+You are requested to take note of the above. 
+Thanking You, 
+Yours faithfully, 
+For The Great Eastern Shipping Company Limited  
+Anand Punde 
+Company Secretary  
+Email Id: anand_punde@greatship.com
+Digitally signed by: 
+Anand Prabhakar 
+Punde
+DN: CN = Anand 
+Prabhakar Punde C
+= IN O = Personal
+Date: 2024.01.31 
+16:33:52 +05'30'
+Anand 
+Prabhak
+ar Punde
+
+=== deck_Q3_2024-01-31 PAGE 2 ===
+Ink
+The Great Eastern 
+Shipping Co. Ltd. 
+at AT 
+CS".
+2023 
+ING co • 
+C 
+• 
+7• "-:F. 
+TH 
+z STERN 
+SI 
+a 
+T CO. 
+LTD. 
+G. 
+S
+-e.c--
+Nk.
+Q3FY24
+Earnings Presentation
+31 JANUARY 2024
+
+=== deck_Q3_2024-01-31 PAGE 3 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+DISCLAIMER
+Except for historical information, the statements made in this presentation constitute forward looking
+statements. These include statements regarding the intent, belief or current expectations of GE Shipping
+and its management regarding the Company’s operations, strategic directions, prospects and future
+results which in turn involve certain risks and uncertainties. Certain factors may cause actual results to
+differ materially from those contained in the forward looking statements; including changes in freight
+rates;
+global
+economic
+and
+business
+conditions;
+effects
+of
+competition
+and
+technological
+developments; changes in laws and regulations; difficulties in achieving cost savings; currency, fuel price
+and interest rate fluctuations etc. The Company assumes no responsibility with regard to publicly
+amending, modifying or revising the statements based on any subsequent developments, information or
+events that may occur.
+2
+
+=== deck_Q3_2024-01-31 PAGE 4 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+Q3FY24 HIGHLIGHTS
+3
+•
+Net profits of INR 538 Cr on a consolidated basis
+•
+ Our consolidated NAV has moved to INR 1,316/share as on 31st December 2023
+•
+Declared 3rd Interim dividend of INR  6.30/Share for Q3FY2024. Total dividend for 9MFY24 is INR 
+25.50/Share
+ 
+
+=== deck_Q3_2024-01-31 PAGE 5 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+REPORTED HIGHLIGHTS
+4
+•
+GE Shipping Q3FY24 
+consolidated Net 
+Profit at INR 538 Cr
+•
+Declared 3rd Interim 
+dividend of INR 
+6.30/Share for 
+Q3FY2024
+Q3
+Q3
+9M
+Q3
+Q3
+9M
+Fig in INR Crores
+FY24
+FY23
+FY24
+FY24
+FY23
+FY24
+Income Statement
+Revenue*
+1,110
+    
+1,261
+    
+3,401
+    
+1,396
+    
+1,522
+    
+4,192
+    
+EBITDA*
+686
+       
+796
+       
+2,155
+    
+801
+       
+898
+       
+2,519
+    
+Net Profit
+488
+     
+604
+     
+1,590
+  
+538
+     
+627
+     
+1,709
+  
+Balance Sheet
+Total Assets
+13,255
+  
+12,174
+  
+13,255
+  
+16,366
+  
+15,416
+  
+16,366
+  
+Equity
+9,708
+    
+8,002
+    
+9,708
+    
+11,588
+  
+9,679
+    
+11,588
+  
+Gross Debt
+2,491
+    
+2,998
+    
+2,491
+    
+3,380
+    
+4,153
+    
+3,380
+    
+Net Debt
+(2,665)
+   
+(1,319)
+   
+(2,665)
+   
+(2,760)
+   
+(1,156)
+   
+(2,760)
+   
+Cash Flows
+- From Operating Activities
+511
+       
+782
+       
+1,667
+    
+630
+       
+857
+       
+1,942
+    
+- From Investing Activities
+(407)
+      
+(98)
+        
+(236)
+      
+(376)
+      
+(72)
+        
+(270)
+      
+- From Financing Activities
+(143)
+      
+(177)
+      
+(542)
+      
+(237)
+      
+(250)
+      
+(801)
+      
+Net Cash Inflow/Outflow
+(39)
+        
+507
+       
+889
+       
+17
+         
+535
+       
+871
+       
+Standalone
+Conslidated
+* Including Other Income
+
+=== deck_Q3_2024-01-31 PAGE 6 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+NORMALISED FINANCIALS
+o The impact of the exchange rate on foreign currency loans and current assets and 
+liabilities, including cash and bank balances, has been removed
+o NCD & Currency Swap:
+o Funds raised through NCDs have been swapped into USD using INR-FCY swaps, thus 
+creating synthetic fixed rate USD loans. 
+o The MTM change of these swaps impacts the reported numbers. 
+o Normalized numbers are worked out after making necessary adjustments to reported 
+numbers to reflect the effective cost of the synthetic USD loans. 
+5
+
+=== deck_Q3_2024-01-31 PAGE 7 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+NORMALISED FINANCIAL HIGHLIGHTS
+•
+GE Shipping Q3FY24 
+consolidated Net Profit 
+at INR 552 Cr
+•
+Declared 3rd Interim 
+dividend of INR 
+6.30/Share for 
+Q3FY2024
+6
+Q3
+Q3
+9M
+Q3
+Q3
+9M
+Fig in INR Crores
+FY24
+FY23
+FY24
+FY24
+FY23
+FY24
+Income Statement
+Revenue*
+1,110
+      
+1,261
+    
+3,401
+     
+1,396
+    
+1,522
+    
+4,192
+      
+EBITDA*
+689
+          
+771
+        
+2,074
+     
+789
+        
+881
+        
+2,408
+      
+Net Profit
+514
+       
+605
+     
+1,579
+   
+552
+     
+640
+     
+1,677
+   
+Balance Sheet
+Total Assets
+13,255
+    
+12,174
+  
+13,255
+   
+16,366
+  
+15,416
+  
+16,366
+   
+Equity
+9,708
+      
+8,002
+    
+9,708
+     
+11,588
+  
+9,679
+    
+11,588
+   
+Gross Debt
+3,009
+      
+3,668
+    
+3,009
+     
+3,898
+    
+4,823
+    
+3,898
+      
+Net Debt
+(2,147)
+      
+(650)
+       
+(2,147)
+    
+(2,241)
+    
+486
+-        
+(2,241)
+     
+* Including Other Income
+Standalone
+Conslidated
+
+=== deck_Q3_2024-01-31 PAGE 8 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+NORMALISED FINANCIAL HIGHLIGHTS
+7
+Q3
+Q3
+9M
+Q3
+Q3
+9M
+FY24
+FY23
+FY24
+FY24
+FY23
+FY24
+Key Financial Figure
+Return on Equity (ROE%)**
+22%
+31%
+23%
+19%
+27%
+20%
+Return on Capital Employed (ROCE%)**
+17%
+23%
+18%
+16%
+20%
+16%
+Gross Debt/Equity (x)
+0.31
+      
+0.46
+      
+0.31
+        
+0.34
+             
+0.50
+             
+0.34
+              
+Net Debt/Equity (x)
+(0.22)
+     
+(0.08)
+     
+(0.22)
+       
+(0.19)
+            
+(0.05)
+            
+(0.19)
+             
+Earnings Per Share (EPS - INR/Share)
+35.99
+  
+42.38
+  
+110.60
+ 
+38.67
+       
+44.85
+        
+117.48
+      
+Cash Profit Per Share (INR/Share)
+44.76
+  
+50.61
+  
+135.61
+ 
+52.26
+       
+57.76
+        
+156.74
+      
+Dividend Per Share (INR/Share)
+6.30
+    
+7.20
+    
+25.50
+   
+6.30
+         
+7.20
+          
+25.50
+        
+Net Asset Value Per Share (INR/Share)
+1068
+892
+1068
+1,295-1,3381,014-1,082 1,295-1,338
+Standalone
+Conslidated
+
+=== deck_Q3_2024-01-31 PAGE 9 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+ea-
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+NORMALISED FINANCIALS – KEY RATIOS
+8
+Earnings per Share (INR/Share)
+Cash Profit per Share (INR/Share)
+9.11
+16.96 15.36
+12.46
+32.55
+47.62
+42.38
+46.34
+36.23
+37.51
+35.99
+5.8
+14.79
+13.11
+14.30
+35.65
+51.21
+45.03
+48.98
+37.06
+41.65
+38.67
+5
+15
+25
+35
+45
+55
+Q1 
+FY22
+Q2 
+FY22
+Q3 
+FY22
+Q4 
+FY22
+Q1 
+FY23
+Q2 
+FY23
+Q3 
+FY23
+Q4 
+FY23
+Q1 
+FY24
+Q2 
+FY24
+Q3 
+FY24
+Standalone
+Consolidated
+16.94
+24.96
+23.34
+18.47
+40.55
+55.65
+50.61
+53.61
+44.17
+45.82
+44.76
+18.01
+27.84
+25.62
+24.84
+48.21
+63.89
+57.95
+60.71
+49.65
+54.73
+52.26
+Q1 
+FY22
+Q2 
+FY22
+Q3 
+FY22
+Q4 
+FY22
+Q1 
+FY23
+Q2 
+FY23
+Q3 
+FY23
+Q4 
+FY23
+Q1 
+FY24
+Q2 
+FY24
+Q3 
+FY24
+Standalone
+Consolidated
+
+=== deck_Q3_2024-01-31 PAGE 10 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+GE Shipping – Q3FY24 Results
+CONSISTENT DIVIDEND PAYOUTS
+9
+Dividend Per Share (INR/Share)
+2.4
+3.1
+3.3 2.3
+2.3
+2.0
+3.0 4.0
+2.0
+1.5
+2.8
+4.0
+4.0
+6.5
+9.0
+10.0
+11.5
+15.0
+8.0
+8.0
+8.0
+6.5 7.5
+9.0
+11.0
+13.5
+10.1
+7.2
+5.4
+8.1 9.0 9.9
+28.8
+25.5
+0
+5
+10
+15
+20
+25
+30
+35
+YTD
+
+=== deck_Q3_2024-01-31 PAGE 11 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+PROFIT & LOSS STATEMENT – INDUSTRY FORMAT
+10
+Q3
+Q3
+9M
+Q3
+Q3
+9M
+Figures in INR Crores
+FY24
+FY23
+FY24
+FY24
+FY23
+FY24
+Operating Revenue
+990
+          
+1,207
+      
+2,955
+           
+1,230
+           
+1,415
+      
+3,691
+           
+Less: Direct Operating Expenses/Voyage Expenses
+141
+          
+219
+          
+473
+              
+164
+              
+236
+          
+501
+              
+Time Charter Equivalent (A)
+849
+       
+988
+       
+2,482
+       
+1,067
+       
+1,179
+    
+3,191
+       
+Profit on Sale of Ships and Other Assets
+32
+            
+-
+           
+174
+              
+32
+                
+-
+           
+174
+              
+Other Income
+88
+            
+54
+            
+272
+              
+133
+              
+108
+          
+327
+              
+Total Other Income (B)
+120
+       
+54
+         
+446
+          
+166
+          
+108
+       
+501
+          
+Other Operating Expense
+220
+          
+214
+          
+651
+              
+359
+              
+329
+          
+1,002
+           
+Adminstrative and General Expense
+60
+            
+58
+            
+202
+              
+88
+                
+81
+            
+280
+              
+Total Expense (C)
+280
+       
+272
+       
+854
+          
+447
+          
+409
+       
+1,281
+       
+EBITDA D = (A+B+C)
+689
+       
+771
+       
+2,074
+       
+786
+          
+877
+       
+2,410
+       
+Depriciation and Amortisation (E)
+125
+          
+117
+          
+357
+              
+194
+              
+184
+          
+560
+              
+Impairment (F)
+-
+           
+-
+           
+-
+               
+-
+               
+-
+           
+-
+               
+Operating Profit Including Other Income 
+564
+       
+653
+       
+1,717
+       
+592
+          
+693
+       
+1,849
+       
+G= (D-E-F)
+Finance Expense (H)
+50
+            
+64
+            
+153
+              
+67
+                
+85
+            
+206
+              
+Derivative Losses/ (Gains) (I)
+9
+               
+17
+            
+(33)
+               
+(8)
+                 
+13
+            
+(63)
+               
+Foreign Currency Exchange Losses/(Gains) (J) 
+(6)
+             
+(43)
+           
+(48)
+               
+(7)
+                 
+(33)
+           
+(46)
+               
+Income Tax Expense (K)
+23
+         
+11
+         
+55
+            
+2
+              
+2
+           
+43
+            
+Net Profit (G-H-I-J)
+488
+       
+604
+       
+1,590
+       
+538
+          
+627
+       
+1,709
+       
+Standalone
+Conslidated
+
+=== deck_Q3_2024-01-31 PAGE 12 ===
+San' 
+allIVIrw 
+• 
+• 
+Isi 1t 
+It 
+F 
+nil 
+, .7 
+- 
+n 
+, 
+•vr- I a-
+4.1h— 
+AC 
+t. 
+I 
+= 
+•
+ 
+I 
+11
+1 
+t, 
+tinnii
+itingth 
+" 1"•-•....,""•!• 
+••• :It 
+•-• 
+w 
+(Oa 
+a 
+7948 
+2023 
+The Great Eastern 
+Shipping Ca Ltd. 
+.1 1 
+GE Shipping – Q3FY24 Results
+SHAREHOLDING PATTERN
+11
+Promoters
+30%
+Public
+25%
+Govt./FI/Corp
+19%
+FII/FPI
+26%
+31-Dec-2023
+GE Shipping – Q3 & 9MFY23 Results
+
+=== deck_Q3_2024-01-31 PAGE 13 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+PERFORMANCE REVIEW
+12
+Breakup of Revenue Days (Shipping)
+Q3
+Q3
+Revenue Days
+FY24
+FY23
+Owned Tonnage
+3,690
+3,684
+Inchartered Tonnage
+0
+94
+Total Revenue Days
+3,690
+3,778
+Total Owned Tonnage (mn.dwt)
+3.36
+3.44
+Breakup of Revenue Days (Offshore)
+Q3
+Q3
+Revenue Days
+FY24
+FY23
+Offshore Logistics
+1,566
+1,507
+Drilling Services
+286
+295
+Total
+1,852
+1,802
+
+=== deck_Q3_2024-01-31 PAGE 14 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+PERFORMANCE REVIEW
+13
+Avg TCYs in Various Categories
+Q3
+Q2
+QoQ
+Q3
+YoY
+Avg (TCYs USD/Day)
+FY24
+FY24
+%
+FY23
+%
+Crude Carriers
+45,556
+40,645
+12%
+60,143
+-24%
+Product Carriers
+28,566
+27,743
+3%
+36,423
+-22%
+LPG Carriers
+31,255
+31,100
+0%
+29,803
+5%
+Dry Bulk
+16,478
+11,720
+41%
+17,020
+-3%
+
+=== deck_Q3_2024-01-31 PAGE 15 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+Changes in Standalone NAV (YTD) 
+1200 
+188 
+24 
+1068 
+1000 
+-35 
+892 
+800 
+600 
+400 
+200 
+0 
+NAV Dec-22 
+Cash Profit 
+Fleet Value 
+Dividend 
+NAV Dec-23 
+GE Shipping – Q3FY24 Results
+CHANGES IN STANDALONE NAV (YTD)
+14
+INR/SHARE
+
+=== deck_Q3_2024-01-31 PAGE 16 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+5 YEARS MOVEMENT IN STANDALONE NAV 
+15
+INR/SHARE
+357
+1068
+0
+200
+400
+600
+800
+1000
+1200
+FY18
+FY19
+FY20
+FY21
+FY22
+FY23
+9MFY24
+Standalone NAV – Continue to touch new highs
+CAGR: 21%
+
+=== deck_Q3_2024-01-31 PAGE 17 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+1600 
+1400 
+1200 
+1000 
+800 
+600 
+400 
+200 
+0 
+1043 
+Changes in Consolidated NAV (YTD) 
+88 
+221 
+-35 
+1316 poi 
+NAV Dec-22 
+Cash Profit 
+Fleet Value 
+Dividend 
+NAV Dec-23 
+GE Shipping – Q3FY24 Results
+CHANGES IN CONSOLIDATED NAV (YTD)
+16
+INR/SHARE
+
+=== deck_Q3_2024-01-31 PAGE 18 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+REVENUE COVERAGE
+17
+Coverage of Operating Days (Shipping)
+Category
+FY24
+Crude Carriers
+40%
+Product Carriers*
+41%
+LPG Carriers
+100%
+Dry Bulk
+68%
+Revenue Days
+FY24
+Jack Up Rigs
+96%
+AHTSV
+88%
+MPSVV
+92%
+PSV/ROVSV
+90%
+*Excludes vessel delivered to buyer 
+in January 2024
+
+=== deck_Q3_2024-01-31 PAGE 19 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+1)
+Effective all-in USD cost of debt of about 4.00% basis Dec-23 
+2)
+95% of debt portfolio is fixed.  
+STANDALONE DEBT REPAYMENT SCHEDULE
+18
+41
+68
+74
+74
+36
+362
+0
+50
+100
+150
+200
+250
+300
+350
+400
+0
+10
+20
+30
+40
+50
+60
+70
+80
+Dec-23
+Mar-24
+Mar-25
+Mar-26
+Mar-27
+Mar-28
+GESCO Standalone (USD mn)
+Loan Repayments
+Loan O/S (RHS)
+
+=== deck_Q3_2024-01-31 PAGE 20 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+FLEET PROFILE
+19
+Fleet Profile - Shipping
+DWT
+Fleet
+Q3FY24
+No
+Avg Age
+Crude Carriers
+842,958
+          
+6
+              
+15.19
+         
+Product Carriers
+1,090,663
+       
+18
+           
+15.73
+         
+Gas Carriers
+185,363
+          
+4
+              
+18.21
+         
+Dry Bulk Carriers
+1,239,274
+       
+14
+           
+10.43
+         
+Total
+3,358,258
+   
+42
+           
+13.78
+        
+Fleet (31 Jan'24)
+Fleet Profile - Offshore
+Avg Years
+Fleet
+No. of Units
+Yrs.
+Jack Up Rigs
+4
+12.24
+Platform Supply Vessels
+4
+14.40
+Anchor Handling Tug cum Supply Vessels
+9
+14.16
+Multipurpose Platform Supply & Support Vessels
+2
+13.72
+ROV Support Vessels
+4
+12.26
+
+=== deck_Q3_2024-01-31 PAGE 21 ===
+7948 
+cc" 
+• 
+P 
+. 
+k 
+\\*I 
+\ N 
+44, 4 
+• 
+• 
+• 
+\ 
+• 
+• 
+• \\\>.\\,, 
+\N 11\ 
+A 
+1\ 44 
+tit 
+114.4--Li 
+Nit
+2023 
+The Great Eastern 
+Shipping Co. Ltd. 
+SHIPPING MARKET
+
+=== deck_Q3_2024-01-31 PAGE 22 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+I 
+7948 
+2023 
+N 
+GE Shipping – Q3FY24 Results
+Sources: Industry Reports
+CRUDE AND PRODUCT TANKERS
+USD/day
+FY24
+FY23
+% change
+9M
+28,282
+38,195
+-26%
+USD/day
+FY24
+FY23
+% change
+9M
+51,251
+52,203
+-2%
+21
+0
+10,000
+20,000
+30,000
+40,000
+50,000
+60,000
+70,000
+80,000
+90,000
+100,000
+Apr
+May
+Jun
+Jul
+Aug Sep
+Oct
+Nov Dec
+Jan
+Feb
+Mar
+Avg. Suezmax Earnings (USD/day)
+FY22
+FY23
+FY24
+0
+10,000
+20,000
+30,000
+40,000
+50,000
+60,000
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Jan
+Feb
+Mar
+Avg. MR Earnings (USD/day)
+FY22
+FY23
+FY24
+
+=== deck_Q3_2024-01-31 PAGE 23 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+Sources: Industry Reports
+CRUDE AND PRODUCT TANKERS
+22
+•
+Crude tanker earnings were lower y/y in 3QFY24 due to drop in Middle East exports. However, North & South 
+America saw y/y growth in crude oil exports.  
+•
+Product tanker earnings were also lower y/y in 3QFY24. East of Suez earnings were lower led by drop in 
+Middle East & China exports, but West of Suez earnings were strong aided by Panama canal disruption & 
+healthy US product exports. 
+•
+Overall seaborne crude trade grew by 1% y/y in 3QFY24 while product trade was flat y/y. 
+•
+Both, Crude & product fleet supply growth was at 2% y/y in 3QFY24 
+•
+Asset prices continue to remain firm
+•
+Orderbook for crude and product tankers are at ~4.6% and ~12.4% of the fleet respectively. 
+
+=== deck_Q3_2024-01-31 PAGE 24 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+Sources: Industry Reports
+DRY BULK
+USD/day
+FY24
+FY23
+% change
+9M
+20,580
+16,711
+23%
+USD/day
+FY24
+FY23
+% change
+9M
+12,134
+21,111
+-43%
+DB Freight picked up in Q3FY24 Y-O-Y, however sub-capes averaged lower Y-O-Y
+23
+0
+10,000
+20,000
+30,000
+40,000
+50,000
+60,000
+70,000
+Apr
+May
+Jun
+Jul
+Aug Sep
+Oct
+Nov Dec
+Jan
+Feb
+Mar
+Avg. Baltic Capesize 5T/C Earnings (USD/day)
+FY22
+FY23
+FY24
+0
+5000
+10000
+15000
+20000
+25000
+30000
+35000
+40000
+Apr
+May
+Jun
+Jul
+Aug Sep
+Oct
+Nov Dec
+Jan
+Feb
+Mar
+Avg. Baltic Supra BSI-58 10T/C Earnings 
+(USD/day)
+FY22
+FY23
+FY24
+
+=== deck_Q3_2024-01-31 PAGE 25 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+Sources: Industry Reports
+DRY BULK
+24
+•
+During the quarter, Capesize spot earnings witnessed significant y/y growth of ~ 93 % while Kamsarmax 
+and Supramax earnings were flat y/y.
+•
+Ton – Mile demand increased by ~ 8 % y/y during the quarter as against a nominal fleet supply growth 
+of 3 %.  
+•
+Asset prices increased marginally during the quarter but were down ~ 18 % from 2022 peak levels.
+•
+Capesize earnings surged in December-2023 on the back of higher Iron Ore and Bauxite imports into 
+China.
+•
+Coal imports into China increased ~ 21 % y/y during the quarter due to higher coal requirement for 
+electricity generation. Cal 2023 saw the highest level of annual coal imports into China.
+•
+Order book for the dry bulk sector is at 8.7 % of fleet.
+
+=== deck_Q3_2024-01-31 PAGE 26 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+• 
+GE Shipping – Q3FY24 Results
+Sources: Industry Reports
+LPG GAS
+USD/day
+FY24
+FY23
+% change
+9M
+101,337
+61,484
+65%
+VLGC Spot earnings sustained healthy levels during Q3FY-
+24 and were much higher YoY in comparison to Q3FY-23. 
+25
+ 10,000
+ 30,000
+ 50,000
+ 70,000
+ 90,000
+ 110,000
+ 130,000
+ 150,000
+ 170,000
+April May June July Aug Sep
+Oct
+Nov Dec
+Jan
+Feb
+Mar
+Avg. VLGC Earnings (USD/day)
+FY 22
+FY23
+FY24
+•
+VLGC trade increased by 5% y/y in 3QFY24 led by 17% y/y increase in US LPG exports. 
+•
+Reduced transit slots at Panama Canal meant that  large number of vessels had to re-route transits via Suez-canal or Cape of Good 
+Hope for US-Asia trade thereby stretching the VLGC fleet
+•
+Higher freight rates have enabled VLGC asset prices to remain firm.  
+•
+VLGC Orderbook - At elevated level in historical context. 
+
+=== deck_Q3_2024-01-31 PAGE 27 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+sr' 
+•„ 
+, 
+"4. -4, - 
+• 
+r?; 
+"1 
+• 
+to.7440, 
+THE 
+AT EAST F P.01 
+IIPPING CO. I 
+'woo 
+t,P 
+'F 
+Il i taii 
+, 
+• 
+' 
+%:,...41 . ...0„
+. 
+', ICS°
+ 
+\ 
+. 
+• 
+t) 
+' 1: 
+...' 
+, 
+in, 
+- 
+$4.• - 
+. 
+. . 
+., 
+t,'. 
+i 
+• 
+• r, 
+ILA ; 
+c 
+/ 
+7948 
+2023 
+FLEET SUPPLY
+
+=== deck_Q3_2024-01-31 PAGE 28 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+8.7%
+12.4%
+4.6%
+0%
+10%
+20%
+30%
+40%
+50%
+60%
+70%
+80%
+90%
+Bulkers
+Product tankers
+Crude tankers
+LOW ORDER BOOK TO FLEET RATIO
+Sources: Industry Reports
+Historic Order Book as a % of fleet (Calendar Year)
+Current Orderbook
+27
+
+=== deck_Q3_2024-01-31 PAGE 29 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+-t -
+• 
+-a 
+.4 
+I 
+- 
+d- 
+r
+GHLAT 
+EA,STERN 
+1 :1 : 
+4 
+lar 
+0 
+THE GREAT EASTERN 
+SI EPPING Co, LTR 
+H 
+7948 
+2023 
+0—
+_ 
+ASSET PRICE MOVEMENT
+
+=== deck_Q3_2024-01-31 PAGE 30 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+Sources: Industry Reports
+ASSET PRICE MOVEMENT (INDEXED OVER LAST 
+5 YRS)
+29
+85
+95
+105
+115
+125
+135
+145
+155
+165
+175
+Jan-19
+Apr-19
+Jul-19
+Oct-19
+Jan-20
+Apr-20
+Jul-20
+Oct-20
+Jan-21
+Apr-21
+Jul-21
+Oct-21
+Jan-22
+Apr-22
+Jul-22
+Oct-22
+Jan-23
+Apr-23
+Jul-23
+Oct-23
+Jan-24
+5 Yr Old Asset Value Movement (Crude)
+Suezmax
+90
+100
+110
+120
+130
+140
+150
+160
+Jan-19
+Apr-19
+Jul-19
+Oct-19
+Jan-20
+Apr-20
+Jul-20
+Oct-20
+Jan-21
+Apr-21
+Jul-21
+Oct-21
+Jan-22
+Apr-22
+Jul-22
+Oct-22
+Jan-23
+Apr-23
+Jul-23
+Oct-23
+Jan-24
+5 Yr Old Asset Value Movement (Product)
+MR
+80
+90
+100
+110
+120
+130
+140
+150
+160
+Jan-19
+Apr-19
+Jul-19
+Oct-19
+Jan-20
+Apr-20
+Jul-20
+Oct-20
+Jan-21
+Apr-21
+Jul-21
+Oct-21
+Jan-22
+Apr-22
+Jul-22
+Oct-22
+Jan-23
+Apr-23
+Jul-23
+Oct-23
+Jan-24
+5 Yr Old Asset Value Movement (Dry Bulk)
+Capesize
+95
+105
+115
+125
+135
+145
+155
+165
+Jan-19
+Apr-19
+Jul-19
+Oct-19
+Jan-20
+Apr-20
+Jul-20
+Oct-20
+Jan-21
+Apr-21
+Jul-21
+Oct-21
+Jan-22
+Apr-22
+Jul-22
+Oct-22
+Jan-23
+Apr-23
+Jul-23
+Oct-23
+Jan-24
+5 Yr Old Asset Value Movement (LPG)
+VLGC
+
+=== deck_Q3_2024-01-31 PAGE 31 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+SCRAPPING
+30
+Fleet (Mn Dwt)
+Vessel Category
+Jan'24
+Crude
+462
+Product
+185
+Dry Bulk
+1,003
+Scrapping (% Beginning world fleet)
+CY
+CY
+CY
+CY
+CY
+CY
+CY
+CY
+CY
+Vessel Category
+2023
+2022
+2021
+2020
+2019
+2018
+2017
+2016
+2015
+Crude
+0.08
+                
+0.78
+         
+2.47
+         
+0.53
+         
+0.55
+         
+4.39
+         
+2.43
+         
+0.39
+         
+0.38
+         
+Product
+0.15
+                
+0.76
+         
+2.11
+         
+0.57
+         
+0.60
+         
+1.72
+         
+1.22
+         
+0.54
+         
+0.62
+         
+Dry Bulk
+0.56
+                
+0.50
+         
+0.56
+         
+1.74
+         
+0.93
+         
+1.85
+         
+1.85
+         
+3.78
+         
+4.02
+         
+•
+Overall Scrapping has been negligible in CY23 for tankers.
+•
+Drybulk scrapping last 3 years has been muted 
+
+=== deck_Q3_2024-01-31 PAGE 32 ===
+:11 
+sr:6 
+r 
+, 
+, 
+.Vg) ,.%. 
+:, 
+blibe 
+411
+-1gi! 
+i•z,-,..;:.4., I...
+livi,':/..- 
+1 
+W:, . 
+!!',Illt‘el::*' -14
+Al, 
+11\1 
+A 
+'Al4W1,4 
+If - 
+'' 
+ih.,4 
+4,h, ;4,4 
+l'illi, 
+Eli 
+,„i,,r,_ 
+IN 
+P,PNqra 
+ii.. 
+„.• 0, 
+4 
+_ 
+.,,, ,,, 
+'.:,..4:!‘.44 
+,,,I.,1„•,. 
+':2:4:. .1A 
+.1 
+ 
+10 .k
+liNt 'IMI 
+. 
+.i iiii:' 
+4 
+0".N. 
+111;, t.
+" '
+!!! 
+fa 4
+,N
+1 
+t'..*
+fil;
+THE GREAT EASTERN - 
+SI EPPING CO. LTD. 
+/ 
+7948 
+2023 
+The Great Eastern 
+Shipping Co. Ltd. 
+GREATSHIP (INDIA) LIMITED
+100% SUBSIDIARY
+
+=== deck_Q3_2024-01-31 PAGE 33 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+FLEET SUPPLY
+32
+Number
+Jack-up Rigs
+PSV+AHTSV
+Current Fleet
+498
+                 
+3,360
+                  
+Under Contract Fleet
+370
+                 
+2,340
+                  
+Order Book
+18
+                    
+75
+                        
+O/B to Current Fleet
+3.6%
+2.2%
+Total Scrapping since Jan 2016 (Nos)
+144
+                 
+691
+                     
+No of Vessels/Rigs more than 20/30 years old (% Fleet)
+33%
+20%
+Cold stacked more than 3 years
+55
+                    
+459
+                     
+Source: Industry Reports
+
+=== deck_Q3_2024-01-31 PAGE 34 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+50
+55
+60
+65
+70
+75
+80
+85
+200
+250
+300
+350
+400
+450
+Jan 2010
+Jul 2010
+Jan 2011
+Jul 2011
+Jan 2012
+Jul 2012
+Jan 2013
+Jul 2013
+Jan 2014
+Jul 2014
+Jan 2015
+Jul 2015
+Jan 2016
+Jul 2016
+Jan 2017
+Jul 2017
+Jan 2018
+Jul 2018
+Jan 2019
+Jul 2019
+Jan 2020
+Jul 2020
+Jan 2021
+Jul 2021
+Jan 2022
+Jul 2022
+Jan 2023
+Jul 2023
+Jan 2024
+Jack Up Utilisation : Gradual Improvement
+Under Contract
+Total Util %
+MARKET TRENDS: UTILISATION
+33
+% Util
+
+=== deck_Q3_2024-01-31 PAGE 35 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+• 
+• 
+2023 
+GE Shipping – Q3FY24 Results
+REPRICING
+34
+Remaining 1 vessel will come up for repricing in H1FY29
+3
+9
+1
+0
+2
+3
+0
+1
+1
+1
+0
+1
+H2 FY24
+H1 FY25
+H2 FY25
+H2FY26
+H1FY27
+H2FY27
+Vessels
+Rigs
+
+=== deck_Q3_2024-01-31 PAGE 36 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+DEBT REPAYMENT SCHEDULE
+35
+10
+97
+107
+0
+20
+40
+60
+80
+100
+120
+0
+20
+40
+60
+80
+100
+120
+Dec-23
+Mar-24
+Mar-25
+GIL (USD Mn)
+Repayments
+Loan O/S (RHS)
+
+=== deck_Q3_2024-01-31 PAGE 37 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+cv 
+0 
+L. 
+4 Mir 
+4 
+0. 1 
+77 11°F 
+111 
+IfKtit :1 
+"II Kau 
+II! 
+•i 
+trlit  
+ti 
+.f 
+• 
+I 
+I 
+• 
+• 
+• 
+! 
+• 
+4)
+: 
+I 
+I 
+a 
+I 
+" 
+ThitE GRE,PcT hAr, 
+`F
+, 
+SI EPPING Ott 1:11O1 
+I 
+4 
+O ! 
+_ 
+_ 
+4.444.4. 
+/07/2022 
+7948 
+2023 
+4-,r 
+FINANCIALS
+
+=== deck_Q3_2024-01-31 PAGE 38 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+7948 
+2023 
+GE Shipping – Q3FY24 Results
+ -0.30
+ -0.20
+ -0.10
+ -
+ 0.10
+ 0.20
+ 0.30
+ 0.40
+ 0.50
+ 0.60
+ -300
+ -200
+ -100
+ -
+ 100
+ 200
+ 300
+ 400
+FY2016
+FY2017
+FY2018
+FY2019
+FY2020
+FY2021
+FY2022
+FY2023
+9M FY2024
+Net Debt
+Net Debt/Equity (RHS)
+Net Debt Reduction Phase
+STRONG CASHFLOWS LED NET DEBT USD 360 
+MN TO NET CASH OF USD 250+ MN
+37
+Net Debt Expansion Phase
+USD Mn
+
+=== deck_Q3_2024-01-31 PAGE 39 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+7948 
+2023 
+1 
+GE Shipping – Q3FY24 Results
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+1
+0
+200
+400
+600
+800
+1000
+1200
+1400
+FY16
+FY17
+FY18
+FY19
+FY20
+FY21
+FY22
+FY23
+9MFY24
+Consolidated NAV
+Standalone NAV
+Share Price/Consol. NAV (RHS)
+SHARE PRICE TO CONSOLIDATED NAV
+38
+INR/Share
+* For 9MFY24 we have taken share price as on 31st Jan 2024
+
+=== deck_Q3_2024-01-31 PAGE 40 ===
+7948 
+2023 
+GREAT EASTERN 
+CSR FOUNDATION 
+GE Shipping – Q3FY24 Results
+GREAT EASTERN CSR FOUNDATION
+39
+GECSRF currently supporting 28 NGOs working under health, education and 
+livelihoods across 17 states in India
+EDUCATION
+HEALTH
+LIVELIHOODS
+1. Adhyayan Quality Education 
+Foundation (AQEF)
+1. Anushkaa Foundation for    
+Eliminating  Clubfoot (AFEC)
+1. Ayang Trust 
+2. Alumni Association of College of      
+Engineering, Guindy (AACEG) 
+2.Basic Healthcare Services (BHS) 
+2.Foundation for Promotion of Sports  
+and Games (OGQ program)
+3. ATMA Education
+3.Cuddles Foundation
+3. Impact Foundation (India)/ Dasra
+4. Collective Good Foundation in 
+partnership with Erehwon
+4. Every Infant Matters 
+4. iPartner India
+5. Give India/Education Initiatives
+5. Inga Health Foundation (IHF)
+5. Mauna Dhwani Foundation
+6. Karadi Cultural Alliance Trust
+6. Nourishing Schools Foundation  (NSF)
+6. Medha Learning Foundation
+7. Language and Learning Foundation  (LLF)
+7. Mrida Heart N Soil Foundation 
+8. Learnhill Foundation
+8. Nudge Lifeskills Foundation 
+9. Saajha
+9. Samast Mahajan 
+10. Ummeed Child Development Center
+10. Sri Arunodayam Charitable Trust
+11. Vision Empower Trust 
+11. Vrutti
+
+=== deck_Q3_2024-01-31 PAGE 41 ===
+The Great Eastern 
+Shipping 
+ 
+I TE: GREAT 
+EASTERN 
+} SONO CO, LTD. 
+I 
+7948 
+2023 
+'ego 
+II
+a 
+THE GREAT EASTERN 
+SHIPPING COMPANY LIMITED 
+I 
+• I 
+4. 
+pill Will.. 
+Res 
+Ocean House 
+4"9-.V.... 
+GE Shipping – Q3FY24 Results
+40
+1948
+2024
+From a modest beginning…
+...to most admired globally
+Visit us at www.greatship.com
+THANK YOU
+Read the Story of GE Shipping – Coffee Table Book  
+
+=== deck_Q4_2024-05-10 PAGE 1 ===
+THE GREAT EASTERN 
+SHIPPING COMPANY LIMITED 
+CIN: L35110MI-11948PLC006472 
+OCEAN HOUSE, 134/A, Dr. Annie Besant Road, Worli, Mumbai - 400 018, INDIA. Tel.: +91(22) 6661 3000 / 2492 2100 Fax : +91(22) 2498 5335 
+www.greatship.com 
+Our Ref.: S/2024/JMT 
+                   May 10, 2024 
+BSE Limited 
+ 
+National Stock Exchange of India Limited 
+1st Floor, Phiroze Jeejeebhoy Towers, 
+Exchange Plaza, 5th Floor, Plot No. C/1, 
+Dalal Street,   
+Bandra Kurla Complex, Bandra (East), 
+Mumbai – 400 001 
+ 
+Mumbai – 400 051 
+BSE Scrip code: 500620
+            Trading Symbol - GESHIP
+Dear Sir,
+We enclose herewith Investor Presentation pertaining to the Financial Results for the 
+quarter and year ended March 31, 2024. 
+You are requested to take note of the above. 
+Thanking You, 
+Yours faithfully, 
+For The Great Eastern Shipping Company Limited 
+Anand Punde 
+Company Secretary  
+Email Id: anand_punde@greatship.com
+Digitally signed by: 
+Anand Prabhakar 
+Punde
+DN: CN = Anand 
+Prabhakar Punde C = 
+IN O = Personal
+Date: 2024.05.10 14:
+24:15 +05'30'
+Anand 
+Prabhak
+ar Punde
+
+=== deck_Q4_2024-05-10 PAGE 2 ===
+Ink
+The Great Eastern 
+Shipping Co. Ltd. 
+at AT 
+CS".
+2023 
+ING co • 
+C 
+• 
+7• "-:F. 
+TH 
+z STERN 
+SI 
+a 
+T CO. 
+LTD. 
+G. 
+S
+-e.c--
+Nk.
+Q4 & FY24
+Earnings Presentation
+10 MAY 2024
+
+=== deck_Q4_2024-05-10 PAGE 3 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+DISCLAIMER
+Except for historical information, the statements made in this presentation constitute forward looking 
+statements. These include statements regarding the intent, belief or current expectations of GE Shipping 
+and its management regarding the Company’s operations, strategic directions, prospects and future 
+results which in turn involve certain risks and uncertainties. Certain factors may cause actual results to 
+differ materially from those contained in the forward looking statements; including changes in freight 
+rates; global economic and business conditions; effects of competition and technological 
+developments; changes in laws and regulations; difficulties in achieving cost savings; currency, fuel price 
+and interest rate fluctuations etc. The Company assumes no responsibility with regard to publicly 
+amending, modifying or revising the statements based on any subsequent developments, information or 
+events that may occur.
+2
+
+=== deck_Q4_2024-05-10 PAGE 4 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+FY24 HIGHLIGHTS
+3
+•
+Highest ever net profits of INR  2,614 Cr on a consolidated basis
+•
+ Our consolidated NAV has moved to INR 1,396/share as on 31st March 2024
+•
+Declared 4th Interim dividend of INR  10.80/Share for Q4FY2024. Total dividend for FY24 is             
+INR 36.30/Share
+ 
+
+=== deck_Q4_2024-05-10 PAGE 5 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+REPORTED HIGHLIGHTS
+4
+•
+GE Shipping FY24 
+consolidated Net 
+Profit at INR 2,614 Cr
+•
+Declared 4th Interim 
+dividend of INR 
+10.80/Share for 
+Q4FY2024
+Q4
+Q4
+Q4
+Q4
+Fig in INR Crores
+FY24
+FY23
+FY24
+FY23
+FY24
+FY23
+FY24
+FY23
+Income Statement
+Revenue*
+1,323
+    
+1,268
+    
+4,724
+    
+5,096
+   
+1,727
+    
+1,551
+    
+5,919
+    
+6,171
+   
+EBITDA*
+895
+       
+808
+       
+3,049
+    
+3,098
+   
+1,153
+    
+942
+       
+3,672
+    
+3,608
+   
+Net Profit
+727
+     
+632
+     
+2,316
+  
+2,352
+ 
+905
+     
+722
+     
+2,614
+  
+2,575
+ 
+Balance Sheet
+Total Assets
+13,612
+  
+12,026
+  
+13,612
+  
+12,026
+ 
+16,808
+  
+15,209
+  
+16,808
+  
+15,209
+ 
+Equity
+10,346
+  
+8,520
+    
+10,346
+  
+8,520
+   
+12,397
+  
+10,275
+  
+12,397
+  
+10,275
+ 
+Gross Debt
+2,227
+    
+2,531
+    
+2,227
+    
+2,531
+   
+3,031
+    
+3,623
+    
+3,031
+    
+3,623
+   
+Net Debt
+(3,266)
+   
+(1,673)
+   
+(3,266)
+   
+(1,673)
+  
+(3,495)
+   
+(1,578)
+   
+(3,495)
+   
+(1,578)
+  
+Cash Flows
+- From Operating Activities
+675
+       
+724
+       
+2,342
+    
+2,715
+   
+822
+       
+880
+       
+2,765
+    
+3,155
+   
+- From Investing Activities
+43
+         
+(60)
+        
+(193)
+      
+(16)
+        
+47
+         
+(83)
+        
+(224)
+      
+(70)
+       
+- From Financing Activities
+(428)
+      
+(749)
+      
+(970)
+      
+(1,621)
+  
+(531)
+      
+(819)
+      
+(1,332)
+   
+(1,884)
+  
+Standalone
+Conslidated
+* Including Other Income
+
+=== deck_Q4_2024-05-10 PAGE 6 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+NORMALISED FINANCIALS
+o The impact of the exchange rate on foreign currency loans and current assets and 
+liabilities, including cash and bank balances, has been removed
+o NCD & Currency Swap:
+o Funds raised through NCDs have been swapped into USD using INR-FCY swaps, thus 
+creating synthetic fixed rate USD loans. 
+o The MTM change of these swaps impacts the reported numbers. 
+o Normalized numbers are worked out after making necessary adjustments to reported 
+numbers to reflect the effective cost of the synthetic USD loans. 
+5
+
+=== deck_Q4_2024-05-10 PAGE 7 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+NORMALISED FINANCIAL HIGHLIGHTS
+•
+GE Shipping FY24 
+consolidated Net Profit 
+at INR 2,520 Cr
+•
+Declared 4th Interim 
+dividend of INR 
+10.80/Share for 
+Q4FY2024
+6
+Q4
+Q4
+Q4
+Q4
+Fig in INR Crores
+FY24
+FY23
+FY24
+FY23
+FY24
+FY23
+FY24
+FY23
+Income Statement
+Revenue*
+1,323
+      
+1,268
+    
+4,724
+     
+5,096
+    
+1,727
+    
+1,551
+    
+5,919
+      
+6,171
+    
+EBITDA*
+858
+          
+811
+        
+2,932
+     
+3,032
+    
+1,100
+    
+935
+        
+3,508
+      
+3,513
+    
+Net Profit
+701
+       
+662
+     
+2,280
+   
+2,411
+  
+851
+     
+699
+     
+2,520
+   
+2,581
+  
+Balance Sheet
+Total Assets
+13,612
+    
+12,026
+  
+13,612
+   
+12,026
+  
+16,808
+  
+15,209
+  
+16,808
+   
+15,209
+  
+Equity
+10,346
+    
+8,520
+    
+10,346
+   
+8,520
+    
+12,397
+  
+10,275
+  
+12,397
+   
+10,275
+  
+Gross Debt
+2,691
+      
+3,016
+    
+2,691
+     
+3,016
+    
+3,495
+    
+4,108
+    
+3,495
+      
+4,108
+    
+Net Debt
+(2,802)
+      
+(1,188)
+    
+(2,802)
+    
+(1,188)
+    
+(3,032)
+    
+1,093
+-    
+(3,032)
+     
+1,093
+-    
+* Including Other Income
+Standalone
+Conslidated
+
+=== deck_Q4_2024-05-10 PAGE 8 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+NORMALISED FINANCIAL HIGHLIGHTS
+7
+Q4
+Q4
+Q4
+Q4
+FY24
+FY23
+FY24
+FY23
+FY24
+FY23
+FY24
+FY23
+Key Financial Figure
+Return on Equity (ROE%)**
+28%
+32%
+24%
+32%
+28%
+28%
+22%
+28%
+Return on Capital Employed (ROCE%)**
+23%
+24%
+20%
+23%
+23%
+21%
+18%
+20%
+Gross Debt/Equity (x)
+0.26
+      
+0.35
+      
+0.26
+        
+0.35
+       
+0.28
+             
+0.40
+             
+0.28
+              
+0.40
+           
+Net Debt/Equity (x)
+(0.27)
+     
+(0.14)
+     
+(0.27)
+       
+(0.14)
+      
+(0.24)
+            
+(0.11)
+            
+(0.24)
+             
+(0.11)
+          
+Earnings Per Share (EPS - INR/Share)
+49.13
+  
+46.34
+  
+159.73
+ 
+168.89
+ 
+59.57
+       
+48.98
+        
+176.49
+      
+180.77
+    
+Cash Profit Per Share (INR/Share)
+56.01
+  
+53.61
+  
+191.62
+ 
+200.42
+ 
+70.26
+       
+60.71
+        
+226.43
+      
+230.64
+    
+Dividend Per Share (INR/Share)
+10.80
+  
+9.00
+    
+36.30
+   
+28.80
+   
+10.80
+       
+9.00
+          
+36.30
+        
+28.80
+      
+Net Asset Value Per Share (INR/Share)
+1,127
+962
+1,127
+962
+1,374-1,4181,135-1,192 1,374-1,4181,135-1,192
+Standalone
+Conslidated
+
+=== deck_Q4_2024-05-10 PAGE 9 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+—•-
+7948 
+—•—
+exP Eg
++Y., [a 
+yha 2023 
+GE Shipping – Q4FY24 Results
+NORMALISED FINANCIALS – KEY RATIOS
+8
+Earnings per Share (INR/Share)
+Cash Profit per Share (INR/Share)
+9.11
+16.96 15.36
+12.46
+32.55
+47.62
+42.38
+46.34
+36.23
+37.51
+35.99
+49.13
+5.8
+14.79
+13.11
+14.30
+35.65
+51.21
+45.03
+48.98
+37.06
+41.65
+38.67
+59.57
+5
+15
+25
+35
+45
+55
+Q1 
+FY22
+Q2 
+FY22
+Q3 
+FY22
+Q4 
+FY22
+Q1 
+FY23
+Q2 
+FY23
+Q3 
+FY23
+Q4 
+FY23
+Q1 
+FY24
+Q2 
+FY24
+Q3 
+FY24
+Q4 
+FY24
+Standalone
+Consolidated
+16.94
+24.96
+23.34 18.47
+40.55
+55.65
+50.61
+53.61
+44.17 45.82
+44.76
+56.01
+18.01
+27.84 25.62 24.84
+48.21
+63.89
+57.95
+60.71
+49.65
+54.73
+52.26
+70.26
+Q1 
+FY22
+Q2 
+FY22
+Q3 
+FY22
+Q4 
+FY22
+Q1 
+FY23
+Q2 
+FY23
+Q3 
+FY23
+Q4 
+FY23
+Q1 
+FY24
+Q2 
+FY24
+Q3 
+FY24
+Q4 
+FY24
+Standalone
+Consolidated
+
+=== deck_Q4_2024-05-10 PAGE 10 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+GE Shipping – Q4FY24 Results
+CONSISTENT DIVIDEND PAYOUTS
+9
+Dividend Per Share (INR/Share)
+2.4
+3.1
+3.3 2.3
+2.3
+2.0
+3.0 4.0
+2.0
+1.5
+2.8
+4.0
+4.0
+6.5
+9.0
+10.0
+11.5
+15.0
+8.0
+8.0
+8.0
+6.5 7.5
+9.0
+11.0
+13.5
+10.1
+7.2
+5.4
+8.1 9.0 9.9
+28.8
+36.3
+0
+5
+10
+15
+20
+25
+30
+35
+40
+
+=== deck_Q4_2024-05-10 PAGE 11 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+PROFIT & LOSS STATEMENT – INDUSTRY FORMAT
+10
+Q4
+Q4
+Q4
+Q4
+Figures in INR Crores
+FY24
+FY23
+FY24
+FY23
+FY24
+FY23
+FY24
+FY23
+Operating Revenue
+1,148
+       
+1,206
+      
+4,102
+           
+4,809
+    
+1,484
+           
+1,446
+      
+5,176
+           
+5,660
+      
+Less: Direct Operating Expenses/Voyage Expenses
+153
+          
+181
+          
+626
+              
+1,033
+    
+179
+              
+186
+          
+680
+              
+1,068
+      
+Time Charter Equivalent (A)
+995
+       
+1,025
+    
+3,477
+       
+3,776
+  
+1,306
+       
+1,260
+    
+4,496
+       
+4,592
+    
+Profit on Sale of Ships and Other Assets
+66
+            
+0
+              
+240
+              
+117
+        
+66
+                
+0
+              
+240
+              
+117
+          
+Other Income
+109
+          
+62
+            
+381
+              
+171
+        
+176
+              
+104
+          
+503
+              
+394
+          
+Total Other Income (B)
+175
+       
+62
+         
+621
+          
+288
+     
+242
+          
+104
+       
+743
+          
+511
+       
+Other Operating Expense
+240
+          
+219
+          
+891
+              
+815
+        
+354
+              
+341
+          
+1,356
+           
+1,224
+      
+Adminstrative and General Expense
+72
+            
+58
+            
+275
+              
+217
+        
+108
+              
+87
+            
+388
+              
+317
+          
+Total Expense (C)
+312
+       
+276
+       
+1,166
+       
+1,032
+  
+463
+          
+428
+       
+1,744
+       
+1,541
+    
+EBITDA D = (A+B+C)
+858
+       
+811
+       
+2,932
+       
+3,032
+  
+1,085
+       
+936
+       
+3,495
+       
+3,562
+    
+Depriciation and Amortisation (E)
+98
+            
+104
+          
+455
+              
+450
+        
+166
+              
+167
+          
+726
+              
+712
+          
+Impairment (F)
+-
+           
+-
+           
+-
+               
+-
+         
+(13)
+               
+-
+           
+(13)
+               
+-
+           
+Operating Profit Including Other Income 
+760
+       
+707
+       
+2,477
+       
+2,582
+  
+933
+          
+769
+       
+2,782
+       
+2,850
+    
+G= (D-E-F)
+Finance Expense (H)
+45
+            
+57
+            
+198
+              
+259
+        
+59
+                
+77
+            
+265
+              
+343
+          
+Derivative Losses/ (Gains) (I)
+(29)
+           
+(13)
+           
+(62)
+               
+90
+          
+(62)
+               
+(15)
+           
+(125)
+             
+63
+            
+Foreign Currency Exchange Losses/(Gains) (J) 
+(7)
+             
+16
+            
+(55)
+               
+(156)
+      
+(6)
+                 
+9
+              
+(52)
+               
+(109)
+        
+Income Tax Expense (K)
+25
+         
+14
+         
+80
+            
+37
+       
+37
+            
+(24)
+        
+80
+            
+(21)
+        
+Net Profit (G-H-I-J)
+727
+       
+632
+       
+2,316
+       
+2,352
+  
+905
+          
+722
+       
+2,614
+       
+2,575
+    
+Standalone
+Conslidated
+
+=== deck_Q4_2024-05-10 PAGE 12 ===
+San' 
+allIVIrw 
+• 
+• 
+Isi 1t 
+It 
+F 
+nil 
+, .7 
+- 
+n 
+, 
+•vr- I a-
+4.1h— 
+AC 
+t. 
+I 
+= 
+•
+ 
+I 
+11
+1 
+t, 
+tinnii
+itingth 
+" 1"•-•....,""•!• 
+••• :It 
+•-• 
+w 
+(Oa 
+a 
+7948 
+2023 
+The Great Eastern 
+Shipping Ca Ltd. 
+.1 1 
+GE Shipping – Q4FY24 Results
+SHAREHOLDING PATTERN
+11
+Promoters
+30%
+Public
+26%
+Govt./FI/Corp
+17%
+FII/FPI
+27%
+31-Mar-2024
+GE Shipping – Q3 & 9MFY23 Results
+
+=== deck_Q4_2024-05-10 PAGE 13 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+PERFORMANCE REVIEW
+12
+Breakup of Revenue Days (Shipping)
+Q4
+Q4
+Revenue Days
+FY24
+FY23
+Owned Tonnage
+3,744
+3,831
+Inchartered Tonnage
+0
+80
+Total Revenue Days
+3,744
+3,911
+Total Owned Tonnage (mn.dwt)
+3.36
+3.44
+Breakup of Revenue Days (Offshore)
+Q4
+Q4
+Revenue Days
+FY24
+FY23
+Offshore Logistics
+1,521
+1,447
+Drilling Services
+349
+359
+Total
+1,870
+1,806
+
+=== deck_Q4_2024-05-10 PAGE 14 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+PERFORMANCE REVIEW
+13
+Avg TCYs in Various Categories
+Q4
+Q3
+QoQ
+Q4
+YoY
+Avg (TCYs USD/Day)
+FY24
+FY24
+%
+FY23
+%
+Crude Carriers
+53,182
+45,556
+17%
+64,579
+-18%
+Product Carriers
+37,637
+28,566
+32%
+36,665
+3%
+LPG Carriers
+35,506
+31,255
+14%
+29,175
+22%
+Dry Bulk
+14,921
+16,478
+-9%
+12,704
+17%
+Avg TCYs in Various Categories
+YoY
+Avg (TCYs USD/Day)
+FY24
+FY23
+%
+Crude Carriers
+48,379
+46,179
+5%
+Product Carriers
+31,864
+33,531
+-5%
+LPG Carriers
+31,606
+28,956
+9%
+Dry Bulk
+14,150
+19,681
+-28%
+
+=== deck_Q4_2024-05-10 PAGE 15 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+1400 
+1200 
+1000 
+962 
+800 
+600 
+400 
+200 
+0  
+Changes in Standalone NAV (YTD) 
+L
+-35 
+NAV Mar-23 
+Cash Profit 
+1127 
+Fleet Value 
+Dividend 
+NAV Mar-24 
+GE Shipping – Q4FY24 Results
+CHANGES IN STANDALONE NAV (YTD)
+14
+INR/SHARE
+
+=== deck_Q4_2024-05-10 PAGE 16 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+LJ 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+374
+1127
+0
+200
+400
+600
+800
+1000
+1200
+FY19
+FY20
+FY21
+FY22
+FY23
+FY24
+Standalone NAV – Continues to touch new highs
+5 YEARS MOVEMENT IN STANDALONE NAV 
+15
+INR/SHARE
+CAGR: 25%
+
+=== deck_Q4_2024-05-10 PAGE 17 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+7948 
+2023 
+Changes in Consolidated NAV (YTD) 
+1600 
+1400 
+46 
+35 
+1396 
+221 
+1200 
+1164 
+1000 
+800 
+600 
+400 
+200 
+0 
+NAV Mar-23 
+Cash Profit 
+Fleet Value 
+Dividend 
+NAV Mar-24 
+GE Shipping – Q4FY24 Results
+CHANGES IN CONSOLIDATED NAV (YTD)
+16
+INR/SHARE
+
+=== deck_Q4_2024-05-10 PAGE 18 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+REVENUE COVERAGE
+17
+Coverage of Operating Days (Shipping)
+Category
+Q1FY25
+Crude Carriers
+50%
+Product Carriers*
+60%
+LPG Carriers
+100%
+Dry Bulk
+63%
+Revenue Days
+Q1FY25
+Jack Up Rigs
+99%
+AHTSV
+93%
+MPSVV
+100%
+PSV/ROVSV
+76%
+
+=== deck_Q4_2024-05-10 PAGE 19 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+1)
+Effective all-in USD cost of debt of about 4.00% basis Mar-24 
+2)
+95% of debt portfolio is fixed.  
+STANDALONE DEBT REPAYMENT SCHEDULE
+18
+68
+74
+74
+36
+71
+323
+0
+50
+100
+150
+200
+250
+300
+350
+0
+10
+20
+30
+40
+50
+60
+70
+80
+Mar-24
+Mar-25
+Mar-26
+Mar-27
+Mar-28
+Mar-29
+GESCO Standalone (USD mn)
+Loan Repayments
+Loan O/S (RHS)
+
+=== deck_Q4_2024-05-10 PAGE 20 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+FLEET PROFILE
+19
+Fleet Profile - Shipping
+DWT
+Fleet
+Q4FY24
+No
+Avg Age
+Crude Carriers
+842,958
+          
+6
+              
+15.46
+         
+Product Carriers*
+1,192,148
+       
+20
+           
+15.70
+         
+Gas Carriers
+185,363
+          
+4
+              
+18.48
+         
+Dry Bulk Carriers
+1,239,274
+       
+14
+           
+10.71
+         
+Total
+3,459,743
+   
+44
+           
+14.00
+        
+Fleet (10 May'24)
+Fleet Profile - Offshore
+Avg Years
+Fleet
+No. of Units
+Yrs.
+Jack Up Rigs
+4
+12.60
+Platform Supply Vessels
+4
+14.76
+Anchor Handling Tug cum Supply Vessels
+9
+14.52
+Multipurpose Platform Supply & Support Vessels
+2
+14.07
+ROV Support Vessels
+4
+12.62
+*Committed to sell one 2004 
+built MR “Jag Pahel”.
+
+=== deck_Q4_2024-05-10 PAGE 21 ===
+7948 
+cc" 
+• 
+P 
+. 
+k 
+\\*I 
+\ N 
+44, 4 
+• 
+• 
+• 
+\ 
+• 
+• 
+• \\\>.\\,, 
+\N 11\ 
+A 
+1\ 44 
+tit 
+114.4--Li 
+Nit
+2023 
+The Great Eastern 
+Shipping Co. Ltd. 
+SHIPPING MARKET
+
+=== deck_Q4_2024-05-10 PAGE 22 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+le a 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+CRUDE AND PRODUCT TANKERS
+USD/day
+FY24
+FY23
+% change
+12M
+28,509
+35,497
+-20%
+USD/day
+FY24
+FY23
+% change
+12M
+47,722
+57,510
+-17%
+21
+0
+10,000
+20,000
+30,000
+40,000
+50,000
+60,000
+70,000
+80,000
+90,000
+100,000
+Apr
+May
+Jun
+Jul
+Aug Sep
+Oct
+Nov Dec
+Jan
+Feb
+Mar
+Avg. Suezmax Earnings (USD/day)
+FY22
+FY23
+FY24
+FY25
+0
+10,000
+20,000
+30,000
+40,000
+50,000
+60,000
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Jan
+Feb
+Mar
+Avg. MR Earnings (USD/day)
+FY22
+FY23
+FY24
+FY25
+
+=== deck_Q4_2024-05-10 PAGE 23 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+CRUDE AND PRODUCT TANKERS
+22
+•
+Crude tanker earnings experienced a y/y decrease in 4QFY24 attributed to a decline in Middle East exports 
+on OPEC+ voluntary supply cuts. However, the growth in Atlantic crude exports offered support to crude 
+tanker earnings.
+•
+Product tanker earnings were higher y/y in 4QFY24 aided by robust product exports from US & Middle East. In 
+addition, longer voyages facilitated by Red Sea conflict, boosted the product tanker earnings.  
+•
+Overall seaborne crude trade declined by 1% y/y in 4QFY24 while product trade grew by 4% y/y. 
+•
+Crude & product fleet supply grew by 1.5% and 2% y/y respectively in 4QFY24 
+•
+Robust freight rates continue to keep asset prices firm
+•
+Orderbook for crude and product tankers have seen build up recently and are at ~7.4% and ~15% of the fleet 
+respectively. 
+
+=== deck_Q4_2024-05-10 PAGE 24 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+if I 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+DRY BULK
+USD/day
+FY24
+FY23
+% change
+12M
+21,359
+14,760
+45%
+USD/day
+FY24
+FY23
+% change
+12M
+12,442
+18,340
+-32%
+DB Freight picked up in FY24 Y-O-Y, however sub-capes averaged lower Y-O-Y
+23
+0
+10,000
+20,000
+30,000
+40,000
+50,000
+60,000
+70,000
+Apr
+May
+Jun
+Jul
+Aug Sep
+Oct
+Nov Dec
+Jan
+Feb
+Mar
+Avg. Baltic Capesize 5T/C Earnings (USD/day)
+FY22
+FY23
+FY24
+FY25
+0
+5000
+10000
+15000
+20000
+25000
+30000
+35000
+40000
+Apr
+May
+Jun
+Jul
+Aug Sep
+Oct
+Nov Dec
+Jan
+Feb
+Mar
+Avg. Baltic Supra BSI-58 10T/C Earnings 
+(USD/day)
+FY22
+FY23
+FY24
+FY25
+
+=== deck_Q4_2024-05-10 PAGE 25 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+DRY BULK
+24
+•
+During the quarter, Capesize spot earnings witnessed significant y/y growth of 175%. Kamsarmax and 
+Supramax earnings also grew y/y by 39% and 30%, respectively. 
+•
+The surge in earnings was primarily due to higher supply of iron ore from Brazil owing to lower weather 
+disruptions. This was complemented by increased imports into China due to low iron ore inventory 
+levels at the start of 4QFY24.
+•
+Coal imports into China increased by ~10% y/y during the quarter due to decline in domestic coal 
+production in the country and greater coal demand for electricity generation.
+•
+Red Sea disruption also supported the dry bulk market with vessels re-routing through the Cape of 
+Good Hope, adding to tonne-miles. 
+•
+Bulk carrier fleet grew by 3% y/y during 4QFY24. 
+•
+Asset prices firmed up by 10–15% during the quarter in line with the growth in earnings.
+•
+Order book for the dry bulk sector is at 9.3% of fleet.
+
+=== deck_Q4_2024-05-10 PAGE 26 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+LPG GAS
+USD/day
+FY24
+FY23
+% change
+12M
+85,061
+63,072
+35%
+VLGC Spot earnings sustained healthy levels during FY-24 
+and averaged much higher YoY in comparison to FY-23. 
+25
+ 10,000
+ 30,000
+ 50,000
+ 70,000
+ 90,000
+ 110,000
+ 130,000
+ 150,000
+ 170,000
+April May June July Aug Sep
+Oct
+Nov Dec
+Jan
+Feb
+Mar
+Avg. VLGC Earnings (USD/day)
+FY 22
+FY23
+FY24
+FY25
+•
+VLGC trade increased by 1% y/y in 4QFY24. US exports grew by 2% while Middle Exports dropped by 1% y/y in 4QFY24. 
+•
+Nominal fleet growth stood at 13% y/y in 4QFY24. 
+•
+Panama canal disruption eased significantly in the quarter yet VLGC transits through the canal remained lower y/y
+•
+VLGC asset prices continue to stay at record levels. 
+•
+VLGC Orderbook - At elevated level in historical context. 
+
+=== deck_Q4_2024-05-10 PAGE 27 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+Daily transit trade volume 
+(million metric tons, 7-day moving average) 
+8 
+6 
+2023 
+Cape of Good 
+Hobe 
+2 
+mow
+ '
+Suez Canal 
+Panama Canal 
+1 
+Jan 2023 
+Apr 2023 
+Jul 2023 
+Oct 2023 
+Jan 2024 
+Apr 2024 
+Sources: UN Clobal Platform, IMF PortWatch. 
+IMF 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+SUEZ CANAL/PANAMA CANAL DISRUPTIONS
+26
+•
+In the first two months of 2024, Suez Canal trade 
+dropped by 50 percent from a year earlier while trade 
+through the Panama Canal fell by 32 percent, disrupting 
+supply chains
+•
+A severe drought at the Panama Canal has forced 
+authorities to impose restrictions that have substantially 
+reduced daily ship crossings since last October, slowing 
+down maritime trade through another key chokepoint.
+•
+Attacks on vessels in the Red Sea area reduced traffic 
+through the Suez Canal, the shortest maritime route 
+between Asia and Europe, through which about 15 
+percent of global maritime trade volume normally 
+passes
+•
+As a result, several shipping companies have diverted 
+their ships around the Cape of Good Hope
+
+=== deck_Q4_2024-05-10 PAGE 28 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+sr' 
+•„ 
+, 
+"4. -4, - 
+• 
+r?; 
+"1 
+• 
+to.7440, 
+THE 
+AT EAST F P.01 
+IIPPING CO. I 
+'woo 
+t,P 
+'F 
+Il i taii 
+, 
+• 
+' 
+%:,...41 . ...0„
+. 
+', ICS°
+ 
+\ 
+. 
+• 
+t) 
+' 1: 
+...' 
+, 
+in, 
+- 
+$4.• - 
+. 
+. . 
+., 
+t,'. 
+i 
+• 
+• r, 
+ILA ; 
+c 
+/ 
+7948 
+2023 
+FLEET SUPPLY
+
+=== deck_Q4_2024-05-10 PAGE 29 ===
+The Great Eastern 
+Shipping Co. Ltd.
+N 
+rb 
+OC\
+N
+ 
+r15)
+• 
+O6\ 
+(19' 
+On'
+O61' 
+rl/C)C) 
+7948 
+2023 
+Alm 
+GE Shipping – Q4FY24 Results
+9.3%
+15.0%
+7.4%
+24.7%
+0%
+10%
+20%
+30%
+40%
+50%
+60%
+70%
+80%
+90%
+Bulkers
+Product tankers
+Crude tankers
+LPG Carriers (65K+ CBM)
+LOW ORDER BOOK TO FLEET RATIO
+Sources: Industry Reports
+Historic Order Book as a % of fleet (Calendar Year)
+Current Orderbook
+28
+
+=== deck_Q4_2024-05-10 PAGE 30 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+SCRAPPING
+29
+Fleet (Mn Dwt)
+Vessel Category
+May'24
+Crude
+463
+Product
+186
+Dry Bulk
+1,014
+Scrapping (% Beginning world fleet)
+CYTD
+CY
+CY
+CY
+CY
+CY
+CY
+CY
+CY
+Vessel Category
+2024
+2023
+2022
+2021
+2020
+2019
+2018
+2017
+2016
+Crude
+0.10
+                
+0.08
+         
+0.78
+         
+2.47
+         
+0.53
+         
+0.55
+         
+4.39
+         
+2.43
+         
+0.39
+         
+Product
+0.02
+                
+0.15
+         
+0.76
+         
+2.11
+         
+0.57
+         
+0.60
+         
+1.72
+         
+1.22
+         
+0.54
+         
+Dry Bulk
+0.15
+                
+0.56
+         
+0.50
+         
+0.56
+         
+1.74
+         
+0.93
+         
+1.85
+         
+1.85
+         
+3.78
+         
+Scrapping continues to be very low, and the pool of old ships continues to grow
+Sources: Industry Reports
+
+=== deck_Q4_2024-05-10 PAGE 31 ===
+•
+• 
+• 
+• 
+GE Shipping – Q4FY24 Results
+ORDERBOOK AND SCRAPPING POTENTIAL
+30
+Crude Tankers
+Product Tankers
+Dry Bulk Carriers
+LPG Carriers
+0%
+2%
+4%
+6%
+8%
+10%
+12%
+14%
+16%
+18%
+20%
+0%
+5%
+10%
+15%
+20%
+25%
+30%
+Aeging FLeet as a % of Total Fleet
+Orderbook as % of Total Fleet
+Orderbook Vs Scrapping Potential
+Sources: Industry Reports
+
+=== deck_Q4_2024-05-10 PAGE 32 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+-t -
+• 
+-a 
+.4 
+I 
+- 
+d- 
+r
+GHLAT 
+EA,STERN 
+1 :1 : 
+4 
+lar 
+0 
+THE GREAT EASTERN 
+SI EPPING Co, LTR 
+H 
+7948 
+2023 
+0—
+_ 
+ASSET PRICE MOVEMENT
+
+=== deck_Q4_2024-05-10 PAGE 33 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+ASSET PRICE MOVEMENT (INDEXED OVER LAST 
+5 YRS)
+32
+85
+95
+105
+115
+125
+135
+145
+155
+165
+175
+Apr-19
+Jul-19
+Oct-19
+Jan-20
+Apr-20
+Jul-20
+Oct-20
+Jan-21
+Apr-21
+Jul-21
+Oct-21
+Jan-22
+Apr-22
+Jul-22
+Oct-22
+Jan-23
+Apr-23
+Jul-23
+Oct-23
+Jan-24
+Apr-24
+5 Yr Old Asset Value Movement (Crude)
+Suezmax
+90
+100
+110
+120
+130
+140
+150
+160
+170
+Apr-19
+Jul-19
+Oct-19
+Jan-20
+Apr-20
+Jul-20
+Oct-20
+Jan-21
+Apr-21
+Jul-21
+Oct-21
+Jan-22
+Apr-22
+Jul-22
+Oct-22
+Jan-23
+Apr-23
+Jul-23
+Oct-23
+Jan-24
+Apr-24
+5 Yr Old Asset Value Movement (Product)
+MR
+85
+105
+125
+145
+165
+185
+205
+Apr-19
+Jul-19
+Oct-19
+Jan-20
+Apr-20
+Jul-20
+Oct-20
+Jan-21
+Apr-21
+Jul-21
+Oct-21
+Jan-22
+Apr-22
+Jul-22
+Oct-22
+Jan-23
+Apr-23
+Jul-23
+Oct-23
+Jan-24
+Apr-24
+5 Yr Old Asset Value Movement (Dry Bulk)
+Capesize
+95
+105
+115
+125
+135
+145
+155
+Apr-19
+Jul-19
+Oct-19
+Jan-20
+Apr-20
+Jul-20
+Oct-20
+Jan-21
+Apr-21
+Jul-21
+Oct-21
+Jan-22
+Apr-22
+Jul-22
+Oct-22
+Jan-23
+Apr-23
+Jul-23
+Oct-23
+Jan-24
+Apr-24
+5 Yr Old Asset Value Movement (LPG)
+VLGC
+
+=== deck_Q4_2024-05-10 PAGE 34 ===
+:11 
+sr:6 
+r 
+, 
+, 
+.Vg) ,.%. 
+:, 
+blibe 
+411
+-1gi! 
+i•z,-,..;:.4., I...
+livi,':/..- 
+1 
+W:, . 
+!!',Illt‘el::*' -14
+Al, 
+11\1 
+A 
+'Al4W1,4 
+If - 
+'' 
+ih.,4 
+4,h, ;4,4 
+l'illi, 
+Eli 
+,„i,,r,_ 
+IN 
+P,PNqra 
+ii.. 
+„.• 0, 
+4 
+_ 
+.,,, ,,, 
+'.:,..4:!‘.44 
+,,,I.,1„•,. 
+':2:4:. .1A 
+.1 
+ 
+10 .k
+liNt 'IMI 
+. 
+.i iiii:' 
+4 
+0".N. 
+111;, t.
+" '
+!!! 
+fa 4
+,N
+1 
+t'..*
+fil;
+THE GREAT EASTERN - 
+SI EPPING CO. LTD. 
+/ 
+7948 
+2023 
+The Great Eastern 
+Shipping Co. Ltd. 
+GREATSHIP (INDIA) LIMITED
+100% SUBSIDIARY
+
+=== deck_Q4_2024-05-10 PAGE 35 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+OFFSHORE SUBSIDIARY – GREATSHIP STORY
+34
+FY16 to FY21
+•
+Most challenging years for the offshore sector since late 80s
+•
+Utilization levels across asset classes dropped to historic lows, charter rates came down to levels 
+that barely generated any +ve EBITDA
+•
+A large part of industry went through financial restructuring/reorganization/forced consolidation 
+How did we fare?
+•
+Cash on the balance sheet: Minimal cash depletion from $118 mn (March 2015) to $108 mn (March 
+2021)
+•
+Net Bank Debt: Paid down from USD 437 mn (March 2015) to USD 72 mn (March 2021)
+Post FY21
+•
+Utilization levels have improved
+•
+E&P activities have started to increase
+•
+Contracts are getting repriced at levels which generate significant EBITDA
+•
+The business has now come back to profitability
+
+=== deck_Q4_2024-05-10 PAGE 36 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+MARKET TRENDS: UTILISATION
+35
+% Util
+50
+55
+60
+65
+70
+75
+80
+85
+200
+250
+300
+350
+400
+450
+Mar 2010
+Sep 2010
+Mar 2011
+Sep 2011
+Mar 2012
+Sep 2012
+Mar 2013
+Sep 2013
+Mar 2014
+Sep 2014
+Mar 2015
+Sep 2015
+Mar 2016
+Sep 2016
+Mar 2017
+Sep 2017
+Mar 2018
+Sep 2018
+Mar 2019
+Sep 2019
+Mar 2020
+Sep 2020
+Mar 2021
+Sep 2021
+Mar 2022
+Sep 2022
+Mar 2023
+Sep 2023
+Mar 2024
+Jack Up Utilisation : Gradual Improvement
+Under Contract
+Total Util %
+Sources: Industry Reports
+
+=== deck_Q4_2024-05-10 PAGE 37 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+FLEET SUPPLY
+36
+Number
+Jack-up Rigs
+PSV+AHTSV
+Current Fleet
+497
+                 
+3,358
+                  
+Under Contract Fleet
+388
+                 
+2,353
+                  
+Order Book
+17
+                    
+54
+                        
+O/B to Current Fleet
+3.4%
+1.6%
+Total Scrapping since Jan 2016 (Nos)
+146
+                 
+703
+                     
+No of Vessels/Rigs more than 20/30 years old (% Fleet)
+32%
+21%
+Cold stacked more than 3 years
+55
+                    
+449
+                     
+Source: Industry Reports
+
+=== deck_Q4_2024-05-10 PAGE 38 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+■ 
+■ ■ 
+• 
+• 
+■ 
+■ 
+7948 
+2023 
+■
+GE Shipping – Q4FY24 Results
+REPRICING
+37
+Remaining 1 vessel will come up for repricing in H1FY29
+12
+1
+0
+2
+2
+1
+1
+1
+1
+0
+1
+0
+H1 FY25
+H2 FY25
+H2FY26
+H1FY27
+H2FY27
+H1FY28
+Vessels
+Rigs
+
+=== deck_Q4_2024-05-10 PAGE 39 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+DEBT REPAYMENT SCHEDULE
+38
+20
+26
+26
+26
+97
+0
+20
+40
+60
+80
+100
+120
+0
+5
+10
+15
+20
+25
+30
+Mar-24
+Mar-25
+Mar-26
+Mar-27
+Mar-28
+GIL (USD Mn)
+Repayments
+Loan O/S (RHS)
+
+=== deck_Q4_2024-05-10 PAGE 40 ===
+The Great Eastern 
+Shipping Ca Ltd. 
+cv 
+0 
+L. 
+4 Mir 
+4 
+0. 1 
+77 11°F 
+111 
+IfKtit :1 
+"II Kau 
+II! 
+•i 
+trlit  
+ti 
+.f 
+• 
+I 
+I 
+• 
+• 
+• 
+! 
+• 
+4)
+: 
+I 
+I 
+a 
+I 
+" 
+ThitE GRE,PcT hAr, 
+`F
+, 
+SI EPPING Ott 1:11O1 
+I 
+4 
+O ! 
+_ 
+_ 
+4.444.4. 
+/07/2022 
+7948 
+2023 
+4-,r 
+FINANCIALS
+
+=== deck_Q4_2024-05-10 PAGE 41 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+ -0.40
+ -0.30
+ -0.20
+ -0.10
+ -
+ 0.10
+ 0.20
+ 0.30
+ 0.40
+ 0.50
+ 0.60
+ -400
+ -300
+ -200
+ -100
+ -
+ 100
+ 200
+ 300
+ 400
+FY2016
+FY2017
+FY2018
+FY2019
+FY2020
+FY2021
+FY2022
+FY2023
+FY2024
+Net Debt
+Net Debt/Equity (RHS)
+Net Debt Reduction Phase
+STRONG CASHFLOWS LED NET DEBT USD 360 
+MN TO NET CASH OF USD 330+ MN
+40
+Net Debt Expansion Phase
+USD Mn
+
+=== deck_Q4_2024-05-10 PAGE 42 ===
+The Great Eastern 
+Shipping Co. Ltd. 
+7948 
+2023 
+GE Shipping – Q4FY24 Results
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+1
+0
+200
+400
+600
+800
+1000
+1200
+1400
+1600
+FY16
+FY17
+FY18
+FY19
+FY20
+FY21
+FY22
+FY23
+FY24
+Consolidated NAV
+Standalone NAV
+Share Price/Consol. NAV (RHS)
+SHARE PRICE TO CONSOLIDATED NAV
+41
+INR/Share
+* For FY24 we have taken share price as on 10th May 2024
+
+=== deck_Q4_2024-05-10 PAGE 43 ===
+7948 O
+2023 
+GREAT EASTERN 
+CSR FOUNDATION 
+GE Shipping – Q4FY24 Results
+Sources: Industry Reports
+GREAT EASTERN CSR FOUNDATION
+42
+Since 2015, GECSRF has partnered with 49 NGOs under the three key CSR focus areas. 
+•
+Education: More than 1.50 Lakh students reached out through primary and secondary education. 
+•
+Health: More than 78,000 women and 40,300 children provided with health services – including 
+maternal care, nutrition support through clinics and community programs.
+•
+Livelihoods: Around 42,400 women provided with entrepreneurship trainings and business 
+handholding support in agriculture, non-agriculture sectors and handloom weaving.
+
+=== deck_Q4_2024-05-10 PAGE 44 ===
+7948 O
+2023 
+GREAT EASTERN 
+CSR FOUNDATION 
+GE Shipping – Q4FY24 Results
+GREAT EASTERN CSR FOUNDATION
+43
+GECSRF currently supporting 28 NGOs working under health, education and 
+livelihoods across 17 states in India
+EDUCATION
+HEALTH
+LIVELIHOODS
+1. Adhyayan Quality Education 
+    Foundation (AQEF)
+1. Anushkaa Foundation for    
+    Eliminating  Clubfoot (AFEC)
+1. Ayang Trust 
+2. Alumni Association of College of      
+     Engineering, Guindy (AACEG) 
+2.Basic Healthcare Services (BHS) 
+2.Foundation for Promotion of Sports  
+    and Games (OGQ program)
+3. ATMA Education
+3.Cuddles Foundation
+3. Impact Foundation (India)/ Dasra
+4. Collective Good Foundation in 
+     partnership with Erehwon
+4. Every Infant Matters 
+4. iPartner India
+5. Give India/Education Initiatives
+5. Inga Health Foundation (IHF)
+5. Mauna Dhwani Foundation
+6. Karadi Cultural Alliance Trust
+6. Nourishing Schools Foundation  (NSF)
+6. Medha Learning Foundation
+7. Language and Learning Foundation  (LLF)
+7. Mrida Heart N Soil Foundation 
+8. Learnhill Foundation
+8. Nudge Lifeskills Foundation 
+9. Saajha
+9. Samast Mahajan 
+10. Ummeed Child Development Center
+10. Sri Arunodayam Charitable Trust
+11. Vision Empower Trust 
+11. Vrutti
+MORE TO KNOW ABOUT OUR CSR: Click Here
+
+=== deck_Q4_2024-05-10 PAGE 45 ===
+The Great Eastern 
+Shipping 
+ 
+I TE: GREAT 
+EASTERN 
+} SONO CO, LTD. 
+I 
+7948 
+2023 
+'ego 
+II
+a 
+THE GREAT EASTERN 
+SHIPPING COMPANY LIMITED 
+I 
+• I 
+4. 
+pill Will.. 
+Res 
+Ocean House 
+4"9-.V.... 
+GE Shipping – Q4FY24 Results
+44
+1948
+2024
+From a modest beginning…
+...to most admired globally
+Visit us at www.greatship.com
+THANK YOU
+Read the Story of GE Shipping – Coffee Table Book  

@@ -1,0 +1,5843 @@
+
+=== PAGE 301 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Present Value of Defined Benefit Obligation at end of the year
+ 4,799.46 
+ 4,319.66 
+Less: Fair Value of Plan Assets at the end of the year
+ 4,399.69 
+ 3,818.15 
+Net Liabilities /(Assets) recognized in the Balance Sheet
+ 399.77 
+ 501.51 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Defined Benefit Obligation at beginning of the year
+ 4,319.66 
+ 4,313.35 
+Current Service Cost
+ 295.69 
+ 265.13 
+Current Interest Cost
+ 297.07 
+ 290.20 
+Past Service Cost
+ - 
+ - 
+Actuarial (Gain)/ Loss
+ 308.76 
+ 202.52 
+Benefits paid
+ (421.72)
+ (751.54)
+Defined Benefit Obligation at end of the year
+ 4,799.46 
+ 4,319.66 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Fair Value of Plan Assets at the beginning of the year
+ 3,818.15 
+ 4,033.56 
+Expected Return on Plan Assets
+ 278.94 
+ 279.89 
+Actuarial Gain/(Loss)
+ 222.81 
+ (23.55)
+Contributions from the employer
+ 501.50 
+ 279.79 
+Benefits paid
+ (421.71)
+ (751.54)
+Fair Value of the Assets at the end of the year
+ 4,399.69 
+ 3,818.15 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Service Cost:
+	
+Current  Service Cost
+ 295.69 
+ 265.13 
+	
+Past  Service Cost
+ - 
+ - 
+	
+Net Interest expense
+ 18.13 
+ 10.31 
+Components of defined benefit costs recognised in statement of profit  and loss
+313.82
+ 275.44 
+Remeasurement of the net defined benefit liability:
+Actuarial (Gain)/Loss on Plan Obligations
+ 308.76 
+ 202.52 
+Difference between Actual Return and Interest income on Plan assets (gain)/loss
+ (222.81)
+ 23.55 
+Components of defined benefit costs recognised in Other Comprehensive Income
+ 85.95 
+ 226.07 
+The amount included in the Balance Sheet arising from the entity’s obligation in respect of its defined benefit plan is as 
+follows:-
+Movements in present value of the defined benefit obligation are as follows:-
+Movements in the fair value of the plan assets are as follows:
+Amount recognised in the Statement of Profit and Loss/Other comprehensive income in respect of defined benefit plans 
+are as follows:-
+Annual Report 2023-24
+317
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 302 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Year
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Year 1 
+ 143.68 
+ 160.58 
+Year 2 
+ 629.58 
+ 571.47 
+Year 3 
+ 450.06 
+ 437.68 
+Year 4 
+ 352.83 
+ 400.09 
+Year 5 
+ 287.11 
+ 322.41 
+Next 5 Years 
+ 1,347.44 
+ 1,167.06 
+Sensitivity Analysis
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+A.	 Discount Rate + 50 BP
+7.47%
+7.73%
+	
+Defined Benefit Obligation [PVO] 
+ 4,560.01 
+ 4,111.97 
+	
+Current Service Cost 
+ 314.70 
+ 276.46 
+B.	 Discount Rate - 50 BP 
+6.47%
+6.73%
+	
+Defined Benefit Obligation [PVO] 
+ 5,058.74 
+ 4,544.50 
+	
+Current Service Cost 
+ 361.87 
+ 316.81 
+C.	 Salary Escalation Rate + 50 BP 
+3.50%
+3.50%
+	
+Defined Benefit Obligation [PVO] 
+ 5,019.28 
+ 4,519.69 
+	
+Current Service Cost 
+ 354.30 
+ 308.18 
+D.	 Salary Escalation Rate - 50 BP 
+2.50%
+2.50%
+	
+Defined Benefit Obligation [PVO] 
+ 4,582.95 
+ 4,127.12 
+	
+Current Service Cost 
+ 323.51 
+ 280.70 
+MAJOR CATEGORIES OF PLAN ASSETS (AS PERCENTAGE OF TOTAL PLAN ASSETS)
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Government of India Securities
+39.59%
+31.68%
+State Government Securities
+24.56%
+27.62%
+High Quality Corporate Bonds
+0.00%
+0.00%
+Equity shares of listed companies
+28.37%
+23.62%
+Property
+0.00%
+0.00%
+Special Deposit Scheme
+0.00%
+0.00%
+BP denotes “Basis Points”
+ (H in lakhs)
+Year
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Year 1 
+ NA 
+ NA 
+Year 2 
+ NA 
+ NA 
+Year 3 
+ NA 
+ NA 
+Year 4 
+ NA 
+ NA 
+Year 5 
+ NA 
+ NA 
+Next 5 Years 
+ NA 
+ NA 
+ Expected Contributions in Following Years [mid-year cash flows]
+"NA " denoted " Not Available"
+Expected Benefit Payments in Following Years [mid-year cash flows]
+318
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 303 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+The principal assumptions used for the purpose of actuarial valuation of International 
+Ship Repair Facility (ISRF) and CSL Mumbai Ship Repair Unit (CMSRU) were as follows:
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Discount Rate (p.a)-ISRF
+7.10%
+7.30%
+Discount Rate (p.a)-CMSRU
+7.10%
+7.30%
+Rate of increase in compensation levels
+3.00%
+3.00%
+Attrition Rate
+2.00%
+2.00%
+Expected Rate of Return on Plan Asset
+0.00%
+0.00%
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Service Cost:
+	
+Current  Service Cost
+ 23.18 
+ 24.28 
+	
+Past  Service Cost
+ - 
+ - 
+	
+Net Interest expense
+ 15.66 
+ 16.58 
+Components of defined benefit costs recognised in statement of profit  and loss
+ 38.84 
+ 40.86 
+Remeasurement of the net defined benefit liability:
+Actuarial (Gain)/Loss on Plan Obligations
+ (20.20)
+ (93.24)
+Difference between Actual Return and Interest income on Plan assets  (gain)/loss
+Components of defined benefit costs recognised in Other Comprehensive Income
+ (20.20)
+ (93.24)
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Present Value of Defined Benefit Obligation at end of the year
+ 233.26 
+ 214.62 
+Less: Fair Value of Plan Assets at the end of the year
+ - 
+ - 
+Net Liabilities /(Assets) recognized in the Balance Sheet
+ 233.26 
+ 214.62 
+Amount recognised in the Statement of Profit and Loss/Other comprehensive income in respect of defined benefit plans 
+are as follows:-
+The amount included in the Balance Sheet arising from the entity’s obligation in respect of its defined benefit plan is as 
+follows:-
+MAJOR CATEGORIES OF PLAN ASSETS (AS PERCENTAGE OF TOTAL PLAN ASSETS)
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Funds managed by Insurer
+0.31%
+0.33%
+Others 
+7.17%
+16.75%
+Total
+100.00%
+100.00%
+The plan assets are managed by the Gratuity Trust formed by the Holding Company.
+Annual Report 2023-24
+319
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 304 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended Mar 31, 2024
+Year
+ISRF
+CMSRU
+Year 1 
+ NA 
+ NA 
+Year 2 
+ NA 
+ NA 
+Year 3 
+ NA 
+ NA 
+Year 4 
+ NA 
+ NA 
+Year 5 
+ NA 
+ NA 
+Next 5 Years 
+ NA 
+ NA 
+ (H in lakhs)
+Particulars
+For the year ended Mar 31, 2024
+Year
+ISRF
+CMSRU
+Year 1
+ 46.67 
+ 5.53 
+Year 2
+ 28.57 
+ - 
+Year 3
+ 39.88 
+ 4.06 
+Year 4
+ 18.71 
+ 2.14 
+Year 5
+ 2.99 
+ - 
+Next 5 Years
+ 78.26 
+ 6.41 
+ (H in lakhs)
+Particulars
+For the year ended Mar 31, 2023
+Year
+ISRF
+CMSRU
+Year 1 
+ NA 
+ NA 
+Year 2 
+ NA 
+ NA 
+Year 3 
+ NA 
+ NA 
+Year 4 
+ NA 
+ NA 
+Year 5 
+ NA 
+ NA 
+Next 5 Years 
+ NA 
+ NA 
+“NA “ denoted “ Not Available” 
+Expected Contributions in Following Years [mid-year cash flows]
+“NA “ denoted “ Not Available” 
+Expected Benefit Payments in Following Years [mid-year cash flows]
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Defined Benefit Obligation at beginning of the year
+ 214.62 
+ 267.00 
+Current Service Cost
+ 23.18 
+ 24.28 
+Current Interest Cost
+ 15.66 
+ 16.58 
+Past Service Cost
+Actuarial (Gain)/ Loss
+ (20.20)
+ (93.24)
+Benefits paid
+Defined Benefit Obligation at end of the year
+ 233.26 
+ 214.62 
+Movements in present value of the defined benefit obligation are as follows:-
+ISRF & CMSRU gratuity is self managed by the Holding Company.
+Expected Contributions in Following Years [mid-year cash flows]
+320
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 305 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Particulars
+ISRF
+CMSRU
+A.	 Discount Rate + 100 BP
+8.10%
+8.10%
+	
+Defined Benefit Obligation [PVO]
+ 207.27 
+ 17.54 
+	
+Variation
+(3.64)%
+(3.36)%
+B.	 Discount Rate - 100 BP
+6.10%
+6.10%
+	
+Defined Benefit Obligation [PVO]
+ 223.62 
+ 18.81 
+	
+Variation
+3.96%
+3.63%
+C.	 Salary Escalation Rate + 100 BP
+4.00%
+4.00%
+	
+Defined Benefit Obligation [PVO]
+ 222.80 
+ 18.74 
+	
+Variation
+3.58%
+3.24%
+D.	 Salary Escalation Rate - 100 BP
+2.00%
+2.00%
+	
+Defined Benefit Obligation [PVO]
+ 207.91 
+ 17.60 
+	
+Variation
+(3.34)%
+(3.05)%
+Particulars
+ISRF
+CMSRU
+A.	 Discount Rate + 100 BP
+8.30%
+8.30%
+	
+Defined Benefit Obligation [PVO] 
+ 187.92 
+ 18.27 
+	
+Variation 
+(4.02)%
+(2.94)%
+B.	 Discount Rate - 100 BP 
+6.30%
+6.30%
+	
+Defined Benefit Obligation [PVO] 
+ 204.35 
+ 19.42 
+	
+Variation 
+4.37%
+3.17%
+C.	 Salary Escalation Rate + 100 BP
+4.00%
+4.00%
+	
+Defined Benefit Obligation [PVO] 
+ 203.65 
+ 19.35 
+	
+Variation 
+4.01%
+2.78%
+D.	 Salary Escalation Rate - 100 BP
+2.00%
+2.00%
+	
+Defined Benefit Obligation [PVO] 
+ 188.44 
+ 18.33 
+	
+Variation
+(3.75)%
+(2.62)%
+ (H in lakhs)
+Particulars
+For the year ended Mar 31, 2023
+Year
+ISRF
+CMSRU
+Year 1 
+ 25.46 
+ 5.97 
+Year 2 
+ 32.56 
+ 3.88 
+Year 3 
+ 22.42 
+ - 
+Year 4 
+ 27.83 
+ 2.91 
+Year 5 
+ 18.96 
+ 1.56 
+Next 5 Years 
+ 68.53 
+ 4.49 
+Expected Benefit Payments in Following Years [mid-year cash flows]
+Sensitivity Analysis as on 31.03.2024
+BP denotes "Basis Points" 
+Sensitivity Analysis as on 31.03.2023
+Annual Report 2023-24
+321
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 306 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Discount Rate (p.a)
+7.20%
+7.30%
+Rate of increase in compensation levels
+5.00%
+3.00%
+Attrition Rate- Half Pay Leave
+0.00%
+0.00%
+Average Duration of Defined Benefit Obligation (In years)
+ 16.37 
+ 18.19 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Service Cost:
+	
+Current  Service Cost
+1.86
+ 3.67 
+	
+Past service cost
+ 1.03 
+	
+Net Interest expense
+0.34
+ - 
+Acturial (Gain)/Loss recognised during the period
+21.54
+ - 
+Expenses recognised in the statement of profit and loss
+ 23.74 
+ 4.70 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Present Value of Defined Benefit Obligation at end of the year
+28.31
+ 4.70 
+Fair Value of Plan Assets at the end of the year
+ - 
+Net Liabilities /(Assets) recognized in the Balance Sheet
+ 28.31 
+ 4.70 
+ (H in lakhs)
+Type of Employee Benefit
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Current Component of PVO
+2.46
+ 0.11 
+Non-Current Component of PVO
+25.85
+ 4.59 
+TOTAL PVO
+ 28.31 
+ 4.70 
+ 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Defined Benefit Obligation at beginning of the year
+4.70
+Current & Past Service Cost
+1.86
+ 3.67 
+Current Interest Cost
+0.34
+ 1.03 
+Actuarial (Gain)/ Loss
+21.54
+ - 
+Benefits paid
+(0.13)
+ - 
+Defined Benefit Obligation at end of the year
+ 28.31 
+ 4.70 
+Employee Benefit Plans of UCSL (Subsidiary)
+Defined Benefit Plan - Compensated absences
+The principal assumptions used for the purpose of actuarial valuation were as follows:
+Amount recognised in the Statement of Profit and Loss in respect of defined benefit plans are as follows:-
+The amount included in the Balance Sheet arising from the entity's obligation in respect of its defined benefit plan is as 
+follows:-
+Movements in present value of the defined benefit obligation are as follows:- 
+322
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 307 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Fair Value of Plan Assets at the beginning of the year
+ - 
+ - 
+Expected Return on Plan Assets
+ - 
+ - 
+Actuarial (Gain)/ Loss
+ - 
+ - 
+Contributions from the employer
+ - 
+ - 
+Benefits paid
+ - 
+ - 
+Fair Value of the Assets at the end of the year
+ - 
+ - 
+ (H in lakhs)
+Year
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Year 1
+ 2.09 
+ NA 
+Year 2
+ 0.34 
+ NA 
+Year 3
+ - 
+ NA 
+Year 4
+ 0.31 
+ NA 
+Year 5
+ 0.48 
+ NA 
+6 years and above
+ 25.09 
+ NA 
+Sensitivity Analysis
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+A.	 Discount Rate + 100 BP
+8.20%
+8.30%
+	
+Defined Benefit Obligation [PVO] 
+ 25.72 
+ 4.31 
+	
+Variation 
+(9.15)%
+(8.25)%
+B.	 Discount Rate - 100 BP 	
+6.20%
+6.30%
+	
+Defined Benefit Obligation [PVO] 
+ 31.36 
+ 5.16 
+	
+Variation 
+10.76%
+9.92%
+C.	 Salary Escalation Rate +100 BP
+6.00%
+4.00%
+	
+Defined Benefit Obligation [PVO] 
+ 31.25 
+ 5.16 
+	
+Variation 
+10.37%
+9.74%
+D.	 Salary Escalation Rate - 100 BP
+4.00%
+2.00%
+	
+Defined Benefit Obligation [PVO] 
+ 25.77 
+ 4.32 
+	
+Variation 
+(8.97)%
+(8.19)%
+The principal assumptions used for the purpose of actuarial valuation were as follows:
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Discount Rate (p.a) 
+7.10%
+7.30%
+Rate of increase in compensation levels 
+5.00%
+3.00%
+Expected Rate of Return on Plan Asset 
+0.00%
+0.00%
+Movements in the fair value of the plan assets are as follows: 
+Expected Contributions in Following Years [mid-year cash flows]
+ "NA " denoted " Not Available"
+BP denotes "Basis Points" 
+Defined Benefit Plan-Gratuity
+Annual Report 2023-24
+323
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 308 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Average Duration of Defined Benefit Obligations (In years)
+12.74
+5.78
+Amount recognised in the Statement of Profit and Loss/Other comprehensive income in respect of defined benefit plans 
+are as follows:-
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Service Cost:
+	
+Current  Service Cost
+ 22.44 
+ 11.85 
+	
+Past  Service Cost
+ - 
+ - 
+	
+Net Interest expense
+ 1.44 
+ 0.50 
+Components of defined benefit costs recognised in statement of profit  and loss
+23.88
+ 12.35 
+Remeasurement of the net defined benefit liability:
+Actuarial (Gain)/Loss on Plan Obligations
+ 3.82 
+ (0.62)
+Difference between Actual Return and Interest income on Plan assets (gain)/loss
+ - 
+Components of defined benefit costs recognised in Other Comprehensive Income
+ 3.82 
+ (0.62)
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Present Value of Defined Benefit Obligation at end of the year
+ 47.58 
+ 19.79 
+Less: Fair Value of Plan Assets at the end of the year
+ 48.13 
+ - 
+Net Liabilities /(Assets) recognized in the Balance Sheet
+ (0.55)
+ 19.79 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Defined Benefit Obligation at beginning of the year 
+ 19.79 
+ 8.06 
+Current Service Cost 
+ 22.44 
+ 11.85 
+Current Interest Cost 
+ 1.44 
+ 0.50 
+Past Service Cost 
+ - 
+ - 
+Actuarial (Gain)/ Loss 
+ 3.91 
+ (0.62)
+Benefits paid 
+ - 
+ - 
+Defined Benefit Obligation at end of the year 
+ 47.58 
+ 19.79 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Fair Value of Plan Assets at the beginning of the year
+ - 
+Expected Return on Plan Assets
+ - 
+Actuarial Gain/(Loss)
+ 0.09 
+ - 
+Contributions from the employer
+ 48.04 
+ - 
+Benefits paid
+ - 
+Fair Value of the Assets at the end of the year
+ 48.13 
+ - 
+The amount included in the Balance Sheet arising from the entity's obligation in respect of its defined benefit plan is as 
+follows:-
+Movements in present value of the defined benefit obligation are as follows:-
+Movements in the fair value of the plan assets are as follows:
+324
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 309 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Year
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Year 1 
+ 
+ NA 
+Year 2 
+ - 
+ NA 
+Year 3 
+ NA 
+Year 4 
+ NA 
+Year 5 
+ NA 
+Next 5 Years 
+ NA 
+ (H in lakhs)
+Year
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Year 1 
+ 1.78 
+ 0.30 
+Year 2 
+ 3.27 
+ 2.82 
+Year 3 
+ 1.21 
+ 13.57 
+Year 4 
+ 4.16 
+ 1.49 
+Year 5 
+ 3.00 
+ - 
+6 years and above 
+ 34.16 
+ 1.61 
+Sensitivity Analysis
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+A.	 Discount Rate + 100 BP 
+8.10%
+8.30%
+	
+Defined Benefit Obligation [PVO] 
+ 42.78 
+ 19.70 
+	
+Variation 
+(10.07)%
+(3.60)%
+B.	 Discount Rate - 100 BP 
+6.10%
+6.30%
+	
+Defined Benefit Obligation [PVO] 
+ 53.26 
+ 20.58 
+	
+Variation 
+11.93%
+4.05%
+C.	 Salary Escalation Rate + 100 BP 
+6.00%
+4.00%
+	
+Defined Benefit Obligation [PVO] 
+ 53.07 
+ 20.51 
+	
+Variation 
+11.54%
+3.68%
+D.	 Salary Escalation Rate - 100 BP 
+4.00%
+2.00%
+	
+Defined Benefit Obligation [PVO] 
+ 42.86 
+ 19.13 
+	
+Variation 
+(9.92)%
+(3.31)%
+Expected Contributions in Following Years [mid-year cash flows]
+"NA " denoted " Not Available"
+Expected Benefit Payments in Following Years [mid-year cash flows]
+BP denotes "Basis Points"
+MAJOR CATEGORIES OF PLAN ASSETS (AS PERCENTAGE OF TOTAL PLAN ASSETS)
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Government of India Securities
+ - 
+NA
+State Government Securities
+ - 
+NA
+High Quality Corporate Bonds
+ - 
+NA
+Equity shares of listed companies
+ - 
+NA
+Property
+ - 
+NA
+Special Deposit Scheme
+ - 
+NA
+ (H in lakhs)
+Annual Report 2023-24
+325
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 310 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended  
+31st March, 2024
+For the year ended  
+31st March, 2023
+Gratuity
+Leave 
+Encashment
+Gratuity
+Leave 
+Encashment
+I
+Components of Employer Expense 
+Recognised in the Statement of Profit and Loss:
+1
+Current Service Cost
+ 4.81 
+ 3.42 
+ 4.75 
+ 2.06 
+2
+Past Service Cost
+ - 
+ - 
+ - 
+ - 
+3
+Net Interest Cost
+ 0.63 
+ 0.59 
+ 0.26 
+ 0.42 
+4
+Actuarial gains/(losses)
+ - 
+ (0.48)
+ - 
+ 0.72 
+5
+Total expense recognised in the Statement of Profit and Loss
+ 5.44 
+ 3.54 
+ 5.01 
+ 3.20 
+Re-measurements recognised in Other Comprehensive Income
+6
+Return on plan assets (greater)/less than discount rate
+ - 
+ - 
+ - 
+ - 
+7
+Effect of changes in assumptions
+ 0.55 
+ - 
+ - 
+ - 
+8
+Effect of experience adjustments
+ (1.39)
+ - 
+ 0.08 
+ - 
+9
+Total re-measurements included in Other Comprehensive 
+Income
+ (0.84)
+ - 
+ 0.08 
+ - 
+10 Total defined benefit cost recognised in the Statement of 
+Profit and Loss and Other Comprehensive Income (5+9)
+ 4.60 
+ 3.54 
+ 5.09 
+ 3.20 
+MAJOR CATEGORIES OF PLAN ASSETS (AS PERCENTAGE OF TOTAL PLAN ASSETS)
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Funds managed by Insurer
+ - 
+NA
+Others  (Life Insurance Corporation of India)
+100.00%
+NA
+Total
+100.00%
+NA
+The plan assets are managed through Group Gratuity Scheme of Life Insurance Corporation of India.
+Employee Benefit Plans of HCSL (Subsidiary)
+Defined Benefit Plans/Long Term Compensated Absences
+Description of Plans:
+The Company has not taken any funded plan for gratuity of its employees. The present value of obligation is determined in accordance 
+with the advice of independent, Professionally qualified actuaries using the projected unit credit method, which is recognised in each 
+period of service as giving rise to additional unit of employee benefit entitlement and measures each unit separately to build up the 
+final obligation. The net Defined Benefit cost is recognised by the company in the Financial Statements.
+Risk:
+The Defined Benefit Plans expose the Company to interest rate risk, salary cost inflation risk and Demographic risk.
+Interest Rate Risk: The present value of Defined Benefit Plans liability is determined using the discount rate based on the market yields 
+prevailing at the end of reporting period on Government bonds. A decrease in yields will increase the fund liabilities and vice-versa.
+Salary Cost Inflation Risk: The present value of the Defined Benefit Plan liability is calculated with reference to the future salaries of 
+participants under the Plan. Increase in salary might lead to higher liabilities.
+Demographic risk : This is the risk of variability of results due to unsystematic nature of decrements that include mortality, withdrawal, 
+disability and retirement. The effect of these decrements on the defined benefit obligation is not straight forward and depends upon 
+the combination of salary increase, discount rate and vesting criteria. It is important not to overstate withdrawals because in the financial 
+analysis the retirement benefit of a short career employee typically costs less per year as compared to a long service employee.
+326
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 311 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended  
+31st March, 2024
+For the year ended  
+31st March, 2023
+Gratuity
+Leave 
+Encashment
+Gratuity
+Leave 
+Encashment
+II
+Net Liability/(Asset) recognised in Balance Sheet 
+Present Value of Defined Benefit Obligation
+ 13.25 
+ 10.90 
+ 8.65 
+ 8.90 
+Fair Value of Plan Assets
+ - 
+ - 
+ - 
+ - 
+Net liability:
+	
+- Non-Current
+ 13.11 
+ 10.68 
+ 8.58 
+ 8.68 
+	
+- Current
+ 0.14 
+ 0.22 
+ 0.07 
+ 0.22 
+III Change in Defined Benefit Obligation (DBO)
+1
+Present Value of DBO at the beginning of the year
+ 8.65 
+ 8.90 
+ 3.56 
+ 5.70 
+2
+Current Service Cost
+ 4.81 
+ 3.42 
+ 4.75 
+ 2.06 
+3
+Past Service Cost
+ - 
+ - 
+ - 
+ - 
+4
+Net Interest Cost
+ 0.63 
+ 0.59 
+ 0.26 
+ 0.42 
+5
+Actuarial gains/(losses)
+ - 
+ (0.48)
+ - 
+ 0.72 
+6
+Remeasurement gains /(losses): 
+a	
+Effect of changes in demographic assumptions
+ - 
+ - 
+ - 
+ - 
+b	
+Effect of changes in financial assumptions
+ 0.55 
+ - 
+ - 
+ - 
+c	
+Changes in asset ceiling (excluding interest income)
+ - 
+ - 
+ - 
+ - 
+d	
+Effect of experience adjustments
+ (1.39)
+ - 
+ 0.08 
+ - 
+7
+Curtailment Cost/(Credits)
+ - 
+ - 
+ - 
+ - 
+8
+Settlement Cost/(Credits)
+ - 
+ - 
+ - 
+ - 
+9
+Acquisitions credit/ (cost)
+ - 
+ - 
+ - 
+ - 
+10 Effects of transfer In/(Out)
+ - 
+ - 
+ - 
+ - 
+11 Benefits Paid
+ - 
+ (1.53)
+ - 
+ - 
+12 Net defined benefit liability/ (asset) at end of current period
+ 13.25 
+ 10.90 
+ 8.65 
+ 8.90 
+IV Best Estimate of Employers’ Expected Contribution for 
+the next year
+Gratuity
+ 13.25 
+ 8.65 
+ NA 
+V
+Change in Fair Value of Assets
+1
+Plan Assets at the beginning of the year
+ - 
+ - 
+ - 
+ - 
+2
+Acquisition adjustment
+ - 
+ - 
+ - 
+ - 
+3
+Interest income on plan assets
+ - 
+ - 
+ - 
+ - 
+4
+Employer contributions
+ - 
+ - 
+ - 
+ - 
+5
+Return on plan assets greater/(lesser) than discount rate
+ - 
+ - 
+ - 
+ - 
+6
+Benefits paid
+ - 
+ - 
+ - 
+ - 
+7
+Fair Value of assets at the end of current period
+ - 
+VI Actuarial Assumptions
+1
+Discount rate per annum
+7.30%
+7.30%
+7.30%
+7.30%
+2
+Rate of Escalation in Salary
+3.00%
+3.00%
+3.00%
+3.00%
+3
+Mortality Rate
+Indian 
+Assured Lives 
+Mortality 
+(2006-08) 
+Ultimate
+Indian 
+Assured Lives 
+Mortality 
+(2006-08) 
+Ultimate
+Indian 
+Assured Lives 
+Mortality 
+(2006-08) 
+Ultimate
+Indian 
+Assured Lives 
+Mortality 
+(2006-08) 
+Ultimate
+4
+Withdrawal
+0.70%
+0.70%
+0.70%
+0.70%
+The current service cost, past service cost and net interest cost for the year pertaining to Gratuity expenses have been recognised 
+in “Contribution to Provident and other funds” and Leave Encashment in “Employee Salaries & Allowances” under Note 39. The 
+remeasurements of the net defined benefit liability are included in Other Comprehensive Income.
+Annual Report 2023-24
+327
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 312 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+VII.	 Sensitivity Analysis
+	
+The Sensitivity Analysis below has been determined based on reasonably possible change of the respective assumptions 
+occurring at the end of the reporting period, while holding all other assumptions constant. These sensitivities show the 
+hypothetical impact of a change in each of the listed assumptions in isolation. While each of these sensitivities holds all other 
+assumptions constant, in practice such assumptions rarely change in isolation and the asset value changes may offset the impact 
+to some extent. For presenting the sensitivities, the present value of the Defined Benefit Obligation has been calculated using 
+the projected unit credit method at the end of the reporting period, which is the same as that applied in calculating the Defined 
+Benefit Obligation presented above. There was no change in the methods and assumptions used in the preparation of the 
+Sensitivity Analysis from previous year.
+ (H in lakhs)
+Particulars
+As at 31st March, 2024
+As at 31st March, 2023
+Gratuity
+Leave 
+Encashment
+Gratuity
+Leave 
+Encashment
+A
+Discount Rate
+7.00%
+7.00%
+7.30%
+7.30%
+Effect on DBO due to 1% increase in Discount Rate
+ (1.71)
+ (1.61)
+ (1.07)
+ (1.13)
+Percentage Impact
+(12.90)%
+(14.80)%
+(12.40)%
+(12.60)%
+Effect on DBO due to 1% decrease in Discount Rate
+ 2.07 
+ 1.97 
+ 1.29 
+ 1.35 
+Percentage Impact
+15.60%
+18.00%
+14.90%
+15.10%
+B
+Salary Escalation Rate
+3.00%
+3.00%
+3.00%
+3.00%
+Effect on DBO due to 1% increase in Salary Escalation 
+Rate
+ 2.13 
+ 1.39 
+ 1.33 
+ 1.39 
+Percentage Impact
+16.10%
+12.80%
+15.40%
+15.70%
+Effect on DBO due to 1% decrease in Salary Escalation 
+Rate
+ (1.78)
+ (2.10)
+ (1.12)
+ (1.18)
+Percentage Impact
+(13.50)%
+(19.30)%
+(13.00)%
+(13.20)%
+Maturity Analysis of the Benefit Payments
+Year 1
+ 0.14 
+ 0.20 
+ 0.07 
+ 0.23 
+Year 2
+ 0.16 
+ 0.21 
+ 0.27 
+ 0.30 
+Year 3
+ 1.25 
+ 0.21 
+ 2.55 
+ 0.38 
+Year 4
+ 0.25 
+ 0.22 
+ 3.69 
+ 0.47 
+Year 5
+ 0.27 
+ 0.23 
+ 0.66 
+ 0.57 
+Next 5 Years
+ 5.41 
+ 2.60 
+ 16.53 
+ 16.07 
+	
+Amounts towards Defined Contribution Plans have been recognised under “Contribution to Provident and other funds” in 
+ Note 39: H37.12 Lakh (2023 - H32.03 Lakh).
+Note 40: Finance Costs
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Interest expense on lease liabilities
+ 4,163.54 
+ 3,975.85 
+Interest  on  tax free bonds
+ 771.70 
+ 1,051.44 
+Interest on Cash credit
+ 29.36 
+ 28.40 
+Interest  others
+ 20.74 
+ 40.12 
+ 4,985.34 
+ 5,095.81 
+Less:Expenditure during construction
+ (1,661.23)
+ (1,593.22)
+Total
+ 3,324.11 
+ 3,502.59 
+328
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 313 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Depreciation on property, plant and equipments
+ 5,165.60 
+ 5,408.51 
+Depreciation on Right Of Use  Assets
+ 1,948.13 
+ 1,630.32 
+Amortisation of intangible asset
+ 921.06 
+ 396.09 
+Total
+ 8,034.79 
+ 7,434.92 
+Less:Expenditure during construction
+ (576.97)
+ (550.71)
+Total
+ 7,457.82 
+ 6,884.21 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Consumption of stores & spares
+ 3,155.97 
+ 2,632.01 
+Dimunition in value  of  Loose tools
+ 150.49 
+ 133.33 
+Rates  and  taxes
+ 71.74 
+ 126.70 
+Power
+ 2,847.29 
+ 2,741.04 
+Fuel
+ 573.66 
+ 138.96 
+Water
+ 421.28 
+ 390.91 
+Repairs and maintenance:
+	
+Building and roads
+ 853.95 
+ 1,460.08 
+	
+Plant and machinery
+ 385.77 
+ 271.59 
+	
+Others
+ 2,090.56 
+ 1,668.61 
+Maintenance dredging 
+ 243.93 
+ 616.82 
+Transport and stores handling
+ 204.04 
+ 105.37 
+Travelling and conveyance expenses 
+ 1,282.76 
+ 1,171.73 
+Printing and stationery
+ 111.60 
+ 94.00 
+Postage, telephone and telex
+ 65.35 
+ 54.11 
+Advertisement and publicity
+ 1,081.87 
+ 424.34 
+Lease rent 
+ 1.58 
+ 10.60 
+Hire charges 
+ 1,292.96 
+ 588.95 
+Insurance charges
+ 639.03 
+ 652.55 
+Security expenses
+ 2,571.09 
+ 2,579.08 
+Payments to Auditors
+ 39.19 
+ 37.55 
+Training expenses
+ 821.09 
+ 750.98 
+Legal expenses
+ 48.43 
+ 84.45 
+Consultancy
+ 150.70 
+ 66.50 
+Bank charges
+ 1,298.35 
+ 826.70 
+Net loss on foreign currency transactions
+ - 
+ 109.01 
+Loss on Forex Derivative Transactions 
+ 724.89 
+ - 
+Corporate social responsibility (Refer Note no.54)
+ 1,384.38 
+ 1,654.96 
+Loss on sale/write off of property, plant and equipments
+ 0.87 
+ 4.92 
+Penalty payment
+ - 
+ 38.89 
+Loss on lease modification
+ - 
+ 32.08 
+Bad debts written off
+ 96.98 
+ - 
+R&D and New initiatives *
+ 626.18 
+ 864.16 
+Miscellaneous expenses
+ 1,646.93 
+ 816.84 
+Total
+ 24,882.91 
+ 21,147.82 
+Note 41: Depreciation and Amortisation Expenses
+Note 42: Other Expenses
+Persuant to extension of lease agreement, ROU and lease liabilities in the books of accounts of UCSL stood as at 23.12.2022 (the 
+date of Lease Modification) were remeasured and loss on lease moditication amounting to H32.08 lakhs charged off to Profit and 
+Loss account during FY 2022-23.
+Annual Report 2023-24
+329
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 314 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Auditors remuneration, Auditors remuneration for other services and Miscellaneous expenses include:
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+For Audit Fees
+24.50
+ 24.50 
+For Limited Review/other services
+11.69
+ 11.30 
+For Certifications
+3.00
+ 1.75 
+Total
+ 39.19 
+ 37.55 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Loss allowance for Trade Receivables
+ 1,659.04 
+ 730.47 
+Expenses and contingencies
+ 520.01 
+ - 
+Profit share to lessor
+ 210.86 
+ 268.74 
+Loss on Ship Building
+ 898.00 
+ - 
+Total
+ 3,287.91 
+ 999.21 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Sale of excluded ships on behalf of CoC
+-	
+Y123
+ 3,850.00 
+-	
+Y159
+ 655.00 
+Less: Sale proceeds directly collected by/passed on to CoC as per NCLT order
+ (655.00)
+ (3,850.00)
+Prior period error
+ - 
+ 6,181.35 
+Total
+ - 
+ 6,181.35 
+*R&D and New initiatives includes the following:
+ 
+ 
+National Centre of Excellence for Green Port & Shipping (NCoEGPS)  is a major initiative by the Ministry of Ports, Shipping 
+and Waterways (MoPSW) towards providing greener solutions. The Energy and Resources Institute (TERI) is the knowledge 
+and implementation partner for this project. The centre aims to develop a regulatory framework and alternate technology 
+adoption road map for Green Shipping to foster carbon neutrality and circular economy (CE) in shipping sector in India. MoPSW 
+, Deendayal Port Authority Kandal, Paradip Port Authority Paradip, V O Chidambaranar Port authority Thoothukudi & Cochin 
+Shipyard Ltd have partnered to develop NCoEGPS by providing funding support for infrastructure development and supporting 
+research and capacity-building activities/initiatives for 5 years. During FY 22-23, CSL has paid H475.00 lakhs to TERI which has 
+been reported as R&D expenses.
+ 
+ 
+USHUS is a start-up support program of  CSL in association with Indian Institute of Management Kozhikode (IIM K) &  Indian 
+Institutes of Technology Madras (IIT) to augment the Government of India’s initiatives to encourage and develop an ecosystem 
+in India to support Maritime Start-ups. As part of this program maritime start-ups will receive seed funds from CSL as grants/
+investments. IIMK LIVE  & IIT Madras will  review and recommend the proposals received under this scheme for investment by 
+CSL. Fee for their services amounts to  H7.00 lakhs(Previous Year - H18.50 lakhs). H90 Lakhs has been disbursed to five start ups 
+identified by IIM K under seed funding scheme during the F.Y 2023-24.
+ 
+ 
+M/s Boston Consulting group was entrusted with preparation of detailed report for Setting up of Ship repair cluster (Mumbai & 
+Kochi) in India in line with MoPSW’s Maritime India Vision-2030 for an amount of H686.00 lakhs out of which H343.00 lakhs has 
+been charged to Profit and loss account during current year. M/s Boston Consulting group is also entrusted for preparation of 
+detailed report for Setting up of Ship repair business in Vadinar, Gujrat in India for an amount of H137.00 lakhs.
+Note 43: Provision for Anticipated Losses and Expenditure
+Note 44: Exceptional items
+330
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 315 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Net Profit after tax (H in lakhs)
+ 78,327.78 
+ 30,470.91 
+Basic and Diluted Earnings Per Share (EPS) ( in H )
+29.77
+11.58
+Face value per share ( in H)
+5.00
+5.00
+The land and water area on which the International Ship Repair Facility (ISRF) project is being constructed has been taken on lease from 
+Cochin Port Trust.  The company has commenced development of the new ship repair facility with effect from 09th Jan 2018. The 
+lease period of 30 years commences from date of Environmental Clearance. The Company has not considered capitalization of said 
+cost amounting to H8288.21 lakhs from the commencement of project construction/development till 31 Mar 2023. As the amount 
+is less than the materiality level arrived by the Company, the management rectified/corrected the prior periods error amounting to 
+H6181.35 Lakhs during the financial year 2022-23, which was duly classified as ‘Exceptional items’.
+Persuant to NCLT Order, Tripartite agreement was entered into among UCSL, Committee of Creditors & HAL Offshore limited, for 
+effecting transfer of title of excluded ship bearing Hull No. Y 123 in FY 2022-23. In accorance with the agreement, Tax invoice was 
+raised by company for the consideration of H3850 lakhs which was collected directly by CoC. GST portion amounting to H192.50 lakhs 
+(5% on sale consideration) collected by company from the transferee to facilitate GST remittance has been remitted to Govt treasury.
+However, during current financial year, Tripartite agreement has been entered into among UCSL, Committee of Creditors & SAN 
+Marine, for effecting transfer of title of excluded ship bearing Hull No. Y159. In accordance with the agreement, Tax invoice have 
+been raised by UCSL for the consideration of H655.00 Lakhs which was collected by CoC. GST portion amounting to H32.75 Lakhs (5% 
+on sale consideration) alone collected by UCSL from the transferee and later remitted to Govt treasury.
+Note 45: Earnings per Equity Share
+Refer Note No:21.1
+Note 46: Additional Disclosures under  Ind AS 115-"Revenue from Contract with Customers”
+A.	
+Disclosures of Disaggregated revenue as per Ind AS 115
+ (H in lakhs)
+Type of Product or Services
+Year ended 31 March 2024
+Revenue as 
+per 
+Ind AS 115
+Method for measuring 
+performance obligation
+Total as per 
+Statement 
+of Profit 
+and Loss 
+Input 
+Method
+Output 
+Method 
+A.	 Revenue from goods or services transferred over time
+	
+(i)	 Sale of products
+	
+	
+Ship building:
+	
+	
+	
+Indigenous Aircraft Carrier (IAC)
+1,20,271.77 
+ - 
+ 1,20,271.77 
+ 1,20,271.77 
+	
+	
+	
+Vessels other than IAC
+1,56,147.69 
+ - 
+ 1,56,147.69 
+ 1,56,147.69 
+	
+	
+Other operating revenue:
+	
+	
+	
+Ship Building Financial Assistance
+ 5,302.36 
+ 5,302.36 
+ - 
+ 5,302.36 
+	
+(ii)	Sale of services
+	
+	
+Ship repairs
+ 98,681.23 
+ - 
+ 98,681.23 
+ 98,681.23 
+	
+	
+Other operating revenue
+	
+	
+Management fee
+ 1,575.94 
+ - 
+ 1,575.94 
+ 1,575.94 
+Annual Report 2023-24
+331
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 316 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Trade Receivables
+ 35,547.56 
+ 33,841.50 
+Contract Assets
+ 76,011.63 
+ 51,119.32 
+Contract Liabilities
+ 4,96,202.62 
+ 3,87,207.41 
+ (H in lakhs)
+Type of Product or Services
+Year ended 31 March 2023
+Revenue as 
+per 
+Ind AS 115
+Method for measuring 
+performance obligation
+Total as per 
+Statement 
+of Profit 
+and Loss 
+Input 
+Method
+Output 
+Method 
+A.	 Revenue from goods or services transferred over time
+	
+(i)	 Sale of products 
+	
+	
+Ship building:
+	
+	
+	
+Indigenous Aircraft Carrier (IAC)
+1,42,418.66 
+ - 
+ 1,42,418.66 
+1,42,418.66 
+	
+	
+	
+Vessels other than IAC
+ 34,373.45 
+ 2,543.01 
+ 31,830.44 
+ 34,373.45 
+	
+	
+	
+Other operating revenue
+	
+	
+	
+Ship Building Financial Assistance
+ 1,424.67 
+ 1,424.67 
+ - 
+ 1,424.67 
+(ii)	Sale of services
+	
+Ship repairs
+ 55,088.35 
+ 757.35 
+ 54,331.00 
+ 55,088.35 
+	
+Other operating revenue
+	
+Management fee
+ 1,537.50 
+ - 
+ 1,537.50 
+ 1,537.50 
+B.	 Revenue from goods or services transferred to 
+customers at a point in time
+	
+Other operating revenue
+	
+Sale of Ship Building Scrap
+ 1,017.44 
+ - 
+ - 
+ 1,017.44 
+	
+Sale of Ship Repair Scrap
+ 532.18 
+ - 
+ - 
+ 532.18 
+	
+Sale of stock items
+ 63.23 
+ - 
+ - 
+ 63.23 
+	
+Total
+2,36,455.48 
+ (H in lakhs)
+Type of Product or Services
+Year ended 31 March 2024
+Revenue as 
+per 
+Ind AS 115
+Method for measuring 
+performance obligation
+Total as per 
+Statement 
+of Profit 
+and Loss 
+Input 
+Method
+Output 
+Method 
+B.	 Revenue from goods or services transferred to 
+customers at a point in time
+	
+Other operating revenue
+	
+Sale of Ship Building Scrap
+ 566.12 
+ - 
+ - 
+ 566.12 
+	
+Sale of Ship Repair Scrap
+ 376.88 
+ - 
+ - 
+ 376.88 
+	
+Sale of stock items
+ 123.43 
+ - 
+ - 
+ 123.43 
+	
+Total
+ 3,83,045.42 
+B.	
+Contract balances
+332
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 317 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Contract asset at the beginning of the year
+ 51,119.32 
+ 35,028.44 
+Contract asset at the end of the year
+ 76,011.63 
+ 51,119.32 
+Net (increase)/decrease
+ 24,892.31 
+ 16,090.88 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Contract liabilities at the beginning of the year
+ 3,87,207.41 
+ 2,26,054.62 
+Contract liabilities at the end of the year
+ 4,96,202.62 
+ 3,87,207.41 
+Net (increase)/decrease
+ 1,08,995.21 
+ 1,61,152.79 
+Movement in contract balances during the year
+C.	
+Details of transaction price allocated to unsatisfied/ partially satisfied performance obligations:
+	
+Aggregate amount of the transaction price allocated to the performance obligations that are unsatisfied (or partially unsatisfied) 
+as of the end of the reporting period amounts to H1626061.35 lakhs (excluding Cost Plus Part of IAC contract). The amount 
+of transaction price relating to unsatisfied performance obligation that are part of a contract that has an original expected 
+duration of one year or less has not been included in the above disclosure as permitted under Ind AS 115. Further the estimate 
+of the transaction price as above would not include any estimated amounts of variable consideration that are constrained.
+Management expects that 27.01 % of  transaction price allocated to unsatisfied/ partially satisfied contracts as of 31.03.2023, 
+as stated above, will be recognised as revenue during FY 2023-24 and the remaining thereafter.
+	
+During the year ended March 31,2023 the Group recognised revenue of H119708.43 lakhs arising from opening Contract 
+Liability as of April 01,2022.
+D.	
+Reconciliation of contracted price with revenue during the year
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Opening contracted price of orders 
+ 24,68,756.76 
+ 15,02,234.10 
+Add:
+Fresh orders/change orders received (net)
+ 76,210.73 
+ 10,09,900.07 
+Increase due to additional consideration including Shipbuilding Financial 
+assistance
+ 42,750.07 
+ 2,745.77 
+Increase due to exchange rate movements (net)
+ 3,634.08 
+ 4,858.33 
+Less:
+Other deductions including variations, change orders etc.
+ 3,286.87 
+ 2,199.59 
+Orders completed during the year
+ 18,573.66 
+ 48,781.92 
+Closing contracted price of orders
+ 25,69,491.11 
+ 24,68,756.76 
+Total Revenue recognised during the year:
+ 2,10,351.28 
+ 74,514.75 
+Less: Revenue out of orders completed during the year
+ 11,025.49 
+ 5,428.88 
+Revenue out of orders under execution at the end of the year (I)
+ 1,99,325.79 
+ 69,085.87 
+Revenue recognised upto previous year (from orders pending completion at the 
+end of the year) (II)
+ 7,44,103.97 
+ 6,85,115.82 
+Decrease due to exchange rate movements (net) (III)
+Balance revenue to be recognised in future viz. Order book (IV)
+ 16,26,061.35 
+ 17,14,555.07 
+Closing contracted price of orders (I+II+III+IV)
+ 25,69,491.11 
+ 24,68,756.76 
+Annual Report 2023-24
+333
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 318 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Note 47: Additional Disclosures under Ind AS 116-"Leases"
+Rent and Hire charges Expense includes expense incurred for the year ended 31.03.2024 on Short term leases and leases of low value 
+assets amounting to H1294.54 lakhs (Previous year H599.55 lakhs).
+Total Cash outflow for leases for the year ended March 31,2024 including outflow on short term and low value leases is H3415.64 
+lakhs (Previous year  H2995.70 lakhs).
+The Group has lease term extension options that are not reflected in the measurement of lease liabilities.
+The details of the contractual maturities of lease liabilities on an undiscounted basis are as follows
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Less than one year
+ 2,943.93 
+ 2,905.98 
+One to five years
+ 13,367.83 
+ 12,719.60 
+More than five years
+ 1,13,593.80 
+ 1,21,540.14 
+Total
+ 1,29,905.56 
+ 1,37,165.72 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Less than one year
+ 127.40 
+ 35.78 
+One to five years
+ 287.18 
+ 159.87 
+More than five years
+ 159.69 
+ 204.41 
+Total
+ 574.27 
+ 400.06 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Opening Balance
+ 45,445.85 
+ 42,796.57 
+Add:Additions
+ 1,617.13 
+ 1,276.68 
+Add:Interest recognised during the year
+ 4,163.54 
+ 3,975.84 
+Less: Deletion/ Disposal
+ 44.14 
+ 80.04 
+Less: Payment made
+ 3,264.62 
+ 2,523.20 
+Closing Balance
+ 47,917.76 
+ 45,445.85 
+The details of the contractual maturities of leased assets on an undiscounted basis are as follows
+Movement of Lease Liabilities are as under:
+Note 48: Additional Disclosures for Hedge Accounting
+The Group enters into foreign exchange derivative contracts to offset the   foreign currency risks arising from the amounts 
+denominated in currencies other than Indian Rupee. The counter party to the Group’s foreign currency forward contracts is a bank.
+334
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 319 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Balance at the beginning of the year Cr/(Dr)
+(3578.40)
+0.97
+Changes in the fair value of effective portion of outstanding cash flow derivatives (Net)
+2984.65
+(3579.37)
+Balance at the end of the year
+(593.75)
+(3578.40)
+The company has the following outstanding forward contracts, which have been designated as Cash Flow Hedges, as on 
+31 Mar 24:
+ (H in lakhs)
+Currency
+No. of 
+contracts
+31-Mar-24
+No. of 
+contracts
+31-Mar-23
+Notional 
+amount of 
+contracts 
+Fair Value 
+Gain/ 
+(Loss)
+Notional 
+amount of 
+contracts 
+Fair Value 
+Gain/ 
+(Loss)
+Euro
+82
+114937.75
+(46.02)
+34
+63630.13
+(3892.22)
+NOK
+6
+7824.95
+(747.84)
+8
+13431.68
+(889.68)
+Total
+88
+122762.70
+(793.86)
+42
+77061.81
+(4781.90)
+The movement in Hedge reserve  for derivatives designated as cash Flow Hedges is as follows
+Note 49: CONTINGENT LIABILITIES AND COMMITMENTS
+Particulars
+As at 
+ 31  Mar 2024 
+(J  in Lakhs)
+As at 
+ 31  Mar 2023 
+(J  in Lakhs)
+Brief Description of the nature and obligation
+A
+CONTINGENT 
+LIABILITY  
+(To the extent not 
+provided for)
+a
+Guarantees 
+i
+Letters of Credit
+ 39,922.08 
+ 23,676.09 Represents Letter of Credit opened by the Group in various banks for 
+procurement of materials/assets
+ii
+Bank Guarantees
+ 89,615.43 
+ 83,995.04 Bank guarantees (including continuity guarantees) represent 
+guarantees issued by various banks on behalf of the Group to its 
+customers and other beneficiaries. Value of advance Bank Guarantee 
+outstanding as on Balance sheet date is included in Note 50
+b
+Other money 
+for which the 
+company is 
+contingently liable
+i
+Greater Cochin 
+Development 
+Authority (GCDA)
+ 69.06 
+ 69.06 Claim raised by GCDA for the land acquired for the Company is settled.   
+However 8 land acquisition revision petition cases (Valued at H69.06 
+lakhs) filed by evictees is pending with the Hon'ble  Supreme Court and 
+High Court.
+ii
+Customs duties
+ 10,543.96 
+ 6,485.78 Customs duty for materials under Bond for H4210 Lakhs. This also 
+includes  differential duty towards steel scrap sales and interest 
+thereon amounting to  H285.63 Lakhs, penalty on differential IGST for  
+H230 lakhs and H5752.16 lakhs towards duty paid under protest.
+Annual Report 2023-24
+335
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 320 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Particulars
+As at 
+ 31  Mar 2024 
+(J  in Lakhs)
+As at 
+ 31  Mar 2023 
+(J  in Lakhs)
+Brief Description of the nature and obligation
+iii
+Income Tax
+ 2,209.37 
+ 2,236.53 Demand relating to Assessment Years:                                                                                            
+AY 2010-11 - H126.26 Lakhs   
+AY 2014-15 - H911.07 Lakhs 
+AY 2017-18 - H331.77 Lakhs 
+AY 2018-19 - H20.76 Lakhs 
+AY 2020-21 - H819.51 Lakhs
+Detailed notes in Note no. 49.1 (I)
+iv
+Service Tax
+ 1,647.47 
+ 1,647.47 Demand of Service Tax on IAC (Design Consultancy) as per Show Cause 
+Notice issued. Appeal filed to CESTAT.
+ 376.67 
+ 376.67 Refund claim of Service Tax on IAC granted by Commissioner (Appeal). 
+However Department filed Appeal before CESTAT against the order of 
+Commissioner(Appeals). Also issued Show Cause Notice on CSL.
+ 323.04 
+ 323.04 Demand of Service Tax on IAC (Management Fee/Handling Charges) as 
+per Show Cause Notice issued. Appeal filed to CESTAT.
+ 2,339.64 
+ 2,339.64 Show Cause Notice issued for levy of service tax on ship repair without 
+allowing deduction of materials for which VAT paid  and disallowance 
+of Cenvat Credit. Proceedings under the show cause has been 
+dropped vide order no. COC-EXCUS-000-COM-18-17-18 dt 19.03.2018. 
+Department filed appeal to CESTAT.
+ 1,885.49 
+ 1,885.49 Show Cause Notice issued for levy of Service Tax on the repair of 
+vessels owned by UTLA  by denying the benefit of Notification 
+No.25/212-ST dt. 20-6-2012 available for the repair of vessels owned 
+by Govt. Departments. Proceedings under the show cause has been 
+dropped vide order no. COC-EXCUS-000-COM-11-17-18 dt 07.03.2018. 
+Department filed appeal to CESTAT.
+ 513.71 
+ 513.71 Show Cause Notice issued for levy of Service Tax on the repair of 
+vessels during FY 2015-16 owned by UTLA  by denying the benefit of 
+Notification No.25/212-ST dt. 20-6-2012 available for the repair of 
+vessels owned by Govt. Departments. 
+ 734.93 
+ 734.93 Show Cause Notice issued for levy of Service Tax on the repair of 
+vessels during FY 2016-17 owned by UTLA  by denying the benefit of 
+Notification No.25/212-ST dt. 20-6-2012 available for the repair of 
+vessels owned by Govt. Departments.
+ 150.57 
+ 150.57 Show Cause Notice issued for levy of service tax on ship repair during 
+the period 2015-16 without allowing deduction of materials for which 
+VAT paid  and disallowance of Cenvat Credit. Joint Commissioner vide 
+OIO No.48/2020-ST(JC) dt 31.12.2020 confirmed demand. Appeal filed 
+to Commissioner (Appeals) againt OIO.
+ 286.85 
+ 286.85 Show Cause Notice issued for levy of service tax on ship repair during 
+the period 2016-17 without allowing deduction of materials for which 
+VAT paid  and disallowance of Cenvat Credit. 
+ 279.46 
+ 279.46 Show Cause Notice issued for non payment of service tax on availing 
+services of persons in non-taxable territory for meeting contractual 
+warranty obligations and on cost of security provided to the 
+transportation of Barge from Cochin to Abu Dhabi. Appeal filed to 
+CESTAT.
+336
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 321 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Particulars
+As at 
+ 31  Mar 2024 
+(J  in Lakhs)
+As at 
+ 31  Mar 2023 
+(J  in Lakhs)
+Brief Description of the nature and obligation
+v
+Kerala Value Added 
+Tax (KVAT)
+ 787.32 
+ 787.32 Demand for FY 2015-16. Assessing office made additions to taxable 
+turnover against the order of Joint Commissioner (Appeals) and raised 
+demand. 
+vi
+Demand for Input 
+Tax credit on IGST 
+for the period 2018-
+19 and penalty 
+thereon
+ 92.13 
+ - Demand raised by GST Department for GST related issues  for the 
+period April 2018 to March 2019.
+vii Alekton  
+Engineering 
+Industries Pvt Ltd 
+305.57
+ 240.74 The petitioner (claimant) approached MSME Council  for recovery of 
+Liquidated damages (LD) along with interest in respect of LD  deducted 
+by CSL for  delay in submission of drawings and supply of goods . 
+MSME Council , Chennai has referred the case to  Madras High Court 
+Arbitration Centre for   arbitration.  Madras High Court Arbitration 
+Centre  has appointed Mr. Suhrith Parthsarrathy as the sole arbitrator.  
+Claim petition filed by   the petitioner.  Examination of witness is in 
+progress.
+viii Employee 
+State Insurance 
+Corporation
+54.66
+ 54.66 ESI Corporation raised a demand notice for H62.28 lakhs towards 
+contribution for advance trainees for the period Apr 2008- Mar 2012. 
+Company has paid contribution of H26.46 Lakhs for the period Jun 
+2010- Mar 2012 and H25.95 lakhs for the period Apr 2012- Jul 2013 
+belatedly. Later on, ESI Department has raised a demand notice of 
+H19.84 lakhs towards interest on delayed payments and damages for 
+the period Jun 2010- Jul 2013. The Company is contesting the demands 
+made before Honourable Insurance Court, Alappuzha. In the meantime, 
+the court has granted a stay by depositing H1 lakh.
+ix
+M/s. Vigil Marine 
+Services
+1951.50
+ 1,861.59 M/s. Vigil Marine Services in 2004 raised claims towards Agency 
+Commission payable for winning orders for ATCO Tugs. The arbitration 
+proceedings commenced on 10 Oct 2004. Examination and cross 
+examination of witnesses completed and posted the matter for 
+arguments on 01 and 02 Feb 2014. The Arbitrator completed the 
+proceedings and passed his award directing the Company to pay 
+commission to M/s Vigil Marine Services at the rate of 5% of the ATCO 
+contract value of U S Dollar 18.25 Million with interest @ 8% per 
+annum.  Aggrieved on this CSL filed Original Suit No 187/2016 before 
+Sub Court, Ernakulam and obtained an interim order staying execution 
+of the award.  Bank guarantee for the award amount along with 
+interest from the date of receipt of the amount till the date of award 
+(H1305 lakhs) has been deposited as security to Hon’ble High Court and 
+and the same is included in Note 50.
+x
+Building Tax
+0.00
+ 27.54 CSL has challenged demand notice B1/14569/2019 No 112/19-20 dated 
+10.8.2019 under S. 10 of the Kerala Building Tax Act 1975 demanding 
+an amount of H27,54,000/- towards building tax for the building owned 
+by CSL  at Girinagar (METI) by filing WP No.  14999/2023 before the 
+Hon’ble High Court of  Kerala. The judgment of Hon’ble High Court of  
+Kerala has been received in favor of CSL.
+Annual Report 2023-24
+337
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 322 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Particulars
+As at 
+ 31  Mar 2024 
+(J  in Lakhs)
+As at 
+ 31  Mar 2023 
+(J  in Lakhs)
+Brief Description of the nature and obligation
+xi
+Property Tax
+68.24
+ 68.24 CSL challenged arrear demand notices issued by Kochi Municipal 
+corporation for the period from 2013-14 to 2022-23 towards revised 
+property tax  for  14  old buildings of CSL by filing  W.P (C) No. 
+12758/2023  before the Hon’ble High Court Kerala. The  Hon’ble High 
+Court Kerala vide  its order dated  10 April 2023  granted interim stay of 
+demand  notices  until further  orders. 
+xii Indemnity Bond to 
+Customs Authorities
+14950.00
+ 22,054.15 Bond under Customs (Imports of Goods at Concessional Rate of Duty) 
+rules 2017.
+xiii Indemnity Bond to 
+Govt of India
+30415.00
+ 30,415.00 Represent Indemnity Bonds given by Company to GoI towards 
+performance of obligations under the IAC contract. Value of advance 
+Bank Guarantee/Indemnity Bond outstanding as on Balance sheet date 
+is included in Note 50.
+xiv Paint contamination 
+claims
+863.83
+ 863.83 Claims raised against the Company for paint contamination spots 
+observed on cars - Ghamadia & 128 yard at Mumbai Port.
+B
+COMMITMENTS 
+(To the extent not 
+provided for)
+a
+Estimated amount 
+of contracts 
+remaining to be 
+executed on capital 
+account and not 
+provided for:
+ 40,528.32 
+ 65,325.68 Estimated amount of contracts remaining to be executed on capital 
+account and not provided for.
+b
+Interest on Lease 
+Rent Payable to GOI 
+not provided for
+ 8.04 
+CONTINGENT LIABILITIES AND COMMITMENTS in respect Udupi Cochin Shipyard Ltd.,Subsidiary 
+The company has been sanctioned Fund based and Non Fund based limits of H56853.00 lakhs  (PY - H9100 lakhs) as against the 
+security of hypothication of current assets including inventory and trade receivables of the company.
+B	
+CONTINGENT LIABILITIES RELATED TO ERSTWHILE TEBMA PERIOD
+i. Tax Matters
+As at 
+ 31  Mar 2024
+As at 
+ 31  Mar 2023 
+Brief Description of the nature and obligation	
+Director General of Foreign Trade 
+(DGFT) 
+(J  in Lakhs)
+(J  in Lakhs)
+-	
+Where the Company is 
+in appeal (Writ petition 
+pending before Honourable 
+High court of Madras).  The 
+amount disclosed inclusive 
+of Interest amount, that may 
+be charged.
+ 425.71 
+ 414.38 Company has filed Writ petition aganist impugned orders 
+by DGFT imposing penalty, customs duty and Interest 
+under Foreign Trade Act  issued to explain the reasons 
+as to why Petitioner's name should not be placed under 
+Denied Entity List refusing issuance of further licences/
+authorizations and other export benefits in terms of 
+Section 9(2) of the Foreign Trade (Development and 
+Regulation) Act, 1992. Interim  Stay Order granted on 03 
+August 2022 until further orders.
+338
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 323 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+i. Tax Matters
+As at 
+ 31  Mar 2024
+As at 
+ 31  Mar 2023 
+Brief Description of the nature and obligation	
+Director General of Foreign Trade 
+(DGFT) 
+(J  in Lakhs)
+(J  in Lakhs)
+-	
+Where the Company is 
+in appeal (Writ petition 
+pending before Honourable 
+High court of Madras) The 
+amount disclosed inclusive 
+of Interest amount, that may 
+be charged.
+ 749.43 
+ 694.00 Show cause notices issued to explain the reasons as 
+to why Petitioner's name should not be placed under 
+Denied Entity List refusing issuance of further licences/
+authorizations and other export benefits in terms of 
+Section 9(2) of the Foreign Trade (Development and 
+Regulation) Act, 1992 by DGFT.  
+Interim  Stay Order granted on 03 August 2022 until 
+further orders.
+-	
+Where the Company is 
+in appeal (Writ petition 
+pending before Honourable 
+High court of Karnataka) 
+ Refer 
+Description 
+of the 
+nature and 
+obligation 
+column 
+ Refer 
+Description 
+of the 
+nature and 
+obligation 
+column 
+Show cause notices issued alleging that there was failure 
+to achieve positive net foreign exchange(NFE) of H918.90 
+lakhs in respect of the years 2011-12 to 2015-16 and 
+also a failure to file the Annual Progress Report (APR) in 
+respect of the Malpe EOU for the years 2016-17 onwards 
+resulting in non-fulfilment amounted to a contravention 
+of the FTP and thereby rendered the Petitioner liable to 
+imposition of penalty under Sec. 11(2) of the FT (D&R) 
+Act.  
+The  Hon’ble High court has  granted an interim stay of  
+all proceedings pursuant to the show cause notice vide 
+order date 15Dec 2021. The  Respondents  have  filed 
+their counter affidavit in the matter and the matter is  
+posted for  filing of  rejoinder by the  Petitioners. 
+-	
+Where the Department has 
+served Show cause notices.  
+The amount disclosed 
+inclusive of Interest amount, 
+that may be charged.
+ 339.16 
+ 314.07 Show cause notices issued to explain the reasons as 
+to why Petitioner's name should not be placed under 
+Denied Entity List refusing issuance of further licences/
+authorizations and other export benefits in terms of 
+Section 9(2) of the Foreign Trade (Development and 
+Regulation) Act, 1992 by DGFT. UCSL representative has 
+attended personal hearing and submitted reply. Order 
+awaitied.
+Others
+Entry Tax
+ 76.90 
+ 76.90 All these cases pertain to the periods prior to the order 
+of the Hon’ble NCLT approving the resolution plan and 
+are not included in the Resolution Plan as no claims were 
+submitted by the authorities concerned in response of 
+the public notice issued by the Resolution Professional 
+in terms of the regulations of IBC and who fall under the 
+definition of operational creditors. However, as per the 
+order of the Hon’ble NCLT dt. 04-03-2020, the Company 
+has been directed to file applications for termination of 
+the proceedings before the relevant authorities.
+Annual Report 2023-24
+339
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 324 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+i. Tax Matters
+As at 
+ 31  Mar 2024
+As at 
+ 31  Mar 2023 
+Brief Description of the nature and obligation	
+Director General of Foreign Trade 
+(DGFT) 
+(J  in Lakhs)
+(J  in Lakhs)
+Central / State Excise / Service 
+Tax / Customs / Goods and 
+service tax / VAT
+ 1,234.65 
+ 1,234.65 
+Karnataka VAT
+ 11.91 
+ 11.91 Order no  ZD2900223010218S dtd  20/2/23 for Wrong 
+claim of ITC for the period Sep to Dec 2017. All these 
+cases pertain to the periods prior to the order of the 
+Hon’ble NCLT approving the resolution plan and are 
+not included in the Resolution Plan as no claims were 
+submitted by the authorities concerned in response of 
+the public notice issued by the Resolution Professional 
+in terms of the regulations of IBC and who fall under the 
+definition of operational creditors. However, as per the 
+order of the Hon’ble NCLT dt. 04-03-2020, the Company 
+has been directed to file applications for termination 
+of the proceedings before the relevant authorities. 
+Company replied to the authorities accordingly.
+ii) Money Suits
+Plaintiff: Lokenath Enterprises
+ 35.91 
+ 31.96 For recovery of H21,83,714 together with interest  @ 
+18% per annum from September 2020 till the date of 
+realization, for the services performed by him from 2016 
+till CIRP Period for which payments were not made by 
+Resolution professional.  
+Interlocutory Applications filed to set aside Exparte 
+Order. At present adjourned for further hearing on IA's. 
+Case open before Hon’ble Additional District and 
+Sessions Court Chengalpettu (Tamil Nadu).
+Plaintiff: Cochin Port trust
+ 262.76 
+ 246.97 Port had filed a civil suit on 28/03/2014 before the 
+Honourable Sub Court at kochi to recover an amount of 
+H105 lakhs with interest @ 15% p.a, which was incurred 
+by CopT to rectify the manufacturing defects noticed on 
+the tugs supplied by company. Matter pending before 
+court for arbitration.
+	
+There are no other pending litigations, other than those disclosed above.
+C	
+CONTINGENT ASSETS
+	
+Pursuant to Order dated 13.07.2021 passed by Honourable High court of Madras in OP365/14  for the award dated 12.12.2013 
+and 04.02.2014 in the arbitration proceedings between M/s Tebma Shipyards Ltd and M/s Tuticorin Port trust Ltd (Present V.O. 
+Chidambaranar Port Authority), H181.94 lakhs were settled by the VOCPT in Dec 2022 and Company is yet to receive the interest 
+portion for the period from 04.02.2014 to 15.12.2022 which amounts to H283.68 lakhs plus taxes.
+340
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 325 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Account Head	 	
+	
+	
+	
+Increase / 
+Decrease in 
+Value
+Amount 
+ in Lakhs
+Remark
+Revenue from Operation
+Decrease
+ 54.92 Decrease in Contract Revenue
+Contract Asset
+Increase
+ 106.12 -
+Contract Liability
+Increase
+ 44.53 -
+Profit after Tax
+Decrease
+ 11.77 Decrease  in Profit
+Deferred Tax Asset
+Increase
+ 43.15 -
+49.1.	CONTINGENCIES AND COMMITMENTS
+	
+(I)	
+Income Tax Assessments
+	
+	
+The Income Tax Assessment of the company has been completed up to AY 2023-24.
+	
+	
+Demands raised as per the assessment orders totaling H1,389.86 lakhs for the Assessment Years 2010-11, 2014-15, 2018-
+19 and 2017-18 are pending for disposal of the appeals filed before the Commissioner of Income Tax (Appeals) and 
+H819.51 lakhs for assessment year 2020-21 is pending for disposal of appeal filed before ITAT. The demands are shown 
+under Contingent Liability and are mainly due to the disallowance of certain genuine claims. However, the above demands 
+have been adjusted against the refund due for the subsequent years.
+50. Value of advance Bank Guarantee outstanding as on reporting date  is  H980057.45 lakhs (Previous year H6,90,720.85 lakhs)
+51. Impact of change in accounting policy on revenue recognition of subsidiaries
+During the year, in order to faithfully depict the entity's performance towards complete satisfaction of a performance obligation ,the 
+subsidiaries has adopted (as per Ind AS 115 "
+Revenue from Contract with Customers")  Output method (based on physical completion) changing from the Input method which 
+was followed in the comparative previous year. The subsidiaries has made reasonable efforts to determine effect of change in the 
+accounting policy during the year. The effect due to change in the accounting policy in the comparative  years are not material, hence 
+the amounts of comparative periods are not restated.The impact of the aforesaid changes have been disclosed in table below;
+The effect on the financial statement of subsidiaries during the current financial year due to the change in the accounting policy :
+Based on the above, effect due to change in the accounting policy of subsidiaries does not have any material impact in current and 
+previous year consolidated financial statements.
+52. Litigations:
+The Group is subject to legal proceedings and claims, in the ordinary course of business. The Company's Management does not 
+reasonably expect that these legal actions, when ultimately concluded and determined, will have material and adverse effect on the 
+Company's results of operation.
+53. Research & Development /New Initiative Expenditure
+ (H in lakhs)
+Particulars
+2023-24
+2022-23
+a)	 Revenue Expenditure
+626.18
+864.16
+b)	 Capital Expenditure
+1450.47
+0.00
+2076.65
+864.16
+Refer Note No.42 for Revenue Expenditure & Note No.4,5,13 for capital expenditure.
+H3500 lakhs has been allocated for R&D and innovation initiatives Fund, for development of  pilot Autonomous Surface Vessel Project.1% 
+of average turnover based on the audited financial results of the standalone financial results of CSL for the last three financial years will 
+be set aside as yearly budget for the Research and Development/Innovation initiatives of CSL.  Further the Board has granted approval 
+for funding support not exceeding H5000 Lakhs to "USHUS" project under CSL’s Start-up Engagement Policy Framework.
+Annual Report 2023-24
+341
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 326 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+54. Corporate Social Responsibility (CSR) : As per section 135 of the Companies Act 2013, CSR committee has been 
+formed by the Holding Company. The areas of CSR activity includes Health Care, Education, Social Empowerment, etc., and other 
+areas permitted in Schedule VII to the Companies Act 2013. The utilisation of CSR funds are done as per the recommendations of CSR 
+committee. Details of amount required to be spent and the amount utilised are given below:
+ (H in lakhs)
+Particulars
+As at 
+March 31,2024
+As at 
+March 31,2023
+(a)	 Gross amount required to be spent by the Company during the year
+1369.01
+1645.62
+(b)	 Amount spent during the year 
+1444.38
+1724.96
+ (H in lakhs)
+In case of Sec.135(5) Excess amount spent
+As at 
+March 31,2024
+As at 
+March 31,2023
+(i)	 Amount carry forwarded from previous financial years 
+110.00
+40.00
+(ii)	 Amount spent during the year
+1444.38
+1724.96
+(iii)	Amount charged to P&L as CSR expenses
+1384.38
+1654.96
+(iv)	Amount carry forwarded to succeding financial years 
+170.00
+110.00
+ (H in lakhs)
+Additional Disclosures on CSR
+As at 
+March 31,2024
+As at 
+March 31,2023
+(i)	 Amount required to be spent by the company during the year,
+1369.01
+1645.62
+(ii)	 Amount of expenditure incurred,
+1444.38
+1724.96
+(iii)	Shortfall at the end of the year,
+0.00
+0.00
+(iv)	Total of previous years shortfall,
+0.00
+0.00
+(v)	 Reason for shortfall
+NA
+NA
+(vi)	Nature of CSR activities: As per section 135 of the Companies Act 2013, CSR committee has been formed by the Company. The 
+areas of CSR activity includes Health Care, Education, Social Empowerment, etc., and other areas permitted in  Schedule VII to 
+the Companies Act 2013. The utilisation of CSR funds are done  as per the recommendations of CSR committee.
+Details of amount spent for year ended 31 March 2024
+ (H in lakhs)
+Particulars
+In cash
+Yet to be 
+paid in cash
+Total
+(i)	 Construction/acquisition of any asset
+1096.17
+1096.17
+(ii)	 On purposes other than (i) above
+348.21
+348.21
+1444.38
+0.00
+1444.38
+ (H in lakhs)
+Particulars
+In cash
+Yet to be 
+paid in cash
+Total
+(i)	 Construction/acquisition of any asset
+1408.75
+0.00
+1408.75
+(ii)	 On purposes other than (i) above
+316.21
+0.00
+316.21
+1724.96
+0.00
+1724.96
+Details of amount spent for year ended 31 March 2023
+As on 31 March 2024, the Company spent H185.37 lakhs in excess of amount required to be spent as per Companies Act, 2013 out of 
+which H15.37 lakhs is charged to Profit and Loss and H170 Lakhs is carried forwarded to succeding financial years.
+342
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 327 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Additional Disclosures on CSR
+As at 
+March 31,2024
+As at 
+March 31,2023
+(vii)	details of related party transactions, e.g., contribution to a trust controlled by the 
+company in relation to CSR expenditure as per relevant Accounting Standard,
+Nil
+Nil
+(viii)Where a provision is made with respect to a liability incurred by entering into a 
+contractual obligation, the movements in the provision during the year shall be 
+shown separately.
+Nil
+Nil
+55. Related Party disclosure as per Ind AS 24
+Related Party
+Nature of Relationship
+2023-24
+2022-23
+Shri Madhu S Nair  
+Chairman & Managing Director
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Bejoy Bhasker  
+Director (Technical)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Sreejith K Narayanan (From July 21, 2022) 
+Director (Operations)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Jose V J  
+Director (Finance) & Chief Financial Officer 
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Sanjay Bandopadyaya (Upto July 28, 2022) 
+Official Part Time (Nominee) Director, Government of India
+-
+Key Managerial 
+Personnel
+Shri Vikram Singh (From July 28, 2022 to Nov 21, 2022) 
+Official Part Time (Nominee) Director, Government of India
+-
+Key Managerial 
+Personnel
+Shri Rajesh Kumar Sinha (From Nov 21, 2022) 
+Official Part Time (Nominee) Director, Government of India
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri K R Jyothilal (Upto Jan 02, 2023) 
+Official  Part Time (Nominee) Director, Government of Kerala
+-
+Key Managerial 
+Personnel
+Shri Biju Prabhakar (From Jan 02, 2023) 
+Official  Part Time (Nominee) Director, Government of Kerala
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Smt. Amrapali Prashant Salve (From Nov 26, 2021) 
+Non-Official (Independent) Director
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Nahar Singh Maheshwari (From Dec 01, 2021) 
+Non-Official (Independent) Director
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Ashok Sharma (From Nov 26, 2021) 
+Non-Official (Independent) Director
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Prithiviraj Harichandan (From Nov 22, 2021) 
+Non-Official (Independent) Director
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Venkatesan M (From Nov 22, 2021) 
+Non-Official (Independent) Director
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Abhijit Biswas (From Dec 01, 2021) 
+Non-Official (Independent) Director
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Syamkamal N 
+Company Secretary
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Neelakandhan A N (UCSL) 
+Director, (w.e.f May 03, 2022)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Rajesh Gopalakrishnan (UCSL) 
+Director, (w.e.f May 03, 2022 till Jan 05,2024)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Annual Report 2023-24
+343
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 328 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Related Party
+Nature of Relationship
+2023-24
+2022-23
+Shri Anjana K R  
+Director,UCSL (w.e.f Jan 06,2024) 
+Nominee Director,HCSL (from 26.03.2022)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Harikumar A (UCSL) 
+Chief Executive Officer
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Shankar Nataraj (UCSL) 
+Chief Financial Officer, (w.e.f. November 25, 2022)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Shibu John (UCSL) 
+Chief Financial Officer, (Till November 24, 2022)
+-
+Key Managerial 
+Personnel
+Shri Aswin Sarma M (UCSL) 
+Company Secretary
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Shekhar Chakravarthy (HCSL) 
+Chief Executive Officer (from 22.12.2021 till 12.12.2023)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Sanil Peter (HCSL) 
+Chief Executive Officer (from 15.12.2023)
+Key Managerial 
+Personnel
+-
+Shri.Saibal Chattopadyay (HCSL) 
+Chief Financial Officer (from 14.02.2022)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+Shri Kiran.K.A (HCSL) 
+Company Secretary (from 16.10.2020)
+Key Managerial 
+Personnel
+Key Managerial 
+Personnel
+CSL Superannuation Pension Trust For Executives And Supervisors
+Post- Employment 
+Benefit Plan
+Post- Employment 
+Benefit Plan
+Cochin Shipyard Ltd Group Gratuity Trust
+Post- Employment 
+Benefit Plan
+Post- Employment 
+Benefit Plan
+CSL Retired Employees Medical Assistance Trust
+Post- Employment 
+Benefit Plan
+Post- Employment 
+Benefit Plan
+CSL Mutual And Public Welfare Trust
+Post- Employment 
+Benefit Plan
+Post- Employment 
+Benefit Plan
+Cochin Shipyard Ltd Employees Contributory Provident Fund Trust
+Post- Employment 
+Benefit Plan
+Post- Employment 
+Benefit Plan
+CSL Officers And Supervisors Retirement Benefit Trust
+Post- Employment 
+Benefit Plan
+Post- Employment 
+Benefit Plan
+CSL Insurance Linked Medical Assistance Trust For Retired Workmen
+Post- Employment 
+Benefit Plan
+Post- Employment 
+Benefit Plan
+CSL Workmen Pension Trust
+Post- Employment 
+Benefit Plan
+Post- Employment 
+Benefit Plan
+Nature of transaction-Remuneration to Key Managerial Person
+ (H in lakhs)
+Particulars
+As at 
+March 31,2024
+As at 
+March 31,2023
+Short term benefit
+430.30
+ 339.58 
+Post employment Benefit
+52.60
+ 40.96 
+Total
+ 482.90 
+ 380.54 
+344
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 329 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+As at 
+March 31,2024
+As at 
+March 31,2023
+Amrapali Prashant Salve
+2.90
+2.65
+Nahar Singh Maheshwari
+2.40
+2.25
+Ashok Sharma
+2.60
+3.05
+Prithiviraj Harichandan
+2.40
+2.25
+Venkatesan M
+1.80
+1.65
+Abhijit Biswas
+2.60
+3.05
+Total
+14.70
+14.90
+ (H in lakhs)
+Particulars
+For the year ended 
+31st March 2024
+For the year ended 
+31st March 2023
+i)	 Transactions
+	
+Contribution to Post employment plans (for the year)
+1917.62
+2606.46
+ii)	 Balances
+	
+Payable to trust (Net)
+1505.56
+586.96
+Nature of transaction-Advances
+ (H in lakhs)
+Name of Related Party
+Opening Balance 
+as on 1/4/2023
+Loans/advances 
+Taken during 
+2023-24
+Repayment
+Balance as 
+on 31/03/24
+Interest accrued 
+as on 31/03/24
+BEJOY BHASKER
+0.08
+0.00
+0.08
+0.00
+0.00
+JOSE V J
+0.12
+0.00
+0.12
+0.00
+0.00
+SREEJITH K N
+0.08
+0.00
+0.08
+0.00
+0.00
+SYAMKAMAL N
+0.12
+0.60
+0.58
+0.14
+0.00
+ (H in lakhs)
+Name of Related Party
+Opening Balance 
+as on 1/4/2022
+Loans/advances 
+Taken during 
+2022-23
+Repayment
+Balance as 
+on 31/03/23
+Interest accrued 
+as on 31/03/23
+BEJOY BHASKER
+0.12
+0.25
+0.30
+0.08
+0.00
+JOSE V J
+0.12
+0.40
+0.40
+0.12
+0.00
+SREEJITH K N
+0.08
+0.25
+0.25
+0.08
+0.00
+SYAMKAMAL N
+0.12
+0.50
+0.50
+0.12
+0.00
+Nature of transaction-Sitting Fee to Independent Directors
+Transactions and Balances with other Related Parties (Post- Retirement Benefits Trust/Plans)
+Transactions & Balances with Government and entities under the control of same government
+Government of India (GOI) as on 31st March 2024 is holding 72.86% equity shares of the Company, which is held by President of India 
+through Ministry of  Ports, Shipping and Waterways (MoPSW). GOI controls the Company through Ministry of  Ports, Shipping and 
+Waterways (MoPSW).
+The Company has made various transactions with the Ministry of Ports,Shipping and Waterways (MoPSW) and with entities being 
+controlled or jointly controlled or having significant influence of the Ministry of Ports, Shipping and Waterways (MoPSW).
+Annual Report 2023-24
+345
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 330 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+i)	
+Transactions/Balances with GoI
+ (H in lakhs)
+Particulars
+For the year ended 
+31st March 2024
+For the year ended 
+31st March 2023
+Amount payable to Government of India
+420.09
+ 374.30 
+Amount as paid as dividend during the year to Government of India
+17251.82
+17012.21
+ (H in lakhs)
+Particulars
+For the year ended 
+31st March 2024
+For the year ended 
+31st March 2023
+Lease rent paid
+3561.80
+ 2,642.78 
+Power & water supply charges
+988.27
+ 1,346.88 
+Annual Profit share payment 
+299.51
+ 786.30 
+Employee related expenses
+349.39
+ 474.84 
+Shifting & Cold movement expenses
+80.16
+ 374.43 
+Hiring & rent services
+860.84
+ 340.30 
+Miscellaneous services taken
+232.75
+ 92.95 
+Revenue from operations
+17679.73
+ 20,123.51 
+other income
+0.00
+181.82
+ (H in lakhs)
+Particulars
+For the year ended 
+31st March 2024
+For the year ended 
+31st March 2023
+Payables
+47.66
+ 7.83 
+Advances given to suppliers
+35.20
+ 16.88 
+Receivables
+9050.19
+12351.67
+Advance received from customers
+6348.32
+ 2,346.77 
+ii)	
+Significant transactions with Government related Entities under MoPSW
+iii)	
+Significant balances with Government related Entities under MoPSW
+	
+In addition to the above, around 89.00 % (approx) of the companies turnover and 92.00% (approx) of trade receivables and 
+customer advance is with respect to Government and Government related entities including those under MoPSW.
+56. FINANCIAL INSTRUMENTS
+The fair value hierarchy is based on inputs to valuation techniques that are used to measure fair value that are either observable or 
+unobservable and consist of the following three levels:
+Level I inputs are quoted prices (unadjusted) in active markets for identical assets or liabilities that the entity can access at the 
+measurement date.
+Level II inputs are inputs other than quoted prices included within Level 1 that are observable for the asset or liability, either 
+directly or indirectly.
+Level III inputs are unobservable inputs for the asset or liability.
+346
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 331 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Financial assets/ financial liabilities
+Fair value as at
+Fair Value 
+hierarchy
+As at 
+March 31,2024
+As at 
+March 31,2023
+Financial Assets
+Non Current
+(i)	 Investments
+ 12.55 
+ 11.32 Level III
+(ii)	 Loans
+ 569.95 
+ 520.60 Level III
+(iii)	Others
+ 98.71 
+ 107.34 Level III
+Current
+(i)	 Trade Receivables
+ 35,547.56 
+ 33,841.50 Level III
+(ii)	 Cash & Cash equivalents
+ 30,641.30 
+ 37,502.21 Level III
+(iii)	Bank Balances other than (ii)
+ 3,55,759.25 
+ 4,38,299.56 Level III
+(iv)	Loans
+ 115.11 
+ 99.50 Level III
+(v)	 Others
+ 11,848.96 
+ 3,421.07 Level III
+Total Financial Assets
+ 4,34,593.39 
+ 5,13,803.10 
+Financial Liabilities
+Non Current
+(i)	 Borrowings
+ 2,302.20 
+ 2,302.20 Level III
+(ii)	 Lease liabilities
+ 44,925.88 
+ 40,446.48 Level III
+(iii)	Other financial liabilities
+ 18.27 
+ 261.22 Level III
+Current
+(i)	 Borrowings
+ - 
+ 10,984.78 Level III
+(i)	 Trade Payables
+ 46,512.01 
+ 21,647.94 Level III
+(ii)	 Lease liabilities
+ 2,991.88 
+ 4,999.40 Level III
+(iii)	Other financial liabilities
+ 18,255.60 
+ 19,344.46 Level III
+Total Financial Liabilities
+ 1,15,005.84 
+ 99,986.48 
+The following table summarises financial assets and liabilities measured at fair value on a recurring basis and financial assets that are 
+not measured at fair value on a recurring basis.
+Note: 
+1.	
+The investments in equity instruments are not held for trading. Instead, they are held for medium or long term strategic 
+purpose. The Company has chosen to designate these investments in equity instruments of Subsidiary at cost (as per Ind AS 
+27 ) and other equity instruments at FVTOCI (as per Ind AS 109), as the directors believe that this provides a more meaningful 
+presentation of medium or long term strategic investments, than reflecting changes in fair value immediately in profit or loss. 
+The investments in debt instruments are not held for trading. Upon the application of Ind AS 109, the Company has chosen to 
+designate these investments at Amortised Cost.
+	
+Investments included in level 3 of fair value hierarchy have been valued using the cost approach to arrive at their fair value. The 
+cost of unquoted investments approximate the fair value because there is a wide range of possible fair value measurements and 
+the cost represents estimate of fair value within that range.
+	
+There were no transfers between Level 1 and 2 in the period.
+2.	
+Loans, Borrowings are at the market rates and therefore the carrying value is the fair value.
+3.	
+The carrying amount of trade receivables, trade and other payables and short term loans are considered to be the  same as their 
+fair value due to their short term nature.
+	
+Difference between carrying amounts and fair values of bank deposits, other financial assets,other financial liabilities and 
+borrowings subsequently measured at amortised cost is not significant in each of the years presented.
+Annual Report 2023-24
+347
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 332 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Financial Instruments by category
+ (H in lakhs)
+Particulars
+31st March 2024
+31st March 2023
+FVTPL
+FVTOCI
+Amortised 
+Cost/At Cost
+FVTPL
+FVTOCI
+Amortised 
+Cost/At Cost
+Financial Assets
+Investments (Non-current)
+	
+-Equity instruments
+ 12.55 
+ 11.32 
+ - 
+	
+-Debt instruments
+ - 
+	
+-Preference shares
+Investments (Current)
+	
+-Mutual Funds
+Loans
+ 620.10 
+Trade receivables
+ 35,547.56 
+ 33,841.50 
+Cash & Cash equivalents 
+ 30,641.30 
+ 37,502.21 
+Bank Balances 
+ 3,55,759.25 
+ 4,38,299.56 
+Other Financial Assets
+ 12,632.73 
+ 3,528.41 
+Total Financial Assets
+ - 
+ 12.55 
+ 4,34,580.84 
+ - 
+ 11.32 
+ 5,13,791.78 
+Financial liabilities
+Borrowings
+ 2,302.20 
+ 13,286.98 
+Lease liabilities
+ 47,917.76 
+ 45,445.88 
+Trade Payables
+ 46,512.01 
+ 21,647.95 
+Other financial liabilties
+ 18,273.87 
+ 19,605.68 
+Total Financial Liabilities
+ - 
+ - 
+ 1,15,005.84 
+ - 
+ - 
+ 99,986.49 
+57. Financial Risk Management Policy
+Financial Risk Management Objective and Policies:
+The Group’s principal financial liabilities, other than derivatives, comprise of loans and borrowings, trade and other payables 
+and advances from customers. The Company’s principal financial assets include Investment, loans and advances, trade and other 
+receivables and cash and bank balances that derive directly from its operations. The Company is exposed to market risk, credit risk 
+and liquidity risk. The Company’s senior management oversees the management of these risks. The Board provides written principles 
+for overall risk management as well as policies covering specific areas such as foreign exchange risk, interest rate risk, credit risk, the 
+use of derivative financial instruments and non-derivative financial instruments, and the investment of excess liquidity. The Company 
+does not enter into or trade financial instruments, including derivatives for speculative purposes.
+Market Risk
+Market risk is the risk that the fair value of future cash flows of financial assets will fluctuate because of changes in market prices. 
+Market risk comprises three types of risk: interest rate risk, foreign currency risk and other price risk, being mainly commodity price 
+risk. Financial Assets affected by market risk include loans and advances, deposits and derivative financial instruments.
+A.	
+Interest rate Risk
+	
+Interest rate risk is the risk that the fair value or future cash flows of a financial instrument will fluctuate because of changes 
+in market interest rates. The Group’s exposure to the risk of changes in market interest rates is minimal since the exposure 
+relates primarily to the Company’s long-term debt obligations of redeemable non-convertible bonds with fixed interest rates 
+as disclosed in Notes 23 and 28. With the current profile of fixed rate borrowing, the company is not sensitive to interest 
+rate fluctuations.
+348
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 333 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+B.	
+Foreign Currency Risk
+	
+Foreign currency risk is the risk that the fair value or future cash flows of an exposure will fluctuate because of changes in foreign 
+exchange rates. The Group’s exposure to the risk of changes in foreign exchange rates relates primarily to the Company’s 
+operating activities (when revenue or expense is denominated in a foreign currency).
+	
+Foreign currency risk of the Holding company is managed through a properly documented risk management policy approved by 
+the board. The Board of directors also reviews the foreign currency exposure of the Company on quarterly basis. The company 
+manages the net foreign currency risk mainly by entering into forward contracts with the bank as the counter party. The 
+disclosures of outstanding forward contract as on reporting date is given in Note 48.
+	
+The Group’s exposure to foreign currency risk net of hedged exposure at the end of the reporting period expressed in H (foreign 
+currency amount multiplied by closing rate) are as follows:
+ (H in lakhs)
+Particulars
+USD
+EURO
+GBP
+NOK
+Total
+Financial Assets
+31st March 2024
+ 544.41  46,229.69 
+ 7,276.80  54,050.91 
+31st March 2023
+ 1,885.63  27,625.64 
+ - 
+ 1,489.18  31,000.45 
+Financial Liabilities
+31st March 2024
+ 5,915.16  19,494.53 
+ 47.12 
+ 133.84  25,590.65 
+31st March 2023
+ 1,447.86  11,935.36 
+ 17.82 
+ 145.17  13,546.21 
+	
+The sensitivity of profit/ loss to changes in the exchange rates arises mainly from foreign currency denominated financial 
+instruments. The sensitivity analysis includes only outstanding foreign currency denominated monetary items net of hedge 
+accounting impact and adjusts their translation at the year-end for a 5% change in foreign currency rates, with all other 
+variables held constant. The sensitivity rate represents management’s assessment of the reasonably possible change in foreign 
+exchange rates. 
+ (H in lakhs)
+Particulars
+5% change in foreign currency rates
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Receivables
+USD - Strengthening of H by 5%
+0.00
+0.00
+USD - Weakening of H by 5%
+0.00
+0.00
+EURO - Strengthening of H by 5%
+0.00
+0.00
+EURO - Weakening of H by 5%
+0.00
+0.00
+GBP - Strengthening of H by 5%
+0.00
+0.00
+GBP - Weakening of H by 5%
+0.00
+0.00
+NOK - Strengthening of H by 5%
+0.00
+0.00
+NOK - Weakening of H by 5%
+0.00
+0.00
+Payables
+USD - Strengthening of H by 5%
+(295.75)
+(72.39)
+USD - Weakening of H by 5%
+295.75 
+72.39
+EURO - Strengthening of H by 5%
+(974.73)
+(596.77)
+EURO - Weakening of H by 5%
+974.73 
+596.77
+GBP - Strengthening of H by 5%
+(2.36)
+(0.89)
+GBP - Weakening of H by 5%
+2.36 
+0.89
+NOK - Strengthening of H by 5%
+(6.69)
+(7.26)
+Annual Report 2023-24
+349
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 334 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+5% change in foreign currency rates
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+NOK - Weakening of H by 5%
+6.69 
+7.26
+Profit Before Tax
+USD - Strengthening of H by 5%
+295.75
+ 72.39 
+USD - Weakening of H by 5%
+(295.75)
+ (72.39)
+EURO - Strengthening of H by 5%
+974.73
+ 596.77 
+EURO - Weakening of H by 5%
+(974.73)
+ (596.77)
+GBP - Strengthening of H by 5%
+2.36
+ 0.89 
+GBP - Weakening of H by 5%
+(2.36)
+ (0.89)
+NOK - Strengthening of H by 5%
+6.69
+ 7.26 
+NOK - Weakening of H by 5%
+(6.69)
+ (7.26)
+C.	
+Commodity Price Risk
+	
+The Group is affected by the price volatility of certain commodities. Its operating activities require the purchase of steel, major 
+machineries, equipments etc. The Company primarily purchases its raw materials in the open market from third parties. The 
+Company is therefore subject to fluctuations in prices for the purchase of steel, being the primary raw material inputs. The 
+Company aims to sell the finished products based on firm contract which is negotiated after due consideration of the expected 
+raw material prices. Therefore, the Company plans its purchases closely to optimise the price. Further since the products are 
+of a specific nature which does not entail competition and is heterogeneous in nature due to its specification, the company’s 
+exposure to commodity risk is minimal.
+	
+The following table details the Group’s sensitivity to a 5% movement in the input price of steel. The sensitivity analysis includes 
+only 5% change in commodity prices for quantity consumed during the year, with all other variables held constant.
+ (H in lakhs)
+Commodity
+Increase of 5 %
+Decrease of 5 %
+As at 
+31st Mar 2024
+As at 
+31st Mar 2023
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Steel 
+735.24
+202.79
+(735.24)
+(202.79)
+	
+Liquidity Risk
+	
+The risk that an entity will encounter difficulty in meeting obligations associated with financial liabilities that are settled by 
+delivering cash or another financial asset. Liquidity risk may arise from an inability to sell a financial asset quickly at a rate close 
+to its fair value.
+	
+The Group requires funds both for short term operational needs as well as for long term capital expenditure growth projects. 
+The Company generates sufficient cash flow for operations, which together with the available cash and cash equivalents 
+provides liquidity in the short-term and long- term and manages the liquidity risk by continuously monitoring forecast and actual 
+cash flows, and by matching the maturity profiles of financial assets and liabilities as depicted below.
+ (H in lakhs)
+Particulars
+As on 31.03.2024
+As on 31.03.2023
+< 1 year
+1-3 years
+> 3 years
+< 1 year
+1-3 years
+> 3 years
+Financial Assets
+   
+Non-current investments 
+ 12.55 
+-
+ - 
+ 11.32 
+Loans (Non Current)
+ 276.84 
+ 293.11 
+ 250.90 
+ 268.41 
+ 1.29 
+Other Financial Assets
+ - 
+ 1.31 
+ 97.40 
+-
+ 23.11 
+ 84.23 
+Trade Receivables
+ 30,344.98 
+ 5,202.58 
+ - 
+33,841.50
+Cash and Cash Equivalents 
+ 30,641.30 
+ - 
+ - 
+37,502.21
+350
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 335 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+As on 31.03.2024
+As on 31.03.2023
+< 1 year
+1-3 years
+> 3 years
+< 1 year
+1-3 years
+> 3 years
+Bank Balances other than cash and cash 
+equivalents
+3,55,759.25 
+ - 
+ - 
+4,38,299.56
+Loans
+ 115.11 
+ - 
+ - 
+99.50
+Other Financial Assets
+ 11,712.30 
+ 114.46 
+ 22.20 
+3,421.07
+Total Financial Assets
+4,28,572.94 
+ 5,595.19 
+ 425.26 
+5,13,414.74
+ 291.51 
+ 96.85 
+Financial Liabilities
+Borrowings
+ - 
+ - 
+ 2,302.20 
+ 10,984.78 
+ - 
+ 2,302.20 
+Lease Liabilities (Non Current)
+ -  10,005.17  34,920.71 
+ 40,446.48 
+Other financial liabilities 
+ - 
+ 18.27 
+ - 
+ 261.22 
+Lease Liabilities
+ 2,991.88 
+ - 
+ - 
+ 4,999.40 
+Trade payables
+ 46,512.01 
+ - 
+ - 
+ 21,647.94 
+Other financial liabilities 
+ 18,248.64 
+ 6.96 
+ - 
+ 19,344.46 
+Total Financial Liabilities
+ 67,752.53  10,030.40  37,222.91 
+ 97,423.06 
+ - 
+ 2,563.42 
+	
+Credit Risk
+	
+Credit risk is the risk that a counter party will not meet its obligations under a financial instrument or customer contract, leading to a 
+financial loss. The Group is exposed to credit risk from its operating activities (primarily trade receivables and advances to suppliers) 
+and from its exposure to  other financial assets, including deposits with banks and financial institutions, derivative instruments, 
+and other financial instruments. The Group has adopted a policy of only dealing with counterparties that have sufficiently high 
+credit rating in order to manage the credit risk. Trade receivables mainly comprise of government entities and the cash and cash 
+equivalents and derivative instruments are maintained with banks and recognised financial institutions with high credit rating.
+	
+For trade receivables, as a practical expedient the company computes credit loss allowance based on a provision matrix which 
+considers historically observed default rates over expected life of trade receivables, adjusted for forward looking estimates. 
+The movement in expected credit loss allowance is disclosed in Note 15.
+	
+The Group’s maximum exposure to the credit risk for the components of Balance Sheet as 31st March 2023 and 31st March 2022 is 
+the carrying amounts mentioned in Note no 15 and as stated in Note 55, around 89.00%(approx) of company’s turnover and 92.00% 
+(approx.) of trade receivables and customer advance it with respect to Government and Govt. regulated entities. The maximum 
+exposure relating to financial derivative instruments and financial guarantees is disclosed in Note 48 and Note 49 respectively.
+58. Disclosure pursuant to Ind AS 1 “Presentation of financial statements”:
+a.	
+Current assets expected to be recovered within twelve months and after twelve months from the reporting date.
+ (H in lakhs)
+Particulars
+As on 31.03.2024
+As on 31.03.2023
+Within 
+twelve 
+months
+After 
+twelve 
+months
+Total
+Within 
+twelve 
+months
+After 
+twelve 
+months
+Total
+Inventories
+102609.40
+0.00
+102609.40
+37299.71
+37299.71
+Trade receivables
+30344.98
+5202.58
+35547.56
+33841.50
+33841.50
+Cash and cash equivalents
+30641.30
+0.00
+30641.30
+37502.21
+37502.21
+Bank balances
+355759.25
+0.00
+355759.25
+438299.56
+438299.56
+Loans
+115.11
+0.00
+115.11
+99.50
+99.50
+Other Financial assets
+11734.50
+114.46
+11848.96
+3421.07
+3421.07
+Current tax assets (net)
+323.10
+0.00
+323.10
+7147.48
+7147.48
+Other current assets
+236983.12
+90027.85
+327010.97
+155224.89
+155224.89
+Annual Report 2023-24
+351
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 336 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+b.	
+Current liabilities expected to be settled within twelve months and after twelve months from the reporting date:	
+ (H in lakhs)
+Particulars
+As on 31.03.2024
+As on 31.03.2023
+Within 
+twelve 
+months
+After 
+twelve 
+months
+Total
+Within 
+twelve 
+months
+After 
+twelve 
+months
+Total
+Borrowings
+0.00
+0.00
+0.00
+10984.78
+10984.78
+Lease Liabilities
+2991.88
+0.00
+2991.88
+4999.40
+4999.40
+Trade payables
+46512.01
+0.00
+46512.01
+21647.95
+21647.95
+Other financial liabilities 
+17184.49
+1071.11
+18255.60
+19344.46
+19344.46
+Other current liabilities
+32330.05
+488652.74
+520982.79
+415106.90
+415106.90
+Provisions
+62520.48
+359.20
+62879.68
+39193.01
+39193.01
+Current tax liabilities (net)
+0.00
+0.00
+0.00
+0.00
+0.00
+59. Segment Reporting
+The Group has identified two major operating segments  viz, Shipbuilding and Ship Repair.  Segment wise analysis has been made on 
+the above basis and amounts allocated on a reasonable basis.
+ (H in lakhs)
+Particulars
+As at 
+March 31,2024
+As at 
+March 31,2023
+Segment Assets
+Ship building
+607070.02
+429873.09
+Ship Repair
+303047.43
+282235.51
+Unallocated
+294105.08
+289155.99
+Total
+1204222.53
+1001264.59
+Segment Liability
+Ship building
+427954.21
+316149.69
+Ship Repair
+47378.09
+49020.33
+Unallocated
+228556.56
+193329.93
+Total
+703888.86
+558499.95
+ (H in lakhs)
+Particulars
+As at 
+March 31,2024
+As at 
+March 31,2023
+Segment Revenue
+Ship building
+ 2,82,408.69 
+ 1,79,297.44 
+Ship Repair
+ 1,00,636.73 
+ 57,158.04 
+Unallocated
+ 31,018.09 
+ 20,701.25 
+Total
+ 4,14,063.51 
+ 2,57,156.73 
+Segment Result
+Ship building
+ 58,920.72 
+ 19,843.32 
+Ship Repair
+ 36,320.76 
+ 9,856.53 
+Unallocated
+ 15,176.39 
+ 9,465.09 
+Total
+ 1,10,417.87 
+ 39,164.94 
+352
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 337 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+As at 
+March 31,2024
+As at 
+March 31,2023
+Long term borrowings
+ 2,302.20 
+ 2,302.20 
+Net Debt
+ 2,302.20 
+ 13,286.98 
+Equity Share Capital
+ 13,154.04 
+ 13,154.04 
+Other equity
+ 4,87,179.63 
+ 4,29,610.60 
+Total Equity
+ 5,00,333.67 
+ 4,42,764.64 
+Gearing Ratio
+0.46%
+3.00%
+Reconciliation of segment results to profit before tax from continuing operations:
+ (H in lakhs)
+Particulars
+For the year ended
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Amount as per segment results
+ 1,10,417.87 
+ 39,164.94 
+Less: Finance Costs
+ 3,324.11 
+ 3,502.59 
+Add: Exceptional items
+ - 
+ 6,181.35 
+Profit before tax from continuing operations
+ 1,07,093.76 
+ 41,843.70 
+The Group has two major business segments -“shipbuilding” and “ship repair”. Revenue under shipbuilding includes H230672.72 Lakhs 
+(previous year: H155800.89 Lakhs) from one customer (previous year: one customer) having 81.68% revenue of the total Shipbuilding 
+revenue, and for ship repair includes H63351.17 Lakhs (previous year: H37770.68 Lakhs) from two customers (previous year: two 
+customers) having 63% in total of the total ship repair revenue.
+60. Capital Management
+The Group's objective when managing capital are to safeguard their ability to continue as a going concern so that they can continue 
+to provide returns for shareholders and maintain an optimal capital structure to reduce the cost of capital.
+For the purpose of capital management, capital includes issued equity capital and all other equity reserves attributable to the equity 
+holders of the parent. The company is not subject to any externally imposed capital requirements.
+To maintain or adjust the capital structure, the company may adjust the dividend payment to shareholders, return on capital to 
+shareholders or issue new shares. The company monitors capital using a gearing ratio, which is net debt divided by total equity. The 
+Company includes within net debt, interest bearing loans and borrowings (including bonds).
+No changes were made in the objectives, policies or processes for managing capital during the years ended March 31, 2024 and 
+March 31, 2023.
+Annual Report 2023-24
+353
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 338 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Ratios
+Numerator
+Denominator
+ As at 
+March 
+31,2024 
+ As at 
+March 
+31,2023 
+% 
+change
+Remarks if change is more 
+than 25%
+(a)	 Current Ratio,
+Current Assets
+Current Liabilities
+1.33
+1.39
+(4.95%)
+-
+(b)	 Debt-Equity Ratio,
+Total Debt
+Shareholder’s 
+Equity
+0.00
+0.03
+(84.67%)
+Due to redemption of Tax 
+free bonds H10000 lakhs.
+(c)	 Debt Service 
+Coverage Ratio,
+*Earnings 
+available for debt 
+service
+Debt Service
+11.89
+5.59
+112.81%
+Due to increase in Earnings 
+available for debt service.
+(d)	 Return on Equity 
+Ratio,
+Net Profits after 
+taxes – Preference 
+Dividend (if any)
+Average 
+Shareholder’s 
+Equity
+0.17
+0.07
+140.43%
+Due to increase in Net Profit 
+after tax.
+(e)	 Inventory turnover 
+ratio,
+Revenue from 
+Operations
+Average Inventory
+5.48
+7.04
+(22.27%)
+-
+(f)	 Trade Receivables 
+turnover ratio,
+Net Credit Sales
+Avg. Accounts 
+Receivable
+8.28
+4.78
+73.36%
+Due to increase in Turnover 
+and reduction in trade 
+receivables.
+(g)	 Trade payables 
+turnover ratio,
+Net Credit 
+Purchases
+Average Trade 
+Payables
+7.01
+6.21
+13%
+-
+(h)	 Net capital turnover 
+ratio,
+Net Sales
+Working Capital
+1.80
+1.17
+53.99%
+Due to increase in turnover.
+(i)	 Net profit ratio,
+Net Profits
+Net Sales
+0.20
+0.13
+58.68%
+Due to increase in Profit 
+after tax.
+(j)	 Return on Capital 
+employed,
+Earning before 
+interest and taxes
+Tangible Net 
+Worth + Total Debt 
++ Deferred Tax 
+Liability
+0.22
+0.10
+119.77%
+Due to increase in Earnings 
+before interest and taxes.
+(k)	 Return on 
+investment:
+ROI on Equity Investment Dividend
+Average 
+investment in 
+Equity shares
+4.52%
+5.27%
+(14.12%)
+Sl 
+No
+Name 
+Relationship
+Nature of activity
+Principal place 
+of business
+As at 31st 
+March 2024 & 
+31st March 2023 
+Proportionate 
+ownership in %
+1
+Hooghly Cochin Shipyard 
+Limited
+Subsidiary
+Construction of vessels of various 
+types and repairs thereof
+Kolkata, India
+100%
+2
+Udupi Cochin Shipyard 
+Limited
+Subsidiary
+Construction of vessels of various 
+types and repairs thereof
+Malpe, India
+100%
+*Earning for Debt Service = Net Profit after taxes + Non-cash operating expenses like depreciation and other amortizations + Interest + other adjustments like 
+loss on sale of Fixed assets etc.
+*Debt service = Interest & Lease Payments + Principal Repayments
+61. Details of Subsidiaries
+354
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 339 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+62. Summarised financial information of subsidiary company is as follows:
+The amounts disclosed for subsidiary are before inter-company eliminations
+A.	
+HOOGHLY COCHINSHIPYARD LIMITED
+ (H in lakhs)
+Summarised Balance sheet
+2023-24
+2022-23
+Non-current assets
+16732.33
+17373.21
+Current assets
+9226.46
+8735.30
+Total Assets
+25958.79
+26108.51
+Non-current liabilities
+9868.78
+13743.64
+Current liabilities
+8146.92
+5816.87
+Total Liabilities
+18015.70
+19560.51
+Net Assets
+7943.09
+6548.00
+Accumulated NCI
+0.00
+0.00
+ (H in lakhs)
+Summarised Balance sheet
+2023-24
+2022-23
+Non-current assets
+14982.24
+14613.02
+Current assets
+17130.54
+7648.50
+Assets held for sale
+0.00
+0.00
+Total Assets
+32112.78
+22261.52
+Non-current liabilities
+2140.80
+2108.10
+Current liabilities
+13689.45
+6087.81
+Total Liabilities
+15830.25
+8195.91
+Net Assets
+16282.53
+14065.61
+Accumulated NCI
+0.00
+0.00
+ (H in lakhs)
+Summarised Statement of Profit & Loss
+2023-24
+2022-23
+Revenue
+2071.68
+1702.06
+Profit/(Loss) for the year
+(3005.81)
+(2033.59)
+Other Comprehensive Income
+0.84
+(0.08)
+Total Comprehensive Income
+(3004.97)
+(2033.67)
+Profit/(Loss) attributable to NCI
+0.00 
+0.00 
+ (H in lakhs)
+Summarised Cashflows
+2023-24
+2022-23
+Cashflows from operating activites
+547.54 
+(141.18)
+Cashflows from investing activities
+94.69 
+(813.65)
+Cashflows from financing activities
+(715.12)
+4061.06 
+Net increase/decrease in cash and cash equivalents
+(72.89)
+3106.23 
+B.	
+UDUPI  COCHIN SHIPYARD LIMITED (Formerly Tebma Shipyard Limited)
+ (H in lakhs)
+Summarised Statement of Profit & Loss
+2023-24
+2022-23
+Revenue
+17971.62
+3932.22
+Profit/(Loss) for the year
+111.38 
+(866.54)
+Other Comprehensive Income
+305.54 
+0.62 
+Total Comprehensive Income
+416.92 
+(865.92)
+Profit/(Loss) attributable to NCI
+0.00 
+0.00 
+Annual Report 2023-24
+355
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 340 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Summarised Cashflows
+2023-24
+2022-23
+Cashflows from operating activites
+427.99 
+(1418.46)
+Cashflows from investing activities
+(579.36)
+(2114.61)
+Cashflows from financing activities
+995.73 
+2885.40 
+Net increase/decrease in cash and cash equivalents
+844.36 
+(647.67)
+ (H in lakhs)
+Name of the entity in the 
+group
+Net Asset
+Share in Profit or (Loss)
+Share in Other Comprehensive 
+Income
+Share in Total  
+Comprehensive Income
+Ownership 
+in % As at 
+March 31, 
+2022
+Proportionate 
+Share
+As % of 
+Consolidated 
+Net Asset
+Share in 
+Profit/ 
+(Loss)
+As % of 
+Consolidated 
+Profit/ (Loss)
+Share in Other 
+Comprehensive 
+Income
+Share in Other 
+Comprehensive 
+Income
+Share in Total 
+Comprehensive 
+Income
+As % of 
+Consolidated 
+Total 
+Comrpehensive 
+income 
+Cochin Shipyard Limited
+100.00%
+502587.09
+100%
+81310.34
+103.81%
+2612.21 
+100.00%
+83922.55
+103.29%
+Subsidiary
+Hooghly Cochin Shipyard 
+Limited
+100.00%
+7943.09
+1.59%
+(3005.81)
+(3.84)%
+0.84 
+0.03%
+(3004.97)
+(3.70)%
+Udupi Cochin Shipyard 
+Limited
+100.00%
+16282.53
+3.25%
+111.38
+0.14%
+305.54 
+10.47%
+416.92
+0.51%
+Consolidation 
+adjustments
+(26479.04)
+(5.29)%
+(88.14)
+(0.11)%
+0.00 
+0%
+(88.14)
+(0.11)%
+Grand Total
+500333.67
+100%
+78327.78
+100.00%
+2918.58 
+100.00%
+81246.36
+100.00%
+63. INFORMATION REQUIRED BY SCHEDULE III OF THE COMPANIES ACT 2013,WITH RESPECT TO 
+CONSOLIDATED FINANCIAL STATEMENTS
+64. Consumption of imported goods/services for the year amounts to ₹85,639.89 lakhs (₹74,122.85 lakhs in the previous year).
+65. The  Company  have used the ERP, SAP S/4HANA as the accounting software for maintaining its books of account, which have a 
+feature of Security audit log  and recording audit trail (edit log) facility throughout the year for all relevant transactions recorded in 
+the respective softwares except for the instances mentioned below.
+i.	
+The feature of recording audit trail (edit log) facility were enabled for identified database tables to log data changes for the 
+accounting software used for maintaining the books of account. However, any direct data change to SAP database tables are 
+not being carried out. 
+ii.	
+Security audit log was enabled in the ERP from 2022 onwards.The feature of recording audit trail (edit log) facility of the 
+accounting software was enabled on March, 2024. 
+Further no instance of audit trail feature being tampererd with was noted in respect of the accounting software.
+66. No proceedings have been initiated or pending against the company for holding any benami property under the Benami 
+Transactions (Prohibition) Act, 1988 (45 of 1988) and rules made thereunder.
+67. The holding company has no borrowings from banks or financial institutions on the basis of security of current assets. The 
+company  has been sanctioned aggregate Non –Fund  based limits in excess of  H5 Crores by the multiple banks, which are availed  as 
+and when required . It has also been sanctioned aggregate fund based limits in excess of H5 Crores by multiple banks  which has not 
+been availed by the company .  The company is not required to file any quarterly returns or statements with the banks.
+The HCSL subsidiary has borrowings from banks on the basis of security of current assets. The company has complied with the 
+requirement of filing of monthly / quarterly retuns/ statements of current assets with the bank or financial institutions as applicable, 
+and these returns were in agreement with the books of accounts for the year ended March 31, 2024 and March 31, 2023.
+356
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 341 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+The UCSL subsidiary has been sanctioned working capital limits in excess of five crore rupees, in aggregate, from banks on the basis 
+of security of current assets. The quarterly returns or statements filed by the Company with the banks or financial institutions are in 
+agreement with the books of accounts.
+68. The company is not declared wilful defaulter by any bank or financial Institution or other lender.
+69. The company has no transactions with the companies struck off under section 248 of Companies Act, 2013 or section 560 of 
+Companies Act, 1956.
+70. The Company has entered agreement with Andaman & Nicobar Administration on a long term license basis for a period of 30 
+years from November 2019 onwards for developing, designing, constructing, modernising, operating, maintaining and managing the 
+existing shiprepair facility which is named as CSL-AN Ship Repair Unit (CANSRU).
+71.  There are no charges or satisfaction yet to be registered with ROC beyond the statutory period.
+72.  No funds have been advanced or loaned or invested (either from borrowed funds or share premium or any other sources or kind of 
+funds) by the Company to or in any other person(s) or entity(ies), including foreign entities (“Intermediaries”), with the understanding, 
+whether recorded in writing or otherwise, that the Intermediary shall, directly or indirectly lend or invest in other persons or entities 
+identified in any manner whatsoever by or on behalf of the Company (“Ultimate Beneficiaries”) or provide any guarantee, security 
+or the like on behalf of the Ultimate Beneficiaries. No funds have been received by the Company from any person(s) or entity(ies), 
+including foreign entities (“Funding Parties”), with the understanding, whether recorded in writing or otherwise, that the Company 
+shall, directly or indirectly, lend or invest in other persons or entities identified in any manner whatsoever by or on behalf of the 
+Funding Party (“Ultimate Beneficiaries”) or provide any guarantee, security or the like on behalf of the Ultimate Beneficiaries.
+The Company has not received any fund from any person(s) or entity(ies), including foreign entities (Funding Party) with the 
+understanding (whether recorded in writing or otherwise) that the company shall (i) directly or indirectly lend or invest in other 
+persons or entities identified in any manner whatsoever by or on behalf of the Funding Party (Ultimate Beneficiaries) or (ii) provide 
+any guarantee, security or the like to or on behalf of the Ultimate Beneficiaries.
+73. The company did not trade or invest in Crypto Currency or virtual currency during the financial year. Hence disclosures relating 
+to it are not applicable.
+74.  In the case of contracts/ sub-contracts, wherever final bills are not submitted by the contractors for the work done as at the close 
+of the year, liability is estimated and provided based on the work done.
+75. The Company has made adequate provision towards material foreseeable losses wherever required, in respect of long term 
+contracts. The Company do not have any long term derivative contracts for which there were any material foreseeable losses.
+76.  Figures in brackets denote negative figures.
+77.  Previous year figures have been regrouped and reclassified wherever necessary to conform to the current year presentation.
+As per our report attached	 	
+	
+For and on behalf of Board of Directors
+For M/s Anand & Ponnappan	
+Chartered Accountants	
+(Firm Registration No. 000111S)	
+SYAMKAMAL N	
+BEJOY BHASKER
+	
+Company Secretary	
+Director (Technical)
+	
+Membership Number – A25337	
+DIN – 08103825
+Y BANUTEJA	
+JOSE V J	
+MADHU S NAIR
+Partner	
+Director (Finance) & Chief Financial Officer	
+Chairman and Managing Director
+(Membership Number 250129)	
+DIN – 08444440	
+DIN - 07376798
+Kochi, dated May 24, 2024	
+	
+Kochi, dated May 24, 2024	
+Annual Report 2023-24
+357
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 342 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Annexure  
+FORM AOC 1 
+“Statement containing salient features of the financial statement of Subsidiaries/associate companies/joint ventures 
+(Pursuant to first proviso to sub-section (3) of section 129 read with rule 5 of Companies (Accounts) Rules, 2014” 
+Sl 
+No
+Particulars
+Details
+Details
+1
+Sl No
+1
+2
+2
+Name of the subsidiary
+Hooghly Cochin Shipyard Ltd
+Udupi Cochin Shipyard Ltd
+3
+The date since when subsidiary was acquired
+October 23, 2017
+ September 15, 2020
+4
+Reporting Period for the subsidiary concerned, if 
+different from the holding company's reporting 
+period
+No
+No
+5
+Reporting currency and Exchange rate as on the 
+last date of the relevant financial year in the case 
+of foreign subsidiaries
+Not Applicable
+Not Applicable
+6
+Share Capital
+H14000 Lakhs
+H10800 Lakhs
+7
+Reserves and Surplus
+H(6056.91) Lakhs
+H5482.53 Lakhs
+8
+Total Assets
+H25958.79 Lakhs
+H32112.78 Lakhs
+9
+Total Liabilities
+H25958.79 Lakhs
+H32112.78 Lakhs
+10
+Investments
+Nil
+Nil
+11
+Turnover
+H2071.68 Lakhs
+H17971.62 Lakhs
+12
+Profit Before Taxation
+H(2485.19) Lakhs
+H304.68 Lakhs
+13
+Provision for taxation 
+(i) Current Tax
+(ii) Deferred Tax
+H520.62 Lakhs
+H193.30 Lakhs
+14
+Profit after taxation
+H(3005.81) Lakhs
+H111.38 Lakhs
+15
+Proposed Dividend
+Nil
+Nil
+16
+Extent of shareholding (in %)
+100%
+100%
+Part “B”: Associates and Joint Ventures :Not applicable 
+As per our report attached	 	
+	
+For and on behalf of Board of Directors
+For M/s Anand & Ponnappan	
+Chartered Accountants	
+(Firm Registration No. 000111S)	
+SYAMKAMAL N	
+BEJOY BHASKER
+	
+Company Secretary	
+Director (Technical)
+	
+Membership Number – A25337	
+DIN – 08103825
+Y BANUTEJA	
+JOSE V J	
+MADHU S NAIR
+Partner	
+Director (Finance) & Chief Financial Officer	
+Chairman and Managing Director
+(Membership Number 250129)	
+DIN – 08444440	
+DIN - 07376798
+Kochi, dated May 24, 2024	
+	
+Kochi, dated May 24, 2024	
+Part “A”: Subsidiaries
+358
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 343 ===
+Notice
+COCHIN SHIPYARD LIMITED
+Corporate Identity Number: L63032KL1972GOI002414
+Registered Office: Administrative Building, Cochin Shipyard Premises 
+Perumanoor, Ernakulam, Kerala – 682015
+Tel: +91 (484) 2501306 Fax: +91 (484) 2384001
+E-mail: secretary@cochinshipyard.in Website: www.cochinshipyard.in
+Notice is hereby given that, the 52nd Annual General Meeting 
+(AGM) of Cochin Shipyard Limited (CSL) will be held on 
+Monday, September 30, 2024 at 11:00 hrs. IST through Video 
+Conferencing (“VC”) / Other Audio Visual Means (“OAVM”) to 
+transact the following business: 
+Ordinary Business
+1.	
+To receive, consider and adopt the audited standalone 
+financial statements of the Company for the financial year 
+ended March 31, 2024, together with the Reports of the 
+Board of Directors’ and the Auditors’ thereon.
+2.	
+To receive, consider and adopt the audited consolidated 
+financial statements of the Company for the financial year 
+ended March 31, 2024, together with the Report of the 
+Auditors’ thereon.  
+3. 
+To confirm the payment of first interim dividend of ₹8.00 
+(80%) per equity share of face value of H10/- each and 
+second interim dividend of ₹3.50 (70%) per equity share 
+of face value of H5/- each and to declare final dividend of 
+₹2.25 (45%) per equity share of face value of H5/- each for 
+the financial year 2023-24.
+4.	
+To appoint a Director in place of Shri Sreejith K Narayanan 
+(DIN: 09543968), who retires by rotation and being eligible, 
+offers himself for re-appointment.
+5.	
+To authorize the Board of Directors to fix the remuneration 
+of the auditors appointed by the Comptroller and Auditor 
+General of India (C&AG) for the financial year 2024-25.
+Special Business
+6.	
+Ratification of Remuneration of Cost Auditors
+	
+To consider and if thought fit, to pass the following 
+resolution as ordinary resolution:
+	
+“RESOLVED THAT pursuant to the provisions of 
+Section 148 and other applicable provisions, if any, of 
+the Companies Act, 2013 and the Companies (Audit and 
+Auditors) Rules, 2014 (including any statutory modification 
+or re-enactment thereof for the time being in force), as 
+amended from time to time, the Company hereby ratifies 
+NOTICE
+the remuneration of ₹1,50,000/- (Rupees One Lakh Fifty 
+Thousand Only) per annum plus applicable tax payable to 
+M/s. Rajendran Mani and Varier, Cost Accountants (Firm 
+Registration No.: 000006), who are appointed by the Board 
+of Directors as Cost Auditors of the Company to conduct 
+audits relating to cost records of the Company under the 
+Companies (Cost Records and Audit) Rules, 2014 for the 
+year ending March 31, 2025.” 
+	
+“RESOLVED FURTHER THAT any one of the Directors or 
+the Company Secretary of the Company be and is hereby 
+authorized to do all acts and take all such steps as may 
+be necessary, proper or expedient to give effect to the 
+above resolution.”
+7.	
+Approval of extension of tenure of Shri Jose V J (DIN: 
+08444440), as Director (Finance)
+	
+To consider and if thought fit, to pass the following 
+resolution as ordinary resolution:
+	
+“RESOLVED THAT pursuant to the provisions of 
+Regulation 17(1C) of the Securities and Exchange Board 
+of India (Listing Obligations and Disclosure Requirements) 
+Regulations, 2015 and applicable provisions, if any, of 
+the Companies Act, 2013 read with Rules, if any, made 
+thereunder (including any statutory modification(s) or 
+re-enactment thereof for the time being in force), the 
+approval of the Shareholders be and is hereby accorded for 
+the extension of tenure of Shri Jose V J (DIN: 08444440), 
+as Director (Finance) of the Company, beyond August 
+01, 2024 till the date of his superannuation i.e., February 
+28, 2027, or until further orders, whichever is earlier, by 
+the Government of India vide Ministry of Ports, Shipping 
+and Waterways letter F. No. SY-11012/2/2018-CSL dated 
+July 03, 2024, on the terms and conditions as stipulated 
+by the Government of India, and whose office is liable to 
+retire by rotation.” 
+By Order of the Board of Directors
+Syamkamal N
+Kochi 	
+Company Secretary
+September 06, 2024		
+M. No. A25337
+Annual Report 2023-24
+359
+
+=== PAGE 344 ===
+Notes:
+1.	
+The Ministry of Corporate Affairs (“MCA”) vide its General 
+Circular No. 09/2023 dated September 25, 2023 read 
+with General Circular No. 20/2020 dated May 05, 2020 
+and all other relevant Circulars issued from time to time 
+(collectively referred to as “MCA Circulars”), permitted 
+the holding of the Annual General Meeting (“AGM”) 
+through Video Conferencing (“VC”)/ Other Audio Visual 
+Means (“OAVM”), without the physical presence of the 
+Members at a common venue. In compliance with the 
+provisions of the Companies Act, 2013, MCA Circulars, 
+Securities and Exchange Board of India (Listing Obligations 
+and Disclosure Requirements) Regulations, 2015 (“SEBI 
+Listing Regulations”) and SEBI Circulars, the 52nd AGM 
+of the Company is being held through VC/ OAVM. The 
+Registered Office of the Company shall be deemed to be 
+the venue for the AGM.
+2.	
+The attendance of the Shareholders in the AGM through 
+VC/ OAVM will be counted for the purpose of ascertaining 
+the quorum under Section 103 of the Companies Act, 2013.
+3.	
+The statement pursuant to Section 102(1) of the Companies 
+Act, 2013 with respect to the special business set out in 
+the Notice is annexed and forms part of the Notice.
+4.	
+The relevant details, pursuant to Regulation 36(3) of 
+the SEBI Listing Regulations and Secretarial Standards 
+on General Meetings issued by the Institute of Company 
+Secretaries of India (“ICSI”), in respect of Directors seeking 
+appointment/ re-appointment/ extension at this AGM is 
+annexed to this Notice.
+5.	
+Pursuant to the provisions of the Companies Act, 2013, 
+a Member entitled to attend and vote at the AGM is 
+entitled to appoint a proxy to attend and vote on his/ 
+her behalf and the proxy need not be a Member of the 
+Company. Since, this AGM is being held pursuant to the 
+MCA Circulars through VC/ OAVM, physical attendance 
+of Members has been dispensed with and hence the 
+facility for appointment of proxies by the Members will 
+not be available for the AGM. Therefore, the proxy form, 
+attendance slip and route map are not annexed to this 
+Notice. However, in pursuance of Section 112 and 113 of 
+the Companies Act, 2013, representatives of the Members 
+such as the President of India or the Governor of a State 
+or body corporate can attend the AGM through VC/ OAVM 
+and cast their votes through e-voting.
+6.	
+Annual Report for the year 2023-24 including the audited 
+financial statements for the year ended March 31, 2024, 
+is being sent by e-mail to those Members whose e-mail 
+addresses are registered with Company’s RTA/ Depository 
+Participants (DP). Further, the hard copies of the same 
+would also be made available to the Members on request. 
+Members may forward their request for hard copy to 
+secretary@cochinshipyard.in. Members may note that the 
+Notice and Annual Report 2023-24 will also be available on 
+the Company’s website www.cochinshipyard.in, websites 
+of the Stock Exchanges i.e., BSE Limited and National 
+Stock Exchange of India Limited at www.bseindia.com 
+and www.nseindia.com respectively and on the website of 
+Central Depository Services (India) Limited (CDSL) at www.
+evotingindia.com.
+7.	
+As per Regulation 40 of SEBI Listing Regulations, as 
+amended, securities of listed companies can be transferred 
+only in dematerialized mode with effect from April 01, 
+2019, except in case of request received for transmission 
+or transposition of securities. In view of this and to 
+eliminate all risks associated with physical shares and for 
+ease of portfolio management, Members holding shares in 
+physical mode are requested to consider converting their 
+holdings to dematerialized mode. Members can contact 
+the Company or Company’s Registrar and Transfer Agents 
+(RTA), Link Intime India Private Limited for assistance 
+in this regard.
+8.	
+Members who have not yet registered/ updated their 
+e-mail addresses are requested to register/ update the 
+same with their Depository Participants (DP) in case the 
+shares are held in demat mode and with Link Intime India 
+Private Limited, Company’s RTA, in case the shares are 
+held in physical mode. Members are requested to register/ 
+update their e-mail addresses to enable the Company/ RTA 
+to send communications through e-mail.
+9.	
+Members are requested to intimate changes, if any, 
+pertaining to their name, postal address, e-mail address, 
+telephone/ mobile numbers, Permanent Account Number 
+(PAN), mandates, nominations, power of attorney, bank 
+details such as name of the bank and branch details, bank 
+account number, MICR code, IFSC etc.
+	
+For shares held in demat mode: To their DPs.
+	
+For shares held in physical mode: To Link Intime India 
+Private Limited, Company’s RTA, in the prescribed Form 
+ISR-1. The said form is available at https://cochinshipyard.
+in/investor/investor_titles/56.
+	
+SEBI has mandated that with effect from April 01, 2024, 
+dividend to Shareholders holding shares in physical mode 
+shall be paid only through electronic mode. Such payment 
+shall be made only if the PAN, contact details (postal 
+address with PIN and mobile number), bank account 
+details and specimen signature for their corresponding 
+folio numbers are submitted. Those Members who have 
+not yet submitted the said details may submit the same 
+360
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 345 ===
+Notice
+with the Company’s RTA, Link Intime India Private Limited. 
+The detailed instructions for the same are available at 
+https://www.linkintime.co.in/home-KYC.html.
+10.	 As per the provisions of Section 72 of the Companies 
+Act, 2013, the facility for making nomination is available 
+to the Members in respect of the shares held by them. 
+Members who have not yet registered their nomination 
+are requested to register the same by submitting Form 
+No. SH-13 prescribed under Rule 19 of the Companies 
+(Share Capital and Debentures) Rules, 2014. If a Member 
+desires to cancel the earlier nomination and record a fresh 
+nomination, he/ she may submit the same in Form No. 
+SH-14 prescribed under Rule 19 of the Companies (Share 
+Capital and Debentures) Rules, 2014. On request, the 
+necessary forms can be obtained from the Company’s RTA, 
+Link Intime India Private Limited. Members are requested 
+to submit the said details to their DP in case the shares 
+are held in demat mode and to Link Intime India Private 
+Limited in case the shares are held in physical mode.
+11.	 SEBI has established a common Online Dispute Resolution 
+Portal (“ODR Portal”) for resolution of disputes arising in 
+the Indian Securities Market. After exhausting the option 
+to resolve the grievances with the Company/ RTA directly 
+and through the SCORES Portal, the investors can initiate 
+dispute resolution through the ODR Portal, which can be 
+accessed at https://smartodr.in/login.
+12.	 Book Closure and Dividend
+	
+(i)	
+The Register of Members and the Share Transfer 
+Books of the Company will be closed from Tuesday, 
+September 24, 2024 to Monday, September 30, 
+2024, both days inclusive.
+	
+(ii)	
+The final dividend for the financial year 2023-24, as 
+recommended by the Board of Directors, if approved 
+at the AGM, will be paid, subject to deduction of tax at 
+source, by October 29, 2024 i.e., within 30 days from 
+the date of approval to those Members whose names 
+appear in the Register of Members/ Depositories’ 
+records, as the case may be, at the close of business 
+hours on Monday, September 23, 2024.
+	
+(iii)	 Company will be making the dividend payment by 
+electronic mode wherever possible and by dividend 
+warrants/ demand drafts in other cases. In respect 
+of shares held in demat mode, the dividend will be 
+paid on the basis of beneficial ownership details 
+furnished by the Depositories (NSDL & CDSL) as at 
+the close of business hours on Monday, September 
+23, 2024. Members holding shares in demat mode 
+may note that the bank particulars registered against 
+their respective depository accounts will be used by 
+the Company for payment of dividend. The Company 
+or its RTA cannot act on any request received 
+directly from the Members holding shares in demat 
+mode for any change of bank particulars or bank 
+mandate. Such changes are to be advised only to the 
+Depository Participant of the Members. Members 
+who have changed their bank account after opening 
+the demat account and want to receive dividend in an 
+account other than the one specified while opening 
+the demat account, are requested to change/ correct 
+their bank account details (including the nine digit 
+Bank code) with their Depository Participant, before 
+September 23, 2024.
+ 
+(iv) As per the Finance Act, 2020, dividend paid and 
+distributed by a Company will be taxable in the hands 
+of Shareholders with effect from April 01, 2020. 
+Therefore, the Company will be required to deduct 
+taxes at source (TDS) at the rates applicable to each 
+category of Shareholder under the provisions of the 
+Income Tax Act, 1961 as explained below:
+	
+	
+A.	
+Resident Shareholders
+	
+	
+	
+(a)	
+TDS would not apply in case of individuals 
+if the aggregate dividend distributed to 
+them during the financial year 2024-25 
+does not exceed ₹5,000.
+	
+	
+	
+(b)	
+Tax at source will not be deducted in cases 
+where a Shareholder provides
+ 
+ 
+Form 15G (applicable to any person 
+other than a Company or a Firm); or
+ 
+ 
+Form 
+15H 
+(applicable 
+to 
+an 
+individual above the age of 60 
+years), provided that the eligibility 
+conditions are being met.
+ 
+ 
+ 
+ 
+The Form 15G/ 15H is available for 
+download at the Company’s website at 
+www.cochinshipyard.in.
+	
+	
+	
+(c)	
+Tax will be deducted at source (TDS) 
+under Section 194 of the Income Tax Act, 
+1961 @ 10% on the amount of dividend 
+payable unless exempted under any of 
+its provisions.
+	
+	
+	
+(d)	
+TDS rate in case of “specified persons”
+ 
+ 
+ 
+ 
+The Finance Act, 2021 has inserted the 
+provisions of Section 206AB of the Income 
+Tax Act, 1961 with effect from July 01, 
+2021, pursuant to which the Company 
+Annual Report 2023-24
+361
+
+=== PAGE 346 ===
+would be liable to deduct tax at higher of 
+the below rates on the dividend paid to 
+“specified persons”:
+	
+	
+	
+	
+(i)	
+At twice the rate specified in the 
+relevant provision of the Income 
+Tax Act, 1961; or
+	
+	
+	
+	
+(ii)	
+At twice the rate or rates in force; or
+	
+	
+	
+	
+(iii)	 At the rate of 5%.
+ 
+ 
+ 
+ 
+For the purposes of Section 206AB 
+“specified person” means
+	
+	
+	
+	
+(i)	
+A person who has not furnished the 
+return of income for the assessment 
+year relevant to the previous year 
+immediately preceding the financial 
+year in which tax is required to be 
+deducted, for which the time limit 
+for furnishing the return of income 
+under sub-section (1) of Section 139 
+has expired; and
+	
+	
+	
+	
+(ii)	
+the aggregate of tax deducted at 
+source and tax collected at source in 
+his case is rupees fifty thousand or 
+more in the said previous year.
+	
+	
+	
+	
+In cases where Sections 206AA and 206AB 
+are applicable i.e., the Shareholder has 
+not submitted PAN as well as not filed the 
+return, tax will be deducted at higher of 
+the rates prescribed in these sections.
+	
+	
+	
+	
+The Income Tax Department has issued a 
+compliance check utility to check whether 
+a person is covered under the “specified 
+person” as defined under Section 206AB 
+of the Income Tax Act, 1961. Accordingly, 
+for determining TDS rate on Dividend, 
+the Company will be using the said 
+utility to determine the applicability 
+of Section 206AB.
+	
+	
+	
+(e)	
+Shareholders may also note that linking 
+of 
+PAN 
+and 
+Aadhar 
+is 
+mandatory. 
+Accordingly, Shareholders are requested 
+to link their PAN with Aadhar on the 
+Income tax website. In case the PAN is not 
+linked with Aadhar, then the PAN is liable 
+to be treated as invalid. If PAN is invalid/ 
+not submitted, TDS would be deducted 
+@ 20% as per Section 206AA of the 
+Income Tax Act, 1961.
+	
+	
+	
+(f)	
+Shareholders are requested to update 
+their PAN with the Company’s RTA, Link 
+Intime India Private Limited (in case 
+of shares held in physical mode) and 
+Depository Participants (in case of shares 
+held in demat mode).
+	
+	
+	
+(g)	
+Shareholders 
+holding 
+shares 
+under 
+multiple accounts under different status/ 
+category and single PAN, may note that, 
+higher of the tax as applicable to the 
+status in which shares held under a PAN 
+will be considered on their entire holding 
+in different accounts.
+	
+	
+	
+(h)	
+Shareholders are requested to kindly 
+verify the correctness of the records and 
+update the same with the Depository 
+Participant (if shares are held in demat 
+mode) or the Company’s RTA (if shares are 
+held in physical mode), at the earliest.
+	
+	
+	
+(i)	
+Eligible Shareholders are also requested 
+to submit the following documents as 
+prescribed under the Income Tax Act, 
+1961 latest by September 23, 2024 at the 
+portal of the Company’s RTA, Link Intime 
+India Private Limited at https://liiplweb.
+linkintime.co.in/formsreg/submission-of-
+form-15g-15h.html to avail the benefit 
+of exemption or lower deduction from 
+withholding tax.
+Category
+Documents required
+Remarks
+General
+Self-attested copy of withholding tax certificate 
+for lower deduction u/s 197.
+If lower rate 
+of tax is to be 
+claimed.
+Individual
+Duly signed Form 15G or 15H (as may be 
+applicable) along with the self-attested copy of 
+the PAN card.
+If tax exemption 
+is to be claimed.
+362
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 347 ===
+Notice
+Category
+Documents required
+Remarks
+Insurance Company
+Self-declaration that it has full beneficial interest 
+with respect to shares owned, along with self-
+attested copy of PAN card and registration 
+certificate.
+If tax exemption 
+is to be claimed.
+Mutual Funds
+Self-declaration that they are specified in Section 
+10(23D) of the Income Tax Act, 1961, along with 
+self-attested copy of PAN card and registration 
+certificate.
+If tax exemption 
+is to be claimed.
+Corporation established by or under 
+a Central Act which is, under any law 
+for the time being in force, exempt 
+from income tax on its income
+Self-attested copy of the documentary evidence 
+supporting the exemption status along with self-
+attested copy of PAN card.
+If tax exemption 
+is to be claimed.
+Alternative Investment Fund (AIF) 
+established/ incorporated in India
+Self-declaration that its income is exempt under 
+Section 10(23FBA) of the Income Tax Act, 1961 
+and that they are governed by SEBI Regulations 
+as Category I or Category II AIF along with self-
+attested copy of the PAN card and registration 
+certificate.
+If tax exemption 
+is to be claimed.
+	
+	
+B.	
+Non-Resident Shareholders
+	
+	
+	
+(a)	
+Tax is required to be deducted at source in accordance with the provisions of Section 195 of the Income Tax Act, 
+1961 at applicable rates in force. As per the relevant provisions of the Income Tax Act, 1961, the tax shall be 
+deducted at source @ 20% (plus applicable surcharge and cess) on the amount of dividend payable.
+	
+	
+	
+(b)	
+Shareholders are requested to kindly verify the correctness of the records and update the same with the 
+Depository Participant (if shares are held in demat mode) or the Company’s RTA (if shares are held in physical 
+mode), at the earliest. 
+	
+	
+	
+(c)	
+Eligible Shareholders are also requested to submit the following documents as prescribed under the Income Tax 
+Act, 1961 latest by September 23, 2024 at the portal of the Company’s RTA, Link Intime India Private Limited 
+at https://liiplweb.linkintime.co.in/formsreg/submission-of-form-15g-15h.html to avail the benefit of Double 
+Taxation Avoidance Agreement (DTAA) between India and their country of residence.
+Category of Shareholder
+Documents
+Investments made by routes 
+other than FPI route
+Individual
+ 
+ 
+Self-attested copy of Tax Residency Certificate (of FY 2024-25 or calendar 
+year 2024) issued by the country in which the Shareholder is a resident;
+ 
+ 
+Self-declaration(1); 
+ 
+ 
+E-Form 10F(2); and
+ 
+ 
+Self-attested copy of lower/ nil withholding tax certificate provided under 
+Section 197 of the Income Tax Act, 1961, if any.
+Partnerships, 
+Trusts
+ 
+ 
+Self-attested copy of Tax Residency Certificate (of FY 2024-25 or calendar 
+year 2024) issued by the country in which the Shareholder is a resident; 
+ 
+ 
+List of partners/ beneficiaries, their respective shares in the income 
+of the partnership/ trust and their respective residential status (if not 
+forming part of TRC);
+ 
+ 
+Self-declaration(1); 
+ 
+ 
+E-Form 10F(2); and
+ 
+ 
+Self-attested copy of lower/ nil withholding tax certificate provided under 
+Section 197 of the Income Tax Act, 1961, if any.
+Annual Report 2023-24
+363
+
+=== PAGE 348 ===
+Category of Shareholder
+Documents
+Companies
+ 
+ 
+Self-attested copy of Tax Residency Certificate (of FY 2024-25 or calendar 
+year 2024) issued by the country in which the Shareholder is a resident;
+ 
+ 
+Proof of satisfaction of LoB wherever required as per treaty (for example, 
+in case the foreign company is registered on the stock exchange of the 
+other country – the listing certificate of the company);
+ 
+ 
+Self-declaration(1); 
+ 
+ 
+E-Form 10F(2); and
+ 
+ 
+Self-attested copy of lower/ nil withholding tax certificate provided under 
+Section 197 of the Income Tax Act, 1961, if any.
+Investments made through FPI route
+FPIs 
+(if shares are 
+held under 
+the FDI 
+regime)
+ 
+ 
+Self-attested copy of Tax Residency Certificate (of FY 2024-25 or calendar 
+year 2024) issued by the country in which the Shareholder is a resident;
+ 
+ 
+Proof of satisfaction of LoB wherever required as per treaty (for example, 
+in case the foreign company is registered on the stock exchange of the 
+other country – the listing certificate of the company);
+ 
+ 
+Self-declaration(1); 
+ 
+ 
+E-Form 10F(2); and
+ 
+ 
+Self-attested copy of lower/ nil withholding tax certificate provided under 
+Section 197 of the Income Tax Act, 1961, if any.
+FPIs 
+(other than 
+above)
+ 
+ 
+Self-attested 
+declaration 
+that 
+investment 
+has 
+been 
+made 
+under FPI route; and
+ 
+ 
+Self-attested copy of lower/ nil withholding tax certificate provided under 
+Section 197 of the Income Tax Act, 1961, if any.
+	
+	
+	
+	
+(1)The format of Self-declaration is available at Company’s website at www.cochinshipyard.in.
+	
+	
+	
+	
+(2)Electronic Form 10F as per notification No. 03/2022 dated July 16, 2022 from the Central Board of Direct 
+Tax {Notification can be read under -notification-no-3-2022-systems.pdf (incometaxindia.gov.in)}. Form 10F can 
+be obtained electronically through e-filing portal of income tax website and the procedure for the same is 
+detailed below:
+	
+	
+	
+PROCEDURE 
+FOR 
+ELECTRONICALLY 
+FURNISHING OF FORM 10F – STEPS/ 
+PROCEDURE FOR E-FILING FORM 10F
+	
+	
+	
+(i)	
+Login to https://www.incometax.gov.in/
+iec/foportal using PAN login.
+ 
+ 
+ 
+(ii) 
+Go to E-file>Income Tax Forms>File 
+Income Tax Forms.
+ 
+ 
+ 
+(iii) Select Form 10F from the available options.
+ 
+ 
+ 
+(iv) Select the relevant Assessment Year for 
+which you need to file Form 10F and 
+click on continue.
+ 
+ 
+ 
+(v) 
+Fill all the required fields in the Form.
+	
+	
+	
+(vi)	 Attach the Tax Residency Certificate and 
+Save the Draft and then Proceed to submit 
+the Form with digital signature (DSC) of 
+the authorized signatory/self.
+ 
+ 
+ 
+(vii) Once submitted, go to ‘View Filed Forms’ 
+and download the copy of the Form 10F 
+and submit along with other tax forms.
+	
+	
+	
+	
+Kindy note that, as per Rule 21AB of 
+Income Tax Rules, a non-resident, who 
+wishes to avail the benefit of Double 
+Taxation Avoidance Agreement between 
+India and the country of their residence, 
+is required to furnish certain information 
+in Form 10F. Further under sub rule 2 of 
+the aforesaid rule, a non-resident is not 
+required to furnish Form 10F if all the 
+information as required in the form is 
+contained in the TRC.
+	
+	
+	
+	
+As per Sections 90 and 90A read with 
+Section 295 of the Income Tax Act, 1961 
+read with Rule 21AB(1) of Income Tax 
+Rules, 1962, a certificate (TRC) to be 
+obtained by an non-resident, from the 
+country of his tax residence, shall contain 
+the following particulars namely:-
+	
+	
+	
+	
+(i)	
+Name of the assessee;
+	
+	
+	
+	
+(ii)	
+Status (individual, company, firm etc.) 
+of the assessee;
+	
+	
+	
+	
+(iii)	 Nationality (in case of individual);
+364
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 349 ===
+Notice
+	
+	
+	
+	
+(iv)	 Country or specified territory of 
+incorporation 
+or 
+registration 
+(in 
+case of others);
+	
+	
+	
+	
+(v)	
+Assessee’s tax identification number 
+in the country or specified territory of 
+residence or in case no such number, 
+then, a unique number on the basis 
+of which the person is identified by 
+the Government of the country or 
+the specified territory;
+	
+	
+	
+	
+(vi)	 Residential 
+status 
+for 
+the 
+purposes of tax;
+	
+	
+	
+	
+(vii)	 Period for which the certificate is 
+applicable; and
+	
+	
+	
+	
+(viii)	 Address of the applicant for the period 
+for which the certificate is applicable.
+ 
+ 
+ 
+ 
+Thus, 
+if 
+Form 
+10F 
+is 
+required 
+to 
+be furnished, then it shall be done 
+electronically as laid out above.
+	
+	
+	
+(d)	
+Kindly note that the Company is not 
+obligated to apply the beneficial DTAA 
+rates at the time of tax deduction/ 
+withholding 
+on 
+dividend 
+amounts. 
+Application 
+of 
+beneficial 
+DTAA 
+rate 
+shall depend upon the completeness 
+and satisfactory review by the Company 
+of the documents submitted by Non-
+Resident Shareholders.
+	
+	
+	
+(e)	
+Tax shall be deducted at source @ 20% 
+(plus applicable surcharge and cess) on 
+dividend paid to Foreign Institutional 
+Investors and Foreign Portfolio Investors 
+under Section 196D of the Income Tax Act, 
+1961. Such TDS rate shall not be reduced 
+on account of the application of the lower 
+DTAA rate, if any.
+	
+(v)	
+Kindly note that the aforementioned documents 
+should be uploaded at the portal of the Company’s 
+RTA, Link Intime India Private Limited at https://
+liiplweb.linkintime.co.in/formsreg/submission-of-
+form-15g-15h.html latest by September 23, 2024. 
+Documents submitted through e-mail or any other 
+form will not be considered.
+	
+(vi)	 No communication on the tax determination/ 
+deduction 
+shall 
+be 
+entertained 
+after 
+September 23, 2024. 
+	
+(vii)	 In case tax on dividend is deducted at a higher rate in 
+the absence of receipt of the aforementioned details/ 
+documents, Shareholders would still have the option 
+of claiming refund of the excess tax deducted at the 
+time of filing the income tax return by consulting a 
+tax advisor. No claim shall lie against the Company for 
+such taxes deducted. 
+	
+(viii)	 Shareholders are requested to register/ update their 
+e-mail addresses with their Depository Participant 
+(DP) in case the shares are held in demat mode and 
+with Link Intime India Private Limited, Company’s 
+RTA, in case the shares are held in physical mode to 
+enable the Company to send Form 16A with respect 
+to the TDS on Dividend. Shareholders will be able 
+to see the credit of TDS in Form 26AS, which can be 
+downloaded from their e-filing account at https://
+eportal.incometax.gov.in.
+	
+(ix)	 Disclaimer: This communication shall not be treated 
+as an advice from the Company. For the tax related 
+matters Shareholders should obtain the tax advice 
+from a tax professional. 
+13.	 Unclaimed Dividend
+	
+(i)	
+Members are hereby informed that under the 
+Companies Act, 2013, the Company is obliged to 
+transfer any money lying in the Unpaid Dividend 
+Account, which remains unpaid or unclaimed for a 
+period of seven years from the date of such transfer 
+to the Unpaid Dividend Account, to the credit of 
+the Investor Education and Protection Fund (“IEPF”) 
+established by the Central Government. The details 
+of such unclaimed dividends that are liable to be 
+transferred to IEPF are available at the Company’s 
+website www.cochinshipyard.in.
+	
+(ii)	
+Further, pursuant to the provisions of Section 124 
+of the Companies Act, 2013, read with the Investor 
+Education and Protection Fund Authority (Accounting, 
+Audit, Transfer and Refund) Rules, 2016, as amended 
+(“IEPF Rules”), all the shares on which dividend remain 
+unpaid/ unclaimed for a period of seven consecutive 
+years or more shall be transferred to the demat 
+account of the IEPF Authority as notified by the 
+Ministry of Corporate Affairs. Hence, the Company 
+urges all the Shareholders to encash/ claim their 
+respective dividend within the prescribed period.
+14.	 In case of joint holders, the Member whose name appears 
+as the first holder in the order of names as per the 
+Register of Members of the Company will be entitled to 
+vote at the AGM.
+15.	 To prevent fraudulent transactions, Members are advised 
+to exercise due diligence and notify the Company of any 
+change in address or demise of any Member as soon 
+as possible. Periodic statement of holdings should be 
+Annual Report 2023-24
+365
+
+=== PAGE 350 ===
+obtained from the concerned DP and holdings should be 
+verified from time to time.
+16.	 Members are requested to:
+	
+(i)	
+Intimate to the Company/ RTA, changes if any, in 
+their respective addresses along with the pincode 
+at an early date.
+	
+(ii)	
+Quote folio numbers in all their correspondences.
+	
+(iii)	 Consolidate holdings into one folio in case of 
+multiplicity of folios with names in identical orders.
+17.	 Non-Resident Indian Shareholders are requested to inform 
+the Company immediately the change in the residential 
+status on return to India for permanent settlement.
+18.	 The Register of Directors and Key Managerial Personnel 
+and their shareholding, maintained under Section 170 of 
+the Companies Act, 2013 and the Register of Contracts 
+or Arrangements in which the Directors are interested, 
+maintained under Section 189 of the Companies Act, 2013 
+will be available electronically for inspection to the Members 
+during the AGM. All documents referred to in the Notice will 
+also be available for electronic inspection by the Members 
+from the date of circulation of this Notice up to the date 
+of AGM. Members seeking to inspect such documents can 
+send an email to secretary@cochinshipyard.in. 
+19.	 Members are requested to send all communications 
+relating to shares to the Company’s Registrar and Transfer 
+Agents (RTA) at the following address:
+	
+Link Intime India Private Limited  
+	
+“Surya”, 35, Mayflower Avenue 
+	
+Behind Senthil Nagar, Sowripalayam Road 
+	
+Coimbatore, Tamil Nadu – 641028  
+	
+Phone: +91 (422) 2314792, 2315792
+	
+E-mail: coimbatore@linkintime.co.in
+20.	 Pursuant to the provisions of Section 108 of the 
+Companies Act, 2013 read with Rule 20 of the Companies 
+(Management and Administration) Rules, 2014 (as 
+amended), Regulation 44 of SEBI Listing Regulations (as 
+amended) and MCA Circulars, the Company is providing 
+facility of remote e-voting to its Members in respect of the 
+business to be transacted at the AGM. For this purpose, 
+the Company has entered into an agreement with Central 
+Depository Services (India) Limited (CDSL) for facilitating 
+voting through electronic means, as the authorized 
+agency. The facility of casting votes by a Member using 
+remote e-voting system as well as the e-voting system on 
+the date of the AGM will be provided by CDSL.
+21.	 The Board of Directors of the Company has appointed CS 
+Sreekumar P. S. (FCS No. 8130, CP No. 8067) Partner, M/s. 
+SVJS & Associates, Practising Company Secretaries, Kochi, 
+as the Scrutinizer for conducting the e-voting process in a 
+fair and transparent manner.
+22.	 Instructions to Shareholders for remote e-voting
+ 
+(i) 
+The remote e-voting period begins on Friday, 
+September 27, 2024 at 09:00 hrs. and ends on 
+Sunday, September 29, 2024 at 17:00 hrs. The 
+remote e-voting module shall be disabled by CDSL 
+for voting thereafter. The Members whose names 
+appear in the Register of Members/ Depositories’ 
+records, as the case may be, as on the cut-off date, 
+Monday, September 23, 2024, may cast their vote 
+electronically. The voting right of Shareholders shall 
+be in proportion to their share in the paid-up equity 
+share capital of the Company as on the cut-off date, 
+being Monday, September 23, 2024. A person who is 
+not a Member as on the cut-off date should treat this 
+Notice for information purpose only. 
+	
+(ii)	
+Shareholders who have already voted prior to 
+the Meeting date would not be entitled to vote 
+at the Meeting.
+	
+(iii)	 Process and manner of voting by electronic means
+	
+	
+A.	
+Login method for e-Voting and joining virtual 
+meeting for Individual Shareholders holding 
+securities in demat mode
+ 
+ 
+ 
+Pursuant to SEBI circular no. SEBI/HO/CFD/
+CMD/CIR/P/2020/242 dated December 09, 
+2020 on ‘e-Voting Facility Provided by Listed 
+Entities’, e-Voting process has been enabled 
+to all the individual demat account holders, by 
+way of a single login credential, through their 
+demat accounts/ websites of Depositories/ DPs 
+in order to increase the efficiency of the voting 
+process. Individual demat account holders 
+would be able to cast their vote without having 
+to register again with the E-Voting Service 
+Provider (ESP), thereby, not only facilitating 
+seamless authentication but also enhancing 
+ease and convenience of participating in 
+e-Voting process. Shareholders are advised to 
+update their mobile number and e-mail ID with 
+their DPs to access e-Voting facility.
+	
+	
+	
+In terms of the said SEBI Circular, login method 
+for e-Voting and joining virtual meeting for 
+Individual Shareholders holding securities in 
+demat mode is given below:
+366
+COCHIN SHIPYARD LIMITED

@@ -1,0 +1,6174 @@
+
+=== PAGE 251 ===
+ (H in lakhs) 
+Particulars
+Reserves and Surplus
+Other 
+Comprehensive 
+Income
+Total
+Capital 
+Reserve
+Securities 
+Premium 
+General 
+Reserve
+Retained 
+Earnings
+Capital 
+Redemption 
+Reserve
+Debenture 
+Redemption 
+Reserve
+Effective 
+portion of 
+Cash Flow 
+Hedges
+Attributable 
+to the Parent 
+Company
+Attributable 
+to NCI
+Other 
+Equity
+Balance as at 
+April 01,2023
+7,024.25 
+ 93,151.96 
+ 6,322.75 
+ 3,12,667.84 
+ 12,353.76 
+ 1,668.44 
+ (3,578.40)
+ 4,29,610.60 
+ - 
+ 4,29,610.60 
+Profit for the year
+ 78,327.78 
+ 78,327.78 
+ 78,327.78 
+Other comprehensive 
+income for the year
+ (66.07)
+ 2,984.65 
+ 2,918.58 
+ 2,918.58 
+Total comprehensive 
+income for the year
+ 78,261.71 
+ - 
+ - 
+ 2,984.65 
+ 81,246.36 
+ 81,246.36 
+Dividends 
+ (23,677.27)
+ (23,677.27)
+ (23,677.27)
+Transfer to retained 
+earnings
+ 1,668.44 
+ (1,668.44)
+ - 
+ - 
+0.00
+Amortisation of premium
+ (0.06)
+ (0.06)
+ (0.06)
+Balance as at 
+March 31,2024
+7,024.25 
+ 93,151.90 
+ 6,322.75 
+ 3,68,920.72 
+ 12,353.76 
+ - 
+ (593.75)
+ 4,87,179.63 
+ 4,87,179.63 
+Consolidated Statement of Changes in Equity 
+for the year ended March 31, 2024
+Refer Note 22 for further details
+B. Other Equity
+Annual Report 2023-24
+267
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 252 ===
+Consolidated Statement of Changes in Equity 
+for the year ended March 31, 2023
+(H in Lakh)
+Particulars
+Reserves and Surplus
+Other 
+Comprehensive 
+Income
+Total
+Capital 
+Reserve
+Securities 
+Premium 
+General 
+Reserve
+Retained 
+Earnings 
+Capital 
+Redemption 
+Reserve
+Debenture 
+Redemption 
+Reserve
+Effective 
+portion of 
+Cash Flow 
+Hedges
+Attributable 
+to the Parent 
+Company
+Attributable 
+to NCI
+Other 
+Equity
+Balance as at April 01,2022
+7,024.25  93,152.08 6,322.75 3,05,641.87 
+ 12,353.76 
+ 1,668.44 
+ 0.98 
+ 4,26,164.12 
+4,26,164.12 
+Profit for the year
+ 30,470.91 
+ 30,470.91 
+ 30,470.91 
+Other comprehensive income 
+for the year
+ (96.56)
+ (3,579.37)
+ (3,675.93)
+ (3,675.93)
+Total comprehensive 
+income for the year
+ 30,374.35 
+ (3,579.37)
+ 26,794.98 
+ 26,794.98 
+Dividends (including taxes)
+ (23,348.38)
+ (23,348.38)
+ (23,348.38)
+Transfer to retained earnings
+ - 
+ - 
+ - 
+0.00
+Amortisation of premium
+ (0.12)
+ (0.12)
+ (0.12)
+Balance as at March 31,2023
+7,024.25  93,151.96 6,322.75 3,12,667.84 
+ 12,353.76 
+ 1,668.44 
+ (3,578.40)
+ 4,29,610.60 
+ - 4,29,610.60 
+Refer Note 22 for further details
+Corporate overview and Material Accounting Policy Information	
+1 - 3
+Notes to the Consolidated Financial Statements	
+4 - 77
+The accompanying notes are an integral part of these financial statements
+As per our report attached	 	
+	
+For and on behalf of Board of Directors
+For M/s Anand & Ponnappan	
+Chartered Accountants	
+(Firm Registration No. 000111S)	
+SYAMKAMAL N	
+BEJOY BHASKER
+	
+Company Secretary	
+Director (Technical)
+	
+Membership Number – A25337	
+DIN – 08103825
+Y BANUTEJA	
+JOSE V J	
+MADHU S NAIR
+Partner	
+Director (Finance) & Chief Financial Officer	
+Chairman and Managing Director
+(Membership Number 250129)	
+DIN – 08444440	
+DIN - 07376798
+Kochi, dated May 24, 2024	
+	
+Kochi, dated May 24, 2024	
+268
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 253 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+1.	
+CORPORATE 
+OVERVIEW 
+AND 
+MATERIAL 
+ACCOUNTING POLICY INFORMATION
+1.1	 Corporate Information:
+	
+Cochin Shipyard Limited (referred to as “CSL” or "Holding 
+Company" or “the Group”)  is one of the leading shipyards 
+in India, located in the southern state of Kerala. The 
+Company was founded in 1972 and is owned by the 
+Government of India. The group is primarily engaged in 
+shipbuilding and ship repair, catering to both the domestic 
+and international markets.
+	
+The  Holding Company is a “Miniratna”, Schedule-“A”, 
+Category-I CPSE, which is also a public limited group 
+incorporated and domiciled in India. The registered office 
+of the Holding Company is Perumanoor, Kochi, Kerala.
+	
+As at March 31, 2024, the Government of India holds 
+72.86% of the Group's equity share capital. The Group's 
+equity shares are listed for trading on NSE Limited and BSE 
+Limited in India and tax-free bonds are listed for trading 
+on BSE Limited.
+	
+The  consolidated financial statements relate to Cochin 
+Shipyard Limited (Holding Company) and its Subsidiaries, 
+Hooghly Cochin Shipyard Limited (hereinafter referred to 
+as HCSL) and Udupi Cochin Shipyard Limited (hereinafter 
+referred to as UCSL) (Formerly Tebma Shipyards Ltd). 
+	
+The Holding Company and its Subsidiaries are together 
+referred to as “Group”.
+	
+The Consolidated financial statements for the year ended 
+March 31,2024 were approved by the Board of Directors 
+and authorized for issue on May 24, 2024 which are 
+subject to the supplementary audit by the Comptroller 
+& Auditor General of India (C&AG) and final approval of 
+the shareholders.
+Details of Subsidiaries
+Share 
+holding
+Hooghly Cochin Shipyard Ltd. (hereinafter 
+referred to as HCSL) incorporated on October 
+23, 2017 is mainly engaged in the business of  
+construction and repair of  vessels of all types. 
+100%
+Udupi Cochin Shipyard Limited (Formerly 
+Tebma Shipyards Ltd), acquired on September 
+15, 2020 through NCLT process,  is mainly 
+engaged in the business of  construction and 
+repair of  vessels of all types.
+100%
+2.	
+Basis of preparation and presentation of 
+consolidated financial statements
+2.1	 Statement of compliance
+	
+These consolidated financial statements have been 
+prepared in accordance with the Indian Accounting 
+Standards (referred to as “Ind AS”) as prescribed under 
+Section 133 of the Companies Act, 2013 read with 
+Companies (Indian Accounting Standards) Rules, 2015 
+as amended from time to time and other Accounting 
+Principles generally accepted in India.
+	
+The Balance Sheet, the Statement of Profit and Loss and 
+the Statement of Changes in Equity are prepared and 
+presented in the format prescribed in the Division II of 
+Schedule III to the Companies Act, 2013 (the Act). The 
+Statement of Cash Flows has been prepared and presented 
+in accordance with Ind AS 7 “Statement of Cash Flows”. 
+The disclosures with respect to items in the Balance 
+Sheet and Statement of Profit and Loss, as prescribed in 
+the Schedule III to the Act, are presented by way of notes 
+forming part of the consolidated financial statements 
+along with the other notes required to be disclosed under 
+the notified Accounting Standards and the SEBI (Listing 
+Obligations and Disclosure Requirements) Regulations, 
+2015 as amended.
+2.2	 Functional and Presentation Currency
+	
+The consolidated financial statements are presented 
+in Indian Rupees (H) which is group’s presentation and 
+functional currency and all values are rounded to the 
+nearest lakhs (rounded off to two decimals) as permitted 
+by Schedule III of the Act except when otherwise indicated.
+2.3	 Basis of Measurement
+	
+These consolidated financial statements have been 
+prepared on the historical cost basis, except for certain 
+financial instruments which are measured at fair values 
+at the end of each reporting period, as explained in the 
+accounting policies below. Historical cost is generally based 
+on the fair value of the consideration given in exchange 
+for goods and services. Fair value is the price that would 
+be received to sell an asset or paid to transfer a liability in 
+an orderly transaction between market participants at the 
+measurement date.
+2.3.1	Current/ Non-Current Classification
+	
+An Asset/ liability is classified as current if it satisfies any of 
+the following conditions:
+Annual Report 2023-24
+269
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 254 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+	
+i.	
+the asset/ liability is expected to be realized/ settled 
+in the group’s normal operating cycle;
+	
+ii.	
+the asset is intended for sale or consumption;
+	
+iii.	
+the asset/ liability is held primarily for the 
+purpose of trading;
+	
+iv.	
+the asset/ liability is expected to be realized/ settled 
+within twelve months after the reporting  period;
+	
+v.	
+the asset is cash or cash equivalent unless it is 
+restricted from being exchanged or used to settle 
+a liability for at least twelve months after the 
+reporting date;
+	
+vi.	
+in the case of a liability, the group does not have an 
+unconditional right to defer settlement of the liability 
+for at least twelve months after the reporting date.
+	
+All other assets and liabilities are classified as non-current.
+	
+For the purpose of current/ non-current classification of 
+assets and liabilities, the group has ascertained its normal 
+operating cycle of different business activities as follows:
+	
+(i)	
+In case of ship building and ship repair, normal 
+operating cycle is considered vessel wise, as the time 
+period from the effective date of contract to the date 
+of expiry of warranty period.
+	
+(ii)	
+In the case of other business activities, normal 
+operating cycle is 12 months.
+2.3.2	Basis of consolidation
+	
+The Consolidated financial statements comprise the financial 
+statements of the CSL and its subsidiaries as at March 31, 2024.
+	
+Subsidiaries are entities (including structured entities) 
+over which the Holding Company has control. The Holding 
+Compnay controls an entity when the Holding Company 
+is exposed to, or has rights to, variable returns from its 
+involvement with the entity and has the ability to affect 
+those returns through its power to direct the relevant 
+activities of the entity.
+	
+Consolidation of a subsidiary begins when the Holding 
+Company obtains control over the subsidiary and ceases 
+when the Holding Company loses control of the subsidiary. 
+Assets, liabilities, income and expenses of a subsidiary 
+acquired or disposed of during the year are included in 
+the Consolidated Financial Statements from the date the 
+Holding Company gains control until the date the Holding 
+Company ceases to control the subsidiary.
+	
+Consolidated Financial Statements are prepared using 
+uniform accounting policies for like transactions and other 
+events in similar circumstances. If a member of the group 
+uses accounting policies other than those adopted in the 
+Consolidated Financial Statements for like transactions and 
+events in similar circumstances, appropriate adjustments 
+are made to that group member’s financial statements 
+in preparing the Consolidated Financial Statements to 
+ensure conformity with the group’s accounting policies.
+	
+The Financial Statements of all entities used for the 
+purpose of consolidation are drawn up to same reporting 
+date as that of the Holding Company, i.e., year ended on 
+March 31. Following consolidation procedure is followed:
+	
+a)	
+Combine like items of assets, liabilities, equity, 
+income, expenses and cash flows of the Holding 
+Company with those of its subsidiaries. For this 
+purpose, income and expenses of the subsidiary are 
+based on the amounts of the assets and liabilities 
+recognized in the consolidated financial statements 
+at the acquisition date.
+	
+b)	
+Offset (eliminate) the carrying amount of the 
+Holding Company’s investment in each subsidiary 
+and the Holding Company’s portion of equity of 
+each subsidiary.
+	
+c)	
+Eliminate in full intragroup assets and liabilities, 
+equity, income, expenses and cash flows relating to 
+transactions between entities of the group (profits 
+or losses resulting from intragroup transactions that 
+are recognized in assets, such as inventory and fixed 
+assets, are eliminated in full). Intragroup losses may 
+indicate an impairment that requires recognition 
+in the consolidated financial statements. Ind AS 
+12 Income Taxes applies to temporary differences 
+that arise from the elimination of profits and losses 
+resulting from intragroup transactions.
+	
+Profit or loss and each component of other comprehensive 
+income (OCI) are attributed to the equity holders of the 
+Holding Company of the Group and to the non-controlling 
+interests, even if this results in the non-controlling 
+interests having a deficit balance. When necessary, 
+adjustments are made to the financial statements of 
+subsidiaries to bring their accounting policies into line 
+with the Group’s accounting policies. All intra-group assets 
+270
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 255 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+and liabilities, equity, income, expenses and cash flows 
+relating to transactions between members of the Group 
+are eliminated in full on consolidation.	
+2.3.3	Business Combinations
+	
+Business combinations are accounted for using the 
+acquisition method. The cost of an acquisition is measured 
+as the aggregate of the consideration transferred 
+measured at acquisition date fair value and the amount of 
+any non-controlling interests in the acquiree. Acquisition 
+related transaction costs are recognised as expense in the 
+statement of profit and loss as and when incurred.
+	
+At the acquisition date, the identifiable assets acquired and 
+the liabilities assumed are recognized at their acquisition 
+date fair values. For this purpose, the liabilities assumed 
+include 
+contingent 
+liabilities 
+representing 
+present 
+obligation and they are measured at their acquisition fair 
+values irrespective of the fact that outflow of resources 
+embodying economic benefits is not probable. However, 
+the following assets and liabilities acquired in a business 
+combination are measured at the basis indicated below:
+	
+* Deferred tax assets or liabilities, and the assets or 
+liabilities related to employee benefit arrangements are 
+recognized and measured in accordance with Ind AS 12 
+Income Tax and Ind AS 19 Employee Benefits respectively.
+	
+* Assets (or disposal groups) that are classified as held for 
+sale in accordance with Ind AS 105 Non-current Assets 
+Held for Sale and Discontinued Operations are measured 
+in accordance with that standard.
+	
+Aggregate amount of consideration transferred (Purchase 
+consideration) in excess of the Group’s interest in the 
+acquiree’s net fair value of identifiable assets and liabilities 
+is recognised as Goodwill. Excess of the Group’s interest in 
+the net fair value of the acquiree’s identifiable assets and 
+liabilities over the purchase consideration is recognised in 
+the Capital Reserve.
+	
+Non-Controlling Interest	
+	
+	
+	
+Non-controlling interest represent the proportion of 
+income, other comprehensive income and net assets 
+in subsidiaries that is not attributable to the Group’s 
+shareholders. Non-controlling interest is initially measured 
+at the proportionate share of the recognized amounts 
+of the acquiree’s identifiable net assets. Subsequent 
+to acquisition, the carrying amount of non-controlling 
+interest is the amount of the interest at initial recognition 
+plus the non-controlling interests’ share of subsequent 
+changes in equity.
+	
+Profit or loss and other comprehensive income are 
+attributed to the owners of the Holding Company and 
+to the non-controlling interests, shown separately in the 
+consolidated financial statements.
+2.4	 Use of estimates and judgments
+	
+The preparation of the consolidated financial statements 
+in conformity with the Ind AS requires management to 
+make judgments, estimates and assumptions that affect 
+the application of accounting policies and the reported 
+amounts of assets, liabilities and disclosures as at date of 
+the consolidated financial statements and the reported 
+amounts of the revenues and expenses for the years 
+presented. The estimates and associated assumptions 
+are based on historical experience and other factors 
+that are considered to be relevant. Actual results may 
+differ from these estimates under different assumptions 
+and conditions.
+	
+Future results could differ due to changes in these 
+estimates and the difference between the actual result 
+and the estimates are recognized in the period in which 
+the results are known/materialize.
+	
+The estimates and underlying assumptions are reviewed 
+on an ongoing basis.
+2.5	 Critical Accounting estimates and judgments: 
+	
+The application of accounting policies that require critical 
+accounting estimates involving complex and subjective 
+judgments and the use of assumptions in the consolidated 
+financial statements have been disclosed below:
+	
+a)	
+Valuation of deferred tax assets / liabilities
+	
+	
+The group reviews the carrying amount of deferred 
+tax assets / liabilities at the end of each reporting 
+period. Significant judgments are involved in 
+determining the elements of deferred tax items.
+	
+b)	
+Leases
+	
+	
+The group evaluates if an arrangement qualifies to 
+be a lease as per the requirements of Ind AS 116. 
+Identification of a lease requires significant judgment. 
+The group uses significant judgments in assessing the 
+lease term (including anticipated renewals) and the 
+applicable discount rate.
+Annual Report 2023-24
+271
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 256 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+	
+	
+The classification of the leasing arrangement as 
+a finance lease or operating lease is based on an 
+assessment of several factors, including, but not 
+limited to, transfer of ownership of leased asset 
+at end of lease term, lessee’s option to purchase 
+and estimated certainty of exercise of such option, 
+proportion of lease term to the asset’s economic 
+life, proportion of present value of minimum lease 
+payments to fair value of leased asset and extent of 
+specialized nature of the leased asset.
+	
+	
+For computation of lease liability, Ind AS 116 requires 
+lessee to use their incremental borrowing rate as 
+discount rate if the rate implicit in the lease contract 
+cannot be readily determined.
+	
+	
+For leases denominated in group’s functional 
+currency, the group considers the incremental 
+borrowing rate to be the interest rate on borrowings 
+from banks available to the group.
+	
+c)	
+Provision towards Guarantee repairs
+	
+	
+A provision is made towards guarantee repairs/claims 
+in respect of newly built ships/small crafts delivered 
+and repaired ships on the basis of the technical 
+estimation done by the group. The guarantee claims 
+received from the ship owners are reviewed every 
+year till settlement of the same. In case of a shortfall 
+/ surplus in the provision made earlier, necessary 
+adjustments are made.
+	
+d)	
+Litigations
+	
+	
+From time to time, the group is subject to legal 
+proceedings and the ultimate outcome of each 
+being always subject to many uncertainties inherent 
+in litigation. A provision for litigation is made when 
+it is considered probable that a payment will be 
+made and the amount of the loss can be reasonably 
+estimated. Significant judgment is made when 
+evaluating, among other factors, the probability 
+of unfavorable outcome and the liability to make a 
+reasonable estimate of the amount of potential loss. 
+Provision for litigations are reviewed at the end of 
+each accounting period and revisions made for the 
+changes in facts and circumstances.
+	
+e)	
+Fair value measurements
+	
+	
+Fair value is the price that would be received to sell 
+an asset or paid to transfer a liability in an orderly 
+transaction between market participants at the 
+measurement date under current market conditions.
+	
+	
+The group categorizes assets and liabilities measured 
+at fair value into one of three levels depending 
+on the ability to observe inputs employed in their 
+measurement which are described as follows:
+	
+	
+(a)	
+Level 1 inputs are quoted prices (unadjusted) in 
+active markets for identical assets or liabilities.
+	
+	
+(b)	
+Level 2 inputs are inputs that are observable, 
+either 
+directly 
+or 
+indirectly, 
+other 
+than 
+quoted prices included within level 1 for the 
+asset or liability.
+	
+	
+(c)	
+Level 3 inputs are unobservable inputs for 
+the asset or liability reflecting significant 
+modifications to observable related market 
+data or group’s assumptions about pricing by 
+market participants.
+	
+	
+Management 
+applies 
+valuation 
+techniques 
+to 
+determine the fair value of financial instruments 
+(where active market quotes are not available) 
+and non-financial assets. This involves developing 
+estimates and assumptions consistent with how 
+market participants would price the instrument. 
+Management bases its assumptions on observable 
+data as far as possible but this is not always available. 
+In that case management uses the best information 
+available. Estimated fair values may vary from the 
+actual prices that would be achieved in an arm’s 
+length transaction at the reporting date.
+	
+f)	
+Liquidated Damages
+	
+	
+Claims for liquidated damages against the group  are 
+recognized in the consolidated financial statements 
+based on the management’s assessment of the 
+probable outcome with reference to the available 
+information 
+supplemented 
+by 
+experience 
+of 
+similar transactions.
+	
+g)	
+Revenue Recognition
+	
+	
+The 
+group 
+exercises 
+significant 
+judgment 
+in 
+measuring progress of performance obligations 
+satisfied over time for recognition of revenue from 
+contracts with customers.
+	
+	
+Revenue is recognized over time by measuring the 
+work carried out or survey of performance completed 
+272
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 257 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+to date under output method. Under this method, 
+works completed to date in each contract are the basis 
+to measure and recognize revenue. The quantum is 
+calculated by each project team based on the technical 
+progress up to the reporting date. The revenue 
+recognized reflects the value of works completed/ 
+measured to date in line with the consideration as 
+determined in the respective contracts.
+	
+	
+Provision for estimated losses if any, on the 
+uncompleted part of the contracts are provided in 
+the period in which such losses become probable 
+based on the expected contract estimates at the 
+reporting date.
+	
+h)	
+Recognition and measurement of defined benefit 
+obligations
+	
+	
+The obligation arising from defined benefit plan is 
+determined on the basis of actuarial assumptions. Key 
+actuarial assumptions include discount rate, trends in 
+salary escalation and vested future benefits and life 
+expectancy. The discount rate is determined with 
+reference to market yields at the end of the reporting 
+period on the Government bonds. The period to 
+maturity of the underlying bonds correspond to 
+the probable maturity of the post employment 
+benefit obligations.
+2.6	 Changes in Accounting Policies
+A.	
+Deferred Tax related to assets and liabilities arising 
+from a single transaction
+	
+The group has adopted Deferred Tax related to Assets and 
+Liabilities arising from a Single Transaction (Amendments 
+to Ind AS 12) from 1st April,2023. The amendments 
+narrow the scope of the initial recognition exemption to 
+exclude transactions that give rise to equal and offsetting 
+temporary differences - e.g. leases and decommissioning 
+liabilities. For leases and decommissioning liabilities, an 
+entity is required to recognize the associated deferred 
+tax assets and liabilities from the beginning of the earliest 
+comparative period presented, with any cumulative 
+effect recognized as an adjustment to retained earnings 
+or other components of equity at that date. For all 
+other transactions, group applies the amendments to 
+transactions that occur on or after the beginning of the 
+earliest period presented.
+	
+The group previously accounted for deferred tax on leases 
+by applying the ‘integrally linked’ approach, resulting 
+in a similar outcome as under the amendments, except 
+that the deferred tax asset or liability was recognized 
+on a net basis.
+	
+Following the amendments, the group has recognized 
+a separate deferred tax asset in relation to its lease 
+liabilities and a deferred tax liability in relation to its 
+right-of-use assets.
+	
+However, there was no impact on the statement of 
+financial position ie., Balance Sheet because the balances 
+qualify for offset under paragraph 74 of Ind AS 12. There 
+was also no impact on the opening retained earnings as at 
+01st April,2022 as a result of the change.
+B.	
+Change in accounting policy on measurement of 
+inventories:
+Nature of 
+Inventories
+Current Year
+Previous Years
+Raw 
+materials and 
+components
+At weighted 
+average cost 
+method. When 
+they are intended 
+for project use, 
+valuation is done 
+at project specific 
+weighted average 
+cost method
+At weighted 
+average cost 
+method or net 
+realisable value 
+whichever is lower.
+	
+Raw-materials and components, Stores & Spares and 
+Goods in Transit represents items that are contract/
+project specific and are consumed in the ship building and/
+or ship repair contracts and other directly related ancillary 
+services. Since each contract/project with different 
+customers is distinct and having different characteristics, 
+raw-materials and components, Stores & Spares and Goods 
+in Transit are held for use in the production and not for sale 
+in the ordinary course of business, are not ordinarily inter-
+changeable and unique in nature, therefore arriving at 
+their net realizable value/replacement cost is not practical.
+	
+The raw materials and components have been valued at 
+weighted/project specific weighted average cost method 
+as against the present policy of valuing inventories at 
+weighted average cost method or net realisable value 
+whichever is lower. The said change in the measurement 
+policy does not have any impact in the current and previous 
+financial statements.	
+Annual Report 2023-24
+273
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 258 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+C.	
+Change in methods for measuring progress towards 
+complete satisfaction of a performance obligation by 
+subsidiaries
+	
+During the year, in order to faithfully depict the entity’s 
+performance 
+towards 
+complete 
+satisfaction 
+of 
+a 
+performance obligation ,the subsidiaries has adopted (as 
+per Ind AS 115 “Revenue from Contract with Customers”) 
+Output method ( based on physical completion) changing 
+from the Input method which was followed in the 
+comparative previous year. The subsidiaries has made 
+reasonable efforts to determine effect of change in the 
+accounting policy during the year. The effect due to change 
+in the accounting policy in the comparative  years are not 
+material, hence the amounts of comparative periods are 
+not restated.The impact of the aforesaid changes have 
+been disclosed in Note No.51.
+D.	
+Material accounting policy information
+	
+The group  adopted Disclosure of Accounting Policies 
+(Amendments to Ind AS 1) from 1st April,2023. This 
+amendment did not result in any changes in the accounting 
+policies themselves and also did not result in any significant 
+impact in  the accounting policy information disclosed in 
+the consolidated financial statements.
+	
+The amendments require the disclosure of ‘material 
+accounting policy information’, rather than ‘significant 
+accounting policies’. The amendments also provide 
+guidance on the application of materiality in disclosing 
+accounting policies to provide useful, group specific 
+accounting policy information that users need to 
+understand along with other material information in this 
+consolidated financial statements.
+	
+Management reviewed the accounting policies and made 
+updates to the information disclosed in Note No.3 Material 
+Accounting Policy Information in line with the amendment.
+3.	
+Material Accounting Policy Information
+	
+The group has consistently applied all the accounting 
+policies to  the period presented in this consolidated 
+financial statements except  where a newly issued 
+Accounting Standard is initially adopted or  a revision to 
+an existing accounting standard requires a change in the 
+accounting policy hitherto in use.
+	
+(Refer “Note No. 2.6-Changes in Accounting Policies”)
+	
+The group presents the material accounting policies 
+under this note, which should be read in conjunction 
+with the information presented and disclosed in the 
+relevant notes referred under these consolidated financial 
+statements and are considered to be “Material Accounting 
+Policy Information”.
+3.1	 Property , Plant and Equipment (PPE)
+	
+Recognition and Measurement:
+	
+Items of Property, Plant and Equipment are measured 
+at cost, which includes capitalized borrowing costs, 
+less accumulated depreciation and any accumulated 
+impairment losses. For the items of Property, Plant and 
+Equipment  existing as on April 1, 2015 i.e group’s date of 
+transition to Ind AS, was carried at deemed cost ie carrying 
+amount as at that date.  However in case of UCSL, fair 
+value has been adopted as deemed cost on the transition 
+date to Ind AS.
+	
+If significant parts of an item of Property, Plant and 
+Equipment have different useful lives, then they are 
+accounted for as separate items (major components) of 
+Property, Plant and Equipment.
+	
+Spare Parts are capitalized when they meet the definition of 
+Property, Plant and Equipment, i.e., when the group intends 
+to use these for a period exceeding 12 months,  have 
+value of more than H 5 Lakhs  and that  can be used only in 
+connection with an item of property, plant and equipment 
+and whose use is expected to be irregular are capitalized and 
+depreciated over the useful life of the spares or principal 
+item of the relevant assets, whichever is lower.
+	
+Any gain or loss on disposal of an item of Property, Plant 
+and Equipment is recognized in the statement of profit 
+and loss account.
+	
+Subsequent Expenditure:
+	
+Subsequent costs are included in the asset’s carrying 
+amount or recognized as a separate asset, as appropriate, 
+only when it is probable that future economic benefits 
+associated with the item will flow to the group and the 
+cost of the items is material and can be measured reliably.
+3.2	 Capital work in progress 
+	
+Capital work in progress are property, plant and 
+equipment that are not yet ready for their intended use 
+at the reporting date, which are carried at cost, comprising 
+direct cost, related incidental expenses and attributable 
+borrowing cost.
+274
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 259 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+	
+Expenditure incurred on assets under construction 
+(including a project) is carried at cost under Capital work in 
+Progress (‘CWIP’).
+3.3	 Intangible Assets
+	
+Design 
+development: 
+Cost 
+incurred 
+on 
+Design 
+Development which is not directly chargeable on a product 
+are capitalized as Intangible Asset and amortized on a 
+straight-line basis over a period of five years.
+	
+Software: Cost of software which is not an integral part 
+of the related hardware acquired for internal use is 
+capitalized as intangible asset and amortized on a straight-
+line basis over a period of three years.
+	
+Internally generated procedure: Cost of internally 
+generated weld procedure is capitalized as Intangible 
+Asset and amortized on a straight-line basis over a period 
+of three years.
+	
+For the intangible assets  existing as on April 1, 2015 i.e 
+group’s date of transition to Ind AS, was carried at deemed 
+cost ie carrying amount as at that date.
+	
+The residual values, useful lives and methods of 
+amortization of intangible assets are reviewed at 
+each financial year end and adjusted prospectively, 
+if appropriate.
+	
+Computer software/ license is under development or is not 
+yet ready for use, accumulated cost incurred on such items 
+are accounted as “Intangible Assets Under Development”.
+3.4	 Leases
+	
+The group assesses at contract inception whether a 
+contract is, or contains, a lease. That is, if the contract 
+conveys the right to control the use of an identified asset 
+for a period of time in exchange for consideration.
+	
+The group’s lease asset classes primarily consist of leases 
+for Land and Buildings.
+	
+i)	
+As a Lessee: 
+	
+	
+At the date of commencement of the lease, the 
+group recognizes a lease liability and a corresponding 
+right-of-use (“RoU”) asset for all lease arrangements 
+in which it is a lessee, except for leases with a term 
+of twelve months or less (short term leases) and 
+leases of low value assets. For these short term and 
+leases of low value assets, the group recognizes 
+the lease payments as an operating expense on a 
+straight-line basis or another systematic basis over 
+the term of the lease.
+	
+	
+Right of Use (RoU) Assets
+	
+	
+The right-of-use assets are initially recognized at 
+cost, which comprises the initial amount of the lease 
+liability adjusted for any lease payments made at or 
+prior to the commencement date of the lease plus 
+any initial direct costs less any lease incentives. They 
+are subsequently measured at cost less accumulated 
+depreciation and impairment losses, if any. Right-of-
+use assets are depreciated from the commencement 
+date on a straight-line basis over the shorter of the 
+lease term and useful life of the underlying asset.
+	
+	
+Lease Liabilities 
+	
+	
+The lease liability is initially measured at the present 
+value of the future lease payments i.e. amortised cost 
+under effective interest method.The lease payments 
+are discounted using the interest rate implicit in 
+the lease or, if not readily determinable, using the 
+incremental borrowing rates.
+	
+	
+The lease liability is subsequently remeasured by 
+increasing the carrying amount to reflect interest on 
+the lease liability and reducing the carrying amount 
+to reflect the lease payments made.
+	
+	
+A lease liability is remeasured upon the occurrence 
+of certain events such as a change in the lease term 
+or a change in an index or rate used to determine 
+lease payments. When a lease liability is remeasured, 
+a corresponding adjustment is made to the carrying 
+amount of right of use asset, or is recorded in 
+statement of profit and loss, if carrying amount of 
+the right of use asset has been reduced to nil.
+	
+	
+Modifications 
+to 
+a 
+lease 
+agreement 
+beyond 
+the original terms and conditions are generally 
+accounted for as a re-measurement of the lease 
+liability with a corresponding adjustment to the RoU 
+asset. Any gain or loss on modification is recognized 
+in the Statement of Profit and Loss. However, the 
+modifications that increase the scope of the lease by 
+adding the right to use one or more underlying assets 
+at a price commensurate with the stand-alone selling 
+price are accounted for as a separate new lease. In 
+case of lease modifications, discounting rates used 
+Annual Report 2023-24
+275
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 260 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+for measurement of lease liability and RoU assets is 
+also suitably adjusted.
+	
+	
+The group presents right of use assets in ‘property, 
+plant and equipment’ and the lease liabilities 
+separately from other liabilities in the Balance Sheet.
+	
+ii)	
+As a lessor:
+	
+	
+Leases for which the group is a lessor is classified as a 
+finance or operating lease.
+	
+	
+For operating leases, rental income is recognized 
+on a straight line basis or another systematic basis 
+over the term of the relevant lease .The difference 
+between the amount recognized as lease rental 
+income and actual cashflows receivable as per the 
+lease agreement is adjusted in (“Accrued Lease 
+Rental asset”).
+3.5	 Depreciation
+	
+Depreciation on property, plant and equipment is provided 
+on straight-line method based on useful life of the asset as 
+prescribed in part C of Schedule II to the Companies Act, 
+2013 except to the extent described below:
+	
+* For the assets acquired from Cochin Port Trust for 
+International Ship Repair Facility (ISRF), depreciation is 
+provided on the basis of remaining useful life as assessed 
+by technical experts.
+	
+* Assets on leased premises are depreciated from the 
+commencement date on a straight line basis over the 
+shorter of its the end of the useful life of the Right 
+Of Use asset/ Assets on leased premises or the end of 
+the lease term.
+	
+* For  certain types of buildings and equipments ,based on 
+technical evaluation, useful life has been estimated  to be 
+different from that prescribed in Schedule II of the Act.
+	
+Depreciation on additions/deletions to Gross Block is 
+calculated on pro-rata basis from the date of such additions 
+and up to the date of such deletions.
+	
+Depreciable amount is the cost of an asset, or other amount 
+substituted for cost, less its residual value. A maximum 
+residual value of 5% of original cost is considered for all 
+categories of assets.
+	
+Depreciation method, useful lives and residual values 
+are reviewed at each reporting date and adjusted 
+prospectively, if appropriate.	
+	
+	
+	
+Based on the technical evaluation of the management, for 
+few categories of plant and machinery, the useful life is 
+determined on double shift basis.
+	
+Capital Work in Progress included under Property, Plant 
+and equipments are not depreciated as these assets are 
+not yet available for use. However, they are tested for 
+impairment if any.
+3.6	 Impairment of Assets -Non Financial Assets
+	
+The Company assesses, at each reporting date, whether 
+there is an indication that an asset may be impaired. If any 
+indication exists, or when annual impairment testing for 
+an asset is required, the Company estimates the asset’s 
+recoverable amount. An asset’s recoverable amount is the 
+higher of an asset’s or cash-generating unit’s (CGU) fair 
+value less cost of disposal and its value in use. Recoverable 
+amount is determined for an individual asset, unless the 
+asset does not generate cash inflows that are largely 
+independent of those from other assets or groups of assets.
+	
+Impairment loss is recognized when the carrying amount 
+of an asset exceeds recoverable amount. In assessing value 
+in use, the estimated future cash flows are discounted 
+to their present value using a pre-tax discount rate that 
+reflects current market assessments of the time value of 
+money and the risks specific to the asset. In determining 
+fair value less cost of disposal, recent market transactions 
+are taken into account. If no such transactions can be 
+identified, an appropriate valuation model is used. These 
+calculations are corroborated by valuation multiples, 
+available quoted market prices for public traded companies 
+or other available fair value indicators.
+	
+The Company bases its impairment calculation on detailed 
+budgets and forecast calculations, which are prepared 
+separately for each of the Company’s CGUs to which the 
+individual assets are allocated. To estimate cash flow 
+projections beyond periods covered by the most recent 
+budgets/forecasts, the Company extrapolates cash flow 
+projections in the budget using a steady or declining 
+growth rate for subsequent years, unless an increasing 
+rate can be justified.
+	
+For assets excluding goodwill, an assessment is made at 
+each reporting date to determine whether there is an 
+indication that previously recognized impairment losses 
+no longer exist or have decreased. If such indication exists, 
+276
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 261 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+the Company estimates the asset’s or CGU’s recoverable 
+amount. A previously recognized impairment loss is 
+reversed only if there has been a change in the assumptions 
+used to determine the asset’s recoverable amount since the 
+last impairment loss was recognized. The reversal is limited 
+so that the carrying amount of the asset does not exceed its 
+recoverable amount, nor exceed the carrying amount that 
+would have been determined, net of depreciation, had no 
+impairment loss been recognized for the asset in prior years.
+3.7	 Inventories
+	
+Raw materials and components are valued at weighted 
+average cost method. When they are  intended to 
+project use, valuation is done at project specific weighted 
+average cost method. 
+	
+Stores 
+and 
+spares 
+are 
+valued 
+at 
+weighted 
+average cost method.
+	
+Goods in transit are valued at cost.
+	
+Work In Progress (WIP) and Finished goods  have been 
+valued at lower of cost and net realisable value.
+3.8 Financial instruments
+	
+A financial instrument is any contract that gives rise to 
+a financial asset of one entity and a financial liability or 
+equity instrument of another entity.
+	
+Financial assets and financial liabilities are recognized when 
+the group becomes a party to the contractual provisions of 
+the instruments.
+	
+a)	
+Equity Instruments
+	
+	
+An equity instrument is a contract that evidences residual 
+interest in the assets of the group after deducting all of 
+its liabilities. Equity instruments are recognized at the 
+proceeds received net of direct issue cost.
+	
+b)	
+Financial Assets
+	
+	
+Initial recognition and measurement
+	
+	
+All Financial Assets other than trade receivables are 
+recognized initially at fair value plus, in the case of 
+financial assets not recorded at fair value through 
+profit or loss, transaction cost that are attributable 
+to the acquisition of the Financial Asset. Transaction 
+costs directly attributable to the acquisition of 
+financial assets measured at fair value through profit 
+or loss are recognized immediately in the Statement 
+of Profit and Loss.
+	
+	
+Subsequent measurement
+	
+	
+For the purpose of subsequent measurement, 
+Financial Assets are classified in three categories:
+	
+	
+* Financial assets at amortized cost;
+	
+	
+* Financial assets at Fair Value through other 
+comprehensive income (FVTOCI);
+	
+	
+* Financial assets at Fair Value through statement of 
+profit and loss (FVTPL);
+	
+	
+i)	
+Financial assets at amortized cost
+	
+	
+	
+Financial assets are subsequently measured at 
+amortized cost if these financial assets are held 
+within a business whose objective is to hold 
+these assets in order to collect contractual cash 
+flows and the contractual terms of the financial 
+asset give rise on specified dates to cash flows 
+that are solely payments of principal and 
+interest on the principal amount outstanding.
+	
+	
+ii)	
+Financial assets at Fair Value through other 
+comprehensive income (FVTOCI)
+	
+	
+	
+Financial assets are measured at fair value 
+through other comprehensive income if these 
+financial assets are held within a business 
+whose objective is achieved by both collecting 
+contractual cash flows that give rise on specified 
+dates to solely payments of principal and 
+interest on the principal amount outstanding 
+and by selling financial assets.
+	
+	
+iii)	
+Financial 
+assets 
+at 
+Fair 
+Value 
+through 
+statement of profit and loss (FVTPL)
+	
+	
+	
+Financial assets are measured at fair value 
+through profit or loss unless it is measured at 
+amortized cost or at fair value through other 
+comprehensive income on initial recognition. 
+The transaction costs directly attributable to the 
+acquisition of financial assets and liabilities at 
+fair value through profit or loss are immediately 
+recognized in statement of profit and loss.
+	
+	
+Investments
+	
+	
+All equity investments in scope of Ind AS 109 Financial 
+Instruments are measured at fair value. Equity 
+instruments which are held for trading are classified 
+as at FVTPL. For all other equity instruments, the 
+group had made an irrevocable election to present 
+Annual Report 2023-24
+277
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 262 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+the subsequent changes in the fair value in other 
+comprehensive income. The group makes such 
+election on an instrument-by- instrument basis. The 
+classification is made on initial recognition/transition 
+and is irrevocable.
+	
+	
+There is no recycling/reclassification of the amounts 
+from OCI to the Statement of Profit and Loss, even 
+on sale/disposal of the said equity investments.
+	
+	
+Investment in preference shares/debentures  are 
+treated as equity instruments if the same are 
+convertible into equity shares. Investment in 
+preference shares/debentures not meeting the 
+aforesaid condition is classified as debt instruments 
+at amortized cost.
+	
+	
+Investment in a ‘debt instrument’ is measured at 
+the amortized cost if both the following conditions 
+are met: The asset is held within a business model 
+whose objective is -
+	
+	
+(1)	
+To hold assets for collecting contractual 
+cash flows, and
+	
+	
+(2)	
+Contractual terms of the asset give rise on 
+specified dates to cash flows that are solely 
+payments of principal and interest (SPPI) on the 
+principal amount outstanding.
+	
+	
+Amortized cost is calculated by taking into account 
+any discount or premium and fees or costs that are 
+an integral part of the Effective Interest Rate (EIR). 
+The EIR amortization is included in other income in 
+the Statement of Profit and Loss.
+	
+	
+Impairment of Financial Assets
+	
+	
+In accordance with Ind AS 109, the group applies 
+Expected Credit Loss (ECL) model for measurement 
+and recognition of impairment loss on the following 
+financial assets and credit risk exposure:
+	
+	
+a)	
+Financial Assets that are Debt Instruments, 
+and are measured at amortized cost e.g., loans, 
+debt   securities, deposits, trade receivables 
+and bank balance
+	
+	
+b)	
+Financial guarantee contracts which are not 
+subsequently measured as at FVTPL
+	
+	
+c)	
+Lease Receivables under Ind AS 116
+	
+	
+Simplified Approach
+	
+	
+The 
+group 
+follows 
+‘simplified 
+approach’ 
+for 
+recognition of impairment loss allowance on 
+Trade Receivables.
+	
+	
+Trade Receivables
+	
+	
+The group classifies the right to consideration in 
+exchange for deliverables as either a receivable 
+or as contract asset. A receivable is a right to 
+consideration that is unconditional and only the 
+passage of time is required before the payment of 
+that consideration is due.
+	
+	
+The group assesses at each Balance Sheet date 
+whether a financial asset or a group of financial asset 
+is impaired.  Ind AS 109 requires expected credit loss 
+to be measured through a loss allowance.
+	
+	
+The group recognizes lifetime expected credit losses 
+for all trade receivables that do not constitute a 
+financing transaction. Impairment loss allowance is 
+based on a simplified approach as permitted by Ind 
+AS 109. As a practical expedient, the group uses a 
+provision matrix to determine the impairment loss 
+on the portfolio of its trade receivables.
+	
+	
+The provision matrix is based on its historically 
+observed default rates over the expected life of the 
+trade receivables and is adjusted for forward-looking 
+estimates. At every reporting date, the historical 
+observed default rates are updated and changes 
+in the forward-looking estimates are analyzed. On 
+that basis, the group estimates provision on trade 
+receivables at the reporting date.
+	
+	
+Impairment loss allowance (or reversal) that is 
+required to be recognized at the reporting date 
+is recognized as an impairment loss or gain in the 
+Statement of Profit & Loss Account.
+	
+	
+General Approach
+	
+	
+For recognition of impairment loss on other financial 
+assets and risk exposure, the group determines that 
+whether there has been a significant increase in the 
+credit risk since initial recognition. If credit risk has 
+not increased significantly, 12-months ECL is used to 
+provide for impairment loss. However, if credit risk 
+has increased significantly, lifetime ECL is used. If, in 
+a subsequent period, credit quality of the instrument 
+improves such that there is no longer a significant 
+increase in credit risk since initial recognition, then 
+278
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 263 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+the entity reverts to recognizing impairment loss 
+allowance based on 12-months ECL.
+	
+	
+Lifetime ECL are the expected credit losses resulting 
+from all possible default events over the expected 
+life of a financial instrument. The 12-months ECL is a 
+portion of the lifetime ECL which results from default 
+events that are possible within 12 months after the 
+reporting date.
+	
+	
+ECL 
+impairment 
+loss 
+allowance 
+(or 
+reversal) 
+recognized during the period is recognized in the 
+Statement of Profit and Loss. The Balance Sheet 
+presentation for various financial instruments is 
+described below:	 	
+	
+	
+	
+* Financial Assets measured as at amortized cost: ECL 
+is presented as an allowance, i.e., as an integral part 
+of the measurement of those assets in the Balance 
+Sheet. The allowance reduces the net carrying 
+amount. Until the asset meets write-off criteria, the 
+group does not reduce impairment allowance from 
+the gross carrying amount.
+	
+	
+* Financial Guarantee contracts: ECL is presented as a 
+provision in the Balance Sheet, i.e. as a liability.
+	
+	
+* Debt instruments measured at FVTOCI: Since 
+financial assets are already reflected at fair value, 
+impairment allowance is not further reduced 
+from its value. Rather, ECL amount is presented as 
+‘accumulated impairment amount’ in the OCI.
+	
+c)	
+Financial liabilities
+	
+	
+Initial recognition and measurement
+	
+	
+Financial Liabilities are classified, at initial recognition, 
+as financial liabilities at fair value through profit 
+or loss and financial liabilities at amortized cost, 
+as appropriate.
+	
+	
+All Financial Liabilities are recognized initially at 
+fair value and, in the case of liabilities subsequently 
+measured at amortized cost, they are measured net 
+of directly attributable transaction cost. In case of 
+Financial Liabilities measured at fair value through 
+profit or loss, transaction costs directly attributable 
+to the acquisition of financial liabilities are recognized 
+immediately in the Statement of Profit and Loss.
+	
+	
+The group’s Financial Liabilities include trade and 
+other payables, loans and borrowings including 
+financial 
+guarantee 
+contracts 
+and 
+derivative 
+financial instruments.
+	
+	
+Subsequent measurement
+	
+	
+The measurement of financial liabilities depends on 
+their classification, as described below:
+	
+	
+* Financial liabilities at Fair Value through statement 
+of profit and loss (FVTPL);
+	
+	
+* Financial liabilities at amortized cost;
+	
+	
+* Financial Guarantee Contracts;
+	
+	
+i)	
+Financial Liabilities at fair value through profit 
+or loss
+	
+	
+	
+Financial Liabilities at fair value through profit 
+or loss include financial liabilities held for 
+trading and financial liabilities designated upon 
+initial recognition as at fair value through the 
+Statement of Profit and Loss. Financial Liabilities 
+are classified as held for trading if they are 
+incurred for the purpose of repurchasing in the 
+near term. This category also includes derivative 
+financial instruments entered into by the group 
+that are not designated as hedging instruments 
+in hedge relationships as defined by Ind AS 109.
+	
+	
+	
+Gains or losses on liabilities held for trading are 
+recognized in the Statement of Profit and Loss.
+	
+	
+ii)	
+Financial Liabilities at amortized cost
+	
+	
+	
+Financial Liabilities that are not held-for-
+trading and are not designated as at FVTPL 
+are measured at amortized cost at the end of 
+subsequent accounting periods. The carrying 
+amounts 
+of 
+financial 
+liabilities 
+that 
+are 
+subsequently measured at amortized cost are 
+determined based on the effective interest 
+method. Gains and losses are recognized in the 
+Statement of Profit and Loss when the liabilities 
+are derecognized as well as through the EIR 
+amortization process.
+	
+	
+	
+Amortized cost is calculated by taking into 
+account any discount or premium on acquisition 
+and fees or cost that are an integral part of the 
+EIR. The EIR amortization is included as finance 
+costs in the Statement of Profit and Loss.
+Annual Report 2023-24
+279
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 264 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+	
+	
+iii)	
+Financial Guarantee Contracts
+	
+	
+	
+Financial guarantee contracts issued by the 
+group are those contracts that require a 
+payment to be made to reimburse the holder 
+for a loss it incurs because the specified 
+debtor fails to make the payment when due in 
+accordance with the terms of a debt instrument. 
+Financial guarantee contracts are recognized 
+initially as a liability at fair value, adjusted for 
+transaction costs that are directly attributable 
+to the issuance of the guarantee. Subsequently, 
+the liability is measured at the higher of the 
+amount of loss allowance determined as per 
+impairment requirements of Ind AS 109 and 
+the amount initially recognized less cumulative 
+income 
+recognized 
+in 
+accordance 
+with 
+principles of Ind AS 115.
+	
+d)	
+De-recognition of Financial Instruments
+	
+	
+A financial asset is de-recognized when:
+	
+	
+* The rights to receive cash flows from the asset 
+have expired, or
+	
+	
+* the group has transferred substantially all the 
+risks and rewards of the asset, or the group has 
+neither transferred nor retained substantially all the 
+risks and rewards of the asset, but has transferred 
+control of the asset.
+	
+	
+A financial liability or a part of financial liability is de-
+recognized from the Balance Sheet when the obligation 
+specified in the contract is discharged, cancelled or 
+expired. When an existing financial liability is replaced 
+by another from the same lender on substantially 
+different terms, or the terms of an existing liability 
+are substantially modified, such an exchange or 
+modification is treated as the de-recognition of the 
+original liability and the recognition of a new liability. 
+The difference in the respective carrying amounts is 
+recognized in the statement of profit or loss.
+	
+e)	
+Offsetting of financial instruments
+	
+	
+Financial assets and financial liabilities are offset and 
+the net amount is reported in consolidated financial 
+statements if there is a currently enforceable legal 
+right to offset the recognized amounts and there is 
+an intention to settle on a net basis, to realize the 
+assets and settle the liabilities simultaneously.
+	
+f)	
+Derivative instruments and hedge accounting:
+	
+	
+The group uses derivative financial instruments, such 
+as forward currency contracts, to hedge its foreign 
+currency risks respectively. Such derivative financial 
+instruments are initially recognized at fair value on 
+the date on which a derivative contract is entered 
+into and are subsequently re-measured at fair value. 
+The accounting for subsequent changes in fair value 
+of derivatives depends on the designation or non- 
+designation of derivative as hedging instruments. 
+Derivatives are carried as financial assets when the 
+fair value is positive and as financial liabilities when 
+the fair value is negative.
+	
+	
+Derivative 
+that 
+are 
+designated 
+as 
+Hedge 
+Instrument
+	
+	
+The group undertakes foreign exchange forward 
+contracts for hedging foreign currency risks. The 
+group generally designates the whole forward 
+contract as hedging instrument.
+	
+	
+These hedging instruments are governed by the 
+group’s foreign exchange risk management policy 
+approved by the Board of Directors.
+	
+	
+At the inception of a hedge relationship, the 
+group formally designates and documents the 
+hedge relationship to which the group wishes to 
+apply hedge accounting and the risk management 
+objective and strategy for undertaking the hedge. 
+The documentation includes the group’s risk 
+management objective and strategy for undertaking 
+hedge, the hedging/ economic relationship, the 
+hedged item or transaction, the nature of the risk 
+being hedged, hedge ratio and how the entity will 
+assess the effectiveness of changes in the hedging 
+instrument’s fair value in offsetting the exposure to 
+changes in the hedged item’s fair value or cash flows 
+attributable to the hedged risk.
+	
+	
+Such hedges are expected to be highly effective 
+in achieving offsetting changes in fair value or 
+cash flows and are assessed on an ongoing basis to 
+determine that the hedge is actually have been highly 
+effective throughout the financial reporting periods 
+for which it was designated
+	
+	
+The effective portion of change in the fair value of 
+the designated hedging instrument is recognized 
+in the Other Comprehensive Income (‘OCI’) and 
+accumulated under the heading Cash Flow Hedge 
+280
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 265 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Reserve within Equity. The gain or loss relating to 
+the ineffective portion is recognized immediately 
+in the Statement of Profit and Loss and included 
+in the Other Income or Other Expenses as Gain on 
+Derivatives or Loss on Derivatives respectively.
+	
+	
+Amounts 
+previously 
+recognized 
+in 
+OCI 
+and 
+accumulated in equity relating to effective portion 
+are reclassified to Statement of Profit and Loss in the 
+periods when the hedged item affects profit or loss, 
+in the same line item as the recognized hedged item 
+or treated as basis adjustment if a hedged forecast 
+transaction subsequently results in the recognition 
+of a non-financial asset or non-financial liability. 
+When a forecasted transaction is no longer expected 
+to occur, the cumulative gain or loss accumulated 
+in equity is transferred to the Statement of 
+Profit and Loss.	
+	
+	
+Hedge accounting is discontinued when the hedging 
+instrument expires or is sold, terminated or exercised 
+without replacement or rollover (as part of hedging 
+strategy), or if its designation as a hedge is revoked, 
+or when the hedge no longer meets the criteria for 
+hedge accounting.
+	
+g)	
+Contract Assets
+	
+	
+Where the group performs by transferring goods 
+or services to a customer before the customer pays 
+consideration or before payment is due, the group 
+presents the contract as a contract asset. A contract 
+asset is group’s right to consideration in exchange 
+for goods or services that the group has transferred 
+to a customer, when that right is conditioned on 
+something other than the passage of time. Contract 
+assets are reviewed for impairment in accordance 
+with Ind AS 109.
+	
+h)	
+Contract Liabilities
+	
+	
+Where the group receives consideration, or the 
+group has a right to an amount of consideration that 
+is unconditional (i.e. a receivable), before the group 
+transfers a good or service to the customer, the group 
+presents the contract as a contract liability when the 
+payment is made or the payment is due (whichever 
+is earlier). A contract liability is group’s obligation to 
+transfer goods or services to a customer for which 
+the group has received consideration (or an amount 
+of consideration is due) from the customer. 
+3.9	 Provisions, Contingent Liabilities and Contingent 
+assets
+	
+a)	
+Provisions
+	
+	
+A provision is recognized if, as a result of a past event, 
+the group has a present legal obligation that can be 
+estimated reliably, and it is probable that an outflow 
+of economic benefits will be required to settle 
+the obligation.
+	
+	
+Provisions 
+(excluding 
+retirement 
+benefits 
+and 
+compensated leave) are not discounted to its present 
+value and are determined by the best estimate of the 
+outflow of economic benefits required to settle the 
+obligation at the reporting date. These are reviewed 
+at each reporting date adjusted to reflect the current 
+best estimates.
+	
+	
+Warranty obligations included in this type of 
+provisions are not treated as a separate performance 
+obligation, unless the customer has the option of 
+contracting the warranty separately, therefore they 
+are recognized in accordance with Ind AS 37. These 
+provisions are classified as current liabilities since 
+they relate to the operating construction projects 
+cycle, in line with Ind AS 1.
+	
+	
+Provision towards guarantee claims in respect of 
+ships delivered wherever provided/ maintained 
+is based on technical estimation.  For the ships 
+delivered, guarantee claims are covered by way of 
+insurance policies covering the guarantee period on 
+case-to-case basis, wherever required.
+	
+	
+Provisions for anticipated losses are recognized when 
+it becomes apparent that the total costs expected to 
+fulfil a contract exceed expected contract revenues. 
+For the purpose of determining, where appropriate, 
+the amount of the provision, budgeted contract 
+revenue will include the forecast revenue that is 
+considered probable, in line with Ind AS 37 as well 
+as incremental costs. General costs are not directly 
+attributable to a contract and are therefore excluded 
+from the Budgeted cost unless they are explicitly 
+passed on to the counterparty in accordance with the 
+contract, in line with paragraph 68 of Ind AS 37.
+	
+b)	
+Contingent Liabilities and Contingent Assets
+	
+	
+In the normal course of business, contingent 
+liabilities may arise from litigations and other claims 
+against the group. Where the potential liabilities 
+Annual Report 2023-24
+281
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 266 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+have a low probability of crystallizing or are very 
+difficult to quantify reliably, the group treats them as 
+contingent liabilities. Such liabilities are disclosed in 
+the notes but are not provided for in the consolidated 
+financial statements. Although there can be no 
+assurance regarding the final outcome of the legal 
+proceedings, group does not expect them to have 
+a materially adverse impact on the financial position 
+or profitability. The group does not recognize a 
+contingent liability but discloses its existence in the 
+consolidated financial statements.
+	
+	
+A contingent asset is a possible asset that arises from 
+past events and whose existence will be confirmed 
+only by the occurrence or non-occurrence of one or 
+more uncertain future events not wholly within the 
+control of the entity. The group does not recognize 
+a contingent asset but discloses its existence in the 
+consolidated financial statements where an inflow of 
+economic benefits is probable.
+3.10	Revenue Recognition
+	
+a)	
+Revenue from Operations
+	
+	
+Revenue 
+from 
+contracts 
+with 
+customers 
+are 
+measured based on the consideration specified in 
+a contract with a customer (ie., transaction price, 
+which is the fair value of consideration received 
+or receivable).
+	
+	
+At the first instance, revenue recognition process 
+involves identifying the relevant contracts and 
+technical evaluation of the performance obligations, 
+contained therein.
+	
+	
+A single performance obligation is identified  in 
+shipbuilding and/or ship repair segments for each 
+vessel, due to the high degree of integration and 
+customization of the various goods and services 
+forming a combined output that is transferred to the 
+customer over time.
+	
+	
+The group choses the appropriate method of 
+measuring the progress of the completion at the 
+contract inception for recognizing revenue over time, 
+and are applied consistently to similar performance 
+obligations under the respective segments and/or 
+activities carried out thereon.
+	
+	
+Recognition of Revenue for a performance obligation 
+satisfied over time is made only if the group can 
+reasonably measure its progress towards complete 
+satisfaction of the performance obligation.
+	
+	
+The performance obligations for the shipbuilding 
+and Ship repair activities carried out by the company 
+are satisfied over time rather than at a point in time 
+since the Company’s performance does not create 
+an asset with an alternative use to the Company ie 
+contractual restrictions and practical limitations to 
+readily direct that asset for another use (Even in some 
+cases it will be able to do so, it can only be done after 
+significant changes and at significant cost) and it has 
+an enforceable right to payment for performance 
+completed to date.
+	
+	
+Revenue is recognized when the group satisfies 
+performance obligations by transferring promised 
+goods and services to the customer over a period of 
+time using output method based on measurement of 
+physical performance completed to date in respect 
+of contracts with customers for ship building and ship 
+repair other than Indigenous Aircraft Carrier (IAC).
+	
+	
+In respect of contract with Indian Navy for 
+construction of Indigenous Aircraft Carrier, which 
+is partly ‘fixed price basis’ and partly ‘cost plus 
+basis’, the revenue.
+ 
+ 
+from 
+fixed 
+price 
+portion 
+is 
+recognized 
+using output method.
+ 
+ 
+by way of mark up from cost plus part of the 
+contract for procuring and supply of materials 
+and design outsourcing is recognized when 
+performance obligations as per the terms of the 
+contract are fulfilled upon making payments 
+to the suppliers.
+ 
+ 
+The cost of materials, value of design 
+outsourcing and other expenses incurred for 
+the vessel which are recoverable separately 
+from Navy are charged off to the statement of 
+Profit and Loss when materials are consumed/
+activities are performed/expenses are incurred 
+and are simultaneously grossed up with the 
+value of work done and recognized as revenue.
+	
+	
+In the case of ship repair contracts involving 
+continuous multiple years maintenance support/ 
+recurring and routine services, the group opted 
+for time-elapsed output method, i.e, measuring 
+the progress based on time elapsed to reporting 
+282
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 267 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+date, which is representative of the satisfaction of 
+performance obligation subject to entitlement of 
+consideration in exchange of goods and/or services.
+	
+	
+Based on the technical assessment considering the 
+latest available information to the group, measuring 
+the progress towards complete satisfaction of a 
+performance obligation in the method adopted will 
+be revised/updated on an ongoing basis.
+	
+	
+During the initial stages of a contract, where the 
+group may not be able to reasonably measure the 
+outcome of a performance obligation and the group 
+expects to recover the costs incurred in satisfying the 
+performance obligation, revenue will be recognized 
+only to the extent of the costs incurred until such 
+time that it can reasonably measure the outcome of 
+the performance obligation.
+	
+	
+Contract 
+modifications 
+are 
+accounted 
+when 
+additions, deletions or changes are approved 
+either to the contract scope or contract price. The 
+accounting for modifications of contracts involves 
+assessing whether the services added to an existing 
+contract are distinct and whether the pricing is at the 
+stand alone selling price. Where the goods or services 
+added are not distinct, adjustment to revenue is made 
+on a cumulative catch up basis. Where the goods or 
+services added are distinct, and such additional goods 
+or services are priced at standalone selling prices, the 
+contract modification is accounted for as a separate 
+contract; whereas if the modification is not priced at 
+standalone selling price, the same is accounted as a 
+termination of the existing contract and creation of 
+a new contract.
+	
+	
+The group generally does not recognize any revenue 
+from additional work until it has been approved by 
+the customer. When the scope of work has been 
+approved but the impact on revenue is  yet to be 
+valued, the “variable consideration” requirement (as 
+explained below) will apply. This entails recognizing 
+revenue in an amount that is unlikely to be reversed.
+	
+	
+If the consideration promised in a contract includes 
+variable amounts like discounts, rebates, refunds, 
+credits, price concessions, liquidated damages or 
+other similar items, the group estimates the net 
+amount of consideration to which the group is 
+entitled in exchange for transferring the promised 
+goods or services to a customer and accounts for the 
+same. The payment terms are based on milestones 
+specified in the respective contracts with customers. 
+On achieving the specified milestones these 
+payments are released.
+	
+	
+Revenue from Supply of Base & Depot Spares is 
+recognized based on the satisfaction of performance 
+obligation at a point in time on proof of receipt of 
+goods from customer.
+	
+	
+Unlike revenue recognition, amounts billed to the 
+customer are based on the various milestones 
+reached under the contract and on acknowledgement 
+thereof by the customer by means of a contractual 
+document referred to as a progress billing certificate. 
+Therefore, the amounts recognized as revenue for a 
+given year do not necessarily match those billed to 
+or certified by the customer. For contracts in which 
+the revenue recognized exceeds the amount billed or 
+certified, the difference is recognized in as “Contract 
+Asset” under “Other Current Assets”, while for 
+contracts in which the revenue recognized is lower 
+than the amount billed or certified, the difference 
+is recognized as “Contract Liability” under “Other 
+Current Liabilities”.
+	
+	
+Other Operating Revenue with respect to sale of 
+stock items and scrap is recognized at a point in time 
+when the group satisfies performance obligations 
+and right to receive the income is established as per 
+terms of the contract by transferring promised goods 
+and services to the customer.
+	
+	
+Management 
+fee 
+is 
+also 
+recognized 
+over 
+a 
+period of time.
+	
+b)	
+Government Grants
+	
+	
+Government grants are recognized when there is 
+reasonable assurance that the group will comply with 
+the conditions attaching to them and that the grants 
+will be received.
+	
+	
+Government grants are recognized in Statement 
+of Profit and Loss on a systematic basis over the 
+periods in which the group recognizes as expenses, 
+the related costs for which the grants are intended 
+to compensate. Where the Grant relates to an asset 
+value, it is recognized as deferred income, and 
+amortized over the expected useful life of the asset. 
+Other grants are recognized in the statement of 
+Annual Report 2023-24
+283
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 268 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Profit & Loss concurrent to the expenses to which 
+such grants relate/ are intended to cover.
+	
+	
+Ship 
+Building 
+Financial 
+Assistance 
+(SBFA) 
+is 
+recognized over a period of time in proportion to the 
+expenses / cost incurred and classified under “other 
+operating revenue”.
+	
+	
+Government 
+grants 
+that 
+are 
+receivable 
+as 
+compensation for expenses or losses already incurred 
+or for the purpose of giving immediate financial 
+support to the group with no future related costs are 
+recognized in statement of profit & loss in the period 
+in which they become receivable.
+	
+c)	
+Other income
+	
+	
+i)	
+Liquidated damages and interest on advances
+	
+	
+	
+No income is recognized on (a) interest on 
+advances given and (b) liquidated damages, 
+where the levies depend on decisions regarding 
+force majeure condition of contract.  These are 
+accounted for on completion of contracts and / 
+or when final decisions are taken.
+	
+	
+	
+In the case of contracts entered into for 
+execution of capital works having long gestation 
+period, where the extant commercial terms of 
+the contract provides for provision of extending 
+interest bearing mobilisation advance to the 
+service provider for mobilising various resources 
+for timely execution, mobilisation advances are 
+paid and interest is accounted on accrual basis.
+	
+	
+ii)	
+Accounting for insurance claims
+	
+	
+(i)	
+Warranty/Builder Risk claims
+	
+	
+	
+In the case of guarantee defects covered 
+under warranty insurance policies or claims 
+under Insurance Policies taken for ship building 
+and ship repair works, the insurance claims 
+lodged are recognized in the consolidated 
+financial statements in the year in which 
+the survey is completed and the probable 
+amount of settlement is intimated by the 
+insurance company.
+	
+	
+(ii)	
+Other Insurance Policies
+	
+	
+	
+In the case of other Insurance Policies like Asset 
+Insurance, Transit Insurance, Marine Insurance, 
+Cash Insurance etc., the claims are recognized 
+in the  the consolidated financial statements on 
+settlement of the claims by way of receipt of 
+the amount from the Insurance company.
+	
+	
+	
+In the case of Medical insurance, claims are 
+recognized on due basis, based on the claims 
+submitted with the insurance company.
+	
+	
+	
+Other items of income are accounted as and 
+when the right to receive such income arises 
+and it is probable that the economic benefits 
+will flow to the group and the amount of income 
+can be measured reliably.
+3.11	Employee benefits
+	
+Employee benefits consist of salaries and wages, 
+contribution to provident fund, superannuation fund, 
+gratuity fund, towards medical assistance, which are short 
+term in nature and contribution towards compensated 
+absences, which is long term in nature.
+	
+Post-employment benefit plans
+	
+i)	
+Defined Contribution plans
+	
+	
+In respect of Holding company, Defined contribution 
+to Employees Pension scheme for eligible employees 
+is made to National Pension Scheme (NPS) and are 
+charged as expense as they fall due. Such benefits 
+are classified as Defined Contribution Schemes as 
+the Holding company does not carry any further 
+obligations, apart from the contributions made.
+	
+	
+The Holding Company makes contributions to the 
+Cochin Shipyard Employees Mutual Public Welfare 
+Trust and Employees Medical Assistance Trusts, which 
+are charged as expense, as and when they fall due. 
+Such benefits are classified as Defined Contribution 
+Schemes as the group does not carry any further 
+obligations, apart from the contributions made.
+	
+	
+In respect of subsidiaries ,contributions to Providend 
+Fund  are made to the Regional Providend Fund 
+Commisioner and are charged to the Profit and Loss 
+account. The companies have no further obligations 
+for future Providend Fund benefits other than its 
+monthly contributions.
+	
+ii)	
+Defined benefit plans
+	
+	
+Gratuity
+	
+	
+The group provides for gratuity, a defined benefit 
+retirement plan covering eligible employees. The 
+284
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 269 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+fund of Holding Company is managed by the trustees 
+of the Cochin Shipyard Ltd Group Gratuity Trust .The 
+liability or asset recognized in the balance sheet in 
+respect of its defined benefit plan is the present value 
+of the defined benefit obligation at the end of the 
+reporting period less the fair value of plan assets. The 
+defined benefit obligation is calculated periodically 
+by actuaries using the projected unit credit method.
+	
+	
+The present value of the said obligation is determined 
+by discounting the estimated future cash outflows, 
+using market yields of government bonds that have 
+terms approximating the terms of the related liability.
+	
+	
+The interest income / (expense) are calculated 
+by applying the discount rate to the net defined 
+benefit liability or asset. The net interest income / 
+(expense) on the net defined benefit liability or asset 
+is recognised in the Statement of Profit and loss.
+	
+	
+Remeasurement gains and losses arising from 
+experience adjustments and changes in actuarial 
+assumptions are recognised in the period in which they 
+occur, directly in other comprehensive income. They 
+are included in retained earnings in the Statement of 
+Changes in Equity and in the Balance Sheet.
+	
+	
+Changes in the present value of the defined 
+benefit obligation resulting from plan amendments 
+or curtailments are recognised immediately in 
+Statement of profit and loss as past service cost.
+	
+	
+UCSL makes contribution to Group Gratuity Cash 
+Accumulation plan maintained with Life Insurance 
+Corporation of India (LIC).
+	
+	
+Provident Fund and Pension Scheme
+	
+	
+The group also makes contribution towards provident 
+fund. The provident fund of Holding Company is 
+administered by the Trustees of the Cochin Shipyard 
+Limited Employees Contributory Provident Fund 
+Trust. The rules of the  provident fund administered 
+by the Trust, require that if the Board of Trustees 
+are unable to pay interest at the rate declared by 
+the Government under para 60 of the Employees’ 
+Provident Fund Scheme, 1952, then the deficiency 
+shall be made good by the Holding Company. The 
+deficiency, if any assessed by the holding company 
+based on actuarial valuation will  be provided for 
+in the accounts.
+	
+	
+Other employee benefits
+	
+	
+Compensated absences
+	
+	
+The group has a policy on compensated absence 
+which are both accumulating and non-accumulating 
+in nature. The expected cost of accumulating 
+compensated absence is determined by Actuarial 
+valuation performed by an independent actuary at 
+each Balance Sheet date using projected unit credit 
+method on the additional amount expected to be 
+paid/availed as a result of unused entitlement that 
+has accumulated at the Balance Sheet date. Expense 
+on non-accumulating compensated absence is 
+recognised in the period in which the absences occur.
+3.12	Taxes on Income
+	
+a)	
+Income tax
+	
+	
+Income tax expense comprises current tax expense 
+and the net change in the deferred tax asset or 
+liability during the year.	
+	
+	
+Current and deferred taxes are recognized in 
+Statement of Profit and Loss, except when they 
+relate to items that are recognized in other 
+comprehensive income or directly in equity, in 
+which case, the current and deferred tax are also 
+recognized in other comprehensive income or 
+directly in equity, respectively.
+	
+	
+The group has determined that interest and penalties 
+related to income taxes, including uncertain tax 
+treatments, do not meet the definition of income 
+taxes, and therefore accounted for them under 
+Ind AS 37 Provisions, Contingent Liabilities and 
+Contingent Assets.
+	
+b)	
+Current tax
+	
+	
+Current tax is measured at the amount of tax 
+expected to be payable or receivable on the taxable 
+income or loss for the year  and any adjustment to the 
+tax payable or receivable in respect of previous years 
+as determined in accordance with the provisions of 
+the Income Tax Act, 1961. The amount of current 
+tax payable or receivable is the best estimate of 
+the tax amount expected to be paid or received 
+that reflects uncertainty related to income taxes, 
+if any. It is measured using the tax rates enacted or 
+substantively enacted at the reporting date.
+	
+	
+Current tax assets and current tax liabilities are 
+offset, when there is a legally enforceable right to set 
+Annual Report 2023-24
+285
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 270 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+off the recognized amounts and there is an intention 
+to settle the asset and the liability on a net basis.
+	
+c)	
+Deferred tax
+	
+	
+Deferred tax is recognized using the Balance Sheet 
+approach. Deferred  tax assets and liabilities are 
+recognised for deductible and taxable temporary 
+differences arising between the tax base of assets and 
+liabilities and their carrying amount, except when the 
+deferred  tax arises from the initial recognition of an 
+asset or liability in a transaction that is not a business 
+combination and affects neither accounting nor 
+taxable profit or loss at the time of the transaction.
+	
+	
+Deferred tax assets are recognised only to the extent 
+that it is probable that either future taxable profits 
+or reversal of deferred tax liabilities will be available, 
+against which the deductible temporary differences, 
+and the carry forward of unused tax credits and 
+unused tax losses can be utilised.
+	
+	
+The carrying amount of a deferred tax asset shall 
+be reviewed at the end of each reporting date and 
+reduced to the extent that it is no longer probable 
+that sufficient taxable profit will be available to 
+allow all or part of the deferred income tax asset to 
+be utilised. Unrecognized deferred tax assets are re-
+assessed at each reporting date and are recognized 
+to the extent that it has become probable that future 
+taxable profits will allow the deferred tax assets 
+to be recovered.
+	
+	
+Deferred tax relating to items recognized outside 
+profit or loss is recognized outside profit or loss 
+(either in other comprehensive income or in equity).
+	
+	
+Deferred tax assets and liabilities are measured using 
+the tax rates and tax laws that have been enacted or 
+substantively enacted by the end of the reporting 
+period and are expected to apply when the related 
+deferred tax asset is realised or the deferred tax 
+liability is settled.
+	
+	
+Deferred tax assets and liabilities are off set when 
+there is a legally enforceable right to offset current 
+tax assets and liabilities and when the deferred tax 
+balances relate to the same taxation authority.
+3.13	Operating Segments
+	
+Operating segments are defined as components of an 
+enterprise for which discrete financial information is 
+available that is evaluated regularly by the chief operating 
+decision maker, in deciding how to allocate resources 
+and assessing performance. The group’s chief operating 
+decision maker is the Chairman & Managing Director.
+	
+The group has identified business segments (industry 
+practice) as reportable segments. The business segments 
+comprise: 1) Ship Building and 2) Ship Repair
+	
+Segment revenue, segment expenses, segment assets and 
+segment liabilities have been identified to segments on the 
+basis of their relationship to the operating activities of the 
+segment. Revenue, expenses, assets and liabilities which 
+relate to the group as a whole and are not allocable to 
+segments on a reasonable basis have been included under 
+“unallocated revenue / expenses / assets / liabilities”.
+3.14	Exceptional Items
+	
+An item of income or expense which by its size, type 
+or incidence requires disclosure in order to improve an 
+understanding of the performance of the Company is 
+treated as an exceptional item and disclosed as such in 
+the consolidated  financial statements and also as per 
+Guidance note on Division II -  Ind AS Schedule III.
+3.15	Excluded Financial Asset
+	
+Pursuant to resolution plan and NCLT Order dated 4th 
+March 2020, the following assets/matters of Erstwhile 
+Tebma shipyards mentioned below are identified as 
+excluded financial asset based on information provided by 
+the COC or Resolution Professional
+	
+1)	
+VAT refund;
+	
+2)	
+Insurance claim for damages to Tug lodged with an 
+insurance company;
+	
+3)	
+Insurance claim for theft and burglary with an 
+insurance company;
+	
+4)	
+Trade receivables from Indian Navy; and
+	
+5)	
+50% (fifty percent) of the amount of subsidy claim 
+(ie., Shipbuilding Finance Assistance/subsidy) form 
+Government of India.
+	
+These items will be accounted on realization basis.
+3.16	Recent Pronouncements
+	
+Ministry of Corporate Affairs (“MCA”) notifies new 
+standards or amendments to the existing standards under 
+Companies (Indian Accounting Standards) Rules as issued 
+from time to time. For the year ended March 31, 2024, 
+MCA has not notified any new standards or amendments 
+to the existing standards applicable to the group.
+286
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 271 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Note 4 : Property, Plant and Equipment
+ (H in lakhs)
+Particulars
+Gross carrying amount
+Depreciation
+Net Carrying amount
+As at 
+1st Apr 
+2023
+ Additions/ 
+adjustments 
+during the year
+ Disposal/ 
+adjustments 
+during the year
+As at 31st 
+Mar 2024
+As at 
+1st Apr 
+2023
+For the 
+year
+Adjustment/ 
+(withdrawal)
+As at 
+31st Mar 
+2024
+As at 31st 
+Mar 2024
+ As at 
+31st Mar 
+2023
+a)	 Owned Assets
+	
+Land (Freehold)
+ 3,267.86 
+ 3,267.86 
+ - 
+ - 
+ 3,267.86 
+ 3,267.86 
+	
+Buildings & Roads
+ 10,286.02 
+ 238.31 
+ 0.65 
+ 10,523.68 
+ 4,575.00 
+ 688.33 
+ 0.44 
+ 5,262.89 
+ 5,260.79 
+ 5,711.02 
+	
+Plant and  equipment
+ 24,814.37 
+ 1,711.28 
+ 19.30 
+ 26,506.35  14,420.54  2,293.79 
+ 14.83  16,699.50 
+ 9,806.85  10,393.83 
+	
+Furniture and fixtures
+ 1,777.45 
+ 215.90 
+ 3.98 
+ 1,989.37 
+ 864.45 
+ 160.64 
+ 3.78 
+ 1,021.31 
+ 968.06 
+ 913.00 
+	
+Vehicles
+ 677.87 
+ 7.55 
+ 6.80 
+ 678.62 
+ 430.23 
+ 55.83 
+ 6.48 
+ 479.58 
+ 199.04 
+ 247.64 
+	
+Office equipments
+ 657.30 
+ 100.23 
+ 0.76 
+ 756.77 
+ 368.46 
+ 83.83 
+ 0.73 
+ 451.56 
+ 305.21 
+ 288.84 
+	
+Others
+ - 
+ - 
+ - 
+	
+Data Processing 
+Equipments
+ 2,773.54 
+ 299.23 
+ 8.45 
+ 3,064.32 
+ 1,720.06 
+ 320.09 
+ 6.88 
+ 2,033.27 
+ 1,031.05 
+ 1,053.48 
+	
+Docks and quays
+ 4,466.45 
+ 4,466.45 
+ 2,440.78 
+ 299.41 
+ 2,740.19 
+ 1,726.26 
+ 2,025.67 
+	
+Railway sidings
+ 1.10 
+ 1.10 
+ - 
+ - 
+ 1.10 
+ 1.10 
+	
+Electrical installations
+ 2,018.12 
+ 297.16 
+ 2,315.28 
+ 1,227.65 
+ 149.55 
+ 1,377.20 
+ 938.08 
+ 790.47 
+	
+Drainage and  water supply
+ 23.55 
+ 23.55 
+ 0.98 
+ 1.07 
+ 2.05 
+ 21.50 
+ 22.57 
+	
+Vessels
+ 21.88 
+ 34.54 
+ 56.42 
+ 9.80 
+ 2.42 
+ 12.22 
+ 44.20 
+ 12.08 
+	
+Sub Total
+ 50,785.51 
+ 2,904.20 
+ 39.94 
+ 53,649.77  26,057.95  4,054.96 
+ 33.14  30,079.77  23,570.00  24,727.56 
+b)	 Assets on leased 
+premises
+	
+Buildings & Roads
+ 23,232.33 
+ 729.46 
+ 23,961.79 
+ 2,488.59 
+ 570.50 
+ 3,059.09  20,902.70  20,743.74 
+	
+Plant and  equipment
+ 6,543.03 
+ 2,441.54 
+ 8,984.57 
+ 492.78 
+ 467.92 
+ 960.70 
+ 8,023.87 
+ 6,050.25 
+	
+Docks and quays
+ 22.05 
+ 22.05 
+ 8.76 
+ 0.79 
+ 9.55 
+ 12.50 
+ 13.29 
+	
+Electrical installation
+ 1,365.12 
+ 43.48 
+ 1,408.60 
+ 286.16 
+ 71.43 
+ 357.59 
+ 1,051.01 
+ 1,078.96 
+	
+Slip way
+ 1,117.99 
+ 1,117.99 
+ 850.74 
+ 850.74 
+ 267.25 
+ 267.25 
+	
+Sub Total
+ 32,280.52 
+ 3,214.48 
+ - 
+ 35,495.00 
+ 4,127.03  1,110.64 
+ - 
+ 5,237.67  30,257.33  28,153.49 
+Total (a)+(b)
+ 83,066.03 
+ 6,118.68 
+ 39.94 
+ 89,144.77  30,184.98  5,165.60 
+ 33.14  35,317.44  53,827.33  52,881.05 
+c)	 Right Of Use Assets
+	
+Right of Use - Land
+ 41,111.01 
+ 1,614.72 
+ 42,725.73 
+ 5,463.55  1,709.86 
+ 7,173.41  35,552.32  35,647.46 
+	
+Right of Use - Buildings
+ 173.07 
+ 2.41 
+ 175.48 
+ 118.34 
+ 18.44 
+ 136.78 
+ 38.70 
+ 54.73 
+	
+Right to use ship repair 
+facility
+ 7,000.00 
+ 7,000.00 
+ 1,793.99 
+ 210.34 
+ 2,004.33 
+ 4,995.67 
+ 5,206.01 
+	
+Leased Land at 
+Nazirgunge & salkia 
+-Right to use
+ 575.00 
+ 575.00 
+ 34.43 
+ 9.49 
+ 43.92 
+ 531.08 
+ 540.57 
+Sub Total
+ 48,859.08 
+ 1,617.13 
+ - 
+ 50,476.21 
+ 7,410.31  1,948.13 
+ - 
+ 9,358.44  41,117.77  41,448.77 
+Total(a+b+c)
+1,31,925.11 
+ 7,735.81 
+ 39.94 1,39,620.98  37,595.29  7,113.73 
+ 33.14  44,675.88  94,945.10  94,329.82 
+Annual Report 2023-24
+287
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 272 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+Gross carrying amount
+Depreciation
+Net Carrying amount
+As at 
+1st Apr 
+2022
+ Additions/ 
+adjustments 
+during the year
+ Disposal/ 
+adjustments 
+during the year
+As at 31st 
+Mar 2023
+As at 
+1st Apr 
+2022
+For the 
+year
+Adjustment/ 
+(withdrawal)
+As at 
+31st Mar 
+2023
+As at 31st 
+Mar 2023
+As at 
+31st Mar 
+2022
+a)	 Owned Assets
+	
+Land (Freehold)
+ 3,267.86 
+ - 
+ - 
+ 3,267.86 
+ - 
+ - 
+ - 
+ - 
+ 3,267.86 
+ 3,267.86 
+	
+Buildings & Roads
+ 9,822.16 
+ 463.86 
+ - 
+ 10,286.02 
+ 3,928.04 
+ 646.96 
+ - 
+ 4,575.00 
+ 5,711.02 
+ 5,894.12 
+	
+Plant and  equipment
+ 24,794.20 
+ 243.18 
+ 223.01 
+ 24,814.37  12,247.84 
+ 2,360.24 
+ 187.54  14,420.54  10,393.83  12,546.36 
+	
+Furniture and fixtures
+ 1,529.05 
+ 248.40 
+ - 
+ 1,777.45 
+ 726.59 
+ 137.86 
+ - 
+ 864.45 
+ 913.01 
+ 802.46 
+	
+Vehicles
+ 675.02 
+ 2.94 
+ 0.09 
+ 677.87 
+ 370.03 
+ 60.23 
+ 0.03 
+ 430.23 
+ 247.64 
+ 304.99 
+	
+Office equipment
+ 565.19 
+ 92.11 
+ - 
+ 657.30 
+ 295.89 
+ 72.57 
+ - 
+ 368.46 
+ 288.84 
+ 269.30 
+	
+Others
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+	
+Data Processing 
+Equipments
+ 2,446.19 
+ 338.43 
+ 11.08 
+ 2,773.54 
+ 1,385.95 
+ 340.67 
+ 6.56 
+ 1,720.06 
+ 1,053.48 
+ 1,060.24 
+	
+Docks and quays
+ 4,466.45 
+ - 
+ 4,466.45 
+ 2,141.37 
+ 299.41 
+ - 
+ 2,440.78 
+ 2,025.67 
+ 2,325.08 
+	
+Railway sidings
+ 1.10 
+ - 
+ - 
+ 1.10 
+ - 
+ - 
+ - 
+ - 
+ 1.10 
+ 1.10 
+	
+Electrical installation
+ 1,832.41 
+ 189.52 
+ 3.81 
+ 2,018.12 
+ 1,102.86 
+ 127.91 
+ 3.12 
+ 1,227.65 
+ 790.47 
+ 729.55 
+	
+Drainage and  water 
+supply
+ 6.67 
+ 16.88 
+ - 
+ 23.55 
+ - 
+ 0.98 
+ - 
+ 0.98 
+ 22.57 
+ 6.67 
+	
+Vessels
+ 19.74 
+ 2.14 
+ - 
+ 21.88 
+ 8.44 
+ 1.36 
+ - 
+ 9.80 
+ 12.08 
+ 11.30 
+	
+Sub Total
+ 49,426.04 
+ 1,597.46 
+ 237.99 
+ 50,785.51  22,207.01 
+ 4,048.19 
+ 197.25  26,057.95  24,727.56  27,219.03 
+b)	 Assets on leased 
+premises
+	
+Buildings & Roads
+ 23,004.37 
+ 227.96 
+ - 
+ 23,232.33 
+ 1,706.78 
+ 781.81 
+ - 
+ 2,488.59  20,743.74  21,297.59 
+	
+Plant and  equipment
+ 4,824.37 
+ 1,718.66 
+ - 
+ 6,543.03 
+ 157.75 
+ 335.03 
+ - 
+ 492.78 
+ 6,050.25 
+ 4,666.62 
+	
+Docks and quays
+ 9.62 
+ 12.43 
+ - 
+ 22.05 
+ 8.35 
+ 0.41 
+ - 
+ 8.76 
+ 13.29 
+ 1.27 
+	
+Electrical installation
+ 1,330.09 
+ 35.03 
+ - 
+ 1,365.12 
+ 212.78 
+ 73.38 
+ - 
+ 286.16 
+ 1,078.96 
+ 1,117.31 
+	
+Slip way
+ 1,117.99 
+ - 
+ - 
+ 1,117.99 
+ 681.05 
+ 169.69 
+ - 
+ 850.74 
+ 267.25 
+ 436.94 
+	
+Sub Total
+ 30,286.44 
+ 1,994.08 
+ - 
+ 32,280.52 
+ 2,766.71 
+ 1,360.32 
+ - 
+ 4,127.03  28,153.49  27,519.73 
+	
+Total (a)+(b)
+ 79,712.48 
+ 3,591.54 
+ 237.99 
+ 83,066.03  24,973.72 
+ 5,408.51 
+ 197.25  30,184.98  52,881.05  54,738.76 
+c)	 Right Of Use Assets
+	
+Right of Use - Land
+ 39,874.95 
+ 1,331.96 
+ 95.90 
+ 41,111.01 
+ 4,142.95 
+ 1,390.64 
+ 70.04 
+ 5,463.55  35,647.46  35,732.00 
+	
+Right of Use - Buildings
+ 173.07 
+ - 
+ - 
+ 173.07 
+ 100.20 
+ 18.14 
+ - 
+ 118.34 
+ 54.73 
+ 72.87 
+	
+Right to use - land and 
+ship repair facility
+ 7,000.00 
+ 7,000.00 
+ 1,583.67 
+ 210.32 
+ 1,793.99 
+ 5,206.01 
+ 5,416.33 
+	
+Leased Land at 
+Nazirgunge & salkia 
+-Right to use
+ 575.00 
+ 575.00 
+ 24.94 
+ 9.49 
+ 34.43 
+ 540.57 
+ 550.06 
+	
+Right to use - land 
+(Malpe)
+ 16.68 
+ 16.68 
+ - 
+ 12.53 
+ 1.73 
+ 14.26 
+ - 
+ - 
+ 4.15 
+Sub Total
+ 47,639.70 
+ 1,331.96 
+ 112.58 
+ 48,859.08 
+ 5,864.29 
+ 1,630.32 
+ 84.30 
+ 7,410.31  41,448.77  41,775.41 
+Total(a+b+c)
+1,27,352.18 
+ 4,923.50 
+ 350.57 1,31,925.11  30,838.01 
+ 7,038.84 
+ 281.55  37,595.29  94,329.82  96,514.17 
+288
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 273 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+a)	
+Freehold Land includes the value of (a) land allotted on 
+lease basis to (i) Bharatiya Vidya Bhavan (0.69045 hectare) 
+(ii) M/s Indian Oil Corporation Ltd (0.620 hectare) for laying 
+pipeline (iii) land leased to M/s Kochin Air Products (0.30 
+hectare) and  (b) land leased to Kerala State Electricity 
+Board (0.47 hectare).
+b)	
+Value of land includes value of buildings acquired along 
+with the  land for which depreciation has not been 
+provided as the  value is not separately available and most 
+of these buildings are likely to be demolished for putting 
+up facilities for the factory. 
+c)	
+Freehold land includes landed properties of the Company 
+admeasuring 197.12 ares (487.00 cents) made up of 34.30 
+ares in Sy No. 713/11, 23.57 ares in Sy No. 713/12, 59.12 
+ares in Sy No. 713/13, 50.18 ares in Sy No. 714/06, 10.12 
+ares in Sy No. 714/2, 8.90 ares in Sy No. 714/4 and 10.93 
+ares in Sy No. 714/5 of land all are lying contiguously in 
+Elamkulam village, Kanayannur taluk, Ernakulam Dist, 
+Kerala provided as security for issue of Tax free bonds.
+d)	
+The company has bearer plants in its premises and other 
+sites which generates nominal income. Cost of such bearer 
+plants  cannot be reliably measured and hence these plants 
+were not capitalized.
+e)	
+Title deeds of all immovable properties are held in the 
+name of the Company. In the case of following properties 
+where the Company is the lessee, lease agreements 
+are duly executed in favour of the lessee with the 
+following exceptions:
+	
+1.	
+CSL has taken 8.12  HA of land (re-measured as 
+8.1164HA) and 15 HA of water body on lease from 
+Cochin Port Authority  (CoPA) on 12 April 2013 (1st 
+phase). CSL has also taken 8.134 HA of additional land 
+area on lease from CoPA on 16 Nov 2017 (2nd phase). 
+Two lease agreements (i.e. 1st phase allotment of 
+land/waterbody and 2nd phase allotment of land) 
+were entered between CSL & CoPA and both lease 
+deeds have not been registered.
+	
+2.	
+The 
+company 
+has 
+executed 
+concessionaire 
+agreements with the Mumbai Port Trust (MBPT) and 
+Syama Prasad Mukherjee Port (SMPT) to Upgrade, 
+Operate and Manage Ship Repair facility at   Hughes 
+Dry Dock  and  specified berths at Indira Dock of 
+MbPT and two dry docks and Berth No.6 of Netaji 
+Subash Dock of  SMPT respectively.
+	
+	
+The  project site at MbPT is taken on license for 29 
+years. The license agreement is yet to be registered, 
+as a request submitted for waiver of the stamp 
+duty to the Government of Maharashtra is under 
+consideration. 
+	
+	
+The project site at Syama Prasad Mukherjee Port is 
+taken on license for 30 years. As license agreement 
+does not attract stamp duty and registration charges 
+in West Bengal, Concession Agreement with SMPT 
+has not been registered.
+f)	
+The Right to use of land and ship repair facility represents 
+the upfront fee paid to Cochin Port Trust towards setting 
+up of International Ship Repair Facility (ISRF) project,  to 
+be amortised over the period of lease which was further 
+extended based on the date of obtaining of Environmental 
+Clearance. As all environmental clearances for ISRF are 
+obtained as on January 09, 2018, the lease period of 30 
+years effectively starts from this date.
+g)	
+As at 31 March 2024, plant and equipment with a carrying 
+amount of H465.55 lakhs were temporarily idle, but the 
+company plans to operate the assets in FY 2024-25.
+h)	
+The Gross Carrying value of assets of H12938.36 Lakhs 
+have been fully depreciated, but still are in use.
+i)	
+PPE includes capital expenditure on Research & 
+development 
+relating 
+to 
+equipments 
+for 
+welding 
+technology amounting to H25.95 lakhs.
+j)	
+UCSL and  Karnataka Maritime Board have signed the 
+Lease Agreement for the Leasehold land at Malpe & 
+Hangarkatta on 23.12.2022,  for a period of 30 years w.e.f 
+04.3.2020, i.e.; the date of NCLT order approving the take 
+over of M/s Udupi Cochin Shipyard Limited (Erstwhile 
+M/s TEBMA Shipyards Ltd) by M/s Cochin Shipyard Ltd. 
+Modification to lease ageement has necessitated the 
+reassessment of  ROU assets and lease liabilities as per 
+IND AS 116 and also the extension of useful life of assets 
+located on lease hold land. Towards this, company made 
+a total payment of  H325.50 lakhs to Karnataka Maritime 
+board(KMB) during FY 2022-23 which consists of payment 
+towards security deposit, lease dues, penalty and interests 
+to the KMB against the dues.  Resulting changes has been 
+incorporated in FY 2022-23 figures.
+k)	
+Team 2 (12T BollardPull Tug) given on operating 
+lease during the financial year has been included in 
+"Plant & Equipments”.
+Annual Report 2023-24
+289
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 274 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+l)	
+The value of Land at Kulpi (Kolkata- 230 cents)  have not 
+been recognized in accounts due to pending verification of 
+geographical area & valuation of the same.
+m)	
+Land belonging to UCSL continue to be in the name 
+of erstwhile "Tebma Shipyards Ltd" and/or "Tebma 
+Engineering Pvt Ltd" in the land records. Company has 
+already initiated action to change the title deed in the 
+name of "Udupi Cochin Shipyard Limited”.
+n)	
+Assets which cannot be detached and transported for 
+alternate use (“Non Removable Assets”) constructed on 
+leasehold land at Malpe yard are amortized/ depreciated 
+over the lower of the period of lease and useful life 
+of those assets.
+o)	
+During the year, borrowing cost of H8.11 Lakhs (PY 
+H23.59 lakhs) capitalised in the books of UCSL, The total 
+borrowing cost of ₹32.98 lakhs incurred during the FY 
+2021-22 to 2023-24 capitalised to Building (Asset held 
+under lease land) included in the addition during the year.
+p)	
+No charge has been created on Property, Plant & 
+Equipments of UCSL.
+q)	
+M/s Udupi Cochin Shipyard Ltd had elected to consider 
+the fair value of the assets as on the transition date, as 
+the deemed cost of the property, plant and equipment 
+and accordingly the gross block of property, plant and 
+equipment arrived at.
+r)	
+The Right to use of land at Malpe  represents the upfront 
+fee paid  to Port Officer Kundapura towards using Malpe 
+leasehold land, which is amortised over the lease period.
+s)	
+The title deeds of Building, Temporary Structure, Office 
+Building, Factory Building and Roads belonging to M/s 
+Hooghly Cochin Shipyard Ltd are not held in the name 
+of Company, as the land is in the name of Government 
+of India which were taken on lease for a period of 59 
+years and the Company had constructed immovable 
+properties on the same.
+t)	
+In case of HCSL, Twenty-six percent (26%) of initial 
+Equity Share capital of the company was issued to secure 
+leasehold right of the land without receipt of any monetary 
+consideration. Value of such 26% equity shares (H572.00 
+Lakhs) along with  related expenses totalling H575.00 
+Lakhs was capitalized as  Right to Use asset and amortized 
+on a straight line basis over the period for which the right 
+is acquired, commencing from the date on which the right 
+becomes capable of being exercised.
+290
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 275 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Note 5: Capital work -in -progress	
+	
+	
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Plant and machinery, Buildings and Civil works
+ 1,86,531.68 
+ 1,34,792.90 
+Add: Expenditure during construction
+ 12,141.82 
+ 9,570.95 
+Capital yard items
+ 20,852.09 
+ 15,354.87 
+Goods in Transit
+ 1.28 
+ 7.30 
+Project Management fees and miscellaneous capital expenditure
+ - 
+ 523.71 
+Total
+ 2,19,526.87 
+ 1,60,249.73 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Opening Balance
+ 9,570.95 
+ 1,006.79 
+Add:Expenses during the year
+	
+Salaries
+ 364.32 
+ 275.95 
+	
+Depreciation under Ind AS116
+ 545.32 
+ 513.64 
+	
+Finance cost under Ind AS116
+ 1,661.23 
+ 1,593.22 
+	
+Exceptional items
+ - 
+Closing Balance
+ 12,141.82 
+ 9,570.95 
+ (H in lakhs)
+Capital Work in Progress
+Amount in CWIP for a period of
+Total
+Less than 1 
+year
+1-2 years
+2-3 years
+More than 3 
+years
+Projects in progress
+64,679.21
+33,924.80
+16,434.84
+1,04,488.02
+2,19,526.87
+Projects temporarily suspended
+-
+ - 
+-
+-
+-
+ (H in lakhs)
+Capital Work in Progress
+Amount in CWIP for a period of
+Total
+Less than 1 
+year
+1-2 years
+2-3 years
+More than 3 
+years
+Projects in progress
+41,592.43
+ 17,749.39 
+42,957.11
+57,950.80
+1,60,249.73
+Projects temporarily suspended
+-
+ - 
+-
+-
+-
+Capital work -in -progress (CWIP) includes capital expenditure on Research & development relating to R&D centre amounting 
+to H24.78 lakhs
+CWIP Ageing schedule as on 31.03.2024
+CWIP Ageing schedule as on 31.03.2023
+Expenditure during construction
+Annual Report 2023-24
+291
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 276 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Overdue CWIP as on 31.03.2024
+Overdue CWIP as on 31.03.2023
+ (H in lakhs)
+Capital Work in Progress
+To be completed in
+Less than 1 
+year
+1-2 years
+2-3 years
+More than 3 
+years
+Caisson Gate - Kolkata unit
+ 1,503.61 
+ - 
+ - 
+ - 
+Integrated Security System
+ 923.67 
+ - 
+ - 
+ - 
+Conference Hall Renovation Of Business Development
+ 36.81 
+ - 
+ - 
+ - 
+Office Space For Basic Design
+ 19.37 
+ - 
+ - 
+ - 
+Dock Arm Accessories
+ 352.78 
+ - 
+ - 
+ - 
+Fire Main System
+ 88.10 
+ - 
+ - 
+ - 
+Aluminium Roofing Hull Shop
+ - 
+ 162.25 
+ - 
+ - 
+DSL System For Crane
+ 56.30 
+ - 
+ - 
+ - 
+Office for Project Management Section
+ 52.15 
+ - 
+ - 
+ - 
+BBT and Tap Off Box
+ 54.82 
+Electrical installation at Hull Shop
+ 23.48 
+Asset under Construction- Docks & Quay
+63.24
+Asset under Construction-Capstan
+30.84
+Augmentation of yard facilities-civil
+36.41
+ (H in lakhs) 
+Capital Work in Progress
+To be completed in
+Less than 1 
+year
+1-2 years
+2-3 years
+More than 3 
+years
+International Ship Repair Facility 
+ - 
+ 70,447.15 
+ - 
+ - 
+Dry Dock 
+ 84,852.92 
+ - 
+ - 
+Caisson Gate - Kolkata unit 
+ 694.78 
+ - 
+ - 
+Integrated security system 
+ 354.17 
+ - 
+ - 
+Caisson Gate - Mumbai Unit 
+ 1,359.38 
+ - 
+ - 
+Asset under Construction- Docks & Quay 
+22.09
+ 18.63 
+22.51
+Asset under Construction-Capstan 
+0
+ 26.01 
+4.82
+Asset under Construction-Pontoon 
+459.16
+Asset under Construction-Skid 
+55.66
+292
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 277 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Note 6 : Intangible assets
+ (H in lakhs)
+Particulars
+Gross carrying amount
+Amortisation
+Net Carrying amount
+As at 
+1st Apr 
+2023
+ Additions/ 
+adjustments 
+during the year
+ Disposal/ 
+adjustments 
+during the year
+As at 31st 
+Mar 2024
+As at 
+1st Apr 
+2023
+For the 
+year
+Adjustment/ 
+(withdrawal)
+As at 
+31st Mar 
+2024
+As at 31st 
+Mar 2024
+ As at 
+31st Mar 
+2023
+Internally generated weld 
+procedure
+ 27.67 
+ 27.67 
+ 27.67 
+ 27.67 
+ - 
+ - 
+Computer software
+ 2,914.75 
+ 1,766.10 
+ 4,680.85 
+ 1,948.70 
+ 921.06 
+ 2,869.76 
+ 1,811.09 
+ 966.05 
+ 2,942.42 
+ 1,766.10 
+ - 
+ 4,708.52 
+ 1,976.37 
+ 921.06 
+ - 
+ 2,897.43 
+ 1,811.09 
+ 966.05 
+ (H in lakhs) 
+Particulars
+Gross carrying amount
+Amortisation
+Net Carrying amount
+As at 
+1st Apr 
+2022
+ Additions/ 
+adjustments 
+during the year
+ Disposal/ 
+adjustments 
+during the year
+As at 31st 
+Mar 2023
+As at 
+1st April 
+2022
+For the 
+year
+Adjustment/ 
+(withdrawal)
+As at 
+31st Mar 
+2023
+As at 31st 
+Mar 2023
+As at 
+31st Mar 
+2022
+Internally generated weld 
+procedure
+ 27.67 
+ 27.67 
+ 27.67 
+ 27.67 
+ - 
+ - 
+Computer software
+ 2,003.14 
+ 911.61 
+ 2,914.75 
+ 1,552.61 
+ 396.09 
+ 1,948.70 
+ 966.05 
+ 450.53 
+ 2,030.81 
+ 911.61 
+ - 
+ 2,942.42 
+ 1,580.28 
+ 396.09 
+ - 
+ 1,976.37 
+ 966.05 
+ 450.53 
+Annual Report 2023-24
+293
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 278 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Note 7: Intangible assets under development		
+	
+	
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Intangible assets under development
+ 60.64 
+ 1,602.37 
+Total
+ 60.64 
+ 1,602.37 
+Intangible assets under development Ageing schedule as on 31.03.2024
+ (H in lakhs)
+Capital Work in Progress
+Amount in CWIP for a period of
+Less than 1 
+year
+1-2 years
+2-3 years
+More than 3 
+years
+Projects in progress
+0.00
+32.18
+28.46
+0.00
+Projects temporarily suspended
+-
+ - 
+-
+-
+Intangible assets under development Ageing schedule as on 31.03.2023
+ (H in lakhs)
+Capital Work in Progress
+Amount in CWIP for a period of
+Less than 1 
+year
+1-2 years
+2-3 years
+More than 3 
+years
+Projects in progress
+39.07
+ 28.46 
+136.15
+1,398.69
+Projects temporarily suspended
+-
+ - 
+-
+-
+Overdue Intangible assets under development as on 31.03.2024
+ (H in lakhs)
+Capital Work in Progress
+To be completed in
+Less than 1 
+year
+1-2 years
+2-3 years
+More than 3 
+years
+Repository - CANSRU
+60.64
+0.00
+0.00
+0.00
+ (H in lakhs)
+Capital Work in Progress
+To be completed in
+Less than 1 
+year
+1-2 years
+2-3 years
+More than 3 
+years
+3D Experience Ship building software
+1541.73
+ - 
+ - 
+ - 
+REPOSITORY - CANSRU
+60.64
+ - 
+ - 
+ - 
+Overdue Intangible assets under development as on 31.03.2023
+294
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 279 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ 
+ 
+ (H in lakhs)
+Particulars
+Face value 
+per unit
+Number of units 
+as on Mar 31, 2024
+Number of units 
+as on Mar 31, 2023
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Unquoted (Fully Paid up)
+Investment in equity instruments 
+a)	 At Fair Value Through Other 
+Comprehensive Income
+	
+Cochin Shipyard Employees Consumer 
+Co-operative Society Limited  2175  'B 
+Class'
+100
+2,175
+2,175
+ 2.18 
+ 2.18 
+	
+Kerala Enviro Infrastructure Limited 
+10
+70,000
+70,000
+ 10.37 
+ 9.14 
+	
+Cochin Waste 2 Energy Private Limited
+10
+1,00,000
+1,00,000
+ - 
+ - 
+Total
+ 12.55 
+ 11.32 
+	
+Aggregate value of unquoted investment
+ 12.55 
+ 11.32 
+	
+Aggregate value of quoted investments and market value thereof
+ - 
+ - 
+	
+Aggregate value of unquoted investment
+ 12.55 
+ 11.32 
+	
+Aggreagate amount of impairment in value of investments
+ 10.00 
+ 10.00 
+Note 8: Investments-Non Current	
+	
+	
+a)	
+Considering the indicators of the value of an investment such as  investee’s assets, results etc. a decline, other than temporary, 
+in the value of investment in Cochin Waste 2 Energy (P) Ltd is noticed and accordingly fair value is considered as Nil .Similarly, 
+increase in value of investment in Kerala Enviro Infrastructure Limited is noticed and accordingly investment is fair valued.
+b)	
+The Group’s Investment in Cochin Shipyard Employees Consumer Co-operative Society Limited are non-participative shares and 
+normally does not carry any voting rights. Hence, the group has carried this investment at its transaction value considering to 
+be its fair value.
+Note 9: Loans - Non Current
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Unsecured, considered good:
+	
+Loan to employees
+	
+Related parties 
+ - 
+ - 
+	
+Others
+569.95
+520.60
+Total
+569.95 
+520.60 
+No signficant increase in credit risk or credit impairment
+Note 10: Other Financial Assets - Non Current
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Security deposits
+ 97.40 
+ 100.90 
+Accrued Lease Rental Asset
+ 1.31 
+ 6.44 
+Total
+ 98.71 
+ 107.34 
+Security deposits includes rent deposits paid towards lease land at amortised cost under Ind AS 109 read with Ind As 116.
+Annual Report 2023-24
+295
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 280 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Non current tax assets
+Income Tax Assets net of provisions
+ 6,486.87 
+ 3,007.47 
+Current tax assets / (liabilities)
+ Advance income tax net of provisions
+ 323.10 
+ 7,147.48 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Current tax:
+Current income tax charge
+ 25,016.34 
+ 11,597.42 
+Adjustment in respect of  prior years
+ 3,307.72 
+ (1,289.25)
+Total (A)
+ 28,324.06 
+ 10,308.17 
+Deferred tax:
+In respect of current year
+ 441.92 
+ 1,064.62 
+Total (B)
+ 441.92 
+ 1,064.62 
+Income tax expense recognised in the Statement of Profit and Loss (A+B)
+ 28,765.98 
+ 11,372.79 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Profit before tax
+ 1,07,093.76 
+ 41,843.70 
+Income tax expense calculated at respective applicable rates
+ 27,601.01 
+ 11,288.02 
+Effect of expenses that are not deductible in determining taxable profit
+ 5,655.16 
+ 3,528.04 
+Effect of expenses that are allowable in determining taxable profit
+ (7,578.04)
+ (4,879.90)
+Effect of expenses incurred on Corporate Social Responsibility not deductible in 
+determining taxable profit
+ 348.42 
+ 416.52 
+Effect of income that is exempt from taxation
+ - 
+Adjustments with respect to unabsorbed business loss / Depreciation
+ (245.56)
+Others
+ (764.65)
+ 1,244.74 
+ 25,016.34 
+ 11,597.42 
+Adjustments recognised in the current year in relation to the current tax of prior years
+ 3,307.72 
+ (1,289.25)
+Adjustments for changes in estimates of deferred tax assets
+ 441.92 
+ 1,064.62 
+Income tax expense recognised in the Statement of Profit and Loss
+ 28,765.98 
+ 11,372.79 
+Note 11: Income tax assets / liability (net)
+UCSL has not  accounted the TDS amount uploaded in Form 26AS on those deposits which are not taken as fixed deposits in the 
+books of UCSL due to lien mark bank guarantee issued by Committe of Creditors (CoC).
+Income tax recognised in the Statement of profit and loss
+The income tax expense for the year can be reconciled to the accounting profit as follows:-
+296
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 281 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Deferred tax liabilities
+ (2,239.59)
+ (3,266.05)
+Deferred tax assets
+ 12,665.04 
+ 13,715.55 
+Total 
+ 10,425.45 
+ 10,449.51 
+Deferred tax liabilities of HCSL
+ 520.62 
+Total 
+ 520.62 
+ - 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Brought forward losses
+ 900.78 
+ 211.10 
+Unabsorbed tax depreciation
+ 804.56 
+ 468.49 
+Total
+ 1,705.34 
+ 679.59 
+Note 12: Deferred tax assets (net)
+Deferred tax liabilities/(assets) in relation to 2023-24
+ (H in lakhs)
+Particulars
+Opening 
+balance
+Recognised in 
+Statement of 
+Profit and Loss
+Recognised in 
+OCI
+Closing 
+Balance
+Provisions
+ (5,585.50)
+ (947.81)
+ (6.38)
+ (6,539.69)
+Property, plant and equipment
+ 3,033.55 
+ (532.94)
+ - 
+ 2,500.61 
+Intangible assets
+ 32.67 
+ 225.69 
+ - 
+ 258.36 
+Leased Assets
+ (2,433.71)
+ (15.81)
+ - 
+ (2,449.52)
+Leased Liabilities
+ 1,064.86 
+ (222.21)
+ - 
+ 842.65 
+Carry forward losses
+ (5,199.16)
+ 546.99 
+ - 
+ (4,652.17)
+Cashflow Hedge-Adjustment
+ - 
+ - 
+ 109.14 
+ 109.14 
+Others
+ (1,362.22)
+ 1,388.01 
+ - 
+ 25.79 
+Total
+ (10,449.51)
+ 441.92 
+ 102.76 
+ (9,904.83)
+Deferred tax liabilities/(assets) in relation to 2022-23	
+	
+	
+ (H in lakhs)
+Particulars
+Opening 
+balance
+Recognised in 
+Statement of 
+Profit and Loss
+Recognised in 
+OCI
+Closing 
+Balance
+Provisions
+ (7,601.16)
+ 2,015.66 
+ - 
+ (5,585.50)
+Property, plant and equipment
+ 3,190.06 
+ (156.51)
+ - 
+ 3,033.55 
+Intangible assets
+ (18.27)
+ 50.94 
+ - 
+ 32.67 
+Leased Assets
+ (2,464.67)
+ 30.96 
+ - 
+ (2,433.71)
+Leased Liabilities
+ 625.75 
+ 439.11 
+ - 
+ 1,064.86 
+Carry forward losses
+ (5,085.79)
+ (113.37)
+ - 
+ (5,199.16)
+Others
+ (160.05)
+ (1,202.17)
+ - 
+ (1,362.22)
+Total
+ (11,514.13)
+ 1,064.62 
+ - 
+ (10,449.51)
+Brought forward losses and unabsorbed depreciation of HCSL for which no deferred tax assets have been recognized are attributable 
+to the following:
+Annual Report 2023-24
+297
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 282 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Note 13: Other non-current assets
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Unsecured, considered good
+Capital advances                            
+ 4,892.43 
+ 15,971.40 
+Advances other than capital advances:
+	
+Security deposits
+ 312.88 
+ 266.38 
+	
+Advance lease rentals
+ 40.71 
+ 36.43 
+	
+Deposits with Customs department *
+ - 
+ 261.22 
+	
+Loose tools 
+ 799.77 
+ 649.03 
+Research & Development vessel- Cost of the vessel **
+1399.74
+ - 
+Less : Amount payable to Ministry/GoI**
+-1015.88
+ 383.86 
+ - 
+Total
+ 6,429.65 
+ 17,184.46 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Raw Materials and components
+ 82,303.86 
+ 33,839.75 
+Work in Progress
+ 428.64 
+ 496.05 
+Goods-in transit
+ 17,612.61 
+ 1,557.05 
+ 1,00,345.11 
+ 35,892.85 
+Stores & Spares
+ 1,789.81 
+ 1,296.27 
+Goods-in transit
+ 474.48 
+ 110.59 
+ 2,264.29 
+ 1,406.86 
+Total*
+ 1,02,609.40 
+ 37,299.71 
+* As per final order no: 20055 of 2024 dated 24.01.2024 passed by the Commissioner of Customs (Appeals), Cochin, the refund appeal has been dismissed. Hence 
+the deposit with customs department of H261.22 lakhs which is appearing under Other Non-current asset has been adjusted with Other financial liabilities (Non 
+current)- payable to Chennai port trust under note no.25
+** Research committee of Ministry of Ports, Shipping and Waterways (MoPSW) approved on 16  November 2021 for construction of a Hydrogen Fuel Cell Electric 
+vessel (HFCEV) by Cochin Shipyard Limited (CSL- Holding Company) as a pilot technology demonstrator vessel. MoPSW issued Work order (WO) dated 10 March 
+2022 for the research and development project of  HFCEV by CSL. The HFCEV is constructed based on home grown new advanced technology i.e.; hydrogen fuel 
+cell technology under the ambit of Atmanirbhar Bharat initiatives and Govt. of India's strong thrust on the Hydrogen economy as the initiatives arising out of the 
+National Hydrogen Mission.
+The overall estimated cost is H1750.00 Lakhs (including operation and maintenance cost for two years) out of which 75% (i.e. H1312.50 Lakhs) will be funded by 
+MoPSW. Holding Company had incurred cumulative amount of H1399.74 lakhs as of March 31, 2024 out of which H1015.88 lakhs has been funded by MoPSW. 
+The construction of the pilot project has been completed on Feb 24, 2024. As per WO issued by MoPSW,  Holding Company has to demonstrate and run the 
+vessel to prove the Hydrogen Fuel cell technology in ship building. Besides, IRS class certification for the vessel was accorded towards demonstration operation 
+for two years before the vessel can be put into full commercial operation by another entity. Subseqently, Holding Company has entered into a Memorandum 
+of Understanding with Inland Waterways Authority of India (IWAI) for Develop,Design,Construct and Supply of 1 No' Hydrogen Fuel Cell Vessel. The Holding 
+Company intends to transfer the Title and Ownership of Vessel through a separate contract, which is currently under discussion.
+Note 14: Inventories 
+Stores & Spares represents  spares of general nature and are not related to a particular asset.
+*Includes Materials Pending Inspection as on 31 March 2024 comes to H15,364.25 lakhs
+During the previous year, stores and spares are valued at weighted average cost method and goods in transit at cost as against 
+"weighted average cost method or net realisable value whichever is lower" for stores and "lower of cost and net realisable value" for 
+Goods in transit which was followed in  prior years immediately preceeding to previous year. During the year, group  reviewed this 
+policy on measurement of Stores & Spares and Goods in transit and after due consideration of all the factors, the policy followed is 
+considered as appropriate.
+Entire stock of inventories of UCSL valuing H5907.02 lakhs are hypothecated towards availing cash credit facility from the bank.
+298
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 283 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Unsecured
+Considered good:
+Trade Receivables considered good - Unsecured
+ 35,547.56 
+ 33,841.50 
+Trade Receivables which have significant increase in Credit Risk
+ 12,145.76 
+ 11,030.93 
+Less: Allowance for Expected credit loss 
+ (12,145.76)
+ (11,030.93)
+Trade Receivables - Credit impaired
+ - 
+ - 
+Less: Allowance for Expected credit loss 
+ - 
+ - 
+Total
+ 35,547.56 
+ 33,841.50 
+Note 15: Trade Receivables-Current
+Trade receivables are non-interest bearing and receivable in normal operating cycle.
+Trade receivables include receivable accrued but not due (unbilled trade receivables) H5202.58 Lakhs (previous year H2102.59 Lakhs)
+Trade Receivables ageing schedule as on 31.03.2024
+ (H in lakhs)
+Particulars
+Accrued 
+but not due 
+(Unbilled trade 
+receivables)
+Outstanding for following periods from 
+due date of payment
+ Total 
+ Less than 
+6 Months 
+ 6 Months 
+to 1 year 
+ 1 to 2 
+years 
+ 2 to 3 
+years 
+ More than 
+3 years 
+(i)	 Undisputed Trade receivables – 
+considered good
+5,202.58
+20,246.41
+4,985.64
+2,397.05
+2,733.08
+2.59
+35567.35
+(ii)	 Undisputed Trade Receivables – which 
+have significant increase in credit risk
+0.00
+0.00
+0.00
+111.12
+476.18
+2525.07
+3112.37
+(iii)	Undisputed Trade Receivables – credit 
+impaired
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+(iv)	Disputed Trade Receivables– 
+considered good
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+(v)	 Disputed Trade Receivables – which 
+have significant increase in credit risk
+0.00
+0.00
+0.00
+0.00
+27.91
+8985.69
+9013.60
+(vi)	Disputed Trade Receivables – credit 
+impaired
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+ 5,202.58  20,246.41 
+ 4,985.64 2,508.17 3,237.17  11,513.35  47,693.32 
+Less: Expected Credit Loss provision as on 
+31.03.2024
+ 12,145.76 
+Trade receivable as on 31.03.2024
+ 35,547.56 
+Trade Receivables ageing schedule as on 31.03.2023
+ (H in lakhs)
+Particulars
+Accrued 
+but not due 
+(Unbilled trade 
+receivables)
+Outstanding for following periods from due date of 
+payment
+ Total 
+ Less than 
+6 Months 
+ 6 Months 
+to 1 year 
+ 1 to 2 
+years 
+ 2 to 3 
+years 
+ More than 
+3 years 
+(i)	 Undisputed Trade receivables – 
+considered good
+2,102.59
+13777.34
+12567.14
+3707.94
+1686.49
+0.00
+33841.50
+(ii) Undisputed Trade Receivables – which 
+have significant increase in credit risk
+0.00
+0.00
+0.00
+189.72
+292.00
+1360.33
+1842.05
+(iii) Undisputed Trade Receivables – credit 
+impaired
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+Annual Report 2023-24
+299
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 284 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+Accrued 
+but not due 
+(Unbilled trade 
+receivables)
+Outstanding for following periods from due date of 
+payment
+ Total 
+ Less than 
+6 Months 
+ 6 Months 
+to 1 year 
+ 1 to 2 
+years 
+ 2 to 3 
+years 
+ More than 
+3 years 
+(iv) Disputed Trade Receivables– 
+considered good
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+(v) Disputed Trade Receivables – which 
+have significant increase in credit risk
+0.00
+0.00
+0.00
+98.04
+121.95
+8968.89
+9188.88
+(vi) Disputed Trade Receivables – credit 
+impaired
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+ 2,102.59  13,777.34  12,567.14 3,995.70 2,100.44  10,329.23  44,872.43 
+Less: Expected Credit Loss provision as on 
+31.03.2023
+ 11,030.93 
+Trade receivable as on 31.03.2023
+ 33,841.50 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Opening balance
+ 11,030.93 
+ 10,439.67 
+Add: Additions during the year
+ 1,594.87 
+ 613.97 
+Less: Reversals/withdrawals during the year
+ 480.04 
+ 22.71 
+Closing Balance
+ 12,145.76 
+ 11,030.93 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Cash on hand
+Balance with Banks
+	
+In current account
+ 951.82 
+ 7,394.45 
+	
+Term deposits  with original maturity  of less than three months
+ 29,689.48 
+ 30,107.76 
+Total
+ 30,641.30 
+ 37,502.21 
+Movement in the expected credit loss allowance
+Note 16: Cash and Cash equivalents
+a)	
+H3500 lakhs has been allocated for R&D and innovation initiatives Fund, for development of pilot Autonomous Surface Vessel 
+Project.  Also Board approval granted for funding support not exceeding H5000 lakhs to "USHUS" project under CSL’s Start-up 
+Engagement Policy Framework.
+b)	
+Pursuant to resolution plan submitted by the M/s Cochin Shipyard Limited for takeover of Udupi Cochin Shipyard Limited 
+(Erstwhile Tebma shipyards), the bid amounts have been paid to the banks under the approved resolution plan and all security 
+charges, encumbrances, created or suffered to exist in relation to credit facilities extended to erstwhile M/s Tebma Shipyards 
+Limited, stands released, discharged in terms of the resolution plan.Consequently the Bank guarantees stands discharged and 
+margin money shall be released to M/s Udupi Cochin Shipyard Limited. However, the margin monies (aggregating  approx. 
+H351.12 lakhs) have not yet been actually released by the banks to UCSL as they hold the same as lien for the Bank Guarantees 
+issued by them earlier which has been disputed by the UCSL. Therefore, on a prudent basis, UCSL will recognize the Fixed 
+deposits, Interest income and TDS portion of interest income only in the period in which the banks actually release the margin 
+money deposits. Accordingly  the aforesaid amount is not included in the above.
+300
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 285 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Lien Marked Term deposits  with original maturity  of less than three months*
+ 46,103.75 
+ 84,423.51 
+Term Deposits with banks with original maturity more than 3 months and less than 12 
+months**
+ 22,094.07 
+ 56,869.86 
+In current account :
+ - 
+on behalf of Indian Navy ***
+ 2,76,092.29 
+ 2,42,387.94 
+on behalf of UTLA
+ 432.68 
+ - 
+on behalf of A&N
+ 1,897.80 
+ - 
+on behalf of IWAI
+ 1,046.23 
+ 828.34 
+Term deposit on behalf of IWAI
+ 900.00 
+Term Deposits with banks with original maturity more than 3 months and less than 12 
+months earmarked for objects of IPO 
+ 7,050.00 
+ 53,691.71 
+Earmarked balances (Unpaid Dividend account)
+ 142.43 
+ 98.20 
+Total
+ 3,55,759.25 
+ 4,38,299.56 
+Note 17: Bank balances other than cash and cash equivalents
+*Lien Marked Term deposits represents deposits in which lien is marked in favour of Union Bank of India, State Bank of India & IDBI for maintaining cash margin 
+towards the Non-Fund based credit facilities granted to the Company and H106.87 lakhs (previous year H101.92 lakhs) lien marked in favour of The Registrar 
+of High Court of Kerala. H11.84 lakhs in previous year  represents lien marked deposit in favour of Executive Engineer (M) Maritime Board, Gujarat towards 
+submission of quotation for fabrication of patrolling boats.
+**Term Deposit with original maturity more than 3 months and less than 12 months includes term deposit of H0.94 lakhs with ICICI bank for which deposit receipt 
+is not available as it was placed by erstwhile M/s Tebma Shipyards Ltd,however the bank has issued the confirmation letter for holding the deposit.
+*** Funds parked by Indian Navy for the construction of Indigenous Aircraft Carrier and Next generation Missile Vessels are held in a separate accounts.
+Note 18: Loans - Current
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Unsecured, considered good
+Employee advances             
+	
+Related parties
+ - 
+ - 
+	
+Others
+ 115.11 
+ 99.50 
+Total
+ 115.11 
+ 99.50 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Interest accrued on Bank Deposits
+ 9,429.28 
+ 3,335.93 
+Interest accrued from Others
+0.94
+	
+Related parties
+ - 
+Interest accrued on employee advances
+	
+Related parties
+	
+Others
+ 124.75 
+ 68.73 
+FD More than 12 months
+ 700.00 
+ - 
+Foreign Exchange Derivatives Assets
+ 1,594.93 
+ 15.47 
+Total
+ 11,848.96 
+ 3,421.07 
+No signficant increase in credit risk or credit impairment	 	
+	
+	
+	
+	
+	
+Note 19: Other Financial Assets - Current
+Annual Report 2023-24
+301
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 286 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Unsecured advances
+Advances other than  capital advances     
+	
+Advances to related party
+ 3,527.06 
+ 0.39 
+	
+Other advances#
+ 1,56,344.44 
+ 63,822.35 
+	
+Advances considered doubtful
+ 0.07 
+ 1,030.17 
+ 1,59,871.57 
+ 64,852.91 
+Less: Provision for doubtful advances
+ 0.07 
+ 1,030.17 
+ 1,59,871.50 
+ 63,822.74 
+Others
+Contract Assets for IAC works*
+ 24,765.33 
+ 29,238.07 
+Contract Assets for other works
+ 51,246.30 
+ 21,881.25 
+Obsolete stock
+ 281.41 
+ 352.37 
+Less: Provision for obsolesence
+ (281.41)
+ (352.37)
+Balance with Revenue authorities
+ 1,167.99 
+ 709.69 
+Miscellaneous deposits
+ 84.34 
+ 62.04 
+Prepaid expenditure
+ 2,526.36 
+ 1,089.09 
+Other receivables**
+ 31.95 
+ 31.95 
+Input Tax Credit on GST
+ 83,885.69 
+ 34,783.32 
+Medical Insurance Premium
+ 1,984.50 
+ 1,876.91 
+Miscellaneous current assets ***
+ 1,447.01 
+ 1,729.83 
+Total
+ 3,27,010.97 
+ 1,55,224.89 
+ 
+Description
+FY 2023-24 
+J in Lakhs
+FY 2022-23 
+J in Lakhs
+Revenue Recognised as at beginning of the year
+ 17,40,844.14 
+ 15,98,425.48 
+Revenue recognised during the year 
+ 1,20,269.87 
+ 1,42,418.66 
+Total revenue recognised on IAC P-71 as at year end
+ 18,61,114.01 
+ 17,40,844.14 
+Note 20: Other Current Assets
+*The Group has incurred H40,057.28 Lakhs till 31 March 2024 (H37,377.15 Lakhs till 31st March 2023) towards augmentation of infrastructure facility out of funds 
+received from Indian Navy. The ownership of the assets created out of the said funds vests with Indian Navy.
+Stock of raw materials and bought out components procured under "Cost Plus" part of the IAC contract amounting to H5601.25 lakhs (previous year H6966.24 
+lakhs) held on behalf of Indian Navy lying with the Company  is adjusted against Advances from Indian Navy for Indigenous Aircraft Carrier.
+During the Financial Year 2022-23, the Group has handed over the Indigenous Aircraft Carrier (IAC P-71) to Indian Navy in accordance with the contract for the 
+construction of IAC P-71. The Company has raised Invoice for H1915000 Lakhs on achievement of the delivery milestone of the contract. The balance scope of 
+work will be completed subsequently  as per the construction contract.
+The Group has recognised revenue to the extent of H1861114.01 Lakhs as on 31.03.2024 against the IAC project P-71 and the balance revenue would be 
+recognised as and when the performance obligations are achieved in accordance with the construction contract of IAC P-71. The details of revenue recognised 
+so far on the project are as follows:
+Refer Note No 46 on Ind AS 115 "Revenue from Contract with Customers
+**Other receivables represents the amount to be recovered from Committee of Creditors (CoC) for the costs incurred for maintenance of excluded ships. Said 
+sum consisted of funds utilized from the CIRP account kept by the resolution professional as well as funds used from the company's account. The Group has raised 
+debit note for recovery of balance amount to CoC  but has not yet received the payment. No Balance confirmation is available from Committee of Creditors. 
+*** The Corporate Social responsibility (CSR) expenditure is charged to the Statement of Profit & Loss in the period in which it is incurred, except to the extent 
+the Group decides to carry forward any amount in excess of the minimum required CSR expenditure for adjustment in future years in terms of Sec 135(5) of 
+the Companies Act 2013 read with Companies (Corporate Social Responsibility Policy) Amendment Rules, 2021 and such excess amount is classified under 
+Miscellaneous Current Assets.
+#In HCSL,Fund received from Inland Waterways Authority of India (IWAI) for Pandu Project-Ship Repair Facility Unit at Pandu-Guwahati, on Deposit basis has been 
+adjusted with amount incurred on Pandu Project till 31.03.2024.
+302
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 287 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ 
+ 
+Particulars
+ As at March 31,2024
+ As at March 31,2023 
+Number
+J in lakhs
+Number
+J in lakhs
+Authorised
+Equity shares of  H5/- each as at March 31, 2024 
+Equity shares of  H10/- each as at March 31, 2023
+500000000
+ 25,000.00 
+250000000
+ 25,000.00 
+Issued, Subscribed and  Fully paid up
+Equity shares of  H5/- each as at March 31, 2024 
+Equity shares of  H10/- each as at March 31, 2023
+263080780
+ 13,154.04 
+131540390
+ 13,154.04 
+Total
+263080780
+ 13,154.04 
+131540390
+ 13,154.04 
+Note 21: Equity Share Capital
+21.1	Reconciliation of  number of shares and amounts outstanding
+ 
+ 
+Particulars
+ As at March 31,2024
+ As at March 31,2023 
+Number
+J in lakhs
+Number
+J in lakhs
+Equity Shares outstanding at the beginning of the year 
+131540390
+13,154.04
+131540390
+ 13,154.04 
+Add : shares issued during the year 
+0
+0.00
+0
+0.00
+Less: Shares extinguished on splitting of shares 
+(refer note below)
+(131540390)
+0.00
+0
+0.00
+Add : Equity shares of H5/- each issued during the year on 
+splitting (Refer note below)
+263080780
+0.00
+0
+0.00
+Less : Shares bought back during the year 
+0
+0.00
+0
+0.00
+Equity Shares outstanding at the end of the year
+263080780
+13154.04
+131540390
+ 13,154.04 
+	
+Terms & Rights attached to Equity shares: The Company has only one class of equity shares having a face value of H5 per share 
+which is fully paid up. Equity shareholders are eligible for one vote per share held, and are entitled to dividends as and when 
+declared by the Company. Interim dividend is paid as and when declared by the Board. Final dividend proposed by the Board of 
+Directors is subject to approval/regularisation by the share holders in the Annual General meeting. In the event of liquidation, 
+the equity shareholders are eligible  to receive the remaining assets of the company after distribution of all preferential 
+amounts, in proportion to their shareholding.
+	
+Sub-division & Other information:
+	
+On 10 Jan 2024, the Company sub-divided  every 1 (one) Equity Share of the nominal/face value of H10/- each into 2 (Two) Equity 
+Share of the nominal/face value of H5/- each.
+21.2	Details of shareholders holding more than 5% shares in the company
+ 
+ 
+Particulars
+ As at March 31,2024
+ As at March 31,2023 
+Number of 
+Shares held
+% of holding
+Number of 
+Shares held
+% of holding
+The President of India (Pre stock split - Face value H10/share 
+Post stock split - Face value H5/share)
+191686928
+ 72.86
+95843464
+ 72.86
+Annual Report 2023-24
+303
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 288 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Capital Reserves
+ 7,024.25 
+ 7,024.25 
+Capital Redemption Reserve
+ 12,353.76 
+ 12,353.76 
+Securities Premium 
+ 93,151.90 
+ 93,151.96 
+Debenture Redemption  Reserve
+ - 
+ 1,668.44 
+General Reserve
+ 6,322.75 
+ 6,322.75 
+Cash flow Hedge Reserve
+ (593.75)
+ (3,578.40)
+Retained Earnings
+ 3,68,920.72 
+ 3,12,667.84 
+Total
+ 4,87,179.63 
+ 4,29,610.60 
+Promoter name
+No. of Shares
+% of total shares
+% Change during 
+the year
+The President of India (Pre stock split - Face value H10/share 
+Post stock split - Face value H5/share)
+191686928
+72.86
+Nil
+21.3	Shares held by promoters at the end of the year
+	
+During the year 2023-24, as a result of splitting of shares of the company, one (01) equity share of face value of H10 each was 
+sub divided into two (02) equity shares of face value of H5 each. However, there was no percentage change in share capital of 
+the company as on 31st March 2024.
+Note 22: Other Equity
+Movement of each item in Other Equity is detailed in Statement of Changes in Equity
+Capital  Reserve: Capital reserve includes H263.56 lakhs being restoration charges received from M/s Indian Oil Corporation 
+Ltd for laying pipe line through the Group's land. It also includes gain on acquisition of subsidiary M/s Udupi Cochin Shipyard Ltd 
+(Formerly Tebma Shipyards Ltd) H6696.04 lakhs and acquisition of Non controlling interest of subsidiary M/s Hooghly Cochin Shipyard 
+Ltd H64.65 lakhs.
+Capital Redemption Reserve: Capital Redemption Reserve of H12353.76 lakhs includes  H11914.20 lakhs being reserves created on 
+redemption of preference shares and  H439.56 lakhs being a sum equal to the nominal value of the shares  bought back, which will be 
+utilised for the purpose defined under the Companies Act 2013.
+Securities Premium: Premium on tax free bonds is amortised on straight line basis over the period of bonds. The company had 
+completed the Initial Public Offer (IPO) during 2017-18 and had allotted 22656000 equity shares of  H10 each at premium ( H93929.76 
+lakhs). Expenses incurred net of deferred tax adjustment towards such allotment of shares amounting H777.93 lakhs has been 
+debited in Securities Premium in accordance with the requirements of  Indian Accounting Standard (Ind AS) 32- Financial Instruments.
+Debenture Redemption Reserve: The Holding Company was hitherto creating Debenture Redemption Reserve at 25% of the value 
+of bonds issued by the company over the maturity period of such debentures in accordance with Section 71(4) of the Companies Act, 
+2013 read with Rule 18(7) of the Companies (Share Capital and Debentures) Rules, 2014 and as per SEBI (Issue and Listing of Debt 
+Securities) Regulations, 2008. As per the amendment made to the Companies (Share Capital and Debentures) Rules, 2014 notified 
+vide Notification No. G.S.R. 574(E) by the Ministry of Corporate Affairs, the Holding company is not required to create Debenture 
+Redemption Reserves in respect of the bonds issued by it. However, the Debenture Redemption Reserve already created up to 
+30.09.2019, H1668.44 Lakhs, was retained in the books till the time of redemption of the Tax Free Infrastructure Bond Series 2013-14 
+(Tranche I) on 2nd December 2023. After this, entire balance was transferred to retained earnings.
+304
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 289 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+General Reserve: General reserve is primarily created to comply with the requirements of section 123(1) of the Companies Act, 
+2013. This is a free reserve and can be utilised for any general purpose like issue of bonus shares, payment of dividend, buy back of 
+shares etc. The Company created a General reserve in earlier years pursuant to the provisions of the Companies Act,1956 where in 
+certain percentage of profits were required to be transferred to General reserve before declaring dividends. As per the Companies 
+Act 2013, the requirements to transfer profits to General reserve is not mandatory.
+Cash flow Hedge Reserve: Cash flow hedge reserve represents the effective portion of change in the fair value of designated 
+hedging instruments recognised in the Other Comprehensive Income. (Refer Note No. 48)
+Interim dividend: During the year, the Company paid  interim dividends of H8 per equity share of face value of H10 (Pre sub-division) 
+and H3.5 per equity share of face value of H5 (Post sub- division), as recommended at the board meetings held on Nov 7, 2023 and 
+Jan 30, 2024 respectively.
+Proposed dividend: The Board of Directors of the Company have recommended a final dividend of  H2.25 per equity share of face 
+value of H5  for the financial year ended March 31, 2024 at the Board meeting held on May 24, 2024. This is subject to approval/
+regularisation by the share holders in the Annual General meeting.
+Note 23: Borrowings
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Bonds - Secured
+ - 
+At amortised cost
+Tax Free Redeemable Non Convertible Bonds -Series 2013-14
+ 2,302.20 
+ 2,302.20 
+Total
+ 2,302.20 
+ 2,302.20 
+Tax Free Infrastructure Bond Series 2013-14
+a)	
+Tranche 1: 1000 bonds of face value of H10 lakhs totalling H10000 lakhs with interest rate of 8.51% payable annually, redeemable 
+at par, redeemed on 02nd December 2023.
+b)    Tranche 2: 230 bonds of face value of H10 lakhs totalling H2300 lakhs with interest rate of 8.72% payable annually, redeemable at 
+par, due for redemption on 28th March 2029.
+These bonds are secured against the landed properties of the Group admeasuring 197.12 ares (487.00 cents) made up of 34.30 ares 
+in Sy No. 713/11, 23.57 ares in Sy No. 713/12, 59.12 ares in Sy No. 713/13, 50.18 ares in Sy No. 714/06, 10.12 ares in Sy No. 714/2, 
+8.90 ares in Sy No. 714/4 and 10.93 ares in Sy No. 714/5 of land all are lying contiguously in Elamkulam village, Kanayannur taluk, 
+Ernakulam Dist, Kerala.
+Utilisation :  Out of the issue proceeds of H12300 lakhs  received,  the Company has fully utilised/adjusted funds towards various 
+expenditure incurred on International Ship Repair Facility (ISRF) project.
+Difference between carrying amounts and fair values of financial liabilities of borrowings is not significant in each of the year presented.
+Note 24:  Lease Liabilities-Non current
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Lease Liabilities under Ind AS 116
+ 44,925.88 
+ 40,446.48 
+Total
+ 44,925.88 
+ 40,446.48 
+Annual Report 2023-24
+305
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 290 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Deferred Income arising from Government Assistance 
+ 6.87 
+ 248.98 
+advance lease rental
+ 4.13 
+Total
+ 11.00 
+248.98
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Tax Free Redeemable Non Convertible Bonds -Series 2013-14
+ - 
+ 10,279.78 
+Loan from banks repayable on demand
+ - 
+ 705.00 
+Total
+0.00
+10,984.78
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Payable to Chennai Port Trust
+ - 
+ 261.22 
+Security deposit
+ 18.27 
+ - 
+Advance lease rent
+ - 
+ - 
+Total
+ 18.27 
+ 261.22 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Provision for employee benefits - Compensated absences (Refer Note No 39)
+ 4,302.61 
+ 3,927.93 
+Provision for employee benefits - Gratuity
+ 186.32 
+ 222.72 
+Total
+ 4,488.93 
+ 4,150.65 
+Note 25:  Other Financial liabilities - Non Current
+Rent Deposit received against vessel given on operating lease disclosed at amortised cost as per Ind AS 109 - Financial Instruments.
+Liability of H261.22 lakhs to Chennai Port Trust in respect of customs duty was covered by a refund appeal lying before Commissioner 
+(Appeals) which was also shown as deposits with Customs department under Note No. 13. Since the refund appeal has been rejected 
+by  Commissioner of Customs (Appeals), Other Non-current asset has been adjusted with Other financial liabilities (Non current)- 
+payable to Chennai port trust.
+Note 26: Provisions - Non Current
+Note 27: Other non current liabilities
+Note 28: Borrowings
+Referring to Note 23: Tranche 1:  1000 bonds of face value of  H10 lakhs totalling  H10000 lakhs with interest rate of 8.51% payable 
+annually , redeemable at par,   redeemed  on 02nd December 2023.	
+UCSL has availed Cash Credit facility (Sanction limit of H8500 Lakhs) from Union Bank of India and SBI at the interest rate 9.4% & 9.2% / 
+annum respectively. Credit facility is secured by hypothecation of current assets including inventory and receivables of the Company. 
+Terms of Repayment: Running account repayable on demand subject to annual review/ renewal. 
+Cash credit facility availed as on 31.03.2024 is Nil.
+306
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 291 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Lease Liabilities under Ind AS 116
+ 2,991.88 
+ 4,999.40 
+Total
+ 2,991.88 
+4,999.40
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Trade payables  (Unsecured) 
+Outstanding dues of Micro enterprises and Small enterprises
+ 8,879.21 
+ 5,716.84 
+Outstanding dues of creditors other than Micro enterprises and Small enterprises
+ 37,632.80 
+ 15,931.10 
+Total
+ 46,512.01 
+ 21,647.94 
+Note 29: Lease liabilities
+Note 30: Trade Payables
+Fund received from Inland Waterways Authority of India (IWAI) for Pandu Project-Ship Repair Facility Unit at Pandu-Guwahati, on 
+Deposit basis has been adjusted with amount incurred on Pandu Project till 31.03.2024.
+To the extent, the Company has received intimation from the vendors regarding their status under the Micro, Small and Medium 
+Enterprises Development Act, 2006, the details of trade payables are provided as under:
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Amount remaining unpaid to supplier at the end of each accounting year;
+Principal
+ 8,879.21 
+ 5,716.84 
+Interest on above Principal
+ - 
+ - 
+The amount of interest paid by the buyer in terms of section 16 of the Micro, Small, and 
+Medium Enterprises Development Act, 2006 (27 of 2006), along with the amount of the 
+payment made to supplier beyond the appointed day during each accounting year;
+The amount of interest due and payable for the period of delay in making 
+payment (which has been paid but beyond the appointed day during the year) but 
+without adding the interest specified under Micro, Small, and Medium Enterprises 
+Development Act, 2006;
+ - 
+ - 
+The amount of interest accrued and remaining unpaid at the end of each accounting year
+ - 
+ - 
+The amount of further interest remaining due and payable even in the succeeding 
+years, until such date when the interest dues above are actually paid to the small 
+enterprise, for the purpose of disallowance of a deductible expenditure under section 
+23 of the Micro, Small, and Medium Enterprises Development Act, 2006;
+ - 
+ - 
+Annual Report 2023-24
+307
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 292 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Interest accrued but not due
+ - 
+ - 
+Dividend on preference shares
+ 115.42 
+ 96.01 
+Unpaid Dividend
+ 142.43 
+ 93.22 
+Foreign Exchange Derivatives Liabilities
+ 2,388.81 
+ 4,797.38 
+Others 
+	
+Security and other deposits
+ 2,422.86 
+ 2,147.84 
+	
+Profit share payable to lessor
+ 202.13 
+ 268.60 
+	
+Others Payables
+ 12,983.95 
+ 11,941.41 
+Total
+ 18,255.60 
+ 19,344.46 
+Trade Payables ageing schedule  as on 31.03.2024	
+	
+	
+	
+ (H in lakhs)
+Particulars
+Outstanding for following periods from due date of payment
+Less than 
+1 year
+1-2 years
+2-3 years
+More than 3 
+years
+Total
+(i)	 MSME
+	
+Not due 
+8787.28
+0.00
+0.00
+0.00
+8787.28
+	
+Due 
+91.93
+0.00
+0.00
+0.00
+91.93
+(ii)	 Others
+	
+Not due 
+33626.83
+0.00
+0.00
+0.00
+33626.83
+	
+Due 
+3979.19
+17.03
+0.00
+9.75
+4005.97
+(iii)	Disputed dues – MSME
+0.00
+(iv)	Disputed dues – Others
+0.00
+(v)	 Unbilled Creditors- ucsl
+0.00
+Total
+ 46,485.23 
+ 17.03 
+ - 
+ 9.75 
+ 46,512.01 
+ (H in lakhs)
+Particulars
+Outstanding for following periods from due date of payment
+Less than 
+1 year
+1-2 years
+2-3 years
+More than 3 
+years
+Total
+(i)	 MSME
+	
+Not due 
+ 5,716.84 
+ - 
+ - 
+ - 
+ 5,716.84 
+	
+Due 
+ - 
+ - 
+ - 
+ - 
+ - 
+(ii)	 Others
+ - 
+	
+Not due 
+ 11,725.20 
+ 0.54 
+ - 
+ - 
+ 11,725.74 
+	
+Due 
+ 4,184.22 
+ 7.34 
+ - 
+ 13.80 
+ 4,205.36 
+(iii)	Disputed dues – MSME
+ - 
+ - 
+ - 
+ - 
+ - 
+(iv)	Disputed dues – Others
+ - 
+ - 
+ - 
+ - 
+ - 
+Total
+ 21,626.26 
+ 7.88 
+ - 
+ 13.80 
+ 21,647.94 
+Trade Payables ageing schedule  as on 31.03.2023	
+	
+	
+Note 31: Other Financial Liabilities - Current
+Other payables includes H1253.84 lakhs (PY H1253.84 Lakhs) payable to Committee of Creditors i.e; Subsidy received from Ministry 
+under Ship Building Subsidy Scheme. No Balance confirmation is available from Committee of Creditors.
+308
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 293 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Provision for Employee benefits
+Gratuity 
+ 459.97 
+ 530.54 
+Compensated absences (Refer Note No 39)
+ 363.42 
+ 275.69 
+ 823.39 
+ 806.23 
+Other Provisions
+For Taxes and duties
+ 2,672.32 
+ 2,668.99 
+For Shipbuilding loss *
+ 6,363.00 
+ 5,465.00 
+For Expenditure / contingencies
+ 53,020.97 
+ 30,066.72 
+ 62,056.29 
+ 38,200.71 
+Total
+ 62,879.68 
+ 39,006.94 
+ (H in lakhs)
+Particulars
+ As at 
+March 31,2024 
+ As at 
+March 31,2023 
+Contract Liability for Indigenous Aircraft Carrier works (Net)
+ - 
+ - 
+IAC Trade payables
+ 11,184.64 
+ 17,573.11 
+Contract Liability for other works
+ 4,96,202.62 
+ 3,87,207.41 
+Advances for  ship building , ship repair and other contracts
+ 9,609.09 
+ 8,312.12 
+Advances for ship repair and others
+Income received in advance
+ 1,259.55 
+ 29.08 
+Statutory dues
+ 2,725.75 
+ 1,984.04 
+Deferred Income arising from Government Assistance
+ 1.14 
+ 1.14 
+Total
+ 5,20,982.79 
+ 4,15,106.90 
+Note 32: Other Current Liabilities
+IAC Trade Payables include H2072.12 lakhs (previous year -H1774.84 lakhs) payable to MSME vendors which are not due as 
+on 31 March 2024.
+Note 33: Provisions - Current
+Provision for Expenses / Contingencies
+In order to meet the contingent expenditure to operationalise the facility as per the resolution plan, a provision  for contingency of 
+H1250 lakhs has been provided in books of UCSL as on 31/3/2020. During the year, UCSL has adjusted an amount of H156.64 lakhs (PY 
+H212.59 lakhs) and the balance has been reviewed and retained.
+* HCSL is executing one 2200 DWT-MPV order based on customer specification as per the agreement. During the construction of vessels design and other 
+specification got changed and it is estimated that H427.00 lakhs additional cost will be incurred. Discussions are going on with the customer meanwhile company 
+is making additional provision of  H427.00 lakhs.
+Annual Report 2023-24
+309
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 294 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+ As at 
+01.04.2023 
+ Provision 
+made during 
+the period 
+ Amounts 
+used during 
+the period 
+ Unused amounts 
+reversed during 
+the period 
+ As at 
+31.03.2024 
+Provision for employee benefits- Gratuity 
+ 530.54 
+ 607.54 
+ 501.50 
+ 176.61 
+ 459.97 
+Compensated absences
+ 275.69 
+ 87.86 
+ 0.13 
+ 363.42 
+Provision for taxes and duties
+ 2,668.99 
+ 3.33 
+ 2,672.32 
+Provision for shipbuilding loss
+ 5,465.00 
+ 2,014.00 
+ 1,116.00 
+ 6,363.00 
+Provision for expenditure / contingencies
+ 30,066.72  2,14,143.06 1,89,780.27 
+ 1,408.54 
+ 53,020.97 
+ (H in lakhs)
+Particulars
+ As at 
+01.04.2022 
+ Provision 
+made during 
+the period 
+ Amounts 
+used during 
+the period 
+ Unused amounts 
+reversed during 
+the period 
+ As at 
+31.03.2023 
+Provision for employee benefits- Gratuity 
+ 360.78 
+ 449.55 
+ 279.79 
+ - 
+ 530.54 
+Compensated absences
+ 419.76 
+ 0.19 
+ - 
+ 144.26 
+ 275.69 
+Provision for taxes and duties
+ 2,665.50 
+ 3.49 
+ - 
+ - 
+ 2,668.99 
+Provision for shipbuilding loss
+ 7,573.00 
+ - 
+ - 
+ 2,108.00 
+ 5,465.00 
+Provision for expenditure / contingencies
+ 36,513.19 
+ 39,497.83 
+ 43,763.57 
+ 2,180.73 
+ 30,066.72 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Sale of products
+Ship building:
+Indigenous Aircraft Carrier (IAC)
+ 1,20,271.77 
+ 1,42,418.66 
+Vessels other than IAC
+ 1,55,460.79 
+ 34,373.45 
+Engineering works
+ - 
+ - 
+Income from Csas
+ 686.90 
+ - 
+ 2,76,419.46 
+ 1,76,792.11 
+Sale of services
+Ship repairs
+ 98,681.23 
+ 54,512.00 
+Income from services
+ 576.35 
+ 98,681.23 
+ 55,088.35 
+Other operating revenue
+Sale of stock items
+ 123.43 
+ 63.23 
+Ship Building Financial Assistance
+ 5,302.36 
+ 1,424.67 
+Sale of scrap
+ 943.00 
+ 1,549.62 
+Management fee 
+ 1,575.94 
+ 1,537.50 
+ 7,944.73 
+ 4,575.02 
+Total
+ 3,83,045.42 
+ 2,36,455.48 
+33.1	Details of  movement of provisions
+Note 34: Revenue from operations
+310
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 295 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+1.	
+Refer Note No 46 on Ind AS 115 "Revenue from Contract with Customers".
+2.	
+Out of the Revenue from Operations, H26135.62 lakhs (H6905.65 lakhs in previous year) pertain to revenue from export orders. 
+3.	
+The group has considered the lock down period due to COVID 19 & GoI circular dated May 13, 2020, which ever is applicable 
+to the projects and Kerala Flood natural calamity 2018 as Force Majeure period for computation of Liquidated Damages  while 
+calculating Revenue from operations.
+4.	
+With regard to the Shipbuilding contract with Andaman & Nicobar (‘A&N’) Administration for construction of 2 Nos 1200 
+Passenger Vessels, the contractual delivery dates (as extended) for both the vessels have already expired. The Company 
+has provided for LD for the delay upto 29 Apr 2023 and 30 Oct 2023 in vessel yard no. SH.0023 & vessel yard no. SH.0024 
+respectively. At the request of the A&N administration for reallocation of the vessel for other prospective buyers, the delivery 
+of ships has been abated, with minor progress.  Since the Holding Company has a valid contract with A&N Administration, the 
+Holding company has not recognized further liquidated damages in the financials beyond the dates mentioned above.
+5.	
+Ship Building Financial Assistance (‘SBFA’) provided by Govt. of India is to compensate the cost incurred by the Group in building 
+the vessels and it is not for the losses already incurred. Prior to 2016, SBFA was named as “Shipbuilding Subsidy”, with an 
+intention to subsidize the cost/compensating the cost of construction of vessel. Subsequently the term has been reworded 
+as “Ship Building Financial Assistance”, without any change in the intention of the Government, modality, principles and 
+procedure of the policy.
+	
+SBFA is recognized over a period of time in proportion to the expenses / cost incurred. The Group has obtained in principle 
+approvals from DG Shipping for eligible vessels. Only for those vessels, which are constructed and delivered within the period 
+as specified in the policy guidelines shall be eligible for availing financial assistance under the policy. Accordingly, the company 
+has recognized the SBFA Income for those vessels, which in view of the management are complying with the requirements of 
+SBFA Policy as amended.
+	
+During the year, the group has reversed a sum of H1072.01 lakhs due to revision in expected delivery dates. To the extent of the 
+SBFA Income recognized,  there are no  unfulfilled conditions or contingencies attached to it.
+6.	
+Cochin Shipyard Ltd (CSL) has entered into an Agreement with the Andaman and Nicobar Administration to commence its 
+operations at Marine Dockyard, at Port Blair, a facility that is currently being operated directly by the A&N Administration.
+Management fee on pro rata basis is accounted based on this agreement. Under the ambit of this Agreement signed on 
+28 Nov 2019, CSL shall assist the Administration to set up a Ship repair ecosystem at A&N islands.CSL shall also associate in 
+Augmentation and Modernisation of the facility and also focus efforts towards Skill Development in the Islands in consultation 
+with the Administration and Technical Institutions located in the Islands.
+7.	
+During the year, the Group has updated its measurement of progress in applying the Output Method for recognition of revenue 
+in respect of Shipbuilding Contracts in order to have a more faithful depiction towards complete satisfaction of the performance 
+obligations considering the change in circumstances and characteristics of the contracts entered.
+Annual Report 2023-24
+311
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 296 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Training facilities
+ 501.57 
+ 327.76 
+Income from sale of scrap and stores
+ 147.94 
+ 1,345.61 
+Profit on sale of Property, Plant & Equipment
+ 13.25 
+ 6.11 
+Income from laboratory services
+ 23.00 
+ 17.58 
+Rental income
+ 253.30 
+ 298.30 
+Hire charges 
+ 60.00 
+ 1.39 
+Interest on bank  deposits
+ 23,220.58 
+ 11,601.55 
+Interest from others
+ 834.13 
+ 764.28 
+Dividend income from Preference shares
+ - 
+Dividend Income from Mutual funds
+ 7.49 
+ - 
+Dividend income from Society
+ 0.54 
+ 0.54 
+Net gain on foreign currency transactions
+ 2,004.65 
+ - 
+Provision no longer required
+ 2,426.41 
+ 5,837.91 
+Miscellaneous income*
+ 1,525.23 
+ 500.23 
+Total
+ 31,018.09 
+ 20,701.25 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Raw Materials 
+Steel
+ 14,704.73 
+ 4,055.72 
+Pipe
+ 1,556.61 
+ 1,178.60 
+Paint
+ 2,300.28 
+ 2,011.92 
+Bought out components
+ 1,54,883.16 
+ 1,04,942.62 
+Total
+ 1,73,444.78 
+ 1,12,188.86 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Work -in-progress at cost:
+	
+At the beginning of the year 
+ 496.05 
+ 352.31 
+	
+Less:  at the end of the year
+ 428.65 
+ 496.05 
+Total
+ 67.40 
+ (143.74)
+Note 36: Cost of Materials Consumed
+Note 35: Other Income
+*Miscellaneous income includes H1.14 lakhs being deferred government assistance in the form of subsidy relating to installation of Solar Power plant inside the 
+yard. The same has been accounted as per the requirements of Ind AS 20 - Accounting for Government Grants and Disclosure of Government Assistance.
+The Group is not accounting the Interest amount uploaded in Form 26AS on those deposits which are not taken as fixed deposits in 
+the books of UCSL due to lien marked before NCLT order.
+During the FY 2022-23, pursuant to the order of Madras High Court dismissing appeal filed by VOC Port Trust against the arbitral 
+award, an amount of H181.82 lakhs has been received by the Group and same has been accounted as other income under the head 
+"ProvisIon no longer required / Liabilities written back" during the FY 2022-23.
+Provision of H26.46 lakhs reversed on receipt of TDS  amount during the current financial year.
+Note 37: Changes in Inventories of  Work-in-Progress
+(Other than those which are recognised as income on percentage / proportionate completion method)
+312
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 297 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Sub contract and off loaded jobs
+ 36,446.04 
+ 31,122.39 
+Hull insurance 
+ 835.21 
+ 335.99 
+Design Expenses
+ 8,844.36 
+ 6,653.57 
+Operating expenses
+ 9,750.81 
+ 5,377.93 
+Total
+ 55,876.42 
+ 43,489.88 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Salaries, wages, bonus/exgratia and allowances
+ 32,349.42 
+ 28,009.19 
+Contribution to Provident Fund and Family Pension Fund
+ 1,719.37 
+ 2,664.87 
+Gratuity
+ 384.07 
+ 328.65 
+Staff welfare expenses
+ 4,539.86 
+ 2,698.79 
+ 38,992.72 
+ 33,701.50 
+Less:Expenditure during construction
+ (364.32)
+ (275.95)
+Total
+ 38,628.40 
+ 33,425.55 
+Note 38: Sub Contract and Direct Expenses
+Note 39: Employee Benefits Expenses
+Contribution to Provident Fund and Family Pension Fund includes provident fund inspection and administration charges H28.41 lakhs 
+(previous year H43.62 lakhs).
+Salaries, Wages, bonus/exgratia and allowances includes provision for encashment of half pay compensated absences for workmen 
+amounting to H90.00  lakhs (previous year H17.96 lakhs).
+The employee benefits accruing to the employees on deputation from Cochin Port Trust and Mumbai Port Trust are being accounted 
+based on demands received from Cochin Port Trust & Mumbai Port Trust as per tripartite agreement between the Holding Company, 
+Cochin Port Trust & Mumbai Port Trust and the recognised Trade unions of the Port and not based on actuarial valuation except for 
+gratuity which is actuarially valued.
+Post-employment obligations
+Provident fund
+Provident Fund for eligible employees is managed by the Holding Company through a trust in line with the Provident Fund 
+and Miscellaneous Provision Act,1952. The plan guarantees interest at the rate notified by the Provident Fund Authorities. The 
+contribution by the employees and employer @12% of basic salary (including Dearness Allowance) together with the interest 
+accumulated thereon are payable to employees at the time of separation from the Holding Company or retirement whichever is 
+earlier. The benefits vests immediately on rendering of the services by the employee. The contribution is charged to Statement of 
+Profit and Loss of the year when the contributions to the respective funds are due in accordance with relevant statute. Employer's 
+contribution to Provident Fund & Family Pension fund is H1693.55 Lakhs for the year 2023-24 (H2028.84 Lakhs for the year 2022-23). 
+The minimum interest rate payable by the trust to the beneficiaries every year is notified by the Government. The Holding Company 
+has an obligation to make good the shortfall, if any, between the return from the investments of the trust (including investment risk 
+fall) and the notified interest rate, which is determined on the basis of actuarial valuation.
+The Holding Company has obtained report on the determination and disclosure of interest rate Guarantee, valuation of Assets & 
+Liabilities as per Ind AS 19 of Employees Benefits relating to Exempt Provident Fund  for the period ended 31st March 2024.
+Annual Report 2023-24
+313
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 298 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Discount Rate (p.a)
+6.97%
+7.23%
+Rate of increase in compensation levels
+Officers & 
+Supervisors 3% 
+Workers  3%
+Officers & 
+Supervisors 3% 
+Workers  3%
+Attrition Rate- Half Pay Leave
+0.70%
+0.70%
+Attrition Rate- Earned Leave
+Officers & 
+Supervisors 0.7% 
+Workers  0.7%
+Officers & 
+Supervisors 0.7% 
+Workers  0.7%
+Average Duration of Defined Benefit Obligation (In years)
+9.30
+9.03
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Service Cost:
+	
+Current  Service Cost
+245.58
+ 227.99 
+	
+Net Interest expense
+283.51
+ 267.00 
+Acturial (Gain)/Loss recognised during the period
+453.72
+ 428.75 
+Expenses recognised in the statement of profit and loss
+ 982.81 
+ 923.74 
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Present Value of Defined Benefit Obligation at end of the year
+ 4,626.82 
+ 4,198.71 
+Fair Value of Plan Assets at the end of the year
+ - 
+ - 
+Net Liabilities /(Assets) recognized in the Balance Sheet
+ 4,626.82 
+ 4,198.71 
+ (H in lakhs)
+Type of Employee Benefit
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Current Component of PVO
+ 350.06 
+ 275.36 
+Non-Current Component of PVO
+ 4,276.76 
+ 3,923.35 
+TOTAL PVO
+ 4,626.82 
+ 4,198.71 
+The amount included in the Balance Sheet arising from the entity’s obligation in respect of its defined benefit plan is as 
+follows:-
+The details of fund obligations as per actuarial valuation are given below:
+ (H in lakhs)
+Particulars
+2023-24
+2022-23
+Fair value of plan assets
+ 23,514.49 
+ 19,430.22 
+Present value of benefit obligation at year end
+ 23,581.18 
+ 19,995.86 
+Net liability / (Net asset)
+ 66.69 
+ 565.64 
+Additional provision
+ Nil 
+ Nil 
+Other Benefit Plan - Compensated absences
+The principal assumptions used for the purpose of actuarial valuation were as follows:
+Amount recognised in the Statement of Profit and Loss in respect of defined benefit plans are as follows:-
+314
+COCHIN SHIPYARD LIMITED
+
+=== PAGE 299 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Defined Benefit Obligation at beginning of the year
+ 4,198.71 
+ 3,970.62 
+Current & Past Service Cost
+ 245.58 
+ 227.99 
+Current Interest Cost
+ 283.51 
+ 267.00 
+Actuarial (Gain)/ Loss
+ 453.72 
+ 428.75 
+Benefits paid
+ (554.70)
+ (695.65)
+Defined Benefit Obligation at end of the year
+ 4,626.82 
+ 4,198.71 
+Movements in present value of the defined benefit obligation are as follows:-
+Movements in the fair value of the plan assets are as follows:
+ (H in lakhs)
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Fair Value of Plan Assets at the beginning of the year
+ - 
+ - 
+Expected Return on Plan Assets
+ - 
+ - 
+Actuarial (Gain)/ Loss
+ - 
+ - 
+Contributions from the employer
+ 554.70 
+ 695.65 
+Benefits paid
+(554.70)
+ (695.65)
+Fair Value of the Assets at the end of the year
+ - 
+ - 
+ (H in lakhs)
+Year
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Year 1
+ 87.59 
+ 80.98 
+Year 2
+ 249.14 
+ 191.37 
+Year 3
+ 177.05 
+ 183.51 
+Year 4
+ 157.34 
+ 153.66 
+Year 5
+ 120.14 
+ 141.97 
+Next 5 Years
+ 708.03 
+ 585.85 
+ (H in lakhs)
+Year
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Year 1
+ 87.59 
+ 80.98 
+Year 2
+ 249.14 
+ 191.37 
+Year 3
+ 177.05 
+ 183.51 
+Year 4
+ 157.34 
+ 153.66 
+Year 5
+ 120.14 
+ 141.97 
+Next 5 Years
+ 708.03 
+ 585.85 
+Expected Contributions in Following Years [mid-year cash flows]
+“NA “ denoted “ Not Available”  
+Expected Benefit Payments in Following Years [mid-year cash flows] 
+Annual Report 2023-24
+315
+Corporate Overview
+Statutory Reports
+Financial Statements
+
+=== PAGE 300 ===
+Notes to the Consolidated Financial Statements for the year ended March 31, 2024
+Sensitivity Analysis - Earned Leave
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+A.	 Discount Rate + 50 BP 
+7.47%
+7.73%
+	
+Defined Benefit Obligation [PVO] 
+ 3,889.26 
+ 3,546.50 
+	
+Current Service Cost 
+ 168.06 
+ 152.61 
+B.	 Discount Rate - 50 BP 
+6.47%
+6.73%
+	
+Defined Benefit Obligation [PVO] 
+ 4,234.29 
+ 3,850.97 
+	
+Current Service Cost 
+ 185.38 
+ 167.55 
+C.	 Salary Escalation Rate + 50 BP 
+3.50%
+3.50%
+	
+Defined Benefit Obligation [PVO] 
+ 4,240.52 
+ 3,856.87 
+	
+Current Service Cost 
+ 185.70 
+ 167.84 
+D.	 Salary Escalation Rate - 50 BP 
+2.50%
+2.50%
+	
+Defined Benefit Obligation [PVO] 
+ 3,882.28 
+ 3,539.98 
+	
+Current Service Cost 
+ 167.72 
+ 152.29 
+The principal assumptions used for the purpose of actuarial valuation were as follows 
+(Head office):
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Discount Rate (p.a) 
+6.97%
+7.23%
+Rate of increase in compensation levels 
+Officers & 
+Supervisors 3% 
+Workers 3%
+Officers & 
+Supervisors 3% 
+Workers  3%
+Attrition Rate 
+Officers & 
+Supervisors 0.70% 
+Workers  0.70%
+Officers & 
+Supervisors 0.70% 
+Workers  0.70%
+Expected Rate of Return on Plan Asset 
+6.97%
+7.23%
+Particulars
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+Average Duration of Defined Benefit Obligations (In years)
+11.20
+10.83
+Sensitivity Analysis - Half Pay Leave
+For the year ended 
+March 31, 2024
+For the year ended 
+March 31, 2023
+A.	 Discount Rate + 50 BP 
+7.47%
+7.73%
+	
+Defined Benefit Obligation [PVO] 
+ 3,889.26 
+ 3,546.50 
+	
+Current Service Cost 
+ 168.06 
+ 152.61 
+B.	 Discount Rate - 50 BP 
+6.47%
+6.73%
+	
+Defined Benefit Obligation [PVO] 
+ 4,234.29 
+ 3,850.97 
+	
+Current Service Cost 
+ 185.38 
+ 167.55 
+C.	 Salary Escalation Rate + 50 BP 
+3.50%
+3.50%
+	
+Defined Benefit Obligation [PVO] 
+ 4,240.52 
+ 3,856.87 
+	
+Current Service Cost 
+ 185.70 
+ 167.84 
+D.	 Salary Escalation Rate - 50 BP 
+2.50%
+2.50%
+	
+Defined Benefit Obligation [PVO] 
+ 3,882.28 
+ 3,539.98 
+	
+Current Service Cost 
+ 167.72 
+ 152.29 
+BP denotes "Basis Points" 
+BP denotes "Basis Points"
+Defined Benefit Plan-Gratuity
+316
+COCHIN SHIPYARD LIMITED

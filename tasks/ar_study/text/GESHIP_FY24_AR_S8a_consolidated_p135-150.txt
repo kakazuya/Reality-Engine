@@ -1,0 +1,3225 @@
+
+=== PAGE 135 ===
+231
+230
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Statement Containing Salient Features Of The Financial Statements Of Subsidiaries/Joint Ventures
+Form AOC - I
+[Pursuant to first proviso to sub-section (3) of Section 129 read with Rule 5 of Companies (Accounts) Rules, 2014]
+PART “A” : SUBSIDIARIES
+(K in crores)
+Sr. 
+No.
+ Name of the subsidiary 
+The 
+Greatship 
+(Singapore) 
+Pte. Ltd.
+The Great 
+Eastern 
+Chartering 
+LLC (FZC)
+The Great 
+Eastern 
+Chartering 
+(Singapore) 
+Pte. Ltd. 
+Great 
+Eastern CSR 
+Foundation
+Great 
+Eastern 
+Services 
+Limited
+Greatship 
+(India) 
+Limited
+Greatship 
+Global 
+Offshore 
+Services Pte. 
+Ltd.
+Greatship 
+Global 
+Energy 
+Services Pte. 
+Ltd.
+Greatship 
+(UK) Limited
+Greatship 
+Oilfield 
+Services 
+Limited
+1
+Date from which it became a subsidiary
+28/03/1994
+01/11/2004
+17/04/2013
+26/02/2015
+23/06/2020
+26/06/2002
+08/05/2007
+23/10/2006
+29/10/2010
+09/07/2015
+2
+Reporting period 
+31/03/2024
+31/03/2024
+31/03/2024
+31/03/2024
+31/03/2024
+31/03/2024
+31/03/2024
+31/03/2024
+31/03/2024
+31/03/2024
+3
+Reporting currency
+SGD
+USD
+USD
+INR
+INR
+INR
+USD
+USD
+USD
+INR
+4
+Exchange rate as on 31/03/2024
+J 61.74
+J 83.41
+J 83.41
+J 1.00
+J 1.00
+J 1.00
+J 83.41
+J 83.41
+J 83.41
+J 1.00
+5
+Share capital 
+3.09
+0.34
+123.03
+0.05
+0.10
+111.35
+592.71
+41.71
+4.17
+0.26
+6
+Reserves & surplus 
+4.17
+514.18
+25.21
+6.11
+ (0.01)
+2102.36
+125.28
+38.79
+1.51
+ (0.08)
+7
+Total assets 
+7.89
+514.64
+153.94
+6.17
+0.09
+3679.20
+749.66
+81.52
+21.63
+0.18
+8
+Total liabilities 
+0.63
+0.12
+5.70
+0.01
+ - * 
+1465.49
+31.67
+1.02
+15.95
+ - 
+9
+Investments (excluding investment in 
+subsidiaries)
+ - 
+341.20
+ - 
+ - 
+ - 
+4.10
+ - 
+ - 
+ - 
+ - 
+10
+Turnover 
+10.28
+127.63
+93.25
+24.73
+ - 
+888.51
+238.96
+4.10
+ - 
+ - 
+11
+Profit/(loss) before taxation
+0.74
+124.71
+69.94
+5.96
+ - * 
+56.35
+123.29
+2.60
+ (0.20)
+ - * 
+12
+Provision for taxation 
+0.01
+ - 
+5.22
+ - 
+ - 
+ (2.21)
+11.33
+0.31
+ - 
+ - 
+13
+Profit/(loss) after taxation 
+0.73
+124.71
+64.72
+5.96
+ - * 
+58.56
+111.96
+2.29
+ (0.20)
+ - * 
+14
+Proposed dividend
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+15
+% of shareholding
+100%
+100%
+100%
+100%
+100%
+100%
+100%
+100%
+100%
+100%
+* less than J one lakh
+For and on behalf of the Board
+G. Shivakumar 
+Executive Director & CFO
+(DIN : 03632124)
+ K. M. Sheth
+Chairman
+(DIN : 00022079)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Notes :
+1.	
+Great Eastern Services Limited and Greatship Oilfield Services Limited 
+are yet to commence operations.
+2.	
+Figures include foreign currency translation adjustment.
+Part “B” : NOT APPLICABLE
+Mumbai : May 10, 2024
+Independent Auditor’s Report
+To The Members of The Great Eastern Shipping Company Limited
+Report on the Audit of the Consolidated Financial Statements
+Opinion
+We have audited the accompanying consolidated financial statements of The Great Eastern Shipping Company Limited (”the Parent”) and its 
+subsidiaries, (the Parent and its subsidiaries together referred to as “the Group”), which comprise the Consolidated Balance Sheet as at March 31, 
+2024, and the Consolidated Statement of Profit and Loss (including Other Comprehensive Income), the Consolidated Statement of Changes in Equity, 
+the Consolidated Statement of Cash Flows for the year ended on that date, and notes to the financial statements, including a summary of material 
+accounting policies and other explanatory information.
+In our opinion and to the best of our information and according to the explanations given to us, and based on the consideration of reports of other 
+auditors on separate financial statements of the subsidiaries referred to in the Other Matters section below, the aforesaid consolidated financial 
+statements give the information required by the Companies Act, 2013 (“the Act”) in the manner so required and give a true and fair view in conformity 
+with the Indian Accounting Standards prescribed under Section 133 of the Act (‘Ind AS’) and other accounting principles generally accepted in India, of 
+the consolidated state of affairs of the Group as at March 31, 2024, and their consolidated profit, their consolidated total comprehensive income, their 
+consolidated changes in equity and their consolidated cash flows for the year ended on that date.
+Basis for Opinion
+We conducted our audit of the consolidated financial statements in accordance with the Standards on Auditing (“SAs") specified under Section 143 (10) 
+of the Act. Our responsibilities under those Standards are further described in the Auditor’s Responsibility for the Audit of the Consolidated Financial 
+Statements section of our report. We are independent of the Group in accordance with the Code of Ethics issued by the Institute of Chartered 
+Accountants of India (“ICAI”) together with the ethical requirements that are relevant to our audit of the consolidated financial statements under the 
+provisions of the Act and the Rules made thereunder, and we have fulfilled our other ethical responsibilities in accordance with these requirements 
+and the ICAI’s Code of Ethics. We believe that the audit evidence obtained by us and the audit evidence obtained by the other auditors in terms of 
+their reports referred to in the Other Matters section below, is sufficient and appropriate to provide a basis for our audit opinion on the consolidated 
+financial statements.
+Key Audit Matters
+Key audit matters are those matters that, in our professional judgment, were of most significance in our audit of the consolidated financial statements 
+of the current period. We have determined that there are no key audit matters to communicate in our report.
+Information Other than the Financial Statements and Auditor’s Report Thereon
+The Parent’s Board of Directors is responsible for the other information. The other information comprises the information included in the Board’s 
+Report, Corporate Governance Report, Business Responsibility Report, The Year at a Glance, Financial Highlights and 5 years at a Glance, but does not 
+include the consolidated financial statements, standalone financial statements and our auditor’s reports thereon.
+Our opinion on the consolidated financial statements does not cover the other information and we do not express any form of assurance conclusion thereon.
+In connection with our audit of the consolidated financial statements, our responsibility is to read the other information, compare with the financial 
+statements of the subsidiaries audited by the other auditors, to the extent it relates to these entities and, in doing so, place reliance on the work of 
+the other auditors and consider whether the other information is materially inconsistent with the consolidated financial statements or our knowledge 
+obtained during the course of our audit or otherwise appears to be materially misstated. Other information so far as it relates to the subsidiaries, is 
+traced from their financial statements audited by the other auditors.
+If, based on the work we have performed, we conclude that there is a material misstatement of this other information, we are required to report that 
+fact. We have nothing to report in this regard.
+
+=== PAGE 136 ===
+233
+232
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Responsibilities of Management and Those Charged with Governance for the Consolidated Financial Statements
+The Parent’s Board of Directors is responsible for the matters stated in Section 134(5) of the Act with respect to the preparation of these consolidated 
+financial statements that give a true and fair view of the consolidated financial position, consolidated financial performance including other 
+comprehensive income, consolidated changes in equity and consolidated cash flows of the Group in accordance with the accounting principles 
+generally accepted in India, including Ind AS specified under Section 133 of the Act. The respective Board of Directors of the companies included in 
+the Group are responsible for maintenance of adequate accounting records in accordance with the provisions of the Act for safeguarding the assets 
+of the Group and for preventing and detecting frauds and other irregularities; selection and application of appropriate accounting policies; making 
+judgments and estimates that are reasonable and prudent; and design, implementation and maintenance of adequate internal financial controls, that 
+were operating effectively for ensuring the accuracy and completeness of the accounting records, relevant to the preparation and presentation of the 
+financial statements that give a true and fair view and are free from material misstatement, whether due to fraud or error, which have been used for 
+the purpose of preparation of the consolidated financial statements by the Directors of the Parent, as aforesaid.
+In preparing the consolidated financial statements, the respective Management and Board of Directors of the companies included in the Group are 
+responsible for assessing the ability of the respective entities to continue as a going concern, disclosing, as applicable, matters related to going 
+concern and using the going concern basis of accounting unless the respective Board of Directors either intend to liquidate their respective entities 
+or to cease operations, or has no realistic alternative but to do so.
+The respective Board of Directors of the companies included in the Group are also responsible for overseeing the financial reporting process of the Group.
+Auditor’s Responsibility for the Audit of the Consolidated Financial Statements
+Our objectives are to obtain reasonable assurance about whether the consolidated financial statements as a whole are free from material misstatement, 
+whether due to fraud or error, and to issue an auditor’s report that includes our opinion. Reasonable assurance is a high level of assurance, but is not 
+a guarantee that an audit conducted in accordance with SAs will always detect a material misstatement when it exists. Misstatements can arise from 
+fraud or error and are considered material if, individually or in the aggregate, they could reasonably be expected to influence the economic decisions 
+of users taken on the basis of these consolidated financial statements.
+As part of an audit in accordance with SAs, we exercise professional judgment and maintain professional skepticism throughout the audit. We also:
+•	Identify and assess the risks of material misstatement of the consolidated financial statements, whether due to fraud or error, design and perform 
+audit procedures responsive to those risks, and obtain audit evidence that is sufficient and appropriate to provide a basis for our opinion. The risk 
+of not detecting a material misstatement resulting from fraud is higher than for one resulting from error, as fraud may involve collusion, forgery, 
+intentional omissions, misrepresentations, or the override of internal control.
+•	Obtain an understanding of internal financial controls relevant to the audit in order to design audit procedures that are appropriate in the 
+circumstances. Under Section 143(3)(i) of the Act, we are also responsible for expressing our opinion on whether the Parent has adequate internal 
+financial controls with reference to consolidated financial statements in place and the operating effectiveness of such controls.
+•	Evaluate the appropriateness of accounting policies used and the reasonableness of accounting estimates and related disclosures made by the 
+management.
+•	Conclude on the appropriateness of management’s use of the going concern basis of accounting and, based on the audit evidence obtained, 
+whether a material uncertainty exists related to events or conditions that may cast significant doubt on the ability of the Group to continue as a 
+going concern. If we conclude that a material uncertainty exists, we are required to draw attention in our auditor’s report to the related disclosures in 
+the consolidated financial statements or, if such disclosures are inadequate, to modify our opinion. Our conclusions are based on the audit evidence 
+obtained up to the date of our auditor’s report. However, future events or conditions may cause the Group to cease to continue as a going concern.
+•	Evaluate the overall presentation, structure and content of the consolidated financial statements, including the disclosures, and whether the 
+consolidated financial statements represent the underlying transactions and events in a manner that achieves fair presentation.
+•	Obtain sufficient appropriate audit evidence regarding the financial information of the entities within the Group to express an opinion on the 
+consolidated financial statements. We are responsible for the direction, supervision and performance of the audit of the financial statements of 
+such entities included in the consolidated financial statements of which we are the independent auditors. For the other entities included in the 
+consolidated financial statements, which have been audited by other auditors, such other auditors remain responsible for the direction, supervision 
+and performance of the audits carried out by them. We remain solely responsible for our audit opinion.
+Materiality is the magnitude of misstatements in the consolidated financial statements that, individually or in aggregate, makes it probable that 
+the economic decisions of a reasonably knowledgeable user of the consolidated financial statements may be influenced. We consider quantitative 
+materiality and qualitative factors in (i) planning the scope of our audit work and in evaluating the results of our work; and (ii) to evaluate the effect of 
+any identified misstatements in the consolidated financial statements.
+We communicate with those charged with governance of the Parent and such other entities included in the consolidated financial statements of which 
+we are the independent auditors regarding, among other matters, the planned scope and timing of the audit and significant audit findings, including 
+any significant deficiencies in internal financial controls that we identify during our audit.
+We also provide those charged with governance with a statement that we have complied with relevant ethical requirements regarding independence, and to 
+communicate with them all relationships and other matters that may reasonably be thought to bear on our independence, and where applicable, related safeguards.
+From the matters communicated with those charged with governance, we determine those matters that were of most significance in the audit of the 
+consolidated financial statements of the current period and are therefore the key audit matters. We describe these matters in our auditor’s report 
+unless law or regulation precludes public disclosure about the matter or when, in extremely rare circumstances, we determine that a matter should not 
+be communicated in our report because the adverse consequences of doing so would reasonably be expected to outweigh the public interest benefits 
+of such communication.
+Other Matters
+We did not audit the financial statements of 6 subsidiaries, whose financial statements reflect total assets of J 1415.06 crores as at March 31, 2024, 
+total revenues of J 439.19 crores and net cash inflows amounting to J 72.80 crores for the year ended on that date, as considered in the consolidated 
+financial statements. These financial statements  have been audited by other auditors whose reports have been furnished to us by the Management and 
+our opinion on the consolidated financial statements, in so far as it relates to the amounts and disclosures included in respect of these subsidiaries, 
+and our report in terms of subsection (3) of Section 143 of the Act, in so far as it relates to the aforesaid subsidiaries is based solely on the reports of 
+the other auditors
+These subsidiaries are located outside India whose financial statements have been prepared in accordance with accounting principles generally 
+accepted in their respective countries and which have been audited by other auditors under generally accepted auditing standards applicable in their 
+respective countries. The Parent’s management has converted the financial statements of such subsidiaries located outside India from accounting 
+principles generally accepted in their respective countries to accounting principles generally accepted in India. We have audited these conversion 
+adjustments made by the Parent’s management. Our opinion in so far as it relates to the balances and affairs of such subsidiaries located outside India 
+is based on the reports of the other auditors and the conversion adjustments prepared by the management of the Parent and audited by us.
+Our opinion on the consolidated financial statements above and our report on Other Legal and Regulatory Requirements below, is not modified in 
+respect of the above matter with respect to our reliance on the work done and the reports of the other auditors.
+Report on Other Legal and Regulatory Requirements
+(1)	
+As required by Section 143(3) of the Act, based on our audit and on the consideration of the reports of the other auditors on the separate financial 
+statements of the subsidiaries referred to in the Other Matters section above we report, to the extent applicable that:
+(a)	
+We have sought and obtained all the information and explanations which to the best of our knowledge and belief were necessary for the 
+purposes of our audit of the aforesaid consolidated financial statements.
+(b)	
+In our opinion, proper books of account as required by law relating to preparation of the aforesaid consolidated financial statements have 
+been kept so far as it appears from our examination of those books and the reports of the other auditors except for matters in paragraph i(vi).
+(c)	
+The Consolidated Balance Sheet, the Consolidated Statement of Profit and Loss including Other Comprehensive Income, the Consolidated 
+Statement of Changes in Equity and the Consolidated Statement of Cash Flows dealt with by this Report are in agreement with the relevant 
+books of account maintained for the purpose of preparation of the consolidated financial statements.
+(d)	
+In our opinion, the aforesaid consolidated financial statements comply with the Ind AS specified under Section 133 of the Act.
+(e)	
+On the basis of the written representations received from the directors of the Parent as on March 31, 2024 taken on record by the Board of 
+Directors of the Company and the reports of the statutory auditors of its subsidiary companies incorporated in India, none of the directors 
+of the Group companies incorporated in India is disqualified as on March 31, 2024 from being appointed as a director in terms of Section 
+164 (2) of the Act.
+(f)	
+The modification relating to the maintenance of accounts and other matters connected therewith, is as stated in paragraph (b) above.
+(g)	
+With respect to the adequacy of the internal financial controls with reference to consolidated financial statements and the operating 
+effectiveness of such controls, refer to our separate Report in “Annexure A” which is based on the auditors’ reports of the Parent and 
+subsidiary companies incorporated in India. Our report expresses an unmodified opinion on the adequacy and operating effectiveness of 
+internal financial controls with reference to consolidated financial statements of those companies.
+
+=== PAGE 137 ===
+235
+234
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+(h)	
+With respect to the other matters to be included in the Auditor’s Report in accordance with the requirements of Section 197(16) of the Act, as 
+amended, in our opinion and to the best of our information and according to the explanations given to us and based on the auditor’s reports 
+of subsidiary companies incorporated in India, the remuneration paid by the Parent/ and such subsidiary companies to their respective 
+directors during the year is in accordance with the provisions of Section 197 of the Act.
+(i)	
+With respect to the other matters to be included in the Auditor’s Report in accordance with Rule 11 of the Companies (Audit and Auditors) 
+Rules, 2014, as amended in our opinion and to the best of our information and according to the explanations given to us:
+(i)	
+The consolidated financial statements disclose the impact of pending litigations on the consolidated financial position of the Group - 
+Refer Note 39 to the consolidated financial statements.
+(ii)	
+Provision has been made in the consolidated financial statements, as required under the applicable law or accounting standards, 
+for material foreseeable losses, if any, on long-term contracts including derivative contracts. - Refer Note 20 and Note 40(D) to the 
+consolidated financial statements
+(iii)	
+There has been no delay in transferring amounts, required to be transferred, to the Investor Education and Protection Fund by the 
+Parent. There were no amounts which were required to be transferred to the Investor Education and Protection Fund by the subsidiary 
+companies incorporated in India.
+(iv)	
+(a)	 The respective Managements of the Parent and its subsidiaries which are companies incorporated in India, whose financial 
+statements have been audited under the Act, have represented to us and to the other auditors of such subsidiaries that, to the best 
+of their knowledge and belief, as disclosed in the Note 47 to the consolidated financial statements, no funds have been advanced 
+or loaned or invested (either from borrowed funds or share premium or any other sources or kind of funds) by the Parent or any of 
+such subsidiaries to or in any other person(s) or entity(ies), including foreign entities (“Intermediaries”), with the understanding, 
+whether recorded in writing or otherwise, that the Intermediary shall, directly or indirectly lend or invest in other persons or entities 
+identified in any manner whatsoever by or on behalf of the Parent or any of such subsidiaries (“Ultimate Beneficiaries”) or provide 
+any guarantee, security or the like on behalf of the Ultimate Beneficiaries.
+(b)	 The respective Managements of the Parent and its subsidiaries which are companies incorporated in India, whose financial 
+statements have been audited under the Act, have represented to us that, to the best of their knowledge and belief, other than 
+as disclosed in the Note 47 to the consolidated financial statements, no funds have been received by the Parent or any of such 
+subsidiaries from any person(s) or entity(ies), including foreign entities (“Funding Parties”), with the understanding, whether 
+recorded in writing or otherwise, that the Parent or any of such subsidiaries shall, directly or indirectly, lend or invest in other 
+persons or entities identified in any manner whatsoever by or on behalf of the Funding Party (“Ultimate Beneficiaries”) or provide 
+any guarantee, security or the like on behalf of the Ultimate Beneficiaries.
+(c)	 Based on the audit procedures performed that have been considered reasonable and appropriate in the circumstances performed 
+by us and that performed by the auditors of the subsidiaries which are companies incorporated in India whose financial statements 
+have been audited under the Act, nothing has come to our notice that has caused us to believe that the representations under sub-
+clause (i) and (ii) of Rule 11(e), as provided under (a) and (b) above, contain any material misstatement.
+(v)	
+The fourth interim dividend and preference dividend of previous year, declared and paid by the Parent and a subsidiary company 
+respectively, during the year is in accordance with Section 123 of the Act, as applicable.
+The first, second and third interim dividends declared and paid by the Parent during the year and until the date of this report are in 
+accordance with Section 123 of the Companies Act 2013. The fourth interim dividend relating to the financial year 2023-24, declared by 
+the Parent is in accordance with Section 123 of the Companies Act 2013 to the extend it applies to declaration of dividend. However, the 
+said forth interim dividend was not due for payment on the date of this audit report.
+(vi)	
+Based on our examination which included test checks, except for the instances mentioned below, the Parent Company and its subsidiary 
+companies incorporated in India have used accounting software(s) for maintaining their respective books of account for the year ended 
+March 31, 2024, which have a feature of recording audit trail (edit log) facility and the same has operated throughout the year for all 
+relevant transactions recorded in the software(s) :
+(A)	 In respect of the Parent Company:
+(a)	 for an accounting software, maintained by a third-party service provider, in the absence of an independent auditor’s system 
+and organisation controls report covering the requirement of audit trail, we are unable to comment whether audit trail feature was 
+enabled at database level and operated throughout the year to log any direct data changes or whether there were any instances of the 
+audit trail feature been tampered with, and
+(b)	 for other accounting software(s), audit trail was not enabled at the database level to log any direct data changes.
+(B)	 In respect of two subsidiaries, audit trail was not enabled at the database level to log any direct data changes.
+Further, during the course of our audit, we did not come across any instance of audit trail feature being tampered with, in respect of 
+accounting software(s) for the period for which the audit trail feature was operating.
+Two other subsidiaries, being companies incorporated in India, whose financial statements are audited under the Act, have not used any 
+accounting software for maintaining their respective books of account for the year ended March 31, 2024; accordingly reporting under Rule 
+11 (g) of Companies (Audit and Auditors) Rules, 2014 is not applicable to those companies.
+As proviso to Rule 3(1) of the Companies (Accounts) Rules, 2014 is applicable from April 1, 2023, reporting under Rule 11 (g) of the Companies 
+(Audit and Auditors) Rules, 2014 on preservation of audit trail as per the statutory requirements for record retention is not applicable for the 
+year ended March 31, 2024.
+(2)	
+With respect to the matters specified in clause (xxi) of paragraph 3 and paragraph 4 of the Companies (Auditor’s Report) Order, 2020 (“CARO”/ “the 
+Order”) issued by the Central Government in terms of Section 143 (11) of the Act, according to the information and explanations given to us, and 
+based on the CARO reports issued by us on the companies included in the consolidated financial statements to which reporting under CARO is 
+applicable, we report that there are no qualifications or adverse remarks by the respective auditors in the CARO reports of the said companies 
+included in the consolidated financial statements.
+ For DELOITTE HASKINS & SELLS LLP
+ Chartered Accountants
+ (Firm’s Registration No. 117366W | W-100018)
+Mehul Parekh
+Partner 
+ Membership No. 121513 
+ UDIN: 24121513BKEPEN7099
+Mumbai, May 10, 2024
+
+=== PAGE 138 ===
+237
+236
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Annexure “A” To The Independent Auditor’s Report
+(Referred to in paragraph 1(g) under ‘Report on Other Legal and Regulatory Requirements’ section of our report of even date)
+Report on the Internal Financial Controls with reference to consolidated financial statements under Clause (i) of Sub-section 3 of Section 143 of the 
+Companies Act, 2013 (“the Act”)
+In conjunction with our audit of the consolidated Ind AS financial statements of the Company as at and for the year ended March 31, 2024, we have 
+audited the internal financial controls with reference to consolidated financial statements of The Great Eastern Shipping Company Limited (hereinafter 
+referred to as “Parent”) and its subsidiary companies, which are companies incorporated in India,  as of that date.
+Management’s Responsibility for Internal Financial Controls
+The respective Board of Directors of the Parent and its subsidiary companies, which are companies incorporated in India, are responsible for 
+establishing and maintaining internal financial controls with reference to consolidated financial statements based on the internal control with 
+reference to consolidated financial statements  criteria established by the respective Companies considering the essential components of internal 
+control stated in the Guidance Note on Audit of Internal Financial Controls Over Financial Reporting issued by the Institute of Chartered Accountants 
+of India ("ICAI"). These responsibilities include the design, implementation and maintenance of adequate internal financial controls that were operating 
+effectively for ensuring the orderly and efficient conduct of its business, including adherence to the respective Company’s policies, the safeguarding 
+of its assets, the prevention and detection of frauds and errors, the accuracy and completeness of the accounting records, and the timely preparation 
+of reliable financial information, as required under the Companies Act, 2013.
+Auditor’s Responsibility
+Our responsibility is to express an opinion on the internal financial controls with reference to consolidated financial statements of the Parent and its 
+subsidiary companies, which are companies incorporated in India, based on our audit. We conducted our audit in accordance with the Guidance Note 
+on Audit of Internal Financial Controls Over Financial Reporting (the “Guidance Note”) issued by the Institute of Chartered Accountants of India and the 
+Standards on Auditing, prescribed under Section 143 (10) of the Companies Act, 2013, to the extent applicable to an audit of internal financial controls 
+with reference to consolidated financial statements. Those Standards and the Guidance Note require that we comply with ethical requirements and 
+plan and perform the audit to obtain reasonable assurance about whether adequate internal financial controls with reference to consolidated financial 
+statements was established and maintained and if such controls operated effectively in all material respects.
+Our audit involves performing procedures to obtain audit evidence about the adequacy of the internal financial controls with reference to consolidated 
+financial statements and their operating effectiveness. Our audit of internal financial controls with reference to consolidated financial statements 
+included obtaining an understanding of internal financial controls with reference to consolidated financial statements, assessing the risk that 
+a material weakness exists, and testing and evaluating the design and operating effectiveness of internal control based on the assessed risk. The 
+procedures selected depend on the auditor’s judgement, including the assessment of the risks of material misstatement of the financial statements, 
+whether due to fraud or error.
+We believe that the audit evidence we have obtained is sufficient and appropriate to provide a basis for our audit opinion on the internal financial 
+controls with reference to consolidated financial statements of the Parent and its subsidiary companies, which are companies incorporated in India.
+Meaning of Internal Financial Controls with reference to consolidated financial statements
+A Company's internal financial control with reference to consolidated financial statements is a process designed to provide reasonable assurance 
+regarding the reliability of financial reporting and the preparation of financial statements for external purposes in accordance with generally accepted 
+accounting principles. A Company's internal financial control with reference to consolidated financial statements includes those policies and 
+procedures that (1) pertain to the maintenance of records that, in reasonable detail, accurately and fairly reflect the transactions and dispositions of 
+the assets of the Company; (2) provide reasonable assurance that transactions are recorded as necessary to permit preparation of financial statements 
+in accordance with generally accepted accounting principles, and that receipts and expenditures of the Company are being made only in accordance 
+with authorisations of management and directors of the Company; and (3) provide reasonable assurance regarding prevention or timely detection of 
+unauthorised acquisition, use, or disposition of the Company's assets that could have a material effect on the financial statements.
+Inherent Limitations of Internal Financial Controls with reference to consolidated financial statements
+Because of the inherent limitations of internal financial controls with reference to consolidated financial statements, including the possibility of 
+collusion or improper management override of controls, material misstatements due to error or fraud may occur and not be detected. Also, projections 
+of any evaluation of the internal financial controls with reference to consolidated financial statements to future periods are subject to the risk that the 
+internal financial control with reference to consolidated financial statements may become inadequate because of changes in conditions, or that the 
+degree of compliance with the policies or procedures may deteriorate.
+Opinion
+In  our opinion to the best of our information and according to the explanations given to us, the Parent and its subsidiary companies, which are 
+companies incorporated in India, have, in all material respects, an adequate internal financial controls with reference to consolidated financial 
+statements  and such internal financial controls with reference to consolidated financial statements were operating effectively as at March 31, 2024, 
+based on the criteria for internal financial control with reference to consolidated financial statements established by the respective companies 
+considering the essential components of internal control stated in the Guidance Note on Audit of Internal Financial Controls Over Financial Reporting 
+issued by the Institute of Chartered Accountants of India.
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+(Firm‘s Registration No. 117366W | W-100018)
+Mehul Parekh
+Partner
+Membership No. 121513
+ UDIN:24121513BKEPEN7099
+Mumbai, May 10, 2024  
+
+=== PAGE 139 ===
+239
+238
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Consolidated Balance Sheet As At March 31, 2024
+(K in crores)
+Particulars
+Note No.
+As at 31/03/2024 
+As at 31/03/2023
+ASSETS
+I. Non-Current Assets :
+(a)	 Property, Plant and Equipment
+6
+8308.48
+8421.51
+(b)	 Capital Work-in-progress
+6
+50.73
+34.75
+(c)	 Intangible Assets
+7
+6.79
+5.79
+(d)	 Intangible Assets under development
+7
+8.48
+-
+(e)	 Right-of-use Assets
+36
+14.06
+22.64
+(f)	 Financial Assets
+ (i) Other Financial Assets
+8
+44.69
+64.34
+(g)	 Current Tax Assets (net)
+9
+103.05
+114.94
+(h)	 Other Non-Current Assets
+10
+82.30
+49.01
+8618.58
+8712.98
+II. Current Assets :
+(a)	 Inventories
+11
+247.38
+204.48
+(b)	 Financial Assets
+(i) Current Investments
+12
+1969.69
+1509.61
+(ii) Trade Receivables
+13
+646.89
+577.02
+(iii) Cash and Cash Equivalents 
+14
+3287.88
+2678.36
+(iv) Bank Balances other than (iii) above
+15
+1602.91
+1120.99
+ (v) Other Financial Assets
+8
+217.14
+273.64
+(c)	 Other Current Assets
+10
+162.48
+132.04
+8134.37
+6496.14
+III. Asset classified as held for sale
+48
+54.91
+-
+TOTAL ASSETS
+16807.86
+15209.12
+EQUITY AND LIABILITIES
+I. Equity :
+(a)	 Equity Share Capital
+16
+142.77
+142.77
+(b)	 Other Equity
+17
+12254.68
+10132.59
+12397.45
+10275.36
+II. Non-Current Liabilities :
+(a)	 Financial Liabilities
+(i) Borrowings
+18
+2407.72
+3021.04
+(ii) Lease Liabilities
+36
+7.05
+17.27
+(iii) Other Financial Liabilities
+19
+270.41
+245.08
+(b)	 Provisions
+20
+38.47
+46.68
+(c)	 Deferred Tax Liabilities (net)
+21
+169.25
+153.73
+(d)	 Other Non-Current Liabilities
+22
+11.02
+13.36
+2903.92
+3497.16
+III. Current Liabilities :
+(a)	 Financial Liabilities
+(i) Borrowings
+18
+623.31
+602.00
+(ii) Trade Payables
+23
+- total outstanding dues of micro and small enterprises
+20.50
+18.62
+- total outstanding dues of creditors other than micro and small enterprises
+435.52
+324.91
+(iii) Lease Liabilities
+36
+10.22
+9.08
+(iv) Other Financial Liabilities
+19
+267.03
+347.10
+(b)	 Other Current Liabilities
+22
+60.67
+61.59
+(c)	 Provisions
+20
+45.67
+30.02
+(d)	 Current Tax Liabilities (net)
+24
+43.57
+43.28
+1506.49
+1436.60
+TOTAL EQUITY AND LIABILITIES
+16807.86
+15209.12
+The accompanying notes are an integral part of the consolidated financial statements
+In terms of our report attached
+For and on behalf of the Board
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+Firm Regn. No. : 117366W / W - 100018
+G. Shivakumar
+Executive Director & CFO
+(DIN : 03632124)
+K. M. Sheth
+Chairman
+(DIN : 00022079)
+Mehul Parekh
+Partner
+(M. No. : 121513)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Mumbai : May 10, 2024
+Mumbai : May 10, 2024
+Consolidated Statement Of Profit And Loss For The Year Ended March 31, 2024
+(K in crores)
+Particulars
+Note No.
+ Current Year 
+ Previous Year 
+I. Revenue from Operations
+25
+5255.17
+5690.46
+II. Other Income
+26
+663.53
+480.68
+III. Total Income (I + II)
+5918.70
+6171.14
+IV. Expenses :
+Fuel Oil and Water
+433.78
+604.76
+Port, Light and Canal Dues
+174.61
+185.40
+Consumption of Spares and Stores
+316.12
+264.38
+Employee Benefits Expense
+27
+886.25
+765.11
+Finance Costs
+28
+264.70
+342.74
+Depreciation and Amortisation Expense
+29
+726.07
+712.05
+Reversal of Impairment on a Vessel
+30
+(13.03)
+-
+Other Expenses
+31
+435.82
+743.16
+Total Expenses
+3224.32
+3617.60
+V. Profit Before Tax (III - IV)
+2694.38
+2553.54
+VI. Tax Expense : 
+32
+- Current Tax
+67.31
+33.01
+- Reversal of taxes for earlier years
+(8.11)
+(45.56)
+- Deferred Tax (net)
+21.00
+(8.92)
+80.20
+(21.47)
+VII. Profit for the Year (V - VI)
+2614.18
+2575.01
+VIII. Other Comprehensive Income
+A.	 (i) Items that will not be reclassified to profit or loss
+(a)	 Remeasurement of defined employee benefit plans
+5.61
+(5.37)
+(b)	 Fair value changes relating to own credit risk of financial liabilities designated at fair value 
+through profit or loss
+(8.03)
+0.03
+(2.42)
+(5.34)
+(ii) Income tax relating to items that will not be reclassified to profit or loss
+(0.05)
+(0.22)
+B.	 (i) Items that will be reclassified to profit or loss
+(a)	 Exchange differences in translating the financial statements of foreign operations
+18.53
+75.51
+(b)	 Effective portion of gains/(losses) on designated portion of hedging instruments in a cash 
+flow hedge
+(21.14)
+(28.01)
+(2.61)
+47.50
+(ii) Income tax relating to items that will be reclassified to profit or loss
+(5.43)
+4.26
+Other Comprehensive Income (A(i-ii)+B(i-ii))
+0.45
+38.12
+IX. Total Comprehensive Income (VII + VIII)
+2614.63
+2613.13
+Profit for the Year attributable to :
+- Owners of the Company
+2614.18
+2575.01
+- Non-controlling interest
+-
+-
+Other Comprehensive Income for the Year attributable to :
+- Owners of the Company
+0.45
+38.12
+- Non-controlling interest
+-
+-
+Total Comprehensive Income for the Year attributable to :
+- Owners of the Company
+2614.63
+2613.13
+- Non-controlling interest
+-
+-
+X. Earnings per Equity Share : (In J)
+33
+(Face value per share J 10/-)
+- Basic
+ 183.11 
+ 180.36 
+- Diluted
+ 182.74 
+ 180.00 
+The accompanying notes are an integral part of the consolidated financial statements
+In terms of our report attached
+For and on behalf of the Board
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+Firm Regn. No. : 117366W / W - 100018
+G. Shivakumar
+Executive Director & CFO
+(DIN : 03632124)
+K. M. Sheth
+Chairman
+(DIN : 00022079)
+Mehul Parekh
+Partner
+(M. No. : 121513)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Mumbai : May 10, 2024
+Mumbai : May 10, 2024
+
+=== PAGE 140 ===
+241
+240
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Consolidated Statement Of Changes In Equity For The Year Ended March 31, 2024
+I.	
+Equity Share Capital
+(K in crores)
+Balance as at April 1, 2022
+Changes in equity share capital during the year
+Balance as at March 31, 2023
+ 142.77 
+ - 
+ 142.77 
+(K in crores)
+Balance as at April 1, 2023
+Changes in equity share capital during the year
+Balance as at March 31, 2024
+ 142.77 
+ - 
+ 142.77 
+II.	 Other Equity
+(K in crores)
+Reserves and Surplus
+Items of Other 
+Comprehensive Income
+Total Other 
+Equity
+Capital 
+Reserve
+Securities 
+Premium 
+Reserve
+General 
+Reserve
+Capital 
+Redemption 
+Reserve
+Tonnage 
+Tax Reserve 
+under 
+Section 
+115VT of the 
+Income-tax 
+Act, 1961
+Statutory 
+Reserve
+Retained 
+Earnings
+Effective 
+portion of 
+Cash Flow 
+Hedge
+Foreign 
+Currency 
+Translation 
+Reserve
+Balance as at April 1, 
+2022
+21.04
+74.76
+3356.45
+248.09
+447.50
+0.13
+2864.22
+68.56
+827.78
+7908.53
+Impact on account 
+of onerous contract 
+(Refer Note 20)
+-
+-
+-
+-
+-
+-
+(29.30)
+-
+-
+(29.30)
+Profit for the year
+-
+-
+-
+-
+-
+-
+2575.01
+-
+-
+2575.01
+Other comprehensive 
+income/(loss) for the 
+year, net of income 
+tax (Refer Note 17)
+-
+-
+-
+-
+-
+-
+(5.12)
+(31.01)
+74.25
+38.12
+Total comprehensive 
+income for the year
+-
+-
+-
+-
+-
+-
+2540.59
+(31.01)
+74.25
+2583.83
+Transfer 
+from 
+Retained 
+Earnings 
+(Refer Note 17)
+-
+-
+-
+-
+460.00
+-
+(460.00)
+-
+-
+-
+Payment of dividend
+-
+-
+-
+-
+-
+-
+(359.77)
+-
+-
+(359.77)
+Balance as at March 
+31, 2023
+21.04
+74.76
+3356.45
+248.09
+907.50
+0.13
+4585.04
+37.55
+902.03
+10132.59
+Reserves and Surplus
+Items of Other 
+Comprehensive Income
+Total Other 
+Equity
+Capital 
+Reserve
+Securities 
+Premium 
+Reserve
+General 
+Reserve
+Capital 
+Redemption 
+Reserve
+Tonnage 
+Tax Reserve 
+under 
+Section 
+115VT of the 
+Income-tax 
+Act, 1961
+Statutory 
+Reserve
+Retained 
+Earnings
+Effective 
+portion of 
+Cash Flow 
+Hedge
+Foreign 
+Currency 
+Translation 
+Reserve
+Balance as at April 1, 
+2023
+21.04
+74.76
+3356.45
+248.09
+907.50
+0.13
+4585.04
+37.55
+902.03
+10132.59
+Profit for the year
+-
+-
+-
+-
+ - 
+-
+2614.18
+-
+-
+2614.18
+Other comprehensive 
+income/(loss) for the 
+year, net of income 
+tax (Refer Note 17)
+-
+-
+-
+-
+-
+-
+(2.37)
+(14.64)
+17.46
+0.45
+Total comprehensive 
+income for the year
+-
+-
+-
+-
+-
+-
+2611.81
+(14.64)
+17.46
+2614.63
+Transfer 
+from 
+Tonnage Tax Reserve 
+(Refer Note 17)
+-
+-
+215.00
+-
+(215.00)
+-
+-
+-
+-
+-
+Transfer 
+from 
+Retained 
+Earnings 
+(Refer Note 17)
+-
+-
+-
+-
+409.00
+-
+(409.00)
+-
+-
+-
+Payment of dividend
+-
+-
+-
+-
+-
+-
+(492.54)
+-
+-
+(492.54)
+Balance as at March 
+31, 2024
+21.04
+74.76
+3571.45
+248.09
+1101.50
+0.13
+6295.31
+22.91
+919.49
+12254.68
+The accompanying notes are an integral part of the consolidated financial statements
+In terms of our report attached
+For and on behalf of the Board
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+Firm Regn. No. : 117366W / W - 100018
+G. Shivakumar
+Executive Director & CFO
+(DIN : 03632124)
+K. M. Sheth
+Chairman
+(DIN : 00022079)
+Mehul Parekh
+Partner
+(M. No. : 121513)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Mumbai : May 10, 2024
+Mumbai : May 10, 2024
+(K in crores)
+
+=== PAGE 141 ===
+243
+242
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Consolidated Statement of Cash Flows For The Year Ended March 31, 2024
+(K in crores)
+Current Year
+Previous Year
+A. CASH FLOWS FROM OPERATING ACTIVITIES
+Profit before tax
+2694.38 
+2553.54 
+Adjustments For :
+Depreciation and amortisation expense
+726.07 
+712.05 
+Reversal of impairment
+ (13.03)
+ - 
+Interest income
+ (206.11)
+ (63.62)
+Finance costs
+264.70 
+342.74 
+Net (gain)/loss on settlement of derivative contracts
+ (67.74)
+ 66.28 
+Net gain on investments
+ (116.61)
+ (147.41)
+Net gain on disposal of property, plant and equipment
+ (240.18)
+ (117.20)
+Bad debts and advances written off
+ 1.37 
+ 0.46 
+Allowance for doubtful debts and advances (net)
+0.58 
+16.45 
+Insurance claim settled on property, plant and equipment
+ - 
+ (44.73)
+Amortisation of income from government grants 
+(2.34)
+ (2.34)
+Exchange differences on translation of assets and liabilities
+ (45.91)
+ 34.25 
+Reversal of provision for onerous contract
+ (9.74)
+ (11.12)
+Changes in fair value on derivative transactions/other financial assets
+ (131.92)
+ (69.33)
+Operating profit before working capital changes
+2853.52 
+3270.02 
+Adjustments For :
+(Increase)/Decrease in trade and other assets
+ (87.30)
+ (334.80)
+(Increase)/Decrease in inventories
+ (42.84)
+ 20.02 
+Increase/(Decrease) in trade payables
+102.20 
+8.75 
+Increase/(Decrease) in other liabilities
+29.64 
+10.45 
+Cash generated from operations 
+2855.22 
+2974.44 
+Direct taxes (paid)/refund
+ (47.17)
+ 0.14 
+Net cash (used in)/generated from operating activities
+2808.05 
+2974.58 
+B. CASH FLOWS FROM INVESTING ACTIVITIES
+Payment for purchase of property, plant and equipment
+ (845.20)
+ (465.30)
+Proceeds from disposal of property, plant and equipment
+409.93 
+266.50 
+Purchase of current investments
+(1768.00)
+(1583.86)
+Proceeds from disposal/redemption of current investments
+1544.67 
+1450.36 
+Proceeds from disposal/redemption of equity investments
+ 18.56 
+ 1.54 
+Purchase of derivative instruments
+ (61.52)
+ - 
+Proceeds from disposal of derivative instruments
+ 22.79 
+ 6.89 
+Withdrawal of deposits with banks
+1080.00 
+1339.10 
+Placement of deposits with banks
+(1461.98)
+(1143.69)
+Placement of margin money deposit
+ (25.39)
+ - 
+Insurance claim settled on property, plant and equipment
+ - 
+ 44.73 
+Interest received
+171.51 
+45.44 
+Net cash (used in)/generated from investing activities
+(914.63)
+(38.29)
+C. CASH FLOWS FROM FINANCING ACTIVITIES
+Proceeds from borrowings
+ 806.68 
+ - 
+Repayments of borrowings
+(1416.05)
+(1179.21)
+Dividends paid
+ (492.54)
+ (359.77)
+Settlement of derivative contracts
+ 10.20 
+ - 
+Loss on principal settlement of derivative contracts related to borrowings
+ (59.69)
+ (164.17)
+Net gain on interest settlement of derivative contracts related to borrowings
+ 88.93 
+ 95.24 
+Interest paid
+ (257.11)
+ (275.86)
+Repayment of lease liability
+ (10.57)
+ (9.53)
+Net cash (used in)/generated from financing activities
+(1330.15)
+(1893.30)
+Current Year
+Previous Year
+Net increase/(decrease) in cash and cash equivalents 
+563.27 
+1042.99 
+Cash and cash equivalents at the beginning of the year
+2678.36 
+1558.32 
+Exchange difference on translation of foreign currency cash and cash equivalents
+ 46.25 
+ 77.05 
+Cash and cash equivalents at the end of the year
+3287.88 
+2678.36 
+The above Consolidated Statement of Cash Flows has been prepared under the “Indirect Method” as set out in Ind AS 7, ‘Statement of Cash Flows’.
+Reconciliation for changes in liabilities arising from financing activities including both changes arising from cash flows and non-cash changes as per 
+the requirement of amendment to Ind AS 7 :
+(K in crores)
+Particulars
+As at 
+March 31, 
+2023
+Cash flows 
+(net)
+Non-cash changes
+As at 
+March 31, 
+2024
+Change in 
+fair value of 
+derivatives 
+and others
+Foreign 
+exchange 
+movement
+Finance cost
+Foreign currency term loans from banks 
+1473.78 
+ (359.37)
+ - 
+ 20.07 
+ (3.75)
+1130.73 
+Non-convertible debentures
+2149.26 
+ (250.00)
+ - 
+ - 
+ 1.04 
+1900.30 
+Interest on foreign currency term loans from 
+banks/Non-convertible debentures
+115.19 
+(257.11)
+ - 
+ - 
+ 252.89 
+110.97 
+Derivative transactions
+214.21 
+ 39.44 
+ 22.79 
+ - 
+ - 
+276.44 
+Lease
+26.35 
+ (10.57)
+ (0.20)
+ - 
+ 1.69 
+17.27 
+Total
+3978.79 
+(837.61)
+22.59 
+20.07 
+251.87 
+3435.71 
+(K in crores)
+Particulars
+As at 
+March 31, 
+2022
+Cash flows 
+(net)
+Non-cash changes
+As at 
+March 31, 
+2023
+Change in 
+fair value of 
+derivatives 
+and others
+Foreign 
+exchange 
+movement
+Finance cost
+Foreign currency term loans from banks 
+2278.71 
+ (979.21)
+ - 
+ 167.90 
+ 6.38 
+1473.78 
+Non-convertible debentures
+2346.75 
+ (200.00)
+ - 
+ - 
+ 2.51 
+2149.26 
+Interest on foreign currency term loans from 
+banks/Non-convertible debentures
+114.62 
+ (282.22)
+ 7.83 
+-
+ 274.96 
+115.19 
+Derivative transactions
+260.66 
+ (62.57)
+ 16.12 
+ - 
+ - 
+214.21 
+Lease
+30.00 
+ (9.53)
+ 4.37 
+-
+ 1.51 
+26.35 
+Total
+5030.74 
+(1533.53)
+28.32 
+167.90 
+285.36 
+3978.79 
+The accompanying notes are an integral part of the consolidated financial statements
+In terms of our report attached
+For and on behalf of the Board
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+Firm Regn. No. : 117366W / W - 100018
+G. Shivakumar
+Executive Director & CFO
+(DIN : 03632124)
+K. M. Sheth
+Chairman
+(DIN : 00022079)
+Mehul Parekh
+Partner
+(M. No. : 121513)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Mumbai : May 10, 2024
+Mumbai : May 10, 2024
+(K in crores)
+
+=== PAGE 142 ===
+245
+244
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Notes to the Consolidated Financial Statements for the Year Ended March 31, 2024
+Note 1 : Corporate Information :
+The Great Eastern Shipping Company Limited (the Holding Company) is a public limited Company registered in India under the provisions of the 
+Companies Act, 1913 and has its registered office in Mumbai, Maharashtra, India. Its shares are listed on the BSE Ltd. and the National Stock Exchange 
+of India Ltd. The Company along with its subsidiaries is a major player in the Indian Shipping and Oil drilling services industry.
+The consolidated financial statements comprise financial statements of The Great Eastern Shipping Company Limited, the Holding Company and its 
+subsidiaries (collectively the Group). The consolidated financial statements for the year ended March 31, 2024 were approved by the Board of Directors 
+and authorised for issue on May 10, 2024.
+Note 2 : Material Accounting Policies
+(a)	 Statement of Compliance :
+These financial statements have been prepared in accordance with Indian Accounting Standards (Ind AS) prescribed under Section 133 of the 
+Companies Act, 2013 (the Act) read with Rule 3 of the Companies (Indian Accounting Standards) Rules, 2015 and relevant amendments and rules 
+issued thereafter.
+(b)	 Basis of Preparation and Presentation :
+The Financial Statements have been prepared on the historical cost basis except for certain financial instruments that are measured at fair 
+values at the end of each reporting period.
+(c)	 Current/Non-Current Classification :
+Any asset or liability is classified as current if it satisfies any of the following conditions :
+(i)	
+the asset/liability is expected to be realised/settled in the Group’s normal operating cycle;
+(ii)	 the asset is intended for sale or consumption;
+(iii)	 the asset/liability is held primarily for the purpose of trading;
+(iv)	 the asset/liability is expected to be realised/settled within twelve months after the reporting period;
+(v)	 the asset is cash and cash equivalent or other bank balances unless it is restricted from being exchanged or used to settle a liability for at 
+least twelve months after the reporting date;
+(vi)	 in the case of a liability, the Group does not have an unconditional right to defer settlement of the liability for at least twelve months after 
+the reporting date;
+(vii)	 All other assets and liabilities are classified as non-current.
+For the purpose of current/non-current classification of assets and liabilities, the Group has ascertained its normal operating cycle as twelve months.
+(d)	 Use of Estimates :
+The preparation of financial statements in conformity with the recognition and measurement principles of Ind AS requires management of the 
+Group to make judgments, estimates and assumptions that affect the application of accounting policies and the reported amounts of assets 
+and liabilities, disclosures of contingent assets and contingent liabilities as at the date of financial statements and the reported amounts of 
+income and expenses during the period. Actual results may differ from these estimates. Estimates and underlying assumptions are reviewed on 
+an ongoing basis. Revisions to accounting estimates are recognised in the period in which the estimates are revised and in future periods which 
+are affected.
+Key sources of estimation of uncertainty at the date of the financial statements, which may cause a material adjustment to the carrying amounts 
+of assets and liabilities within the next financial year, is in respect of impairment of property, plant and equipment, useful lives of property, plant 
+and equipment, provision, contingent liabilities.
+Impairment of Property, plant and equipment :
+Determining whether a ship, support vessel or a rig is impaired requires an estimation of value in use and fair value less cost of disposal. The key 
+estimates made in the value in use calculation include discount rates, revenue (having regard to past trend), operating profit growth rates and 
+deployment of ships, support vessels or rigs. The discount rate is estimated using pre-tax rates that reflects current market assessments of the 
+time value of money. The fair values are estimated based on valuations provided by independent valuers considering latest transactions of 
+similar assets.
+Useful lives and residual values of Property, plant and equipment :
+Useful lives and residual values of property, plant and equipment are reviewed at each year end based on the best available information. The lives 
+are based on historical experience with similar assets as well as anticipation of future events. Residual value of Fleet is estimated having regard 
+to, inter alia, past trend of steel scrap prices.
+Provisions and Contingent Liabilities :
+The Group is a party to certain legal disputes, the outcomes of which cannot be assessed with a high degree of certainty. A provision is recognised 
+where, based on the legal views and advice, it is considered probable that an outflow of resources will be required to settle a present obligation that 
+can be measured reliably. Contingent liabilities are disclosed in Note 39 unless the possibility of a loss arising is considered remote. Management 
+applies its judgement in determining whether or not a provision should be recorded or contingent liability should be disclosed.
+(e)	 Property, plant and equipment :
+Property, plant and equipment (PPE) are stated at acquisition cost less accumulated depreciation and accumulated impairment losses, if any. 
+Cost includes expenses related to acquisition, installation of the concerned assets and any attributable cost of bringing the asset to the condition 
+of its intended use.
+The Group identifies and determines cost of each part of an item of property, plant and equipment separately, if the part has a cost which is 
+significant to the total cost of that item of property, plant and equipment and has a useful life that is materially different from that of the remaining 
+item. Borrowing costs attributable to the acquisition or construction of a qualifying asset are also capitalised as part of the cost of the asset.
+Capital work-in-progress and Capital advances :
+Cost of assets not ready for intended use as on the Balance Sheet date, is shown as capital work-in-progress. Advances given towards acquisition 
+of fixed assets outstanding at each Balance Sheet date are disclosed as Other Non-Current Assets.
+(f)	
+ Depreciation on Property, Plant and Equipment :
+(i)	
+Depreciation is recognised on Straight Line Method basis so as to write off the original cost of the asset less its estimated residual value 
+over their estimated useful life. The estimated useful lives of the assets are as under :
+Property, Plant And Equipment :
+Estimated Useful Life
+Fleet (Main)
+- Crude Oil Tankers
+20 years
+- Product Tankers *
+23 years
+- Dry Bulk Carriers *
+23 years
+- Gas Carriers *
+27 years
+- Speed Boats
+13 years
+- Offshore support vessels
+20 years
+Modern Rigs
+30 years
+Fleet (Component)
+- Grabs *
+10 years
+- Dry Dock *
+Period from survey certificate date till the estimated date for next special survey
+Leasehold Land
+Lease period
+Ownership Flats and Buildings
+60 years
+Furniture & Fixtures, Office Equipment *
+5 years
+Computers
+- Servers and Networks
+6 years
+- End User Devices
+3 years
+Vehicles *
+4 years
+Mobiles *
+2 years
+Plant and Equipment *
+3 to 10 years
+Leasehold improvements
+Lease period
+* For this class of assets, based on internal technical assessment and past experience, the Management believes that the useful lives as 
+given above, best represent the period over which the Management expects the use of the assets. The useful lives of these assets are 
+different from the useful lives as prescribed under Part C of Schedule II to the Companies Act, 2013.
+
+=== PAGE 143 ===
+247
+246
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+(ii)	 Estimated useful life of the Fleet, Rigs and Ownership Flats and Buildings is considered from the year of built. Estimated useful life in case 
+of all other assets is considered from the date of acquisition by the Group.
+(iii)	 The estimated useful lives and residual values are reviewed at the end of each reporting period based on the conditions of the vessels, market 
+conditions and other regulatory requirements, with the effect of any changes in estimate being accounted for on a prospective basis.
+Derecognition :
+An item of property, plant and equipment is derecognised upon disposal or when no future economic benefits are expected to arise from the 
+continued use of the asset. Any gain or loss arising on the disposal or retirement of an item of property, plant and equipment is determined as the 
+difference between the sales proceeds and the carrying amount of the asset and is recognised in the Statement of Profit and Loss.
+(g)	 Intangible Assets :
+Intangible assets are stated at acquisition cost less accumulated amortisation and accumulated impairment losses, if any. An intangible asset is 
+derecognised on disposal, or when no future economic benefits are expected from use or disposal. Gains or losses on derecognition measured at 
+difference between net disposal proceeds and the carrying amount of the asset, are recognised in the Statement of Profit and Loss.
+           Amortisation :
+Intangible Assets with finite lives are amortised on a Straight Line basis over the estimated useful economic life. The amortisation expense on 
+intangible assets with finite lives is recognised in the Statement of Profit and Loss. The estimated useful life of intangible assets is mentioned below :
+Intangible Assets :
+Estimated Useful Life
+Software
+5 years
+The amortisation period and the amortisation method for an intangible asset with finite useful life are reviewed at the end of each financial year. 
+If any of these expectations differ from previous estimates, such change is accounted for as a change in an accounting estimate.
+(h)	 Asset classified as held for sale :
+An item of property, plant and equipment is classified as asset held for sale at the time when the Management is committed to sell/dispose off the 
+asset as per Memorandum of Agreement entered into with the customer and the asset is expected to be sold/disposed off within one year from 
+the date of classification.
+Non-current assets classified as held for sale are measured at the lower of their carrying amount and fair value less costs to sell.
+(i)	
+Inventories :
+Inventories of fuel oil (includes returnable fuel oil from charterer as per terms of the time charter agreement), stores and spares on rigs and at 
+warehouse are carried at lower of cost and net realisable value. Stores and spares delivered on board the vessels are charged to Statement of 
+Profit and Loss. Stores and spares of Rigs are charged to Statement of Profit and Loss on consumption basis. Cost is ascertained on first-in-first-
+out basis for fuel oil and on weighted average basis for stores and spares on Rigs. Net realisable value represents the estimated selling price for 
+inventories less all costs necessary to make the sale or expected amount to be realised from use as estimated by the management, as applicable.
+(j)	
+Borrowing Costs :
+Borrowing costs include interest, ancillary cost incurred in connection with the arrangement of borrowings and exchange differences arising from 
+foreign currency borrowings availed on or after April 01, 2016, to the extent they are regarded as an adjustment to the interest cost. Borrowing 
+costs that are directly attributable to the acquisition/construction of the qualifying assets are capitalised as part of the cost of the asset, upto the 
+date of acquisition/completion of construction. Other borrowing costs are recognised in profit and loss in the period in which they are incurred.
+(k)	 Revenue Recognition :
+Revenue from shipping activities : Revenue in shipping business is recognised upon transfer of control of promised services to customers at an 
+amount that reflects the consideration which the Group expects to receive in exchange for those services. The Group earns revenue from time 
+and voyage charter. Time Charter hire earnings are accrued on time proportion basis except where the charter party agreements have not been 
+renewed/finalised, in which case it is recognised on provisional basis. Revenue from voyage charters is recognised as income, by reference to 
+the voyage progress on a load-to-discharge basis, which has been assessed by management to be an appropriate measure of progress towards 
+complete satisfaction of the performance obligations over time under Ind AS 115. Judgement is involved in estimating days to reach the load port 
+and discharge port destinations impacting the calculation of income to be accrued for incomplete voyage. Management uses its judgement in 
+estimating the total number of days of a voyage based on historical trends, the operating capability of the vessel (speed and fuel consumption) 
+and the distance of the trade route.
+Demurrage revenue is recognised as the performance obligations under the contract is satisfied. Pool revenue is recognised as the performance 
+obligation is satisfied over time in accordance with the pooling agreement. Training fees included in other operating income are accounted on 
+accrual basis.
+Revenue from offshore activities : The Group earns revenue from drilling and offshore support services performed by deploying rigs and support 
+vessels under contracts with customers. Revenue from drilling services is earned on performance of activity which are paid on a day rate basis 
+over the period of the contract as and when specified services are rendered, which may vary depending upon the nature of operations of rigs 
+during the day. Such daytime consideration is attributed to the distinct time period to which it relates within the contract term, and therefore, is 
+recognised as the services are performed. Revenue from offshore support services is earned on a day rate basis as per the terms of the contract 
+and is recognised accordingly. Revenue is measured based on the consideration to which the Group expects to be entitled in contract with a 
+customer. The consideration is determined based on the price specified in the contract, net of address commission, liquidated damages, off-hire 
+and downtime rebates.
+Revenue is recognised to the extent that it is probable that economic benefits will flow to the Group and the revenue can be reliably measured. 
+Revenue in excess of invoicing is classified as contract assets (unbilled revenue). Revenue excludes any taxes or duties collected on behalf of the 
+government which are levied on such services such as goods and services tax.
+(l)	
+Expenses :
+(i)	
+Fuel oil is charged to the Statement of Profit and Loss on consumption basis.
+(ii)	 Stores and spares delivered on board the ships/offshore support vessels are charged to the Statement of Profit and Loss. Stores and spares 
+of rigs are charged to revenue on consumption basis.
+(iii)	 Expenses on account of general average claims/damages to ships are charged to the Statement of Profit and Loss in the year in which they 
+are incurred. Claims against the underwriters are accounted for on acceptance of average adjustment by the adjustors.
+(m)	 Leases :
+Group as a Lessee :
+The Group’s lease assets classes primarily consist of leases for office premises, warehouse and equipment rental. The Group assesses whether 
+a contract contains a lease, at inception of a contract. A contract is, or contains, a lease if the contract conveys the right to control the use of 
+an identified asset for a period of time in exchange for consideration. To assess whether a contract conveys the right to control the use of an 
+identified asset, the Group assesses whether : (1) the contract involves the use of an identified asset (2) the Group has substantially all of the 
+economic benefits from use of the asset through the period of the lease and (3) the Group has the right to direct the use of the asset.
+At the date of commencement of the lease, the Group recognises a right-of-use asset (“ROU”) and a corresponding lease liability for all lease 
+arrangements in which it is a lessee, except for leases with a term of twelve months or less (short-term leases) and low value leases. For these 
+short-term and low value leases, the Group recognises the lease payments as an operating expense on a straight-line basis over the term of the lease.
+Certain lease arrangements include the options to extend or terminate the lease before the end of the lease term. ROU assets and lease liabilities 
+include these options when it is reasonably certain that they will be exercised.
+The right-of-use assets are initially recognised at cost, which comprises the initial amount of the lease liability adjusted for any lease payments 
+made at or prior to the commencement date of the lease plus any initial direct costs less any lease incentives. They are subsequently measured 
+at cost less accumulated depreciation and impairment losses.
+Right-of-use assets are depreciated from the commencement date on a straight-line basis over useful life of the underlying asset.
+The lease liability is initially measured at amortised cost at the present value of the future lease payments. The lease payments are discounted 
+using the interest rate implicit in the lease or, if not readily determinable, using the incremental borrowing rates in the country of domicile of the 
+leases. Lease liabilities are remeasured with a corresponding adjustment to the related right-of-use assets if the Group changes its assessment 
+of either exercising an extension or a termination option.
+Lease liability and ROU asset have been separately presented in the Balance Sheet and lease payments have been classified as financing cash flows.
+Group as a Lessor :
+Leases can be classified as finance or operating leases. In making the assessment, certain indicators, such as whether the substantial risks and 
+rewards of ownership of the underlying asset continue with the Group, and whether the contract is for a major part of the economic life of the 
+asset, are considered.
+Based on the aforementioned assessment, the time charter contracts for ships, support vessels and rigs of the Group contain operating lease 
+component for the purpose of Ind AS 116, Leases - Refer Note 36.
+(n)	 Employee Benefits :
+(i)	 Short-Term Employee Benefits :
+All employee benefits payable wholly within twelve months of rendering the service are classified as short-term employee benefits. Benefits 
+such as salaries, performance incentives, etc., are recognised as an expense at the undiscounted amount in the Statement of Profit and 
+Loss of the year in which the employee renders the related service.
+(ii)	 Post-Employment Benefits :
+	Liability is provided for retirement benefits of Provident Fund, Superannuation, Gratuity, Post Retirement Medical Benefit Scheme and 
+Compensated Absences in respect of all eligible employees and for pension benefit to eligible Whole-time Directors of the Group.
+
+=== PAGE 144 ===
+249
+248
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+(a)	
+Defined Contribution Plan :
+Employee benefits in the form of Superannuation Fund, Government administered Provident Fund and other Seamen’s Welfare 
+Contributions are considered as defined contribution plans and the contributions are charged to the Statement of Profit and Loss for 
+the period when the contributions to the respective funds are due.
+(b)	
+Defined Benefit Plan :
+Retirement benefits in the form of Provident Fund administered by the Group, Gratuity, Post Retirement Medical Benefit Scheme for all 
+eligible employees and Pension plan for eligible Whole-time Directors are considered as defined benefit obligations and are provided for 
+on the basis of actuarial valuations, using the projected unit credit method, as at the date of the Balance Sheet.
+(iii)	 Other Long-Term Benefits :
+Long-term compensated absences are provided for on the basis of an actuarial valuation, using the projected unit credit method, as at the 
+date of the Balance Sheet.
+Actuarial gain/loss, comprising of experience adjustments and the effects of changes in actuarial assumptions is recognised in the 
+Statement of Other Comprehensive Income except for Long-term compensated absences where the same is immediately recognised in the 
+Statement of Profit and Loss.
+Employee Share Based Payments :
+Equity settled stock options granted under the Group's Employee stock option (ESOP) schemes are accounted as per the accounting 
+treatment prescribed by SEBI (Employee Stock Option Scheme and Employee Stock Purchase Scheme) Guidelines, 1999 and the Guidance 
+Note on Accounting for Employee Share based payments issued by ICAI. Consequent to the introduction of the encashment scheme, the 
+liability in respect of outstanding options is measured at fair value as per the scheme and the difference in the fair value and the exercise 
+price is amortised over the vesting period as employee compensation with a credit to provisions.
+(o)	 Impairment :
+The carrying amounts of the Group’s property, plant and equipment are reviewed annually or more frequently to determine whether there is 
+any indication of impairment. If any such indication exists, the asset’s recoverable amounts are estimated in order to determine the extent of 
+impairment loss, if any. An impairment loss is recognised whenever the carrying amount of an asset or its cash generating unit (CGU) exceeds its 
+recoverable amount. The impairment loss, if any, is recognised in the Statement of Profit and Loss in the period in which impairment takes place.
+Assessment of recoverable amount of the vessels/rigs is based on higher of fair value less cost to sell and its value in use calculations, with each 
+vessel/rig being regarded as one cash generating unit. Value in use is the present value of estimated future cash flows expected to arise from the 
+continuing use of a vessel/rig and from its disposal at the end of its useful life. For calculating present value, future cash flows are discounted 
+using a pre-tax discount rate that reflects current market rates and the risk specific to the vessel/rig. Fair value less cost to sell is the best 
+estimate of the amount obtainable from the sale of a vessel/rig in an arm’s length transaction between knowledgeable, willing parties, less the 
+cost of disposal based on independent third-party broker valuations.
+Where an impairment loss subsequently reverses, the carrying amount of the asset is increased to the revised estimate of its recoverable amount, 
+however subject to the increased carrying amount not exceeding the carrying amount that would have been determined (net of amortisation or 
+depreciation) had no impairment loss been recognised for the asset in prior accounting periods. A reversal of an impairment loss is recognised 
+immediately in the Statement of Profit and Loss.
+(p)	 Foreign Exchange Transactions :
+Items included in the financial statements of the Group are measured using the currency of the primary economic environment in which each 
+entity of the Group operates (‘the functional currency’). The financial statements are presented in ‘Indian Rupees’ (INR), which is also the Holding 
+Company’s functional currency.
+The transactions in currencies other than each entity's functional currency (foreign currencies) are recorded at the rate of exchange that 
+approximates the actual rate at the date of transaction. Non-monetary items, which are measured in terms of historical costs denominated in 
+a foreign currency are reported using the exchange rate at the date of the transaction. Monetary assets and liabilities denominated in foreign 
+currency, remaining unsettled at the year-end are translated at closing rates. The difference in translation of long-term monetary assets acquired 
+and liabilities incurred prior to April 01, 2016 and gains and losses on foreign currency transactions relating to acquisition of depreciable capital 
+assets are added to or deducted from the cost of the asset and depreciated over the balance life of the asset; and in other cases, accumulated 
+in a Foreign Currency Monetary Item Translation Difference Account and amortised over the balance period of such long-term asset/liability, by 
+recognition as income or expense but not beyond March 31, 2020. The difference in translation of all other monetary assets and liabilities and 
+realised gains and losses on other foreign currency transactions are recognised in the Statement of Profit and Loss.
+Translation of financial statements of foreign entities :
+For the purpose of consolidation, the assets and liabilities of the foreign operations are translated to Indian rupees at the exchange rate prevailing 
+on the Balance Sheet date, and the income and expenses at the average rate of exchange. Exchange differences arising on such translation 
+are recognised as currency translation reserve under equity. Exchange differences on monetary items receivable from or payable to a foreign 
+operation for which settlement is neither planned nor likely to occur (therefore forming part of the net investment in the foreign operation) are 
+recognised initially in other comprehensive income and reclassified from equity to profit or loss on repayment of the monetary items. Exchange 
+differences arising from the translation of a foreign operation previously recognised in currency translation reserve in equity are not reclassified 
+from equity to profit or loss until the disposal of the operation.
+(q)	 Financial Instruments :
+Initial Recognition :
+Financial assets and financial liabilities are recognised when a Group becomes a party to the contractual provisions of the instruments.
+Financial assets and financial liabilities are initially measured at fair value, except for trade receivables which are initially measured at transaction 
+price. Transaction costs that are directly attributable to the acquisition or issue of financial assets and financial liabilities (other than financial 
+assets and financial liabilities at fair value through profit or loss) are added to or deducted from the fair value of the financial assets or financial 
+liabilities, as appropriate, on initial recognition. Transaction costs directly attributable to the acquisition of financial assets or financial liabilities 
+at fair value through profit or loss are recognised immediately in the Statement of Profit and Loss.
+Subsequent Measurement :
+Financial Assets :
+All recognised financial assets are subsequently measured in their entirety at either amortised cost or fair value through profit or loss (FVTPL) 
+or fair value through other comprehensive income (FVTOCI), depending on the classification of the financial assets. The purchase and sale of 
+financial assets are accounted for at trade date.
+Cash and Cash Equivalents :
+Cash and cash equivalents include cash in hand, demand deposits with banks, other short-term highly liquid financial instruments which are 
+readily convertible into known amounts of cash that are subject to an insignificant risk of change in value and having original maturities of three 
+months or less.
+Fixed deposit having residual maturity upto twelve months from the reporting period is considered as part of bank balances other than cash 
+and cash equivalent. Fixed deposit with residual maturity more than twelve months from reporting period is classified under other non-current assets.
+Debt Instruments :
+Debt instruments are initially measured at amortised cost, fair value through other comprehensive income (FVTOCI) or fair value through profit 
+or loss (FVTPL) till derecognition on the basis of (i) the entity’s business model for managing the financial assets and (ii) the contractual cash flow 
+characteristics of the financial asset.
+(i)	 Measured at Amortised Cost :
+Financial assets that are held within a business model whose objective is to hold financial assets in order to collect contractual cash flows 
+that are solely payments of principal and interest, are subsequently measured at amortised cost using the effective interest rate (EIR) 
+method less impairment, if any. The amortisation using EIR and loss arising from impairment, if any, is recognised in the Statement of Profit 
+and Loss.
+Under the effective interest method, the future cash receipts are exactly discounted to the initial recognition value using the effective 
+interest rate. The cumulative amortisation using the effective interest method of the difference between the initial recognition amount 
+and the maturity amount is added to the initial recognition value (net of principal repayments, if any) of the financial asset over the relevant 
+period of the financial asset to arrive at the amortised cost at each reporting date. The corresponding effect of the amortisation under 
+effective interest method is recognised as interest income over the relevant period of the financial asset. The same is recognised in the 
+Statement of Profit and Loss.
+(ii)	 Measured at Fair value through Other Comprehensive Income (FVTOCI) :
+Financial assets that are held within a business model whose objective is achieved by both, selling financial assets and collecting contractual 
+cash flows that are solely payments of principal and interest and the contractual terms of the instrument give rise on specified dates to cash 
+flows that are solely payments of principal and interest on the principal amount outstanding, are subsequently measured at fair value through 
+Other Comprehensive Income. Fair value movements are recognised in the Other Comprehensive Income (OCI). Interest income measured 
+using the EIR method and impairment losses, if any are recognised in the Statement of Profit and Loss. On derecognition, cumulative gain 
+or loss previously recognised in OCI is reclassified to profit or loss.
+
+=== PAGE 145 ===
+251
+250
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Further, the Group, through an irrevocable election at initial recognition, has measured certain investments in equity instruments at 
+FVTOCI. The Group has made such election on an instrument by instrument basis. These equity instruments are neither held for trading nor 
+are contingent consideration recognised under a business combination. Pursuant to such irrevocable election, subsequent changes in the 
+fair value of such equity instruments are recognised in OCI. However, the Group recognises dividend income from such instruments in the 
+Statement of Profit and Loss.
+On derecognition of such financial assets, cumulative gain or loss previously recognised in OCI is not reclassified from the equity to 
+Statement of Profit and Loss. However, the Group may transfer such cumulative gain or loss into retained earnings within equity.
+(iii)	 Measured at Fair value through Profit or Loss (FVTPL) :
+A financial asset not classified at either amortised cost or FVTOCI, is classified as FVTPL. Such financial assets are measured at fair value 
+with all changes in fair value, including interest income and dividend income if any, recognised in the Statement of Profit and Loss.
+Impairment of Financial Assets :
+Expected credit losses (ECL) are recognised for all financial assets subsequent to initial recognition other than financials assets in FVTPL 
+category. The Group’s trade receivables do not contain significant financing component and loss allowance on trade receivables is measured at 
+an amount equal to lifetime expected losses i.e. expected cash shortfall. The impairment losses and reversals are recognised in the Statement 
+of Profit and Loss.
+In case of other assets, the Group determines if there has been a significant increase in credit risk of the financial asset since initial recognition. 
+If the credit risk of such assets has not increased significantly, an amount equal to 12-month ECL is measured and recognised as loss allowance. 
+However, if credit risk has increased significantly, an amount equal to lifetime ECL is measured and recognised as loss allowance.
+ECL is recognised in the Statement of Profit and Loss.
+Derecognition of Financial Assets :
+The Group derecognises a financial asset when the contractual rights to the cash flows from the asset expire, or when it transfers the financial 
+asset and substantially all the risks and rewards of ownership of the asset to another party. On derecognition of a financial asset, (except as 
+mentioned above for financial assets measured at FVTOCI), the difference between the carrying amount and the consideration received is 
+recognised in the Statement of Profit and Loss.
+Financial Liabilities and Equity Instruments :
+Classification as Debt or Equity :
+Debt and equity instruments issued by the Group are classified as either financial liabilities or as equity in accordance with the substance of the 
+contractual arrangements and the definitions of a financial liability and an equity instrument.
+Equity Instruments :
+An equity instrument is any contract that evidences a residual interest in the assets of an entity after deducting all of its liabilities. Equity 
+instruments issued by the Group are recognised at the proceeds received, net of direct issue costs.
+Financial Liabilities :
+All financial liabilities are subsequently measured at amortised cost using the effective interest method or at FVTPL.
+Financial liabilities are classified as at FVTPL when the financial liability is held for trading or it is designated as at FVTPL.
+For financial liabilities that are designated as at FVTPL, the amount of change in the fair value of the financial liability that is attributable to 
+changes in the credit risk of that liability is recognised in other comprehensive income, unless the recognition of the effects of changes in the 
+liability’s credit risk in other comprehensive income would create or enlarge an accounting mismatch in profit or loss. The remaining amount 
+of change in the fair value of liability is recognised in profit or loss. Changes in fair value attributable to a financial liability’s credit risk that are 
+recognised in other comprehensive income are not subsequently reclassified to profit or loss; instead, they are transferred to retained earnings 
+upon derecognition of the financial liability.
+Financial liabilities that are not held-for-trading and are not designated as at FVTPL are measured at amortised cost at the end of subsequent 
+accounting periods. The carrying amounts of financial liabilities that are subsequently measured at amortised cost are determined based on the 
+effective interest method.
+Derecognition of Financial Liabilities :
+The Group derecognises financial liabilities when, and only when, the Group’s obligations are discharged, cancelled or have expired. A substantial 
+modification of the terms of an existing financial liability (whether or not attributable to the financial difficulty of the debtor) is accounted for as 
+an extinguishment of the original financial liability and the recognition of a new financial liability. The difference between the carrying amount of 
+the financial liability derecognised and the consideration paid and payable is recognised in the Statement of Profit and Loss.
+Offsetting Financial Instruments :
+Financial assets and liabilities are offset and the net amount is reported in the Balance Sheet where there is a legally enforceable right to offset 
+the recognised amounts and there is an intention to settle on a net basis or realise the asset and settle the liability simultaneously. The legally 
+enforceable right must not be contingent on future events and must be enforceable in the normal course of business and in the event of default, 
+insolvency or bankruptcy of the Group or the counterparty.
+Derivative Financial Instruments :
+The Group enters into a variety of derivative financial instruments to manage its exposure to interest rate and foreign exchange rate risks, 
+including foreign exchange forward contracts, interest rate swaps, currency swaps, commodity swaps etc. Further details of derivative financial 
+instruments are disclosed in Note 40.
+Derivatives are initially recognised at fair value at the date the derivative contracts are entered into and are subsequently remeasured to their 
+fair value at the end of each reporting period. The resulting gain or loss is recognised in the Statement of Profit and Loss immediately unless the 
+derivative is designated and effective as a hedging instrument, in which event the timing of the recognition in the Statement of Profit and Loss 
+depends on the nature of the hedging relationship and the nature of the hedged item. The gains or losses on derivative contracts related to the 
+acquisition of depreciable capital assets are added to or deducted from the cost of the assets and not recognised in the Statement of Profit and Loss.
+Embedded Derivatives :
+Derivatives embedded in non-derivative host contracts that are not financial instruments within the scope of Ind AS 109 are treated as separate 
+derivatives when their risks and characteristics are not closely related to those of the host contracts and the host contracts are not measured 
+at FVTPL.
+Hedge Accounting :
+The Group designates certain hedging instruments, which include derivatives and non-derivatives in respect of foreign currency risk, as either 
+fair value hedges or cash flow hedges.
+At the inception of the hedge relationship, the entity documents the relationship between the hedging instrument and the hedged item, along 
+with its risk management objectives and its strategy for undertaking various hedge transactions. Furthermore, at the inception of the hedge 
+and on an ongoing basis, the Group documents whether the hedging instrument is highly effective in offsetting changes in fair values or cash 
+flows of the hedged item attributable to the hedged risk. Note 40 sets out details of the fair values of the derivative instruments used for hedging 
+purposes.
+Fair Value Hedges :
+Changes in fair value of the designated portion of derivatives that qualify as fair value hedges are recognised in the Statement of Profit and Loss 
+immediately, together with any changes in the fair value of the hedged asset or liability that are attributable to the hedged risk. The change in the 
+fair value of the designated portion of hedging instrument and the change in the hedged item attributable to the hedged risk are recognised in the 
+Statement of Profit and Loss in the line item relating to the hedged item.
+Hedge accounting is discontinued when the hedging instrument expires or is sold, terminated, or exercised, or when it no longer qualifies 
+for hedge accounting. The fair value adjustment to the carrying amount of the hedged item arising from the hedged risk is amortised to the 
+Statement of Profit and Loss from that date.
+Cash Flow Hedges :
+The effective portion of changes in the fair value of derivatives that are designated and qualify as cash flow hedges is recognised in other 
+comprehensive income and accumulated under the heading of Cash Flow Hedging Reserve. The gain or loss relating to the ineffective portion is 
+recognised immediately in the Statement of Profit and Loss.
+Amounts previously recognised in other comprehensive income and accumulated in equity (relating to effective portion as described above) are 
+reclassified to the Statement of Profit and Loss in the periods when the hedged item affects profit or loss, in the same line as the recognised 
+hedged item. However, when the hedged forecast transaction results in the recognition of a non-financial asset or a non-financial liability, such 
+gains and losses are transferred from equity (but not as a reclassification adjustment) and included in the initial measurement of the cost of the 
+non-financial asset or non-financial liability.
+Hedge accounting is discontinued when the hedging instrument expires or is sold, terminated, or exercised, or when it no longer qualifies for 
+hedge accounting. Any gain or loss recognised in other comprehensive income and accumulated in equity at that time remains in equity and is 
+recognised when the forecast transaction is ultimately recognised in the Statement of Profit and Loss. When a forecast transaction is no longer 
+expected to occur, the gain or loss accumulated in equity is recognised immediately in the Statement of Profit and Loss.
+(r)	
+Taxation :
+Tax expense for the year comprises current and deferred tax. The tax currently payable is based on taxable profit for the year. The Group’s liability 
+for current tax is calculated using tax rates and tax laws that have been enacted or substantively enacted by the end of the reporting period. 
+Significant judgments are involved in determining the provision for income taxes, including amount expected to be paid/recovered for uncertain 
+tax positions.
+
+=== PAGE 146 ===
+253
+252
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Deferred tax is recognised on temporary differences between the carrying amounts of assets and liabilities in the financial statements and the 
+corresponding tax bases used in the computation of taxable profit. Deferred tax liabilities are generally recognised for all taxable temporary 
+differences. In contrast, deferred tax assets are only recognised to the extent that it is probable that future taxable profits will be available against 
+which the deductible temporary differences can be utilised.
+The carrying amount of deferred tax assets is reviewed at the end of each reporting period and reduced to the extent that it is no longer probable 
+that sufficient taxable profits will be available to allow all or part of the asset to be recovered.
+Deferred tax liabilities and assets are measured at the tax rates that are expected to apply in the period when the liability is settled or the asset is 
+realised based on the tax rates and tax laws that have been enacted or substantively enacted by the end of the reporting period. The measurement 
+of deferred tax liabilities and assets reflects the tax consequences that would follow from the manner in which the Group expects, at the end of 
+the reporting period, to cover or settle the carrying value of its assets and liabilities.
+Current and deferred tax are recognised as an expense or income in the Statement of Profit and Loss, except when they relate to items credited 
+or debited either in other comprehensive income or directly in equity, in which case the tax is also recognised in other comprehensive income or 
+directly in equity respectively.
+Deferred tax assets and liabilities are offset to the extent that they relate to taxes levied by the same tax authority and there are legally enforceable 
+rights to set off current tax assets and current tax liabilities within that jurisdiction. Deferred tax assets include Minimum Alternate Tax (MAT) paid in 
+accordance with the tax laws which is likely to give future economic benefits in the form of availability of set off against future income tax liability.	
+(s)	
+Provisions and Contingent Liabilities :
+Provisions are recognised in the financial statement in respect of present obligations (legal or constructive) as a result of past events if it is 
+probable that the Group will be required to settle the obligation, and which can be reliably estimated. Provisions are measured at the best estimate 
+of the consideration required to settle the present obligation at the Balance Sheet date. In case of onerous contract present obligations arising 
+under onerous contracts are recognised and measured as provisions. An onerous contract is considered to exist where the Group has a contract 
+under which the unavoidable costs of meeting the obligations under the contract exceed the economic benefits expected to be received under 
+it. The unavoidable costs under a contract reflect the least net cost of exiting from the contract, which is the lower of the cost of fulfilling it and 
+any compensation or penalties arising from failure to fulfil it, if applicable. The cost of fulfilling a contract comprises the costs that relate directly 
+to the contract. Costs that relate directly to a contract consist of both the incremental costs of fulfilling that contract and an allocation of other 
+costs that relate directly to fulfilling contracts.
+Contingent liabilities are not recognised but disclosed unless the probability of an outflow of resources is remote. Contingent assets are disclosed 
+where inflow of economic benefits is probable.
+(t)	
+Earnings Per Share :
+Basic earnings per share is calculated by dividing the net profit or loss for the period attributable to the equity shareholders by the weighted 
+average number of equity shares outstanding during the period. The weighted average number of equity shares outstanding during the period 
+is adjusted for events, such as bonus issue, bonus element in a rights issue and shares split that have changed the number of equity shares 
+outstanding, without a corresponding change in resources. For the purpose of calculating Diluted Earnings per share, the net profit or loss for 
+the period attributable to the equity shareholders and the weighted average number of shares outstanding during the period is adjusted for the 
+effects of all dilutive potential equity shares.
+(u)	 Government Grants :
+Government grants are not recognised until there is a reasonable assurance that the Group will comply with the conditions attached to them and 
+that the grants will be received. Government grants are recognised in the Statement of Profit and Loss on a systematic basis over the periods in 
+which the Group recognises as expenses the related costs for which the grants are intended to compensate. Government grants used to acquire 
+non-current asset are recognised as deferred revenue in the Balance Sheet and transferred to the Statement of Profit and Loss on a systematic 
+basis over the useful lives of the related assets.
+Applicability of new and revised Ind AS :
+New and amended standards adopted by the Group 
+Ministry of Corporate Affairs (“MCA”) notifies new standards or amendments to the existing standards under Companies (Indian Accounting 
+Standards) Rules as issued from time to time. For the year ended March 31, 2024, MCA has not notified any new standards or amendments to the 
+existing standards applicable to the Group.
+Note 3 : Basis of Consolidation
+The consolidated financial statements relate to The Great Eastern Shipping Company Limited (GESCO), the Holding Company and its subsidiaries 
+(collectively referred to as the Group). The consolidated financial statements of the Holding Company with its subsidiaries have been prepared in 
+accordance with the requirements of Ind AS 110, 'Consolidated Financial Statements'. The financial statements of the Holding Company and its 
+subsidiaries are combined on a line by line basis and intra group balances, intra group transactions and unrealised profits/(losses) are fully eliminated.
+In case of foreign subsidiaries, revenue items are consolidated at an average rate prevailing during the year. All assets and liabilities are converted at 
+the rates prevailing at the end of the year. Exchange gains/(losses) arising on conversion are recognised under Foreign Currency Translation Reserve.
+In the consolidated financial statements, 'Goodwill' represents the excess of the cost to the Group of its investment in the subsidiaries over its share 
+of equity, at the respective dates on which the investments are made. Alternatively, where the share of equity as on the date of investment is in excess 
+of cost of investment, it is recognised as 'Capital Reserve' in the consolidated financial statements.
+Note 4 :
+The financial statements of the subsidiaries used in the consolidation are drawn upto the same reporting date as that of the Holding Company i.e. 
+March 31, 2024.
+Note 5 :
+The subsidiary companies considered in these consolidated financial statements are :
+Sr. No.
+Name of the Companies
+Country of 
+Incorporation
+Ownership in % either directly or through 
+Subsidiaries
+As at 31/03/2024
+As at 31/03/2023
+1
+The Greatship (Singapore) Pte. Ltd.
+Singapore
+100%
+100%
+2
+The Great Eastern Chartering LLC (FZC)
+UAE
+100%
+100%
+2a
+The Great Eastern Chartering (Singapore) Pte. Ltd. 
+(wholly owned subsidiary of The Great Eastern Chartering 
+LLC (FZC))
+Singapore
+100%
+100%
+3
+Greatship (India) Limited
+India
+100%
+100%
+3a
+Greatship Global Energy Services Pte. Ltd.  
+(wholly owned subsidiary of Greatship (India) Limited)
+Singapore
+100%
+100%
+3b
+Greatship Global Offshore Services Pte. Ltd. 
+(wholly owned subsidiary of Greatship (India) Limited)
+Singapore
+100%
+100%
+3c
+Greatship (UK) Ltd.  
+(wholly owned subsidiary of Greatship (India) Limited)
+UK
+100%
+100%
+3d
+Greatship Oilfield Services Ltd. 
+(wholly owned subsidiary of Greatship (India) Limited)
+India
+100%
+100%
+4
+Great Eastern CSR Foundation
+India
+100%
+100%
+5
+Great Eastern Services Limited
+India
+100%
+100%
+
+=== PAGE 147 ===
+255
+254
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Note 6 : Property, Plant and Equipment and Capital Work-in-progress
+(i)	 Property, Plant and Equipment
+(K in crores)
+Particulars
+Gross Block
+Depreciation/Impairment
+Net Block
+As at 
+01/04/2023
+Additions 
+during the 
+year
+Deductions 
+during the 
+year
+Other 
+adjustments 
+[Refer Note 
+(c)]
+As at 
+31/03/2024
+Accumulated 
+depreciation/ 
+impairment 
+as at 
+31/03/2023
+ On 
+deductions
+For the 
+year
+Other 
+adjustments 
+[Refer Note 
+(c)]
+Reversal of 
+impairment 
+[Refer Note 
+30]
+Accumulated 
+depreciation/ 
+impairment 
+as at 
+31/03/2024
+As at 
+31/03/2024
+As at 
+31/03/2023
+Fleet
+11036.03
+785.77
+608.60
+8.67
+11221.87
+5028.71
+384.16
+584.62
+4.66
+ (13.03)
+5220.80
+6001.07
+6007.32
+Rigs
+3227.34
+ - 
+ - 
+ - 
+3227.34
+951.04
+ - 
+115.70
+ - 
+ - 
+1066.74
+2160.60
+2276.30
+Land (Freehold and Perpetual 
+Lease) [Refer Note (a)]
+59.80
+ - 
+ - 
+ - 
+59.80
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+59.80
+59.80
+Ownership Flats and Buildings 
+[Refer Note (b)]
+55.69
+0.34
+ - 
+ - 
+56.03
+27.83
+ - 
+1.14
+ - 
+ - 
+28.97
+27.06
+27.86
+Leasehold Improvements
+5.30
+ - 
+ - 
+ - 
+5.30
+5.30
+ - 
+ - 
+ - 
+ - 
+5.30
+ - 
+ - 
+Plant and Equipment
+100.07
+12.37
+0.13
+ - 
+112.31
+62.92
+ - 
+7.66
+ - 
+ - 
+70.58
+41.73
+37.15
+Furniture, Fixtures and Office 
+Equipment
+54.95
+3.87
+2.80
+0.02
+56.04
+49.76
+2.09
+2.79
+0.02
+ - 
+50.48
+5.56
+5.19
+Vehicles
+32.11
+8.91
+5.99
+ - 
+35.03
+24.22
+5.80
+3.95
+ - 
+ - 
+22.37
+12.66
+7.89
+14571.29
+811.26
+617.52
+8.69
+14773.72
+6149.78
+392.05
+715.86
+4.68
+ (13.03)
+6465.24
+8308.48
+8421.51
+(K in crores)
+Particulars
+Gross Block
+Depreciation/Impairment
+Net Block
+As at 
+01/04/2022
+Additions 
+during the 
+year
+Deductions 
+during the 
+year
+Other 
+adjustments 
+[Refer Note 
+(c)]
+As at 
+31/03/2023
+Accumulated 
+depreciation/ 
+impairment 
+as at 
+31/03/2022
+ On 
+deductions
+For the 
+year
+Other 
+Adjustments 
+[Refer Note 
+(c)]
+Impairment 
+loss 
+[Refer Note 
+30]
+Accumulated 
+depreciation/ 
+impairment 
+as at 
+31/03/2023
+As at 
+31/03/2023
+As at 
+31/03/2022
+Fleet
+11051.09
+388.63
+444.03
+40.34
+11036.03
+4732.08
+295.02
+570.93
+20.72
+ - 
+5028.71
+6007.32
+6319.01
+Rigs
+3227.34
+ - 
+ - 
+ - 
+3227.34
+833.88
+ - 
+117.16
+ - 
+ - 
+951.04
+2276.30
+2393.46
+Land (Freehold and Perpetual 
+Lease) [Refer Note (a)]
+59.80
+ - 
+ - 
+ - 
+59.80
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+59.80
+59.80
+Ownership Flats and Buildings 
+[Refer Note (b)]
+55.69
+ - 
+ - 
+ - 
+55.69
+26.70
+ - 
+1.13
+ - 
+ - 
+27.83
+27.86
+28.99
+Leasehold Improvements
+5.30
+ - 
+ - 
+ - 
+5.30
+5.30
+ - 
+ - 
+ - 
+ - 
+5.30
+ - 
+ - 
+Plant and Equipment
+92.84
+7.23
+ - 
+ - 
+100.07
+55.45
+ - 
+7.47
+ - 
+ - 
+62.92
+37.15
+37.39
+Furniture, Fixtures and Office 
+Equipment
+51.86
+3.14
+0.18
+0.13
+54.95
+46.88
+0.14
+2.90
+0.12
+ - 
+49.76
+5.19
+4.98
+Vehicles
+28.77
+5.44
+2.10
+ - 
+32.11
+22.75
+1.76
+3.23
+ - 
+ - 
+24.22
+7.89
+6.02
+14572.69
+404.44
+446.31
+40.47
+14571.29
+5723.04
+296.92
+702.82
+20.84
+ - 
+6149.78
+8421.51
+8849.65
+Notes :
+(a)	
+Title deeds of immovable property not held in the name of the Group :	
+Relevant 
+line item in 
+the Balance 
+Sheet
+Description 
+of item of 
+property
+Gross 
+carrying 
+value  
+(K in crores)
+Title deed held 
+in the name of 
+Whether title deed holder is a 
+promoter, director or relative of 
+promoter/director or employee 
+of promoter/director 
+Property held 
+since which 
+date 
+Reason for not being held in the name of the Group
+Property, 
+Plant and 
+Equipment
+Land 
+(Perpetual 
+Lease)
+43.72
+Central Camera 
+Company 
+Private Limited
+No
+April 30, 1997
+The Holding Company has filed a Writ Petition in the Bombay High 
+Court contesting demand on account of property tax of J 3.10 crores 
+raised by Bombay Municipal Corporation, as the same is time barred.
+(b)	
+The ownership flats and buildings include J 11,760 (Previous Year : J 11,760) being value of shares held in various co-operative societies.
+(c)	
+During the current year, other adjustments comprise of exchange difference on translation of foreign operations amounting to J 4.01 crores (Gross block : J 8.69 crores and accumulated 
+depreciation/impairment : J 4.68 crores). During the previous year, other adjustments comprise of exchange difference on translation of foreign operations amounting to J 19.63 crores 
+(Gross block : J 40.47 crores and accumulated depreciation/impairment : J 20.84 crores).
+(d)	
+Fleet and Rigs with a carrying amount of J 2984.97 crores (as at March 31, 2023 : J 3649.33 crores) and buildings with a carrying amount of J 0.47 crore (as at March 31, 2023 : J 0.49 crore) 
+have been mortgaged to secure borrowings (Refer Note 18).
+(e)	
+During the previous year, the Group had prepaid certain External Commercial Borrowings (ECBs) to banks and was in the process of satisfying charges on vessels amounting to book value 
+of J 406.10 crores which were registered against such ECBs. The said charges have been released during the current year.
+(ii)	 Capital Work-in-progress
+Capital Work-in-progress amounting to J 50.73 crores (as at March 31, 2023 : J 34.75 crores) consists of dry-dock expenses, scrubbers, ballast water management systems, other equipments 
+on ships pending installation, buildings and others.
+There are no projects whose completion is overdue or has exceeded the cost as compared to original stipulated plan except for dry-dock expenses, scrubbers, ballast water management 
+systems, other equipments on ships pending installation, which are predicated on availability of vessels and drydock yard. Any variations in cost or timelines with regard to such activities are 
+revisited and revised by the management on timely basis.
+Capital Work-in-progress ageing schedule :
+As at March 31, 2024
+(K in crores)
+Particulars
+Amount in Capital Work-in-progress for a period of 
+< 1 year
+1-2 years
+2-3 years
+ More than 3 years 
+Total
+Projects in Progress
+ 45.00 
+ 5.73 
+ - 
+ - 
+ 50.73 
+ 45.00 
+ 5.73 
+ - 
+ - 
+ 50.73 
+As at March 31, 2023
+(K in crores)
+Particulars
+Amount in Capital Work-in-progress for a period of 
+< 1 year
+1-2 years
+2-3 years
+ More than 3 years 
+Total
+Projects in Progress
+ 26.17 
+ 2.18 
+ 2.00 
+ 4.40 
+ 34.75 
+ 26.17 
+ 2.18 
+ 2.00 
+ 4.40 
+ 34.75 
+
+=== PAGE 148 ===
+257
+256
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Note 7 : Intangible Assets and Intangible Assets under development
+(i)	 Intangible Assets
+(K in crores)
+Particulars
+Gross Block
+Amortisation
+Net Block
+As at 
+01/04/2023
+Additions 
+during the 
+year
+Deductions 
+during the 
+year
+As at 
+31/03/2024
+Accumulated 
+amortisation 
+as at 
+31/03/2023
+ On 
+deductions
+For the year
+Accumulated 
+amortisation 
+as at 
+31/03/2024
+As at 
+31/03/2024
+As at 
+31/03/2023
+Software
+13.29
+2.45
+0.80
+14.94
+7.50
+0.80
+1.45
+8.15
+6.79
+5.79
+13.29
+2.45
+0.80
+14.94
+7.50
+0.80
+1.45
+8.15
+6.79
+5.79
+(K in crores)
+Particulars
+Gross Block
+Amortisation
+Net Block
+As at 
+01/04/2022
+Additions 
+during the 
+year
+Deductions 
+during the 
+year
+As at 
+31/03/2023
+Accumulated 
+amortisation 
+as at 
+31/03/2022
+ On 
+deductions
+For the year
+Accumulated 
+amortisation 
+as at 
+31/03/2023
+As at 
+31/03/2023
+As at 
+31/03/2022
+Software
+6.89
+6.40
+ - 
+13.29
+6.67
+ - 
+0.83
+7.50
+5.79
+0.22
+6.89
+6.40
+ - 
+13.29
+6.67
+ - 
+0.83
+7.50
+5.79
+0.22
+(ii)	 Intangible Assets under development
+Intangible Assets under development amounting to J 8.48 crores (as at March 31, 2023 : J NIL) consist of software under development.
+There are no projects whose completion is overdue or has exceeded the cost as compared to original stipulated plan. Any variations in cost or timelines with regard to such activities are 
+revisited and revised by the management on timely basis.
+Intangible Assets under development ageing schedule :
+As at March 31, 2024
+(K in crores)
+Particulars
+Amount in Intangible Assets under development for a period of 
+< 1 year
+1-2 years
+2-3 years
+ More than 3 years 
+Total
+Projects in Progress
+ 8.48 
+ - 
+ - 
+ - 
+ 8.48 
+ 8.48 
+ - 
+ - 
+ - 
+ 8.48 
+As at March 31, 2023
+(K in crores)
+Particulars
+Amount in Intangible Assets under development for a period of 
+< 1 year
+1-2 years
+2-3 years
+ More than 3 years 
+Total
+Projects in Progress
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Note 8 : Other Financial Assets
+(Unsecured)
+(K in crores)
+ Non-Current 
+ Current 
+As at 31/03/2024
+As at 31/03/2023
+As at 31/03/2024
+As at 31/03/2023
+Considered good
+(a)	 Deposits with maturity period of more than 
+12 months *
+ 25.00 
+ 38.23 
+ - 
+ - 
+(b)	Security Deposits
+ 3.95 
+ 3.96 
+ 0.45 
+ 0.09 
+(c)	 Mark-to-Market (MTM) Gains on Derivatives **
+ 14.79 
+ 21.53 
+ 109.93 
+ 125.15 
+(d)	Deposits on account of pool arrangement
+ - 
+ - 
+ 80.59 
+ 58.32 
+(e)	 Insurance Claims
+ - 
+ - 
+0.30 
+0.48 
+(f)	 Others
+ 0.95 
+ 0.62 
+ 25.87 
+ 89.60 
+Considered doubtful
+(a)	 Security Deposit
+ 0.44 
+ 0.44 
+ - 
+ - 
+(b)	Others
+ 1.01 
+ 1.01 
+ - 
+ - 
+Less : Allowance for doubtful deposit and 
+advances
+ (1.45)
+ (1.45)
+ - 
+ - 
+ 44.69 
+ 64.34 
+ 217.14 
+ 273.64 
+* Earmarked for customs amounting to J NIL (as at March 31, 2023 : J 3.23 crores).
+** Mark-to-market gains on derivatives include gains on derivatives designated and effective as hedging instruments classified as cash flow hedge 
+amounting to J14.79 crores (as at March 31, 2023 : J 19.75 crores) as non-current and J10.93 crores (as at March 31, 2023 : J 31.46 crores) as current.
+Note 9 : Current Tax Assets (net)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+Excess of Advance Payment of Income-tax and Tax Deducted/Collected at Source over Provision 
+for Income-tax
+103.05 
+114.94 
+ 103.05 
+ 114.94 
+
+=== PAGE 149 ===
+259
+258
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+Note 10 : Other Assets
+(Unsecured)
+(K in crores)
+ Non-Current 
+ Current 
+As at 31/03/2024
+As at 31/03/2023
+As at 31/03/2024
+As at 31/03/2023
+Considered good
+(a)	 Capital Advances
+ 51.23 
+ 26.52 
+ - 
+ - 
+(b)	Security Deposits
+ 30.73 
+ 22.14 
+ - 
+ - 
+(c)	 Indirect tax Balances/Recoverable/Credits
+ - 
+ - 
+ 39.87 
+ 41.46 
+(d)	Contract Assets *
+ - 
+ - 
+ 49.95 
+ 26.59 
+(e)	 Others **
+ 0.34 
+ 0.35 
+ 72.66 
+ 63.99 
+Considered doubtful
+(a)	 Others
+ 5.98 
+ 5.98 
+ - 
+ - 
+ Less : Allowance for doubtful advances
+ (5.98)
+ (5.98)
+ - 
+ - 
+ 82.30 
+ 49.01 
+ 162.48 
+ 132.04 
+* Contract assets relate to the unfinished voyages to represent the Group’s right to consideration for services provided to date. Contract asset is 
+reclassified to trade receivables at the point at which it is invoiced to the customer.	
+** Others mainly include advances to suppliers, masters, agents and others.
+Note 11 : Inventories
+(Valued at lower of cost and net realisable value)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Stores and Spares on Board Rigs
+ 79.89 
+ 73.36 
+(b)	Fuel Oil
+ 167.49 
+ 131.12 
+ 247.38 
+ 204.48 
+Note :
+Inventories of stores and spares on rigs and fuel oil on vessels and rigs are recognised as expense on consumption and stores and spares relating to 
+vessels are recognised as expense when delivered on board the vessels. The cost of inventories recognised as an expense during the year was J 556.31 
+crores (Previous Year : J 748.09 crores).
+Note 12 : Current Investments
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+Investments in Equity Shares : Quoted (valued at FVTPL)
+ 341.20 
+ 220.98 
+Investments in Liquid Mutual Funds : Unquoted (valued at FVTPL)
+1628.49 
+1288.63 
+1969.69 
+1509.61 
+Aggregate carrying amount of quoted investments
+ 341.20 
+ 220.98 
+Aggregate market value of quoted investments
+ 341.20 
+ 220.98 
+Aggregate carrying amount of unquoted investments
+1628.49 
+1288.63 
+Aggregate amount of impairment in value of investments
+ - 
+ - 
+Note 13 : Trade Receivables
+(Unsecured)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+Considered good
+ 287.08 
+ 295.00 
+Considered doubtful
+ 32.68 
+ 42.27 
+Unbilled Revenue
+ 359.81 
+ 282.02 
+ 679.57 
+ 619.29 
+Less : Allowance for doubtful receivables (expected credit loss allowance)
+ (32.68)
+ (42.27)
+ 646.89 
+ 577.02 
+Notes :
+Trade receivables are initially recognised at their original invoiced amounts i.e. the transaction price. Trade receivables are considered to be of short 
+duration, and hence, not discounted. The customers generally have stable financial standings and high credit quality, and historical experience of 
+collection of receivables also indicates that credit risk is low. All trade receivables are reviewed and assessed for recoverability on a regular basis. The 
+trade receivables overdue for one year and above are provided for as expected credit loss. It is ensured that provision for expected credit loss is not less 
+than the amount derived as per the provision matrix which is based on historically observed default rates over the expected life of trade receivables 
+and forward looking estimates. Besides, specific evaluation is done mainly for demurrage receivable which is based on expected outcome of ongoing 
+negotiations with counterparties. While there is no standard credit period offered, the average recovery period for trade receivables is up to 90 days.
+The movement in expected credit loss during the year is as follows :
+(K in crores)
+ Current Year 
+ Previous Year 
+Opening Balance
+ 42.27 
+ 18.87 
+Add : Allowance during the year
+ 7.04 
+ 33.62 
+Less : Reversal during the year
+ (16.63)
+ (10.22)
+Closing Balance
+ 32.68 
+ 42.27 
+Trade Receivables ageing schedule :
+As at March 31, 2024
+(K in crores)
+Particulars
+Outstanding for following periods from due date of payment/date of transaction *
+Unbilled
+Not due
+Less than 
+6 months
+6 months - 
+1 year
+1-2 years
+2-3 years
+ More than 
+3 years 
+Total
+Undisputed trade receivables 
+- considered good
+ 359.81 
+ 56.91 
+ 207.41 
+ 22.67 
+ 0.09 
+ - 
+ - 
+ 646.89 
+Undisputed trade receivables 
+- considered doubtful
+ - 
+ - 
+ 3.25 
+ 0.27 
+ 1.39 
+ 1.03 
+ 6.16 
+ 12.10 
+Disputed trade receivables 
+- considered good
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Disputed trade receivables 
+- considered doubtful
+ - 
+ - 
+ - 
+ - 
+ 4.09 
+ 15.36 
+ 1.13 
+ 20.58 
+ 359.81 
+ 56.91 
+ 210.66 
+ 22.94 
+ 5.57 
+ 16.39 
+ 7.29 
+ 679.57 
+
+=== PAGE 150 ===
+261
+260
+76th Annual Report 2023-2024  Consolidated Financial Statements
+The Great Eastern Shipping Co. Ltd.
+As at March 31, 2023
+(K in crores)
+Particulars
+Outstanding for following periods from due date of payment/date of transaction *
+Unbilled
+Not due
+Less than 
+6 months
+6 months - 
+1 year
+1-2 years
+2-3 years
+ More than 
+3 years 
+Total
+Undisputed trade receivables 
+- considered good
+ 282.02 
+ 47.70 
+ 213.72 
+ 31.15 
+ - 
+ - 
+ - 
+ 574.59 
+Undisputed trade receivables 
+- considered doubtful
+ - 
+ - 
+ 7.58 
+ 12.26 
+ 14.76 
+ 0.38 
+ 6.47 
+ 41.45 
+Disputed trade receivables 
+- considered good
+ - 
+ - 
+ - 
+ 2.43 
+ - 
+ - 
+ - 
+ 2.43 
+Disputed trade receivables 
+- considered doubtful
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ 0.82 
+ 0.82 
+ 282.02 
+ 47.70 
+ 221.30 
+ 45.84 
+ 14.76 
+ 0.38 
+ 7.29 
+ 619.29 
+* Where due date for payment is not specified/captured in the relevant system, disclosure has been made from the date of transaction.
+Note 14 : Cash and Cash Equivalents
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Balances with Banks in Current Accounts
+3287.84 
+2678.34 
+(b)	Cash on Hand
+ 0.04 
+ 0.02 
+3287.88 
+2678.36 
+Note 15 : Bank Balances other than Cash and Cash Equivalents
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Term Deposits having residual maturity upto 12 months *
+1452.16 
+1047.95 
+(b)	Balances with Banks - Unpaid Dividend Account
+ 9.05 
+ 9.03 
+(c)	 Margin Money Deposits
+ 100.68 
+ 50.60 
+(d)	Interest Accrued on Bank Deposits
+ 41.02 
+ 13.41 
+1602.91 
+1120.99 
+* Term Deposits with original maturity of more than 3 months J 1452.16 crores (as at March 31, 2023 : J 1047.95 crores).
+Margin Money given as security :
+Margin Money Deposits comprise of -
+(i)	 Placed with bank under lien against bank guarantees given
+0.01
+ 0.01 
+(ii)	Placed with bank for derivative facilities given by Bank
+97.25
+ 50.59 
+(iii)  Earmarked for customs
+ 3.42 
+ - 
+ 100.68 
+ 50.60 
+Note 16 : Equity Share Capital
+ As at 31/03/2024 
+ As at 31/03/2023 
+Nos. 
+K in crores
+Nos. 
+K in crores
+Authorised :
+Equity Shares of J 10 each
+30,00,00,000
+ 300.00 
+30,00,00,000
+ 300.00 
+Preference Shares of J 10 each
+20,00,00,000
+ 200.00 
+20,00,00,000
+ 200.00 
+50,00,00,000
+500.00 
+50,00,00,000
+500.00 
+Issued :
+Equity Shares of J 10 each
+14,31,53,522
+ 143.15 
+14,31,53,522
+ 143.15 
+14,31,53,522
+143.15 
+14,31,53,522
+143.15 
+Subscribed and Fully Paid :
+Equity Shares of J 10 each
+14,27,67,161
+ 142.77 
+14,27,67,161
+ 142.77 
+Add : Forfeited Shares J 30,358 (as at March 
+31, 2023 : J 30,358)
+ 2,518 
+ - 
+ 2,518 
+ - 
+14,27,69,679
+142.77 
+14,27,69,679
+142.77 
+(a)	
+Terms/Rights attached to Equity Shares :
+The Holding Company has only one class of equity shares having a face value of J 10 each. Each holder of equity shares is entitled to one vote per 
+share. The Holding Company declares and pays dividends in Indian rupees. Interim dividend is paid as recommended by the Board of Directors.
+In the event of liquidation, the equity shareholders are eligible to receive remaining assets of the Holding Company, after distribution of all 
+preferential amounts in proportion to their shareholding.
+(b)	
+Details of shareholders holding more than 5% equity shares in the Holding Company :
+ As at 31/03/2024 
+ As at 31/03/2023 
+Nos. 
+% holding 
+Nos. 
+% holding 
+Equity shares of J 10 each fully paid
+Mr. Bharat Kanaiyalal Sheth *
+1,56,00,000
+10.93%
+1,56,00,000
+10.93%
+Mr. Ravi Kanaiyalal Sheth *
+1,58,99,023
+11.14%
+1,58,99,023
+11.14%
+Nalanda India Equity Fund Limited
+1,05,24,139
+7.37%
+1,05,24,139
+7.37%
+HDFC Mutual Fund
+91,17,002
+6.39%
+1,02,87,016
+7.21%
+* Shares held as Trustee.
+(c)	
+There are no shares reserved for issue under options and contracts or commitments for the sale of shares.
+(d)	
+For the period of five years immediately preceding the date as at which the Balance Sheet is prepared :
+(i)	
+No shares were allotted pursuant to contracts without payment being received in cash.
+(ii)	 No bonus shares have been issued.
+(iii)	 38,10,581 equity shares have been bought back during the financial year 2019-20. 41,99,323 equity shares have been bought back 
+during the financial year 2021-22.
+(e)	
+There are no securities convertible into equity/preference shares.

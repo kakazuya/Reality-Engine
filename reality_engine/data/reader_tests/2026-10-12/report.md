@@ -2,6 +2,6 @@
 
 | model | answered | figures | identifiable | Haiku's numbers found | unsupported numbers | median s |
 |---|---|---|---|---|---|---|
-| cc:claude-opus-5.5 | 40/40 | 1758 | 94.0% | 1477/1483 (100%) | 0 | 38.62465310096741 |
+| gemma-4-26b@g1|gemma-4-26b@g2|gemma-4-26b@g3|gemma-4-26b@g4|gemma-4-26b@g5|gemma-4-26b@g6|gemma-4-26b@g7|gemma-4-26b@g8 | 40/40 | 1692 | 83.8% | 1459/1483 (98%) | 0 | 12.142693996429443 |
 
-## cc:claude-opus-5.5: unsupported numbers (check on the page image)
+## gemma-4-26b@g1|gemma-4-26b@g2|gemma-4-26b@g3|gemma-4-26b@g4|gemma-4-26b@g5|gemma-4-26b@g6|gemma-4-26b@g7|gemma-4-26b@g8: unsupported numbers (check on the page image)

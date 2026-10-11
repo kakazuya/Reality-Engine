@@ -1,0 +1,3147 @@
+
+=== PAGE 1 ===
+ 
+ 
+SEC/48/2017-63 
+February 15, 2024 
+ 
+ 
+The Manager 
+Compliance Department 
+BSE Limited 
+Phiroze Jeejeebhoy Tower 
+Dalal Street 
+Mumbai – 400 001 
+The Manager 
+Compliance Department 
+The National Stock Exchange of India Ltd. 
+Exchange Plaza 
+Bandra – Kurla Complex, Bandra (East) 
+Mumbai – 400 051 
+Scrip Code/Symbol: 540678/COCHINSHIP 
+ 
+Dear Sir/Madam, 
+Subject: Transcript of Investor/ Analyst Conference Call to discuss the  
+financial results of the Company for the quarter ended  December 31, 2023 
+1. Further to our communication with respect to the conference call to discuss the 
+financial results of the Company for the quarter ended December 31, 2023, please 
+find attached herewith the transcript of the said conference call conducted on 
+Thursday, February 08, 2024 at 04.00 PM IST. 
+ 
+2. 
+The above is for your information and record please.  
+ 
+ 
+For Cochin Shipyard Limited 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=== PAGE 2 ===
+Page 1 of 14 
+ 
+ 
+ 
+ 
+“Cochin Shipyard Limited 
+Q3 FY’24 Results Conference Call” 
+February 08, 2024 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+MANAGEMENT: MR. MADHU S NAIR – CHAIRMAN AND MANAGING 
+DIRECTOR – COCHIN SHIPYARD LIMITED 
+MR. JOSE V J – DIRECTOR FINANCE – COCHIN 
+SHIPYARD LIMITED 
+MR. RAJESH GOPALAKRISHNAN – CHIEF GENERAL 
+MANAGER, SHIP REPAIR – COCHIN SHIPYARD 
+LIMITED 
+MR. HARIKRISHNAN S – CHIEF GENERAL MANAGER, 
+SHIPBUILDING – COCHIN SHIPYARD LIMITED 
+MR. SHIBU JOHN – GENERAL MANAGER, FINANCE – 
+COCHIN SHIPYARD LIMITED 
+MR. SYAMKAMAL N – COMPANY SECRETARY – 
+COCHIN SHIPYARD LIMITED 
+ 
+MODERATOR: 
+MS. CHANDNI CHANDE – KIRIN ADVISORS 
+ 
+
+=== PAGE 3 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 2 of 14 
+ 
+Moderator: 
+Ladies and gentlemen, good day, and welcome to the Q3 FY '24 Results Conference Call of 
+Cochin Shipyard Limited hosted by Kirin Advisors. As a reminder, all participant lines will be 
+in the listen-only mode, and there will be an opportunity for you to ask questions after the 
+presentation concludes. Should you need assistance during the conference call, please signal an 
+operator by pressing star then zero on your touchtone phone. Please note that this conference is 
+being recorded. 
+I now hand the conference over to Ms. Chandni Chande from Kirin Advisors. Thank you, and 
+over to you, ma'am. 
+Chandni Chande: 
+Thank you. On behalf of Kirin Advisors, I welcome you all to the conference call of Cochin 
+Shipyard Limited. From management side, we have Mr. Madhu S Nair, Chairman and Managing 
+Director; Mr. Jose V J, Director of Finance; Mr. Rajesh Gopalakrishnan, Chief General Manager 
+of Ship Repair; Mr. Harikrishnan, Chief General Manager, Shipbuilding; Mr. Shibu General 
+Manager of Finance; Mr. Syamkamal, who is Company Secretary. 
+Now I hand over the call to Mr. Madhu S Nair. Over to you, sir. 
+Madhu S Nair: 
+Good evening to all present in this conference call. I Madhu S Nair, Chairman and Managing 
+Director of Cochin Shipyard Limited, I would like to extend a warm welcome to all the 
+participants who are joining us today. I'm joined by Sri Jose V J, our Director of Finance; Sri 
+Rajesh Gopalakrishnan, Chief General Manager, Ship Repair; Sri Harikrishnan S., Chief 
+General Manager, Shipbuilding; Sri Shibu John, General Manager, Finance; and Shri 
+Syamkamal N, our Company Secretary. 
+I would like to bring to your attention, operational achievements in the third quarter of FY '24. 
+Two major defence projects stood out during this period. Firstly, INS Vikrant, the Indigenous 
+Aircraft Carrier commissioned in September 2022 by the Honourable Prime Minister. This 
+project played a significant role in generating revenue for both Shipbuilding and Ship Repair 
+during this quarter. 
+The second noteworthy project involved the construction of ASW SWC for the Indian Navy 
+with an estimated overall value of about INR 6,300 crores. The progress on this project has been 
+good and we are happy to inform you that 3 vessels were simultaneously launched on 30th 
+November 2023, which is probably a first for such projects of the Indian Navy. Currently, on 
+these 3 vessels which have been launched, the machinery outfitting works are underway.  
+Additionally, 2 more vessels, that's vessel number 4 and 5 in the series had their keel laid on 8th 
+December 2023, and currently hull block erection is in progress. The remaining 3 vessels, that's 
+vessel number 6, 7 and 8 are also in the advanced stages of block fabrication. 
+On the commercial front, of the Multi-Purpose Vessel projects, 8 numbers which we are 
+executing for European clients, also contributed during this quarter. With respect to new orders, 
+CSL has received several important orders in the third quarter until this date. 
+In October 2023, the Ministry of Defence entered into a contract with CSL for a mid-life upgrade 
+and repowering of a Naval platform at a cost of INR313.42 crores. This project is expected to 
+
+=== PAGE 4 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 3 of 14 
+ 
+be completed in 24 months and involves the modernization and upgradation of various systems 
+and the equipment on-board the ship to enhance its operational capability. We consider this as a 
+significant order win because this could set the context for such projects into the future. 
+Furthermore, in December 2023, CSL signed a contract, again with the Ministry of Defence for 
+a value of INR488.25 crores. This contract entails the repair and maintenance of equipment and 
+systems onboard INS Vikrant. The full work is expected to be completed by the first quarter of 
+FY '25. 
+Additionally, on the shipbuilding front, in January 2024, CSL secured orders from a European 
+client for the design and construction of 1 Hybrid SOV, Service Operation Vessel, the project 
+cost for this firm order is estimated to be approximately INR500 crores with the vessel scheduled 
+to be delivered in 2026. 
+ The vessel is designed and built to cater to the service, maintenance and operational needs of 
+the offshore wind farm industry in the European market were sustainable energy solutions are 
+in high demand. It is significant again from the point that this again is a hybrid SOV. 
+In early February 2024, we have signed ship repair contracts for undertaking medium refit of 2 
+India Naval vessels. This is called a multiple refit contract because it's 2 vessels together, so this 
+multiple refit contracts valued at around INR150 crores include drydocking, refits, as well as 
+upgradation of equipment on board the ships. 
+Now I would like to go through other achievements during the period, which I also consider 
+worth mentioning here. CSL successfully delivered 2 Electric Hybrid 100 Pax vessels to the 
+Cochin Water Metro project, a venture which has had considerable significance and visibility 
+nationwide. 
+The replication of this project in various regions is underway and the contract for 8 vessels with 
+similar configuration has been awarded by the Inland Waterways Authority of India to Cochin 
+Shipyard Limited and two of them have already been delivered in January and has presently 
+been positioned, 1 each at Ayodhya and Varanasi. 
+We started the fabrication of steel-cutting and fabrication of the Trailer Suction Hopper Dredger 
+being built by CSL for Dredging Corporation of India. Our subsidiary company, Udupi Cochin 
+Shipyard Limited, UCSL has delivered the first 62-ton Bollard Pull Tug to Ocean Sparkle 
+Limited, which is now part of the Adani Group, which is the leading tug operator in India.  
+Also, the keel has been laid for the second 70-ton Bollard Pull Tug for Polestar Maritime 
+Limited. Members may be aware that UCSL has contracted to build 2 numbers 62-Ton Bollard 
+Pull Tug for Ocean Sparkle and 2 numbers, 70 Ton Bollard Pull Tug for Polestar. 
+Also, at UCSL, fabrication has commenced for 2 numbers, 3,800 ton dry cargo vessels being 
+constructed for Wilson Shipowning AS, Norway, which is part of a 6-vessel series. This 
+showcase of UCSL venture into the global shipbuilding arena. 
+
+=== PAGE 5 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 4 of 14 
+ 
+It's worthwhile and we take pride in informing that CSL, the main unit, Cochin Shipyard Limited 
+has been upgraded to the GreenCo – CII GreenCo Gold rating. We were earlier rated at CII 
+GreenCo Silver by the Confederation of the Indian Industry under the GreenCo framework. So 
+this upgradation from GreenCo Silver to Greenco Gold, is in line with the efforts being put by 
+CSL to upgrade its green and environmental footprint. 
+The confidence that our greening efforts will establish us, as a benchmark for shipbuilding and 
+repair yards in India and also give confidence to various ship-owners looking to build green 
+ships in the country is encouraging for Cochin Shipyard Limited. 
+Moving on to the financials, I would like to mention that our financial results for the third quarter 
+were indicative of positive growth. These results were uploaded on 30th January 2024, and I'm 
+sure that all of you have gone through it in detail. 
+I would request Mr. Jose VJ, Director, Finance, to briefly touch upon the results for the  third 
+quarter of FY ‘24. 
+Jose VJ: 
+Yes. Good evening, everyone. The financial performance of the company during the period were 
+in line with our expectations. In the third quarter of FY '24, the company witnessed a significant 
+increase in turnover, reaching INR1,021.45 crores compared to INR631 crores in the third 
+quarter of FY '23, demonstrating a growth rate of 62 percentage. Similarly, the profit before tax 
+for the third quarter of FY '24 also showed remarkable improvement with INR345 crores as 
+opposed to INR151 crores in Q3 of FY '23, indicating a growth rate of 129 percentage. 
+Moreover, the profit after tax for Q3 of FY '24 stood at INR248 crores, a substantial increase 
+from INR118 crores in Q3 of FY '23, reflecting a growth rate of 109 percentage. When 
+considering the year-to-date performance, the company experienced overall growth in turnover 
+and profitability. 
+The year-to-date turnover of FY '24 amounted to INR2,420 crores, making a 38% increase 
+compared to the previous year turnover of INR1,753crores. Additionally, the year-to-date profit 
+before tax reached INR748 crores, showcasing a marked improvement from previous year's 
+INR390 crores, representing a growth rate of 92 percentage. 
+Similarly, the year-to-date profit after tax was recorded at INR548 crores, indicating a growth 
+rate of 91 percentage when compared to the previous year of INR287 crores. Furthermore, the 
+company redeemed its tax-free infrastructure bonds amounting to INR100 crores in December 
+2023, which reduced the total debt to just INR23 crores as of current date. 
+As a result, the company has practically become a debt-free company. In terms of the financial 
+indicators, the company achieved a strong EBITDA margin of 34 percentage for the 9-month 
+period ended December '24. The margin includes other income also. 
+Additionally, the profit after tax, the PAT margin achieved during the same period was 23 
+percentage, further emphasizing the company's financial success. That's all from my side. 
+
+=== PAGE 6 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 5 of 14 
+ 
+Madhu S Nair: 
+Thank you. The Board of Directors of the company, at the meeting held on 7th November 2023, 
+had approved split of equity shares having face value of INR10, each fully paid up into two 
+equity shares of the face value of INR5 each fully paid up. Shareholders approved the proposal 
+on 13th December 2023, and the split of equity shares were effective from 10th January 2024. 
+Also, the company's Board at the recent meeting held on 30th January '24, have declared second 
+income dividend of INR3.50 per equity share of face value of INR5 each post-split for FY '23, 
+'24, which is repaid by end of this month. This is in addition to the first interim dividend of INR8 
+per equity share of the face value of INR10 each, which is pre-split, which was declared by the 
+Board at its meeting held on 7th November '23. The total payout to the shareholders on account 
+of these two interim dividends is INR197 crores. 
+Moving on to the status of various vessels under construction. For the ASW-SWC Corvettes 
+project for the Indian Navy, a total of eight vessels is being constructed at a cost of about 
+INR6,300 crores. The status has already been covered earlier in my talk. Regarding the Hybrid 
+Electric Catamaran Hull vessels for Kochi Water Metro, a total of 23 vessels are contracted. Out 
+of these 12 vessels, they have already been delivered, remaining 11 are at various stages of 
+construction. 
+For the 7K Multipurpose Vessel project for European clients, a total of 8 vessels are being 
+constructed. Vessels 1 and 2 are currently undergoing hull block erection and outfitting. The 
+vessels 3 to 8 are at various stages of construction. 
+Regarding the Commissioning Service Operations Vessels project, CSOV project, two vessels 
+are being constructed. Plate cutting for the vessels was done on September 1st, 2023, and 
+fabrication is currently in progress. The fabrication for one number, 12,000 cubic meter Trailing 
+Suction Hopper Dredger being constructed by CSL for DCI started on the 11th of December 
+2023. The pilot project of one number Hydrogen Fuel cell vessel, equipment commissioning has 
+been completed and the vessel is in advanced stages of testing and sea trial at this moment. 
+Eight number Hybrid Electric Catamaran Passenger Vessels from IWAI at a cost of about 
+INR129 crores. Two of them have already been delivered in January as was mentioned earlier. 
+And the balancing process are at various stages of construction at our subsidiary, Hooghly 
+Cochin Shipyard Limited. 
+Coming to the two major expansion projects being undertaken by CSL, namely the new dry dock 
+project at a cost of INR1,799 crores, and the International Ship Repair Facility, ISRF project 
+costing INR970 crores. The civil work for both the projects have been completed and the projects 
+were inaugurated by the Honourable Prime Minister Shri Narendra Modi on 17th January 2024. 
+The ceremony was also attended by the Governor of Kerala, the Chief Minister of Kerala, the 
+Unit Minister of Port Shipping and Waterway and other high-level dignitaries. For the dry dock 
+project, all the civil works have been completed and we are now awaiting the installation of the 
+large 600-ton gantry crane delivered to us by M/s. Hyundai Samho Heavy Industries, South 
+Korea. And once the crane is operational, it is expected that the project will be fully functional 
+by mid-2024. 
+
+=== PAGE 7 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 6 of 14 
+ 
+Regarding the ISRF project, the civil works have been fully completed. The Ship lift system and 
+two workstations are ready for operation. The project also includes the addition of four more 
+workstations, which are expected to be completed by mid-2024.  
+I am happy to inform you that our order book currently stands at about INR21,500 crores. For 
+ship repair, we have an order book of about INR800 plus crores. We normally guide a little bit 
+lower, but we have about INR800 plus crores in ship repair. 
+I would like to conclude now and would be happy to take questions. Thank you all for your 
+patient hearing. 
+Moderator: 
+Should we start for the Q&A session? 
+Rajesh Gopalakrishnan: 
+Yes. 
+Moderator: 
+Thank you very much. We will now begin the question-and-answer session. The first question 
+is from the line of Rohit from Antique. Please go ahead, sir. 
+Rohit: 
+Congratulations on a good set of numbers. Sir, if you could just help me with the order backlog 
+position, including the IAC work, both in Shipbuilding and Ship Repair? 
+Madhu S Nair: 
+What was it, the order backlog? 
+Jose VJ: 
+Got INR21,500 crores mentioned by the CMD only the order backlog. Out of that, IAC in 
+INR1,047 crores. And ASW SWC is INR5,215 crores. NGMV, that is Next Generation Missile 
+Vessels is INR9,802. For total from defence is around INR16,064 crores. And on the commercial 
+front the 1,200 passenger vessels INR286 crores, then the KMRL INR32 crores, IWAI 6 vessels 
+INR73 crores and dredger for DCI around INR869 crores. So that comes to around INR1,260. 
+That is on the domestic front. 
+Then the export order, the 7,000 multipurpose vessel INR734 crores. CSOV for a European 
+client is INR955 crores and zero-emission feeder container vessel, two numbers again to another 
+European client is INR547 crores. And SOV for another European client is INR452 crores, 
+which we recently signed the contract. So the total export order is around INR2,688 crores. Then 
+subsidiaries, we have a total order book of around INR700 crores. For ship repair, we have an 
+order book of about INR800 plus crores. So totally INR21,500. 
+Rohit: 
+Thanks, sir. From the context of the EBITDA margin front, how sustainable is this about 20% 
+kind of EBITDA margin as we conclude this IAC? 
+Jose VJ: 
+The EBITDA margin of this level may not be sustainable. But after IAC, we may be around 19 
+to 20 level EBITDA, excluding other income. 
+Rohit: 
+Even in ASW, you mean to say the EBITDA margin can be or even NGMV can give you 19% 
+to 20%? 
+Madhu S Nair: 
+We would not like to discuss exact project wise, but largely, the guidance would be 19% level. 
+Jose VJ: 
+On a blended level. 
+
+=== PAGE 8 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 7 of 14 
+ 
+Madhu S Nair: 
+On a blended level. Because we operate different businesses actually. Ship repair, ship building, 
+different businesses. On both sides, commercial and defence are different businesses. So we 
+would probably desist from getting into a specific project. And that kind of detail we would 
+desist. Because it is a little bit too complex. 
+Rohit: 
+Got it, sir. From an order inflow perspective, especially on INS Vishal, would you want to make 
+any remarks? As in any conversation about it, it will be really helpful, sir? 
+Madhu S Nair: 
+We probably are not in a position to make any comment in this regard. 
+Rohit: 
+Any other order inflows in pipeline like next projects we have been hearing for a long time. Any 
+colour on those aspects? Any additional [AON]? 
+Madhu S Nair: 
+Not yet, not yet. 
+Rohit: 
+No, that means in terms of the conventional defence order inflow, it looks big, right? 
+Madhu S Nair: 
+The RFP issued as of now is -- there is RFP for INR1,600 crores for defence projects. But there 
+are expectations, which I may not be able to discuss, but over this year, within 2024 calendar 
+year, we are expecting further RFPs to come in. 
+Moderator: 
+And the next question is from the line of Deepak Krishnan from Kotak Institutional Equities. 
+Please go ahead. 
+Deepak Krishnan: 
+Sir just wanted to understand this change in margin guidance. Because I think last quarter, you 
+had indicated that, ship repair would be somewhere at segmental level is 13%-14%. Sorry, ship 
+repair is 19%, ship building is 13%-14%. So, on a blended basis, we make 16%-17%. Like, any 
+particular reason for this sharp sort of, increasing guidance and in addition, any one-off factors… 
+Madhu S Nair: 
+We're probably not getting you very clear on the line because there's too much of a booming 
+voice coming in. Can you repeat that question one again? 
+Deepak Krishnan: 
+Is it better now? 
+Madhu S Nair: 
+Just go ahead. Let me see. 
+Deepak Krishnan: 
+Yes, just wanted to understand the 200 bps improvement in margin. So, you had last quarter 
+indicated that ship building does 13%-14% and ship repair does 18%-19%, blended basis was 
+17%? 
+Madhu S Nair: 
+Yes. This quarter, as was mentioned earlier, we had the aircraft carrier, both on the Shipbuilding 
+side and the Ship Repair side, which has helped us a little bit more on the margins. 
+Deepak Krishnan: 
+Sir, I am talking about long-term steady state. Like, we are saying 19% we will do. Just wanted 
+to understand the factors, like, which is higher than 16%, 17% which you normally indicated? 
+Jose VJ: 
+The 19% indicated was post IAC period, post aircraft carrier period. 
+
+=== PAGE 9 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 8 of 14 
+ 
+Deepak Krishnan: 
+Yes, yes. 
+Madhu S Nair: 
+Just a minute, just a minute. 
+Deepak Krishnan: 
+Sir, can you hear me fine now?  
+Madhu S Nair: 
+See when you're talking the margin level, like it's -- you mentioned that we have conveyed earlier 
+17%, 18% kind of level, and we are now talking 19% kind of level. Is this what you said? 
+Deepak Krishnan: 
+Yes, yes. 
+Madhu S Nair: 
+Yes. That is actually coming through when we say 17%, 18% and what we are trying to project 
+into the future, it is a little bit a percentage here and there will always happen. But when we are 
+talking, you would have also seen that on the Ship Repair side, we said we are sitting on a slightly 
+more higher firm order book. So we know that Ship Repair is going to contribute a little bit more 
+over the next few years as we move forward. There is a higher level of confidence the kind of 
+large projects, the multi refit contracts that come in the midlife upgrade contracts that come in. 
+ 
+We are getting signals that this could all be sort of sustainable into the future. These are -- these 
+could be the method that's sustainable into the future. So don’t hold us too hard on to whether 
+it's 18% or 19%, it's somewhere around that level. That is all we would like to say, yes. 
+Deepak Krishnan: 
+Sure, sir. Maybe just on the 2 new facilities. Do we have any work in hand for the ship repair 
+under new dry-dock? Or would that be something that comes up over time? 
+Madhu S Nair: 
+The shipbuilding dock, the new dock, the current orders, the dredger will actually be built in the 
+new docks. And then there are further vessels already scheduled and planned into the new dock. 
+For ship repair, we expect to go and secure orders as we move forward. We don't think that it 
+will be too much of a difficulty to get the orders for our ISRF facility, which is for ships below 
+130 meters long. We are firmly entrenched in that segment. There's quite some volumes 
+available. 
+Moderator: 
+Thank you. The next question is from the line of Raj Rishi from DCPL. Please go ahead, sir. 
+Raj Rishi: 
+Just wanted your comments on how big this Ship Repair can become for you. I believe the 
+increase in capacity is, what, 25% of India ship repair capacity. 
+Madhu S Nair: 
+By numbers. 
+Raj Rishi: 
+Okay. And I also read that you had mentioned in a recent interview that you're looking at a 
+cluster in Maharashtra region also for Ship Repair. So being such a labour-intensive sector, the 
+Ship Repair, what's the edge which you would have, say, internationally to get international 
+orders also? 
+Madhu S Nair: 
+So there are 2 parts to the question. The first one you asked was what could be the size of the 
+business from whatever we currently have. There is the unit we have right now in Cochin, the 
+new ISRF and the units in Mumbai, Kolkata and Port Blair. That's what we currently have. So 
+that is something which I'm not sure whether we have said this earlier, but then we should be 
+
+=== PAGE 10 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 9 of 14 
+ 
+seeing INR1,200 crores very shortly and scaling it up to a INR1,500 crores kind of level in a 
+few years. So that is a picture which we have painted on Ship Repair. 
+ 
+Now what we have talked about a new cluster on the West Coast, it's something which we are 
+in discussion. And that would be actually to try and tap larger ships. Whatever we have built till 
+now, the new ISRF and the 3 units which we have is all for medium size ship. The only large 
+facility is actually at Cochin Shipyard Limited, the main unit. If all goes well and final 
+assessments are clear, then if we do something in the West Coast, that would be for slightly more 
+larger type of vessels trying to tap the international market. 
+And you are asking a very pertinent question. With the kind of labour-intensive work, we need 
+to actually work with best around or next to best around turnaround times in the world to attract 
+business. The confidence is there, the plans are yet to evolve. 
+Raj Rishi: 
+And sir, what's the labour arbitrage, say, if an international ship comes here versus some other 
+country, what's the labour arbitrage? What's the advantage which India would offer? 
+Madhu S Nair: 
+I don't think the labour arbitrage is the most important part here. It is actually the skill sets and 
+the capability to drive. See, world-over ship repair happens in pockets and clusters. For some 
+time, there will be labour arbitrage, that is for sure. But we would not want to do anything into 
+the long term looking at labour arbitrage because that will be gone after some time. So it will all 
+be best-in-class turnaround time worldwide and best-in-class capabilities, which is the 
+confidence level. 
+So it may not be the arbitrage on the labour, but it is trying to actually plug into the global ship 
+repair ecosystem. 
+Raj Rishi: 
+And I also read an interview which you had mentioned that the size of the -- this global ship 
+repair industry is like massive. And I think India is, what, 1% or something. What would be your 
+reasonable vision as to what kind of percentage can it go to? 
+Madhu S Nair: 
+I may not be able to talk on that total percentage from a country perspective. But as we say, from 
+a CSL perspective, I said INR1,500 crores in a not faraway future. But then maybe you should 
+add another INR1,000 crores to it from Cochin Shipyard point of view over the next 10 years or 
+so, something like that. 
+Raj Rishi: 
+And sir, just regards to green shipping, I think you had mentioned in the earlier call that around 
+2,500 ships are ready for their life – end of life. So do you think most of them will go for green 
+shipping or it will be just like fossil fuel? 
+Madhu S Nair: 
+No, they will all go for some sort of green. All these vessels will have some green part in it. So 
+it may not be fully green but it will all have some part of it green. That is for sure. 
+Raj Rishi: 
+And sir, these 2,500 ships which you had mentioned, in how many years would it be like all of 
+them would have to go for like some new ships have to... 
+Madhu S Nair: 
+The general take is in about 10 years' time. 
+
+=== PAGE 11 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 10 of 14 
+ 
+Raj Rishi: 
+In 10 years. And you would expect very, very good business from there, like? 
+Madhu S Nair: 
+It is actually about our execution capabilities. We have now contracted eight ships in Cochin 
+Shipyard from German clients, another six in our Udupi subsidiary. It will really be -- once we 
+deliver these vessels from a quality perspective, time perspective and how beneficial it's been 
+for the clients, that will decide how things will move into the future. But as we're speaking, we 
+feel confident, we feel good. 
+Raj Rishi: 
+Okay. And sir, recent news item, you mentioned some African country delegation, which had 
+come to Cochin Shipyard? 
+Madhu S Nair: 
+A very, very preliminary reach out. It's also got governmental angles to it, but there has been 
+nascent MOU that has been signed. But right now, we are not sensing any business on that at 
+this stage. But we will take it forward. We will see where it goes. 
+Moderator: 
+Thank you. And the next question is from the line of Rohit from Antique. Please go ahead sir. 
+Rohit: 
+My question will be more to do with the capacity augmentation that we have had in the – with 
+the latest edition. What is the peak shipbuilding venue execution you could do theoretically in a 
+given year? 
+Madhu S Nair: 
+That's a very tough call. That depends on the type of projects we are able to garner and the type 
+of the projects that would come up in the market. So because that would be a very difficult 
+question to answer because whether it's a Naval project or whether it’s a conventional 
+commercial vessel or whether it's a functional vessel, it will depend on that because that 
+turnover, it also depends. It's not just by execution of the shipbuilding capabilities. It is also the 
+equipment which goes in because the turnover is a sum of the -- not just the execution but the 
+equipment also. So if it's a functionally costly ship, then the turnover could be high. So that 
+could be a question which we would not like to answer straight away. 
+Rohit: 
+Sir, let me put that question in a different way. We have somewhere like 1,10,000 deadweight 
+tons capacity. Is it fair to assume that the correct... 
+Madhu S Nair: 
+We lost you. 
+Moderator: 
+The line for the current participant has been disconnected, so we will take the next question. The 
+next question is from the line of Vignesh from Ksema Wealth. Please go ahead sir. 
+Vignesh: 
+I just want to understand your guidance for FY25 along with EBITDA margins. 
+Madhu S Nair: 
+Director Finance, can you just explain that? 
+Jose VJ: 
+This year, we may achieve the all-time high turnover we achieved pre-COVID period. And next 
+year, we may add another 12% to 15% above that. That is a broad guidance which I can give. 
+Vignesh: 
+Okay. So approximately, it should be INR3,400 crores for the year, and it should be around 
+INR3,700 crores approximately for next year? 
+
+=== PAGE 12 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 11 of 14 
+ 
+Jose VJ: 
+In a broad way. 
+Vignesh: 
+Got it. And EBITDA margin should be around 18% to 19% as you have stated it approximately? 
+Jose VJ: 
+Yes, yes. 
+Vignesh: 
+Okay. And how for the orders from the Europe, sir like hybrid vessel, green, are you seeing 
+positive inquiries coming up for the next year? 
+Madhu S Nair: 
+We are -- there are inquiries. We are hopeful that we will be able to convert a few of those 
+because these are all in various stages of discussion, but there are inquiries. There's no dearth of 
+inquiry. 
+Vignesh: 
+Okay, okay. And other things, any passenger ships kind of thing where in the waterways where 
+our government is focusing on tourism kind of things, are we getting any orders in such a manner 
+there? 
+Madhu S Nair: 
+We are not in a position to discuss orders at this stage. And the smaller vessels, especially for 
+the inland waterways space, there are discussions that would be largely handled by our 
+subsidiary from Kolkata. That is our thinking. HCSL, Hooghly Cochin Shipyard Limited. 
+Vignesh: 
+Okay. So but discussions are going on in... 
+Madhu S Nair: 
+There are discussions happening, yes. 
+Moderator: 
+And the next question is from the line of Viraj from Jupiter Financial. Please go ahead sir. 
+Viraj: 
+Congratulations in outstanding numbers. My question is regarding to the previous participant. 
+Are you guiding 15% growth from the pre-COVID levels? So that should be in the range of 
+[3,000 -- 700 to 800] top line? And what would be the PAT margin, would be in the range of 
+18%? 
+Jose VJ: 
+PAT margin may not be in the 18% level because next year, we will have the depreciation 
+provision of the new capex which we commissioned. So PAT margin, it may be lower, but 
+EBITDA level, it will be around 18% to 19%, 19% as we guided. 
+Viraj: 
+The PAT margin should be in range of 15% to 16%, then that should be the case. 
+Jose VJ: 
+Yes, because after considering the depreciation of the additional depreciation from the new 
+projects, that's correct. 
+Viraj: 
+Okay. And there was an article in one of the newspapers where Navy said that they would be 
+interested in having two different -- two aircraft carrier. Any comment on that? 
+Madhu S Nair: 
+See, the Navy has gone on record on that matter. But regarding a contract or any further 
+discussions, we would not have any comments. 
+Moderator: 
+The next question is from the line of Raj Rishi from DCPL. Please go ahead, sir. 
+
+=== PAGE 13 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 12 of 14 
+ 
+Raj Rishi: 
+Some companies have commented on, like, India's advantage for them because of the 
+geopolitical situation. People are a little averse to China and the political reach, which the present 
+establishment has global south, etcetera, etcetera, is helping their cause in getting business. So 
+how would you comment as far as -- what would you comment on this as far as Cochin Shipyard 
+is concerned? 
+Madhu S Nair: 
+I'd say overall field for India is looking very positive. And we have been a little bit of an early 
+mover in this space, especially in West Europe. And right now, with the geopolitics, we feel it's 
+much better positive vibes coming in. So it's definitely looking good for us. 
+Raj Rishi: 
+Okay. So this -- do you get help from the government to government level also, like you have to 
+solicit business on your own? 
+Madhu S Nair: 
+We do it on our own. Government is not getting involved in the business. 
+Moderator: 
+And the next question is from the line of Vignesh from Ksema Wealth. Please go ahead. 
+Vignesh: 
+Just wanted to understand the opportunity. Apart from Europe, are we targeting any other 
+geographies as such? 
+Madhu S Nair: 
+Not really at this stage. 
+Vignesh: 
+Okay. So basically, we are seeing like execution or the orders are pulled from the Europe side, 
+execution will be a challenge is what we understand, sir? 
+Madhu S Nair: 
+Europe, our strength we have built up is a little bit towards Europe, which is quality of the 
+product, engineering strength of the organization, trust that we have built up over the past 20 
+years with various clients in Europe, visibility in Europe.  
+And especially since Europe is looking at significant vessels to be built, we really see no reason 
+at this stage to check other geographies at this stage. We are aware of what could happen in other 
+places. But right now, we are focused on Europe other than what we are seeing in the country 
+on our defence and whatever is happening within the country. 
+Vignesh: 
+Okay, understood. Just a little bit more on Europe orders. Were we are seeing it is the 
+replacement demand or the new ships, which is being coming up for the orders with us? 
+Madhu S Nair: 
+So Europe, two types of demand is what we are seeing. One is in European short sea vessels, 
+which are various type of cargo, multipurpose vessels plying largely within Europe. These are 
+largely old vessels. Average age of the fleet could be getting close to 20 years. And naturally, 
+they would need replacement. And when they are getting replaced, they will not get replaced by 
+old class design. They will get replaced by newer technologies and lesser emission vessels, so 
+what we call the green or the hybrid vessels. So that is one part of the demand. 
+The second part of the demand what we are focused on is the wind energy market, which is 
+emerging in Europe and allied requirement for service and support vessels in the wind farm 
+fields. This is expected to peak from 2027 onwards. So right now, there are various agencies 
+
+=== PAGE 14 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 13 of 14 
+ 
+finding it right time to start doing the investment into this segment. And we are getting into that 
+circuit. 
+Vignesh: 
+Sir, just a bit more on the wind energy. Why do these ships come in? How does it work for the 
+wind energy market for ships, just to understand more on that? 
+Madhu S Nair: 
+It's a difficult question. All I can just explain is the wind energy in Europe, being in the tropics, 
+wind energy is going to be dominating the energy transition into the future, and these are largely 
+going to be offshore wind. So it will be offshore field. When you install fixed offshore wind 
+towers or floating wind towers, these days about 10 megawatt each tower and countries are 
+rolling out their own scale.  
+For example, U.K. is talking about 25 gigawatt. Various other countries are talking about. So 
+once this field come up with multiple thousands of wind towers in the field, all these windmills 
+will need continual maintenance and support. And you need a lot of specialized ships in the field 
+to go ahead and service this market. We are trying to look at that support ship, various types of 
+support ships. 
+Moderator: 
+And the next question is from the line of Deepak Krishnan from Kotak Institutional Equities. 
+Please go ahead, sir. 
+Deepak Krishnan: 
+Just wanted to check because you said that the margin increase and all of that is some sort of 
+large number of ship repair and ship refit contracts. So, when you indicate ship repair, INR1,200 
+crores for the top line, that also includes these medium refit orders? Or ships are largely booked 
+in shipbuilding and how big a pipeline is this? 
+Madhu S Nair: 
+All the medium refit, all whatever we said, that is all ship repair. All the mid-life upgrades and 
+the multi-refit contracts, it will all be ship repair. And as we move forward, we feel, as you 
+rightly pointed out, the ship repair turnover goes up and we can hold our business tight as we 
+are doing right now. That will be positive for the company as we move forward. 
+Deepak Krishnan: 
+What could be the size of this research market right now or maybe, say, next two, three years, 
+what is the size that Cochin Shipyard is targeting? 
+Madhu S Nair: 
+As I said, these are very, very fluctuating figures. That's why we wouldn't want to stick to exact 
+figures. But right now, visibility could be INR1,200 crores in a year or two, INR1,500 crores in 
+three and three odd years. This would be roughly where we would like to be. 
+Deepak Krishnan: 
+And maybe just sort of understanding if there's any update on IAC-2 potential, anything that you 
+can kind of think that could happen? 
+Madhu S Nair: 
+Not yet. We both are on the same page. Whatever is there in public domain, only we also know. 
+Deepak Krishnan: 
+Okay, sir. Those are my questions. Maybe just one more follow up. Any guidance that you've 
+given for next year? I sort of lost out on the call in between. 
+Madhu S Nair: 
+We just conveyed this a bit. 
+
+=== PAGE 15 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+February 08, 2024 
+ 
+Page 14 of 14 
+ 
+Deepak Krishnan: 
+Sorry, I got dropped off. Could you just repeat that? 
+Madhu S Nair: 
+What we had said is like for this year, we would exceed our all-time best turnover targets. And 
+for the next year, that's for FY'25, we would try to raise it by 12 to 15 percentage on top of that. 
+Moderator: 
+As there are no further questions from the participants, I now hand the conference over to 
+management for closing comments. 
+Madhu S Nair: 
+Thank you, dear participants, and we are happy to have all of you tuning into the company. We 
+continue to have these engagements taking forward, and whenever there is any significant events 
+or developments in the company, we'll appropriately convey it to the market. Thank you. Thanks 
+for your time. 
+Moderator: 
+On behalf of Kirin Advisors, that concludes this conference. Thank you for joining us, and you 
+may now disconnect your lines. 
+
+=== PAGE 1 ===
+ 
+ 
+ 
+ 
+Dear Sir / Madam, 
+Subject: Transcript of Investor/ Analyst Conference Call to discuss the  
+financial results of the Company for the quarter and year ended March 31, 2024 
+1. 
+Further to our communication with respect to the conference call to discuss the financial 
+results of the Company for the quarter and year ended March 31, 2024, please find attached 
+herewith the transcript of the said conference call conducted on Friday, May 31, 2024 at 04:00 
+P.M. 
+ 
+2. 
+The above is for your information and record please. 
+ 
+ 
+For Cochin Shipyard Limited 
+ 
+ 
+SEC/48/2017-63 
+June 07, 2024 
+ 
+ 
+The Manager 
+Compliance Department 
+BSE Limited 
+Phiroze Jeejeebhoy Tower 
+Dalal Street 
+Mumbai – 400 001 
+The Manager 
+Compliance Department 
+The National Stock Exchange of India Ltd. 
+Exchange Plaza 
+Bandra – Kurla Complex, Bandra (East) 
+Mumbai – 400 051 
+Scrip Code/Symbol: 540678/COCHINSHIP 
+Digitally signed 
+by Syamkamal N 
+Date: 2024.06.07 
+18:27:08 +05'30'
+
+=== PAGE 2 ===
+Page 1 of 15 
+ 
+ 
+ 
+ 
+“Cochin Shipyard Limited 
+Q4 FY ’24 Earnings Conference Call” 
+May 31, 2024 
+ 
+ 
+ 
+  
+ 
+ 
+MANAGEMENT: MR. MADHU S NAIR – CHAIRMAN AND MANAGING 
+DIRECTOR – COCHIN SHIPYARD LIMITED 
+MR. JOSE V J – DIRECTOR FINANCE – COCHIN 
+SHIPYARD LIMITED 
+MR. NEELAKANDHAN A N – CHIEF GENERAL 
+MANAGER, PLANNING & PROJECT MANAGEMENT – 
+COCHIN SHIPYARD LIMITED 
+MR. RAJESH GOPALAKRISHNAN – CHIEF GENERAL 
+MANAGER, SHIP REPAIR – COCHIN SHIPYARD 
+LIMITED 
+MR. HARIKRISHNAN S – CHIEF GENERAL MANAGER, 
+SHIPBUILDING – COCHIN SHIPYARD LIMITED 
+MR. SHIBU JOHN – GENERAL MANAGER, FINANCE – 
+COCHIN SHIPYARD LIMITED 
+MR. SYAMKAMAL N – COMPANY SECRETARY – 
+COCHIN SHIPYARD LIMITED 
+ 
+MODERATOR: 
+MS. CHANDNI CHANDE – KIRIN ADVISORS 
+ 
+ 
+
+=== PAGE 3 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 2 of 15 
+ 
+Moderator: 
+Ladies and gentlemen, good day and welcome to Cochin Shipyard Limited Q4 and FY '24 
+Conference Call hosted by Kirin Advisors. As a reminder, all participant lines will be in the 
+listened only mode and there will be an opportunity for you to ask questions after the 
+presentation concludes. Should you need assistance during the conference call, please signal an 
+operator by pressing star then zero on your touch-tone phone. Please note that this conference 
+has been recorded. 
+Ladies and gentlemen, the call duration is for one hour. I now hand the conference over to Ms. 
+Chandni Chande from Kirin Advisors. Thank you and over to you, ma'am. 
+Chandni Chande: 
+Thank you. On the behalf of Kirin Advisors, I welcome you all to the conference call of Cochin 
+Shipyard Limited. From management team, we have Shri Madhu S Nair, Chairman and 
+Managing Director; Shri Jose V J, Director of Finance; Shri Neelakandhan A. N., Chief General 
+Manager, Planning & Project Management, Shri Rajesh Gopalakrishnan, Chief General 
+Manager, Ship Repair; Shri Harikrishnan S., Chief General Manager, Shipbuilding; Shri Shibu 
+John, General Manager, Finance; Shri Syamkamal N., Company Secretary. Now I hand over the 
+call to Shri Madhu S Nair. Over to you.  
+Madhu S Nair: 
+Thank you. Good evening and a warm welcome to the conference call of Cochin Shipyard 
+Limited. As has been briefly mentioned, I'm Madhu S Nair, Chairman and Managing Director 
+of Cochin Shipyard Limited; and the senior officials whose names have just been introduced are 
+with me. As the CMD of Cochin Shipyard Limited, I'm proud to present the outstanding 
+performance of the company for the last financial year. Let me begin by highlighting some of 
+our significant achievements during Q4 2024 till date. 
+ 
+On the new orders, from January 2024 till date, we are happy to announce the signing of the 
+contract with a prominent European client for the design and construction of Hybrid Service 
+Operation Vessel, Hybrid SOV, which is slated for delivery in the year 2026. Subsequently, CSL 
+has secured another contract from the same client for the design and construction of a Hybrid 
+SOV with an additional option for 2 more such vessels expected to be completed by end of 2026. 
+Both these contracts put together is in the range of INR1,000 crores to INR1,200 crores. 
+ 
+Furthermore, our wholly-owned subsidiary, UCSL, has secured an order for a 70-ton Bollard 
+Pull Tug for Polestar Maritime Limited and another order for 3 numbers of 70-ton Bollard Pull 
+Tug for Ocean Sparkle Limited. Other wholly-owned subsidiary, Hooghly Cochin Shipyard 
+Limited, HCSL, has secured an order for the construction of 2 numbers of 40-ton Bollard Pull 
+ASD Tugs for Industrial Handling Private Limited. All these orders aggregate to around INR250 
+crores to INR300 crores. 
+ 
+On the ship repair front, CSL has entered into a contract with the Indian Navy for undertaking 
+medium refits of two Indian naval vessels, the value of which comes to around INR150 crores. 
+Additionally, CSL has signed the Master Ship Repair Agreement, MSRA, with the United States 
+Navy, which will facilitate the repair of U.S. naval vessels under the Military Sealift Command 
+in our shipyards. 
+
+=== PAGE 4 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 3 of 15 
+ 
+ 
+We are honoured to have the Honourable Prime Minister of India flag off India's first 
+indigenously-built Hydrogen Fuel Cell Vessel, a remarkable achievement that underscores our 
+commitment to sustainable maritime solutions. 
+ 
+We have also delivered two state-of-the-art Hybrid Electric Catamaran Hull Vessels for the 
+Kochi Metro Rail Limited under the Kochi Water Metro Project. Our subsidiary, UCSL, has 
+also delivered a vessel named Ocean Splendour, a 62-ton Bollard Pull Tug built for Ocean 
+Sparkle Limited and a 70-ton Bollard Pull Tug named Konna Star, for Polestar Maritime 
+Limited. 
+ 
+Turning our attention to other major events, the Honourable Prime Minister dedicated the 
+International Ship Repair Facility, ISRF and the world's first stepped dry-dock to the nation on 
+January 17, 2024, marking a significant milestone in the augmentation of India's maritime 
+capability. These projects are significant for the company as it's the highest capex, around 
+INR2,769 crores, ever made by CSL in its long journey of over 50 years. 
+ 
+The civil work for the new dry-dock project, including the dock floor, caisson gate, pump house 
+and substations, etcetera, has been fully completed and the installation and commissioning of 
+the 600-ton gantry crane are currently in progress and the new dry dock is expected to be fully 
+in operation by August 2024. 
+ 
+The ship lift system, 2 workstations and afloat repair berth of ISRF project at Willingdon Island 
+is operational and it is expected that ISRF will be fully operational after the completion of certain 
+allied work by August 2024. We have also successfully carried out the maiden surface run of 
+the High Endurance Autonomous Underwater Vehicle, HEAUV, at our ISRF facility in Kochi, 
+meeting all the required parameters. 
+ 
+CSL has also been awarded the prestigious Kerala Industrial Safety Award 2023 under the 
+category of Very Large Factories in Engineering instituted by the government of Kerala, 
+reaffirming our commitment to excellence in safety standards. 
+ 
+Turning my attention to the financial performance of the company. I'm pleased to report that 
+Cochin Shipyard has registered its all-time high turnover in the financial year '23-'24, surpassing 
+the previous high achieved in the financial year 2019-'20. 
+ 
+On a consolidated basis, the turnover in 2023-'24 stands at INR3,830.45 crores compared to 
+INR2,364.55 crores in '22-'23, representing an increase of 62 percentage. Furthermore, our profit 
+before tax in '23-'24 has reached INR1,070.94 crores, 156 percentage increase from the 
+INR418.44 crores recorded in '22-'23. Our profit after tax in '23-'24 is INR783.28 crores, 157 
+percentage increase from the figure of INR304.71 crores in the previous year. 
+ 
+It is also worth mentioning that the company's ship repair turnover has crossed INR1,000 crores 
+and the net worth of the company has clocked INR5,000 crore mark for the first time in the 
+history of CSL. For the financial year '23-'24, CSL derived 72 percentage of its total operating 
+income from shipbuilding activities and the remaining 28 percentage came from ship repair 
+operations. Within the shipbuilding segment, 46 percentage of the revenue was generated from 
+
+=== PAGE 5 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 4 of 15 
+ 
+the work on the Indigenous Aircraft Carrier and the remaining 54 percentage work from other 
+shipbuilding projects. 
+ 
+The ship repair units, apart from the main unit in Kochi, performed well during the year. 
+CMSRU, CSL's Mumbai Ship Repair Unit, registered a revenue of over INR150 crores; and 
+CANSRU, CSL's Andaman & Nicobar Ship Repair Unit, achieved a turnover of about INR100 
+crores. The other ship repair unit, CKSRU, also demonstrated reasonable performance. 
+ 
+Regarding the subsidiary companies, Udupi Cochin Shipyard Limited, UCSL, which CSL had 
+acquired through the IBC process, has turned around completely. It's recorded a total revenue of 
+INR186 crores, a PBT of INR3 crores and a PAT of INR1 crore during the financial year 
+compared to a loss of INR9 crores in the previous year. The order book position of UCSL stands 
+at approximately of INR800 crores as on date. The other subsidiary, Hooghly Cochin Shipyard 
+Limited, HCSL, has started securing new orders, with a total order value of approximately 
+INR150 crores as on the reporting period. The company is optimistic about achieving a good 
+execution rate in the upcoming financial year for HCSL. 
+ 
+In recognition of our financial performance, the Board has recommended a final dividend of 
+INR2.25 per share, aggregating to INR59.19 crores. Coupled with the interim dividends paid 
+during the year, the total dividend for the financial year '23-'24 amounts to INR256.50 crores, 
+which is 32 percentage of the profit after tax. 
+ 
+Furthermore, I would like to remind that the company has redeemed its tax free bonds amounting 
+to INR100 crores in December 2023 and as of now, the company is practically debt-free, with 
+only INR23 crores as long-term debt. Also, the company in January 2024, completed the split 
+of equity shares in the ratio of 1:2, that is one equity share of face value of INR10 each was split 
+into 2 equity shares of face value of INR5 each. 
+ 
+Turning our attention to the status of vessels under construction. We have made significant 
+progress across various shipbuilding projects. On the anti-submarine warfare shallow water craft 
+corvette, ASW-SWC, we have a total of 8 vessels under contract, with 3 vessels launched in 
+November 2023 and the machinery outfitting of these vessels are underway. The keel has been 
+laid for a further 2 vessels, that is number 4 and 5 in the series, in December 2023 and the hull 
+block erection is progressing steadily. The remaining 3 vessels, vessel number 6, 7, & 8 are in 
+advanced stages of fabrication. 
+ 
+With regards to the Hybrid Electric Catamaran Hull Vessels for Kochi Metro Rail Limited, under 
+the Kochi Water Metro project, we have a total of 23 vessels under contract, of which 14 vessels 
+have been delivered and the remaining 9 vessels are under various stages of construction. For 
+the 7,000 deadweight Multi-Purpose Vessel project for European clients, we have a total of 8 
+vessels under contract and block erection and outfitting are underway for 2 vessels, while the 
+keel has been laid for other vessels, which are in various stages of construction. Additionally, 
+we have 2 Commissioning Service Operation Vessel, CSOV and 1 number of 12,000 cubic meter 
+Trailer Suction Hopper Dredger, all of which are under block fabrication stage. Notably, the 
+Hydrogen Fuel Cell Vessel, we have completed its trial and that sailed off from CSL to Varanasi 
+on 18th May 2024. 
+
+=== PAGE 6 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 5 of 15 
+ 
+ 
+As we look towards the future, I'm pleased to inform you that our current order book position is 
+healthy, with approximately INR22,000 crores of unexecuted orders, including the ship repair 
+orders, which typically amounts to a little bit of higher level than earlier times at about INR1,200 
+crores at this given point of time. 
+ 
+These achievements are the result of hard work, dedication and innovative spirit of our entire 
+CSL team, right from the senior management to the worker level. I'm confident that with the 
+continued support of all stakeholders, we will maintain this momentum and drive sustainable 
+growth that will create value for our shareholders. 
+ 
+For the financial year 2024-'25, we would like to guide with a target of 20 to 25 percentage 
+increase in the top line. Our PAT level will have to be tempered due to the higher depreciation 
+cost from the commissioning of the ISRF and the new dry dock project. We expect to sustain 
+the EBITDA at the level which we have previously guided. 
+Thank you for your patient hearing and now we would be happy to take any questions. Thank 
+you, Jai Hind. 
+Moderator: 
+Thank you very much. We will now begin the question-and-answer session. Our first question 
+is from the line of Deepak Krishnan from Kotak Institutional Equities. Please go ahead. 
+Deepak Krishnan: 
+I just wanted to understand, you said the EBITDA margin previously guided, so in the range of 
+18% to 19% on a consolidated. Is that understanding correct? 
+Madhu S Nair: 
+Can you just repeat that last part of the question? You were talking about the EBITDA margins? 
+Deepak Krishnan: 
+Yes, sir. You said EBITDA margins will be in the range of previous guidance. So does that 
+imply more closer to the 18% to 19% on an annual basis EBITDA margin guidance? 
+Madhu S Nair: 
+That's right. 
+Deepak Krishnan: 
+Sure, sir. And maybe just a follow-up on that. Factors that drove such high EBITDA margin this 
+quarter. Is it largely due to the INR400-odd crore ship repair contract that we have that continues 
+till Q1 FY '25 and the IAC-1 sitting in our book? Are those two factors having margins ahead in 
+this particular quarter? Or was there any one-off factor? 
+Madhu S Nair: 
+It's not one-off. It's the large things, as you rightly said. We had good projects and project 
+execution, both on the ship repair side, aided by the aircraft carrier in the dock and the IAC 
+revenue is also coming in. So there has been good traction, both on the execution side, ship 
+repair and shipbuilding. So it's not largely one-off. 
+Deepak Krishnan: 
+Sure. And maybe just a follow-up question. The agreement that we have, the MSRA, when do 
+we kind of see any orders coming through? Or is it just like a prequalification? And how does 
+things really progress from the signing of the MoU? 
+Madhu S Nair: 
+It is a formal agreement and we are expecting inquiries and offers will be submitted. It will have 
+to be taken through. But as a company, we'll push for earlier starts on this. I'm not able to give 
+time lines on this, but it's a full agreement and we'll have to get into execution at the earliest. 
+
+=== PAGE 7 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 6 of 15 
+ 
+Deepak Krishnan: 
+Sure. But is there like a guaranteed volume or anything that you can kind of comment on? 
+Madhu S Nair: 
+No guaranteed volumes. But the company has been evaluated thoroughly and the final 
+inspections were in Jan by a 17-member team spread over 3 days and the feedback has been 
+excellent. 
+Deepak Krishnan: 
+Maybe just one follow-up. If you could indicate the order backlog within sections, defense - 
+you've given the overall number of INR22,000 crores, but within defense, commercial, 
+commercial exports. 
+Madhu S Nair: 
+It will be uploaded immediately after this call. 
+Deepak Krishnan: 
+Okay, maybe I will just come back on the questions after a while. 
+Moderator: 
+Our next question is from the line of Umesh Raut from Nomura. Please go ahead. 
+Umesh Raut: 
+Good evening and Congratulations for the good set of numbers. Sir, my first question is 
+pertaining to future prospect pipeline on the ordering side, both on shipbuilding and ship 
+repairing. Could you please highlight key projects which you are expecting in next couple of 
+years? 
+Madhu S Nair: 
+Ship repair, Rajesh, can you just throw light on the ship repair part in brief? 
+Rajesh Gopalakrishnan: 
+Yes. Ship repair, as was mentioned briefly, typically, ship repair, we don't maintain a long term 
+order book because inquiries keep coming and we quote and take orders. But this particular year 
+is slightly different because we already have secured firm orders for almost for the full year and 
+most of them are mainly from the Navy, a couple of large weapon platform refit projects and of 
+course, one major conversion project from the Navy. 
+ 
+Along with that, there are also MoU projects which we are handling for the Lakshadweep 
+Administration. These are all almost assured projects. So from that sense, the order book for this 
+particular year for ship repair looks quite well settled and final figures will actually be revealed 
+when we complete the negotiations especially on the naval projects. 
+Madhu S Nair: 
+On the shipbuilding side, you're talking about further order inflow. You'll have to wait a little 
+bit to see on the defense side. And on the international side, as was briefly mentioned, we have 
+secured this recent two contracts for the Hybrid SOVs. And I won't be able to give you much 
+more information, but I can tell you that there is good traction we are seeing on similar vessels 
+from Europe and we expect to sign more contracts. Naturally, with a caveat that's ‘all going 
+well’. 
+Umesh Raut: 
+Okay. A follow-up on shipbuilding prospects. So basically, there is a next corvette order which 
+is in the pipeline. And what we are hearing, there are about 4 shipyards which are now shortlisted 
+by MoD to participate into the tender. So just wanted to clarify whether Cochin Shipyard has 
+qualified in that particular order or not. 
+
+=== PAGE 8 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 7 of 15 
+ 
+Madhu S Nair: 
+I wouldn't want to comment on that specific information because it's not a formal communication 
+kind of a thing. So we would not want to comment on matters which would be the prerogative 
+of the Indian Navy. 
+Umesh Raut: 
+Okay. Got it, sir. My follow-up on repairing side is more of on the utilization of new facilities, 
+which got commenced recently. How you are planning to kind of ramp up revenue from that 
+particular facility? 
+ 
+And maybe in the medium to longer term, maybe 3 to 5 years down the line, what kind of 
+repairing top line you are seeing? And along with that, maybe what kind of margins you are kind 
+of seeing more of sustainability to maintain on the repairing side? 
+Madhu S Nair: 
+See, the facility for ship repair, ISRF has been commissioned, as I briefly mentioned. We expect 
+this to be put into operations from August '24 onwards. We are coming up shortly with a global 
+tender for a global operating partner, which will be out in the open shortly. And over the next 
+few years, we expect significant revenues to come in, but I wouldn't want to put figures on to 
+this, we have our internal projections and we have a plan of action. But it probably would not be 
+proper to put this across in the open at this stage. But number of vessels, there will be, because 
+as we already said, the facility is to cater to 82 vessels in a year of size less than 130-meter in 
+length. So you were wanting a guidance in 3 years to 5 years' time, but I can say for sure that in 
+3 years to 5 years, it will actually touch that kind of numbers on the ship repairs. We would not 
+want to put money values into it at this stage. 
+Umesh Raut: 
+And sir, on the margin side, is it fair to say that 25% to 30% is more of a sustainable EBIT 
+margin range for ship repairing business? 
+Madhu S Nair: 
+My Director Finance would like to guide you to 22 to 23 percentage. 
+Umesh Raut: 
+Okay. So sir, that is more of at the company level, right, at a blended shipbuilding plus ship 
+repairing level, right? I was asking more of from the repairing point of view only. 
+Jose V J: 
+It would not be prudent to take Q4 performance or this FY23-24 performance be taken as the 
+guidance, because in FY24, since there a better execution, the EBITDA level is higher. But going 
+forward, the blended level, you can expect around the 17% - 19%. 
+Madhu S Nair: 
+We always say 17% to 19% for the blended level. We would like to be conservative, but we 
+would like to say 17% to 19%. Ship repair, we would like to say 22 to 23 percentage. Probably, 
+you can take a little bit of your views, but we would like to convey these levels on a prudent 
+basis. 
+Umesh Raut: 
+Got it. Fair enough, Sir, you have mentioned in your opening remarks that depreciation costs 
+from '24 onwards will go up significantly. Is it fair to assume that new capacity will have a 
+depreciation rate of closer to, say, 6% and maybe additional cost of about INR50-odd crores 
+incrementally on a base of '24? 
+Jose V J: 
+Both capacities put together is around INR2,800 crores. So the additional depreciation will be 
+around INR125 crores to INR150 crores, not exact. 
+
+=== PAGE 9 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 8 of 15 
+ 
+Umesh Raut: 
+Okay. But would that be applicable from FY '25 onwards? Or that will come up in phases? 
+Jose V J: 
+We are planning to fully commission that project by August '24. So around 8 months, it will be 
+there. The depreciation will be there for almost 8 months of the financial year. 
+Umesh Raut: 
+Got it, sir. My last question is more of on the balance sheet side, where if I look at inventory 
+position for FY '24, that has increased by about 40 days. If I look at on an average in the last few 
+years, we were maintaining closer to about 45, 50 days, but for '24, it was closer to 100 days. So 
+was there any particular reason behind this? 
+Jose V J: 
+Now both ASW and NGMV, projects are coming to the production stage. So a lot of materials 
+have started reaching CSL. So the inventory has gone up this year and high value equipments 
+also. For NGMV project, the material component is quite high. 
+Umesh Raut: 
+Okay. Got it. And similarly, advances from customers, that has also seen marginal drop as 
+compared to FY '23 and FY '24. So would that continue, assuming that our execution from ASW 
+Shallow Water Craft and NGMV will go up only from current level? 
+Jose V J: 
+Yes, it is likely to come down. The advance of customers was mainly from the NGMV project, 
+but now since the execution started, the advance will come down. 
+Umesh Raut: 
+Okay. Got it sir. Thank you. 
+Moderator: 
+Our next question is from the line of Pritam from Wealth Way. Please go ahead.  
+Pritam: 
+My question is regarding decarbonization and the opportunity for Cochin Shipyard in green 
+vessels. So how big is the opportunity for the hybrid vessels, zero emission vessels, both large 
+and the medium-sized as well as the green tugs, patrolling boats, etcetera? 
+ 
+We saw some orders coming along on those fronts and also how we are technologically advanced 
+when we will have to compete against a few of those Japanese or Korean companies also perhaps 
+with the European policy that is coming up by 2027-'28 that they are probably levying penalties 
+for the diesel petrol boats and more efforts towards green? 
+Madhu S Nair: 
+On the green vessels, from an international point of view, CSL had has got a generally good 
+footing in the European market and we expect orders to come in from that segment. Many of the 
+companies are looking at options and would like to talk to Cochin Shipyard. We are expecting 
+orders from that side. So we have set in motion. I don't want to use the word firmly entrenched, 
+but we are almost there in the international functional vessel part. Specialized vessels like wind 
+construction vessels and other specialised vessels, we are generally good. 
+ 
+Coming to the Indian market, you were alluding to the green tug policies and other things. And 
+we again feel there would be a good opportunity for CSL and for other shipyards also. But we 
+have been working on this for quite some time. We are expecting at least 8 to 10 vessels being 
+ordered over the next year or so by the major ports through private entities and of course we 
+expect to be very much actively parked in those process. I'm not in a position to say exactly what 
+
+=== PAGE 10 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 9 of 15 
+ 
+we will get, but both international green vessels on the functional vessels side and Indian vessels 
+on the green tug side, we are good. 
+ 
+The other thing on the green vessel side, green ferries and other things, what we are talking, it 
+will not translate into too much of business at this stage, but we would be frontrunner in all those 
+aspects. You also asked a question on the technology and competition. We are good on that. We 
+are good from a competitive point of view and we have our methods to do appropriate 
+partnerships and collaborations. So that is not a great worry at this stage. I presume this gives 
+you an overall feel of this space. 
+Pritam: 
+And regarding Kochi Water Metro station, do you see replicas of those coming in other areas of 
+India? Are there any inquiries or potential sales could be coming? 
+Madhu S Nair: 
+It is not exactly the same, but definitely, there is. I can confirm that the Bengal government is 
+talking projects. We are actively involved there. There are others also. So we are also waiting 
+for the outcome. 
+Moderator: 
+Our next question is from the line of Vivek from Shanti Financial. Please go ahead. 
+Vivek: 
+Congratulations. The entire shipyard sector itself catching the fancy of the market and Cochin is 
+probably the pioneer for everything to do within defense. I'd like to understand, broadly, you 
+mentioned that you have an order book of some sort, but then there are so many other projects 
+in the pipeline. So I guess to understand the breakup of - what are orders on hand? You 
+mentioned around only INR1,200 crores. What is the size of the volume of such mix? What's 
+the size of the revenue that is part of your pipeline? 
+ 
+And I'd also like to understand if there's going to be a call transcript that's going to be posted on 
+your website or any of the normal financial websites for us to take stock of the numbers that you 
+mentioned, because there are many projects and many different numbers that have been 
+discussed? 
+Madhu S Nair: 
+Regarding the order book and the order possibilities, I would request you to kindly wait till end 
+of this call and immediately thereafter, we are uploading a presentation in which there are 2 
+slides giving a fair bit of information on the order position. But the overall for a figure, 
+INR22,000 crores from both shipbuilding and shiprepair out of which about INR15,000 crores 
+is the defense part and the balance is the non-defense part. 
+ 
+The ship repair component of order book is about INR1,250 crores, which normally, if you have 
+been following us earlier, we always used to guide about the order book of INR600 crores, 
+INR700 crores. So ship repair order book is also at much better level right now. But you will get 
+more information when we upload this after this call. 
+Moderator: 
+Our next question is from the line of Viraj from Jupiter Finance. Please go ahead. 
+Viraj: 
+Congratulations, sir, on the good set of numbers. My question is regarding the guidance. You 
+gave a growth of 25% and EBITDA of 19% to 20% EBITDA margin. So the PAT should be in 
+the range of 12% to 14%, is that correct to think, number one? 
+
+=== PAGE 11 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 10 of 15 
+ 
+ 
+Number two, what are the factors making you - giving you some confidence that the growth will 
+be double digit, maybe 20%, 25% on the revenue growth? That's my question number two. 
+ 
+My other question is on the ship repair sir, like with U.S. the strong connection plus Europe, 
+what kind which will give you more colour in terms of growth in the ship repair business for a 
+bit of time. Just your sense. I'm not asking for a guidance, but just your sense for a period of 
+time to understand? Thank you sir. That's it from side. 
+Madhu S Nair: 
+On the growth guidance, 20 percentage to 25 percentage on the overall turnover in FY25. You 
+are aware that shipbuilding and ship repair for the year, we talk based on contracts in hand and 
+our current execution status and the confidence is based on that. So that's the top line growth on 
+both shipbuilding, ship repair together. 
+ 
+Your next question was on ship repair, connected with the MSRA with the U.S. Navy. Currently, 
+financial figures from MSRA has not been factored in. Our ship repair story, what we have 
+conveyed is based on what we are currently in and what we are seeing our potential to see over 
+the next 12 to 18 to 24 months. 
+ 
+We will not be able to record it, but we are also tracking continuously in the market what kind 
+of orders in the ship repair space will come, both from defense and from our friends in the 
+commercial space. So it is based on that. 
+ 
+Specifically on the U.S. MSRA, see, all I can say is it's a very significant step for Cochin 
+Shipyard. Because the U.S. vessels, both the - what we call the MSC sealift vessels and the 
+combatant vessels, there are a lot of challenges and a lot of requirements, but Cochin Shipyard 
+has been cleared after a long and detailed assessment. The entire team have been happy with our 
+performance and what we have done. 
+ 
+But we are waiting for the first order and probably the second order to come in and to exactly 
+convey to people like you how exactly it is going. But all in all, if I may use the word, it is a 
+very positive step for Cochin Shipyard. I would not want to add figures on it. 
+Viraj: 
+Sir, my follow-up on this would be that as the aircraft carrier comes, this will be additional to 
+all the guidance, right? My thinking is correct in this direction? 
+Madhu S Nair: 
+That is correct. 
+Viraj: 
+Thank you Sir and good luck. 
+Moderator: 
+Our next question is from the line of Sagar Gandhi from Invesco Mutual Fund. Please go ahead 
+Sagar Gandhi: 
+My question is related to IAC-2. So I'm not asking you whether it will come or not, but if it has 
+to come, will it be '26 or '27? 
+Madhu S Nair: 
+Sagar Gandhi, your guess should be as good as mine and there would be - if at all I have better 
+information, I will not be able to share it also here. That's all. 
+
+=== PAGE 12 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 11 of 15 
+ 
+Sagar Gandhi: 
+Okay. Sir, my second question is considering that next 2 years are likely to be very heavy in 
+terms of delivery or revenue bookings, so in absence of IAC-2 will FY '25 or '26 still see peak 
+revenue? 
+Madhu S Nair: 
+We don't want to consider it that way. Because with IAC-2, there is a plan of action. Without 
+IAC-2, if at all such a scenario happens, I think we should still have a plan of action, both on our 
+defense and non-defense side. Defense also, there are projects coming in. We will be there 
+strongly. Non-defense and the export side, as we have just explained in interactions earlier, we 
+feel things are good. 
+ 
+So we don't want to talk about peak revenue as a company. We want to continually grow both 
+top line with a steady-state margin levels. So IAC-2 coming in definitely would be great and 
+welcome, but in case, because it's not under our control and there are lot of other reasons how it 
+will move forward, but we would nevertheless confidently talk growth at least for the next 5, 6 
+years as of today. 
+Sagar Gandhi: 
+Okay. And sir, when is our new shipbuilding facility getting commissioned? Ship repair you 
+said August 2024? 
+Madhu S Nair: 
+Shipbuilding, also August '24. It is actually that the crane is getting installed, we probably are 
+putting a picture after this call. So, the crane is halfway through. So the crane gets commissioned 
+and a little bit of work. So August this year, we expect to start shipbuilding work in the new 
+facility. 
+Sagar Gandhi: 
+Okay. Thank you so much sir. 
+Moderator: 
+Our next question is from the line of Dhiraj from Samvad Financial Services LLP. Please go 
+ahead. 
+Dhiraj: 
+My one request, which you have already said that we will be putting the presentation, but it 
+would have been better had the presentation being circulated in advance. That would help reduce 
+and improve the understanding for all of us. So just a request, in future, whenever you do con 
+call, please pre-circulate presentation in advance. 
+Madhu S Nair: 
+We will do that. That's a positive suggestion and we'll do that for sure. 
+Dhiraj: 
+And second part, while we do kind of path breaking work, but at least there is no update about 
+what kind of R&D, whether do we have an R&D laboratory or research lab or IP kind of things, 
+patents, etcetera. 
+ 
+Can you share some insights and share whatever you can disclose on those parts? Are we 
+protecting our IP, because we are doing so much good amount of work. Any thoughts of 
+management? And if you can disclose what exactly your effort on that side? 
+Madhu S Nair: 
+You're bringing out a very, very important point. See, Cochin Shipyard, due to historical reasons, 
+we have been a shipbuilder and ship repair and it's not been too much of an R&D and IP kind of 
+thought process. But over the last many years, the kind of knowledge that is coming up in the 
+
+=== PAGE 13 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 12 of 15 
+ 
+company that is why by 2021, we set up a new division called the CSL Strategic & Advanced 
+Solutions (C-SAS). 
+ 
+And I can tell you, we have set it up as a new division. Our divisions are shipbuilding and ship 
+repair, the business division, so we did not call this new C-SAS as a group, we actually call it as 
+a division, wanting to convey to ourselves and to the external stakeholders that this is actually 
+potential growth area for us. 
+ 
+And within the new C-SAS is where we are doing this innovative work, including the hydrogen 
+fuel cell vessel and various other things which we have conveyed. Currently, we have 
+commenced works on a fully indigenous autonomous surface vessel and it is a 24-month project. 
+We are already about 6, 7 months into the project. 
+ 
+And we are teaming up with the DRDO, IITs and at least 7 startups. Similarly, there are other 
+work also being undertaken. Regarding IP and protecting the knowledge, yes, there are certain 
+aspects and certain things which we are doing. But a little bit beyond the IP, we are recording, 
+we are documenting and we are holding on to the knowledge spot much better and C-SAS will 
+be our vehicle to take this forward. 
+Dhiraj: 
+Thanks a lot for updating and performing so well. Just one more suggestion. In the annual report 
+for FY '24, if you can give some, whatever you can disclose about your research and IP, that 
+would be appreciated. Anyway you are supposed to disclose the answer. Just a humble 
+suggestion. 
+Madhu S Nair: 
+And whatever that's possible we can do, we'll absolutely do. 
+Dhiraj: 
+Thanks a lot and wish you all the best. 
+Moderator: 
+Our next question is from the line of Gagan from ASK Investments. Please go ahead. 
+Gagan: 
+The first question is on this very significant addition to gross block of almost INR2,800 crores. 
+What could be the peak fixed asset turn one could expect on this? 
+Jose V J: 
+Kindly repeat that questioin please? 
+Gagan: 
+I'm saying that your current gross block is probably closer to INR1,300 crores, on which you are 
+doing a sales turnover of INR3,400 crores or more. On this new gross block addition that you're 
+doing, this new capex of INR2,800 crores, which will get added to the gross block? What could 
+be the potential fixed asset turnover on that? What could be the peak fixed asset turnover on 
+that? 
+Jose V J: 
+It will be around, I don't have the exact numbers right now. It will be around 2, once the operation 
+in both new facilities get stabilised. 
+Gagan: 
+Okay. So I mean, when these capacities are fully utilized, you are saying essentially INR5,500 
+crores, INR5,600 crores contribution to sales can come from them eventually when they are fully 
+utilized. 
+
+=== PAGE 14 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 13 of 15 
+ 
+Madhu S Nair: 
+I think it's safe to assume that way. 
+Gagan: 
+And would it be possible for you to elucidate in a little more detail your pipeline on the 
+commercial side pertaining to hybrid vehicles sorry, hybrid vessels, especially which we're 
+getting from European or Scandinavian countries. Some idea of the pipeline that is possible from 
+there? 
+Madhu S Nair: 
+What we already have contracted, you will get this information when we upload these figures. 
+But when we are talking about pipeline and what the potential possibility of the pie outside is, 
+all I can say is there's enough on the green vessel, on the short sea vessels getting replaced that's 
+enough. But Cochin Shipyard what we are looking at it is not just about grabbing orders. It is 
+also to make sure that we are generally good. 
+ 
+I won't say exact, but we are generally and largely good with execution and what we can handle. 
+And within that, we want to maximize the, what shall we say, the value for the company, which 
+would be a combination of financial and strategic insights. So we are also a bit choosy. Choosy 
+about the project, choosy about the client, choosy about how much of risk, because any new 
+aspect we are getting into the European market, because these are new things even in the 
+European market. So risk is also a factor. So it's a combination of these things. As an 
+organization, we want to be prudent. We want to be aggressive, but at the same time, we want 
+to be very prudent in what we do. But I can tell you, currently, there is enough in Europe for a 
+company like Cochin Shipyard. That is what I would like to say, if that answers your question. 
+Gagan: 
+All right, sir. And this shipbuilding, ship repair order book of INR1250 crores, is that executable 
+in less than 12 months? Or is it executable in 12 months or more? 
+Madhu S Nair: 
+It spreads beyond that also. But then that is not the ship repair. There will also be orders we'll 
+pick up as we go also during this year. It is not that we pick up, for example, if we are talking 
+about everything today, that means that for the next 10 months, we won't pick up any new work 
+for this year. That is not the way we do ship repair. Maybe 2 months down the line, I would be 
+picking up various other orders also for execution within this year itself. 
+ 
+But we are, again, targeting significant growth in our ship repair top line also for this year as we 
+move forward. We are happy and you would have noted that for the first time in our history, we 
+crossed the INR1,000 crores on ship repair. It's a tough job, ship repair, but between Cochin 
+Shipyard units, the three ship repair units elsewhere and the upcoming ISRF, we are still hoping 
+to do a good increase in top line as we move forward. And we again feel there is good traction 
+in the market to support that kind of a growth. 
+Gagan: 
+Final question, sir. You mentioned the additional depreciation from the new facilities, but there 
+would also be additional employee and overhead costs related to the new facilities. Can you give 
+some idea of what could be the additional leverage and inventory costs coming from the new 
+facility? 
+Madhu S Nair: 
+We may not be able to put an exact figure on it, but all I can say is like the new facilities, which 
+the new dry dock, let me say, the new dry dock is not a stand-alone facility. It is contiguous to 
+
+=== PAGE 15 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 14 of 15 
+ 
+the percent Cochin Shipyard main unit. So largely, we are leveraging the existing facility. So it 
+would be marginal additions on the labour side. 
+ 
+And wherever is core labour, that is what it will be our own. Otherwise, there will be a significant 
+part which is outsourced on a business on need basis. But the core aspects, let's say the plant 
+maintenance because it's a brand new facility, we would put our own people to handle that 
+facility. Similarly, on the ISRF side, if you were there earlier on the call, I have mentioned that 
+we are looking at an operational partner. I can't disclose more details at this stage, but this will 
+be coming out in the open when we do the tender hopefully within a month from now. We are 
+trying to bring in a global operating partner. So again, it is not just about increasing the number 
+of people, but again, in ISRF also, it's a brand-new ship lift and crane, which would be our own 
+core people who will handle the electronics and the ship lift. 
+ 
+So we are cognizant of the fact. We don't want to brought up anything. But it will be more 
+marginal. It will not be a multiplier kind of a thing, depending on the size and scale. 
+Gagan: 
+When you say you're looking for a partner, can you elaborate a little more on the business 
+contents of this? Is the partner the one who will operate the ship repair facility, which will be 
+owned by you? What exactly are the contents of this project? 
+Madhu S Nair: 
+I won't get into too much detail, but the partner is not just to do the work, it is to make sure that 
+we are best-in-class in the world. Turnaround times for us in ship repair, we are good in India. 
+We are good generally, but we are not the best. We still need significant improvement. And for 
+that significant improvement, we need to learn and work with some of the best in the world. We 
+need to leverage some of the ecosystem, which is supply chain and service provider chains, 
+which many of them have developed in places like Singapore or the Middle East. 
+ 
+And we also would like to see them coming in with their clients. So it is, a close example would 
+be the Indian airport, when it's been, some of the leading Indian operators have worked on this, 
+but then they are also in league with some of the best international operators. I would like to stop 
+at that, but that is our whole intention. 
+Gagan: 
+Thank you. 
+Moderator: 
+Our next question is from the line of Deepak Krishnan from Kotak Institutional Equities. Please 
+go ahead. 
+Deepak Krishnan: 
+Maybe just one follow-up. Just wanted to understand how are we looking at a potential IAC 
+execution time line, given that we've already guided in the past. So suppose the order comes 
+through, how many years for design and typical execution after that from fit-out launch as well 
+as in final delivery? 
+Madhu S Nair: 
+Again, this is something which we wouldn't want to talk too much. But whatever we have said 
+on record earlier, if next carrier, when it comes, is largely based on the same or similar platform 
+as what was Vikrant, then we have said we are somewhere around 8 to 10-ish years. This is what 
+we have said. But I would like to stop at that because, again, it's the prerogative of the MoD and 
+the Indian Navy to talk more on this. 
+
+=== PAGE 16 ===
+ 
+ 
+Cochin Shipyard Limited 
+ 
+ 
+May 31, 2024 
+ 
+Page 15 of 15 
+ 
+Deepak Krishnan: 
+Sure, sir. Maybe just any outlook on the landing platform though? Initially we had indicated 
+that, that project could be potentially coming up for RFP over the next 2 years. Anything that 
+you're seeing incrementally positive on that front? 
+Madhu S Nair: 
+Not yet. Probably maybe after the elections and the new government comes in, maybe there will 
+be traction on that. 
+Deepak Krishnan: 
+Thank you. 
+Moderator: 
+Thank you. Ladies and gentlemen, that was the last question for the day. I now hand the 
+conference over to Ms. Chandni Chande for closing comments. 
+Chandni Chande: 
+Thank you, everyone, for joining the conference call of Cochin Shipyard Limited. If you have 
+any queries, you can write to us at research@kirinadvisors.com. Once again, thank you for 
+joining the call. 
+Moderator: 
+Thank you. On behalf of Kirin Advisors, that concludes this conference. Thank you for joining 
+us and you may now disconnect your lines. Thanks. 
+
+=== PAGE 1 ===
+ 
+ 
+SEC/48/2017-63 
+February 08, 2024 
+ 
+ 
+The Manager 
+Compliance Department 
+BSE Limited 
+Phiroze Jeejeebhoy Tower 
+Dalal Street 
+Mumbai – 400 001 
+The Manager 
+Compliance Department 
+The National Stock Exchange of India Ltd. 
+Exchange Plaza 
+Bandra – Kurla Complex, Bandra (East) 
+Mumbai – 400 051 
+Scrip Code/Symbol: 540678/COCHINSHIP 
+ 
+Dear Sir/Madam, 
+Subject: Investor Presentation – Q3 FY24 Financial Results and Highlights 
+1. 
+Please refer our communication dated February 05, 2024 with respect to the Q3 FY24 
+Earnings Call scheduled today i.e., February 08, 2024 at 04:00 PM to discuss the Company’s 
+financial performance for the quarter ended December 31, 2023. The presentation on the Q3 
+FY24 Financial results and highlights is attached herewith for the purpose of dissemination 
+of information widely to the members. 
+ 
+2. 
+The above is for your information and record please.  
+ 
+ 
+For Cochin Shipyard Limited 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=== PAGE 2 ===
+आत्मनिर्भर
+र्ारतअनर्याि
+Cochin Shipyard Limited
+Investor Presentation
+
+=== PAGE 3 ===
+Contents
+Important Operational Events for Q3 FY24
+Financial Performance Q3 FY24
+Infrastructure Augmentation
+Novel & Green Initiatives
+Order Book Position
+
+=== PAGE 4 ===
+IMPORTANT OPERATIONAL 
+EVENTS FOR Q3 FY 2024
+
+=== PAGE 5 ===
+Highlights
+-
+Delivered two Electric Hybrid 100 Pax Water Metro boat to Kochi Metro.
+-
+Delivered two Hybrid Electric Catamaran Passenger vessels to IWAI.
+-
+Contract was signed with Ministry of Defence for a value of Rs.488.25
+crores for repair and maintenance of the equipments and systems onboard
+INS Vikrant.
+-
+Ministry of Defence, inked a deal with CSL for the Mid Life Upgrade and Re-
+Powering of 'INS Beas' at a cost of Rs. 313.42 Crs.
+-
+Launched three nos. of Anti-Submarine Warfare Shallow Water Crafts
+(ASWSWC) being built for Indian Navy.
+
+=== PAGE 6 ===
+Highlights 
+-
+CSL awarded seed funding of Rs. 30 Lakhs each to 3 start-ups through IIMK
+(LIVE) backed USHUS Marine Start Up Support Program.
+-
+After completion of all the civil works, ISRF and the New Dry-dock was
+inaugurated by the Hon’ble Prime Minister on January 17, 2024.
+-
+Keel laid 2 nos. of Anti-Submarine Warfare Shallow Water Crafts (ASWSWC)
+being built for Indian Navy.
+-
+Steel cutting of Trailer Suction Hopper Dredger being built for Dredging
+Corporation of India Limited (DCI) was held at CSL.
+
+=== PAGE 7 ===
+Highlights
+-
+CSL was honoured with Maritime Excellence Award during INMEX SMM
+India Summit
+in recognition for its commitment towards sustainable
+solutions and the stellar performance in shipbuilding, under the category,
+‘Shipbuilding Company of the Year’.
+-
+CSL was honoured with the Maritime Excellence Achievers’ Award for being
+the Best in the Industry under the category ‘Ship Building and Repair’ during
+the Global Maritime India Summit (GMIS) 2023.
+-
+CSL upgraded to “GreenCo Gold” ratings from “GreenCo Silver ratings by
+the Confederation of Indian Industry.
+
+=== PAGE 8 ===
+Highlights 
+-
+Udupi Cochin Shipyard Limited (UCSL) Keel Laid the second 70T Bollard
+Pull Tug being built for Polestar Maritime Limited.
+-
+UCSL delivered one no. of 62 Tonne Bollard Pull Tug, being built for Ocean
+Sparkle Limited, the leading tug operator in India.
+-
+Steel cutting of 2 nos. of 3800 T Dry cargo vessel being built for M/s. Wilson
+Shipowning AS, Norway was held at UCSL.
+
+=== PAGE 9 ===
+FINANCIAL PERFORMANCE
+Q3 FY24
+
+=== PAGE 10 ===
+FINANCIAL HIGHLIGHTS
+Rs Crs
+*Including other income
+Particulars
+Standalone
+Consolidated
+FY 24 Q3 FY 23 Q3
+QoQ %
+FY 24 Nine 
+Months
+FY 23 Nine 
+Months
+QoQ %
+FY23
+FY 24 
+Nine 
+Months
+FY23
+Turnover (Rs Crs)
+1,021.45 
+630.86 
+62%
+2,419.79 
+1,753.49 
+38%
+2,330.46 2,544.40 2,364.55 
+Profit Before Tax (Rs 
+Crs)
+344.84 
+150.66 
+129%
+748.15 
+390.20 
+92%
+448.51 
+728.78 
+418.44 
+Profit After Tax (Rs Crs)
+248.02 
+118.41 
+109%
+548.43 
+287.14 
+91%
+334.49 
+524.56 
+304.71 
+EPS (Rs)
+18.86 
+9.00 
+109%
+41.69 
+21.83 
+91%
+25.43 
+39.88 
+23.16 
+PAT Margins (%)
+24%
+19%
+29%
+23%
+16%
+38%
+14%
+21%
+13%
+EBITDA*
+367.73 
+176.60 
+108%
+816.54 
+468.27 
+74%
+533.39 
+810.50 
+522.31 
+EBITDA (%)
+36%
+28%
+29%
+34%
+27%
+26%
+23%
+32%
+22%
+
+=== PAGE 11 ===
+REVENUE MIX
+Rs Crs
+Particulars
+Standalone
+Consolidated
+FY 24 Q3 FY 23 Q3 QoQ %
+FY 24 
+Nine 
+months
+FY 23 
+Nine 
+months
+%
+FY 23
+FY 24 Nine 
+months
+FY 23
+Shipbuilding
+718.15 
+452.25 
+59%
+1,714.31 
+1,329.84 
+29% 1,766.45 
+1,838.92 
+1,792.97 
+Ship Repair
+303.30 
+178.61 
+70%
+705.48 
+423.65 
+67%
+564.01 
+705.48 
+571.59 
+Turnover
+1,021.45 
+630.86 
+62%
+2,419.79 
+1,753.49 
+38% 2,330.46 
+2,544.40 
+2,364.56 
+Other Income
+56.24 
+23.09 
+144%
+228.00 
+137.00 
+66%
+206.49 
+230.07 
+207.01 
+Total Income
+1,077.69 
+653.95 
+65%
+2,647.79 
+1,890.49 
+40% 2,536.95 
+2,774.47 
+2,571.57 
+
+=== PAGE 12 ===
+KEY FINANCIAL PARAMETERS
+Particulars
+Standalone
+Consolidated
+FY 24 Nine 
+months
+FY 23
+FY 24 Nine 
+months
+FY 23
+Net worth (Rs Crs)
+4836.80
+4423.42
+4815.24
+4427.65
+Book value / share (Rs) 
+(Before share split)
+367.70
+336.28
+366.07
+336.60
+Net Debt (Rs Crs)
+23.00
+123.00
+23.00
+123.00
+
+=== PAGE 13 ===
+TURNOVER (Rs Crs) & EBITDA MARGINS(%)
+1554
+1637
+1860
+1996
+2059
+2355
+2962
+3422
+2819
+3190
+2330
+2420
+20%
+21%
+23%
+24%
+26%
+28%
+27%
+28%
+32%
+28%
+23%
+34%
+0%
+5%
+10%
+15%
+20%
+25%
+30%
+35%
+40%
+0
+500
+1000
+1500
+2000
+2500
+3000
+3500
+4000
+FY13
+FY14
+FY15
+FY16
+FY17
+FY18
+FY19
+FY20
+FY21
+FY22
+FY23
+FY24 9M
+ Turnover
+EBITDA Margins %
+
+=== PAGE 14 ===
+PROFIT AFTER TAX (Rs Cr.) & PAT MARGINS (%)
+228
+172
+185
+194
+235
+275
+322
+397
+481
+638
+610
+587
+334
+548
+16%
+12%
+12% 12%
+13%
+14%
+16%
+17%
+16%
+19%
+22%
+18%
+14%
+23%
+0%
+5%
+10%
+15%
+20%
+25%
+0
+100
+200
+300
+400
+500
+600
+700
+FY11
+FY12
+FY13
+FY14
+FY15
+FY16
+FY17
+FY18
+FY19
+FY20
+FY21
+FY22
+FY23
+FY24
+9M
+ PAT
+PAT Margins %
+
+=== PAGE 15 ===
+RETURN EFFICIENCIES
+1176
+1353
+1561
+1732
+2029
+3256
+3332
+3732
+3978
+4359
+4423
+4837
+16%
+14%
+15%
+16%
+16%
+12%
+14%
+17%
+15%
+13%
+8%
+11%
+FY13
+FY14
+FY15
+FY16
+FY17
+FY18
+FY19
+FY20
+FY21
+FY22
+FY23
+FY24 9M
+Networth
+Return on Networth
+Net worth (Rs Crs), RoE (%)
+
+=== PAGE 16 ===
+STATUS OF VESSELS UNDER 
+CONSTRUCTION
+
+=== PAGE 17 ===
+Status of vessels under construction
+BY 123-145: 23 vessels
+12 vessels delivered, 11 vessels under various stages of construction
+Planned to complete by June’24
+Hybrid Electric 
+Catamaran Hull 
+Vessels for KMRL
+BY 523-530: 8 vessels
+BY 523-525: Vessel No.1,2 & 3 :- Launched on 30 Nov’23, Machinery outfitting under progress
+BY 526-527: Vessel No.4 & 5 :- Keel laid on 08 Dec’23, Hull block erection under progress
+BY 528-530: Vessel No.6,7 & 8 :- Advanced stage of block fabrication
+ASW SWC 
+Corvette for Indian 
+Navy
+
+=== PAGE 18 ===
+Status of vessels under construction
+SH 29-36: 8 vessels
+SH 29 & 30 : Vessel 1& 2 :- Hull block erection and outfitting under progress
+Keel laid for all vessels
+SH 31-36 : Vessel 3 to 8 :- Under various stages of construction
+7K Multipurpose 
+Vessel for European 
+Clients
+BY 151-152: 2 vessels
+Plate cutting done on 01 Sep’23 - Fabrication in progress 
+Commissioning 
+Service Operation 
+Vessels
+
+=== PAGE 19 ===
+Status of vessels under construction
+SH 37: 1 vessel
+Fabrication commenced on 11 Dec’23
+12000 Cu. M. 
+Trailer Suction 
+Hopper Dredger
+Pilot Project. BY150: 1 vessel
+Equipment commissioning under progress, sea trials planned by mid of Feb’24.
+Hydrogen Fuel 
+Cell Vessel 
+
+=== PAGE 20 ===
+INFRASTRUCTURE 
+AUGMENTATION
+
+=== PAGE 21 ===
+Dock Size: 310m x 75/60m x 13m (Stepped Dry Dock)
+Design Life: 100 Years
+Draught of vessel – upto 9.5 m
+600 T , 75 T and 40T Cranes
+Largest dry dock in India
+Suitable for LNG vessels, Aircraft Carriers, Jack-up
+Rigs, Drill ships, Large Tankers & Merchant vessels.
+Expenditure incurred till date
+Rs. 1203.02 Cr.
+Civil works such as dock floor, dock wall, caisson gate, pump 
+house, sub-stations etc. is fully completed and the new Dry-
+dock was inaugurated by Hon’ble Prime Minister, Shri 
+Narendra Modi on January 17, 2024.
+Total Project Cost
+Rs. 1,799.00 Cr.
+New Dry Dock Project
+Installation and commissioning of 600T Gantry Crane is 
+progressing. The new dry-dock is expected to be fully 
+operational after completion of above work by mid of 2024.
+
+=== PAGE 22 ===
+New Dry Dock Project
+•
+Recent Snapshots of new dry-dock 
+
+=== PAGE 23 ===
+
+Shiplift - 130 m LOA x 25 m Beam, Capacity:- 6000 T
+
+Transfer System
+
+06 Work stations
+
+1.25 Km Berth
+
+Floating gate
+
+4 nos. Cranes 
+Project Cost: Rs. 970 Crs.
+Land Area
+Marine area
+16.254 ha
+16.15 ha.
+Expenditure incurred till date
+Rs. 756.19 Cr.
+Shiplift system, 2 workstations & afloat repair berths etc. is fully 
+completed and the project was inaugurated by Hon’ble Prime 
+Minister, Shri Narendra Modi on January 17, 2024. ISRF is 
+expected to be fully operational after completion of allied works 
+by mid of 2024.
+International Ship Repair Facility (ISRF) Project 
+
+=== PAGE 24 ===
+International Ship Repair Facility (ISRF) Project 
+Recent snapshots of ISRF
+
+=== PAGE 25 ===
+NOVEL & GREEN INITIATIVES
+
+=== PAGE 26 ===
+•
+100 Passenger Ferry Boat
+•
+Fully Indigenised ‘Home Grown Technology’
+•
+2 x 25 kWh H2 Fuel Cell, 6 kWh Solar Plant
+•
+Target Completion : Feb 2024
+H2 Fuel Cell Vessel 
+Pilot Project by CSL
+•
+2 No. of vessels delivered to IWAI
+•
+Air conditioned passenger area for 50 pax
+•
+Design Speed – 9 Knots
+•
+Fast Charging LTO Battery of ~ 120 kWh
+•
+Target Completion : Dec 2023 – Nov 2024
+Electric Catamaran Ferry
+8 Nos contracted by IWAI
+Zero emission Green Vessels
+
+=== PAGE 27 ===
+•
+Rs 50 Crores initial corpus 
+•
+Three types of funding
+Seed Fund Scheme - Upto 50 L per start-up
+Pilot Grant Scheme - Upto 100 L per start-up
+Equity Investment
+CSL’s Maritime Start Up Engagement Programme
+“USHUS” – Nurturing Aspirations
+Review and Recommending Agencies
+Autonomous Surface Vessel
+Pilot Project
+SWAYAT
+•
+Fully indigenous, IRS class approved scalable
+solution catering commercial and defence use
+cases
+•
+‘Made in India & Made for the World’
+
+=== PAGE 28 ===
+ORDER BOOK POSITION
+
+=== PAGE 29 ===
+Shipbuilding Order Book Position – Rs. 21,500 Crs. (Approx.) 
+{ Healthy – Clear Visibility on Revenue }
+Sl. 
+No.
+Project
+No. of 
+Vessels
+Order 
+Value*
+1.
+Post
+Commission
+works
+of
+Indigenous
+Aircraft Carrier - Phase III for Indian Navy
+1
+1047
+2.
+ASW SCW Corvette for Indian Navy
+8
+5215
+3.
+NGMV for Indian Navy
+6
+9802
+Total
+16064
+1.
+1200 Pax cum 1000 Ton Cargo Vessel for
+A&N Admn.
+2
+286
+2.
+Hybrid Electric Aluminium Catamaran Hull
+Vessels for KMRL
+11
+32
+3.
+Hybrid Electric Catamaran Passenger Vessels
+for IWAI
+6
+73
+4.
+Trailer Suction Hopper Dredger for DCI
+1
+869
+Total
+1260
+Defence
+(Rs. Crore)
+Commercial –
+Domestic
+1.
+7K Multipurpose Vessel for European Clients
+8
+734
+2.
+Commissioning Service Operation Vessels for
+European Clients
+2
+955
+3.
+Zero Emission Feeder Container Vessels for
+European Clients
+2
+547
+4.
+Service Operation Vessel for European Client
+1
+452
+Total
+2688
+Commercial –
+Export
+Ship Repair Orders – Rs. 700 Crs. (Approx)
+*The order value given in the above tables is the balance amount of orders to be recognised.
+16064, 78%
+1260; 6%
+2688; 13%
+696; 3%
+Defence
+Commercial - Domestic
+Commercial - Export
+Susbidiaries
+Total Order Book Position
+2059; 52%
+1889; 48%
+Green Vessels
+Conventional Vessels
+Green compliment 
+Commercial Segment
+Sl. 
+No.
+Name of the Subsidiary
+Order Value*
+1.
+Hooghly Cochin Shipyard Limited (HCSL)
+21 
+2.
+Udupi Cochin Shipyard Limited (UCSL)
+675
+Total
+696
+Subsidiaries
+
+=== PAGE 30 ===
+Sl. 
+No.
+Project
+Approx. Order Value 
+(Rs. Crs.)
+1.
+Vessels to foreign clients
+6,300
+Sl. No.
+Project
+Approx. Order 
+Value (Rs. Crs.)
+1.
+Vessels for Domestic clients
+1,160
+Commercial – Export
+Commercial – Domestic
+Defence/ RFP Stage
+Sl. 
+No.
+Project
+No. of 
+Vessels
+Approx. Order Value 
+(Rs. Crs.)
+1.
+Defence Project
+2
+1,600
+Shipbuilding Order Pipeline/Possibilities – Rs. 9,000 Crs. (Approx.)
+Rs. 1,600 
+Crs. (Def.)
+Rs. 6,300 
+Crs. (Com. 
+Exp.)
+Rs. 
+1,160Crs. 
+(Com. 
+Dom.)
+Other project proposals - RFI/Mid Stage 
+Rs. 84,000 Crs.
+
+=== PAGE 31 ===
+
+=== PAGE 1 ===
+ 
+ 
+SEC/48/2017-63 
+May 31, 2024 
+ 
+ 
+The Manager 
+Compliance Department 
+BSE Limited 
+Phiroze Jeejeebhoy Tower 
+Dalal Street 
+Mumbai – 400 001 
+The Manager 
+Compliance Department 
+The National Stock Exchange of India Ltd. 
+Exchange Plaza 
+Bandra – Kurla Complex, Bandra (East) 
+Mumbai – 400 051 
+Scrip Code/Symbol: 540678/COCHINSHIP 
+ 
+Dear Sir/Madam, 
+Subject: Investor Presentation – Q4 FY24 Financial Results and Highlights 
+1. 
+Please find attached herewith the presentation on the Q4 FY24 Financial results and 
+highlights for the purpose of dissemination of information widely to the members. 
+ 
+2. 
+The above is for your information and record please.  
+ 
+ 
+For Cochin Shipyard Limited 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Digitally signed 
+by Syamkamal 
+N 
+Date: 
+2024.05.31 
+17:37:42 +05'30'
+
+=== PAGE 2 ===
+आत्मनिर्भर 
+र्ारत अभर्याि
+Cochin Shipyard Limited
+Investor Presentation
+
+=== PAGE 3 ===
+Contents
+▪Important Operational Events for Q4 FY24
+▪Financial Performance Q4 FY24
+▪Infrastructure Augmentation
+▪Novel & Green Initiatives
+▪Order Book Position
+
+=== PAGE 4 ===
+IMPORTANT OPERATIONAL 
+EVENTS - Q4 FY 2024 TILL 
+DATE
+
+=== PAGE 5 ===
+Highlights – Orders
+-
+January, 2024 – Contract signed with a European Client for the design and
+construction of a Hybrid Service Operation Vessel (Hybrid SOV). The vessel is to be
+delivered in 2026.
+-
+March 2024 – Hooghly Cochin Shipyard Limited (HCSL) secured an order for
+construction of 2 nos. of 40T Bollard Pull ASD Tugs for Industrial Handling Pvt. Ltd.
+-
+April 2024 – Udupi Cochin Shipyard Limited (UCSL) secured an order for 1 no. of
+70T Bollard Pull Tug for Polestar Maritime Limited.
+-
+May 2024 – CSL also bagged another order from the same European Client for the
+design and construction of a Hybrid SOV with an option for two more such vessels.
+The project is expected to be completed by the end 2026.
+
+=== PAGE 6 ===
+Highlights – Orders
+-
+May 2024 – UCSL bagged an order for construction of 3 nos. of 70T Bollard
+Pull Tugs for Ocean Sparkle Limited.
+-
+February 2024 – CSL entered into a contract with the Indian Navy for
+undertaking Medium Refits of Two Indian Naval Vessels.
+-
+April 2024 – CSL signed the Master Ship Repair Agreement (MSRA) with
+United States Navy. This will facilitate repair of US Naval vessels under Military
+Sealift Command in CSL.
+
+=== PAGE 7 ===
+Highlights – Vessels Delivered
+-
+February
+2024
+–
+Hon’ble
+Prime
+Minister
+flagged
+off
+India’s
+first
+indigenously built Hydrogen Fuel Cell Vessel.
+-
+February/ April 2024 – Delivered two nos. of Electric Hybrid 100 Pax
+Water Metro boats to Kochi Metro.
+-
+March 2024 – UCSL delivered ‘Ocean Splendour’ 62T Bollard Pull Tug,
+built for Ocean Sparkle Limited.
+-
+May 2024 – UCSL delivered 70T Bollard Pull Tug – ‘Konna Star’ built for
+Polestar Maritime Limited.
+
+=== PAGE 8 ===
+Highlights – Major Events
+-
+January 2024 – Hon’ble Prime Minister dedicated the International Ship
+Repair Facility (ISRF) and the world’s first stepped Dry-dock to the nation,
+marking a significant milestone in the augmentation of India’s Maritime
+capability.
+-
+February 2024 – Steel cutting completed for a Zero Emission Feeder
+Container vessel being built for a European client.
+-
+February 2024 – Keel laying of three nos. of Hybrid Electric Catamaran
+Passenger vessels for Inland Waterways Authority of India (IWAI) was held
+HCSL.
+
+=== PAGE 9 ===
+Highlights – Major Events
+-
+March 2024 – Maiden Surface run of High Endurance Autonomous
+Underwater Vehicle (HEAUV) meeting all the mission parameters were
+carried out successfully at CSL, International Ship Repair Facility (ISRF)
+Jetty, Kochi.
+-
+March 2024 – CSL secured the prestigious Kerala Industrial Safety Award –
+2023, instituted by the government of Kerala, reaffirming CSL’s commitment
+to
+excellence
+in
+safety
+within
+the
+realm
+of
+Very
+Large
+Factories
+(Engineering).
+-
+April 2024 – Keel laying of 1 no. of New Generation Diesel Electric 3800
+DWT General Cargo vessel being built for Wilson Shipowning AS, Norway
+was held at UCSL.
+
+=== PAGE 10 ===
+FINANCIAL PERFORMANCE
+Q4 FY24
+
+=== PAGE 11 ===
+FINANCIAL HIGHLIGHTS
+Rs Crs
+*Including other income
+Particulars
+Standalone
+Consolidated
+FY 24 Q4
+FY 23 Q4
+QoQ %
+FY 24
+FY 23
+YoY %
+FY 24
+FY 23
+Turnover (Rs Crs)
+1,225.49 
+576.97 
+112%
+3,645.28 
+2,330.46 
+56%
+3,830.45 
+2364.55
+Profit Before Tax (Rs Crs)
+345.48 
+58.31 
+493%
+1,093.62 
+448.51 
+144%
+1,070.94 
+418.44 
+Profit After Tax (Rs Crs)
+264.67 
+47.34 
+459%
+813.10 
+334.49 
+143%
+783.28 
+304.71 
+EPS (Rs)
+10.06 
+1.80 
+459%
+30.91 
+12.71 
+143%
+29.77 
+11.58 
+PAT Margins (%)
+22%
+8%
+163%
+22%
+14%
+55%
+20%
+13%
+EBIDTA
+365.57 
+65.12 
+461%
+1,182.10 
+533.39 
+122%
+1,178.76 
+522.31 
+*EBITDA (%)
+30%
+11%
+164%
+32%
+23%
+42%
+31%
+22%
+
+=== PAGE 12 ===
+REVENUE MIX
+Rs Crs
+Particulars
+Standalone
+Consolidated
+FY 24 Q4
+FY 23 Q4
+QoQ %
+FY 24
+FY 23
+YoY %
+FY 24
+FY 23
+Shipbuilding
+924.60 
+436.61 
+112%
+2,638.91 
+1,766.45 
+49%
+2,824.09 
+1,792.97 
+Ship Repair
+300.89 
+140.37 
+114%
+1,006.38 
+564.01 
+78%
+1,006.36 
+571.59 
+Turnover
+1,225.49 
+576.97 
+112%
+3,645.28 
+2,330.46 
+56%
+3,830.45 
+2,364.56 
+Other Income
+79.38 
+69.48 
+14%
+307.38 
+206.49 
+49%
+310.18 
+207.01 
+Total Income
+1,304.87 
+646.45 
+102%
+3,952.66 
+2,536.95 
+56%
+4,140.63 
+2,571.57 
+
+=== PAGE 13 ===
+KEY FINANCIAL PARAMETERS
+Particulars
+Standalone
+Consolidated
+FY 24
+FY 23
+FY 24
+FY 23
+Net worth (Rs Crs)
+5025.87
+4423.42
+5003.34
+4427.65
+Book value / share (Rs)
+191.04
+168.14
+190.18
+168.30
+Net Debt (Rs Crs)
+23.02
+125.82
+23.02
+132.87
+
+=== PAGE 14 ===
+TURNOVER (Rs Crs) & EBITDA MARGINS(%)
+1860
+1996
+2059
+2355
+2962
+3422
+2819
+3190
+2330
+3645
+23%
+24%
+26%
+28%
+27%
+28%
+32%
+28%
+23%
+32%
+0%
+5%
+10%
+15%
+20%
+25%
+30%
+35%
+0
+500
+1000
+1500
+2000
+2500
+3000
+3500
+4000
+FY15
+FY16
+FY17
+FY18
+FY19
+FY20
+FY21
+FY22
+FY23
+FY24
+ Turnover
+EBITDA Margins %
+
+=== PAGE 15 ===
+PROFIT AFTER TAX (Rs Cr.) & PAT MARGINS (%)
+185
+194
+235
+275
+322
+397
+481
+638
+610
+587
+334
+813
+12%
+12%
+13%
+14%
+16%
+17%
+16%
+19%
+22%
+18%
+14%
+22%
+0%
+5%
+10%
+15%
+20%
+25%
+0
+100
+200
+300
+400
+500
+600
+700
+800
+900
+FY13
+FY14
+FY15
+FY16
+FY17
+FY18
+FY19
+FY20
+FY21
+FY22
+FY 23
+FY 24
+ PAT
+PAT Margins %
+
+=== PAGE 16 ===
+RETURN EFFICIENCIES
+1353
+1561
+1732
+2029
+3256
+3332
+3732
+3978
+4359
+4423
+5026
+14%
+15%
+16%
+16%
+12%
+14%
+17%
+15%
+13%
+8%
+16%
+FY14
+FY15
+FY16
+FY17
+FY18
+FY19
+FY20
+FY21
+FY22
+FY23
+FY24
+Networth
+Return on Networth
+Net worth (Rs Crs), RoE (%)
+
+=== PAGE 17 ===
+STATUS OF VESSELS UNDER 
+CONSTRUCTION
+
+=== PAGE 18 ===
+Status of vessels under construction
+BY 123-145: 23 vessels
+14 vessels delivered, 9 vessels under various stages of construction
+Planned to complete by Sep’24
+Hybrid Electric 
+Catamaran Hull 
+Vessels for KMRL
+BY 523-530: 8 vessels
+BY 523-525: Vessel No.1,2 & 3 :- Launched on 30 Nov’23, Machinery outfitting under progress
+BY 526-527: Vessel No.4 & 5 :- Keel laid on 08 Dec’23, Hull block erection under progress
+BY 528-530: Vessel No.6,7 & 8 :- Advanced stage of block fabrication
+ASW SWC 
+Corvette for Indian 
+Navy
+
+=== PAGE 19 ===
+Status of vessels under construction
+SH 29-36: 8 vessels
+SH 29 & 30 : Vessel 1& 2 :- Hull block erection and outfitting under progress
+Keel laid for all vessels
+SH 31-36 : Vessel 3 to 8 :- Under various stages of construction
+7K Multipurpose 
+Vessel for European 
+Clients
+BY 151-152: 2 vessels
+Plate cutting done on 01 Sep’23 - Block Fabrication in progress
+Commissioning 
+Service Operation 
+Vessels
+
+=== PAGE 20 ===
+Status of vessels under construction
+SH 37: 1 vessel
+Plate cutting done on 11 Dec’23 – Block Fabrication in progress
+12000 Cu. M. 
+Trailer Suction 
+Hopper Dredger
+Pilot Project. BY150: 1 vessel
+Trials Completed, Vessel sailed off from CSL to Varanasi on 18 May 24
+Hydrogen Fuel 
+Cell Vessel 
+
+=== PAGE 21 ===
+INFRASTRUCTURE 
+AUGMENTATION
+
+=== PAGE 22 ===
+▪Dock Size: 310m x 75/60m x 13m (Stepped Dry Dock)
+▪Design Life: 100 Years
+▪Draught of vessel – upto 9.5 m
+▪600 T , 75 T and 40T Cranes
+▪Largest dry dock in India
+▪Suitable for LNG vessels, Aircraft Carriers, Jack-up
+Rigs, Drill ships, Large Tankers & Merchant vessels.
+Expenditure incurred till date
+Rs. 1,312.49 Cr.
+Civil works such as dock floor, dock wall, caisson gate, pump 
+house, sub-stations etc. is fully completed and the new Dry-
+dock was inaugurated by the Hon’ble Prime Minister on 
+January 17, 2024.
+Total Project Cost
+Rs. 1,799.00 Cr.
+New Dry Dock Project
+Installation & commissioning of 600T Gantry Crane is 
+progressing. The New Dry-dock is expected to be fully 
+operational after completion of above work by Aug 2024.
+
+=== PAGE 23 ===
+New Dry Dock Project
+Recent Snapshots of New Dry-dock 
+
+=== PAGE 24 ===
+➢
+Shiplift - 130 m LOA x 25 m Beam, Capacity:- 6000 T
+➢
+Transfer System
+➢
+06 Work stations
+➢
+1.25 Km Berth
+➢
+Floating gate
+➢
+4 nos. Cranes 
+Project Cost:
+Rs. 970 Crs.
+Land Area
+Marine area
+16.254 ha
+16.15 ha.
+Expenditure incurred till date
+Rs. 797.45 Cr.
+Shiplift system, 2 workstations & afloat repair berths etc. is fully 
+completed and the project was inaugurated by the Hon’ble 
+Prime Minister on January 17, 2024. ISRF is expected to be fully 
+operational after completion of allied works by Aug 2024.
+International Ship Repair Facility (ISRF) Project 
+
+=== PAGE 25 ===
+International Ship Repair Facility (ISRF) Project 
+Recent snapshots of ISRF
+
+=== PAGE 26 ===
+NOVEL & GREEN INITIATIVES
+
+=== PAGE 27 ===
+•
+100 Passenger Ferry Boat
+•
+Fully Indigenised ‘Home Grown Technology’
+•
+2 x 25 kWh H2 Fuel Cell, 6 kWh Solar Plant
+•
+Trials completed and sailed off from CSL to 
+Varanasi on May 18, 2024.
+H2 Fuel Cell Vessel 
+Pilot Project by CSL
+•
+2 No. of vessels delivered to IWAI
+•
+Air conditioned passenger area for 50 pax
+•
+Design Speed – 9 Knots
+•
+Fast Charging LTO Battery of ~ 120 kWh
+•
+Target Completion : Dec 2023 – Nov 2024
+Electric Catamaran Ferry
+8 Nos contracted by IWAI
+Zero emission Green Vessels
+
+=== PAGE 28 ===
+•
+Rs 50 Crores initial corpus 
+•
+Three types of funding
+❑Seed Fund Scheme - Upto 50 L per start-up
+❑Pilot Grant Scheme - Upto 100 L per start-up
+❑Equity Investment
+CSL’s Maritime Start Up Engagement Programme
+“USHUS” – Nurturing Aspirations
+Review and Recommending Agencies
+Autonomous Surface Vessel
+Pilot Project
+SWAYAT
+•
+Fully indigenous, IRS class approved scalable
+solution catering commercial and defence use
+cases
+•
+‘Made in India & Made for the World’
+
+=== PAGE 29 ===
+ORDER BOOK POSITION
+
+=== PAGE 30 ===
+Order Book Position – Rs. 22,000 Crs. (Approx.) 
+{ Healthy – Clear Visibility on Revenue }
+Sl. 
+No.
+Project Category
+No. of Vessels
+Order 
+Value*
+1.
+Defence
+15
+15,225
+2.
+Commercial - Domestic
+18
+1,258
+3.
+Commercial - Export
+14
+3,480
+TOTAL
+47
+19,963
+Ship Repair Orders – Rs. 1,250 Crs. (Approx)
+*The order value given in the above tables is the balance amount of orders to be recognised.
+15225; 73%
+1258; 6%
+3480; 17%
+959; 4%
+Defence
+Commercial - Domestic
+Commercial - Export
+Susbidiaries
+Total Order Book Position
+2789; 59%
+1949; 41%
+Green Vessels
+Conventional Vessels
+Green compliment 
+Commercial Segment
+Sl. 
+No.
+Name of the Subsidiary
+Order 
+Value*
+1.
+Hooghly Cochin Shipyard Limited (HCSL)
+154
+2.
+Udupi Cochin Shipyard Limited (UCSL)
+805
+Total
+959 
+(Rs. Crore)
+
+=== PAGE 31 ===
+Sl. 
+No.
+Project
+Approx. Order Value 
+(Rs. Crs.)
+1.
+Vessels to foreign clients
+6,500
+Sl. No.
+Project
+Approx. Order Value 
+(Rs. Crs.)
+1.
+Vessels for Domestic clients
+2,000
+Commercial – Export
+Commercial – Domestic
+Govt. / RFP Stage
+Sl. 
+No.
+Project
+Approx. Order Value  
+(Rs. Crs.)
+1.
+Govt Projects
+1,500
+Shipbuilding Order Pipeline/Possibilities – Rs. 10,000 Crs. (Approx.)
+Rs. 1,500 
+Crs. (Govt.)
+Rs. 6,500 
+Crs. (Com. 
+Exp.)
+Rs. 
+2,000Crs. 
+(Com. 
+Dom.)
+Other project proposals - RFI/Mid Stage 
+Rs. 50,000 Crs.
+
+=== PAGE 32 ===

@@ -1,0 +1,5704 @@
+
+=== PAGE 251 ===
+ 
+249 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+These plans typically expose the company to actuarial risks such as: investment risk, interest rate risk, longevity risk and salary risk. 
+Investment Risk 
+The present value of the defined benefit plan liability (denominated in Indian Rupee) is calculated using a discount rate which is
+determined by reference to market yields at the end of the reporting period on government bonds. 
+Interest Risk 
+A decrease in the bond interest rate will increase the plan liability; however, this will be partially offset by an increase in the return on the
+plan's debt investments. 
+Longevity Risk 
+The present value of the defined benefit plan liability is calculated by reference to the best estimate of the mortality of plan participants
+both during and after their employment. An increase in the life's expectancy of the plan participants will increase the plan's liability. 
+Salary Risk 
+The present value of the defined benefit plan liability is calculated by reference to the future salaries of plan participants. As such, an
+increase in the salary of the plan participants will increase the plan's liability. 
+The most recent actuarial valuation of the plan assets and the present value of the defined benefit obligation were carried out as at March 31, 2024 by M/s SS 
+Consultancy. The present value of the defined benefit obligation, and the related current service cost and past service cost, were measured using the projected 
+unit credit method. 
+ 
+ 
+An actuarial valuation was carried out in respect of the aforesaid defined benefit plans and other long term benefits based on the following assumptions: 
+Particulars 
+  
+March 31, 2024 
+March 31, 2023 
+Leave Encashment/ 
+Compensated 
+Absence 
+Employees 
+Gratuity Fund 
+Interest 
+Guarantee 
+Liability PF 
+Retirement 
+Allowance 
+Leave 
+Encashment/ 
+Compensated 
+Absence 
+Employees 
+Gratuity Fund 
+Interest 
+Guarantee 
+Liability PF 
+Retirement 
+Allowance 
+Economic Assumptions  
+Discount rate (per annum) 
+7.15%
+7.15%
+7.15%
+7.15%
+7.30%
+7.30%
+7.30%
+7.30% 
+Rate of increase in compensation levels 
+ 5% per annum 
+ 5% per annum
+ 
+ 
+ 6.87% per 
+annum 
+ 6.87% per 
+annum 
+ 
+  
+Rate of return on plan assets 
+NA
+7.15%
+8.26%
+7.15%
+NA
+7.30%
+8.59%
+7.30% 
+Demographic Assumptions 
+Employee Turnover/Withdrawal Rate 
+2.33%
+2.33%
+ 
+ 
+2.41%
+2.41%
+  
+Retirement Age 
+60 years
+60 years
+ 
+60 years
+60 years
+60 years
+ 
+60 years 
+Mortality 
+IALM (2012-14) IALM (2012-14)
+ 
+IIAM 
+(2012-15) IALM (2012-14) IALM (2012-14)
+ 
+IIAM (2012-
+15) 
+Leave Availment Ratio 
+1.00%
+NA
+ 
+NA
+1.00%
+NA
+ 
+NA 
+Estimates of future salary increases considered in actuarial valuation take account of inflation, seniority, promotion and other relevant factors such as supply and demand
+in the employment market. 
+
+=== PAGE 252 ===
+ 
+250 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Amounts recognised in statement of profit or loss in respect of the defined benefit plans are as follows-  
+(₹in Crores) 
+Particulars 
+  
+March 31, 2024 
+March 31, 2023 
+Leave 
+Encashment/ 
+Compensated 
+Absence 
+Employees 
+Gratuity 
+Fund 
+Retirement 
+Allowance 
+Leave 
+Encashment/ 
+Compensated 
+Absence 
+Employees 
+Gratuity Fund 
+Retirement 
+Allowance 
+Current service cost 
+6.12 
+3.32 
+3.03 
+4.03 
+3.95 
+3.35 
+Company's Contribution to Provident Fund 
+ 
+ 
+ 
+ 
+ 
+ 
+Past Service Cost 
+-  
+-  
+-  
+-  
+-  
+-  
+Remeasurements 
+2.68 
+- 
+- 
+4.52 
+- 
+- 
+Net Interest cost 
+5.56 
+0.10 
+(1.94) 
+5.29 
+0.44 
+0.70 
+Net actuarial (Gains)/loss 
+- 
+- 
+- 
+- 
+- 
+- 
+Components of defined benefit costs recognised in profit 
+or loss* 
+14.36 
+3.42 
+1.09 
+13.84 
+4.39 
+4.05 
+ 
+ 
+ 
+ 
+ 
+ 
+Remeasurement on the net defined benefit liability 
+ 
+ 
+ 
+ 
+ 
+ 
+-Return on plan assets (excluding amounts included in net 
+interest expense) 
+- 
+(1.20) 
+1.21 
+- 
+(0.56) 
+0.26 
+Actuarial (gains) / losses arising from changes in 
+demographic assumptions 
+- 
+(0.26) 
+0.33 
+- 
+1.72 
+(12.89) 
+ -Actuarial (gains) / losses arising from changes in 
+financial assumptions 
+- 
+(1.03) 
+(6.10) 
+- 
+(0.07) 
+(10.20) 
+-Actuarial (gains) / losses arising from experience 
+adjustments 
+- 
+1.87 
+(3.88) 
+- 
+(2.18) 
+(15.82) 
+Components of defined benefit costs recognised in other 
+comprehensive income(OCI)** 
+- 
+(0.62) 
+(8.44) 
+- 
+(1.09) 
+(38.65) 
+Total 
+14.36 
+2.80 
+(7.35) 
+13.84 
+3.30 
+(34.60) 
+*   Included in "Employee benefits expense" line item in the statement of profit and loss. 
+** Included in "Other Comprehensive Income" 
+ 
+ 
+ 
+
+=== PAGE 253 ===
+ 
+251 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Movement in the present value of the defined benefit obligation are as follows-               
+       
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+      (₹in Crores) 
+Particulars 
+March 31, 2024 
+March 31, 2023 
+Leave 
+Encashment/ 
+Compensated 
+Absence 
+Employees 
+Gratuity Fund 
+Retirement 
+Allowance 
+Leave 
+Encashment/ 
+Compensated 
+Absence 
+Employees 
+Gratuity Fund 
+Retirement 
+Allowance 
+Present value of obligation as at beginning of the year 
+75.32 
+102.00 
+58.94 
+72.86 
+97.03 
+89.14 
+Adjustment in beginning balance 
+ 
+ 
+ 
+- 
+- 
+- 
+Interest cost 
+5.56 
+7.30 
+4.37 
+5.29 
+6.93 
+6.52 
+Past Service Cost 
+ 
+- 
+- 
+- 
+-  
+-  
+Current service cost 
+6.12 
+3.32 
+3.03 
+4.03 
+3.95 
+3.35 
+Contribution by plan participants 
+ 
+ 
+ 
+- 
+- 
+- 
+Benefits paid 
+ (10.40) 
+(6.91) 
+(0.96) 
+(11.38) 
+(5.38) 
+(1.16) 
+Transfer In 
+ 
+ 
+ 
+- 
+- 
+- 
+Actuarial (gain) / loss on obligations due to remeasurements 
+- 
+ 
+ 
+-  
+- 
+- 
+a. Effect of change in Financial Assumptions 
+(11.83) 
+(1.03) 
+(6.10) 
+1.94 
+(0.07) 
+(10.20) 
+b. Effect of change in Demographic Assumptions 
+0.10 
+(0.26) 
+0 .33 
+(3.89) 
+1.72 
+(12.89) 
+c. Experience (Gain)/Losses 
+14.40 
+1.87 
+(3.88) 
+6.47 
+(2.18) 
+(15.82) 
+d . Past Service Cost (lst year no heading) 
+- 
+ 
+ 
+-  
+- 
+- 
+Present value of obligation as at the year end 
+79.27 
+106.29 
+55.73 
+75.32 
+102.00 
+58.94 
+Movement in the fair value of the plan assets are as follows 
+(₹in Crores) 
+Particulars 
+  
+March 31, 2024 
+March 31, 2023 
+Retirement 
+Allowance 
+Employees Gratuity 
+Fund 
+Retirement 
+Allowance 
+Employees Gratuity 
+Fund 
+Fair value of Plan Assets as at beginning of the year 
+85.54 
+98.70 
+80.88 
+89.82 
+Expected return on Plan Assets 
+6.30 
+7.21 
+5.82 
+6.49 
+Employer contribution 
+2.13 
+3.29 
+0.26 
+7.21 
+Benefits paid 
+(0.96) 
+(6.91) 
+(1.16) 
+(5.38) 
+Transfer In 
+NA 
+ 
+NA  
+ 
+Return on plan assets (excluding amounts included in net interest expense)/ 
+Acturial Gain (Losses) 
+(1.21) 
+1.20 
+(0.26) 
+0.56 
+Fair value of plan assets as at the year end 
+91.80 
+103.49 
+85.54 
+98.70 
+
+=== PAGE 254 ===
+ 
+252 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+Reconciliation of present value of defined benefit obligation and fair value of assets 
+(₹in Crores) 
+Particulars 
+March 31, 2024 
+March 31, 2023 
+Leave 
+Encashment/ 
+Compensated 
+Absence 
+Employees 
+Gratuity Fund 
+Retirement 
+Allowance 
+Leave 
+Encashment/ 
+Compensated 
+Absence 
+Employees 
+Gratuity 
+Fund 
+Retirement 
+Allowance 
+Present value of obligation as at the year end 
+79.27 
+106.29 
+55.73 
+75.32 
+102.00 
+58.94 
+Fair value of plan assets as at the year end 
+NA 
+103.49 
+91.80 
+NA  
+98.70 
+85.54 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Net (asset)/ liability recognised in balance sheet 
+79.27 
+2.80 
+(36.07) 
+75.32 
+3.30 
+(26.60) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Classified as non- current 
+74.18 
+- 
+- 
+70.77 
+-  
+- 
+Classified as current 
+5.09 
+2.80 
+(36.07) 
+4.55 
+3.30 
+(26.60) 
+Total  
+79.27 
+2.80 
+(36.07) 
+75.32 
+3.30 
+              (26.60) 
+ 
+(₹in Crores) 
+Constitution of Plan Assets 
+  
+CONCOR Employees Gratuity Fund 
+CONCOR Medical Trust 
+March 31, 
+2024 
+% 
+March 31, 
+2023 
+% 
+March 31, 
+2024 
+% 
+March 31, 
+2023 
+% 
+(a) Central Government Securities 
+51.74 
+50.95% 
+49.28 
+52.79% 
+51.79 
+57.55% 
+49.29 
+59.33% 
+(b) State Government Securities 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(c) Corporate Bond/debentures  
+44.27 
+43.59% 
+41.29 
+44.24% 
+25.50 
+28.34% 
+22.10 
+26.60% 
+(d) Mutual Funds/Equity Investment 
+5.47 
+5.39% 
+2.70 
+2.89% 
+ 
+ 
+ 
+ 
+(e) Fixed Deposit Receipts 
+ 
+ 
+ 
+ 
+12.70 
+14.11% 
+11.68 
+14.06% 
+(f) Others(Special Deposit Scheme) 
+0.07 
+0.07% 
+0.07 
+0.07% 
+ 
+ 
+ 
+ 
+Total 
+101.55 
+ 
+93.34 
+ 
+89.99 
+ 
+83.07 
+ 
+ 
+The return on the investment is the nominal yield available on the format of investment as applicable to Approved Gratuity Fund under Rule 101 of Income Tax Act 
+1961. 
+Significant actuarial assumptions for the determination of the defined obligation are discount rate, expected salary increase and mortality. The sensitivity analyses 
+below have been determined based on reasonably possible changes of the respective assumptions occurring at the end of the reporting period, while holding all other 
+assumptions constant. 
+ 
+ 
+
+=== PAGE 255 ===
+ 
+253 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Gratuity 
+·     If the discount rate is 100 basis points higher (lower), the defined benefit obligation would decrease by ₹6.59 crore (increase by ₹7.38crore) (as at March 31, 2023: 
+decrease by ₹ 6.60 crore (increase by ₹7.40crore)). 
+·     If the expected salary growth increases (decreases) by 100 basis points, the defined benefit obligation would increase by ₹ 1.19crore (decrease by ₹1.22 crore) (as at 
+March 31, 2023: increase by ₹ 1.25 crores (decrease by ₹ 1.21crores)) 
+The estimated term of the benefit obligations in case of gratuity is 8.92 years (As at March 31, 2023: 9.10 years) 
+The company expects to contribute ₹ 5.66 crore to its gratuity plan in the next financial year. 
+Leave Encashment 
+·     If the discount rate is 100 basis points higher (lower), the defined benefit obligation would decrease by ₹ 5.69crore (increase by ₹6.46crore) (as at March 31, 2023 
+decrease by ₹ 5.87 crore (increase by₹ 6.44 crore) 
+·     If the expected salary growth increases (decreases) by 100 basis points, the defined benefit obligation would increase by ₹ 6.62   crore (decrease by ₹ 5.93 crore) (as 
+at March 31, 2023: increase by ₹ 6.59 crore (decrease by ₹ 5.93 crores) 
+The estimated term of the benefit obligations in case of Leave Encashment is 8.92 years (As at March 31, 2023: 9.10 years) 
+Post retirement Benefits 
+·    If the discount rate is 100 basis points higher (lower), the defined benefit obligation would decrease by ₹ 8.98 crore (increase by ₹ 11.53 crore) (as at March 31, 
+2023: decrease by ₹ 10.01crore (increase by ₹ 12.98 crore)). 
+ 
+The sensitivity analysis presented above may not be representative of the actual change in the defined benefit obligation as it is unlikely that the change in assumptions 
+would occur in isolation of one another as some of the assumptions may be correlated. 
+ 
+Furthermore, in presenting the above sensitivity analysis, the present value of the defined benefit obligation has been calculated using the projected unit credit method 
+at the end of the reporting period, which is the same as that applied in calculating the defined benefit obligation liability recognised in the balance sheet. 
+ 
+There has been no change in the process used by the Company to manage its risks from prior periods. 
+
+=== PAGE 256 ===
+ 
+254 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Note 37: Earning Per Share 
+ 
+Particulars 
+As at March 31,2024 
+As at March 31,2023 
+Basic and diluted earning per share (in ₹) 
+(Face Value of ₹5/- per share) 
+20.20 
+19.19 
+Total 
+20.20 
+19.19 
+There are no dilutive instruments issued by the company 
+Basic and Diluted earning per share 
+The earnings and weighted average number of equity shares used in the calculation of basic earnings per share are 
+as follows. 
+(₹in Crores)
+Particulars 
+As at March 31,2024 
+As at March 31,2023 
+Profit after tax for the year attributable to 
+equity shareholders 
+1,230.79 
+1,169.08 
+Earnings used in the calculation of basic and 
+diluted earnings per share 
+1,230.79 
+1,169.08 
+Weighted average number of equity shares 
+for the purposes of basic and diluted 
+earnings per share 
+60.93 
+60.93 
+Face Value per equity share (₹) 
+5 
+5 
+Impact of changes in accounting policies 
+There are no changes in the accounting policies which had significant impact on the amounts reported for earning
+per share. 
+ 
+ 
+ 
+
+=== PAGE 257 ===
+ 
+255 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Note 38: Segment Information 
+ 
+Services from which reportable segments derive their revenues 
+ 
+The Segment reporting disclosed by the Company in this section is presented in accordance with the disclosures requirements of Ind AS 108 "Operating Segment". 
+ 
+Information reported to the chief operating decision maker (CODM) for the purposes of resource allocation and assessment of segment performance focuses on the 
+divisions operated in the company. There are two major operating divisions- EXIM and Domestic, which are organized on All India basis. The information is further 
+analysed based on the different classes of customers. Both EXIM and Domestic divisions of the company are engaged in handling, transportation & warehousing 
+activities. The Company has not aggregated any operating segments for presentation purposes. 
+ 
+As at March 31, 2024, the operating segment of the Company are as under: 
+ 
+(a) The Company is organised into two major operating divisions- EXIM and Domestic. The divisions are the basis on which the Company reports its primary 
+segment information. Segment revenue and expenses directly attributable to EXIM and Domestic segments are allocated to the two segments. Joint revenue and 
+expenses have been allocated on a reasonable basis. Segment assets include all operating assets used by a segment and consist principally of inventories, sundry 
+debtors, cash and bank balances, loans & advances, other current assets and fixed assets net of provisions. Similarly, segment liabilities include all operating 
+liabilities and consist principally of sundry creditors, advance/deposits from customers, other liabilities and provisions. Segment assets and liabilities do not, 
+however, include provisions for taxes. Joint assets & liabilities have been allocated to segments on a reasonable basis. 
+ 
+(b) As the operations of the Company are presently confined to the geographical territories of India, there are no reportable geographical segments.  
+(c) Segment revenue and results 
+The following is the analysis of the Company's revenue and results from operations by reportable segments:- 
+ 
+(₹in Crores) 
+Particulars 
+  
+EXIM 
+Domestic 
+Un-Allocable 
+Total 
+Year ended 
+March 31, 2024 
+Year ended 
+March 31, 2023 
+Year ended 
+March 31, 2024 
+Year ended 
+March 31, 2023 
+Year 
+ended 
+March 
+31, 2024 
+Year ended 
+March 31, 
+2023 
+Year ended 
+March 31, 
+2024 
+Year ended 
+March 31, 
+2023 
+Revenue 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Segment Revenue 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Rail Freight Income 
+3,985.47 
+3,661.30 
+2,569.67 
+2,436.88 
+- 
+- 
+6,555.14 
+6,098.18 
+Road Freight Income 
+138.29 
+107.74 
+217.97 
+165.44 
+- 
+- 
+356.26 
+273.18 
+Handling Income 
+841.38 
+811.45 
+180.79 
+185.35 
+- 
+- 
+1,022.17 
+996.80 
+
+=== PAGE 258 ===
+ 
+256 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Storage and 
+Warehousing Income 
+126.41 
+133.09 
+46.99 
+43.94 
+- 
+- 
+173.40 
+177.03 
+Export Incentive 
+- 
+-    
+- 
+- 
+- 
+- 
+- 
+-    
+Other operating income 
+606.44 
+620.93 
+76.94 
+77.69 
+- 
+- 
+683.38 
+698.62 
+Total Revenue from 
+Operations 
+5,697.99 
+5,334.51 
+3,092.36 
+2,909.30 
+- 
+- 
+8,790.35 
+8,243.81 
+Less: Rebate/Discount 
+(144.46) 
+(121.64) 
+(13.40) 
+(18.77) 
+ 
+ 
+( 157.86) 
+(140.41) 
+Net Total Revenue 
+from Operations 
+5,553.53 
+5,212.87 
+3,078.96 
+2,890.53 
+- 
+- 
+8,632.49 
+8,103.40 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Result 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Segment Result 
+1,248.63 
+1,262.06 
+263.56 
+239.21 
+ 
+ 
+1,512.19 
+1,501.27 
+Corporate expenses 
+- 
+- 
+- 
+- 
+183.51 
+213.30 
+183.51 
+213.30 
+Interest Expenses 
+- 
+- 
+- 
+- 
+65.33 
+57.01 
+65.33 
+57.01 
+Exceptional item 
+- 
+- 
+- 
+- 
+7.14 
+1.25 
+7.14 
+1.25 
+Profit before tax and other income 
+ 
+ 
+ 
+ 
+ 
+1,256.21 
+1,229.71 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Interest and  other 
+income 
+- 
+- 
+- 
+- 
+378.27 
+324.02 
+378.27 
+324.02 
+Income Taxes 
+- 
+- 
+- 
+- 
+403.69 
+384.65 
+403.69 
+384.65 
+Net Profit 
+ 
+ 
+ 
+ 
+ 
+ 
+1,230.79 
+1,169.08 
+(d) The accounting policies of the reportable segments are the same as the Company’s accounting policies described in Note 1. Segment profit represents the profit before 
+tax earned by each segment without allocation of central administration costs and directors’ salaries, investment income, other gains and losses, as well as finance costs. 
+This is the measure reported to the chief operating decision maker for the purposes of resource allocation and assessment of segment performance. 
+Revenue and expenses directly identifiable to the segments have been allocated to the relatively primary reportable segments. 
+ 
+Segment revenue and expenses which are not directly identifiable to the primary reportable segments have been disclosed under unallocable, which primarily includes 
+interest and other income and Corporate Expenses. Other income includes Rent income, dividend income and Interest Income. Corporate Expenses includes Employee 
+staff benefit expense, Administrative expense and Depreciation expense of Corporate office. 
+ 
+ 
+ 
+ 
+ 
+
+=== PAGE 259 ===
+ 
+257 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Segment assets and liabilities 
+(₹in Crores) 
+  
+  
+Particulars 
+  
+EXIM 
+Domestic 
+Un-Allocable 
+Total Segments 
+As at  March 
+31, 2024 
+As at   
+March 31, 2023 
+As at  
+March 31, 
+2024 
+As at   
+March 31, 
+2023 
+As at  March 
+31, 2024 
+As at   
+March 31, 
+2023 
+As at  March 
+31, 2024 
+As at  March 
+31, 2023 
+Segment Assets 
+3,824.52 
+3,489.89 
+3,028.57 
+2,822.24 
+ 
+ 
+6,853.09 
+6,312.13 
+Unallocated 
+Corporate Assets 
+- 
+- 
+- 
+- 
+7,011.82 
+6,968.47 
+7,011.82 
+6,968.47 
+Total Assets 
+ 
+ 
+ 
+ 
+ 
+ 
+13,864.91 
+13,280.60 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Segment Liabilities 
+1,232.31 
+1,165.80 
+594.92 
+579.70 
+ 
+ 
+1,827.23 
+1,745.50 
+Unallocated 
+Corporate Liabilities 
+- 
+- 
+- 
+- 
+12,037.68 
+11,535.10 
+12,037.68 
+11,535.10 
+Total Liabilities 
+ 
+ 
+ 
+ 
+ 
+ 
+13,864.91 
+13,280.60 
+For the purposes of monitoring segment performance and allocating resources between segments: 
+a) all assets are allocated to reportable segments other than investments and assets of corporate office; and 
+b) all liabilities are allocated to reportable segments other than share capital, other equity, deferred tax liabilities and other liabilities of corporate office. Un-
+allocated corporate liabilities include ₹ 11,812.34crore (As at March 31 2023: ₹ 11,244.98crore) on account of Shareholder's funds. 
+c) assets and liabilities which are not directly identifiable to the segments have been disclosed under unallocable. 
+ 
+Other segment information 
+(₹in Crores)
+ 
+Particulars 
+EXIM 
+Domestic 
+Un-Allocable 
+Total Segments 
+Year ended 
+March 31,  
+2024 
+Year ended 
+March 31,  
+2023 
+Year ended 
+March 31, 
+2024 
+Year ended 
+March 31, 
+2023 
+Year ended 
+March 31, 
+2024 
+Year ended 
+March 31, 
+2023 
+Year ended 
+March 31, 
+2024 
+Year ended 
+March 31,  
+2023 
+Capital Expenditure 
+530.38 
+306.68 
+462.76 
+181.47 
+8.14 
+4.64 
+1,001.28 
+492.79 
+Depreciation and amortisation 
+330.11 
+300.43 
+243.20 
+226.97 
+27.57 
+26.69 
+600.88 
+554.09 
+Non 
+cash 
+expenses 
+other 
+than
+depreciation and amortisation 
+0.12 
+0.56 
+0.06 
+0.89 
+7.19 
+1.84 
+7.37 
+3.29 
+
+=== PAGE 260 ===
+ 
+258 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Note: 
+Capital Expenditure includes addition during the year to property, plant and equipment & Other Intangible assets. 
+ 
+Revenue from major services 
+The following is the analysis of the company's revenue from its major services. 
+(₹ in Crores) 
+Particulars 
+Year ended March 31, 2024 
+Year ended March 31, 2023 
+Rail Freight Income 
+6,555.14 
+6,098.18 
+Road Freight Income 
+356.26 
+273.18 
+Handling Income 
+1,022.17 
+996.80 
+Storage and Warehousing Income 
+173.40 
+177.03 
+Export incentive 
+- 
+-    
+Other operating income 
+683.38 
+698.62 
+Gross Revenue from Operations 
+8,790.35 
+8,243.81 
+Less: Rebates & Discounts 
+(157.86) 
+(140.41) 
+Net Revenue from Operations 
+8,632.49 
+8,103.40 
+Information about major customers 
+No single customer contributed 10% or more to company's revenue during FY 2023-24 and during FY 2022-23. 
+ 
+ 
+ 
+
+=== PAGE 261 ===
+ 
+259 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+Note 39: Lease Arrangements 
+ 
+As a lessee 
+ 
+The Company has entered into Operating leases arrangements for Land, Vehicles, Containers, Plant & Machinery, Railway Wagons/Rakes, Office Premises, 
+Accommodation Provided to Staffs etc. with different lease terms. 
+The Company has accounted lease payment associates with short term leases (having lease term of 12 months or less) and leases of low value assets (less than ₹ 3.5 
+lakhs) as an expense on either a straight-line basis over the lease term or another systematic basis. 
+ 
+The Company has entered into agreement(s) with Indian Railways, for utilization of its land leased to CONCOR for setting up of Company’s Terminals and carrying out 
+Company’s operations at such terminals.  
+ 
+In FY 2020-21, Ministry of Railways, Government of India vide its order no.2015/LML-II/13/4 dated 19.03.2020, had communicated that the Land License Fee (LLF) 
+applicable on the Railway land leased to CONCOR shall be charged w.e.f. 01.04.2020 as per extant policy of Railways i.e. @6% of the value of land, which will be 
+further increased 7% annually. Subsequently, superseding all previous policies/ guidelines, Railways has issued a Master Circular (MC) on Policy for Management of 
+Railway Land on 4th October 2022. In the MC, it has been reiterated that annual LLF on the existing land will be payable @6% of Market Value (MV) of land with 
+annual escalation of 7%. The MV will be the industrial rate specified in the State and when it is not specified in the State, then any other rate depending upon use of 
+surrounding land as specified by the State/ Revenue Office, shall be considered.  
+ 
+On the basis of above MC of Railways, LLF for the FY 2023-24 has been booked on the MV of Railways’ land parcels obtained by CONCOR. In some cases, where 
+there is inconsistency in the assessment of land area and MV of land between the Company and the Railways, the same is being reconciled with the concerned divisional 
+Railways. Further, in terms of the MC the new Agreement(s) with the Railways for the land parcels leased to CONCOR will be executed as and when the same are 
+finalized by Railways.  
+ 
+In view of above, the quantification of company’s potential exposure for land licensed by Indian Railways in future is not ascertainable. Therefore, the Company has not 
+recognized Right of Use (ROU) Asset and Lease Liability for lands licensed by Indian Railways. 
+ 
+For the Year ended March 31, 2024: -   
+(₹in Crores) 
+Particulars 
+Land 
+Building/ 
+Office 
+Premises 
+Plant & 
+Machinery 
+Vehicles 
+Railway 
+Wagon/Rake 
+Containers 
+Accommodation 
+provided to 
+Staff  
+Other 
+(photo 
+copier & 
+printer) 
+Depreciation Charged 
+32.81 
+7.86 
+74.51 
+1.19 
+9.08 
+0.57 
+0.69 
+ 
+Interest expense on Lease Liabilities 
+37.50 
+1.29 
+20.28 
+0.32 
+5.64 
+0.16 
+ 
+ 
+Expense related to short term leases 
+0.04 
+1.75 
+6.40 
+4.09 
+ 
+ 
+0.32 
+0.14 
+
+=== PAGE 262 ===
+ 
+260 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Expense related to low value leases 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Expense related to variable lease payments 
+301.94 
+2.56 
+0.04 
+2.69 
+ 
+ 
+ 
+ 
+Income from Sub-leasing right-of use assets 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Total Cash outflow for leases 
+453.14 
+12.25 
+90.92 
+7.92 
+14.10 
+0.28 
+0.32 
+0.13 
+Addition to Right of Use Assets 
+2.67 
+ 
+269.23 
+0.29 
+ 
+ 
+ 
+ 
+Gains or Losses arising from sale and 
+leaseback transactions 
+ 
+ 
+0.33 
+ 
+ 
+ 
+ 
+ 
+Carrying amount of right-of-use assets at 
+the end of the reporting period 
+849.82 
+6.46 
+286.67 
+3.74 
+41.16 
+1.95 
+14.09 
+ 
+ 
+For the Year ended March 31, 2023: -   
+(₹in Crores) 
+Particulars 
+Land 
+Building/ 
+Office 
+Premises 
+Plant & 
+Machinery 
+Vehicles 
+Railway 
+Wagon/Rake 
+Containers 
+Accommodation 
+provided to 
+Staff  
+Other 
+(photo 
+copier & 
+printer) 
+Depreciation Charged 
+33.01 
+7.87 
+35.11 
+1.12 
+9.07 
+0.32 
+0.70 
+ 
+Interest expense on Lease Liabilities 
+40.12 
+2.10 
+8.06 
+0.22 
+6.29 
+0.11 
+ 
+ 
+Expense related to short term leases 
+0.07 
+1.50 
+1.89 
+3.64 
+ 
+ 
+0.27 
+0.14 
+Expense related to low value leases 
+0.01 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Expense related to variable lease payments 
+382.34 
+2.27 
+0.03 
+2.58 
+ 
+ 
+ 
+ 
+Income from Sub-leasing right-of use assets 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Total Cash outflow for leases 
+405.61 
+11.62 
+65.00 
+7.06 
+14.10 
+0.61 
+0.27 
+0.17 
+Addition to Right of Use Assets 
+6.36 
+ 
+91.64 
+3.37 
+ 
+2.56 
+ 
+ 
+Gains or Losses arising from sale and 
+leaseback transactions 
+ 
+ 
+(0.12) 
+ 
+ 
+ 
+ 
+ 
+Carrying amount of right-of-use assets at 
+the end of the reporting period 
+879.95 
+14.32 
+95.47 
+4.57 
+50.23 
+2.53 
+14.79 
+ 
+  
+The table below provided details un-discounted contractual maturity analysis of lease liabilities as at 31st March 2024: -  
+ 
+(₹in Crores) 
+Particulars 
+Carrying 
+Amount 
+Due in 1st 
+Year 
+Due in 2nd 
+Year 
+Due in 3rd 
+Year 
+Due in 4th   
+to 5th Year 
+Due after 5th Year 
+Total Contracted 
+Cash flows 
+Lease Liabilities 
+887.98 
+190.48 
+145.54 
+126.80 
+121.59 
+1,254.38 
+1,838.79 
+
+=== PAGE 263 ===
+ 
+261 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+The table below provided details un-discounted contractual maturity analysis of lease liabilities as at 31st March 2023: -  
+ 
+(₹in Crores) 
+Particulars 
+Carrying 
+Amount 
+Due in 1st 
+Year 
+Due in 2nd 
+Year 
+Due in 3rd 
+Year 
+Due in 4th   
+to 5th Year 
+Due after 5th Year 
+Total Contracted 
+Cash flows 
+Lease Liabilities 
+700.22 
+181.72 
+145.88 
+123.85 
+123.03 
+1,201.44 
+1,775.92 
+The Company manages liquidity risk by maintaining adequate reserves and continuously monitoring forecast and actual cash flows and by matching the maturity 
+profiles of financial assets and lease liabilities. 
+ 
+Disclosure in respect of future cash outflow of lease commitments for leases which are not yet commenced as at 31st March 2024: - 
+ 
+(₹in Crores) 
+Particulars 
+Lease period from 0-3 
+Yrs 
+Lease Period From 4-5 
+Yrs 
+Lease Period from 6-8 
+yrs 
+Lease period from 
+more than 8 yrs 
+Disclosure in respect of future cash outflow of lease 
+commitments for leases which are not yet commenced 
+- 
+- 
+- 
+- 
+ 
+Disclosure in respect of future cash outflow of lease commitments for leases which are not yet commenced as at 31st March 2023: - 
+ 
+(₹in Crores) 
+Particulars 
+Lease period from 0-3 
+Yrs 
+Lease Period From 4-5 
+Yrs 
+Lease Period from 6-8 
+yrs 
+Lease period from 
+more than 8 yrs 
+Disclosure in respect of future cash outflow of lease 
+commitments for leases which are not yet commenced 
+- 
+- 
+- 
+- 
+As a Lessor:  
+The Company has given certain office premises and warehouses on cancellable operating leases. 
+Payments recognised as an income: 
+ 
+For year ended March 31st 2024: 
+(₹in Crores) 
+Particulars 
+Land 
+Building/Office 
+Premises 
+Plant & 
+Machinery 
+Vehicles 
+Railway 
+Wagon/Rake 
+Warehouse 
+Accommodatio
+n provided to 
+Staff 
+Others 
+Minimum lease payments received 
+0.74 
+15.31 
+0.30 
+- 
+- 
+44.61 
+0.10 
+- 
+Sub-lease recoveries 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+ 
+ 
+
+=== PAGE 264 ===
+ 
+262 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+For year ended March 31st 2023: 
+(₹in Crores) 
+Particulars 
+Land 
+Building/Office 
+Premises 
+Plant & 
+Machinery 
+Vehicles 
+Railway 
+Wagon/Rake 
+Warehouse 
+Accommodatio
+n provided to 
+Staff 
+Others 
+Minimum lease payments received 
+0.54 
+13.66 
+- 
+- 
+- 
+47.58 
+0.14 
+- 
+Sub-lease recoveries 
+- 
+- 
+- 
+- 
+- 
+- 
+0.03 
+- 
+ 
+Operating Leases 
+Maturity analysis of lease payments, showing the undiscounted lease payments to be received. 
+ 
+As at 31st March 2024 
+(₹in Crores) 
+Particulars 
+Land 
+Building/Office 
+Premises 
+Plant & 
+Machinery 
+Vehicles 
+Railway 
+Wagon/Rake 
+Warehouse 
+Accommodation 
+provided to Staff 
+Lease Payment to be received  
+  
+  
+  
+  
+  
+  
+  
+1st Year 
+0.16 
+7.41 
+0.36 
+- 
+- 
+9.69 
+- 
+2nd Year 
+- 
+6.85 
+0.36 
+- 
+- 
+5.03 
+- 
+3rd Year 
+-  
+5.59 
+0.36 
+- 
+- 
+3.80 
+- 
+4th Year 
+- 
+4.51 
+0.06 
+- 
+- 
+3.04 
+- 
+5th Year 
+- 
+4.59 
+- 
+- 
+- 
+3.04 
+- 
+After 5 Years 
+0.01 
+15.68 
+- 
+- 
+- 
+3.99 
+- 
+ 
+As at 31st March 2023 
+(₹in Crores) 
+Particulars 
+Land 
+Building/Office 
+Premises 
+Plant & 
+Machinery 
+Vehicles 
+Railway 
+Wagon/Rake 
+Warehouse 
+Accommodation 
+provided to Staff 
+Lease Payment to be received  
+  
+  
+  
+  
+  
+  
+  
+1st Year 
+0.19 
+5.86 
+- 
+- 
+- 
+11.42 
+- 
+2nd Year 
+- 
+5.23 
+- 
+- 
+- 
+3.81 
+- 
+3rd Year 
+-  
+4.37 
+- 
+- 
+- 
+3.01 
+- 
+4th Year 
+- 
+4.00 
+- 
+- 
+- 
+1.88 
+- 
+5th Year 
+- 
+4.07 
+- 
+- 
+- 
+1.96 
+- 
+After 5 Years 
+0.01 
+17.30 
+- 
+- 
+- 
+2.06 
+- 
+
+=== PAGE 265 ===
+ 
+263 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Note:- 
+1. Applied a single discount rate to a portfolio of leases of similar assets in similar economic environment with a similar end date. The company has applied single 
+discount rate of 8.50 % per annum for first half year and 8.55 % per annum for second half year as the same is review on half yearly basis for newly entered contract(s), 
+if any. 
+2. Applied the exemption not to recognize right-of-use assets and liabilities for leases with less than 12 months of lease term. 
+ 
+ 
+Note 40: Financial Instruments 
+ 
+(1) Capital management 
+The company manages it's capital to ensure that it will be able to continue as a going concern while maximising the return to stakeholders through the optimization 
+of the capital structure.  
+ 
+The capital structure of the Company consists of total equity. The Company is not subject to any externally imposed capital requirements.  
+ 
+(i) Gearing ratio 
+The Company has no outstanding debt as at the end of reporting period. Accordingly, the Company has nil gearing ratio as at March 31, 2024 and March 31, 2023 
+respectively. 
+ 
+ 
+(ii) Categories of financial instruments 
+ 
+(₹in Crores) 
+Particulars 
+As at  
+March 31, 2024 
+As at  
+March 31, 2023 
+Recorded at Amortised cost 
+ 
+ 
+Financial assets 
+ 
+ 
+Cash and bank balances  
+3,238.88 
+3,047.88 
+Investments 
+1,333.57 
+1,442.52 
+Trade receivables 
+329.45 
+213.10 
+Loans 
+61.01 
+55.48 
+Other financial assets 
+283.21 
+237.80 
+Financial liabilities 
+ 
+ 
+Trade payables 
+287.53 
+377.02 
+Other financial liabilities  
+1,176.71 
+1,046.05 
+(iii) Financial risk management objectives 
+The Company’s corporate treasury function monitors and manages the financial risks relating to the operations of the Company by analyzing exposures by degree and 
+magnitude of risks. These risks include market risk (including currency risk and price risk), credit risk and liquidity risk. 
+
+=== PAGE 266 ===
+ 
+264 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+(iv)Market Risk 
+The Company’s activities expose it primarily to the financial risks of changes in foreign currency exchange rates. 
+Market risk exposures are measured using sensitivity analysis. 
+There has been no change to the Company's exposure to market risks or the manner in which these risks are being managed and measured. 
+(v) Foreign Currency risk management 
+The company is not subject to significant transactions denominated in foreign currencies. The company does not have earnings in foreign currency but the foreign 
+currency outgo made during the year is ₹0.63crore ( 2022-23 :₹ 0.50 crore ) against which the net gain/(loss) on foreign currency transactions recorded in the books is 
+insignificant .Consequently, exposures to exchange rate fluctuations are limited. 
+(vi) Interest rate risk management 
+The Company has not availed borrowings, hence is not exposed to interest rate risk. 
+ 
+(vii) Other price risks 
+The company is not exposed to price risk as its investments in debt based marketable securities are held in a business model to collect contractual amounts at maturity 
+and are carried at amortised costs. Thus the change in fair value of these investments does not impact the Company.  
+ 
+These investments are tradable in market. A 10% increase / decrease in the market price of these investments as at March 31 2024 will lead to ₹ 56.40 crore (As at 
+March 31 2023: ₹ 69.57crore) increase / decrease in the fair value of these investment. 
+ 
+(viii) Credit risk management 
+Credit risk refers to the risk that a counterparty will default on its contractual obligations resulting in financial loss to the Company. The Company has limited 
+exposure to credit risk owing to the balance of trade receivables as explained in Note no. 12. Company's bank balances and investments in marketable securities are 
+held with a reputed and creditworthy banking institution resulting to limited credit risk from the counterparties. 
+ 
+The Company is exposed to credit risk in relation to letter of comfort given to banks on behalf of subsidiaries / joint venture companies. The Company’s maximum 
+exposure in this respect is the maximum amount the Company could have to pay if the guarantee is called on as at March 31, 2024 is ₹ 2.03crore (As at March 31, 
+2023: ₹ 51.31crore) 
+ 
+(ix)Liquidity risk management 
+The Company manages liquidity risk by maintaining adequate reserves and continuously monitoring forecast and actual cash flows and by matching the maturity 
+profiles of financial assets and liabilities. 
+ 
+The table below provides details regarding the contractual maturities of financial liabilities including estimated interest payments as at March 31, 2024: 
+
+=== PAGE 267 ===
+ 
+265 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Particulars 
+Carrying  
+amount 
+Due in 
+1st year 
+Due in 
+2nd year 
+Due in 
+3rd year 
+Due in 
+4th to 5th 
+year 
+Due after 
+ 5th year 
+Total 
+contracted 
+cash flows 
+Financial Liabilities 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Trade payable 
+287.53 
+287.53 
+ 
+ 
+ 
+ 
+287.53 
+Borrowings 
+- 
+- 
+ 
+ 
+ 
+ 
+- 
+Other financial liabilities 
+1,176.71 
+440.37 
+127.97 
+104.15 
+80.01 
+424.21 
+1,176.71 
+Financial guarantee contracts* 
+- 
+ 
+ 
+ 
+ 
+ 
+- 
+ 
+The table below provides details regarding the contractual maturities of financial liabilities including estimated interest payments as at March 31, 2023: 
+Particulars 
+Carrying  
+amount 
+Due in 
+1st year 
+Due in 
+2nd year 
+Due in 
+3rd year 
+Due in 
+4th to 5th year 
+Due after 
+ 5th year 
+Total 
+contracted 
+cash flows 
+Financial Liabilities 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Trade payable 
+377.02 
+377.02 
+ 
+ 
+ 
+ 
+377.02 
+Borrowings 
+- 
+- 
+ 
+ 
+ 
+ 
+- 
+Other financial 
+liabilities 
+1045.67 
+405.40 
+107.32 
+52.65 
+44.05 
+436.25 
+1045.67 
+Financial guarantee contracts* 
+0.38 
+ 
+ 
+ 
+ 
+ 
+- 
+*Based on expectations at the end of the reporting period, the Company considers that it is more likely than not such an amount will be payable under the arrangement. 
+The maximum amounts the Company could be forced to settle under the arrangement for the full guaranteed amount (letter of comfort) if that amount is claimed by the 
+counterparty to the guarantee is ₹ 2.03 crore (As at March 31 2023: ₹ 51.31 crore ). 
+The table below provides details regarding the contractual maturities of financial assets including estimated interest receipts as at March 31, 2024: 
+Particulars 
+Carrying  
+amount 
+upto 1 year 
+1-3 year 
+4-5 year 
+More than 5 year 
+Total contracted 
+cash flows 
+Non-current/Current investments** 
+513.17 
+38.91 
+175.02 
+352.80 
+91.78 
+658.51 
+Trade receivables 
+329.45 
+329.45 
+ 
+ 
+ 
+329.45 
+Loans 
+61.01 
+15.46 
+15.52 
+10.57 
+19.46 
+61.01 
+Other financial assets 
+261.67 
+192.41 
+47.03 
+3.20 
+19.03 
+261.67 
+
+=== PAGE 268 ===
+ 
+266 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+The table below provides details regarding the contractual maturities of financial assets including estimated interest receipts as at March 31, 2023: 
+Particulars 
+Carrying  
+amount 
+upto 1 year 
+1-3 year 
+4-5 year 
+More than 5 year 
+Total contracted 
+cash flows 
+Non-current/Current investments** 
+638.74 
+168.54 
+182.91 
+111.67 
+364.03 
+827.15 
+Trade receivables 
+213.10 
+213.10 
+ 
+ 
+ 
+213.10 
+Loans 
+55.48 
+14.19 
+13.80 
+9.11 
+18.38 
+55.48 
+Other financial assets 
+212.47 
+133.60 
+56.95 
+7.22 
+14.70 
+212.47 
+ 
+(x) Fair value measurements 
+None of the company’s financial assets and financial liabilities are measured at fair value at the end of the reporting period.  
+(xi) Fair value of financial assets and financial liabilities that are not measured at fair value (but fair value disclosures are required) 
+Particulars 
+Fair value hierarchy 
+As at  
+March 31, 2024 
+As at  
+March 31, 2023 
+Carrying amount 
+Fair value 
+Carrying amount 
+Fair value 
+Financial assets 
+ 
+ 
+ 
+ 
+ 
+Non-current/current investments** 
+Level 2 
+513.17 
+563.97 
+638.74 
+695.67 
+Employee Loan including interest 
+Level 2 
+61.01 
+61.01 
+55.48 
+55.48 
+Loan to Subsidiaries including interest 
+Level 2 
+- 
+- 
+- 
+- 
+Fixed Deposits with interest 
+Level 2 
+0.78 
+0 .78 
+1.08 
+1.08 
+Trade receivables* 
+Level 2 
+329.45 
+329.45 
+213.10 
+213.10 
+Others 
+Level 3 
+260.89 
+260.89 
+211.39 
+211.39 
+Financial Liabilities 
+Trade payables* 
+Level 2 
+287.53 
+287.53 
+377.02 
+377.02 
+Borrowings 
+Level 2 
+- 
+- 
+- 
+- 
+Other financial liabilities* 
+ 
+Level 2 
+1,176.71 
+1,176.71 
+1,046.05 
+1046.05 
+* There is no significant change in the fair value of these financial assets and financial liabilities, therefore fair value is equal to its carrying value. 
+** These investments include investments made in tax free bonds only. 
+
+=== PAGE 269 ===
+ 
+267 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+Note 41: Statement of Transactions with Related Parties 
+ 
+41.1.  Name of related parties and description of relationship: 
+Joint Ventures 
+1. Star Track Terminals Pvt. Ltd.  
+2. Transworld Terminals Dadri Private Limited (formerly known as Albatross Inland Ports Private Limited)  
+3. Gateway Terminals India Pvt. Ltd.  
+4. Himalayan Terminals Pvt. Ltd. (Foreign Joint Venture) 
+5. India Gateway Terminal Pvt. Ltd.  
+6. TCI-CONCOR Multimodal Solutions Pvt. Ltd. (formerly known as Infinite Logistics Solutions Private Limited) 
+7. Container Gateway Limited 
+8. Allcargo Logistics Park Pvt. Ltd.  
+9. CMA-CGM Logistics Park (Dadri) Pvt. Ltd. 
+10.Angul Sukinda Railway Ltd. 
+11.HALCON 
+12. Pipavav Integrated Logistics-HUB(PILH) 
+Subsidiaries 
+1. Fresh And Healthy Enterprises Ltd. (wholly owned) 
+2. CONCOR Air Limited. (wholly owned) 
+3. SIDCUL CONCOR Infra Company Ltd. (partly owned) 
+4. Punjab Logistics Infrastructure Ltd. (partly owned) 
+ 
+Trusts (including post retirement employee benefit trust) wherein CONCOR having control 
+1. CONCOR Employees Gratuity Fund 
+2. CONCOR Employees CPF Trust 
+3. CONCOR Post Retirement Medical Trust 
+4. CONCOR Superannuation Pension Trust 
+Whole Time Directors/ Key Managerial Personnel 
+1. Sh. Sanjay Swarup, Director (IM&O) (w.e.f. 01.09.2016 upto 30.09.2023) and Chairman & Managing Director (w.e.f 01.10.2023) 
+2. Sh. Manoj K. Dubey, Director (Finance) & CFO (w.e.f. 31.10.2018) 
+3. Sh. Ajit Kumar Panda, Director (Projects & Services) (w.e.f. 28.12.2022) 
+
+=== PAGE 270 ===
+ 
+268 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+4. Sh . Mohammad Azhar Shams, Director Domestic (w.e.f. 01.02.2023 ) 
+5. Sh. Priya Ranjan Parhi, Director (IM&O)(additional charge) (w.e.f. 23.10.2023) 
+6. Sh. V. Kalyana Rama, Chairman & Managing Director (w.e.f. 01.10.2016 upto 30.09.2023) 
+7. Sh. Harish Chandra, Executive Director (Finance) & Company Secretary 
+Nominated/Independent Directors 
+1. Sh. Satendra Kumar (w.e.f. 09.11.2021) 
+2. Sh. Kedarashish Bapat (w.e.f. 09.11.2021) 
+3. Sh. Chesong Bikramsing Terang (w.e.f. 16.11.2021) 
+4. Smt. Chandra Rawat (w.e.f. 23.11.2021) 
+5. Sh. Amrendra Kumar Chandra (w.e.f. 16.03.2023 upto 29.02.2024) 
+6. Sh. Manoj Kumar Srivastava (w.e.f. 16.03.2023 upto 30.06.2023) 
+7. Sh. R. C. Paul Kanagaraj (w.e.f. 15.06.2023 upto 24.03.2024) 
+8. Sh. Rajesh Pathak (w.e.f. 11.09.2023 upto 21.03.2024) 
+9. Sh. Sandeep Jain (w.e.f. 20.03.2024) 
+ 
+Enterprises owned or significantly influenced by Key Management Personnel/Directors or their relatives: 
+1. Seshasaila Power and Engineering Pvt. Ltd. 
+2. Seshasaila Logistics Pvt. Ltd. 
+3. Seshasaila Infrastructure Pvt. Ltd. 
+4. Seshasaila Power (Mandsaur) Pvt. Ltd. 
+5. Seshasaila Power (Dhar) Pvt. Ltd. 
+6. AK-BIO Power (India) Pvt. Ltd. 
+7. Praja Engineering Services Pvt. Ltd. 
+8. Venran Biotech Pvt. Ltd. 
+9. Dronamraju Estates Pvt. Ltd. 
+10. Inteca Digi Technologies LLP 
+11. Pipehaul Logistics LLP 
+12. Central Railside Warehouse Company Limited 
+13. Pipavav Railway Corporation Limited 
+14. Satendra & Co., Chartered Accountants 
+15. Satyam Shree Build Home LLP 
+16. S.B. Dandekar & Co., Chartered Accountants 
+17. YU Technologies Private Limited 
+18. Quickgrow Vinimay Private Limited 
+19.AIKYA Investment Management Ltd. 
+20.Hassen Mangalore Rail Development Co. Ltd. 
+
+=== PAGE 271 ===
+ 
+269 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+21.Chhattisgarh East West Railway Ltd. 
+22.Chhattisgarh East Railway Ltd. 
+23.Jharkhand Central Railway Ltd. 
+24.Mahanadi Coal Railway Ltd. 
+25.Konkan Railway Co. Ltd. 
+26.Maharashtra Metro Rail. Corp. Ltd. 
+27. Jharkhand Rail Infra Development Corp. Ltd. 
+28. Rites Limited 
+ 
+41.2.  Details of Transactions: 
+ 
+(₹in Crores)
+Particulars 
+Fresh And Healthy 
+Enterprises Ltd. 
+CONCOR Air 
+Limited. 
+SIDCUL CONCOR 
+Infra Company Ltd. 
+Punjab Logistics 
+Infrastructure Ltd 
+Total 
+Year 
+ended 
+March 31, 
+2024 
+Year 
+ended 
+March 31, 
+2023 
+Year ended 
+March 31, 
+2024 
+Year 
+ended 
+March 31, 
+2023 
+Year 
+ended 
+March 31, 
+2024 
+Year 
+ended 
+March 31, 
+2023 
+Year 
+ended 
+March 31, 
+2024 
+Year 
+ended 
+March 31, 
+2023 
+Year ended 
+March 31, 
+2024 
+Year ended 
+March 31, 
+2023 
+A. Revenue from operations 
+- 
+- 
+- 
+- 
+0.45 
+- 
+- 
+0.45 
+B. Rent, Maintenance charges, interest 
+and dividend income 
+- 
+- 
+ 
+10.99 
+1 .87 
+1.10 
+1.09 
+1.08 
+2 .96 
+13.17 
+C. Income from leased assets 
+- 
+- 
+- 
+- 
+0.30 
+- 
+- 
+- 
+0 .30 
+- 
+D. Investment (Net) made during the year
+ 
+8.21 
+- 
+- 
+- 
+- 
+20.40 
+- 
+20.40 
+8.21 
+E. Other Expenditure 
+- 
+- 
+- 
+- 
+19.52 
+14.79 
+27.00 
+29.72 
+46.52 
+44.51 
+ 
+41.2.2. Outstanding balance with subsidiaries 
+(₹in Crores)
+Particulars 
+Fresh And Healthy 
+Enterprises Ltd. 
+CONCOR Air 
+Limited 
+SIDCUL CONCOR 
+Infra Company Ltd. 
+Punjab Logistics 
+Infrastructure Ltd. 
+Total 
+Year ended 
+March 
+31,2024 
+Year 
+ended 
+March 
+31, 2023 
+Year ended 
+March 
+31,2024 
+Year 
+ended 
+March 31, 
+2023 
+Year 
+ended 
+March 
+31,2024 
+Year 
+ended 
+March 31, 
+2023 
+Year 
+ended 
+March 
+31,2024 
+Year 
+ended 
+March 31, 
+2023 
+Year ended 
+March 31,2024 
+Year ended 
+March 31, 
+2023 
+
+=== PAGE 272 ===
+ 
+270 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+-Bank Guarantee/ 
+Bid Bonds 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- Trade Receivable 
+- 
+- 
+- 
+- 
+1.49 
+0.52 
+1.29 
+1.46 
+2 .78 
+1.98 
+- Other Payables 
+- 
+- 
+- 
+- 
+7.56 
+1.77 
+4.38 
+3.39 
+11.94 
+5.16 
+-Loans to/(from) subsidiaries 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- Advances given 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- Interest accrued on loans 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- Investments (Gross) 
+229.64 
+229.64 
+36.65 
+36.65 
+74.00 
+74.00 
+128.75 
+108.35 
+469.04 
+448.64 
+- Fixed Assets given on lease (At Cost) 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+ 
+ 
+41.2.3.  Transactions with Joint Ventures  
+(₹ in crore)
+Particulars 
+  
+Star Track 
+Terminals 
+Pvt. Ltd. 
+Transworld 
+Terminals 
+Dadri 
+Private 
+Ltd. 
+Gateway 
+Terminals 
+India Pvt. 
+Ltd. 
+TCI-
+CONCOR 
+Multimodal 
+Solutions Pvt. 
+Ltd. 
+Allcargo 
+Logistics 
+Park Pvt. 
+Ltd. 
+CMA-
+CGM 
+Logistics 
+Park 
+(Dadri) 
+Pvt. Ltd. 
+Angul 
+Sukinda 
+HALCON Himalayan 
+Terminals 
+Pvt. Ltd. 
+PILH 
+Total 
+Year 
+ended 
+March 
+31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year 
+ended 
+Marc
+h 31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year 
+ended 
+Marc
+h 31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year 
+ended 
+March 
+31, 
+2024 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+Marc
+h 31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year 
+ended 
+Marc
+h 31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year 
+ended 
+Marc
+h 31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year 
+ended 
+Marc
+h 31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year 
+ended 
+Marc
+h 31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year 
+ended 
+Marc
+h 31, 
+2024 
+Year 
+ended 
+Marc
+h 31, 
+2023 
+Year ended 
+March 31, 
+2024 
+Year 
+ended 
+March 31, 
+2023 
+A. Revenue 
+from 
+operations 
+25.10 28.04 67.99 65.88
+8.21
+8.45 250.90 215.07 24.41 23.13 34.84 29.42
+- 
+-
+ 
+- 
+ 
+- 
+-
+-
+411.45
+369.99
+B. Rent, 
+Maintenanc
+e charges, 
+interest and 
+dividend 
+income 
+0.78
+0.74 9.90 8.29
+1.28
+0.99 
+2.52
+1.65 0.52 5.13
+5.14
+2.07
+- 
+-
+- 
+- 
+- 
+- 
+-
+-
+20.14
+18.87
+C. Income 
+from leased 
+assets 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+-
+-
+
+=== PAGE 273 ===
+ 
+271 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+D. Share in 
+the 
+income/(loss) 
+recognized 
+ 
+ 
+ 
+ 
+ 
+ 
+- 
+- 
+ 
+ 
+-
+-
+E. Investment 
+(Net) made 
+during the 
+year 
+ 
+ 
+ 
+ 
+ 
+- 
+-
+ 
+ 
+ 
+ 
+-
+-
+E. Other 
+expenditure 
+2.99 
+ 
+0.20
+ 
+4.07
+2.88 
+ 0.17
+0.37
+ 
+ 
+ 
+ 
+ 
+4.07
+6.61
+ 
+41.2.4. Outstanding balances with Joint Ventures 
+(₹ in crore)
+Particulars 
+Star Track 
+Terminals 
+Pvt. Ltd. 
+Transworld 
+Terminals 
+Dadri 
+Private 
+Ltd. 
+Gateway 
+Terminals 
+India Pvt. 
+Ltd. 
+TCI-
+CONCOR 
+Multimodal 
+Solutions 
+Pvt. Ltd. 
+Allcargo 
+Logistics 
+Park Pvt. 
+Ltd. 
+CMA-
+CGM 
+Logistics 
+Park 
+(Dadri) 
+Pvt. Ltd. 
+Angul 
+Sukinda 
+HALCON Himalayan 
+Terminals 
+Pvt. Ltd. 
+PILH 
+Total 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year 
+ended 
+March 
+31,202
+4 
+Year 
+ended 
+March 
+31, 
+2023 
+Year ended 
+March 
+31,2024 
+Year ended 
+March 31, 
+2023 
+-Security 
+Deposit 
+received 
+0.67
+0.67 0.75
+0.75
+-
+- 0.01
+0.01
+0.36
+0.36 0.38 0.38
+ 
+ 
+ 
+2.17
+2.17 
+- Trade 
+Receivable 
+ 
+-
+- 4.89
+4.72
+ 
+ 0.15
+0.15
+ 
+ 
+5.04
+4.87 
+- Other 
+Payables 
+-
+1.47 
+-
+0.14
+ 
+-
+0.40
+-
+0.02 
+-
+0.26
+-
+- 
+ 
+ 
+-
+2.29 
+-Loans 
+to/(from) 
+joint ventures 
+ 
+ 
+ 
+ 
+ 
+ 
+-
+- 
+- Advances 
+received 
+0.38
+0.53 0.22
+0.05
+0.07
+0.07 0.04 0.04
+0.15
+0.29 0.35
+0.19
+ 
+ 
+ 
+1.21
+1.17 
+- Advances 
+given 
+ 
+  
+ 
+ 
+-
+- 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+  
+ 
+ 
+ 
+  
+ 
+  
+-
+- 
+
+=== PAGE 274 ===
+ 
+272 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+41.2.5. Transactions with Trusts                           
+ 
+ 
+(₹ in crore) 
+Name of related party 
+Nature of 
+transaction 
+Year ended 
+March 31, 2024 
+Year ended 
+March 31, 2023 
+A.   Contribution to trust  
+a)    CONCOR Employees CPF Trust 
+Contribution to 
+Provident Fund 
+68.65 
+52.99 
+b)    CONCOR Employees Gratuity Trust 
+Contribution to 
+Gratuity 
+3.33 
+7.21 
+c)    CONCOR Post Retirement Medical Trust 
+Contribution to 
+Medical Trust 
+1.93 
+0.07 
+d)    CONCOR Superannuation Pension Trust 
+Contribution to 
+Pension Trust 
+22.88 
+21.82 
+ 
+ 
+ 
+ 
+ 
+ 
+(₹in 
+crore) 
+B. Payable to trust                                             
+On account of     
+Year ended 
+March 31, 2024 
+Year ended 
+March 31, 2023 
+ 
+a)   CONCOR Employees CPF Trust 
+ 
+Contribution to 
+Provident Fund 
+4 .80 
+- 
+b)   CONCOR Employees Gratuity Fund  
+ 
+Contribution to 
+Gratuity 
+2 .76 
+3.29 
+c)   CONCOR Post Retirement Medical Trust 
+Contribution to 
+Medical Trust  
+- 
+- 
+d)   CONCOR Superannuation Pension Trust  
+ 
+Contribution to 
+Pension Trust 
+1.90 
+- 
+ 
+ 
+ 
+ 
+Compensation of Key Management Personnel: 
+A. Whole Time Directors and Company Secretary 
+ 
+(₹ in crore) 
+Name of Key 
+Managerial 
+Personnel 
+Short-term 
+benefits 
+Post-retirement 
+benefits(Provident 
+fund/Pension) 
+Other long-term 
+benefits 
+Total 
+Year 
+ended  
+March 
+31, 2024 
+Year 
+ended  
+March 
+31, 2023 
+Year 
+ended  
+March 
+31, 2024 
+Year 
+ended  
+March 
+31, 2023 
+Year 
+ended  
+March 
+31, 2024 
+Year ended  
+March 31, 
+2023 
+Year ended  
+March 31, 
+2024 
+Year 
+ended  
+March 
+31, 2023 
+Sh. V. Kalyana 
+Rama (Ex CMD 
+retired on 
+30.09.2023) 
+0.68 
+0.86 
+0.06 
+0.11 
+- 
+0.03 
+0.74 
+1.00  
+Sh. Pradip Kumar 
+Agrawal, (Ex. DD 
+retired on 
+31.01.2023) 
+- 
+0.88 
+- 
+0.09  
+- 
+- 
+- 
+0.97 
+Sh. Sanjay 
+Swarup/CMD (CMD 
+w.e.f. 01.10.2023 
+& Ex. DIMO upto 
+30.09.2023) 
+0.74 
+0.82 
+0.11 
+0.10 
+0.02 
+0.05 
+0.87        0.97 
+
+=== PAGE 275 ===
+ 
+273 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Sh. Manoj Kumar 
+Dubey/DF 
+0.86 
+0.68 
+0.13 
+0.09 
+0.03 
+0.04 
+1.02 
+0.81 
+Sh. Ajit Kumar 
+Panda/DPS (w.e.f. 
+28.12.2022) 
+0.58 
+0.13 
+0.09 
+0.02 
+0.06 
+- 
+0.73 
+0.15 
+Sh. Mohammad 
+Azhar Shams/DD 
+(w.e.f. 
+01.02.2023) 
+0.79 
+0.12 
+0.11 
+0.02 
+0.12 
+0.01 
+1.02 
+0.15 
+Sh. Harish Chandra, 
+ED (Fin. & CS) 
+0.80 
+0.75 
+0.11 
+0.10 
+0.02 
+0.01 
+0.93 
+0.86 
+Total 
+4.45 
+4.24 
+0.61 
+0.53 
+0.25 
+0.14 
+5.31 
+4.91 
+ 
+B. Independent Directors 
+Sitting fees paid to nominated/independent directors for the period ended March 2024 is ₹ 0.35 crore (previous 
+period: ₹ 0.30 crore) 
+41.3.  Disclosure in respect of Government Controlled Entities 
+ 
+41.3.1.   Name of Government controlled entities and description of relationship wherein significant amount of 
+transaction carried out: 
+ 
+Government controlled entities 
+1. Indian Railways (54.80% shareholding) 
+ 
+41.3.2.   Transaction with Government Controlled Entities                           
+(₹ in crore) 
+Name of related party 
+Nature of transaction 
+Year ended 
+March 31, 2024 
+Year ended 
+March 31, 2023 
+Services received from 
+a) Indian Railways 
+Rail Freight 
+4910.08 
+4502.20 
+Land License Fees 
+370.60 
+392.36 
+Railway Cost Recoveries 
+8.99 
+9.93 
+Container Rail Siding Access 
+Charges  
+10.83 
+14.59 
+Other Charges (Overweight, 
+Demurage, rent etc.) 
+1.42 
+1.50 
+Total 
+5,301.92 
+4,920.58 
+Services provided to 
+ 
+ 
+ 
+a) Indian Railways 
+ 
+Terminal Charges PFT Indian 
+Railways 
+          4.06 
+2.34 
+           4.06             
+2.34 
+ 
+Purchase of property and 
+other assets from                      
+ 
+Nature of transaction 
+Year ended 
+March 31, 2024 
+ 
+Year ended 
+March 31, 
+2023 
+a) Indian Railways  
+Wagons 
+55.12 
+ 
+           142.39 
+ 
+
+=== PAGE 276 ===
+ 
+274 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Loco  
+0.82 
+19.98 
+55.94 
+162.37 
+ 
+The above transactions (revenue/expenses) with the government related entities presented for the parties 
+covering collectively upto 80% of total transactions (revenue/expenses). The Company has entered into 
+transactions related to expenses such as telephone expenses, air travel, fuel purchase etc. with above 
+mentioned and other various government controlled entities. These expenses are not material individually and 
+collectively. 
+ 
+41.3.3.  Outstanding balances with Government related entities 
+ 
+(₹ in crore) 
+Name of related party 
+Nature of transaction 
+As at  
+March 31, 2024 
+As at  
+March 31, 2023 
+A.  Indian Railways  
+Advances (Net of Payables) 
+- Non Financial Assets 
+882.88 
+938.47 
+B.  Indian Railways 
+Advances (Net of Payables) 
+- Financial Assets 
+(56.00) 
+(60.16) 
+C.  Executive Engineer Narmada 
+Project Canal 
+Advances (Net of Payables) 
+- Non Financial Assets 
+0.18 
+0.18 
+D.  Government of Gujarat 
+Advances (Net of Payables) 
+- Financial Assets 
+43.50 
+22.64 
+E.  Gujarat Industrial Development 
+Corporation 
+Advances (Net of 
+Payables)- Financial Assets 
+0.08 
+0.08 
+ 
+ 
+870.64 
+901.21 
+The Company has also entered into transactions related to operational and other expenses such as telephone 
+expenses, air travel, fuel purchase etc. with above mentioned and other various government related entities. 
+These operational and other expenses are insignificant individually and collectively. 
+ 
+41.4. Disclosure of Subsidiaries that have Non Controlling Interest 
+(a) Details of the Group's subsidiaries at the end of the reporting period are as follows: 
+Name of the Subsidiary 
+Place of 
+Incorporation and 
+Place of Operation 
+Proportion of Non-Controlling Interest  
+and Voting Rights 
+As at March 31,2024 
+As at March 31, 2023 
+SIDCUL CONCOR Infra 
+Company Limited 
+Sidcul, Rudrapur, 
+Udham Singh Nagar, 
+Uttarakhand, 263153 
+26% 
+26% 
+Punjab Logistics Infrastructure 
+Limited 
+SCO-119-120, Sector 
+17-B,Chandigarh- 
+160017 
+49% 
+49% 
+ 
+41.5 Related party transactions were made on arm's length. 
+ 
+41.6 Company’s share of assets, liabilities, income, expenditure, contingent liabilities & capital commitments in the 
+Subsidiaries, to the extent of information available, is as follows: 
+(₹ in crore) 
+Particulars 
+Assets 
+Liabilities 
+Income 
+Expenditure 
+Contingent 
+Liabilities & 
+Capital 
+Commitments 
+
+=== PAGE 277 ===
+ 
+275 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Punjab Logistics 
+Infrastructure Ltd. 
+111.25 
+ 30.12 
+20.02 
+19.95 
+2.53 
+(114.92) 
+(33.83) 
+(19.51) 
+(20.36) 
+(2.58) 
+SIDCUL CONCOR Infra 
+Company Ltd. 
+96.68 
+24.61 
+17.68 
+13.61 
+0 .51 
+(89.29) 
+(21.29) 
+(14.11) 
+(12.92) 
+(0.98) 
+In the above statement: 
+-   Previous year figures are in brackets. 
+ 
+ 
+Note 42: Contingent liabilities and contingent assets 
+ 
+ 
+ 
+(₹ in crore) 
+Particulars 
+As at March 31, 2024 
+As at March 31, 2023 
+a. Outstanding Letters of Credit and bank guarantees  
+143.25 
+140.31 
+b.  Bank guarantees/bid bonds for joint ventures & 
+Subsidiaries 
+- 
+- 
+c. The Company has given Letter of Comfort to bank(s) 
+on behalf of subsidiaries companies.  
+2.03 
+51.31 
+d.  Claims against the Company not acknowledged as 
+debt, 
+net 
+of 
+advances/payments 
+under 
+protest, 
+ arbitration, court orders, etc. [include claims of 
+₹835.34crore 
+(2022-23 
+₹641.54crore) 
+pending 
+in 
+arbitration/courts pursuant to arbitration awards]* 
+1,348.04 
+1,044.11 
+ 
+*The Management has assessed the above claims and recognized a provision of ₹ Nil crore (PY 0.24 crore based 
+on probability of outflow of resources embodying economic benefits and estimated ₹ 1,348.04 crore (PY: ₹ 
+1,044.11 crore) as the amount of contingent liability including LLF demand from railways for few terminals i.e. 
+amounts for which Company may be held contingently liable. In respect of such estimated contingent claims 
+either outflow of resources embodying economic benefits is not probable or a reliable estimate of the amount 
+required for settling the obligation cannot be made. In respect of the rest of the claims/obligations, possibility of 
+any outflow in settlement is considered as remote. 
+ 
+e. Contingent liabilities are disclosed to the extent of claims received and include an amount of ₹40.12crore ( 
+2022-23 ₹ 30.53 crore ), which may be reimbursable to the company. Any further interest demand on the basic 
+claim is not considered where legal cases are pending, as the claim itself is not certain. No provision has been 
+made for the contingent liabilities stated above, as on the basis of information available, careful evaluation of 
+facts and past experience of legal aspects of the matters involved, it is not probable that an outflow of future 
+economic benefits will take place. 
+ 
+f. A demand of ₹ 158.84 crore received from SDMC towards property tax of ICD/Tughlakabad whereas as per 
+the opinion of Advocate no provision of property tax was being made in the books earlier and no demand were 
+ever received in this regard. Out of ₹ 158.84crore an amount of ₹ ₹ 23.06crore (2023-24 : ₹3.55crore , 2022-23 : 
+₹7.25 crore & 2020-21  :₹10.76crore& 2019-20 :₹1.50 crore) has been deposited with SDMC towards service 
+charge as applicable on other PSU i.e M/s DMRC . Stay order has been granted by H'nable Delhi High Court & 
+Final Order is awaited. ₹ 135.78crore has been included in the contingent liability. 
+g. Disallowance of SFIS Scrips For AY 2013-14 was quashed by Hon’ble ITAT/Delhi and Department has filed 
+appeal against the orders with Hon'ble High Court/Delhi and the same is pending with Hon'ble High Court/Delhi. 
+ 
+In respect of AY 2008-09, department has filed a Miscellaneous application in ITAT for disallowance of 80IA- 
+Rail System (Rolling Stock). The same matter has already been allowed in favor of CONCOR by Apex Court in 
+case of AY 2003-04 to AY 2005-06. The case in respect of AY 2008-09 is pending for decision in ITAT. 
+ 
+
+=== PAGE 278 ===
+ 
+276 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+In respect of AY 2014-15, CONCOR's appeal against "Disallowance of ₹ 5.46 Crores w.r.t. amortization of 
+leasehold land" was allowed by ITAT and referred to AO for statistical purpose vide ITAT Order (ITA No. 
+2367/Del/2018) dated 10.03.2021. 
+ 
+Further, CONCOR's appeal against "Disallowance of ₹ 1.51 Crores w.r.t. Prior Period Expense" was allowed by 
+CIT (A), Delhi-2 vide its order (10420/2019-20) dated31.10.2023 
+ 
+ 
+h.   Disputed income tax/other tax liabilities (excluding interest) have been summarized as: 
+ 
+(₹ in Crore) 
+Nature of Dispute 
+Assessment Year 
+Amount 
+ {A} Regular Assessment 
+2008-09 
+96.59 
+  
+2013-14 
+48.55 
+  
+2020-21 
+0.50 
+Total  (A) 
+  
+145.64 
+ 
+Nature of Dispute 
+Assessment Year 
+Amount 
+{B} Service Tax 
+  
+  
+(i) One third share of service tax demand related to JWG-
+ACC 
+2002-2008 
+        
+1.48  
+Total  (B) 
+  
+1.48 
+{C} Others: 
+  
+  
+(i)) Water Tax dispute - Kanpur 
+2001-till Date 
+1.48  
+Total  (C) 
+  
+                   1.48  
+Total(A+B+C)   
+148.60 
+ 
+(i) “The company entered into contract for supply of 1320 wagons by Hindustan engineering and Industries 
+(HEI). After the supply of 1050 wagons, the contract was terminated during FY 2004-05, for non-fulfilment of 
+obligation on the part of HEI. The company invoked the bank guarantee of ₹ 5.99 crore for refund of unadjusted 
+advance and ₹ 7.37 crores towards performance guarantee for non fulfilment of terms of contract on the part of 
+HEI. The matter was referred to an Arbitration Tribunal comprising three members, which has given majority 
+award amounting to ₹ 39.58 Crores and interest @ 15% from date 22.05.2005 to 13.11.2013 amounting to ₹ 
+50.37 crore, totalling to ₹ 89.95 Crore + 18% interest p.a. from the date of award to the date of payment in favour 
+of M/s Hindustan Engineering Industries on 13.11.2013. Minority award by Co-Arbitrator has been given 
+amounting to ₹ 14.61 crore in favour of the company. The majority award given in favour of HEI has been 
+challenged by the company under section 34 of Arbitration and Conciliation Act, 1996 in the High Court of Delhi 
+at New Delhi on dated 07.03.2014. Last hearing in this case was held on 24.04.2024 & next Hearing is schedule 
+for 30.07.2024. 
+ 
+(j) The Company has executed "Custodian cum Carrier Bonds" of ₹ 25139.69crore (Previous year: ₹ 26,588.19 
+crore) in favour of Customs Department under the Customs Act, 1962. These bonds are of continuing nature, for 
+which claims may be lodged by the Custom Authorities. Claims lodged during the year Nil (previous year: NIL). 
+ 
+(k)No further provision is considered necessary in respect of these matters as the company expects favourable 
+outcome. It is not possible for the company to estimate the timing of further cash outflows, if any, in respect of 
+these matters. 
+ 
+(l)No contingent assets and contingent gains are probable to the company. 
+ 
+ 
+ 
+
+=== PAGE 279 ===
+ 
+277 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Note 43: Commitments for expenditure 
+ 
+Estimated amounts of contracts remaining to be executed on capital & other account (net of advances) 
+and not provided for: 
+ (₹ in crore) 
+Particulars 
+For the Year ended 
+March 31, 2024 
+For the Year ended 
+March 31, 2023 
+In relation to joint ventures & subsidiaries  
+68.72 
+89.12 
+On Capital Account 
+619.49 
+1,101.25 
+On Revenue Account 
+11.20 
+9.83 
+Note 44: Details of capital Expenditure on enabling assets  
+created on  land not belonging to the company are as under: 
+Particulars 
+As at March 31, 2024 
+As at March 31, 2023 
+Building 
+7.51 
+7.51 
+Railway Siding 
+8.00 
+8.00 
+Plant & Machinery 
+3.05 
+3.05 
+Electrical Fittings 
+2.81 
+2.81 
+Furniture 
+0.02 
+0.02 
+Others 
+0.18 
+0.18 
+Total 
+21.57 
+21.57 
+Out of the above capital expenditure ₹ 21.57 crore (previous year: ₹ 21.57crore) has already been charged to 
+Statement of Profit & Loss as Depreciation. The Net Value of these assets in the books of accounts is NIL 
+as on 31.03.2024. 
+ 
+Note 45: Disclosure as required by Regulation 34(3) and 53(f) of  
+SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015 
+(₹ in Crore) 
+Subsidiary Company 
+Amount outstanding 
+During the year ended 
+Maximum Amount 
+Outstanding during the year 
+ended 
+March 31st, 
+2024 
+March 31st, 
+2023 
+March 31st, 
+2024 
+March 31st, 
+2023 
+CONCOR Air Ltd 
+- 
+- 
+- 
+- 
+Fresh and Healthy Enterprises Limited 
+- 
+- 
+- 
+- 
+SIDCUL CONCOR Infra Company Ltd. 
+(partly owned) 
+- 
+- 
+- 
+- 
+Punjab Logistics Infrastructure Ltd.  
+(partly owned) 
+- 
+             - 
+              - 
+- 
+ 
+Note 46: Value of imports calculated on C.I.F. basis 
+(₹ in Crore) 
+Particulars 
+For the Year ended March 
+31, 2024 
+For the Year ended 
+March 31, 2023 
+Raw materials 
+- 
+- 
+Capital goods 
+- 
+0.34 
+Stores & Spares 
+- 
+- 
+ 
+ 
+ 
+
+=== PAGE 280 ===
+ 
+278 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Note 47: Expenditure in foreign currency 
+ 
+(₹ in Crore) 
+Particulars 
+For the Year ended March 
+31, 2024 
+For the Year ended 
+March 31, 2023 
+Consultancy Charges 
+- 
+- 
+Research & Development 
+- 
+- 
+Travelling 
+0.19 
+0.07 
+Membership & Subscription 
+0.01 
+- 
+Training Expenses 
+0.43 
+- 
+Children Higher Education-Staff  
+- 
+0.09 
+Books & periodicals 
+- 
+- 
+ 
+Note 48 
+ 
+(a) During the year, the company realised ₹ 10.00 crore (previous year ₹ 41.84crore) (net of auction expenses) from 
+auction of unclaimed containers. Out of the amount realized, ₹ 2.67 crore (previous year ₹ 9.17 crore) is paid/ 
+payable as custom duty, ₹ 6.70 crore (previous year ₹ 32.13 crore) has been recognised as income and the balance 
+of ₹ 0.63 crore (previous year ₹ 0.54 crore) has been shown under Current Liabilities. 
+ 
+(b) Current liabilities include ₹ Nil crore (As at March 31 2023 ₹ Nil crore) towards unutilised capital grant 
+received for acquisition of specific fixed assets in CONCOR/business arrangements. ₹ Nil crore has been 
+recognised in the Statement of Profit and Loss for the year ended March 31, 2024 (previous year: ₹ Nil crore). 
+ 
+(c) Current liabilities include ₹ 1.82 crore (As at March 31 2023 ₹ 1.82 crore) towards unutilised revenue grant 
+received from National Horticulture Board for offsetting the freight for the Horticulture Projects. 
+ 
+(d) Out of the capital grant of ₹ 51.39 crore (previous year: ₹ 56.17 crore), an amount of ₹ 5.11 crore (previous 
+year: ₹ 4.78 crore) has been recognised in the Statement of Profit and Loss and the balance of ₹ 46.28 crore 
+(previous year: ₹ 51.39 crore) is shown under other current liabilities 
+ 
+ 
+Note 49: The Particulars of dues to Micro, Small and Medium Enterprises under Micro, Small and Medium 
+Enterprises Development Act,2006 (‘’MSMED Act”) 
+(₹ in Crore) 
+Particulars 
+As at March 31, 2024 
+As at March 31, 2023 
+Principal amount due to suppliers under MSMED Act at 
+the year end. [Refer note no. 25&25(a)] 
+25.97 
+25.98 
+Note: The above information has been disclosed in respect of parties which have been identified on the basis of 
+the information available with the Company. 
+ 
+ 
+Note 50: Remittance In Foreign Currency For Dividend 
+ 
+The company has not remitted any amount in foreign currency on account of dividend during the year. 
+ 
+Provisions relating to disclosure of information as required by Companies Act, 2013 in case of companies other 
+than service companies are not applicable, as the company has no manufacturing, trading and financing activities.  
+ 
+ 
+ 
+
+=== PAGE 281 ===
+ 
+279 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Note 51 
+ 
+In FY 2020-21, Ministry of Railways, Government of India vide its order no.2015/LML-II/13/4 dated 19.03.2020, 
+had communicated that the LLF applicable on the Railway land leased to CONCOR shall now be charged w.e.f. 
+01.04.2020 as per extant policy of Railways i.e. @6% of the value of land, which will be further increased 7% 
+annually.  
+Accordingly, as per the company assessment, an amount of ₹ 373.06 crore (2022-23:₹393.63 crore) has been 
+booked, net off past provisions of ₹ 68.20 crores (2022-23:₹ 6.22 crore) as Land License fee payable to Indian 
+Railways in current financial year as per extant policy of Railways. 
+ 
+ 
+Note 52: Interest in Joint Ventures 
+ 
+ 
+a)   Brief description of Joint Ventures of the Company where investments have been made are: 
+Particulars 
+Country of 
+incorporation 
+(%) Holding 
+Star Track Terminals Pvt. Ltd.: A Joint Venture with APM 
+Terminals India Pvt. Ltd. (formerly known as Maersk India Pvt. 
+Ltd.) for setting up and running a CFS at Dadri, U.P.  
+India 
+49 
+Transworld Terminals Dadri Private Limited (formerly known 
+as Albatross Inland Ports Private Limited): A Joint Venture with 
+Transworld Terminals Private Limited for CFS at Dadri, U.P. 
+India 
+49 
+Gateway Terminals India Pvt. Ltd.:  A Joint Venture with APM 
+Terminals Mauritius Ltd. for third berth at JN Port, Mumbai. 
+India 
+26 
+CMA-CGM Logistics Park (Dadri) Pvt. Ltd: A Joint Venture 
+with “CMA-CGM Agencies(India) Pvt. Ltd.” for CFS at Dadri, UP. 
+India 
+49 
+Himalayan Terminals Pvt. Ltd.: A Joint Venture with Nepalese 
+Enterprises (Interstate Multimodal Transport Pvt. Ltd. of Nepal & 
+Nepal Transit & Warehouse Co. Ltd.) & Transworld group of 
+companies for management and operation of rail container terminal 
+at Birgunj (Nepal). 
+Nepal 
+40 
+HALCON: A business arrangement with Hindustan Aeronautics 
+Ltd. for operating an air cargo complex & ICD at Ozar airport, 
+Nasik. 
+India 
+50 
+India Gateway Terminal Pvt. Ltd.: A Joint Venture with 
+Hindustan Ports Pvt. Ltd. & others for setting up and managing 
+Container Terminals at Cochin. 
+India 
+11.87 
+TCI-CONCOR Multimodal Solutions Pvt. Ltd. (formerly 
+known as Infinite Logistics Solutions Pvt. Ltd.): A Joint Venture 
+with Transport Corporation of India Ltd.to establish logistics 
+freight terminals and provide integrated logistics services across the 
+country. 
+India 
+49 
+Container Gateway Ltd.: A Joint Venture with Gateway 
+Distriparks Ltd. (earlier Gateway Rail Freight Ltd.) for operations 
+of existing rail/road container terminal at GarhiHarsaru, Gurgaon 
+(Haryana) 
+India 
+49 
+Allcargo Logistics Park Pvt. Ltd.:  A Joint Venture with Allcargo 
+Logistics Ltd. for setting up and running CFS at Dadri. 
+India 
+49 
+
+=== PAGE 282 ===
+ 
+280 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Angul Sukinda Railway Ltd.:A Joint Venture with Rail Vikas 
+Nigam Limited, Jindal Steel & Power Ltd., Odisha Mining 
+Corporation, 
+Odisha 
+Industrial 
+Infrastructure 
+Development 
+Corporation and Government of Odisha to develop the region of 
+Odisha. 
+India 
+26 
+Pipavav 
+Integrated 
+Logistics-HUB 
+(PILH): 
+A 
+business 
+arrangement Central Warehousing Corporation to operate the 
+Logistics facility at Pipavav Port. 
+India 
+50 
+ 
+b)   Brief description of subsidiaries of the Company where investments have been made are: 
+Particulars 
+Country of 
+incorporation 
+(%) Holding 
+Fresh and Healthy Enterprises Limited 
+India 
+100 
+CONCOR AIR Limited 
+India 
+100 
+SIDCUL CONCOR Infra Company Ltd.: A Joint 
+Venture with SIIDCUL (State Infrastructure & Industrial 
+Development Corporation of Uttrakhand). 
+India 
+74 
+Punjab Logistics Infrastructure Ltd.: A Joint Venture 
+with Punjab State Container & Warehousing Corporation 
+Limited (CONWARE). 
+India 
+51 
+ 
+c)  Company’s share of assets, liabilities, income, expenditure, contingent liabilities & capital commitments in 
+the Joint Ventures, to the extent of information available, is as follows:  
+ 
+ 
+ 
+ 
+ 
+(₹ in Crore) 
+Particulars 
+Assets 
+Liabilities 
+Income 
+Expenditure 
+Contingent 
+Liabilities & 
+Capital 
+Commitments 
+1.Star Track Terminal 
+Pvt. Ltd.  # 
+38.02 
+13.14 
+28.71 
+28.53 
+0.13 
+(33.15) 
+(8.46) 
+(31.19) 
+(28.87)  
+(0.13) 
+2.Transworld Terminals 
+Dadri Private Limited 
+(formerly known as  
+Albatross Inland Ports 
+Private Limited)# 
+ 
+30.47  
+6.62 
+35.86 
+31.22 
+-  
+(34.94) 
+(7.64) 
+(37.55) 
+(32.26) 
+- 
+ 
+ 
+3.Gateway Terminals 
+India Pvt. Ltd. # 
+542.44 
+272.24 
+229.88 
+228.92 
+238.98 
+(461.24) 
+(191.81) 
+(200.46) 
+(203.33) 
+(315.73) 
+4.Himalayan Terminals 
+Pvt. Ltd.  # 
+8.44 
+7.72 
+0.29 
+0.19 
+3.38 
+(8.34) 
+(7.72) 
+(0.29) 
+(0.20) 
+- 
+5.CMA -CGM Logistics 
+Park (Dadri) Pvt. Ltd. # 
+ 
+26.87 
+6.48 
+39.48 
+34.88 
+- 
+(24.52) 
+(5.46) 
+(36.27) 
+(30.70) 
+(0.02) 
+6.HALCON 
+3.78 
+0.37 
+2.34 
+1.16 
+- 
+(2.49) 
+(0.25) 
+(2.02) 
+(2.97) 
+- 
+7.India Gateway 
+Terminal Pvt. Ltd. # 
+116.56 
+106.65 
+50.64 
+40.85 
+129.28 
+(86.38) 
+(86.31) 
+(46.98) 
+(42.33) 
+(156.50) 
+8.Angul Sukinda 
+Railway Ltd. # 
+ 
+ 
+873.17 
+607.62 
+71.80 
+71.68 
+104.29 
+(770.83) 
+(531.45) 
+(136.91) 
+(136.80) 
+(158.25) 
+
+=== PAGE 283 ===
+ 
+281 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+9.TCI-CONCOR 
+Multimodal Solutions 
+Pvt. Ltd. (formerly 
+known as Infinite 
+Logistics Solutions Pvt. 
+Ltd.) 
+37.40 
+21.82 
+169.34 
+166.29 
+- 
+(23.21) 
+(10.18) 
+(149.31) 
+(146.62) 
+- 
+10.Allcargo Logistics 
+Park Pvt. Ltd.# 
+27.54 
+4.93 
+25.55 
+19.96 
+0.04 
+(22.18) 
+(5.16) 
+(23.44) 
+(18.88) 
+(0.04) 
+11.Container Gateway 
+Ltd. # 
+0.05 
+0.04 
+- 
+- 
+- 
+(0.05) 
+(0.04) 
+- 
+- 
+- 
+12.Pipavav Integrated 
+Logistics Hub(PILH)# 
+- 
+- 
+- 
+- 
+- 
+(0.61) 
+(0.01) 
+- 
+(0.24) 
+- 
+In the above statement: 
+-   Previous year figures are in brackets. 
+-   # Current year figures are unaudited. 
+ 
+Note 53 
+ 
+Works carried out by Railways/its units for the company are accounted for on the basis of correspondence 
+/estimates/advice etc. 
+ 
+Note 54 
+ 
+India Gateway Terminal (P) Ltd. (IGTPL) is a joint venture of CONCOR with Hindustan Ports Pvt. Ltd & others 
+for setting up and managing of container terminal at Cochin. Though CONCOR’s share in the accumulated losses 
+(as per unaudited financial statements for FY 2023-24) of this JV are as at ₹ 44.69crores& does not exceeds its 
+investment of ₹ 54.60 crores as on 31st March 2024, no provision for diminution in the value of investment has 
+been made, as with the management’s consistent review and implementation of appropriate business strategy, the 
+company has already made a turnaround. The same is clearly established from the unaudited financial statements of 
+IGTPL for FY 2023-24. 
+ 
+Management has also tested this investment for impairment in accordance with the conditions laid own under IND 
+AS-36 “Impairment of Assets”. As per the impairment testing carried out by the management, it has been 
+established that the Value in Use i.e., the present value of future expected cash flows that will accrue from the 
+improving/enhancing of its asset’s performance exceed the carrying value of investment. IND AS-36 states that 
+impairment needs to be provided if and only if the carrying value of investments exceeds its value in use or fair 
+value. 
+ 
+Note 55 
+ 
+(a). Fresh & Healthy Enterprises Limited (FHEL), is a wholly owned subsidiary of the company. The carrying 
+amount of company's investment in FHEL as on 31.03.2024 is ₹ 204.03 crores in the books of the company. 
+Impairment testing report of FHEL as on 31.03.2024 has indicated that recoverable value of assets of FHEL as on 
+31.03.2024 is ₹198.95 Crores against the carrying amount of FHEL investment in books of Container Corporation 
+of India Ltd. of ₹ 204.03 Crores. Accordingly, an amount of ₹ 5.08 Cr. (Previous Year :Nil) has been recognised as 
+impairment loss in profit & loss statement and the same has been recognised as exceptional item in statement of 
+profit & loss. 
+ 
+(b) CONCOR Air Limited (CAL), is a wholly owned subsidiary of the company. The carrying amount of 
+company's investment in CAL as on 31.03.2024 is ₹ 35.40 crores in the books of the company. Impairment testing 
+report of CAL as on 31.03.2024 has indicated that recoverable value of assets of CAL as on 31.03.2024 is ₹ 34.37 
+Crores against the carrying amount of CAL investment in books of Container Corporation of India Ltd. of ₹ 35.40 
+
+=== PAGE 284 ===
+ 
+282 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Crores. Accordingly, an amount of ₹ 1.03 Cr. ( Previous Year :₹ 1.25 Cr. ) has been recognised as impairment loss 
+in profit & loss statement and the same has been recognised as exceptional item in statement of profit & loss. 
+ 
+(c) Pipavav Integrated Logistics Hub (PILH), a JWG (A business arrangement with Central Warehousing 
+Corporation to operate the Logistics facility at Pipavav Port). The JWG so formed with an investment of ₹ 10 
+Crores (₹ 5 Crores each by both the parties equally i.e. CONCOR and CWC). In the initial phase of entity, there 
+was no business in terms of TEUs. The operations started from Sep.2019, total TEUs handled during the FY 2019-
+20 was 911 TEUs. During the same year, due to the out-break of Covid-19 in December, 2019 operations were 
+restricted. Thereafter, there was no volume/business on account of PILH due to COVID lockdown. Therefore, vide 
+letter no. CON/IM/401/16 Dt.02.07.2020., it was decided to pre-close JWG agreement due to economic non-
+viability of the JWG-PILH and to terminate the agreement with effect from 02.07.2020. The carrying amount of 
+company's investment in PILH have been ₹ 1.03 crores in the books of the company. Accordingly, the company 
+has written off investment of ₹ 1.03 crore in M/s PILH and the same has been recognised as exceptional item in 
+statement of profit & loss 
+ 
+Note 56 
+ 
+(a) In FY 2023-24, an amount of ₹ 17.52 crore (In FY 2022-23 ₹ 19.57 crore.) has been utilized on various social 
+activities undertaken including development of aspirational districts adopted by CONCOR by taking up healthcare 
+activities in districts, i.e., Chandauli, Chirtakoot, Uttar Pradesh under CONCOR CSR activities. 
+ 
+Apart from above activities in aspirational districts, CONCOR has undertaken various other activities as per its 
+CSR policy and Companies Act 2013. Some of the major projects are related to creating infrastructure for schools 
+and healthcare centre, procurement of medical equipment’s, organization of health camps, sportfacilities, 
+environment activities, installation of solar lights etc. 
+ 
+(b) Disclosure with regards to CSR activities under section 135 of the Companies Act:- 
+      (₹ in Crore) 
+Particulars 
+As at 31st 
+March 2024 
+As at 31st  
+March 2023 
+(i) Amount required to be spent by the company during the year, 
+57.90 
+49.26 
+(ii) Amount of expenditure incurred (in cash FY 2023.-24) 
+10.79 
+19.57 
+(iii) Shortfall at the end of the year. 
+47.11 
+29.69 
+(iv) Total of previous years shortfall, 
+28.16 
+20.84 
+ 
+(v) reason for shortfall, 
+Some amounts allocated for spending towards CSR could not be utilized during the year, mainly due to not 
+completion of project on time by implementing agencies with whom CONCOR has signed MOU due to 
+various reasons including non-availability of men & material in respect of construction works as well as 
+shortage of required equipments/ goods which are to be supplied by implementing agencies to beneficiaries, 
+etc. 
+ 
+(vi) nature of CSR activities 
+Company identified the areas of CSR activity as per provisions of schedule VII of Companies Act 2013, which 
+include health & medical care, sanitation, education/literacy enhancement, community development, rural 
+development, environment protection, conservation of natural resources, and infrastructure development. 
+ 
+(vii) No transactions with related parties, e.g., contribution to a trust controlled by the company in relation to 
+CSR expenditure as per relevant Accounting Standard. 
+ 
+(viii) No provision is made with respect to a liability incurred by entering into a contractual obligation. 
+
+=== PAGE 285 ===
+ 
+283 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+Note 57 
+ 
+Title deeds of Immovable Properties not held in name of the Company 
+ 
+Relevant 
+line 
+item 
+in 
+the 
+Balance sheet 
+Description of item 
+of property 
+Gross 
+carrying 
+value 
+Title deeds held 
+in the name of 
+Whether 
+title 
+deed 
+holder is a 
+promoter, 
+director 
+or 
+relative 
+of 
+promoter/dir
+ector 
+or 
+employee of 
+promoter/dir
+ector 
+Property 
+held 
+since 
+which 
+date 
+Reason for not being held in the name of the 
+company 
+Property, plant 
+and equipment 
+(PPE) 
+Kanakpura (Jaipur) 
+1,52,68,501 Indian Railway 
+Not 
+Applicable 
+03 
+January 
+2002 
+Agreement not executed. 
+Others 
+Ravtha Road (Kota) 
+0 Indian Railway 
+Not 
+Applicable 
+11 
+Novembe
+r 2013 
+Agreement 
+executed, 
+however 
+period 
+not 
+mentioned in deed. 
+Property, plant 
+and equipment 
+(PPE) 
+Freehold 
+Land 
+at 
+Varnama. 
+11,38,34,006 Land Owners- 
+Farmers of 
+Varanama 
+Village 
+Not 
+Applicable 
+2014 
+& 
+2019 
+Acquisition completed. Updation in Govt record 
+is pending (7/12) 
+Property, plant 
+and equipment 
+(PPE) 
+Freehold 
+Land 
+at 
+Varnama. 
+7,09,53,065 Land Owners- 
+Farmers of 
+Varanama 
+Village 
+Not 
+Applicable. 
+2022 
+Acquisition completed. Updation in Govt record 
+is pending (7/12). 
+Property, plant 
+and equipment 
+(PPE) 
+Aurangabad 
+3-
+Housing 
+flats Purchased from 
+CIDCO  
+9,47,726 City 
+and 
+Industrial 
+Development 
+Corporation of 
+Not 
+Applicable. 
+12 
+May 
+2000 
+Possession slips issued by City and Industrial 
+Development 
+Corporation of Maharashtra Ltd., (CIDCO) for all 
+the three flats 
+
+=== PAGE 286 ===
+ 
+284 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Maharashtra Ltd., 
+(CIDCO) 
+(no.5,9 &12 at N-4, Shopping Complex at 
+Aurangabad) are in 
+the name of Company.. 
+Property, plant 
+and equipment 
+(PPE) 
+Mumbai, Powai 10 
+LIG 
+flats Purchased from 
+MHADA 
+1,50,05,850 MHADA 
+(Maharashtra 
+Housing 
+and 
+Area 
+Development 
+Authority) 
+Not 
+Applicable 
+01 
+May 
+1998 
+No title deed or agreement executed by MHADA 
+& only allotment/ possession letter issued by 
+MHADA is available. 
+Property, plant 
+and equipment 
+(PPE) 
+Building 
+no. 
+19, 
+Oshiwara, 
+Mumbai- 2 MIG flats 
+Purchased 
+from 
+MHADA 
+56,12,658 MHADA 
+(Maharashtra 
+Housing 
+and 
+Area 
+Development 
+Authority) 
+Not 
+Applicable 
+01 
+May 
+1998 
+No title deed or agreement executed by MHADA 
+& only allotment / possession letter issued by 
+MHADA is available. 
+Property, plant 
+and equipment 
+(PPE) 
+Building 
+no. 
+16, 
+Oshiwara, 
+Mumbai-2 MIG flats 
+Purchased 
+from 
+MHADA 
+62,96,452 MHADA 
+(Maharashtra 
+Housing 
+and 
+Area 
+Development 
+Authority) 
+Not 
+Applicable 
+01 
+May 
+1998 
+No title deed or agreement executed by MHADA 
+& only allotment / possession letter issued by 
+MHADA is available. 
+Property, plant 
+and equipment 
+(PPE) 
+Freehold Land at 
+Krishnapatnam (Land 
+Area- 
+141.95 Acs) 
+33,30,01,871 Andhra Pradesh 
+Industrial 
+Infrastructure 
+Corporation 
+Not 
+Applicable 
+21 March 
+2018 
+As per the clause 3 of the sale agreement, Sale 
+deed can be executed only upon implementation 
+and going into Commercial production. The 
+commercial production is yet to 
+commence. 
+Property, plant 
+and equipment 
+(PPE) 
+Leasehold 
+Land 
+as 
+ROU 
+Asset at Nagalapalle 
+(0.28 
+acres) 
+8,85,542 South Central 
+Railway 
+Not 
+Applicable 
+01 April 
+2021 
+A draft agreement has been submitted by 
+Railways and is still under process 
+Property, plant 
+and equipment 
+(PPE) 
+Leasehold at SRO 
+(RAILWAY 
+QUARTER) 
+1,30,00,000 Southern 
+Railways 
+Not 
+Applicable 
+2010 
+Lease agreement pending with Zonal Office, 
+Southern Railway 
+Property, plant 
+and equipment 
+(PPE) 
+Leasehold at SRO 
+(REGIONAL OFFICE 
+BUILDING) 
+2,00,00,000 Southern Railway 
+Not 
+Applicable 
+2014 
+Lease agreement pending with Zonal Office, 
+Southern Railway 
+
+=== PAGE 287 ===
+ 
+285 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Property, plant 
+and equipment 
+(PPE) 
+Residential Flat 
+17,00,000 Southern Railway 
+Not 
+Applicable 
+11 
+June 
+1999 
+Lease agreement pending with Zonal Office, 
+Southern Railway 
+Property, plant 
+and equipment 
+(PPE) 
+Residential Flat 
+22,00,000 Southern Railway 
+Not 
+Applicable 
+01 
+June 
+1998 
+Lease agreement pending with Zonal Office, 
+Southern Railway 
+Property, plant 
+and equipment 
+(PPE) 
+LEASE 
+HOLD 
+LAND at 
+MMLP Naya Raipur 
+(land 
+area 2.99 acres) 
+- South 
+East 
+Central 
+Railway 
+Not 
+Applicable 
+Sep-22 
+In Sept-2022, the permanent connectivity has 
+been made and connected with the newly 
+commissioned Naya Raipur Railway Station. In 
+this connection, to arrive an exact Railway area 
+using by CONCOR, a joint survey has been 
+carried out by Railways/CONCOR and submitted 
+the Land Licensing Plan for approval to Railways. 
+the revised land area is = 12598 Sqms. Once the 
+land plan get approved, the land Licensing 
+Agreement will be executed with Railways. 
+Property, plant 
+and equipment 
+(PPE) 
+LEASE 
+HOLD 
+LAND at 
+Sanathnagar 
+(land 
+area 
+9.24 acres) 
+- South Central 
+Railway 
+Not 
+Applicable 
+23 
+May 
+2001 
+CONCOR had lease one of the parcel of railway 
+land of 9.24acres at ICD Sanathnagar. The 
+agreement for such land is not executed yet. 
+Continuous follow up is going up with, Railways 
+to finalise the draft agreement of lease at 
+ICD/SNF 
+Property, plant 
+and equipment 
+(PPE) 
+Land taken on lease at 
+CTKR Terminal from 
+Syama 
+Prasad 
+Mookerjee 
+Port Trust 
+42,77,24,119 Syama Prasad 
+Mookerjee Port 
+Trust 
+Not 
+Applicable 
+25 
+February 
+2004 
+The Land Lease Agreement with Syama Prasad 
+Mookerjee Port Trust for 85,500 Sq. metres of 
+land taken on lease at CTKR Terminal got expired 
+on 24-02-2019.CONCOR has requested and 
+appealed to port authorities for50% concession in 
+lease rent but no formal decision has been 
+received from the port authorities. The execution 
+of the lease deed will be taken up after the 
+response of port authorities. 
+
+=== PAGE 288 ===
+ 
+286 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Others 
+Land taken on lease at 
+Shalimar 
+Terminal 
+from 
+South 
+Eastern 
+Railways 
+- South Eastern 
+Railways 
+Not 
+Applicable 
+01 
+February 
+1992 
+CONCOR has taken a land on lease from South 
+Eastern Railways measuring 15.01 Acres for a 
+period of 30 years with effect from 01-02-1992. 
+The Lease agreement got expired on31-01-2022 
+and pending for renewal as on the reporting date 
+of the balance sheet for FY 2021-22. The lease 
+agreement is pending on account of difference in 
+the area of the land taken on lease as per South 
+Eastern Railways and CONCOR. Once the issue 
+in the area of land taken on lease is resolved, the 
+lease agreement will be executed. 
+Others 
+Land taken on lease at 
+MMLP Jharsuguda 
+Terminal from South 
+Eastern Railways 
+- South Eastern 
+Railways 
+Not 
+Applicable 
+26 
+August 
+2016 
+CONCOR has taken a land on lease from South 
+Eastern Railways measuring 2.142 Acres for a 
+period of 5 years with effect from 26-08-2016. 
+The Lease agreement got expired on 25-08-2021 
+and pending for renewal as on the reporting date 
+of the balance sheet for FY 2021-22. CONCOR 
+has taken up the issue of non-execution of lease 
+agreement with concerned railways and awaiting 
+necessary action from railways side. 
+Others 
+Office Space taken on 
+Lease at Shalimar 
+Terminal from South 
+Eastern Railways 
+- South Eastern 
+Railways 
+Not 
+Applicable 
+01 
+February 
+1992 
+CONCOR has taken an Office Space on rent from 
+South Eastern Railways measuring 285 Sq. feet in 
+respect of which no lease agreement has been 
+entered. South Eastern 
+Railways has raised Office rent invoices which 
+are not inconsonance with the Railway board 
+circular no.2010/LML/18/64 dated 11-07-2018. 
+The Company has represented to revise the office 
+rent invoice as per the said railway board circular. 
+However, revised bill is awaited from railways. 
+The Execution of the lease agreement will be 
+taken upon receipt of office rent invoice in 
+accordance with the railway board circular dated 
+11-07-2018. 
+ 
+
+=== PAGE 289 ===
+ 
+287 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+Note 58 
+ 
+There are no Loans or Advances in the nature of loans are granted to promoters, directors, KMPs and the related 
+parties (as defined under Companies Act, 2013), either severally or jointly with any other person, that are:(a) 
+repayable on demand; or(b) without specifying any terms or period of repayment. 
+ 
+Note 59: Key Ratios 
+ 
+The following are analytical ratio for the year ended March 31, 2024 and March 31, 2023- 
+Particulars 
+Numerator 
+Denominator 
+Current 
+year 
+Previous 
+year 
+Remarks 
+(a) Current Ratio 
+(in times) 
+Total 
+current 
+Assets 
+Total 
+Current 
+liabilities 
+3.39 
+3.07  
+(b) Debt- Equity 
+Ratio (in times) 
+Debts consists 
+of lease liability 
+Total Equity 
+0.08 
+0.06     On account of increase in 
+lease liability (ROU assets) 
+as compare to previous FY 
+(c) Debt Service 
+Coverage Ratio (in 
+times) 
+Earnings 
+available 
+for 
+debt 
+service= 
+Net profit after 
+taxes+Interest 
++Other 
+non 
+cash 
+adjustments 
+Debt 
+Services= 
+Interest & lease 
+payments 
+14.22 
+16.55  
+(d) 
+Return 
+on 
+Equity Ratio (in 
+%) 
+Net Profits after 
+taxes 
+less 
+Preference 
+Dividend 
+(if 
+any) 
+Average 
+Shareholder’s 
+Equity 
+10.7% 
+10.6%  On account of higher PAT 
+as compare to previous FY.  
+(e) 
+Inventory 
+turnover ratio (in 
+times) 
+Cost of goods 
+sold OR sales 
+Average 
+Inventory 
+NA 
+NA  
+(f) 
+Trade 
+Receivables 
+turnover ratio (in 
+times) 
+Revenue 
+from 
+operations 
+Average 
+Trade 
+receivables 
+31.82 
+41.64 On account of increase in 
+Revenue from operations 
+(g) Trade payables 
+turnover ratio (in 
+times) 
+Terminal 
+& 
+other 
+services 
+charges+ other 
+expenses 
+Average 
+Trade 
+Payables 
+18.78 
+14.57 On account of increase in 
+operating 
+expenses 
+as 
+compare to previous FY in 
+line 
+with 
+increase 
+in 
+operating income.  
+(h) 
+Net 
+capital 
+turnover ratio (in 
+times) 
+Revenue 
+from 
+operations 
+Average working 
+capital (i.e Total 
+current 
+Assets 
+less Total current 
+liabilities) 
+2.92 
+2.96  
+(i) Net profit ratio 
+(in %) 
+Profit for the 
+year 
+Revenue 
+from 
+operations 
+14.3% 
+14.4%  On account of increase in 
+depreciation & Staff cost as 
+compare to previous FY.  
+(j) 
+Return 
+on 
+Capital employed 
+(in %) 
+Profit 
+before 
+tax and finance 
+costs 
+Capital 
+employed= 
+Net 
+worth+ 
+Lease 
+13.4% 
+13.5%  On account of increase in 
+lease liability (ROU Assets) 
+as compare to previous FY.  
+
+=== PAGE 290 ===
+ 
+288 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Liabilities 
+(k) 
+Return 
+on 
+investment (in %) 
+Income  
+generated from 
+invested funds 
+Average 
+investments 
+4.4% 
+4.4%  
+ 
+Note 60 
+ 
+Details of Crypto Currency or Virtual Currency:- 
+The Company has not traded or invested in Crypto currency or Virtual Currency during the financial year. 
+ 
+Note 61 
+ 
+Details of Benami Property held:- 
+The Company does not hold any benami property under the Benami Transactions (Prohibition) Act, 1988. and no 
+proceedings have been initiated or pending against the company under the said Act. 
+ 
+Note 62 
+ 
+The Company does not have any borrowings outstanding as on 31.03.2024 and has not borrowed any funds from 
+banks or financial institutions on the basis of security of current assets during Financial Year 2023-24. Considering 
+the same, the company has not been declared as wilful defaulter by any bank or financial Institution or other lender 
+and no charges or satisfaction are yet to be registered with ROC beyond the statutory period. 
+ 
+ 
+Note 63 
+ 
+Relationship with Struck off Companies:- 
+The Company does not have any transactions with companies struck off under section 248 of the Companies Act, 
+2013 or section 560 of Companies Act, 1956. 
+ 
+Note 64 
+ 
+The company has complied with provision related to the number of layers prescribed under clause (87) of section 2 
+of the Act read with the Companies (Restriction on number of Layers) Rules, 2017. 
+ 
+Note 65 
+ 
+No Scheme of Arrangements has been approved by the Competent Authority in terms of sections 230 to 237 of the 
+Companies Act, 2013. 
+ 
+ 
+Note 66 
+ 
+The company has not received any fund from any person(s) or entity(ies), including foreign entities (Funding 
+Party) with the understanding (whether recorded in writing or otherwise) that the company shall (i) directly or 
+indirectly lend or invest in other persons or entities identified in any manner whatsoever by or on behalf of the 
+Funding Party (Ultimate Beneficiaries) or (ii) provide any guarantee, security or the like on behalf of the Ultimate 
+Beneficiaries. 
+ 
+Note 67 
+ 
+The Company does not have any transaction not recorded in the books of accounts that has been surrendered or 
+disclosed as income during the year in the tax assessments under the Income Tax Act, 1961. Further, there were no 
+previously unrecorded income and related assets which were required to be properly recorded in the books of 
+account during the year. 
+
+=== PAGE 291 ===
+ 
+289 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+Note 68 
+ 
+a) Unless otherwise stated, the figures are in rupees crore.   Previous year’s figures have been restated, regrouped 
+and rearranged, wherever considered necessary. 
+ 
+Note 69 
+ 
+Approval of Financial statements 
+The financial statements were approved for issue by the Board of Directors in its meeting held on 16th May, 2024. 
+ 
+ 
+In terms of our report attached 
+For HEM SANDEEP & CO. 
+For and on behalf of the Board of Directors 
+ 
+Chartered Accountants 
+ 
+ 
+FRN-009907N 
+ 
+ 
+ 
+ 
+Himanshu Saxena 
+Partner 
+Membership no.546385 
+(Sanjay Swarup) 
+Chairman & Managing Director 
+(DIN05159435) 
+(Manoj K. Dubey) 
+Director (Finance) & CFO 
+(DIN:07518387) 
+(Harish Chandra) 
+Executive Director (Finance)
+& Company Secretary 
+Place: Greater Noida 
+Date: 16th May, 2024 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=== PAGE 292 ===
+ 
+290 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+HEM SANDEEP & CO. 
+CHARTERED ACCOUNTANTS 
+ 
+ 
+1961, KATRA KHUSHAL RAI,  
+KINARI BAZAR, CHANDNI CHOWK 
+DELHI-110006 
+E-MAIL: hemsandeep@cahsc.in 
+                hemsandeep@yahoo.com 
+ 
+ 
+PH: 011-47551961, 9818478888 
+INDEPENDENT AUDITOR’S REPORT 
+ 
+TO THE MEMBERS OF 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ 
+Report on the Audit of Standalone Financial Statements 
+ 
+Opinion 
+ 
+We have audited the accompanying standalone financial statements of CONTAINER CORPORATION OF INDIA 
+LIMITED ("the Company"), which comprise the Balance Sheet as at 31st March, 2024, the Statement of Profit and 
+Loss (including other comprehensive income), Statement of Changes in Equity, Statement of Cash Flows for the 
+year then ended and notes to the financial statements, including a summary of material  accounting policies and 
+other explanatory information (herein after referred to as "the standalone financial statements"). 
+ 
+In our opinion and to the best of our information and according to the explanations given to us, the aforesaid 
+standalone financial statements give the information required by the Companies Act, 2013 ("the Act") in manner so 
+required and give a true and fair view in conformity with the accounting principles generally accepted in India, of 
+the state of affairs of the Company as at 31st March 2024, its profit (including other comprehensive income), 
+changes in equity and its cash flows for the year ended on that date. 
+ 
+Basis of Opinion 
+ 
+We conducted our audit of standalone financial statements in accordance with the Standards on Auditing (SAs) 
+specified under section 143(10) of the Companies Act, 2013. Our responsibilities under those Standards are further 
+described in the Auditor's Responsibilities for the Audit of the Standalone Financial Statements section of our 
+report. We are independent of the Company in accordance with the Code of Ethics issued by the Institute of 
+Chartered Accountants of India ("ICAI") together with the ethical requirements that are relevant to our audit of the 
+standalone financial statements under the provisions of the Act and the Rules made there under and we have 
+fulfilled our other ethical responsibilities in accordance with these requirements and the Code of Ethics. We believe 
+that the audit evidence we have obtained is sufficient and appropriate to provide a basis for our opinion. 
+ 
+Emphasis of Matters 
+ 
+We draw the attention to: 
+ 
+a) Refer Note no. 30, 39 and 51, which describe payment of Land License Fee to Indian Railways for land 
+leased to it on the basis of company assessment in line with Master circular dated 04.10.2022 issued by 
+Railway and is not final. In view of the uncertainty of the lease terms, no Right of Use (ROU) has been 
+assessed as required under Ind AS 116. 
+ 
+Our conclusion is not modified in respect of these matters 
+ 
+ 
+Key Audit Matters 
+ 
+Key audit matters are those matters that, in our professional judgment, were of most significance in our audit of the 
+financial statements of the current year ended 31st March 2024. These matters were addressed in the context of our 
+
+=== PAGE 293 ===
+ 
+291 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+audit of the financial statements as a whole, and in forming our opinion thereon, and we do not provide a separate 
+opinion on these matters. We have determined the matters described below to be key audit matters to be 
+communicated in our report 
+ 
+Key Audit Matter 
+How our Audit Addressed the Key Audit matter 
+Demand raised by Railways against the 
+company: 
+ 
+Our audit procedures included the following: 
+The company has received demand against 
+Land Licence fee for three terminals 
+namely Phillaur for Rs.15.96 Crores, 
+Tughlakabad for Rs.677.68 Crores and 
+Moradabad for Rs.5.58 Crores. 
+ 
+• Discussion with the management on the policy matter 
+of land licence fee (LLF) payable to Railway.  
+ 
+• The Railway Board As per Master Circular issued by 
+Railways   on 4.10.2022, the annual Land Licence fee 
+will be payable @ 6% of market value of land with 
+annual escalation of 7%. The market value is to be 
+taken as Industrial land rate specified in the State(s). 
+The company has assessed the liability of LLF based 
+on the area of land measured under Joint inspection of 
+company and Railway and calculated the LLF by 
+applying industrial land rates taken from respective 
+Land Revenue Authorities.  
+ 
+• In said cases, the demand is mainly due to differences 
+in assessment of land area and market value of land 
+between the company and Indian Railways (IR). The 
+same are being reconciled with respective Divisional 
+offices of IR, which are under their consideration for 
+necessary correction.  
+ 
+• We have obtained representation letter from the 
+management on the assessment of these matters as per 
+SA 580 (revised). 
+ 
+ 
+ 
+Information Other than the Standalone Financial Statements and Auditor’s Report Thereon 
+ 
+The Company's Board of Directors is responsible for the other information. The other information comprises the 
+Management Discussion and Analysis, Director's Report including annexure to Director's Report, Business 
+Responsibility Report, Corporate Governance, ten years Financial/physical performance and data and letter from 
+CMD included in the annual report of the company, but does not include the standalone financial statements and 
+our auditor's report thereon. The annual report is expected to be made available to us after the date of this auditor's 
+report. 
+ 
+Our opinion on the standalone financial statements does not cover the other information and we do not express any 
+form of assurance conclusion thereon. 
+ 
+In connection with our audit of the standalone financial statements, our responsibility is to read the other 
+information identified above when it becomes available and, in doing so, consider whether the other information is 
+materially inconsistent with the standalone financial statements or our knowledge obtained in the audit, or 
+otherwise appears to be materially misstated. 
+ 
+If, based on the work we have performed, we conclude that there is a material misstatement of this other 
+information, we are required to communicate the fact. We have nothing to report in this regard. 
+
+=== PAGE 294 ===
+ 
+292 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+Responsibilities of Management and Those Charged with Governance for the Standalone Financial 
+Statements 
+ 
+The Company's Board of Directors is responsible for the matters stated in section 134(5) of the Companies Act, 
+2013 ("the Act") with respect to the preparation of these standalone financial statements that give a true and fair 
+view of the financial position, financial performance, changes in equity and cash flows of the Company in 
+accordance with the accounting principles generally accepted in India, including the Accounting Standards 
+specified under Section 133 of the Act. This responsibility also includes maintenance of adequate accounting 
+records in accordance with the provisions of the Act for safeguarding of the assets of the Company and for 
+preventing and detecting frauds and other irregularities; selection and application of appropriate accounting 
+policies; making judgments and estimates that are reasonable and prudent; and design, implementation and 
+maintenance of adequate internal financial controls, that were operating effectively for ensuring the accuracy and 
+completeness of the accounting records, relevant to the preparation and presentation of the financial statements that 
+give a true and fair view and are free from material misstatement, whether due to fraud or error. 
+ 
+In preparing the financial statements, the Board of Directors is responsible for assessing the Company's ability to 
+continue as a going concern, disclosing, as applicable, matters related to going concern and using the going concern 
+basis of accounting unless the Board of Directors either intends to liquidate the Company or to cease operations, or 
+has no realistic alternative but to do so. 
+ 
+The Board of Directors is also responsible for overseeing the Company's financial reporting process. 
+ 
+Auditor’s Responsibilities for the Audit of the Financial Statements 
+ 
+Our objectives are to obtain reasonable assurance about whether the financial statements as a whole are free from 
+material misstatement, whether due to fraud or error, and to issue an auditor's report that includes our opinion. 
+Reasonable assurance is a high level of assurance, but is not a guarantee that an audit conducted in accordance with 
+SAs will always detect a material misstatement when it exists. Misstatements can arise from fraud or error and are 
+considered material if, individually or in the aggregate, they could reasonably be expected to influence the 
+economic decisions of users taken on the basis of these financial statements. 
+ 
+As part of an audit in accordance with SAs, we exercise professional judgment and maintain professional 
+skepticism throughout the audit. We also: 
+ 
+a) Identify and assess the risks of material misstatement of the financial results, whether due to fraud or error, 
+design and perform audit procedures responsive to those risks, and obtain audit evidence that is sufficient and 
+appropriate to provide a basis for our opinion. The risk of not detecting a material misstatement resulting from 
+fraud is higher than for one resulting from error, as fraud may involve collusion, forgery, intentional omissions, 
+misrepresentations, or the override of internal control. 
+ 
+b) Obtain an understanding of internal control relevant to the audit in order to design audit procedures that are 
+appropriate in the circumstances. Under Section 143(3)(i) of the Act, we are also responsible for expressing our 
+opinion on whether the company has adequate Internal Financial Control System in place and the operating 
+effectiveness of such controls. 
+ 
+c) Evaluate the appropriateness of accounting policies used and the reasonableness of accounting estimates and 
+related disclosures made by the Board of Directors. 
+ 
+d) Conclude on the appropriateness of the Board of Directors' use of the going concern basis of accounting and 
+based on the audit evidence obtained, whether a material uncertainty exists related to events or conditions that 
+may cast significant doubt on the Company's ability to continue as a going concern. If we conclude that a 
+material uncertainty exists, we are required to draw attention in our auditor's report to the related disclosures in 
+the financial statements or, if such disclosures are inadequate, to modify our opinion. Our conclusions are based 
+
+=== PAGE 295 ===
+ 
+293 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+on the audit evidence obtained up to the date of our auditor's report. However, future events or conditions may 
+cause the Company to cease to continue as a going concern. 
+ 
+e) Evaluate the overall presentation, structure and content of the standalone financial statements, including the 
+disclosures, and whether the financial statements represent the underlying transactions and events in a manner 
+that achieves fair presentation. 
+ 
+Materiality is the magnitude of misstatements in the standalone financial statements that, individually or in 
+aggregate, makes it probable that the economic decisions of a reasonably knowledgeable user of the standalone 
+financial statements may be influenced. We consider quantitative materiality and qualitative factors in (i) planning 
+the scope of our audit work and in evaluating the results of our work; and (ii) to evaluate the effect of any identified 
+misstatements in the standalone financial statements. 
+ 
+We communicate with those charged with governance regarding, among other matters, the planned scope and 
+timing of the audit and significant audit findings, including any significant deficiencies in internal control that we 
+identify during our audit. 
+ 
+We also provide those charged with governance with a statement that we have complied with relevant ethical 
+requirements regarding independence, and to communicate with them all relationships and other matters that may 
+reasonably be thought to bear on our independence, and where applicable, related safeguards. 
+ 
+From the matters communicated with those charged with governance, we determine those matters that were of most 
+significance in the audit of the financial statements of the current period and are therefore the key audit matters. We 
+describe these matters in our auditor's report unless law or regulation precludes public disclosure about the matter 
+or when, in extremely rare circumstances, we determine that a matter should not be communicated in our report 
+because the adverse consequences of doing so would reasonably be expected to outweigh the public interest 
+benefits of such communication. 
+ 
+Report on Other Legal and Regulatory Requirements: 
+ 
+1. As required by the Companies (Auditor's Report) order, 2020 ("the Order") issued by the Central Government 
+of India in terms of sub-section (11) of section 143 of the Act, we give in the "Annexure A", a statement on 
+the matters specified in paragraphs 3 and 4 of the order, to the extent applicable. 
+ 
+2. The Comptroller & Auditor General of India has issued directions indicating the areas to be examined in terms 
+of Sub section (5) of Section 143 of the Act, compliance of which are set out in "Annexure-B". 
+ 
+3. As required by Section 143 (3) of the Act, we report that: 
+ 
+a. We have sought and obtained all the information and explanations which to the best of our knowledge and 
+belief were necessary for the purposes of our audit. 
+ 
+b. In our opinion, proper books of accounts as required by law have been kept by the Company so far as it 
+appears from our examination of those books. 
+ 
+c. The Balance Sheet, the Statement of Profit and Loss (including other comprehensive income), the 
+Statement of Changes in Equity and the Cash Flow Statement dealt with by this Report are in agreement 
+with the books of accounts. 
+ 
+d. In our opinion, the aforesaid standalone financial statements comply with the Indian Accounting Standards 
+specified under Section 133 of the Act. 
+ 
+e. As per the notification number G.S.R. 463(E) dated 5th June, 2015 issued by Ministry of Corporate 
+Affairs, section 164(2) of the Act regarding the disqualifications of Directors is not applicable to the 
+Company, since it is a Government Company. 
+
+=== PAGE 296 ===
+ 
+294 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ 
+f. With respect to the adequacy of internal financial controls over financial reporting of the Company and the 
+operating effectiveness of such controls, refer to our separate Report in "Annexure C". 
+ 
+g. With respect to the other matters to be included in the Auditor's Report, as per notification number G.S.R. 
+463 (E) dated 5th June, 2015 issued by Ministry of Corporate Affairs, section 197(16) of the Act regarding 
+the Managerial Remuneration is not applicable to the Company, since it is a Government Company. 
+ 
+h. With respect to the other matters to be included in the Auditor's Report in accordance with Rule 11 of the 
+Companies (Audit and Auditors) Rules, 2014, in our opinion and to the best of our information and 
+according to the explanations given to us: 
+ 
+i. 
+The company has disclosed the impact of pending litigations/arbitrations on its financial position in 
+its standalone financial statements. Refer note no. 42 to the standalone financial statements.  
+ 
+ii. 
+The company did not have any long-term contracts including derivative contracts for which there 
+were any material foreseeable losses.  
+ 
+iii. There has been no delay in transferring amounts required to be transferred to the Investor Education 
+and Protection Fund by the Company.  
+ 
+iv. (a) The Management of the Company have represented to us that, to the best of their knowledge and 
+belief, no funds (which are material either individually or in the aggregate) have been advanced or 
+loaned or invested (either from borrowed funds or share premium or any other sources or kind of 
+funds) by the Company to or in any other person or entity, including foreign entity “Intermediaries"), 
+with the understanding, whether recorded in writing or otherwise, that the Intermediary shall, 
+directly or indirectly lend or invest in other persons or entities identified in any manner whatsoever 
+by or on behalf of the Company or any of such subsidiaries ("Ultimate Beneficiaries") or provide any 
+guarantee, security or the like on behalf of the Ultimate Beneficiaries. 
+ 
+(b) The Management of the Company has represented to us that, to the best of their knowledge and 
+belief, no funds (which are material either individually or in the aggregate) have been received by the 
+Company or any of such subsidiaries from any person or entity, including foreign entity ("Funding 
+Parties"), with the understanding, whether recorded in writing or otherwise, that the Company shall, 
+directly or indirectly, lend or invest in other persons or entities identified in any manner whatsoever 
+by or on behalf of the Funding Party ("Ultimate Beneficiaries") or provide any guarantee, security or 
+the like on behalf of the Ultimate Beneficiaries. 
+ 
+(c) Based on the audit procedures that have been considered reasonable and appropriate in the 
+circumstances performed by us on the Company, nothing has come to our notice that has caused us 
+to believe that the representations under sub-clause (i) and (ii) of Rule ll (e), as provided under (a) 
+and (b) above, contain any material misstatement. 
+ 
+v. 
+As stated in Note 19.2 to the standalone financial statements: 
+ 
+a. 
+The final dividend proposed in the previous year, declared and paid by the Company during the 
+year is in accordance with Section 123 of the Act, as applicable. 
+ 
+b. 
+The interim dividend declared and paid by the Company during the year and until the date of 
+this report is in compliance with Section 123 of the Act. 
+ 
+c. 
+The Board of Directors of the Company have proposed final dividend for the year which is 
+subject to the approval of the members at the ensuing Annual General Meeting. The amount of 
+dividend proposed is in accordance with section 123 of the Act, as applicable. 
+ 
+
+=== PAGE 297 ===
+ 
+295 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+vi. Proviso to Rule 3(1) of the Companies (Accounts) Rules, 2014 for maintaining books of account 
+using accounting software which has a feature of recording audit trail (edit log) facility is applicable 
+to the Company with effect from April 1, 2023. Accordingly, based on our examination which 
+included test checks, the company has used an accounting software for maintaining its books of 
+accounts which has a feature of recording audit trail (Edit Log) facility and the same has been 
+operated throughout the year for all relevant transactions recorded it the software. 
+ 
+ 
+For Hem Sandeep & Co. 
+Chartered Accountants 
+FRN: 009907N 
+ 
+ 
+Place: Greater Noida 
+ 
+ 
+ 
+ 
+ 
+(Himanshu Saxena)  
+Date:16.05.2024  
+ 
+ 
+ 
+ 
+ 
+Partner 
+ 
+ 
+ 
+ 
+M. No. 546385 
+ 
+ 
+ 
+ 
+ 
+      
+ 
+UDIN: 24546385BKDOWA3433 
+ 
+Annexure - A to the Independent Auditors’ Report 
+ 
+(Referred to Paragraph – 1 under the “Report on other Legal and Regulatory Requirements” section of our 
+report to the Members of Container Corporation of India Limited of even date) 
+ 
+To the best of our information and according to the explanations provided to us by the Company and the books of 
+account and records examined by us in the normal course of audit, we state that: 
+ 
+i. 
+In respect of the Company’s Property, Plant and Equipment and Intangible Assets: 
+ 
+a. 
+(A) The Company has maintained proper records showing full particulars, including quantitative details and 
+situation of Property, Plant and Equipment and relevant details of right-of-use assets. 
+ 
+(B) The Company has maintained proper records showing full particulars of intangible assets. 
+ 
+b. 
+The Company has a program of physical verification of Property, Plant and Equipment and right-of use 
+assets which, in our opinion, is reasonable having regard to the size of the Company and the nature of its 
+assets. According to the information and explanations given to us, no material discrepancies were noticed on 
+such verification. 
+ 
+c. 
+Based on our examination of the records of the company, we report that, the title in respect of self-
+constructed buildings and title deeds of all other immovable properties (other than properties where the 
+company is the lessee and the lease agreements are duly executed in favour of the lessee), disclosed in the 
+financial statements included under Property, Plant and Equipment are held in the name of the Company as 
+at the balance sheet date except the cases given in Appendix-A where title deeds of immovable properties are 
+not held in the name of the company. 
+ 
+d. 
+The Company has not revalued any of its Property, Plant and Equipment (including right-of-use assets) and 
+intangible assets during the year. 
+ 
+e. 
+No proceedings have been initiated during the year or are pending against the Company as at March 31, 2024 
+for holding any benami property under the Benami Transactions (Prohibition) Act, 1988 (as amended in 
+2016) and rules made there under. 
+ 
+ii. 
+(a) The Company has carried out physical verification of inventory at the year end. As per the information and 
+explanations given to us, no discrepancies of 10% or more in the aggregate for each class of inventory were 
+
+=== PAGE 298 ===
+ 
+296 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+noticed during such verification, and as such no adjustments were required to be made in the books of 
+accounts. 
+ 
+(b)The Company has not been sanctioned working capital limits in excess of Rs. 5 crores, in aggregate, at any 
+points of time during the year, from banks or financial institutions on the basis of security of current assets and 
+hence reporting under clause 3(ii)(b) of the Order is not applicable. 
+ 
+iii. The Company, during the year, has made investment of Rs 20.40 crores by way of Cumulative Redeemable 
+Preference shares in M/S Punjab Infrastructure Logistics Limited (PLIL), a subsidiary of the company. 
+However, the company has not provided any security or granted any loans or advances in the nature of loans, 
+secured or unsecured to companies, firms, Limited Liability Partnerships or any other parties, in respect of 
+which: 
+ 
+a. The Company had provided guarantee to HDFC Bank amounting to Rs 70 crores in past for loan given by 
+HDFC Bank to M/S Punjab Infrastructure Logistics Limited (PLIL), a subsidiary of the company. Further, 
+the company has not provided any loans or advances in the nature of loans or provided security to any other 
+entity during the year. Details in respect of above is given below: 
+ 
+A.    The aggregate amount of guarantee provided during the year is NIL and balance outstanding with 
+respect to such guarantee is Rs 2.03 crores as on 31.03.2024 
+B.      This sub-clause is not applicable. 
+ 
+b. 
+In our opinion, the investments made during the year are, prima facie, not prejudicial to the Company’s 
+interest. 
+ 
+c. The company has not granted loans and advances, hence reporting under clauses 3(iii)(c), (d), (e) and (f) of 
+the order are not applicable. 
+ 
+iv. In our opinion and according to the information and explanations given to us, the Company has complied with 
+the provisions of Sections 185 and 186 of the Companies Act, 2013 in respect of loans granted, investments 
+made and guarantees and securities provided, as applicable. 
+ 
+v. 
+The Company has not accepted any deposit or amounts which are deemed to be deposits. Hence, reporting 
+under clause 3(v) of the Order is not applicable. 
+ 
+vi. The maintenance of cost records has not been specified by the Central Government under sub-section (1) of 
+section 148 of the Companies Act, 2013 for the business activities carried out by the Company. Hence, 
+reporting under clause 3(vi) of the Order is not applicable to the Company. 
+ 
+vii. In respect of statutory dues: 
+a. In our opinion, the Company has generally been regular in depositing undisputed statutory dues, including 
+Goods and Services tax, Provident Fund, Employees' State Insurance, Income Tax, Sales Tax, Service Tax, 
+duty of Custom, duty of Excise, Value Added Tax, Cess and other material statutory dues applicable to it 
+with the appropriate authorities. There were no undisputed amounts payable in respect of Goods and 
+Service tax, Provident Fund, Employees' State Insurance, Income Tax, Sales Tax, Service Tax, duty of 
+Custom, duty of Excise, Value Added Tax, Cess and other material statutory dues in arrears as at March 
+31, 2024 for a period of more than six months from the date they became payable. 
+ 
+b. Details of statutory dues referred to in sub-clause (a) above which have not been deposited as on March 
+31,2024 on account of disputes are given below: 
+ 
+Name of 
+The 
+Statute 
+Nature of the 
+Dues 
+Amount 
+(Rs. in 
+crores) 
+Period to which 
+the amount 
+relates 
+Forum where 
+dispute is 
+pending 
+Status of Dispute 
+
+=== PAGE 299 ===
+ 
+297 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+Service 
+Tax 
+Service tax 
+penalty 
+Rs. 1.48 
+Sept 2002 - 
+June-2008 
+CESTAT 
+Bangalore 
+A 
+Joint 
+working 
+group 
+(JWG) 
+of 
+HAL, CONCOR, & 
+MSIL 
+was 
+established 
+during 
+the year 2001 with 
+equal 
+share 
+and 
+closed during the 
+year 
+2011. 
+The 
+custodian 
+of 
+Accounts was M/s 
+HAL. A service Tax 
+demand is pending 
+against the erstwhile 
+JWG, against which 
+1/3rd 
+share 
+of 
+CONCOR towards 
+the 
+service 
+Tax 
+demand amounting 
+Rs. 1.48 crore has 
+been withheld by 
+M/s HAL. The case 
+is still pending in 
+CESTAT. 
+Income 
+Tax  
+Disallowance 
+of 80IA Rail 
+System  
+Rs. 
+284.16 
+(excludin
+g interest 
+Rs. 96.59) 
+AY 2008-09 
+ITAT 
+An appeal was filed 
+with CIT(A) against 
+the order passed by 
+AO u/s 147/143(3). 
+CIT(A) had passed 
+order on 27/01/2017 
+allowing the appeal 
+in 
+favour 
+of 
+CONCOR.   
+ 
+Further, department 
+filed 
+an 
+appeal 
+before 
+the 
+ITAT 
+against the order of 
+CIT (A) which was 
+dismissed by ITAT 
+vide order dated 13-
+01-2020 based on 
+the 
+similar 
+cases 
+disallowed 
+by 
+HC/SC 
+in 
+earlier 
+AYs. 
+ 
+Department 
+filed 
+Misc application in 
+
+=== PAGE 300 ===
+ 
+298 
+ 
+CONTAINER CORPORATION OF INDIA LIMITED 
+ANNUAL REPORT 2023-24 
+ITAT 
+on 
+27-12-
+2021 
+against 
+the 
+above ITAT order. 
+No 
+information 
+regarding same was 
+shared 
+with 
+Company. 
+CONCOR 
+got 
+information 
+about 
+same 
+only 
+after 
+receipt of Notice of 
+hearing 07-11-2023. 
+First date of hearing 
+was 08-12-2023 and 
+after 
+3 
+hearings, 
+fourth hearing is on 
+26-07-2024. 
+Income 
+Tax 
+Disallowance 
+of deductions 
+for: SFIS 
+Scrips 
+Rs. 
+149.63 
+(excludin
+g Interest 
+- Rs 
+48.55) 
+AY - 2013-14 
+Income tax 
+Dept 
+CIT(A) vide order 
+dated 
+22/07/2022 
+ordered to delete the 
+addition 
+of 
+Rs.149.63 cr made 
+to 
+income 
+for 
+A.Y.2013-14 
+on 
+account 
+of 
+SFIS 
+Scrips and utilised 
+for 
+domestic 
+purchases. DCIT has 
+appealed 
+with 
+ITAT 
+on 
+16.09.2022 vide IT 
+Appeal No.2298/Del 
+of 2022. ITAT vide 
+order 
+dated 
+12/07/2023 
+dismissed the appeal 
+of 
+the 
+revenue 
+(DCIT) and order 
+has 
+been 
+pronounced 
+in 
+CONCOR’s favour. 
+No 
+further 
+communication 
+received from IT 
+department in this 
+regard. 

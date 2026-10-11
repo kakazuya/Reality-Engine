@@ -1,0 +1,935 @@
+{
+ "symbol": "AXISBANK",
+ "n_xbrl_facts": {
+  "consolidated": 85,
+  "standalone": 84
+ },
+ "n_hits": {
+  "consolidated": 50,
+  "standalone": 38
+ },
+ "key": {
+  "consolidated": {
+   "CashFlowsFromUsedInOperatingActivities": [
+    true,
+    true
+   ],
+   "Assets": [
+    true,
+    true
+   ]
+  },
+  "standalone": {
+   "CashFlowsFromUsedInOperatingActivities": [
+    true,
+    false
+   ],
+   "Assets": [
+    true,
+    true
+   ]
+  }
+ },
+ "hits": [
+  {
+   "scope": "consolidated",
+   "concept": "InterestOrDiscountOnAdvancesOrBills",
+   "xbrl_inr": 903140200000.0,
+   "page": 418,
+   "label": "I. Interest/discount on advances/bills",
+   "raw": "90,314.02",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "RevenueOnInvestments",
+   "xbrl_inr": 200823900000.0,
+   "page": 418,
+   "label": "II. Income on investments (including dividend)",
+   "raw": "20,082.39",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "InterestOnBalancesWithReserveBankOfIndiaAndOtherInterBankFunds",
+   "xbrl_inr": 9237400000.0,
+   "page": 418,
+   "label": "III. Interest on balances with Reserve Bank of India and other inter-bank funds",
+   "raw": "923.74",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherInterest",
+   "xbrl_inr": 14389000000.0,
+   "page": 418,
+   "label": "IV. Others",
+   "raw": "1,438.90",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "InterestEarned",
+   "xbrl_inr": 1127590500000.0,
+   "page": 408,
+   "label": "Interest earned",
+   "raw": "112,759.05",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherIncome",
+   "xbrl_inr": 252303100000.0,
+   "page": 408,
+   "label": "Other income",
+   "raw": "25,230.31",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Income",
+   "xbrl_inr": 1379893600000.0,
+   "page": 408,
+   "label": "Total",
+   "raw": "137,989.36",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "InterestExpended",
+   "xbrl_inr": 613907400000.0,
+   "page": 408,
+   "label": "II Expenditure Interest expended",
+   "raw": "61,390.74",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OperatingExpenses",
+   "xbrl_inr": 372425500000.0,
+   "page": 408,
+   "label": "Operating expenses",
+   "raw": "37,242.55",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "TaxExpense",
+   "xbrl_inr": 87544600000.0,
+   "page": 435,
+   "label": "",
+   "raw": "8,754.46",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitLossFromOrdinaryActivitiesAfterTax",
+   "xbrl_inr": 264235400000.0,
+   "page": 408,
+   "label": "III Net Profit for the year",
+   "raw": "26,423.54",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitLossForThePeriod",
+   "xbrl_inr": 264235400000.0,
+   "page": 408,
+   "label": "III Net Profit for the year",
+   "raw": "26,423.54",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ShareOfProfitLossOfAssociates",
+   "xbrl_inr": 687100000.0,
+   "page": 408,
+   "label": "Share of earnings/(loss) in Associate",
+   "raw": "68.71",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitLossOfMinorityInterest",
+   "xbrl_inr": 1060500000.0,
+   "page": 408,
+   "label": "Minority interest",
+   "raw": "(106.05)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitLossAfterTaxesMinorityInterestAndShareOfProfitLossOfAssociates",
+   "xbrl_inr": 263862000000.0,
+   "page": 436,
+   "label": "Basic and Diluted earnings for the year (Net profit after tax) (₹ in crores)",
+   "raw": "26,386.20",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "PaidUpValueOfEquityShareCapital",
+   "xbrl_inr": 6173100000.0,
+   "page": 219,
+   "label": "Capital",
+   "raw": "617",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ReserveExcludingRevaluationReserves",
+   "xbrl_inr": 1555117200000.0,
+   "page": 407,
+   "label": "Reserves & Surplus",
+   "raw": "155,511.72",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "NonPerformingAssets",
+   "xbrl_inr": 32474700000.0,
+   "page": 343,
+   "label": "Closing Balance 340 Integrated Annual Report 2023-24",
+   "raw": "3,247.47",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Capital",
+   "xbrl_inr": 6173100000.0,
+   "page": 219,
+   "label": "Capital",
+   "raw": "617",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ReservesAndSurplus",
+   "xbrl_inr": 1555117200000.0,
+   "page": 407,
+   "label": "Reserves & Surplus",
+   "raw": "155,511.72",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Deposits",
+   "xbrl_inr": 10671024000000.0,
+   "page": 407,
+   "label": "Deposits",
+   "raw": "1,067,102.40",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Borrowings",
+   "xbrl_inr": 2281995500000.0,
+   "page": 407,
+   "label": "Borrowings",
+   "raw": "228,199.55",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CapitalAndLiabilities",
+   "xbrl_inr": 15182385300000.0,
+   "page": 407,
+   "label": "Total",
+   "raw": "1,518,238.53",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashAndBalancesWithReserveBankOfIndia",
+   "xbrl_inr": 860774900000.0,
+   "page": 407,
+   "label": "Assets Cash and Balances with Reserve Bank of India",
+   "raw": "86,077.49",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "BalancesWithBanksAndMoneyAtCallAndShortNotice",
+   "xbrl_inr": 304156900000.0,
+   "page": 407,
+   "label": "Balances with Banks and Money at Call and Short Notice",
+   "raw": "30,415.69",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Investments",
+   "xbrl_inr": 3323537400000.0,
+   "page": 407,
+   "label": "Investments",
+   "raw": "332,353.74",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Advances",
+   "xbrl_inr": 9993334800000.0,
+   "page": 407,
+   "label": "Advances",
+   "raw": "999,333.48",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "FixedAssets",
+   "xbrl_inr": 58375600000.0,
+   "page": 407,
+   "label": "Fixed Assets",
+   "raw": "5,837.56",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Assets",
+   "xbrl_inr": 15182385300000.0,
+   "page": 442,
+   "label": "Assets",
+   "raw": "1,518,238.53",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "SegmentRevenueFromOperations",
+   "xbrl_inr": 1379893600000.0,
+   "page": 442,
+   "label": "Revenue",
+   "raw": "137,989.36",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "NetSegmentAssets",
+   "xbrl_inr": 15182385300000.0,
+   "page": 442,
+   "label": "Assets",
+   "raw": "1,518,238.53",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AdjustmentsForImpairmentLossReversalOfImpairmentLossRecognisedInProfitOrLoss",
+   "xbrl_inr": 65334300000.0,
+   "page": 409,
+   "label": "Provision for Non Performing Assets (including bad debts)/restructured assets",
+   "raw": "6,533.43",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AdjustmentsForSharebasedPayments",
+   "xbrl_inr": 5195700000.0,
+   "page": 409,
+   "label": "Employee Stock option Expense",
+   "raw": "519.57",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "IncomeTaxesPaidRefundClassifiedAsOperatingActivities",
+   "xbrl_inr": 72311100000.0,
+   "page": 409,
+   "label": "Direct taxes paid",
+   "raw": "(7,231.11)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashFlowsFromUsedInOperatingActivitiesBeforeExtraordinaryItems",
+   "xbrl_inr": -55546700000.0,
+   "page": 409,
+   "label": "Net cash flow from operating activities Cash flow from investing activities",
+   "raw": "(5,554.67)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashFlowsFromUsedInOperatingActivities",
+   "xbrl_inr": -55546700000.0,
+   "page": 409,
+   "label": "Net cash flow from operating activities Cash flow from investing activities",
+   "raw": "(5,554.67)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashFlowsUsedInObtainingControlOfSubsidiariesOrOtherBusinessesClassifiedAsInvestingActivities",
+   "xbrl_inr": 3298500000.0,
+   "page": 409,
+   "label": "Purchase consideration for acquistion of Citibank India consumer business (Refer",
+   "raw": "(329.85)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProceedsFromSalesOfTangibleAssetsClassifiedAsInvestingActivities",
+   "xbrl_inr": 90700000.0,
+   "page": 409,
+   "label": "Proceeds from sale of fixed assets",
+   "raw": "9.07",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "PurchaseOfTangibleAssetsClassifiedAsInvestingActivities",
+   "xbrl_inr": 23854100000.0,
+   "page": 409,
+   "label": "Purchase of fixed assets",
+   "raw": "(2,385.41)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherInflowsOutflowsOfCashClassifiedAsInvestingActivities",
+   "xbrl_inr": -63819700000.0,
+   "page": 409,
+   "label": "(Increase)/Decrease in Held to Maturity investments",
+   "raw": "(6,381.97)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashFlowsFromUsedInInvestingActivitiesBeforeExtraordinaryItems",
+   "xbrl_inr": -90881600000.0,
+   "page": 409,
+   "label": "Net cash used in investing activities Cash flow from financing activities",
+   "raw": "(9,088.16)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashFlowsFromUsedInInvestingActivities",
+   "xbrl_inr": -90881600000.0,
+   "page": 409,
+   "label": "Net cash used in investing activities Cash flow from financing activities",
+   "raw": "(9,088.16)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProceedsFromBorrowingsClassifiedAsFinancingActivities",
+   "xbrl_inr": 219859800000.0,
+   "page": 409,
+   "label": "Increase/(Decrease) in borrowings (other than subordinated debt, Additional Tier",
+   "raw": "21,985.98",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "DividendsPaidClassifiedAsFinancingActivities",
+   "xbrl_inr": 3079800000.0,
+   "page": 186,
+   "label": "Dividend paid",
+   "raw": "308",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherInflowsOutflowsOfCashClassifiedAsFinancingActivities",
+   "xbrl_inr": 1060500000.0,
+   "page": 409,
+   "label": "Increase in minority interest",
+   "raw": "106.05",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashFlowsFromUsedInFinancingActivitiesBeforeExtraordinaryItems",
+   "xbrl_inr": 223412500000.0,
+   "page": 409,
+   "label": "Net cash generated from financing activities 406 Integrated Annual Report 2023-2",
+   "raw": "22,341.25",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashFlowsFromUsedInFinancingActivities",
+   "xbrl_inr": 223412500000.0,
+   "page": 409,
+   "label": "Net cash generated from financing activities 406 Integrated Annual Report 2023-2",
+   "raw": "22,341.25",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "EffectOfExchangeRateChangesOnCashAndCashEquivalents",
+   "xbrl_inr": 868300000.0,
+   "page": 410,
+   "label": "Effect of exchange fluctuation translation reserve",
+   "raw": "86.83",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "IncreaseDecreaseInCashAndCashEquivalents",
+   "xbrl_inr": 77852500000.0,
+   "page": 410,
+   "label": "Net increase in cash and cash equivalents",
+   "raw": "7,785.25",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashAndCashEquivalentsCashFlowStatement",
+   "xbrl_inr": 1164931800000.0,
+   "page": 410,
+   "label": "Cash and cash equivalents at the end of the year Notes to the Cash Flow Statemen",
+   "raw": "116,493.18",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "InterestOrDiscountOnAdvancesOrBills",
+   "xbrl_inr": 871066000000.0,
+   "page": 213,
+   "label": "Interest on loans",
+   "raw": "87,107",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "RevenueOnInvestments",
+   "xbrl_inr": 200106200000.0,
+   "page": 213,
+   "label": "Interest on investments",
+   "raw": "20,011",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "InterestEarned",
+   "xbrl_inr": 1093686300000.0,
+   "page": 213,
+   "label": "Interest income",
+   "raw": "109,369",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherIncome",
+   "xbrl_inr": 224419600000.0,
+   "page": 185,
+   "label": "Other income",
+   "raw": "22,442",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Income",
+   "xbrl_inr": 1318105900000.0,
+   "page": 382,
+   "label": "Revenue",
+   "raw": "131,810.59",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "InterestExpended",
+   "xbrl_inr": 594741500000.0,
+   "page": 213,
+   "label": "Interest expense",
+   "raw": "59,474",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "EmployeesCost",
+   "xbrl_inr": 109331100000.0,
+   "page": 215,
+   "label": "Staff cost",
+   "raw": "10,933",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OperatingExpenses",
+   "xbrl_inr": 352132800000.0,
+   "page": 185,
+   "label": "Operating expenses",
+   "raw": "35,213",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OperatingProfitBeforeProvisionAndContingencies",
+   "xbrl_inr": 371231600000.0,
+   "page": 185,
+   "label": "Operating profit",
+   "raw": "37,123",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProvisionsOtherThanTaxAndContingencies",
+   "xbrl_inr": 40630900000.0,
+   "page": 185,
+   "label": "Provisions and contingencies (other than tax)",
+   "raw": "4,063",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossFromOrdinaryActivitiesBeforeTax",
+   "xbrl_inr": 330600700000.0,
+   "page": 185,
+   "label": "Profit before exceptional items and tax",
+   "raw": "33,060",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "TaxExpense",
+   "xbrl_inr": 81986400000.0,
+   "page": 185,
+   "label": "Provision for tax",
+   "raw": "8,199",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossFromOrdinaryActivitiesAfterTax",
+   "xbrl_inr": 248614300000.0,
+   "page": 376,
+   "label": "Basic and Diluted earnings for the year (Net profit after tax) (` in crores)",
+   "raw": "24,861.43",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossForThePeriod",
+   "xbrl_inr": 248614300000.0,
+   "page": 376,
+   "label": "Basic and Diluted earnings for the year (Net profit after tax) (` in crores)",
+   "raw": "24,861.43",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossAfterTaxesMinorityInterestAndShareOfProfitLossOfAssociates",
+   "xbrl_inr": 248614300000.0,
+   "page": 376,
+   "label": "Basic and Diluted earnings for the year (Net profit after tax) (` in crores)",
+   "raw": "24,861.43",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "PaidUpValueOfEquityShareCapital",
+   "xbrl_inr": 6173100000.0,
+   "page": 219,
+   "label": "Capital",
+   "raw": "617",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ReserveExcludingRevaluationReserves",
+   "xbrl_inr": 1496176900000.0,
+   "page": 219,
+   "label": "Reserves and Surplus",
+   "raw": "149,618",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "NonPerformingAssets",
+   "xbrl_inr": 32474700000.0,
+   "page": 343,
+   "label": "Closing Balance 340 Integrated Annual Report 2023-24",
+   "raw": "3,247.47",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Capital",
+   "xbrl_inr": 6173100000.0,
+   "page": 219,
+   "label": "Capital",
+   "raw": "617",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ReservesAndSurplus",
+   "xbrl_inr": 1496176900000.0,
+   "page": 219,
+   "label": "Reserves and Surplus",
+   "raw": "149,618",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Deposits",
+   "xbrl_inr": 10686413900000.0,
+   "page": 185,
+   "label": "Deposits",
+   "raw": "1,068,641",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Borrowings",
+   "xbrl_inr": 1968117500000.0,
+   "page": 219,
+   "label": "Borrowings",
+   "raw": "196,812",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CapitalAndLiabilities",
+   "xbrl_inr": 14772086000000.0,
+   "page": 219,
+   "label": "Total liabilities and shareholder’s funds Shareholder’s funds",
+   "raw": "1,477,209",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CashAndBalancesWithReserveBankOfIndia",
+   "xbrl_inr": 860774900000.0,
+   "page": 407,
+   "label": "Assets Cash and Balances with Reserve Bank of India",
+   "raw": "86,077.49",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Investments",
+   "xbrl_inr": 3315272500000.0,
+   "page": 217,
+   "label": "Total investments",
+   "raw": "331,527",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Advances",
+   "xbrl_inr": 9650683800000.0,
+   "page": 185,
+   "label": "Advances",
+   "raw": "965,068",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "FixedAssets",
+   "xbrl_inr": 56845800000.0,
+   "page": 218,
+   "label": "Fixed assets",
+   "raw": "5,685",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherAssets",
+   "xbrl_inr": 604740000000.0,
+   "page": 218,
+   "label": "Other assets1",
+   "raw": "60,474",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Assets",
+   "xbrl_inr": 14772086000000.0,
+   "page": 185,
+   "label": "Total assets / liabilities",
+   "raw": "1,477,209",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "SegmentRevenueFromOperations",
+   "xbrl_inr": 1318105900000.0,
+   "page": 382,
+   "label": "Revenue",
+   "raw": "131,810.59",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "SegmentProfitLossBeforeTaxAndFinanceCosts",
+   "xbrl_inr": 330600700000.0,
+   "page": 185,
+   "label": "Profit before exceptional items and tax",
+   "raw": "33,060",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "SegmentProfitBeforeTax",
+   "xbrl_inr": 330600700000.0,
+   "page": 185,
+   "label": "Profit before exceptional items and tax",
+   "raw": "33,060",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "NetSegmentAssets",
+   "xbrl_inr": 14772086000000.0,
+   "page": 185,
+   "label": "Total assets / liabilities",
+   "raw": "1,477,209",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "AdjustmentsForImpairmentLossReversalOfImpairmentLossRecognisedInProfitOrLoss",
+   "xbrl_inr": 64528200000.0,
+   "page": 215,
+   "label": "Provision for non-performing assets",
+   "raw": "6,453",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "AdjustmentsForSharebasedPayments",
+   "xbrl_inr": 4543300000.0,
+   "page": 185,
+   "label": "Miscellaneous income",
+   "raw": "454",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherInflowsOutflowsOfCashClassifiedAsInvestingActivities",
+   "xbrl_inr": -63819700000.0,
+   "page": 409,
+   "label": "(Increase)/Decrease in Held to Maturity investments",
+   "raw": "(6,381.97)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "DividendsPaidClassifiedAsFinancingActivities",
+   "xbrl_inr": 3079800000.0,
+   "page": 186,
+   "label": "Dividend paid",
+   "raw": "308",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CashAndCashEquivalentsCashFlowStatement",
+   "xbrl_inr": 1144543900000.0,
+   "page": 217,
+   "label": "Cash and bank balances",
+   "raw": "1,14,454",
+   "unit": "crore",
+   "period": "2024-03-31"
+  }
+ ],
+ "table_hits": {
+  "418": 4,
+  "408": 9,
+  "435": 1,
+  "436": 1,
+  "219": 8,
+  "407": 11,
+  "343": 2,
+  "442": 3,
+  "409": 16,
+  "186": 2,
+  "410": 3,
+  "213": 4,
+  "185": 13,
+  "382": 2,
+  "215": 2,
+  "376": 3,
+  "217": 2,
+  "218": 2
+ }
+}

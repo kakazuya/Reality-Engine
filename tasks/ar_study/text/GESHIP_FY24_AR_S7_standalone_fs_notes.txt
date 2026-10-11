@@ -1,0 +1,5567 @@
+
+=== PAGE 106 ===
+Balance Sheet As At March 31, 2024
+(K in crores)
+Particulars
+Note No.
+As at 31/03/2024
+As at 31/03/2023
+ASSETS
+I. Non-Current Assets :
+(a)	 Property, Plant and Equipment
+3
+5202.99
+5139.95
+(b)	 Capital Work-in-progress
+3
+29.86
+27.03
+(c)	 Intangible Assets
+4
+6.79
+5.79
+(d)	 Intangible Assets under development
+4
+8.48
+-
+(e)	 Right-of-use Assets
+33
+1.15
+3.01
+(f)	 Financial Assets
+(i) Non-Current Investments
+5
+1691.13
+1689.64
+(ii) Other Financial Assets
+6
+106.38
+50.61
+(g)	 Current Tax Assets (net)
+7
+73.87
+76.50
+(h)	 Other Non-Current Assets
+8
+46.51
+25.00
+7167.16
+7017.53
+II. Current Assets :
+(a)	 Inventories
+9
+148.19
+110.00
+(b)	 Financial Assets
+ 
+(i) Current Investments
+10
+1624.39
+1267.89
+(ii) Trade Receivables
+11
+437.82
+443.73
+(iii) Cash and Cash Equivalents 
+12
+2829.36
+2317.13
+(iv) Bank Balances other than (iii) above
+13
+1055.38
+597.38
+(v) Other Financial Assets
+6
+153.68
+158.02
+(c)	 Other Current Assets
+8
+140.81
+114.63
+6389.63
+5008.78
+III. Asset classified as held for sale
+45
+54.91
+-
+TOTAL ASSETS
+13611.70
+12026.31
+EQUITY AND LIABILITIES
+I. Equity :
+(a)	 Equity Share Capital
+14
+142.77
+142.77
+(b)	 Other Equity
+15
+10203.64
+8377.48
+10346.41
+8520.25
+II. Non-Current Liabilities :
+(a)	 Financial Liabilities
+(i) Borrowings
+16
+1767.37
+2222.29
+(ii) Lease Liabilities
+33
+0.15
+2.57
+(iii) Other Financial Liabilities
+17
+270.41
+245.08
+(b)	 Provisions
+18
+22.55
+27.29
+(c)	 Deferred Tax Liabilities (net)
+19
+44.28
+26.03
+2104.76
+2523.26
+III. Current Liabilities :
+(a)	 Financial Liabilities
+(i) Borrowings
+16
+459.85
+308.66
+(ii) Trade Payables
+20
+- total outstanding dues of micro and small enterprises
+9.87
+13.43
+- total outstanding dues of creditors other than micro and small enterprises
+351.00
+257.66
+(iii) Lease Liabilities
+33
+2.29
+2.05
+(iv) Other Financial Liabilities
+17
+224.84
+305.90
+(b)	 Other Current Liabilities
+21
+51.12
+53.59
+(c)	 Provisions
+18
+35.68
+16.17
+(d)	 Current Tax Liabilities (net)
+22
+25.88
+25.34
+1160.53
+982.80
+TOTAL EQUITY AND LIABILITIES
+13611.70
+12026.31
+The accompanying notes are an integral part of the financial statements
+In terms of our report attached
+For and on behalf of the Board
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+Firm Regn. No. : 117366W / W - 100018
+G. Shivakumar
+Executive Director & CFO
+(DIN : 03632124)
+K. M. Sheth
+Chairman
+(DIN : 00022079)
+Mehul Parekh
+Partner
+(M. No. : 121513)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Mumbai : May 10, 2024
+Mumbai : May 10, 2024
+Statement Of Profit And Loss For The Year Ended March 31, 2024
+(K in crores)
+Particulars
+Note No.
+ Current Year 
+ Previous Year 
+I.
+Revenue from Operations
+23
+4164.79
+4834.82
+II.
+Other Income
+24
+558.80
+261.36
+III.
+Total Income (I + II)
+4723.59
+5096.18
+IV.
+Expenses :
+Fuel Oil and Water
+410.18
+584.87
+Port, Light and Canal Dues
+174.18
+184.95
+Consumption of Spares and Stores
+198.00
+170.63
+Employee Benefits Expense
+25
+585.05
+505.34
+Finance Costs
+26
+197.60
+259.20
+Depreciation and Amortisation Expense
+27
+455.30
+450.09
+Other Expenses
+28
+306.69
+552.51
+Total Expenses
+2327.00
+2707.59
+V.
+Profit Before Tax (III - IV)
+2396.59
+2388.59
+VI.
+Tax Expense : 
+29
+- Current Tax
+62.00
+28.00
+- Deferred Tax
+18.25
+8.58
+80.25
+36.58
+VII.
+Profit for the Year (V - VI)
+2316.34
+2352.01
+VIII.
+Other Comprehensive Income
+A.	 (i) Items that will not be reclassified to profit or loss
+(a)	 Remeasurement of defined employee benefit plans
+6.30
+(4.08)
+(b)	 Fair value changes relating to own credit risk of financial liabilities designated at 
+fair value through profit or loss
+(8.03)
+0.03
+(1.73)
+(4.05)
+(ii) Income tax relating to items that will not be reclassified to profit or loss
+-
+-
+B.	 (i) Items that will be reclassified to profit or loss
+(a)	 Effective portion of gains/(losses) on designated portion of hedging instruments 
+in a cash flow hedge
+4.09
+(39.37)
+4.09
+(39.37)
+(ii) Income tax relating to items that will be reclassified to profit or loss
+-
+-
+Other Comprehensive Income (A(i-ii)+B(i-ii))
+2.36
+(43.42)
+IX.
+Total Comprehensive Income (VII + VIII)
+2318.70
+2308.59
+X.
+Earnings per Equity Share : (In K)
+30
+(Face value per share J 10/-)
+     - Basic
+ 162.25 
+ 164.74 
+     - Diluted
+ 161.92 
+ 164.41 
+The accompanying notes are an integral part of the financial statements
+In terms of our report attached
+For and on behalf of the Board
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+Firm Regn. No. : 117366W / W - 100018
+G. Shivakumar
+Executive Director & CFO
+(DIN : 03632124)
+K. M. Sheth
+Chairman
+(DIN : 00022079)
+Mehul Parekh
+Partner
+(M. No. : 121513)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Mumbai : May 10, 2024
+Mumbai : May 10, 2024
+173
+172
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 107 ===
+Statement Of Changes In Equity For The Year Ended March 31, 2024
+I.	
+Equity Share Capital
+(K in crores)
+Balance as at April 1, 2022
+Changes in equity share capital during the year
+Balance as at March 31, 2023
+ 142.77 
+ - 
+ 142.77 
+(K in crores)
+Balance as at April 1, 2023
+Changes in equity share capital during the year
+Balance as at March 31, 2024
+ 142.77 
+ - 
+ 142.77 
+II.	 Other Equity
+(K in crores)
+Reserves and Surplus
+Items of Other 
+Comprehensive 
+Income
+Total Other 
+Equity
+Capital Reserve
+General 
+Reserve
+Capital 
+Redemption 
+Reserve
+Tonnage Tax 
+Reserve under 
+Section 115VT 
+of the Income-
+tax Act, 1961
+Retained 
+Earnings
+Effective 
+portion of Cash 
+Flow Hedge
+Balance as at April 1, 2022
+15.98
+3184.70
+248.09
+365.00
+2556.51
+58.38
+6428.66
+Profit for the year
+-
+-
+-
+-
+2352.01
+-
+2352.01
+Other comprehensive income/(loss) for the year, net of 
+income tax (Refer Note 15)
+-
+-
+-
+-
+(4.05)
+(39.37)
+(43.42)
+Total comprehensive income for the year
+-
+-
+-
+-
+2347.96
+(39.37)
+2308.59
+Transfer from Retained Earnings (Refer Note 15)
+-
+-
+-
+450.00
+(450.00)
+-
+-
+Payment of dividend
+-
+-
+-
+-
+(359.77)
+-
+(359.77)
+Balance as at March 31, 2023
+15.98
+3184.70
+248.09
+815.00
+4094.70
+19.01
+8377.48
+Reserves and Surplus
+Items of Other 
+Comprehensive 
+Income
+Total Other 
+Equity
+Capital Reserve
+General 
+Reserve
+Capital 
+Redemption 
+Reserve
+Tonnage Tax 
+Reserve under 
+Section 115VT 
+of the Income-
+tax Act, 1961
+Retained 
+Earnings
+Effective 
+portion of Cash 
+Flow Hedge
+Balance as at April 1, 2023
+15.98
+3184.70
+248.09
+815.00
+4094.70
+19.01
+8377.48
+Profit for the year
+-
+-
+-
+ - 
+2316.34
+-
+2316.34
+Other comprehensive income/(loss) for the year, net of 
+income tax (Refer Note 15)
+-
+-
+-
+-
+(1.73)
+4.09
+2.36
+Total comprehensive income for the year
+-
+-
+-
+-
+2314.61
+4.09
+2318.70
+Transfer from Tonnage Tax Reserve (Refer Note 15)
+-
+215.00
+-
+(215.00)
+-
+-
+-
+Transfer from Retained Earnings (Refer Note 15)
+-
+-
+-
+400.00
+(400.00)
+-
+-
+Payment of dividend
+-
+-
+-
+-
+(492.54)
+-
+(492.54)
+Balance as at March 31, 2024
+15.98
+3399.70
+248.09
+1000.00
+5516.77
+23.10
+10203.64
+The accompanying notes are an integral part of the financial statements
+In terms of our report attached
+For and on behalf of the Board
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+Firm Regn. No. : 117366W / W - 100018
+G. Shivakumar
+Executive Director & CFO
+(DIN : 03632124)
+K. M. Sheth
+Chairman
+(DIN : 00022079)
+Mehul Parekh
+Partner
+(M. No. : 121513)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Mumbai : May 10, 2024
+Mumbai : May 10, 2024
+(K in crores)
+175
+174
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 108 ===
+Statement Of Cash Flows For The Year Ended March 31, 2024
+(K in crores)
+Current Year
+Previous Year
+A. CASH FLOWS FROM OPERATING ACTIVITIES
+Profit before tax
+2396.59 
+2388.59 
+Adjustments For :
+Depreciation and amortisation expense
+455.30 
+450.09 
+Interest income
+(199.48)
+ (71.35)
+Finance costs
+197.60 
+ 259.20 
+Net (gain)/loss on settlement of derivative contracts
+(29.24)
+68.93 
+Net gain on investments
+(116.11)
+ (57.66)
+Net gain on disposal of property, plant and equipment
+ (239.79)
+ (116.91)
+Bad debts and advances written off 
+ 1.37 
+ - 
+Allowance for doubtful debts and advances (net)
+ (0.54)
+ 2.22 
+Exchange differences on translation of assets and liabilities
+(23.37)
+ (19.32)
+Changes in fair value on derivative transactions/other financial assets
+(35.18)
+ 16.12 
+Operating profit before working capital changes
+2407.15 
+2919.91 
+Adjustments For :
+(Increase)/Decrease in trade and other assets
+(39.62)
+(214.15)
+(Increase)/Decrease in inventories
+(38.19)
+ 29.37 
+Increase/(Decrease) in trade payables
+80.03 
+ 0.03 
+Increase/(Decrease) in other liabilities
+ 21.14 
+ 0.50 
+Cash generated from operations 
+2430.51 
+2735.66 
+Direct taxes (paid)/refund
+(58.83)
+ (36.62)
+Net cash (used in)/generated from operating activities
+2371.68 
+2699.04 
+B. CASH FLOWS FROM INVESTING ACTIVITIES
+Payment for purchase of property, plant and equipment
+(757.35)
+(368.97)
+Proceeds from disposal of property, plant and equipment
+409.42 
+266.17 
+Purchase of current investments
+(1754.00)
+(1355.62)
+Proceeds from disposal/redemption of investments
+1513.53 
+1162.59 
+Placements of deposits with banks
+(1030.00)
+(610.01)
+Withdrawal of deposits with banks 
+ 635.00 
+928.81 
+Placement of margin money deposit
+(25.39)
+ - 
+Loan to subsidiary
+ (65.00)
+ - 
+Interest received
+170.25 
+58.24 
+Net cash (used in)/generated from investing activities
+ (903.54)
+81.21 
+C. CASH FLOWS FROM FINANCING ACTIVITIES
+Repayments of borrowings
+(310.67)
+ (972.97)
+Dividends paid
+ (492.54)
+ (359.77)
+Loss on principal settlement of derivative contracts related to borrowings
+ (59.69)
+ (164.17)
+Net gain on interest settlement of derivative contracts related to borrowings
+88.93 
+ 95.24 
+Interest paid
+(196.34)
+ (219.22)
+Repayment of lease liability
+ (2.21)
+ (1.90)
+Net cash (used in)/generated from financing activities
+(972.52)
+(1622.79)
+Net increase/(decrease) in cash and cash equivalents 
+495.62 
+1157.46 
+Cash and cash equivalents at the beginning of the year
+2317.13 
+1115.82 
+Exchange difference on translation of foreign currency cash and cash equivalents
+ 16.61 
+ 43.85 
+Cash and cash equivalents at the end of the year
+2829.36 
+2317.13 
+The above Statement of Cash Flows has been prepared under the “Indirect Method” as set out in Ind AS 7, ‘Statement of Cash Flows’.
+Reconciliation for changes in liabilities arising from financing activities including both changes arising from cash flows and non-cash changes as per 
+the requirement of amendment to Ind AS 7 :
+(K in crores)
+Particulars
+As at 
+March 31, 
+2023
+Cash flows 
+(net)
+Non-cash changes
+As at 
+March 31, 
+2024
+Change in 
+fair value of 
+derivatives 
+and others
+Foreign 
+exchange 
+movement
+Finance cost
+Foreign currency term loans from banks 
+383.28 
+ (60.67)
+ - 
+ 5.22 
+ 0.68 
+328.51 
+Non-convertible debentures
+2147.67 
+ (250.00)
+ - 
+ - 
+ 1.04 
+1898.71 
+Interest on foreign currency term loans from 
+banks/Non-convertible debentures
+114.04 
+ (196.34)
+ - 
+ - 
+ 192.27 
+109.97 
+Derivative transactions
+214.21 
+ 29.24 
+ 32.99 
+ - 
+ - 
+276.44 
+Lease
+4.62 
+ (2.21)
+ (0.09)
+ - 
+ 0.12 
+2.44 
+Total
+2863.82 
+(479.98)
+32.90 
+5.22 
+194.11 
+2616.07 
+(K in crores)
+Particulars
+As at 
+March 31, 
+2022
+Cash flows 
+(net)
+Non-cash changes
+As at 
+March 31, 
+2023
+Change in 
+fair value of 
+derivatives 
+and others
+Foreign 
+exchange 
+movement
+Finance cost
+Foreign currency term loans from banks 
+1083.06 
+ (772.97)
+ - 
+ 71.10 
+ 2.09 
+383.28 
+Non-convertible debentures
+2346.50 
+ (200.00)
+ - 
+ - 
+ 1.17 
+2147.67 
+Interest on foreign currency term loans from 
+banks/Non-convertible debentures
+114.19 
+ (225.58)
+6.34
+ - 
+219.09
+114.04 
+Derivative transactions
+260.66 
+ (62.57)
+ 16.12 
+ - 
+ - 
+214.21 
+Lease 
+4.62 
+ (1.90)
+ 1.54 
+ - 
+ 0.36 
+4.62 
+Total
+3809.03 
+(1263.02)
+24.00 
+71.10 
+222.71
+2863.82 
+The accompanying notes are an integral part of the financial statements
+In terms of our report attached
+For and on behalf of the Board
+For DELOITTE HASKINS & SELLS LLP
+Chartered Accountants
+Firm Regn. No. : 117366W / W - 100018
+G. Shivakumar
+Executive Director & CFO
+(DIN : 03632124)
+K. M. Sheth
+Chairman
+(DIN : 00022079)
+Mehul Parekh
+Partner
+(M. No. : 121513)
+Anand Punde
+Company Secretary
+(M. No. : 15129)
+Bharat K. Sheth
+Deputy Chairman & Managing Director
+(DIN : 00022102)
+T. N. Ninan
+Director
+(DIN : 00226194)
+Mumbai : May 10, 2024
+Mumbai : May 10, 2024
+177
+176
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 109 ===
+Notes to the Financial Statements for the Year Ended March 31, 2024
+Note 1 : Corporate Information
+The Great Eastern Shipping Company Limited (the Company) is a public limited company registered in India under the provisions of the Companies Act, 
+1913 and has its registered office in Mumbai, Maharashtra, India. Its shares are listed on the BSE Ltd. and the National Stock Exchange of India Ltd. The 
+Company is a major player in the Indian Shipping industry.
+The financial statements for the year ended March 31, 2024 were approved by the Board of Directors and authorised for issue on May 10, 2024.
+Note 2 : Material Accounting Policies
+(a)	 Statement of Compliance :
+These financial statements are the separate financial statements of the Company (also called standalone financial statements) and have been 
+prepared in accordance with Indian Accounting Standards (Ind AS) prescribed under Section 133 of the Act read with Rule 3 of the Companies 
+(Indian Accounting Standards), Rules, 2015 and relevant amendments and rules issued thereafter.
+(b)	 Basis of Preparation and presentation :
+The Financial Statements have been prepared on the historical cost basis except for certain financial instruments that are measured at fair 
+values at the end of each reporting period.
+(c)	 Current/Non-Current Classification :
+Any asset or liability is classified as current if it satisfies any of the following conditions :
+(i)	
+the asset/liability is expected to be realised/settled in the Company’s normal operating cycle;
+(ii)	 the asset is intended for sale or consumption;
+(iii)	 the asset/liability is held primarily for the purpose of trading;
+(iv)	 the asset/liability is expected to be realised/settled within twelve months after the reporting period;
+(v)	 the asset is cash and cash equivalent or other bank balances unless it is restricted from being exchanged or used to settle a liability for at 
+least twelve months after the reporting date;
+(vi)	 in the case of a liability, the Company does not have an unconditional right to defer settlement of the liability for at least twelve months after 
+the reporting date;
+(vii)	 All other assets and liabilities are classified as non-current.
+For the purpose of current/non-current classification of assets and liabilities, the Company has ascertained its normal operating cycle as twelve months.
+(d)	 Use of Estimates :
+The preparation of financial statements in conformity with the recognition and measurement principles of Ind AS requires management of the 
+Company to make judgments, estimates and assumptions that affect the application of accounting policies and the reported amounts of assets 
+and liabilities, disclosures of contingent assets and contingent liabilities as at the date of financial statements and the reported amounts of 
+income and expenses during the period. Actual results may differ from these estimates. Estimates and underlying assumptions are reviewed on 
+an ongoing basis. Revisions to accounting estimates are recognised in the period in which the estimates are revised and in future periods which 
+are affected.
+Key sources of estimation of uncertainty at the date of the financial statements, which may cause a material adjustment to the carrying amounts 
+of assets and liabilities within the next financial year, is in respect of impairment of property, plant and equipment, useful lives of property, plant 
+and equipment, provision, contingent liabilities.
+Impairment of Property, plant and equipment :
+Determining whether a ship is impaired requires an estimation of value in use and fair value less cost of disposal. The key estimates made in the 
+value in use calculation include discount rates, revenue (having regard to past trend), operating profit growth rates and deployment of vessels. The 
+discount rate is estimated using pre-tax rates that reflect current market assessments of the time value of money. The fair values are estimated 
+based on valuations provided by independent valuers considering latest transactions of similar assets.
+Useful lives and residual values of Property, plant and equipment :
+Useful lives and residual values of property, plant and equipment are reviewed at each year end based on the best available information. The lives 
+are based on historical experience with similar assets as well as anticipation of future events. Residual value of Fleet is estimated having regard 
+to, inter alia, past trend of steel scrap prices.
+Provisions and Contingent Liabilities :
+The Company is a party to certain legal disputes, the outcomes of which cannot be assessed with a high degree of certainty. A provision is 
+recognised where, based on the legal views and advice, it is considered probable that an outflow of resources will be required to settle a present 
+obligation that can be measured reliably. Contingent liabilities are disclosed in Note 36 unless the possibility of a loss arising is considered 
+remote. Management applies its judgement in determining whether a provision should be recorded or contingent liability should be disclosed.
+(e)	 Property, plant and equipment :
+Property, plant and equipment (PPE) are stated at acquisition cost less accumulated depreciation and accumulated impairment losses, if any. 
+Cost includes expenses related to acquisition, installation of the concerned assets and any attributable cost of bringing the asset to the condition 
+of its intended use.
+The Company identifies and determines cost of each part of an item of property, plant and equipment separately, if the part has a cost which is 
+significant to the total cost of that item of property, plant and equipment and has a useful life that is materially different from that of the remaining 
+item. Borrowing costs attributable to the acquisition or construction of a qualifying asset are also capitalised as part of the cost of the asset.
+Capital work-in-progress and Capital advances :
+Cost of assets not ready for intended use as on the Balance Sheet date, is shown as capital work-in-progress. Advances given towards acquisition 
+of fixed assets outstanding at each Balance Sheet date are disclosed as Other Non-Current Assets.
+Depreciation on Property, Plant and Equipment :
+(i)	
+Depreciation is recognised on Straight Line Method basis so as to write off the original cost of the asset less its estimated residual value 
+over the estimated useful life. The estimated useful life of the assets is as under : 
+Property, plant and equipment :
+Estimated Useful Life
+Fleet (Main)
+- Crude Oil Tankers
+20 years
+- Product Tankers *
+23 years
+- Dry Bulk Carriers *
+23 years
+- Gas Carriers *
+27 years
+- Speed Boats
+13 years
+Fleet (Component)
+- Grabs *
+10 years
+- Dry Dock *
+Period from survey certificate date till the estimated date for next special survey
+Leasehold Land
+Lease period
+Ownership Flats and Buildings
+60 years
+Furniture & Fixtures, Office Equipment *
+5 years
+Computers
+- Servers and Networks
+6 years
+- End User Devices
+3 years
+Vehicles *
+4 years
+Mobiles *
+2 years
+Plant and Equipment *
+10 years
+Leasehold improvements
+Lease period
+* For this class of assets, based on internal technical assessment and past experience, the Management believes that the useful lives as 
+given above, best represent the period over which the Management expects the use of the assets. The useful lives of these assets are 
+different from the useful lives as prescribed under Part C of Schedule II to the Companies Act, 2013.
+(ii)	 Estimated useful life of the Fleet and Ownership Flats and Buildings is considered from the year of built. Estimated useful life in case of all 
+other assets is considered from the date of acquisition by the Company.
+179
+178
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 110 ===
+(iii)	 The estimated useful lives and residual values are reviewed at the end of each reporting period based on the conditions of the vessels, market 
+conditions and other regulatory requirements, with the effect of any changes in estimate being accounted for on a prospective basis.
+Derecognition :
+An item of property, plant and equipment is derecognised upon disposal or when no future economic benefits are expected to arise from the 
+continued use of the asset. Any gain or loss arising on the disposal or retirement of an item of property, plant and equipment is determined as the 
+difference between the sales proceeds and the carrying amount of the asset and is recognised in the Statement of Profit and Loss.
+(f)	
+Intangible Assets :
+Intangible assets are stated at acquisition cost less accumulated amortisation and accumulated impairment losses, if any. An intangible asset is 
+derecognised on disposal, or when no future economic benefits are expected from use or disposal. Gains or losses on derecognition measured at 
+difference between net disposal proceeds and the carrying amount of the asset, are recognised in the Statement of Profit and Loss.
+Amortisation :
+Intangible Assets with finite lives are amortised on a Straight Line basis over the estimated useful economic life. The amortisation expense on 
+intangible assets with finite lives is recognised in the Statement of Profit and Loss. The estimated useful life of intangible assets is mentioned below :
+Intangible Assets :
+Estimated Useful Life
+Software
+5 years
+The amortisation period and the amortisation method for an intangible asset with finite useful life are reviewed at the end of each financial year. 
+If any of these expectations differ from previous estimates, such change is accounted for as a change in an accounting estimate.
+(g)	 Asset classified as held for sale :
+An item of property, plant and equipment is classified as asset held for sale at the time when the Management is committed to sell/dispose off the 
+asset as per Memorandum of Agreement entered into with the customer and the asset is expected to be sold/disposed off within one year from 
+the date of classification.
+Assets classified as held for sale are measured at the lower of their carrying amount and fair value less costs to sell.
+(h)	 Impairment :
+The carrying amounts of the Company’s property plant and equipment and intangible assets are reviewed at the end of each reporting period to 
+determine whether there is any indication of impairment. If any such indication exists, the asset’s recoverable amounts are estimated in order to 
+determine the extent of impairment loss, if any. An impairment loss is recognised whenever the carrying amount of an asset or its cash generating 
+unit (CGU) exceeds its recoverable amount. The impairment loss, if any, is recognised in the Statement of Profit and Loss in the period in which 
+impairment takes place.
+Assessment of recoverable amount of the vessels is based on higher of fair value less cost to sell and its value in use calculations, with each 
+vessel being regarded as one cash generating unit. Value in use is the present value of estimated future cash flows expected to arise from the 
+continuing use of a vessel and from its disposal at the end of its useful life. For calculating present value, future cash flows are discounted using 
+a pre-tax discount rate that reflects current market rates and the risk specific to the vessel. Fair value less cost to sell is the best estimate of the 
+amount obtainable from the sale of a vessel in an arm’s length transaction between knowledgeable, willing parties, less the cost of disposal based 
+on independent third-party broker valuations.
+Where an impairment loss subsequently reverses, the carrying amount of the asset is increased to the revised estimate of its recoverable amount, 
+however subject to the increased carrying amount not exceeding the carrying amount that would have been determined (net of amortisation or 
+depreciation) had no impairment loss been recognised for the asset in prior accounting periods.
+(i)	
+Investments in subsidiaries :
+Non-current Investments in equity shares in subsidiaries are carried at cost less accumulated impairment losses, if any. Where an indication of 
+impairment exists, the carrying amount of the investment is assessed and written down to its recoverable amount. On disposal of investments in 
+subsidiaries, the difference between net disposal proceeds and the carrying amounts are recognised in the Statement of Profit and Loss.
+Non-current Investments in preference shares of subsidiary is measured at amortised cost as it is held within a business model whose objective 
+is to hold this investment in order to collect the contractual cash flows and the contractual cash flows are solely payment of principal and interest 
+on the principal amount outstanding.
+(j)	
+Inventories :
+Inventories of fuel oil (includes returnable fuel oil from charterer as per terms of the time charter agreement), stores and spares at warehouse are 
+carried at lower of cost and net realisable value. Stores and spares delivered on board the vessels are charged to Statement of Profit and Loss. 
+Cost is ascertained on first-in-first-out basis. Net realisable value represents the estimated selling price for inventories less all costs necessary 
+to make the sale or expected amount to be realised from use as estimated by the management, as applicable.
+(k)	 Borrowing Costs :
+Borrowing costs include interest, ancillary cost incurred in connection with the arrangement of borrowings and exchange differences arising from 
+foreign currency borrowings availed on or after April 01, 2016, to the extent they are regarded as an adjustment to the interest cost. Borrowing 
+costs that are directly attributable to the acquisition/construction of the qualifying assets are capitalised as part of the cost of the asset, upto the 
+date of acquisition/completion of construction. Other borrowing costs are recognised in profit and loss in the period in which they are incurred.
+(l)	
+ Revenue Recognition :
+Revenue is recognised upon transfer of control of promised services to customers at an amount that reflects the consideration which the 
+Company expects to receive in exchange for those services.
+The Company earns revenue from time and voyage charter.
+Time Charter hire earnings are accrued on time proportion basis except where the charter party agreements have not been renewed/finalised, in 
+which case it is recognised on provisional basis.
+Revenue from voyage charters is recognised as income, by reference to the voyage progress on load-to-discharge basis, which has been assessed 
+by management to be an appropriate measure of progress towards complete satisfaction of the performance obligations over time under Ind AS 
+115. Judgement is involved in estimating days to reach the load port and discharge port destinations impacting the calculation of income to be 
+accrued for incomplete voyage. Management uses its judgement in estimating the total number of days of a voyage based on historical trends, the 
+operating capability of the vessel (speed and fuel consumption) and the distance of the trade route.
+Demurrage revenue is recognised as the performance obligations under the contract is satisfied.
+Pool revenue is recognised as the performance obligation is satisfied over time in accordance with the pooling agreement. Training fees included 
+in other operating income are accounted on accrual basis.
+Revenue is measured based on the consideration to which the Company expects to be entitled in contract with customer. The consideration is 
+determined based on the price specified in the contract, net of address commission. Revenue excludes any taxes or duties collected on behalf of 
+the Government which are levied on sales such as Goods and Services tax.
+There is no significant financing component in any transaction.
+(m)	 Expenses :
+(i)	
+Fuel oil is charged to the Statement of Profit and Loss on consumption basis.
+(ii)	 Stores and spares delivered on board the ships are charged to the Statement of Profit and Loss.
+(iii)	 Expenses on account of general average claims/damages to ships are charged to the Statement of Profit and Loss in the year in which they 
+are incurred. Claims against the underwriters are accounted for on acceptance of average adjustment by the adjustors.
+(n)	 Leases :
+Company as a Lessee
+The Company’s lease asset classes primarily consist of leases for office premises, warehouse and equipment rental. The Company assesses 
+whether a contract contains a lease, at inception of a contract. A contract is, or contains, a lease if the contract conveys the right to control 
+the use of an identified asset for a period in exchange for consideration. To assess whether a contract conveys the right to control the use of an 
+identified asset, the Company assesses whether : (1) the contract involves the use of an identified asset (2) the Company has substantially all 
+of the economic benefits from use of the asset through the period of the lease and (3) the Company has the right to direct the use of the asset.
+At the date of commencement of the lease, the Company recognises a right-of-use asset (“ROU”) and a corresponding lease liability for all lease 
+arrangements in which it is a lessee, except for leases with a term of twelve months or less (short-term leases) and low value leases. For these 
+short-term and low value leases, the Company recognises the lease payments as an operating expense on a straight-line basis over the term of 
+the lease.
+Certain lease arrangements include the options to extend or terminate the lease before the end of the lease term. ROU assets and lease liabilities 
+includes these options when it is reasonably certain that they will be exercised.
+181
+180
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 111 ===
+The right-of-use assets are initially recognised at cost, which comprises the initial amount of the lease liability adjusted for any lease payments 
+made at or prior to the commencement date of the lease plus any initial direct costs less any lease incentives. They are subsequently measured 
+at cost less accumulated depreciation and impairment losses.
+Right-of-use assets are depreciated from the commencement date on a straight-line basis over useful life of the underlying asset.
+The lease liability is initially measured at amortised cost at the present value of the future lease payments. The lease payments are discounted 
+using the interest rate implicit in the lease or, if not readily determinable, using the incremental borrowing rates in the country of domicile of 
+the leases. Lease liabilities are remeasured with a corresponding adjustment to the related right-of-use assets if the Company changes its 
+assessment of either exercising an extension or a termination option.
+Lease liability and ROU asset have been separately presented in the Balance Sheet and lease payments have been classified as financing cash flows.
+Company as a Lessor
+Leases can be classified as finance or operating leases. In making the assessment, certain indicators, such as whether the substantial risks and 
+rewards of ownership of the underlying asset continue with the Company, and whether the contract is for a major part of the economic life of the 
+asset, are considered.
+Based on the aforementioned assessment, the time charter contracts for vessels of the Company contain operating lease component for the 
+purpose of Ind AS 116, Leases - Refer Note 33.
+(o)	 Employee Benefits :
+(i)	 Short-Term Employee Benefits :
+All employee benefits payable wholly within twelve months of rendering the service are classified as short-term employee benefits. Benefits 
+such as salaries, performance incentives, etc., are recognised as an expense at the undiscounted amount in the Statement of Profit and 
+Loss of the year in which the employee renders the related service.
+(ii)	 Post-Employment Benefits :
+Liability is provided for retirement benefits of Provident Fund, Superannuation, Gratuity, Post Retirement Medical Benefit Scheme and 
+Compensated Absences in respect of all eligible employees and for pension benefit to eligible Whole-time Directors of the Company.
+(a)	 Defined Contribution Plan
+Employee benefits in the form of Superannuation Fund and other Seamen’s Welfare Contributions are considered as defined contribution 
+plans and the contributions are charged to the Statement of Profit and Loss of the period when the contributions to the respective 
+funds are due.
+(b)	 Defined Benefit Plan
+Retirement benefits in the form of Provident Fund administered by the Company, Gratuity, Post Retirement Medical Benefit scheme for 
+all eligible employees and Pension plan for eligible Whole-time Directors are considered as defined benefit obligations and are provided 
+for on the basis of actuarial valuations, using the projected unit credit method, as at the date of the Balance Sheet.
+(iii)	 Other Long-Term Benefits
+Long-term compensated absences are provided for on the basis of an actuarial valuation, using the projected unit credit method, as at the 
+date of the Balance Sheet.
+Actuarial gain/loss, comprising of experience adjustments and the effects of changes in actuarial assumptions is recognised in the 
+Statement of Other Comprehensive Income except for Long-term compensated absences where the same is immediately recognised in the 
+Statement of Profit and Loss.
+(p)	 Foreign Exchange Transactions :
+(i)	
+Items included in the financial statements of the Company are measured using the currency of the primary economic environment in which 
+the entity operates (‘the functional currency’). The financial statements are presented in ‘Indian Rupees’ (INR), which is also the Company’s 
+functional currency.
+(ii)	 The transactions in currencies other than the entity’s functional currency (foreign currencies) are recorded at the rate of exchange that 
+approximates the actual rate at the date of transaction. Non-monetary items, which are measured in terms of historical costs denominated 
+in a foreign currency are reported using the exchange rate at the date of the transaction. Monetary assets and liabilities denominated in 
+foreign currency, remaining unsettled at the year end are translated at closing rates. The difference in translation of long-term monetary 
+assets acquired and liabilities incurred prior to April 01, 2016 and gains and losses on foreign currency transactions relating to acquisition of 
+depreciable capital assets are added to or deducted from the cost of the asset and depreciated over the balance life of the asset; and in other 
+cases, accumulated in a Foreign Currency Monetary Item Translation Difference Account and amortised over the balance period of such long-
+term asset/liability, by recognition as income or expense but not beyond March 31, 2020. The difference in translation of all other monetary 
+assets and liabilities and realised gains and losses on other foreign currency transactions are recognised in the Statement of Profit and Loss.
+(q)	 Financial Instruments :
+Initial Recognition :
+Financial assets and financial liabilities are recognised when a Company becomes a party to the contractual provisions of the instruments.
+Financial assets and financial liabilities are initially measured at fair value, except for trade receivables which are initially measured at transaction 
+price. Transaction costs that are directly attributable to the acquisition or issue of financial assets and financial liabilities (other than financial 
+assets and financial liabilities at fair value through profit or loss) are added to or deducted from the fair value of the financial assets or financial 
+liabilities, as appropriate, on initial recognition. Transaction costs directly attributable to the acquisition of financial assets or financial liabilities 
+at fair value through profit or loss are recognised immediately in the Statement of Profit and Loss.
+Subsequent measurement :
+Financial Assets :
+All recognised financial assets are subsequently measured in their entirety at either amortised cost or fair value through profit or loss (FVTPL) 
+or fair value through other comprehensive income (FVTOCI), depending on the classification of the financial assets. The purchase and sale of 
+financial assets are accounted for at trade date.
+Cash and Cash Equivalents :
+Cash and cash equivalents include cash in hand, demand deposits with banks, other short-term highly liquid financial instruments which are readily 
+convertible into known amounts of cash that are subject to an insignificant risk of change in value and having original maturities of three months or less.
+Fixed deposit having residual maturity upto twelve months from the reporting period is considered as part of bank balances other than cash and cash 
+equivalent. Fixed deposit with residual maturity more than twelve months from reporting period is classified under other non-current assets.
+Debt Instruments :
+Debt instruments are initially measured at amortised cost, fair value through other comprehensive income (FVTOCI) or fair value through profit 
+or loss (FVTPL) till derecognition on the basis of (i) the entity’s business model for managing the financial assets and (ii) the contractual cash flow 
+characteristics of the financial asset.
+(i)	 Measured at Amortised Cost :
+Financial assets that are held within a business model whose objective is to hold financial assets in order to collect contractual cash flows 
+that are solely payments of principal and interest, are subsequently measured at amortised cost using the effective interest rate (EIR) method 
+less impairment, if any. The amortisation using EIR and loss arising from impairment, if any, is recognised in the Statement of Profit and Loss.
+Under the effective interest method, the future cash receipts are exactly discounted to the initial recognition value using the effective 
+interest rate. The cumulative amortisation using the effective interest method of the difference between the initial recognition amount 
+and the maturity amount is added to the initial recognition value (net of principal repayments, if any) of the financial asset over the relevant 
+period of the financial asset to arrive at the amortised cost at each reporting date. The corresponding effect of the amortisation under 
+effective interest method is recognised as interest income over the relevant period of the financial asset. The same is recognised in the 
+Statement of Profit and Loss.
+(ii)	 Measured at Fair value through Other Comprehensive Income (FVTOCI) :
+Financial assets that are held within a business model whose objective is achieved by both, selling financial assets and collecting contractual 
+cash flows that are solely payments of principal and interest and the contractual terms of the instrument give rise on specified dates to cash 
+flows that are solely payments of principal and interest on the principal amount outstanding, are subsequently measured at fair value through 
+other comprehensive income. Fair value movements are recognised in the Other Comprehensive Income (OCI). Interest income measured 
+using the EIR method and impairment losses, if any are recognised in the Statement of Profit and Loss. On derecognition, cumulative gain 
+or loss previously recognised in OCI is reclassified to profit or loss.
+Further, the Company, through an irrevocable election at initial recognition, has measured certain investments in equity instruments at 
+FVTOCI. The Company has made such election on an instrument by instrument basis. These equity instruments are neither held for trading 
+nor are contingent consideration recognised under a business combination. Pursuant to such irrevocable election, subsequent changes in 
+the fair value of such equity instruments are recognised in OCI. However, the Company recognises dividend income from such instruments 
+in the Statement of Profit and Loss.
+183
+182
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 112 ===
+On derecognition of such financial assets, cumulative gain or loss previously recognised in OCI is not reclassified from the equity to 
+Statement of Profit and Loss. However, the Company may transfer such cumulative gain or loss into retained earnings within equity.
+(iii)	 Measured at Fair value through Profit or Loss (FVTPL) :
+A financial asset not classified at either amortised cost or FVTOCI, is classified as FVTPL. Such financial assets are measured at fair value 
+with all changes in fair value, including interest income and dividend income if any, recognised in the Statement of Profit and Loss.
+Impairment of Financial Assets :
+Expected credit losses (ECL) are recognised for all financial assets subsequent to initial recognition other than financials assets in FVTPL 
+category. The Company’s trade receivables do not contain significant financing component and loss allowance on trade receivables is measured 
+at an amount equal to lifetime expected losses i.e. expected cash shortfall. The impairment losses and reversals are recognised in the Statement 
+of Profit and Loss.
+In case of other assets, the Company determines if there has been a significant increase in credit risk of the financial asset since initial recognition. 
+If the credit risk of such assets has not increased significantly, an amount equal to 12-month ECL is measured and recognised as loss allowance. 
+However, if credit risk has increased significantly, an amount equal to lifetime ECL is measured and recognised as loss allowance.
+ECL impairment loss allowance recognised during the period is recognised in the Statement of Profit and Loss.
+Derecognition of Financial Assets :
+The Company derecognises a financial asset when the contractual rights to the cash flows from the asset expire, or when it transfers the financial 
+asset and substantially all the risks and rewards of ownership of the asset to another party. On derecognition of a financial asset, (except as 
+mentioned above for financial assets measured at FVTOCI), the difference between the carrying amount and the consideration received is 
+recognised in the Statement of Profit and Loss.
+Financial liabilities and Equity Instruments :
+Classification as Debt or Equity :
+Debt and equity instruments issued by the Company are classified as either financial liabilities or as equity in accordance with the substance of 
+the contractual arrangements and the definitions of a financial liability and an equity instrument.
+Equity Instruments :
+An equity instrument is any contract that evidences a residual interest in the assets of an entity after deducting all of its liabilities. Equity 
+instruments issued by the Company are recognised at the proceeds received, net of direct issue costs.
+Financial Liabilities :
+All financial liabilities are subsequently measured at amortised cost using the effective interest method or at FVTPL.
+Financial liabilities are classified as at FVTPL when the financial liability is held for trading or it is designated as at FVTPL.
+For financial liabilities that are designated as at FVTPL, the amount of change in the fair value of the financial liability that is attributable to 
+changes in the credit risk of that liability is recognised in other comprehensive income, unless the recognition of the effects of changes in the 
+liability’s credit risk in other comprehensive income would create or enlarge an accounting mismatch in profit or loss. The remaining amount 
+of change in the fair value of liability is recognised in profit or loss. Changes in fair value attributable to a financial liability’s credit risk that are 
+recognised in other comprehensive income are not subsequently reclassified to profit or loss; instead, they are transferred to retained earnings 
+upon derecognition of the financial liability.
+Financial liabilities that are not held-for-trading and are not designated as at FVTPL are measured at amortised cost at the end of subsequent 
+accounting periods. The carrying amounts of financial liabilities that are subsequently measured at amortised cost are determined based on the 
+effective interest method.
+Derecognition of Financial Liabilities :
+The Company derecognises financial liabilities when, and only when, the Company’s obligations are discharged, cancelled or have expired. 
+A substantial modification of the terms of an existing financial liability (whether or not attributable to the financial difficulty of the debtor) is 
+accounted for as an extinguishment of the original financial liability and the recognition of a new financial liability. The difference between the 
+carrying amount of the financial liability derecognised and the consideration paid and payable is recognised in the Statement of Profit and Loss.
+Offsetting Financial Instruments :
+Financial assets and liabilities are offset and the net amount is reported in the Balance Sheet where there is a legally enforceable right to offset 
+the recognised amounts and there is an intention to settle on a net basis or realise the asset and settle the liability simultaneously. The legally 
+enforceable right must not be contingent on future events and must be enforceable in the normal course of business and in the event of default, 
+insolvency or bankruptcy of the Company or the counterparty.
+Derivative Financial Instruments :
+The Company enters into a variety of derivative financial instruments to manage its exposure to interest rate and foreign exchange rate risks, 
+including foreign exchange forward contracts, interest rate swaps, currency swaps, commodity swaps etc. Further details of derivative financial 
+instruments are disclosed in Note 37.
+Derivatives are initially recognised at fair value at the date the derivative contracts are entered into and are subsequently remeasured to their 
+fair value at the end of each reporting period. The resulting gain or loss is recognised in the Statement of Profit and Loss immediately unless the 
+derivative is designated and effective as a hedging instrument, in which event the timing of the recognition in the Statement of Profit and Loss 
+depends on the nature of the hedging relationship and the nature of the hedged item. The gains or losses on derivative contracts related to the 
+acquisition of depreciable capital assets are added to or deducted from the cost of the assets and not recognised in the Statement of Profit and Loss.
+Embedded Derivatives :
+Derivatives embedded in non-derivative host contracts that are not financial instruments within the scope of Ind AS 109 are treated as separate 
+derivatives when their risks and characteristics are not closely related to those of the host contracts and the host contracts are not measured at FVTPL.
+Hedge Accounting :
+The Company designates certain hedging instruments, which include derivatives and non-derivatives in respect of foreign currency risk, as either 
+fair value hedges or cash flow hedges.
+At the inception of the hedge relationship, the entity documents the relationship between the hedging instrument and the hedged item, along with 
+its risk management objectives and its strategy for undertaking various hedge transactions. Furthermore, at the inception of the hedge and on an 
+ongoing basis, the Company documents whether the hedging instrument is highly effective in offsetting changes in fair values or cash flows of the 
+hedged item attributable to the hedged risk. Note 37 sets out details of the fair values of the derivative instruments used for hedging purposes.
+Fair Value Hedges :
+Changes in fair value of the designated portion of derivatives that qualify as fair value hedges are recognised in the Statement of Profit and Loss 
+immediately, together with any changes in the fair value of the hedged asset or liability that are attributable to the hedged risk. The change in the 
+fair value of the designated portion of hedging instrument and the change in the hedged item attributable to the hedged risk are recognised in the 
+Statement of Profit and Loss in the line item relating to the hedged item.
+Hedge accounting is discontinued when the hedging instrument expires or is sold, terminated, or exercised, or when it no longer qualifies 
+for hedge accounting. The fair value adjustment to the carrying amount of the hedged item arising from the hedged risk is amortised to the 
+Statement of Profit and Loss from that date.
+Cash Flow Hedges :
+The effective portion of changes in the fair value of derivatives that are designated and qualify as cash flow hedges is recognised in Other 
+Comprehensive Income and accumulated under the heading of Cash Flow Hedging Reserve. The gain or loss relating to the ineffective portion is 
+recognised immediately in the Statement of Profit and Loss.
+Amounts previously recognised in Other Comprehensive Income and accumulated in equity (relating to effective portion as described above) are 
+reclassified to the Statement of Profit and Loss in the periods when the hedged item affects profit or loss, in the same line as the recognised 
+hedged item. However, when the hedged forecast transaction results in the recognition of a non-financial asset or a non-financial liability, such 
+gains and losses are transferred from equity (but not as a reclassification adjustment) and included in the initial measurement of the cost of the 
+non-financial asset or non-financial liability.
+Hedge accounting is discontinued when the hedging instrument expires or is sold, terminated, or exercised, or when it no longer qualifies for 
+hedge accounting. Any gain or loss recognised in Other Comprehensive Income and accumulated in equity at that time remains in equity and is 
+recognised when the forecast transaction is ultimately recognised in the Statement of Profit and Loss. When a forecast transaction is no longer 
+expected to occur, the gain or loss accumulated in equity is recognised immediately in the Statement of Profit and Loss.
+185
+184
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 113 ===
+(r)	
+Taxation :
+Tax expense for the year comprises current and deferred tax. The tax currently payable is based on taxable profit for the year. The Company’s liability 
+for current tax is calculated using tax rates and tax laws that have been enacted or substantively enacted by the end of the reporting period. Significant 
+judgments are involved in determining the provision for income taxes, including amount expected to be paid/recovered for uncertain tax positions.
+Deferred tax is recognised on temporary differences between the carrying amounts of assets and liabilities in the financial statements and the 
+corresponding tax bases used in the computation of taxable profit. Deferred tax liabilities are generally recognised for all taxable temporary 
+differences. In contrast, deferred tax assets are only recognised to the extent that it is probable that future taxable profits will be available against 
+which the deductible temporary differences can be utilised.
+The carrying amount of deferred tax assets is reviewed at the end of each reporting period and reduced to the extent that it is no longer probable 
+that sufficient taxable profits will be available to allow all or part of the asset to be recovered.
+Deferred tax liabilities and assets are measured at the tax rates that are expected to apply in the period when the liability is settled or the asset is 
+realised based on the tax rates and tax laws that have been enacted or substantively enacted by the end of the reporting period. The measurement 
+of deferred tax liabilities and assets reflects the tax consequences that would follow from the manner in which the Company expects, at the end 
+of the reporting period, to cover or settle the carrying value of its assets and liabilities.
+Current and deferred tax are recognised as an expense or income in the Statement of Profit and Loss, except when they relate to items credited 
+or debited either in other comprehensive income or directly in equity, in which case the tax is also recognised in other comprehensive income or 
+directly in equity respectively.
+Deferred tax assets and liabilities are offset to the extent that they relate to taxes levied by the same tax authority and there are legally enforceable 
+rights to set off current tax assets and current tax liabilities within that jurisdiction. Deferred tax assets include Minimum Alternate Tax (MAT) paid in 
+accordance with the tax laws which is likely to give future economic benefits in the form of availability of set off against future income tax liability.
+(s)	
+Provisions and Contingent Liabilities :
+Provisions are recognised in the financial statement in respect of present obligations (legal or constructive) as a result of past events if it is 
+probable that the Company will be required to settle the obligation, and which can be reliably estimated. Provisions are measured at the best 
+estimate of the consideration required to settle the present obligation at the Balance Sheet date. In case of onerous contract present obligations 
+arising under onerous contracts are recognised and measured as provisions. An onerous contract is considered to exist where the Company has a 
+contract under which the unavoidable costs of meeting the obligations under the contract exceed the economic benefits expected to be received 
+under it. The unavoidable costs under a contract reflect the least net cost of exiting from the contract, which is the lower of the cost of fulfilling 
+it and any compensation or penalties arising from failure to fulfil it, if applicable. The cost of fulfilling a contract comprises the costs that relate 
+directly to the contract. Costs that relate directly to a contract consist of both the incremental costs of fulfilling that contract and an allocation 
+of other costs that relate directly to fulfilling contracts. 
+Contingent liabilities are not recognised but disclosed unless the probability of an outflow of resources is remote. Contingent assets are disclosed 
+where inflow of economic benefits is probable.
+(t)	
+Earnings Per Share :
+Basic earnings per share is calculated by dividing the net profit or loss for the period attributable to the equity shareholders by the weighted 
+average number of equity shares outstanding during the period. The weighted average number of equity shares outstanding during the period 
+is adjusted for events, such as bonus issue, bonus element in a rights issue and shares split that have changed the number of equity shares 
+outstanding, without a corresponding change in resources. For the purpose of calculating Diluted Earnings per share, the net profit or loss for 
+the period attributable to the equity shareholders and the weighted average number of shares outstanding during the period is adjusted for the 
+effects of all dilutive potential equity shares.
+(u)	 Government Grants :
+Government grants are not recognised until there is a reasonable assurance that the Company will comply with the conditions attached to them 
+and that the grants will be received. Government grants are recognised in the Statement of Profit and Loss on a systematic basis over the periods 
+in which the Company recognises as expenses the related costs for which the grants are intended to compensate. Government grants used to 
+acquire non-current asset are recognised as deferred revenue in the Balance Sheet and transferred to the Statement of Profit and Loss on a 
+systematic basis over the useful lives of the related assets.
+Applicability of new and revised Ind AS :
+New and amended standards adopted by the Company 
+Ministry of Corporate Affairs (“MCA”) notifies new standards or amendments to the existing standards under Companies (Indian Accounting 
+Standards) Rules as issued from time to time. For the year ended March 31, 2024, MCA has not notified any new standards or amendments to the 
+existing standards applicable to the Company.
+Note 3 : Property, Plant and Equipment and Capital Work-in-progress
+(i)	Property, Plant and Equipment
+(K in crores)
+Particulars
+Gross Block
+Depreciation/Impairment
+Net Block
+As at 
+01/04/2023
+Additions 
+during the year
+Deductions 
+during the year
+As at 
+31/03/2024
+Accumulated 
+depreciation/ 
+impairment 
+as at 
+31/03/2023
+ On deductions
+For the year
+Accumulated 
+depreciation/ 
+impairment 
+as at 
+31/03/2024
+As at 
+31/03/2024
+As at 
+31/03/2023
+Fleet
+8261.72
+728.72
+576.51
+8413.93
+3223.07
+352.10
+445.23
+3316.20
+5097.73
+5038.65
+Land (Freehold and 
+Perpetual Lease)
+[Refer Note (a)]
+59.80
+ - 
+ - 
+59.80
+ - 
+ - 
+ - 
+ - 
+59.80
+59.80
+Ownership Flats and 
+Buildings 
+[Refer Note (b)]
+55.69
+0.34
+ - 
+56.03
+27.83
+ - 
+1.14
+28.97
+27.06
+27.86
+Plant and Equipment
+13.07
+1.33
+ - 
+14.40
+9.63
+ - 
+0.51
+10.14
+4.26
+3.44
+Furniture, Fixtures and 
+Office Equipment
+43.90
+3.07
+1.43
+45.54
+39.45
+1.43
+2.42
+40.44
+5.10
+4.45
+Vehicles
+22.04
+6.25
+3.76
+24.53
+16.29
+3.57
+2.77
+15.49
+9.04
+5.75
+8456.22
+739.71
+581.70
+8614.23
+3316.27
+357.10
+452.07
+3411.24
+5202.99
+5139.95
+(K in crores)
+Particulars
+Gross Block
+Depreciation/Impairment
+Net Block
+As at 
+01/04/2022
+Additions 
+during the year
+Deductions 
+during the year
+As at 
+31/03/2023
+Accumulated 
+depreciation/ 
+impairment 
+as at 
+31/03/2022
+ On deductions
+For the year
+Accumulated 
+depreciation/ 
+impairment 
+as at 
+31/03/2023
+As at 
+31/03/2023
+As at 
+31/03/2022
+Fleet
+8377.36
+305.90
+421.54
+8261.72
+3054.15
+272.56
+441.48
+3223.07
+5038.65
+5323.21
+Land (Freehold and 
+Perpetual Lease) 
+[Refer Note (a)]
+59.80
+ - 
+ - 
+59.80
+ - 
+ - 
+ - 
+ - 
+59.80
+59.80
+Ownership Flats and 
+Buildings 
+[Refer Note (b)]
+55.69
+ - 
+ - 
+55.69
+26.70
+ - 
+1.13
+27.83
+27.86
+28.99
+Plant and Equipment
+13.05
+0.02
+ - 
+13.07
+9.10
+ - 
+0.53
+9.63
+3.44
+3.95
+Furniture, Fixtures and 
+Office Equipment
+41.28
+2.68
+0.06
+43.90
+37.26
+0.06
+2.25
+39.45
+4.45
+4.02
+Vehicles
+19.19
+4.35
+1.50
+22.04
+15.50
+1.20
+1.99
+16.29
+5.75
+3.69
+8566.37
+312.95
+423.10
+8456.22
+3142.71
+273.82
+447.38
+3316.27
+5139.95
+5423.66
+187
+186
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 114 ===
+Notes :
+(a)	
+Title deeds of immovable property not held in the name of the Company :
+Relevant 
+line item in 
+the Balance 
+Sheet
+Description 
+of item of 
+property
+Gross 
+carrying 
+value  
+(K in crores)
+Title deed 
+held in the 
+name of 
+Whether title deed holder is a 
+promoter, director or relative 
+of promoter/director or 
+employee of promoter/director 
+Property held 
+since which 
+date 
+Reason for not being held in the name of the Company
+Property, 
+Plant and 
+Equipment
+Land 
+(Perpetual 
+Lease)
+43.72
+Central 
+Camera 
+Company 
+Private 
+Limited
+No
+April 30, 1997
+The Company has filed a Writ Petition in the Bombay High Court 
+contesting demand on account of property tax of J 3.10 crores 
+raised by Bombay Municipal Corporation, as the same is time 
+barred.
+(b)	
+The ownership flats and buildings include J 11,760 (Previous Year : J 11,760) being value of shares held in various co-operative societies.
+(c)	
+Fleet with a carrying amount of J 1149.56 crores (as at March 31, 2023 : J 1722.29 crores) and buildings with a carrying amount of J 0.47 crore (as at March 31, 2023 : J 0.49 crore) have been 
+mortgaged to secure borrowings (Refer Note 16).
+(d)	
+During the previous year, the Company had prepaid certain External Commercial Borrowings (ECBs) to banks and was in the process of satisfying charges on vessels amounting to book 
+value of J 406.10 crores which were registered against such ECBs. The said charges have been released during the current year.
+(ii)  Capital Work-in-progress
+Capital Work-in-progress amounting to J 29.86 crores (as at March 31, 2023 : J 27.03 crores) consists of dry-dock expenses, scrubbers, ballast water management systems and other equipments 
+on ships pending installation, buildings and others.
+There are no projects whose completion is overdue or has exceeded the cost as compared to original stipulated plan except for dry-dock expenses, scrubbers, ballast water management 
+systems, other equipments on ships pending installation, which are predicated on availability of vessels and drydock yard. Any variations in cost or timelines with regard to such activities are 
+revisited and revised by the management on timely basis.
+Capital Work-in-progress ageing schedule :
+As at March 31, 2024
+(K in crores)
+Particulars
+Amount in Capital Work-in-progress for a period of 
+< 1 year
+1-2 years
+2-3 years
+ More than 3 years 
+Total
+Projects in Progress
+ 24.13 
+ 5.73 
+-
+-
+ 29.86 
+ 24.13 
+ 5.73 
+ - 
+ - 
+ 29.86 
+As at March 31, 2023
+(K in crores)
+Particulars
+Amount in Capital Work-in-progress for a period of 
+< 1 year
+1-2 years
+2-3 years
+ More than 3 years 
+Total
+Projects in Progress
+ 18.45 
+ 2.18 
+ 2.00 
+ 4.40 
+ 27.03 
+ 18.45 
+ 2.18 
+ 2.00 
+ 4.40 
+ 27.03 
+Note 4 : Intangible Assets and Intangible Assets under development
+(i)	Intangible Assets
+(K in crores)
+Particulars
+Gross Block
+Amortisation
+Net Block
+As at 
+01/04/2023
+Additions 
+during the 
+year
+Deductions 
+during the 
+year
+As at 
+31/03/2024
+Accumulated 
+amortisation 
+as at 
+31/03/2023
+ On 
+deductions
+For the year 
+Accumulated 
+amortisation 
+as at 
+31/03/2024
+As at 
+31/03/2024
+As at 
+31/03/2023
+Software
+8.18
+2.45
+0.80
+9.83
+2.39
+0.80
+1.45
+3.04
+6.79
+5.79
+8.18
+2.45
+0.80
+9.83
+2.39
+0.80
+1.45
+3.04
+6.79
+5.79
+(K in crores)
+Particulars
+Gross Block
+Amortisation
+Net Block
+As at 
+01/04/2022
+Additions 
+during the 
+year
+Deductions 
+during the 
+year
+As at 
+31/03/2023
+Accumulated 
+amortisation 
+as at 
+31/03/2022
+ On 
+deductions
+For the year 
+Accumulated 
+amortisation 
+as at 
+31/03/2023
+As at 
+31/03/2023
+As at 
+31/03/2022
+Software
+1.78
+6.40
+ - 
+8.18
+1.58
+ - 
+0.81
+2.39
+5.79
+0.20
+1.78
+6.40
+ - 
+8.18
+1.58
+ - 
+0.81
+2.39
+5.79
+0.20
+(ii)  Intangible Assets under development
+Intangible Assets under development amounting to J 8.48 crores (as at March 31, 2023 : J NIL) consist of software under development.
+There are no projects whose completion is overdue or has exceeded the cost as compared to original stipulated plan. Any variations in cost or timelines with regard to such activities are 
+revisited and revised by the management on timely basis.
+Intangible Assets under development ageing schedule :
+As at March 31, 2024
+(K in crores)
+Particulars
+Amount in Intangible Assets under development for a period of 
+< 1 year
+1-2 years
+2-3 years
+ More than 3 years 
+Total
+Projects in Progress
+ 8.48 
+ - 
+ - 
+ - 
+ 8.48 
+ 8.48 
+ - 
+ - 
+ - 
+ 8.48 
+As at March 31, 2023
+(K in crores)
+Particulars
+Amount in Intangible Assets under development for a period of 
+< 1 year
+1-2 years
+2-3 years
+ More than 3 years 
+Total
+Projects in Progress
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+189
+188
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 115 ===
+Note 5 : Non-Current Investments
+Face Value 
+per Share
+ As at 31/03/2024 
+ As at 31/03/2023 
+No. of shares
+ K in crores 
+No. of shares
+ K in crores 
+Investments in Equity Instruments :
+(Unquoted - valued at cost)
+Subsidiaries :
+ - Greatship (India) Limited
+ K 10
+11,13,45,500
+1305.14
+11,13,45,500
+1305.14
+ - Great Eastern Services Limited
+K 10
+1,00,000
+0.10
+1,00,000
+0.10
+ - The Greatship (Singapore) Pte. Ltd. 
+S$ 1
+5,00,000
+1.15
+5,00,000
+1.15
+ - The Great Eastern Chartering LLC (FZC) 
+AED 100
+1,500
+0.19
+1,500
+0.19
+1306.58
+1306.58
+Investments in Preference Shares : 
+(Unquoted - valued at amortised cost)
+Subsidiary :
+ - Greatship (India) Limited
+24.60% Cumulative Redeemable Preference Shares 
+(Refer Note (i))
+K 10
+4,45,00,000
+189.00
+4,45,00,000
+187.55
+22.50% Cumulative Redeemable Preference Shares 
+(Refer Note (ii))
+K 10
+6,06,24,000
+195.55
+6,06,24,000
+195.51
+384.55
+383.06
+Other Investments in Equity Instruments : 
+(Unquoted - valued at cost)
+Subsidiary :
+ - Great Eastern CSR Foundation
+K 10
+ 49,999 
+ - 
+ 49,999 
+ - 
+ - 
+ - 
+1691.13
+1689.64
+Aggregate amount of unquoted investments
+1691.13
+1689.64
+Aggregate amount of impairment in value of investments
+ - 
+ - 
+Notes :
+(i)	
+24.60% 4,45,00,000 cumulative redeemable preference shares issued by a subsidiary company, Greatship (India) Limited, are redeemable at a 
+premium of J 30.90 per share in four equal annual tranches from April 1, 2025 to April 1, 2028, as per the terms of issue (modified from time to 
+time) of these preference shares.
+The subsidiary company has an option of early redemption by providing one month’s notice to the Company. Early redemption can be in part or 
+in full subject to a minimum of 25,00,000 shares at a time. In case of early redemption, the premium on redemption would be determined at such 
+time so as to provide an effective yield to maturity of 7.00% p.a. to the Company. The cumulative redeemable preference shares do not contain 
+any equity component.
+(ii)	
+22.50% 6,06,24,000 cumulative redeemable preference shares issued by a subsidiary company, Greatship (India) Limited, are redeemable at a 
+premium of J 20.00 per share in four equal annual tranches from April 1, 2025 to April 1, 2028, as per the terms of issue (modified from time to 
+time) of these preference shares.
+The subsidiary company has an option of early redemption by providing one month’s notice to the Company. Early redemption can be in part or 
+in full subject to a minimum of 25,00,000 shares at a time. The cumulative redeemable preference shares do not contain any equity component. 
+Note 6 : Other Financial Assets
+(Unsecured)
+(K in crores)
+Non-Current
+Current
+As at 31/03/2024
+As at 31/03/2023
+As at 31/03/2024
+As at 31/03/2023
+Considered good
+(a)	 Deposits with maturity period of more than 
+12 months
+ 25.00 
+ 35.00 
+ - 
+ - 
+(b)	Security Deposits
+0.64 
+1.01 
+0.44 
+0.08 
+(c)	 Mark-to-Market (MTM) Gains on Derivatives *
+ 14.79 
+ 13.98 
+74.33 
+97.98 
+(d)	Loan given to a Subsidiary**
+ 65.00 
+ - 
+ - 
+ - 
+(e)	 Deposits on account of pool arrangement
+ - 
+ - 
+77.25 
+ 58.32 
+(f)	 Insurance Claims
+ - 
+ - 
+0.30 
+0.48 
+(g)	Others
+0.95 
+0.62 
+1.36 
+1.16 
+Considered doubtful
+(a)	 Security Deposit
+ 0.44 
+ 0.44 
+ - 
+ - 
+(b)	Others
+ 1.01 
+ 1.01 
+ - 
+ - 
+Less : Allowance for doubtful deposit and 
+advances
+ (1.45)
+ (1.45)
+ - 
+ - 
+ 106.38 
+ 50.61 
+ 153.68 
+ 158.02 
+* Mark-to-market gains on derivatives include gains on derivatives designated and effective as hedging instruments classified as cash flow hedge 
+amounting to J 14.79 crores (as at March 31, 2023 : J 13.98 crores) as non-current and J 10.25 crores (as at March 31, 2023 : J 9.82 crores) as current.
+** Loan pertains to unsecured rupee denominated loan given to a wholly owned subsidiary, 'Greatship (India) Limited', carrying interest rate of 8.50% 
+payable on quarterly basis and principal repayable in full after two years from the date of drawdown. The said loan was provided for funding a part of 
+repayment tranche due under the existing foreign currency term loan of the subsidiary.
+Note 7 : Current Tax Assets (net)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+Excess of Advance Payment of Income-tax and Tax Deducted/Collected at Source over Provision 
+for Income-tax
+73.87 
+76.50 
+ 73.87 
+ 76.50 
+191
+190
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 116 ===
+Note 8 : Other Assets
+(Unsecured)
+(K in crores)
+Non-Current
+Current
+As at 31/03/2024
+As at 31/03/2023
+As at 31/03/2024
+As at 31/03/2023
+Considered good
+(a)	 Capital Advances
+ 46.17 
+ 24.65 
+ - 
+ - 
+(b)	Indirect tax Balances/Recoverable/Credits
+ - 
+ - 
+ 38.38 
+ 36.53 
+(c)	 Contract Assets *
+ - 
+ - 
+ 49.95 
+ 26.59 
+(d)	Others
+ 0.34 
+0.35 
+ 52.48 
+51.51 
+Considered doubtful
+(a)	 Others
+ 5.98 
+ 5.98 
+ - 
+ - 
+ Less : Allowance for doubtful advances
+ (5.98)
+ (5.98)
+ - 
+ - 
+ 46.51 
+ 25.00 
+ 140.81 
+ 114.63 
+* Contract assets relate to the unfinished voyages to represent the Company’s right to consideration for services provided to date. Contract asset is 
+reclassified to trade receivables at the point at which it is invoiced to the customer.
+Note 9 : Inventories
+(Valued at lower of cost and net realisable value)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Stores and Spares
+ - 
+ 0.07 
+(b)	Fuel Oil
+148.19 
+109.93 
+ 148.19 
+ 110.00 
+Note :
+The cost of inventories recognised as an expense during the year was J 414.59 crores (Previous Year : J 634.45 crores).
+Note 10 : Current Investments
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+Investments in Liquid Mutual Funds : Unquoted (valued at FVTPL)
+1624.39 
+1267.89 
+1624.39 
+1267.89 
+Aggregate carrying amount of unquoted investments
+1624.39 
+1267.89 
+Aggregate amount of impairment in value of investments
+ - 
+ - 
+Note 11 : Trade Receivables
+(Unsecured)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+Considered good
+ 171.56 
+ 226.89 
+Considered doubtful
+ 14.65 
+ 24.52 
+Unbilled Revenue
+ 266.26 
+ 216.84 
+ 452.47 
+ 468.25 
+Less : Allowance for doubtful receivables (expected credit loss allowance)
+ (14.65)
+ (24.52)
+ 437.82 
+ 443.73 
+Notes :
+Trade receivables are initially recognised at their original invoiced amounts i.e. the transaction price. Trade receivables are considered to be of short 
+duration, and hence, not discounted. The customers generally have stable financial standings and high credit quality, and historical experience of 
+collection of receivables also indicates that credit risk is low. All trade receivables are reviewed and assessed for recoverability on a regular basis. The 
+trade receivables overdue for one year and above are provided for as expected credit loss. It is ensured that provision for expected credit loss is not less 
+than the amount derived as per the provision matrix which is based on historically observed default rates over the expected life of trade receivables 
+and forward looking estimates. Besides, specific evaluation is done mainly for demurrage receivable which is based on expected outcome of ongoing 
+negotiations with counterparties. While there is no standard credit period offered, the average recovery period for trade receivables is up to 90 days.
+The movement in expected credit loss during the year is as follows :
+(K in crores)
+ Current Year 
+ Previous Year 
+Opening Balance
+ 24.52 
+ 15.97 
+Add : Allowance during the year
+ 4.43 
+ 17.09 
+Less : Reversal during the year
+ (14.30)
+ (8.54)
+Closing Balance
+ 14.65 
+ 24.52 
+Trade Receivables ageing schedule :
+As at March 31, 2024
+(K in crores)
+Particulars
+Outstanding for following periods from due date of payment/date of transaction *
+Unbilled
+Less than 
+6 months
+6 months - 
+1 year
+1-2 years
+2-3 years
+ More than 
+3 years 
+Total
+Undisputed trade receivables 
+- considered good
+ 266.26 
+148.80
+22.67
+ 0.09 
+ - 
+ - 
+ 437.82 
+Undisputed trade receivables 
+- considered doubtful
+ - 
+ 3.25 
+ 0.27 
+ 1.39 
+ 1.02 
+ 6.16 
+ 12.09 
+Disputed trade receivables 
+- considered good
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Disputed trade receivables 
+- considered doubtful
+ - 
+ - 
+ - 
+ 1.74 
+ - 
+ 0.82 
+ 2.56 
+ 266.26 
+152.05
+22.94
+ 3.22 
+ 1.02 
+ 6.98 
+ 452.47 
+193
+192
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 117 ===
+As at March 31, 2023
+(K in crores)
+Particulars
+Outstanding for following periods from due date of payment/date of transaction *
+Unbilled
+Less than 
+6 months
+6 months - 
+1 year
+1-2 years
+2-3 years
+ More than 
+3 years 
+Total
+Undisputed trade receivables 
+- considered good
+ 216.84 
+ 195.74 
+ 31.15 
+ - 
+ - 
+ - 
+ 443.73 
+Undisputed trade receivables 
+- considered doubtful
+ - 
+ 7.58 
+ 6.35 
+ 3.22 
+ 0.38 
+ 6.17 
+ 23.70 
+Disputed trade receivables 
+- considered good
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Disputed trade receivables 
+- considered doubtful
+ - 
+ - 
+ - 
+ - 
+ - 
+ 0.82 
+ 0.82 
+ 216.84 
+ 203.32 
+ 37.50 
+ 3.22 
+ 0.38 
+ 6.99 
+ 468.25 
+* Where due date for payment is not specified/captured in the relevant system, disclosure has been made from the date of transaction.
+Note 12 : Cash and Cash Equivalents
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Balances with Banks in Current Accounts
+2829.34 
+2317.12 
+(b)	Cash on Hand
+ 0.02 
+ 0.01 
+2829.36 
+2317.13 
+Note 13 : Bank Balances other than Cash and Cash Equivalents
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Term Deposits having residual maturity upto 12 months *
+ 980.00 
+575.00 
+(b)	Balances with Banks - Unpaid Dividend Account
+9.05 
+ 9.03 
+(c)	 Margin Money Deposits
+25.40 
+ 0.01 
+(d)	Interest Accrued on Bank Deposits
+ 40.93 
+ 13.34 
+1055.38 
+597.38 
+* Term Deposits with original maturity of more than 3 months J 980.00 crores (as at March 31, 2023 : J 575.00 crores).
+Margin Money given as security :
+Margin Money Deposits comprise of -
+(i)	 Placed with bank under lien against bank guarantees given
+ 0.01 
+ 0.01 
+(ii)	Placed with bank for derivative facilities given by Bank
+ 25.39 
+ - 
+ 25.40 
+ 0.01 
+Note 14 : Equity Share Capital
+ As at 31/03/2024 
+ As at 31/03/2023 
+Nos. 
+K in crores
+Nos. 
+K in crores
+Authorised :
+Equity Shares of J 10 each
+30,00,00,000
+ 300.00 
+30,00,00,000
+ 300.00 
+Preference Shares of J 10 each
+20,00,00,000
+ 200.00 
+20,00,00,000
+ 200.00 
+50,00,00,000
+ 500.00 
+50,00,00,000
+ 500.00 
+Issued :
+Equity Shares of J 10 each
+14,31,53,522
+ 143.15 
+14,31,53,522
+ 143.15 
+14,31,53,522
+ 143.15 
+14,31,53,522
+ 143.15 
+Subscribed and Fully Paid :
+Equity Shares of J 10 each
+14,27,67,161
+142.77 
+14,27,67,161
+142.77 
+Add : Forfeited Shares J 30,358 (as at March 
+31, 2023 : J 30,358)
+ 2,518 
+ - 
+ 2,518 
+ - 
+14,27,69,679
+142.77 
+14,27,69,679
+142.77 
+(a)	
+Terms/Rights attached to Equity Shares :
+The Company has only one class of equity shares having a face value of J 10 each. Each holder of equity shares is entitled to one vote per share. 
+The Company declares and pays dividends in Indian rupees. Interim dividend is paid as recommended by the Board of Directors.
+In the event of liquidation, the equity shareholders are eligible to receive remaining assets of the Company, after distribution of all preferential 
+amounts in proportion to their shareholding.
+(b)	
+Details of shareholders holding more than 5% equity shares in the Company :
+ As at 31/03/2024 
+ As at 31/03/2023 
+Nos. 
+% holding 
+Nos. 
+% holding 
+Equity shares of J 10 each fully paid
+Mr. Bharat Kanaiyalal Sheth *
+1,56,00,000
+10.93%
+1,56,00,000
+10.93%
+Mr. Ravi Kanaiyalal Sheth *
+1,58,99,023
+11.14%
+1,58,99,023
+11.14%
+Nalanda India Equity Fund Limited
+1,05,24,139
+7.37%
+1,05,24,139
+7.37%
+HDFC Mutual Fund
+91,17,002
+6.39%
+1,02,87,016
+7.21%
+* Shares held as Trustee.
+(c)	
+There are no shares reserved for issue under options and contracts or commitments for the sale of shares.
+(d)	
+For the period of five years immediately preceding the date as at which the Balance Sheet is prepared :
+(i)	
+No shares were allotted pursuant to contracts without payment being received in cash.
+(ii)	
+No bonus shares have been issued.
+(iii)	
+38,10,581 equity shares have been bought back during the financial year 2019-20. 41,99,323 equity shares have been bought back 
+during the financial year 2021-22.
+(e)	
+There are no securities convertible into equity/preference shares.
+195
+194
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 118 ===
+(f)	
+Under orders from the Special Court (Trial of Offences Relating to Transactions in Securities) Act, 1992, the allotment of 2,53,522 (as at March 31, 
+2023 : 2,53,522) rights equity shares of the Company have been kept in abeyance in accordance with the Companies Act, 2013 till such time as 
+the title of the bonafide owner is certified by the concerned Stock Exchanges. Additional 40,608 (as at March 31, 2023 : 40,608) shares have also 
+been kept in abeyance for disputed cases in consultation with the BSE Ltd. 92,231 (as at March 31, 2023 : 92,231) shares are unsubscribed out of 
+the total offered to employees on rights basis during the earlier years.
+(g)	
+Shareholding of promoter :
+Shares held by promoters as at March 31, 2024 :
+Sr. 
+No.
+Promoter name
+No. of shares
+% of total shares
+% of changes during 
+the year
+1
+Kanaiyalal Maneklal Sheth
+2,78,133
+0.19%
+0.00%
+2
+Bharat Kanaiyalal Sheth
+5,19,490
+0.36%
+0.00%
+3
+Ravi Kanaiyalal Sheth 
+7,64,072
+0.54%
+0.00%
+4
+Rahul Ravi Sheth 
+1,08,521
+0.08%
+0.00%
+5
+Bharat K. Sheth (Trustee of GE RKS Trust)
+1,56,00,000
+10.93%
+0.00%
+6
+Ravi K. Sheth (Trustee of GE BKS Trust)
+1,58,99,023
+11.14%
+0.00%
+Promoters Group
+1
+Sachin Mulji 
+10,55,000
+0.74%
+0.00%
+2
+Kabir Mulji 
+5,29,615
+0.37%
+0.00%
+3
+Sangita Mulji 
+5,82,415
+0.41%
+0.00%
+4
+Amita R. Sheth 
+1,83,808
+0.13%
+0.00%
+5
+Rosaleen Mulji 
+4,32,000
+0.30%
+0.00%
+6
+Jyoti B. Sheth 
+1,37,796
+0.10%
+0.00%
+7
+Nirja Bharat Sheth
+1,05,317
+0.07%
+0.00%
+8
+Nisha Viraj Mehta 
+1,12,037
+0.08%
+0.00%
+9
+Arjun Ravi Sheth
+ 50,040 
+0.04%
+0.00%
+10
+Laadki Trading And Investments Ltd.
+61,54,981
+4.31%
+0.00%
+11
+Gopa Investments Co. Pvt. Ltd. 
+4,24,000
+0.30%
+0.00%
+Total
+4,29,36,248
+30.07%
+0.00%
+Note 15 : Other Equity
+A.	 Summary of Other Equity
+(Refer Statement of Changes in Equity for details of movement)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Capital Reserve
+15.98 
+15.98 
+(b)	General Reserve
+3399.70 
+3184.70 
+(c)	 Capital Redemption Reserve
+248.09 
+248.09 
+(d)	Tonnage Tax Reserve under Section 115VT of the Income-tax Act, 1961
+1000.00 
+815.00 
+(e)	 Retained Earnings
+5516.77 
+4094.70 
+(f)	 Cash Flow Hedging Reserve
+23.10 
+ 19.01 
+10203.64 
+8377.48 
+B.	 Nature of Reserves :
+(i)	
+Capital Reserve : Capital Reserve was created on cancellation of convertible warrants during the year ended March 31, 2009.
+(ii)	
+General Reserve : General Reserve is used from time to time to transfer profits from Retained Earnings for appropriation purposes and for 
+transfer from Tonnage Tax Reserve.
+(iii)	
+Capital Redemption Reserve : As per the Companies Act, 2013, Capital Redemption Reserve is created when the Company purchases its 
+own shares out of free reserves or securities premium. A sum equal to the nominal value of the shares so purchased is transferred to capital 
+redemption reserve. The reserve is utilised in accordance with the provisions of Section 69 of the Companies Act, 2013.
+(iv)	
+Tonnage Tax Reserve : Tonnage Tax Reserve is created as per the provisions of the Section 115VT of the Income-tax Act, 1961, whereby a 
+minimum of 20% of book profits from the tonnage tax activities is to be utilised for acquiring new ships within 8 years.
+(v)	
+Retained Earnings : Retained Earnings are the profits that the Company has earned till date, less any transfers to reserves and dividend 
+distributions to the shareholders.
+The Board of Directors has -
+	- paid the fourth interim dividend for financial year 2022-23 of J 9.00 per equity share of J 10/- each during the year. The outgo on this 
+account was J 128.49 crores.
+	- for nine months period ended December 31, 2023, declared and paid three interim dividends totalling to J 18.00 per equity share of 
+J 10/- each. In addition, a special dividend of J 7.50/- per equity share of J 10/- each to commemorate the 75th anniversary of the 
+Company was declared and paid in August 2023. The total outgo on this account was J 364.05 crores.
+	- declared fourth interim dividend for financial year 2023-24 of J 10.80 per equity share of J 10/- each. The outgo on this account will 
+be J 154.19 crores. 
+The total dividend declared for financial year 2023-24 aggregates to J 36.30 per equity share. The total outgo on this account will be J 518.24 crores.
+Retained Earnings comprise of gain on remeasurement of defined employee benefit plans amounting to J 6.30 crores (Previous Year : loss 
+of J 4.08 crores) and loss on fair value changes relating to own credit risk of financial liabilities designated at fair value through profit or loss 
+amounting to J 8.03 crores (Previous Year : gain of J 0.03 crore).
+(vi)	
+Cash Flow Hedging Reserve : The Cash Flow Hedging Reserve is the cumulative effective portion of gains or losses arising on changes in fair 
+values of designated portion of hedging instruments entered into for cash flow hedges. The gains or losses arising thereon are transferred 
+to the Statement of Profit and Loss when hedged transaction affects the profit or loss. 
+197
+196
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 119 ===
+Note 16 : Borrowings
+(K in crores)
+ Non-Current 
+ Current 
+As at 31/03/2024
+As at 31/03/2023
+As at 31/03/2024
+As at 31/03/2023
+(a)	Debentures :
+Secured - at amortised cost :
+Redeemable Non-Convertible Debentures 
+of J 10,00,000 each -
+(i)	 8.85% 3000 Debentures redeemable on 
+April 12, 2028
+300.00 
+ 300.00 
+ - 
+ - 
+(ii)	 8.05% 1500 Debentures redeemable on 
+August 31, 2024
+ - 
+ 150.00 
+ 150.00 
+ - 
+(iii)	 8.05% 1500 Debentures redeemable on 
+November 2, 2028
+ 150.00 
+ 150.00 
+ - 
+ - 
+[Refer Notes (i) and (iii) below]
+Unsecured - at amortised cost :
+Redeemable Non-Convertible Debentures 
+of J 10,00,000 each -
+(i)	 8.25% 1500 Debentures redeemable on 
+May 25, 2027
+ 150.00 
+ 150.00 
+ - 
+ - 
+(ii)	 8.24% 2000 Debentures redeemable on 
+November 10, 2026
+ 200.00 
+ 200.00 
+ - 
+ - 
+(iii)	 8.70% 2500 Debentures redeemable on 
+May 6, 2026
+ 250.00 
+ 250.00 
+ - 
+ - 
+(iv)	 8.24% 2000 Debentures redeemable on 
+November 10, 2025
+ 200.00 
+ 200.00 
+ - 
+ - 
+(v)	 8.70% 2500 Debentures redeemable on 
+May 31, 2025
+ 250.00 
+ 250.00 
+ - 
+ - 
+(vi)	 7.99% 2500 Debentures redeemable on 
+January 18, 2025
+ - 
+ 250.00 
+ 250.00 
+ - 
+(vii)	 7.99% 2500 Debentures redeemable on 
+January 18, 2024
+ - 
+ - 
+ - 
+ 250.00 
+[Refer Note (iii) below]
+1500.00 
+1900.00 
+400.00 
+250.00 
+(b)	Term Loans from Banks :
+Secured - at amortised cost :
+Foreign Currency Loans from Banks
+269.57 
+325.94 
+61.29 
+60.38 
+[Refer Notes (ii) and (iii) below]
+269.57 
+325.94 
+61.29 
+60.38 
+(c)	Unamortised Finance Charges
+(2.20)
+(3.65)
+(1.44)
+(1.72)
+Total ((a) +(b) + (c))
+1767.37 
+2222.29 
+ 459.85 
+ 308.66 
+Notes :
+(i)	
+8.85% 3000 Secured Redeemable Non-Convertible Debentures of J 10,00,000 each, redeemable on April 12, 2028, 8.05% 1500 Secured 
+Redeemable Non-Convertible Debentures of J 10,00,000 each, redeemable on August 31, 2024 and 8.05% 1500 Secured Redeemable Non-
+Convertible Debentures of J 10,00,000 each, redeemable on November 2, 2028 are secured by exclusive charge on specified ships with 1.20 times 
+cover on the market value of ships and additional security by way of mortgage on certain immovable property of the Company.
+(ii)	
+Foreign currency USD loans availed from banks carry interest rates of overnight SOFR/LIBOR plus 152 to 156 bps (Previous Year : LIBOR plus 100 
+to 156 bps). The principal repayments are due quarterly or half yearly. These loans are secured by mortgage of specific ships of the Company.
+(iii)	 The terms of repayments of non-current borrowings are as under :
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+ - between one to three years
+Secured Debentures
+ - 
+ 150.00 
+Unsecured Debentures
+ 900.00 
+ 700.00 
+Secured Loans from Banks
+ 122.58 
+ 120.77 
+1022.58 
+970.77 
+ - between three to five years
+Secured Debentures
+ 450.00 
+ - 
+Unsecured Debentures
+ 150.00 
+ 600.00 
+Secured Loans from Banks
+ 146.99 
+ 165.41 
+746.99 
+765.41 
+ - over five years
+Secured Debentures
+ - 
+ 450.00 
+Unsecured Debentures
+ - 
+ - 
+Secured Loans from Banks
+ - 
+ 39.76 
+ - 
+489.76 
+Note 17 : Other Financial Liabilities
+(K in crores)
+ Non - Current 
+ Current 
+As at 31/03/2024
+As at 31/03/2023
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Unpaid Dividend
+ - 
+ - 
+ 9.05 
+ 9.03 
+(b)	Interest Accrued but not due on Borrowings
+ - 
+ - 
+ 109.97 
+ 114.04 
+(c)	 Mark-to-Market Losses on Derivatives *
+ 270.41 
+ 245.08 
+ 87.01 
+ 166.40 
+(d)	Others
+ - 
+ - 
+ 18.81 
+ 16.43 
+270.41 
+245.08 
+224.84 
+305.90 
+* Mark-to-market losses on derivatives include losses on derivatives designated and effective as hedging instruments classified as cash flow hedge 
+amounting to J NIL (as at March 31, 2023 : J 0.51 crore) as non-current and J NIL (as at March 31, 2023 : J 2.35 crores) as current.
+199
+198
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 120 ===
+Note 18 : Provisions
+(K in crores)
+ Non - Current 
+ Current 
+As at 31/03/2024
+As at 31/03/2023
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Provision for Employee Benefits (Refer Note 
+31)
+ 22.55 
+ 27.29 
+ 11.44 
+ 2.48 
+(b)	Vessel Performance/Off-hire Claims (Refer 
+Note below)
+ - 
+ - 
+ 24.24 
+ 13.69 
+ 22.55 
+ 27.29 
+35.68 
+16.17 
+Note :
+The Company has recognised the following provisions in its accounts in respect of obligations arising from past events, the settlement of which is 
+expected to result in an outflow embodying economic benefits.
+(K in crores)
+ Current Year 
+ Previous Year 
+Vessel performance/off-hire claims -
+Provision has been recognised for the estimated liability for under-performance of certain vessels 
+and off-hire claims under dispute :
+Opening Balance
+ 13.69 
+ 12.59 
+Add : Addition during the year
+ 16.11 
+ 7.10 
+Less : Reversal during the year
+ (5.56)
+ (6.00)
+Closing Balance
+ 24.24 
+ 13.69 
+Note 19 : Deferred Tax Liabilities (net)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+Deferred Tax Liabilities (net) *
+ 44.28 
+ 26.03 
+ 44.28 
+ 26.03 
+* This is in relation to MTM gain on mutual funds and derivatives.
+Note 20 : Trade Payables
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Dues to Micro and Small enterprises
+ 9.87 
+ 13.43 
+(b)	Dues to Subsidiary Companies (Refer Note 34)
+ 0.68 
+ 0.91 
+(c)	 Dues to others
+ 350.32 
+ 256.75 
+ 360.87 
+ 271.09 
+Notes :
+(i)	
+Trade payables are recognised at their original invoiced amounts which represent their fair values on initial recognition. Trade payables are 
+considered to be of short duration and are not discounted.
+(ii)	
+Disclosures under the Micro, Small and Medium Enterprises Development Act, 2006 are provided as under, to the extent the Company has received 
+intimation from the “Suppliers” regarding their status under the Act :
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Principal amount and the interest due thereon remaining unpaid to each supplier at the end 
+of each accounting year (but within due date as per the Micro, Small and Medium Enterprises 
+Development Act, 2006)
+-  Principal amount due to Micro and Small enterprises
+ 9.87 
+ 13.43 
+-  Interest due on above 
+ - 
+ - 
+(b)	Interest paid by the Company in terms of Section 16 of the Micro, Small and Medium Enterprises 
+Development Act, 2006, along-with the amount of the payment made to the supplier beyond 
+the appointed day during the period
+ - 
+ - 
+(c)	 Interest due and payable for the period of delay in making payment (which have been paid but 
+beyond the appointed day during the period) but without adding interest specified under the 
+Micro, Small and Medium Enterprises Development Act, 2006
+ - 
+ - 
+(d)	The amount of interest accrued and remaining unpaid at the end of each accounting year 
+ - 
+ - 
+(e)	 Interest remaining due and payable even in the succeeding years, until such date when the 
+interest dues as above are actually paid to the small enterprises
+ - 
+ - 
+Dues to Micro and Small enterprises have been determined to the extent such parties have been identified on the basis of information collected by the 
+Management. This has been relied upon by the auditors.
+Trade Payables ageing schedule :
+As at March 31, 2024
+(K in crores)
+Particulars
+Outstanding for following periods from due date of payment/date of transaction *
+< 1 year
+1-2 years
+2-3 years
+ More than 
+3 years 
+Total
+Micro and Small enterprises
+ 8.23 
+ 1.45 
+ 0.16 
+ 0.03 
+ 9.87 
+Others
+297.64
+33.76
+2.80
+16.80
+ 351.00 
+Disputed dues - Micro and Small 
+enterprises
+ - 
+ - 
+ - 
+ - 
+ - 
+Disputed dues - Others 
+ - 
+ - 
+ - 
+ - 
+ - 
+305.87
+35.21
+2.96
+16.83
+ 360.87 
+As at March 31, 2023
+(K in crores)
+Particulars
+Outstanding for following periods from due date of payment/date of transaction *
+< 1 year
+1-2 years
+2-3 years
+ More than 
+3 years 
+Total
+Micro and Small enterprises
+ 12.62 
+ 0.26 
+ 0.17 
+ 0.38 
+ 13.43 
+Others
+ 219.71 
+ 3.18 
+ 11.88 
+ 22.89 
+ 257.66 
+Disputed dues - Micro and Small 
+enterprises
+ - 
+ - 
+ - 
+ - 
+ - 
+Disputed dues - Others 
+ - 
+ - 
+ - 
+ - 
+ - 
+ 232.33 
+ 3.44 
+ 12.05 
+ 23.27 
+ 271.09 
+* Where due date for payment is not specified/captured in the relevant system, disclosure has been made from the date of transaction.
+201
+200
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 121 ===
+Note 21 : Other Current Liabilities
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+(a)	 Advances from Customers
+ 29.99 
+ 38.56 
+(b)	Statutory Liabilities
+ 8.54 
+ 8.16 
+(c)	 Others
+ 12.59 
+ 6.87 
+ 51.12 
+ 53.59 
+Note 22 : Current Tax Liabilities (net)
+(K in crores)
+As at 31/03/2024
+As at 31/03/2023
+Excess of Provision for Income-tax over Advance Payment of Income-tax and Tax Deducted/
+Collected at Source
+ 25.88 
+ 25.34 
+ 25.88 
+ 25.34 
+Note 23 : Revenue from Operations
+(K in crores)
+ Current Year 
+ Previous Year 
+(a)	 Revenue from -
+- Freight and Demurrage
+1573.93 
+2267.92 
+ - Charter Hire (Refer Note 42)
+2528.40 
+2540.63 
+4102.33 
+4808.55 
+(b)	Other Operating Revenue
+62.46 
+26.27 
+4164.79 
+4834.82 
+Notes :
+(i)	
+Disaggregation of revenue by timing of revenue :
+(K in crores)
+ Current Year 
+ Previous Year 
+Contracts with customers for the transfer of goods and services over time 
+4126.61 
+4832.68 
+Insurance claim received at a point in time
+38.18 
+2.14 
+4164.79 
+4834.82 
+(ii)	 Details of revenue from contract with customers :
+(K in crores)
+ Current Year 
+ Previous Year 
+Total revenue from contracts with customers as above
+4102.33 
+4808.55 
+Add : Rebate/Commission 
+72.27 
+94.33 
+Total revenue from contracts with customers as per contracted price 
+4174.60 
+4902.88 
+Note 24 : Other Income
+(K in crores)
+ Current Year 
+ Previous Year 
+(a)	 Gain on disposal of Property, plant and equipment (net)
+ 239.79 
+ 116.91 
+(b)	Interest Income -
+- on Bank Deposits (at amortised cost)
+ 171.86 
+ 45.34 
+- on Preference Shares Investment in a Subsidiary (at amortised cost)
+ 26.08 
+ 25.91 
+- on Loan to a Subsidiary (at amortised cost)
+ 1.53 
+ - 
+- on Others
+ 2.82 
+ 0.10 
+202.29 
+71.35 
+(c)	 Gain on sale/MTM of Current Investments (at FVTPL) *
+ 116.11 
+ 57.66 
+(d)	Miscellaneous Income
+ 0.61 
+ 15.44 
+558.80 
+261.36 
+* Includes MTM gain of J 66.64 crores (Previous Year : J 29.81 crores).
+Note 25 : Employee Benefits Expense
+(K in crores)
+ Current Year 
+ Previous Year 
+(a)	 Salaries and Wages
+ 500.45 
+ 452.04 
+(b)	Contribution to Provident and Other funds (Refer Note 31)
+ 39.31 
+ 20.03 
+(c)	 Staff Welfare Expenses
+ 45.29 
+ 33.27 
+585.05 
+505.34 
+Note 26 : Finance Costs
+(K in crores)
+ Current Year 
+ Previous Year 
+(a)	 Interest Cost *
+ 192.39 
+ 219.45 
+(b)	Other Borrowing Costs
+ 1.72 
+ 3.26 
+(c)	 Exchange Differences regarded as an adjustment to Borrowing Costs
+ 3.49 
+ 36.49 
+197.60 
+259.20 
+* Includes gain/loss arising on Interest Rate Swap transactions.
+Note 27 : Depreciation and Amortisation Expense
+(K in crores)
+ Current Year 
+ Previous Year 
+(a)	 Depreciation on Property, plant and equipment
+ 452.07 
+ 447.38 
+(b)	Depreciation on Right-of-use Assets (Refer Note 33)
+ 1.78 
+ 1.90 
+(c)	 Amortisation on Intangible Assets
+ 1.45 
+ 0.81 
+455.30 
+450.09 
+203
+202
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 122 ===
+Note 28 : Other Expenses
+(K in crores)
+ Current Year 
+ Previous Year 
+(a)	 Hire of Chartered Ships
+ 16.55 
+ 229.20 
+(b)	Brokerage and Commission
+ 23.58 
+ 30.54 
+(c)	 Agency Fees
+ 7.98 
+ 8.92 
+(d)	Repairs and Maintenance -
+- Fleet
+ 154.91 
+ 170.32 
+- Buildings
+ 12.19 
+ 8.20 
+- Others
+ 15.16 
+ 13.41 
+182.26 
+191.93 
+(e)	 Insurance -
+- Fleet Insurance and Protection and Indemnity Club Insurance
+ 47.90 
+ 44.28 
+- Others
+ 2.30 
+ 1.83 
+50.20 
+46.11 
+(f)	 Foreign Exchange Loss/(Gain) (net) 
+ (54.89)
+ (155.87)
+(g)	Loss/(Gain) on Derivatives Transactions (net) 
+ (62.41)
+ 89.83 
+(h)	Rates and Taxes
+ 0.44 
+ 0.59 
+(i)	 Bad Debts and Advances Written off
+ 1.37 
+ - 
+(j)	 Allowance for doubtful debts and advances (net)
+ (0.54)
+ 2.22 
+(k)	 Travelling Expenses
+ 52.04 
+ 46.57 
+(l)	 Payments to Auditor (Refer Note below)
+ 1.25 
+ 1.26 
+(m)	Expenditure on Corporate Social Responsibility Activities (Refer Notes 34 and 40)
+ 24.73 
+ 10.18 
+(n)	Miscellaneous Expenses
+ 64.13 
+ 51.03 
+306.69 
+552.51 
+Note :
+Payments to Auditor -
+- Auditor
+ 1.17 
+ 1.14 
+- For Other Services
+ 0.04 
+ 0.04 
+- For Reimbursement of Expenses
+ 0.04 
+ 0.08 
+1.25 
+1.26 
+Note 29 : Tax Expense
+(K in crores)
+ Current Year 
+ Previous Year 
+(a)	 Current Tax
+ 62.00 
+ 28.00 
+(b)	Deferred Tax
+ 18.25 
+ 8.58 
+80.25 
+36.58 
+Reconciliation of estimated income tax expense at statutory income tax rate to income tax expense reported in the Statement of Profit and Loss is 
+as follows:
+(K in crores)
+ Current Year 
+ Previous Year 
+Profit before Income Tax 
+2396.59 
+2388.59 
+Indian statutory income tax rate (including surcharge and cess)
+25.17%
+25.17%
+Expected income tax expense as per Indian statutory income tax rate
+ 603.17 
+ 601.16 
+Tax effect of adjustments to reconcile expected income tax expense to reported income tax 
+expense :
+Profit attributable to tonnage tax activity (net of Deemed Tonnage Income)
+ (458.11)
+ (531.24)
+Items liable to tax in the year of settlement/payment
+-
+ 1.97 
+Deduction under Section 80M of the Income-tax Act, 1961 in respect of dividend income
+ (6.19)
+ (6.19)
+Gain on disposal/held for sale of Property, plant and equipment (net)
+ (60.35)
+ (29.43)
+Others (net)
+1.73
+ 0.31 
+Provision for Current Tax and Deferred Tax as per Books
+80.25 
+36.58 
+The Company has opted for computation of its income from shipping activities under Tonnage Tax Scheme as per Section 115VA of the Income-tax 
+Act, 1961. Thus, income from the business of operating ships is assessed on the basis of the Deemed Tonnage Income of the Company and no deferred 
+tax is applicable to such income as there are no temporary differences.
+The Company, with effect from financial year 2019-20, has chosen to exercise the option of lower tax rate of 25.17% (inclusive of surcharge and cess) 
+under Section 115BAA of the Income-tax Act, 1961 as introduced by The Taxation Laws (Amendment) Ordinance, 2019.
+The contingent liability includes liability for matters arising out of disallowance under Section 14A of the Income-tax Act, 1961 upto assessment year 
+2020-21. Similar claims have been made by the Company for subsequent assessment years for which assessments are pending.
+The contingent liabilities include the liability pertaining to the disallowance under Section 14A of the Income-tax Act, 1961 upto assessment year 
+2020-21. The Tribunal has decided this issue in favour of the Company upto assessment year 2015-16. Post assessment year 2020-21 there is no such 
+disallowance possible in the hands of the Company.
+Note 30 : Basic and Diluted Earnings per Equity Share
+ Current Year 
+ Previous Year 
+(a)	 Net Profit After Tax (J in crores)
+2316.34 
+2352.01 
+(b)	Number of Equity Shares
+(i)	
+Basic Earnings per Share :
+Weighted Average Number of Equity Shares
+14,27,67,161
+14,27,67,161
+(ii)	
+Diluted Earnings per Share :
+Weighted Average Number of Equity Shares
+14,27,67,161
+14,27,67,161
+Shares deemed to be issued for no consideration in respect of :
+     - Rights Shares kept in abeyance
+2,90,569
+2,88,559
+Weighted Average Number of Equity Shares adjusted for the effect of dilution
+14,30,57,730
+14,30,55,720
+(c)	 Face Value of Equity Share (in J)
+ 10.00 
+ 10.00 
+(d)	Earnings per Share (in J)
+- Basic 
+ 162.25 
+ 164.74 
+- Diluted
+ 161.92 
+ 164.41 
+205
+204
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 123 ===
+Note 31 : Employee Benefit Plans
+A.	 Defined Contribution Plans :
+(i)	
+The Company has recognised the following amounts in the Statement of Profit and Loss for the year :
+(K in crores)
+ Current Year 
+ Previous Year 
+Contribution to Employees Superannuation Fund
+ 6.41 
+ 6.11 
+Contribution to National Pension Scheme
+ 1.87 
+ 1.58 
+Contribution to Seamen’s Provident Fund
+ 1.09 
+ 0.98 
+Contribution to Seamen’s Annuity Fund
+ 0.83 
+ 0.44 
+Contribution to Seamen’s Rehabilitation Fund
+ 0.17 
+ 0.14 
+Contribution to Seamen’s Gratuity Fund
+ - 
+ 0.14 
+(ii)	
+General description of Defined Contribution Plans :
+Superannuation Fund :
+In addition to gratuity benefits, employees have the option to become a member of the Superannuation Fund Trust set up by the Company 
+and receive benefits thereunder. It is a defined contribution plan. The Company makes contributions to the trust in respect of the said 
+employees until their retirement or resignation. The Company recognises such contributions as an expense when incurred. The Company 
+has no further obligation beyond its contribution.
+National Pension Scheme (NPS) :
+NPS is an additional option for offering retirement benefits to the employees. NPS is designed on defined contribution basis wherein the 
+Company contributes to the employees account.
+There is no defined benefit that would be available at the time of exit from the system and the accumulated wealth depends on the 
+contributions made and the income generated from the investment of such wealth. The Company recognises such contributions as an 
+expense when incurred. The Company has no further obligation beyond its contribution.
+Seamen's Provident Fund :
+The Company's contribution towards Provident Fund in respect of seamen i.e. crew who sail on Company's ships is paid to the Seamen's 
+Provident Fund as per the National Maritime Board Agreement binding on the Company.
+Seamen's Annuity Fund :
+The Company's contribution towards Annuity in respect of seamen is paid to the Seamen's Annuity Fund as per the National Maritime Board 
+Agreement binding on the Company.
+Seamen's Rehabilitation Fund :
+The Company's contribution towards rehabilitation in respect of seamen is paid to the National Maritime Board Rehabilitation and Welfare 
+Trust as per the National Maritime Board Agreement binding on the Company.
+Seamen's Gratuity Fund :
+The Company's contribution towards Gratuity in respect of seamen is paid to the Seafarer's Welfare Fund Society as per the National 
+Maritime Board Agreement binding on the Company.
+B.	 Defined Benefit Plans and Other Long-Term Benefits :
+(i)	
+Valuations in respect of Gratuity, Pension Plan for eligible Whole-time Directors and Retired Directors/Spouses, Post Retirement Medical 
+Benefit Scheme and Compensated Absences have been carried out by an independent actuary as at the Balance Sheet date as per the 
+Projected Unit Credit method, based on the following assumptions :
+Actuarial assumptions 
+Gratuity
+Pension Plan
+Post Retirement Medical 
+Benefit Scheme
+Compensated Absences
+Funded
+Unfunded
+Unfunded
+Unfunded
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+Rate of discounting (p.a.)
+7.21%
+7.45%
+7.21%
+7.45%
+7.21%
+ - 
+7.21%
+7.45%
+Rate of salary increase 
+(p.a.)
+4.00%-
+6.00%
+4.00%-
+6.00%
+ - 
+ - 
+ - 
+ - 
+6.00%/ 
+0.00% *
+6.00%/ 
+0.00% *
+Rate of employee turnover 
+(p.a.)
+0.50%-
+9.33%
+0.50%-
+11.67%
+ - 
+ - 
+ - 
+ - 
+4.33%-
+9.33%
+6.33%-
+11.67%
+Medical cost inflation (p.a.)
+ - 
+ - 
+ - 
+ - 
+3.00%
+ - 
+ - 
+ - 
+Mortality 
+rate 
+during 
+employment
+Indian 
+Assured 
+Lives 
+Mortality 
+ 2012-14 
+(Urban)
+Indian 
+Assured 
+Lives 
+Mortality 
+ 2012-14 
+(Ultimate)
+Indian 
+Assured 
+Lives 
+Mortality 
+ 2012-14 
+(Urban)
+LIC (a) 
+(1996-98) 
+Ultimate 
+Indian 
+Assured 
+Lives 
+Mortality 
+ 2012-14 
+(Urban)
+ - 
+Indian 
+Assured 
+Lives 
+Mortality 
+ 2012-14 
+(Urban)
+Indian 
+Assured 
+Lives 
+Mortality 
+ 2012-14 
+(Ultimate)
+Mortality 
+rate 
+after 
+employment
+ - 
+ - 
+Indian 
+Individual 
+AMT 
+ (2012-15)
+LIC (a) 
+(1996-98) 
+Ultimate 
+Indian 
+Individual 
+AMT 
+ (2012-15)
+ - 
+ - 
+ - 
+* In case of Compensated Absences, rate of salary increase (p.a.) is 0.00% for frozen accumulated leave balance.
+In case of funded schemes above, expected return on plan assets is same as that of respective rate of discounting.
+(ii)	
+Changes in present value of defined benefit obligations :
+(K in crores)
+Gratuity
+Pension Plan
+Post Retirement Medical 
+Benefit Scheme
+Compensated Absences
+Funded
+Unfunded
+Unfunded
+Unfunded
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+Present value of benefit 
+obligation at the beginning 
+of the year
+ 34.08 
+ 29.51 
+ 25.74 
+ 27.50 
+ - 
+ - 
+ 2.64 
+ 3.16 
+Short-term liability at the 
+beginning of the year
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ 0.86 
+ - 
+Current service cost
+ 4.30 
+ 1.35 
+ - 
+ - 
+ - 
+ - 
+ 1.24 
+ 0.15 
+Past service cost
+ 10.02 
+ - 
+ - 
+ - 
+ 1.64 
+ - 
+ - 
+ - 
+Interest cost
+ 2.91 
+ 1.85 
+ 1.92 
+ 1.88 
+ - 
+ - 
+ 0.26 
+ 0.18 
+Actuarial (gains)/losses on 
+obligations
+ (1.19)
+ 4.36 
+ (5.19)
+ (1.71)
+ - 
+ - 
+ 0.98 
+ (0.26)
+Benefits paid
+ (2.69)
+ (2.99)
+ (1.73)
+ (1.93)
+ - 
+ - 
+ (1.83)
+ (0.59)
+Present value of benefit 
+obligation at the end of the 
+year
+ 47.43 
+ 34.08 
+ 20.74 
+ 25.74 
+ 1.64 
+ - 
+ 4.15 
+ 2.64 
+207
+206
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 124 ===
+(iii)	
+Changes in fair value of plan assets :
+(K in crores)
+Gratuity
+Pension Plan
+Post Retirement Medical 
+Benefit Scheme
+Compensated Absences
+Funded
+Unfunded
+Unfunded
+Unfunded
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+Fair value of plan assets at 
+the beginning of the year
+ 33.36 
+ 29.96 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Adjustment 
+to 
+opening 
+balance
+ - 
+ (0.04)
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Return on plan assets, 
+excluding interest income
+2.11
+ (1.01)
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Interest income
+ 2.49 
+ 2.01 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Contributions 
+by 
+the 
+employer
+ 11.22 
+ 5.43 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Benefits paid
+ (2.69)
+ (2.99)
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Fair value of plan assets at 
+the end of the year
+46.49
+ 33.36 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+(iv)	
+Amounts recognised in the Balance Sheet :
+(K in crores)
+Gratuity
+Pension Plan
+Post Retirement Medical 
+Benefit Scheme
+Compensated Absences
+Funded
+Unfunded
+Unfunded
+Unfunded
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+Present value of benefit 
+obligation at the end of the 
+year
+(47.43)
+ (34.08)
+ (20.74)
+ (25.74)
+ (1.64)
+ - 
+ (4.15)
+ (2.64)
+Fair value of plan assets at 
+the end of the year
+ 46.49 
+ 33.36 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Funded status
+ (0.94)
+ (0.72)
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Short-term liability
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ (0.86)
+Net 
+(liability) 
+/ 
+asset 
+recognised in the Balance 
+Sheet
+ (0.94)
+ (0.72)
+ (20.74)
+ (25.74)
+ (1.64)
+ - 
+ (4.15)
+ (3.50)
+(v)	
+Amounts recognised in the Statement of Profit and Loss :
+(K in crores)
+Gratuity
+Pension Plan
+Post Retirement Medical 
+Benefit Scheme
+Compensated Absences
+Funded
+Unfunded
+Unfunded
+Unfunded
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+Current service cost
+ 4.30 
+ 1.35 
+ - 
+ - 
+ - 
+ - 
+ 1.24 
+ 0.15 
+Past service cost
+ 10.02 
+ - 
+ - 
+ - 
+ 1.64 
+ - 
+ - 
+ - 
+Net interest
+ 0.42 
+ (0.16)
+ 1.92 
+ 1.88 
+ - 
+ - 
+ 0.26 
+ 0.18 
+Actuarial (gains)/losses
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+ 0.98 
+ (0.25)
+Expenses recognised in 
+Statement of Profit and 
+Loss
+ 14.74 
+ 1.19 
+ 1.92 
+ 1.88 
+ 1.64 
+ - 
+ 2.48 
+ 0.08 
+(vi)	
+Amounts recognised in Other Comprehensive Income (OCI) :
+(K in crores)
+Gratuity
+Pension Plan
+Post Retirement Medical 
+Benefit Scheme
+Compensated Absences
+Funded
+Unfunded
+Unfunded
+Unfunded
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+Actuarial (gains) / losses 
+on 
+obligations 
+due 
+to 
+change 
+in 
+demographic 
+assumptions
+ 1.69 
+ 0.10 
+ (0.68)
+ - 
+ - 
+ - 
+ - 
+ - 
+Actuarial (gains)/losses on 
+obligations due to change 
+in financial assumptions
+ 0.54 
+ (1.36)
+ 0.33 
+ - 
+ - 
+ - 
+ - 
+ - 
+Actuarial (gains) / losses 
+on 
+obligations 
+due 
+to 
+experience adjustments
+ (3.42)
+ 5.62 
+ (4.84)
+ (1.71)
+ - 
+ - 
+ - 
+ - 
+Return on plan assets, 
+excluding interest income
+ (2.11)
+ 1.01 
+ - 
+ - 
+ - 
+ - 
+ - 
+ - 
+Net (income) / expense 
+recognised in OCI
+ (3.30)
+ 5.37 
+ (5.19)
+ (1.71)
+ - 
+ - 
+ - 
+ - 
+(vii)	
+The fair values of the plan assets at the end of the reporting period for each category, are as follows :
+(K in crores)
+Category of assets
+Gratuity
+Funded
+ As at 31/03/2024 
+ As at 31/03/2023 
+Cash and cash equivalents
+ 0.08 
+ - 
+HDFC group unit linked plan
+46.41
+ 33.36 
+Total
+46.49
+ 33.36 
+The fair values of the above instruments are determined based on quoted market prices in active markets.
+209
+208
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 125 ===
+(viii)	
+Sensitivity analysis :
+(K in crores)
+Change in assumptions
+Gratuity
+Pension Plan
+Post Retirement 
+Medical Benefit 
+Scheme
+Compensated 
+Absences
+Funded
+Unfunded
+Unfunded
+Unfunded
+Projected benefit obligation on current 
+assumptions as on 31/03/2024
+ 47.43 
+ 20.74 
+ 1.64 
+ 4.15 
+Change in rate of discounting (p.a.)
+Increase by 1%
+ (2.14)
+ (1.33)
+ (0.13)
+ (0.09)
+Decrease by 1%
+ 2.40 
+ 1.51 
+ 0.15 
+ 0.10 
+Change in rate of salary increase (p.a.)
+Increase by 1%
+ 1.89 
+ - 
+ - 
+ 0.07 
+Decrease by 1%
+ (1.77)
+ - 
+ - 
+ 0.07 
+Change in rate of employee turnover (p.a.)
+Increase by 1%
+ 0.43 
+ - 
+ - 
+ - 
+Decrease by 1%
+ (0.49)
+ - 
+ - 
+ - 
+Change in life expectancy
+Increase by 1 year
+ - 
+ 0.49 
+ - 
+ - 
+Decrease by 1 year
+ - 
+ (0.49)
+ - 
+ - 
+Change in medical cost inflation (p.a.)
+Increase by 1%
+ - 
+ - 
+ 0.16 
+ - 
+Decrease by 1%
+ - 
+ - 
+ (0.14)
+ - 
+The sensitivity analysis have been determined based on reasonably possible changes of the respective assumptions occurring at the end of the 
+reporting period, while holding all other assumptions constant.
+The sensitivity analysis presented above may not be representative of the actual change in the defined benefit obligation as it is unlikely that the 
+change in assumptions would occur in isolation of one another as some of the assumptions may be correlated.
+Furthermore, in presenting the above sensitivity analysis, the present value of the defined benefit obligation has been calculated using the projected unit credit 
+method at the end of the reporting period, which is the same as that applied in calculating the defined benefit obligation as recognised in the Balance Sheet.
+There was no change in the methods and assumptions used in preparing the sensitivity analysis from prior years.
+(ix)	
+The defined benefit obligations shall mature after year ended March 31, 2024 as follows :
+(K in crores)
+Projected benefits payable in future years
+Gratuity
+Pension Plan
+Post Retirement 
+Medical Benefit 
+Scheme
+Funded
+Unfunded
+Unfunded
+1st following year
+ 11.52 
+ 1.72 
+ 0.08 
+2nd following Year
+ 4.01 
+ 1.44 
+ 0.11 
+3rd following year
+ 6.14 
+ 4.33 
+ 0.12 
+4th following year
+ 5.04 
+ 4.07 
+ 0.12 
+5th following year
+ 3.86 
+ 3.84 
+ 0.13 
+Sum of years 6 to 10
+ 17.21 
+ 16.65 
+ 0.72 
+Sum of years 11 and above
+ - 
+ - 
+ 2.31 
+(x)	
+General description of Defined Benefit Plans :
+Gratuity Plan :
+Gratuity is payable to all eligible employees of the Company on superannuation, death, permanent disablement or resignation in terms of the 
+provisions of the Payment of Gratuity Act or as per the Company’s scheme whichever is more beneficial. Benefit would be paid at the time 
+of separation based on the last drawn basic salary.
+The defined benefit plan is administered by a separate fund that is legally separated from the Company. The Company’s investment strategy 
+in respect of its funded plan is implemented within the framework of the applicable statutory requirements.
+The plan exposes the Company to a number of actuarial risks such as investment risk, interest rate risk, longevity risk and salary risk.
+	- Investment/Interest Rate Risk
+The Company is exposed to investment/interest rate risk if the return on the invested fund falls below the discount rate used to arrive 
+at present value of the benefit.
+	- Longevity Risk
+The Company is not exposed to risk of the employees living longer as the benefit under the scheme ceases on the employee separating 
+from the employer for any reason.
+	- Salary Risk
+The Company is exposed to higher liability if the future salaries rise more than assumption of salary escalation.
+The Company does an Asset - Liability matching study each year in which the consequences of the strategic investment policies are 
+analysed in terms of risk and return profiles.
+Retirement Benefit Scheme including Pension Plan :
+Under the Company’s Retirement Benefit Scheme for the eligible Whole-time Directors, all the eligible Whole-time Directors are entitled to 
+the benefits of the scheme only after attaining the age of 62 years, except for retirement due to physical disability or death while in office, in 
+which case, the benefits shall start on his retirement due to such physical disability or death. The benefits are in the form of monthly pension 
+@ 50% of his eligible salary subject to maximum of J 1.25 crores p.a. during his lifetime. If he predeceases the spouse, she will be paid 
+monthly pension @ 50% of eligible pension during her lifetime. Benefits include reimbursement of medical expenses for self and spouse, 
+overseas medical treatment upto J 0.50 crore for self/spouse, office space including office facilities in the Company’s office premises. 
+Benefits also include use of Company’s car including reimbursement of driver’s salary and other related expenses during his lifetime and in 
+the event of his demise, his spouse will be entitled to avail the said benefit during her lifetime.
+Post Retirement Medical Benefit Scheme for Executive Directors and Senior Management Employees:
+As per the Company’s Post Retirement Medical Benefit Scheme for Executive Directors and Senior Management Employees (‘Scheme'), 
+selected employees who fulfil the conditions for eligibility and entitlement as prescribed in the Scheme shall be eligible for the benefits of the 
+Scheme upon retirement. The benefits are in the form of reimbursement/payment of hospitalisation (including domiciliary hospitalisation) 
+expenses incurred in India or abroad for the selected employee and his/her spouse for life, pre and post hospitalisation expenses and annual 
+preventive health check-up package, subject to the annual limit not exceeding J 0.50 crore. If either of the selected employee or his/her 
+spouse passed away, the limit will continue for eligible survivor. Selected employee, who has been Executive Director of the Company, will 
+also be entitled to reimbursement of all other medical expenses for himself/herself and his/her spouse.
+Compensated Absences :
+All eligible union grade employees had an option to freeze the accumulated leave balance as on June 30, 2008. Such frozen accumulated 
+leave balance will be encashed as per the last drawn basic salary at the time of superannuation, death, permanent disablement, resignation 
+or promotion to the non-union category. 
+With effect from April 1, 2012, all eligible non-union employees have an option to freeze their leave accumulation days on 30th June every 
+year and such frozen accumulated leave balance will be encashed as per the basic salary for the month of June of the relevant year for which 
+leave was frozen at the time of superannuation, death, permanent disablement or resignation. 
+For all union and non-union grade employees, maximum leave that can be carried forward is 15 days. 
+The leave over and above 15 days is encashed and paid to employees on an annual basis.
+211
+210
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 126 ===
+Provident Fund :
+Eligible employees of the Company receive benefits from a provident fund, which is a defined benefit plan. Both the eligible employee and 
+the Company make monthly contributions to the provident fund plan equal to a specified percentage of the covered employee’s salary. 
+The Company contributes a portion to the Provident Fund Trust and the remaining portion is contributed to the government administered 
+pension fund. The trust invests in specific designated instruments as permitted by Indian law. The rate at which the annual interest is payable 
+to the beneficiaries by the trust is being administered by the Government. The Company has an obligation to make good the shortfall, if any.
+Valuations in respect of Provident Fund have been carried out by an independent actuary as at the Balance Sheet date as per the Deterministic 
+Cashflow Approach based on the following assumptions :
+Actuarial assumptions
+Provident Fund
+Funded
+ As at 31/03/2024 
+ As at 31/03/2023 
+Rate of discounting (p.a.)
+7.21%
+7.45%
+Rate of employee turnover (p.a.)
+0.50%-9.33%
+5.00%-11.67%
+Guaranteed return (p.a.) *
+8.25%
+8.15%
+* Rate recommended by Central Board of Trustees, EPF for the current year and previous year and the same is used for valuation purpose.
+The details of fund and plan asset position are as follows :
+(K in crores)
+Funded status
+Provident Fund
+Funded
+ As at 31/03/2024 
+ As at 31/03/2023 
+Present value of benefit obligation at the end of the year
+(290.40)
+ (254.81)
+Fair value of plan assets at the end of the year
+284.41
+ 256.68 
+(Deficit)/Surplus of plan assets over obligation
+(5.99)
+ 1.87 
+The plan assets have been invested in government securities, private and public sector bonds.
+The Company contributed J 8.31 crores to the Provident Fund Trust during the current year (Previous Year : J 7.53 crores), and the same has 
+been recognised in the Statement of Profit and Loss under the head Employee Benefits Expense.
+During the current year, the Company has made a provision of J 0.13 crore (Previous Year : J 0.42 crore), being the change in remeasurement of 
+the defined benefit plans due to impairment in the value of certain investments made in securities by the trusts managing the defined benefit 
+plans of the Company.
+Note 32 : Segment Reporting
+The Company is engaged only in shipping business segment and there are no separate reportable segments as per Ind AS 108, 'Operating Segments'.
+Information concerning principal geographic areas is as follows :
+(K in crores)
+(a)	
+Particulars
+ Current Year 
+ Previous Year 
+Revenue from operations :
+- Revenue from customers located outside India
+3064.18 
+3461.65 
+- Revenue from customers located within India
+1038.15 
+1346.90 
+4102.33 
+4808.55 
+(b)	
+Substantial assets of the Company are ships, which are operating across the world, in view of which they can not be identified by any 
+particular geographical area.
+(c)	
+Information about major customers :
+Included in revenue from operations of J 4102.33 crores (Previous Year : J 4808.55 crores) are revenues of J 1165.76 crores which arose from 
+sales to the Company's two major customers (Previous Year : J 551.55 crores from single largest customer). No other customer contributed 
+10% or more to the Company's revenue for both current year and previous year.
+Note 33 : Right-of-use Assets (ROU) and Lease Liabilities
+The Company's lease assets primarily consist of leases for buildings and IT equipments. The Company has elected to apply recognition exemption as 
+per Ind AS 116 for leases which are expiring within 12 months from the date of transition by class of assets and leases for which the underlying asset is 
+of low value on a lease by lease basis. The Company has also used the practical expedient provided by the standard when applying Ind AS 116 to leases. 
+The Company has used a single discount rate to a portfolio of leases with similar characteristics.
+Right-of-use Assets :
+The following is the movement in right-of-use assets :
+(K in crores)
+ Current Year 
+ Previous Year 
+Opening Balance
+ 3.01 
+ 3.37 
+Add : Addition during the year
+ - 
+ 1.54 
+Less : Deduction during the year
+ (0.08)
+-
+Less : Depreciation for the year
+ (1.78)
+ (1.90)
+Closing Balance
+ 1.15 
+ 3.01 
+The aggregate depreciation on ROU assets has been included under depreciation and amortisation expense in the Statement of Profit and Loss 
+(Refer Note 27).
+Carrying value of right-of-use assets :
+(K in crores)
+ As at 31/03/2024 
+As at 31/03/2023 
+Land and Buildings
+ 0.34 
+ 1.04 
+Plant and Equipment
+ 0.81 
+ 1.97 
+Total
+ 1.15 
+ 3.01 
+Lease Liabilities :
+The following is the movement in lease liabilities :
+(K in crores)
+ Current Year 
+ Previous Year 
+Opening Balance
+ 4.62 
+ 4.62 
+Add : Addition during the year
+ - 
+ 1.54 
+Less : Deduction during the year
+ (0.09)
+ - 
+Add : Finance cost accrued during the year
+ 0.12 
+ 0.36 
+Less : Payment of lease liability during the year
+ (2.21)
+ (1.90)
+Closing Balance
+ 2.44 
+ 4.62 
+213
+212
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 127 ===
+The table below provides details regarding the contractual maturities of lease liabilities on an undiscounted basis :
+(K in crores)
+As at 31/03/2024 
+As at 31/03/2023
+Before 3 months
+0.28
+0.33
+3-6 months
+0.42
+0.49
+6-12 months
+1.70
+1.48
+1-3 years
+0.09
+2.07
+3-5 years
+0.09
+0.09
+Total
+ 2.58 
+ 4.46 
+Note 34 : Related Party Transactions
+(I)	 List of Related Parties :
+(a)	
+Parties where control exists :
+Subsidiary Companies :
+The Greatship (Singapore) Pte. Ltd., Singapore
+The Great Eastern Chartering LLC (FZC), UAE and its subsidiary :
+- The Great Eastern Chartering (Singapore) Pte. Ltd., Singapore
+Great Eastern CSR Foundation, India
+Great Eastern Services Limited, India
+Greatship (India) Limited, India and its subsidiaries :
+- Greatship Global Offshore Services Pte. Ltd., Singapore
+- Greatship Global Energy Services Pte. Ltd., Singapore
+- Greatship (UK) Ltd., UK
+- Greatship Oilfield Services Ltd., India
+GESHIPPING (IFSC) Limited, India (Incorporated on May 2, 2024)
+(b)	
+Key Management Personnel and close members of their family in employment with the Company :
+Mr. K. M. Sheth
+- Non-Executive Chairman, father of Mr. Bharat K. Sheth and Mr. Ravi K. Sheth
+Mr. Bharat K. Sheth
+- Deputy Chairman and Managing Director
+Mr. Tapas Icot
+- Executive Director
+Mr. G. Shivakumar
+- Executive Director and Chief Financial Officer
+Mr. Jayesh Trivedi
+- President (Secretarial and Legal) and Company Secretary (up to June 30, 2023)
+Mr. Anand Punde
+- Company Secretary (w.e.f. July 1, 2023)
+Mr. Ravi K. Sheth
+- Non-Executive Director
+Mr. Berjis Desai
+- Non-Executive Director
+Mr. Cyrus Guzder
+- Non-Executive Director (up to September 24, 2022)
+Mrs. Rita Bhagwati
+- Non-Executive Director
+Dr. Shankar Acharya
+- Non-Executive Director
+Mr. Vineet Nayyar
+- Non-Executive Director (up to September 24, 2022)
+Mr. Raju Shukla
+- Non-Executive Director
+Mr. Ranjit Pandit
+- Non-Executive Director
+Mr. T.N. Ninan 
+- Non-Executive Director (w.e.f. May 6, 2022)
+Mr. Shiv Shankar Menon
+- Non-Executive Director (w.e.f. May 6, 2022)
+Mr. Uday Shankar
+- Non-Executive Director (w.e.f. May 6, 2022)
+Mrs. Bhavna Doshi
+- Non-Executive Director (w.e.f. May 12, 2023)
+Mr. Keki Mistry
+- Non-Executive Director (w.e.f. August 9, 2023)
+Mr. Rahul R. Sheth
+- Son of Mr. Ravi K. Sheth
+(c)	
+Other related parties where transactions exist :
+Employees’ Benefit Plans :
+The Provident Fund of The Great Eastern Shipping Company Ltd.
+The Great Eastern Shipping Co. Ltd. Employees Gratuity Fund
+The Great Eastern Shipping Co. Limited Executives Superannuation Fund
+The Great Eastern Shipping Co. Ltd. Floating Staff Superannuation Fund
+The Great Eastern Shipping Co. Ltd. Staff Superannuation Fund
+215
+214
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 128 ===
+(II)	 Transactions with Related Parties :
+(K in crores)
+(a)	Nature of Transactions
+Subsidiary Companies
+Other Related Parties
+Key Management Personnel 
+and their close family members
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+ Current 
+Year 
+ Previous 
+Year 
+Services received from
+	- The Greatship (Singapore) Pte. Ltd.
+ 9.63 
+ 7.01 
+ - 
+ - 
+ - 
+ - 
+	- The Great Eastern Chartering LLC (FZC)
+-
+ 45.95 
+ - 
+ - 
+ - 
+ - 
+Loan to
+	- Greatship (India) Limited
+ 65.00 
+ - 
+ - 
+ - 
+ - 
+ - 
+Interest income on loan
+	- Greatship (India) Limited
+ 1.53 
+ - 
+ - 
+ - 
+ - 
+ - 
+Interest 
+income 
+on 
+preference 
+shares 
+investment
+	- Greatship (India) Limited
+ 26.08 
+ 25.91 
+ - 
+ - 
+ - 
+ - 
+Services rendered to
+	- Greatship (India) Limited
+ 1.28 
+ 1.25 
+ - 
+ - 
+ - 
+ - 
+	- The Great Eastern Chartering LLC (FZC)
+-
+ 6.81 
+ - 
+ - 
+ - 
+ - 
+	- The Great Eastern Chartering (Singapore) Pte. 
+Ltd.
+ 0.10 
+ - 
+ - 
+ - 
+ - 
+ - 
+Reimbursement of expenses from
+	- Greatship (India) Limited
+ - 
+ 0.08 
+ - 
+ - 
+ - 
+ - 
+Reimbursement of expenses to
+	- Greatship (India) Limited
+ 0.27 
+ 0.30 
+ - 
+ - 
+ - 
+ - 
+Contribution towards
+	- Great Eastern CSR Foundation
+ 24.73 
+ 10.18 
+ - 
+ - 
+ - 
+ - 
+Professional fees paid
+	- Bhavna Doshi Associates LLP
+ 0.06 
+ - 
+ - 
+ - 
+ - 
+ - 
+Contribution to post-employment benefit 
+plans (Refer Note (i) below)
+ - 
+ - 
+28.56
+ 19.35 
+ - 
+ - 
+Compensation to key management personnel 
+and close members of their family
+	- Salaries 
+ - 
+ - 
+ - 
+ - 
+ 9.52 
+ 8.68 
+	- Post-employment benefits 
+(Refer Note (ii) below)
+ - 
+ - 
+ - 
+ - 
+ 3.15 
+ 2.89 
+	- Sitting fees
+ - 
+ - 
+ - 
+ - 
+ 1.12 
+ 0.75 
+	- Variable pay/Commission
+ - 
+ - 
+ - 
+ - 
+ 10.45 
+ 10.30 
+	- Dividend
+ - 
+ - 
+ - 
+ - 
+ 116.47 
+ 97.63 
+(K in crores)
+(b)	Outstanding Balances
+Subsidiary Companies
+Other Related Parties
+Key Management Personnel 
+and their close family members
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+ As at 
+31/03/2024 
+ As at 
+31/03/2023 
+Receivables
+ - Greatship (India) Limited
+ 0.75 
+ 0.75 
+ - 
+ - 
+ - 
+ - 
+Interest income receivables
+ - Greatship (India) Limited
+ 26.08 
+ 25.91 
+ - 
+ - 
+ - 
+ - 
+Payables
+ - The Greatship (Singapore) Pte. Ltd.
+ 0.68 
+ 0.91 
+ - 
+ - 
+ - 
+ - 
+ - Post-employment benefit plans
+ - 
+ - 
+6.73
+ (0.19)
+ - 
+ - 
+ - Variable pay/Commission payable
+ - 
+ - 
+ - 
+ - 
+10.45
+ 10.30 
+ - Provision for retirement benefits
+ - 
+ - 
+ - 
+ - 
+ 19.74 
+ 24.32 
+Terms and conditions of transactions with related parties :
+All related party transactions entered during the year were in ordinary course of the business.
+Notes : 
+(i)	
+Contribution to post-employment benefit plans to the extent of J 1.30 crores (Previous Year : J 1.25 crores) in respect of key management 
+personnel and close members of their family is included under post-employment benefits.
+(ii)	
+Post-employment benefits provision for retirement pension benefits payable J 0.29 crore (Previous Year : J 0.06 crore) on the basis of actuarial 
+valuation as per the Retirement Benefits Scheme approved by the Board of Directors.
+Note 35 : Commitments
+(a)	 Capital Commitments :
+(K in crores)
+Particulars
+As at 31/03/2024
+As at 31/03/2023
+Estimated amount of contracts, net of advances paid thereon, remaining to be executed on 
+capital account and not provided for
+ 518.88 
+ 42.77 
+(b)	 Other Commitments :
+The Company has given letter of comfort to Standard Chartered Bank for credit facility availed by its wholly owned subsidiary Greatship (India) 
+Limited (GIL). The financial obligation of GIL shall be endeavored to be fulfilled by the Company in case the same is not met by GIL. This letter of 
+comfort is not in the nature of financial guarantee.
+217
+216
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 129 ===
+Note 36 : Contingent Liabilities
+(K in crores)
+Sr. No.
+Particulars
+As at 31/03/2024
+As at 31/03/2023
+Claims against the Company, not acknowledged as debts :
+(a)
+Sales Tax demands under BST Act, CST Act and VAT Act against which the Company has 
+preferred appeals. *
+ 4.73 
+ 4.73 
+(b)
+Demand from the Office of the Collector and District Magistrate, Mumbai City and from 
+Brihanmumbai Mahanagarpalika towards transfer charges for transfer of premises not 
+acknowledged by the Company.
+ 4.34 
+ 4.34 
+(c)
+Demand for Custom Duty disputed by the Company. *
+[The Company has given bank guarantees amounting to J 3.63 crores (as at March 31, 
+2023 : J 3.63 crores) against the said Custom Duty demand.]
+ 6.75 
+ 6.75 
+(d)
+Income Tax demands for various assessment years disputed by the Company.
+ 58.54 
+ 58.54 
+(e)
+Demand for dividend and interest on shares disputed.
+ 10.60 
+ 10.60 
+* Amounts pertaining to points above are excluding interest and penalty.
+Notes :
+(i)	
+It is not practicable for the Company to estimate the timings of cash outflows, if any, in respect of the above pending resolution of the respective 
+proceedings as it is determinable only on receipt of judgements/decisions pending with various forums/authorities.
+(ii)	
+The Company does not expect any reimbursements in respect of the above contingent liabilities.
+(iii)	 The Company’s pending litigations comprise of claims pertaining to proceedings pending with Income Tax, Custom, Sales Tax/VAT, Service Tax 
+and other authorities. The Company has reviewed all its pending litigations and proceedings and has adequately provided for where provisions 
+were required and disclosed as contingent liabilities where applicable, in its financial statements. The Company does not expect the outcome of 
+these proceedings to have a materially adverse effect on its financial statements.
+Note 37 : Financial Instruments
+A.	 Capital Management :
+The Company’s capital management is intended to create value for shareholders by facilitating the meeting of long-term and short-term goals of the Company.
+The capital structure of the Company consists of net debt (borrowings as detailed in Note 16 and offset by cash and bank balances and current 
+investments) and total equity of the Company.
+The Company is not subject to any externally imposed capital requirements.
+The Company's risk management committee reviews the capital structure of the Company on a regular basis considering the cyclicity of business.
+The gearing ratio was as follows:
+(K in crores)
+ As at 31/03/2024 
+ As at 31/03/2023 
+Debt *
+2340.83 
+2650.36 
+Less : Cash and bank balances (other than margin money deposits and unpaid dividend account)  
+               including current investments
+(5499.68)
+(4208.36)
+Net debt
+(3158.85)
+(1558.00)
+Total equity
+10346.41 
+8520.25 
+Net debt to equity ratio
+(0.31)
+(0.18)
+* Debt includes redeemable non-convertible debentures, term loans from banks and accrued interest.
+B.	 Financial Assets and Liabilities :
+The material accounting policies, including the criteria for recognition, the basis of measurement and the basis on which incomes and expenses are 
+recognised, in respect of each class of financial asset, financial liability and equity instruments are disclosed in Note 2(q) to the financial statements.
+The carrying amounts of financial instruments by categories are as follows :
+(K in crores)
+ As at 31/03/2024 
+ As at 31/03/2023 
+Financial Assets : 
+Measured at Amortised Cost *
+- Investments in Subsidiaries
+- Preference Shares
+384.55 
+383.06 
+- Trade Receivables
+437.82 
+443.73 
+- Cash and Cash Equivalents 
+2829.36 
+2317.13 
+- Other Bank Balances
+1055.38 
+597.38 
+- Other Financial Assets
+170.94 
+96.67 
+Measured at Fair value through Profit or Loss
+- Investments in Mutual Funds
+1624.39 
+1267.89 
+- Derivative Contracts
+64.08
+88.16 
+Measured at Fair value through OCI
+- Derivative Contracts
+25.04
+23.80 
+Total
+6591.56 
+5217.82 
+Financial Liabilities : 
+Measured at Amortised Cost *
+- Borrowings
+2227.22 
+2530.95 
+- Trade Payables
+360.87
+271.09 
+- Other Financial Liabilities
+137.83 
+139.51
+- Lease Liability
+2.44
+4.62
+Measured at Fair value through Profit or Loss
+- Derivative Contracts
+357.42 
+408.63 
+Measured at Fair value through OCI
+- Derivative Contracts
+ - 
+2.85 
+Total
+3085.78
+3357.65 
+* The fair values of the financial assets and financial liabilities are not materially different (difference being in range of 5% of the carrying amounts) 
+from their carrying amounts.
+C.	 Fair Value Hierarchy :
+The fair value hierarchy is based on inputs to valuation techniques that are used to measure fair value that are either observable or unobservable and 
+consists of the following three levels :
+> Level 1 - Inputs are quoted prices (unadjusted) in active markets for identical assets or liabilities.
+> Level 2 - Inputs are other than quoted prices included within Level 1 that are observable for the asset or liability, either directly (i.e. as prices) or 
+indirectly (i.e. derived from prices).
+219
+218
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 130 ===
+> Level 3 - Inputs are not based on observable market data (unobservable inputs). Fair values are determined in whole or in part using a valuation model 
+based on assumptions that are neither supported by prices from observable current market transactions in the same instrument nor are they based 
+on available market data.
+The following table presents assets and liabilities measured at fair value and classified by the level of the following fair value measurements hierarchy :
+(K in crores)
+ As at 31/03/2024 
+ As at 31/03/2023 
+Financial Assets : 
+Measured at Level 2
+- Investments in Mutual Funds
+1624.39 
+1267.89 
+- Derivative Contracts
+89.12 
+111.96 
+Total
+1713.51 
+1379.85 
+Financial Liabilities : 
+Measured at Level 2
+- Derivative Contracts
+357.42 
+411.48 
+Total
+357.42 
+411.48 
+Valuation technique and key inputs : 
+Investments in mutual funds are valued at the net asset value of the respective units. Derivative instruments are fair valued at the discounted cash 
+flows. Future cash flows are estimated based on forward exchange/interest rates and contract forward/interest rates discounted at a rate that reflects 
+the credit risk of various counterparties.
+D.	 Derivative Financial Instruments and Risk Management :
+The Company uses foreign exchange forward contracts and interest rate swaps to hedge its exposure to the movements in foreign exchange and 
+interest rates. The use of these reduces the risk to the Company arising out of movement in exchange and interest rates. The Company does not use 
+foreign exchange forward contracts and interest rate swaps for trading purpose. The Company has also entered into cross currency swaps to swap its 
+INR borrowings into US dollars to mitigate the exchange risk arising out of foreign currency receivables. The interest rate swap component in the cross 
+currency swap reduces the effective interest costs to the Company. The Company also uses commodity futures contracts for hedging the exposure 
+to bunker price risk.
+(i)	
+Derivative instruments in hedging relationship (Cash Flow Hedges) :
+(a)	
+Interest Rate Swap Contracts :
+Details
+ As at 31/03/2024 
+ As at 31/03/2023 
+Total no. of contracts outstanding
+ 3 
+ 3 
+Principal notional amount (USD in million)
+24.267
+28.976
+Fair value gain/(loss)- net (J in crores) (Excluding interest accrued)
+ 18.33 
+ 23.80 
+Maturity period
+ Upto 4 Years 
+ Upto 5 Years 
+(b)	
+Bunker Swap Contracts :
+Details
+As at 31/03/2024
+As at 31/03/2023
+Purchase
+Sale
+Purchase
+Sale
+Total no. of contracts outstanding
+ 6 
+ - 
+ 3 
+ - 
+No. of units in MT under above contracts
+14800 
+ - 
+11700 
+ - 
+Fair value gain/(loss)- net (J in crores) 
+ 6.71 
+ - 
+ (2.85)
+ - 
+Maturity period
+ Upto 2 Years 
+ - 
+ Upto 2 Years 
+ - 
+The interest rate swaps are entered to hedge interest payments from floating to fixed on borrowings. The bunker swaps are entered to 
+hedge the bunker price risk. Fair value gains/(losses) on the interest rate swap contracts and bunker swap contracts recognised in Cash 
+Flow Hedging Reserve are transferred to the Statement of Profit and Loss as part of interest expense and fuel oil and water expense on 
+settlement. The fair value on reporting date is reported under “Other financial assets” and “Other financial liabilities".
+The hedging gain recognised in other comprehensive income during the year is J 16.19 crores (Previous Year : loss of J 44.58 crores) of 
+which gain of J 12.10 crores (Previous Year : loss of J 5.21 crores) has been reclassified to Statement of Profit and Loss.
+(ii)	
+Derivative instruments not in hedging relationship :
+Forward Exchange Contracts :
+Details
+As at 31/03/2024
+As at 31/03/2023
+Purchase
+Sale
+Purchase
+Sale
+Total no. of contracts outstanding
+ - 
+ 43 
+ - 
+ 36 
+Foreign currency value (USD in million)
+ - 
+ 53.750 
+ - 
+ 45.000 
+Fair value gain/(loss)- net (J in crores)
+ - 
+ 1.43 
+ - 
+ (2.90)
+Maturity period
+ - 
+ Upto 1 Year 
+ - 
+ Upto 1 Year 
+Forward exchange contracts mentioned under (ii) above economically hedge the underlying exposures but hedge accounting is not opted for 
+the same. The gains/(losses) on such are recognised in the Statement of Profit and Loss.
+Forward exchange contracts were entered into to hedge existing transactions/firm commitments denominated in foreign currency.
+(iii)	
+Currency Swap Contracts :
+Currency Swap Contracts (INR to USD) :
+Details
+ Currency 
+ As at 31/03/2024 
+ As at 31/03/2023 
+Total no. of contracts outstanding
+28 
+32 
+Principal notional amount (J in crores)
+INR/USD
+1900.00 
+2150.00 
+Fair value gain/(loss)- net (J in crores) 
+(294.76)
+(317.57)
+Maturity period
+Upto 5 Years
+Upto 6 Years
+The mark-to-market loss on above mentioned currency swap contracts is recognised in the Statement of Profit and Loss.
+221
+220
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 131 ===
+E.	 Market Risk :
+(i)	
+Foreign currency risk management :
+The Company undertakes transactions denominated in foreign currencies; consequently, exposures to exchange rate fluctuation arise.
+The Company's exposure to unhedged foreign currency is listed as under :
+Details
+ Currency 
+As at 31/03/2024 
+As at 31/03/2023 
+As at 31/03/2024 
+As at 31/03/2023
+ (Currency in Millions) 
+ (Currency in Millions) 
+ (K in crores) 
+ (K in crores) 
+Loan Liabilities and Payables
+ AED 
+ 3.518 
+ 5.469 
+ 7.99 
+ 12.23 
+ AUD 
+ 0.062 
+ 0.033 
+ 0.34 
+ 0.18 
+ BHD 
+ 0.001 
+ 0.022 
+ 0.02 
+ 0.48 
+ CAD 
+ 0.047 
+ 0.007 
+ 0.29 
+ 0.04 
+ DKK 
+ 2.452 
+ 0.976 
+ 2.95 
+ 1.17 
+ EUR 
+ 1.329 
+ 1.612 
+ 11.95 
+ 14.42 
+ GBP 
+ 0.056 
+ 0.092 
+ 0.59 
+ 0.94 
+ IDR 
+ - 
+ 55.205 
+ - 
+ 0.03 
+ JPY 
+ 112.261 
+ 93.078 
+ 6.18 
+ 5.77 
+ NOK 
+ 0.093 
+ 0.285 
+ 0.07 
+ 0.22 
+ SAR 
+ - 
+ 0.028 
+ - 
+ 0.06 
+ SEK 
+ - 
+ 0.034 
+ - 
+ 0.03 
+ SGD 
+ 2.111 
+ 1.404 
+ 13.03 
+ 8.68 
+ USD 
+ 356.747 
+ 386.064 
+2975.63 
+3172.29 
+ ZAR 
+ 1.660 
+ - 
+ 0.73 
+ - 
+Receivables
+ AED 
+ 0.028 
+ 0.007 
+ 0.06 
+ 0.02 
+ AUD 
+ 0.022 
+ - 
+ 0.12 
+ - 
+ CHF 
+ 0.007 
+ - 
+ 0.06 
+ - 
+ DKK 
+ 0.262 
+ 0.454 
+ 0.32 
+ 0.55 
+ EUR 
+ 0.467 
+ 0.056 
+ 4.20 
+ 0.50 
+ GBP 
+ 0.016 
+ 0.018 
+ 0.17 
+ 0.18 
+ JPY 
+ 33.191 
+ 15.648 
+ 1.83 
+ 0.97 
+ NOK 
+ 0.051 
+ - 
+ 0.04 
+ - 
+ SGD 
+ 0.401 
+ 0.206 
+ 2.48 
+ 1.27 
+ USD 
+ 58.204 
+ 60.043 
+ 485.48 
+ 493.37 
+ ZAR 
+ 1.322 
+ - 
+ 0.58 
+ - 
+Bank Balances
+ AED 
+ 0.212 
+ 0.472 
+ 0.48 
+ 1.06 
+ EUR 
+ 0.024 
+ - 
+ 0.22 
+ - 
+ SGD 
+ 0.159 
+ 0.483 
+ 0.98 
+ 2.98 
+ USD 
+ 341.901 
+ 280.535 
+2851.80 
+2305.16 
+Sensitivity analysis :
+A 5% strengthening/weakening of Indian Rupee against key currencies to which the Company is exposed (net of hedge), with all other 
+variables being held constant, would have led to approximately a gain/loss of J 16.45 crores (Previous Year : J 20.52 crores) in the Statement 
+of Profit and Loss.
+(ii)	
+Interest rate risk :
+The Company has mix of fixed and floating rate loans and generally uses interest rate swaps as cash flow hedges of future interest payments, 
+which have economic effect of converting the borrowings from floating to fixed interest rate loans. Under the interest rate swaps, the 
+Company agrees with other parties to exchange, at specified intervals, the difference between fixed contract rates and floating rate interest 
+amounts calculated by reference to the agreed notional principal amounts.
+Interest rate risk is measured by using the cash flow sensitivity for changes in variable interest rate. The borrowings of the Company are 
+principally denominated in rupees and US dollars with a mix of fixed and floating rates of interest. The Company hedges its US dollar interest 
+rate risk through interest rate swaps to reduce the floating interest rate risk. The Company has exposure to interest rate risk, arising 
+principally on changes in base lending rate and SOFR/LIBOR rates. The risk is managed by the Company by maintaining an appropriate mix 
+between fixed and floating rate borrowings, and by the use of interest rate swap contracts.
+The following table provides a breakup of the Company's fixed and floating rate borrowings :
+(K in crores)
+ As at 31/03/2024 
+ As at 31/03/2023 
+Fixed Rate Borrowings
+1900.00 
+2150.00 
+Floating Rate Borrowings
+330.86 
+386.32 
+Total Borrowings (Gross)
+2230.86 
+2536.32 
+Sensitivity analysis :
+The sensitivity analysis has been determined based on the exposure to interest rates for unhedged floating rate liabilities. A 0.50% decrease 
+in interest rates and other variables held constant, would have led to approximately gain of J 0.68 crore (Previous Year : J 1.76 crores) in the 
+Statement of Profit and Loss. A 0.50% increase in interest rate would have led to an equal but opposite effect.
+(iii)	
+Price risk :
+The Company is mainly exposed to the price risk due to its investment in debt mutual funds. The price risk arises due to uncertainties about 
+the future market values of these investments.
+Sensitivity analysis :
+A 1% increase in prices would have led to approximately an additional gain of J 16.24 crores (Previous Year : J 12.68 crores) in the Statement 
+of Profit and Loss. A 1% decrease in prices would have led to an equal but opposite effect.
+(iv)	
+Credit risk management :
+Credit risk refers to the risk that a counter party will default on its contractual obligations resulting in financial loss to the Company. The 
+major class of financial asset of the Company is trade receivables. For credit exposures to customer, the management assesses the credit 
+quality of the customer, taking into account its financial position, past experience and other factors.
+As the Company does not hold any collateral, the maximum exposure to credit risk for each class of financial instruments is the carrying 
+amount of that class of financial instruments presented on the statement of financial position.
+Cash and Cash Equivalents, derivatives and mutual fund investments :
+Credit risk on cash and cash equivalents is limited as the Company invests in deposits with banks with high credit ratings assigned by 
+international and domestic credit rating agencies. Investments primarily include investments in liquid mutual funds units from reputed 
+funds. For derivative and financial instruments, the Company attempts to limit the credit risk by only dealing with reputable banks having 
+high credit ratings assigned by credit rating agencies.
+Trade receivables :
+Trade receivables consist of a large number of various types of customers, spread across geographical areas. Credit risk arising from 
+trade receivables is managed in accordance with the Company's established policy, procedures and control relating to customer credit risk 
+management. Ongoing credit evaluation is performed on these trade receivables and where appropriate, allowance for losses are provided.
+223
+222
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 132 ===
+Exposure to credit risk :
+The carrying amount of financial assets represents the maximum credit exposure. The maximum exposure to credit risk was J 6591.56 crores 
+as at March 31, 2024 (as at March 31, 2023 : J 5217.82 crores), being the total of the carrying amount of investment in subsidiaries (other 
+than investments in equity instruments of subsidiaries), cash and cash equivalents, other bank balances, trade receivables, investments in 
+mutual funds and other financial assets including derivatives instruments.
+The ageing analysis of the trade receivables (excluding unbilled receivables) of the Company that are past due but not provided as doubtful 
+debts is as follows :
+(K in crores)
+ As at 31/03/2024 
+ As at 31/03/2023 
+Overdue 
+- Less than 180 days
+148.80
+ 195.74 
+- More than 180 days
+22.76
+ 31.15 
+171.56
+ 226.89 
+The carrying amounts of trade receivables (excluding unbilled receivables) provided as doubtful debts are as follows :
+(K in crores)
+ As at 31/03/2024 
+ As at 31/03/2023 
+Overdue 
+- Less than 180 days
+ 3.25 
+ 7.58 
+- More than 180 days
+ 11.40 
+ 16.94 
+Less : Allowance for doubtful debts
+(14.65)
+(24.52)
+ - 
+ - 
+(v)	
+Liquidity risk management :	
+	
+	
+	
+	
+Liquidity risk may arise from inability to meet financial obligations, including loan repayments and payments for vessel acquisitions. This 
+is dealt with by keeping low leverage, as a result of which the Company is able to borrow even in challenging markets. It is also mitigated by 
+keeping substantial liquidity at all times, which enables the Company to capitalise on any opportunities that may arise. 
+The following table shows the maturity analysis of the financial liabilities based on contractually agreed undiscounted cash flows :
+(K in crores)
+Payable within 1 year Payable within 2 - 5 years
+More than 5 years
+Total
+As at March 31, 2024
+Borrowings
+461.29 
+1769.57 
+ - 
+2230.86 
+Interest Commitments
+171.54 
+259.32 
+ - 
+430.86 
+Trade Payables
+360.87
+ - 
+ - 
+360.87
+Unpaid Dividend
+9.05 
+ - 
+ - 
+9.05 
+Interest Accrued but not due on 
+Borrowings
+109.97 
+ - 
+ - 
+109.97 
+Derivative Contracts
+87.01 
+ 270.41 
+ - 
+357.42 
+Other Financial Liabilities
+18.81 
+ - 
+ - 
+18.81 
+Lease Liabilities
+2.40 
+0.18 
+ - 
+2.58 
+1220.94 
+2299.48 
+ - 
+3520.42 
+As at March 31, 2023
+Borrowings
+310.38 
+1736.18 
+489.76 
+2536.32 
+Interest Commitments
+199.92 
+ 413.55 
+8.13 
+621.60 
+Trade Payables
+271.09 
+ - 
+ - 
+271.09 
+Unpaid Dividend
+9.03 
+ - 
+ - 
+9.03 
+Interest Accrued but not due on 
+Borrowings
+114.04 
+ - 
+ - 
+114.04 
+Derivative Contracts
+166.40 
+ 114.32 
+130.76 
+411.48 
+Other Financial Liabilities
+16.43 
+ - 
+ - 
+16.43 
+Lease Liabilities
+2.05 
+ 2.57 
+ - 
+4.62 
+1089.34 
+2266.62 
+628.65 
+3984.61 
+Note 38 : Government Grants
+The Company receives government assistance in the form of Duty Free Credit Entitlement Certificates (DFCEC) under Service Exports From India 
+Scheme (SEIS), which are issued to eligible Indian service providers having free foreign exchange earnings. It can be utilised for duty-free imports of 
+office and professional equipment, spares, furniture and consumables or any other items notified by the Government from time to time.
+Following are the balances of DFCEC under SEIS held by the Company (Refer Note 24) :
+(K in crores)
+ Current Year 
+ Previous Year 
+Opening Balance
+ - 
+ - 
+Add : Licenses received during the year
+ - 
+ 15.11 
+Less : Licenses sold during the year (Previous Year : Sold at a loss of J 0.32 crore)
+ - 
+ (15.11)
+Closing Balance
+ - 
+ - 
+225
+224
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 133 ===
+Note 39 : Particulars of loans, guarantees and investments covered under Section 186 of the 
+Companies Act, 2013
+(a)	
+During the year, the Company has given J 65.00 crores loan to its subsidiary 'Greatship (India) Limited'. No guarantees have been given to 
+subsidiaries during the year (Refer Note 6).
+(b)	
+The particulars of the Company's investments in wholly owned subsidiaries are disclosed in Note 5.
+Note 40 : Corporate Social Responsibility (CSR)
+(K in crores)
+Sr. No.
+Particulars
+ Current Year 
+ Previous Year 
+(a)
+Amount required to be spent by the Company during the year,
+ 24.73 
+ 10.18 
+(b)
+Amount of expenditure incurred,
+ 24.73 
+ 10.18 
+(c)
+Shortfall at the end of the year,
+ - 
+ - 
+(d)
+Total of previous years shortfall,
+ - 
+ - 
+(e)
+Reason for shortfall,
+Not Applicable
+Not Applicable
+(f)
+Nature of CSR activities,
+The areas of CSR activities undertaken by the Company through the Great Eastern CSR 
+Foundation, a trust setup for the purpose are :
+Education : Foundation is committed to support initiatives that aim to improve the 
+quality of education, with a focus on building capacities of teachers and educators.
+Health : Foundation aims to improve health outcomes for adolescent girls, pregnant 
+women, infants, other women and communities at large.
+Livelihoods : Foundation aims to enhance livelihood opportunities for women and youth 
+by supporting organisations that focus on skill building, women empowerment and 
+sustainable farming practices.
+Sports : Foundation for Promoting Sports and Games and contributing to their Olympic 
+Gold Quest (OGQ) program, for training and support of athletes and para athletes who 
+have the potential to win Olympic Gold Medals.
+(g)
+Details of related party transactions, e.g., contribution to a trust controlled by the 
+Company in relation to CSR expenditure as per relevant Accounting Standard (Refer 
+Note 34),
+ 24.73 
+ 10.18 
+(h)
+Where a provision is made with respect to a liability incurred by entering into a 
+contractual obligation, the movements in the provision during the year shall be shown 
+separately.
+ - 
+ - 
+Note 41 : Contract Balances
+(K in crores)
+Particulars
+As at 31/03/2024
+As at 31/03/2023
+Trade Receivables
+ 171.56 
+ 226.89 
+Contract Assets
+ 316.21 
+ 243.43 
+Contract Liabilities
+ 29.99 
+ 38.56 
+(K in crores)
+Particulars
+ Current Year 
+ Previous Year 
+Revenue recognised in the reporting period included in opening contracted liabilities
+ 38.56 
+ 28.17 
+Contract assets include mainly unbilled revenue. Contract liabilities are towards charter hire received in advance and part of the freight amount 
+received for incomplete voyages which will be recognised as per progress of the voyage.
+Applying the practical expedient as given in Ind AS 115, 'Revenue from Contracts with Customers', the Company has not disclosed the remaining 
+performance obligation related to contracts as the original expected duration of these contracts is one year or less.
+Payment terms differ for each charter party contract. In case of time charter, the amounts receivable from customers become due in advance on 
+raising of invoice and in case of voyage charter, on expiry of credit period which on an average is a maximum of 90 days.
+Note 42 : Time Charter
+The Company has entered into time charter agreements for vessels.
+Future charter hire receivables under these time charter arrangements are as follows :
+(K in crores)
+Particulars
+As at 31/03/2024
+As at 31/03/2023
+Total Future Time Charter Receivables * 
+	- Less than 1 year 
+ 558.97 
+ 430.10 
+	- More than 1 year and less than 2 years 
+ 200.04 
+ - 
+	- More than 2 years and less than 3 years 
+ - 
+ - 
+	- More than 3 years and less than 4 years 
+ - 
+ - 
+	- More than 4 years and less than 5 years 
+ - 
+ - 
+	- More than 5 years 
+ - 
+ - 
+* the receivables (undiscounted) are calculated on full term employment basis at operating days rates as per time charter agreements (excluding 
+vessels under pool arrangement).
+Note :
+The Company’s operations include deployment of vessels on time charter basis for short-term. The operation and maintenance of the vessels given 
+on time charter, which includes specialised activities, is responsibility of the Company under the contract. Accordingly, the Company deploys trained 
+and skilled crew to run the vessels for providing logistics services or for shipment of cargo, and ensures maintenance of these assets including dry 
+docking, as per applicable regulatory standards. The charterer does not deploy its crew for these activities. The time charter rate negotiated with the 
+charterer for provision of services which, inter-alia, involves all the above activities is a lumpsum day rate as per the industry practice, and hence, it is 
+not possible to segregate any lease component embedded in the time charter rate for the purposes of the Ind AS 116, 'Leases'.
+227
+226
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.
+
+=== PAGE 134 ===
+Note 43 : Analytical Ratios
+Sr No.
+Particulars
+Current Year
+Previous Year
+% Variance 
+Reasons for Variance
+(i)
+Current Ratio (in times)
+[Current Assets/Current Liabilities]
+ 5.51 
+ 5.10 
+8.03%
+(ii)
+Debt Equity Ratio (in times)
+[Total Debt/Total Equity]
+ 0.22 
+ 0.30 
+-26.67%
+Repayment of debt and increase in 
+net worth.
+(iii)
+Debt Service Coverage Ratio (in times)
+[Profit after Tax plus Interest and Depreciation/
+Interest and Lease payments expense plus 
+Principal repayments (net of refinancing) made 
+during the year]
+5.82
+ 2.49 
+134.11%
+Lower repayment of debt vis a 
+vis previous year on account of 
+prepayments during the previous 
+year.
+(iv)
+Return on Equity
+[Net Profit after Tax/Average Shareholders' 
+Equity]
+24.55%
+31.17%
+-21.22%
+(v)
+Inventory Turnover Ratio (in times)
+[Fuel Oil and Water cost for the year/Average 
+Inventory]
+ 3.18 
+ 4.69 
+-32.28%
+Decrease in fuel cost.
+(vi)
+Trade Receivables Turnover Ratio (in times)
+[Revenue from Operations (excluding Other 
+Operating Revenue for the year)/Average Trade 
+Receivables for the year]
+ 9.31 
+ 14.73 
+-36.80%
+Decrease 
+in 
+revenue 
+from 
+operations and increase in average 
+trade receivables.
+(vii)
+Trade Payables Turnover Ratio (in times)
+[Total 
+Expenses 
+excluding 
+Interest 
+and 
+Depreciation/Average Trade Payables for the 
+year]
+ 5.30 
+ 7.14 
+-25.84%
+Decrease 
+in 
+total 
+expenses 
+excluding interest and depreciation 
+and increase in average trade 
+payables.
+(viii)
+Net Capital Turnover Ratio (in times)
+[Total Income/Working Capital]
+ 0.90 
+ 1.27 
+-28.64%
+Decrease in total income and 
+increase in working capital.
+(ix)
+Net Profit Ratio
+[Net Profit after Tax/Total Income]
+49.04%
+46.15%
+6.25%
+(x)
+Return on Capital Employed
+[Earnings before Interest and Taxes/Capital 
+Employed]
+20.56%
+23.90%
+-13.99%
+(xi)
+Return on Investments
+[Gain on Current Investments (at FVTPL)/Average 
+Current Investments]
+8.03%
+5.05%
+59.10%
+Increase 
+in 
+gain 
+on 
+current 
+investments is significantly higher in 
+proportion as compared to increase 
+in average current investments.
+Note 44 : Other Statutory Information
+(i)	
+The Company does not have any benami property, where any proceeding has been initiated or pending against the Company for holding any 
+benami property.
+(ii)	
+The Company has not taken any loans from banks or financial institutions against security of current assets and is not required to file 
+quarterly returns or statements.
+(iii)	
+The Company is not declared wilful defaulter by bank or financial institution or lender during the year.
+(iv)	
+The Company does not have any transactions with companies struck off.
+(v)	
+The Company does not have any charges or satisfaction which is yet to be registered with the Registrar of Companies beyond the statutory 
+period.
+(vi)	
+The Company has complied with the number of layers prescribed under clause (87) of Section 2 of the Companies Act, 2013 read with the 
+Companies (Restriction on number of Layers) Rules, 2017.
+(vii)	
+The Company has used the borrowings from banks and financial institutions for the specific purpose for which they were obtained.
+(viii)	
+The Company has not advanced or loaned or invested funds to any other person(s) or entity(ies), including foreign entities (Intermediaries) 
+with the understanding that the Intermediary shall :
+(a)	
+directly or indirectly lend or invest in other persons or entities identified in any manner whatsoever by or on behalf of the Company 
+(ultimate beneficiaries) or
+(b)	
+provide any guarantee, security or the like to or on behalf of the ultimate beneficiaries.
+(ix)	
+The Company has not received any fund from any person(s) or entity(ies), including foreign entities (funding party) with the understanding 
+(whether recorded in writing or otherwise) that the Company shall :
+(a)	
+directly or indirectly lend or invest in other persons or entities identified in any manner whatsoever by or on behalf of the funding party 
+(ultimate beneficiaries) or
+(b)	
+provide any guarantee, security or the like on behalf of the ultimate beneficiaries.
+(x)	
+The Company does not have any such transaction which is not recorded in the books of accounts that has been surrendered or disclosed as 
+income during the year in the tax assessments under the Income-tax Act, 1961 (such as, search or survey or any other relevant provisions 
+of the Income-tax Act, 1961).
+(xi)	
+The Company has not traded or invested in Crypto currency or Virtual currency during the financial year.
+Note 45 : Asset classified as held for sale	
+	
+	
+	
+	
+	
+During the year, the Company has contracted to sell its 2004 built Medium Range Product Tanker named ‘Jag Pahel’ to be delivered in first quarter of 
+the financial year 2024-25.
+229
+228
+76th Annual Report 2023-2024  Standalone Financial Statements
+The Great Eastern Shipping Co. Ltd.

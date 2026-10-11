@@ -1,0 +1,1544 @@
+{
+ "symbol": "NAVINFLUOR",
+ "n_xbrl_facts": {
+  "consolidated": 112,
+  "standalone": 107
+ },
+ "n_hits": {
+  "consolidated": 75,
+  "standalone": 66
+ },
+ "key": {
+  "consolidated": {
+   "RevenueFromOperations": [
+    true,
+    true
+   ],
+   "ProfitLossForPeriod": [
+    true,
+    true
+   ],
+   "CashFlowsFromUsedInOperatingActivities": [
+    true,
+    false
+   ],
+   "Assets": [
+    true,
+    true
+   ],
+   "EquityAndLiabilities": [
+    true,
+    true
+   ],
+   "Equity": [
+    true,
+    true
+   ],
+   "TradeReceivablesCurrent": [
+    true,
+    true
+   ],
+   "BorrowingsNoncurrent": [
+    true,
+    true
+   ],
+   "BorrowingsCurrent": [
+    true,
+    true
+   ],
+   "Inventories": [
+    true,
+    true
+   ],
+   "ProfitBeforeTax": [
+    true,
+    true
+   ],
+   "DepreciationDepletionAndAmortisationExpense": [
+    true,
+    true
+   ],
+   "FinanceCosts": [
+    true,
+    true
+   ]
+  },
+  "standalone": {
+   "RevenueFromOperations": [
+    true,
+    true
+   ],
+   "ProfitLossForPeriod": [
+    true,
+    true
+   ],
+   "CashFlowsFromUsedInOperatingActivities": [
+    true,
+    false
+   ],
+   "Assets": [
+    true,
+    true
+   ],
+   "EquityAndLiabilities": [
+    true,
+    true
+   ],
+   "Equity": [
+    true,
+    true
+   ],
+   "TradeReceivablesCurrent": [
+    true,
+    true
+   ],
+   "BorrowingsCurrent": [
+    true,
+    true
+   ],
+   "Inventories": [
+    true,
+    true
+   ],
+   "ProfitBeforeTax": [
+    true,
+    true
+   ],
+   "DepreciationDepletionAndAmortisationExpense": [
+    true,
+    true
+   ],
+   "FinanceCosts": [
+    true,
+    true
+   ]
+  }
+ },
+ "hits": [
+  {
+   "scope": "consolidated",
+   "concept": "RevenueFromOperations",
+   "xbrl_inr": 20650100000.0,
+   "page": 47,
+   "label": "Revenue from Operations",
+   "raw": "2,065.01",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherIncome",
+   "xbrl_inr": 558500000.0,
+   "page": 47,
+   "label": "Other Income",
+   "raw": "55.85",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Income",
+   "xbrl_inr": 21208600000.0,
+   "page": 47,
+   "label": "Total Income",
+   "raw": "2,120.86",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CostOfMaterialsConsumed",
+   "xbrl_inr": 9022800000.0,
+   "page": 135,
+   "label": "EXPENSES Cost of materials consumed",
+   "raw": "902.28",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "PurchasesOfStockInTrade",
+   "xbrl_inr": 94300000.0,
+   "page": 135,
+   "label": "Purchases of stock-in-trade",
+   "raw": "9.43",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade",
+   "xbrl_inr": 237200000.0,
+   "page": 135,
+   "label": "Changes in Inventories of finished goods, work in progress and stock-in-trade",
+   "raw": "23.72",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "EmployeeBenefitExpense",
+   "xbrl_inr": 2858400000.0,
+   "page": 135,
+   "label": "Employee benefits expense",
+   "raw": "285.84",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "FinanceCosts",
+   "xbrl_inr": 745600000.0,
+   "page": 47,
+   "label": "Less: Finance Costs",
+   "raw": "74.56",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "DepreciationDepletionAndAmortisationExpense",
+   "xbrl_inr": 961600000.0,
+   "page": 47,
+   "label": "Less: Depreciation and Amortization Expenses",
+   "raw": "96.16",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherExpenses",
+   "xbrl_inr": 4454600000.0,
+   "page": 55,
+   "label": "Other expenses",
+   "raw": "445.46",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Expenses",
+   "xbrl_inr": 18374500000.0,
+   "page": 135,
+   "label": "Total Expenses",
+   "raw": "1,837.45",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitBeforeExceptionalItemsAndTax",
+   "xbrl_inr": 2834100000.0,
+   "page": 47,
+   "label": "Profit before Exceptional Items and Tax",
+   "raw": "283.41",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ExceptionalItemsBeforeTax",
+   "xbrl_inr": 521300000.0,
+   "page": 47,
+   "label": "Add: Exceptional Items",
+   "raw": "52.13",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitBeforeTax",
+   "xbrl_inr": 3355400000.0,
+   "page": 47,
+   "label": "Profit Before Tax",
+   "raw": "335.54",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "DeferredTax",
+   "xbrl_inr": 293300000.0,
+   "page": 135,
+   "label": "(2) Deferred tax",
+   "raw": "29.33",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "TaxExpense",
+   "xbrl_inr": 650300000.0,
+   "page": 47,
+   "label": "Less: Tax Expense",
+   "raw": "65.03",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitLossForPeriodFromContinuingOperations",
+   "xbrl_inr": 2705100000.0,
+   "page": 135,
+   "label": "Profit for the year",
+   "raw": "270.51",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod",
+   "xbrl_inr": -100000.0,
+   "page": 47,
+   "label": "Less: Share of (loss) from Joint Venture (net)",
+   "raw": "0.01",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitLossForPeriod",
+   "xbrl_inr": 2705000000.0,
+   "page": 135,
+   "label": "Total profit for the year",
+   "raw": "270.50",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherComprehensiveIncomeNetOfTaxes",
+   "xbrl_inr": 200000.0,
+   "page": 55,
+   "label": "Other comprehensive income",
+   "raw": "0.02",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ComprehensiveIncomeForThePeriod",
+   "xbrl_inr": 2705200000.0,
+   "page": 135,
+   "label": "Total comprehensive income for the year",
+   "raw": "270.52",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProfitOrLossAttributableToOwnersOfParent",
+   "xbrl_inr": 2705000000.0,
+   "page": 135,
+   "label": "Profit is attributable to: Owners of the Company Other Comprehensive Income attr",
+   "raw": "270.50",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ComprehensiveIncomeForThePeriodAttributableToOwnersOfParent",
+   "xbrl_inr": 2705200000.0,
+   "page": 135,
+   "label": "Total comprehensive income for the year",
+   "raw": "270.52",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "PaidUpValueOfEquityShareCapital",
+   "xbrl_inr": 99100000.0,
+   "page": 100,
+   "label": "Equity EQUITY AND LIABILITIES a. Equity share capital",
+   "raw": "9.91",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ReserveExcludingRevaluationReserves",
+   "xbrl_inr": 23727600000.0,
+   "page": 137,
+   "label": "Balance as at March 31, 2024",
+   "raw": "2,372.76",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CapitalWorkInProgress",
+   "xbrl_inr": 7110900000.0,
+   "page": 135,
+   "label": "c. Capital work-in-progress",
+   "raw": "711.09",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "InvestmentProperty",
+   "xbrl_inr": 505100000.0,
+   "page": 135,
+   "label": "d. Investment properties",
+   "raw": "50.51",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Goodwill",
+   "xbrl_inr": 877600000.0,
+   "page": 135,
+   "label": "e. Goodwill",
+   "raw": "87.76",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherIntangibleAssets",
+   "xbrl_inr": 24600000.0,
+   "page": 135,
+   "label": "f. Other intangible assets",
+   "raw": "2.46",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "InvestmentsAccountedForUsingEquityMethod",
+   "xbrl_inr": 7400000.0,
+   "page": 135,
+   "label": "g. Financial assets i. Investment accounted for using the equity method",
+   "raw": "0.74",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "NoncurrentInvestments",
+   "xbrl_inr": 80500000.0,
+   "page": 100,
+   "label": "ii. Investments",
+   "raw": "8.05",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "LoansNoncurrent",
+   "xbrl_inr": 2500000.0,
+   "page": 100,
+   "label": "iii. Loans",
+   "raw": "0.25",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherNoncurrentFinancialAssets",
+   "xbrl_inr": 233100000.0,
+   "page": 135,
+   "label": "iv. Other financial assets",
+   "raw": "23.31",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "NoncurrentAssets",
+   "xbrl_inr": 28237900000.0,
+   "page": 135,
+   "label": "Total non-current assets",
+   "raw": "2,823.79",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Inventories",
+   "xbrl_inr": 3716500000.0,
+   "page": 135,
+   "label": "Current assets a. Inventories",
+   "raw": "371.65",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CurrentInvestments",
+   "xbrl_inr": 4860300000.0,
+   "page": 135,
+   "label": "b. Financial assets i. Investments",
+   "raw": "486.03",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "TradeReceivablesCurrent",
+   "xbrl_inr": 5125100000.0,
+   "page": 135,
+   "label": "ii. Trade receivables",
+   "raw": "512.51",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashAndCashEquivalents",
+   "xbrl_inr": 66400000.0,
+   "page": 135,
+   "label": "iii. Cash and cash equivalents",
+   "raw": "6.64",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "BankBalanceOtherThanCashAndCashEquivalents",
+   "xbrl_inr": 209000000.0,
+   "page": 135,
+   "label": "iv. Bank balances other than (iii) above",
+   "raw": "20.90",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "LoansCurrent",
+   "xbrl_inr": 6100000.0,
+   "page": 135,
+   "label": "v. Loans",
+   "raw": "0.61",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherCurrentFinancialAssets",
+   "xbrl_inr": 182500000.0,
+   "page": 135,
+   "label": "vi. Other financial assets",
+   "raw": "18.25",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherCurrentAssets",
+   "xbrl_inr": 1366200000.0,
+   "page": 135,
+   "label": "c. Other current assets",
+   "raw": "136.62",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CurrentAssets",
+   "xbrl_inr": 15532100000.0,
+   "page": 135,
+   "label": "Total current assets",
+   "raw": "1,553.21",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Assets",
+   "xbrl_inr": 43770000000.0,
+   "page": 135,
+   "label": "Total assets",
+   "raw": "4,377.00",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "EquityShareCapital",
+   "xbrl_inr": 99100000.0,
+   "page": 100,
+   "label": "Equity EQUITY AND LIABILITIES a. Equity share capital",
+   "raw": "9.91",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherEquity",
+   "xbrl_inr": 23727600000.0,
+   "page": 137,
+   "label": "Balance as at March 31, 2024",
+   "raw": "2,372.76",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "EquityAttributableToOwnersOfParent",
+   "xbrl_inr": 23826700000.0,
+   "page": 135,
+   "label": "Total equity",
+   "raw": "2,382.67",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Equity",
+   "xbrl_inr": 23826700000.0,
+   "page": 135,
+   "label": "Total equity",
+   "raw": "2,382.67",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "BorrowingsNoncurrent",
+   "xbrl_inr": 10228600000.0,
+   "page": 135,
+   "label": "a. Financial liabilities Non-current liabilities Liabilities i. Borrowings",
+   "raw": "1,022.86",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherNoncurrentFinancialLiabilities",
+   "xbrl_inr": 173000000.0,
+   "page": 135,
+   "label": "ii. Lease Liabilities",
+   "raw": "17.30",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProvisionsNoncurrent",
+   "xbrl_inr": 184900000.0,
+   "page": 135,
+   "label": "b. Provisions",
+   "raw": "18.49",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "DeferredTaxLiabilitiesNet",
+   "xbrl_inr": 643300000.0,
+   "page": 135,
+   "label": "c. Deferred tax liabilities (Net)",
+   "raw": "64.33",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherNoncurrentLiabilities",
+   "xbrl_inr": 134500000.0,
+   "page": 100,
+   "label": "d. Other non-current liabilities",
+   "raw": "13.45",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "NoncurrentLiabilities",
+   "xbrl_inr": 11364300000.0,
+   "page": 135,
+   "label": "Total non-current liabilities",
+   "raw": "1,136.43",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "BorrowingsCurrent",
+   "xbrl_inr": 3170800000.0,
+   "page": 135,
+   "label": "a. Financial liabilities Current liabilities i. Borrowings",
+   "raw": "317.08",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherCurrentLiabilities",
+   "xbrl_inr": 402600000.0,
+   "page": 135,
+   "label": "e. Other current liabilities",
+   "raw": "40.26",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "ProvisionsCurrent",
+   "xbrl_inr": 121200000.0,
+   "page": 135,
+   "label": "c. Provisions",
+   "raw": "12.12",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CurrentTaxLiabilities",
+   "xbrl_inr": 7800000.0,
+   "page": 135,
+   "label": "d. Current tax liabilities (Net)",
+   "raw": "0.78",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CurrentLiabilities",
+   "xbrl_inr": 8579000000.0,
+   "page": 135,
+   "label": "Total current liabilities",
+   "raw": "857.90",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "Liabilities",
+   "xbrl_inr": 19943300000.0,
+   "page": 135,
+   "label": "Total liabilities",
+   "raw": "1,994.33",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "EquityAndLiabilities",
+   "xbrl_inr": 43770000000.0,
+   "page": 135,
+   "label": "Total equity and liabilities",
+   "raw": "4,377.00",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AdjustmentsForFinanceCosts",
+   "xbrl_inr": 745600000.0,
+   "page": 47,
+   "label": "Less: Finance Costs",
+   "raw": "74.56",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AdjustmentsForDepreciationAndAmortisationExpense",
+   "xbrl_inr": 961600000.0,
+   "page": 47,
+   "label": "Less: Depreciation and Amortization Expenses",
+   "raw": "96.16",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AdjustmentsForSharebasedPayments",
+   "xbrl_inr": 14700000.0,
+   "page": 116,
+   "label": "Employee share-based payment expense (refer note",
+   "raw": "1.47",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "InterestReceivedClassifiedAsOperatingActivities",
+   "xbrl_inr": -32600000.0,
+   "page": 127,
+   "label": "Utilities",
+   "raw": "3.26",
+   "unit": "crore",
+   "period": "2024-03-31*"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "OtherInflowsOutflowsOfCashClassifiedAsOperatingActivities",
+   "xbrl_inr": -131700000.0,
+   "page": 144,
+   "label": "Rental Income (refer note",
+   "raw": "13.17",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "InterestReceivedClassifiedAsInvestingActivities",
+   "xbrl_inr": 32600000.0,
+   "page": 127,
+   "label": "Utilities",
+   "raw": "3.26",
+   "unit": "crore",
+   "period": "2024-03-31*"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "PaymentsOfLeaseLiabilitiesClassifiedAsFinancingActivities",
+   "xbrl_inr": 66000000.0,
+   "page": 151,
+   "label": "Cash flows",
+   "raw": "6.60",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "InterestPaidClassifiedAsFinancingActivities",
+   "xbrl_inr": 745600000.0,
+   "page": 47,
+   "label": "Less: Finance Costs",
+   "raw": "74.56",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "IncreaseDecreaseInCashAndCashEquivalentsBeforeEffectOfExchangeRateChanges",
+   "xbrl_inr": -78300000.0,
+   "page": 127,
+   "label": "Depreciation",
+   "raw": "7.83",
+   "unit": "crore",
+   "period": "2024-03-31*"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "IncreaseDecreaseInCashAndCashEquivalents",
+   "xbrl_inr": -78300000.0,
+   "page": 127,
+   "label": "Depreciation",
+   "raw": "7.83",
+   "unit": "crore",
+   "period": "2024-03-31*"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "CashAndCashEquivalentsCashFlowStatement",
+   "xbrl_inr": 66400000.0,
+   "page": 135,
+   "label": "iii. Cash and cash equivalents",
+   "raw": "6.64",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AmountOfItemThatWillNotBeReclassifiedToProfitAndLoss",
+   "xbrl_inr": -8500000.0,
+   "page": 135,
+   "label": "(A) Items that will not be reclassified to profit and loss Other comprehensive i",
+   "raw": "(0.85)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "IncomeTaxRelatingToItmesThatWillNotBeReclassifiedToProfitOrLoss",
+   "xbrl_inr": -3100000.0,
+   "page": 135,
+   "label": "(ii) Current tax relating to the above",
+   "raw": "0.31",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "consolidated",
+   "concept": "AmountOfItemThatWillBeReclassifiedToProfitAndLoss",
+   "xbrl_inr": 5600000.0,
+   "page": 135,
+   "label": "(B) Items that may be reclassified to profit and loss (i) Exchange differences o",
+   "raw": "0.56",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "RevenueFromOperations",
+   "xbrl_inr": 14208300000.0,
+   "page": 47,
+   "label": "Revenue from Operations",
+   "raw": "1,420.83",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherIncome",
+   "xbrl_inr": 673700000.0,
+   "page": 47,
+   "label": "Other Income",
+   "raw": "67.37",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Income",
+   "xbrl_inr": 14882000000.0,
+   "page": 47,
+   "label": "Total Income",
+   "raw": "1,488.20",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CostOfMaterialsConsumed",
+   "xbrl_inr": 6505700000.0,
+   "page": 100,
+   "label": "EXPENSES Cost of materials consumed",
+   "raw": "650.57",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade",
+   "xbrl_inr": 166900000.0,
+   "page": 100,
+   "label": "Changes in inventories of finished goods and work-in-progress",
+   "raw": "16.69",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "EmployeeBenefitExpense",
+   "xbrl_inr": 2095000000.0,
+   "page": 100,
+   "label": "Employee benefit expense",
+   "raw": "209.50",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "FinanceCosts",
+   "xbrl_inr": 49600000.0,
+   "page": 47,
+   "label": "Less: Finance Costs",
+   "raw": "4.96",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "DepreciationDepletionAndAmortisationExpense",
+   "xbrl_inr": 575800000.0,
+   "page": 47,
+   "label": "Less: Depreciation and Amortization Expenses",
+   "raw": "57.58",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherExpenses",
+   "xbrl_inr": 3085600000.0,
+   "page": 55,
+   "label": "Other expenses",
+   "raw": "308.56",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Expenses",
+   "xbrl_inr": 12478600000.0,
+   "page": 100,
+   "label": "Total Expenses",
+   "raw": "1,247.86",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitBeforeExceptionalItemsAndTax",
+   "xbrl_inr": 2403400000.0,
+   "page": 47,
+   "label": "Profit before Exceptional Items and Tax",
+   "raw": "240.34",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ExceptionalItemsBeforeTax",
+   "xbrl_inr": 521300000.0,
+   "page": 47,
+   "label": "Add: Exceptional Items",
+   "raw": "52.13",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitBeforeTax",
+   "xbrl_inr": 2924700000.0,
+   "page": 47,
+   "label": "Profit Before Tax",
+   "raw": "292.47",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "DeferredTax",
+   "xbrl_inr": 222300000.0,
+   "page": 100,
+   "label": "(2) Deferred tax",
+   "raw": "22.23",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "TaxExpense",
+   "xbrl_inr": 573000000.0,
+   "page": 47,
+   "label": "Less: Tax Expense",
+   "raw": "57.30",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossForPeriodFromContinuingOperations",
+   "xbrl_inr": 2351700000.0,
+   "page": 100,
+   "label": "Profit for the year Other comprehensive income",
+   "raw": "235.17",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProfitLossForPeriod",
+   "xbrl_inr": 2351700000.0,
+   "page": 100,
+   "label": "Profit for the year Other comprehensive income",
+   "raw": "235.17",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherComprehensiveIncomeNetOfTaxes",
+   "xbrl_inr": -15800000.0,
+   "page": 100,
+   "label": "Total other comprehensive income, net of tax",
+   "raw": "(1.58)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ComprehensiveIncomeForThePeriod",
+   "xbrl_inr": 2335900000.0,
+   "page": 100,
+   "label": "Total comprehensive income for the year",
+   "raw": "233.59",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ComprehensiveIncomeForThePeriodAttributableToOwnersOfParent",
+   "xbrl_inr": 2335900000.0,
+   "page": 100,
+   "label": "Total comprehensive income for the year",
+   "raw": "233.59",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "PaidUpValueOfEquityShareCapital",
+   "xbrl_inr": 99100000.0,
+   "page": 100,
+   "label": "Equity EQUITY AND LIABILITIES a. Equity share capital",
+   "raw": "9.91",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ReserveExcludingRevaluationReserves",
+   "xbrl_inr": 22918800000.0,
+   "page": 102,
+   "label": "Balance as at March 31, 2024",
+   "raw": "2,291.88",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CapitalWorkInProgress",
+   "xbrl_inr": 454100000.0,
+   "page": 100,
+   "label": "c. Capital work-in-progress",
+   "raw": "45.41",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "InvestmentProperty",
+   "xbrl_inr": 389700000.0,
+   "page": 100,
+   "label": "d. Investment properties",
+   "raw": "38.97",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherIntangibleAssets",
+   "xbrl_inr": 13400000.0,
+   "page": 100,
+   "label": "e. Other intangible assets",
+   "raw": "1.34",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "LoansNoncurrent",
+   "xbrl_inr": 2500000.0,
+   "page": 100,
+   "label": "iii. Loans",
+   "raw": "0.25",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherNoncurrentFinancialAssets",
+   "xbrl_inr": 179800000.0,
+   "page": 100,
+   "label": "iv. Other financial assets",
+   "raw": "17.98",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "NoncurrentAssets",
+   "xbrl_inr": 14551500000.0,
+   "page": 100,
+   "label": "Total non-current assets",
+   "raw": "1,455.15",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Inventories",
+   "xbrl_inr": 2147800000.0,
+   "page": 100,
+   "label": "Current assets a. Inventories",
+   "raw": "214.78",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CurrentInvestments",
+   "xbrl_inr": 4518100000.0,
+   "page": 100,
+   "label": "b. Financial assets i. Investments",
+   "raw": "451.81",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "TradeReceivablesCurrent",
+   "xbrl_inr": 3200900000.0,
+   "page": 100,
+   "label": "ii. Trade receivables",
+   "raw": "320.09",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CashAndCashEquivalents",
+   "xbrl_inr": 16900000.0,
+   "page": 100,
+   "label": "iii. Cash and cash equivalents",
+   "raw": "1.69",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "BankBalanceOtherThanCashAndCashEquivalents",
+   "xbrl_inr": 47400000.0,
+   "page": 100,
+   "label": "iv. Bank balances other than (iii) above",
+   "raw": "4.74",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "LoansCurrent",
+   "xbrl_inr": 2341900000.0,
+   "page": 100,
+   "label": "v. Loans",
+   "raw": "234.19",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherCurrentFinancialAssets",
+   "xbrl_inr": 129500000.0,
+   "page": 100,
+   "label": "vi. Other financial assets",
+   "raw": "12.95",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherCurrentAssets",
+   "xbrl_inr": 382800000.0,
+   "page": 100,
+   "label": "c. Other current assets",
+   "raw": "38.28",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CurrentAssets",
+   "xbrl_inr": 12785300000.0,
+   "page": 100,
+   "label": "Total current assets",
+   "raw": "1,278.53",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Assets",
+   "xbrl_inr": 27336800000.0,
+   "page": 100,
+   "label": "Total assets",
+   "raw": "2,733.68",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "EquityShareCapital",
+   "xbrl_inr": 99100000.0,
+   "page": 100,
+   "label": "Equity EQUITY AND LIABILITIES a. Equity share capital",
+   "raw": "9.91",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherEquity",
+   "xbrl_inr": 22918800000.0,
+   "page": 102,
+   "label": "Balance as at March 31, 2024",
+   "raw": "2,291.88",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "EquityAttributableToOwnersOfParent",
+   "xbrl_inr": 23017900000.0,
+   "page": 100,
+   "label": "Total equity",
+   "raw": "2,301.79",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Equity",
+   "xbrl_inr": 23017900000.0,
+   "page": 100,
+   "label": "Total equity",
+   "raw": "2,301.79",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherNoncurrentFinancialLiabilities",
+   "xbrl_inr": 146900000.0,
+   "page": 100,
+   "label": "Non-current liabilities Liabilities a. Financial liabilities -Lease liabilities",
+   "raw": "14.69",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "NoncurrentFinancialLiabilities",
+   "xbrl_inr": 146900000.0,
+   "page": 100,
+   "label": "Non-current liabilities Liabilities a. Financial liabilities -Lease liabilities",
+   "raw": "14.69",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProvisionsNoncurrent",
+   "xbrl_inr": 165800000.0,
+   "page": 100,
+   "label": "b. Provisions",
+   "raw": "16.58",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "DeferredTaxLiabilitiesNet",
+   "xbrl_inr": 397400000.0,
+   "page": 100,
+   "label": "c. Deferred tax liabilities (Net)",
+   "raw": "39.74",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherNoncurrentLiabilities",
+   "xbrl_inr": 134500000.0,
+   "page": 100,
+   "label": "d. Other non-current liabilities",
+   "raw": "13.45",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "NoncurrentLiabilities",
+   "xbrl_inr": 844600000.0,
+   "page": 100,
+   "label": "Total non-current liabilities",
+   "raw": "84.46",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "BorrowingsCurrent",
+   "xbrl_inr": 396500000.0,
+   "page": 100,
+   "label": "a. Financial liabilities Current liabilities i. Borrowings",
+   "raw": "39.65",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "TradePayablesCurrent",
+   "xbrl_inr": 2337200000.0,
+   "page": 114,
+   "label": "Total",
+   "raw": "233.72",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherCurrentLiabilities",
+   "xbrl_inr": 220000000.0,
+   "page": 100,
+   "label": "e. Other current liabilities",
+   "raw": "22.00",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProvisionsCurrent",
+   "xbrl_inr": 100600000.0,
+   "page": 100,
+   "label": "c. Provisions",
+   "raw": "10.06",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CurrentTaxLiabilities",
+   "xbrl_inr": 5100000.0,
+   "page": 100,
+   "label": "d. Current tax liabilities (Net)",
+   "raw": "0.51",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CurrentLiabilities",
+   "xbrl_inr": 3474300000.0,
+   "page": 100,
+   "label": "Total current liabilities",
+   "raw": "347.43",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "Liabilities",
+   "xbrl_inr": 4318900000.0,
+   "page": 100,
+   "label": "Total liabilities",
+   "raw": "431.89",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "EquityAndLiabilities",
+   "xbrl_inr": 27336800000.0,
+   "page": 100,
+   "label": "Total equity and liabilities",
+   "raw": "2,733.68",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "AdjustmentsForFinanceCosts",
+   "xbrl_inr": 49600000.0,
+   "page": 47,
+   "label": "Less: Finance Costs",
+   "raw": "4.96",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "AdjustmentsForDepreciationAndAmortisationExpense",
+   "xbrl_inr": 575800000.0,
+   "page": 47,
+   "label": "Less: Depreciation and Amortization Expenses",
+   "raw": "57.58",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "AdjustmentsForSharebasedPayments",
+   "xbrl_inr": 14700000.0,
+   "page": 116,
+   "label": "Employee share-based payment expense (refer note",
+   "raw": "1.47",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "OtherInflowsOutflowsOfCashClassifiedAsOperatingActivities",
+   "xbrl_inr": -81300000.0,
+   "page": 108,
+   "label": "Operating lease rentals credited to the Statement of Profit and Loss (refer note",
+   "raw": "8.13",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "ProceedsFromBorrowingsClassifiedAsFinancingActivities",
+   "xbrl_inr": 396500000.0,
+   "page": 100,
+   "label": "a. Financial liabilities Current liabilities i. Borrowings",
+   "raw": "39.65",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "InterestPaidClassifiedAsFinancingActivities",
+   "xbrl_inr": 49600000.0,
+   "page": 47,
+   "label": "Less: Finance Costs",
+   "raw": "4.96",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CashFlowsFromUsedInFinancingActivities",
+   "xbrl_inr": -461600000.0,
+   "page": 153,
+   "label": "Gratuity Payable (refer note",
+   "raw": "46.2)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "CashAndCashEquivalentsCashFlowStatement",
+   "xbrl_inr": 16900000.0,
+   "page": 100,
+   "label": "iii. Cash and cash equivalents",
+   "raw": "1.69",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "AmountOfItemThatWillNotBeReclassifiedToProfitAndLoss",
+   "xbrl_inr": -21100000.0,
+   "page": 100,
+   "label": "Items that will not be reclassified to profit and loss Remeasurement loss of the",
+   "raw": "(2.11)",
+   "unit": "crore",
+   "period": "2024-03-31"
+  },
+  {
+   "scope": "standalone",
+   "concept": "IncomeTaxRelatingToItmesThatWillNotBeReclassifiedToProfitOrLoss",
+   "xbrl_inr": -5300000.0,
+   "page": 100,
+   "label": "Current tax relating to the above",
+   "raw": "0.53",
+   "unit": "crore",
+   "period": "2024-03-31"
+  }
+ ],
+ "table_hits": {
+  "47": 25,
+  "135": 46,
+  "55": 3,
+  "100": 52,
+  "137": 2,
+  "116": 2,
+  "127": 4,
+  "144": 1,
+  "151": 1,
+  "102": 2,
+  "114": 1,
+  "108": 1,
+  "153": 1
+ }
+}
