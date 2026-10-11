@@ -114,8 +114,10 @@ MUST = [
 
 # Readers whose request size is capped (Gemma: 16k tokens/min per project, so a request must stay well under that):
 # sections are cut at page markers into pieces of at most this many characters (~9k tokens), named "<part>#<k>".
-SPLIT = {"gemma": 36000}
-GEMMA_KEYS = ["gemma-4-31b@g1", "gemma-4-31b@g2"]
+SPLIT = {"gemma": 36000, "gemma26": 36000, "dots": 36000}
+# one reader per Google key that is set (limits are per project and per model)
+GEMMA_KEYS = {"gemma": [m for m in x.MODELS if m.startswith("gemma-4-31b@")],
+              "gemma26": [m for m in x.MODELS if m.startswith("gemma-4-26b@")]}
 
 
 def parts(report, max_chars=None):
@@ -160,7 +162,7 @@ def call(model, prompt, env, tries=4):
     if cfg.get("api") == "gemini_native":
         key = env[cfg["key_env"]]; last = None
         for a in range(6):
-            PACER.wait(cfg["key_env"], int(len(prompt) / 3.2) + 1500)
+            PACER.wait(cfg["key_env"] + cfg["id"], int(len(prompt) / 3.2) + 1500)   # per project AND model
             t = time.time()
             try:
                 r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{cfg['id']}:generateContent",
@@ -208,12 +210,12 @@ def run(models, reports):
         if f.exists() and "error" not in json.loads(f.read_text(encoding="utf-8")):
             return f"skip {f.name}"
         f.parent.mkdir(parents=True, exist_ok=True)
-        reader = GEMMA_KEYS[jobs.index(job) % len(GEMMA_KEYS)] if m == "gemma" else READERS[m]
+        reader = GEMMA_KEYS[m][jobs.index(job) % len(GEMMA_KEYS[m])] if m in GEMMA_KEYS else READERS[m]
         res = call(reader, PROMPT.format(company=COMPANY[rep], text=text), env)
         f.write_text(json.dumps(res, indent=1), encoding="utf-8")
         return f"{m} {rep} {name}: " + (res.get("error") or f"{res['seconds']}s in {res['in_tok']} out {res['out_tok']} {res['finish']}")
 
-    with ThreadPoolExecutor(6) as ex:
+    with ThreadPoolExecutor(16) as ex:
         for msg in ex.map(one, jobs):
             print(msg, flush=True)
 

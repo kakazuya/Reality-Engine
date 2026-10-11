@@ -63,6 +63,10 @@ JOBS = [
      "passes": LOGS / "extract_deck_figures.passes.log", "done_exit": 0, "stale_min": 20, "slow_rate": 2.0,
      "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO pages (\d+) ",
      "second_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO pages .*?second reads (\d+)"},
+    # annual-report fact extraction (2026-10-12); rate = report pages read per second
+    {"name": "ar-ingest", "match": "run_ar_ingest", "log": LOGS / "ingest_annual_reports.log",
+     "passes": LOGS / "ingest_annual_reports.passes.log", "done_exit": 0, "stale_min": 20, "slow_rate": 1.0,
+     "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
 ]
 
 log = logging.getLogger("resource_watchdog")
@@ -389,7 +393,7 @@ def run():
                           + (f" | {rate:.1f} pages/s" if rate is not None else "")
                           + (f" | {r2 * 60:.0f} second readings/min" if r2 is not None else "")
                           + f" | log age {age:.0f} min" + (f" | {js['target']}" if procs else ""))
-            if procs and rate is not None and rate < job["slow_rate"] and age < job["stale_min"] and not (r2 and r2 > 0.1):
+            if procs and rate is not None and rate < job["slow_rate"] and age < job["stale_min"] and not (r2 and r2 > 0.05):
                 inc.add("job_slow", job["name"], f"{rate:.1f} pages/s (10 min); disk {mbs:.0f} MB/s, CPU {cpu:.0f}%, "
                         f"RAM free {ram:.1f} GB; {deck_diagnosis(lines)}")
             fault = None
