@@ -114,7 +114,7 @@ def readers(env):
     for n, var in enumerate(["GEMINI_API_KEY"] + [f"GEMINI_API_KEY_{i}" for i in range(2, 9)], 1):
         if env.get(var):
             out.append({"name": f"gemma-4-31b@g{n}", "kind": "gemini", "key": env[var], "model": "gemma-4-31b-it",
-                        "slots": 3, "pacer": TokenPacer(15000)})
+                        "slots": 6, "pacer": TokenPacer(15000)})   # Gemma answers in ~4 min; 6 in flight keeps the token pacer (not latency) the limit
     return out
 
 
