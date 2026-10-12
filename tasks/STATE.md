@@ -2,6 +2,36 @@
 
 _Last updated: 2026-10-11 00:50 (main session closeout)_
 
+## HAND-OFF 2026-10-12 14:15 (read first; session "Extraction status" closed)
+
+**Running now (detached, kept alive by the resource watchdog; stop the watchdog BEFORE restarting a job by hand, or it
+starts a duplicate - happened 13:48):**
+1. **Annual-report fact extraction** - `reality_engine/scripts/run_ar_ingest.cmd` -> `ingest_annual_reports.py`, log
+   `data/logs/ingest_annual_reports.log`, output `data/ar_facts.db` (ar_docs / ar_pieces / ar_facts). Readers: LongCat
+   (OpenCode Go free, 32 slots) + Gemma 4 31B on 8 Google keys (GEMINI_API_KEY, _2.._8; native API, token-paced 15k/min
+   per key). Every text page read in ~10-page pieces, newest filing first; each fact carries isin, symbol, fiscal_year
+   (+source), filed_at (+source), page, quote, model, value_check (page/piece/not_found/prose). At 14:15: 426 reports
+   done, 6,383 pieces ok, 45 failed (mostly Google HTTP 500 on Gemma; retried on a later pass), 240k facts.
+   ~125-130 report pages/min before the 13:48 restart. **Check:** Gemma slots were raised 3 -> 6 per key at 13:48
+   (latency ~4 min/piece was capping it at ~1/3 of the 16k TPM); compare Gemma pieces/hour after 14:00 with 122 in
+   13:00-13:48; revert to 3 if not faster. Full set at this pace: weeks, not days (see to-do 2 and Haiku option).
+2. **Deck second readings** - `run_deck_redo_deferred.cmd` (`extract_deck_figures --redo-deferred`), log
+   `data/logs/extract_deck_figures.log`. Only Step via Kilo works (~600-1,000 pages/h); OpenCode's free Step has been
+   rate-limited since 2026-10-11 21:27; StepFun out of balance. 38,039 deferred + 3,003 queued left at 14:15 -> ETA
+   ~Wed/Thu. Option pending Shivam: Claude Haiku 5.5 via Anthropic Batch API ~$25 for all (needs Anthropic API key).
+3. **Resource watchdog** - starts at logon; report printed into every Claude session by the SessionStart hook.
+
+**Reader test results 2026-10-11/12** (details: `reality_engine/data/reader_tests/*/VERDICT.md`,
+`tasks/ar_study/free_test/FINDINGS.md`): decks - Gemma 4 31B passes (86.9% identifiable, opt-in), Gemma 4 26B 83.8%,
+Gemini 3.1 Flash-Lite 78%, 3.8 Flash 80%, CodeCraft Opus/Sonnet ~94% (anonymous provider, test only), GPT-5.6 Luna
+altered printed numbers. ARs - LongCat 25/25, Gemma 4 31B 25/25 (0.4% numbers not in text), Gemma 26B 25/25 but misread
+Indian grouping 10x, Dots 24/25 but loops and cites wrong pages, Glyph Cluster 18/25, NIM models too slow. Kilo has no
+batch API; Haiku batch is $0.05/$0.25 per M for prompts <= 100k tokens.
+
+**To-dos for the next session (all four):** see "Next" below - (1) daily new-reader check, (2) safe YoY page skip in
+the AR run (numbers NOT masked), (3) row clean-up refinements, (4) AR parser fixes. Retrieval gaps are parked
+(`tasks/RETRIEVAL_GAPS.md`).
+
 ## Done
 - 2026-10-06/07: all NSE + BSE cash-segment data, NSE/BSE disclosures, NSDL FPI reports, derivatives participant data and commodities fetched from 2019-01-01 and loaded into `mkt_*` tables (~22M rows). Scripts: `reality_engine/scripts/fetch_market_raw.py`, `fetch_nse_api_raw.py`, `fetch_bse_api_raw.py`, `fetch_nsdl_raw.py`, `load_market_raw.py`. Raw copies in `reality_engine/data/raw_market/`.
 - 2026-10-08: framework settled (`tasks/FRAMEWORK.md`).
