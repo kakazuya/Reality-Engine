@@ -14,7 +14,7 @@ starts a duplicate - happened 13:48):**
    done, 6,383 pieces ok, 45 failed (mostly Google HTTP 500 on Gemma; retried on a later pass), 240k facts.
    ~125-130 report pages/min before the 13:48 restart. **Check:** Gemma slots were raised 3 -> 6 per key at 13:48
    (latency ~4 min/piece was capping it at ~1/3 of the 16k TPM); compare Gemma pieces/hour after 14:00 with 122 in
-   13:00-13:48; revert to 3 if not faster. Full set at this pace: weeks, not days (see to-do 2 and Haiku option).
+   13:00-13:48; revert to 3 if not faster. **Result (15:00): no gain** - Gemma 12:00-13:00: 147 pieces / 1,847 pages; 14:00-15:00: 169 pieces / 1,787 pages, avg seconds per piece 219 -> 412 (Google serves slower with more in flight; we use only ~4k of 16k tokens/min per key, so the limit is Google's free-tier service rate, not our pacing). 0 errors since the restart. Keeping 6 or reverting to 3 makes no throughput difference. Full set at this pace: weeks, not days (see to-do 2 and Haiku option).
 2. **Deck second readings** - `run_deck_redo_deferred.cmd` (`extract_deck_figures --redo-deferred`), log
    `data/logs/extract_deck_figures.log`. Only Step via Kilo works (~600-1,000 pages/h); OpenCode's free Step has been
    rate-limited since 2026-10-11 21:27; StepFun out of balance. 38,039 deferred + 3,003 queued left at 14:15 -> ETA
