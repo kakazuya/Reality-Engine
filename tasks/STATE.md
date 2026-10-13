@@ -38,7 +38,12 @@
   - **Routines (RemoteTrigger) bill to the Pro plan, not the credit.**
   - A cloud session Shivam starts himself at claude.ai/code does use the credit: $7 for 300 slides (~$0.02/slide,
     inflated by an Opus start and a re-check pass). $92 left, expires 11-05.
-  - Suggested use: hard or disagreeing deck pages, not bulk.
+  - **DECIDED (Shivam 2026-10-13 18:55): use the $92 ONLY for the hardest deck pages, the ones even the second
+    reading struggles with.** That means pages whose primary and second readings disagree, pages still weak after the
+    second reading (low recall against the text layer, few figures), and pages that errored on every reader.
+    - Next session, step 1: add an `export-hard` mode to `claude_page_queue.py` that selects these after the free
+      second readings finish (decks ETA ~10-14 Oct morning) and sizes the list (~$0.015-0.02 per slide).
+    - Step 2: Shivam starts the claude.ai/code session per batch.
   - Batch recipe in memory `feedback_cloud_credit_sessions`.
 - **Spend so far:** OpenCode accounts $20.77 (2 Go subscriptions now).
 - **Pro weekly usage:** 96%, resets Friday 23:30. A very long session costs a lot per turn; start fresh sessions.
