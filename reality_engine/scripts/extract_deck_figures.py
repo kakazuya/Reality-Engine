@@ -177,7 +177,18 @@ ALSO_PRIMARY = ["dots-studio/dots-3-note-preview:free"]
 if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries only when its key is set
     ALSO_PRIMARY.append("dots-studio/dots-3-note-preview:free@kilo2")
 # StepFun (paid, 5 slots) is the default second reader so its slots are always used; then the free readers in this order
-ALSO_SECOND = ["step-5-preview-free", "stepfun/step-5-preview-free@kilo"]
+# OpenCode Zen free models (2026-10-12): they answer only inside OpenCode, so each reading is an `opencode run` with the
+# page image and prompt attached (api "cli"). 40-page test via deck_zen_test.py: Step 94.2% identifiable / 0 unsupported,
+# MiMo 93.7% / 1, Muse 1.3 93.6% / 3 (all four "unsupported" were correct digits under junk labels, e.g. ISO 9001:2008).
+# ~170 MB RAM per process, so few slots each.
+for _m, _n in (("step-5-preview-free", 3), ("mimo-v2.6-flash-free", 3), ("muse-spark-1.3-contributor-free", 3)):
+    MODELS[f"{_m}@zen"] = {"api": "cli", "id": _m, "price": (0.0, 0.0), "capped": False, "ceiling": _n, "body": {}}
+# Second OpenCode Go account (2026-10-13): its own free Step allowance (Go Step's limit resets daily at 00:00 UTC)
+if os.environ.get("OPENCODE_GO_API_KEY_2"):
+    MODELS["step-5-preview-free@go2"] = dict(MODELS["step-5-preview-free"], id="step-5-preview-free", key_env="OPENCODE_GO_API_KEY_2")
+# OpenCode Go's free Step has been rate-limited since 2026-10-11 21:27: last, so it does not draw pages ahead of working readers
+ALSO_SECOND = ["stepfun/step-5-preview-free@kilo", "step-5-preview-free@zen", "mimo-v2.6-flash-free@zen",
+               "muse-spark-1.3-contributor-free@zen", "step-5-preview-free"] + (["step-5-preview-free@go2"] if os.environ.get("OPENCODE_GO_API_KEY_2") else [])
 # Kilo routes free models through its own OpenRouter account: every Kilo key shares one quota per model (a 1,000/day cap on
 # Inkling Small was already used up on 2026-10-10 for both keys), so extra Kilo accounts add no free-model capacity.
 RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900
@@ -648,6 +659,8 @@ class Client:
         url = "data:image/jpeg;base64," + jpeg_b64
         if MODELS[model]["api"] == "agent":
             raise RuntimeError(f"{model} runs through scripts/claude_page_queue.py, not the extractor")
+        if MODELS[model]["api"] == "cli":
+            return self._post_cli(model, jpeg_b64, prompt)
         if MODELS[model]["api"] == "gemini_native":   # Google's own API (Gemma: its OpenAI-compatible route returns 500)
             body = {"contents": [{"parts": [{"inline_data": {"mime_type": "image/jpeg", "data": jpeg_b64}}, {"text": prompt}]}],
                     "generationConfig": MODELS[model]["body"]}
@@ -679,6 +692,33 @@ class Client:
         j = r.json(); u = j.get("usage", {})
         txt = "".join(c.get("text", "") for o in j.get("output", []) if o.get("type") == "message" for c in o.get("content", []))
         return 200, txt, (u.get("input_tokens", 0), u.get("output_tokens", 0))
+
+    def _post_cli(self, model, jpeg_b64, prompt):
+        """OpenCode Zen free model through `opencode run` (image + prompt attached); HTTP-like codes for read()."""
+        import base64
+        import subprocess
+        from reality_engine.scripts.ar_queue import ANSI, opencode_exe
+        tmp = OUT_DB.parent / "zen_tmp"; tmp.mkdir(exist_ok=True)
+        stem = tmp / uuid.uuid4().hex
+        img, txt = stem.with_suffix(".jpg"), stem.with_suffix(".txt")
+        img.write_bytes(base64.b64decode(jpeg_b64)); txt.write_text(prompt, encoding="utf-8")
+        try:
+            p = subprocess.run([opencode_exe(), "run", "-m", f"opencode/{MODELS[model]['id']}", "--title", f"deck {model}",
+                                "Read the attached slide image and follow the instructions in the attached text file exactly. "
+                                "Do not use any tools. Reply with the requested output only.", "-f", str(txt), "-f", str(img)],
+                               cwd=tmp, stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=self.timeout * 2)
+        except subprocess.TimeoutExpired:
+            return -1, "opencode run timed out", None
+        finally:
+            img.unlink(missing_ok=True); txt.unlink(missing_ok=True)
+        out = "\n".join(l for l in ANSI.sub("", p.stdout).splitlines() if not l.startswith("> ")).strip()
+        err = ANSI.sub("", p.stdout + " " + p.stderr)
+        if parse_facts(out) or (p.returncode == 0 and out and "Error:" not in out):
+            return 200, out, (0, 0)
+        if re.search(r"rate limit", err, re.I):
+            return 429, "free usage limit: " + err[-200:], None   # QUOTA_429 benches the reader for 30 min
+        return 502, err[-300:], None
 
     def read(self, model, jpeg_b64, prompt, tries=6, wait_on_cap=True):
         """One reading with spend-cap handling, 429 backoff and retries on transient failures. A capped second reader

@@ -49,6 +49,10 @@ INCIDENTS = LOGS / "resource_incidents.jsonl"
 REPORT = LOGS / "resource_watchdog_report.md"
 
 CHECK_SEC = 120
+READER_REPORT = LOGS / "reader_watch_report.md"
+AR_REVIEW_EVERY = 200   # ar_review.py after this many newly finished annual reports (Shivam 2026-10-13)
+STUCK_MIN = 30  # a managed job reading no pages (and no second readings) this long is restarted as hung
+READER_CHECK_HOUR = 9   # new_reader_check.py runs once a day after this hour (local time)
 RESTART_GAP_MIN = 30
 MAX_RESTARTS_PER_DAY = 6
 LOW_RAM_GB = 1.5
@@ -66,6 +70,21 @@ JOBS = [
     # annual-report fact extraction (2026-10-12); rate = report pages read per second
     {"name": "ar-ingest", "match": "run_ar_ingest", "log": LOGS / "ingest_annual_reports.log",
      "passes": LOGS / "ingest_annual_reports.passes.log", "done_exit": 0, "stale_min": 20, "slow_rate": 1.0,
+     "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
+    # annual reports, Zen route (2026-10-12): OpenCode Zen free models via `opencode run`, oldest filing first
+    # annual reports, Google route (2026-10-13): Flash-Lite 3.5 on all Gemini keys; idle_ok: daily caps can idle it
+    {"name": "ar-google", "match": "run_ar_google", "idle_ok": True, "log": LOGS / "ingest_annual_reports_google.log",
+     "passes": LOGS / "ingest_annual_reports_google.passes.log", "done_exit": 0, "stale_min": 30, "slow_rate": 0.2,
+     "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
+    {"name": "ar-ggemma26", "match": "run_ar_ggemma26", "idle_ok": True, "log": LOGS / "ingest_annual_reports_google_gemma-4-26b.log",
+     "passes": LOGS / "ingest_annual_reports_google_gemma-4-26b.passes.log", "done_exit": 0, "stale_min": 30, "slow_rate": 0.2,
+     "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
+    {"name": "ar-gflash31", "match": "run_ar_gflash31", "idle_ok": True, "log": LOGS / "ingest_annual_reports_google_3.1fl.log",
+     "passes": LOGS / "ingest_annual_reports_google_3.1fl.passes.log", "done_exit": 0, "stale_min": 30, "slow_rate": 0.2,
+     "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
+    # idle_ok: it legitimately reads nothing while the Zen free quota is used up, so no-pages is not a hang
+    {"name": "ar-zen", "match": "run_ar_zen", "idle_ok": True, "log": LOGS / "ingest_annual_reports_zen.log",
+     "passes": LOGS / "ingest_annual_reports_zen.passes.log", "done_exit": 0, "stale_min": 30, "slow_rate": 0.2,
      "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
 ]
 
@@ -275,6 +294,10 @@ def write_report(status_lines):
         out.append("- none")
     for r in sorted(inc, key=lambda r: r["last"], reverse=True)[:40]:
         out.append(f"- **{r['kind']}** [{r['key']}] {r['first'][5:16]} -> {r['last'][5:16]} (x{r['count']}): {r['detail']}")
+    try:   # daily new-reader check (new_reader_check.py), started from the loop in main()
+        out += ["", READER_REPORT.read_text(encoding="utf-8").strip()]
+    except OSError:
+        pass
     tmp = REPORT.with_suffix(".tmp")
     tmp.write_text("\n".join(out) + "\n", encoding="utf-8")
     os.replace(tmp, REPORT)
@@ -403,6 +426,16 @@ def run():
                     fault = ("job_stopped", f"not running, last pass exit {ex}")
             elif age >= job["stale_min"]:
                 fault = ("job_hung", f"log silent {age:.0f} min")
+            # 2026-10-12: the AR run froze inside a C call for 4 h while each restart still wrote a log line, so a fresh
+            # log is not proof of work: no pages (and no second readings) for STUCK_MIN also counts as hung
+            busy = (rate or 0) > 0 or (r2 or 0) > 0
+            if procs and rate is not None and not busy and not job.get("idle_ok"):
+                js.setdefault("zero_since", now)
+                if not fault and now - js["zero_since"] >= STUCK_MIN * 60:
+                    fault = ("job_hung", f"no pages read for {(now - js['zero_since']) / 60:.0f} min (log still written)")
+                    js["zero_since"] = now
+            else:
+                js.pop("zero_since", None)
             if fault:
                 day = [t for t in js["restarts"] if now - t < 86400]
                 js["restarts"] = day
@@ -419,6 +452,25 @@ def run():
                         kill_tree(o)
                     start_cmd(js["target"])
                     js["restarts"].append(time.time())
+        today = datetime.now().strftime("%Y-%m-%d")
+        if datetime.now().hour >= READER_CHECK_HOUR and st.get("reader_check_day") != today:
+            st["reader_check_day"] = today
+            subprocess.Popen([sys.executable, "-m", "reality_engine.scripts.new_reader_check"], cwd=ROOT,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+            log.info("daily new-reader check started")
+        try:   # AR extraction review after every AR_REVIEW_EVERY newly finished reports (ar_review.py)
+            import sqlite3
+            con = sqlite3.connect(f"file:{ROOT / 'reality_engine' / 'data' / 'ar_facts.db'}?mode=ro", uri=True, timeout=30)
+            done_n = con.execute("SELECT COUNT(*) FROM ar_docs WHERE status='done'").fetchone()[0]; con.close()
+            if done_n >= st.get("ar_review_at", 0) + AR_REVIEW_EVERY:
+                st["ar_review_at"] = done_n
+                subprocess.Popen([sys.executable, "-m", "reality_engine.scripts.ar_review"], cwd=ROOT,
+                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+                log.info("AR review started at %d finished reports", done_n)
+        except Exception as e:
+            log.warning("AR review trigger failed: %s", e)
         save_state(st)
         log.info(" || ".join(status))
         write_report(status)

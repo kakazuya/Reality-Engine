@@ -1,0 +1,66 @@
+{
+  "_about": "Register of OpenCode Zen free models that PASSED the AR admission test (ar_queue.py test-score: 25/25 must-find, <1% numbers not in text, all pieces answered). Never retest a model listed here. Read by ingest_annual_reports.py --route zen at start; a rate-limited model benches itself 20 min and retries by itself. status 'passed' = in use; 'retired' = gone from Zen. slots = opencode processes (~170 MB each). Deck readers: see MODELS '*@zen' in extract_deck_figures.py. free_until = end of the model's free promotion as announced (None = not stated); the daily check warns 2 days ahead.",
+  "longcat-2.5-preview-free": {
+    "slots": 6,
+    "status": "passed",
+    "ar_test": "2026-10-11 25/25 (Go API route); Zen route 0.3% not_found on zen01",
+    "deck_test": "rate-limited during the 2026-10-12 Zen deck test",
+    "free_until": "2026-10-10",
+    "promo_source": "x.com/opencode/status/2103841640171614322: free for two weeks from 2026-09-26"
+  },
+  "space-bunny-free": {
+    "slots": 6,
+    "status": "passed",
+    "ar_test": "2026-10-12 17:20 25/25, 3/8170 numbers not in text",
+    "free_until": "2026-10-12",
+    "promo_source": "x.com/opencode/status/2107398361733104102: free period ended 10/05, sponsored 'a few more days' from 2026-10-06"
+  },
+  "muse-spark-1.3-contributor-free": {
+    "slots": 5,
+    "status": "passed",
+    "ar_test": "2026-10-12 17:30 25/25, 0/4156",
+    "deck_test": "2026-10-12 93.6% identifiable, 0 misreads"
+  },
+  "big-pickle": {
+    "slots": 5,
+    "status": "passed",
+    "ar_test": "2026-10-12 18:05 25/25, 0/8196"
+  },
+  "exo-free": {
+    "slots": 0,
+    "status": "unavailable",
+    "ar_test": "2026-10-12: 'Model exo-free has been deprecated'"
+  },
+  "ling-3.0-flash-fin-free": {
+    "slots": 0,
+    "status": "unavailable",
+    "ar_test": "2026-10-12: 'Model is unavailable' (upstream)"
+  },
+  "ling-3.1-flash-free": {
+    "slots": 0,
+    "status": "unavailable",
+    "ar_test": "2026-10-12: 'Endpoint is unavailable' (upstream); retest by hand when it answers",
+    "free_until": null,
+    "promo_source": "x.com/opencode/status/2106059771162087587: free from 2026-10-02, no end date"
+  },
+  "step-5-preview-free": {
+    "slots": 0,
+    "status": "failed",
+    "ar_test": "2026-10-13T09:00 auto: **Facts extracted 2366** (depth rule: at least 4500 = half the passed models' median ~9000; a reader that hits the must-find list but skips most facts loses data); answered 28/110"
+  },
+  "mimo-v2.6-flash-free": {
+    "slots": 0,
+    "status": "failed",
+    "ar_test": "2026-10-13T09:00 auto: **Facts extracted 1525** (depth rule: at least 4500 = half the passed models' median ~9000; a reader that hits the must-find list but skips most facts loses data); answered 20/110"
+  },
+  "nemotron-3.5-lightning-free": {
+    "slots": 0,
+    "status": "failed",
+    "ar_test": "2026-10-13T09:00 auto: **Facts extracted 422** (depth rule: at least 4500 = half the passed models' median ~9000; a reader that hits the must-find list but skips most facts loses data); answered 12/110"
+  },
+  "nemotron-3-ultra-free": {
+    "slots": 0,
+    "status": "failed",
+    "ar_test": "2026-10-13T09:00 auto: **Facts extracted 2027** (depth rule: at least 4500 = half the passed models' median ~9000; a reader that hits the must-find list but skips most facts loses data); answered 22/110"
+  }
+}

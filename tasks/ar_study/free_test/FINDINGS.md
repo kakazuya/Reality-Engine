@@ -121,3 +121,11 @@ gross vs net) is supported by the column header.
   16k tokens/min per project; ~75 s per piece. Throughput: ~15 report pages/min per key (~20k pages/day per account).
 - **Glyph Cluster (Kilo free, stealth reasoning model): FAILS.** 18/25 must-find, 6.5% of 1,332 numbers not in the text
   (~10x Gemma/LongCat), and 7 of 26 sections timed out upstream (HTTP 408).
+
+- 2026-10-12 17:20, OpenCode Zen route (`opencode run`, production prompt ar-v1, 36k-char pieces, `ar_queue.py test-score`): **space-bunny-free PASS** - must-find 25/25, numbers not in text 3/8170 (0.0%), 110/110 answered, ~35 s/piece. Added to `zen_models.json` (6 slots).
+- 2026-10-12 17:30, Zen route: **muse-spark-1.3-contributor-free PASS** - must-find 25/25, numbers not in text 0/4156 (0.0%), 110/110 answered; about half the numbers of Space Bunny per report (less exhaustive, nothing wrong). Added (5 slots).
+- 2026-10-12 18:05, Zen route: **big-pickle PASS** - must-find 25/25, numbers not in text 0/8196 (0.0%), 110/110 answered. Added (5 slots).
+- 2026-10-13 00:40, Google API route (production prompt): **gemini-3.5-flash-lite** 24/25 (missed CON-brsr-rpt-purchases 73.65%), 0.2% not in text, 4 empty, 3,916 facts, 7 s/piece: FAIL (recall, depth). **gemini-3.1-flash-lite** 25/25, 0.9%, 3 empty, 1,189 facts (1/8 of Bunny/Pickle), 20 s/piece: FAIL on the new depth rule (>= 4,500 facts on the 110 pieces).
+- 2026-10-13 01:10, gemini-3.1-flash-lite at smaller pieces: 18k chars 24/25 (missed GES-tc-receivables), 0.7%, 2,021 facts; 9k chars see SCORE.md. Smaller pieces help 3.1 far less than 3.5.
+- 2026-10-13 03:26, **gemma-4-26b-a4b-it with the EXHAUSTIVE prompt, 36k pieces: PASS** - 25/25, 10,072 facts (was 3,078 without the instruction), 0.1% numbers not in text, 1/110 empty. Grouping check refined (regrouped vs commas added to unformatted numbers): 23/9,536 regrouped, all prose-in-value or ranges, no tenfold error; baseline Space Bunny 13/8,170. Production as Google route 3 (`run_ar_ggemma26.cmd`, 2 slots per key, 13.5k TPM pacer). The 18k and Indian-number-note variants were stopped part-way (full-size already passed).
+- 2026-10-13 06:10, Kilo: **poolside/laguna-s-2.1:free** FAIL (23/25, 2,926 facts, 2.3% not in text, 3.2% regrouped, 11/110 empty); **inclusionai/ling-3.1-flash** FAIL (32/110 answered, upstream Novita overloaded; 15/25).

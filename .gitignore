@@ -58,6 +58,7 @@ reality_engine/data/browser_profile/*
 reality_engine/data/inbox/*
 reality_engine/data/lancedb/*
 reality_engine/data/reports/*
+reality_engine/data/ar_queue/*
 !reality_engine/data/**/.gitkeep
 
 # Continuous loop runtime state (briefs, run log, agent transcripts, sessions)
@@ -171,3 +172,4 @@ tasks/ar_study/free_test/*.log
 tasks/ar_study/challenger/out/
 tasks/ar_study/challenger/out_step4/
 tasks/ar_study/challenger/out_unseen/
+reality_engine/data/zen_tmp/

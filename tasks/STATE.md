@@ -1,8 +1,51 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
-_Last updated: 2026-10-11 00:50 (main session closeout)_
+## HAND-OFF 2026-10-13 18:40 (read first; long session "Handoff copy from STATE.md" closing to save Claude usage)
 
-## HAND-OFF 2026-10-12 14:15 (read first; session "Extraction status" closed)
+**Read next:**
+- `tasks/OPENCODE_ORCHESTRATION.md`: how the OpenCode accounts are driven headlessly.
+- `tasks/ar_study/READER_FINDINGS.md`: every model test, quota and incident.
+- Config files in `reality_engine/scripts/`:
+  - `reader_profiles.json`: per-model prompt, piece size, limits and slots.
+  - `zen_models.json`: passed Zen models.
+  - `reader_watch.json`: the daily checker's state.
+
+**Running (all watchdog-managed, restart themselves; kill the python child to restart one):**
+- **Annual reports** (`ingest_annual_reports.py` routes; claims in `ar_facts.db.ar_claims` keep them apart):
+  - **Main run** (`run_ar_ingest.cmd`): Go LongCat x128 slots on BOTH Go accounts (`OPENCODE_GO_API_KEY`, `_2`),
+    plus Gemma 31B (exhaustive prompt) on 30 Google keys. About 495 pages/min, newest first.
+  - `run_ar_ggemma26.cmd`: Gemma 26B, exhaustive, ~170 pages/min.
+  - `run_ar_google.cmd`: Flash-Lite 3.5, exhaustive, 18k pieces.
+  - `run_ar_gflash31.cmd`: Flash-Lite 3.1, exhaustive, 9k pieces.
+    Both Flash-Lite workers are limited by Google's daily caps; a daily refusal rests the key 1 h.
+  - `run_ar_zen.cmd`: Zen free models, one daily allowance reset 00:00 UTC (05:30 IST), used up in ~1.5 h.
+  - Total ~800+ pages/min; ~4.3M pages left as of 10-13 16:30, about 4 days.
+- **Decks:** `run_deck_redo_deferred.cmd`, second readings. Readers: Go Step on both accounts, Kilo Step, Zen
+  Step/MiMo/Muse when the Zen quota allows. About 19,600 pages left, roughly 15-20 h.
+  - 800 pages were read by Claude Haiku via cloud batches (`claude_page_queue.py export-deferred / import-deferred`).
+- **Profile tuner** (`run_profile_tuner.cmd`): waits for Zen; finishes the exhaustive tests for Space Bunny, Muse and
+  Big Pickle; switches passing models to the exhaustive prompt; restarts the Zen worker.
+- **Resource watchdog:**
+  - restarts dead or stuck jobs, including a job that logs but reads no pages for 30 min;
+  - runs `new_reader_check.py` daily after 09:00;
+  - runs `ar_review.py` every 200 finished reports.
+
+**Decisions and open items for Shivam:**
+- Go LongCat stays on the PLAIN prompt. Exhaustive scored 23/25 with 13,413 facts. Option: retest with the
+  `exhaustive_core` variant (`ar_queue.py test-export --exhaustive --core`; run `t-lcgo-exc` exists).
+- Free models only; never a subscription's paid models (memory `feedback_free_models_only`).
+- **Claude cloud credit:**
+  - **Routines (RemoteTrigger) bill to the Pro plan, not the credit.**
+  - A cloud session Shivam starts himself at claude.ai/code does use the credit: $7 for 300 slides (~$0.02/slide,
+    inflated by an Opus start and a re-check pass). $92 left, expires 11-05.
+  - Suggested use: hard or disagreeing deck pages, not bulk.
+  - Batch recipe in memory `feedback_cloud_credit_sessions`.
+- **Spend so far:** OpenCode accounts $20.77 (2 Go subscriptions now).
+- **Pro weekly usage:** 96%, resets Friday 23:30. A very long session costs a lot per turn; start fresh sessions.
+- **Parked:** to-dos 3 (row clean-up) and 4 (CPU parser fixes). CPU page-skip rules were rejected (they lose >0.5% of
+  facts); only the year-over-year skip is in use.
+
+## Previous hand-off 2026-10-12 14:15 (superseded by the one above)
 
 **Running now (detached, kept alive by the resource watchdog; stop the watchdog BEFORE restarting a job by hand, or it
 starts a duplicate - happened 13:48):**
@@ -20,6 +63,68 @@ starts a duplicate - happened 13:48):**
    rate-limited since 2026-10-11 21:27; StepFun out of balance. 38,039 deferred + 3,003 queued left at 14:15 -> ETA
    ~Wed/Thu. Option pending Shivam: Claude Haiku 5.5 via Anthropic Batch API ~$25 for all (needs Anthropic API key).
 3. **Resource watchdog** - starts at logon; report printed into every Claude session by the SessionStart hook.
+4. **AR Zen worker (2026-10-12 16:49, Shivam: "get all annual reports done; use every free Zen model once it passes")**
+   - Process: `run_ar_zen.cmd` -> `ingest_annual_reports.py --route zen`; log `data/logs/ingest_annual_reports_zen.log`.
+   - Readers: OpenCode Zen free models listed in `reality_engine/scripts/zen_models.json` (model -> slots). It reads through
+     `opencode run` (CLI v2, background service), one call per piece, and reads oldest filing first. It is a watchdog
+     job (`ar-zen`).
+   - Why the CLI: Zen free models refuse direct API calls and custom agent prompts; the stock agent answers.
+   - Work split: claims in `ar_facts.db` table `ar_claims`. The Zen worker claims each report; the Python run skips
+     claimed reports (from its next restart). The two ends of the queue meet only weeks from now. Facts from this route
+     carry model `zen:<id>`.
+   - Admission: a model joins `zen_models.json` only after 25/25 must-find and < 1% numbers not in the text. Commands:
+     `ar_queue.py test-export / drive / test-score`. Handbook: `tasks/OPENCODE_AR_HANDBOOK.md`.
+   - Status 16:50: LongCat x6 in production. Tests running for MiMo, Step, Muse 1.3, Ling 3.1, Nemotron Lightning,
+     Nemotron Ultra, Space Bunny and Big Pickle, plus LongCat at 36k / 72k / 144k characters per piece (bigger pieces
+     mean fewer calls; attachments arrive whole). Dead: exo-free, ling-3.0-flash-fin-free; gone: muse 1.2, jev.
+   - Batch `zen01` (2 reports, claims owned by `queue-zen01`): import it once its driver finishes.
+   - Each `opencode run` call creates an OpenCode session (`ar-queue ...` titles); they can be deleted freely.
+   - RAM: about 170 MB per process.
+   - **Zen free quota is per account or IP, not per model (2026-10-12).** LongCat was refused from 17:00; at 18:31 and
+     again at 18:51, every Zen model was refused in the same second. The Zen route used up the allowance in about 2 h
+     at ~150 pages/min, with ~35 calls in flight across AR, deck and tests. It resets daily at 00:00 UTC (05:30 IST):
+     all four models answered again at 05:30 on 10-13. Next: pace Zen to the sustainable rate, AR first.
+   - **Free models are time-limited promotions** (OpenCode posts on X, dates in `zen_models.json` `free_until`):
+     LongCat ~2026-10-10 (past), Space Bunny "a few more days" from 2026-10-06, Step ~2026-10-15, Ling 3.1 from
+     2026-10-02 (no end date). Go LongCat carries ~60% of the main run's pieces, so the main run can drop to Gemma only
+     (~45 pages/min). Gemma (8 Google keys) is the only durable free reader. Options for Shivam: more Google keys, a
+     Haiku batch for ARs (~$600) or decks (~$25), or a slower finish.
+   - **Incident 2026-10-12 ~18:00-22:06: the main AR run read nothing for 4 h.** A malformed PDF made PyMuPDF spin
+     inside the run while holding Python's lock, so every reader thread stood still, and each restart reached the same
+     PDF within 30 s. The watchdog did not catch it: the log kept a line per restart. Fix: every report's text split
+     now runs in a child process with a 3-min limit (`pieces_isolated`; the year-over-year reference too, in
+     `ar_yoy.py`); a hanging PDF is marked `unreadable` and skipped.
+   - **Google route (2026-10-13 00:51)**: `run_ar_google.cmd` -> `ingest_annual_reports.py --route google`; log
+     `ingest_annual_reports_google.log`; watchdog job `ar-google`.
+     - Readers: Gemini 3.5 Flash-Lite on all 30 GEMINI keys, 18k-char pieces (~5 pages). Claims reports oldest-first
+       (owner `google-flash`), alongside the Zen worker without overlap.
+     - An empty answer (Flash-Lite returns STOP with no text on some pieces) is re-read at once by Gemma 31B and stored
+       under Gemma's name.
+     - Free quota is per model and per project: Flash-Lite 15/min, 250k TPM, 500/day per key, so ~15k pieces/day; a key
+       at its daily cap rests until PT midnight (12:30 IST).
+     - First minutes: 0.19% of numbers not in the text, 3% of pieces went to the fallback.
+   - **AR admission tests 2026-10-13** (`FINDINGS.md`):
+     - 3.5 Flash-Lite: 36k pieces 24/25 and too shallow; 18k pieces 25/25, 5,459 facts, but 28 empty pieces held 118
+       Space Bunny facts, hence the fallback.
+     - 3.1 Flash-Lite: 25/25 but only 1,189 facts (fail, depth rule).
+     - Gemma 26B: 24/25, 3,078 facts (fail).
+     - New depth rule: >= 4,500 facts on the 110 test pieces.
+     - Kilo Ling 3.1 and Laguna S 2.1 tests still running.
+     - Gemma 31B's tokens/min hit 17.9k of 16k on the AI Studio dashboard: pacer lowered to 13.5k (takes effect at the
+       main run's next restart).
+   - Register of passed models: `reality_engine/scripts/zen_models.json`. Passed: LongCat, Space Bunny, Muse 1.3,
+     Big Pickle; never retest these. A rate-limited model benches itself 20 min and retries.
+   - Paused tests (resume with `ar_queue.py drive --run t-mimo,t-step,t-nemotron,t-nemoultra`): MiMo 20/110,
+     Step 24/110, Nemotron Lightning 11/110, Nemotron Ultra 18/110. The daily new-reader check scores them when done.
+   - Daily new-reader check: `new_reader_check.py`, started by the watchdog after 09:00. It diffs the Zen/Go/Kilo free
+     lists, starts AR tests for new Zen models and auto-registers passes; its report is appended to the watchdog
+     report.
+   - Deck second readers via Zen (`*@zen` in `extract_deck_figures.py`): Step, MiMo and Muse passed the 40-page test
+     (94.2/93.7/93.6% identifiable, no misreads), but they share the same Zen quota.
+   - Year-over-year page skip (to-do 2) is live in both AR workers (`ar_yoy.py`; table `ar_skipped_pages`): ~14% of
+     pages in reports that have a previous year; no must-find page skipped.
+   - To-dos 3 and 4 (row clean-up, CPU parser fixes) are parked: the running pipeline reads every page with LLMs, so
+     they matter only if the AR run switches to the CPU-first design.
 
 **Reader test results 2026-10-11/12** (details: `reality_engine/data/reader_tests/*/VERDICT.md`,
 `tasks/ar_study/free_test/FINDINGS.md`): decks - Gemma 4 31B passes (86.9% identifiable, opt-in), Gemma 4 26B 83.8%,

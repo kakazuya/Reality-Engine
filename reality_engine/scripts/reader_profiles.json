@@ -1,0 +1,133 @@
+{
+  "_about": "Per-model reader profiles for annual-report reading (2026-10-13, Shivam: every worker calls each model per its profile). Read by ingest_annual_reports.py at start; edit and restart the worker to apply. prompt: plain = PROMPT (version ar-v1), exhaustive = PROMPT + ar_queue.EXHAUSTIVE (version ar-v1x). piece_chars: the worker's piece size (one per worker: pieces are cut per report before a reader is chosen). rpm/tpm/rpd: free-tier limits per key (Google AI Studio dashboard 2026-10-13; null = not published, paced by slots and 429 handling). slots: requests in flight per key. A reader at its rpd rests until Google's reset (PT midnight). Test evidence: tasks/ar_study/READER_FINDINGS.md. Zen models are listed in zen_models.json (passed register) and take their prompt from here.",
+  "workers": {
+    "python": {
+      "piece_chars": 36000,
+      "readers": [
+        "longcat-2.5-preview-free",
+        "gemma-4-31b-it"
+      ]
+    },
+    "zen": {
+      "piece_chars": 36000,
+      "readers": "zen_models.json"
+    },
+    "google": {
+      "piece_chars": 18000,
+      "readers": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallback": "gemma-4-31b-it"
+    },
+    "google_3.1fl": {
+      "piece_chars": 9000,
+      "readers": [
+        "gemini-3.1-flash-lite"
+      ],
+      "fallback": "gemma-4-31b-it"
+    },
+    "google_gemma-4-26b": {
+      "piece_chars": 36000,
+      "readers": [
+        "gemma-4-26b-a4b-it"
+      ],
+      "fallback": "gemma-4-31b-it"
+    }
+  },
+  "models": {
+    "longcat-2.5-preview-free": {
+      "api": "opencode-go",
+      "prompt": "plain",
+      "slots": 128,
+      "rpm": null,
+      "tpm": null,
+      "rpd": null,
+      "per_key": false,
+      "test": "25/25 Go API; exhaustive 23/25 (missed GES capcom 518.88 in an answered piece; CON SEIS 861.05), 13,413 facts: kept on plain pending Shivam; slots 32 -> 64 on 2026-10-13 14:15 (no 429 in 35 h at 32: test whether the Go account has a concurrency limit); second Go account (OPENCODE_GO_API_KEY_2, subscribed 2026-10-13 ~14:40) added as reader longcat-2.5-preview-free@go2; 64 slots x 2 accounts clean (113 + 96 pages/min, 0 errors, 14:40-15:10); 96 slots per account from 15:12; 96 slots x 2 clean (168 + 173 pages/min, 0 errors, 15:21-15:51); 128 per account from 15:53",
+      "go_keys": [
+        "OPENCODE_GO_API_KEY",
+        "OPENCODE_GO_API_KEY_2"
+      ]
+    },
+    "gemma-4-31b-it": {
+      "api": "google",
+      "prompt": "exhaustive",
+      "slots": 6,
+      "rpm": 30,
+      "tpm": 13500,
+      "rpd": 14400,
+      "per_key": true,
+      "test": "25/25, 0.4%; exhaustive test t-g31-ex pending; tpm set under the 16k limit (dashboard showed 17.9k peak at 15k pacing); exhaustive PASS 2026-10-13 06:55 after re-running 4 pieces lost to 429s: 25/25, 8,756 facts (3.3x), 0.1% not in text, 0.04% regrouped"
+    },
+    "gemini-3.5-flash-lite": {
+      "api": "google",
+      "prompt": "exhaustive",
+      "slots": 1,
+      "rpm": 15,
+      "tpm": 240000,
+      "rpd": 500,
+      "per_key": true,
+      "test": "18k exhaustive: 24/25 (miss in an empty piece, covered by fallback), 18,352 facts, 0.0%"
+    },
+    "gemini-3.1-flash-lite": {
+      "api": "google",
+      "prompt": "exhaustive",
+      "slots": 1,
+      "rpm": 15,
+      "tpm": 240000,
+      "rpd": 500,
+      "per_key": true,
+      "test": "9k exhaustive: 25/25, 7,632 facts, 0.3%"
+    },
+    "gemma-4-26b-a4b-it": {
+      "api": "google",
+      "prompt": "exhaustive",
+      "slots": 2,
+      "rpm": 30,
+      "tpm": 13500,
+      "rpd": 14400,
+      "per_key": true,
+      "test": "36k exhaustive: 25/25, 10,072 facts, 0.1%, regrouped 0.24% (no tenfold errors)"
+    },
+    "space-bunny-free": {
+      "api": "opencode-zen",
+      "prompt": "plain",
+      "slots": 6,
+      "rpm": null,
+      "tpm": null,
+      "rpd": null,
+      "per_key": false,
+      "test": "plain 25/25, 9,872 facts; exhaustive test t-bunny-ex runs when Zen quota returns"
+    },
+    "muse-spark-1.3-contributor-free": {
+      "api": "opencode-zen",
+      "prompt": "plain",
+      "slots": 5,
+      "rpm": null,
+      "tpm": null,
+      "rpd": null,
+      "per_key": false,
+      "test": "plain 25/25, 5,080 facts; exhaustive test t-muse13-ex pending Zen"
+    },
+    "big-pickle": {
+      "api": "opencode-zen",
+      "prompt": "plain",
+      "slots": 5,
+      "rpm": null,
+      "tpm": null,
+      "rpd": null,
+      "per_key": false,
+      "test": "plain 25/25, 9,459 facts; exhaustive test t-pickle-ex pending Zen"
+    },
+    "longcat-2.5-preview-free@zen": {
+      "api": "opencode-zen",
+      "prompt": "plain",
+      "slots": 6,
+      "rpm": null,
+      "tpm": null,
+      "rpd": null,
+      "per_key": false,
+      "test": "Zen copy of LongCat; follows the Go LongCat exhaustive result"
+    }
+  }
+}
