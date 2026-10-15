@@ -62,5 +62,10 @@
     "slots": 0,
     "status": "failed",
     "ar_test": "2026-10-13T09:00 auto: **Facts extracted 2027** (depth rule: at least 4500 = half the passed models' median ~9000; a reader that hits the must-find list but skips most facts loses data); answered 22/110"
+  },
+  "cat-jam-free": {
+    "slots": 3,
+    "status": "passed",
+    "ar_test": "2026-10-14T00:33 auto: **Facts extracted 12191** (depth rule: at least 4500 = half the passed models' median ~9000; a reader that hits the must-find list but skips most facts loses data)"
   }
 }

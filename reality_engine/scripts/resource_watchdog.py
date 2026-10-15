@@ -52,7 +52,7 @@ CHECK_SEC = 120
 READER_REPORT = LOGS / "reader_watch_report.md"
 AR_REVIEW_EVERY = 200   # ar_review.py after this many newly finished annual reports (Shivam 2026-10-13)
 STUCK_MIN = 30  # a managed job reading no pages (and no second readings) this long is restarted as hung
-READER_CHECK_HOUR = 9   # new_reader_check.py runs once a day after this hour (local time)
+READER_CHECK_EVERY_S = 2 * 3600   # new_reader_check.py runs every 2 h (OpenCode posts free models at any hour; 2026-10-13 Cat Jam came at 23:29)
 RESTART_GAP_MIN = 30
 MAX_RESTARTS_PER_DAY = 6
 LOW_RAM_GB = 1.5
@@ -127,13 +127,59 @@ def job_procs(job):
     return out
 
 
+READER_DROP_EVERY_S = 30 * 60
+
+
+def reader_drops():
+    """Per annual-report reader family: pages in the last hour vs its best hour of the last 24 h (2026-10-15, Shivam: the
+    watchdog must catch a reader slowing down by itself; Gemma 26B ran at ~5% for 13 h unnoticed because only whole jobs
+    were watched). Also flags a burst of reports marked unreadable. Returns (kind, where, text) incidents."""
+    import sqlite3
+    out = []
+    try:
+        con = sqlite3.connect(f"file:{ROOT / 'reality_engine' / 'data' / 'ar_facts.db'}?mode=ro", uri=True, timeout=60)
+        since = (datetime.now() - timedelta(hours=24)).isoformat(timespec="seconds")
+        fam = ("CASE WHEN model LIKE 'longcat%' THEN 'LongCat' WHEN model LIKE 'cat-jam%' THEN 'Cat Jam' "
+               "WHEN model LIKE 'zen:%' THEN 'Zen' WHEN model LIKE 'gemma-4-26b%' THEN 'Gemma 26B' "
+               "WHEN model LIKE 'gemma-4-31b%' THEN 'Gemma 31B' WHEN model LIKE 'gemini-3.5%' THEN 'Flash-Lite 3.5' "
+               "ELSE 'Flash-Lite 3.1' END")
+        rows = con.execute(f"SELECT {fam}, substr(ts, 1, 13), SUM(page_to - page_from + 1) FROM ar_pieces "
+                           "WHERE status='ok' AND ts >= ? GROUP BY 1, 2", (since,)).fetchall()
+        last_hour = (datetime.now() - timedelta(hours=1)).strftime("%Y-%m-%dT%H")
+        by = {}
+        for f, h, p in rows:
+            by.setdefault(f, {})[h] = p or 0
+        for f, hours in by.items():
+            best = max(hours.values())
+            now_p = hours.get(last_hour, 0)
+            if best >= 3000 and now_p < 0.3 * best:   # a reader that mattered (>= 50 pages/min at its best) fell under 30%
+                out.append(("reader_drop", f, f"{now_p / 60:.0f} pages/min in the last full hour vs {best / 60:.0f} at its "
+                            f"best in 24 h (quota, provider outage, or our own bench/pacing: check before assuming)"))
+        bad = con.execute("SELECT COUNT(*) FROM ar_docs WHERE status='unreadable' AND ts >= ?",
+                          ((datetime.now() - timedelta(minutes=30)).isoformat(timespec="seconds"),)).fetchone()[0]
+        if bad >= 5:
+            out.append(("unreadable_burst", "ar", f"{bad} reports marked unreadable in 30 min (killed children? bad PDFs?)"))
+        con.close()
+    except Exception as e:
+        out.append(("monitor_failed", "reader_drops", str(e)[:150]))
+    return out
+
+
 def orphan_workers():
     """multiprocessing children whose parent is gone, running in this project's folder."""
     out = []
     for p in psutil.process_iter(["name", "cmdline", "ppid"]):
         try:
             cmd = " ".join(p.info["cmdline"] or [])
-            if (p.info["name"] or "").lower() != "python.exe" or "multiprocessing.spawn" not in cmd:
+            if (p.info["name"] or "").lower() != "python.exe":
+                continue
+            # AR report-cutting children (ingest_annual_reports --pieces-json): orphaned, or past the parent's 3-min limit
+            # (2026-10-14: three orphans read the disk at ~1 GB/s for up to 15 h after their parents were killed)
+            if "--pieces-json" in cmd:
+                if not psutil.pid_exists(p.info["ppid"]) or time.time() - p.create_time() > 300:
+                    out.append(p)
+                continue
+            if "multiprocessing.spawn" not in cmd:
                 continue
             m = re.search(r"parent_pid=(\d+)", cmd)
             if psutil.pid_exists(int(m.group(1)) if m else p.info["ppid"]):
@@ -294,7 +340,7 @@ def write_report(status_lines):
         out.append("- none")
     for r in sorted(inc, key=lambda r: r["last"], reverse=True)[:40]:
         out.append(f"- **{r['kind']}** [{r['key']}] {r['first'][5:16]} -> {r['last'][5:16]} (x{r['count']}): {r['detail']}")
-    try:   # daily new-reader check (new_reader_check.py), started from the loop in main()
+    try:   # 2-hourly new-reader check (new_reader_check.py), started from the loop in main()
         out += ["", READER_REPORT.read_text(encoding="utf-8").strip()]
     except OSError:
         pass
@@ -396,6 +442,11 @@ def run():
             inc.add("low_ram", "machine", f"{ram:.1f} GB free; largest: " + ", ".join(
                 f"{p.info['name']} pid {p.pid} {p.info['memory_info'].rss / 1e9:.1f} GB" for p in big if p.info["memory_info"]))
 
+        if time.time() - st.get("reader_drop_ts", 0) >= READER_DROP_EVERY_S:
+            st["reader_drop_ts"] = time.time()
+            for kind, where, text in reader_drops():
+                inc.add(kind, where, text)
+
         orphans = orphan_workers()
         if orphans:
             inc.add("orphans_killed", "project", f"killed {len(orphans)} orphaned workers "
@@ -452,22 +503,29 @@ def run():
                         kill_tree(o)
                     start_cmd(js["target"])
                     js["restarts"].append(time.time())
-        today = datetime.now().strftime("%Y-%m-%d")
-        if datetime.now().hour >= READER_CHECK_HOUR and st.get("reader_check_day") != today:
-            st["reader_check_day"] = today
+        if time.time() - st.get("reader_check_ts", 0) >= READER_CHECK_EVERY_S:
+            st["reader_check_ts"] = time.time()
             subprocess.Popen([sys.executable, "-m", "reality_engine.scripts.new_reader_check"], cwd=ROOT,
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                              creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
-            log.info("daily new-reader check started")
+            log.info("new-reader check started")
         try:   # AR extraction review after every AR_REVIEW_EVERY newly finished reports (ar_review.py)
             import sqlite3
             con = sqlite3.connect(f"file:{ROOT / 'reality_engine' / 'data' / 'ar_facts.db'}?mode=ro", uri=True, timeout=30)
             done_n = con.execute("SELECT COUNT(*) FROM ar_docs WHERE status='done'").fetchone()[0]; con.close()
-            if done_n >= st.get("ar_review_at", 0) + AR_REVIEW_EVERY:
-                st["ar_review_at"] = done_n
+            # 2026-10-14: with Cat Jam 200 reports finish in ~4 min, faster than one review runs; three reviews piled up
+            # (a core each, reading ar_facts.db) and the main run fell from ~950 to ~120 pages/min. One review at a time,
+            # at most hourly.
+            running = any("reality_engine.scripts.ar_review" in " ".join(p.info["cmdline"] or [])
+                          for p in psutil.process_iter(["cmdline"]))
+            if (done_n >= st.get("ar_review_at", 0) + AR_REVIEW_EVERY and not running
+                    and time.time() - st.get("ar_review_ts", 0) >= 12 * 3600):   # 2026-10-15: a run scans all facts (a core +
+                # ~0.9 GB for 30+ min, and its long read blocks the WAL checkpoint: WAL grew to ~1 GB); twice a day is enough
+                st["ar_review_at"] = done_n; st["ar_review_ts"] = time.time()
                 subprocess.Popen([sys.executable, "-m", "reality_engine.scripts.ar_review"], cwd=ROOT,
                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+                                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                                 | subprocess.BELOW_NORMAL_PRIORITY_CLASS)
                 log.info("AR review started at %d finished reports", done_n)
         except Exception as e:
             log.warning("AR review trigger failed: %s", e)

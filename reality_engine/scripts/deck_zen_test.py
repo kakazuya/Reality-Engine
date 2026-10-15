@@ -16,7 +16,7 @@ import pymupdf
 
 from reality_engine.scripts import extract_deck_figures as x
 from reality_engine.scripts import reader_quality_test as q
-from reality_engine.scripts.ar_queue import ANSI, opencode_exe
+from reality_engine.scripts.ar_queue import ANSI, NO_WINDOW, opencode_exe
 
 OUT = x.OUT_DB.parent / "reader_tests" / f"{date.today().isoformat()}-zen"
 ASK = ("Read the attached slide image and follow the instructions in the attached text file exactly. "
@@ -27,7 +27,7 @@ def call(exe, model, prompt_file, img, timeout=600):
     t = time.time()
     p = subprocess.run([exe, "run", "-m", f"opencode/{model}", "--title", f"deck-test {model} {img.stem}", ASK,
                         "-f", str(prompt_file), "-f", str(img)], cwd=OUT, stdin=subprocess.DEVNULL, capture_output=True,
-                       text=True, encoding="utf-8", errors="replace", timeout=timeout)
+                       text=True, encoding="utf-8", errors="replace", timeout=timeout, creationflags=NO_WINDOW)
     out = "\n".join(l for l in ANSI.sub("", p.stdout).splitlines() if not l.startswith("> ")).strip()
     return {"output": out, "seconds": round(time.time() - t, 1), "rc": p.returncode, "stderr": ANSI.sub("", p.stderr)[-400:]}
 

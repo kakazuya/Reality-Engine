@@ -1,6 +1,198 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
-## HAND-OFF 2026-10-13 18:40 (read first; long session "Handoff copy from STATE.md" closing to save Claude usage)
+## HARD ANNUAL REPORTS (Haiku session, 2026-10-16 ~03:00; brief `tasks/HARD_AR_HAIKU_SESSION.md`)
+
+**Hard set:** 345 reports with > 10% of numbers not found in the text (43,953 of ~148k numbers).
+- Cause, by the page kind holding most misses (`ar_queue diagnose`, CSV `reality_engine/data/ar_queue/hard_diagnosis.csv`):
+  - garbled OCR layer / scans: 111 reports, 15.1k misses;
+  - fonts that encode digits: 46 reports, 14.5k misses;
+  - clean text: 188 reports, 14.0k misses. Mostly LongCat and Gemma 26B misreads; several (PPAP, ATUL, LUPIN) were
+    really mixed-font pages, which the new rule fixes.
+- SDC is still the only unreadable PDF (text split times out).
+
+**Free fix (no quota):** `value_check` now decodes fonts that store 0-9 as ten consecutive code points anywhere in
+Unicode (`shifted_digit_maps`). Examples: OIL FY2020 uses U+0144 = 0; PPAP FY2024 uses control characters, U+0010 = 0.
+- The base is chosen by the years it decodes, so neighbouring blocks are not mistaken for it.
+- Re-checked all 345 reports (`ar_queue recheck --write`): not_found 43,953 -> 35,736 (8,217 numbers now verified).
+  Examples: PPAP 851 -> 81, OIL 2,560 -> 1,878, ATUL 601 -> 280.
+- False-match test: random 4-digit numbers "found" 1-3% (old rule 0-1%); decimals 0%.
+
+**Haiku re-read path (`ar_queue.py`):**
+- Commands: `export-docs`, `missing`, `import-docs`.
+- Clean pages go as 18k text pieces; garbled, encoded or no-text pages go as page images.
+- Each image also gets a RapidOCR text file. The import checks Haiku's numbers against the text layer, then against
+  that OCR text (`value_check='ocr'`).
+- Facts are stored as model `claude-haiku-5-5`, prompt_version `ar-v1x-haiku`.
+- A report's older facts on the re-read pages are replaced only if Haiku's not_found share is lower AND Haiku has at
+  least 80% as many verified numbers. Replaced rows move to `ar_facts_replaced`. Losing Haiku answers are stored as
+  model `claude-haiku-5-5:rejected`.
+- **Run folders must live in a worktree.** The worktree guard stops helper agents writing into the main checkout, so
+  runs are under `.claude/worktrees/wonderful-chatterjee-4788f5/reality_engine/data/ar_queue/` (`--run` takes an
+  absolute path).
+- **Do not remove that worktree until h02 is finished.** Also, `reality_engine/data/ar_queue/h01-sinclair` in the main
+  checkout is an unused copy; it can be deleted.
+
+**Incident (mine, repaired):** while editing `value_check` at 00:07 IST, `ingest_annual_reports.py` had a syntax error for ~2 min. Workers spawn `--pieces-json` children from that file, so 124 good reports were marked `unreadable` ('text split failed ... source_to_code'). At ~03:00 I deleted those rows and their 122 Gemma-26B route claims; they are read on the next run pass. Lesson: edit live scripts by writing a checked copy first (the later edits compile before writing).
+
+**Haiku results so far:** 12 reports imported; 11 replaced, 1 kept old (KAIZENAGRO).
+- Before: 711 numbers, 418 verified. After: 3,984 numbers, 3,732 verified.
+- SINCLAIR FY2020 (validation): 58 numbers, 98% not found -> 561 numbers, 1% not found.
+- Quota: 3 waves (~27 agents, ~4.5M Haiku tokens).
+  - The 5-hour window went 26% -> 75%, shared with the deck Haiku session.
+  - Weekly went 32% -> 42%.
+  - About 0.5-0.8% of the 5-hour window per agent.
+
+**Status at hand-over (2026-10-16 ~06:00, sessions being killed):**
+- Run h02-scanned is now copied to the MAIN checkout: `reality_engine/data/ar_queue/h02-scanned` (397 of 638 answers). Use `--run reality_engine/data/ar_queue/h02-scanned` (or just `--run h02-scanned`). Helper agents cannot write there from a worktree session; run the next waves from a session opened on the main checkout.
+- Answered: b000-b035, b038, b039. b036/b037 were interrupted (may be partial; `ar_queue missing` lists them). b040-b063 not started.
+- Imported so far: SINCLAIR + 15 h02 reports (11 + POPULARES, SUPTANERY, SATANIBRG, NBL replaced; KAIZENAGRO kept old). Reports finished by waves 3-4 are NOT imported yet: run `python -m reality_engine.scripts.ar_queue import-docs --run h02-scanned` (already-imported reports are skipped since the 06:00 fix).
+- Fixed: a second import used to re-tag Haiku facts as rejected; 3,842 rows on 11 reports were restored.
+- Not committed: my changes are in `reality_engine/scripts/ar_queue.py` (hard-report commands) and `ingest_annual_reports.py` (`shifted_digit_maps` + `value_check`), mixed with other sessions' uncommitted edits in the same files.
+
+**Next:**
+- Finish run h02-scanned after the 5-hour reset: 44 folders, b020-b063, 438 pages of FY2024-26 scanned reports.
+  `ar_queue missing --run <abs path>` lists them. Launch waves of 10, then `import-docs --run <abs path>`.
+- Then the other 87 garbled reports (~7.6k image pages; too many for Haiku alone).
+  - **Free alternative to test first:** RapidOCR's text of these pages is clean (SINCLAIR p26). Feeding the OCR text to
+    the free readers as a new text layer would cover all 111 garbled reports at no quota.
+- **FIXED 2026-10-16 ~02:00 (resume side session): reports marked `done` with unread pages.**
+  - Bug 1: `main()` resumed by piece index (`ok = {piece ...}`), whatever the prompt_version or piece size. A failed
+    piece was hidden by an ok piece with the same index from another split. These pieces had failed on transient
+    HTTP 500/429/503 errors.
+  - Bug 2 was bigger. Two splits with the same prompt_version reused piece numbers, so `INSERT OR REPLACE` overwrote the
+    other split's ok row. The facts `DELETE ... WHERE doc_id=? AND piece=?` then deleted that split's facts. Those pages
+    lost their record and their facts. Example: doc 138108 has two ar-v1 splits, and pages 97-108 are gone.
+  - Fix in `ingest_annual_reports.py`:
+    - `unread_pieces()` resumes by page: a page counts as read if any ok piece of any version covers it.
+    - Only the unread pages of a piece are sent.
+    - A piece keeps its number only if no row already uses that number for another page range. Otherwise it gets a new
+      number, so `INSERT OR REPLACE` and the facts DELETE can no longer touch another split.
+    - Status at the end of a report is page-based: `partial` only if one of the split's text pages is still unread.
+    - The live file was replaced atomically after a compile check, so workers never saw a broken file. No new
+      `unreadable` rows appeared.
+  - Before: 220 `done` reports had error-piece holes (252 pieces, 3,005 pages). An exact scan of every `done` report's
+    uncovered pages (text >= 40 characters, the split's rule) found **1,858 `done` reports with 21,038 unread text
+    pages**. That set includes all 220.
+  - Re-marked those 1,858 as `partial`, with error 're-marked 2026-10-16: unread pages (page-based resume)'. Reopened
+    their 37 `imported` claims to `claimed`; the old ts lets the main run take them.
+  - After: 0 `done` reports with error-piece holes. 0 `done` reports with more uncovered pages than blank pages. The
+    other 6,349 `done` reports with gaps have only blank pages.
+  - `partial` is now 2,043 reports (402 with error-piece holes, 4,526 pages).
+  - **Takes effect only when a worker restarts.** Each pass builds its to-do list at start, and the running parents
+    still hold the old code until then: index resume, and the overwrite bug for reports they resume. Workers were
+    NOT restarted. Restart them when convenient; the next pass reads only the unread pages.
+  - Not fixed: `ar_queue.py import-docs` (the old OpenCode path) still writes by piece index with INSERT OR REPLACE.
+
+## HAND-OFF 2026-10-15 07:20 (read first; overnight co-pilot session, Claude checking every 30 min)
+
+**Annual reports:** 13,550 done (2.12M pages), ~20k left. Speed ~800-1,340 pages/min. Biggest in the 05:30-06:15 burst:
+Cat Jam ~20k pages, then Zen; afterwards LongCat ~340, Gemma 26B ~290, Gemma 31B ~125. Flash-Lite is capped until 12:30.
+ETA ~2.5-3 days.
+
+**Fixed overnight (all in `ingest_annual_reports.py` unless noted):**
+- **Gemma 26B (~5% speed for 13 h):** bilingual reports (PSU banks) have Hindi pages at ~2 tokens/char, so pieces of
+  46-76k tokens could never fit the 16k tokens/min limit. They bounced forever and starved every thread.
+  - Hindi pages are now skipped when the report has at least as many English pages (`ar_skipped_pages.containment='hindi'`).
+  - Google routes release reports with a still-oversized piece to the main run.
+  - The pacer uses a script-aware token estimate.
+  - Result: 26B back to 170-290 pages/min.
+- **The 26B fallback (Gemma 31B) failing no longer rests healthy 26B keys** (`FallbackFailed`).
+- **Benches:** Google keys rest 2 min on 500/503. Go readers rest 3 min. No bench runs past 00:00 UTC (05:30 IST), when
+  Zen and Cat Jam reset.
+- **Cat Jam Go budget confirmed DAILY, reset 05:30 IST.** It now reads exhaustive 18k: 20 facts/page, ~20k pages a day.
+- **Watchdog (`resource_watchdog.py`):**
+  - per-reader drop check (`reader_drops()`) and an unreadable-burst incident;
+  - orphaned `--pieces-json` children are killed (three orphans read ~1 GB/s for up to 15 h on 10-14 after my restarts);
+  - AR review at most every 12 h at low priority (it scanned all facts hourly and bloated the WAL to ~1 GB).
+- **Main-run piece size 18k** (Shivam): LongCat +30% facts per report.
+- **Font-encoded digits (Coptic letters)** are now verified by `value_check`; 17 reports re-checked.
+
+**Local Haiku work (10-15 night):** see `tasks/LOCAL_HAIKU_SESSION.md`. Batch 7: b000-b021 done locally,
+b022-b087 left. Batch 8: all 76 folders left. Then deck no-figure pages and hard annual reports.
+
+**Open:**
+- FIXED 08:20: 'Expecting value' / ar_yoy 'invalid literal' unreadable reports. MuPDF printed colour-profile warnings
+  to stdout ahead of the JSON. Children now silence MuPDF and the parent parses from the JSON. 21+26 reports re-queued;
+  only SDC (a malformed PDF) is still unreadable.
+- FIXED 12:41: Flash-Lite fallback is now Gemma 26B (31B outage starved the Flash-Lite routes; 3.5 FL 0 -> 105 pages/min).
+- FIXED 07:45: a single Go 429 now pauses only that thread (~30 s); the whole reader rests only at 20+ 429s/min.
+  LongCat went from 280 to 467 pages/min.
+- Kilo Step: StepFun upstream refused everything ('current 151, limit 150'). Retry at a quieter hour.
+- Cloud credit, hard deck pages:
+  - Batches 1-3 imported: 2,333 pages, $3 + $7 + (batch 3 cost: ask Shivam).
+  - 5,202 disagreement pages left.
+  - `export-hard` works. Fix `CLOUD_TASK.md` paths after export: they must be relative to the repo root (see this
+    session's patch script).
+  - From batch 4, Haiku also writes `CHART | ...` trend lines for charts without printed values. Views `unlabeled_charts`
+    and `unlabeled_charts_all` are in `deck_figures.db`.
+- Gemma 31B outage pattern: fine roughly 04:00-10:00 IST, HTTP 500 much of the rest of the day.
+
+## Previous hand-off 2026-10-14 08:05 (read first; overnight session "Session progress check", Claude ran as co-pilot)
+
+**Numbers at 08:00:**
+- Annual reports: 9,198 done (1.38M pages); ~24.4k left (~3.2M pages after the year-over-year skip).
+- Speed 07:00-08:00: ~1,450 pages/min. Cat Jam 772, LongCat 272, Gemma 31B 211, Gemma 26B 168, Zen 27, Flash-Lite ~4
+  (daily caps used). ETA about 1.5-2 days if LongCat and Cat Jam stay free.
+- Decks, second readings: 4,557 waiting + 3,003 queued; ~750/h on Step (Kilo, Go account 2). ETA ~18:00 today.
+- Then the $92 cloud credit goes to the hardest deck pages (Shivam: wait until all second readings are done).
+  Keep each Haiku agent under 100K tokens of context: above that Haiku bills 5x. ~15 slides per agent.
+
+**New readers and settings (reader_profiles.json):**
+- **Cat Jam** (free on Go, "limited time", text only, so no decks).
+  - Passed the AR test: 25/25, 12,191 facts plain; 20,846 exhaustive.
+  - Exhaustive prompt from 06:55. On the Go API production pieces show ~110 facts, the same as plain. A Go-API exhaustive
+    test (`t-go-catjam-ex`) was running at 08:00 to settle whether exhaustive helps there.
+  - Go slots: 64 per account. 128 gave 429s, and 128 per account also tripped an upstream quota at 01:56.
+  - **Quota = a token budget shared by both Go accounts:** ~84M output tokens (~40-46k pages) per window, the same
+    both times it was cut (01:58 and ~08:00). Still refused at 14:11; likely a daily budget reset at 00:00 UTC
+    (05:30 IST); confirm with the first answer after 05:30 IST on 10-15. Slots only change how fast the budget is spent.
+  - The exhaustive prompt helps on Zen (1.7x) but not on the Go API (~110 facts/piece, the same as plain). It costs no
+    extra budget, so it stays.
+  - Zen: 3 slots.
+- **LongCat:** settled at 128 per account.
+  - 192 and 160 drew its first-ever 429s.
+  - With Cat Jam running, LongCat reads ~22 pieces/min per account at either 128 or 160, so the Go accounts seem to cap
+    total in-flight work.
+- **Zen:** Space Bunny and Muse moved to the exhaustive prompt by the tuner (2.5x facts).
+  - 72k pieces were tested on Cat Jam and rejected: 31% fewer facts per report.
+- **Google:** 37 keys. Shivam made 7 more projects on one account; per key they match the old keys (Gemma 26B 327 vs 322
+  pages/key/h). `gemini_keys()` now loads every `GEMINI_API_KEY_n`, so more keys need only a restart.
+  - Shivam plans 10 more on 10-14.
+  - ToS note: Google APIs ToS 2d forbids circumventing limits (see `tasks/AR_CONTINGENCY.md`).
+
+**Fixes made overnight (all live):**
+- `ingest_annual_reports.py`:
+  - Go readers rest on a 429 (Go 3 min, Zen 20 min) instead of burning retries.
+  - Go readers got the missing `bench_until`. Its absence silently killed every Cat Jam thread 02:25-06:53.
+  - Every reader thread is now guarded: a crash is logged and the thread restarts.
+  - Clearer progress-log labels.
+- `resource_watchdog.py`:
+  - New-reader check every 2 h (was daily; Cat Jam arrived at 23:29).
+  - AR review at most once an hour, one at a time. Three stacked reviews cut the main run to ~120 pages/min for ~20 min.
+- `new_reader_check.py`: also auto-tests new free Go models via the Go API; a pass joins the main run at 32 slots.
+- All `opencode` calls run without a console window. These were the blank windows Shivam saw.
+- `reader_quality_test.py`:
+  - `--exhaustive` deck prompt.
+  - `gx:<google model>@g<n>` for any Google model on any key.
+  - Per-model reports.
+
+**Tests:**
+- LongCat exhaustive_core: FAIL 22/25. LongCat stays on the plain prompt.
+- Cohere North Mini Code (Kilo): FAIL 19/25, 4,492 facts. Kept for coding work.
+- Google deck test with the exhaustive prompt: mostly blocked by Google overload (503) at US peak.
+  - No free tier: Omni 1.1, Argon, 3.1 Pro.
+  - Retired: 2.5 Flash and Pro.
+  - Re-run the 3.5/3.6/3.7/3.8 Flash and 3.5 Flash-Lite deck tests after 12:30 IST; failed pages are re-read only.
+
+**Files written:**
+- `tasks/AR_CONTINGENCY.md`: what to do if LongCat stops being free. CPU-first build parked by Shivam; Go auto-test done.
+- `tasks/FREE_MODELS_IDLE.md`: free models with spare capacity, for coding and strategy work after ingestion.
+
+**Open for Shivam:**
+- Add the 10 new Google projects, then restart the Google workers (or ask Claude to).
+- Cat Jam's quota window: read the main-run log for `cat-jam ... rate-limited` and the first answer after it.
+
+## Previous hand-off 2026-10-13 18:40 (superseded by the one above)
 
 **Read next:**
 - `tasks/OPENCODE_ORCHESTRATION.md`: how the OpenCode accounts are driven headlessly.

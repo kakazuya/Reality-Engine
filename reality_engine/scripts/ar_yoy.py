@@ -45,7 +45,8 @@ def doc_shingles(path):
         return None
     if p.returncode != 0:
         return None
-    return frozenset(int(x, 16) for x in p.stdout.split())
+    # 2026-10-15: MuPDF warnings ("MuPDF error: format error: ...") land on stdout; keep only hex tokens
+    return frozenset(int(x, 16) for x in p.stdout.split() if re.fullmatch(r"[0-9a-f]{1,16}", x))
 
 
 def previous_report(d, by_isin_fy):
@@ -85,6 +86,7 @@ def repeated_pages(pages, prev_path):
 
 if __name__ == "__main__":   # child: read one PDF, print its shingle hashes
     import pymupdf
+    pymupdf.TOOLS.mupdf_display_errors(False); pymupdf.TOOLS.mupdf_display_warnings(False)   # stdout carries data only
     doc = pymupdf.open(sys.argv[1])
     hs = set()
     for page in doc:

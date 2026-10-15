@@ -707,7 +707,7 @@ class Client:
                                 "Read the attached slide image and follow the instructions in the attached text file exactly. "
                                 "Do not use any tools. Reply with the requested output only.", "-f", str(txt), "-f", str(img)],
                                cwd=tmp, stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=self.timeout * 2)
+                               errors="replace", timeout=self.timeout * 2, creationflags=0x08000000)  # no console window
         except subprocess.TimeoutExpired:
             return -1, "opencode run timed out", None
         finally:

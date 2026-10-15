@@ -49,9 +49,35 @@ def numbers(facts):
     return {round(abs(f["value"]), 4) for f in facts if f.get("value") is not None}
 
 
+# Deck EXHAUSTIVE prompt (2026-10-14, Shivam: test Google's multimodal models on an exhaustive deck prompt). Appended to
+# the production prompt; it targets what the score measures: every printed figure, each with a label, period and unit
+# specific enough to identify it.
+DECK_EXHAUSTIVE = """
+Be EXHAUSTIVE and specific. Work through the slide region by region: title, every table, every chart, every KPI box or
+callout, and every number in body text or footnotes that is a business figure.
+- Tables: one line per cell. metric = the row label plus the column label when the column names a measure or segment.
+- Charts: one line per data label, bar, line point or pie slice. metric = series/legend name plus the axis category.
+- Make every label specific: include the segment, product, geography or business it belongs to and the measure
+  (e.g. 'Domestic Formulations Revenue', not 'Revenue'). Two figures must never share the same metric + period + unit.
+- period: from the column header, axis, caption or slide title. Growth figures name their comparison (e.g. 'Q1FY27 YoY').
+- unit: from the cell, the table/chart header, the axis title or a slide-level note such as '(Rs Cr)' or 'in Mn'.
+- List a number again if it appears under a different label. Never output a number that is not printed on the slide."""
+
+
 def variant(name):
     """'<model>+low' / '+medium' tests a reader with that reasoning effort (same key, same quotas).
-    'cc:<id>' tests a CodeCraft API model (CODECRAFT_API_KEY; test only, never a production reader)."""
+    'cc:<id>' tests a CodeCraft API model (CODECRAFT_API_KEY; test only, never a production reader).
+    'gx:<google model id>@g<n>' tests any Google AI Studio model on key n (GEMINI_API_KEY, _2.._30), native API;
+    paced at 4/min and 20/day per key (the smallest free Flash quota) unless it is a Gemma or Flash-Lite model."""
+    if name.startswith("gx:") and name not in x.MODELS:
+        mid, n = name[3:].rsplit("@g", 1)
+        lite = "gemma" in mid or "flash-lite" in mid
+        body = ({"maxOutputTokens": 8000, "thinkingConfig": {"thinkingLevel": "minimal"}} if "gemma" in mid
+                else {"maxOutputTokens": 16000})
+        x.MODELS[name] = {"api": "gemini_native", "id": mid, "key_env": "GEMINI_API_KEY" + ("" if n == "1" else f"_{n}"),
+                          "price": (0.0, 0.0), "capped": False, "ceiling": 4 if lite else 2,
+                          "rpm": 14 if lite else 4, "rpd": 490 if lite else 20, "body": body}
+        return
     if name.startswith("cc:") and name not in x.MODELS:
         x.MODELS[name] = {"api": "chat", "id": name[3:], "base": "https://codecraftapi.com/v1", "key_env": "CODECRAFT_API_KEY",
                           "price": (0.0, 0.0), "capped": False, "ceiling": 4, "body": {"max_tokens": 16000}}
@@ -62,7 +88,8 @@ def variant(name):
         x.MODELS[name] = cfg
 
 
-def run(models):
+def run(models, exhaustive=False):
+    tag = "!ex" if exhaustive else ""
     for m in [r for mm in models for r in mm.split("|")]:
         variant(m)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -82,14 +109,18 @@ def run(models):
 
     def one(args):
         m, (pg, task, b64, img) = args
-        f = OUT / "answers" / m.replace("/", "_").replace(":", "_").replace("|", "+") / f"{img.stem}.json"
+        f = OUT / "answers" / (m.replace("/", "_").replace(":", "_").replace("|", "+")[:120] + tag) / f"{img.stem}.json"
         if f.exists() and "error" not in json.loads(f.read_text(encoding="utf-8")):
             return m, pg, img, json.loads(f.read_text(encoding="utf-8"))
         f.parent.mkdir(parents=True, exist_ok=True)
         # "a|b": one model on several keys, pages split between them (tight free quotas, e.g. 20/day)
         keys = m.split("|"); reader = keys[tasks.index((pg, task, b64, img)) % len(keys)]
         try:
-            res = client.read(reader, b64, x.build_prompt(task), tries=5)
+            # 2026-10-14: a 20/day model hit its cap and every worker slept 11 h. Now: one process per model, quota 429s
+            # bench only 2 min (BENCH_QUOTA_SEC below; per-minute limits clear), spread a 20/day model over >= 8 keys
+            # so no key reaches its cap, and 20/day models get fewer retries (each retry spends a call)
+            res = client.read(reader, b64, x.build_prompt(task) + (DECK_EXHAUSTIVE if exhaustive else ""),
+                              tries=3 if x.MODELS[reader].get("rpd", 10**6) <= 50 else 5)
             res = {"output": res["output"], "seconds": res["seconds"]}
         except Exception as e:
             res = {"error": str(e)[:300]}
@@ -101,7 +132,8 @@ def run(models):
     with ThreadPoolExecutor(8) as ex:
         results = list(ex.map(one, jobs))
 
-    md = [f"# Reader quality test, {date.today()} ({len(tasks)} pages, reference: Claude Haiku 5.5 + text layer)", "",
+    md = [f"# Reader quality test, {date.today()} ({len(tasks)} pages, reference: Claude Haiku 5.5 + text layer; "
+          f"prompt: {'EXHAUSTIVE' if exhaustive else 'production'})", "",
           "| model | answered | figures | identifiable | Haiku's numbers found | unsupported numbers | median s |", "|---|---|---|---|---|---|---|"]
     detail = []
     for m in models:
@@ -116,14 +148,22 @@ def run(models):
                 unsup.append((img.name, v, next((z["metric"] for z in f if z.get("value") is not None and round(abs(z["value"]), 4) == v), "")))
         ident = x.identifiable_share(facts_all) or 0
         secs.sort()
-        md.append(f"| {m} | {len(ok)}/{len(rs)} | {len(facts_all)} | {ident:.1%} | {found}/{refn_all} ({found / max(1, refn_all):.0%}) | "
+        md.append(f"| {m.split('|')[0]}{' x' + str(m.count('|') + 1) + ' keys' if '|' in m else ''}{tag} | {len(ok)}/{len(rs)} | {len(facts_all)} | {ident:.1%} | {found}/{refn_all} ({found / max(1, refn_all):.0%}) | "
                   f"{len(unsup)} | {secs[len(secs) // 2] if secs else '-'} |")
         detail += [f"", f"## {m}: unsupported numbers (check on the page image)"] + [f"- {i}: {v} ({lab[:80]})" for i, v, lab in unsup[:80]]
-    (OUT / "report.md").write_text("\n".join(md + detail) + "\n", encoding="utf-8")
-    print("\n".join(md)); print(f"\nreport: {OUT / 'report.md'}")
+    first = models[0].split("|")[0].replace("gx:", "").split("@")[0].replace("/", "_").replace(":", "_")
+    rep = OUT / f"report{'_ex' if exhaustive else ''}_{first}_{time.strftime('%H%M')}.md"
+    rep.write_text("\n".join(md + detail) + "\n", encoding="utf-8")
+    print("\n".join(md)); print(f"\nreport: {rep}")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--models", required=True)
-    run(ap.parse_args().models.split(","))
+    ap.add_argument("--models", required=True, help="comma-separated; 'a|b' = one model on several keys, pages split")
+    ap.add_argument("--exhaustive", action="store_true", help="append DECK_EXHAUSTIVE to the production prompt")
+    a = ap.parse_args()
+    import os
+    from reality_engine.scripts.resource_watchdog import user_env
+    os.environ.update({k: v for k, v in user_env().items() if k not in os.environ})   # keys added after this shell started
+    x.BENCH_QUOTA_SEC = 120   # tests: a quota 429 is usually per-minute; production keeps 30 min
+    run(a.models.split(","), a.exhaustive)

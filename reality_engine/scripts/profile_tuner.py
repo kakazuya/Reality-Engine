@@ -70,7 +70,7 @@ def zen_answers():
     try:
         p = subprocess.run([ar_queue.opencode_exe(), "run", "-m", "opencode/big-pickle", "--title", "tuner zen probe",
                             "Reply with exactly: ok"], stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=120)
+                           encoding="utf-8", errors="replace", timeout=120, creationflags=ar_queue.NO_WINDOW)
         return bool(re.search(r"(^|\s)ok(\s|$)", ar_queue.ANSI.sub("", p.stdout), re.I))
     except Exception:
         return False

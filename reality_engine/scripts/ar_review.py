@@ -51,18 +51,22 @@ def main():
              f"Facts stored: {n_facts:,}.", ""]
 
     # 1. boilerplate items
+    # 2026-10-15: full scans of ~3M facts ran for hours and blocked the WAL checkpoint; review the latest 300k facts
+    lo = (c.execute("SELECT MAX(rowid) FROM ar_facts").fetchone()[0] or 0) - 300_000
     cnt = Counter()
-    for (item,) in c.execute("SELECT item FROM ar_facts"):
+    for (item,) in c.execute("SELECT item FROM ar_facts WHERE rowid > ?", (lo,)):
         cnt[norm_item(item)] += 1
     lines += ["## 1. Most frequent fact items (digits masked)", "", "| item | facts | share |", "|---|---|---|"]
-    lines += [f"| {k} | {v:,} | {v / max(1, n_facts):.2%} |" for k, v in cnt.most_common(40)]
+    lines += [f"| {k} | {v:,} | {v / max(1, sum(cnt.values())):.2%} |" for k, v in cnt.most_common(40)]
 
     # 2. repeats vs previous year (same isin, fiscal year - 1, same item+value+period)
-    rep = c.execute("""WITH f AS (SELECT isin, substr(fiscal_year,1,4) fy, lower(item) it, value_raw v, period p FROM ar_facts
-                         WHERE value_raw IS NOT NULL)
-                       SELECT COUNT(*) FROM f a WHERE EXISTS (SELECT 1 FROM f b WHERE b.isin=a.isin
-                         AND CAST(b.fy AS INT)=CAST(a.fy AS INT)-1 AND b.it=a.it AND b.v=a.v AND b.p=a.p)""").fetchone()[0]
-    num = c.execute("SELECT COUNT(*) FROM ar_facts WHERE value_raw IS NOT NULL").fetchone()[0]
+    # sampled: 20k recent numeric facts, each looked up in the same company's previous-year facts (isin index)
+    rep = c.execute("""WITH a AS (SELECT isin, CAST(substr(fiscal_year,1,4) AS INT) fy, lower(item) it, value_raw v, period p
+                         FROM ar_facts WHERE rowid > ? AND value_raw IS NOT NULL LIMIT 20000)
+                       SELECT COUNT(*) FROM a WHERE EXISTS (SELECT 1 FROM ar_facts b WHERE b.isin=a.isin
+                         AND CAST(substr(b.fiscal_year,1,4) AS INT)=a.fy-1 AND lower(b.item)=a.it AND b.value_raw=a.v AND b.period=a.p)""",
+                    (lo,)).fetchone()[0]
+    num = 20000
     lines += ["", "## 2. Year-over-year repeats", "",
               f"{rep:,} of {num:,} numeric facts ({rep / max(1, num):.1%}) repeat the same company's previous-year report "
               "(same item, value and period: mostly last year's comparative column)."]

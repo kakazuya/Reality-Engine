@@ -2,9 +2,10 @@
   "_about": "Per-model reader profiles for annual-report reading (2026-10-13, Shivam: every worker calls each model per its profile). Read by ingest_annual_reports.py at start; edit and restart the worker to apply. prompt: plain = PROMPT (version ar-v1), exhaustive = PROMPT + ar_queue.EXHAUSTIVE (version ar-v1x). piece_chars: the worker's piece size (one per worker: pieces are cut per report before a reader is chosen). rpm/tpm/rpd: free-tier limits per key (Google AI Studio dashboard 2026-10-13; null = not published, paced by slots and 429 handling). slots: requests in flight per key. A reader at its rpd rests until Google's reset (PT midnight). Test evidence: tasks/ar_study/READER_FINDINGS.md. Zen models are listed in zen_models.json (passed register) and take their prompt from here.",
   "workers": {
     "python": {
-      "piece_chars": 36000,
+      "piece_chars": 18000,
       "readers": [
         "longcat-2.5-preview-free",
+        "cat-jam-free",
         "gemma-4-31b-it"
       ]
     },
@@ -17,14 +18,14 @@
       "readers": [
         "gemini-3.5-flash-lite"
       ],
-      "fallback": "gemma-4-31b-it"
+      "fallback": "gemma-4-26b-a4b-it"
     },
     "google_3.1fl": {
       "piece_chars": 9000,
       "readers": [
         "gemini-3.1-flash-lite"
       ],
-      "fallback": "gemma-4-31b-it"
+      "fallback": "gemma-4-26b-a4b-it"
     },
     "google_gemma-4-26b": {
       "piece_chars": 36000,
@@ -43,7 +44,21 @@
       "tpm": null,
       "rpd": null,
       "per_key": false,
-      "test": "25/25 Go API; exhaustive 23/25 (missed GES capcom 518.88 in an answered piece; CON SEIS 861.05), 13,413 facts: kept on plain pending Shivam; slots 32 -> 64 on 2026-10-13 14:15 (no 429 in 35 h at 32: test whether the Go account has a concurrency limit); second Go account (OPENCODE_GO_API_KEY_2, subscribed 2026-10-13 ~14:40) added as reader longcat-2.5-preview-free@go2; 64 slots x 2 accounts clean (113 + 96 pages/min, 0 errors, 14:40-15:10); 96 slots per account from 15:12; 96 slots x 2 clean (168 + 173 pages/min, 0 errors, 15:21-15:51); 128 per account from 15:53",
+      "test": "25/25 Go API; exhaustive 23/25 (missed GES capcom 518.88 in an answered piece; CON SEIS 861.05), 13,413 facts: kept on plain pending Shivam; slots 32 -> 64 on 2026-10-13 14:15 (no 429 in 35 h at 32: test whether the Go account has a concurrency limit); second Go account (OPENCODE_GO_API_KEY_2, subscribed 2026-10-13 ~14:40) added as reader longcat-2.5-preview-free@go2; 64 slots x 2 accounts clean (113 + 96 pages/min, 0 errors, 14:40-15:10); 96 slots per account from 15:12; 96 slots x 2 clean (168 + 173 pages/min, 0 errors, 15:21-15:51); 128 per account from 15:53; 2026-10-14 06:00-06:50 at 128: 745 pages/min both accounts, 0 errors, ~220 s/piece (throughput ~ slots/latency, so slot-bound); 192 per account from 06:58 (bisection on pages/min); 192 = first-ever LongCat 429s on both accounts at 07:05 ('rate-limited'), 156 pages/min with the 20-min bench -> too high; 160 per account from 07:33 with a 3-min Go bench; 160 (07:38-07:58, Cat Jam 64 alongside): 531 pages/min, ~22 pieces/min per account (same as at 128 with Cat Jam on, 00:36-01:10) and 429s from 07:55 on both models -> SETTLED at 128 (08:01). Throughput ~ slots/latency held only while LongCat ran alone (06:00-06:50, 745 pages/min); with Cat Jam on, the Go accounts seem to cap total in-flight work (LongCat ~80 + Cat Jam ~50 in flight per account), so more LongCat slots add nothing. Report preparation is not the limit (~1.3 s per report).",
+      "go_keys": [
+        "OPENCODE_GO_API_KEY",
+        "OPENCODE_GO_API_KEY_2"
+      ]
+    },
+    "cat-jam-free": {
+      "api": "opencode-go",
+      "prompt": "exhaustive",
+      "slots": 64,
+      "rpm": null,
+      "tpm": null,
+      "rpd": null,
+      "per_key": false,
+      "test": "EXHAUSTIVE from 2026-10-14 06:55 (t-catjam-ex, Zen CLI 36k: 25/25, 20,846 facts = 1.7x plain, 0.1% not in text, 0.05% regrouped, 110/110; plain 72k: 25/25 but 8,415 facts, rejected). Go quota: still refused at 05:27, watching the 05:30 IST reset. QUOTA, not concurrency (02:30): at 128 slots both Go accounts were refused from the SAME second 01:56:53 (HTTP 429 'Upstream request failed: Rate limit exceeded') and every call since, also at 96 (959/959 refused 02:08-02:24); Zen Cat Jam still answered at 02:17. Before the cut: 3,784 pieces, 39M in + 83M out tokens, 40k pages in 80 min (00:36-01:57). Back to 64 with a 20-min bench on 429 until the quota window is known. Bisection (pieces/min with 0 errors is the objective): 64 = 0 errors, ~84 ok pieces/min (both accounts); 128 = 507 HTTP 429 'Upstream request failed: Rate limit exceeded' (~36% of calls, equal on both accounts), ~57 ok pieces/min -> too high; 96 from 02:04. 64 slots clean 01:36-01:42 (505 pieces, 0 errors, 67 s each; the 01:10-01:30 window was spoiled by stacked ar_review runs); 128 per account from 01:43; Shivam: keep doubling while every call is answered, back off at the first rate-limit message. 2026-10-14 00:32 Zen CLI plain 36k: 25/25, 12,191 facts, 0.2% not in text, 110/110 answered (t-catjam-1013). Go docs: free (limited time), Unlimited requests; free-period data may be used to train the model (public filings only). 32 slots per Go account from 00:36: 1,604 pieces, 0 errors, 64 s/piece and 118 facts/piece (LongCat 229 s, 52 facts) by 01:10; 64 slots per account from 01:12.",
       "go_keys": [
         "OPENCODE_GO_API_KEY",
         "OPENCODE_GO_API_KEY_2"
@@ -87,27 +102,27 @@
       "tpm": 13500,
       "rpd": 14400,
       "per_key": true,
-      "test": "36k exhaustive: 25/25, 10,072 facts, 0.1%, regrouped 0.24% (no tenfold errors)"
+      "test": "36k exhaustive: 25/25, 10,072 facts, 0.1%, regrouped 0.24% (no tenfold errors) | 2026-10-15 04:05: 2 slots/key gave ~330 per-minute-input-token 429s per 10 min even with the pacer at <=1 request/key/min (Google seems to count tokens while a ~200 s request runs), 37 pages/min; 1 slot per key from 04:05. | 05:05: root cause was bilingual (Hindi) pieces of 46-76k tokens, larger than the 16k/min limit, bouncing for ever; fixed (Hindi pages skipped, oversize reports released to the main run); back to 2 slots."
     },
     "space-bunny-free": {
       "api": "opencode-zen",
-      "prompt": "plain",
+      "prompt": "exhaustive",
       "slots": 6,
       "rpm": null,
       "tpm": null,
       "rpd": null,
       "per_key": false,
-      "test": "plain 25/25, 9,872 facts; exhaustive test t-bunny-ex runs when Zen quota returns"
+      "test": "plain 25/25, 9,872 facts; exhaustive test t-bunny-ex runs when Zen quota returns; exhaustive PASS 2026-10-14 05:47 (24615 facts)"
     },
     "muse-spark-1.3-contributor-free": {
       "api": "opencode-zen",
-      "prompt": "plain",
+      "prompt": "exhaustive",
       "slots": 5,
       "rpm": null,
       "tpm": null,
       "rpd": null,
       "per_key": false,
-      "test": "plain 25/25, 5,080 facts; exhaustive test t-muse13-ex pending Zen"
+      "test": "plain 25/25, 5,080 facts; exhaustive test t-muse13-ex pending Zen; exhaustive PASS 2026-10-14 06:02 (12544 facts)"
     },
     "big-pickle": {
       "api": "opencode-zen",
@@ -129,5 +144,6 @@
       "per_key": false,
       "test": "Zen copy of LongCat; follows the Go LongCat exhaustive result"
     }
-  }
+  },
+  "_fallback_note": "2026-10-15: Flash-Lite fallback switched from Gemma 31B to Gemma 26B. 31B is in HTTP 500 outage most hours; Flash-Lite's empty answers waited on hung 31B calls and the 3.5 route read 2 pieces all day (10,460 on 10-13)."
 }

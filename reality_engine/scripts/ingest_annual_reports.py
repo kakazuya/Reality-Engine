@@ -16,10 +16,12 @@ Resumable: finished pieces are never re-read. Log: data/logs/ingest_annual_repor
 """
 import argparse
 import collections
+import functools
 import json
 import logging
 import os
 import queue
+import random
 import re
 import sqlite3
 import threading
@@ -109,6 +111,10 @@ class TokenPacer:
             time.sleep(pause)
 
 
+class FallbackFailed(RuntimeError):
+    """The primary reader answered (empty) and its fallback reader failed: retry the piece, do not rest the primary."""
+
+
 class DailyCap(RuntimeError):
     """A key/model hit its requests-per-day limit (rpd in reader_profiles.json)."""
 
@@ -162,11 +168,13 @@ def gate_for(prof):
 
 ZEN_MODELS = Path(__file__).with_name("zen_models.json")   # route zen: register of PASSED models {"<zen model id>": {"slots": n, ...}}
 ZEN_BENCH_SEC = 20 * 60   # a rate-limited Zen model rests this long, then tries again by itself (no retest, no restart)
+GO_BENCH_SEC = 3 * 60     # a rate-limited Go reader (quota or too many slots) rests 3 min, then tries again
 
 
 GOOGLE_PIECES = {"gemini-3.5-flash-lite": 18000, "gemini-3.1-flash-lite": 9000,   # per-model piece size that passed the test
                  "gemma-4-26b-a4b-it": 36000}   # 2026-10-13 exhaustive: 25/25, 10,072 facts, 0.1% not in text, no regrouping
-GOOGLE_TPM = {"gemma-4-26b-a4b-it": 13500}   # Gemma's free tier is 16k tokens/min per key (Flash-Lite: 250k)
+GOOGLE_TPM = {"gemma-4-26b-a4b-it": 13500}
+GOOGLE_REAL_TPM = {"gemma-4-26b-a4b-it": 16000, "gemma-4-31b-it": 16000}   # free-tier input tokens/min per key (429 quotaValue)   # Gemma's free tier is 16k tokens/min per key (Flash-Lite: 250k)
 GOOGLE_SLOTS = {"gemma-4-26b-a4b-it": 2}
 # Google routes use the EXHAUSTIVE instruction (ar_queue.EXHAUSTIVE; 2026-10-13: 3.5 Flash-Lite 5,459 -> 18,352 facts on the
 # test pieces, 0.0% not in text; 3.1 Flash-Lite at 9k chars 3,126 -> 7,632, 25/25), stored as prompt version ar-v1x
@@ -183,7 +191,9 @@ def seconds_to_pacific_midnight():
 
 
 def gemini_keys(env):
-    return [v for v in ["GEMINI_API_KEY"] + [f"GEMINI_API_KEY_{i}" for i in range(2, 31)] if env.get(v)]
+    """Every GEMINI_API_KEY[_n] that is set, in number order (2026-10-14: 37 keys; Shivam adds more projects over time)."""
+    nums = sorted(int(k.rsplit("_", 1)[1]) for k in env if re.fullmatch(r"GEMINI_API_KEY_\d+", k))
+    return [v for v in ["GEMINI_API_KEY"] + [f"GEMINI_API_KEY_{i}" for i in nums] if env.get(v)]
 
 
 def readers(env, route="python", google_model=None):
@@ -221,16 +231,35 @@ def readers(env, route="python", google_model=None):
                         "bench_until": 0.0, "tmpl": tmpl, "pv": pv})
         return out
     out = []
-    prof = M["longcat-2.5-preview-free"]; tmpl, pv = prompt_for(prof["prompt"])
-    # one LongCat reader per OpenCode Go subscription key listed in the profile (2026-10-13: second Go account)
-    for n, var in enumerate(prof.get("go_keys", ["OPENCODE_GO_API_KEY"]), 1):
-        if env.get(var):
-            out.append({"name": "longcat-2.5-preview-free" + ("" if n == 1 else f"@go{n}"), "kind": "chat",
-                        "url": "https://opencode.ai/zen/go/v1/chat/completions", "key": env[var],
-                        "model": "longcat-2.5-preview-free", "slots": prof["slots"], "pacer": None, "tmpl": tmpl, "pv": pv})
+    # every OpenCode Go reader of the python worker (LongCat; Cat Jam from 2026-10-14), one per Go subscription key
+    for m in P["workers"]["python"]["readers"]:
+        prof = M[m]
+        if prof["api"] != "opencode-go":
+            continue
+        tmpl, pv = prompt_for(prof["prompt"])
+        for n, var in enumerate(prof.get("go_keys", ["OPENCODE_GO_API_KEY"]), 1):
+            if env.get(var):
+                # bench_until is required: the 429 bench reads it (2026-10-14 02:25-06:53 it was missing, the bench raised
+                # KeyError inside the except block and silently killed every Cat Jam thread at its first 429)
+                out.append({"name": m + ("" if n == 1 else f"@go{n}"), "kind": "chat",
+                            "url": "https://opencode.ai/zen/go/v1/chat/completions", "key": env[var],
+                            "model": m, "slots": prof["slots"], "pacer": None, "bench_until": 0.0, "tmpl": tmpl, "pv": pv})
     for n, v in enumerate(gemini_keys(env), 1):
         out.append(g_reader("gemma-4-31b-it", n, v))
     return out
+
+
+def short_name(k):
+    """Progress-log label: Gemma 31B keys stay 'g7'; other Google models carry the model ('26b@g7', '3.5fl@g7') so a
+    worker's primary and its Gemma 31B fallback on the same key no longer share one label (2026-10-14: the 26B worker's
+    log showed ~5 pieces on 28 of 30 keys while the database held ~410 each); Go/Zen readers keep the model."""
+    base, _, tail = k.partition("@")
+    if tail and not tail.startswith("go"):
+        if base.startswith("gemma-4-31b"):
+            return tail
+        return base.replace("gemini-", "").replace("gemma-4-", "").replace("-flash-lite", "fl").replace("-a4b-it", "") + "@" + tail
+    base = base.replace("zen:", "").replace("-preview-free", "").replace("-free", "")
+    return f"{base}@{tail}" if tail else base
 
 
 def google_tag(gm):
@@ -265,14 +294,22 @@ def call(r, prompt, http):
         if parse_lines(text) or text.strip().upper().startswith("NONE"):
             return text, it, ot
         fb = r["fallback"]   # empty answer: the fallback reads the same piece; facts carry the fallback's name
-        text, it, ot = call(fb, prompt, http)
+        try:
+            text, it, ot = call(fb, prompt, http)
+        except Exception as e:
+            # 2026-10-15: the fallback (Gemma 31B) is down most hours; its 500/429 were handled as the PRIMARY's error and
+            # rested healthy 26B keys (55 of 74 threads asleep; 26B fell from ~900 to ~50 pieces/h from 10-14 13:00)
+            raise FallbackFailed(str(e)[:200])
         return text, it, ot, fb
     # answer allowance: exhaustive answers run ~3x longer (2026-10-13: 41 TPM 429s/h on Gemma 31B at the old 1,500)
-    r["pacer"].wait(int(len(prompt) / 3.2) + (5000 if "Be EXHAUSTIVE" in prompt else 1500))
+    r["pacer"].wait(est_tokens(prompt) + (5000 if "Be EXHAUSTIVE" in prompt else 1500))   # est_tokens: Devanagari-aware
     resp = http.post(f"https://generativelanguage.googleapis.com/v1beta/models/{r['model']}:generateContent", timeout=900,
                      headers={"x-goog-api-key": r["key"]},
                      json={"contents": [{"parts": [{"text": prompt}]}],
                            "generationConfig": {"maxOutputTokens": 32000, "thinkingConfig": {"thinkingLevel": "minimal"}}})
+    if resp.status_code == 429:   # name the exact quota (it sits past the first 200 characters of the body)
+        q = re.findall(r'"quotaId": "([^"]+)"', resp.text)
+        raise RuntimeError(f"HTTP 429 quota={','.join(q) or '?'}: {resp.text[:120]}")
     if resp.status_code != 200 or not resp.json().get("candidates"):
         raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
     j = resp.json(); u = j.get("usageMetadata", {}); c = j["candidates"][0]
@@ -315,15 +352,66 @@ def digits(s):
     return re.sub(r"[^\d.]", "", str(s).replace(",", "")).strip(".")
 
 
+# Some reports' fonts store digits as Coptic letters U+03EC-U+03F5 (0-9), '.' as U+0358 and '-' as U+0372 (2026-10-14:
+# PSB FY2019 '54771' is 'ϱϰϳϳϭ' in the text layer). Readers decode them; the check must too, or right numbers read as
+# not_found (PSB: 2,470 of 2,646 facts).
+FONT_DIGITS = str.maketrans({**{chr(0x3EC + i): str(i) for i in range(10)}, "͘": ".", "Ͳ": "-"})
+
+
 def value_check(raw, page_text, piece_text):
     d = digits(raw) if raw is not None else ""
     if not d:
         return "prose"
+    page_text = (page_text or "").translate(FONT_DIGITS); piece_text = (piece_text or "").translate(FONT_DIGITS)
     if d in digits(page_text or "") or d in re.sub(r"[^\d.]", "", (page_text or "").replace(",", "")):
         return "page"
     if d in re.sub(r"[^\d.]", "", piece_text.replace(",", "")):
         return "piece"
+    # shifted-digit fonts: decode, and compare without the decimal point (its glyph is encoded too)
+    for where, text in (("page", page_text), ("piece", piece_text)):
+        for tr in shifted_digit_maps(text):
+            if d.replace(".", "") in re.sub(r"\D", "", text.translate(tr)):
+                return where
     return "not_found"
+
+
+@functools.lru_cache(maxsize=256)
+def shifted_digit_maps(text, top=2):
+    """Other fonts store 0-9 as ten consecutive code points elsewhere in Unicode: OIL FY2020 writes 31.03.2020 as
+    'ŇŅčńŇčņńņń' (0 = U+0144), PPAP FY2024 as control characters (0 = U+0010), often next to normal digits on the same
+    page (2026-10-16). Return a translation table for each of the (at most `top`) bases b whose block b..b+9 behaves like digits:
+    >= 3 tokens made mostly of block characters, and >= 70% of the block's characters inside such tokens (a block of
+    letters fails: its characters sit inside words). Tokens split at whitespace and at control characters outside the
+    block (OIL encodes the space as U+0003, PPAP as U+0001)."""
+    odd = {ord(ch) for ch in text if ord(ch) > 0x7E or (ord(ch) < 0x20 and ch not in "\n\r\t")}
+    if len(odd) < 10:
+        return ()
+    scored = []
+    for b in {o - i for o in odd for i in range(10)}:
+        if not (0 < b and b + 9 < 0x20 or b > 0x7E):
+            continue
+        hi = b + 9
+        seps = "".join(chr(x) for x in range(0x20) if not b <= x <= hi and chr(x) not in "\n\r\t")
+        toks = [t.strip("()[]-,.;:") for t in re.split(r"[\s" + re.escape(seps) + r"]+", text)]
+        n_tok = in_tok = total = 0
+        for t in toks:
+            nb = sum(b <= ord(ch) <= hi for ch in t)
+            if not nb:
+                continue
+            total += nb
+            if nb >= 2 and len(t) - nb <= max(2, nb // 2):
+                n_tok += 1; in_tok += nb
+        if n_tok >= 3 and in_tok >= 0.7 * total:
+            tr = str.maketrans({chr(b + i): str(i) for i in range(10)})
+            years = len(re.findall(r"(?<!\d)(?:19[89]\d|20[0-4]\d)(?!\d)", text.translate(tr)))
+            scored.append((years, n_tok, b))
+    # neighbouring bases share most characters (U+0143, U+0144 and U+0145 all pass for OIL); only the true one decodes the
+    # years every report page is full of (2019, 2020), so rank by those, then drop bases overlapping a better one
+    kept = []
+    for *_, b in sorted(scored, reverse=True):
+        if all(abs(b - k) > 9 for k in kept):
+            kept.append(b)
+    return tuple(str.maketrans({chr(b + i): str(i) for i in range(10)}) for b in kept[:top])
 
 
 # ---------------------------------------------------------------- inventory and text
@@ -359,6 +447,18 @@ def inventory(limit=0, symbols=None):
     return docs
 
 
+def devanagari_share(text):
+    letters = [ch for ch in text if ch.isalpha()]
+    return sum(1 for ch in letters if "ऀ" <= ch <= "ॿ") / len(letters) if letters else 0.0
+
+
+def est_tokens(text):
+    """Rough Gemma token count: ~3.2 Latin characters per token, ~2 tokens per Devanagari/other non-Latin character
+    (2026-10-15 countTokens: a 32k-character bilingual piece = 46-76k tokens)."""
+    non_latin = sum(1 for ch in text if ord(ch) > 0x24F)
+    return int((len(text) - non_latin) / 3.2 + non_latin * 2)
+
+
 def pieces_of(path, skip=None):
     """skip(pages) -> {page_no: ...} of pages to leave out (year-over-year repeats, ar_yoy.py); skipped pages still count
     in n_text_pages."""
@@ -369,6 +469,12 @@ def pieces_of(path, skip=None):
     pages = [(n, t) for n, t in pages if len(t.strip()) >= 40]
     n_text = len(pages)
     skipped = skip(pages) if skip else {}
+    # 2026-10-15: bilingual reports (PSU banks etc.) repeat the English report in Hindi. Devanagari costs ~2 tokens per
+    # character (vs ~0.35 for English), so those pieces broke Gemma's 16k tokens/min limit and only duplicated facts. A
+    # mostly-Devanagari page is skipped when the report has at least as many English pages (Hindi-only reports are read).
+    hindi = {n for n, t in pages if n not in skipped and devanagari_share(t) >= 0.5}
+    if hindi and len(hindi) <= len(pages) - len(hindi):
+        skipped = {**skipped, **{n: "hindi" for n in hindi}}
     pages = [(n, t) for n, t in pages if n not in skipped]
     out, buf, first = [], "", None
     for n, t in pages:
@@ -381,6 +487,33 @@ def pieces_of(path, skip=None):
     if buf:
         out.append((first, last, buf))
     return (n_pages, n_text, out, skipped) if skip else (n_pages, n_text, out)
+
+
+def unread_pieces(ps, covered, rows):
+    """Resume by page (2026-10-16). ps: this run's split [(p_from, p_to, text)]; covered: pages an ok piece of any
+    prompt_version/piece size has read; rows: existing (piece, page_from, page_to) of the report. Returns ([(k, (p_from,
+    p_to, text))] still to read, cut down to their unread pages; the set of text pages the split holds). A piece keeps
+    its index unless that number already belongs to another page range (then it takes a new one), so a piece number
+    always means one page range and INSERT OR REPLACE / the facts DELETE never touch another split's piece."""
+    by_range = {(f, t): k for k, f, t in rows}
+    used_k = {k for k, _, _ in rows}
+    next_k = max(used_k | {len(ps) - 1}) + 1
+    left, need = [], set()
+    for k, (p_from, p_to, text) in enumerate(ps):
+        blocks = [(int(m.group(1)), m.group(0).rstrip("\n")) for m in re.finditer(r"=== PAGE (\d+) ===\n.*?(?=\n=== PAGE |\Z)", text, re.S)]
+        need.update(n for n, _ in blocks)
+        unread = [(n, b) for n, b in blocks if n not in covered]
+        if not unread:
+            continue
+        if len(unread) < len(blocks):
+            p_from, p_to, text = unread[0][0], unread[-1][0], "\n".join(b for _, b in unread) + "\n"
+        if (p_from, p_to) in by_range:
+            k = by_range[(p_from, p_to)]
+        elif k in used_k:
+            k = next_k; next_k += 1
+        used_k.add(k); by_range[(p_from, p_to)] = k
+        left.append((k, (p_from, p_to, text)))
+    return left, need
 
 
 PIECES_TIMEOUT = 180   # seconds for one report's text split (child process)
@@ -402,7 +535,13 @@ def pieces_isolated(path, prev_path=None):
         raise RuntimeError(f"text split timed out after {PIECES_TIMEOUT} s (malformed PDF?)")
     if p.returncode != 0:
         raise RuntimeError(f"text split failed: {p.stderr.decode('utf-8', 'replace')[-200:]}")
-    j = json.loads(p.stdout.decode("utf-8"))
+    out = p.stdout.decode("utf-8", "replace")
+    # 2026-10-15: MuPDF prints warnings such as "MuPDF error: format error: cmsOpenProfileFromMem failed" (a broken colour
+    # profile) to STDOUT ahead of the JSON; ~60 good reports were marked unreadable ("Expecting value"). Parse from the JSON.
+    start = out.find('{"n_pages"')
+    if start < 0:
+        raise RuntimeError(f"text split gave no JSON (rc {p.returncode}): {out[:200]!r} {p.stderr.decode('utf-8', 'replace')[-200:]!r}")
+    j = json.loads(out[start:])
     return j["n_pages"], j["n_text"], [tuple(x) for x in j["pieces"]], {int(k): v for k, v in j["skipped"].items()}
 
 
@@ -437,12 +576,23 @@ def main():
     a = ap.parse_args()
     if a.pieces_json:
         import sys
+        pymupdf.TOOLS.mupdf_display_errors(False); pymupdf.TOOLS.mupdf_display_warnings(False)   # keep stdout pure JSON
+        # 2026-10-14: restarting a worker by killing only its parent orphaned this child mid-way through a malformed PDF
+        # (SDC); with the 3-min limit living in the parent, three orphans read the disk at ~1 GB/s for up to 15 h. The
+        # child now enforces its own limit and exits as soon as its parent is gone.
+        def _guard(parent=os.getppid(), deadline=time.time() + 200):
+            import psutil
+            while True:
+                if time.time() > deadline or not psutil.pid_exists(parent):
+                    os._exit(3)
+                time.sleep(3)
+        threading.Thread(target=_guard, daemon=True).start()
         PIECE_CHARS = a.piece_chars or PIECE_CHARS
         from reality_engine.scripts import ar_yoy
         if a.prev:
             n_pages, n_text, ps, skipped = pieces_of(a.pieces_json, lambda pg: ar_yoy.repeated_pages(pg, a.prev))
         else:
-            (n_pages, n_text, ps), skipped = pieces_of(a.pieces_json), {}
+            n_pages, n_text, ps, skipped = pieces_of(a.pieces_json, lambda pg: {})   # still returns the Hindi skips
         sys.stdout.buffer.write(json.dumps({"n_pages": n_pages, "n_text": n_text, "pieces": ps, "skipped": skipped}).encode("utf-8"))
         return
     global PROMPT, PROMPT_VERSION
@@ -475,6 +625,12 @@ def main():
     per = {r["name"]: 0 for r in rs}
     slock = threading.Lock(); t0 = time.time()
     remaining = {}   # doc_id -> pieces left
+    need = {}        # doc_id -> text pages this run's split must see read
+
+    def covered_pages(doc_id):
+        """Pages read by an ok piece of any prompt_version or piece size."""
+        return {p for f, t in store.q("SELECT page_from, page_to FROM ar_pieces WHERE doc_id=? AND status='ok'", (doc_id,))
+                for p in range(f, t + 1)}
 
     def finish_piece(d, k, p_from, p_to, text, r, out, sec, it, ot, err, pv=None):
         pv = pv or r.get("pv", PROMPT_VERSION)   # the version of the prompt actually sent (fallbacks read the primary's)
@@ -498,7 +654,8 @@ def main():
             stats["errors"] += bool(err)
             remaining[d["doc_id"]] -= 1
             if remaining[d["doc_id"]] == 0:
-                bad = store.q("SELECT COUNT(*) FROM ar_pieces WHERE doc_id=? AND status!='ok'", (d["doc_id"],))[0][0]
+                # page-based: an error row whose pages another piece has read is no hole (2026-10-16, see main())
+                bad = len(need.pop(d["doc_id"], set()) - covered_pages(d["doc_id"]))
                 store.x("UPDATE ar_docs SET status=?, ts=? WHERE doc_id=?", ("partial" if bad else "done",
                         datetime.now().isoformat(timespec="seconds"), d["doc_id"]))
                 if zen:   # done: claim kept for good; partial: renewed so a restart of this route re-reads the failed pieces
@@ -528,17 +685,47 @@ def main():
                              r.get("pv"))
             except Exception as e:
                 msg = str(e)[:300]
+                if isinstance(e, FallbackFailed):   # the primary answered (empty); only the fallback failed: no bench
+                    if tries < 6:
+                        retry.append((d, k, p_from, p_to, text, tries + 1)); continue
+                    finish_piece(d, k, p_from, p_to, text, r, "", round(time.time() - t, 1), None, None, msg, r.get("pv"))
+                    continue
                 if isinstance(e, DailyCap) or (r.get("fallback") and "429" in msg):   # route google: a daily cap rests the key until Google's reset
                     daily = re.search(r"per ?day|PerDay|RequestsPerDay", msg)
+                    g = r.get("pacer")
+                    log.info("429 %s %s | pacer last-min est %s tokens, %s requests", r["name"], (re.search(r"quota=(\S+)", msg) or [None, "?"])[1],
+                             sum(n for t_, n in g.log if time.time() - t_ < 60) if g else "-", len(g.log) if g else "-")
                     # 2026-10-13: keys still refused after the 12:30 IST reset (quota looks rolling, not a clean PT-midnight
                     # reset), so a daily refusal rests the key 1 h and retries instead of sleeping until PT midnight
                     r["bench_until"] = time.time() + (3600 if daily else 65)
                     retry.append((d, k, p_from, p_to, text, tries)); continue
-                if r["kind"] == "cli" and "rate limit" in msg.lower():   # quota, not a bad piece: bench the model and
-                    if r["bench_until"] < time.time():                    # hand the piece back without counting a try
-                        log.warning("%s rate-limited; benched %d min, retries by itself", r["name"], ZEN_BENCH_SEC // 60)
-                    r["bench_until"] = time.time() + ZEN_BENCH_SEC
+                # 2026-10-14: Go Cat Jam hit an upstream quota (HTTP 429 'Rate limit exceeded', both Go accounts in the same
+                # second); with no bench its threads re-took the refused pieces and burnt their 3 tries in minutes (~1,900
+                # pieces marked error). Go readers (kind 'chat') now bench like the Zen CLI.
+                if r["kind"] in ("cli", "chat") and ("rate limit" in msg.lower() or "HTTP 429" in msg):   # quota, not a bad piece: bench the model and
+                    # Zen: one daily allowance, so a long bench. Go: 429s also come from too many slots (LongCat at 192,
+                    # 2026-10-14 07:05), where a 20-min bench idled the whole reader; Go benches 3 min and retries.
+                    if r["kind"] == "chat":   # Go: an occasional 429 is the per-request rate (2026-10-15: LongCat at 18k pieces
+                        # was rested 30 times in 40 min, each idling all 128 threads for 3 min). Only this thread waits ~30 s;
+                        # the whole reader rests only when 429s keep coming (a used-up budget such as Cat Jam's daily one).
+                        now_ = time.time(); r["r429"] = [x for x in r.get("r429", []) if now_ - x < 60] + [now_]
+                        if len(r["r429"]) < 20:
+                            retry.append((d, k, p_from, p_to, text, tries)); time.sleep(20 + 20 * random.random()); continue
+                    bench = ZEN_BENCH_SEC if r["kind"] == "cli" else GO_BENCH_SEC
+                    # Zen and Cat Jam's Go budget reset at 00:00 UTC (05:30 IST, confirmed 2026-10-15): never rest past it
+                    # (a 20-min bench from 05:19 idled Zen until 05:39 of its ~1.5 h daily window)
+                    to_reset = 86400 - (time.time() % 86400) + 30
+                    bench = min(bench, to_reset)
+                    if r.get("bench_until", 0) < time.time():             # hand the piece back without counting a try
+                        log.warning("%s rate-limited; benched %d min, retries by itself", r["name"], bench // 60)
+                    r["bench_until"] = time.time() + bench
                     retry.append((d, k, p_from, p_to, text, tries)); continue
+                # 2026-10-14: Google sheds free Gemma load in a daily cycle (31B fine ~04:00-10:00 IST, HTTP 500 on every
+                # key most other hours; 26B from 13:00). Retrying every 10 s meant ~1,300 failing calls/min. A Google key
+                # that answers 500/503 now rests 2 min and its piece goes back to the queue for any reader.
+                if r["kind"] == "gemini" and re.search(r"HTTP 50[03]", msg) and tries < 6:
+                    r["bench_until"] = time.time() + 120
+                    retry.append((d, k, p_from, p_to, text, tries + 1)); continue
                 transient = re.search(r"HTTP 50[023]|timed out|overloaded|Internal error", msg)   # server-side: try harder
                 if tries < (6 if transient else 3):   # another reader (or this one later) takes it
                     time.sleep(65 if "429" in msg or "rate limit" in msg.lower() else 10)
@@ -546,7 +733,17 @@ def main():
                 else:
                     finish_piece(d, k, p_from, p_to, text, r, "", round(time.time() - t, 1), None, None, msg, r.get("pv"))
 
-    threads = [threading.Thread(target=worker, args=(r,), daemon=True) for r in rs for _ in range(r["slots"])]
+    def guarded(r):
+        """A reader thread must never die silently (2026-10-14: a KeyError in the 429 handler killed every Cat Jam
+        thread for 4.5 h with nothing in the log). Log it and restart the loop."""
+        while True:
+            try:
+                return worker(r)
+            except Exception:
+                log.exception("%s: reader thread crashed; restarting it", r["name"])
+                time.sleep(30)
+
+    threads = [threading.Thread(target=guarded, args=(r,), daemon=True) for r in rs for _ in range(r["slots"])]
     for th in threads:
         th.start()
 
@@ -557,7 +754,7 @@ def main():
                 el = (time.time() - t0) / 60
                 log.info("ar docs %d/%d | pieces %d (errors %d) | pages %d (%.0f/min) | facts %d | by reader %s",
                          stats["docs"], len(todo), stats["pieces"], stats["errors"], stats["pages"], stats["pages"] / max(el, 0.01),
-                         stats["facts"], {k.split("@")[-1] if "@" in k else k.replace("zen:", "").replace("-preview-free", "").replace("-free", ""): v for k, v in per.items()})
+                         stats["facts"], {short_name(k): v for k, v in per.items()})
     threading.Thread(target=reporter, daemon=True).start()
 
     from reality_engine.scripts.ar_queue import claim_for_zen, claimed_elsewhere
@@ -575,25 +772,51 @@ def main():
         try:
             # pages repeated word for word (numbers included) from last year's report are skipped; a report already
             # part-read keeps its original pieces
-            n_pages, n_text, ps, skipped = pieces_isolated(d["path"], prev["path"] if prev and not started else None)
+            try:
+                n_pages, n_text, ps, skipped = pieces_isolated(d["path"], prev["path"] if prev and not started else None)
+            except Exception as e1:
+                # 2026-10-15: children killed mid-way (jobs stopped at 22:17) left empty output ('Expecting value') or a
+                # cut-off year-over-year list, and 37 good reports were marked unreadable for ever. Retry once without the
+                # year-over-year skip; only a second failure (or a timeout: a genuinely malformed PDF) marks it.
+                if "timed out" in str(e1):
+                    raise
+                log.warning("%s: text split failed (%s); retrying without the year-over-year skip", d["symbol"], str(e1)[:300])
+                time.sleep(5)
+                n_pages, n_text, ps, skipped = pieces_isolated(d["path"], None)
             if skipped:
                 store.x("INSERT OR REPLACE INTO ar_skipped_pages VALUES (?,?,?,?,?)",
-                        [(d["doc_id"], n, prev["doc_id"], c, datetime.now().isoformat(timespec="seconds")) for n, c in skipped.items()],
+                        [(d["doc_id"], n, prev["doc_id"] if prev else None, c, datetime.now().isoformat(timespec="seconds")) for n, c in skipped.items()],
                         many=True)
         except Exception as e:
             store.x("INSERT OR REPLACE INTO ar_docs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (d["doc_id"], d["isin"], d["symbol"], d["company"], d["fiscal_year"], d["fiscal_year_source"], d["filed_at"],
                      d["filed_at_source"], d["sha256"], d["path"], None, None, 0, "unreadable", str(e)[:200], datetime.now().isoformat(timespec="seconds")))
             continue
-        ok = {r[0] for r in store.q("SELECT piece FROM ar_pieces WHERE doc_id=? AND status='ok'", (d["doc_id"],))}
+        # Google's real input limit per key per minute (the pacer's tpm is set lower for headroom; comparing with it
+        # released 1,163 ordinary reports in 25 min on 2026-10-15 04:34-05:00)
+        tpm = GOOGLE_REAL_TPM.get(rs[0]["model"]) if a.route == "google" else None
+        if tpm and ps and max(est_tokens(t) + 2000 for _, _, t in ps) > tpm:
+            # 2026-10-15: a piece larger than the key's tokens/min limit can never be read here; it bounced between keys
+            # for ever (429 hands it back uncounted) and starved Gemma 26B. Release the report to the main run (LongCat).
+            store.x("DELETE FROM ar_claims WHERE doc_id=?", (d["doc_id"],))
+            log.info("%s: a piece exceeds %s tokens/min; released to the main run", d["symbol"], tpm)
+            continue
+        # 2026-10-16: resume by page, not by piece index. Resuming by index (`ok = {piece ...}`) let an ok piece of one
+        # split (another piece size or prompt_version) hide a failed piece with the same index from another split: 220
+        # reports were marked 'done' with 3,005 pages never read. Now a page counts as read when any ok piece covers it,
+        # only the unread pages of each piece are sent, and a piece takes a new number unless an existing row has
+        # exactly its page range (a number shared by two ranges let INSERT OR REPLACE and the facts DELETE wipe the other).
+        left, doc_need = unread_pieces(ps, covered_pages(d["doc_id"]),
+                                       store.q("SELECT DISTINCT piece, page_from, page_to FROM ar_pieces WHERE doc_id=?", (d["doc_id"],)))
         store.x("INSERT OR REPLACE INTO ar_docs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (d["doc_id"], d["isin"], d["symbol"], d["company"], d["fiscal_year"], d["fiscal_year_source"], d["filed_at"],
                  d["filed_at_source"], d["sha256"], d["path"], n_pages, n_text, len(ps),
-                 "no_text" if not ps else ("reading" if len(ok) < len(ps) else "done"),   # no_text: scanned report, needs OCR later
+                 "no_text" if not ps else ("reading" if left else "done"),   # no_text: scanned report, needs OCR later
                  None if ps else "no text layer", datetime.now().isoformat(timespec="seconds")))
-        left = [(k, p) for k, p in enumerate(ps) if k not in ok]
+        if ps and not left and zen:   # every page already read (e.g. a re-marked report): release the claim for good
+            store.x("UPDATE ar_claims SET status='imported', ts=? WHERE doc_id=?", (datetime.now().isoformat(timespec="seconds"), d["doc_id"]))
         with slock:
-            remaining[d["doc_id"]] = len(left)
+            remaining[d["doc_id"]] = len(left); need[d["doc_id"]] = doc_need
         for k, (p_from, p_to, text) in left:
             work.put((d, k, p_from, p_to, text, 0))
     while True:   # drain

@@ -27,6 +27,7 @@ from reality_engine.scripts.resource_watchdog import user_env
 HERE = Path(__file__).resolve().parent
 WATCH = HERE / "reader_watch.json"
 REGISTER = HERE / "zen_models.json"
+PROFILES = HERE / "reader_profiles.json"
 REPORT = HERE.parent / "data" / "logs" / "reader_watch_report.md"
 PY = sys.executable
 SLOTS_NEW = 3
@@ -39,7 +40,7 @@ def now():
 def zen_models():
     exe = ar_queue.opencode_exe()
     p = subprocess.run([exe, "models"], stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", timeout=300)
+                       errors="replace", timeout=300, creationflags=ar_queue.NO_WINDOW)
     ids = [l.strip() for l in ar_queue.ANSI.sub("", p.stdout).splitlines() if l.strip().startswith("opencode/")]
     return {i.split("/", 1)[1]: {} for i in ids}
 
@@ -58,7 +59,7 @@ def kilo_models(env):
         pr = m.get("pricing") or {}
         free = m.get("isFree") or str(pr.get("prompt")) in ("0", "0.0") and str(pr.get("completion")) in ("0", "0.0")
         if free or pr.get("discount"):
-            out[m["id"]] = {"free": bool(free), "discount": pr.get("discount"),
+            out[m["id"]] = {"free": bool(free), "discount": pr.get("discount") or None,   # Kilo flips 0 <-> null; not a change
                             "image": "image" in (m.get("architecture") or {}).get("input_modalities", [])}
     return out
 
@@ -80,6 +81,28 @@ def driving(run):
     for p in psutil.process_iter(["name", "cmdline"]):
         c = p.info["cmdline"] or []
         if "drive" in c and "--run" in c and run in c[c.index("--run") + 1].split(","):
+            return True
+    return False
+
+
+def add_go_reader(model, note):
+    """A Go model that passed the AR test joins the main run (reader_profiles.json), plain prompt, 32 slots per Go
+    account; Claude tunes the slots afterwards (bisection on pages/min)."""
+    prof = load(PROFILES, {})
+    readers = prof["workers"]["python"]["readers"]
+    if model not in readers:
+        readers.insert(readers.index("gemma-4-31b-it") if "gemma-4-31b-it" in readers else len(readers), model)
+    prof["models"][model] = {"api": "opencode-go", "prompt": "plain", "slots": 32, "rpm": None, "tpm": None, "rpd": None,
+                             "per_key": False, "test": note, "go_keys": ["OPENCODE_GO_API_KEY", "OPENCODE_GO_API_KEY_2"]}
+    PROFILES.write_text(json.dumps(prof, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def restart_main_run():
+    import psutil
+    for p in psutil.process_iter(["name", "cmdline"]):
+        c = p.info["cmdline"] or []
+        if (p.info["name"] or "").lower() == "python.exe" and c and c[-1].endswith("ingest_annual_reports"):
+            p.kill()   # run_ar_ingest.cmd restarts it with the new profile
             return True
     return False
 
@@ -129,7 +152,7 @@ def main():
                 v["status"] = "retired"; v["retired"] = now(); lines.append(f"- register: **{m} retired** (gone from Zen)")
             elif v.get("status") == "retired" and m in zen:
                 v["status"] = "passed"; lines.append(f"- register: **{m} back** on Zen, in use again")
-        added = False
+        added = restart_main = False
         for m, t in list(watch["tests"].items()):   # score finished tests
             if t.get("result"):
                 continue
@@ -145,6 +168,13 @@ def main():
                   and n_out == n_all and fx and int(fx.group(1)) >= ar_queue.DEPTH_MIN)
             t["result"] = "pass" if ok else "fail"; t["scored"] = now()
             line = score.splitlines()[2] if len(score.splitlines()) > 2 else ""
+            if m.startswith("go:"):   # Go API model: a pass joins the main run on both Go accounts
+                if ok:
+                    add_go_reader(m[3:], f"{now()[:16]} auto Go API test {t['run']}: {line}")
+                    restart_main = True
+                lines.append(f"- test {m}: **{t['result'].upper()}** ({line})"
+                             + ("; added to the main AR run at 32 slots per Go account" if ok else ""))
+                continue
             if ok:
                 reg[m] = {"slots": SLOTS_NEW, "status": "passed", "ar_test": f"{now()[:16]} auto: {line}"}
                 added = True
@@ -164,9 +194,29 @@ def main():
                              creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
             watch["tests"][m] = {"run": run, "started": now()}
             lines.append(f"- test {m}: **started** (run {run})")
+        # Go free models (2026-10-14, Shivam: auto-test Go too; Go's API is where free models run at volume). A model
+        # already a main-run reader, or already tested on any route, is skipped. The test reads through the Go API.
+        prof = load(PROFILES, {})
+        in_main = set(prof.get("workers", {}).get("python", {}).get("readers", []))
+        for m in seen.get("go", {}):
+            if (m in in_main or f"go:{m}" in watch["tests"] or a.no_tests
+                    or (m in reg and reg[m].get("status") in ("failed", "passed"))):
+                continue
+            run = f"t-go-{slug(m)}-{datetime.now():%m%d}"
+            try:
+                ar_queue.test_export(run, f"go:{m}")
+            except SystemExit:
+                pass
+            subprocess.Popen([PY, "-m", "reality_engine.scripts.ar_queue", "drive", "--run", run, "--workers", "4"],
+                             cwd=HERE.parents[1], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | ar_queue.NO_WINDOW)
+            watch["tests"][f"go:{m}"] = {"run": run, "started": now()}
+            lines.append(f"- test go:{m}: **started** (Go API, run {run})")
         REGISTER.write_text(json.dumps(reg, indent=2) + "\n", encoding="utf-8")
         if added and restart_zen_worker():
             lines.append("- Zen AR worker restarted with the new register")
+        if restart_main and restart_main_run():
+            lines.append("- main AR run restarted with the new Go reader")
     WATCH.write_text(json.dumps(watch, indent=1) + "\n", encoding="utf-8")
     for m, v in reg.items():   # promotions end: warn ahead (dates from OpenCode's announcements, see promo_source)
         if isinstance(v, dict) and v.get("free_until") and v.get("status") in ("passed", "untested"):
