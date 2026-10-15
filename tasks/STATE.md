@@ -42,6 +42,13 @@ Unicode (`shifted_digit_maps`). Examples: OIL FY2020 uses U+0144 = 0; PPAP FY202
   - Weekly went 32% -> 42%.
   - About 0.5-0.8% of the 5-hour window per agent.
 
+**Status at hand-over (2026-10-16 ~06:00, sessions being killed):**
+- Run h02-scanned is now copied to the MAIN checkout: `reality_engine/data/ar_queue/h02-scanned` (397 of 638 answers). Use `--run reality_engine/data/ar_queue/h02-scanned` (or just `--run h02-scanned`). Helper agents cannot write there from a worktree session; run the next waves from a session opened on the main checkout.
+- Answered: b000-b035, b038, b039. b036/b037 were interrupted (may be partial; `ar_queue missing` lists them). b040-b063 not started.
+- Imported so far: SINCLAIR + 15 h02 reports (11 + POPULARES, SUPTANERY, SATANIBRG, NBL replaced; KAIZENAGRO kept old). Reports finished by waves 3-4 are NOT imported yet: run `python -m reality_engine.scripts.ar_queue import-docs --run h02-scanned` (already-imported reports are skipped since the 06:00 fix).
+- Fixed: a second import used to re-tag Haiku facts as rejected; 3,842 rows on 11 reports were restored.
+- Not committed: my changes are in `reality_engine/scripts/ar_queue.py` (hard-report commands) and `ingest_annual_reports.py` (`shifted_digit_maps` + `value_check`), mixed with other sessions' uncommitted edits in the same files.
+
 **Next:**
 - Finish run h02-scanned after the 5-hour reset: 44 folders, b020-b063, 438 pages of FY2024-26 scanned reports.
   `ar_queue missing --run <abs path>` lists them. Launch waves of 10, then `import-docs --run <abs path>`.
