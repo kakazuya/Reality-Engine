@@ -1,0 +1,55 @@
+Company: NEWGEN (NSE/BSE symbol NEWGEN), an Indian listed company. Document: investor presentation filed 2023-01-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ -
+ 200
+ 400
+ 600
+ 800
+ 1,000
+ 1,200
+ 1,400
+ 1,600
+Q3 FY'22
+Q3 FY'23
+617
+844
+1,116
+1,544
+Subscription Revenues (INR Mn)
+Annuity Revenues (INR Mn)
+Continuous growth in Annuity based revenues 
+(INRm)
+(1)
+Subscription revenues comprise of ATS/AMC, Cloud/ Subscription License revenue streams
+(2)
+Annuity Revenues comprise of ATS/AMC, Cloud/ Subscription License and Support revenue streams
+Annuity and Subscription Revenues (INR Mn)
+Annuity and Subscription Revenues (INR Mn)
+37% Q3 YoY 
+Growth
+38% Q3 YoY 
+Growth
+Strong growth in Subscription
+based revenues
+The recurring nature Annuity
+revenues are growing at a fast
+pace and now contribute 61% to
+revenues
+• • 
+■ 
+~
+newgen 
+■ 
+UNLOCK SIMPLE 
+
+>>>

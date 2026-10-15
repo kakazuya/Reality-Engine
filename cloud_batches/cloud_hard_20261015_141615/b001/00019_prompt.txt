@@ -1,0 +1,117 @@
+Company: TALBROAUTO (NSE/BSE symbol TALBROAUTO), an Indian listed company. Document: investor presentation filed 2022-02-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Multi-year orders received in FY21 — Adding to growth in FY22 
+  
+Multi-Year order win for BIW parts 
+  
+ 
+o 
+Marelli Talbros Chassis Systems 
+Pvt. 
+Ltd., JV 
+company has received multi-year order from a 
+Large European Car Manufacturer. The Order 
+is for supplying BIW (Body 
+in White design) 
+parts 
+The order supplies will begin 
+in Q1FY22 from 
+the JV Company’s plant in Pune, Maharashtra. 
+The annual order value 
+is estimated 
+at 
+Rs. 
+14.4 crores. The order value 
+is estimated 
+at 
+approximately 
+Rs. 
+92 crores over the 
+life of 
+the contract. 
+No major investments 
+will 
+be 
+required to fulfil this order as the JV Company 
+has sufficient capacity. 
+ 
+  
+O 
+Careful Strategic Planning And 
+Implementation Efforts 
+  
+Commenting on the order Mr. Anuj Talwar, Jt. Managing Director, Talbros Automotive Components Limited said: 
+Technical Assistance Agreement with SANWA 
+talb 
+Automotive Components 
+  
+° 
+ 
+Entered 
+in 
+a Technical Assistance Agreement 
+(TAA) 
+with 
+its 
+Japanese 
+partner 
+‘Sanwa 
+Packing 
+Industry 
+Co. 
+Ltd.’ 
+for 
+Light Weight 
+Aluminium Heat Shields 
+Light Weight Aluminium Heat Shield — Nimbus 
+(Product name) by Sanwa 
+is the world’s first 
+aluminium light weight heatshield for exhaust 
+systems 
+This 
+product 
+will 
+be 
+used 
+for 
+automotive 
+applications 
+and 
+is 
+a 
+futuristic 
+product 
+technology which offers value added features 
+like Noise Reduction, Emission Control, Heat 
+Insulation at challenging temperatures and 
+is 
+a 
+widely 
+used 
+on 
+new generation 
+engines 
+including Hybrid and EVs 
+This product will be of 
+a strong support to 
+OEMs in building BS-VI products 
+ 
+  
+“We had a great start of the year 2021 by addition of this order to our portfolio. This order our second large win in the current financial year and is a testimony to our capabilities 
+of a trusted and quality focused supplier in the Auto Components Industry. This order further enhances the revenue growth visibility and will lead to operating leverage benefits 
+due to low level of capex required to fulfil this order. 
+We remain buoyant on the export opportunities for Indian Auto Components Industry and believe the positive momentum to continue for specialized manufacturers like us.” 
+SO 
+OS OS SO SB OOO OOO SOO SOO OO OOO SOO SOOO OOOO SOO SOOO OOOO OOO OOOO OOOO SOOO OOO OOO OS OOOO OOO OOO OO OOO OOO SOO OOOO OOOO SO
+
+>>>

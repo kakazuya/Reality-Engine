@@ -1,0 +1,77 @@
+Company: TATASTEEL (NSE/BSE symbol TATASTEEL), an Indian listed company. Document: investor presentation filed 2025-05-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+1 
+Page 3 of 4 
+ 
+levels, of which £230 million or Rs 2,600 crores was in UK, Rs 2,800 crores was in India and Rs 1,150 crores was 
+in Netherlands and the cost transformation program will continue in the future. Our Electric Arc Furnace project in 
+UK is also progressing as per plan with award of key OEM contracts, receipt of planning permissions with 
+construction likely to begin by July 2025. Tata Steel Netherlands annual EBITDA has improved to €90 million as 
+production returned to near rated capacity and operating cash flows after interest were around €450 million through 
+significant cash and cost focused actions. The discussion with the Government of Netherlands on the integrated 
+decarbonisation and environmental measures project continues to be intense and we are also engaged with the 
+provincial and environmental authorities on the above.” 
+ 
+Disclaimer 
+Statements in this press release describing the Company’s performance may be “forward-looking statements” within 
+the meaning of applicable securities laws and regulations. Actual results may differ materially from those directly or 
+indirectly expressed, inferred or implied. Important factors that could make a difference to the Company’s operations 
+include, among others, economic conditions affecting demand/ supply and price conditions in the domestic and 
+overseas markets in which the Company operates, changes in or due to the environment, Government regulations, 
+laws, statutes, judicial pronouncements and/ or other incidental factors. 
+ 
+ 
+For queries and information  
+Sarvesh Kumar, Chief Corporate Communications, Tata Steel, sarvesh.kumar@tatasteel.com 
+ 
+ 
+About Tata Steel 
+● 
+Tata Steel group is among the top global steel companies with an annual crude steel capacity of 35 million 
+tonnes per annum. 
+● 
+It is one of the world's most geographically diversified steel producers, with operations and commercial 
+presence across the world. 
+● 
+The group recorded a consolidated turnover of around US$26 billion in the financial year ending March 31, 
+2025. 
+● 
+A Great Place to Work-CertifiedTM organisation, Tata Steel Limited, together with its subsidiaries, associates, 
+and joint ventures, is spread across five continents with an employee base of over 78,000. 
+● 
+Tata Steel has announced its major sustainability objectives including Net Zero by 2045. 
+● 
+The Company has been on a multi-year digital-enabled business transformation journey intending to be the 
+leader in ‘Digital Steel making’. The Company has received the World Economic Forum’s Global Lighthouse 
+recognition for its Jamshedpur, Kalinganagar, and IJmuiden Plants. Tata Steel has also been recognised with 
+the ‘Digital Enterprise of India – Steel’ Award 2024 by Economic Times CIO. 
+● 
+The Company has been recognised with the World Economic Forum’s Global Diversity Equity & Inclusion 
+Lighthouse 2023. 
+● 
+The Company has been a part of the DJSI Emerging Markets Index since 2012 and has been consistently 
+ranked among the top 10 steel companies in the DJSI Corporate Sustainability Assessment since 2016. 
+● 
+Tata Steel’s Jamshedpur Plant is India’s first site to receive ResponsibleSteelTM Certification. Subsequently, 
+its Kalinganagar and Meramandali plants have also received the certification. In India, Tata Steel now has more 
+than 90% of its steel production from ResponsibleSteelTM certified sites. 
+● 
+Received Prime Minister’s Trophy for the best performing integrated steel plant for 2016-17, 2025 Steel 
+Sustainability Champion recognition from worldsteel for eight years in a row, 2023 Climate Change Leadership 
+Award by CDP, Top performer in Iron and Steel sector in Dun & Bradstreet's India's top 500 companies 2022, 
+Ranked as the 2024 most valuable Mining and Metals brand in India by Brand Finance, ‘Most Ethical Company’ 
+award 2021 from Ethisphere Institute, and ‘Best Corporate for Promotion of Sports’ recognition at the Sportstar 
+Aces Awards 2024. 
+
+>>>

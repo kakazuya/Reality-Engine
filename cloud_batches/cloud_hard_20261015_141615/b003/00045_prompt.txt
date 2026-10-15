@@ -1,0 +1,115 @@
+Company: BAJAJHFL (NSE/BSE symbol BAJAJHFL), an Indian listed company. Document: investor presentation filed 2025-07-23. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+16
+BAJAJ HOUSING FINANCE LIMITED
+16
+Shareholding Profile
+Holding of top-20 investors
+S. No.
+Name of Shareholder
+Holding %
+1
+Bajaj Finance Limited
+88.70
+2
+Catamaran Ventures LLP
+0.21
+3
+Vanguard Total International Stock Index Fund
+0.16
+4
+Vanguard Emerging Markets Stock Index Fund, a series of 
+Vanguard International Equity Index Funds
+0.14
+5
+ICICI Prudential Life Insurance Company Limited
+0.14
+6
+Government Pension Fund Global
+0.13
+7
+Government of Singapore
+0.10
+8
+Vanguard Fiduciary Trust Company Institutional Total 
+International Stock Market Index Trust II
+0.08
+9
+Florida Retirement System - Allspring Global Investments, 
+LLC (EMSC)
+0.05
+10
+Serum Institute Of India Pvt Ltd
+0.05
+11
+SBI Life Insurance Co. Ltd
+0.04
+12
+Fidelity Investment Trust Fidelity Emerging Asia Fund
+0.04
+13
+HDFC Life Insurance Company Limited
+0.04
+14
+Edelweiss Trusteeship Co Ltd A/c - Edelweiss MF A/c -
+Edelweiss Recently Listed IPO Fund
+0.04
+15
+Monetary Authority Of Singapore
+0.04
+16
+ICICI Prudential Nifty Next 50 Index Fund
+0.04
+17
+HDFC Trustee Company Ltd. A/C HDFC Large Cap Fund
+0.03
+18
+Canada Pension Plan Investment Board
+0.03
+19
+Nippon Life India Trustee Ltd- A/c Nippon India ETF Nifty Next 
+50 Junior Bees
+0.03
+20
+Morgan Stanley Asia (Singapore) PTE
+0.03
+1.04%
+8,85%
+88.70%
+0.79%
+0.32%
+Corporates
+Promoters & Promoter Group
+Mutual Funds
+FII & FPIs
+Resident & Non-resident Individuals
+Others
+0.30%
+Note: Shareholding as of 31st March 2025
+OVERVIEW OF BAJAJ HOUSING FINANCE
+Executive 
+Summary
+Overview of Bajaj 
+Housing Finance
+Business Wise 
+Update
+Financial 
+Performance
+Treasury 
+Update
+Asset 
+Quality
+Management 
+Assessment - FY26
+
+>>>

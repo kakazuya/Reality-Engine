@@ -1,0 +1,72 @@
+Company: TATASTEEL (NSE/BSE symbol TATASTEEL), an Indian listed company. Document: investor presentation filed 2024-06-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+11
+Financial Management to enable returns across cycle
+Note : Bloomberg for Returns; As on 17th May’24, ROIC – Return on Invested Capital, IG – Investment Grade, HY – High Yield
+0
+400
+800
+1200
+1600
+Mar-18
+Mar-19
+Mar-20
+Mar-21
+Mar-22
+Mar-23
+Mar-2
+Balance sheet management
+•Optimise capital structure and cost
+•Target Net Debt to EBITDA <2.5x across 
+cycle
+•Proactive financing to drive flexibility and 
+reduce costs
+Capital allocation
+• Value accretive investments                     
+(ROIC : 15%)
+• Portfolio restructuring
+Operational excellence
+• Minimize working capital
+• Continuous improvement programs
+Total Shareholder Returns (%)
+33
+15
+5 years
+18
+12
+10 years
+17
+13
+25 years
+Tata Steel
+Nifty 50
+Value Drivers 
+Outcome
+Bond spreads converged to Investment grade
+0
+400
+800
+1200
+1600
+Mar-18
+Mar-19
+Mar-20
+Mar-21
+Mar-22
+Mar-23
+Mar-24
+Tata Steel Abja 5.45 (2028)
+Bloomberg Asia USD IG Bond Index OAS
+Bloomberg Asia USD HY Bond Index OAS
+
+>>>

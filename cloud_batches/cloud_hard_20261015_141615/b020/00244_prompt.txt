@@ -1,0 +1,76 @@
+Company: ADANIGREEN (NSE/BSE symbol ADANIGREEN), an Indian listed company. Document: investor presentation filed 2022-03-19. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+HoldCo Financing: Maiden HoldCo Green Bond Issuance by AGEL 
+OPCOs
+AGEL
+43
+FCFE 1
+Tariff payment
+Taxes & operating expenses
+Senior debt payments                   
+Senior debt reserves: DSRA, SDRA, 
+SDRRA
+Capex Reserve
+Distribution account
+1
+5
+2
+3
+4
+Cash Waterfall
+Taxes & operating expenses
+Senior debt payments                   
+Senior debt reserves: DSRA, SDRA, 
+SDRRA
+Development capital reserve
+Distribution account
+1
+5
+2
+3
+4
+Unique 
+covenants 
+Structure
+Debt Sizing
+ListCo Senior Debt Sizing criteria linked to FCFE - Lower of (a) or (b) :
+a)
+Discounted FCFE: next 10 years Discounted FCFE with cover of 1.6x
+b)
+Forecasted FCFE: next 12 months FCFE with multiple of 5x
+Subject to Overall Cap of ListCo Senior Debt $1.7 bn
+Cash Sweep 
+In case of breach of Debt Sizing covenant, it shall result into mandatory cash sweep into SDRA
+Credit Protection Lock-up 
+– If consolidated Net Consolidated Debt to Run-rate EBITDA is above 7.5x, it shall result in lock-up of 50% surplus 
+cash in SDRRA 
+Key features 
+of the issue
+– AGEL raised USD 750 mn through Holdco bond issuance under the 144A / Reg S format with flexibility to raise 
+additional USD 950 mn to fund future growth.
+– All round participation from Real Money Investors, comprising 48% from Asia, 28% from Europe, Middle East and 
+Africa and 24% from North America.
+– Vigeo Eiris provided a Second Party Opinion on AGEL’s Green Financing framework. KPMG provided 
+independent assurance for the same.
+– Issuance was rated ‘Ba3/Stable’ by Moody’s.
+Rating 
+Rationale
+– Predictable cash flow backed by long-term power purchase agreements (PPAs)
+– Operating projects had an average remaining life of around 20 years 
+– Supported by its large and diversified portfolio of solar and wind generation projects
+– Demonstrated capacity to deliver on growth projects
+– Experienced board members in the areas of corporate governance, business strategy, operational and financial 
+capabilities
+– Credit profile supported by its substantial shareholders – Adani Group & TotalEnergies SE
+
+>>>

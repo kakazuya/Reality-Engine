@@ -1,0 +1,123 @@
+Company: LEMONTREE (NSE/BSE symbol LEMONTREE), an Indian listed company. Document: investor presentation filed 2026-02-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Expansion Plans – Pipeline of managed & franchised contracts by opening (1 of 5)
+6-February-2026
+Q3 and 9M FY26 Earnings Presentation
+32
+Note: The inventory and the dates are as per the latest update from the 3rd party owners
+#
+Hotel Pipeline
+State
+Rooms
+1
+Aurika, Kasauli
+Himachal Pradesh
+110
+2
+Aurika, Rishikesh
+Uttarakhand
+132
+3
+Aurika, Sasan Gir
+Gujarat
+82
+4
+Aurika, Surat
+Gujarat
+175
+5
+Bhangeri Durbar Resort, operated by Lemon Tree Hotels, Nepal
+Nepal
+51
+6
+Keys Lite by Lemon Tree Hotels, Ajmer
+Rajasthan
+31
+7
+Keys Lite by Lemon Tree Hotels, Ambala
+Punjab
+44
+8
+Keys Lite by Lemon Tree Hotels, Coimbatore
+Tamil Nadu
+40
+9
+Keys Lite by Lemon Tree Hotels, Dehradun
+Dehradun
+32
+10
+Keys Lite by Lemon Tree Hotels, Garoth
+Madhya Pradesh
+42
+11
+Keys Lite by Lemon Tree Hotels, Kartarpur
+Punjab
+47
+12
+Keys Lite by Lemon Tree Hotels, Kharar
+Punjab
+47
+13
+Keys Lite by Lemon Tree Hotels, Kurali, Kharar
+Punjab
+38
+14
+Keys Lite by Lemon Tree Hotels, Metropolitan, Vijayawada
+Andhra Pradesh
+44
+15
+Keys Lite by Lemon Tree Hotels, Moga
+Punjab
+30
+16
+Keys Lite by Lemon Tree Hotels, Niman
+Madhya Pradesh
+42
+17
+Keys Lite by Lemon Tree Hotels, Pathankot
+Punjab
+44
+18
+Keys Lite by Lemon Tree Hotels, Somnath
+Gujarat
+52
+19
+Keys Prima by Lemon Tree Hotels, Darjeeling
+West Bengal
+65
+20
+Keys Prima by Lemon Tree Hotels, Dehradun
+Uttarakhand
+55
+21
+Keys Prima by Lemon Tree Hotels, Haridwar 
+Uttarakhand
+60
+22
+Keys Prima by Lemon Tree Hotels, Kempty Road, Mussoorie
+Uttarakhand
+47
+23
+Keys Prima by Lemon Tree Hotels, Saj by the Lake, Malsej Ghat
+Maharashtra
+55
+24
+Keys Prima by Lemon Tree Hotels, Varanasi
+Uttar Pradesh
+153
+25
+Keys Select by Lemon Tree Hotels, Amritsar
+Punjab
+45
+
+>>>

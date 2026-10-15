@@ -1,0 +1,137 @@
+Company: KIRLOSBROS (NSE/BSE symbol KIRLOSBROS), an Indian listed company. Document: investor presentation filed 2024-05-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+•
+Double major in Mathematics and 
+Biology from Bryn Mawr College, 
+USA.
+•
+Served as a GM and Head of Product 
+Portfolio Management at KBL. Prior to 
+KBL, worked with Polaris Partners, 
+Boston based VC firm as well as 
+Visterra Inc., an MIT biotech start-up 
+company. 
+•
+Also on the Board of Karad Projects 
+and 
+Motors 
+Limited, 
+Prakar 
+Investments 
+Pvt 
+Ltd. 
+And 
+KPT 
+Industries Limited (earlier known as 
+Kulkarni Power Tools Limited) 
+Ms. Rama Kirloskar
+Joint Managing Director- KBL 
+Managing Director – KEPL
+•
+B. Com & Chartered Accountant by 
+qualification
+•
+40+ years of rich experience in 
+Finance
+•
+Before joining KBL worked with 
+Kirloskar Ebara Pumps Limited since 
+1989 
+and 
+handled 
+various 
+assignments in Finance as well as 
+several other departments
+Mr. Chittaranjan Mate
+Senior Vice President (Finance)
+Mr. Alok Kirloskar
+Director – KBL
+ Managing Director – KBI B.V. 
+•
+Bachelor 
+in 
+Business 
+Administration with concentration 
+in finance from Carnegie Mellon 
+University, Pittsburgh. He has the 
+honour to be on the deans list for 
+this academic excellence. 
+•
+Worked in a start-up from 2006 as 
+Business Development manager 
+at Sonasoft Inc (Microsoft CSP)
+•
+Headed industry sector in KBL and 
+on board since July 18th 2012. MD 
+of SPP Pumps Ltd since January 
+2012 
+and 
+CEO 
+of 
+Kirloskar 
+Brothers International BV since 
+January 2015.
+Highly Qualified Management Team
+19
+•
+Holds Bachelor’s in Science degree in 
+Mechanical Engineering from the 
+Illinois Institute of Technology in 
+Chicago, USA.
+•
+On Boards of DCM Shriram Industries 
+Ltd., Kirloskar Ebara Pumps Ltd., 
+Kirloskar Brothers International B.V., 
+The Netherlands and SPP Pumps 
+Limited, UK.
+Chairman & Managing 
+Director
+Mr. Sanjay Kirloskar
+•
+Chartered 
+Accountant 
+and 
+has 
+completed executive education from 
+IIM Banglore
+•
+Fellow 
+member 
+of 
+Institute 
+of 
+Directors India & London (F.IOD). 
+•
+He has work experience of over 28 
+years in field of finance, strategic 
+evaluation, risk analysis, treasury & 
+forex management, investor relations, 
+etc. 
+•
+Before 
+joining KBL 
+worked 
+with 
+Trivitron Healthcare since 2019 and 
+handled 
+various 
+assignments 
+in 
+Finance as well as several other 
+departments
+Mr. Ravish Mittal
+Chief Financial Officer^
+Vice President – Finance
+^ w.e.f. 15th May 2024
+
+>>>

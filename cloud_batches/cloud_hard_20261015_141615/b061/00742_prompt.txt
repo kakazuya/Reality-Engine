@@ -1,0 +1,46 @@
+Company: VEDL (NSE/BSE symbol VEDL), an Indian listed company. Document: investor presentation filed 2025-04-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+VZI Sensitivity: Internal (C3)
+17
+Vedanta Limited 
+4QFY25 Investor Presentation
+4QFY25 financial snapshot 
+EBITDA
+₹ 11,618 crore
+                     30% y-o-y
+REVENUE
+₹ 39,789 crore
+                       14% y-o-y
+EBITDA Margin1
+35%
+ 465 bps y-o-y
+Profit after tax
+₹ 4,961 crore
+                    118% y-o-y             
+ROCE2
+c.27%
+ ~371 bps y-o-y
+FCF (Pre-capex)
+₹ 7,814 crore                                   
+               21% y-o-y
+Net Debt/EBITDA
+1.2x
+ vs 1.5x in 4Q FY24
+Cash & Cash 
+Equivalent
+₹ 20,602 crore
+                          34% y-o-y
+1.  Excludes custom smelting at Copper Business                                                                  2.  ROCE is EBIT net of tax outflow divided by average capital employed 
+
+
+>>>

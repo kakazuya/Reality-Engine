@@ -1,0 +1,59 @@
+Company: TANLA (NSE/BSE symbol TANLA), an Indian listed company. Document: investor presentation filed 2021-10-21. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Key Policies
+Basis for preparation of financial statements 
+The Consolidated financial statements of the Group have been prepared in accordance with Indian Accounting Standards ("Ind AS") as notified under 
+Section 133 of the Companies Act, 2013 (the "Act") read with Rule 3 of the Companies (Indian Accounting Standards) Rules 2015 as amended, issued by 
+Ministry of Corporate Affairs (‘MCA’).Accounting policies have been consistently applied to all the years presented except where a newly issued accounting 
+standard is initially adopted or a revision to an existing accounting standard requires a change in the accounting policy hitherto in use 
+Revenue recognition 
+Revenue are derived from our Enterprise and Platform business. Revenue from Enterprises are computed based on total transactions processed through 
+our platforms at the agreed fixed value per transaction. Platform revenue are computed by way of revenue share measured as a rate applicable to 
+transaction processed on their network from mobile carriers and other suppliers. Revenue is recognized upon provision of service to customers that reflects 
+the consideration we expect to receive in exchange for those service.
+Depreciation and Amortization 
+Fixed assets including IT assets are depreciated over their estimated useful lives using the straight-line method. Intangible assets created at time of 
+acquisition based on purchase price allocation methodology. Intangible assets are amortized over their estimated useful lives using the straight-line method. 
+Capitalization of Platforms: Research and development cost are aimed at developing new and innovative products, expanding features for our existing 
+platforms and products. Development cost comprises of third-party product development and other direct related cost associated with it. Internal cost which 
+are revenue expenditure in nature are not capitalized. Development cost incurred are capitalized on product go-live
+Provision for bad and doubtful debts
+We have an Audit Committee approved policy on norm-based provision for bad and doubtful debts. Debtors are assessed at end of each reporting period 
+and provided for based on bad and doubtful debt policy which is norm based (50%- debtor aged between 180-270 days and 100% for greater than 270 days 
+for Enterprises and 100% for greater than 365 days for Government). Provisions created shall be higher of Expected Credit Loss (ECL) or provision 
+determined by the policy. 
+Investment policy
+We have an Audit Committee approved policy on investments. Investments can be in form of liquid funds- fixed deposits/term deposits with banks, housing 
+finance companies and saving scheme/securities/bonds issued by the central government. Investments are mainly in Fixed deposits with banks and housing 
+finance companies having a credit rating of “AAA”. Instruments with this rating are considered to have the highest degree of safety regarding timely servicing 
+of financial obligations. Such instruments carry lowest credit risk.
+Governance policies:
+Code of Conduct:
+This code of conduct on the website is for Directors and Senior Employees- the code of conduct generally applicable to all employees in on the HRMS tool. 
+Supplier code of conduct:
+We believe in conducting business with ethics and integrity, treating all people with dignity and respect, supporting our communities and honoring the laws & 
+regulations  of the countries in which we operate. We will endeavor to choose reputable business partners who conduct their business in a manner that 
+shows high ethical standards, safe and healthy work environments, protection of human rights and dignity, protection of environment and compliance with 
+the law. The SCoC outlines our expectations regarding the workplace standards and the business practices of our suppliers and those in their supply chain.
+Whistle Blower Policy:
+This policy is formulated with a view to provide a mechanism for employees to report to the management instances of unethical behaviour, actual or 
+suspected fraud or violation of the company’s code of conduct.
+Code for Insider Trading:
+All information shall be handled within the Company on a need-to-know basis and no unpublished price sensitive information shall be communicated to any 
+person except in furtherance of the insider's legitimate purposes, performance of duties or discharge of his legal obligations. The Compliance Officer shall 
+report on insider trading to the Board of Directors and to the Chairman of the Audit Committee, if any, at such frequency as may be stipulated by the Board 
+of Directors.
+14
+Q2 | 21-22 Shareholder Report
+
+>>>

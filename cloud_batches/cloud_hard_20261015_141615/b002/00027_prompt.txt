@@ -1,0 +1,65 @@
+Company: SVPGLOB (NSE/BSE symbol SVPGLOB), an Indian listed company. Document: investor presentation filed 2021-07-01. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+SVP 
+4.0: SVP Oman at Sohar Freezone 
+GLOBAL 
+VENTURES LTD. 
+Sohar is one of the fastest growing Port and Freezone developments in Oman, with a 
+strategic location and connections to Asia, Europe and the Americas 
+    
+SVP 
+GLOBAL 
+      
+    
+    
+Sohar is Oman’s major port 
+city with the 2nd largest 
+population in Oman 
+Expanding 
+Footprint 
+P 
+9 
+P 
+Deep sea port with 25m drafts, 
+at Oman 
+located outside the Strait of Hormuz 
+Salient Features of 
+Sohar Freezone 
+The Sohar Port and Freezone is a 
+02? 
+06 
+Access to key transportation links: 
+90:50 JV between Oman 
+e 
+" 
+Sea links with regional port connections 
+Government and Port of Rotterdam 
+" 
+Highway network connecting major GCC hubs 
+= 
+Cargo airport with 50,000 tons / year of capacity 
+03 
+05 
+100% % foreign ownership, free 
+Region’s largest bulk port with 
+repatriation of capital and profits, and 
+the deepest jetty in the Gulf 
+25-year corporate tax holiday. Zero 
+percent import or re-export duties 
+Logistic efficiencies through excellent road, 
+port and air connectivity to cotton & yarn 
+hubs for the global market 
+SVP Global Ventures Limited 
+25
+
+>>>

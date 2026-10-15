@@ -1,0 +1,62 @@
+Company: TECHNOE (NSE/BSE symbol TECHNOE), an Indian listed company. Document: investor presentation filed 2022-02-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+Techno Electric & Engineering Company Limited 
+February 15, 2022 
+ 
+ 
+Page 7 of 22 
+Moderator:  
+Thank you very much. We will now begin the question-and-answer 
+session. Anyone who wishes to ask a question may press '*' and '1' on 
+the touchstone telephone. If you wish to remove yourself from the 
+question queue, you may press '*' and '2'. Participants are requested to 
+use handsets while asking a question. Ladies and gentlemen, we will 
+wait for a moment while the question queue assembles. 
+The first question is from the line of Sandeep Tulsiyan from JM 
+Financial. 
+Sandeep Tulsiyan:   Very good evening, sir. And congratulations on very healthy execution 
+that you've demonstrated in the quarter. 
+P.P. Gupta:              Thank you, Sandeep. 
+Sandeep Tulsiyan:    So, I have a couple of questions. So, first question, sir, is on the revenue 
+target, you had guided around INR 1,000 crore to INR 1,100 crore kind 
+of EPC revenue target that you had given for the current financial year 
+FY22, we have done close to INR 700 crore in the first 9 months period. 
+So, do you think in the last quarter, based on the current execution run 
+rate, you can achieve this INR 300 crore to INR 400 crore kind of 
+revenue? And also, parallelly, if you would like to give any guidance. 
+You briefly mentioned you will do 50% of your order book is around 
+INR 1,500 crore. So, is that the number we should go by for FY23? 
+P.P. Gupta:  
+You see there is always a time lag. But firstly, coming to Q4, it will be 
+INR 300 crore plus only. So, project we'll be achieving now this year as 
+the EPC revenue. So now the minimum goal post is INR 3 billion a 
+quarter, we will be doing definitely. Similarly, we believe will be further 
+ramped to INR 3.5 billion to INR 4 billion, going forward. So in about 
+a year like last year, we had done about INR 800 crore and you see INR 
+1,000 crore this year, plus, so growth is about 25%. So, you can see at 
+least a 25% growth next year also without considering any output of data 
+center being booked in the company. If we look data center outlook, 
+which will be no less than INR 300 crore, INR 400 crore, it will 
+definitely be exceeding INR 1,500 crore in that segment, but INR 12 
+crore, INR 15 crore without data center will definitely be targeting. 
+Sandeep Tulsiyan:    Understood. And what would be the margin profile that we should -- you 
+mentioned you have conservatively guided in the past that one should 
+not look at the quarterly margins that you have delivered of 18% to 20%, 
+and it should be in 15% to 16% on a sustainable basis. And there are 
+some cost recovery that you are hoping for that will come through. So, 
+from a margin perspective, how should we look at these numbers 
+panning out based on the order backlog that you build for on the FGD 
+side as well on the data center side, what do you expect? 
+
+>>>

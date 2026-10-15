@@ -1,0 +1,121 @@
+Company: INSPIRE (NSE/BSE symbol INSPIRE), an Indian listed company. Document: investor presentation filed 2024-05-13. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Share Holding Pattern 
+NSE: INSPIRE
+Share Performance From 05th October 2023
+68.43%
+31.57%
+Promoter & Promoter Group
+Public
+41.65
+0.00
+20.00
+40.00
+60.00
+80.00
+0
+500000
+1000000
+1500000
+2000000
+05-Oct-23
+08-Oct-23
+11-Oct-23
+14-Oct-23
+17-Oct-23
+20-Oct-23
+23-Oct-23
+26-Oct-23
+29-Oct-23
+01-Nov-23
+04-Nov-23
+07-Nov-23
+10-Nov-23
+13-Nov-23
+16-Nov-23
+19-Nov-23
+22-Nov-23
+25-Nov-23
+28-Nov-23
+01-Dec-23
+04-Dec-23
+07-Dec-23
+10-Dec-23
+13-Dec-23
+16-Dec-23
+19-Dec-23
+22-Dec-23
+25-Dec-23
+28-Dec-23
+31-Dec-23
+03-Jan-24
+06-Jan-24
+09-Jan-24
+12-Jan-24
+15-Jan-24
+18-Jan-24
+21-Jan-24
+24-Jan-24
+27-Jan-24
+30-Jan-24
+02-Feb-24
+05-Feb-24
+08-Feb-24
+11-Feb-24
+14-Feb-24
+17-Feb-24
+20-Feb-24
+23-Feb-24
+26-Feb-24
+29-Feb-24
+03-Mar-24
+06-Mar-24
+09-Mar-24
+12-Mar-24
+15-Mar-24
+18-Mar-24
+21-Mar-24
+24-Mar-24
+27-Mar-24
+30-Mar-24
+02-Apr-24
+05-Apr-24
+08-Apr-24
+11-Apr-24
+14-Apr-24
+17-Apr-24
+20-Apr-24
+23-Apr-24
+26-Apr-24
+29-Apr-24
+Volume
+Price
+Source - NSE
+Share Price (₹)
+41.69
+Market Capitalization (₹ Cr)
+56.68
+No. of Shares Outstanding 
+1,36,09,299
+Face Value (₹)
+10.00
+52 week High-Low (₹)
+72.10 – 29.10
+As on 07-05-2024
+As on 31-03-2024
+38
+Investor Presentation 
+Stock Data
+As on 07-05-2024
+
+>>>

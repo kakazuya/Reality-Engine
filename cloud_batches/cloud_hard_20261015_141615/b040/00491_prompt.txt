@@ -1,0 +1,81 @@
+Company: CEIGALL (NSE/BSE symbol CEIGALL), an Indian listed company. Document: investor presentation filed 2026-05-07. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Sr. 
+No
+Project
+Status
+Progress
+Equity Invested*
+Key Highlights
+1
+Malout – Abohar (Punjab)
+Deal Concluded
+100% Completed
+992
+•
+Sale Announced: 100% Stake divestment to Neo Asset Management.
+•
+COD Achieved: Dec 2025 (PCOD June 2023).
+2
+Bathinda – Dabwali (Punjab)
+NBO Signed – Due 
+Diligence in process
+100% Completed
+841
+•
+Status: Pre-COD received in Dec-25.
+•
+Strategy: Asset is now fully mature; monetization process initiated.
+3
+Jalbehra – Shahbad (Haryana)
+NBO Signed – Due 
+Diligence in process
+~98%
+852
+•
+Strategy: Advanced stage execution; slated for divestment upon completion. 
+*(INR Million)
+Objective
+Ceigall has initiated a strategic program to monetise its 
+portfolio of completed and near-complete Hybrid Annuity 
+Mode (HAM) assets.
+The Approach
+Divest 100% equity in mature assets to long-term investors 
+(InvITs/Infrastructure Funds) to recycle capital.
+Future Roadmap
+This transaction marks the start of a sustained monetization 
+cycle. The Company intends to monetize the remaining HAM 
+assets as they achieve COD/maturity.
+Monetize
+Recycle
+Execute
+Funding Growth : De-leveraging Balance sheet
+•
+Monetization proceeds to fund equity requirements of 
+ongoing & upcoming HAM projects
+•
+Reduces dependence on incremental borrowing for 
+HAM equity infusion
+De-leveraging & Capital Efficiency
+•
+Monetization proceeds to support repayment / 
+prepayment of standalone debt
+•
+Improves consolidated leverage metrics & ROE
+•
+Releases capital locked in long-tenor annuity assets
+Monetizing of Mature HAM Assets
+Strategic Rationale
+CEIGALL INDIA LIMITED | INVESTOR PRESENTATION
+
+>>>

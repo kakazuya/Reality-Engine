@@ -1,0 +1,77 @@
+Company: MITSU (NSE/BSE symbol MITSU), an Indian listed company. Document: investor presentation filed 2025-11-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Investor presentation
+Insights Into The Plastic Molding Industry
+58
+The demand for molded plastics is projected to increase significantly due to the extensive expansion and 
+development in the 
+Construction, Automotive, And Packaging Sectors.
+“According to India Plastics Pact's (IPP) Roadmap to 2030, the target is to eliminate all unnecessary plastic waste 
+and items, and make 100% of plastic packaging reusable, recyclable or compostable by the year 2030. The starting 
+point is to establish a list of plastic packaging products that are unneeded or troublesome and take action to solve 
+them through redesign and innovation. New technology and higher-quality plastic will also help India progress 
+towards this goal.”
+Source - IBEF
+The "Make in India," 
+"Skill India," "Swachh 
+Bharat," and "Digital 
+India" initiatives of the 
+government are 
+increasing plastic 
+production, and by 
+2027, it is expected 
+that the plastics 
+industry will generate 
+Rs. 10 lakh billion (US$ 
+122.54 billion) annual 
+revenue, with two lakh 
+tonnes of exports.
+1
+3
+5
+2
+4
+The country 
+recycles plastic at a 
+rate of 60%, which is 
+higher than that of 
+developed nations. 
+The Indian plastic 
+processing industry 
+comprises 
+approximately 
+30,000 units that 
+use injection 
+molding, blow 
+molding, extrusion, 
+and calendaring to 
+create a wide 
+range of products.
+The plastics 
+industry is currently 
+home to about 
+50,000 industries, 
+most of which are 
+micro, small, and 
+medium-sized 
+enterprises 
+(MSMEs). 
+These enterprises 
+contribute Rs. 3.5 
+lakh crore (US$ 
+42.89 billion) to 
+India's economy 
+and employ more 
+than 50,000 people.
+
+>>>

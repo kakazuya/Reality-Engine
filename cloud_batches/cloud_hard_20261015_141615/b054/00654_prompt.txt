@@ -1,0 +1,101 @@
+Company: MHRIL (NSE/BSE symbol MHRIL), an Indian listed company. Document: investor presentation filed 2023-02-02. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Strengthening Brand Pull through Targeted Marketing 
+Campaigns - Q3 FY23 
+Raveena Tandon 
+CLUB MIRKA ARES BY THE as OF 
+REDucE, REUSE. RECYCLE 0 RAINWATER HARVESTING 
+/ 
+Rocky Er Mayur 
+Partnered with Times Network for a celebrity Travel show named 'Magical Trails' 
+which comprises of 6 episodes where celebrities travel to select resorts and 
+experience a Club Mahindra holiday. 
+Campaign Objective Er Theme: 
+Afterall Moms know best 
+To Position 'Club Mahindra' as a caring Family Brand 
+from the perspective of a mother. 
+A Club Mahindra membership enables moms to 
+become #Familykisuperwoman and enables them to 
+plan wonderful family holidays for their loved ones. 
+3.28 Mn 
+11.9 Mn 
+4.9 Mn 
+Reach 
+Impressions 
+Video Views 
+ClubMahl.ratra 
+:xFanAllyKisur.wm. 
+Where's our 
+#FamilyKiSuperwoman 
+headed next? Make a guess! 
+2000. tlssInations 180+ resorts 
+EXPIOle ,rda with a 
+Club MoNedra Membership 
+*Data as on 30th Dec,22 
+011511 PRIMUCIIVIS Ml LED ...wrr, 
+sisrcrreon 50012A3 K. !ARUM 
+OubMahindra 
+clumanTara 
+Bliss 
+THE GOOD LIFE 
+BEGINS AT 50 
+Co-Branding Movie Association for Bliss (Uunchai - starring Amitabh 
+Bachchan, Boman Irani EY Anupam Kher) 
+Theme: Travel EY Enjoy the 2 nd Innings of your Life. 
+The Stage by 
+Club Mahindra 
+!RAPE 
+IS SET. 
+NOW, SE I 
+YOUR 
+DATES. 
+Discover India 
+Art Fair 
+COME, 
+DISCOVER 
+INDIA 
+WITH SOME 
+OF THE FINEST, 
+CONTEMPORARY 
+ART! 
+il•-••••••••• 
+L,
+FL. 
+me welcome sootyyu to be a pan of 
+multImemfe 
+,unfempoiofy art • xnaNtlan. 
+c. mew! by Gawp Seth tbot 
+menomoralos abooverina 
+nala In oohs Ofnaaonol. 
+area oWttual 
+WNW 
+KM QUM FS 
++WI SS 2/7 "7M 
+'The Stage': An on-
+ground Brand IP 
+was launched under 
+which popular plays 
+of Lillete Dubey 
+were performed. 
+Discover India Art 
+Fair was launched 
+where Leading 
+Artists across India 
+Er Goa displayed 
+their art. 
+Venue: CM Varca 
+Dec'22 - Jan'23 
+•
+•
+
+>>>

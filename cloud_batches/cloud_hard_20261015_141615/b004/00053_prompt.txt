@@ -1,0 +1,52 @@
+Company: CAPTRUST (NSE/BSE symbol CAPTRUST), an Indian listed company. Document: investor presentation filed 2026-08-18. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+29
+MSME Loans
+Product Offering & Typical Clientele
+Financing The Overlooked Shopkeeper
+Type of Loan
+Income-generating business loan 
+Ticket Size (₹)
+50,000 – 3,00,000
+Tenure
+18 - 36 months
+ROI
+Starting 26%
+Repayment
+Digital (NACH, BBPS, UPI, Static QR) followed by 
+physical cash collection
+Product 
+Optimisation
+Small ticket size, short tenure, optimal EMI amount, 
+short turn-around-time, 
+digital collection enabled, cash collection setup
+Target Clientele
+Shopkeepers
+Overlooked by formal financial institutions, the 
+company aims to support rural and semi-urban 
+shopkeepers
+New to Organized 
+Credit
+Replacing traditional informal sources of financing 
+(local moneylenders) which currently account for 
+84% of all financing to MSMEs
+Informal MSMEs
+Unserved by MFIs (owing to RBI guidelines) and 
+banks / large NBFCs (owing to no formal income 
+documentation)
+Clients Needing 
+Instant Credit
+With 100% digital processes, company can disburse 
+loans in a matter of hours from onboarding
+
+>>>

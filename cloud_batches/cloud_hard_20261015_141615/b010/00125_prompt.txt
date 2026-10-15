@@ -1,0 +1,62 @@
+Company: ICICIGI (NSE/BSE symbol ICICIGI), an Indian listed company. Document: investor presentation filed 2024-07-19. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+ 
+ 
+ 
+ 
+About ICICI Lombard General Insurance Company Limited 
+ICICI Lombard is the leading private general insurance company in the country. 
+The Company offers a comprehensive and well-diversified range of products 
+through multiple distribution channels, including motor, health, crop, fire, personal 
+accident, marine, engineering, and liability insurance. With a legacy of over 2 
+decades, ICICI Lombard is committed to customer centricity with its brand 
+philosophy of ‘Nibhaaye Vaade’. The company has issued over 36.2 million 
+policies, honoured over 2.9 million claims and has a Gross Written Premium 
+(GWP) of ₹ 255.94 billion for the year ended March 31, 2024.  ICICI Lombard has 
+312 branches and 13,670 employees, as on March 31, 2024.  
+ICICI Lombard has been a pioneer in the industry and is the first large scale 
+insurance company in India to migrate its entire core systems to cloud.  With a 
+strong focus on being digital led and agile, it has launched a plethora of tech-driven 
+innovations, including the industry first Face Scan on its signature insurance and 
+wellness App - IL TakeCare, with over 9.3 million downloads. The company has 
+won several laurels including ET Corporate Excellence Awards, Golden Peacock 
+Awards, FICCI Insurance Awards, Assocham, Stevie Asia Pacific, National CSR 
+awards etc. for its various initiatives. For more details log on to 
+https://www.icicilombard.com/   
+For further press queries, please get in touch with Ms. Rima Mane +91 99877 
+87103 
+or 
+send 
+an 
+email 
+to 
+rima.mane@icicilombard.com 
+/ 
+corporate.communication@icicilombard.com  
+For investor queries please get in touch with Mr. Sarvesh Agrawal +91 70450 
+91174 
+or 
+send 
+an 
+email 
+to 
+sarvesh.agrawal@icicilombard.com 
+/ 
+ir@icicilombard.com   
+ 
+ 
+ 
+ 
+
+>>>

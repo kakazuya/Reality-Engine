@@ -1,0 +1,42 @@
+Company: RAMRAT (NSE/BSE symbol RAMRAT), an Indian listed company. Document: investor presentation filed 2026-02-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Ram Ratna Wires Ltd
+At a Glance
+8
+Over 3 decades of
+Manufacturing expertise
+India’s Leading
+Manufacturer of super
+enamelled copper winding wires 
+India’s Only Manufacturer
+Offering widest range of enamelled 
+wires (0.016 mm – 5.000 mm)
+~41,400 Tons
+Annual Capacity for Enamelled Wires*
+Extensive Distribution 
+Network
+PAN India
+85-90%
+Capacity Utilization*
+Proven Track record Revenue & PAT growing at CAGR
+(5 years) of 20% & 37% respectively 
+Supplies 70-75% Products
+to Large OEMs
+Investment in Capacity Building 
+continues to drive operational efficiency
+ 
+ROCE*
+21.5%
+*The figures are for FY25
+
+>>>

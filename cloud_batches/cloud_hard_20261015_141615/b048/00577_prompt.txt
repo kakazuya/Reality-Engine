@@ -1,0 +1,162 @@
+Company: IRFC (NSE/BSE symbol IRFC), an Indian listed company. Document: investor presentation filed 2021-06-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+PRIVATE & CONFIDENTIAL
+Growth Journey
+3
+1998-99
+2018
+2011
+2012-16
+1993-96
+2003-10
+2019
+2017
+
+GoI permitted 
+IRFC to raise tax 
+saving bonds 
+under section 
+54EC(ba) of IT 
+Act, 1961, 
+pursuant to the 
+notification dated 
+August 8, 2017 
+issued by the 
+CBDT, MoF
+
+Set up EMTN 
+Programme for USD 
+2 Billion
+
+The financial 
+statements, for the 
+year ended March 
+31, 2019, were the 
+first annual financial 
+statements that have 
+been prepared in 
+accordance with Ind 
+AS
+
+Raised FCY 
+TL from 
+American 
+Family Life 
+Assurance 
+Co. of 
+Columbus 
+for a tenure 
+of 15years
+
+Registered as an NBFC
+
+Issued secured, 
+redeemable, non-
+cumulative, taxable bonds 
+to LIC for 15 years
+
+Issued  secured, 
+redeemable, non-
+cumulative, taxable bonds 
+in Separately Transferable 
+Redeemable Principal 
+Parts (STRPP)
+
+Declared as a 
+Public 
+Financial 
+Institution 
+under Section 
+4A of the 
+Companies 
+Act, 1956
+
+Public issue of 
+deep discount 
+bonds
+
+Categorized as 
+NBFC-ND-AFC 
+by RBI
+
+Issued secured, 
+redeemable, 
+non-cumulative, 
+taxable bonds 
+for a tenure of 
+25 years
+
+Categorized as 
+NBFC-IFC by 
+RBI
+
+Raised funds through a 
+public issue of tax –free 
+bonds at a differential 
+coupon rate
+
+Entered into a MoU* with 
+MoR for  financing of 
+railway infrastructure 
+projects 
+
+Forayed into funding 
+railway projects through 
+institutional finance from 
+LIC
+
+CBDT , notified that any bond redeemable 
+after 3 years issued by IRFC will be classified 
+as ‘long-term specified asset’ under Section 
+54EC of the IT Act, 1961
+
+USD 500 mn unsecured fixed rate Reg S 
+Green Bonds issued for period of 10 years
+
+Awarded ‘Mini Ratna Category I’ status
+
+The MCA, granted exemption  from  
+applicability of AS22 under Indian GAAP or 
+Indian Accounting Standard 12 under Ind AS, 
+as applicable, relating to deferred tax assets 
+or Liability w.ef. April 2017
+2020
+
+MCA advised the Company to apply 
+paragraph 11 of Ind AS 01, first time 
+adoption of Ind AS read with Ind AS 
+8, Accounting Policies, Changes in 
+Accounting Estimates and Errors
+
+Accordingly, the Co. reversed the 
+deferred tax liability of INR 
+64,431.40 million by crediting the 
+retained earnings as at April 1, 2017, 
+being the date of transition to Ind AS
+
+IRFC made its maiden IPO and was 
+successfully listed on both NSE & BSE on 
+29th January 2021
+
+Cumulative funding to MoR, for meeting 
+its developmental expenditure,  has 
+reached to INR 4.43 lakh crore
+
+Highest ever disbursement to MoR at INR 
+1,04,369 crore
+
+Mobilized an aggregate sum of USD 4.075 
+Billion, highest ever ECB in a single year
+2021
+
+>>>

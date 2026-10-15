@@ -1,0 +1,48 @@
+Company: LAURUSLABS (NSE/BSE symbol LAURUSLABS), an Indian listed company. Document: investor presentation filed 2024-01-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Laurus Q3 & 9M FY 2024 Investor Presentation | January 24, 2024
+9
+Our Collaboration and Updates 
+Dec’23 – Started GLP lab construction for Vectors/Gene products
+Jun’23 – In-licensed few gene therapy assets and funding support 
+to advance clinical trials 
+Dec’23 - Successful NexCAR19 India launch. Ph II/III interim results 
+presented at ASH 2023; demonstrates excellent Safety profile 
+Oct’23 - India’s first indigenously developed CAR-T cell therapy, 
+NexCAR19 approved by CDSCO1
+May’23 - Ph II completed for CD-19 targeting  B-lymphoid 
+malignancies. Laurus increased stake to ~34%. GMP facility on 
+going expansion to service more treatments
+Nov’21 - Acquired 26.6% in CAR-T cell platform co w/Aim to bring 
+novel technology to cancer patients at a very affordable pricing
+Cell Therapy
+Gene
+Therapy
+Precision 
+Fermentation
+Sep’23 – Increased stake to ~88%. Focus on integrated offering 
+with capabilities across rh-Protein, Bio-catalysis & precision 
+fermentation
+1 Central Drugs Standard Control Organization (CDSCO),  ^Including consideration paid towards Additional stake in Laurus Bio and Gene therapy spends in 3QFY24   
+Accessing Advanced platform through our Goal to Invest up to 10% of profits on disruptive technologies
+Strategic Investment – Journey towards Delivering breakthrough technologies
+~ ₹ 450 Crore^ 
+Cumulative Investment 
+in breakthrough 
+technologies since past 
+3 years consistent with 
+our Goal 
+Technologies
+Investments 
+
+>>>

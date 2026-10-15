@@ -1,0 +1,144 @@
+Company: AFFLE (NSE/BSE symbol AFFLE), an Indian listed company. Document: investor presentation filed 2026-08-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+20
+NOTE: (1) All case studies are based on First Party data consented and shared by the advertiser/agency together with Affle’s platform data; (2) Campaign Period: Jan 26-June 26  (3) The ads and/or platform 
+modules/screenshots shown here are for illustrative purpose only 
+Traveloka is Indonesia's leading online travel booking
+platform,
+offering
+flights,
+hotels,
+transportation,
+attractions, and lifestyle experiences.
+About the Advertiser
+Objective
+Capture
+interest
+from
+high-intent
+travelers,
+while
+improving purchase conversion and traveler loyalty.
+Solutions & Results 
+●AI-led
+precision
+optimization
+to
+maximize conversion quality, expanding
+Traveloka’s
+reach
+among
+high-intent
+travelers to drive first purchases
+●Partner with premium apps: Optimizing
+to
+reach
+travelers
+most
+likely
+to
+complete flight and hotel bookings.
+●140%
+increase
+in
+new
+converted
+travelers (May‘26 vs Jan‘26), driving 3X
+cost efficiency towards first purchases
+●>120% month-on-month growth in first
+purchases,
+driving
+stronger
+revenue
+returns and improved profitability.
+Localiza is one of Latin America's largest mobility
+companies, offering car rentals, fleet management,
+and mobility solutions.
+About the Advertiser
+Objective
+Reach high-quality new renters to drive additional
+car rental reservations on iOS.
+PT TransNusa Aviation Mandiri (TransNusa) is one of
+Indonesia's
+legacy
+airline,
+providing
+affordable
+domestic and international air travel
+About the Advertiser
+Objective
+Engage
+high-intent
+travelers
+to
+drive
+higher
+conversions.
+Solutions & Results
+●AI-powered campaign optimization
+to
+continuously
+analyze
+performance signals and maximize
+conversion efficiency
+●AI-generated
+Custom
+Product
+Pages
+(CPPs)
+to
+deliver
+more
+relevant App Store experiences and
+attract higher quality renters.
+●Refined keywords and budgets to
+maximize
+business
+outcomes,
+optimizing toward conversions
+●52% surge in car rental reservations
+(Q1FY27
+vs.Q4FY26)
+&
+over
+50%
+increase in revenue
+Solutions & Results
+●Leverage proprietary audience
+intelligence
+to
+identify
+and
+reach
+high-intent
+travelers
+across major social platforms,
+enabling smarter engagement.
+●Continuous
+optimization
+for
+improved conversions, driven by
+AI-led insights.
+●4.4x
+higher
+month-on-month
+engagement for the new route
+launch initiative
+●Over
+190%
+increase
+in
+engagements Q-on-Q
+Hospitality & Travel | Turning travel intent into bookings across Emerging Markets
+
+>>>

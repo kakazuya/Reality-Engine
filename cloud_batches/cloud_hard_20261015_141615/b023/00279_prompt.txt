@@ -1,0 +1,60 @@
+Company: APOLLO (NSE/BSE symbol APOLLO), an Indian listed company. Document: investor presentation filed 2023-05-31. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+About us:
+
+Apollo Micro Systems Limited (AMS) has become one of the leading companies in the
+Indian Defence sector for electronic manufacturing, hardware designing, weapon
+integration, and platform integration.
+
+AMS specializes in the design, development, and sale of high-performance solutions that
+are critical for missions and time-sensitive operations.
+
+Company’s products are used across multiple industries including Aerospace Systems,
+Ground Defence, Space, Avionics Systems, Homeland Security, and Transportation.
+
+AMS’s manufacturing facility is located in Hyderabad and has a built-up area of 55,000 sq.ft.
+with a team of 300+ employees, including 150+ employees in R&D.
+Our Key Differentiator:
+
+Over 38 years of experience in the Design, Development and Assembly of Custom-Built
+Electronics and Electro-mechanical solutions.
+
+AMS provides a gamut of products and services which includes designing, electronic
+manufacturing services, PCB fabrication, embedded software design and development,
+circuit board assembly, hardware design services, concept-to-product development, host
+interface development, and custom-built electronic systems.
+
+Company’s manufacturing plant boasts a full-fledged ESS testing facility, and the inspection
+is in line with DGQA standards.
+
+ISO, CEMILAC certified and DRDO approved partner with key roles in multiple ongoing
+defence programmes.
+
+AMS actively invests an average of 7-8% of the revenue in R&D for developing and testing
+critical components under DRDO programmes. Some of the key strategic projects are
+mentioned below:
+
+Company’s clientele consists of prominent government institutions such as the DRDO,
+Indian Army, Indian Navy, DPSU’s, as well as private players like Adani, L&T and many more.
+1.
+Universal Homming System for Light & Heavy Weight Torpedoes
+2.
+Landing Gear Actuators for Avionic Platforms
+3.
+Digital RF Seeker Signal Processor
+4.
+Integrated Guidance Kit for Various Platforms
+5.
+Under Water Mines
+
+>>>

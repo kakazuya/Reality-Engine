@@ -1,0 +1,103 @@
+Company: NAVKARCORP (NSE/BSE symbol NAVKARCORP), an Indian listed company. Document: investor presentation filed 2023-10-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Navkar Corporation Limited
+Our Esteemed Board
+19
+Chairman & Managing Director
+Shantilal Jayavantraj Mehta
+o
+With over decades of experience as Chairman and Managing
+Director, he guides diverse aspects of the company, from
+management to long-term strategy.
+o
+Under his leadership, the company excelled, receiving accolades
+like "CFS of the Year" for its achievements
+Whole-Time Director
+Nemichand Jayavantraj Mehta
+o
+With over decades of experience in CFS and ICD operations, he's
+been a Whole Time Director since the company's start.
+o
+His leadership significantly influences the company's policies,
+vision, strategy, and long-term growth, driving its success.
+Whole-Time Director
+Jayesh Nemichand Mehta
+o
+With over a decade of logistics experience and a diverse project
+portfolio in CFS and ICD, he serves as the Whole Time Director,
+contributing to business development and process innovations.
+o
+He holds a Diploma in Strategic Leadership Development from IIM
+Bangalore.
+Whole-Time Director
+Dinesh Jain
+o
+With over 20 years of logistics experience, he's been associated
+with the organization since inception and has been a key
+contributor to its success
+o
+He has been instrumental in critical activities like IPO, QIP,
+mergers, and operations across CFS, ICD, and Rail Terminals.
+Non-Executive Independent Director
+Pooja Hemant Goyal
+o
+She serves as an Independent Women Director, bringing a
+legal perspective to the company's leadership.
+o
+With a master's degree in law and over 13 years of legal
+industry
+experience,
+she
+offers
+valuable
+insights
+and
+knowledge to the organization.
+Non-Executive Independent Director
+Ashok Kumar Thakur
+o
+With over 40 years of banking sector experience and a master's
+degree in commerce, he serves as a Non-Executive Independent
+Director.
+o
+He has held leadership roles at Union Bank of India and served as
+Chairman at Rewa Siddhi Gramin Bank before becoming an
+Independent Director on the company's board in January 2017.
+Non-Executive Independent Director
+Atul Kumar
+o
+With 35+ years in banking, known for integrity and ethical
+leadership, he joined as an Independent Director on May 29,
+2023.
+o
+The first-ever Chief Ethics Officer in Indian banking history, he
+holds a bachelor's degree in arts from Awadh University.
+Non-Executive Independent Director
+Sandeep Kumar Singh
+o
+He's been a Non-Executive Independent Director since August 23,
+2018,
+with
+a
+diverse
+background
+spanning
+media
+and
+organizations like ASSOCHAM and AC Nielsen.
+o
+He notably reshaped SABe TV and launched Sahara Samay
+channels, demonstrating his strategic prowess in the media
+industry.
+
+>>>

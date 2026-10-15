@@ -1,0 +1,41 @@
+Company: SHREEPUSHK (NSE/BSE symbol SHREEPUSHK), an Indian listed company. Document: investor presentation filed 2022-02-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+SAFETY
+SOCIETY
+ECO-FRIENDLY
+ENVIRONMENTAL
+Fertiliser Business
+31
+Fertilisers
+Animal Health & 
+Nutrition
+Product used as an additive for the feed given to livestock and domestic fowls as supplementary to their
+requirement of phosphorus and calcium
+Prevents Osteomalacia and Rickets in the livestockand fowls
+Portfolioconsists of more than 15 types of different grades of Fertilizers
+Own distribution and dealership network mainly in the states of Haryana, Punjab, Rajasthan, Uttar Pradesh,
+Himachal Pradesh, Uttarakhand, Maharashtra, Karnataka, and Goa
+Single Super Phosphate (SSP) is a straight phosphatic multi-nutrient fertilizer and manufacture fortified SSP
+in two different types
+1.
+Zincated (Granular and Powder)
+2.
+Boronated (Granular and Powder)
+PUSHKAR™Sulphate of Potash (SOP) is a product that provides Potash and Sulphur as nutrients. One of the
+major benefits of SOP as a fertilizer is that it is completely water soluble and can be easily administered to
+plants through soil or foliar spray
+PUSHKAR™NPK consists of 18 % Nitrogen, 18% Phosphorus & 10% Potassium. It enhances the health of the
+plant and uniforms plant growth, so the crop gets ready for harvest at once
+Among the Top 5 manufacturer of SSP in India
+
+>>>

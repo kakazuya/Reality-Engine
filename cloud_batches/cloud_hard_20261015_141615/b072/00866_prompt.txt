@@ -1,0 +1,60 @@
+Company: LICI (NSE/BSE symbol LICI), an Indian listed company. Document: investor presentation filed 2023-05-25. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Robust agency force
+Source: Life Council
+29
+10,69,640 11,01,268 
+11,16,175 
+12,80,883 
+12,08,826 
+13,53,808 13,26,432 
+13,47,325 
+ -
+ 2,00,000
+ 4,00,000
+ 6,00,000
+ 8,00,000
+ 10,00,000
+ 12,00,000
+ 14,00,000
+ 16,00,000
+FY20
+FY21
+FY22
+FY23
+PVT
+LIC
+LARGEST AGENCY FORCE
+19.75%
+11.46%
+15.35%
+0.00%
+5.00%
+10.00%
+15.00%
+20.00%
+25.00%
+PRIVATE
+LIC
+INDUSTRY
+GROWTH IN NO. OF AGENTS {2020 to 2023}
+LIC has dominant agency force – 50% plus of life insurance Industry.
+14.76%
+1.58%
+7.60%
+Growth {FY23 over FY22}
+PRIVATE
+LIC
+INDUSTRY
+
+>>>

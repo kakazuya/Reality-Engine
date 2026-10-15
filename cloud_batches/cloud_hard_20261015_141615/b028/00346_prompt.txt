@@ -1,0 +1,37 @@
+Company: ICICIPRULI (NSE/BSE symbol ICICIPRULI), an Indian listed company. Document: investor presentation filed 2022-07-16. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Financial metrics
+27
+1.
+At June 30 of respective financial years
+2.
+At March 31, 2022
+Solvency ratio continues to be strong at 203.6%
+` billion
+Q1-FY2022
+FY2022
+Q1-FY2023
+Profit after Tax
+(1.86)
+7.54
+1.56
+Solvency ratio
+193.7%1
+204.5%2
+203.6%1
+AUM
+2,231.711
+2,404.922
+2,300.721
+
+>>>

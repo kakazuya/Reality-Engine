@@ -1,0 +1,90 @@
+Company: GLENMARK (NSE/BSE symbol GLENMARK), an Indian listed company. Document: investor presentation filed 2022-11-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+NOVEMBER 17, 2022
+ISB 1442 Shows Superior Tumor Cell Killing Compared to 
+Magrolimab and Daratumumab Monotherapies or Combination
+CD38
+CD47
+180,000
+60,000
+10-310-210-1 100 101 102 103
+-20
+0
+20
+40
+60
+80
+100
+120
+Antibody concentration (nM)
+CD47/SIRPa inhibition (%)
+anti-CD47 mAb (5F9)
+ISB 1442
+CD38high (Daudi)
+Data presented at American Society of Hematology 2021 Annual Meeting. Author, Stefano Sammicheli, et. al
+Statistics: Tukey’s multiple comparison test.
+Middle and right graphs: Multiple Mode of Action Killing assay run in the 
+presence of irrelevant competing IgGs from serum, more closely 
+representing what happens in vivo
+Blocks CD47/SIRPα Interactions
+9nM
+5F9
+900nM
+ISB 1442
+40
+GLENMARK INVESTOR DAY
+Higher Killing Compared
+to Anti-CD47 (5F9) and
+Daratumumab Monotherapy
+Higher Killing Compared to 
+Combination of Anti-CD47 
+(5F9) and Daratumumab
+10 0
+10 2
+10 4
+-20
+10 -4
+10 -2
+0
+20
+40
+60
+80
+100
+% Specific killing
+anti-CD47 mAb (5F9) 
+Daratumumab
+ISB 1442
+Antibody concentration (nM)
+P<0.0005
+P<0.05
+P<0.05
+100
+102
+104
+-20
+10-4
+10-2
+80
+60
+40
+20
+0
+Antibody concentration (nM)
+% Specific killing
+ISB 1442
+Daratumumab + anti-CD47 mAb (5F9)
+• The enhanced Fc in ISB 1442 activates macrophages regardless of the presence of competing IgGs, 
+resulting in greater monotherapy efficacy than anti-CD47 (5F9)
+
+>>>

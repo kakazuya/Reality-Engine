@@ -1,0 +1,112 @@
+Company: GMRAIRPORT (NSE/BSE symbol GMRAIRPORT), an Indian listed company. Document: investor presentation filed 2022-02-26. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+34
+Covid timeline in Indian aviation
+Domestic flight 
+resumption starting 
+May 25th
+Lack of visibility on 
+resumption of Int’l 
+operations 
+Ban extended on Int’l 
+flights
+Graded resumption of 
+int’l travel under air-
+bubble arrangement
+Bubble 
+agreements 
+signed with 24 
+nations to enhance 
+int’l operations
+Domestic capacity 
+enhanced to 80% 
+in steps
+New Covid cases 
+fall to ~20K per 
+day
+Apr- Jun 2020
+Jul-Sep 2020
+Oct’20–Mar’21
+Complete
+Lockdown
+Restricted 
+Operations
+Good 
+Recovery
+Focus on safety 
+and sanitation
+Emergency flights 
+and Cargo
+Ramp up on 
+domestic traffic 
+Cargo volumes 
+return to 
+pre-covid levels
+Air bubble 
+arrangement with 
+27 nations
+New Covid cases 
+rise to ~0.4 mn/ 
+day by April end
+Apr- May 2021
+Covid 2nd
+Wave Impact
+Second wave hits 
+India in April and 
+traffic plummets
+Air bubble 
+arrangement with 
+28 countries
+New Covid cases 
+drop to <40K by 
+mid-July; cases 
+<6K in Dec
+Domestic traffic 
+back to >~90% 
+levels in Dec
+Int. traffic 
+recovering with 
+easing of travel 
+restrictions
+Jun-Dec 2021
+Road to strong 
+Recovery
+Traffic bounces 
+to ~60-65% of 
+pre-Covid levels
+Traffic bounces to 
+~80% of pre-Covid 
+levels
+Air bubble 
+arrangement with 
+28 nations
+New Covid cases 
+rise to ~0.35 mn/ 
+day by mid Jan. 
+Cases starts 
+reducing ~0.07 mn 
+as of Feb 8, 2022
+Vaccination 
+reduced the impact
+Third wave impacts 
+traffic in Jan. But 
+traffic showing signs 
+of recovery from end 
+of Jan
+Jan 2022
+Covid 3rd Wave 
+but imact waning 
+fast
+☼
+
+>>>

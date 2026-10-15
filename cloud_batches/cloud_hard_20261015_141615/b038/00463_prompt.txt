@@ -1,0 +1,65 @@
+Company: LTF (NSE/BSE symbol LTF), an Indian listed company. Document: investor presentation filed 2023-10-20. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+6
+Performance against Lakshya 2026 goals  – Q2FY24
+GS3   <3%
+NS3   <1%
+Retail Asset Quality
+2.8% - 3%
+Retail RoA
+>25% CAGR
+Retail Growth
+>80%
+Retailisation
+LAKSHYA 2026 
+GOALS
+YEAR 1 - FY23          
+RETAIL
+GS3   3.41%
+NS3   0.71%
+Q4
+2.95%
+35% YoY
+75%
+YEAR 0 - FY22          
+RETAIL
+GS3   3.82%
+NS3   1.14%
+Q4 
+2.58%
+10% YoY
+51%
+FY
+2.46%
+FY
+1.66%
+YEAR 2 – Q1FY24          
+RETAIL
+GS3   3.21%
+NS3   0.70%
+3.08%
+34% YoY
+82%
+Q1FY24
+YEAR 2 – Q2FY24          
+RETAIL
+GS3   3.05%
+NS3   0.67%
+3.32%
+33% YoY
+88%
+Q2FY24
+INTERNAL
+Lakshya was launched in April 2022. Year 0 refers to the financial year 2021-22 which is before the launch of Lakshya strategy
+
+>>>

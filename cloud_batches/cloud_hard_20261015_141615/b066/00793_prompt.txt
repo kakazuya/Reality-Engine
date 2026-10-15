@@ -1,0 +1,61 @@
+Company: GMRAIRPORT (NSE/BSE symbol GMRAIRPORT), an Indian listed company. Document: investor presentation filed 2026-05-27. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+4
+Humility | Entrepreneurship | Teamwork & Respect for Individual | Deliver the Promise | Learning & Inner Excellence | Social Responsibility | Financial Prudence - Frugality 
+Leading global airports platform with end-to-end capabilities
+across the airport value chain
+One of the Largest Airports Platform
+1) GMR Airports is the 2nd largest private airport operator in the world based on CY2025 passengers; 2) FY26 data including DIAL, GHIAL, Goa, Medan and Cebu 3) ACI: Airport Council International; 4) Includes DIAL (230 acres), GHIAL (1,500 
+acres), Goa (232 acres), Bhogapuram (294 acres), Nagpur (247 acres), Greece (~10 acres); 5) Only includes operational Indian airports in GMR Airports Ltd. (GAL) portfolio in FY26 – DIAL, GHIAL and Mopa (Goa); 6) Includes Cebu where GAL 
+will operate as the Technical Services Provider until Dec’26; 7) 2025 Airport Service Quality Customer Experience Awards by Airports Council International
+2nd Largest1 globally
+Largest in India
+Private airport 
+operator
+#96
+No. of airport assets 
+under operations or 
+various stages of 
+development
+“Best Airport”7 in CY25
+DIAL: At Departures In 
+Asia Pacific catering to 
+40mn+ pax
+GHIAL: At Arrivals, 
+Globally
+27.3%5
+share of passenger
+traffic in India in FY26
+Integrated plus end-to-end capabilities across the entire airport value chain
+~197 m
+Operational capacity:  
+~172 m6
+Under development: 
+~25 m
+1342 m
+Passengers handled 
+across all gateway 
+airports
+~2,510 acres4
+Of land with strong 
+real estate ("RE") 
+development 
+potential
+Long remaining 
+concession period 
+with rated capacity of 
+~400m pax positioned 
+to capitalize on robust 
+traffic growth outlook
+
+>>>

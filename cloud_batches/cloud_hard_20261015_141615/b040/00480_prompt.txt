@@ -1,0 +1,44 @@
+Company: ZTECH (NSE/BSE symbol ZTECH), an Indian listed company. Document: investor presentation filed 2025-02-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Creating a better tomorrow!
+13
+84.79
+97.22
+2024
+2029
+Indian Water & Wastewater Treatment
+Technology Market (In ₹ Cr)
+
+The India Water and Wastewater Treatment Technology Market size is estimated at INR
+8,364 crore (USD 1.02 billion) in 2024 and is expected to reach ₹ 14,013 crore (USD 1.71
+billion) by 2029, growing at a CAGR of 10.78% during the forecast period (2024-2029)
+
+India, along with China, Indonesia, Nigeria, and the United States, is expected to lead the
+world's urban population surge by 2050, increasing the need for municipal water treatment
+
+The Indian government aims to provide 100% of its population with safe and adequate
+drinking water within premises by 2024 or 2025, which will boost the demand for municipal
+water treatment plants
+
+By 2030, India's water demand is expected to exceed supply by two times, indicating severe
+water scarcity and increasing the need for water treatment systems. Major end-user
+industries for anaerobic biological treatment include municipal wastewater treatment, food
+and beverage manufacturing, chemical effluent, and agricultural waste
+
+The Council on Energy, Environment, and Water (CEEW), in association with the 2030 Water
+Resources Group, is working to improve wastewater management in India and increase
+private investments in wastewater treatment plants. The urban sewage capacity in India has
+grown significantly in recent years, driving the demand for innovative water treatment
+technologies
+
+>>>

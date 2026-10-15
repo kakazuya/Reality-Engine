@@ -1,0 +1,66 @@
+Company: PATINTLOG (NSE/BSE symbol PATINTLOG), an Indian listed company. Document: investor presentation filed 2022-06-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Airfreight 
+Patel 
+Airfreight 
+(PAF) 
+Domestic 
+was 
+launched 
+in 
+1980 
+and 
+is 
+an 
+IATA-approved 
+cargo 
+agency 
+offering 
+transportation of high-density cargo by air and surface within India. 
+Today, PAF Domestic has a presence in 89 Airports in India and has 125+ offices at strategic locations across the 
+country. 
+In 2004 PATEL Airfreight (PAF) International was launched and today 
+it undertakes efficient and cost-effective 
+freight transportation across the globe. 
+PAF International 
+is 
+a member of Global Logistics Network (GLN), headquartered 
+in New Jersey, USA, with 
+a 
+worldwide membership of 136 members across 60 countries. Through this, the company 
+is able to efficiently 
+manage it’s international business and deliver the cargo to the doorstep of clients. 
+The company specializes in transporting Cargo through passenger Aircrafts and is a major player in the passenger 
+Air Freight Cargo in India. 
+The company serves a wide set of industries including, seafoods, leather goods, granite, garments, engineering 
+goods, medical equipment, chemicals and many more. 
+Patel Airfreight is a preferred partner for most of the E-commerce giants, Pharmaceutical, Automobiles, FMCG, IT, 
+Engineering companies and many more. 
+The company has tie-ups with major airline carriers in India such as IndiGo, Air India and Spice Jet to ship cargo 
+domestically and internationally weighing anything between 250 gms to 40 tonnes. 
+edd 
+eve 
+Revenue (INR Mn) 
+  
+2020 
+2021 
+2022 
+International 
+tm Domestic 
+    
+Seine W AN a ietc48l 8 
+Patel Airfreight 
+International 
+13
+
+>>>

@@ -1,0 +1,302 @@
+Company: ZENSARTECH (NSE/BSE symbol ZENSARTECH), an Indian listed company. Document: investor presentation filed 2024-04-25. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Case studies: Next
+-generation services bring business value
+The
+client
+encountered
+challenges
+in diverse
+data
+integration,
+risk
+assessment
+complexities,
+and
+demands
+for market
+intelligence
+while
+balancing
+data
+storage
+and
+continuous
+integration,
+alongside
+replication
+and
+disaster
+recovery
+. We
+crafted
+a cloud
+- based
+data
+- driven
+modernization
+roadmap,
+setting
+the
+stage
+for
+the
+client's
+digital
+evolution
+. Collaborated
+closely
+with
+client
+to
+engineer
+a futuristic
+data
+warehouse
+platform
+using
+microservices
+on
+Google
+Kubernetes
+Engine,
+addressing
+unique
+challenges
+.
+Reduced
+costs
+by
+35
+%
+, enabling
+Direct
+- to
+-
+Consumer
+(D
+2 C)
+capabilities
+.
+Increased
+operational
+efficiency
+across
+Distribution
+Centers/Warehouses
+with
+simplified
+integration
+through
+automations
+.
+Unleashing Modern Data Warehousing for US based Insurance provider 
+Enhanced Customer Experience for a Multinational E
+-Commerce Company
+Client’s
+objective
+was
+to boost
+brand
+awareness
+and
+provide
+consumers
+with
+a deeper
+understanding
+of
+the Product’s
+features
+and
+their
+ecosystem
+. We
+created
+an
+eye
+-catching
+and
+cohesive
+system
+for
+their
+retail
+environments
+across
+Canada,
+the
+United
+States,
+and
+Mexico
+. We
+produced
+four
+engagement
+videos
+that
+encompassed
+the
+entire
+product
+line
+and
+unified
+their
+ecosystem
+. Additionally,
+we designed
+a line
+of Point
+of Sale
+materials
+that
+elevated
+the current
+in
+- store
+experience
+.
+A phased
+deployment
+approach
+was
+adopted,
+and
+we
+delivered
+around
+31 % reduction
+in testing
+effort
+via
+100
+% regression
+automation
+in South
+Africa
+&
+AR
+countries
+for
+Trade,
+MFA
+and
+Corporate
+Actions
+.
+#AnewZensar 
+Global 
+Application Management 
+Service 
+for a mobility services company
+Our
+customer
+is one
+the
+world's
+tech
+-enabled,
+global
+mobility
+company
+.
+It has
+divested
+from
+Parent
+organization
+& required
+to
+quickly
+establish
+Steady
+State
+BAU
+operations
+for
+new
+Cloud
+applications
+across
+SAP,
+Replicon,
+M
+- Files
+and
+their
+own
+website
+and SharePoint
+instances
+.
+Zensar
+provided
+them
+steady
+day
+1 operations
+support
+with
+minimum
+Transition
+in
+a highly
+restrictive
+TSA environment
+.
+We supported
+their
+complete
+100
+% Cloud
+first
+environment
+with
+application
+portfolio
+including
+S/ 4 HC,
+Ariba,
+Concur,
+Replicon
+and
+other
+non
+-
+SAP
+applications
+. Zensar
+currently
+provides
+service
+coverage
+across
+31 countries
+24
+x 7 . Within
+span
+of
+1 - year
+reduced
+ticket
+counts
+by
+15 % and
+MTTR
+by
+5 %
+www.zensar.com | © Zensar Technologies 2024 | Page 8
+
+>>>

@@ -1,0 +1,55 @@
+Company: ASMTEC (NSE/BSE symbol ASMTEC), an Indian listed company. Document: investor presentation filed 2022-02-15. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+You can find us at: www.asmltd.com
+215
+982
+M.Cap Full (INR Cr.) 
+770
+31st Dec 2021
+10 mn Shares
+BSE CODE
+526433
+BLOOMBERG CODE
+ASM IN
+Relative Stock Price Returns vs BSE Small Cap Index 
+Annexures
+Source: BSE
+61.8 
+0.02 
+8.3 
+2.3 
+27.6 
+Shareholding Pattern as on 30th Sept 2021
+Promoters
+Financial Institutions
+Corp Bodies
+IEPF
+Retail
+-100.0
+0.0
+100.0
+200.0
+300.0
+400.0
+500.0
+600.0
+700.0
+800.0
+900.0
+1000.0
+1100.0
+1200.0
+ASM Tech
+BSE Small Cap Index
+
+>>>

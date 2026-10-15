@@ -1,0 +1,85 @@
+Company: SHOPERSTOP (NSE/BSE symbol SHOPERSTOP), an Indian listed company. Document: investor presentation filed 2021-10-20. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+PART IV: 
+1 The above financial results have been prepared 1n accordance with Indian Accounting Standards as precribed under section 133 of the Companles Act 2013 read with Rule 3 of the Companies (Indian 
+Accounting Standards) Rules, 2015, as amended. 
+2 The Company is primarily engaged In the business of retail trade tllrough retail and departmental store facilities In India, which in the terms of Ind AS 108 on 'Operating Segments', constitutes a sing,e 
+reporting segment. 
+3 The Consolidated Financial results of Shoppers Stop Limited and its subsidiaries namely, Crossword Bookstores limited, Upasna Trading Limited, Shopper's Stop. Com (India) Limited, Shopper's Stop 
+Services (India) Limited and Gateway Multichannel Retail (India) Limited are consolidated in accordance with Ind AS 110 on Consolidation of Financial Statements. 
+4 Pursuant to levy of service tax on renting of Immovable properties given for commercial use, retrospectively with effect from 1 June,2007, the Company has based on a legal advice, challenged the said levy 
+and, ln!er-alia, its retrospective application. Pending the final d1sposal of the matter, which is presently before the Supreme Court, the Company continues not to provide for the retrospective levy aggregating 
+Rs 20.11 Crores in consolidated results (Standalone Rs 16.60 Crores ) for the pedod 1 June,2007 to 31 March,2010, fully paid under protest. 
+5 The Board of Directors at their meeting held on 31 August, 2021 have accorded their approval for sale of 100% equity shares In four tranches, held by the Company in Crossword Bookslores Ltd(Crossword) 
+at a business value of Rs 41 .60 crores ( Rs 5 crores against equi y and balance towards discharge of liabilities ) in accordance with Share Purchase Agreement. Subsequent to the quarter end on October 11, 
+2021, the Company has completed first tranche of stake sale of 51% in Crossword. Accordingly, Crossword ceased to be a subsidiary from that date.Two tranches aggregating 39% of stake sale I$ expected 
+to be completed in next 12 months and last tranche of 10% stake sale is expected to be completed after 3 years. 
+Accordingly, the Company has disclosed 90% of Investment and net assets under asset held for disposal In standalone financial results and consolidated financial results respectivety. 
+6 The Company has recorded provision Rs NIL for the quarter ended 30 September,2021 (Quarter ended 30 June, 2021: Rs.15 Crores, quarter ended 30 September, 2020 : Rs 10.00 Crores and year ended 
+31 March, 2021 : Rs 22.40 Crores) for Impairment on loan / Investments towards Crossword Bookstores Umited. 
+7 The Ministry of Corporate Affairs vlde notification dated 24 July,2020 and 18 June,2021 , Issued an amendment to Ind AS 116 -Leases, by inserting a practical expedient w.r.t "Covid-19-Rela!ed Renl 
+Concessions· effective from the per[od beginning on or after 1 Aprll,2020. Pursuant to the above amendment, the Company has applied the practical expedient by accounting the unconditional rent 
+concessions In "Other income'' in the Statement of Profit and Loss as under : 
+Rs in Cr It sl 
+·::.i..,._ 
+Standalone 
+Consolidated 
+-
+For the 
+For the 
+For the Quarter Ended 
+Flnanclal Year 
+For the Quarter Ended 
+Financial Year 
+For the Half Year Ended 
+Ended 
+For the Half Year Ended 
+Ended 
+30 Sept 2021 I 30 June 2021 I 30 Sept 2020 
+30 Sept 2021 
+I 30 Sept 2020 
+31 Mar 2021 
+30 Sept 2021 I 30 June 2021 I 30 Sept 2020 
+30 Sept 2021 I 30 Sept 2020 
+31 Mar 2021 
+28.30 I 
+60.49 I 
+52.48 
+88.79 I 
+152.36 
+174.09 
+28.64 I 
+61.25 I 
+53.41 
+89,89 I 
+154.66 
+176.83 
+8 During the quarter under review, the Company has granted 28,671 Employee Stock Options lo eligible employees, under ESOP Schemes (for the quarter ended 30 June, 2021· nil.for the quarter ended 30 
+September, 2020- 2, 11 ,582). Further,71 ,800 options have been exercised during the quarter ended 30 September, 2021 (for quarter ended 30 June, 2021- Nfl,for quarter ended 30 September, 2020- NIL). 
+9 The Company has considered the impact of Covid-19 in the above financial results and the Company believes the recoverability of the carrying value of the assets will not be impacted. However In an unlil<e!y 
+situation of reoccurrence- of COVID the eventual impact may be different than estimate, as at the date of approval of these financial results. 
+10 This above financial results have been reviewed and recommended by the Audit Committee and have been approved and taken on records by the Board of Directors at its meetings held on 20 October 2021 . 
+11 The limited review as reqllired under Regulation 33 of the SEBI (Ll'stlng Obligation and Disclosure Requirements) Regutations,2015 has been completed by the statutory auditors of the Company ancJ 
+unmodified report has been Issued. 
+12 The previous perlod's figures have been regrouped / rearranged Wherever necessary to conform to the current period's classlfication(s), 
+Place: Mumbai 
+Date : 20 October, 2021 
+SIGN 
+BY 
+Venu . 
+air 
+S-lomer Care Associate & Mn11ugi119 
+lr1:cl r 
+& Chief Executive Officer 
+
+>>>

@@ -1,0 +1,53 @@
+Company: SPMLINFRA (NSE/BSE symbol SPMLINFRA), an Indian listed company. Document: investor presentation filed 2026-04-20. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+About 
+— 
+SPML Infra 
+SPML Infra Ltd. is a leading publicly listed infrastructure development company in India with a rich legacy encompassing over four decades. The company 
+has executed and commissioned nearly 700 infrastructure projects across India, significantly contributing to the nation’s development. SPML Infra Ltd. 
+has enhanced the lives of millions by providing essential services such as drinking water facilities, wastewater treatment, integrated sewerage networks, 
+improved municipal waste management, power transmission and distribution, and electrification of rural homes. Recognized among the World’s Top 50 
+Private Water Companies and India’s 50 Best Real Estate & Infrastructure Companies, SPML Infra Ltd. operates primarily in the engineering, procurement, 
+and construction (EPC) segment. 
+The company is primarily focused on the water and wastewater sector, where substantial opportunities are emerging due to significant government 
+funding. With approximately Rs. 10 trillion allocated for water and sanitation infrastructure development projects in the coming years, SPML Infra Ltd., as 
+a leading player in the industry, is strategically positioned to secure numerous contracts from both central and state governments, thereby enhancing its 
+business prospects. 
+Registered & Corporate office 
+22, Camac Street,Block - A, 3rd Floor Kolkata — 
+700016. 
+Contact: +91 33 4009 1200 
+Statutory Auditor: 
+Maheshwari & Associates 
+8B, Middleton Street, 6A Geetanjali 
+Kolkata— 700071 
+Internal Auditor: 
+Ernst & Young (E&Y) LLP 
+22, Camac Street, 3™ Floor 
+Block C, Kolkata-700016 
+ASM & Concurrent Auditor: 
+KPMG Lodha Excelus, Apollo Mill Compound, 
+Mumbai 
+Credit Rating Agency: 
+ICRA Limited 
+Gurgaon. Building No. 8, 2nd Floor, Tower A, DLF 
+Cyber City, Phase Il, Gurgaon - 122 002 
+Solicitor Firm: 
+Argus and Partners 
+278, 3rd Floor, Binoy Bhavan, Camac St, 
+Kolkata, West Bengal 700016 
+Investor Presentation e
+'
+_SPML
+
+>>>

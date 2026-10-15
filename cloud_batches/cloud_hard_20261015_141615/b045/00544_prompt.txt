@@ -1,0 +1,48 @@
+Company: VILAS (NSE/BSE symbol VILAS), an Indian listed company. Document: investor presentation filed 2026-05-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+(An ISO 9001:2015 Certified Company)
+From the Chairman’s Desk
+Investor Presentation – FY26
+5
+Mr Nilesh Jitubhai Patel
+Chairman & Managing Director
+“We delivered a steady performance in FY26 with ~65% YoY volume growth and ~30% revenue growth. Growth was supported by 
+strong demand, optimal capacity utilisation, and contribution from newly added capacities across CRGO and nanocrystalline 
+core products. The gap between volume and revenue growth was primarily due to the decline in CRGO prices to around Rs 180 - Rs 
+185 per kg during the period.
+Our margins were impacted during the year primarily due to initial operating and establishment expenses incurred for the new 
+unit while capacity utilisation is currently ramping up. As utilisation improves going forward, the impact of these fixed costs is 
+expected to gradually reduce. In addition, the sharp decline in CRGO steel prices during the period also impacted margins. However, 
+supported by efficient inventory management and operational controls, we were able to limit the overall impact on profitability.
+As part of our forward integration strategy, our radiator manufacturing plant has recently commercial production commenced  
+and is expected to start contributing to revenues going forward. Further, to capitalise on the growing opportunities in the power and 
+energy sector, we are expanding into copper conductors. Specialised and customised machinery for the new facility has already 
+arrived, while installation and erection activities are underway. Trial production is expected by end of September 2026, with revenue 
+contribution likely from H2FY27 onwards. 
+Further, in line with our strategy to expand across high value transformer and power equipment segments, VTL, along with its 
+Promoters, has incorporated a new entity for manufacturing High Voltage Bushings ranging from 12kV to 400kV. VTL will initially 
+hold a 25% equity stake in the venture, marking our entry into a high entry barrier and technology driven segment. The initial phase 
+will focus on R&D and product development, followed by phased commercialisation over the next year.
+Looking ahead, supported by strong sectoral demand, ongoing capacity expansion, and new product additions, we remain optimistic 
+about our growth trajectory. We expect CRGO volume growth of 45% to 50% and turnover growth of 40% to 50%, depending on the 
+product mix, while maintaining EBITDA and PAT margins.”
+FY27 Guidance
+Volume Growth Target 
+45% - 50%
+Revenue Growth Target
+40% - 50%  
+Profitability 
+EBITDA and PAT Margins
+Expected to be Maintained
+
+>>>

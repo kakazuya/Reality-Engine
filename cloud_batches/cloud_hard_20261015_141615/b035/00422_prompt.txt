@@ -1,0 +1,81 @@
+Company: TEMBO (NSE/BSE symbol TEMBO), an Indian listed company. Document: investor presentation filed 2024-06-04. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+CAPITAL MARKET 
+INFORMATION
+Market Indicators
+Listed on (Aug-2018)
+NSE
+Scrip Code
+TEMBO
+Share Price (As on 31-05-2024)
+INR 232
+Market Cap (Rs Cr)
+INR 258
+52 Week High/Low
+INR 333/191
+Key Update
+In 2020, issued  Bonus 1:1
+In 2022, Came out with Right Issue 1:1 at Price of 
+INR 100
+Declared Dividend of INR 1.5 for 2023
+In Sep 2023, Preferential share allotted ~5,81,000 
+shares at price of INR 230 to promoters
+Market Price : Created Wealth 5x of Investor
+180
+200
+220
+240
+260
+280
+300
+320
+31-May-23
+11-Sep-23
+18-Sep-23
+26-Sep-23
+04-Oct-23
+11-Oct-23
+18-Oct-23
+26-Oct-23
+02-Nov-23
+09-Nov-23
+16-Nov-23
+23-Nov-23
+01-Dec-23
+08-Dec-23
+15-Dec-23
+22-Dec-23
+01-Jan-24
+08-Jan-24
+15-Jan-24
+20-Jan-24
+30-Jan-24
+06-Feb-24
+13-Feb-24
+20-Feb-24
+27-Feb-24
+04-Mar-24
+12-Mar-24
+19-Mar-24
+27-Mar-24
+04-Apr-24
+12-Apr-24
+22-Apr-24
+29-Apr-24
+07-May-24
+14-May-24
+21-May-24
+28-May-24
+close
+
+>>>

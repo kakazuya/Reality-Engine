@@ -1,0 +1,74 @@
+Company: SOFTTECH (NSE/BSE symbol SOFTTECH), an Indian listed company. Document: investor presentation filed 2024-02-28. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Q3FY24 Earnings Presentation
+36
+US Construction market size is approx. $1.6 trillion, growing at 
+6% CAGR till 2026
+GLOBAL
+•
+Global construction industry size is ~ $10 trillion (2022) 1
+•
+Expected to grow to $13.9 trillion by 2037 with over 51% accounted from 
+China, India, and United States 1
+UNITED STATES
+•
+New construction in Year 2021 is $1.6 trillion (7% of US GDP) and is expected 
+to grow at ~ 6% YoY till 20262
+•
+Three major segments in the construction industry – Non-Building (17% share), 
+Non-Residential (34% share), and Residential (49% share) 2
+•
+Residential and Non-Building segments growing at 7% YoY in the next 5 years. 2 
+•
+The top 5 states in terms of construction spending are California, Texas, Florida, 
+New York and Illinois contributing > 50% of the total construction spending. 
+The growth rate in these states is ~ 5 to 12% 2
+•
+The average gross profit margin in the construction industry was around 28% 
+Q3 of 2022 and typical net profit margins are around 4-6%3
+•
+The number of workers in the construction market is ~ 8.0 million (Year 2023) 4
+Key Numbers & Insights
+0
+500
+1,000
+1,500
+2,000
+2,500
+2026*
+2025*
+2024*
+2023*
+2022*
+2021
+2020
+2019
+2018
+2017
+2016
+2015
+2014
+Non-building - Power facilities, highways, sewage, water supply,
+and conservation work
+Non-Residential - Lodging, offices, commercial buildings, health
+care, and education
+Residential - Single-family, multi-family housing, and home
+improvements
+New construction put in place in the United States from 2014 to 2021, 
+with forecast until 20262  (Values in US$ Millions)     
+1Global Construction Futures, Oxford Economics 2023. The Oxford Economics estimates the US construction market to be around USD 1.4 trillion. However, the US construction market size was considered based on US specific reference
+2US Census Bureau Data  
+3https://www.levelset.com/blog/us-construction-statistics-you-need-to-know/
+4US Bureau of Labor Statistics. https://fred.stlouisfed.org/series/USCONS
+
+>>>

@@ -1,0 +1,192 @@
+Company: UFLEX (NSE/BSE symbol UFLEX), an Indian listed company. Document: investor presentation filed 2026-03-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+55,487  (90.2%)
+33,743  (112.5%)
+44,105  (105%)
+52,637  (70.2%)
+38,201  (79.6%)
+35,337  (78.5%)
+104,368  (91.6%)
+29,038  (72.6%)
+121,842  (74.2%)
+53,735  (89.6%)
+30,581  (101.9%)
+34,811  (82.9%)
+48,750  (65%)
+29,594  (98.6%)
+26,444  (58.8%)
+101,944  (89.4%)
+25,355  (63.4%)
+115,202  (74.3%)
+46,066  (76.8%)
+30,655  (102.2%)
+34,659  (82.5%)
+61,039  (81.4%)
+29,917  (99.7%)
+21,190  (47.1%)
+107,772  (94.5%)
+24,141  (62.7%)
+94,994  (90%)
+60,084  (100.1%)
+31,688  (105.6%)
+39,642  (94.4%)
+73,642  (98.2%)
+28,917  (96.4%)
+25,760  (76.3%)
+110,846  (97.2%)
+21,593  (98.2%)
+104,907  (114%)
+59,259  (98.8%)
+31,653  (105.5%)
+NA
+52,868  (100.7%)
+23,079  (102.6%)
+NA
+77,285  (99.1%)
+25,326  (115.1%)
+95,962  (104.3%)
+Mexico
+USA
+Hungary
+Poland
+CIS
+Nigeria
+Egypt
+Dubai
+India
+FY25 Production (Utilization %)
+FY24  Production (Utilization %)
+FY23 Production (Utilization %)
+FY22 Production (Utilization %)
+FY21 Production (Utilization %)
+Geographic Breakdown of Total 
+Packaging film Production vol. (%)
+Capacity, Production and Utilization
+Poland: In Q3 FY21(OND20), 45,000 MTPA second BOPET line was commissioned, so 6 months of its capacity(45k/12*6) and 30,000 MTPA from the first line were used in the FY21 utilization calc.; Hungary : 42,000 MTPA BOPP line  was commissioned in Q1 FY22, starting April 1, 2021.; Dubai: Production 
+on the 30,000 MTPA second BOPET line ceased in early June 2019, only 5,000 MT considered in FY20, alongside 22,000 MT from the first line for utilization. Production of the 18,000 MTPA CPP line started in May 2022, so 16,500 MT (11 months) of capacity was included in FY 23 utilization .; CIS: 30,000 
+MTPA BOPET line in CIS was commissioned in Q2 FY21 (JAS20).So 22,500 MT (9 month) of capacity used in FY21 for utilization; Dharwad, India: 18,000 MTPA CPP line was commissioned in Q2 FY23 (JAS22, 9 mon. of capacity for utilization  in FY23), & 45,000 MTPA BOPET line was commissioned on 
+March 31, 2023. Nigeria: 45,000 MTPA film line was commissioned in Q2 FY22 (JAS21), So, 33,750( MT (9 months) of capacity for utilization in FY22.; Egypt:  42,000 MT BOPP line commissioned in Q4 FY21(JFM 21).;
+24%
+6%
+20%
+7%
+7%
+10%
+9%
+6%
+11%
+25%
+5%
+22%
+6%
+6%
+10%
+7%
+7%
+12%
+21%
+5%
+24%
+5%
+7%
+13%
+8%
+7%
+10%
+FY25
+FY24
+FY23
+514,758
+MT
+466,416
+MT
+450,433
+MT
+Total
+India
+Dubai
+Egypt
+Nigeria
+CIS
+Poland
+Hungary
+USA
+Mexico
+19
+92,000
+92,000
+155,000
+155,000
+164,160
+22,000
+22,000
+40,000
+40,000
+40,000
+FY21
+FY22
+FY23
+FY24
+FY25
+114,000
+114,000
+114,000
+114,000
+114,000
+NA
+45,000
+45,000
+45,000
+45,000
+30,000
+30,000
+30,000
+30,000
+48,000
+75,000
+75,000
+75,000
+75,000
+75,000
+NA
+42,000
+42,000
+42,000
+42,000
+30,000
+30,000
+30,000
+30,000
+30,000
+60,000
+60,000
+60,000
+60,000
+78,000
+Films Production Capacity (MTPA) 
+as of March 31
+To calculate capacity utilization, we use the proportion of the annual capacity that is operational during the fiscal year, which is computed by dividing the yearly capacity by 12 and factoring in the months of operation after commissioning.
+423,000
+510,000
+591,000
+591,000
+636,160
+514,758  (83.1%)
+466,416  (78.9%)
+450,433  (83.4%)
+497,079  (99.7%)
+365,432  (102.4%)
+3.1c
+Packaging Films Production Volume across Geographies
+
+>>>

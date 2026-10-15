@@ -1,0 +1,193 @@
+Company: ARE&M (NSE/BSE symbol ARE&M), an Indian listed company. Document: investor presentation filed 2024-02-01. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+14
+CONSOLIDATED BALANCE SHEET
+PARTICULARS (INR Mn)
+FY22
+FY23
+H1-FY24
+Assets
+(1) Non-Current Assets
+(A) Property, Plant And Equipment
+21,276
+25,187
+26,064
+(B) Right Of Use Asset 
+2,852
+3,710
+3,744
+(C) Capital Work-in Progress
+8,293
+2,481
+2,822
+(D) Goodwill
+274
+(E) Other Intangible Assets
+795
+659
+607
+(F) Intangible Assets Under Development
+3
+8
+14
+(G) Financial Assets
+(i)
+Investments
+425
+2,616
+2,620
+(ii) Other Financial Assets
+83
+1,252
+1,165
+(H) Deferred Tax Assets (Net)
+-
+9
+12
+(I) Income Tax Assets (Net)
+72
+-
+74
+(J) Other Non-current Assets
+1,713
+1,236
+1,478
+Total Non-current Assets
+35,513
+37,158
+38,873
+(2) Current Assets
+(A) Inventories
+18,046
+17,022
+17,611
+(B) Financial Assets
+(i) Investments
+347
+1,653
+4,071
+(ii) Loans
+-
+887
+871
+(iii) Trade Receivables
+7,920
+8,866
+11,262
+(iv) Cash And Cash Equivalents
+349
+949
+1,157
+(v) Bank Balances Other Than Cash And Cash Equivalents
+193
+104
+522
+(vi) Other Financial Assets
+167
+3,137
+1,471
+(C) Other Current Assets
+1,227
+1,463
+2,798
+Total Current Assets
+28,248
+34,081
+39,763
+Total Assets (1+2)
+63,761
+71,239
+78,636
+PARTICULARS (INR Mn)
+FY22
+FY23
+H1-FY24
+Equity And Liabilities
+(1) Equity
+45,525
+52,993
+56,601
+(A) Equity Share Capital
+171
+171
+171
+(B) Other Equity
+45,354
+52,822
+56,430
+(2) Non-Current Liabilities
+(A) Financial Liabilities
+(i) Borrowings
+165
+96
+96
+(ii) Lease Liabilities
+773
+635
+651
+(B) Provisions
+1,083
+1,434
+1,537
+(C) Deferred Tax Liabilities (Net)
+314
+732
+737
+(D) Other Non-Current Liabilities
+637
+830
+775
+Total Non-Current Liabilities
+2,972
+3,727
+3,796
+(3) Current Liabilities
+(A) Financial Liabilities
+(i) Borrowings
+69
+69
+69
+(ii) Lease Liabilities
+252
+268
+263
+(iii) Trade Payables
+8,055
+7,571
+10,443
+(iv) Other Financial Liabilities
+2,988
+2,516
+2,195
+(B) Provisions
+1,373
+1,416
+1,562
+(C) Current Tax (Net)
+-
+9
+97
+(D) Other Current Liabilities
+2,528
+2,670
+3,609
+Total Current Liabilities
+15,265
+14,519
+18,239
+Total Equity And Liabilities (1+2+3)
+63,761
+71,239
+78,636
+
+>>>

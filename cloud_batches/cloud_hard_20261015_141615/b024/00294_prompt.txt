@@ -1,0 +1,157 @@
+Company: GODFRYPHLP (NSE/BSE symbol GODFRYPHLP), an Indian listed company. Document: investor presentation filed 2021-11-02. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+www.godfreyphillips.com
+14
+Gross Profit and Net Profit Contribution
+Gross Profit (Rs. Crore) and Margin (%)
+Gross Profit (Rs. Crore) and Margin (%)
+Net Profit (Rs. Crore) and Margin (%) 
+Net Profit (Rs. Crore) and Margin (%) 
+336
+356
+377
+331
+349
+18.4%
+19.6%
+20.4%
+20.3%
+20.0%
+15.0%
+17.0%
+19.0%
+21.0%
+23.0%
+25.0%
+27.0%
+29.0%
+300
+310
+320
+330
+340
+350
+360
+370
+380
+390
+Q2 FY 21
+Q3 FY 21
+Q4 FY 21
+Q1 FY 22
+Q2 FY 22
+Gross Profit
+Margin%
+96
+114
+95
+108
+102
+5.3%
+6.3%
+5.1%
+6.6%
+5.9%
+1.0%
+3.0%
+5.0%
+7.0%
+9.0%
+-15
+5
+25
+45
+65
+85
+105
+125
+Q2 FY 21
+Q3 FY 21
+Q4 FY 21
+Q1 FY 22
+Q2 FY 22
+Net Profit
+Margin%
+1116
+1121
+1407
+1601
+1272
+20.7%
+19.3%
+22.7%
+22.4%
+19.9%
+15.00%
+16.00%
+17.00%
+18.00%
+19.00%
+20.00%
+21.00%
+22.00%
+23.00%
+24.00%
+25.00%
+0
+200
+400
+600
+800
+1000
+1200
+1400
+1600
+1800
+FY17
+FY18
+FY19
+FY20
+FY21
+Gross Profit
+Margin%
+136
+141
+256
+388
+357
+2.5%
+2.4%
+4.1%
+5.4%
+5.6%
+2.00%
+3.00%
+4.00%
+5.00%
+6.00%
+7.00%
+0
+50
+100
+150
+200
+250
+300
+350
+400
+450
+FY17
+FY18
+FY19
+FY20
+FY21
+Net Profit
+Margin%
+
+>>>

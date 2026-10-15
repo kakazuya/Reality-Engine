@@ -1,0 +1,70 @@
+Company: GPTHEALTH (NSE/BSE symbol GPTHEALTH), an Indian listed company. Document: investor presentation filed 2026-02-02. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Stock Information
+30
+Stock Price Chart as on 30-Jan-2025
+Shareholding Pattern (Dec’25)
+65.6%
+2.7%
+6.2%
+25.5%
+Promoters
+FII
+DII
+Public
+Stock Data (As on 30th Jan, 2026) 
+BSE/NSE Code
+544131 | GPTHEALTH
+CMP (Rs)
+128.4
+Market Cap (Rs Cr)
+1053.58
+Shares O/s (Cr)
+8.20
+Face Value (Rs)
+10
+Average Trading Volume (‘000)
+847
+Interim Dividend of 
+Re.1/-
+0
+20
+40
+60
+80
+100
+120
+140
+160
+180
+200
+01-Nov-24
+04-Dec-24
+06-Jan-25
+08-Feb-25
+13-Mar-25
+15-Apr-25
+18-May-25
+20-Jun-25
+23-Jul-25
+25-Aug-25
+27-Sep-25
+30-Oct-25
+02-Dec-25
+04-Jan-26
+Price in Rs
+Share Price Movement
+Traded Volume
+Closing Share Price
+
+>>>

@@ -1,0 +1,132 @@
+Company: DBOL (NSE/BSE symbol DBOL), an Indian listed company. Document: investor presentation filed 2025-07-28. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Operational Highlights - Sugar
+0.95
+0.96
+3.03
+3.51
+39,153 
+40,835 
+38,350 
+39,317 
+ 35,000
+ 36,000
+ 37,000
+ 38,000
+ 39,000
+ 40,000
+ 41,000
+ 42,000
+ 43,000
+ 44,000
+ 45,000
+ -
+ 0.50
+ 1.00
+ 1.50
+ 2.00
+ 2.50
+ 3.00
+ 3.50
+ 4.00
+ 4.50
+ 5.00
+Q1FY25
+Q1FY26
+FY24
+FY25
+Sugar Sales (Lac Tons)
+Avg. Realisation (₹/Ton)
+-   
+-   
+0.31 
+3.37 
+0.00
+0.03 
+0.43
+0.24
+Q1FY25
+Q1FY26
+FY24
+FY25
+Cane Diverted Towards Syrup derived Ethanol (Lac Tons)
+Sugar Sacrifice for BH Molasses (Lac Tons)
+2.02
+1.52
+34,579 
+37,396 
+ -
+ 5,000
+ 10,000
+ 15,000
+ 20,000
+ 25,000
+ 30,000
+ 35,000
+ 40,000
+ -
+ 0.50
+ 1.00
+ 1.50
+ 2.00
+ 2.50
+ 3.00
+As on 30-06-2024
+As on 30-06-2025
+Sugar Inventory (Lac Tons)
+Valuation Rate (₹/Ton)
+2.00 
+2.32 
+41.44 
+34.98 
+0.27 
+0.22 
+4.23 
+3.10 
+11.73%
+9.54%
+10.32%
+9.80%
+0.00%
+2.00%
+4.00%
+6.00%
+8.00%
+10.00%
+12.00%
+14.00%
+ -
+ 5.00
+ 10.00
+ 15.00
+ 20.00
+ 25.00
+ 30.00
+ 35.00
+ 40.00
+ 45.00
+Q1FY25
+Q1FY26
+FY24
+FY25
+Cane Crushed (Lac Tons)
+Sugar Production (Lac Tons)
+Net Sugar Recovery (%)
+19
+Cane Crushed, Sugar Production & Recovery
+Sugar Sales & Realisation
+Sugar Inventory & Valuation
+Cane Diversion & Sugar Sacrifice
+1.Sales includes sugar export of 0.07 lac tons in FY24 as against Nil in FY25
+
+>>>

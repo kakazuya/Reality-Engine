@@ -1,0 +1,45 @@
+Company: MOL (NSE/BSE symbol MOL), an Indian listed company. Document: investor presentation filed 2021-08-18. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+2016 - 17 
+2013 - 14 
+2000 - 10 
+1996 - 00 
+1986 - 95 
+GLP Accredited Lab  and expansion of R & D 
+facility  
+Acquired Agrochemical plant from Rallis 
+Setup two new facilities for agrochemicals at Panoli and Dahej 
+Singapore listing in 2004 and India listing in 2007 
+Established MFL with 24.97% participation from IFC 
+Diversification into pigment blue by setting up new 
+plant at Panoli 
+Private Equity investment in Meghmani Organics 
+Setup new Pigment plant at Dahej SEZ 
+exclusively for exports 
+Started pigment operations in 1986 
+Setup 1st agrochemical plant in 1995 
+14 
+Key Milestones 
+2019 - 20 
+Capacity expansion for 2,4-D plant to 21.6K TPA from 
+10.8K TPA 
+2020 - 21 
+Commissioned 2 New Plants in Agro Division: 
+     - Doubling the capacity of 2,4-D to 21,600 TPA 
+     - New Formulation Plant   
+
+Setting up new  Multipurpose Plant (New Molecules) 
+ Independent listing of Chloro-Alkalies & Derivatives business to 
+unlock share holder value & Delisting from SGX 
+
+>>>

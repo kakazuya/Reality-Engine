@@ -1,0 +1,60 @@
+Company: REDINGTON (NSE/BSE symbol REDINGTON), an Indian listed company. Document: investor presentation filed 2022-09-20. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+  
+Redington Limited 
+September 14, 2022 
+ 
+ 
+Page 22 of 35 
+to motorcycles, you go to scooters, lamp, shades, whatever industry you want to go to, there isn't 
+one single and competition is good for the industry. We need it because it allows you to 
+proliferate the concepts. We are at a space right now where the concept of cloud selling has to 
+get more and more and more and more proliferated. We need more Crayons. We need more 
+Ingram Micro and we need more of Tech Datas to start to help us proliferate. Our differentiation 
+will build. We are building the way you mentioned about making sure that we are technically 
+sort of more capable. 
+And something that consumes me is just that point, how are we trying to become more relevant 
+to our customers in the tech domain? That's all my thing is. Don't worry about Ingrams and 
+Crayons because the market is so huge right now and whoever does a better job of capability 
+creation is going to be the real winner in the marketplace. And that's who we are. That's exactly 
+who we are. Nothing else we are trying to do, okay? Because the market size is right now, so 
+early stage, so nascent and so huge that I think we need people to step up and say, "look, let me 
+go and position cloud more and more to more and more customers." That helps all of us. 
+Participant: 
+(Inaudible) (1:32:04) $190 million you showed as recurring revenues, right? So, that is 
+recurring in the sense that for how long it is recurring and so that is only going to grow from 
+here, right, $190 million? 
+Rajiv Srivastava: 
+That is right. Recurring means it gets renewed every year. You still have to do the work of 
+renewal because like I said, in subscription, somebody can say, I switch it off tomorrow. I don't 
+want to buy it, and it can be off. So, the dynamics of the industry are a little different, okay? 
+When you have a hardware product, you can't switch off because you have the product. So, you 
+got to pay for it. But when you have a software product, like I said, I gave the example of Zoom 
+for myself, I also have Adobe license similarly, okay? Then I can switch off and then somebody 
+can't pay. 
+So, the way the industry works is, it works on a mechanism of trying to step up how to ensure 
+customer stickiness and customer consumption, consumption and adoption rather. So, I 
+consume, but I adopt as well. And so when it comes to the end of the year, I'm so dependent 
+upon it that I must continue to use it. So, I think a lot of conversion, about 70% of conversion is 
+automatic. The balance 30%, you've got to work for it. Some will get lost, okay, out of $190 
+million, maybe 15%, 20% will get lost. And so you got to find net new the way Rakshit was 
+mentioning. So, you got to create net new. That's our last year revenue. This year is going to be 
+a dramatically different number. 
+Participant: 
+And in your presentation, you showed that since last 15 years, your revenue has grown at 14%, 
+EBITDA at 16% and PAT at 18%. Do you feel that still the EBITDA and PAT growth will 
+outpace revenue growth in future the way things are? 
+Rajiv Srivastava: 
+I really hope so, yes. 
+
+>>>

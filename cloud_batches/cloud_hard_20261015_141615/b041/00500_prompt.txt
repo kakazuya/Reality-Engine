@@ -1,0 +1,46 @@
+Company: AURIONPRO (NSE/BSE symbol AURIONPRO), an Indian listed company. Document: investor presentation filed 2026-02-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Segmental Revenue
+INR Cr
+Technology Innovation Group (TIG)
+137
+156
+169
+372
+471
+0
+100
+200
+300
+400
+500
+Q3FY25
+Q2FY26
+Q3FY26
+9MFY25
+9MFY26
+9
+1
+Aurionpro expands its Smart Transit portfolio by securing a major Platform Screen 
+Door systems order from Titagarh Rail Systems for Mumbai Metro Line 5, marking its 
+entry into safety-critical PSD solutions.
+2
+Aurionpro secures a major order from Delhi Metro Rail Corporation for Automated 
+Fare Collection systems for the Bhopal and Indore Metro projects, strengthening its 
+Smart Mobility leadership
+3
+Aurionpro won a strategic data center infrastructure project with IDBI Bank, marking 
+its entry into a leading commercial bank and strengthening its position as a single-
+window data center solutions provider. 
+
+>>>

@@ -1,0 +1,55 @@
+Company: LICI (NSE/BSE symbol LICI), an Indian listed company. Document: investor presentation filed 2024-08-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Foreign branches1
+Subsidiaries
+Associates
+Fiji Branch
+Mauritius Branch
+United Kingdom Branch
+100.00%
+100.00%
+99.66%2
+100.00%
+90.91%
+55.00%
+83.33%
+45.24%3
+49.24%4
+44.61%
+5.38%3
+29.84%4
+49.00%
+LIC Mutual Fund
+Trustee Company Ltd
+Country
+Entity
+Country
+Entity
+Stake held (%)
+Country
+Entity
+Stake held (%)
+Source: Corporation data; Note: All data as of  30th June, 2024; 1 Foreign branches were set up by the Corporation and are not separate legal entities; 2 The Corporation’s 99.66% shareholding in Life Insurance Corporation (International) B.S.C. Bahrain was
+purchased using a combination of shareholders’ (94.40%) and policyholders’ funds (5.60%); 3 LIC Housing Finance holds a 94.62% stake in LIC HFL Asset Management Company; 4 IDBI Bank holds a 54.70% stake in IDBI Bank Trusteeship Services
+X% - Shareholding purchased using shareholders’ funds
+Y% - Shareholding purchased using policyholders’ funds
+48
+LIC – Group Structure
+Equity Participation
+10.21%
+4.98%
+Country
+Entity
+Stake held (%)
+
+>>>

@@ -1,0 +1,63 @@
+Company: PROZONER (NSE/BSE symbol PROZONER), an Indian listed company. Document: investor presentation filed 2026-08-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+11 
+FINANCIAL SNAPSHOT - COIMBATORE MALL
+Key Operating Parameters
+Q1 FY27
+Total Operational Area (lakh sq.ft.)
+4.78
+Total Leased Area (lakh sq.ft.)
+4.81
+Current Leasing Status
+95%
+Number of Stores Leased
+113
+New Stores Opened in quarter
+1
+Number of Stores Under fit out
+0
+Occupancy (in lakhs)
+Consumption & Footfall Trend (in lakhs)
+Note: Consumption is up by 27% over Q1 FY26. 
+0.00
+10.00
+20.00
+30.00
+0
+5,000
+10,000
+15,000
+Q1FY26
+Q2FY26
+Q3FY26
+Q4FY26
+Q1FY27
+Footfall
+Consumption
+Consumption (In Lacs)
+Footfall (in Lacs)
+4.79
+5.06
+0.03
+0.00
+0.25
+Total
+Operational
+area
+Under Fit-out
+Signed till date
+Remaining
+space
+Size of the Mall
+
+>>>

@@ -1,0 +1,74 @@
+Company: INDGN (NSE/BSE symbol INDGN), an Indian listed company. Document: investor presentation filed 2026-04-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+© 2026 Indegene. All rights reserved.
+Our large addressable market is underpinned by 
+growing outsourcing and rapid digital adoption
+(1) Indicates revenue contribution by customer industry for Q3 FY26. 
+Remaining 1.6% from other industry.
+Large Market Opportunity
+Life Sciences Operations Spend Across 
+Verticals ($B)
+Outsourcing and Tech 
+Expanding our TAM
+Lifesciences at Inflection       
+Point
+Patent Cliff
+Large number of drugs are coming                   
+off-patent between FY2023-27
+Margin Pressure
+P&Ls are stretched with IRA pricing  
+pressures
+Drug Launches
+Increased focus on efficiency and 
+strategy by large biopharma for 
+commercialization of existing pipeline
+$135 B+
+Our Market 
+Opportunity
+Marketing and 
+Sales
+Regulatory and 
+Medical Affairs
+Pharmacovigilance
+Drug Discovery 
+and Clinical Trial
+Mfg, Supply Chain 
+and Distribution
+$55 B
+$24 B
+$21 B
+$36 B
+$21 B
+Growth in Life Sciences 
+Industry
+Growth in Outsourcing 
+Operations Spend
+Rising Digital and Tech 
+Adoption
++
++
+~9-14% 
+CAGR (2022-2026) in Outsourcing 
+Operations Across Verticals
+We Offer Solutions 
+Across Life Sciences 
+End Markets
+Medical Devices
+3.9%(1)
+Biopharma
+89.9%(1)
+Emerging Biotech
+4.6%(1)
+21
+
+>>>

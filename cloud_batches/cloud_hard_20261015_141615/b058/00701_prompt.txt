@@ -1,0 +1,57 @@
+Company: VIVIANA (NSE/BSE symbol VIVIANA), an Indian listed company. Document: investor presentation filed 2026-06-15. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+STRUCTURAL DEFENSES FIVE REASONS VIVIANA IS BETTER
+POSITIONED AS A BESS DEVELOPER
+Investor Presentation
+18
+01
+Small portfolio = procurement 
+nimbleness
+165 MW / 330 MWh aggregate means single-
+vessel procurement window, no need to lock 
+5+ GWh of cells at peak prices. Can wait out 
+short-term spikes and source from multiple 
+OEMs (Indian or Chinese) for diversification.
+02
+EPC-integrated cost base
+Transformers, transmission line evacuation 
+and substation scope executed in-house 
+Transformers + core EPC team. Eliminates 12 - 
+18% intermediary EPC margin that pure-
+financial developers must pay external 
+contractors.
+03
+VGF cushion = 17% of capex
+₹59.4 Cr aggregate VGF tranched at financial 
+close, COD, and post-COD certification. 
+Combined with 75% term debt, the net equity 
+exposure is only ~₹60 Cr against an FY27 
+expected PAT base materially larger than this 
+number.
+04
+Asset recycling optionality
+BESPA permits ownership transfer after 4-
+year lock-in. India BESS InvIT market and 
+strategic financial sponsors create a viable 
+exit at 90 - 110% of capex, freeing equity for 
+higher-IRR core T&D and HVDC bids.
+05
+Strategic credentialing — the 
+real prize
+Execution of 2 - 3 BOO BESS projects unlocks 
+Ministry of Power TBCB and HVDC bidding 
+(requires ₹250 - 500 Cr net worth + Technical 
+experience). Single TBCB win is worth ₹1,000 - 
+5,000 Cr revenue at materially higher margin.
+
+>>>

@@ -1,0 +1,150 @@
+Company: BAJAJFINSV (NSE/BSE symbol BAJAJFINSV), an Indian listed company. Document: investor presentation filed 2024-01-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Bajaj Finserv Health – Network Metrics
+58
+*Network of Doctors on-boarded and total doctor transactions, excluding Dental
+*Network of Hospitals on-boarded and total transactions
+*Network of Dentists on-boarded and Dental transactions
+*Network of Diagnostic touchpoints and total diagnostic transactions
+1,745 
+1,856 
+1,950 
+2,082 
+2,110 
+8,618 
+9,283 
+9,262 
+9,310 
+8,310 
+ -
+ 500
+ 1,000
+ 1,500
+ 2,000
+ 2,500
+ 3,000
+ 3,500
+ 4,000
+ 4,500
+ 5,500
+ 6,000
+ 6,500
+ 7,000
+ 7,500
+ 8,000
+ 8,500
+ 9,000
+ 9,500
+ 10,000
+Q3 FY22-23
+Q4 FY22-23
+Q1 FY23-24
+Q2 FY23-24
+Q3 FY23-24
+HOSPITAL NETWORK
+Hospital Network
+Transactions
+81,717 
+83,254 
+83,848 
+84,443 
+85,663 
+5,99,660 6,58,799 6,19,813 6,84,653 
+7,92,540 
+ 75,000
+ 80,000
+ 85,000
+ 90,000
+ 95,000
+ -
+ 1,00,000
+ 2,00,000
+ 3,00,000
+ 4,00,000
+ 5,00,000
+ 6,00,000
+ 7,00,000
+ 8,00,000
+ 9,00,000
+Q3 FY22-23
+Q4 FY22-23
+Q1 FY23-24
+Q2 FY23-24
+Q3 FY23-24
+DOCTOR NETWORK
+Doctor Network
+Transactions
+20,164 
+20,691 
+21,080 
+21,539 
+21,661 
+1,78,509 
+2,18,689 2,10,681 
+2,53,243 2,65,927 
+ 19,000
+ 21,000
+ 23,000
+ 25,000
+ -
+ 50,000
+ 1,00,000
+ 1,50,000
+ 2,00,000
+ 2,50,000
+ 3,00,000
+Q3 FY22-23
+Q4 FY22-23
+Q1 FY23-24
+Q2 FY23-24
+Q3 FY23-24
+DENTAL NETWORK
+Dentist Network
+Transactions
+4,305 
+4,323 
+5,073 
+5,511 
+5,368 
+43,438 
+62,756 
+71,122 
+73,283 
+79,574
+ -
+ 10,000
+ 20,000
+ 30,000
+ 40,000
+ 50,000
+ 60,000
+ 70,000
+ 80,000
+ 90,000
+ -1,000
+ 1,000
+ 3,000
+ 5,000
+ 7,000
+ 9,000
+ 11,000
+Q3 FY22-23
+Q4 FY22-23
+Q1 FY23-24
+Q2 FY23-24
+Q3 FY23-24
+DIAGNOSTIC NETWORK
+Diagnostic touchpoints
+Transactions
+
+>>>

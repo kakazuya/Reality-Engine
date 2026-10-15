@@ -1,0 +1,90 @@
+Company: GMRAIRPORT (NSE/BSE symbol GMRAIRPORT), an Indian listed company. Document: investor presentation filed 2022-02-26. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+4
+Leading global airports platform with end to end capabilities
+across the airport value chain
+2nd Largest1 globally
+Largest in India
+Private airport operator
+#9
+No. of airport assets 
+under operations or 
+various stages of 
+development
+#1 ASQ rating by ACl4
+2019 - DIAL in 40 mn+ 
+category
+2020 - GHIAL in 15 -
+25mn pax category
+~2,520 acres5
+Of land with strong 
+real estate ("RE") 
+development potential
+Integrated + End-to-
+end capabilities 
+across the entire value 
+chain (aero, non-aero, 
+value added, O&M, 
+Engg. etc.)
+179 mn3 
+Operational capacity: 
+94 mn
+Under development: 
+85 mn
+102.6 mn2
+Passengers 
+handled in FY20 
+across all gateway 
+airports
+One of the largest airports platform… 
+1) Prior to COVID, GMR Airports Ltd. (GAL) was the second largest majority private airport operator in the world based on annual passengers; 2) Nagpur Airport traffic and capacity is not considered since it is currently handled by AAI
+3) Includes Delhi, Hyderabad and Cebu LTM (Apr 2019-Mar 2020) passenger data; 4) ACI: Airport Council International; 5) Includes DIAL (230 acres), GHIAL (1,500 acres), Goa (232 acres), Bhogapuram (294 acres), Nagpur (247 acres), 
+Cebu (11 acres),Greece (~ 10 acres); 6) Only includes operational Indian airports in GAL portfolio – DIAL and GHIAL
+…with significant international experience 
+Global partnerships have helped develop capabilities across the value chain
+Turkey
+GALs 1st international airport project
+Lucrative 2.3x MoM exit in Dec’13
+In collaboration with Limak focused on 
+development, financing, commercial strategy
+Philippines
+1st project under hybrid PPP model (Cebu)
+Successfully completed the construction and 
+handover of the terminal at the Clark airport
+Indonesia
+Greece
+Maldives
+Early mover in Indonesia (Medan) when 
+government started privatising local airports
+Recently won duty free contract for Bali but 
+decided against taking up the concession 
+1st Indian operator in Europe
+Develop, operate and manage the upcoming 
+airport in Crete
+Involved in the modernisation of the Ibrahim 
+Nasir International Airport, Male 
+One of the largest investments in Maldives
+Key partner
+Overview
+Government 
+of Maldives 
+Middle East
+Recently won IT infra bid for Kuwait airport (operational 
+readiness & transfer services)
+Provided testing support of specialised airport system 
+equipment's in Muscat / Oman 
+26%6
+share of passenger
+traffic in India
+
+>>>

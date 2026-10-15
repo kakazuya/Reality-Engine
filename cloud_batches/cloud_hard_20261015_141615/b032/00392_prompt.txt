@@ -1,0 +1,85 @@
+Company: INTELLECT (NSE/BSE symbol INTELLECT), an Indian listed company. Document: investor presentation filed 2023-05-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Building an Open, Innovative & Embedded AI Ecosystem
+FABRIC I/O
+Experimental with 
+successful AI & Data POCs
+Data and AI as Experiments
+Democratic; A self service 
+platform with more integrated 
+services, experiences and data 
+offerings. Enabling banks to 
+build their own AI products 
+and services for bank 
+customers within their own 
+enterprise
+Data and AI as a Platform
+A truly unbiased, open and 
+innovative ecosystem to help 
+customers & fintech’s 
+partner at every layer of AI 
+stack.  Enabling customers to 
+develop and deploy their 
+own AI models, App builders 
+for business use cases all at 
+scale
+Data and AI as an Ecosystem
+Transformational; new products 
+and LOB created with seamless 
+customer experience around core 
+offering expanded to other 
+customer segments
+Data and AI as Products
+Operational; One strong offering 
+for a specific customer with 
+measurable value
+Data and AI as Solution
+Maturity
+Solutions
+Intellect Products
+Customer Products
+3rd Party Partners
+Customer Segments
+Digital Experience
+Fintech
+Time
+AI
+Data
+2015 - 2018
+Wave 1
+2018 - 2021
+Wave 2
+2021 - 2023
+Wave 3
+2023 -
+Wave 4
+Wave 5
+• Sentiment Analysis
+• Data Aggregator 
+• IDX for SJP Wealth
+• Risk Analyst for Insurance
+• Magic Submission
+• Magic Invoice
+• Risk Analyst
+• iESG
+• iSherlock
+• Doc2API Platform
+• FABRIC Data Platform
+FABRIC I/O
+--- -
+■ 
+■ 
+■ 
+■ 
+
+>>>

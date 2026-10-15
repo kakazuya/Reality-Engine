@@ -1,0 +1,78 @@
+Company: KFINTECH (NSE/BSE symbol KFINTECH), an Indian listed company. Document: investor presentation filed 2024-01-25. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+B S R and Co
+Chartered Accountants
+Salarpuria Knowledge City, Orwell 
+B Wing, 6th Floor, Unit-3, Sy No. 83/1
+Plot No. 02, Raidurg
+Hyderabad – 500 081, India
+Telephone + 91 407 182 2000
+Fax + 91 407 182 2399
+Principal Office:
+14th Floor, Central B Wing and North C Wing, Nesco IT Park 4, Nesco Center, 
+Western Express Highway, Goregaon (East), Mumbai - 400063
+Page 1 of 2
+Limited Review Report on unaudited standalone financial results of KFin 
+Technologies Limited (formerly known as KFin Technologies Private Limited) for the 
+quarter ended 31 December 2023 and year to date results for the period from 01 April 
+2023 to 31 December 2023 pursuant to Regulation 33 of Securities and Exchange 
+Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015, 
+as amended
+To the Board of Directors of KFin Technologies Limited (formerly known as KFin 
+Technologies Private Limited)
+1.
+We have reviewed the accompanying Statement of unaudited standalone financial results of KFin 
+Technologies Limited (formerly known as KFin Technologies Private Limited) (hereinafter referred to 
+as “the Company”) for the quarter ended 31 December 2023 and year to date results for the period 
+from 01 April 2023 to 31 December 2023 (“the Statement”).
+2.
+This Statement, which is the responsibility of the Company’s management and approved by its Board 
+of Directors, has been prepared in accordance with the recognition and measurement principles laid 
+down in Indian Accounting Standard 34 “Interim Financial Reporting” (“Ind AS 34”), prescribed under 
+Section 133 of the Companies Act, 2013, and other accounting principles generally accepted in India 
+and in compliance with Regulation 33 of the Securities and Exchange Board of India (Listing 
+Obligations and Disclosure Requirements) Regulations, 2015, as amended (“Listing Regulations”). 
+Our responsibility is to issue a report on the Statement based on our review.
+3.
+We conducted our review of the Statement in accordance with the Standard on Review Engagements 
+(SRE) 2410 “Review of Interim Financial Information Performed by the Independent Auditor of the 
+Entity”, issued by the Institute of Chartered Accountants of India. A review of interim financial 
+information consists of making inquiries, primarily of persons responsible for financial and accounting 
+matters, and applying analytical and other review procedures. A review is substantially less in scope 
+than an audit conducted in accordance with Standards on Auditing and consequently does not enable 
+us to obtain assurance that we would become aware of all significant matters that might be identified 
+in an audit. Accordingly, we do not express an audit opinion.
+4.
+Based on our review conducted as above, nothing has come to our attention that causes us to believe 
+that the accompanying Statement, prepared in accordance with the recognition and measurement 
+principles laid down in the aforesaid Indian Accounting Standard and other accounting principles 
+generally accepted in India, has not disclosed the information required to be disclosed in terms of 
+Regulation 33 of the Listing Regulations, including the manner in which it is to be disclosed, or that it 
+contains any material misstatement.
+5.
+Emphasis of matter paragraph
+i.
+We draw attention to Note 3 of the statement of unaudited standalone financial results for the 
+quarter and nine months period ended 31 December 2023 regarding the amalgamation of Karvy 
+Computershare Private Limited (KCPL) and the ‘RTA Undertaking’ of Karvy Consultants Limited 
+(KCL) into the Company accounted for in financial year 2018-2019 with effect from 17 November 
+2018. In accordance with the scheme approved by National Company Law Tribunal (NCLT), the 
+amalgamation had been accounted for as per Accounting Standard 14 – ‘Accounting for 
+Amalgamations’. Accordingly, all assets and liabilities of KCPL and of the RTA Undertaking of 
+KCL had been recorded at their respective existing book values. The difference between the book 
+values of the net assets so recorded and the consideration (being the face value of equity shares 
+issued by the Company to the shareholders of KCL and cost of investment in equity shares of 
+KCPL) amounting to INR 6,749.15 million had been debited to goodwill. This goodwill was being 
+amortised over a period of ten years as per the terms of the scheme and was also being tested 
+
+>>>

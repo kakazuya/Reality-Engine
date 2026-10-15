@@ -1,0 +1,31 @@
+Company: REDINGTON (NSE/BSE symbol REDINGTON), an Indian listed company. Document: investor presentation filed 2025-05-19. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Paynet Divestment
+3
+Paynet Divestment completed in Q4FY25
+•
+A definitive agreement was executed on May 06, 2024 between a step down subsidiary of the company, Arena Bilgisayar
+Sanayi Ve Ticaret A.S (“Arena”) and Iyzi Payment and Electronic Money Services Inc (“Iyzico”,), for the sale of 100% of
+the equity interest held by Arena in its fintech payments business, Paynet Ödeme Hizmetler A.Ş (“Paynet”), which is a
+wholly owned subsidiary of Arena.
+•
+During the quarter ended March 2025, the divestment of Paynet has been completed post receipt of requisite
+approvals, for a consideration of ₹ 763.2 Crores ($89.3 million). Gain on sale (net of related expenses) of ₹ 625.8 Crores
+($74.0 million) on the above transaction has been presented as an “Exceptional item” in the Consolidated Statement of
+Profit and Loss for the quarter and year ended March 31, 2025. The post-tax impact of this gain is ₹ 536.7 Crores ($63.5
+million) and ₹ 265.1 Crores ($31.4 million) on the Consolidated Profit after tax (PAT) of the Company before and after
+Non-controlling interests respectively.
+•
+We have excluded the impact of Paynet profits from all numbers presented in this presentation for Q4FY25 and FY25.
+
+>>>

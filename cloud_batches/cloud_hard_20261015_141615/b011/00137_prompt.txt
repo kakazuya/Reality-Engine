@@ -1,0 +1,99 @@
+Company: SILVERTUC (NSE/BSE symbol SILVERTUC), an Indian listed company. Document: investor presentation filed 2026-09-23. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+MAJOR MILESTONE
+MAJOR MILESTONE
+MAJOR MILESTONE
+| Silver Touch Technologies Limited
+9
+1995 -
+2000
+2006 –
+2010
+2017 –
+2018
+2021 –
+2022
+2023 –
+2024
+2001 –
+2005
+2011 –
+2016
+2019 –
+2021
+2022 –
+2023
+2024 –
+2025
+ISO 9001
+Certification
+Listing in NSE
+Emerge
+Setup Silver
+Touch
+Techlab
+Partnership with
+IBM & Microsoft
+Empaneled with
+Govt. of Gujarat
+CMMI Level 5
+Certification
+(Highest level of
+maturity for
+software & IT
+consulting)
+Started Branch
+Offices in New
+Delhi & Mumbai
+30 Year Journey
+Well-Travelled
+|
+In 1995, we began our journey with 4 technocrats unraveling their entrepreneurial spirit and
+enthusiasm after completing their engineering in information technology and allied faculties.
+IoT Solutions for
+Industry 4.0
+Solution building
+in AI/ML
+Partner with Odoo
+Acquisition of SAP
+Gold Partner in USA
+Operations Started
+in Canada
+Partner with NVIDIA
+Incorporated
+Ai4Pharma Tech Ltd
+Secured a single
+order worth over ₹50
+crore
+Launched Gen AI
+products
+Partnership with SAP
+GROW in the USA
+CMMI Level 3
+Certification
+Started UK
+Operations
+Migrated to Main
+Board of NSE, BSE
+Partnership with
+SAP Success
+Factor
+Setup Private
+Data Center in UK
+Developed AI
+Products
+Signed an MOU
+with the Gujarat
+Government
+
+>>>

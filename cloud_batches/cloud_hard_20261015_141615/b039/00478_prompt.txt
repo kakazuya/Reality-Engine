@@ -1,0 +1,73 @@
+Company: TRIVENI (NSE/BSE symbol TRIVENI), an Indian listed company. Document: investor presentation filed 2021-10-27. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+4 
+ 
+Uttar Pradesh). While the Company’s Power Transmission (Gears) manufacturing facility is located at Mysuru, the 
+Water & Wastewater treatment business is located at Noida. The Company currently operates 6 co-generation power 
+plants located across five sugar units and two molasses-based distilleries in U.P. India, located at Muzaffarnagar and 
+Sabitgarh. The Company manufactures Indian Made Indian Liquor (IMIL) at its Muzaffarnagar distillery. 
+ 
+The Company produces premium quality multi-grade crystal sugar, raw, refined and pharmaceutical sugar. All of the 
+Sugar units are FSSC 22000 certified. The sugar is supplied not only to household consumers but also to bulk 
+consumers. The Company has supply chain relationship with leading multinational beverage, food & FMCG 
+companies, pharmaceutical companies and leading confectionery producers. It also has a strong presence in branded 
+sugar market through its brand “Shagun”. The distillery at Muzaffarnagar produces Ethanol, Extra Neutral Alcohol 
+(ENA) and alcoholic beverages IMIL. The distillery at Sabitgarh produces Fuel-grade Ethanol. Triveni currently operates 
+104.5 MW grid connected co-generation capacity.  
+ 
+The Company is the largest engineered-to-order turbo gearbox manufacturer in India. The Power Transmission 
+business has 3 different business segments – Gears, Defence, Built to Print. It delivers robust and reliable Gears 
+solutions which cover a range of applications and industries to meet the ever-changing operating conditions and 
+customers’ requirements. The Company has become a dominant supplier to all major OEMs in the country, offering 
+solutions to all industrial segments including Oil and Gas as per AGMA, API-613 and API-677 standards. It remains the 
+market leader in high-speed Gears and Gearboxes up to 70 MW capacity and speed of 70,000 rpm. The major product 
+portfolio includes steam turbines, gas turbines and compressor gearboxes under the High-Power High-Speed 
+segment. In the Low-Speed segment, the Company focuses on the gearboxes used in applications such as 
+reciprocating pumps and compressors, hydel turbines, mill and extruder drives for metal, sugar, rubber and plastic 
+industries, marine applications, etc. Its robust and reliable products are backed by 360-degree service solutions which 
+minimise the downtime for its customers. The Company provides health monitoring services for all types of critical 
+gearboxes, high-speed and low-speed, as well as maintains an inventory of dimension ready sites for immediate 
+solution. 
+ 
+The Company provides complete and sustainable water technology solutions across the water usage segments. 
+Advanced Solutions offered for total water management include turnkey / EPC, customer care, operations and 
+maintenance, life cycle models such as Design, Build Own & Operate (DBOO), Design, Build Own Operate and Transfer 
+(DBOOT), BOOT, equipment supply for unit processes like screening, grit separation, clarification and sludge handling. 
+The Customer Care Division offers value added services for operation management and performance optimisation. 
+The quality service offerings are tailored to customers’ requirements, which in many cases form an integral part of 
+the main contract - operations and maintenance, annual maintenance contracts, product & process audit, health 
+check-up and overhauling, pilot experiments, refreshment, upgradation and automation of existing plants, spares and 
+service consumables and chemicals and on-site training and assistance. 
+ 
+Triveni Brands is the newly launched FMCG Division of Triveni Group which currently constitutes Shagun Sugar and 
+the Private Label Sugar Business. Over the next 12 months, several new brands with innovative products will be 
+launched. 
+ 
+As a result of a scheme of arrangement in 2010, the turbine division of the Company demerged into Triveni Turbine 
+Limited (TTL). The Company holds 21.85% equity capital of Triveni Turbine Limited.  
+ 
+For further information on the Company, its products and services please visit www.trivenigroup.com 
+ 
+Surabhi Chandna 
+Triveni Engineering & Industries Ltd 
+Ph: +91 120 4308000 
+Fax: +91 120 4311010, 4311011 
+E-mail: ir@trivenigroup.com 
+Gavin Desa/ Rishab Barar 
+CDR India 
+Ph: +91 22 6645 1237 / 1235 
+ 
+Fax: +91 22 22844561 
+E-mail: gavin@cdr-india.com|rishab@cdr-india.com 
+
+>>>

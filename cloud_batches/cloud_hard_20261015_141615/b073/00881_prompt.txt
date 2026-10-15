@@ -1,0 +1,83 @@
+Company: SATIN (NSE/BSE symbol SATIN), an Indian listed company. Document: investor presentation filed 2021-10-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+1. Differentiated Product Offerings
+22
+SCNL
+Business Correspondent  
+Services
+Housing Finance
+SME
+Product features 
+as on Sep’21
+MFI(1)
+Taraashna Financial Services  
+Limited(2)
+Satin Housing Finance Limited(3)
+Satin Finserv Limited (SFL)(4)
+Start Date
+May’08 (JLG)
+May’12
+Feb’18
+Mar’19
+Ticket Size Range
+Upto Rs. 50,000
+Upto Rs. 50,000 
+(JLG - Microfinance)
+Rs. 100,000 – 4,000,000
+Rs. 100,000 – 100,000,000
+Tenure
+6 - 24 months
+12 - 24 months
+24 - 240 months
+12 - 120 months
+Frequency of Collection
+Bi-Weekly
+Bi-Weekly
+Monthly
+Monthly/Quarterly
+No. of States/UTs
+23
+7
+4
+8
+No. of Branches
+1,027*
+220
+16
+15
+AUM (Rs. crore)
+5,989(5)
+682
+246
+138
+No. of loan accounts
+27,62,849
+3,77,267
+2,711
+2,296
+Avg. Ticket Size for Q2FY22
+Rs. 43,000** (JLG)
+Rs. 34,000
+Rs. 1,093,000
+Rs. 2,78,500 (Retail)(6)
+Notes 
+(1) Includes MFI Lending (loans under JLG model, IndusInd BC and water & sanitation) and Product Financing (Loans  for solar lamps, cycles) 
+(2) TFSL acquisition is effective Sep 1, 2016 
+(3) Satin Housing Finance Ltd was incorporated on April 17, 2017 
+(4) SFL was incorporated on August 10, 2018
+(5) SCNL also has MSME portfolio of Rs. 326 crore other than MFI portfolio
+(6) Average Ticket Size of Retail Financing is 2.78 lacs. Overall, the average ticket size of SFL is Rs. 6.01 lacs
+*There were 1,027 branches with Microfinance operations & 24 branches with MSME operations. Out of the 24 MSME branches, 23 of them also had microfinance operations & 1 was unique
+**Focus on repeat clients with established credit history
+
+>>>

@@ -1,0 +1,76 @@
+Company: JYOTIRES (NSE/BSE symbol JYOTIRES), an Indian listed company. Document: investor presentation filed 2022-05-18. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Investor Presentation
+32
+Investor Presentation
+Shareholding Pattern & Price Performance
+Category
+Mar-20
+Mar-21
+Mar-22
+Promoter
+47.21%
+48.98%
+49.97%
+Public
+52.79%
+51.02%
+50.03%
+- Foreign Institutional Investors*
+-
+-
+2.00%
+- Ark Global Emerging Companies, Lp
+-
+-
+1.25%
+- Deseret Mutual Employee Pension Plan Trust**
+-
+-
+0.75%
+* FII shareholding is part of overall public shareholding                                    
+** Source: Bulk Deals, BSE India - % derived from shares bought vs total equity shares outstanding
+0
+50
+100
+150
+200
+250
+300
+350
+400
+450
+500
+01-Apr-21
+22-Apr-21
+13-May-21
+03-Jun-21
+24-Jun-21
+15-Jul-21
+05-Aug-21
+26-Aug-21
+16-Sep-21
+07-Oct-21
+28-Oct-21
+18-Nov-21
+09-Dec-21
+30-Dec-21
+20-Jan-22
+10-Feb-22
+03-Mar-22
+24-Mar-22
+Price Performance (Relative) (1.04.21 to 31.03.22)
+Jyoti Resins & Adhesives
+ BSE Sensex
+
+>>>

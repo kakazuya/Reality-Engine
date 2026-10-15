@@ -1,0 +1,94 @@
+Company: BIGBLOC (NSE/BSE symbol BIGBLOC), an Indian listed company. Document: investor presentation filed 2026-06-23. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+29
+AAC Bloc Industry : Key Features
+Economics of an AAC 
+plant setup
+• An AAC plant of 
+annual capacity 
+4,00,000 CuM 
+requires an 
+investment of up to 
+INR 75 cr including 
+land, machinery and 
+civil construction cost
+• An approximate land 
+area of 10 acre is 
+required for such a 
+greenfield AAC plant
+• To setup a plant, the 
+average expenses 
+incurred are: 1) 60% - 
+Plant & Machinery 2) 
+30% - Building 3) 
+10% - Land
+Large players expanding
+• AAC industry is largely 
+organized. There are 
+more than 150 AAC 
+block manufacturing 
+plants in India with 
+total installed capacity 
+of around 12 million 
+CuM p.a. This is an 
+average of around 1.5 
+lakh CuM p.a.
+• Out of 70, top 10 
+companies account for 
+around 50% with the 
+next 60 accounting for 
+balance 50% capacity.
+Consumption Centres
+• The consumers 
+include government 
+supplies, real estate 
+developers and 
+individuals. 
+Construction segment 
+is the biggest 
+consumers of AAC 
+blocks.
+• As catchment area is 
+less, plants are setup 
+near consumption 
+centers i.e., majorly 
+urban areas.
+Logistics limiting 
+widespread adoption of 
+AAC blocks
+• AAC block industry 
+has strong growth 
+potential, but logistics 
+remain a key barrier 
+to wider adoption.
+• Selling prices range 
+from INR 3,300–3,900 
+per CBM, with 
+logistics costs 
+reaching up to 15%.
+• High freight costs 
+restrict supply to a 
+~400 km radius, 
+limiting plant size and 
+scalability
+Working Capital
+Average working capital cycle is 2 months
+60%
+30%
+10%
+Set Up Costs
+Plant
+Building
+Land
+
+>>>

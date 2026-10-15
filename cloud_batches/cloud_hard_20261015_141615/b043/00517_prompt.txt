@@ -1,0 +1,56 @@
+Company: FOCUS (NSE/BSE symbol FOCUS), an Indian listed company. Document: investor presentation filed 2024-05-28. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+I n v e s t o r P r e s e n t a t i o n
+46
+Stock Data
+SHARE HOLDING PATTERN 
+NSE: FOCUS ISIN: INE593W01028
+Share Performance From 01 January 2021 Till Date
+56.09%
+43.40%
+0.50%
+Promoter & Promoter Group
+Public
+Shares held by Employee
+Share Price (₹)
+160.90
+Market Capitalization (₹ Cr)
+1,066.45
+No. of Shares Outstanding 
+6,62,80,575
+Face Value (₹)
+2.00
+52 week High-Low (₹)
+217.80 – 106.36
+As on 27-05-2024
+As on 31-03-2024
+22.75
+848
+159.05
+0.00
+200.00
+400.00
+600.00
+800.00
+1000.00
+0
+500000
+1000000
+1500000
+2000000
+Volume
+Price
+Source - NSE
+Note: 5:1 Stock Split. Record date – 6th October, 2023.
+
+>>>

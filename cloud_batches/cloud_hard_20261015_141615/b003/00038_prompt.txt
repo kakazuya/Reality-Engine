@@ -1,0 +1,56 @@
+Company: MANYAVAR (NSE/BSE symbol MANYAVAR), an Indian listed company. Document: investor presentation filed 2026-05-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Vedant Fashions Limited •
+Introduction to Vedant Fashions
+4
+Indian Wedding and Celebration Wear Brands
+Headquartered in Kolkata, incorporated in 
+2002 by Mr. Ravi Modi, Vedant Fashions 
+offers Indian wedding & celebration wear 
+for men, women & kids 
+01
+One-stop destination with wide product 
+portfolio for every celebratory occasion; 
+aspirational yet value-for-money offering
+02
+Largest company in India in men’s Indian 
+wedding & celebration wear by Revenue, 
+OPBDIT1 & PAT*. Commands dominant 
+position in conventionally unorganized 
+market
+03
+Manyavar brand is category leader in 
+branded Indian wedding & celebration 
+wear market with pan-India presence*
+05
+Delivers aristocratic & seamless customer 
+experience via aesthetic franchisee-owned 
+EBOs
+06
+Growing presence in women’s Indian 
+wedding & celebration wear with Mohey - 
+Largest brand by number of stores with 
+pan-India presence*
+07
+Omni-channel network of EBOs, MBOs, LFS 
+& Online (own website & leading lateral e-
+commerce platforms)
+04
+08
+Retail footprint (FY26) of 1.79 mn sq. ft. 
+across India (652 EBOs2 in 240 cities & 
+towns in India) and Overseas (17 EBOs in 
+USA, UAE, Canada, U.K. and Australia)
+Source: *Crisil Report; As of FY20 (latest available); Note: (1) OPBDIT is Operating profit before depreciation, interest & tax; (2) Includes 144 shop-in-shops (SIS)
+
+>>>

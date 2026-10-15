@@ -1,0 +1,62 @@
+Company: EIDPARRY (NSE/BSE symbol EIDPARRY), an Indian listed company. Document: investor presentation filed 2023-05-31. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Refinery - Journey so far..
+
+While the Spread is narrowing YoY, our consistent 
+zeal to improve efficiency helped us reduce the Cost 
+substantially. Higher cost refineries have closed 
+down
+Profitable & 
+Sustainable Business
+Factory
+Costs  to be controlled 
+within the Spread
+Independent profitable 
+toller
+Sales
+Premiums to be earned 
+over and above spreads
+Make profits net of FOB 
+charges
+Forex Hedge Desk 
+Commodity Hedge Desk
+36
+66
+62
+66
+52
+32
+42
+44
+42
+43
+0
+10
+20
+30
+40
+50
+60
+70
+FY 15
+FY 16
+FY 17
+FY 18
+FY 19
+FY 20
+FY 21
+FY 22
+FY 23
+Refinery Spread- $/MT
+
+>>>

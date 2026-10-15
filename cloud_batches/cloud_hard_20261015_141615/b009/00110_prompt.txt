@@ -1,0 +1,70 @@
+Company: GVT&D (NSE/BSE symbol GVT&D), an Indian listed company. Document: investor presentation filed 2022-08-03. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Cash Pool : GEIIPL
+© GE T&D India Limited
+Benefits Landing
+Benefits Borrowing
+Purpose
+• Availability of additional source of funds
+• Market benchmark rate of Interest: 
+• Present rate of interest around 6% Variable in 
+nature and is determined by independent transfer 
+pricing consultant at arm’s length and is 
+benchmarked to prevailing bank and market 
+prices. 
+• Unsecured, payable on demand - higher flexibility 
+to manage funds and optimize interest cost
+• Day end balance sweep within the entities thereby 
+interest cost incurred on the day end balance
+• No minimum tenor of borrowings Flexibility to repay 
+borrowings on daily basis (which in case of bank is 
+only on due date)
+• Terms of the cash pool arrangement are consistent 
+with the cash pool arrangement existing within 
+General Electric Company and its subsidiaries 
+• Pool participants can terminate cash pooling at any 
+time 
+• Better fund management and optimization of the 
+interest benefit by depositing overnight funds 
+• Better interest on investment: At present around 5%
+• Variable in nature and is determined by 
+independent transfer pricing consultant at 
+arm’s length and is benchmarked to prevailing 
+bank and market prices.
+• However, no loan is given at a rate of interest 
+lower than the prevailing yield of one year, three 
+year, five year or ten year Government Security 
+closest to the tenor of the loan in compliance 
+with the provision of section 186(7) of the Act. 
+• Unsecured. daily callable on demand
+• No minimum tenor of deposits. No penalty of early 
+withdrawal
+• Day end balance sweep within the entities thereby 
+interest earned on the day end surplus balance 
+• The cash pooling offered rate of 1 year with Govt. of 
+India GSec with no penalty on early withdrawal is 
+better than a similar Bank time deposit rate on new 
+deposit rollovers of 91 day (currently at ~ 3%-4.0% 
+p.a.) with 1 % penalty on early withdrawal. 
+• Pool participants can terminate cash pooling at any 
+time. 
+Purpose : Short term loans to meet its working capital 
+requirements
+Limit for FY 22-23 and upto 67th AGM: 
+• Borrowing : 7,000 MINR at any point of time
+• Lending : 1,500 MINR at any point of time
+FY 2021-22 approval in AGM dated:
+• Borrowing : 7,000 MINR at any point of time
+• Lending : 1,500 MINR at any point of time
+
+>>>

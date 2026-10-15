@@ -1,0 +1,63 @@
+Company: GRAVITA (NSE/BSE symbol GRAVITA), an Indian listed company. Document: investor presentation filed 2025-07-28. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+7.23%
+8.32%
+9.70%
+10.21%
+10.47%
+10.43%
+5.00%
+6.00%
+7.00%
+8.00%
+9.00%
+10.00%
+11.00%
+FY20
+FY21
+FY22
+FY23
+FY24
+FY25
+EBITDA  Margin
+• To mitigate the risk of commodity prices fluctuation from
+June. 2016
+• Metal equivalent of the scrap bought, is sold on the same
+day
+• Pricing against Customer contracts – Natural Hedging
+• Forward Contracts on LME Exchange for balance
+quantity - till final sale to customer
+• Core inventory was not part of back-to-back hedging
+• Gravita started hedging of core inventory also in June 2019
+by taking a forward contact on LME Exchange.
+• June 2019 onwards Gravita enjoys stable margins and is not
+affected by the commodity price fluctuations
+Risk Mitigation by BACK-TO-BACK HEDGING mechanism
+22
+1947
+1867
+2283
+2105
+2105
+2121
+2046
+LME
+$
+$
+$
+$
+$
+$
+$
+
+>>>

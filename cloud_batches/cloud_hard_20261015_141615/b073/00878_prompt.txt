@@ -1,0 +1,139 @@
+Company: ASARFI (NSE/BSE symbol ASARFI), an Indian listed company. Document: investor presentation filed 2026-05-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+19
+Super-Specialty Hospital Unit
+Cancer Hospital Unit
+Driving Better Assets Monetization
+18,751
+20,068
+17,177
+17,505
+23,020
+0
+5,000
+10,000
+15,000
+20,000
+25,000
+FY22
+FY23
+FY24
+FY25
+FY26
+ARPOB (in ₹)
+30,429
+37,428
+0
+10,000
+20,000
+30,000
+40,000
+FY25
+FY26
+ARPOB  (in ₹)
+65
+65
+30%
+42%
+0
+10
+20
+30
+40
+50
+60
+70
+FY25
+FY26
+Bed Capacity and Occupancy %
+250
+250
+250
+250
+285
+66%
+65%
+60%
+61%
+56%
+0
+50
+100
+150
+200
+250
+300
+FY22
+FY23
+FY24
+FY25
+FY26
+Bed Capacity and Occupancy %
+Super
+Specialty
+Unit:
+FY26
+ARPOB increased due to Higher
+revenue realization, Enhanced
+Case-mix
+and
+Higher
+ICU/Critical
+care
+utilization.
+However, Occupancy decreased
+primarily due to the expansion
+in
+bed
+capacity,
+which
+temporarily outpaced
+patient
+volume growth.
+Cancer
+Hospital
+Unit:
+FY26
+ARPOB
+and
+Occupancy
+improved
+driven
+by
+a
+favourable
+case-mix
+with
+a
+higher share of complex, high-
+acuity
+oncology
+cases
+and
+growth in Radiation Oncology,
+supported
+by
+higher
+bed
+utilization
+and
+realizations,
+partly offsetting the impact of
+lower
+volumes
+and
+reduced
+government scheme cases.
+* Asarfi Cancer Institute was operationalized in FY25.
+
+>>>

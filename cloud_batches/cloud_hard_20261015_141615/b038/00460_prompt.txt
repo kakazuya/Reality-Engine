@@ -1,0 +1,72 @@
+Company: SPAL (NSE/BSE symbol SPAL), an Indian listed company. Document: investor presentation filed 2022-11-01. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+14
+Brief Profile
+Notes:
+ROE = PAT before MI / Avg. Equity (Excl. preference shares) + MI (Cash adj. PAT)
+Cash Adj. ROCE = EBIT / Avg. Capital Employed (excl. cash & current investments), 
+
+SPAL is one of the leading manufacturers 
+and exporters of knitted garments for 
+infants and children in India.
+
+Provides end-to-end garment 
+manufacturing from Yarn to finished 
+products including  body suits, sleep suits, 
+tops and bottoms.
+
+Strong promoter pedigree with more than 
+three decades of experience in textile and 
+apparels industry.
+BUSINESS OVERVIEW
+
+SPAL is a specialized player in the highly 
+challenging infant & children wear knitted 
+garment industry.
+
+Preferred vendor through long standing 
+relationships with reputed international 
+brands etc.
+
+Stringent quality compliance, superior in-
+house product development and certified 
+testing laboratories.
+
+Demonstrated ability to setup integrated 
+facilities to scale-up operations. Currently 
+operating 18 facilities having close 
+proximity to key raw materials  & skilled 
+labour.
+
+Advanced manufacturing machineries with 
+latest technology and automation.
+KEY STRENGTHS
+
+Reported Consolidated Revenues, EBITDA 
+and PAT were Rs 8,672 mn, Rs 1,528 mn
+and Rs 847 mn in FY22.
+
+Strong balance sheet with Net Debt to 
+Equity ratio of 0.22x as on Mar-22.
+
+Improving profitability & return ratios over 
+FY15 to FY22-
+
+Reported PAT Margin: 1.7% to 9.8%
+
+Cash Adjusted ROCE: 13.4% to 17.2%
+
+ROE: 9.6% to 20.2%
+FINANCIAL OVERVIEW *
+
+>>>

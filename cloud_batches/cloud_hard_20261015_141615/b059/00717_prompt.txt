@@ -1,0 +1,54 @@
+Company: REPRO (NSE/BSE symbol REPRO), an Indian listed company. Document: investor presentation filed 2023-01-25. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Compared to Global /US/ China book market, India’s books market is unexplored & 
+underserved    
+Source: World Bank, ACER, Primary Research and EY Parthenon ‘Value Proposition of the Indian Publishing Industry’
+Notes: * 1 USD = 80 INR 
+Increasing 
+readership in 
+Tier 2/3 towns
+Increasing 
+literacy rate
+2nd Largest English-
+Speaking Country
+Increased 
+Consumer 
+Spending
+Lowest Data Prices 
+@Rs. 18 in India Vs 
+Rs 600/ GB  Globally
+Increased 
+International content 
+distribution 
+Key Drivers
+The Indian Book Market
+Indian book market - 3rd largest in the World 
+$8.3 Bn in FY22; growing at a CAGR of 8.6% : 
+Physical books are dominant and online sales are rising
+$ 5 
+$ 17 
+INR 66,000 Cr*
+($ 8.3 Bn) 
+INR 10,56,000 Cr*
+($ 132 Bn) 
+79% 
+Is the share of Physical 
+books. Remaining is e-
+books & audiobooks
+92% 
+Share of Physical books
+Books Market Size FY22
+Format
+Per Capita spend on books
+
+>>>

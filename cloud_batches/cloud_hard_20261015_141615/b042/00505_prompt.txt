@@ -1,0 +1,54 @@
+Company: BALAMINES (NSE/BSE symbol BALAMINES), an Indian listed company. Document: investor presentation filed 2025-08-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Investor Presentation
+01
+02
+03
+y
+04
+05
+06
+BAL owns 55% in subsidiary Balaji Speciality Chemicals 
+Pvt. Ltd which is strategically located at Solapur
+Commenced its commercial operations in June 2019 from 
+its state of-the-art manufacturing facility in Solapur, 
+Maharashtra, boasting an installed capacity of 30,000 
+MTPA. Received Mega project status for the Project from 
+Maharashtra State Government
+Balaji Speciality Chemicals Limited (BSCL) is 
+Manufacturing products such as Ethylene Diamine (EDA), 
+Piperazine Anhydrous (PIP) , Di Ethylene Tri Amine (DETA), 
+Amino Ethyl Ethanol Amines (AEEA) and Amino Ethyl 
+Piperazine (AEP) which are import substitute products. 
+Thus, BSCL is the sole manufacturer of these products in 
+India
+Started exporting products to China, USA, Europe and 
+other countries. Have received REACH* registration for 
+EDA, DETA and AEEA.
+The Expansion Project for manufacture of EDA based 
+products with better realisation is under execution and 
+will be commissioned during the FY 2026-27. 
+The Greenfield project for manufacture of Hydrogen 
+Cyanide (HCN), Sodium Cyanide (NaCN) 30%(Solution), 
+Sodium Cyanide (NaCN) 100%(Solid), Ethylene Diamine 
+Tetra Acetic Acid (EDTA)/(EDTA-2Na), is under execution 
+and will be commissioned during the end of the FY 2025-
+26 in Phase-I. Under Phase-II Benzyl Cyanide (BnCN), 
+Phenylacetic Acid (PAA), and Tri Ethyl Ortho Formate 
+(TEOF)/Tri Methyl Ortho Formate (TMOF) plants will be 
+taken up.
+About Balaji Speciality Chemicals
+24
+*REACH is a European Regulation and is an acronym for the Registration, Evaluation, Authorisation and Restriction of Chemicals. 
+
+>>>

@@ -1,0 +1,90 @@
+Company: ASTRAMICRO (NSE/BSE symbol ASTRAMICRO), an Indian listed company. Document: investor presentation filed 2025-08-13. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Radar Electronics    I    E le ct ro n ic Warfare   I    Missiles    I    Telemetry    I    Space    I    Meteorology    |    Hydrology    |    Telecom
+Journey so far
+13
+01
+1991
+Telecom
+02
+1993
+Radar & Strategic 
+Electronics 
+Subsystems
+05
+2003
+Space Electronic Sub-
+systems
+06
+2005
+Strategic Semi-
+Conductors (MMIC)
+07
+2010
+Offset Production
+08
+2015
+Entered Radar 
+Systems
+09
+1st System 
+Delivered to 
+Defence
+2018
+10
+2020
+Completed Radar 
+Production Order 
+for Para Military
+13
+2022
+Delivered Phased 
+Array Telemetry 
+System
+03
+1994
+Went Public
+04
+2000
+EW Subsystems
+11
+2021
+Completed DWR 
+production Order fir INDIA 
+MET DEPT.
+16
+Delivered AAAU 
+For Air-Borne 
+AESA Radar
+2023
+12
+Established Earth 
+Station for INDIA 
+MET DEPT.
+2022
+14
+2022
+Delivered T&E 
+Facility For EW 
+Systems
+15
+2022
+7.3 M Telemetry 
+System 
+Commissioned
+17
+2024
+PPTR
+C-DWR
+
+>>>

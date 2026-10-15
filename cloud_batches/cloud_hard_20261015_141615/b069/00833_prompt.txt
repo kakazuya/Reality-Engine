@@ -1,0 +1,88 @@
+Company: RACE (NSE/BSE symbol RACE), an Indian listed company. Document: investor presentation filed 2024-02-16. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+FINANCIAL OVERVIEW (STANDALONE)
+•
+Our PAT for current quarter ending 31 December 2023 stands at INR 0.45 crore as 
+against INR 0.36 crore for the same quarter last year. Thus, recording an YoY growth 
+of 26%.
+•
+Also, we have been able to improve our operating margin & net profit margin by 
+around 116 bps & 17 bps respectively in the current quarter.  
+*To reflect upon our core operations, EBITDA margin and PAT margin are computed excluding other income (non-operating income)
+We have used summarized financials for presentation purpose.
+INR Cr
+PARTICULARS
+Q3 FY24
+Q3 FY23
+INCOME STATEMENT
+Revenue from Operations
+69.40
+84.81
+Operating Costs
+68.10
+84.21
+Operating Profit (EBITDA)
+1.30
+0.60
+Other Income
+0.14
+0.15
+Finance Costs
+0.77
+0.12
+Depreciation and amortisation
+0.14
+0.11
+Profit Before Tax (PBT)
+0.53
+0.51
+Less: Tax expense
+0.08
+0.15
+Profit After Tax (PAT)
+0.45
+0.36
+84.81
+69.40
+0.71%
+1.87%
+0.30%
+0.48%
+0.00%
+0.20%
+0.40%
+0.60%
+0.80%
+1.00%
+1.20%
+1.40%
+1.60%
+1.80%
+2.00%
+0.00
+10.00
+20.00
+30.00
+40.00
+50.00
+60.00
+70.00
+80.00
+90.00
+Q3 FY23
+Q3 FY24
+Revenue from Operations
+EBITDA Margin
+PAT Margin
+
+>>>

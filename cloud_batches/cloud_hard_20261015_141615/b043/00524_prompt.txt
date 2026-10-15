@@ -1,0 +1,46 @@
+Company: TRIVENI (NSE/BSE symbol TRIVENI), an Indian listed company. Document: investor presentation filed 2024-01-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+8 
+ 
+ 
+ 
+ 
+reports, the sugarcane crush and sugar production for 2023-24 (October-September) are estimated at 85 
+million tonnes and 9.8 million tonnes, respectively. In the 2022-23 season, sugar harvest was completed on 
+April 6, with 93.9 million tonnes of sugarcane crushed and 11.02 million tonnes of sugar produced. 
+• 
+International sugar prices still robust: The NY #11 raw sugar futures touched highs of US 27.95 cents/lb in 
+November 2023 since crossing US 27 cents/lb earlier in the year, driven by global supply concerns due to 
+lower production expectations in Thailand and India. Prices have corrected following news of higher 
+production at Brazil, though still remain robust. As on January 24, 2024 the NY #11 front month contract 
+was trading at US 24.5 cents/lb. London #5 prices are currently trading at $685.3 per tonne after reaching 
+highs of $763.40 per tonne in November 2023. 
+ 
+ 
+Note: London #5 on left hand side (LHS) in $/tonne; NY #11 on right hand side (RHS) in US cents/lb 
+ 
+ 
+Alcohol (Distillery) business 
+ 
+ 
+The Company has state-of-the-art distilleries spread across Muzaffarnagar (MZN) – 2 facilities, Sabitgarh (SBT) 
+and Milak Narayanpur (MNP) in Uttar Pradesh aggregating to 660 KLPD. These facilities have the capability to 
+produce Ethanol, Extra Neutral Alcohol (ENA), Rectified Spirit (RS) and Denatured Spirit (SDS). The Company 
+utilises a mix of sugarcane-based feedstocks as well as grains. Distillers Dried Grain Solubles (DDGS), a co-
+product produced on grain operations is also sold to premium Institutions and has been well accepted in market. 
+The Company also manufactures Indian Made Indian Liquor (IMIL). 
+ 
+ 
+ 
+
+>>>

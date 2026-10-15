@@ -1,0 +1,88 @@
+Company: SHRIRAMFIN (NSE/BSE symbol SHRIRAMFIN), an Indian listed company. Document: investor presentation filed 2026-04-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Si-IRiRAM FINANCE LIMITED 
+C1N: L65191TN1979PLC007874 
+Regd. Office: Sri Towers, 14A, South Phase, Industrial Estate, Guindy, Chennai - 600 032, Tamil Nadu. 
+Tel. No: +91 44 4852 4666, Fax: +91 44 4852 5666. Website-www.shriramfinance.in, email-secretarial a shriramfinance.in 
+Notes: 
+3 The above results have been reviewed by the Audit Committee and subsequently approved by the Board of Directors in their respective 
+meetings held on April 24, 2026. 
+4 The consolidated financial results (the 'Statement' or 'Results') of Shriram Finance Limited (the 'Parent' or the 'Company') and its subsidiary 
+(the Parent and its subsidiary together referred to as 'the Group') and its associate Shriram Automall India Limited, together with the Results 
+for the comparative reporting periods have been prepared in accordance with recognition and measurement principles laid down in Indian 
+Accounting Standard (Ind AS') notified under section 133 of the Companies Act, 2013 (`the Act') read with Companies (Indian 
+Accounting Standards) Rules, 2015 as amended from time to time and the other accounting principles generally accepted in India and in 
+compliance with Regulation 33, 52 and 54 read with Regulation 63(2) of Securities and Exchange Board of India (`SEBI') (Listing 
+Obligations and Disclosure Requirements) Regulations, 2015, as amended (the `Listing Regulations'). The annual financial statements, 
+used to prepare the financial results, are based on the Division III of the notified Schedule III of the Act, as amended from time to time, for 
+Non-Banking Financial Companies that are required to comply with Ind AS. The entities consolidated in the results of the Company are as 
+under - 
+Name of the Company 
+% Shareholding and voting power of Shriram 
+Finance Limited 
+Consolidated as 
+Shriram Overseas Investment Limited ('Shriram 
+Overseas') [Formerly Shriram Overseas Investment 
+Private Limited] 
+100% 
+Subsidiary (from May 09, 2025) 
+Bharath Investment Pte. Ltd ('BIPL') 
+81.63%* 
+Step-down subsidiary (w.e.f. May 
+09, 2025 to March 11, 2026) 
+Armour Insurance Services WLL 
+40.00%** 
+Associate of step-down 
+subsidiary (w.e.f. May 09, 2025 
+to March 11, 2026) 
+Shriram Automall India Limited ('SAMIL') 
+44.56% 
+Associate 
+*Held by Shriram Overseas Investment Limited 
+**Held by Bharath Investment Pte. Ltd 
+These consolidated financial results would be available on the website of the Company (www.shriramfinance.in) and on the website of BSE 
+Limited (www.bseindia.com) and National Stock Exchange of India Limited (www.bseindia.com). 
+5 The figures for the fourth quarter of the current and previous year are the balancing figures between (a) audited figures in respect of the full 
+financial year and (b) the published year to date figures up to the end of third quarter of the respective financial years which were subjected 
+to limited review by the statutory auditors. 
+6 The consolidated financial results for the quarter and year ended March 31, 2026 have been audited by the joint statutory auditors, viz. M M 
+NISSIM & CO LLP, Chartered Accountants and G. D. Apte & Co., Chartered Accountants. 
+7 The Board of Directors at its meeting held on December 19, 2025 approved the issuance of 471,121,055 fully paid-up equity shares of face 
+value of Rs. 2/- each fully paid-up on a preferential basis to MUFG Bank Ltd. ("MUFG"), a company incorporated under the laws of Japan 
+at a price of Rs. 840.93 per share (including a premium of Rs. 838.93 per share) ("Issue Price") for an amount aggregating to Rs. 39,617.98 
+crores representing 20% of the post equity share capital on a fully diluted basis ("Preferential Issue"). An 'Investment Agreement' in this 
+regard was executed between, among others, the Company and MUFG on the same date. The requisite resolutions were approved by the 
+shareholders at the extraordinary general meeting on January 14, 2026. 
+Upon receipt of necessary statutory and regulatory approvals, on April 08, 2026, the Board of Directors of the Company approved the 
+allotment of 471,121,055 fully paid-up equity shares of face value of Rs. 2/- each fully paid-up at an issue price on a preferential basis to 
+MUFG on receipt of the subscription amount of Rs. 39,617.98 crores in terms of the Investment Agreement dated December 19, 2025. 
+Pursuant to the allotment of equity shares, MUFG has become a minority public shareholder of the Company representing 20% equity stake 
+on a fully diluted basis and the paid-up equity share capital of the Company stood increased on April 08, 2026 from Rs. 376.31 crores 
+comprising of 1,881,565,371 equity shares of Rs. 2/- each fully paid up to Rs. 470.54 crores comprising of 2,352,686,426 equity shares of 
+Rs. 2/- each fully paid up. The proceeds are being utilised as per the objects of the preferential issue. 
+C 
+SIM 
+IxPTE 
+FR 
+107122 
+W100672 
+MUMBAI 
+-o 
+• q. 
+roc/ Aco 
+<c. 
+‹,z7 
+S 
+RED ACC 
+
+>>>

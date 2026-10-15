@@ -1,0 +1,83 @@
+Company: BLUESTONE (NSE/BSE symbol BLUESTONE), an Indian listed company. Document: investor presentation filed 2026-06-04. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+ 
+ 
+ 
+ 
+ 
+BlueStone Jewellery and Lifestyle Limited 
+[Formerly Known as BlueStone Jewellery and Lifestyle Private Limited] 
+Reg. off : Site No. 89/2 Lava Kusha Arcade, Munnekolal Village, Outer Ring Road, Marathahalli, Bangalore - 560037 
+statutorycompliance@bluestone.com               www.bluestone.com               CIN: L72900KA2011PLC059678 
+Corporate off: 302, Dhantak Plaza, Makwana Road, Marol, Andheri East, Mumbai - 400 059, Maharashtra. 
+Contact No: 080 4514 6904 
+ 
+ 
+  June 04, 2026 
+To, 
+BSE Ltd.   
+Listing Department, 
+P. J. Towers, Dalal Street, 
+Mumbai – 400 001.  
+(Scrip Code: Equity - 544484),  
+National Stock Exchange of India Ltd.  
+Exchange Plaza,  
+Bandra-Kurla Complex,  
+Bandra (E), Mumbai – 400 051. 
+(Symbol: BLUESTONE, Series EQ) 
+ 
+Dear Sirs/ Madam, 
+ 
+Sub :Analyst/ Institutional Investor - Investor Presentation 
+ 
+Ref.: Corrigendum for the presentation made during BlueStone’s Investor Day 2026 
+ 
+Pursuant to the Regulation 30 of the SEBI (Listing Obligations and Disclosure Requirements) 
+Regulations, 2015, and further to our letter dated June 3, 2026, we are enclosing herewith a revised 
+copy of the presentation made at our Investor Day 2026 on June 3, 2026.  
+ 
+Please note the following changes: 
+1. On Slide 5 – share of affluent households in 2029 rectified from 50% to 40%+ 
+2. On Slide 109 – AOV for FY22 updated from Rs 32k in FY22 to Rs 27.9k along with CAGR 
+3. On Slide 130 – MTM call cash outflow rectified to cash inflow 
+4. On Slide 139 – Revenue of Rs. 22,342 Cr. on the bar graph rectified to Rs. 2,342 Cr. 
+ 
+A revised copy of this presentation will also be made available on the website of the Company: 
+https://www.BlueStone.com/investor-relations.html#investorUpdates  
+ 
+You are requested to take the above information on record. 
+ 
+Thanking you, 
+ 
+Thanking you, 
+Your Sincerely, 
+For BlueStone Jewellery and Lifestyle Limited  
+(Formerly known as BlueStone Jewellery and Lifestyle Private Limited) 
+ 
+ 
+ 
+ 
+Gaurav Singh Kushwaha 
+Managing Director  
+DIN: 01674879 
+ 
+Encl.: as above 
+Gaurav Singh 
+Kushwaha
+Digitally signed by 
+Gaurav Singh Kushwaha 
+Date: 2026.06.04 
+12:44:28 +05'30'
+
+>>>

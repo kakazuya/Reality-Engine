@@ -1,0 +1,145 @@
+Company: GODFRYPHLP (NSE/BSE symbol GODFRYPHLP), an Indian listed company. Document: investor presentation filed 2026-01-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+www.godfreyphillips.co
+www.godfreyphillips.co.in
+12
+Gross Profit and Net Profit
+Gross Profit (Rs. Crore) & Margin (%) from continuing operations
+Gross Profit (Rs. Crore) & Margin (%) from continuing operations
+Net Profit (Rs. Crore) & Margin (%) from continuing operations
+Net Profit (Rs. Crore) & Margin (%) from continuing operations
+445
+494
+744
+926
+1153
+7.3%
+7.1%
+8.3%
+8.6%
+8.0%
+5.0%
+6.0%
+7.0%
+8.0%
+9.0%
+10.0%
+50
+250
+450
+650
+850
+1050
+FY21
+FY22
+FY23
+FY24
+FY25
+Net Profit
+Margin%
+24%
+Gross Profit & Net Profit figures reflect our continuing operations . All prior years and quarters have been re-casted to reflect the same
+1233
+1376
+1670
+1847
+2358
+20.3%
+19.9%
+18.7%
+17.1%
+16.3%
+12.0%
+17.0%
+22.0%
+27.0%
+0
+500
+1000
+1500
+2000
+2500
+FY21
+FY22
+FY23
+FY24
+FY25
+Gross Profit
+Margin%
+28%
+633
+639
+628
+599
+714
+16.0%
+16.0%
+15.3%
+15.1%
+15.1%
+10.0%
+12.5%
+15.0%
+17.5%
+20.0%
+22.5%
+25.0%
+27.5%
+30.0%
+250
+350
+450
+550
+650
+750
+Q3 FY 25
+Q4 FY 25
+Q1 FY 26
+Q2 FY 26
+Q3 FY 26
+Gross Profit
+Margin%
+317
+294
+356
+305
+343
+8.0%
+7.4%
+8.7%
+7.7%
+7.2%
+2.0%
+4.0%
+6.0%
+8.0%
+10.0%
+12.0%
+14.0%
+15
+65
+115
+165
+215
+265
+315
+365
+Q3 FY 25
+Q4 FY 25
+Q1 FY 26
+Q2 FY 26
+Q3 FY 26
+Net Profit
+Margin%
+
+>>>

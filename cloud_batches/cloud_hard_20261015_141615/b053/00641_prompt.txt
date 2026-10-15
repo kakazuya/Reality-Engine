@@ -1,0 +1,76 @@
+Company: POWERMECH (NSE/BSE symbol POWERMECH), an Indian listed company. Document: investor presentation filed 2023-09-02. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Professional management team and skilled workforce
+Strategic partnerships and JVs
+Power Mech at a Glance
+3
+A leading industrial services and construction Company providing comprehensive service in power and infrastructure sector
+Pan India presence with international operations and 
+expansion across international geographies
+Comprehensive service provider in power and 
+infrastructure sector 
+Significant orderbook scale up since IPO 
+Diversified service presence across sectors
+Consistent track record of growth with stable margins 
+Long term relationships with Marquee clientele
+1
+2
+3
+4
+5
+6
+7
+106
+Total 
+Ongoing projects
+49
+O&M/ AMC 
+projects(domestic)
+17
+Overseas projects
+Rs. 3,524Cr
+Order book at IPO (FY16)
+Rs. 53,320Cr*
+Order book as on 9th Aug’23
+Sectors
+Industrial plants
+Roads
+New geographies
+Uganda
+Sudan
+Kenya
+Morocco
+Management with strong industry 
+experience
+Railways & 
+Metro
+*Including MDO contracts of Rs. 9,294Cr and Rs.30,438Cr (Execution considered only upto 30th June 2023) 1. For power in terms of MW
+Iraq
+Qatar
+Water
+Mining
+Rs. 3,618cr
+Total Revenue
+Rs.421cr/12%
+EBITDA/ margin
+Rs.209cr/6%
+PAT/ margin
+FY23
+11,866 
+Manpower base
+Q1’FY24
+Largest O&M 
+Service provider1
+8
+
+>>>

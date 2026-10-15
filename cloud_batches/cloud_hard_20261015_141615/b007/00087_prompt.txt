@@ -1,0 +1,62 @@
+Company: SHRIRAMPPS (NSE/BSE symbol SHRIRAMPPS), an Indian listed company. Document: investor presentation filed 2022-12-07. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Scaled up operating platform, poised to deliver strong results
+1
+SPL : An Introduction
+Project
+Overview
+Completed projects, 
+including of c.16% of commercial office 
+space and luxury housing categories
+c.19.5 msf
+over 33 projects
+Project Pipeline4
+c.54 msf3
+over 54 projects
+Land reserves of 197 acres with a
+development potential of 21 msf5
+Apart from Project Pipeline
+c.21 msf
+Business Model 
+and Financial 
+Resources
+Asset light since inception
+76% of completed projects2 in JV / JDA / 
+DM business models
+Focus on asset
+light model
+c.33% of pipeline projects3 in DM
+Established DM 
+Model
+Low Net Debt / Equity
+0.32x
+(30 Sep’22)
+About Us
+Among the Top 5 in South India1
+c.35%
+of post IPO capital held by 
+globally renowned PEs
+Affordable housing 
+and Mid Market 
+housing segment
+c.90% 
+of portfolio2 in
+Part of the well known 
+Shriram Group
+Top 5 
+players in core markets
+____________________________________________________
+Note: 1. As per JLL Report, in terms of number of aggregate units launched in the calendar years 2015 to 2020. 2. Of the total saleable area, as of Sep 30, 2022. 3.Of estimated saleable area. 4. 
+Ongoing, under development and forthcoming projects. 5. In addition, the Company also entered into an agreement for an additional 73 acres in Kolkata, West Bengal. 
+
+>>>

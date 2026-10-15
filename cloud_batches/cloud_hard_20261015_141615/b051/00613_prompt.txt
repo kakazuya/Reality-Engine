@@ -1,0 +1,82 @@
+Company: PVRINOX (NSE/BSE symbol PVRINOX), an Indian listed company. Document: investor presentation filed 2025-10-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+INVESTOR UPDATE : Q2 & H1 FY’26
+25
+ON TRACK TO OPEN ~100 NEW SCREENS IN FY’26
+#
+CINEMAS OPENED IN Q1 FY’26
+MODEL
+OPENING DATE
+SCREENS
+1.
+PVR ELAN MIRACLE 84, GURGAON
+LEASE
+25-APR-25
+6
+2.
+PVR ZORA MALL, RAIPUR
+FOCO
+25-APR-25
+5
+3.
+PVR KA MALL, JABALPUR
+FOCO
+30-APR-25
+4
+PVR  DIRECTOR'S CUT, MALL OF INDIA, NOIDA (1) 
+ASSET 
+LIGHT
+2-MAY-25
+5
+NEW SCREENS OPENED IN Q1 FY’26
+20
+(1)
+5 DIRECTOR’S CUT SCREENS WERE ADDED TO OUR EXISTING CINEMA IN MALL OF INDIA, NOIDA
+SCREEN GROWTH UPDATE – H1 FY’26
+#
+CINEMAS OPENED IN Q2 FY’26
+MODEL
+OPENING DATE
+SCREENS
+4.
+INOX SMR VINAY METRO MALL, HYDERABAD
+LEASE
+4-JUL-25
+4
+5.
+INOX OBEROI SKY CITY, BORIVALI, MUMBAI
+LEASE
+14-AUG-25
+10
+6.
+INOX M5 E-CITY, BENGALURU
+LEASE
+15-AUG-25
+8
+NEW SCREENS OPENED IN Q2 FY’26
+22
+42
+8
+34
+-
+=
+NEW SCREENS
+OPENED
+SCREENS
+CLOSED
+NET SCREEN
+ADDITION
+NET SCREEN ADDITION – H1 FY’26
+4 SCREEN FOCO CINEMA WAS OPENED IN ML ACROPOLIS MALL, SILIGURI, WEST BENGAL ON 15th OCTOBER 2025 
+
+>>>

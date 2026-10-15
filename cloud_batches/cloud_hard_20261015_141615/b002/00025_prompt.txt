@@ -1,0 +1,110 @@
+Company: BALAXI (NSE/BSE symbol BALAXI), an Indian listed company. Document: investor presentation filed 2021-11-02. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Page - 15
+BALAXI PHARMACEUTICALS LIMITED
+Our Genesis:
+Balaxi Group’s Journey
+»
+Commenced
+Pharmaceuticals
+business by
+supplying white
+labelled products to
+customers in Africa.
+»
+Sourcing was from
+WHO GMP certified
+plants based in India.
+»
+Created front-end
+presence for its
+Pharmaceuticals
+business by setting
+up 1st wholesale
+depot in Angola in
+2008.
+»
+Started sourcing
+pharmaceuticals
+from WHO
+GMP certified
+manufacturers in
+China by setting up
+an office in China
+in 2011.
+»
+Opened first
+wholesale depot for
+its ancillary business
+in Angola.
+»
+In 2014, the Group
+expanded its pharma
+business in Angola
+by setting up its 12th
+wholesale depot and
+a central distribution
+warehouse.
+»
+Made in-roads in the
+Dominican Republic
+pharmaceuticals
+market, submitted
+technical dossiers for
+securing product
+registrations and
+opened a central
+distribution
+warehouse.
+»
+»
+Submitted several
+technical dossiers of
+Pharmaceuticals
+products in EL
+Salvador, Honduras,
+Guatemala and
+Domincan Republic for
+product registrations.
+Started selling branded 
+consumer products in 
+Mozambique
+»
+Setup pharma
+warehouse in
+Mozambique, CAR &
+Nicaragua
+2003-07
+2008-10
+2011-13
+2014-16
+2020-2021
+»
+Setup central
+distribution
+warehouse in
+Guatemala marking
+the entry of BALAXI
+into its third
+geography.
+»
+Further unlocked
+the potential of vast
+infrastructure in
+Angola by entering
+branded consumer
+goods products
+business in 2019
+2017-19
+
+>>>

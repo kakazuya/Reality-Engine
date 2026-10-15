@@ -1,0 +1,62 @@
+Company: UPL (NSE/BSE symbol UPL), an Indian listed company. Document: investor presentation filed 2026-05-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+11
+Imperatives for Navigating Through Global Mega Trends
+Grower demand continues to be resilient
+Source: United Nations, Economist, Food and Agriculture Organization (FAO), UNCCD, World Bank Group, Carbon brief, UBS Research
+III. Growing population to create higher food demand
+IV. Current yield trend not enough to meet food demand till 2050
+3.0 
+8.2 
+9.6 
+1960
+2025
+2050
+0
+2
+4
+6
+1970
+1978
+1986
+1994
+2002
+2010
+2018
+2026
+2034
+2042
+2050
+Yield trend since 2010
+Required yield (BAU)
+Required yield (Reforestation)
+Key drivers
+for sustainable
+global agriculture
+I. Crop protection intensification for growing demand
+II. Climate change and rising pest pressure
+More prevalent resistance from insects / weeds / 
+disease is increasing need for multiple AI solutions
+Increase in biofuels: demand for certain crops
+Cropland of ~5M ha p.a. added 
+to global farming area (e.g., Brazil)
+~40% of crop production lost to pests, diseases, weeds
+Climate change accelerates pest reproduction 
+and diseases – higher crop losses
+Continual warming: limits the crop suitability for growers
+in bn
+Need for food security continues to rise globally, creating demand for 
+sustainable agriculture . . .
+Yield (tonne per hectare)
+
+>>>

@@ -1,0 +1,65 @@
+Company: WEALTH (NSE/BSE symbol WEALTH), an Indian listed company. Document: investor presentation filed 2026-08-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+20
+Our Journey
+Became a one-stop financial 
+platform (CDSL + NSE-BSE 
+integration)
+Protected client 
+wealth during 
+Lehman crisis
+Avoided NSEL scam — 100% 
+client wealth protection
+MF AUM crossed 
+₹5,000 Cr
+1992
+1996 - 2000
+Started out as Dalal & 
+Shah Financial Services 
+Pvt. Ltd. with prime 
+focus on fixed income
+✓Exclusive distributor for 
+Franklin Templeton schemes
+✓Captured 50% of 
+Ahmedabad’s retail MF 
+market; early ETF promoter
+CNBC TV18 Financial 
+Advisor Award 
+(West Zone & India)
+✓2016: First IFA 
+practice listed on 
+NSE
+✓2017: Crossed 
+₹1,000 Cr MF AUM; 
+secured RIA license
+✓The final SEBI inspection has been 
+concluded, and approval is in its final 
+stages
+✓Obtained an IRDAI license as a Direct 
+Insurance Broker and strategically 
+expanded our operations in this segment
+✓Listed on BSE
+✓With SEBI’s formal 
+license granted, 
+Lakshya is now fully 
+established and poised 
+to commence 
+operations
+✓Acquired controlling 
+interest in Wealth First 
+Advisors, strengthening 
+its Mumbai presence 
+and expanding AUM to 
+~Rs. 9,000 Cr
+
+>>>

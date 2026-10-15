@@ -1,0 +1,66 @@
+Company: AURUM (NSE/BSE symbol AURUM), an Indian listed company. Document: investor presentation filed 2026-07-21. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Organized supply of
+9 lakh rental units 
+across co-living and 
+family rentals
+Demand for 
+2 crore rental units 
+across co-living and 
+family rentals
+23 x  
+demand supply gap 
+Top Cities by demand
+NCR I MMR I Bengaluru 
+I Hyderabad I Chennai I Pune
+PropTech Opportunity Rentals
+0.8
+6.1
+26.7
+CY 20
+CY 25
+CY 30
+PropTech Rental Market Size (USD Bn.)
+Rental Value Chain
+Usage Type 
+Our rental offering
+Shared accommodation –Common 
+living and shared amenities space
+HelloWorld Co living
+Single apartment rented 
+by one household (non sharing)
+Nestaway Family Rentals
+Students or Young 
+professionals 
+18-26 years
+₹8,500 to ₹16,000 
+paid for rent 
+Young Families & High 
+income professionals
+27 years - 34 years
+₹20,000 to ₹80,000 
+paid for rent 
+Tech enabled C2C Marketplace model
+Students
+Young 
+Professionals
+Rental Market 
+Place
+Young Families
+Co Living 
+Properties
+Family apartments
+14
+Source: Aurum Research, Care EDGE
+
+>>>

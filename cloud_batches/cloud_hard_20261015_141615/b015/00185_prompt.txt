@@ -1,0 +1,83 @@
+Company: RAJRILTD (NSE/BSE symbol RAJRILTD), an Indian listed company. Document: investor presentation filed 2026-08-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+17
+Structural Advantages
+Complete Value Chain 
+From petrochemical molecule at RRIL, through 
+fabric processing and garment manufacturing at 
+SVG Fashions, to finished product delivery to 
+premium global brands creates unmatched supply 
+chain efficiency.
+SVG Vertical Integration 
+Fiber-to-fashion value chain with Adidas, Puma, 
+Skechers, and Reliance Retail as end-brand 
+clients. Domain knowledge of finished product 
+requirements drives bespoke yarn development.
+ 
+Lowest Capex / Tonne 
+9,00,000 sq ft of manufacturing space fully built 
+– so civil cost is sunk. All future expansions will 
+have only incremental costing due to existing 
+infrastructure. This will make the expansion 
+cheaper 
+by 
+30-40% 
+as 
+compared 
+to 
+a 
+greenfield project
+Continuous Melt Integration
+Converts PET directly into fibre, eliminating the 
+chip cost layer. Only 14 direct melt manufacturers 
+in India — the remaining 26–30 chip-buyers carry 
+a structural cost disadvantage.
+World-Class R&D
+Polymer and yarn testing at a standard found only at 
+leading plants worldwide. 2D/3D pigment dosing 
+operational — enabling cotton-like yarns and inherent 
+dyed yarns as new categories in FY26.
+Quality Premium + 3,500+ Approvals  
+Product is approved and branded as premium 
+in the market, it commands 1-2 % higher price 
+from peers. 3,500+ customer approvals built in 
+three operating years — qualification work 
+complete for expanded capacity.
+Clean Balance Sheet + Tax Shield 
+No legacy liabilities post-NCLT. approximately 
+Rs 400 Crores of unabsorbed tax losses and 
+depreciation — a material tax shield that 
+accelerates post-tax returns as profitability 
+scales.
+Strategic Location 
+Silvassa sits in the region producing 70–73% of 
+India's PTA/MEG and accounting for 70% of domestic 
+polyester consumption. Dry port 30 km away.
+Strong Management Pedigree 
+SVG Group founded in 1984 has more than 
+four decades of experience in continuous 
+textile operation through multiple cycles 
+and disruptions. Promoters have full domain 
+expertise across the complete value chain 
+with an established track record.
+02
+01
+03
+04
+05
+06
+07
+08
+09
+
+>>>

@@ -1,0 +1,161 @@
+Company: JINDALSTEL (NSE/BSE symbol JINDALSTEL), an Indian listed company. Document: investor presentation filed 2023-10-31. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Key Steel and RM Prices Trend
+Iron Ore fines and Lumps (Odisha Index)
+Fig in `/tonnes
+Source: Steelmint
+Coking Coal: Premium HCC (Australia origin)
+Fig in USD/tonnes
+Domestic Pellet prices (Barbil)
+Fig in `/tonnes
+India HRC vs Rebar
+Fig in `/tonnes
+Indian Steel Prices firmed 
+up by end of Q2FY24  with 
+the onset of construction 
+season post monsoon and 
+continued growth in 
+infrastructure
+HRC premium over TMT 
+has narrowed sharply by 
+the end of Q2FY24
+Raw material prices 
+started firming from 
+Aug’23
+Prime Hard Coking Coal 
+prices increased by more 
+than $100 due to supply 
+issues in Australia 
+Odisha Iron Ore Fines 
+prices are still at premium 
+to NMDC fines prices 
+adjusted for grade
+10
+Macro and Sectoral Update
+73,500 
+57,900 
+76,500 
+57,950 
+ 50,000
+ 55,000
+ 60,000
+ 65,000
+ 70,000
+ 75,000
+ 80,000
+Apr-22
+May-22
+Jun-22
+Jul-22
+Aug-22
+Sep-22
+Oct-22
+Nov-22
+Dec-22
+Jan-23
+Feb-23
+Mar-23
+Apr-23
+May-23
+Jun-23
+Jul-23
+Aug-23
+Sep-23
+TMT Mumbai
+HRC Mumbai
+6000
+5300
+9500
+8450
+2,000
+4,000
+6,000
+8,000
+10,000
+Apr-22
+May-22
+Jun-22
+Jul-22
+Aug-22
+Sep-22
+Oct-22
+Nov-22
+Dec-22
+Jan-23
+Feb-23
+Mar-23
+Apr-23
+May-23
+Jun-23
+Jul-23
+Aug-23
+Sep-23
+Iron One Fines 62 Fe (0-10 mm)
+Iron One Lumps 63 Fe (5-18 mm)
+12550
+6300
+9750
+7450
+9500
+6000
+8000
+10000
+12000
+14000
+Apr-22
+May-22
+Jun-22
+Jul-22
+Aug-22
+Sep-22
+Oct-22
+Nov-22
+Dec-22
+Jan-23
+Feb-23
+Mar-23
+Apr-23
+May-23
+Jun-23
+Jul-23
+Aug-23
+Sep-23
+560
+402
+234
+349
+200
+300
+400
+500
+600
+Apr-22
+May-22
+Jun-22
+Jul-22
+Aug-22
+Sep-22
+Oct-22
+Nov-22
+Dec-22
+Jan-23
+Feb-23
+Mar-23
+Apr-23
+May-23
+Jun-23
+Jul-23
+Aug-23
+Sep-23
+
+>>>

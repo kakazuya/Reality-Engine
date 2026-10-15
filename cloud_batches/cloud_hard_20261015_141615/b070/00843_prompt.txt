@@ -1,0 +1,103 @@
+Company: VLINFRA (NSE/BSE symbol VLINFRA), an Indian listed company. Document: investor presentation filed 2025-02-22. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Stock Data 
+w 
+We toon Nation Building 
+As on 21-02-2025 
+As on 30-09-2024 
+Stock Information 
+Shareholding Pattern 
+NSE Code 
+VLINFRA 
+ISIN 
+INEOQXLO1015 
+Share Price® 
+45.65 
+34.61% 
+= Promoter & Promoter Group 
+Market Capitalization = Cr 
+7173 
+No. of Share Outstanding 
+1,57,12,500 
+; 
+m Public 
+Face Value 2 
+10.00 
+52 Week High 
+141.00 
+52 Week Low & 
+40.00 
+Share Performance From 25th July 2022 Till Date 
+Ma 
+Volume 
+e=e=Price 
+14,00,000 
+140.00 
+12,00,000 
+120.00 
+83.75 
+10,00,000 
+100.00 
+8,00,000 
+80.00 
+6,00,000 
+as 
+45.65 65 00 
+4,00,000 
+i 
+ee 
+40.00 
+2,00,000 
+| 
+20.00 
+(e) 
+lh 
+aon 
+Oboe. 
+opel 
+ole 
+Babee 
+om. 
+| 
+| 
+Pe ee 
+| 
+| 
+ee 
+ern 
+Pree 
+I 
+ene 
+- Ben 
+ee 
+_-flet 
+wl 
+0.00 
+Jul24 
+Auge4 
+Aug24 
+Sep24 
+Sep24 
+Oct24 
+Oct24 
+Nov24 
+Nov24 
+Dec24 
+Dec24 
+Jan25 
+Jan25 
+Feb25 
+Investor Presentation 
+38
+
+>>>

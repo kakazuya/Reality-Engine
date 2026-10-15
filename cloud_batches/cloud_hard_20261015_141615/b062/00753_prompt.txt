@@ -1,0 +1,150 @@
+Company: ASHOKA (NSE/BSE symbol ASHOKA), an Indian listed company. Document: investor presentation filed 2025-08-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Developing Infrastructure for Better Tomorrow
+Toll Collection
+18
+All figures in Rs. Crs.
+ACL Projects
+Company
+Project
+Period
+FY22
+FY23
+FY24
+FY25
+FY26
+% Rise
+Ashoka Belgaum 
+Dharwad Tollway Ltd.
+Belgaum Dharwad 
+Project
+Q1
+18.9
+33.9
+35.2
+31.9
+32.4 
+1.6%
+Q2
+25.1
+31.3
+32.7
+29.6
+Q3
+29.8
+34.0
+35.5
+31.6
+Q4
+30.5
+35.8
+34.4
+31.7
+104.3
+135.0
+137.8
+124.2
+32.4
+Ashoka Dhankuni 
+Karagpur Tollway Ltd.
+Dhankuni Karagpur 
+Project 
+Q1
+84.9
+117.4
+126.7
+131.8
+150.4 
+14.1%
+Q2
+97.1
+111.6
+122.0
+132.2
+Q3
+104.3
+115.8
+130.0
+134.9
+Q4
+107.3
+121.9
+136.7
+143.2
+393.6
+466.8
+515.4
+542.1
+150.4
+Ashoka Highways 
+(Bhandara) Ltd. 
+Bhandara Project 
+Q1
+16.8
+22.3
+27.6
+30.9
+31.3 
+1.4%
+Q2
+20.1
+22.2
+26.6
+28.8
+Q3
+20.9
+25.6
+30.0
+30.8
+Q4
+22.3
+27.9
+31.1
+32.8
+80.1
+97.9
+115.3
+123.4
+31.3
+Ashoka Highways 
+(Durg) Ltd.
+Durg Project
+Q1
+19.3
+25.2
+31.6
+36.7
+37.7 
+2.9%
+Q2
+23.0
+25.7
+31.3
+34.1
+Q3
+23.9
+29.4
+35.1
+36.9
+Q4
+25.5
+32.2
+36.4
+39.2
+91.6
+112.4
+134.4
+146.9
+37.7
+
+>>>

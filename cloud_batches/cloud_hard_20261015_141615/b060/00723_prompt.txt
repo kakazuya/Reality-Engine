@@ -1,0 +1,71 @@
+Company: LTTS (NSE/BSE symbol LTTS), an Indian listed company. Document: investor presentation filed 2024-07-18. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+ 
+REGISTERED OFFICE: L&T House, N.M. Marg, Ballard Estate, Mumbai - 400 001                                                                CIN: L72900MH2012PLC232169 
+ 
+www.LTTS.com                                                                      info@LTTS.com                                                                     Copyright © L&T Technology Services 
+ 
+ 
+L&T Technology Services reports 7% growth in Q1FY25   
+ 
+Q1 Revenue of ₹2,462 crore, up 7% YoY 
+Q1 Net profit of ₹314 crore, up 1% YoY  
+ 
+  
+Mumbai, July 18, 2024: L&T Technology Services Limited (BSE: 540115, NSE: LTTS), 
+India’s leading pure-play engineering services company, announced its results for the first 
+quarter ended June 30, 2024.  
+ 
+Highlights for Q1FY25 include:  
+• 
+Revenue at ₹24,619 million; growth of 7% YoY  
+• 
+USD Revenue at $295 million; growth of 6% YoY in constant currency 
+• 
+EBIT margin at 15.6% 
+• 
+Net profit at ₹3,136 million; growth of 0.8% YoY  
+ 
+During the quarter, LTTS won two USD 30 million deals, two USD 15 million deals and three 
+deals with TCV of USD 10 million.  
+ 
+ “We are making good progress with our ‘Go Deeper to Scale’ strategy and the simplification 
+of our organization structure into three main segments. Mobility grew by 6% sequentially 
+driven by our differentiated presence across EV, SDV and connected car technology that 
+helped us win one $ 30 Million deal and two $15 Million deals during the quarter. In Hi-Tech 
+and Sustainability, our new strategy is driving a significant increase in the pipeline and large 
+deal discussions that makes us confident of a pickup in growth momentum. 
+ 
+In AI, we are accelerating our investments and innovation focus leading to a total of 61 patents 
+being filed so far. We are starting to win AI led deals on the back of our solutions in in Gen AI 
+across Asset Health, software development and digital assistants. 
+ 
+With phase one of our reorganization and related investments in technology and leadership 
+complete, we are reassured of our performance for the rest of the year and reaffirm our 
+aspirations to reach $1.5 Billion in annualized revenues,” said Amit Chadha, CEO & 
+Managing Director, L&T Technology Services Limited. 
+ 
+Highlights and Recognitions: 
+ 
+▪ 
+LTTS has been officially recognized as a Great Place to Work™ in the United States for the 
+first time ever, and as a Great Place to Work in Poland for the second time in a row.  
+▪ 
+LTTS was recognized as the Most Innovative Company of the Year 2024 – 25, by news 
+channel ET Now. 
+▪ 
+Won the FICCI Smart Urban Innovation Awards in the ‘City Safety, Emergency Response, 
+and Disaster Management’ category for the Patna Smart City Project. 
+
+>>>

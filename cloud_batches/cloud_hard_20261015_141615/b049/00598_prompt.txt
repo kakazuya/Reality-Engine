@@ -1,0 +1,315 @@
+Company: HILINFRA (NSE/BSE symbol HILINFRA), an Indian listed company. Document: investor presentation filed 2026-02-07. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+32
+Completed Projects (EPC)
+Sr. No.
+Project Name
+Date of 
+Completion
+Value of Work 
+Completed(Rs. Cr)
+Sr. No.
+Project Name
+Date of 
+Completion
+Value of Work 
+Completed 
+(Rs. Cr)
+1
+Widening & Upgradation – Ralamandal–Tillore Road
+31-01-08
+3.5
+37
+Infrastructure Development – Namkeen Cluster, Sukliya Village
+31-08-15
+5.0
+2
+Cement Concrete Road – Scheme No. 162 MR-3, Indore
+30-04-08
+5.4
+38
+Strengthening & Widening – Mortakka–Omkareshwar Road (10.6 km)
+08-02-16
+11.6
+3
+Road Furniture Work
+14-06-08
+5.0
+39
+Model School Construction – Niwali
+30-11-16
+3.0
+4
+Retaining Wall & Road – Scheme No. 141, Indore
+30-06-08
+3.9
+40
+BT Renewal & Overlay – Ayodhya Bypass Road (km 1–16), Bhopal
+30-12-16
+20.5
+5
+Widening & Upgradation – Kali Bawadi–Ahirwar Road 
+01-08-08
+5.3
+41
+Construction & Widening of Tarana–Mangliya–Vyaskhedi Road (32.6 km)
+30-05-18
+65.0
+6
+Cement Concrete Pavement – Scheme No. 94 Sector E (West), Indore
+14-10-08
+0.9
+42
+Roads/CDs/Bridges – Package MP11WB13
+10-12-18
+4.5
+7
+Cement Concrete Pavement – Scheme No. 94 Sector E (East), Indore
+21-11-08
+0.9
+43
+Semda–Kanwan–Bidwal–Shergarh Road (7.37 km)
+12-03-19
+4.2
+8
+Cement Concrete Road & Drain – Industrial Area Kheda, Dhar
+30-04-09
+3.8
+44
+Piped Scheme – Village Pigdamber
+14-03-19
+1.2
+9
+Cement Concrete Pavement & Storm Water Line – Scheme No. 78 PSP
+21-05-09
+1.7
+45
+Rural Road & CD Works – Package MP MR-3502 (UPG)
+20-09-19
+20.8
+10
+Cement Concrete Pavement – Scheme No. 114-I, Indore
+06-07-09
+1.8
+46
+Rehabilitation & Upgradation of Kannod–Satwas–Punasa Road
+17-03-20
+69.8
+11
+Cement Concrete Pavement – Scheme No. 74-C, Indore
+15-07-09
+1.1
+47
+Bridges – PMGSY Package 774_MP11-BR-110, Dhar
+31-07-20
+4.2
+12
+Cement Concrete Road – Scheme No. 78 (Arayana), Indore
+11-09-09
+2.8
+48
+Submersible Bridge – Tapti River, Manjrodkala Road
+15-10-20
+12.9
+13
+Concrete Road & Storm Water Line – Scheme No. 132–133, Indore
+25-01-10
+4.1
+49
+Bridges – Soyachopal Road, Sehore
+30-12-20
+2.8
+14
+Cement Concrete Pavement – Scheme No. 103, Indore
+08-02-10
+3.3
+50
+Retrofitting – Jal Jeevan Mission (Badlipurakala, Aamla, Garh, Padlya, Salkanpur)
+12-02-21
+4.2
+15
+Development Work – Scheme No. 78, Part-I Phase-II, Indore
+16-04-10
+23.6
+51
+Modernization – D.O. Indore (Civil, Electrical, Fire Safety)
+05-03-21
+3.3
+16
+Cement Concrete Pavement & Storm Water Line – Scheme No. 74–78, Indore
+28-04-10
+3.1
+52
+Bridges – PMGSY Package 847_MP11-B-43, Dhar
+06-06-21
+6.6
+17
+WBM, Bituminous & Concrete – Jodhpur–Badgaon Khedi Road
+04-05-10
+1.3
+53
+Retrofitting – Jal Jeevan Mission (Sarjapur, Bagwanya, Dongargaon, Palasiya)
+02-12-21
+5.3
+18
+Vegetable Market Development – Scheme No. 78, Indore
+30-11-10
+7.4
+54
+Bridges – PMGSY Package MP17BR301, Indore
+25-06-22
+0.7
+19
+Cement Concrete Road & Storm Water Drain – Devguradia Trenching
+31-03-11
+1.2
+55
+Industrial Park Development – Jaora (Sugar Mill), Ratlam
+20-01-23
+7.6
+20
+Development Work – Scheme No. 78, Phase-II, Indore
+30-05-11
+8.2
+56
+Cement Concrete Road – Scheme No. 94 to Tulsi Nagar, Indore
+05-03-23
+2.5
+21
+Widening to Two Lane – NH-59A (km 129–147)
+19-12-11
+8.1
+57
+Cement Concrete Road – RE-2 (MR-10 to MR-9), Indore
+03-05-23
+4.4
+22
+Improvement & Upgradation – Nagda–Khachrod–Ghinoda Road 
+13-06-12
+14.5
+58
+Housing – California City, Kanadia Road
+31-07-23
+3.0
+23
+Indore–Kanadia–Semliya Chau Road (16.45 km)
+30-09-12
+15.2
+59
+Investment Building (Stilt + 5 Floors) – Scheme-54, Indore
+09-08-23
+14.7
+24
+Patch Repair – km 92/4 to 140/4
+15-12-12
+1.3
+60
+PMAY Housing & Infrastructure – Kanadia, Indore
+29-12-23
+147.1
+25
+Upgradation & Strengthening – I/A No. 2 & 3, Dewas
+01-03-13
+2.2
+61
+Industrial Park Development – Ratlam (Alcohol Plant Lagoon Area)
+25-04-24
+7.9
+26
+Asphalting – I/A No. 1, Dewas
+01-03-13
+0.3
+62
+Upgradation – Bengali Square to Bicholi Mardana Road (2.71 km)
+02-09-24
+8.9
+27
+Road Upgradation – Awalaya–Jamniya–Panjariya–Karadiya Road
+19-04-13
+5.2
+63
+Cement Concrete Road – RE-2 (Bicholi Hapsi to Kanadiya Road), Indore
+15-09-24
+7.2
+28
+Submersible Bridge – Bagni River, Susari Kolgaon Road
+30-04-13
+3.9
+64
+California Phase-I Development – Hingonia, Indore
+15-12-24
+3.4
+29
+Upgradation & Maintenance – Bhawariya–Loni Road (Kisan Sadak Yojna)
+10-06-13
+4.3
+65
+Construction of Maincarriage way
+18-07-25
+18.0
+30
+Cement Concrete Road with Footpath & Utilities – Indore
+30-06-13
+20.6
+66
+Residential Colony Development – Shubham Valley, Rau
+25-09-25
+2.4
+31
+Submersible Bridge – Uri River, Susari Kolgaon Road
+30-07-13
+4.4
+67
+Residential Colony Development – Shubham Green West, Rangwasa
+25-09-25
+2.0
+32
+Development Work – Scheme No. 78, PSP Indore
+02-08-13
+4.5
+68
+Bridge Construction
+04-10-25
+3.1
+33
+High-Level Submersible Bridge – Karam River, Khargon
+30-10-14
+5.4
+69
+Maintenance – Pakiza Greens Colony, Khajrana, Indore
+08-03-26
+1.2
+34
+Infrastructure Development – I/A Nemawar, Dewas
+30-05-15
+14.9
+70
+Roads & Paver Work – Shubham Greens Extn., Rangwasa
+31-03-26
+5.1
+35
+Six-Lane Widening – Old NH-3 (Rajeev Gandhi Sq. to Rau Bypass)
+30-06-15
+17.3
+71
+Roads & Paver Work – Shubham Pride
+31-03-26
+7.3
+36
+Road Construction, Khandwa Road
+30-06-15
+7.5
+Total
+709.2
+
+>>>

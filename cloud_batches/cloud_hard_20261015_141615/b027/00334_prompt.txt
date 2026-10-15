@@ -1,0 +1,71 @@
+Company: BAJFINANCE (NSE/BSE symbol BAJFINANCE), an Indian listed company. Document: investor presentation filed 2025-12-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Progress update on 21 FINAI strategies (1/2)
+1.
+Strategic Partnerships
+• Products live on Airtel app: 9
+• Airtel EMI Card CIF: 7 lakh+ 
+• Disbursement: ₹ 700-800 crore
+2. MSME
+• Strategic Business Unit (SBU) – Jan’25
+• Affordable Housing Finance – Jan’25
+• All mortgages under SBU – Oct’25
+3. PL from 50K to 50 lacs
+ 
+• “EMI Card = PL”: disbursed ₹ 4,600 crore (7%)
+• SALPL pref.: disbursed ₹ 1,000 crore (5%) 
+• Fastest SALPL: 35% STP and 52% same day 
+disbursal
+4. Gold Loan
+ 
+• Branches: 1,592
+• AUM: ₹ 16,340 crore (up 97%)
+• Current market position: 5th 
+5. MFI
+• Branches: 447
+• Disbursement: ₹ 2,147 crore (up 51%)
+• AUM: ₹ 2,317 crore (up 84%)
+6. Two-Wheeler
+• Dealer count: 10,000+
+• Volume: 5.3 lakh loans (up 17%) 
+• AUM: ₹ 6,220 crore (up 36%)
+7. Auto Loans
+• Dealer count: 2,000+
+• Disbursement: ₹ 4,300 crore
+• AUM: ₹ 8,400 crore (up 60%)
+• Credit performance: within threshold
+8. Payments
+• A viable payments business strategy created 
+and actioned. Break-even by FY29
+• FASTag franchise: #2MM+ 
+9. Green Financing – Solar
+• Establish POC in FY26
+• Volume: 5,700 loans
+• FY27 target: 50,000+ loans
+10. Leasing
+• Tool for trade leasing launched
+• Fully digital corporate leasing platform – Apr’26
+• Deliver category expansion in LRS FY26-30
+11. Back to basics - Risk
+• 3, 6, 9 MOB 0+ are the new core risk metrics
+• Early MOB performance across products is 
+tracking in line with pre-covid metrics
+12. Operational Risk
+• ORM projects implemented: 206 
+8
+REAR VIEW
+18-YEAR JOURNEY
+STRATEGY
+Figures: FY26 estimates
+
+>>>

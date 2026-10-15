@@ -1,0 +1,76 @@
+Company: SHRIRAMFIN (NSE/BSE symbol SHRIRAMFIN), an Indian listed company. Document: investor presentation filed 2026-01-23. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+SHRIRAM FINANCE LIMITED 
+CIN: L65191TN1979PLC007874 
+Regd. Office: Sri Towers, 14A, South Phase, Industrial Estate, Guindy, Chennai - 600 032, Tamil Nadu. 
+Tel. No: +91 44 4852 4666, Fax: +91 44 4852 5666. Website-www.shriramfinance.in, email-secretarialO,shriramfinance.in 
+Notes: 
+I 
+The above results have been reviewed by the Audit Committee and subsequently approved by the Board of Directors in their respective 
+meetings held on January 23, 2026. 
+2 The standalone financial results (the `Statement' or `Results') together with the results for the comparative reporting periods have been 
+prepared in accordance with recognition and measurement principles laid clown in Indian Accounting Standard ('Ind AS') 34 - Interim 
+Financial Reporting and as prescribed under section 133 of the Companies Act, 2013 (`the Act') read with Companies (Indian Accounting 
+Standards) Rules, 2015 as amended from time to time and the other accounting principles generally accepted in India and in compliance 
+with Regulation 33 and 52 read with Regulation 63(2) of Securities and Exchange Board of India ('SEBI') (Listing Obligations and 
+Disclosure Requirements) Regulations, 2015, as amended (the `Listing Regulations'). 
+These standalone financial results would be available on the website of the Company (www.shriramfinance.in) and on the ‘vebsite of BSE 
+Limited (www.bseindia.com) and National Stock Exchange of India Limited (www.nseindia.com). 
+3 The Company has applied its material accounting policies in the preparation of this statement consistent with those followed in the 
+standalone financial statements for the year ended March 31, 2025. Any application of guidance/ clarification/ directions issued by 
+Reserve Bank of India (RBI) or other regulators are implemented prospectively when they become applicable. 
+4 
+The Government of India has consolidated 29 existing labour legislations into a unified framework comprising four Labour Codes viz. 
+Code on wages 2019, Codes on Social Security 2020, industrial Relation Code 2020, and Occupational Safety, Health and Working 
+Condition Code 2020 (collectively referred to as the New Labour Codes). These Codes have been made effective from November 21, 
+2025. The corresponding draft rules under these codes have been issued by the Government. 
+Employee benefits expenses for the quarter and nine months period ended December 31, 2025 include incremental impact on gratuity of 
+Rs. 131.71 crores and on long-term compensated absences of Rs. 65.24 crores due to change in definition of wages under the New Labour 
+Codes. The Company continues to monitor the final isation of Central/ State Rules and clarifications from the Government on other aspects 
+of the New Labour Codes and would provide appropriate accounting effect on the basis of such developments as required. 
+5 The standalone financial results for the quarter and nine months period ended December 31, 2025 have been reviewed by the joint 
+statutory auditors, viz. M M Nissim & Co LLP, Chartered Accountants and G. D. Apte & Co., Chartered Accountants. 
+6 
+The Board of Directors at its meeting held on December 19, 2025 approved the preferential issue of 471,121,055 fully paid-up equity 
+shares of face value of Rs. 2/- each at a price of Rs. 840.93 per share representing 20% of the post-preferential equity share capital on a 
+fully diluted basis to MUFG Bank Ltd ("Investor"), a company incorporated under the laws of Japan for an amount aggregating to Rs. 
+39,617.98 crores. An 'Investment Agreement' in this regard was executed on the same date. The requisite resolutions were approved by the 
+shareholders at the extraordinary general meeting on January 14, 2026. Currently, the preferential issue is awaiting necessary statutory and 
+regulatory approvals. Upon completion of the proposed preferential issue, the Investor will become a minority public shareholder of the 
+Company. 
+7 The Board of Directors of the Company in its meeting held on May 13, 2024 had approved the disinvestment of the Company's entire 
+stake in Shriram Housing Finance Limited (SI WU) now renamed as Truhome Finance Limited, a debt-listed non-material then subsidiary 
+of the Company. Post receipt of requisite regulatory approvals, the Company had transferred 308,111,107 equity shares of face value of 
+Rs. 10/- each fully paid up of SI-iFL to the Purchaser for a consideration of Rs. 3,929.03 crores on December 11, 2024. Consequently, 
+SHFL had ceased to be a subsidiary of the Company with effect from December 11, 2024. 
+The exceptional item disclosed in the financial results for the quarter and nine months period ended December 31, 2024 and year ended 
+March 31, 2025 represents resultant gain of Rs. 1,656.77 crores (Rs. 1,489.39 crores net of tax) on account of disinvestment of SHFL. 
+The gain is after adjusting the carrying amount of investments in SHFL as on the date of sale, expenses incurred on the sale transaction, 
+indemnity obligations as per the terms of the share purchase agreement and derecognition of goodwill of Rs. 217.28 crores allocated to the 
+investments in SHFL as per Ind AS 36 - Impairment of Assets. 
+\sS1M & c
+FRN 
+107122 
+*c- 
+W100672 
+- • 
+MUMBAI 
+A, 
+c-,$) 
+:J .!) ACCT
+"?' 
+1,PTE 
+Pod ACCP 
+c 
+
+>>>

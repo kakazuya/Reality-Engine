@@ -1,0 +1,141 @@
+Company: KPIGREEN (NSE/BSE symbol KPIGREEN), an Indian listed company. Document: investor presentation filed 2024-06-04. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+KPI Green Energy Journey
+3
+2008
+KPI Green Energy 
+was established
+2016
+Commissioning of the first
+1.5MW of solar plant and 
+commencing the sale of power
+2013
+•
+Received a GEDA 
+registration certificate for 
+developing a 15 MW Solar 
+plant in Bharuch
+•
+Received Power evacuation 
+(PE) approval from the 
+Gujarat Energy Transmission 
+Corporation Limited 
+(GETCO) for the first 15 MW
+2015
+•
+Signing of the first PPA and 
+beginning of construction of 
+the solar plant
+•
+Successful completion and 
+charging of the 66KV 
+Transmission Line
+2018
+•
+Received a GEDA registration 
+certificate for developing the next 
+25 MW Solar plant
+•
+Power Finance Corporation Ltd. 
+(PFC) approved and signed a 
+facility agreement to part finance 
+25 MW solar plant
+•
+Launched a new segment of business 
+under the Captive Power Producer 
+(CPP) category and commissioned the 
+first CPP solar plant
+2020
+•
+Successfully commissioned an 
+additional 25 MW of capacity, 
+aggregating to ~40.70 MW 
+under the Independent Power 
+Producer (IPP) category
+2022
+•
+Successfully achieved the milestone of 
+~100 MW of capacity energised under 
+the IPP segment
+•
+Successfully energised ~65 MW of 
+capacity under the CPP segment
+2023
+•
+ICRA has upgraded our credit rating from 
+BBB+ to A-
+•
+KPI Global Infrastructure Ltd. has been 
+renamed ‘KPI Green Energy Limited’
+•
+Successfully commissioned
+26.10 MW first IPP Hybrid Project
+•
+Successfully achieved the milestone of 
+300+ MW of cumulative capacity 
+energised (IPP+CPP)
+2021
+•
+Successfully commissioned 
+incremental IPP capacity, 
+aggregating to ~49.20 MW. 
+Also, charged a new 
+11kv transmission line for 
+power evacuation capacity for 
+CPP clients
+•
+Successfully migrated to the 
+Main Board platform of Stock 
+Exchanges
+2019
+•
+Successfully commissioned 15 
+MW of capacity for Phase 1 
+under the Independent Power 
+Producer (IPP) category
+•
+Successfully listed on the SME 
+platform of BSE
+2014
+•
+Commencement of 66 KV 
+Transmission Line construction 
+from Sudi plant to GETCO’s 
+Amod Substation for power 
+evacuation
+2017
+•
+Received GETCO approval for 
+the next 15 MW (Total 30 MW) 
+evacuation
+•
+Received GETCO approval for 
+the laying of a second circuit 
+on a 66 KV Transmission line 
+using a panther conductor
+•
+Procured 200MW Solar PV project from 
+GUVNL
+2024
+•
+Procured 305MW Solar project from 
+Aditya Birla Renewables
+•
+Successfully achieved the milestone of 
+445+ MW of cumulative capacity 
+energized (IPP+CPP)
+•
+Procured 50MW Hybrid Project from 
+GUVNL 
+
+>>>

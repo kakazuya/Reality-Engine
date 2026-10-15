@@ -1,0 +1,60 @@
+Company: CEATLTD (NSE/BSE symbol CEATLTD), an Indian listed company. Document: investor presentation filed 2025-10-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+BS R & Co. LLP 
+Chartered Accountants 
+Private and confidential 
+The Board of Directors 
+CEA T Limited 
+463, Dr. Annie Besant Road, Worli 
+Mumbai 400030 
+India 
+17 October 2025 
+14th Floor, Central B Wing and North C Wing 
+Nesco IT Park 4, Nesco Center 
+Western Express Highway 
+Goregaon (East}, Mumbai - 400 063, India 
+Telephone: +91 (22) 6257 1000 
+Fax: +91 (22) 6257 1010 
+Independent Auditor's Certificate on Security Coverage of CEAT Limited pursuant to 
+Regulation 54(3) of the Securities and Exchange -Board of India (Listing Obligations and 
+Disclosure Requirements) Regulations, 2015 (as amended) for listed non-convertible debt 
+securities as at and for the half year ended 30 September 2025 
+1. This certificate is being issued with the terms of our original engagement letter to the Board of 
+Directors dated 7 September 2022 and addendum to the original agreement dated 14 October 2025. 
+2. The Management of CEA T Limited (hereinafter referred as "the Company") has prepared and 
+compiled the accompanying Statement on calculation of Security Coverage Ratio as at 30 
+September 2025 (hereinafter referred as "the Statement'). We have been requested by the 
+management of the Company to examine the details in Column F ('Book value of the assets shared 
+by pari passu debt holder (includes debt for which this certificate is issued & other debt with pari 
+passu charge)') of the Statement and that the Security Coverage Ratio (based on book value) 
+mentioned in the Statement is not less than 1.25 times of the Principal and Interest value of the 
+NCO as at and for the half year ended 30 September 2025 are as per the Debenture Trust Deed 
+between the Company and Vistra ITCL (India) Limited ("Debenture Trustee"), dated 29 December 
+2020 read with master Supplementary Debenture Trust Deed dated 11 March 2021 including 
+amendment to Annexure 1 (hereinafter referred as "the Deed"), unaudited books of account and 
+other relevant records and documents maintained by the Company as at and for the half year ended 
+30 September 2025 in respect of its Tranche 2 of 7% 1000 Rated, Secured, Listed, Redeemable, 
+non-convertible debentures of a face Value of INR 1,000,000 each (hereinafter referred as "the 
+NCO") issued on private placement securities in compliance with the Regulation 54(3) of the 
+Security and Exchange Board of India (SEBI) Listing Obligations And Disclosure Requirements 
+(LODR) Regulations, 2015 (as amended) read with SEBI Master Circular No. SEBI/HO/DDHS-
+PoD-l/P/CIR/2025/117, dated 13 August 2025 (hereinafter cumulatively referred as "the 
+Regulations"). 
+~ 
+Registered Office: 
+. B S R & Co. (a partnership finn with Registration No BA61223) converted into B S R & Co LLP 
+14th Floor, Central B Wing and North C Wing, Nesco IT Park 4, Nesco Center, 
+(a Limited Liability Partnership wilh LLP Regislration No AAB-8181) with effect from October 14, 2013 
+Western Express Highway, Goregaon (East), Mumbai -400063 
+
+>>>

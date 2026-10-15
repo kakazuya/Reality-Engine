@@ -1,0 +1,82 @@
+Company: CUPID (NSE/BSE symbol CUPID), an Indian listed company. Document: investor presentation filed 2024-01-31. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+1993 
+Company Incorporation
+1995
+Cupid Ltd listed on BSE
+1998
+Commercial production and 
+1st export order.
+2016
+Launched Cupid brand in India,
+ began making water-base
+d lubricant jelly, and got listed on 
+NSE
+2018-20
+Received order in 2018 worth
+ $17 Mn and $6 Mn in 2020 fo
+r female condoms from Ministry 
+of Health, Brazil.
+2020-21
+Male condom production
+ increased to 480 million
+, entered medical devi
+ce industry, received UNFPA 
+orders for lubricant jelly.
+2006-07
+Expanded capacity from 160 
+Mn to 400 Mn.
+2010
+Cupid’s female condom
+ 
+successfully launched.
+2012
+Prequalification for female 
+condoms by UNFPA/WHO.
+2015
+Received order worth $ 16.3
+ Mn for female condoms fro
+m National department of 
+Health South Africa.
+From Humble Beginnings to Global Success
+Our Journey
+1990
+TO
+2000
+2001
+TO
+2015
+2022 TO
+NOW
+2016
+TO 
+2021
+2022-23
+Commenced IVD Device 
+manufacturing operations.
+2023-24
+Columbia Petro Chem Private
+ Limited and Mr. Aditya Kuma
+r Halwasiya acquired a 41.8
+4% stake in a company for INR 
+159.06 crore.
+New and Diverse Management 
+Team Joins Company
+A strategic land acquisition and
+ capacity expansion will boos
+t male condom production to 1.
+25 billion units and female con
+dom production to 125 million units 
+within 18 to 24 months.
+
+>>>

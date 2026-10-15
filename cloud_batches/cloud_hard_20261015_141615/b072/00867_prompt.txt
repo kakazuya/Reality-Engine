@@ -1,0 +1,72 @@
+Company: UFLEX (NSE/BSE symbol UFLEX), an Indian listed company. Document: investor presentation filed 2025-12-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Packaging and Chemicals Production Volume 
+36
+% Breakdown of production vol. by
+packaging products & chemicals
+*Capacity and production data are measured in metric tons per quarter (MTPQ), while utilization is expressed as a %
+QoQ
+YoY
+41%
+39%
+20%
+32%
+44%
+24%
+31%
+44%
+25%
+45,218
+MTPQ
+10,798  (61.9%)
+19,947  (79.8%)
+14,858  (99.1%)
+10,366  (59.5%)
+19,789  (79.2%)
+20,535  (136.9%)
+11,517  (71.6%)
+19,727  (78.9%)
+13,974  (93.2%)
+Chemicals
+(Inks & Adhesives)
+Flexible packaging
+Liquid packaging
+Q2 FY26 Production (Utilization%)
+Q1 FY26 Production (Utilization%)
+Q2 FY25 Production (Utilization%)
+17,433
+15,000
+25,000
+Capacity 
+(MTPQ)
+Liquid packaging
+Flexible packaging
+Chemicals (Inks & Adhesives)
+Q2 FY26
+Q1 FY26
+Q2 FY25
+Capacity, Production and Utilization
+Production volume change
+50,690
+MTPQ
+45,603
+MTPQ
+-27.6% ▼
+6.3% ▲
+0.8% ▲
+1.1% ▲
+4.2% ▲
+-6.2% ▼
+3.1d
+
+>>>

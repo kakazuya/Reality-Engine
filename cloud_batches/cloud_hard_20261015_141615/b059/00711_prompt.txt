@@ -1,0 +1,157 @@
+Company: SUDEEPPHRM (NSE/BSE symbol SUDEEPPHRM), an Indian listed company. Document: investor presentation filed 2026-05-21. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Source: F&S Report
+10. Backed by Healthy Growth in End User Industries
+Speciality Ingredients
+Pharmaceutical Excipients
+Food 
+Ingredients
+Nutritional 
+Ingredients
+Encapsulated
+Ingredients
+Micronutrient
+Ingredients
+Granulated
+Ingredients
+Global 
+Excipients
+India 
+Excipients
+Market Size
+(CY24)
+CAGR Growth
+(CY24 – 
+CY29F)
+Application 
+Industry
+USD 85.0 Bn
+USD 13.6 Bn
+USD 5.5 Bn
+USD 6.9 Bn
+•
+Bakery, 
+Confectionary 
+•
+& Cereals
+•
+Beverages
+•
+Dairy Product
+•
+Processed 
+•
+Food & Meat
+•
+Others
+•
+Dietary 
+Supplement
+•
+Infant 
+Nutrition
+•
+Sports 
+Nutrition
+•
+Functional 
+Foods & 
+Beverages
+•
+Others
+~ 6.8 %
+(USD 118.0 Bn)
+~ 7.2 %
+(USD 19.3 Bn)
+•
+Beverages
+•
+Dairy
+•
+Bakery & 
+Confectionery
+•
+Dietary 
+Supplement
+•
+Food Products
+•
+Others
+~ 8.0 %
+(USD 8.0 Bn)
+~ 7.2 %
+(USD 9.7 Bn)
+•
+Beverages
+•
+Dairy
+•
+Bakery & 
+Confectionery
+•
+Dietary 
+Supplement
+•
+Food
+•
+Others
+USD 277 Mn
+~ 7.0 %
+(USD 389 Mn)
+•
+Dietary 
+Supplement
+•
+Others
+USD 10.4 
+Bn
+~ 4.7 %
+(USD 13.0 
+Bn)
+•
+Oral Solid
+•
+Oral Liquid
+•
+Parenteral
+•
+Topical
+•
+Inhalation
+USD 856 Mn
+~ 11.0 %
+(USD 1.4 Bn)
+•
+Oral Solid
+•
+Oral Liquid
+•
+Parenteral
+•
+Others
+29
+Battery 
+Chemicals
+Global Market
+USD 14.4 Bn
+~ 41.4 %
+(USD 115.2 Bn)
+•
+Electric 
+Vehicles
+•
+Energy 
+Storage 
+Systems
+
+>>>

@@ -1,0 +1,85 @@
+Company: MAXESTATES (NSE/BSE symbol MAXESTATES), an Indian listed company. Document: investor presentation filed 2025-08-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+18
+Projects to be launched in FY26
+Artistic Rendition
+Delhi One (Sector 16B, Noida)
+Development Potential
+~2.5 mn. sq. ft.
+~1.2 mn sqft (unsold)
+Gross Development 
+Value
+New Sales – Rs. 1,500 Cr+
+Receivables – Rs. 500 Cr
+Rentals – Rs. 120 Cr+
+Status
+Under design
+Spanning ~2.5 mn sq. ft. across a ~10-acre land parcel, 
+Max One will bring to life our vision of an integrated 
+campus. A downtown experience that will host ultra-
+luxury residences, premium office spaces, 
+curated high street retail and exclusive club facilities, 
+thoughtfully blending our philosophy of LiveWell, 
+WorkWell, and PlayWell. Situated at the edge of 
+South Delhi and directly connected via the Delhi-
+Noida-Direct (DND) Flyway, the development is just 
+steps from key metro stations, benefitting from 
+unparalleled connectivity across Delhi NCR.
+About 
+Max 
+Estates
+New Opportunity (Gurugram)
+Development Potential
+~4.0 mn. sq. ft.
+Gross Development 
+Value
+Rs. 9,000 Cr +
+Status
+Under design
+Expanding our footprint in Gurugram, Estate 361 is 
+an upcoming LiveWell development located in 
+Sector 36A along the Dwarka Expressway. Spread 
+across ~18-acres with a development potential of ~4 
+mn sq. ft., Estate 361 is being thoughtfully envisioned 
+around our LiveWell philosophy with the vision of 
+bringing real wellbeing to real estate. Central to the 
+design is a lush, 2-acre forest that will anchor the 
+offering and foster holistic wellness for its 
+community.
+New Acquisition (Sector 105, Noida)
+Development Potential
+~2.6 mn. sq. ft.
+Mixed use
+Gross Development 
+Value
+Sales – Rs. 3,000 Cr+
+Rentals – Rs. 140 Cr+
+Status
+Under design
+Located in Sector 105, Noida, our upcoming mixed-
+use development spans ~10 acres with a 
+development potential of 2.6 mn sq. ft., comprising 
+60% commercial and 40% residential space. With 
+three open sides and a striking 75-meter frontage 
+along the Noida-Greater Noida Expressway, the site 
+enjoys excellent visibility and connectivity. Situated 
+within a thriving residential and commercial micro-
+market, the offering will reflect our LiveWell and 
+WorkWell philosophies, seamlessly integrating 
+fitness, sports, and an active lifestyle into a 
+thoughtfully curated urban experience.
+Representative image
+Representative image
+Representative image
+
+>>>

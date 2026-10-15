@@ -1,0 +1,39 @@
+Company: KEI (NSE/BSE symbol KEI), an Indian listed company. Document: investor presentation filed 2025-08-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+22
+Key Growth Initiatives for Cables and Wire Industry (cont’d)
+…Industry Prospects
+
+India’s National Electricity Plan (2022-32)
+The National Electricity Plan (NEP) outlines India’s strategy for power expansion over the next decade. 
+Key targets include:
+•
+Peak demand forecast: 277.2 GW by 2026-27, 366.4 GW by 2031-32
+•
+Installed capacity target: 609 GW by 2031-32
+•
+Renewable energy goal: 500 GW of non-fossil fuel capacity by 2030
+•
+Investment requirement: ₹ 33.6 trillion (US$384.5 billion) over the next decade
+
+India has to enhance its infrastructure to reach its 2025 economic growth target of US$ 5 trillion. 
+
+India has unveiled a comprehensive plan worth Rs. 9.15 lakh crore (US$ 109.50 billion) to enhance its power infrastructure and meet a projected 
+demand of 458 GW by 2032
+
+India's commitment to renewable energy, with a target of 500 GW of non-fossil fuel capacity by 2030.
+
+The positive developments in the manufacturing sector, driven by production capacity expansion, government policy support, heightened M&A activity, 
+and PE/VC-led investment, are creating a robust pipeline for the country’s sustained economic growth in the years to come
+
+>>>

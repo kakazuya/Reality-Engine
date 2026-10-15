@@ -1,0 +1,70 @@
+Company: GUFICBIO (NSE/BSE symbol GUFICBIO), an Indian listed company. Document: investor presentation filed 2025-11-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Research & Development
+11
+•
+Peptides R&D: Paving the Way for In-house Critical 
+API Manufacturing: Our foray into peptides research 
+and development aligns seamlessly with our broader 
+vision of internalizing the production of critical APIs. 
+This strategic move reinforces our commitment to self-
+reliance and robust supply chains
+•
+Innovative Dual Chamber Syringes: Elevating Drug 
+Delivery Systems: Our dedicated efforts have led to 
+the development of a wide array of products within 
+the new drug delivery system of Dual Chamber 
+Syringes. This innovation ensures streamlined 
+reconstitution, precise dosing, and sustained sterility, 
+bridging the gap from plant to patient.
+•
+API Research Development: Fostering Therapeutic 
+Advancements: At Navsari, our API Research 
+Development has achieved noteworthy milestones in 
+therapeutic categories including Antifungal, 
+Anticoagulant, Tetracycline Antibiotics, Progestin, Beta 
+3 Adrenergic Agonists, Antidiabetic, and Cyclopeptide 
+Hormones. Our development projects remain 
+steadfastly aligned with our strategic plan, driving us 
+toward pioneering advancements in these critical 
+therapeutic areas.
+Update on R&D
+Developing SVX-3001 (humanized anti-CD40 agonist antibody) co-administered intratumorally with IL-2 to
+amplify anti-tumour immune response while minimizing systemic toxicity
+Unique Immunotherapy Approach
+•
+Targets CD40 to “convert” immunologically “cold” tumours into “hot” tumours, improving immune cell 
+infiltration and long-term tumour regression
+•
+Demonstrated >80% clearance and abscopal (distant tumour) effects in preclinical mesothelioma 
+models 
+Preclinical Efficacy
+•
+Broad efficacy across eight solid tumour types in mouse models (cure rates 22–93%) 
+•
+Superior to standard-of-care FOLFIRINOX in pancreatic adenocarcinoma models (100% cure vs. 0%)
+Canine Clinical Proof-of-Concept
+•
+Phase I trial in dogs with soft-tissue sarcomas: 68.4% clinical benefit rate (25% complete remission, 42% 
+stable disease) with minimal grade 1–2 adverse events 
+Pipeline & Next Steps
+•
+SVX-1001 (murine model studies) completed
+•
+SVX-2001 (canine antibody) commercialization arm established
+•
+SVX-3001 (humanized antibody) advanced cell-line development; IP filed and entering international 
+patent phase S
+Update on Selvax
+
+>>>

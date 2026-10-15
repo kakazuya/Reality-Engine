@@ -1,0 +1,64 @@
+Company: MADHAVBAUG (NSE/BSE symbol MADHAVBAUG), an Indian listed company. Document: investor presentation filed 2023-05-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Re-emergence of Traditional Medical Care
+27
+01
+05
+04
+03
+02
+Recent Developments
+
+Ministry of AYUSH has been allocated Rs. 3,050 crore in 
+2022, up from 2,970 crore in 2021
+
+Technology innovation hubs of IIT Delhi to collaborate for 
+developing India’s 1st Medical Robotics Centre at IIIT-Delhi 
+
+To develop training programmes in consultation with 
+leading doctors and healthcare experts
+
+WHO’s Launch of Ayurveda Research Institutions
+Market size and services offered
+
+Indian Ayurvedic Industry expected to reach 
+US$ 9 billion by 2022 - Ayurveda medicines -
+> 90% plant based formulations
+
+Broadened offerings - services on diet and 
+nutrition, yoga, herbal medicine, humour 
+therapy and spa 
+Leading brands and players
+
+Many big players such as Apollo, VLCC and 
+Manipal Group setting up wellness centers 
+across India with traditional healthcare 
+remedies
+Notable trends
+
+Traditional medical sector developing  Traditional Knowledge Digital 
+Library to prevent companies from claiming patents on such remedies
+
+Growing interest from PE firms in traditional Indian healthcare sector 
+
+Center revamping existing 1.5 lakh wellness health centers across 
+country
+Developing infrastructure
+
+In July 2021, Union Cabinet approved continuation of National Ayush 
+Mission, responsible for development of traditional medicines in India, 
+as centrally sponsored scheme until 2026 
+India Emerging as Global Wellness & Ayurveda Hub - Ayurveda at Top of Immunity Boosting Shelves
+Source - Ayush Study-Public Policy and Economic-FINAL REPORT 28 OCT.pdf (ris.org.in)
+
+>>>

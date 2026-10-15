@@ -1,0 +1,52 @@
+Company: SENCO (NSE/BSE symbol SENCO), an Indian listed company. Document: investor presentation filed 2023-07-27. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+15
+Unique Customer Centric and Hyperlocal Marketing Strategies
+•
+Capitalise on ‘Dhanteras’, ‘Akshay Tritiya’ or ‘new years’ of various 
+states such as West Bengal, Orissa and Maharashtra to promote 
+sales
+•
+Loyalty programs
+• One year free insurance on purchase of diamond jewellery above 
+a certain value
+•
+Sponsorships for sporting teams and events
+•
+DG Gold (www.mydigigold.com) – A digital platform for the 
+purchase, redemption and sale of the gold^
+•
+Offers and discounts on our jewellery during local and regional 
+festivals such as ‘Akshay Tritiya’, ‘Rath Yatra’, ‘Ganesh Chaturthi’, 
+‘Poila Baisakh’, ‘Teej’, among others
+• During festival offers – schemes take care of gold rates
+•
+Jewellery purchase schemes
+•
+Buy jewellery through periodic installments of 6-18 months under 
+various schemes*
+•
+Offer bespoke design, customization, and exchange of old gold 
+jewellery by computer testing
+•
+Attractive exchange policy
+Key 
+Marketing 
+Strategies
+Schemes and 
+Offerings
+Note: *Senco has entered into agreement with 3rd Party to provide financial facility; Schemes include Swarna Labh for installments of six months, Swarna Yojana for installments of 11 months and Swarna Vridhi for installments up to 18 months; 
+The minimum enrolment amount is INR 1,000 and installments are in multiple of INR 1,000 thereafter; ^Purchase can be minimum quantity of 50 mg of 24 carat gold or gold equivalent to the value of INR 250 of 99.5% purity
+Source: Company Website; Social Media Channels
+
+>>>

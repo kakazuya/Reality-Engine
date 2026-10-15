@@ -1,0 +1,66 @@
+Company: SHRIRAMFIN (NSE/BSE symbol SHRIRAMFIN), an Indian listed company. Document: investor presentation filed 2024-07-26. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+ 
+ 
+SEC/FILING/BSE-NSE/24-25/68A-B                                                  July 26, 2024 
+ 
+ 
+BSE Limited 
+ 
+ 
+ 
+P. J. Towers, 
+Dalal Street, Fort, 
+Mumbai – 400 001 
+Scrip Code: 511218 
+National Stock Exchange of India Limited 
+Listing Department 
+Exchange Plaza, 5th Floor, 
+Plot no. C/1, G- Block, 
+Bandra-Kurla Complex, 
+Mumbai – 400 051 
+NSE Symbol: SHRIRAMFIN 
+ 
+Dear Sir/Madam, 
+ 
+Sub.: Outcome of Board Meeting 
+Re.: Regulation 30, 33, 51, 52 and 54 of the Securities and Exchange Board of India 
+(Listing Obligations and Disclosure Requirements) Regulations, 2015 (‘Listing 
+Regulations’) 
+ 
+ 
+In furtherance of our intimations dated June 28, 2024 and July 16, 2024, we inform you 
+that the Board of Directors of the Company at their meeting held today i.e. July 26, 
+2024 has inter-alia: 
+ 
+1. Approved and taken on record the unaudited standalone and consolidated financial 
+results of the Company for the first quarter ended June 30, 2024, prepared pursuant 
+to Regulation 33 and 52 of the Listing Regulations. 
+ 
+2. Approved periodical resource mobilisation plan including issuance of debt securities 
+viz. redeemable non-convertible debentures (‘NCDs’) /subordinated debentures, 
+bonds on private placement basis and/or public issue in one or more tranches or any 
+other methods of borrowing in onshore/offshore market for the purpose of business 
+of the Company from August 1, 2024 to October 31, 2024. 
+ 
+Please find enclosed herewith: 
+  
+a) Unaudited standalone and consolidated financial results of the Company for the first 
+quarter ended June 30, 2024 (unaudited financial results) together with the limited 
+review reports issued thereon by M/s. Sundaram & Srinivasan and KKC & 
+Associates LLP, Joint Statutory Auditors of the Company and the disclosures in 
+accordance with Regulation 52(4) and 54(3) of the Listing Regulations. 
+ 
+
+>>>

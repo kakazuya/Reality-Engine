@@ -1,0 +1,47 @@
+Company: BAJFINANCE (NSE/BSE symbol BAJFINANCE), an Indian listed company. Document: investor presentation filed 2025-11-10. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+MSME Business
+• Offers unsecured working capital loans to MSME and self-employed professionals
+• Secured offerings include enterprise loans against property 
+• Focused on accelerating used car financing business 
+• Focused on affluent MSMEs with established financials & demonstrated borrowing track record
+• Offers medical equipment financing from ₹ 3 Lakh to ₹ 30 crore for medical professionals
+Commercial 
+business
+• Offers short, medium and long-term financing to mid market corporates
+• Focused on auto ancillaries, pharma, specialty chemicals, financial institution groups, lease rental discounting and top mid corporate 
+clients in India
+Treasury 
+• Strategy is to create a balanced mix of wholesale and retail borrowings with a focus on long term borrowings
+• Strategy is that deposits should contribute to 25% of consolidated borrowings
+• In Q2, standalone cost of funds was 7.59%
+• Borrowings stood at ₹ 2,96,810 crore with a mix of 50% : 20% : 6% : 24% between money markets, banks, ECB and deposits as of 
+30 September 2025
+Credit Quality
+• GNPA and NNPA as of 30 September 2025 stood at 1.59% and 0.77% respectively
+• Provisioning coverage ratio as of 30 September 2025 was 52%
+• Provisioning coverage on stage 1 & 2 stood at 128 bps as of 30 September 2025 
+Credit Rating
+• Credit rating for long term borrowing is AAA/Stable by CRISIL, ICRA, CARE & India Ratings
+• Credit rating for short term borrowing is A1+ by CRISIL, ICRA, CARE & India Ratings
+• Credit rating for FD program is CRISIL AAA (Stable) by CRISIL & ICRA AAA (Stable) by ICRA
+• Long term & short term issuer credit rating of BBB/Stable/A-2 by S&P Global ratings
+• Baa3 long-term corporate family ratings (CFR) with stable outlook by Moody's
+Regulated by
+• Reserve Bank of India 
+• Securities and Exchange Board of India
+• Insurance Regulatory Development Authority of India (IRDAI)
+25
+Executive summary – Bajaj Finance
+
+>>>

@@ -1,0 +1,51 @@
+Company: INDIAGLYCO (NSE/BSE symbol INDIAGLYCO), an Indian listed company. Document: investor presentation filed 2026-09-02. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+20
+What we bring to the table: six foundations, forty years deep
+IGL is pursuing new value-added sustainable chemistry — and intends to build it with partners.
+1
+Product development
+100+ green products commercialised; molecules co-developed 
+with global chemical and consumer customers against identified 
+demand, with a New Specialty Unit providing commercial-scale 
+flexibility for launches.
+2
+Process development
+The world-first agro route to ethylene oxide (1989), India's only 
+continuous glycol-ether/ester process, and four decades of 
+scaling fermentation-to-chemicals routes from pilot to full plant.
+3
+World-class manufacturing
+Three integrated complexes over ~360 acres; a 3×3 feedstock-
+flexibility model across in-house, domestic and imported ethanol; 
+internationally certified, DCS-controlled operations.
+4
+Green technology
+97% renewable raw material, recycled-carbon chemistry with 
+LanzaTech, zero-liquid-discharge distilleries and UNFCCC 
+CDM-registered biomass cogeneration — engineered into the 
+asset base, not added on.
+5
+Application development
+Deep formulation knowledge across twelve end-markets — from 
+surfactants for personal care to rheology modifiers for oilfields —
+backed by a DSIR-recognised R&D centre operating since 1993.
+6
+Global collaborations
+A working history with world leaders — Scientific Design, Sulzer 
+Chemtech, LanzaTech, Clariant, Bacardi — spanning 
+technology licensing, joint ventures and 15-year manufacturing 
+partnerships.
+Trusted by global majors:  BASF · L'Oréal · Stepan · Lamberti · Newpark · Iwatani · Suntory · Toray · Bacardi · Clariant — relationships measured in years and decades, not transactions.
+
+>>>

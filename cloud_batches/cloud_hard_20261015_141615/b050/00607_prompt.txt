@@ -1,0 +1,69 @@
+Company: KANSAINER (NSE/BSE symbol KANSAINER), an Indian listed company. Document: investor presentation filed 2023-05-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+All rights for this presentation are reserved with Kansai Nerolac Paints Limited. 
+LINKAGE OF KNPL CSR PROGRAMS WITH UN SDGs
+PROGRAM HEAD
+SDG HEAD
+SDG NO.
+Approx. 
+spent in % Goal Category
+Skill Enhancement
+Partnership for the Goals
+(Advanced Open training in Painting)
+42
+Partnership 
+Goal
+(42%)
+Ensuring Env. 
+Sustainability
+Climate Action
+(Tree Plantations, Usage of Solar Energy, Painting Activities)
+10
+Economic & 
+Env. Goals 
+(34%)
+Life on Land
+(Pond Rejuvenation, Water conservation, Cleanliness drive)
+11
+Community 
+Development
+Sustainable Cities and Communities
+(Pick up sheds, Women Empowerment)
+13
+Prev. Health care & 
+Sanitation
+Good Health & Wellbeing
+(Health Camps, Providing Toilets, Equipment to Hospitals)
+10
+Social Goals 
+(24%)
+Clean Water and Sanitation
+(Toilets, drinking water facility through Bore wells, RO)
+5
+Promoting Education
+Quality Education
+(Construction of class- rooms, Labs, Providing Educational Material)
+9
+Investor Presentation
+9th May 2023
+CSR Initiatives
+Page 31 of 43
+[( KANSAI 
+PAINT 
+m 
+Ill 
+II 
+- -
+' • 
+
+>>>

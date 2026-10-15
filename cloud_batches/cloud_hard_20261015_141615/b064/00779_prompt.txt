@@ -1,0 +1,92 @@
+Company: BHAGCHEM (NSE/BSE symbol BHAGCHEM), an Indian listed company. Document: investor presentation filed 2026-05-22. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+18
+Creating Entry Barrier: Backward Integration
+Product 1
+Input 1 & 2
+N-1 (A)
+N 1
+Input 3
+N-2 (B)
+N-2 (A)
+Input 4
+Input 5 & 6
+N-3 (B)
+N-3 (A)
+Input 7 & 8
+N-4 (B)
+Input 9 & 10
+N 2
+N 3
+N 4
+Input 11
+N-5 (A)
+N 5
+Input 14
+Input 13
+Input 12
+N-6 (A)
+N 6
+N 7
+Future backward integration
+Backward integrated inputs
+Future backward integration planned to N-7 with 13 process stages, which is expected to increase the margins
+Product 2
+Input 1 & 2
+N-1 (A)
+N-2 (A)
+N-2 (B)
+Input 3
+Input 5 & 6
+N-3 (A)
+Input 7
+Input 4
+N-4 (A)
+Input 8 & 9
+N-5 (A)
+Input 10
+Input 11
+Input 11
+N 1
+N 2
+N 3
+N 4
+N 5
+N 6
+We intend to backward integrate in all the key future products on similar lines
+Backward integration to increase to N-9 
+level with 16 process stages by FY 26, thus 
+increasing margin
+~4%
+Global Market 
+share
+~14%
+Domestic Market 
+share
+Imports
+~60%
+Launched the product with high level of 
+backward integration right from the start, 
+commanding a high margin. 
+Allowed to operate at competitive pricing 
+and capture the market
+~6%
+Global Market 
+share
+~27%
+Domestic Market 
+share
+Imports
+~23%
+
+>>>

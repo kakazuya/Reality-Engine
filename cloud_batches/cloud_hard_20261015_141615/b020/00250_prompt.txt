@@ -1,0 +1,60 @@
+Company: 360ONE (NSE/BSE symbol 360ONE), an Indian listed company. Document: investor presentation filed 2024-01-18. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Mr. Karan Bhagat, MD & CEO, 360 ONE WAM: 
+Key Highlights during the Quarter 
+•
+The wealth and asset management industry in India remains resilient amidst global uncertainty. India's strategic
+position in the Emerging Markets (EM) space has garnered international investor confidence. Domestic investors
+continue to exude confidence in both the private and public markets.
+•
+Overwhelming response to 360 ONE Prime NCD issue: The recent oversubscription of 360 ONE Prime’s maiden
+Public Non-Convertible Debentures (NCDs) within a single day serves as a testament to the trust and confidence
+in our brand.
+•
+Awards: During the quarter, 360 ONE received 10 awards, including the Best Domestic Private Bank - India, by
+Asian Private Banker, which is one of the industry’s most prestigious awards globally. The awards are a testimony
+to the firm’s excellence, growth, and agility.
+360 ONE’s Favourable Client Mix 
+•
+We continue to build deep client relationships and successfully onboarded 400+ clients with AUM exceeding Rs 5
+Crs in ARR assets during 9M FY24. This particular client segment now constitutes 95%+ of the Wealth ARR AUM.
+•
+We anticipate the wealth of the Ultra HNI client segment (with investible surplus over Rs 25 Crs) and HNI segment
+(with investible surplus between Rs 5 - 25 Crs) to clock CAGR of 13-15%. This projection is notably higher than the
+overall economic growth rate.
+•
+In alignment with our expansion objectives, we are proactively making strategic investments to enhance both our
+platform and workforce. We continue to be a ‘company of choice’ for senior industry talent. Specifically, we have
+welcomed multiple senior hires during 9M FY24 within the Wealth Sales teams. Moreover, the average tenure at
+Partner and above levels stands at an impressive 8+ years, while the attrition rate remains significantly low.
+360 ONE’s Areas of Focus 
+•
+While the macroeconomic landscape remains favourable, our commitment remains steadfast in identifying
+optimal bottom-up opportunities within this broader context. Whether in equities or credit, our emphasis is on
+identifying opportunities with the potential to outperform broader markets. We firmly believe that combining a
+long-term perspective with an alpha-seeking approach is integral to achieving the most favorable risk-adjusted
+returns for our investors. All our AMC strategies aim towards this objective.
+•
+We remain focused on expanding our domestic coverage in Tier 2 and 3 cities through a hub-and-spoke model.
+Concurrently, we are enhancing our global footprint. The upcoming launch of a digital-first HNI platform in the
+Q1 FY25 reaffirms our commitment towards the evolving needs of our clients.
+For further information, please contact: 
+Mr. Akshay Gavankar 
+Investor Relations | 360 ONE WAM Ltd. 
+Email: ir@360.one 
+Phone: +91 86558 09111 
+Click here to register for conference call 
+Click here for investor presentation
+360 ONE WAM Q3 FY 24 Analyst Conference call is scheduled for Friday, 19th January, 2:00 PM IST 
+
+>>>

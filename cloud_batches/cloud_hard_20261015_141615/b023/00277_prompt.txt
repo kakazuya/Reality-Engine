@@ -1,0 +1,78 @@
+Company: BPLPHARMA (NSE/BSE symbol BPLPHARMA), an Indian listed company. Document: investor presentation filed 2024-02-20. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+1,135 
+1,900 
+ 1,000
+ 1,100
+ 1,200
+ 1,300
+ 1,400
+ 1,500
+ 1,600
+ 1,700
+ 1,800
+ 1,900
+ 2,000
+2017
+2022
+2023 e
+2024 e
+2025 e
+2026 e
+2027 e
+Spending  in USD bn
+5
+Global medicine spending to reach $ 1.9 trillion by 2027 with a few key themes having the greatest impact on 
+growth and profitability
+Global medicine market spending1 
+Key themes in the generic finished dosage formulations space 
+Source: IQVIA Market Prognosis, Sep 2022; IQVIA Institute, Nov 2022.
+Note 1: Measures the amount spent purchasing medicines from manufacturers before off invoice discounts and rebates, and excludes the impact of spending on COVID 19 vaccines and therapeutics
+CAGR: ~5.1%
+GEOGRAPHY 
+FOCUS
+Higher growth and 
+stable pricing in 
+emerging markets
+•
+High volume growth and negligible price erosion in emerging market generics 
+vis-à-vis regulated markets
+•
+Evolving regulatory requirements have created entry barriers, reducing 
+competition in emerging markets 
+NICHENESS OF 
+PORTFOLIO
+Superior margins and 
+fewer competitors for 
+niche portfolios
+• Complex and specialty generics portfolios enjoy substantially higher margins 
+across geographies
+• Portfolios backed by innovative technology platforms have greater barriers to 
+entry and fewer competitors
+BRANDED 
+GENERICS
+Strong brands enjoy 
+stable market shares
+and pricing power
+• Established brands command premium prices in emerging markets
+• Once established, the market shares of top brands have remained stable over time 
+CAGR: ~5.5%
+1
+2
+3
+I 
+I 
+I 
+• 
+
+>>>

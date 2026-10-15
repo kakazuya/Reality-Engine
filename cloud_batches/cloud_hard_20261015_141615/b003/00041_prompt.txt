@@ -1,0 +1,96 @@
+Company: INDUSINDBK (NSE/BSE symbol INDUSINDBK), an Indian listed company. Document: investor presentation filed 2022-07-20. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+37
+Whatsapp Banking: ~5.1 mn clients enjoy the list of 50+ services now available on the channel
+100
+123
+0.0
+20.0
+40.0
+60.0
+80.0
+100.0
+120.0
+140.0
+Q1'FY22
+Q1'FY23
+2.8
+5.1
+0.0
+1.0
+2.0
+3.0
+4.0
+5.0
+6.0
+Q1'FY22
+Q1'FY23
+Registered Base of 5.1 Mn - up 82% YoY 
+82%
+WhatsApp Banking: Offer 50+ services for clients across 
+segments 
+100
+145
+0.0
+20.0
+40.0
+60.0
+80.0
+100.0
+120.0
+140.0
+160.0
+Q1'FY22
+Q1'FY23
+Transactions up by 45% YOY 
+Monthly active users up 23% YoY 
+Indexed transactions 
+Indexed monthly active 
+user base  
+Multiple new 
+Services added  
+FD/RD Summary
+Talk to Agent
+FD/RD 
+Summary
+CC Statement 
+Chequebook 
+Request
+Block/ 
+Unblock CC
+CC Statement 
+Download/Email
+million
+~c lnduslnd Bank ., 
+: 
+5. FD/RD Number: xxxxxxxx3358 
+6. Show Next 
+Please enter option number from 
+above to proceed further 
+4 st PM 
+1 451PM.V 
+FD Summary 
+FD Number:xxxxxxxx5622 
+Account Balance:INR 148038.05 
+TYPE:Fixed Deposit 
+TENURE:12 months 
+ROl:6.S'ir, 
+Deposit Amount:INR 143311 92 
+Opened on:2019·03·28 
+Maturity Amount:INR 152856 19 
+Maturity Date:2022-03-28 
+451 PM 
+@ ~ essage 
+lnduslnd Bank 
+
+>>>

@@ -1,0 +1,53 @@
+Company: PTCIL (NSE/BSE symbol PTCIL), an Indian listed company. Document: investor presentation filed 2024-02-13. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+© 2024 ptcil.com
+19
+Other major 
+Equipment available
+Aerospace Castings Group – Future Capability & Additions
+Robotic Shelling System: 
+Make: VA Tech; 1 Robot System; 
+Max Shell Dim: 600mm (dia)X 
+800mm (height)
+Dewaxing AutoClave: 
+1200 mm (dia) X 
+1500mm (depth)
+Flashfire Furnace: 
+1000X1000X1200 mm 
+(Pacific Kiln)
+Dimension Inspection: 
+1) CMM: Zeiss : 
+1000X1000X800 mm; 
+2) GOM – 3D Scanning
+Radiography (X Ray): 
+Digital; Max
+thickness: 60 mm
+FPI: 
+New Automated FPI Line
+3D Printed 
+(SLA) Pattern: : 
+600X600X500 mm
+Chemical Milling: 
+1200X1200X1200 mm
+Wax Injection Press: 
+1) 6 Tonne, 1000 cc, 
+350X350X350 mm; 
+2) 35 Tonne, 6500 cc, 
+750X750X750 mm
+Hot Isostatic Press: 
+Max Temp: 
+1350 deg C; Max Pressure 
+137 Mpa; 300 mm (dia) X 
+900 mm (length)
+
+>>>

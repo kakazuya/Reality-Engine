@@ -1,0 +1,73 @@
+Company: JUSTDIAL (NSE/BSE symbol JUSTDIAL), an Indian listed company. Document: investor presentation filed 2026-01-13. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+J D M a r t – E xc l u s i v e B 2 B P l a t f o r m
+Justdial 
+@ Mumbai 
+CP PU.JS CP ENC D21Pl.3C WlrAIA~5. CC TV Dcn"le C__ X 
+,.g m 
+Mil-ill-Iii 
+111111111111111!11111111111 
+~ 
+f N v 
+qj: AdvertisiEl 
+~ Become □ Sol Im RW:RP 
+All c megorltts 
+Food iii. Be\•,;,rng i=i, v 
+lndustf1ol 111.achlnery v 
+Apparel & Fashion v 
+Floctronlc~ v 
+F,tumb:::( > securltfl :Wtectlor In 1,11.L. > CCTv Pro:i.Jc-:s Ir t,1ud::al ) CCTV camera Ir 1,,1urr,C<ll ) CPPLl.lS lCP-EtJ:.-001Pl.3C) __ 
+3ECP PL.US 
+~ Ask More Photos 
+Customers Also Viewed 
+CP PLUS (CP-ENC-D21PL3C) Wireless CCTV Dome 
+Camera2MP 
+, 8,000 - , 25,000 / Pc 
+(MOQ· 5Pc) 
+I QJortily 
+Specification 
+Material 
+color 
+Connectivity 
+Mount Type 
+Type 
+Availability 
+Description 
+vliM+i::iA 
+Plastic 
+White 
+WiFl Enabled 
+Woll Mount 
+Dome Camero 
+In Stock 
+l) seamless surveillance Solution The CP PLUS Wireless CCTV Dome camera offers a 
+reliable and efficient way to monitor spaces with its advanced 2 MP resolution. 
+Designed to deliver clear and sharp images, this camera ensures that every detail is 
+captured, providing peace of mind for businesses looking to enhance their security 
+measures. 2) versatile Installation Options This dome camera features a wall mount 
+design, making it easy to install in various settings, from retail stores to office .. 
+ti 
+Sellar Information 
+1111 21 Ratings 
+0 132 enquiries 
+\. 0 8792491214 
+Get Best Price 
+l§] w hatsApp 
+Connect with 
+19.3Crore+ 
+Buyers 
+on JustdlaJ 
+List your business for 
+FREE 
+
+>>>

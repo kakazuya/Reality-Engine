@@ -1,0 +1,99 @@
+Company: MARKOLINES (NSE/BSE symbol MARKOLINES), an Indian listed company. Document: investor presentation filed 2022-06-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+39
+Maintenance and Repairs Order Book
+As on 31st March, 2022
+Sr. 
+No.
+Name of Work
+SPV
+Principle 
+Company
+End Date
+Work 
+Order 
+In Rs.
+Work 
+Completed
+Pending 
+Contract 
+Value
+KM
+11 Work Order for Water Pipeline work under Chief Minister Urban Water 
+Supply Scheme in the state of Madhya Pradesh
+Nagar Parishad, 
+Rampur Baghelan, 
+Dist.: Satna
+Nagar Parishad, 
+Rampur Baghelan
+24/05/2022
+82.24
+20.55
+61.68
+-
+12
+"Execution of Rehabilitation and Bitumen Overlay works at Delhi-Agra 
+section(Package – 3) from km 147+000 to km 200+000 on NH - 19 (old NH 
+- 2) in the state of Uttar Pradesh"
+DA Toll Road Private 
+Limited
+Cube Highways
+10/06/2022
+419.25
+419.25
+53.00
+13
+Supply of Material - Purchase order Work order for Incidental Work for 
+Km 0.00 to 32.27 Km of Gorakhpur Bypass of NH-28 in the State of Uttar 
+Pradesh
+Gorakhpur 
+Infrastructure Co Ltd
+Peak Infra 
+31/03/2023
+63.56
+35.38
+28.18
+32.00
+14
+Construction of Road Under Full Depth Reclamation/ In-Situ Stabilization 
+with Cement and Additive of Group No UPFDR-18 in district Maharajganj
+(4793, 4796, 4797, 47131)
+Rural Engineering 
+Department, 
+Gorakhpur
+UPRRDA 
+25/04/2023
+286.90
+286.90
+-
+15
+5-Year Maintenance of Road Under Full Depth Reclamation/ In-Situ 
+Stabilization with Cement and Additive of Group No UPFDR-18 in district 
+Maharajganj (4793, 4796, 4797, 47131)
+Rural Engineering 
+Department, 
+Gorakhpur, Circle-
+Gorakhpur
+UPRRDA 
+25/04/2028
+24.88
+-
+24.88
+-
+Total
+3,658.59 
+723.36 
+2,935.24 
+Amounts in Rs Million
+
+>>>

@@ -1,0 +1,97 @@
+Company: TATAPOWER (NSE/BSE symbol TATAPOWER), an Indian listed company. Document: investor presentation filed 2024-08-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+tatapower.com
+38
+Transmission- Recent wins of ₹4,600cr. to expand transmission 
+portfolio
+Project:
+Jalpura Khurja Power 
+Transmission Limited 
+(160 Ckm)
+Project Brief
+•
+Construction and O&M of 
+400 kV substation at 
+Greater Noida and Jalpura 
+in Uttar Pradesh
+•
+Line in line out (LILO) of 400 
+kV line at Greater Noida 
+substation and construction 
+of 400 kV line from Jalpura 
+substation to Tehri Hydro 
+development corporation’s 
+(THDC)  Khurja Thermal 
+Power Plant (TPP)
+Project:
+Rajasthan Phase IV Part C 
+(682 Ckm)
+Project Brief
+•
+Bikaner-III - Neemrana-II 
+765 kV D/C line (2nd) 
+•
+765 kV 110 MVAR 
+switchable line reactor – 6 at 
+Bikaner III PS
+•
+765 kV 110 MVAR 
+switchable line reactor – 6 at 
+Neemrana II S/S
+•
+765 kV line bays – 2 at 
+Bikaner III PS
+•
+765 kV line bays – 2 at 
+Neemrana II S/S
+Received LOA* 
+*Letter of Agreement
+Operational 
+Capacity at 
+the end of 
+Q4FY24
+Under-
+Construction 
+Total 
+Transmission 
+Capacity in 
+Q1FY25
+Capacity 
+added in 
+Q1FY25
+Transmission Capacity (Ckt Km)
+Received LOA* 
+Project:
+Paradeep Transmission       
+(384 Ckm)
+Project Brief
+•
+2 x 1500 MVA, 765/ 400 kV GIS 
+substation at Paradeep with 
+associated bays at Angul and 
+Paradeep (OPTCL).
+•
+~190 km of 765 kV double 
+circuit transmission line from 
+existing Angul substation of 
+PGCIL to the proposed 765 kV 
+GIS substation at Paradeep.
+•
+~12 km of 400 kV line from 
+existing OPTCL substation at 
+Paradeep to the proposed 765 
+kV GIS substation at Paradeep
+Received LOI** 
+**Letter of Intent
+
+>>>

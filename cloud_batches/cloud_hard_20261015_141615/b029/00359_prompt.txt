@@ -1,0 +1,86 @@
+Company: AWHCL (NSE/BSE symbol AWHCL), an Indian listed company. Document: investor presentation filed 2023-02-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+19
+Emerging areas of growth
+o Refers to residual dry combustible fraction of municipal solid waste such as 
+leather, paper, textile, rubber, non-recyclable plastic etc. 
+o Used as a substitute for coal in energy intensive processes such as 
+cement kilns, power production and steel manufacturing
+Refuse Derived Fuel
+o Loosened layers of old waste are sprayed with composting bio cultures and 
+then formed into conventional aerobic windrows on the site, the waste is 
+then sterilized, stabilized, and readied for segregation using machinery as 
+organic and inorganic substances to be later sent for recycling, re-using or 
+composting
+o World’s largest Biomining project on 24 hectares of land was started in 
+2018 at Mulund dumping ground
+o Other cities like Indore, Delhi, Mangalore, Coimbatore, Pune, Kolhapur 
+and Kolkata have started Bio mining projects recently
+Bio-mining
+o Anaerobic fermentation of bio-degradable waste in an enclosed space -
+generates methane rich bio-gas fuel and sludge, used for making compost
+o Like composting, biomethanation is also a technically suitable option for 
+Indian municipal waste due to high organic and moisture content
+o Plants can be of small scale (5 TPD, for population size of 5,000 to 
+25,000)
+Biomethanation
+Population
+(‘000)
+Waste Qty 
+(TPD)
+Treatment option
+Approx. Capex 
+(Rs. lakhs/TPD)
+Products
+15 – 50
+3 – 10
+Bio-methanation & 
+conventional composting
+20
+Bio-gas & 
+manure
+Vermi composting
+8
+Compost
+Conventional composting
+10
+Compost
+50 – 100 
+10 – 20
+Bio-Methanation & 
+conventional composting/ 
+vermi composting
+10
+Bio-gas & 
+Compost
+100 – 1,000 
+20 – 350 
+Integrated waste processing –
+Bio-methanation / 
+Compost/ RDF
+4
+Bio-gas, 
+Compost & RDF
+1,000 –
+20,000
+350 –
+8,000 
+Integrated waste processing –
+Bio-methanation / compost/ 
+RDF/ WTE
+15 – 20 
+Bio-gas, 
+Compost,  RDF 
+& Electricity
+
+>>>

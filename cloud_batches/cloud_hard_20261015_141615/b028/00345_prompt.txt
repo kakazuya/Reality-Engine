@@ -1,0 +1,54 @@
+Company: INOXGREEN (NSE/BSE symbol INOXGREEN), an Indian listed company. Document: investor presentation filed 2024-05-03. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+15
+RENEWABLE ENERGY IN INDIA – AT AN INFLECTION POINT
+Government of India has a clear focus on ‘clean’ and ‘green’ energy – Driven by the PM’s vision and initiatives as visible 
+through India’s commitments in COP conferences, International Solar Alliance, Focus on Green Energy in every bilateral / 
+multilateral discussions, Government’s 2032 targets, supportive policies
+Strong power demand trajectory requires capacity addition – India’s power demand growth is expected to increase by at 
+least a 5-6% CAGR over the next decade and beyond, as peak demand is projected to reach >366GW by 2032
+Renewables: Cheapest source of power with low gestation – RE power tariffs today stand at a substantial differential 
+compared to tariffs from new conventional power projects and India’s APPC, with a significantly shorter gestation period
+596 GW
+India’s Renewable Energy 
+installed capacity target by 
+2032 as per NEP
+365 GW
+India Solar Installed Capacity 
+target by 2032 as per the NEP
+~ Rs 28 trn
+Capex required for ~ 440 
+GW of RE capacity addition 
+over 2022-32
+~ Rs 15 trn
+Capex required for ~ 311 GW of 
+Solar capacity addition over 
+2022-32
+~ Rs 6 trn
+Capex required for ~ 89 
+GW of Wind capacity 
+addition over 2022-32
+~125 GW
+India Wind Installed Capacity 
+target by 2032 as per the NEP
+~ Rs 3.5 trn
+Capex required for BESS 
+capacity addition over 
+2022-32
+~47 GW / 
+236 GWh
+India BESS Installed Capacity 
+target by 2032 as per the NEP
+# Source: National Electricity Plan – Generation, CEA, Mar’23
+
+>>>

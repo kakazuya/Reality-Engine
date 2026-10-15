@@ -1,0 +1,97 @@
+Company: CUB (NSE/BSE symbol CUB), an Indian listed company. Document: investor presentation filed 2026-04-27. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+KEY MILESTONES
+Incorporation 
+of 
+the Bank
+1904
+Scheduled bank 
+since  
+22.03.1945
+1945
+Amalgamation 
+of ‘The City Forward Bank 
+Limited & ‘The Union Bank 
+Limited  with our Bank
+1965
+Entered into 
+agreement with 
+TCS  for core banking  
+solution “Quartz”
+2002
+Took over
+Common 
+Wealth 
+Bank Limited
+1957
+Initial Public 
+Offering  (IPO); 
+Listing bank’s 
+shares  on the
+BSE, NSE & MSE
+1998
+Obtained licenses  
+to act as an agent for 
+procuring life 
+insurance & general  
+insurance business
+2003
+2007
+Rights Issue 
+@ 1 : 4 -to reward the 
+existing shareholders & 
+employees under 
+“Employee Reservation Scheme”
+2012
+Bonus issue @ 1 ; 10 
+– rewarded to the 
+existing shareholders
+2017 & 
+2018
+Rights Issue 
+@ 1 : 4 - to 
+reward  the 
+existing  
+Shareholders
+2009
+Raised
+INR Rs.3,500 mn in  
+Equity capital  
+Through 
+QIP route
+2014
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+Preferential 
+allotment  for equity 
+shares  strengthening
+bank’s capital funds
+13
+2024
+Introduction of
+Digital
+Lending
+Process
+10
+
+>>>

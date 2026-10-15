@@ -1,0 +1,50 @@
+Company: UFLEX (NSE/BSE symbol UFLEX), an Indian listed company. Document: investor presentation filed 2025-03-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+An Overview
+Rich Legacy of 40 Years in Providing Packaging Solutions to our Partners
+1985
+Established
+16
+Manufacturing Units
+5000+
+Customer Base
+1,074,110 
+MTPA1 
+Global Capacity*
+Presence Across 
+150+
+Countries
+10,000+ 
+Workforce
+7bn+ 
+ Aseptic Liquid 
+Packs Capacity
+5.4 bn+ 
+PCR PET2 Bottles  
+Recycled
+64,330 MTPA 
+Chemicals
+Capacity
+74,317 MTPA 
+Recycling 
+Capacity
+300 mn+ 
+Tubes Capacity
+1,090 mn+ 
+Pouch Capacity 
+2
+*Note: The total capacity of 1 million+ MTPA includes resins at 211,020 MTPA (vPET Chips 168,000 + rPET Chips 43,020), base films at 618,160 MTPA, inks and adhesives at 64,330 MTPA, holography at 20,600 MTPA, flexible packaging at 
+100,000 MTPA, and aseptic liquid packaging at 60,000 MTPA.; The 31,297 MTPA MLP and moulding recycling capacity is not factored into the overall capacity calculation. 
+All logos displayed are the property of their respective organizations and are used solely for representational purposes.; 1. Metric tonnes per annum (MTPA) ; 2. Post-Consumer Recycled polyethylene terephthalate (PCR PET)
+
+>>>

@@ -1,0 +1,48 @@
+Company: SSDL (NSE/BSE symbol SSDL), an Indian listed company. Document: investor presentation filed 2026-06-02. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Saraswati Saree Depot Limited (SSDL), a major 
+sarees wholesaler, BEGAN IN 1966 AND IS ONE OF 
+INDIA’S LEADING PLAYER IN THE
+B2B SEGMENT of this Industry
+The company’s main revenue comes from sarees (over 
+90%), but they also wholesale OTHER WOMEN’S 
+APPAREL LIKE KURTIS, LEHENGAS, AND OTHER 
+WOMEN DRESS MATERIALS AS WELL AS 
+ACCESSORIES.
+IN 2015, SSDL MOVED TO A NEW 169,120 SQ. FT.
+FACILITY IN UCHGAON, KOLHAPUR, enhancing its 
+shopping experience with dedicated sections for various 
+apparel with expansion into ready made garments for 
+women in 2017
+SSDL SOURCES SAREES FROM OVER 900 WEAVERS 
+ACROSS MAJOR INDIAN HUBS like
+Surat, Varanasi, Mau, Madurai, Dharmavaram, Kolkata, 
+and Bengaluru
+THEIR ANNUAL FLAGSHIP EVENT
+"UTSAV", STARTED IN 2002, is a major sales driver, 
+contributing 13-15% to annual revenues with special 
+offers and exclusive collections.
+The company’s REVENUE GREW FROM Rs. 222.9
+CRORE IN FY2014
+to SALES EXCEEDING Rs. 600 CRORE IN FY2024, 
+GENERATING A CAGR OF 10.4% OVER THIS PERIOD 
+.
+01
+02
+03
+05
+04
+06
+Company Overview
+
+>>>

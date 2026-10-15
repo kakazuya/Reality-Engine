@@ -1,0 +1,49 @@
+Company: PIDILITIND (NSE/BSE symbol PIDILITIND), an Indian listed company. Document: investor presentation filed 2021-11-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Picillite 
+Notes to the Standalone Unaudited Financial Results:
+1.
+2.
+3.
+4.
+5. Other Income includes dividend received from a subsidiary amounting to Rs.96.20 Crores for quarter ended 30th June 2021 and six month ended 30th September 2021.
+6.
+7.
+8.
+9.
+10.
+     FOR AND ON BEHALF OF THE BOARD OF DIRECTORS
+Mumbai
+BHARAT PURI
+Dated : 10th November 2021
+Managing Director
+DIN: 02173566
+Previous periods' figures are regrouped to make them comparable with those of current period, wherever applicable.
+The Company granted options of 50,000 equity shares on 9th October 2021 and 56,250 equity shares on 9th November 2021 of face value of Re. 1/- each under Employee 
+Stock Option Plan - 2016 to the employees of the Company.
+---- 5 ----
+The above results have been reviewed by the Audit Committee and approved by the Board of Directors at their respective meetings held on 10th November 2021.
+Exceptional items represents diminution / impairment in value of investment in a subsidiary of Rs.0.45 Crores for year ended 31st March 2021.
+The Company has taken into account external and internal information for assessing possible impact of COVID -19 on various element of its financial results, including 
+recoverability of its assets.
+During the quarter, the Company has filed two merger applications with National Company Law Tribunal (NCLT)  with respect to merger of its wholly owned subsidiaries namely 
+Pidilite Adhesives Pvt. Ltd. and Cipy Polyurethanes Pvt. Ltd, Appointed date being 1st April 2022. The said merger applications have been heard by NCLT on 1st November 
+2021. NCLT order on the merger applications is awaited.
+The financial results of the Company have been prepared in accordance with Indian Accounting Standards ("Ind AS") notified under Section 133 of the Companies Act, 2013 
+('Act') read with Companies (Indian Accounting Standards) Rules, 2015, as amended. 
+The Statutory auditors have carried out a " Limited Review" of the above financial results for the quarter and six months ended 30th September 2021 and have issued an 
+unmodified opinion.
+As approved by the Members of the Company at the Annual General Meeting held on August 11, 2021, the Company has paid a final dividend of Rs 8.5 per equity share of the 
+face value of Re. 1 each aggregating Rs. 431.93 Crores.
+
+>>>

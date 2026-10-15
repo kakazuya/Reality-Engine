@@ -1,0 +1,62 @@
+Company: PARAGMILK (NSE/BSE symbol PARAGMILK), an Indian listed company. Document: investor presentation filed 2021-06-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Whey Protein
+Key Highlights
+Source: IMARC Report
+1US$ = INR 72
+• Whey Protein market is estimated at 35,000 MT, translating 
+into business potential of US$ 450 Million, growing upwards 
+of 25% 
+• Parag has the most integrated & largest whey processing 
+facility in the country and intends to dominate this market
+• We have introduced ‘Avvatar’ whey protein in the sports 
+nutrition category and are in process of launching various 
+products under the Health & Nutrition segment as well
+• Parag intends to not only have the Health & Nutrition 
+business as 7% of its portfolio in the medium term, but more 
+importantly, intends to drive its profitability and growth for 
+both Cheese & Whey businesses
+Category
+Market Size
+Historical 
+Growth Rates
+Target 
+Consumer 
+Group
+Market Players
+Sports 
+Nutrition 
+Segment
+US$ 225-300 
+Million
+25-30%
+Athletes, Sports 
+Enthusiasts, Gym-
+goers
+Almost 100% 
+Imported Products
+Health & 
+Nutrition 
+Segment
+US$ 225-300 
+Million
+25-30%
+Mass consumers 
+like children, 
+women, aged 
+people
+Few Large MNCs 
+are present
+39
+
+>>>

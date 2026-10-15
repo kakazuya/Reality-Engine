@@ -1,0 +1,39 @@
+Company: LEMONTREE (NSE/BSE symbol LEMONTREE), an Indian listed company. Document: investor presentation filed 2025-08-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+About Lemon Tree Hotels
+8-August-2025
+Q1 FY26 Earnings Presentation
+42
+Lemon Tree Hotels Limited (LTHL) is one of the largest hotel chains in India, and owns/leases/operates/franchises hotels 
+across the upscale, upper-midscale, midscale and economy segments. LTHL delivers differentiated yet superior service 
+offerings, with a compelling value proposition. The group offers seven brands to meet guests’ needs across all levels, viz. 
+Aurika Hotels & Resorts, Lemon Tree Premier, Lemon Tree Hotels, Red Fox Hotels by Lemon Tree Hotels, Keys Prima by 
+Lemon Tree Hotels, Keys Select by Lemon Tree Hotels and Keys Lite by Lemon Tree Hotels.
+LTHL opened its first hotel with 49 rooms in May 2004. Today, the company has a portfolio of 220+ hotels, which includes 
+over 110 operational hotels and more than 110 hotels set to open in India and internationally. Lemon Tree Hotels are located 
+across metro regions, including the NCR, Mumbai, Kolkata, Bengaluru, Hyderabad and Chennai, as well as numerous tier I, II 
+and III cities such as Pune, Ahmedabad, Chandigarh, Jaipur, Indore, Aurangabad, Udaipur, Visakhapatnam, Kochi, Ludhiana, 
+Thiruvananthapuram, Vijayawada etc. The company expanded internationally with hotels opening in Dubai in December 
+2019, in Bhutan in February 2020 and in Nepal in April 2024.
+To know more, visit lemontreehotels.com | aurikahotels.com | keyshotels.com
+For more information about us, please visit www.lemontreehotels.com or contact:
+Kapil Sharma (Chief Financial Officer) 
+Anoop Poojari
+Lemon Tree Hotels Ltd. 
+CDR India
+Tel: +91 11 4605 0174 / +91 11 4605 0153 
+Tel: 98330 90434
+E-mail: cfo@lemontreehotels.com   
+E-mail: anoop@cdr-india.com 
+
+>>>

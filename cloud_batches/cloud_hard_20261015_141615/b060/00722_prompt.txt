@@ -1,0 +1,47 @@
+Company: BAIKAKAJI (NSE/BSE symbol BAIKAKAJI), an Indian listed company. Document: investor presentation filed 2026-01-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Critical Growth Driver: India’s bottled water market is growing at an 12% CAGR, reaching 
+Rs.2,49,780 crores by 2034 
+Industry Overview: End-use Market Drivers
+Beverage & Packaged Water
+Parameter
+2025
+2030
+2034
+CAGR
+Market Value (USD) 
+ $3.6-8.28 Billion 
+ $13.65 Billion 
+ $29.70 Billion 
+10.51-12%
+Market Value (INR) 
+ Rs.30,276-69,636 Cr 
+ Rs.1,14,865 Cr 
+ Rs.2,49,780 Cr 
+10.51-12%
+■ India Packaged Drinking Water Market
+INDIA BEVERAGE INDUSTRY
+2026 Market Size:
+$81.73 Billion
+(Rs.6,87,543 Crores)
+2035 Market Size:
+$154.67 Billion 
+(Rs.13,00,735 Crores)
+CAGR:
+6.80%
+This Beverage industry growth directly translates to surging demand for PET preforms and closures Company’s core products.
+Data compiled from: Mordor Intelligence, IMARC Group, Future Market Insights, Grand View Research, Fortune Business Insights, Market Research Future, Towards 
+Packaging, Markets and Markets, Expert Market Research, Persistence Market Research
+Source: https://www.imarcgroup.com/india-bottled-water-market
+
+>>>

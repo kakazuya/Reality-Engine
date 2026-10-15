@@ -1,0 +1,68 @@
+Company: HONAUT (NSE/BSE symbol HONAUT), an Indian listed company. Document: investor presentation filed 2023-08-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Honeywell Confidential - ©2023 by Honeywell International Inc. All rights reserved.
+HAIL - HEALTH, SAFETY AND ENVIRONMENT (HSE)
+1
+EXTENDING SAFETY CULTURE BEYOND THE ORGANIZATION
+TOTAL CASES INCIDENT RATE
+SAFETY OBSERVATIONS
+SAFETY OBSERVATION / PERSON
+(Accidents per 200,000-man hours)
+TOTAL CASES INCIDENT RATE (TCIR)
+COMMITMENT
+SAFETY FOR:
+Our Employees
+Our Customers
+Our Contractors
+Our Society
+1
+2
+3
+4
+*
+National Safety Week ‘23
+Fire Safety Campaign – Fire Brigade
+World Environment Day
+• Safety Observations for 2023 are pro-rated as per the trend 
+of past years to represent full year
+0
+0
+0
+0
+0.3
+0.6
+0.9
+2021
+2022
+2023
+Ergonomics Training
+5.3
+5.4
+5.3
+4.8
+4.9
+5
+5.1
+5.2
+5.3
+5.4
+5.5
+5.6
+5.7
+5.8
+5.3
+2021
+20222
+2023
+
+>>>

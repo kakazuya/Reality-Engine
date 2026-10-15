@@ -1,0 +1,45 @@
+Company: LEMONTREE (NSE/BSE symbol LEMONTREE), an Indian listed company. Document: investor presentation filed 2025-05-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Lemon Tree Hotel Network Revenue – Delta in Q4 FY25 vs Q4 FY24
+29-May-2025
+Q4 FY25 Earnings Presentation
+25
+Hotel Network Revenue
+(Rs. Cr)
+Q4 FY25 
+Q4 FY24
+Q4 FY25 vs Q4 FY24 Change 
+(%)
+Owned Hotels
+363 (62% of total)
+313 (63% of total)
+16%
+Managed and Franchised Hotels*
+218 (38% of total)
+184 (37% of total)
+19%
+Total Network Revenue
+582  (100% of total)
+497 (100%of total)
+17%
+497
+50
+35
+582
+Q4 FY24 Total Network Revenue
+Owned Hotels
+Managed and Franchised Hotels
+Q4 FY25 Total Network Revenue
+* Excludes fees from managed & franchised hotels
+
+>>>

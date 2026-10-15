@@ -1,0 +1,256 @@
+Company: CHOICEIN (NSE/BSE symbol CHOICEIN), an Indian listed company. Document: investor presentation filed 2025-10-16. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Simple User Interface, In-opp Curated Baskets, Diverse Investment Products 
+< 
+Set Payment Preferences 
+Select Bank Account 
+Axis Bank 
+*2085
+V 
+Pay Via 
+@ 
+UPI App 
+Upto !25,000 
+I Note: Select the same bank on UPI App 
+GPay 
+Phone Pe 
+Others 
+Q 
+UPIID 
+Q 
+NET BANKING 
+Upto "25,000 
+Limit as per bank 
+Proceed To Pay 
+Powering Seamless 
+Mutual Fund Payments 
+on FinX 
+< 
+Strategy Builder 
+NIFTY 50 25333.15 187.65 0.75% 
+Editor 
+Summary 
+Payoff 
+P&L 
+Greeks 
+Select Strateiw v 
+A dd+ 
+è 
+1 x NIFTY 20 OCT 2025 25550 CE 
+@:: 
+1 x NIFTY 20 OCT 2025 25750 CE 
+é 
+1 x NIFTY 20 OCT 2025 25950 CE 
+[!I 
+1 x NIFTY 20 OCT 2025 26150 CE 
+Lots 1 
+v 
+Clear All 
+.. 
+SaveAs
+--. 
+m 
+Swipe to Trade All 
+X 
+Strategy Chart 
+Q 
+42.05 
+@ 
+V 
+9.5 
+@ 
+V 
+2.7 
+I!!)" 
+V 
+1.35 
+@ 
+V 
+Net Premium 31.20 
+Easy Ready-Made & 
+Custom Strategy 
+Builder on FinX App 
+Choice 
+The R(ofEOl'JW'lg 
+Invest v 
+Resources v 
+About Us 
+Be a Partner v 
+Pricing 
+Contact 
+Choice Group v 
+Home > Stock > Choice International Share price 
+Login 
+Open Demat Account 
+Choice International Share Price 
+CHOICEIN 
+
+ l=i•+ 11Ui 
+822.5 7.65 (0.94%) 't 
+1111 BSE 
+Last updated on 15 Oct, 2025 I 14:48 1ST 
+O The current prices are delayed, login to your account for live prices 
+Choice International Share Key Metrics 
+Volume 
+Market Cap 
+LTQ@)LTP 
+Today's High 
+825.85 
+Today's Low 
+814.45 
+52 Week Low 
+438.45 
+SEO-Driven Pages for New 
+User Acquisition 
+52 Week High 
+836.80 
+Ei+bi& 
+3.82 L 
+16757.84 CR 
+*Some features are available only on Android and Website
+Choice 
+The Joy of Earning 
+NIFTY 50 25,145.50 (·0.32 %) 
+BANKNIFTY 56.49 6 45 (·0.2 3 %) 
+FINNIFTY 2 6,828.30 (·0.21 %) 
+SENSEX 82.02 9 98 (·0.36 %) INDIAVIX 1116 (1.32 %) 
+MIDCPNIFTY 13,03510 (·115 %) 
+
+Choice 
+ FinX 
+a_ Search Stock Options 
+t'.) 
+Watchlist1 
+I . .. ,.
+, 
+I 
+JIOFIN 9 Board Mee1ing 
+NSE iEO) 
+I 
+RELIANCE : Board Mee1ing 
+NSE (EO) 
+I 
+BANKBAROOA 
+NSE iEO) 
+I 
+INFY 9 Board Mee1ing 
+NSE iEO) 
+I 
+TCS OIOivldend 
+NSE (EO) 
+I 
+CHOlCEIN  Bo.ard Mee1ing 
+NSE iEO) 
+I 
+CHOlCEIN  Boatd Mettling 
+BSE (A) 
+I GOLD 
+Sort By 
+m♦.AI 
+305.60 
+- 2.85(-0.92 ") 
+1,375.90 
+0.90 (0.07 "' 
+263.95 
+- 415(-1.55") 
+1,48 9.90 
+-3.30(- 0.22 ") 
+2,960.30 
+-46.90(-1.56") 
+814.85 
+·6.65 i•O 81 %) 
+814.40 
+-8.10 (-0.98 "' 
+125 ,675.00 
+Dashboard 
+Markets • 
+Positions 
+Holdings 
+Orderbook 
+Q CHOICEIN 
+D 
+,: 
+oo 
+Save 
+v 
+Jx 
+00 
+sa-.. 
+Expand II QANGELON 
+D 
+00 
+fx 
+gg 
+ì:'; 
+1 
+CHOICE INTERNATIONAL LTO • 10 • NSE 
+-
+-I-
+D824.00 H829.75 L81l.15 C814.85 ·6.65 (·0.81ô) 
+/ 
+. 52W H/Lcloseclose 
+= 
+= 
+D 
+0 
+MA 9 close 0 798.-10 
+!' 
+@ 
+MACO 12 26 close 9 0.86 3.35 2.-19
+õ 
+.?'1a 
+ê11 ••.. .., •• u- .. ,- .. -..ë 
+0 
+Jul 
+Aue 
+S.p 
+Oct 
+@) 
+I 
+[ ANGEL ONE LIMITEO • 1 D • NSE ... [ 
+8-40.00 
+-,-
+I 
+02,363 90 H2,◄35 00 L2,347 40 (2,404 60 -t-6 
+········--
+.
+, 
+• 
+1 
+/ 
+iw H/L close close 
+ =o 
+# 9 close 0 2,269 02 
+::•;''	,. 
+1◄0.00 
+T 
+720.00 Q 
+700.00 6/ 
+680.00 0 
+20.00 
+@ 
+I
+.?'1a 
+© 
+@) 
+; MACO 12 26 close 9 32.88 -6.89 -39.77 
+d' 
+Date Range .., 
+19:33:35 (UTC+S:30) 
+% log auto 
+d' 
+Manage 
+Enhanced Charting 
+Experience on App & Website 
+
+>>>

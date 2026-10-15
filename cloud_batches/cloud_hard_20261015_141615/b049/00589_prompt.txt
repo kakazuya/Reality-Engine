@@ -1,0 +1,102 @@
+Company: ADANIGREEN (NSE/BSE symbol ADANIGREEN), an Indian listed company. Document: investor presentation filed 2021-09-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+23
+AGEL– Social philosophy
+United Nations Sustainable 
+Development Goals 2030
+Our Key Social Initiatives mapped to UNSDG
+–
+Winterwear distribution to underprivileged children, distribution
+of sports material to schools, COVID relief activities, improving
+health/ sanitization etc
+–
+Opportunities given to local talent
+–
+Inclusive
+growth
+of
+employees
+/
+workers
+along
+with
+the
+organization
+–
+NIL lost time injury frequency rate in FY21
+–
+Cost efficient operation through ENOC
+–
+Development
+of
+semi-automatic
+module
+cleaning
+system
+to
+reduce water usage by 46%
+–
+Installation of solar street lights in villages
+Gujarat
+–
+Enhancing quality of education through adoption of government
+primary schools
+–
+Current average portfolio tariff of Rs. 3.14 per unit much lower
+than APPC of Rs. 3.85 per unit
+–
+25 GW renewable capacity targeted by 2025
+–
+Barren/Non-cultivated land used for plants preventing impact on
+farmers’ livelihood
+–
+Critical Habitat Assessment, Bird & Bat Monitoring & various
+Environment studies at project development stage
+Education
+4. Quality Education
+Health
+3.  Good Health & Well Being
+Livelihood
+8.  Decent Work & Economic Growth
+Ecology
+7.   Affordable and Clean Energy
+13. Climate Action 
+15. Life on Land
+Sustainable Innovation
+9.
+Industry, Innovation & Infrastructure
+11. Sustainable Cities & Communities
+Tamil Nadu
+–
+Use of Single-use-plastic reduced to ‘zero’ from both supply chain
+and internal operation at AGEL’s largest solar plant of 648 MW in
+Kamuthi, Tamil Nadu
+–
+Cleaned and de-silted community water ponds to create extra
+water holding and ground water recharge capacity that is 1.5x of
+water consumption at the Kamuthi plant
+Responsible Consumption & Production
+12. Responsible Consumption & Production
+14. Life below Water
+Rajasthan & other 
+Locations
+Multiple 
+Locations
+Multiple 
+Locations
+Multiple 
+Locations
+Key Focus Areas
+Social licensing through alignment with UNSDGs with focus on renewable energy, inclusive growth & sustainable innovation
+
+>>>

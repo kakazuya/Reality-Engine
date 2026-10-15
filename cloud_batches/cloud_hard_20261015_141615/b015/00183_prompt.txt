@@ -1,0 +1,144 @@
+Company: JINDALSTEL (NSE/BSE symbol JINDALSTEL), an Indian listed company. Document: investor presentation filed 2023-08-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Jindal Steel & Power
+Key Steel and RM Prices Trend
+Iron Ore fines and Lumps (Odisha Index)
+Fig in `/tonnes
+Source: Steelmint
+Coking Coal: Premium HCC (Australia origin)
+Fig in USD/tonnes
+Domestic Pellet prices (Barbil)
+Fig in `/tonnes
+India HRC vs Rebar
+Fig in `/tonnes
+HRC is now trading at a 
+premium to TMT again 
+after trading at discount 
+for around four months 
+from Dec’22 to Mar’23. 
+The premium has been 
+widening over the last 3 
+months and is expected 
+to narrow post 
+monsoon 
+Odisha iron ore fines 
+prices have corrected in 
+the recent times are but 
+still at premium to 
+NMDC prices adjusted 
+for grade
+10
+76500
+55400
+73500
+52900
+45000
+55000
+65000
+75000
+85000
+Apr-22
+May-22
+Jun-22
+Jul-22
+Aug-22
+Sep-22
+Oct-22
+Nov-22
+Dec-22
+Jan-23
+Feb-23
+Mar-23
+Apr-23
+May-23
+Jun-23
+HRC Mumbai
+Primary TMT
+12550
+6300
+8200
+6000
+8000
+10000
+12000
+Apr-22
+May-22
+Jun-22
+Jul-22
+Aug-22
+Sep-22
+Oct-22
+Nov-22
+Dec-22
+Jan-23
+Feb-23
+Mar-23
+Apr-23
+May-23
+Jun-23
+543
+209
+250
+200
+250
+300
+350
+400
+450
+500
+550
+600
+Apr-22
+May-22
+Jun-22
+Jul-22
+Aug-22
+Sep-22
+Oct-22
+Nov-22
+Dec-22
+Jan-23
+Feb-23
+Mar-23
+Apr-23
+May-23
+Jun-23
+6000
+5200
+9500
+7500
+2,000
+4,000
+6,000
+8,000
+10,000
+Apr-22
+May-22
+Jun-22
+Jul-22
+Aug-22
+Sep-22
+Oct-22
+Nov-22
+Dec-22
+Jan-23
+Feb-23
+Mar-23
+Apr-23
+May-23
+Jun-23
+Iron One Fine (0-10 mm) - 62 Fe
+Iron One Lumps (5-18 mm) - 63 Fe
+Macro and Sectoral Update
+
+>>>

@@ -1,0 +1,65 @@
+Company: UNIHEALTH (NSE/BSE symbol UNIHEALTH), an Indian listed company. Document: investor presentation filed 2025-05-26. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Investor Presentation
+48
+Victoria Hospital Limited (Uganda) - Standalone Financials
+Total Revenue
+UGX 37,739 m
+(Rs. 36.00 cr.)
+EBIDTA %
+39.94%
+PAT %
+30.01%
+Total Debt
+UGX 11,025 m
+Debt : Equity
+0.33
+ROCE
+46.96%
+Particulars
+FY 2024-25
+FY 2023-24
+% Change
+UGX 37,739 m
+UGX 27,444 m
+37.51%
+UGX 22,665 m
+UGX 18,059 m
+25.51%
+UGX 15,074 m
+UGX 9,385 m
+60.62%
+UGX 1,580 m
+UGX 1,575 m
+0.32%
+UGX 1,196 m
+UGX 2,416 m
+-50.50%
+UGX 972 m
+UGX 2,497 m
+-61.07%
+UGX 11,326 m
+UGX 2,895 m
+291.23%
+UGX 33,645 m
+UGX 22,319 m
+50.75%
+UGX 8,420 m
+UGX 9,986 m
+-15.68%
+Rate of Exchange (v/s INR)
+Rs. 0.02278430
+Rs. 0.02200387
+3.55%
+
+>>>

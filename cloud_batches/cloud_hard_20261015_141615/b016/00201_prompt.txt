@@ -1,0 +1,86 @@
+Company: KPIGREEN (NSE/BSE symbol KPIGREEN), an Indian listed company. Document: investor presentation filed 2024-08-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+KPI GREEN ENERGY LIMITED | Corporate Presenta tio n 2024
+8
+Business Segments
+• Leading Independent Power 
+Producer (IPP), we are a reliable 
+supplier of renewable power to 
+esteemed business houses 
+through Power Purchase 
+Agreements (PPAs). 
+• Plants strategically located 
+across 38 locations in the 
+Bharuch, Bhavnagar, 
+Banaskantha, Bhuj, Kutch, 
+Narmada,  Rajkot, 
+Surendranagar,  and Tapi 
+districts of Gujarat.
+• Generate clean and sustainable 
+energy. 
+• Proactively energizing hybrid 
+renewable energy projects and 
+integrating them into existing 
+power generation asset 
+portfolio.
+Captive Power Producer 
+(CPP)
+• Specializing in developing, transferring, 
+operating, and maintaining grid-
+connected solar power projects for our 
+valued Captive Power Producer (CPP) 
+customers. 
+• Offer CPP customers the opportunity 
+to own solar and hybrid power projects 
+tailored to meet their specific 
+requirements. 
+• Helping companies to reduce their 
+electricity expenses significantly 
+through captive generation, leveraging 
+the cost-arbitrage between captive 
+solar and hybrid plants & power 
+supplied from DISCOMs.
+• Provides Operation and Maintenance 
+Services (O&M) through separate 
+agreements to ensure continued 
+efficiency and guaranteed performance 
+of installations, throughout project 
+lifecycle.
+13+ MW IPP, 15+ MW CPP 
+Energized in Q1FY25
+28+ MW
+Portfolio Hybrid CUF
+(on AC basis) in Q1FY25 
+52.90%
+Revenue share of
+IPP in Q1FY25
+13%
+Revenue share of 
+CPP in Q1FY25
+87%
+537+ MW IPP, 723+MW in 
+Hybrid IPP, 736+ MW CPP 
+& 331+ MW in Hybrid CPP 
+confirmed orders till 
+August 7, 2024
+2,327+ MW 
+127+ MW IPP, 44+ MW 
+Hybrid IPP, 278+ MW 
+CPP & 24+ MW Hybrid 
+CPP Energized till 
+Q1FY25
+473+ MW
+Independent Power Producer 
+(IPP)
+
+>>>

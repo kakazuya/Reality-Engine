@@ -1,0 +1,53 @@
+Company: GABRIEL (NSE/BSE symbol GABRIEL), an Indian listed company. Document: investor presentation filed 2024-02-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Gabriel India Ltd. |  www.anandgroupindia.com/gabrielindia/
+Highest EV Sales in 
+Uttar Pradesh in the 
+month of Dec’23
+21.37%
+GIL SOB
+2W sales 
+( Q3, FY 23-24)
+73% 
+Top Selling Models
+1.
+Ola S1 Pro
+2.
+TVS iQube
+3.
+Bajaj Chetak
+4.
+Ather 450x
+5.
+Ampere Magnus EX
+6.
+Hero Vida V1 Pro
+7.
+Joy e-bike Glob
+GIL growth - EV-2W  
+Q3 FY24 w.r.t Q3 FY23
+40% 
+GABRIEL INDIA LTD: WELL– ENTRENCHED AMONGST ALL 2W/3W EV PLAYERS
+22
+GIL SOB 
+3W sales 
+( Q3, FY 23-24)
+7% 
+GIL growth - EV-3W  
+Q3 FY24 w.r.t Q3 FY23
+60% 
+GIL Presence
+Source: jmkresearch.com
+Source: zecat.in/ev-sales-report-december-2023
+
+>>>

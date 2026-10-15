@@ -1,0 +1,129 @@
+Company: AWL (NSE/BSE symbol AWL), an Indian listed company. Document: investor presentation filed 2025-07-15. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Industry Volume Growth Trends: Retail Sales
+10
+Edible Oil
+(incl. Mustard)
+Wheat Flour
+Basmati Rice
+13%
+5%
+3%
+0%
+2%
+5%
+0%
+1%
+15%
+7%
+3%
+-1%
+2%
+4%
+-0.10%
+0%
+10%
+2%
+2%
+1%
+2%
+8%
+0%
+3%
+Q2'24
+Q3'24
+Q4'24
+Q1'25
+Q2'25
+Q3'25
+Q4'25
+Q1'26
+Total
+Urban
+Rural
+13%
+4%
+3%
+-2%
+0%
+4%
+-1%
+4%
+12%
+2%
+-2%
+-6%
+-4%
+-1%
+-4%
+-1%
+16%
+11%
+21%
+15%
+14%
+24%
+12%
+19%
+Q2'24
+Q3'24
+Q4'24
+Q1'25
+Q2'25
+Q3'25
+Q4'25
+Q1'26
+Total
+Urban
+Rural
+10.0%
+5.5%
+7.8%
+FY'24
+FY'25
+Q1'26
+Overall %
+▪
+Industry growth has been subdued for last few quarters in Edible Oil & Wheat Flour; Rural has been growing at a faster rate
+▪
+In Q1’26, Edible Oil (ROCP) increased by 1% YoY in the backdrop of elevated edible oil prices
+▪
+In Q1’26, the Wheat Flour industry grew 4% YoY, while Basmati Rice registered 7.8% YoY growth
+Source: Nielsen
+ROCP: Refined Oil Consumer Pack
+■ 
+■ 
+■ 
+·
+•
+-
+-
+-
+-
+_L 
+- ----
+■-■ 
+\ 
+-
+■ 
+■ 
+■ 
+111 • 1 _ I .l... 1 
+I __ I _._ I 
+. J_I 
+■ 
+-
+fi rtune· 
+edible oils end foods 
+
+>>>

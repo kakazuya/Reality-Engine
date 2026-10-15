@@ -1,0 +1,43 @@
+Company: LICI (NSE/BSE symbol LICI), an Indian listed company. Document: investor presentation filed 2025-08-07. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Massive Distribution Network spread across India capable of delivering multi-fold growth
+Snapshot of LIC’s vast distribution capabilities
+14.86¹ lacs
+Agents exclusive to LIC
+36
+States & UTs
+Covering 89% districts vs 79% 
+combined for sector (ex-LIC)4
+26
+Source: Corporation data as on 30.06.2025; Note 1. Including 39,564 Premium Points; 2. Including banks; 3. Out of 14.86 lac agents; 4. As of March 31, 2024 as per the IRDAI Annual Report 2023-2024. ⁵ Including four SSS units(not included P&GS units).
+Enhancing focus on building Omni-channel distribution network
+1772
+Corporate Agents
+295
+Brokers
+165
+Insurance Marketing Firms
+39,564³ 
+Premium points +2,700 MICRO 
+Insurance Premium Points
+18,463
+Total Micro-insurance agents
+3,636
+Branch and satellite offices⁵
+94
+Bancassurance partnerships
+13%
+Single state concentration 
+geographically diversified
+
+>>>

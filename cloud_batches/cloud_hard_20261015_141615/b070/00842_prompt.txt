@@ -1,0 +1,127 @@
+Company: PHOENIXLTD (NSE/BSE symbol PHOENIXLTD), an Indian listed company. Document: investor presentation filed 2023-11-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Upgrades/New Credit Rating in the last 12 months
+Sr. No.
+Company
+Rating Agency
+Rated Amount
+(Rs. mn)
+Rating as on 
+30-September-22
+Current Rating
+Remarks
+1
+The Phoenix Mills Limited
+India Ratings
+7,500 
+A+/ Stable
+AA-/ Stable
+Upgraded by 1 notch with stable outlook
+CRISIL
+4,000
+A+/ Stable
+AA-/ Stable
+Upgraded by 1 notch with stable outlook
+2
+Pallazzio Hotels & Leisure Limited
+CRISIL
+5,031
+A- / Stable
+A / Stable
+Upgraded by 1 notch with stable outlook
+3
+Island Star Mall Developers Pvt. Ltd
+CRISIL
+5,550
+A / Stable
+A+ / Stable
+Upgraded by 1 notch with stable outlook
+ICRA
+2,450
+NA
+A+ / Stable
+ICRA has rated the entity for first time and 
+assigned a rating of A+ with stable outlook
+4
+Classic Mall Development Co.  Ltd
+India Ratings
+6,000
+NA
+A/Stable
+Existing facilities re-financed, and new facility 
+rated for the first time by India Ratings.
+5
+Blackwood Developers Pvt. Ltd
+CRISIL
+1,110
+BBB / Stable
+A- / Stable
+Upgraded by 2 notches with stable outlook
+6
+Vamona Developers Pvt. Ltd.
+CRISIL
+6,500
+A / Stable
+A+ / Stable
+Upgraded by 1 notch with stable outlook
+7
+UPAL Developers Pvt. Ltd.
+CRISIL
+1,110
+A-/ Stable
+A / Stable
+Upgraded by 1 notch with stable outlook
+8
+Sparkle One Mall Developers Pvt. 
+Ltd.
+ICRA
+4,000
+NA
+A-/ Stable
+Entity rated for first time and rating is for under 
+construction asset which assigned at A- with 
+stable outlook
+9
+Alyssum Mall Developers Pvt. Ltd.
+ICRA
+4,000
+NA
+A-/ Stable
+Entity rated for first time and rating is for under 
+construction asset which assigned at A- with 
+stable outlook
+10
+SGH Realty LLP
+ICRA
+4,300
+BBB+/Stable
+A-/Stable
+Upgraded by 1 notch with stable outlook
+11
+Destiny Retail Mall Developers 
+Pvt.Ltd.
+India Ratings
+5,500
+A-/ Stable
+A / Stable
+Upgraded by 1 notch with stable outlook
+12
+Offbeat Developers Pvt. Ltd.
+India Rating
+8,000
+A-/ Stable
+A / Stable
+Upgraded by 1 notch with stable outlook
+55
+
+>>>

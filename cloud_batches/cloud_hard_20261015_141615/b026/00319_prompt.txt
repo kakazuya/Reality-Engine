@@ -1,0 +1,90 @@
+Company: DDEVPLSTIK (NSE/BSE symbol DDEVPLSTIK), an Indian listed company. Document: investor presentation filed 2025-07-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Operating in 5 High Growth Categories with 200+SKU’s
+10
+Source - https://www.investindia.gov.in/sector/consumer-goods/consumer-durables#:~:text=The%20industry%20has%20reached%20%2413.6,an%20average%20to%20this%20industry.
+❑
+Extensively
+used
+in
+packaging
+industry
+like
+woven bag and cement bag.
+❑
+We stand as the leading
+organized
+player
+in
+the
+highly
+fragmented
+unorganized market.
+❑
+Margins- ~3-5%
+❑
+Niche Product with high margin
+❑
+Widely used in Wire & Cable 
+Industry, Construction Industry
+❑
+Global polymer compounding 
+market is expected to reach 
+USD 115bn by FY30
+❑
+Margins ~4-6%
+❑
+Global leader in XLPE and EHV 
+compounds since 1980
+❑
+Only player in country to offer 
+products from the range of 66kv 
+to 132kv
+❑
+Major revenue contributor~50% 
+market share in Sioplas and 
+~33% in XLPE compounds
+❑
+Margins- ~8-12%
+❑
+Mostly used in White Goods
+& FMEG Industry
+❑
+High growth potential with
+very less Margins- ~10-15%
+❑
+Amongst the two producers
+of HFFR in India
+❑
+HFFR is expected to replace
+PVC house wiring cables and
+the govt mandate has come to
+use/replace
+in
+mall,
+metro
+stations, hospitals, schools.
+❑
+Margins- ~10-12%
+Antifab/Filled 
+Compounds/Master 
+Batches
+PVC Compounds
+Sioplas/XLPE 
+Compounds/Semicons
+Engineering Plastic 
+Compounds
+Halogen Free Flame 
+Retardant (HFFR) 
+
+>>>

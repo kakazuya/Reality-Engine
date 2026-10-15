@@ -1,0 +1,70 @@
+Company: BAJFINANCE (NSE/BSE symbol BAJFINANCE), an Indian listed company. Document: investor presentation filed 2026-04-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+27
+Management assessment - FY26 update
+(before one-time actions and presentation change)
+#
+Particulars
+What we said 
+What we did
+Status
+1
+Customer franchise addition
+14 - 16 MM
+17.51 MM
+2
+AUM growth
+24% - 25%
+22%
+3
+Net Interest Margin (NIM)
+Stable NIM 
+Marginally lower
+4
+Fee and other income
+13%-15%
+17%
+5
+Opex to Net total income improvement
+40 - 50 bps
+36 bps
+6
+Credit cost 
+1.85% - 1.95%
+1.93%
+7
+Profitability (PAT Growth) 
+Optimistic
+24%
+8
+ROA
+4.4% - 4.6%
+4.6%
+9
+ROE
+19% - 20%
+19.2%
+10
+GNPA
+< 1.4%
+1.01%
+11
+NNPA
+< 0.5%
+0.41%
+12
+FINAI Transformation
+AI across processes
+On track
+
+>>>

@@ -1,0 +1,85 @@
+Company: ABCAPITAL (NSE/BSE symbol ABCAPITAL), an Indian listed company. Document: investor presentation filed 2026-05-04. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Strong growth momentum across businesses in FY26
+05
+1. As of March 31, 2026  2. For Q4 FY26  3. For March 2026  4.Among SAHI players
+Standalone -
+NBFC segment
+27% y-o-y
+Profitability
+Credit Quality1 (GS2 & GS3)
+QAAUM Growth2
+Domestic QAAUM
+Profitability
+Quality
+Equity QAAUM
+Operating Profit
+ ₹ 1,051 crore
+Premium Growth
+Margin & Combined Ratio
+Persistency & Market Share 
+Individual FYP
+15% y-o-y
+Gross Premium4
+39% y-o-y
+53% y-o-y
+Combined Ratio
+103% 
+(FY25: 105%)
+Housing
+Net VNB Margin 
+20.6%
+8% q-o-q
+12% q-o-q
+₹ 1,59,916 crore
+₹ 47,452 crore
+₹ 4,35,866 crore
+₹ 1,97,374 crore
+Market Share4
+13.7%
+11% y-o-y
+13th month 86%
+PAT ₹ 3,001 crore
+2.25% RoA
+PAT ₹ 647 crore
+1.88% RoA
+136 bps y-o-y
+63 bps y-o-y
+38 bps q-o-q
+19 bps q-o-q
+2.42%
+0.76%
+Individual MAAUM3
+₹ 1,99,373 crore 
+Folios1
+10.97 mn
+61st month 58%
+8% y-o-y
+110 bps y-o-y
+Lending AUM1
+Asset Management
+Life 
+Insurance
+Health
+ Insurance
+Profit After Tax
+ ₹ 975 crore
+20% y-o-y
+101% y-o-y
+3% y-o-y
+5% y-o-y
+260 bps y-o-y
+14% y-o-y
+17% y-o-y
+
+>>>

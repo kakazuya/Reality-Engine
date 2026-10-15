@@ -1,0 +1,175 @@
+Company: ROSSARI (NSE/BSE symbol ROSSARI), an Indian listed company. Document: investor presentation filed 2026-07-19. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Delivering Value and Maintaining Synergy Along the Way
+2003 - 04
+•
+Co-founded by Edward Menezes and 
+Sunil Srinivasan Chari in 2003
+•
+Acquired a ~9 acre plot of land at
+Silvassa
+2006 - 08
+•
+Established a large-scale manufacturing 
+facility at Silvassa
+•
+Awarded the status of ‘One Star Export 
+House’ by the Government of India
+•
+Received ISO certification 9001:2000 for plants 
+at Silvassa and 14001:2004 in 2008
+•
+Awarded as the ‘Corp Excel 2008’ National 
+MSME from a list of 27,000 companies by RBL
+•
+Diversified into Animal Health and Nutrition 
+(AHN) and Construction Chemicals
+2009 - 11
+•
+Received the ‘Frost and Sullivan Award’ for 
+customer value enhancement of industrial 
+enzymes
+•
+Approved its textile auxiliaries’ range by the 
+Global Organic Textile Standards
+•
+Recognised as a leading innovator in the 
+textile industry
+•
+Commenced supply of Animal Health and 
+Nutrition (AHN) products to Zoetis, one of 
+the world’s largest producers of medicine 
+and vaccines for pets and livestock
+2013 - 15
+•
+Launched HPPC (Home, Personal Care and 
+Performance Chemicals) division with an 
+initial focus on Laundry and Industrial 
+Cleaning Chemicals
+•
+Established a representative office to cater 
+to the textile division in Dhaka, Bangladesh
+•
+Formed a joint venture with the German 
+company – Buzil Werk Wagner
+•
+Acquired 13 acres of land at Dahej GIDC 
+(Bharuch, Gujarat)
+•
+Commenced supplies to one of the leading 
+washing machine / dish washer manufacturers 
+for laundry detergent and dishwasher liquid 
+brands
+2016 - 19
+•
+Awarded the ‘Jamnalal Bajaj Award for Fair 
+Business Practices’
+•
+Bestowed with the ‘SME 100 Award’ from 
+the Axis Bank
+•
+Received the ‘Best Vendor Award’ from 
+Arvind Mills
+•
+Bagged the ‘Economic Times Award for 
+Innovation and Sustainability’
+•
+Acquired Lozalo International – a prominent 
+branded veterinary cosmetic products company
+•
+Crossed the turnover of ` 5,000 million
+2020 - 21
+•
+Launched an IPO successfully and Rossari
+got listed publicly on the NSE and BSE
+•
+Became a Zero-Debt Company
+•
+Operationalised Rossari Centre of Excellence, 
+the Company’s new state-of-the-art and certified 
+R&D laboratory, strategically located on the IIT 
+campus in Mumbai
+•
+Fully commissioned all phases of the greenfield 
+manufacturing facility at Dahej, Gujarat
+•
+Tied up with CSIA and Mumbai Airport, to place 
+branded dispensers and supply sanitisers for
+the use of passengers
+•
+Forayed into e-commerce by listing HPPC 
+products on the platform of Amazon
+2021 - 22
+•
+Issued ` 3000 million to existing institutional investors and buyers 
+preferentially
+•
+March 2021 - Winner of Golden Peacock Business Excellence 
+Awards
+•
+In May 2021, Rossari Biotech acquired Unitop Chemicals, a
+manufacturer of surfactants and specialty chemicals. This 
+acquisition expanded Rossari's product portfolio and market 
+presence.
+•
+Established high-tech distillation manufacturing facilities at Sarigam
+•
+July 2021 - Rossari Biotech made the strategic investment in 
+Romakk Chemicals.
+•
+The acquisition of Trio by Rossari Biotech took place in August 2021. 
+This strategic acquisition was a significant milestone for Rossari 
+Biotech, as it aimed to strengthen its product portfolio and market 
+position in the specialty chemicals industry.
+2022 - 24
+•
+Golden Peacock Awards for Innovative 
+Product/Service - Dr. Nanoxa in April 2022 and for
+Innovative Product/Service - Flap-Based UniDirectional
+Waterless and Odourless Urinal System in February, 2024
+•
+July 2023 - BioSpectrum Excellence Awards 2023 -
+Rossari received the award for Best Indian Industrial 
+Enzyme Company for the years 2022 and 2021
+•
+December 2023 - FICCI - Special Jury's Award in 
+"Innovation in Water Technology" Category (This was 
+awarded to Naturesani Pvt. Ltd. for No Odour, No Water 
+Urinal Bowls)
+•
+Acquired Freshee, Naturesani (only products and 
+technology) and Optus (All Under BRPL)
+•
+February 2024: PMFAI - Company of the Year Award -
+Awarded to Unitop Chemicals Pvt. Ltd.
+2024 - 26
+•
+Expanded global footprint with incorporation of 
+subsidiaries in DMCC, Jafza, Thailand, KSA and 
+Singapore
+•
+Additional capacity expansion  by 50,000 MTPA 
+across ethylene oxide derivatives
+•
+Acquired ~5.36 acres of land at Dahej GIDC 
+(Bharuch, Gujarat) 
+•
+Set up of state-of-the-art multi application R&D, at 
+Koparkhairane, Navi Mumbai
+14
+A 25-Year Journey ofTransformation
+Looking back in time Our Company was initially incorporated as ‘Rossari Labtech’ in March, 2003, as a partnership firm. In the same year, in December,the name of the partnership firmwas changed to ‘Rossari Biotech’ and the
+firm was further converted into a joint stock company in August, 2009, as ‘Rossari Biotech Limited’. Today, the Company is a pioneer in the Indian specialty chemicals market, and is recognised as a reputable brand within this
+industry.
+
+>>>

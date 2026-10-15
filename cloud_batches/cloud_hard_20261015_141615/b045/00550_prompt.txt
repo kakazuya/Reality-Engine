@@ -1,0 +1,101 @@
+Company: SHRIRAMFIN (NSE/BSE symbol SHRIRAMFIN), an Indian listed company. Document: investor presentation filed 2024-04-26. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+SHRIRAM FINANCE LIMITED (formerly Shriram Transport Finance Company Limited) 
+CIN: L65191TN1979PLC007874 
+Regd. Office: Sri Towers, 14A, South Phase, Industrial Estate, Guindy, Chennai — 600 032, Tamil Nadu. 
+Tel. No: +91 44 4852 4666, Fax: +91 44 4852 5666, Website-www.shriramfinance.in, email-secretarial@shriramfinance.in 
+12 On January 22, 2024, the Company issued and allotted USD 750,000,000 6.625% senior secured notes due 2027 in offshore market (Social 
+Bonds) for a sum of Rs. 62,319,435,937.50 under USD 3.5 Billion Global Medium Term Note Programme. The said Social Bonds were listed on 
+Global Securities Market - India International Exchange (INX) on January 24, 2024. The proceeds of the issue of the Social Bonds have been 
+utilised as per the Company's Social Finance Framework and as may be permitted by the RBI ECB Guidelines for onward lending and other 
+activities. 
+13 Disclosures pertaining to Fund raising by issuance of Debt Securities by Large Corporate: 
+The Company, as per the SEBI circular SE131/HO/DDHS/CIR/P/2018/144, and the definitions therein, is a Large Corporate and hence is 
+required to disclose the following information about its borrowings. 
+I) Initial Disclosure as per Annexure - 'A' filed within 30 days from the beginning of the financial year 2024-25 
+Sr. No. 
+Particulars 
+Details 
+1 
+Name of the company 
+Shriram Finance Limited 
+2 
+CIN 
+L65191TN1979PLC007874 
+3 
+Outstanding borrowing of company as on March 31, 
+2024 # * (Rs. in crores) 
+121,095.93 
+4 
+Highest Credit Rating During the previous F.Y. along with name of the Credit Rating Agency 
+Deposits 
+ICRA Limited- [ICRA] AA+ (Stable) 
+India Ratings & Research Private Ltd. - IND AA+/ Stable 
+Non-Convertible Debentures/ Subordinated Debt 
+CRISIL Limited - CRISIL AA+/Stable 
+India Ratings & Research Private Ltd. - IND AA+/ Stable 
+ICRA Limited- [ICRA] AA+ (Stable) 
+Care Ratings Limited — CARE AA+/ Stable 
+Short Term Debt 
+CRISIL Limited — CRISIL Al+ 
+India Ratings & Research Private Limited — IND A 1+ 
+Care Ratings Limited — CARE A 1+ 
+Long Term Principal Protected Market Linked 
+Debentures 
+CRISIL Limited — CRISIL PPMLD AA+/Stable 
+India Ratings & Research Private Limited - IND PP-MLD AA+/ Stable 
+Bank Loan facilities : Long Term Rating 
+CRISIL Limited - CRISIL AA+/Stable 
+India Ratings & Research Private Ltd. - IND AA+/ Stable 
+Bank Loan facilities : Short Term Rating 
+CRISIL Limited - CRISIL A I+ 
+5 
+Name of Stock Exchange in which the fine shall be paid, 
+in case of shortfall in the required borrowing under the 
+framework 
+BSE Limited 
+II) Annual disclosure as per Annexure - B2 for the year ended March 31, 2024 
+(Rs. in crores) 
+Sr. No. Particulars 
+March 31, 2024 
+i 
+3-year block period 
+2022-23, 2023-24 & 2024-25 
+ii 
+Incremental borrowing done during the financial year # 
+a 
+47,665.37 
+iii 
+Mandatory borrowing to be done through debt securities during the financial year 
+b 
+11,916.34 
+iv 
+Actual borrowing done through debt securities during the financial year 
+c 
+10,252,60 
+v 
+Shortfall in the borrowing through debt securities, if any, for FY 2022-23 carried 
+forward to FY 2023-24 
+d 
+(2,712.70) 
+vi 
+Quantum of (d), which has been met from ( c) 
+e 
+2,712.70 
+vii 
+Shortfall, if any, in the mandatory borrowing through debt securities for the financial 
+year 
+f 
+(4,376.44) 
+
+>>>

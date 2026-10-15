@@ -1,0 +1,88 @@
+Company: VINSYS (NSE/BSE symbol VINSYS), an Indian listed company. Document: investor presentation filed 2025-05-22. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+                                                                                                                                                      
+ 
+Vinsys IT Services India Limited
+3 
+ 
+ 
+For further informaƟon, please contact 
+ 
+ 
+ 
+ 
+Company 
+ 
+ 
+Investor relaƟons consultants 
+Vinsys IT Services India Limited 
+ 
+Capital Bridge Advisory Service Private Limited
+Ms. Saneeka Dhamankar 
+ 
+Mr. Rutul Shah 
+ 
+Mr. Raj Shah, CFA 
+Chief Financial Oﬃcer 
+ 
+(E) rutul@capbridge.in 
+ 
+(E) raj@capbridge.in 
+saneeka.dhamankar@vinsys.com
+ 
+(M) +91 820 024 7366
+ 
+(M) +91 992 591 1296 
+ 
+ 
+About Vinsys: 
+Founded by Mr. Vikrant PaƟl in 1998, Vinsys Group is a leading, listed provider of training, technology, and manpower soluƟons with a 
+presence across India, the Middle East, the USA, and Africa. OperaƟng under mulƟple verƟcals including corporate training and cerƟﬁcaƟon, 
+digital learning, soŌware development, staﬃng soluƟons, and foreign language services, Vinsys oﬀers 326+ courses across 17 domains. The 
+company has trained over 10 million professionals, executed more than 100 soŌware development projects, and has an on-the-shelf (OTS) 
+library of over 100,000 Ɵtles. With industry-leading cerƟﬁcaƟons and accreditaƟons like CMMi DEV/5, ISO 27001, and ISO 9001:2015, the 
+company ensures highest standards of quality and informaƟon security. Today, Vinsys services over half of the Fortune 500 companies and 
+several global policymakers. It is currently ranked as No.1 corporate training provider in the Middle East. The company has a physical presence 
+across Pune, Hyderabad, Delhi NCR, Bangalore, Dubai, Abu Dhabi, Riyadh, Doha, Muscat, New York, Wilmington, and Lagos. Vinsys currently 
+employees 348 professionals worldwide, with 264 based in India and 75 in the Middle East. For more informaƟon, please visit 
+www.vinsys.com or follow us on LinkedIn, X (formerly TwiƩer), YouTube, and Facebook. 
+Disclaimer: 
+Certain statements made in this press release concerning the company’s future growth prospects are forward-looking in nature and involve 
+a number of known and unknown risks, uncertainƟes, and other important factors. These may cause the actual results, performance, or 
+achievements of the Company to diﬀer materially from those expressed or implied in such statements. 
+Such risks and uncertainƟes include, among others: ﬂuctuaƟons in earnings; our ability to eﬀecƟvely manage growth; compeƟƟve pressures 
+in the IT services and corporate training industry; dependence on clients in the India, Middle East, United States and Africa; wage inﬂaƟon 
+in India, Middle East, United States and Africa; our capacity to aƩract and retain qualiﬁed professionals; Ɵme and cost overruns on ﬁxed-
+price, ﬁxed-schedule contracts; client and industry concentraƟon; immigraƟon-related constraints; risks inherent in managing internaƟonal 
+operaƟons; shiŌs in technology demand; telecommunicaƟon disrupƟons or systems failures; potenƟal liabiliƟes arising from service 
+contracts; concentraƟon of operaƟons in a single geographic locaƟon; withdrawal of ﬁscal incenƟves by the Government; geopoliƟcal 
+tensions and regulatory challenges in cross-border acƟviƟes; unauthorized use or infringement of our intellectual property; and overall 
+economic condiƟons impacƟng our industry. 
+The Company may, from Ɵme to Ɵme, make addiƟonal forward-looking statements in its periodic ﬁlings with the stock exchanges or in 
+shareholder communicaƟons. These statements reﬂect management’s current views as of the date hereof. The Company does not undertake 
+any obligaƟon to publicly update or revise any forward-looking statements, whether as a result of new informaƟon, future events, or 
+otherwise.  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+. ··.;· .. .... . 
+•• • • •• 
+••••• • 
+V INSvs· 
+CAPITAL BRIDGE ADVISORS 
+
+>>>

@@ -1,0 +1,121 @@
+Company: SAKAR (NSE/BSE symbol SAKAR), an Indian listed company. Document: investor presentation filed 2026-02-10. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Oral Solids and Injections – Oncology Dossier List
+18
+Sr.
+Injection Product list
+Strength
+1
+Docetaxel Injection
+80mg/4ml, 20mg/ml, 160mg/8ml
+2
+Gemcitabine Injection*
+200mg/vial, 1gm/vial
+3
+Gemcitabine for Injection
+1000mg/26.3ml
+4
+Irinotecan Injection
+100mg/5ml, 40mg/2ml
+5
+Carboplatin Injection
+450mg/45ml, 150mg/15ml, 50mg/5ml, 600mg/60ml
+6
+Oxaliplatin Injection
+50mg/10ml, 100mg/20ml
+7
+Doxorubicin for Injection*
+50mg/vial
+8
+Paclitaxel Injection
+30mg/5 ml, 100mg/16.7ml, 300mg/50ml, 260mg/43.33ml
+9
+Pemetrexed for Injection*
+500mg/vial, 100mg/vial
+10
+Bortezomib for Injection*
+3.5mg/vial
+11
+Methotrexate Injection!
+50mg/2ml
+12
+Cytarabine Injection!
+100mg/1ml, 500mg/5ml, 2gm/20ml, 1gm/10ml
+13
+Cisplatin Injection!
+100mg/100ml, 50mg/50ml, 25mg/25ml, 10mg/10ml
+14
+Mitomycin for Injection*!
+2mg/vial, 10mg/vial, 40mg/vial
+15
+Azacitidine Injection*!
+100mg/vial
+16
+Doxorubicin Solution for Injection!
+10mg/5ml, 50mg/25ml
+* Lyophilised Injection
+! Under Stability Study
+Sr.
+OSD Product list
+Strength
+1
+Imatinib Tablets
+400mg ,100mg
+2
+Geﬁtinib Tablet
+250mg
+3
+Erlotinib Tablet
+150mg, 100mg
+4
+Abiraterone Tablets
+500mg, 250mg
+5
+Lenalidomide Capsule
+25mg, 2.5mg, 5mg, 10mg, 15mg, 20mg
+6
+Anastrazole Tablet
+1mg
+7
+Letrozole Tablet
+2.5mg
+8
+Tamoxifen Tablet
+20mg, 10mg
+9
+Sunitinib Capsule
+50mg, 25mg, 12.5mg
+10
+Capecitabine Tablet #
+500mg
+11
+Hydroxyurea Capsule
+500mg, 250mg
+12
+Methotrexate Tablet
+2.5mg, 5mg, 7.5mg, 10mg, 15mg
+13
+Dasatinib Tablet**
+20mg, 50mg, 70mg, 80mg, 100mg
+14
+Temozolamide Capsule**
+100mg, 250mg
+15
+Enzalutamide Capsule**
+40mg
+16
+Mercaptopurine Tablet
+50mg
+BE Completed-Bold                 # Applied for NOC to conduct BE Study                    **Ready to Conduct BE Study
+
+>>>

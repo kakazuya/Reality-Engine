@@ -1,0 +1,96 @@
+Company: SUMICHEM (NSE/BSE symbol SUMICHEM), an Indian listed company. Document: investor presentation filed 2021-08-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+SCC - Growth Strategy in Health & Crop Sciences Sector - R&D
+10
+Refer SCC, Japan IR presentation and Investor handbook 2020 at SCC website
+Core Competence: R&D
+Intellectual
+Capital
+Human 
+Capital
+Sumitomo Chemical is conducting 
+R&D based on the knowledge 
+regarding chemical and 
+biorational crop protection 
+products, which is obtained after 
+its many years of R&D activities.
+Personnel located around the 
+world are conducting R&D using 
+a global network.
+The Chemistry Research Center:
+A global discovery and innovation base 
+for the Health & Crop Sciences Sector
+R&D performance data
+12,600 
+10,118 
+7,128 
+6,256 
+4,528 
+3,611 
+2,575 
+2,517 
+3,792 
+1,978 
+2,627 
+2,170 
+278 
+123 
+2,248 
+37 
+0
+2,000
+4,000
+6,000
+8,000
+10,000
+12,000
+14,000
+Bayer
+Syngenta
+BASF
+Corteva
+FMC
+ADAMA
+Sumitomo
+Chemical
+Nufarm
+Crop Protection Sales & Number of Issued Patent (2012-2019)
+Crop Protection Products Sales
+Numbers of Issued Patents
+(Million US$)
+(Billion JPY)
+0.0%
+2.0%
+4.0%
+6.0%
+8.0%
+10.0%
+0
+10
+20
+30
+40
+'12/3
+'13/3
+'14/3
+'15/3
+'16/3
+'17/3
+'18/3
+'19/3
+'20/3
+R&D Expenses to Sales Ratio
+R&D Expenses
+Ratio
+
+>>>

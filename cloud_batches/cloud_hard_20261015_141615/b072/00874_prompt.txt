@@ -1,0 +1,64 @@
+Company: CHOLAHLDNG (NSE/BSE symbol CHOLAHLDNG), an Indian listed company. Document: investor presentation filed 2026-02-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Performance Highlights - Consolidated
+1,290 
+93 
+3 
+1,386 
+1,088 
+2 
+3 
+1,093 
+ -
+ 200
+ 400
+ 600
+ 800
+ 1,000
+ 1,200
+ 1,400
+ 1,600
+CIFCL
+CMSGICL
+Others
+CFHL Consol
+Profit After Tax (Rs.in crs)
+Q3 FY26
+Q3 FY25
+3,587 
+258 
+15 
+3,860 
+3,003 
+366 
+9 
+3,378 
+ -
+ 500
+ 1,000
+ 1,500
+ 2,000
+ 2,500
+ 3,000
+ 3,500
+ 4,000
+ 4,500
+CIFCL
+CMSGICL
+Others
+CFHL Consol
+Profit After Tax (Rs. in crs)
+YTD Dec 25
+YTD Dec 24
+
+>>>

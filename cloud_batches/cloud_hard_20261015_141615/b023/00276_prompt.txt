@@ -1,0 +1,41 @@
+Company: ICICIBANK (NSE/BSE symbol ICICIBANK), an Indian listed company. Document: investor presentation filed 2022-01-22. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+14 
+ 
+initiative makes cross border trade hassle-free, quick and convenient, as 
+it offers an array of services in one place. 
+ 
+E. Portfolio information 
+ 
+We have been growing our loan portfolio in a granular manner with a 
+focus on risk and reward. Our retail portfolio has been built based on 
+proprietary data and analytics in addition to bureau checks, utilising the 
+existing customer database for sourcing in key retail asset products 
+through cross sell and up-sell and pricing in relation to the risk. In the 
+business banking and SME business, our focus is on parameterised and 
+programme based lending, granularity, collateral and robust monitoring. 
+We have given further information on our retail and business banking 
+portfolio in slides 42 to 45 of our investor presentation.  
+The loan and non-fund based outstanding to performing corporate and 
+SME borrowers rated BB and below was 118.42 billion Rupees at 
+December 31, 2021 compared to 127.14 billion Rupees at September 30, 
+2021. The amount of 118.42 billion Rupees at December 31, 2021 includes 
+27.97 billion Rupee of loans under resolution. The details are given on 
+slide 40 and 41 of the investor presentation.  
+ 
+Similar to the last quarter, other than three accounts, one each in 
+construction, power and telecom sectors, the maximum single borrower 
+outstanding in the BB and below portfolio was less than 6 billion Rupees 
+at December 31, 2021. At December 31, 2021, we held provisions of 15.75 
+
+>>>

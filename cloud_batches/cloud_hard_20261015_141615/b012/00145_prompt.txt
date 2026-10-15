@@ -1,0 +1,174 @@
+Company: RAIN (NSE/BSE symbol RAIN), an Indian listed company. Document: investor presentation filed 2022-02-25. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+5
+Growing Demand, Increasing Realisations and Cost
+Key Market Quotations in Advanced Materials Business 
+Carbon Volumes (MT 000) and Price ($/MT)
+Advanced Materials Volumes (MT 000) and Price ($/MT) 
+Natural gas prices increased by ~195% in Europe during the fourth quarter, leading to increased operating costs.
+196 
+235 
+256 
+320 
+425 
+440 
+479 
+468 
+448 
+371 
+432 
+634 
+910 
+1,065 
+984 
+972 
+247 
+342 
+367 
+433 
+573 
+634 
+679 
+698 
+Mar-20
+Jun-20
+Sep-20
+Dec-20
+Mar-21
+Jun-21
+Sep-21
+Dec-21
+Fuel Oil 1% $/MT
+Benzene $/MT
+Naphtha $/MT
+$256
+$305
+$379
+$423
+$494
+$599
+$648
+$728
+$815
+$860
+$385
+$451
+$512
+$522
+$579
+ 200
+ 300
+ 400
+ 500
+ 600
+ 700
+ 800
+ 900
+ 50
+ 100
+ 150
+ 200
+ 250
+ 300
+ 350
+ 400
+ 450
+Q4 20
+Q1 21
+Q2 21
+Q3 21
+Q4 21
+CPC MT
+CTP MT
+OCP MT
+CPC $/MT
+CTP $/MT
+OCP $/MT
+$1,036
+$1,238
+$956
+$974
+$1,229
+$688
+$844
+$1,090
+$973
+$989
+$1,308
+$1,427
+$1,466
+$1,548
+$1,613
+ 200
+ 350
+ 500
+ 650
+ 800
+ 950
+ 1,100
+ 1,250
+ 1,400
+ 1,550
+ 1,700
+ 5
+ 15
+ 25
+ 35
+ 45
+ 55
+ 65
+Q4 20
+Q1 21
+Q2 21
+Q3 21
+Q4 21
+EP MT
+CI MT
+Res MT
+EP $/MT
+CI $/MT
+Res $/MT
+CPC – Calcined Petroleum Coke;   CTP – Coal Tar Pitch;   OCP – Other Carbon Products
+EP – Engineered Products   CI – Chemical Intermediates;   Res – Resins
+13 
+9 
+5 
+11 
+16 
+18 
+29 
+63 
+123 
+67 
+32 
+40 
+41 
+50 
+65 
+73 
+74 
+74 
+Dec-19
+Mar-20
+Jun-20
+Sep-20
+Dec-20
+Mar-21
+Jun-21
+Sep-21
+Dec-21
+Gas €/MWh
+Brent Oil $/bbl
+Energy Cost in European Region
+
+>>>

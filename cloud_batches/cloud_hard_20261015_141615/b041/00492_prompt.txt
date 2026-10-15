@@ -1,0 +1,74 @@
+Company: SATTVAENGG (NSE/BSE symbol SATTVAENGG), an Indian listed company. Document: investor presentation filed 2026-03-10. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ONGOING PROJECTS 
+12 
+ 
+ 
+Description of Project 
+ 
+Total Contract 
+Value 
+(₹ in lakhs) 
+Location 
+Providing 
+comprehensive 
+under 
+ground
+sewerage scheme to semmenchery 
+ 
+5,474.00 
+ 
+semmenchery, 
+Chennai 
+Replacement of water distribution mains
+including construction of 38ll overhead tank
+and providing HDPE tanks along with
+plumbing arrangements for each tenement at
+kannagi nagar 
+5,689.00 
+Kannaginagar, 
+Chennai 
+Design, engineering, construction, testing 
+and commissioning of 10 million litres 
+capacity of underground tank, 3 million litres 
+capacity of overhead tank, laying 600 mm 
+dia. D.I conveying main at bharathi nagar, 
+korukkupet 
+ 
+ 
+1,941.00 
+ 
+Korukkupet, 
+Chennai 
+Design, Build, Operate and Transfer of 47 MLD 
+capacity Water  Treatment Plant at Surapet 
+including comprehensive Operation and 
+Maintenance (O&M) for 10 years 
+ 
+ 
+10,600.00 
+ 
+Surapet, 
+Chennai 
+Improvement of Water Supply System by 
+strengthening the Water Distribution Mains, 
+Construction ofOHT&UGT in SIDCO nagar & 
+Rajamangalam and by tapping a new feeder 
+main from 1200mm dia central main 
+ 
+5,138.00 
+ 
+Villivakkam, 
+Chennai 
+
+>>>

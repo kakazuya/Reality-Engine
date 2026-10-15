@@ -1,0 +1,47 @@
+Company: HUBTOWN (NSE/BSE symbol HUBTOWN), an Indian listed company. Document: investor presentation filed 2026-05-01. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+24 
+  
+25 South, Prabhadevi 
+24 
+Note: 25 Residencies comprises 25 Downtown, 25 South, 25 West, 25 Estates and 25 Vistas​ 
+Premium project located between the Siddhivinayak temple and Prabhadevi beach 
+5.5 acres freehold land, with 3 towers of 57 story each 
+Comprises of apartments, with average size of ~3,500 sq ft (carpet area) 
+1 msf- 90%+ sold  |  1 Tower handed over and remaining 2 towers under construction 
+First project under the "25 Residences" brand 
+Project completion timeline - FY 2027  | Funded by  overseas/domestic fund houses 
+Artistic impression 
+Total Carpet Area 
+(msf) 
+Sold Carpet Area 
+(msf)  
+Unsold Area 
+(Inventory)  
+(msf) 
+0.96 
+0.91 
+0.05 
+Total Sales Value 
+(INR Mn) 
+Collections till 
+Date 
+ (INR Mn) 
+Total Revenue 
+Recognized  
+(INR Mn) 
+55,860 
+46,571 
+20,210 
+
+>>>

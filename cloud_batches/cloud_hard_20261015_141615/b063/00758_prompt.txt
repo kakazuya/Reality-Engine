@@ -1,0 +1,50 @@
+Company: UTIAMC (NSE/BSE symbol UTIAMC), an Indian listed company. Document: investor presentation filed 2021-07-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Mr. Sanjay Varshneya
+| Non-Executive Non-Independent Director
+-Sanjay Varshneya is a Non-Executive Non Independent Director of the Company with effect from 29th July, 2021. He holds a master’s degree in science specializing in Physics and is a CAIIB. He is currently the General
+Manager Treasury Division at Punjab National Bank and has been working with the Bank for the last 19 years. He has a rich experience in the treasury operations of over 11 years. In his earlier roles at the Bank, he was
+leading as Branch Head and Circle Head. He is an accomplished finance professional with over 30 years of demonstrated history of work experience in banking industry. He is an exceptional leader, expert at
+interpersonal communications and people management, problem solver and craving to perform under challenging environments. His appointment as an Non-Executive Non Independent Director of the Company was
+approved by the shareholders at the 18th Annual General Meeting held on 28th July, 2021.
+Mr. Rajeev Kakar
+| Independent Director
+Rajeev Kakar currently serves on the boards of various banks and financial institutions such as Eurobank Ergasias SA (Greece),Gulf International Bank (GIB Bahrain), Gulf International Bank (GIB Saudi Arabia) and
+Commercial International Bank (Egypt). He started his career in 1988 at Citibank NA, where he worked for 18 years and in his last role, was the Managing Director and Division Head for Turkey, Middle East and Africa
+region. In 2006, he moved to become the Global co-founder of Fullerton Financial Holdings Pte. Ltd., headquartered in Singapore (a wholly owned subsidiary of Temasek Holdings Pte. Ltd., Singapore), where he served
+for 11 years in various roles including serving on its Global Management Board, as its Executive Vice President, Head of Consumer Banking and Head of Central and Eastern Europe, Middle East and Africa region.
+Simultaneously, he also was the Founder of Dunia Finance LLC in UAE, where he operated as its Managing Director and Chief Executive Officer. He holds a B. Tech. degree in Mechanical Engineering from the Indian
+Institute of Technology, Delhi and a Post Graduate Diploma in Management from the Indian Institute of Management, Ahmedabad. His appointment as an Independent Director of the Company was approved by the
+shareholders at the Extra Ordinary General Meeting held on 16 December 2019.
+Ms. Dipali Hemant Sheth
+| Independent Director
+Dipali H Sheth serves as Independent Director on the Boards of four other companies. Prior to joining the Company, she was associated with RBS Business Services Private Limited as the Country Head of Human
+Resources, Standard Chartered Bank as Head HR South Asia, Procter & Gamble Distribution Company Limited and DCM Limited. She holds a B.A. (Honours) degree in Economics from University of Delhi, passed out from
+the DCM Management Centre, and is an accredited Coach from ICF and Gallup, USA. Her appointment as an Independent Director of the Company was approved by the shareholders at the Extra Ordinary General
+Meeting held on 16 December 2019.
+Mr. Imtaiyazur Rahman |  CEO & Whole Time Director
+Imtaiyazur Rahman has more than 30 years of experience in management, business leadership, leading change and forming strategic alliances. He joined the UTI Group in 1998 as part of UTI Investor Technology
+Services Ltd. and joined UTI AMC Ltd. in 2003. He was also the CFO of the Company from 2005. In his role as Group President & Chief Finance Officer, he headed the functions of Finance, Accounts, Taxation,
+Information Technology and Board related matters. He is a Science graduate, Fellow member of Institute of Cost Accountants of India and Institute of Company Secretaries of India, Certified Public Accountant (USA) and
+GAMP (ISB-Kellog). Mr. Rahman is on the Board of UTI International (Singapore), UTI International Ltd. Guernsey, UTI Venture Funds Management Co. Pvt. Ltd., UTI Capital Ltd., UTI Retirement Solutions Ltd., IOT
+Infrastructure & Energy Services Ltd. and Association of Mutual Funds in India. He was also a member of the working group for risk management in liquid schemes constituted by SEBI. Prior to joining the Company, he was
+associated with Sumeet Machines Ltd, Leasing Finance India Ltd, Bells Controls Ltd, New India Rubber Works (P) Ltd. and S. Gupta & Co.
+Experienced and Independent AMC Board
+48
+Mr. Deepak Kumar Chatterjee | Independent Director
+Prior to joining the Company, Deepak Kumar Chatterjee was associated with SBI Funds Management Private Limited as the Managing Director and Chief Executive Officer and SBI Capital Markets Limited as a Executive
+Vice President. He was also associated with IIFCL Projects Limited as its Chief Executive Officer and IIFCL Asset Management Company Limited as a Director. He holds a B.Sc. (Honours) degree in Physics from University of
+Delhi, an M.Sc. degree in Agricultural Physics from Indian Agricultural Research Institute, New Delhi and an MBA from University of Delhi. He is also a Certificated Associate of the Indian Institute of Bankers. His
+appointment as an Independent Director of the Company was approved by the shareholders at the Annual General Meeting held on 25 September 2018.
+
+>>>

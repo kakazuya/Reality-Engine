@@ -1,0 +1,65 @@
+Company: UFBL (NSE/BSE symbol UFBL), an Indian listed company. Document: investor presentation filed 2022-05-18. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Key Performance Highlights
+2
+Q4 FY22
+FY22
+Revenue from 
+Operations
+₹ 2,510 mn
++10.9% y-o-y 
+Reported EBITDA
+₹ 504 mn
+(10.0)% y-o-y 
+Delivery Revenue
+₹ 446 mn
++56.5% y-o-y 
+SSSG (%)
+5.5%
+Q4FY21: 19.9%
+Own Digital Assets 
+Contribution2 (%)
+24.1%
+Restaurant 
+Operating Margin1
+₹ 361 mn
+(22.0)% y-o-y
+EBITDA Margin: 20.1%
+Margin: 14.4%
+Revenue from 
+Operations
+₹ 8,606 mn
++69.7% y-o-y 
+Reported EBITDA
+₹ 1,600 mn
++73.1% y-o-y
+Delivery Revenue
+₹ 1,980 mn
++157% y-o-y 
+SSSG (%)
+64.7%
+FY21: (44.3)%
+Own Digital Assets 
+Contribution2 (%)
+25.0%
+Restaurant 
+Operating Margin1
+₹ 1,154 mn
++159% y-o-y
+EBITDA Margin: 18.6%
+Margin: 13.4%
+1)
+Restaurant Operating Margin is calculated without the impact of Ind AS 116.
+2)      Own Digital Assets Contribution is calculated as revenue generated through Barbeque nation app and web bookings. Represents data for BBQ India only.
+
+>>>

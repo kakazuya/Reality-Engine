@@ -1,0 +1,101 @@
+Company: ICRA (NSE/BSE symbol ICRA), an Indian listed company. Document: investor presentation filed 2025-07-31. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+9
+9
+www.icra.in
+Social listening
+Vlvek law e= • 2nd 
+E:d,tor,nCh,~ln:lCnFOUfltWf Somplt>Hal 
+1mo •(S) 
+Few people can demysbfy the l ttonomy like Aditi Nayar does! A must watch to 
+understand where we are headed! Edetweiss Asset Maft69ement Um1ted Radhika 
+Gupta Niranjan Avasthi Mahak Choudhary The Simple Hai! Show ICRA 
+f Konomics #growth #finance • leaming 
+https://lnkd.in!dGf4XQrvg 
+Can India's Young Population Unlock N~ Economic 
+OPPORTUNITIES? 
+)'OUl~com 
+cc. 78 
+•2 ,eposts I 
+---
+II 
+ET EnergyWorld 
+19,021followen 
+lmo • <S> 
+India's electricity demand is set to rise by S.0-5.5% in FY2026, slightly trailing the 
+GDP growth forecast of 6.5%. says ICRA A strong monsoon and above-average 
+rainfall are expected to moderate cooling and agricultural power consumption. 
+Ai: Saur av Anand 
+Read more at: https://lnkd.in/ dv8anBCA 
+#lndiaEnergy #ElectrkityOemand #ICRA #Renewables #ThermalPower 
+~ 1 
+Electricity demand to grow 5-5.S% in FY26; 44 GW 
+Ll___~-i t 
+capacity addition likely: ICRA- ET EnergyWorld 
+___ 
+•"'- '9Y_-~_~_,m_•ct-•m•6 -md_,.,_,m_H.,_,m--------1 
+ETCFO 
+Jiut•-
+... 
+cro.see-•t-Pl(U'l9upO'IFY26de!.pote~,.._ 
+f--lMOMU)l'delewl49t'l_,_.tletlMoU-~•otllofflPfOW"9 
+GW!llowntro,,,~,o,,,1-'-Klll~fo,111ui,1 ..... ~11e 
+---q,de. 
+lltlpt,:/,.,...lrvdlM.IJJMD 
+Minllllifl!Wllll-t 
+~~I ICltA 
+All'HIT~ I K IG,oup(l,~C...-n,tlon .. .,_UNMd) 
+CfOl-p,tw,vc-pidc"'91111lnm,-.,11e 
+_ =--=-""°-------1 
+1, 
+CNBC-TV18 0 
+~~ @CNBCTV18News 
+0··· 
+MayWPI I May #WPI #inflation eases to 0.39% vs 0.85% in April 2025. 
+Food inflation comes in at 1.72% vs 2.55% (MoM). @latha_venkatesh 
+discusses the #inflation print and the outlook ahead with Aditi Nayar, 
+Chief Economist, ICRA (@ICRAUmited). 
+@Viveklyer72 @ekta batra 
+youtu.be/r5Con5sublc?si ... 
+3:'17 PM • Jun 16. 2025 • 1,806 Views 
+0 
+.
+, 
+,!, I 
+__ 
+_____. 
+n , 
+Sensitivitv Label : Confidential 
+I ICRA 
+0 ... 
+'WeeitP«1theGOP1towthtop(ont•IUpet'cenlinfY26,ma,~ 
+btlow1tiee.lpe,oen1p,ojeeledbyusloffY25".wysACfoti Nl)'lrol 
+IU.lr,o!,d 
+~ 
+~
+!
+7ic:t~~~~m1smontndla'shospltalitysec~ ~· 
+Outlook cut 10 'Stable' ftom 'Positive' Srikumar Krishnamurthy bleaks it 
+down. 
+Fulllnterview:: 
+it, 
+I 
+o, 
+t.1 
+.
+3 
+1W2-111: 
+t:J .!. I 
+---
+
+>>>

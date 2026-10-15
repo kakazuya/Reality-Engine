@@ -1,0 +1,61 @@
+Company: TAC (NSE/BSE symbol TAC), an Indian listed company. Document: investor presentation filed 2025-02-20. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+MILESTONE
+Page 7
+2013
+Founded by a school 
+dropout cyber geek.
+2015
+Started Cybersecurity 
+Services and acquired 
+its First Enterprise 
+Customer.
+2017
+• Backed by Lawrence Ang, former 
+Regional Director of Imperva, 
+Singapore.
+• Backed by William May, former 
+Vice President of IBM, USA.
+• Listed in GQ Magazine's 50 Most 
+Influential Young Indians.
+2019
+• Revenue grew by 270% YoY.
+• Listed in Fortune Magazine's 40 
+Under 40.
+• Awarded Company of the Year 
+by Golden Bridge Awards 
+(USA).
+2014
+Executed its First Assignment 
+for a Fortune 500 Company.
+2016
+• Backed by Ex-Vice President of Cognizant.
+• Raised Pre-Series "A" funding from prominent 
+investor Vijay Kedia.
+• Won Start-up of the Year at Startup Summit by 
+ASSOCHAM.
+2018
+• Awarded "Deep Tech Startup of the Year" by 
+Entrepreneur Magazine.
+• Recognized in Forbes Asia 30 Under 30.
+• Won Cyber Security Startup of the Year by InfoSec 
+Bridge (USA).
+• Featured in Entrepreneur Magazine's 35 Under 35.
+• Launched ESOF (Enterprise Security in One 
+Framework) Product.
+• Incorporated in the US with a US State Government 
+as a customer for ESOF.
+• Honored as Leaders of Tomorrow by St.Gallen 
+Symposium, Switzerland.
+
+>>>

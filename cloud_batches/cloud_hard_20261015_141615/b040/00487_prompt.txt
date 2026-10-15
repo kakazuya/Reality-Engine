@@ -1,0 +1,84 @@
+Company: HUDCO (NSE/BSE symbol HUDCO), an Indian listed company. Document: investor presentation filed 2024-02-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+13
+23609
+9202
+20663
+24572
+18052
+ 7,500.00
+ 9,500.00
+ 11,500.00
+ 13,500.00
+ 15,500.00
+ 17,500.00
+ 19,500.00
+ 21,500.00
+ 23,500.00
+ 25,500.00
+FY21
+FY22
+FY23
+9MFY23/9MFY24
+SANCTIONS
+5112
+8323
+8887
+8466
+7768
+3000
+5000
+7000
+9000
+11000
+FY21
+FY22
+FY23
+9MFY23/9MFY24
+DISBURSEMENTS
+79290
+75787
+78513
+80743
+84424
+70000
+75000
+80000
+85000
+90000
+FY21
+FY22
+FY23
+9MFY23/9MFY24
+LOAN OUTSTANDING
+5152
+7173
+6888
+6983
+5652
+4000
+5000
+6000
+7000
+8000
+FY21
+FY22
+FY23
+9MFY23/9MFY24
+INTEREST INCOME
+Rupees in Crores
+Rupees in Crores
+Rupees in Crores
+Rupees in Crores
+
+>>>

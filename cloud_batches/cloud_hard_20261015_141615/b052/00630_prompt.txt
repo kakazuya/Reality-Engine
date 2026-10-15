@@ -1,0 +1,47 @@
+Company: MUFIN (NSE/BSE symbol MUFIN), an Indian listed company. Document: investor presentation filed 2026-08-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+O T H E R L O A N S ( M S M E )  ·  Q 1 F Y 2 7 U P D A T E
+OTHER LOANS (MSME) — Q1 FY27 UPDATE
+Scalable, secured, SMEs and corporates
+AUM (Mar-26)
+₹458.84 Cr
+MUFIN GREEN FINANCE LIMITED  |  Q1 FY27 INVESTOR UPDATE
+NSE: MUFIN  |  BSE: MUFIN
+80.49
+83.14
+112.25
+259.23
+112.67
+0
+50
+100
+150
+200
+250
+300
+Q1 FY26
+Q2 FY26
+Q3 FY26
+Q4 FY26
+Q1 FY27*
+Quarterly Disbursements (₹ Cr)
+Scalable financing solutions for MSMEs 
+and emerging corporates
+Mufin Green Finance limited supports MSMEs, SMEs
+and emerging corporates through tailored financing
+solutions to meet working capital, business expansion
+and other business requirements. The portfolio
+complements Mufin’s core lending businesses while
+enabling diversified and scalable growth.
+
+>>>

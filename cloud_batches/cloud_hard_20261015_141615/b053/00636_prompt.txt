@@ -1,0 +1,83 @@
+Company: SATKARTAR (NSE/BSE symbol SATKARTAR), an Indian listed company. Document: investor presentation filed 2025-10-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Global Ayurvedic Products Market Size
+Global Ayurvedic Products Market Size
+2024
+2033
+ ~₹ 875.9 billion
+~ ₹ 3,605 billion
+CAGR of 16%
+India’s Ayurvedic Products Market Size
+India’s Ayurvedic Products Market Size
+Largest AYUSH 
+Market Globally
+31
+Industry Overview
+2023
+2033
+US$ 14.4 billion
+US$ 85.83 billion
+CAGR of 19.8%
+2nd 
+70%+ 
+15,000+ 
+2nd
+India accounts for nearly
+80% of global Ayurveda
+and traditional medicine
+production
+Global Raw Herbal
+Material Sourced
+Largest exporter of
+Ayurvedic Products
+Ayurvedic wellness 
+& therapy centres
+India is one of the world’s
+largest suppliers of
+medicinal and aromatic
+plants
+India hosts >15,000
+Ayurvedic wellness &
+therapy centres
+India is the 2nd largest
+exporter of Ayurveda
+products globally
+Indian Ayurvedic & Wellness
+Industry Characteristics
+Characterised by deep traditional roots and growing
+institutionalisation of wellness services.
+US $ billion
+2024
+2033
+0
+10
+20
+30
+40
+50
+India’s Ayurvedic Wellness Market Size
+India’s Ayurvedic Wellness Market Size
+ US$ 10.3 billion
+ US$ 42.2 billion
+CAGR of 16.2%
+Wellness Centres & Spas
+Ayurvedic Products
+Therapeutic Services
+34%
+46%
+20%
+Ayurveda Industry Segment Breakdown
+Ayurveda Industry Segment Breakdown
+Source: IMARC Group, IBEF, NMPB, Ministry of Commerce, Grand View Research & Global Wellness Institute, 2024
+
+>>>

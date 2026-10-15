@@ -1,0 +1,102 @@
+Company: ENGINERSIN (NSE/BSE symbol ENGINERSIN), an Indian listed company. Document: investor presentation filed 2021-06-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Experienced Leadership: Executive Directors (as on 31st Mar 2021)
+Mr.R.K.Sabharwal
+Director 
+(Commercial) and
+C&MD (Additional 
+Charge) 
+
+More than 33 years of rich experience. Well conversant with various aspects of international trade, EXIM
+procedures, taxation, legal aspects etc. and has proven competence in systems development.
+
+He has been involved in finalizing e-enabling strategies including e-procurement, development of suitable
+commercial procedures, finalization of detailed contractual terms for domestic and global commerce.
+Mr. Sunil Bhatia
+Director (Finance) 
+
+He has varied experience of over 32 years in a wide array of domains including Projects, Finance, Manufacturing & 
+Marketing.
+
+He joined NFL in 1986 and worked in various capacities in the Finance Department. Thereafter, he served in various
+capacities at the NFL’s Corporate Office and was made Finance Head in August 2013. Subsequently, in
+August, 2015, he was posted as CFO at Ramagundam Fertilizers and Chemicals Limited (RFCL)
+Mr. S K Handa
+Director (Project) 
+
+More
+than
+35
+years
+of
+experience
+in
+the
+field
+of
+Process
+Design,
+Technology
+Development
+&
+its
+commercialisation, Engineering Services & Business Development
+
+He has been associated with many green field & brown field projects across entire hydrocarbon value chain in
+midstream & downstream sectors.
+Mr. Ashok K Kalra
+Director (HR)
+
+More than 33 years of rich experience. He has been associated with HR directorate since 2007 after working for more
+than 21 years in Projects / Construction for Refineries, Petrochemicals, Pipelines, Infrastructure, etc.
+
+He
+has
+experience
+in
+all
+facets
+of
+HR
+functions
+which
+involved
+Formulating
+HR
+Vision,
+Mission
+&
+Objectives, Organization
+Restructuring,
+Institutionalising
+Leadership
+Development
+Programme, Implementing
+Rajbhasha Policy, Transforming HR as a Strategic Partner in the company’s operations, digitization of HR Processes
+& Policies, Corporate Planning, Corporate Branding and CSR.
+Ms. Vartika
+Shukla
+Director 
+(Technical)
+
+Over 32 years of extensive consulting experience comprising Design, Engineering and Implementation of complexes
+in Refining, Gas Processing, Petrochemicals, Fertilizers etc. She has led to the successful completion of many
+prestigious projects for clients both in India and Overseas.
+
+She has wide spectrum of experience across diverse functions covering Process Design, R&D and other engineering
+disciplines. She has been steering several new Initiatives in the areas of BioFuels, Digitalization, Energy
+Efficiency, Make In India and StartUp Initiative of EIL. She is credited with forging several Collaborative Partnerships
+for expanding the Technology Portfolio of EIL.
+16
+
+>>>

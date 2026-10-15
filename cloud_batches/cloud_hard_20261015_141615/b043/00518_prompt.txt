@@ -1,0 +1,99 @@
+Company: MADHAVBAUG (NSE/BSE symbol MADHAVBAUG), an Indian listed company. Document: investor presentation filed 2023-05-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Journey So Far
+7
+2006-09
+2012-13
+2006 - 1st Cardiac 
+Hospital in Khopoli 
+and opening of 1st 
+Madhavbaug Clinic 
+in Dombivali
+2009 - Setting up 
+in-house R&D 
+Team in Thane
+2012 -2nd Hospital 
+at Kondhali, 
+Nagpur
+2013 - 100th Clinic 
+at Kankavali, 
+Ratnagiri
+2014-15
+2014 - Arogyam Hriday 
+Sampada launched 
+with  Mission to create 
+awareness of heart 
+disease
+2015 - Launch of 
+Research based 
+therapies at Clinics
+2016-17
+2016 -Introduction of 
+Standardized Diet Kit on Each 
+Disease
+Collaboration of Madhavbaug 
+Institute of Preventive 
+Cardiology with MUHS
+2017 - Randomized controlled 
+trial published  in  Indian 
+Heart Journal, Official 
+publication of Cardio logical 
+Society of India
+2018-19
+2020-21
+2022
+2023
+2018 - India book record 
+for conducting GTT of 661 
+patient in single day
+200th Madhavbaug Clinic 
+in Nanded, Maharashtra
+2019 - Introduced 
+research based heart 
+blockage management 
+program
+2020 -Launch of MIB Pulse Mobile 
+Application for patient engagement
+2021 - MIB Pulse Mobile 
+Application achieved over 1 Lakh 
+downloads
+Opening of 250th Madhavbaug 
+Clinic at Vashi, Maharashtra
+Research trial on one year follow-
+up of Diabetes patients treated 
+published in Journal of Association 
+of Physicians of India
+Listing of shares on NSE-Emerge
+Khopoli Hospital empanelment with SBI General Insurance
+NABH of Madhavbaug Khopoli Hospital
+Company initiated campaign “Fhealth Accelerators”
+Incorporation of Easy Ayurveda Private Limited
+302+ Clinics, 
+Presence over 8 states
+Tie up with more than 30 Insurance Companies for cashless facility
+
+Incorporation of Company- F- Health Accelerators Private Limited
+Prime Sponsor of 9th World Ayurveda Congress & Arogya Expo was 
+organized with focal theme “Ayurveda for One Health”  at Panjim, 
+Goa
+Mandate for Training session of 
+Ayurveda Practitioners of State of 
+Uttarakhand
+
+(MOU) with Research Institute 
+under Central Council for Research 
+in Ayurvedic Sciences (CCRAS)
+Incorporation of Wholly owned 
+subsidiary in Dubai
+
+>>>

@@ -1,0 +1,92 @@
+Company: SHRIPISTON (NSE/BSE symbol SHRIPISTON), an Indian listed company. Document: investor presentation filed 2026-06-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Focus on Sustainability
+Social
+Implemented ISO 45001  Occupational Health and 
+Safety Management System across organization
+Utmost importance to the Health and Safety of workers
+at the plant/factory 
+Focus on Inclusion and Gender Diversity – employing 
+women workers on shop floor
+Regular trainings on Skill Upgradation and other 
+aspects for all the employees
+Ensuring no human rights are violated  across 
+operations
+Initiated special women empowerment programs 
+including Self Defence
+Mobile medical van & charitable Dispensaries in 
+nearby area
+Empowering women in rural communities earn 
+livelihood by acquiring Tailoring and Bakery skills
+Governance
+Steering Committee on ESG under chairmanship of our 
+MD & CEO
+Initiated a broad Enterprise Risk  Management
+framework
+Robust Ethics framework in place
+Introduced “KPMG” - a digital platform to enable 
+access of relevant ESG related data to authorized  
+users.
+Compliance management tool in  place
+Innovation & intellectual property-oriented culture 
+reflected in patents filed
+Won the “Golden Peacock“ award from Institute of 
+Directors – London for Good Corporate Governance in 
+2022 & 2025
+Environmental
+•
+Implemented ISO 14001  Environmental 
+Management  Systems at both manufacturing  sites
+•
+Zero Waste to Landfill certification as per DIN -91436 
+status “Bronze “ Medal.
+•
+Three plants have Zero Liquid Discharge (ZLD) status 
+& state of the art ETP & STP 
+•
+Special focus on Renewable energy (Solar power ):
+•
+27 MW (~30% of total requirement) Solar Power
+through Group Captive at Ghaziabad
+•
+Commissioned 1.9 MW (~5% of total requirement) 
+Rooftop Solar Power Plant at Pathredi
+•
+Procured 4 MW (~40% of total requirement) Solar 
+Power through Group Captive at Bulandshahr
+•
+Commissioned 1 MW Solar Power Plant at Pithampur
+•
+Sustainability data published on  global platforms
+like CDP ECOVADIS  & SAQ
+•
+95% of critical Suppliers on-boarded are 
+environment compliant
+This image cannot currently be 
+displayed.
+This image cannot currently 
+be displayed.
+This image cannot currently be 
+displayed.
+Commendation for Significant Achievement award for sustainability by CII
+ESG rating 2 awarded by Dun & Bradstreet 
+Sustainability Excellence Award 2025 from Indian Chamber of Commerce
+GOLD” Category awarded by TVS for Sustainability
+“A” Category awarded by Mahindra & Mahindra
+“Bronze”  recognition from ECOVADIS
+25th ICSI National Awards for Excellence in Corporate Governance 
+Awards & 
+Accolades
+35
+
+>>>

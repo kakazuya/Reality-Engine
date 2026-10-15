@@ -1,0 +1,45 @@
+Company: FIEMIND (NSE/BSE symbol FIEMIND), an Indian listed company. Document: investor presentation filed 2023-11-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+AUTOMOTIVE LIGHTS
+34
+Head and Rear Lights
+FIEM is one of the most renowned names in Automotive Lightings & Signalling Equipments with
+the history of around four decades. The company is associated with some of the most prestigious
+OEM customers in India.
+•
+Automotive Lighting - In the automotive components segment the Company makes various
+types of Head lamps, Tail Lamps, Blinker lamps, Fog lamps, Warning triangles, Interior lamps
+and Beacon lights etc. for Two Wheelers and Four Wheelers.
+•
+India’s First NABL Accredited Lab for Testing of Automotive Lighting.
+•
+Manufacturing Facilities for Automotive Lights:
+•
+Unit 1 - Kundli, Sonepat, Haryana
+•
+Unit 2 - Hosur, Tamil Nadu
+•
+Unit 5 - Hosur, Tamil Nadu
+•
+Unit 6 - Nalagarh, Himachal Pradesh
+•
+Unit 7 – Rai, Sonepat, Haryana
+•
+Unit 8 – Tapukara, Rajasthan
+•
+Unit 9 – Ahmedabad, Gujarat
+•
+Top Clients
+NET SALES
+
+>>>

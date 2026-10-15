@@ -1,0 +1,54 @@
+Company: WINDLAS (NSE/BSE symbol WINDLAS), an Indian listed company. Document: investor presentation filed 2024-02-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Underpinned by Strong Tailwinds for Organized Players 
+24
+FY20
+Top 6 (incl. 
+Windlas Biotech)
+21%
+~400 Organised 
++ 15,000 
+Unorganised 
+Players 
+79%
+Strong Industry Tailwind- Domestic Generic Formulations CDMO to 
+grow at 14%+ CAGR in next 5 years
+Consolidation in the Generic Formulations CDMO industry driven by need for 
+providing better and wider portfolio of products and services
+Key Updates in Generic Formulations CDMO industry
+Scaled CDMOs shifting identity from “Supplier” to “Partner”
+Customers asking for higher quality systems in R&D as well as 
+manufacturing
+‘Marketeers’ equally responsible for quality of the drug product 
+in eyes of regulator
+New schedule M to be implemented in October 2021 – many 
+small manufacturers may become unviable
+Production Linked Incentive - 2 Scheme to cover complex 
+products in formulations
+Generic Formulations CDMOs deploying superior R&D 
+infrastructure, expertise and capital
+‘Raw materials purchase efficiency of larger Generic 
+Formulations CDMOs exceeds that of customers in many small 
+– mid volume products 
+Demand from customers for launch of patent expiry products
+End to end services offered by larger Generic Formulations 
+CDMO reduces the complexities in inventory management & 
+logistics for the big pharma companies
+INR 250 Billion
+FY21P
+INR 370-410 Billion
+FY25P
+~14% CAGR
+Source: CRISIL Report
+
+>>>

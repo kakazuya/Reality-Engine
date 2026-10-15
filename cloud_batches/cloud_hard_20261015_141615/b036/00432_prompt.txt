@@ -1,0 +1,61 @@
+Company: OMINFRAL (NSE/BSE symbol OMINFRAL), an Indian listed company. Document: investor presentation filed 2026-09-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+History of the Company
+38
+Foundation and Initial Growth 
+(1971-2002)
+Foundation and Initial Growth 
+(1971-2002)
+Expansion and
+Major Achievements (2003-2015)
+Expansion and
+Major Achievements (2003-2015)
+Diversification and International 
+Ventures (2016-2024)
+Diversification and International 
+Ventures (2016-2024)
+1971 : Post establishment in 1969, 
+the company became operational
+1995 : Issued IPO & Listing on BSE
+2001 : First International Project in 
+Bhutan
+2002 : Entered real estate business 
+and clocked a turnover of Rs. 100 
+Crore
+2003 : Received a project in 
+Vietnam
+2007 : Won 4 major NHPC 
+contracts within a span of 2 
+months and raised funds Rs.120 cr  
+via QIP by diluting 20% stake
+2010 : Clocked a turnover of 200 
+Crore and received the best SME in 
+Infra sector awards from 
+ICICI/CRISIL.
+2013 : Diversified into civil 
+construction projects for roads and 
+dams, won the Kalisindh project at 
+Kota, and clocked a turnover of Rs 
+300 Crore
+2015 : Completed massive civil 
+construction of a dam for the first 
+time – Kalisindh Dam.
+2017 : Contract work for 
+Development of Irrigation and 
+Watershed in Africa
+2022-23 : Received Jal Jeevan 
+Mission Award for ~Rs. 2,000 Cr
+2023-24 : Company crossed 
+Revenue of Rs 1,000 Cr  in FY24
+
+>>>

@@ -1,0 +1,70 @@
+Company: AUBANK (NSE/BSE symbol AUBANK), an Indian listed company. Document: investor presentation filed 2022-05-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+5
+India Opportunity: We Are Being Aided by Strong 
+Structural Tailwinds
+Registration and 
+Formalization of MSMEs
+Source: NITI Aayog Report, IMF; RBI Report on MSMEs, 2019,Budget 2022, NIP Report of the Task Force 2020, United Nations, Redseer
+Government Support for Inclusive Growth
+Green vehicle Push and Vehicles 
+Scrappage Policy 
+Housing For All
+Estimated size of EV finance market by 
+2030
+Enterprises registered on Udyam portal 
+so far
+~US$ 300 Bn
+~US$ 6.4 Bn
+MSME Credit Gap
+~US$ 50 Bn
+Allocation for PM Awas Yojana in Budget 
+2022-23 
+Credit demand from MSMEs still 
+unaddressed
+6.6 MM+
+Harmonization of 
+Regulations 
+Infrastructure Investment 
+Push
+NIP Pipeline budget 
+announced over FY20-25
+~US$ 1.5 Tn
+Convergence of key NBFC 
+regulations to Banking 
+regulations
+Note:
+1.
+In 2020
+Large Base of Millennials and Gen Z
+of India’s Population comprised 
+of Gen Z and Millennials (1)
+~51%
+29.8 MM
+71.7 MM
+Growing Credit Card Penetration
+# Credit Cards issued
+Mar-17
+Feb-22
+~10%
+38-41%
+2014
+2021
+of India’s
+population
+of India’s
+population
+Rising Smartphone Penetration
+Smartphone Penetration, %
+
+>>>

@@ -1,0 +1,76 @@
+Company: KISSHT (NSE/BSE symbol KISSHT), an Indian listed company. Document: investor presentation filed 2026-07-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Q1 FY2027 Quarterly Results  |
+Q1 FY2027 Quarterly Results  |
+• Conversational loan assistant guides customers through 
+offer selection
+• 100s of users/day use AI voice agent for offer clarification
+• Up to +10pp  uplift in offer-selection page conversion
+AI & Technology
+AI deeply engrained in our lending lifecycle
++10pp 
+80%+
+100%
+80%+
+1. Customer Acquisition
+CONVERSION UPLIFT
+• 100% call QC by AI agents vs. ~10% industry standard
+• Average time to answer optimized from ~200s to <90s
+• AI flags SOP breaches, escalation risks and training gaps 
+same day
+4. Customer Support
+SERVICE QUALITY & GOVERNANCE
+• 80%+ of code written with AI assistance
+• Faster implementation cycles across product and 
+analytics use cases
+• Improved code quality, testing and security
+3. System Development
+ENGINEERING VELOCITY
+Risk Management Framework
+Liability and Capital
+Financial Performance
+Portfolio Performance and Asset Quality
+Company Overview
+Performance Snapshot
+Offer-selection 
+conversion uplift
+System development 
+code written with AI
+Customer call QC
+coverage
+Voice agent recovery 
+vs. human team
+16
+• Smart recognition of business licences, income, vintage 
+and banking proofs
+• +30% First Time Right / ~50% reduction in document-
+stage credit queries. LLM-assisted Credit Assessment 
+Memo, income assessment and legal-report generation
+6. LAP – Smart Documents
+STRONGER CREDIT VERIFICATION
+• Voice agents for DPD 1–10 early-bucket collections
+• Achieving >80% of human recovery rate in early 
+delinquency cases, helping sharpen tele-calling 
+interventions
+• Self-pruning dial queues reduce wasted calls and free 
+teams for complex cases
+2. Collections
+EARLY-BUCKET PRODUCTIVITY
+• Majority of marketing videos AI-generated
+• AI creatives enable faster, lower-cost campaign testing
+• Faster creative iteration improves discovery and funnel 
+experimentation
+5. Marketing & Content
+FASTER CREATIVE ITERATION
+
+>>>

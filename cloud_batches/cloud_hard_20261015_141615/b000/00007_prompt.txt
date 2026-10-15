@@ -1,0 +1,96 @@
+Company: RAYMONDLSL (NSE/BSE symbol RAYMONDLSL), an Indian listed company. Document: investor presentation filed 2026-05-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+ 
+ 
+ 
+(Formerly known as 
+Raymond Consumer Care Limited) 
+ 
+                                                                        
+ 
+ 
+Corporate Office 
+JEKEGRAM 
+Pokhran Road No. 1, 
+Thane (West) - 400 606, 
+Maharashtra, India. 
+Phone: +91 2261527000 
+Website: www.raymondlifestyle.com 
+Registered Office 
+Plot G-35 and G-36, 
+MIDC Waluj, Taluka Gangapur, 
+Chhatrapati Sambhajinagar - 431 136, 
+Maharashtra, India. 
+CIN No: L74999MH2018PLC316288 
+Head Office 
+New Hind House, 
+Narottam Morarjee Marg, 
+Ballard Estate, Mumbai – 400 001, 
+Maharashtra, India. 
+Phone: +91 2240349999 
+RLL/SE/26-27/8 
+ 
+May 06, 2026 
+ 
+To  
+The Department of Corporate Services - CRD 
+BSE Limited 
+P.J. Towers, Dalal  Street 
+Mumbai - 400 001                                            
+Scrip Code: 544240 
+ 
+ 
+The National Stock Exchange of India Limited 
+Exchange Plaza, 5th Floor 
+Bandra-Kurla Complex 
+Bandra (East), Mumbai - 400 051                              
+Symbol: RAYMONDLSL  
+ 
+Dear Sir/Madam, 
+ 
+Sub: Raymond Lifestyle Limited – Investor Presentation  
+ 
+Pursuant to Regulation 30 of the SEBI (Listing Obligation and Disclosure Requirements) 
+Regulations, 2015, we enclose herewith the Investor Presentation on the Audited Financial 
+Results for the Fourth quarter and Year ended March 31, 2026. 
+ 
+The meeting of the Board of Directors commenced at 02:15 p.m. and concluded at  05.30 p.m. 
+ 
+The Investor Presentation is also available on the website of the Company i.e. 
+https://raymondlifestyle.com/. 
+ 
+We request you to take the above information on record. 
+ 
+Thanking you. 
+ 
+Yours faithfully, 
+For Raymond Lifestyle Limited 
+ 
+ 
+ 
+ 
+Priti Alkari 
+Company Secretary 
+ 
+Encl.: A/a 
+ 
+Priti Nitin 
+Alkari
+Digitally signed 
+by Priti Nitin 
+Alkari 
+Date: 2026.05.06 
+20:10:23 +05'30'
+
+>>>

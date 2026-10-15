@@ -1,0 +1,127 @@
+Company: RSWM (NSE/BSE symbol RSWM), an Indian listed company. Document: investor presentation filed 2025-11-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+September 2025
+www.rswm.in
+35
+Sustainability
+RENEWABLE ENERGY
+●RSWM commitment to clean energy
+includes wind and solar installations.
+With
+the
+acquisition
+of
+a
+100%
+equity stake in M/s BG Wind Power
+Limited
+(BGWPL),
+BGWPL
+has
+become a wholly owned subsidiary of
+the Company.
+●This
+strategic
+investment
+enables
+RSWM
+to
+access
+20
+MW
+of
+wind
+power.
+●Also,
+RSWM
+has
+secured
+100%
+power
+through
+a
+Power
+Purchase
+Agreement with a 20 MW wind power
+unit from LNJ Power Venture Limited.
+BIO-FUEL
+●RSWM is actively working to shift its
+energy source from coal to biofuel
+across all its facilities. The company
+aims to convert all six of its boilers
+to biofuel, marking a significant step
+toward greener operations.
+●This
+initiative
+is
+part
+of
+RSWM’s
+broader sustainability agenda, aimed
+at reducing its carbon footprint and
+promoting
+the
+use
+of
+renewable
+energy
+sources
+in
+industrial
+processes, a proactive approach to
+cleaner energy technologies.
+PET BOTTLES RECYCLING
+●The Company processes six million
+PET bottles daily, converting them
+into
+polyester
+fibre.
+Recycled
+polyester now constitutes 50% of the
+total production, up from less than
+10% initially.
+●RSWM
+has
+engaged
+the
+local
+community
+in
+four
+districts
+of
+Rajasthan
+by
+installing
+PET
+bottle
+recycling
+machines
+at
+high-traffic
+public
+locations,
+such
+as
+railway
+stations
+and
+bus
+terminals,
+to
+promote recycling awareness.
+1
+2
+3
+
+>>>

@@ -1,0 +1,44 @@
+Company: ERIS (NSE/BSE symbol ERIS), an Indian listed company. Document: investor presentation filed 2021-10-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+11
+ERIS CONTINUES TO EXECUTE ON GROWTH DRIVERS (1/2)
+Source: AIOCD MAT Sep’21
+•
+Our business model of building strong and sustainable brands has enabled us to maintain
+our growth trajectory during the pandemic periods (Wave 1 as well as Wave 2) when MR-
+Doctor interactions were severely constrained
+•
+There has been a clear shift in prescriber preference towards established brands; this bodes
+well for us with 9 of our Top-15 mother brands being ranked among the Top-5 in their
+respective categories
+•
+We have started taking the lead in the detection and management of post-Covid early-onset
+Diabetes (“unmasking of Diabetes”) through a significant ramp-up in our Patient Care
+Initiatives involving CGM and HbA1C camps
+1
+Expansion of power-brands’ 
+franchise 
+•
+We have an exciting pipeline of patent expiration opportunities coming up in the cardio-
+metabolic segment over the next 3-4 years
+•
+We are well-positioned in the cardio-metabolic space to gain significant leverage from these
+expirations; our successes in Zomelis and Gluxit bear testimony in this regard
+•
+Of the 10 new product launches planned for FY22, we have launched 4 products in the first half
+of the year; we have more launches planned in H2 in the areas of Cardio-metabolic, Wellness
+and Women’s Health
+2
+New product pipeline
+
+>>>

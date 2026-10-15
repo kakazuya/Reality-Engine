@@ -1,0 +1,47 @@
+Company: RAINBOW (NSE/BSE symbol RAINBOW), an Indian listed company. Document: investor presentation filed 2025-07-26. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+About Us
+Rainbow network comprises of 201 hospitals and 5 clinics in 6 cities, with a total bed capacity of 2,035 
+beds. Our Pediatric services under “Rainbow Children’s Hospital” includes newborn and pediatric 
+intensive care, pediatric multi-specialty services, pediatric quaternary care (including organ 
+transplantation); whereas our women care services under “Birthright by Rainbow” offers perinatal care 
+services which includes normal and complex obstetric care, multi-disciplinary fetal care, perinatal 
+genetic and fertility care along with gynecology services.
+Rainbow Children’s Hospital built on strong fundamentals of multidisciplinary approach with a full-time 
+consultant led clinical service along with 24/7 commitment in a child centric environment. The company 
+follows a hub-and-spoke operating model where the hub hospital provides comprehensive outpatient, 
+inpatient care, with a focus on tertiary and quaternary services, while the spokes provide emergency 
+care in pediatrics and obstetrics, large outpatient services and comprehensive obstetrics, pediatric and 
+level 3 NICU services. This model is successfully operational at Hyderabad and is gaining traction in 
+Bengaluru. The endeavor is to replicate this approach in Chennai and across the National Capital 
+Region. Subsequently Rainbow intends to expand into tier-2 cities of Southern India.
+Rainbow embraces a unique doctor engagement model, where doctors work exclusively on a full-time, 
+retainer basis. The doctors work in teams and have 24/7 commitment, which is particularly important for 
+children’s emergency, neonatal, pediatric intensive care services and to support pediatric retrieval 
+services. The Company also operates the country’s largest pediatric DNB training programme in private 
+healthcare, offering post graduate residential DNB and fellowship programme.
+35
+Vikas Maheshwari
+Group Chief Financial Officer
+Rainbow Children's Medicare Limited
+Tel: + 91(40) 4969 2222
+Email: investorrelations@rainbowhospitals.in
+Saurabh Bhandari
+Head Investor Relations & Group Business Analyst
+Rainbow Children's Medicare Limited
+Tel: + 91(40) 4969 2222
+Email: Saurabh.bhandari@rainbowhospitals.in
+For further information please contact
+1 Post the acquisition of Prashanthi hospital, Warangal on 1st July, 2025
+
+>>>

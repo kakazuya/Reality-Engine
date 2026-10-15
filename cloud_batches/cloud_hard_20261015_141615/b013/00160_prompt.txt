@@ -1,0 +1,92 @@
+Company: AKUMS (NSE/BSE symbol AKUMS), an Indian listed company. Document: investor presentation filed 2026-08-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Location
+5
+Technologically Advanced Manufacturing Capabilities
+Haridwar
+Haridwar
+Haridwar
+Haridwar
+Haridwar
+Haridwar
+Haridwar
+Haridwar
+Kotdwar
+Baddi
+Haridwar
+Year
+2004
+2007
+2007
+2010
+2010
+2010
+2014
+2014
+2021
+2023
+2024
+Annual Capacity 
+(Cr units)
+649
+15
+39
+264
+6
+269
+2.635
+732
+17
+392
+41
+Capability
+General
+General
+General
+Hormonal
+Cosmetics
+Ayurvedic / 
+Nutraceuticals
+General
+β-lactams 
+and steroids
+Penem 
+anti-infective
+General
+General
+Dosage Forms
+1 2 3 4
+1 2 3 4
+1 2 3 4
+1
+2 3 4
+1 2 3 4
+1 2 3 4
+1 2 3 4
+1 2 3 4
+1 2 3 4
+1 2 3 4
+1
+2 3 4
+1
+3
+2
+4
+Oral Solid
+Oral Liquid
+Injectable / Sterile
+External / Topical
+Key Accreditations* 
+*Received by some or all facilities;
+
+>>>

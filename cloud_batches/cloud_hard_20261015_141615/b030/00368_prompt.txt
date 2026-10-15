@@ -1,0 +1,34 @@
+Company: DEVYANI (NSE/BSE symbol DEVYANI), an Indian listed company. Document: investor presentation filed 2023-05-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+About Us
+Devyani International Limited (DIL) is the largest franchisee of Yum Brands in India and is among the largest operators of chain
+quick service restaurants (QSR) in India, on a non-exclusive basis, and operates 1,243 stores across more than 242 cities in India,
+Nigeria and Nepal, as of March 31, 2023. In addition, DIL is a franchisee for the Costa Coffee brand and stores in India.
+Yum! Brands Inc. operates brands such as KFC, Pizza Hut and Taco Bell brands and has presence globally with more than 54,000
+restaurants in over 155 countries.
+Founded in London by Italian brothers Sergio and Bruno Costa in 1971, Costa Coffee is present in 41 countries around the world,
+with over 2,800+ coffee shops in the UK&I and 1,100+ globally.
+Please visit www.dil-rjcorp.com for more information. You may also reach out to:
+Manish Dawar / Rajiv Kumar
+Anoop Poojari / Jenny Rose
+Devyani International Limited
+CDR India
++91 124 478 6000 / +91 88601 68600
++91 98330 90434 / +91 86899 72124
+Email:
+rajiv.kumar@dil-rjcorp.com
+anoop@cdr-india.com
+Investor.relations@dil-rjcorp.com
+jenny@cdr-india.com
+
+>>>

@@ -1,0 +1,63 @@
+Company: KOTAKBANK (NSE/BSE symbol KOTAKBANK), an Indian listed company. Document: investor presentation filed 2023-07-22. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+18
+Alternate Assets
+Funds Raised during last 12 months
+Kotak Strategic Situations Fund II announced a first close at USD 1.25 bn
+to provide solution capital to growth and value companies. 
+161
+1,435
+2,719
+4,726
+8,791
+0
+2000
+4000
+6000
+8000
+2006
+2012
+2017
+2021
+2023
+Total capital raised 
+since inception
+USD 8.8 bn
+CAGR  of capital raised
+since inception
+26.5%
+Total funds raised 
+during last 12 months
+Kotak Realty Funds (KRF) raised its 12th fund with capital commitments 
+USD 590 mn to invest in office assets in India.
+USD 3.6 bn
+Kotak Realty Funds raised its 13th Fund to focus on opportunistic 
+investments with capital commitments of USD 590 mn.
+Set-up India’s first Data Center fund to build the digital infrastructure 
+backbone. First close announced at USD 590 mn.
+Kotak Infrastructure Investment Fund received commitments of USD 664 
+mn to invest in operating infrastructure projects by providing senior 
+secured credit.
+Total Capital raised - Since inception (USD mn)
+Real Estate
+Strategic 
+Situations
+Infrastructure
+Private Equity
+Data 
+Center
+Private Credit 
+Comprehensive platform covering 6 different asset 
+classes 
+
+>>>

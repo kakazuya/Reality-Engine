@@ -1,0 +1,78 @@
+Company: POWERMECH (NSE/BSE symbol POWERMECH), an Indian listed company. Document: investor presentation filed 2025-05-25. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Professional management team and skilled workforce
+Strategic partnerships and JVs
+Power Mech at a Glance
+3
+A leading industrial services and construction Company providing comprehensive service in power and infrastructure sector
+Diversified service presence across sectors with Pan India presence 
+and expansion across international geographies
+Comprehensive service provider in power and 
+infrastructure sector 
+Significant orderbook scale up since IPO 
+Largest service provider in O&M space with backward and 
+Forward integration.
+Consistent track record of growth with stable margins 
+Long term relationships with Marquee clientele
+1
+2
+3
+4
+5
+6
+7
+165
+Total 
+Ongoing projects
+58
+O&M/ AMC 
+projects(domestic)
+15
+Overseas projects
+Rs. 3,524Cr
+Order book at IPO (FY16)
+Rs. 53,994 Cr*
+Order book as on 31st March 
+25
+Sectors
+Industrial plants
+Roads
+New geographies
+Uganda
+Sudan
+Kenya
+Morocco
+Management with strong industry 
+experience
+Railways & 
+Metro
+*Including MDO contracts of Rs. 9,294Cr and Rs.30,313Cr (Execution considered  up to 31st March 2025), excluding FGD order value of Rs 4264Cr 
+Iraq
+Qatar
+Water
+Mining
+Rs. 5,279cr
+Total Revenue
+Rs.649cr/12.3%
+EBITDA/ margin
+Rs.327cr/6.2%
+PAT/ margin
+FY25
+11,370
+Manpower base
+Q4’FY25
+Largest O&M 
+Service provider
+8
+
+>>>

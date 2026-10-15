@@ -1,0 +1,59 @@
+Company: AMBUJACEM (NSE/BSE symbol AMBUJACEM), an Indian listed company. Document: investor presentation filed 2024-04-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+9
+Infrastructure and Housing sectors to keep Cement Demand vibrant
+10% - 14%
+24% - 25%
+62%-65%
+FY 2023
+11% - 15%
+25%-29%
+60%-62%
+FY 2028f
+Commercial
+Infrastructure
+Housing
+Housing
+•
+Govt. of India promotional scheme for rural housing to push demand
+•
+Aspirational India (per capita GDP ~ USD 3000 by 2025)
+•
+Working age population of 1 Bn by 2030
+•
+Rising shift from rental to own house
+•
+Redevelopment across several cities
+(Housing sale grew 63% in Q4 FY’24 YoY (area volume growth)
+Infrastructure •
+GOI’s National Infrastructure Pipeline (NIP), decade of infrastructure,  
+~USD 4 Trillion investment expected 
+•
+Highways (~15000 km/year), Ports, Bullet Trains, Rail/Metro, Renewables
+•
+New Economic Corridors across the country to boost cement demand
+•
+Stronger Banking Industry – a booster to Capex, GDP expected robust 
+growth of 6-8% in long run
+Commercial 
+•
+GOI’s Make in India & PLI schemes attracting sizeable investments ~
+$ 12 Bn in a year
+•
+China Plus strategy driving manufacturing
+•
+Growth in commercial space to support demand
+- Net leasing of office space expected to grow by 10-15%
+- 47-52% growth expected in the Indian data center industry in fiscal 2023
+
+>>>

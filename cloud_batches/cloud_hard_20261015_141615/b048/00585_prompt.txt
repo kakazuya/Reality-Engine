@@ -1,0 +1,44 @@
+Company: RAMCOCEM (NSE/BSE symbol RAMCOCEM), an Indian listed company. Document: investor presentation filed 2025-05-22. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+EBITDA                                                                                                                       
+` in Crores
+431 
+334 
+291 
+ -
+ 100
+ 200
+ 300
+ 400
+ 500
+4QFY24
+4QFY25
+3QFY25
+Average Cement prices down by 7% & 10% in 4QFY25 & FY25 YoY respectively
+Power and fuel cost down by ` 266 / Ton in FY25 YoY; Down by ` 97 / Ton in 
+4QFY25 YoY & Down by ` 31 / Ton compared with sequential quarter
+Rupee depreciation by 2% during FY25 impacted the fuel cost
+Fixed cost absorption was better during FY25 / 4QFY25 YoY due to
+improved operating leverage
+` 785 / T
+` 631 / T
+` 666 / T
+EBITDA / Ton
+1,595 
+1,276 
+FY24
+FY25
+` 867 / T
+` 690 / T
+
+>>>

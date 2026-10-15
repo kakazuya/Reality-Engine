@@ -1,0 +1,64 @@
+Company: APOLLO (NSE/BSE symbol APOLLO), an Indian listed company. Document: investor presentation filed 2025-08-23. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+ 
+ 
+                                                                              Date: 23rd August, 2025 
+ 
+BSE Limited, 
+Department of Corporate Services 
+Phiroze Jeejeebhoy Towers, 
+Dalal Street, Mumbai – 400 001 
+ 
+National Stock Exchange of India Ltd., 
+Listing Department  
+Exchange Plaza, C-1, Block G, 
+Bandra Kurla Complex, 
+Bandra (E), Mumbai – 400 051 
+ 
+Scrip Code: 540879                       Symbol: APOLLO                         ISIN: INE713T01028 
+ 
+Subject: Intimation under Regulation 30 of SEBI (LODR) Regulations, 2015 – Intimation regarding 
+the Investor Presentation for Analyst/Institutional Investor Meet- Reg 
+ 
+Dear Sir/Madam, 
+In compliance with Regulation 30 read with Part A of Schedule III of the SEBI (Listing Obligations and 
+Disclosure Requirements) Regulations, 2015, and in continuation of our intimation dated August 20, 2025, 
+regarding the Analyst/Institutional Investor Meeting scheduled for August 23, 2025, we wish to inform you 
+that the investor presentation for the quarter ended June 30, 2025, as intimated to the exchanges on July 28, 
+2025, will be used for the said investor meet. 
+  The investor presentation is also available on the Company’s website at https://apollo-micro.com/investors/ 
+ 
+We request you to kindly take the same on record.  
+ 
+Thanking You 
+ 
+Yours Faithfully  
+ 
+FOR APOLLO MICRO SYSTEMS LIMITED 
+ 
+ 
+ 
+ 
+RUKHYA PARVEEN 
+COMPANY SECRETARY & COMPLIANCE OFFICER 
+ 
+RUKHYA 
+PARVEEN
+Digitally signed 
+by RUKHYA 
+PARVEEN 
+Date: 2025.08.23 
+09:45:24 +05'30'
+
+>>>

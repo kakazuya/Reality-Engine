@@ -1,0 +1,47 @@
+Company: GHCL (NSE/BSE symbol GHCL), an Indian listed company. Document: investor presentation filed 2021-04-28. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Return on Capital Employed (ROCE)
+5-Year PAT CAGR Rs. 310 Cr from Rs. 257 Cr
+Capacity Utilisation of Soda Ash
+Lac Spindle Capacity
+MN MT Textile Processing Capacity
+Lac MT Soda Ash Capacity
+Focused management 
+approach
+Strategy led by professional 
+management team
+Targeting 
+To grow profits at a CAGR 15%-18% on a long term horizon
+To inculcate value systems that defines our culture 
+To drive sustainable inclusive growth involving all stakeholders
+Best-in-class
+Operations management 
+CAPEX planning and execution 
+Financial management
+2nd
+Largest 
+manufacturer of 
+Soda Ash in India, 
+with 25% market 
+share
+GHCL – An Introduction
+17
+11.00
+45
+1.85
+90%+
+4%*
+14%*
+* Despite adverse business impact in first half of financial year due to pandemic.
+
+>>>

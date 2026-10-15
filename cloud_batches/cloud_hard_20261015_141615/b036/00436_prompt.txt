@@ -1,0 +1,76 @@
+Company: SHERA (NSE/BSE symbol SHERA), an Indian listed company. Document: investor presentation filed 2024-05-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Investor Presentation
+41
+Stock Data
+Share Holding Pattern 
+63.58%
+0.31%
+36.12%
+Promoters
+Institutions
+NII
+NSE Code
+SHERA
+ISIN
+INE0MM001019
+Share Price ₹
+187.00
+Market Capitalization ₹ Cr
+426.14
+No. of Share Outstanding 
+2,27,88,347 
+Face Value ₹
+10.00
+52 Week High ₹
+209.00
+52 Week Low ₹
+90.85
+As on 16-05-2024
+187.00
+0
+0
+50
+100
+150
+200
+250
+0
+500000
+1000000
+1500000
+2000000
+2500000
+17-Feb-23
+17-Mar-23
+17-Apr-23
+17-May-23
+17-Jun-23
+17-Jul-23
+17-Aug-23
+17-Sep-23
+17-Oct-23
+17-Nov-23
+17-Dec-23
+17-Jan-24
+17-Feb-24
+17-Mar-24
+17-Apr-24
+Volume
+Price Volume
+Share Performance From 17th February 2023
+Stock Information
+As on 31-03-2024
+Source: NSE
+
+>>>

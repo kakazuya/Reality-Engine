@@ -1,0 +1,62 @@
+Company: ZENSARTECH (NSE/BSE symbol ZENSARTECH), an Indian listed company. Document: investor presentation filed 2026-07-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+www.zensar.com
+www.zensar.com | © Zensar Technologies 2026 | Page 11
+0
+2
+4
+6
+8
+10
+0
+200
+400
+600
+800
+1,000
+30-Jun-25
+31-Jul-25
+31-Aug-25
+30-Sep-25
+31-Oct-25
+30-Nov-25
+31-Dec-25
+31-Jan-26
+28-Feb-26
+31-Mar-26
+30-Apr-26
+31-May-26
+30-Jun-26
+Millions
+Share Price
+Volume
+Equity Share Information
+Zensar’s stock price and shareholding pattern
+Mutual Funds, 19.6%
+Others, 20.7%
+FPIs, 10.7%
+Promoter Group, 49.0%
+Shareholding Pattern 
+(as of June 30, 2026)
+▪ Share Price (30th June 2026): INR 428/ share
+▪ Market Cap (30th June 2026):INR 9,674 crs
+▪ Financial Year: April to March
+▪ Face Value: INR 2 / share
+▪ Listed on Indian Stock Exchanges: 
+a) Bombay Stock Exchange (code: 504067)
+b) National Stock Exchange (code: ZENSARTECH)
+▪ Bloomberg Code: ZENT.IN
+▪ Reuters Code: ZENT.BO
+INR
+
+>>>

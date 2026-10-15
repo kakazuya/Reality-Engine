@@ -1,0 +1,56 @@
+Company: PUNJABCHEM (NSE/BSE symbol PUNJABCHEM), an Indian listed company. Document: investor presentation filed 2023-08-04. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Industry Opportunity
+26
+Anticipated Growth 2018 → 2025
+Opportunity size
+Capitalising on Opportunity
+$ 32 bil →$ 49 bil 
+CAGR ~ 6.3% 
+Biologicals $2.8 bil → $7.1 bil 
+CAGR ~ 14.4%
+Improvements in formulation, ease of use, shelf life and 
+spectrum
+100+  agrochemicals to go 
+off-patent till 2023
+Sales of products while under patent valued 
+at $11 bil
+Established players will likely reformulate the
+off-patent products and look for production partners
+$3 bil → $ 5 bil
+FY20 - China contributed 49% of India’s 
+total pesticide imports, valued at INR 9,096 
+crore
+Indian companies are witnessing interest from 
+multinational companies as they seek to diversify supply 
+chains from China
+Source: Deloitte Industry Report
+Integrated Pest 
+Management (IPM)
+Patent expiry of
+agrochemical products
+Substituting China as 
+Global Agrochemical Hub
+Feeding the growing 
+global population
+Protecting against 
+crop loss and 
+increasing yields
+Raising demand for 
+sustainably produced 
+food
+Tracking climate 
+change
+Demand Drivers for Agrochemicals
+
+>>>

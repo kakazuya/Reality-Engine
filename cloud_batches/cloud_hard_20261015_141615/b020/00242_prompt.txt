@@ -1,0 +1,154 @@
+Company: VIESL (NSE/BSE symbol VIESL), an Indian listed company. Document: investor presentation filed 2026-05-13. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+The Rental Advantage
+15
+Partner of Choice for High-Impact Infrastructure Projects
+The company has scaled its
+fleet
+to
+~545+
+units,
+comprising
+large
+fleet
+sourced from OEMs, thereby
+driving superior revenue per
+machine
+and
+asset
+productivity
+The
+fleet
+is
+deployed
+on
+a
+PAN-India
+basis
+across
+28
+states,
+catering
+to
+200+
+marquee
+clients
+including
+Cemindia,
+Kalpataru, L&T, Tata Projects,
+and IRB Infra, which ensures
+geographical
+diversification
+and materially reduces idle
+time.
+Continuous
+fleet
+modernisation remains central
+to
+driving
+technology-led
+improvement
+in
+realizations
+and operating efficiency. There
+is a strong operating leverage
+driven by deploying output-
+oriented equipment. Life of the
+asset is around 10–15 years,
+but 85% of the fleet will be
+within
+5
+years
+of
+age,
+the
+company effectively mitigates
+obsolescence
+risk
+while
+capturing
+peak-cycle
+realizations.
+The
+company
+follows
+an
+integrated asset lifecycle model,
+wherein
+equipment
+is
+initially
+deployed in the rental business
+to generate stable, annuity-like
+cash flows. As assets approach
+the end of their optimal rental
+cycle, they are refurbished and
+monetized
+through
+sales,
+enabling
+efficient
+capital
+recycling and
+optimized
+asset
+utilization. This synergy between
+recurring rental income & value-
+accretive
+refurbishment
+monetization
+supports
+strong
+earnings scalability
+Clients benefit from reduced
+exposure
+to
+equipment
+breakdowns,
+market
+volatility,
+and
+technology
+obsolescence
+through
+equipment rental solutions.
+Timely maintenance support
+and
+quick
+equipment
+replacements
+ensure
+minimal
+downtime
+and
+uninterrupted
+operations,
+enabling
+reliable
+project
+execution
+and
+improved
+competitiveness.
+Trusted Execution Partner
+Next-Gen Equipment Driving 
+Superior Realisations
+Synergy-Driven Asset 
+Turnover
+Risk Mitigation
+02
+01
+03
+04
+
+>>>

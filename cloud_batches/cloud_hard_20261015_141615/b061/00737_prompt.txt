@@ -1,0 +1,66 @@
+Company: SARTELE (NSE/BSE symbol SARTELE), an Indian listed company. Document: investor presentation filed 2024-07-15. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+SAR
+Industry Overview – Telecomm Industry 
+28,395.43 
+42,310.44 
+35,550.21 
+1,18,960.50 
+98,359.41 
+1,11,876.67 
+ -
+ 20,000
+ 40,000
+ 60,000
+ 80,000
+ 1,00,000
+ 1,20,000
+ 1,40,000
+FY20A
+FY21A
+FY22A
+FY23A
+FY24RE
+FY25BE
+Rs Crore
+5,95,649
+6,45,814
+7,10,040
+7,54,067
+7,96,773
+15,00,000
+0
+2,00,000
+4,00,000
+6,00,000
+8,00,000
+10,00,000
+12,00,000
+14,00,000
+16,00,000
+Mar'20
+Mar'21
+Mar'22
+Mar'23
+Mar'24
+Mar'25 E
+In Nos
+Towers Installed
+Number of Towers Installed 
+Budgetary Outlay for Telecom Sector including Tower Infrastructure
+According to the Union Budget 2024-25, a total outlay of INR 111,876.7 cr. was allocated to the telecom sector including telecom infrastructure which is 
+14% more than the previous year's allocation indicating the increased thrust on connectivity in the country by the government.
+10
+Privileged & Confidential
+
+>>>

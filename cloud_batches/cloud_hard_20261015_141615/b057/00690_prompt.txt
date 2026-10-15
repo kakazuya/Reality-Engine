@@ -1,0 +1,86 @@
+Company: ASHIANA (NSE/BSE symbol ASHIANA), an Indian listed company. Document: investor presentation filed 2024-05-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+© Ashiana Housing Limited, All Rights Reserved.
+25
+Future Projects Summary
+* Ashiana Swarang is acquired by Kairav Developers Ltd. (a joint venture company with equal economic interest of Ashiana Housing Ltd. and Arihant Foundations.)
+Location 
+Project
+Phase
+Economic Interest
+Saleable Area 
+(Lakhs Sq. ft.) 
+Bhiwadi 
+Tarang
+5b & 6, 7 and 8
+100% Ownership
+4.95
+Bhiwadi 
+Advik
+2,3,4 & 5
+100% Ownership
+10.57
+Jaipur
+Ekansh
+3 & 4
+77.25% Revenue Share
+4.88
+Jaipur
+Nitara
+2 and 3
+80.20% Revenue Share
+5.23
+Jaipur
+One44
+2
+77.40% Revenue Share
+1.36
+Gurugram
+Amarah
+4 & 5
+100% Ownership
+9.19
+Chennai
+Vatsalya
+2,3,4 & 5
+100% Ownership
+10.28
+Chennai
+Swarang*
+1, 2 and 3
+50% of the Profits
+5.55
+Neemrana 
+Aangan
+2
+100% Ownership
+4.37
+Pune  
+Malhar
+3
+65% Revenue Share
+6.55
+Pune  
+Amodh
+2 and 3
+80% Revenue Share
+5.53
+Pune  
+Utsav Lavasa
+5
+100% Ownership
+0.84
+69.31
+Total
+
+>>>

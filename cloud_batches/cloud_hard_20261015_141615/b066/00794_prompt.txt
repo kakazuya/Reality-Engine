@@ -1,0 +1,87 @@
+Company: ZENSARTECH (NSE/BSE symbol ZENSARTECH), an Indian listed company. Document: investor presentation filed 2025-04-25. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+55,409 
+11,653
+20,837
+15,923
+Apr-24
+May-24
+Jun-24
+Jul-24
+Aug-24
+Sep-24
+Oct-24
+Nov-24
+Dec-24
+Jan-25
+Feb-25
+Mar-25
+Market Cap (Rs Cr.)
+ Group
+CEAT
+KEC
+ZENSAR
+RPG Group key financials
+www.zensar.com | © Zensar Technologies 2025 | Page 14
+Note: 1. ROCE is calculated by taking EBIT*(1-ETR)  divided by Capital Employed  2. ROE is calculated by taking PAT divided by Net Worth 3. Market Cap updated to March 31, 2025
+INR Cr.
+FY20
+FY21
+FY22
+FY23
+FY24
+14.1%
+13.2%
+14.1%
+11.0%
+10.7%
+13.5%
+8,369
+9,677
+10,364
+11,113
+12,742
+13.3%
+14.2%
+9.3%
+7.8%
+14.2%
+10.9%
+13.6%
+8.6%
+9.4%
+13.3%
+0.0%
+5.0%
+10.0%
+15.0%
+20.0%
+25.0%
+30.0%
+35.0%
+40.0%
+-500
+1000
+2500
+4000
+5500
+7000
+8500
+10000
+11500
+13000
+Net Worth (Rs Cr.)
+ROE
+ROCE
+
+>>>

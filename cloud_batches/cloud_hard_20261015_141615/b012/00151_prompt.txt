@@ -1,0 +1,95 @@
+Company: FIDEL (NSE/BSE symbol FIDEL), an Indian listed company. Document: investor presentation filed 2025-04-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Financial results YoY and QoQ  (Rs. in Cr)
+Particulars
+Q4 FY 24-25
+Q3 FY 24-25
+Revenue
+14.61
+14.15
+PBT
+4.13
+2.37
+PAT
+3.06
+1.79
+Q4 FY 23-24
+11.18
+1.92
+1.49
+6
+11.18
+14.15
+14.61
+1.92
+2.37
+4.13
+1.49
+1.79
+3.06
+0
+2
+4
+6
+8
+10
+12
+14
+16
+0
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+Q4 FY 23-24
+Q3 FY 24-25
+Q4 FY 24-25
+QoQ Growth
+Revenue
+PBT
+PAT
+Linear (Revenue)
+Linear (PAT)
+•
+Revenue up
+•Grew from ₹11.18 to ₹14.61
+•Indicates solid topline growth,
+•
+PBT surged 114% YoY
+• Jumped from ₹1.92 to ₹ 4.13
+• Improvement in operating performance, signaling
+better cost control.
+•
+PAT rose 105% YoY
+• Increased from ₹1.49 to ₹3.06
+• Reflects
+higher
+profitability
+and
+improved
+net
+margins.
+•
+Slower sequential revenue growth (Q3 to Q4 FY
+24-25)
+• Revenue grew from ₹14.15 to ₹14.61 (3.21%)
+• The company recorded a 73.87% increase in Profit
+Before Tax (PBT) and a 70.90% increase in Profit
+After Tax (PAT) compared to the previous quarter
+
+>>>

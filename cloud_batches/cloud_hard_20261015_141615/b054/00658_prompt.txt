@@ -1,0 +1,138 @@
+Company: NAZARA (NSE/BSE symbol NAZARA), an Indian listed company. Document: investor presentation filed 2022-05-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+24
+Inorganic Acquisitions Summary (2/2)
+Date
+Name
+Overview
+Rationale
+Consideration
+Financials
+(in Rs. Crs)
+Sep-21
+OML Entertainment is known for managing
+some
+of
+India’s
+biggest
+gaming
+&
+entertainment creators such as Tanmay Bhat,
+Samay Raina, Suhani Shah, etc. and for owning
+and executing storied IPs such as the BACARDÍ
+NH7
+Weekender,
+well
+attended
+comedy
+touring
+properties
+such
+as
+LOLstars
+and
+Headliners and India's biggest hiphop league –
+Breezer Vivid Shuffle
+The
+OML
+Entertainment
+team
+transferring to NODWIN Gaming as
+part of the transaction will help in
+building world-class live experiences
+and enhance the multiple eSports IPs
+that
+NODWIN
+Gaming
+organizes
+through the year including Dreamhack
+and India Premiership
+A total consideration of Rs. 73 crores
+as part of an agreement concluded
+between NODWIN Gaming and OML
+Entertainment
+Revenue 
+FY21:27.85* 
+FY20:90.89 
+FY19:86.10 
+*Covid impact
+Aug-21
+OpenPlay operates a multi-game consumer
+gaming platform under the “Classic Games”
+brand which hosts popular skill based games
+and operates highest standards of technology,
+game fairness, advance player protection,
+security, AML and advertising standards
+Offers an opportunity for Nazara to
+build
+a
+network
+of
+skill
+gaming
+destinations
+operating
+on
+one
+common tech platform under the
+proven leadership of OpenPlay Team.
+•
+A total consideration of Rs. 186.4
+crores for 100% stake
+•
+The
+consideration
+of Rs.
+43.43
+crores for first tranche of strategic
+investment is payable in cash
+•
+Consideration of Rs. 143 crores by
+way of issuance of equity shares
+Revenue 
+FY21:53.48 
+FY20:39.26 
+FY19:20.88
+Jun-21
+Publishme is a
+full-service games marketing
+and
+publishing
+agency
+which
+works
+extensively with gaming publishers in Turkey
+and MENA region
+To lead the Company's foray in the
+MENA region in the gaming industry.
+The acquisition will help the company
+in establishing ourselves as a key
+player in the region
+Cash Consideration of an amount of
+~Rs.
+20
+Crores
+for
+69.82%
+stake
+through a combination of primary
+investment and secondary purchase
+from
+the
+founders
+and
+existing
+shareholders
+-
+
+>>>

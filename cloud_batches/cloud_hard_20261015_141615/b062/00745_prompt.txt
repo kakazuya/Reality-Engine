@@ -1,0 +1,37 @@
+Company: BRAHMINFRA (NSE/BSE symbol BRAHMINFRA), an Indian listed company. Document: investor presentation filed 2026-05-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+BIL | B R A H M A P U T R A I N F R A S T R U C T U R E L I M I T E D
+I N V E S T O R P R E S E N T A T I O N
+Brahmaputra
+Infrastructure Limited
+B S E :  5 3 5 6 9 3    ·    E S T . 1 9 9 8
+FY26
+R E P O R T I N G P E R I O D
+Q4 & Full Year
+An inflection twenty-eight years in the making.
+P A T G R O W T H · Y - O - Y
++99.4%
+₹29.9 Cr → ₹59.6 Cr
+E B I T D A G R O W T H
++71.9%
+Margin 20.0 % → 22.8%
+R E V E N U E · F Y 2 6
++50.9%
+₹242.2Cr → ₹365.5 Cr
+O R D E R B O O K / R E V E N U E
+4.4×
+₹1,600+ Cr
+"The Northeast's next infrastructure platform— built quietly, compounding loudly"
+M A Y 2 0 2 6
+
+>>>

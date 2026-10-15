@@ -1,0 +1,75 @@
+Company: CAPLIPOINT (NSE/BSE symbol CAPLIPOINT), an Indian listed company. Document: investor presentation filed 2026-08-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+.cAPLIN POINT LABORATORIES LIMITED 
+~lidated Notes: 
+1) 
+The above Unaudited Consolidated Financial Results for the quarter ended June 30, 2026, have been 
+reviewed and recommended by the Audit Committee and have been approved by the Board of 
+Directors of the Company at their respective meetings held on August 12, 2026 and reviewed by the 
+Statutory Auditors. 
+2) 
+The Unaudited Consolidated Financial Results of the Company has been prepared in accordance 
+with the Indian Accounting Standards prescribed under Section 133 of the Companies Act, 2013 
+("the Act") read with relevant rules issued thereunder ("Ind AS") and ot her accounting principles 
+generally accepted in India and in terms of Regulation 33 of the SEBI (Listing Obligations and 
+Disclosure Requirements) Regulations, 2015. 
+3) 
+The Group is engaged in the sole activity of carrying on the business of "Pharmaceutical 
+Formulations" and has identified two geographical segments as its reportable segments in 
+accordance with Ind AS 108-0perating Segments. Segment 1: Rest of the World. Segment 2: United 
+States of America (USA). Accordingly, segment reporting has been presented along with the 
+Consolidated results. 
+4) 
+Details of number of shares allotted under Employee Stock Option Plan (ESOP): 
+Number of Shares 
+Quarter Ended 
+Year Ended 
+Particulars 
+30.06.2026 
+31 .03.2026 
+30.06.2025 
+31.03.2026 
+Shares Allotted under Employee Stock 
+Option Plan (ESOP) 
+-
+. 
+-
+-
+Total Number of Equity Shares of the 
+Company 
+7,60, 11,696 
+7,60,11,696 
+7 ,60, 11,696 
+7,60, 11,696 
+5) 
+The Board of Directors at their meeting held on 14th May, 2026 declared an interim dividend of ~4.00 
+(Rs. Four Only) per equity share (200 %) for the financial year 2025-26 and was paid to the 
+shareholders on 8th June 2026. The Board of Directors at their meeting held today have 
+recommended a final dividend of ".,4~ . ./- per equity share (.2P.~ o) for the financial year 2025-26 
+which is subject to approval of the Shareholders in t he ensuing Annual General Meeting of the 
+Company. 
+The total dividend for the financial year 2025-26 including the final dividend (subject to the approval 
+of the Shareholders at the ensuing Annual General Meeting) will be L.8..1- per equity share (9,Q.l;lo/o) 
+of the face value off 2 each. 
+6) 
+Previous periods' figures have been regrouped/reclassified to be in conformity with current period's 
+classification/ disclosure. wherever necessary. 
+For and on behalf of the Board 
+I 
+Place: Chennai 
+Dr. Sridhar Ganesan 
+Date: 
+August 12, 2026 
+Managing Director 
+
+>>>

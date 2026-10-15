@@ -1,0 +1,107 @@
+Company: NH (NSE/BSE symbol NH), an Indian listed company. Document: investor presentation filed 2024-05-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+NH ESG Vision – “Health For All”
+18
+18
+Actuals FY 23~24 (T – Target  FY 23~24)
+A Healthy Society
+By  improving access to care, digitising patient safety & experience and building the workforce for tomorrow
+25,000+
+Doctors, nurses, 
+and paramedical 
+trained by 2030
+Digitization
+For enhancing 
+patient safety & 
+experience
+5000+
+Decreasing disparities in 
+access to care
+5000 BMTs  by 2030
+5000 Heart Procedures for 
+Children every year with 
+Treatment Cost Waiver
+4000+ 
+Underprivileged 
+academically bright 
+students, aspiring to 
+become doctors by 2030
+Touching lives of 
+20,000+ 
+Govt. school children 
+through cleanliness 
+and hunger Feeding 
+program by 2030. 
+5,60,000+ hours
+Person hours invested in 
+Associate Development 
+Programs, including 
+upskilling by 2030
+A Healthy Institution 
+By fostering a culture of innovation & strong governance
+100%
+NABH & enterprise 
+level JCI certified 
+hospitals by 2025
+Industry leader
+Best in Class risk 
+management
+Robust Risk Management 
+Process
+Cyber resilience
+Zero Trust Architecture 
+by 2025
+Greater than 1000 publications in Peer 
+Reviewed Indexed Journals (in the 5 
+years ending Calendar Year 2025).
+1000+ Publications
+In clinical 
+Governance
+A Healthy Planet
+By being conscious about impact on the environment, prioritizing consumption efficiency and resource optimization
+Renewable energy 
+mix by 2030
+30%
+Carbon Neutral
+By 2040
+Waste-water 
+recycling by 2030
+100%
+Optimized
+Waste management 
+processes
+50% less 
+Paper use across patients 
+by 2025 from 2023
+1300  (T 1300)
+715 (T 600)
+7228 (T 3300)
+4117 (T 5300)
+6.28 Pages/ Patient 
+YTD (T 5.0)
+On Plan  Ongoing
+198 Publications  (T 200)
+Ahead of Plan
+On Plan  Ongoing
+On Plan  Ongoing
+On Plan  Ongoing
+Ongoing
+1.27 KL Water Per 
+occupied bed (T 1.30)
+1.69 Kgs Per occupied 
+bed (T 1.56)
+26% (T 26%)
+3.93 L Person Hours of 
+training (T 3.80 L) 
+
+>>>

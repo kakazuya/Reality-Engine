@@ -1,0 +1,94 @@
+Company: CLEAN (NSE/BSE symbol CLEAN), an Indian listed company. Document: investor presentation filed 2025-05-22. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+COMPANY EVOLUTION
+Continuous R&D and Innovation has led to new product launches on a consistent basis
+11
+YEAR
+REVENUES (INR Crore)
+2009
+2011
+2014
+2018
+2020
+2022
+1
+19
+120
+241
+419
+685
+2021
+512
+2023
+936
+2006
+2009
+2011
+2014
+2018
+2020
+2021
+2022
+Technocrat Promoters 
+collaborated to develop 
+novel, clean and sustainable 
+chemical processes
+Aligned to the philosophy, 
+Company was named as 
+Clean Science and 
+Technology
+Commercialized unique 
+catalytic technology to 
+manufacture MEHQ 
+and Guaiacol
+
+Commercialized 
+unique catalytic 
+technology to 
+manufacture 4-MAP
+Commercialized unique 
+catalytic forward 
+integration to 
+manufacture BHA
+
+Commercialized unique 
+vapour phase route to 
+manufacture Anisole
+
+Backward integration 
+for flagship products 
+Commercialized 
+unique 
+technology to 
+manufacture 
+DCC
+Commercialized plant 
+to manufacture P-BQ 
+and TBHQ
+Expanded 
+capacity of 
+MEHQ, Guaiacol 
+and BHA by 50%
+Commercialized 
+plant to 
+manufacture 
+HALS 770 & 701
+2023
+2024
+789
+2024
+Commercialized 
+largest plant for 
+HALS from India
+
+>>>

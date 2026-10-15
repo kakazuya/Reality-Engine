@@ -1,0 +1,55 @@
+Company: FSL (NSE/BSE symbol FSL), an Indian listed company. Document: investor presentation filed 2025-11-04. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Copyright © 2025 Firstsource. All rights reserved. 
+14 
+14 of Top 20
+Mortgage lenders & servicers in the US
+BANKING &
+FINANCIAL SERVICES
+COMMUNICATION, 
+MEDIA & TECHNOLOGY
+HEALTHCARE
+DIVERSIFIED 
+INDUSTRIES
+*US$ revenue and % revenue contribution, on TTM basis
+7 of Top 10 
+Credit card issuers in the US
+3 of Top 6
+Retail banks in the UK
+1 of Top 2
+Media companies in the UK
+3 of Top 5 
+Telecom & media companies in the US
+4 of Top 5
+Consumer Tech companies in the US
+12 of Top 15
+Health plans in the US
+300+
+Health systems in the US
+2 of Top 5
+Energy providers in the UK
+Retailers in the UK
+2 of Top 10
+Leading in the UnBPO
+ world
+Our deep domain expertise is a key differentiator
+33%
+US$336m*
+34%
+US$345m*
+US$219m*
+US$124m*
+12%
+21%
+
+>>>

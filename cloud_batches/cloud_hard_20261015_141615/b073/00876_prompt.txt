@@ -1,0 +1,79 @@
+Company: INDIANB (NSE/BSE symbol INDIANB), an Indian listed company. Document: investor presentation filed 2023-01-25. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Health Care: Tie up with M/s Practo for free online Health consultation for serving / retired staff members. ( Enrolled: 41119 )
+HRM Initiatives
+Skilling & Re-Skilling
+Digital Banking Champions
+No. of Participants in  training (FY23)
+• Sector specific
+(in collaboration with CRISIL)       :  431
+• Mid Career                                      : 140
+• Advanced Corporate Credit         :   69
+(in collaboration with SBICRM)
+• Cyber security/Risk awareness  : 84
+• Others                                            : 4226
+Performance Management System 
+• Target Setting tool
+• PMS Profiler tool
+• Role Clarity tool
+• Job family policy & Survey
+• Succession Planning
+• Career Path Role Mapping
+• Ind Pride Grievance Redressal
+Staff Position &  HRM Initiatives
+31.12.2022
+908 Digital Banking Champions  (DBC) 
+assigned  to encourage customers - to 
+make use of online channels for banking 
+needs. 
+40/49
+ Domestic
+Total 
+Male 
+Female 
+Average  
+age of staff
+% of 
+Female 
+Officers 
+25347
+18231
+7116
+37
+28%
+Clerks 
+12937
+8255
+4682
+38
+36%
+Sub-staff 
+2623
+2277
+346
+46
+13%
+Full Time Sweepers 
+282
+216
+66
+45
+23%
+Total
+41189
+28979
+12210
+38
+30%
+
+>>>

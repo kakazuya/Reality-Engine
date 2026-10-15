@@ -1,0 +1,134 @@
+Company: SHANKARA (NSE/BSE symbol SHANKARA), an Indian listed company. Document: investor presentation filed 2025-05-16. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Q4 & FY25 
+PERFORMANCE
+INVESTOR PRESENTATION
+09
+SHANKARA BUILDING PRODUCTS LIMITED
+Revenue 
+(IN ₹ CRORE)
+Revenue growth impacted 
+due to decline in steel 
+prices (~11% decline) 
+despite 29% growth in 
+volume
+EBITDA margins impacted 
+by inventory losses on 
+account of drop in steel 
+realizations
+EBITDA Margin
+PAT 
+(IN %)
+(IN ₹ CRORE)
+14%
+QoQ
+4,828
+5,697
+2,600
+3,100
+3,600
+4,100
+4,600
+5,100
+5,600
+FY24
+FY25
+1,437
+1,639
+550
+750
+950
+1,150
+1,350
+1,550
+1,750
+Q3FY25 Q4FY25
+1,377
+1,639
+550
+750
+950
+1,150
+1,350
+1,550
+1,750
+Q4FY24 Q4FY25
+19%
+YoY
+18%
+YoY
+2.84%
+3.20%
+Q3FY25 Q4FY25
+3.30%
+3.20%
+Q4FY24 Q4FY25
+61%
+QoQ
+81.1
+77.4
+30. 0
+40. 0
+50. 0
+60. 0
+70. 0
+80. 0
+FY24
+FY25
+17.7
+28.4
+10. 0
+12. 0
+14. 0
+16. 0
+18. 0
+20. 0
+22. 0
+24. 0
+26. 0
+28. 0
+30. 0
+Q3FY25 Q4FY25
+17%
+YoY
+-5%
+YoY
+24.2
+28.4
+10. 0
+12. 0
+14. 0
+16. 0
+18. 0
+20. 0
+22. 0
+24. 0
+26. 0
+28. 0
+30. 0
+Q4FY24 Q4FY25
+3.24%
+3.02%
+FY24
+FY25
+Inventory losses eased in 
+Q4, thus leading to better 
+margins
+o 
+C) 
+C) 
+C) 
+C) 
+C) 
+
+>>>

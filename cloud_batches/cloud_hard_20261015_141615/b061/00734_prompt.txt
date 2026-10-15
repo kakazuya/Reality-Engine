@@ -1,0 +1,154 @@
+Company: SAHYADRI (NSE/BSE symbol SAHYADRI), an Indian listed company. Document: investor presentation filed 2026-05-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+13
+Jayesh Patel – B.Com, MBA
+Chairman & Whole Time 
+Director
+Jayesh Patel – B.Com, MBA
+Chairman
+&
+Whole
+Time
+Director
+Leading face of SIL was on board
+since 1999. More than 30 years
+of experience in the field of
+Building Material Manufacturing
+Satyen Patel – B.Com, PGPBA
+Managing Director
+Young and Dynamic face of SIL
+since 1998. Broadening horizon,
+innovation,
+strategic
+thinking,
+felicitated
+with
+"Achiever
+of
+Maharashtra " Award. More than
+20 years of experience in Building
+Materials industry
+Tuljaram Maheshwari -B.Com, CA
+WTD, CEO & CFO
+Appointed
+on
+board
+in
+2020.
+More than 39 years of experience
+with a large organization in the
+field
+of
+Sales,
+Operations,
+Strategic
+Planning,
+Corporate
+Finance, M&A, JV and Accounts &
+Audit
+Suresh Joshi – B.Com, LLB, CA
+Whole Time Director
+Associated
+with
+board
+since
+2006. More than 40 years of rich
+experience
+in
+the
+field
+of
+Taxation,
+Corporate
+Legal
+Matters,
+Corporate
+Finance,
+M&A, JV, Accounts & Audit
+Ankem Sri Prasad Mohan –
+B.com, CA
+Independent Director
+Appointed on board in 2021.
+More than 23 years of experience
+in the field of FP&A, Taxation,
+Finance
+controller,
+M&A,
+Corporate
+Finance,
+Audit,
+Compliance
+Shrikant Malegaonkar -MBA, LLB
+Independent Director
+Appointed on board in 2017.
+More
+than
+35
+years
+of
+experience in Labour laws and
+Industrial Relations & Practicing
+Advocate
+at
+Pune
+Labour
+/
+Industrial court & Bombay High
+Court
+Ved Saxena – BE (Mechanical)
+Independent Director
+Appointed on board in 2020.
+More
+than
+40
+years
+of
+experience
+of
+rich
+and
+dedicated
+business
+management experience in BD,
+managing HR to its usage &
+General Operations
+Rajib Gope – CS
+Compliance Officer
+Appointed in 2022. More than 14
+years experience in Secretarial
+Operations,
+Corporate
+and
+Economic
+laws,
+Statutory
+Compliance,
+Corporate
+Governance, In-house Legal Work
+and court representation
+Experienced Board of Directors and Management Team
+Moushmi Shaha – B.Com, CA
+Independent Director
+Appointed in 2021. More than
+16
+years
+of
+experience
+in
+Finance,
+Accounts,
+Audits
+&
+Financial Trainings
+
+>>>

@@ -1,0 +1,52 @@
+Company: ANTELOPUS (NSE/BSE symbol ANTELOPUS), an Indian listed company. Document: investor presentation filed 2026-07-27. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+3
+Q1 FY’27 
+Sales Snapshot
+Q1’27 Avg. sales: c. 1705 boepd
+Q4’26 Avg sales: 1758 boepd
+ -
+ 200
+ 400
+ 600
+ 800
+ 1,000
+ 1,200
+ 1,400
+ 1,600
+ 1,800
+ 2,000
+FY'25
+Q1'26
+Q2'26
+Q3'26
+Q4'26
+Q1'27
+boepd
+Sales in boepd
+Bakrol (100% PI)
+701
+Lohar (100% PI)
+55
+Karjisan (100% PI)
+834
+Cambay (50% PI)
+65
+Dangeru (100% PI)
+49
+Total
+1705
+* Q- o- Q inventory build up of c. 6500 boepd
+Our guidance of reaching 2,500 boepd in FY’27 remains intact, as impact from Frac will be seen from Q2 onwards
+
+>>>

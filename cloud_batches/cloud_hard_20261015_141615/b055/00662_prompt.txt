@@ -1,0 +1,101 @@
+Company: GMRP&UI (NSE/BSE symbol GMRP&UI), an Indian listed company. Document: investor presentation filed 2026-08-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+4
+Humility | Entrepreneurship | Teamwork & Respect for Individual | Deliver the Promise | Learning & Inner Excellence | Social Responsibility | Financial Prudence - Frugality    
+Corporate Structure
+(as of 30 Jun’26)
+100%
+100%2
+100%
+GMR Power and Urban Infra Ltd. (GPUIL)
+100%
+Special Investment 
+Region
+Other Energy Assets
+GMR Highways Ltd.
+GMR Energy
+Operational Projects
+Stake
+Warora Plant (Coal) – 
+600MW
+92.07%
+Kamalanga Plant (Coal) – 
+1,050 MW
+100%4
+Vemagiri Plant (Gas)1
+49%3
+Solar Power Project
+100%
+Bajoli Holi (Hydro) 1
+9.86%3
+Under Development
+Stake
+Alaknanda Project (Hydro)
+100%
+Upper Karnali Project 
+(Hydro)
+73%
+Operational Projects
+Stake
+Rajahmundry Plant 
+(Gas)2
+49%3
+Wind Projects
+100%
+Under Development
+Stake
+Talong HPP (Hydro)
+100%
+Annuity Projects
+Stake
+Pochanpalli
+100%
+Chennai ORR
+90%
+BOT (toll) Projects
+Stake
+Ambala Chandigarh
+100%
+Strategic Land Parcel
+Stake
+Krishnagiri SIR
+100%
+Note: Ownership includes both direct & indirect holding
+1. Projects are accounted as JVs
+2. GPUIL holds 100% stake (82.16% direct and 17.84% through wholly owned subsidiary) in GMR Generation Assets Limited (GGAL)
+3. Subsequent to Framework agreement executed for divestment of stake in Bajoli Holi (79.86%), Vemagiri (51%) and Rajahmundry (51%) projects
+4. Subsequent to Acquisition of 2.37% stake by GMR Energy Ltd from IDFC First Bank Limited (“IDFC”) as per corporate announcement dated 30 Mar’26
+Energy Services
+Stake
+Smart Electricity 
+Distribution
+90%
+EPC Business
+Trading
+Stake
+Energy Trading
+100%
+Energy Trading
+100%
+New renewable 
+projects
+Stake
+Green Energy 
+(EV Charging)
+100%
+100%
+GMR Smart Electricity 
+Distribution
+100%
+
+>>>

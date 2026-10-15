@@ -1,0 +1,82 @@
+Company: UFLEX (NSE/BSE symbol UFLEX), an Indian listed company. Document: investor presentation filed 2025-02-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Consolidated Performance Snapshot – Q3 and 9MFY25
+9MFY25
+Q3FY25
+Q3FY25
+9MFY25
+EBITDA 
+Revenue
+Norm. EBITDA*
+Norm. PAT**
+Rs. 37,742 Mn
+(-2.0% QoQ, +12.8% YoY)
+Domestic: 47%
+International: 53%
+Rs. 5,207 Mn
+(+18.8% QoQ, +22.3% YoY)
++13.8% Margin
+(+240bps QoQ, +110bps YoY) 
+Rs. 4,936 Mn
+(+19.7% QoQ, 34.3% YoY)
++13.1% Margin
+(+240bps QoQ, +210bps YoY)
+Rs. 113,100 Mn
+(+13.0% YoY)
+Domestic: 45%
+International: 55%
+Rs.14,242 Mn
+(+23.6% YoY)
++12.6% Margin
+(+110bps YoY)
+Sales Vol. MTs
+Capex
+Net Debt
+Pack. Films 
+Sales Vol. Split
+Rs. 3,647 Mn
+Rs. 61,507 Mn***
+Rs. 10,577 Mn
+482,352
+(+9.2% YoY)
+Packaging Films: 78.0%
+(+12.1% YoY)
+Packaging: 22.0%
+(Flat YoY)
+Rs. 61,507 Mn *** 
+Rs. 2,215 Mn
++2.0% Margin
+Packaging Films: 78.5%
+(Domestic: 17.7%;
+International: 60.9%)
+Rs. 13,462 Mn 
+(+25.0% YoY)
++11.9% Margin 
+(+110bps YoY)
+157,036
+(-6.1% QoQ, +6.3%YoY) 
+Packaging Films: 78.5%
+(-6.1% QoQ, +8.7% YoY)
+Packaging: 21.5%
+(-6.2% QoQ, -1.9% YoY)
+Rs. 1,112 Mn
++2.9% Margin
+Packaging Films: 78.0%
+(Domestic: 16.7%;
+International: 61.3%)
+*Normalized EBITDA includes a Rs. 271 million adjustment for foreign currency fluctuations and derivative gains/losses, compared to a Rs. 583 million loss in Q3 FY24..;** Normalized PAT was adjusted for an exceptional 
+gain of Rs 257 million in Q3 FY25, and a loss of Rs 2,477 million in 9M FY25, mainly due to Nigeria, Mexico and Egypt currency translation.*** Gross and net debt in Q3 FY25 earnings release were overstated by Rs. 204 million 
+due to a typographical error.
+6
+
+>>>

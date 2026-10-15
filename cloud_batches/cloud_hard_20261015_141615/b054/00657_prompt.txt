@@ -1,0 +1,90 @@
+Company: RATEGAIN (NSE/BSE symbol RATEGAIN), an Indian listed company. Document: investor presentation filed 2025-02-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Expanding our Offering to enable Global Clients to Unlock New Revenue  
+Business Units Aligned to our vision of  acquiring guest, retaining them and wallet share expansion
+Provide data and information to 
+players across the travel & hospitality 
+industry 
+Deliver insights including competitive 
+and rate parity intelligence
+AI led Products to gauge Demand and 
+optimise pricing
+Custom audiences based on travel 
+intent
+Subscription model 
+Hybrid model1
+31.9%
+USD 1.1 Bn
+Adara (2023)
+Rev AI
+Demand AI
+2005
+DaaS
+Overview
+Revenue Model
+Revenue Mix –
+(9MFY2025)  
+Total SAM (CY25E)
+Acquisitions
+New AI based 
+Products developed
+Seamless connectivity between Hotels 
+and their demand partners including 
+OTAs, GDS and others
+Communicate availability, rates, 
+inventory and content
+AI led product to standardise content 
+distribution
+RezGain - Subscription model2
+DHISCO - Transaction model3
+19.9%
+USD 1.9 Bn
+DHISCO (2018)
+Content AI
+End to End Digital Marketing Suite to 
+manage Brand presence for Hotels 
+across Social Media and Metasearch 
+platforms 
+To Optimize Direct Bookings
+Monitor Guest Engagement 24x7
+Performance marketing operation 
+leveraging the travel-intent data
+Subscription model
+Transaction model4
+48.2%
+USD 5.5 Bn
+BCV Social (2019)
+MyHotelShop (2021)
+Adara (2023)
+2008
+Distribution
+2019
+Martech
+Note: Source: Company information, Phocuswright report. Note: Numbers have been rounded to nearest one decimal place. 1. Hybrid Model - charges a minimum
+subscription fee and a pay-per-use model for accessing additional data 2. Subscription model - where customers pay a subscription fee to access the product. 3.
+Transaction Model – company generates revenues from bookings. 4. Transaction Model – Revenue from campaigns managed for clients
+2 4
+.. 
+.. 
+► 
+.. 
+RateGain 
+.. 
+.. 
+► 
+.. 
+► 
+► 
+► 
+
+>>>

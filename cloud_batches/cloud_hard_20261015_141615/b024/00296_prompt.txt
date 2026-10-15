@@ -1,0 +1,72 @@
+Company: DEEPAKFERT (NSE/BSE symbol DEEPAKFERT), an Indian listed company. Document: investor presentation filed 2021-05-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Earnings Presentation Q4 FY2021 • www.dfpcl.com • 11
+Ammonia Plant (Taloja) - Strategic Rationale
+•
+68%-70% of DFPCL consolidated turnover depends on ammonia as a key raw material; 70%+ of the project capacity has in-house ready
+demand at Taloja – no offtake risk
+•
+Land Acquired, Consent To Establish (CTE) received, 95% of P&M arrived and EPC moved at site. Project execution risks minimized
+•
+Provides greater margin stability for the group by mitigating the impact of volatile ammonia pricing
+•
+Long term LNG/Gas pricing in a favourable phase to help lower key raw material cost
+•
+Addresses complex logistics challenges as entire production will be for captive use
+•
+Zero dependence on imports or domestic third-party ammonia suppliers at Taloja
+•
+Logistics cost saving along with fiscal benefits granted by state government for the project tantamount to $3-4/mmbtu saving in landed
+price of natural gas, making it a globally competitive Ammonia project
+Strategic Plans
+Ammonia FOB ($/MT)
+In addition to greater margin stability for the group, logistics savings of $75-90/MT for downstream products
+0
+100
+200
+300
+400
+500
+600
+700
+800
+900
+NH3 FOB ME
+NH3 FOB BS
+NH3 FOB Caribbean
+High
+Low
+Average
+Last 15 Years
+723
+            
+176
+            
+372
+            
+Last 10 Years
+705
+            
+176
+            
+381
+            
+Last 7 Years
+608
+            
+176
+            
+319
+            
+
+>>>

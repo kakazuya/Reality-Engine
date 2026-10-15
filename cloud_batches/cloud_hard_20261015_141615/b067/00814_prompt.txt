@@ -1,0 +1,100 @@
+Company: KSB (NSE/BSE symbol KSB), an Indian listed company. Document: investor presentation filed 2022-05-21. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+6. Major Project Orders Received in Q1 2022: Top 10
+Segment
+S N
+Project Name
+PMC
+LSTK Contractor
+Pump Type
+Value
+Petrochemicals
+1
+Talcher Fertilizer Project
+PDIL
+Wuhan Engg. 
+Corp.
+RPH/WKTR/CHTR
+125
+Energy
+2
+TSGENCO Bhadradari 4x270 MW FGD
+TSGENCO
+BHEL
+12 x KWPK 900-
+1133
+108
+Petrochemicals
+3
+IOCL Paradip PX
+Toyo Engg.
+Technimont
+RPH/WKB
+104
+Petrochemicals
+4
+IOCL Gujrat Lupech Project
+Technip
+--
+CHTR/RPH/WKB
+102
+WWW
+5
+Kiru, Kuther and Pinnapuram drainage, dewatering 
+and flood protection system
+Andritz Hydro
+63 x KRT, 12 x CPK, 
+36 x KWP
+98
+Energy
+6
+OPGC 2x660 MW FGD
+OPGC
+ISGEC
+8 x KWPK 900-1133
+80
+Energy
+7
+IOCL Paradip
+Megha Engg
+ISGEC
+2 x CHTR 6/1+7
+58
+Petrochemicals
+8
+HPCL Rajasthan Refinery Project (Offsites & 
+Utility)
+EIL, Delhi
+--
+RPH, WKTR
+52
+Petrochemicals
+9
+IOCL Panipat P25 Project
+EIL
+--
+RPH/RPHb
+52
+Petrochemicals
+10
+2000 MTPD Sulphuric acid Plant-III at IFFCO 
+Paradeep
+PDIL
+Technip
+HG
+50
+In INR Mio
+I KSB India I Investors Meet 20.05.2022 I 
+29
+
+>>>

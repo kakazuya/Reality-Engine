@@ -1,0 +1,104 @@
+Company: HONASA (NSE/BSE symbol HONASA), an Indian listed company. Document: investor presentation filed 2024-08-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Project ‘Neev’ : Future-ready General Trade through right foundational initiatives
+Replace Super-
+Distributor layer with 
+Tier - 11 Direct 
+Distributors in Top-50 
+cities
+Service beyond Top 
+50 towns through 
+Super-Distributors
+RTM TRANSITION 
+WITH FOCUS ON 
+DIRECT DISTRIBUTION
+Regional 
+warehousing
+Optimized dispatch-
+plan led distributor 
+order frequency
+Enhanced  forecast 
+accuracy
+SUPPLY CHAIN 
+CAPABILITY 
+ENHANCEMENT
+RIGHT-SIZING 
+CHANNEL 
+INVENTORY
+One-time inventory 
+correction in the 
+system
+30-45 days inventory 
+across channel 
+partners
+MOVING TO NORM-
+BASED ORDERING 
+SYSTEM 
+Replenishment 
+based inventory
+Improved Inventory 
+visibility
+Effectiveness of 
+trade schemes
+Claims automation
+Sales-team 
+productivity 
+enhancement
+TECH-ENABLED SALES 
+THROUGH FUTURE 
+READY DMS / SFA
+Reduction in contribution by Super- 
+distributors to GT primary sales with 
+transition complete in 7/8 metro cities  
+68%
+48%
+Q1FY24
+Q1FY25
+90%+ of secondary sales getting 
+captured through DMS2
+1.
+Tier-1 Distributors: Working with mature FMCG/BPC Players
+2.
+For Q1FY25
+MOVING TO RoI 
+BASED PARTNERSHIP
+Ensure capital as 
+well as manpower 
+investments in the 
+business by the 
+distributor
+Yet To Begin
+Yet To Begin
+Yet To Begin
+1
+2
+3
+4
+5
+6
+72% distributors agreeing that DMS 
+has eased the schemes 
+management and claims process3
+69% distributors are delighted with 
+Honasa’s progress3
+Building a roadmap with Bain & 
+Co. for winning in Offline
+3. Source : NielsenIQ survey
+4.           Indicates phase completion status
+15
+1
+2
+3
+4
+
+>>>

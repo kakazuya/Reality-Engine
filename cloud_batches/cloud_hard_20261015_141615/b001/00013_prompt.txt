@@ -1,0 +1,40 @@
+Company: MANINDS (NSE/BSE symbol MANINDS), an Indian listed company. Document: investor presentation filed 2025-05-13. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+11
+EARNINGS PRESENTATION
+11
+Q4 & FY25 Operational Highlights
+•
+Order Book: The order book remains robust at ~ INR 25 billion, with expected execution over the next 6 to 12 months. Additionally, the company boasts a 
+healthy bid pipeline of ~INR 150 billion, further reinforcing strong revenue visibility.
+•
+Monetization of Non-Core Asset: In Q4FY25, the company successfully concluded the monetization of a significant non-core asset lying in wholly owned 
+subsidiary Merino Shelters Pvt. Ltd, unlocking additional capital to support its core business operations and future expansion plans. As part of the 
+transaction, the upfront amount of ₹ 700 million and out of total area of the developed property the Company will get 30% area i.e. equivalent to 
+approx. 4,50,000 sq. ft. Rera carpet area (Commercial and Residential) which has a monetising value of approx. ₹6.5-₹7 billion over a period of 5 - 6 
+years. The total monetising value would be approx. ₹7.2 –₹7.7 billion.
+•
+ERW Product Line – Strengthening Export Focus: In FY25, MAN Industries made a strategic entry into the Electric Resistance Welded (ERW) API product 
+line, with a strong emphasis on international markets. This move enabled the company to effectively capitalize on the growing global demand for ERW 
+pipes while broadening its product portfolio and revenue base. The ERW product line contributed approximately 10% to total revenue in FY25, 
+highlighting its increasing significance within the company’s long-term growth strategy. This development represents a pivotal step in expanding MAN 
+Industries’ footprint across global markets and diversified industrial applications
+•
+Inclusion in Qatar LNG Vendor List: We are proud to announce our official inclusion in QatarEnergy LNG’s approved vendor list. This significant milestone 
+represents a major achievement in our growth journey and reaffirms our unwavering commitment to providing high-quality products and services to the 
+global energy sector.
+•
+Awarded 1st Position for Highest Quantity of Steel Imports by Deendayal Port Authority, Kandla: We are pleased to announce that the Company has been 
+awarded 1st position in the category of Highest Quantity of Steel Imports by Deendayal Port Authority, Kandla for the financial year 2024–25.
+
+>>>

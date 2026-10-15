@@ -1,0 +1,81 @@
+Company: UFLEX (NSE/BSE symbol UFLEX), an Indian listed company. Document: investor presentation filed 2026-02-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Ravi Sharma, Jt. President – Engineering Business
+•
+Having spent 34 years with the group, Ravi brings total of 46 years of extensive 
+expertise in Engineering Business, Materials Management, Production, 
+Operations, and related functions.
+•
+Specializes in Efficiently managing the flow of materials from Procurement to 
+Finished Goods.
+•
+Prior to UFlex, worked with Leading Organizations such as M/s Molins, Philips 
+Carbons & Allied Signals
+Management Team
+Professional Management with an average experience of > 25 Years in Business, Corporate, Project & Operational Excellence
+Total years of experience in the industry
+58
+Desh Deepak Misra, Jt. President, Chemicals Business
+•
+Over 32 years of Experience in Manufacturing Operations and Supply Chain.
+•
+Combining Strategic Vision with operational discipline, Desh Deepak is 
+recognized for Spearheading Transformative Initiatives that drive Scalable 
+and Sustainable growth across Diverse Sectors. 
+•
+Prior to UFlex, held Leadership Positions at AkzoNobel India, Raymond 
+Zambaiti, PCBL, Shalina Healthcare, and Epsilon Carbon.
+Parwez Izhar, Executive Vice President, Printing Cylinders Business
+•
+Close to Three Decades of Experience in Areas like Strategic Planning, 
+Costing, Project Management.
+•
+Holds Master’s Degree in Finance from XLRI, Jamshedpur and is Lean 6-
+Sigma Black Belt Champion. He has Also Studied Implications of Artificial 
+Intelligence on Business Strategy from MIT Sloan, USA.
+40
+30
+Chandan Chattaraj, President, Human Resources (India and Global)
+•
+Three Decades of Experience with Esteemed  Organizations like Aircel, The 
+Oberoi Group, Xerox India and Jubilant Organosys in leadership roles.
+•
+Has been Conferred with Multiple Honours like ‘HR Professional of the Year’, 
+‘HR Leadership Award’ and ‘Best Transformational Coach by World HRD 
+Congress.
+30
+Dinesh Jain, President, Legal & Corporate Affairs
+•
+Has a Rich Experience of Four Decades and has been Associated with the 
+Group for over 29 Years. 
+•
+Chairman of National Institute of Personnel Management- Delhi NCR 
+Chapter and Past President of Noida  Management Association.
+•
+MBA, LLB & LLM (Gold Medalist) from Agra University.
+Vinod Hariharan, Executive Vice President, Holography Business
+•
+Brings over 28 years of experience in Strategic Planning, Business Development, 
+Channel Management, Digital Marketing, Sales, and General Management.
+•
+Extensive experience with International Organizations, including Fortune 500 
+Firms, and Held Key Roles at Tesa, Tapes GmbH, 3M India Ltd, and Gulf Oil. Prior 
+to UFlex, served as the Head of Sales & Marketing for APAC at Tesa.
+•
+Holds a B.Tech in Mechanical Engineering from NIT – Kozhikode and Completed a 
+Senior Management Program from IIM – Kolkata.
+28
+32
+34
+
+>>>

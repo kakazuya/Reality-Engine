@@ -1,0 +1,55 @@
+Company: CONTROLPR (NSE/BSE symbol CONTROLPR), an Indian listed company. Document: investor presentation filed 2026-05-21. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Our Evolution in Coding and Marking Business
+INVESTOR PRESENTATION
+9
+90-95% of Consolidated Revenue
+THE CORE 
+FLYWHEEL
+Machine
+Consumables
+Service
+Repeat
+1
+2
+4
+3
+India – Standalone Business
+•
+The Coding and Marking Industry in India today stands at approx. Rs 2000 -2200 crore.
+•
+The industry is dominated in India by 4 key players including Control Print Ltd (the only Indian company) – 
+these 4 players contribute to nearly 80% of the domestic coding and marking business.
+•
+Control Print today has an overall market share of 18-20% of the organized players.
+•
+The overall market is expected to grow at 1.5x to GDP.
+•
+Control Print has continued to grow at a faster pace than the overall industry and today stands at Rs 385 
+crore (FY25) in the Indian Standalone entity.
+The International Business – Long Term Growth Strategy
+•
+Markprint and Codeology bring to the table an important but complimentary diversification to our existing 
+core business in coding and marking.
+•
+While on one hand we wish to scale up or offerings and business in international markets, on the other hand 
+we aim to manufacture and sell these products solutions in India as well.
+•
+Our initial efforts have been met with success with key orders from key customers.
+•
+Further we have setup a subsidiary in the Middle East to target the coding and marking opportunities in the 
+region from our India business as well from Markprint and Codeology.
+•
+This will help us outpace and grow beyond the standard growth rated in our traditional business
+
+>>>

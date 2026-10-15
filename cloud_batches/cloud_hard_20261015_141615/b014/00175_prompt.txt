@@ -1,0 +1,85 @@
+Company: HINDALCO (NSE/BSE symbol HINDALCO), an Indian listed company. Document: investor presentation filed 2022-03-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+11
+11
+Global demand for can stock forecasted to increase 4% by CAGR 2028 
+mainly driven by Sustainability trends 
+In early 2021, Coca-
+Cola launched its first 
+alcoholic beverage, 
+Topo-Chico 
+Can market strongly supported by growth in beverage markets and 
+substitution against glass and PET
+New products such as energy drinks, hard seltzers and mixed cocktails 
+support growth with further potential in CSDs and water
+North American can makers have invested $4.1 bn since 2018 on new 
+capacity requiring  +680kt of additional can sheet
+Domestic supply preferred can makers prefer reliable, logistically 
+sustainable domestic supply over imports
+0
+500
+1,000
+1,500
+2,000
+2,500
+3,000
+2020
+2021
+2022
+2023
+2024
+2025
+2026
+2027
+2028
+2029
+2030
+Demand
+Supply
+Source: CRU Aluminum Can Sheet Market Outlook 2021
+Supply/Demand gap grows from 
+300kt 2022 to >500kt by 2030
+Kilotonnes
+Sustainability push is driving corporations to adopt 
+aluminum and commit to reducing virgin PET usage
+Sustain100% recyclable 
+packaging by 2025
+Reduce virgin plastic content by 
+20% by 2025
+≥50% recycled material by 2030
+Collect and recycle a bottle/can 
+for each sold by 2030
+100% recyclable/ compostable/ 
+biodegradable by 2025
+Reduce virgin plasticcontent by 
+35% 2025
+25% recycled content (33% for 
+PET bottles) by 2025
+Can Makers And Fillers Seek Growth Through Innovation, Partnerships And Acquisitions
+North America Can Sheet Market Supply/Demand Imbalance
+Supply/Demand 
+gap grows from 
+300kt 2022 to 
+>500kt by 2030
+Strong Beverage Packaging Market
+Ballrecently 
+announced a 
+$383m facility to 
+support Red Bull
+In 2018, Anheuser Busch 
+established the Beyond 
+Beer Business Unit to 
+focus on new growth 
+categories 
+
+>>>

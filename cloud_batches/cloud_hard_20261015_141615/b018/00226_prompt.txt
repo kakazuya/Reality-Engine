@@ -1,0 +1,57 @@
+Company: CENTENKA (NSE/BSE symbol CENTENKA), an Indian listed company. Document: investor presentation filed 2022-03-17. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Nylon Tyre Cord Fabric
+11
+•
+Century Enka provides high quality Nylon tyre cord fabrics for reinforcement of
+tyres which are used in motor cycles, scooters, light commercial vehicles (LMVs),
+heavy commercial vehicles (HCVs) and off the road (OTR).
+•
+They provide shape to the tyres and support the weight of the vehicle. They are
+designed to keep tyres running longer and have significant effect on the
+performance of the tyres.
+Sub - Products
+•
+Yarn - Dried chips are fed into a melt spinning machines. The molten polymer is
+filtered to form yarn of different linear density as per specifications. Fibres of
+different length and thickness are made by drawing them out at different speeds.
+•
+The filaments are coated with water & oil to ensure dimensional stability, then they
+are air quenched and solidified, offering outstanding tensile strength and low
+shrinkage under heated conditions, as well as high elasticity.
+•
+Greige Fabric - Cord material is taken into the warp and interlaced with cotton or
+poly-cotton weft to produce reinforcing material for a wide variety of uses.
+•
+Dipped Fabric - Greige fabric is impregnated with an RFL (Resorcinol -
+Formaldehyde - Latex) solution. The dipped fabric is hot stretched to reduce the
+effect of thermal shrinkage in a process known as heat setting. It is passed through
+different ovens to create adhesion with rubber, thus imparting dimensional
+stability.
+9,488 
+6,855 
+6,789 
+7,969 
+ -
+ 2,000
+ 4,000
+ 6,000
+ 8,000
+ 10,000
+FY19
+FY20
+FY21
+9M-FY22
+NTCF Revenues (INR Mn)
+
+>>>

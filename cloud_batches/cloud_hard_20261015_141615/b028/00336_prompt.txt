@@ -1,0 +1,143 @@
+Company: MFSL (NSE/BSE symbol MFSL), an Indian listed company. Document: investor presentation filed 2021-06-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+),MAX 
+`.0 LIFE 
+INSURANCE 
+Step 1,4 Ramesh. anterrizryof 
+rig Updale 
+TemPleri 
+, Covets, Teen epee for medtaltesaleth 
+0 mad mane pre. Palle tiler Inerin 
+Lumpsum Payout * 
+R's"'"  w
+ lib°Ill' 
+t 50,00,000 
+Corer Till Age se. 
+60 years 
+Ply Till Iqe 
+easel neosity 
+•s my% 
+rarrertfrowy 
+Meat* 
+mos: 
+*ran 
+Pay Inert° 
+rs 
+Expits1All 
+Par 4201sgebadtparreertions Um it lraslls? 
+et end of PclicyTem 
+Vra,••• em.r• Anon 
+• ...•A 
+ern-. Trwm. 
+Tatai Piirnitni Read 
+CV/ 
+494 *reef 'iv 
+41.0so.r1 sss4: 
+MAX 
+y 
+Tool Amount 
+Select Payment Method 
+41,303 
+'co rs. 
+•.:MOr10. 
+. 
+0.. 
+We 'testa 1::1 
+Iwo 
+Beek oath Pl 
+Pay S1303 
+AA 
+Y acls.google.com 
+11II I 
+1,‘ 
+„ 
+WHY WAIT 
+to some your 
+famIly's future,
+Get Life cover of 
+Rs 10000000 4117111 
+years of age. Pay 
+Rs 1142 Monthly 
+Buy NO 
+> 
+e 
+11:53 
+Q. 
+It1&ee= 
+Ao Max Life Insurance 
+mt. 
+A prem i um of Rs, 7412 iSChrefOr your POliCy 
+522124304, since 2019-1n-69. PlealeCIICII 
+here https://tInaurl.comly3as43uve10 
+pay the due amount and continue with your 
+cover 
+(You can reply yeah STOP anytime you May, to 
+SrOp COmmunicat/or/ through this chenerei) 
+iFeliU,SPV 
+:tI 
+Dear Vaihhas, 
+Thanks br subscribing to updates& your 
+Life Insurance Plan via Massada-
+You haveselected a Term PlancfrerIng Rs. 
+10000000 Cave, for 30 years, well a total 
+modal premium 018,1.577 Monthly 
+payableTor 35 years. 
+For the shove Oiler,. thee-quote number is 
+1052.XVALA 
+Use the below link to continue-horn where 
+you last left, anytime, 
+unfurl com/ycy Tts3a 
+(Toucan reply with STOP anytime. you wish to 
+slop communicallen through this channel} 
+% 
+0 
+IndeStack 
+E
+DOCSAPP 
+.04.7 art 
+aly
+ Mite r~
+rh 
+00 t
+.iP
+ooLf rielhf 
+A./ crow infArRir 
+• •. • 
+•••.. 
+6: : 6•Experian 
+• . • . 
+Investor Release
+26
+Seamless on-boarding of customers through Best-in-Class On-boarding Platform (mPRO); 
+leveraging integration with Bank partners for customer data
+D
+AI enabled Personalized 
+Sales offers
+Smarter Chase
+Talk to Customer the way they like
+Frictionless Onboarding
+▪Remarketing to Customers with an Ad Click
+direct landing on journey (First in Category)
+▪Leverage Whatsapp for Business to chase in-
+funnel prospects
+▪State of the art Integration stack with third
+parties ensures 70% of B2C Term customers
+are on-boarded without any document
+requirement
+B2C On-boarding Platform
+<$ Secs 
+Page  Load Time
+Top 2
+SEO Ranking
+
+>>>

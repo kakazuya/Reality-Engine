@@ -1,0 +1,102 @@
+Company: RADIOCITY (NSE/BSE symbol RADIOCITY), an Indian listed company. Document: investor presentation filed 2022-01-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+AJANNE 
+KE LIVE SUNIYE RJ GANNIE KO, 
+ONLY ON RADIO 
+CITY 91.1 FM 
+Join Hands With Radio City 
+_ 
+Teo register, whatsapp us on 
+ 
+  
+ 
+  
+ReSuew svedes soce SSg 
+sea 
+Baggs meg dawducn, SR! 
+iN FOND MEMORY OF 
+PUNEETH RAJKUMAR 
+wow maarworey ne 
+pare 
+pe 
+oe 
+Bi 
+: 
+FO emcees 
+WHATSAPP 
+HOSABELAKU 
+TO 90359119117 
+ 
+FM BOLE TOH 
+Radio aia 
+A JAGRAN INITIATIVE 
+RAG RAG MEIN 
+DAUDE CITY. 
+i i ee 
+> 
+ee 
+  
+  
+Ye Crypto Crypto Kya hai- 
+Delhi 
+There was lot of noise around 
+crypto but in reality people 
+don’t have much knowledge 
+about crypto and RC Delhi take 
+it as an opportunity to inform 
+its listeners about Crypto. RJ 
+Ginnie will bring subject experts 
+to Decode Crypto. 
+ 
+ 
+ 
+Khali Karo - Mumbai 
+Be it the New Year or any other 
+festival, we all love to buy new 
+things. Be it shoes, clothes, 
+jewellery or furniture items. 
+While we buy new things for us or 
+our household we need to get rid 
+of our old belongings. 
+Many SM influencers shared the 
+campaign with total outreach of 18L 
+ 
+ 
+Hosabelaku - Bengaluru 
+In the memory of Puneet rajkumar, 
+we Started the campaign called 
+hosabelaku. Late Puneet’s brother 
+and superstar Shiva Rajkumar also 
+joined us in the campaign and 
+appealed people eye donation. We 
+gotaround 4000 + registration, 
+20000 beneficiaries and same has 
+be share with Shankar eye hospital. 
+ 
+ 
+Gaddha Pehelwan-North 
+Took a step forward to bring 
+about a positive change by 
+tackling the potholes issue with 
+help of listeners and civic bodies. 
+This year activity was executed in 
+Punjab, Haryana, Bihar and 
+Jharkhand market was much 
+appreciated by listeners 
+In Punjab activity was covered by 
+No 1 news channel of Punjab 
+ 
+  
+11
+
+>>>

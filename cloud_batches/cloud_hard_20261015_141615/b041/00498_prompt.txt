@@ -1,0 +1,64 @@
+Company: METROBRAND (NSE/BSE symbol METROBRAND), an Indian listed company. Document: investor presentation filed 2022-01-15. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+23
+Platform of choice for third party brands looking to expand in India
+•
+PAN India Presence
+•
+Servicing customers of different 
+ethnicities and markets
+•
+Long track record of 
+successfully incubating and 
+scaling up various retail brands
+•
+Healthy store economics by 
+optimizing operational cost
+•
+Presence across EBO/MBOs, 
+SIS and e-com platforms
+MARKET POSITION
+STORE ECONOMICS
+OMNI CHANNEL PRESENCE
+WIDE REACH
+Why brands prefer Metro platform
+Successful brand partnership
+Metro entered into an agreement with Crocs in Apr 2015, as amended by way of an addendum agreement entered in Jul 2017
+The Company has First right of refusal to opening a retail store / kiosk or outlet in India, as may be proposed by Crocs
+The Company has rights to Sell Crocs products in India at stores and Kiosks as approved by Crocs
+1
+Operates EBOs under an 18 year agreement, post first 3 years the agreement provides for automatic renewal for 5 successive periods of 3 years 
+each
+2
+Permitted to use trademarks and other intellectual property under the Crocs brand for the limited purpose of retailing Crocs Products in India
+3
+96
+118
+149
+175
+FY19
+FY20
+FY21
+9M
+FY22
+Number of Crocs EBOs
+6
+Based out of United Kingdom – Fitflop is known for its premium–super-comfortable flip-flops & footwear range offering shoes for all-day wearing, 
+using a combination of biomechanics, comfort and fashion
+1
+Metro entered into a long-term exclusive agreement with Fitflop in January 2022
+With this agreement, Metro Brands gets exclusive rights for sale and distribution across all formats including , Exclusive Brand Stores, Multi Brand 
+Stores, Airport Stores, Distribution, Online Marketplaces and Webstore in India. 
+2
+
+>>>

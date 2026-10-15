@@ -1,0 +1,80 @@
+Company: TRISHAKT (NSE/BSE symbol TRISHAKT), an Indian listed company. Document: investor presentation filed 2026-07-23. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+TRISHAKTI - UNIQUELY POSITIONED, STRUCTURALLY DEFENDED 
+30 
+25 
+20 
+15 
+10 
+w 
+PAT Margins 
+25 
+12 I 
+Hm Sector Avg ® Tri Shakti 
+70 
+60 
+50 
+40 
+30 
+20 
+10 
+~25% 
+PAT 
+Margins 
+EBITDA Margins 
+65 
+H Sector Avg W Tri Shakti 
+~65% 
+EBITDA 
+Margins 
+120 
+100 
+80 
+60 
+40 
+20 
+Fleet Utilization 
+100 
+78 I 
+H Sector Avg W Tri Shakti 
+100% 
+Fleet 
+Utilization 
+Niche Specialization = Pricing Power 
+b * Heavy-lift (100-750T) is technically demanding. 
+* Few operators can safely execute - commands premium rates and 
+creates natural barriers to entry. 
+9 Tier-1 Client Lock-in 
+b * Once on Reliance & L&T's approved vendor list, repeat work arrives 
+without re-tendering. 
+* New vendor onboarding takes 3 - 6 months. Stickiness is 
+structural. 
+First-Mover CAPEX Advantage 
+* X270 Crdeployed FY26 - 110% above own target. 
+* Fleet anchors long-term contracts. 
+* 2%+ net monthly yield 
+* Achieved through disciplined client selection. 
+» Systematically engineered. 
+Right Place, Right Time 
+» Scaling fleet exactly as India deploys ¥14.3 Lakh Crore in 
+infrastructure. 
+* A 2027 entrant would face higher manpower needs, complex fleet 
+management. 
+L2 
+O 
+9 Best-in-Class Asset Yield 
+& 
+L2 
+¢ 
+
+>>>

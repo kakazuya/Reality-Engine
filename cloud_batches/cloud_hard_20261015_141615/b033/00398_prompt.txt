@@ -1,0 +1,147 @@
+Company: CAMS (NSE/BSE symbol CAMS), an Indian listed company. Document: investor presentation filed 2025-05-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Investor Presentation
+History / Milestones
+46
+1988
+• Our Company was 
+incorporated as 
+Computer Age 
+Management Services 
+Private Limited and 
+received a certificate of 
+incorporation from the 
+RoC on May 25, 1988
+1993
+• Our Company was issued 
+a certificate of 
+registration as a 
+Registrar to an Issue 
+under category II, dated 
+December 24, 1993 by 
+SEBI
+1995
+• The certificate of 
+registration was issued to 
+our Company was 
+upgraded and a fresh 
+certificate of registration 
+as Registrar to an Issue 
+and Share Transfer Agent 
+under category I, dated 
+July 22, 1995, was issued 
+by SEBI to our Company
+2006
+• Our Company was issued 
+a certificate of 
+registration dated 
+June 1, 2006 by SEBI to 
+act as a depository 
+participant for NSDL
+2007
+• Our Company was issued 
+a certificate of 
+registration dated 
+January 31, 2007 by SEBI 
+to act as a depository 
+participant for CDSL
+2011
+•
+CIRSL was incorporated 
+on May 12, 2011; and
+•
+CIRSL had received in-
+principle approval of 
+IRDAI to carry on 
+business as an 
+insurance repository
+2016
+• CFISPL was incorporated 
+on September 26, 2016
+2018
+• Great Terrain acquired 
+37.50% stake in our 
+Company
+2019
+• Our Company was 
+converted into a public 
+limited Company and 
+received a fresh 
+certificate of 
+incorporation from the 
+RoC on September 27, 
+2019; and Great Terrain 
+acquired 6.03% stake in 
+our Company
+2020
+• Listed in BSE on October 
+1st, 2020
+• RBI registration for 
+account aggregator 
+Services
+• Incorporation of 
+CAMSPay (payment 
+aggregator services)
+2021
+• Certification of 
+Registration for CRA 
+Services
+• Franklin Templeton 
+Go-Live
+• Set up office in GIFT City
+• Account aggregator 
+launch
+• MF Central launch
+2013
+• CIRSL was issued a 
+certificate of registration 
+dated July 31, 2013 by 
+IRDAI to carry on the 
+business as an insurance 
+repository; and
+• Our Company acquired 
+100% stake in SSPL, which 
+provides technology 
+support to our Company
+2012
+• CISPL was incorporated 
+on February 13, 2012; and
+• CISPL was issued a 
+certificate of registration 
+dated June 29, 2012 to 
+carry on the business as a 
+KRA
+2022
+• CAMS CRA Go-Live
+• Acquired majority stake 
+in Fintuple Technologies 
+Pvt Ltd
+• Launched innovation lab 
+at IIT Madras
+2023
+• CAMSPay receives in-
+principle authorization 
+from RBI to operate as a 
+Payment Aggregator
+• CAMS Acquires majority 
+stack in Think360 AI
+2024
+• CAMSPay receives final 
+approval from RBI to 
+operate as a Payment 
+Aggregator
+• Launch of REIT 
+platform 
+CompaREITnow
+
+>>>

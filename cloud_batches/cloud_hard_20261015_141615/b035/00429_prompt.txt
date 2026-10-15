@@ -1,0 +1,75 @@
+Company: KRN (NSE/BSE symbol KRN), an Indian listed company. Document: investor presentation filed 2026-02-07. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Investor Presentation
+52
+Stock Data
+Share Holding Pattern 
+70.79%
+29.21%
+Promoter & Promoter Group
+Public
+NSE Code
+KRN
+BSE
+544263 
+ISIN
+INE0Q3J01015
+Share Price ₹
+673.05
+Market Capitalization ₹ Cr
+4,126
+Face Value ₹
+10.00
+52 Week High ₹
+1,012.00
+52 Week Low ₹
+589.80
+As on 06-02-2026
+Share Performance From 3rd  October 2024 Till Date
+Stock Information
+As on 31-12-2025
+Source: BSE
+478.79
+673.05
+0
+1,00,00,000
+2,00,00,000
+3,00,00,000
+4,00,00,000
+03-Oct-24
+03-Nov-24
+03-Dec-24
+03-Jan-25
+03-Feb-25 03-Mar-25
+03-Apr-25
+03-May-25
+03-Jun-25
+03-Jul-25
+03-Aug-25
+03-Sep-25
+03-Oct-25
+03-Nov-25
+03-Dec-25
+03-Jan-26
+03-Feb-26
+0
+200
+400
+600
+800
+1000
+1200
+Volume
+Price
+
+>>>

@@ -1,0 +1,53 @@
+Company: MANORAMA (NSE/BSE symbol MANORAMA), an Indian listed company. Document: investor presentation filed 2026-05-11. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+New Product Launches and Developments
+All-round filling fats (MilcocreamTM1056 and 
+MilcocreamTM1010)
+Cocoa butter equivalents/improvers (Milcoa 
+ES1057 and Milcoa IS1043) 
+Cocoa butter replacers (MilcoatTMR1058)
+MIL DP1055, a hard fat for culinary use and 
+marinades (MIL DP1052). 
+MIL DP1054 is a general-purpose hard 
+stock that may be used for spreading
+Bake stable filling fats MilcocreamTM1059, 
+MilcocreamTM1052 for use as filling in 
+croissants and pastries in the bakery 
+market
+Chocolate Hazelnut Spread fat 
+MilcospreadTM1003, MilcospreadTM1053, 
+MilcospreadTM1060
+Milcoa® Brand Range
+All-round filling fat (Milcoceam 1059)
+Bake-stable filling fat (Milcocream 1068)
+Wafer cream filling fat (Milcocream FF69)
+Specialty Fat for Frozen desert application 
+(Milcolin R11) 
+Icecream Coating Fat (Milcodip MP 65)
+New Products
+All-round filling fat (palm based) 
+(Milcocream FF77)
+Premium filling fat (palm based) 
+(Milcocream TF76)
+No-palm spread fat for export market 
+(Milcospread TU 5)
+Milcocream BS65 – Bakery shortening for 
+bakery and Indian sweets application
+Milcoat 58NH – non hydro, non-lauric CBR 
+development completed, first prototype 
+samples send to customers
+Milcocream 1080 – Filling fat for Kinder Joy 
+type of filling
+New Developments
+
+>>>

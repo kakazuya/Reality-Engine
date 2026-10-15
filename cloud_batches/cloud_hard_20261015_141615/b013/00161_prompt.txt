@@ -1,0 +1,71 @@
+Company: LODHA (NSE/BSE symbol LODHA), an Indian listed company. Document: investor presentation filed 2024-04-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+75-100 mn new households to become ‘home ownership 
+capable’ this decade
+13
+Per capital income seen rising 
+~2.5x over FY20-32
+2,000
+4,819
+1,000
+2,000
+3,000
+4,000
+5,000
+6,000
+FY20
+FY22
+FY24
+FY26
+FY28
+FY30
+FY32
+Per Capital Income (USD)
+Even assuming significant industry supply growth1, supply is likely to be <10 mn units. Once in a country’s lifetime opportunity!
+Annual 
+HH 
+Income 
+(INR mn)
+HH 
+Category
+>2.8
+High
+0.5-2.8
+Upper Mid
+0.2-0.5
+Lower Mid
+<0.2 
+Low
+9mn 
+(3%)
+68mn 
+(23%)
+85mn (29%)
+134mn (45%)
+23mn (6%)
+119mn (31%)
+92mn 
+(24%)
+134n 
+(4%)
+2021
+GDP: USD 3tn
+HH: 296mn
+2030
+GDP: USD 7-8tn
+HH: 386mn
+Source: WEF/Future of Consumption report, EY; HH: Household; 1 - 20% CAGR in physical units delivered CY2021-2030
+125 mn (32%)
+27 mn (7%)
+
+>>>

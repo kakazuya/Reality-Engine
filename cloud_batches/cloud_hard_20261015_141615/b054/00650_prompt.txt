@@ -1,0 +1,82 @@
+Company: MBLINFRA (NSE/BSE symbol MBLINFRA), an Indian listed company. Document: investor presentation filed 2022-06-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Opportunities 
+L_ 
+AprozNeR0010111111111 
+100 lakh crore (US$ 1.41 trillion) to be invested 
+every year on infrastructure over the next 4 years. 
+Infrastructure Sector is the focus of the 
+governmeit. Special 
+impetus has been 
+given to Roads, Highways & Railways 
+The National -lighways & Infrastructure 
+Development Co-poration (NHIDCL) is 
+entrusted with the task of developing 
+and improving road connectivity in 
+length of about 13,000 km including 
+the international trade corridor in the 
+North Eastern region of India 
+National 
+Bank 
+for 
+Financing 
+Infrastructure 
+and 
+Development 
+(NaBFID) will p-ovide non-recourse 
+infrastructure 
+financing 
+and 
+is 
+expected to raise Rs. 4 lakh crore 
+(US$ 53.58 billion) in the next 3 
+years to support projects 
+Mt 
+OPPORTUNITIES 
+PM Gati Shakti- 
+National Master Plan is 
+amid to bring 16 ministries including 
+railways 
+& 
+roadways 
+for 
+integrated 
+planning and coordinated integration for 
+infrastructure connectivity projects. 
+IL 
+National 
+Highways 
+Network 
+is 
+expected to expanded by 25000 
+kilometres, with a budget of Rs. 
+20000 crore (US$ 2.67 billion) set 
+out for the project in FY 2022-23 
+NIP the Target Total 
+length of 
+National Highway will be 1.99 lakh 
+km with 
+a 
+total investment of 
+US$ 26.90 bn 
+In FY 2022-23, 80 lakh houses will be 
+completed 
+for 
+the 
+identified 
+eligible 
+beneficiaries for PM Awas Yojana, both urban 
+and rural, at a cost of Rs 48,000 cr. 
+24 
+
+>>>

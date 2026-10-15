@@ -1,0 +1,122 @@
+Company: INDHOTEL (NSE/BSE symbol INDHOTEL), an Indian listed company. Document: investor presentation filed 2024-02-01. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+73
+Hotels likely to open in 2024 ( Jan - Dec )
+*The opening schedule is indicative and may change in the future
+Sl No
+Hotel Name
+Contract Type
+Brand
+Inventory
+1
+Gorbandh Palace, IHCL SeleQtions ( Open Now)
+Management Contracts
+SeleQtions
+83
+2
+Ginger Durgapur ( Open Now)
+IHCL & Group
+Ginger
+55
+3
+Bliss Hotel, IHCL SeleQtions hotel in Tirupati
+Management Contracts
+SeleQtions
+114
+4
+Munnar - IHCL SeleQtions
+Management Contracts
+SeleQtions
+55
+5
+Ginger Ahmedabad Changodar
+IHCL & Group
+Ginger
+99
+6
+Vivanta Jamshedpur 
+Management Contracts
+Vivanta
+94
+7
+Mahabaleshwar - IHCL SeleQtions
+Management Contracts
+SeleQtions
+73
+8
+Ginger Srinagar
+Management Contracts
+Ginger
+62
+9
+Ginger Coimbatore, Avinashi Road
+Management Contracts
+Ginger
+72
+10
+Ginger Nagpur 2
+IHCL & Group
+Ginger
+88
+11
+Taj Hotel at Ambuja City Centre Patna
+Management Contracts
+Taj
+124
+12
+Taj Puri
+Management Contracts
+Taj
+90
+13
+IHCL SeleQtions Kumbhalgarh
+Management Contracts
+SeleQtions
+176
+14
+Rajkot - IHCL SeleQtions
+Management Contracts
+SeleQtions
+120
+15
+Taj Paro, Bhutan
+Management Contracts
+Taj
+45
+16
+Taj Phobjika , Bhutan 
+Management Contracts
+Taj
+34
+17
+Ginger Ramdaspeth - Nagpur
+IHCL & Group
+Ginger
+87
+18
+Ginger Shashtri Circle Udaipur
+IHCL & Group
+Ginger
+96
+19
+Taj Cochin Airport
+IHCL & Group
+Taj
+112
+20
+Tadoba, IHCL SeleQtions
+Management Contracts
+SeleQtions
+35
+
+>>>

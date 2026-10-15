@@ -1,0 +1,55 @@
+Company: NIRLON (NSE/BSE symbol NIRLON), an Indian listed company. Document: investor presentation filed 2023-08-13. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+ 
+Page 2 of 10 
+Kunal Sagar 
+Thank you, Purvangi and good afternoon, everyone. Welcome to our Earnings Conference Call 
+for the first quarter of the financial year 2024. 
+Let us take you through the financial performance of the Company. So, the first quarter is the 
+financial year 2024, the Company reported a total income of Rs.149 crores, an increase of 
+approximately 7% on a year-on-year basis. EBITDA stood at Rs.117 crores, we grew by 
+approximately 9% on a year-on-year basis representing an EBITDA margin of 78.4%. Profit after 
+tax was Rs.50 crores, which was a growth of more than 250% on a year-on-year basis, while 
+PAT margins stood at 33.4%. This growth of 250% over quarter one of the previous year, is 
+largely due to the effect of the change in the depreciation method that was effective from 
+quarter three financial year 2023 and one- time expenses for debt refinancing, which were 
+incurred in quarter one of the last financial year. 
+On the operational front for the current quarter, the average occupancy rate increased to 
+99.4%. and as on June 30th, 2023, approximately 14,000 sq. ft of area was vacant. ICICI 
+Prudential has expanded its space at NKP by approximately 9600 sq. ft. Deutsche has concluded 
+terms to renew approximately 320,000 sq. ft of space in NKP, which is due for renewal in 
+financial year 2024 and Ipsaa, our creche amenity, has renewed it's approximately 3000 sq. ft. 
+of space at NKP in quarter two financial year 2024. With this we conclude our short 
+presentation and open the floor for your questions. 
+Moderator: 
+Thank you very much sir. We will now begin the question-and-answer session. Anyone who 
+wishes to ask questions may press “*” and “1” on their touchtone telephone. If you wish to 
+withdraw yourself from the question queue, you may press “*” and “2”. Participants are 
+requested to use handsets while asking a question. Ladies and gentlemen, we will wait for a 
+moment while the question queue assembles. The first question is from the line of Shirish Vaze 
+from Money Life Advisory Services. Please go ahead. 
+Shirish Vaze: 
+Thank you, sir for the opportunity. I just have one question. We have been talking about 
+restructuring for a while, so the most tax efficient kind of way to restructure would be to merge 
+with any of the three listed office REITs. So, I just wanted to understand, are you in conversation 
+with any of the three listed REITs for a possible restructuring? Thank you. 
+Kunal Sagar: 
+We continue to engage with our majority shareholders, our advisors and stakeholders on the 
+subject of restructuring. All concerned are working within our regulatory framework to arrive 
+at a reasoned and thought-out path forward in this matter. We will not specifically comment 
+on whether we are looking at A, B or C option because it's a work in process. I hope that's 
+something that answers your question to some extent. 
+Shirish Vaze: 
+Yes, sir, thank you, sir. I will just get back in the queue. 
+
+>>>

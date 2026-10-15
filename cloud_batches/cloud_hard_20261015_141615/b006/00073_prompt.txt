@@ -1,0 +1,60 @@
+Company: BELRISE (NSE/BSE symbol BELRISE), an Indian listed company. Document: investor presentation filed 2025-06-16. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+% Revenue from Exports (% of 
+Manufacturing Revenue)
+5.8%
+Annual Production Capacity
+60,000+ MTPA
+Stamping Capacity 
+450+ machines up to 
+1,200 T
+Plastic Processing Capacity 
+100+ machines up to 
+1,800 T
+64%
+No. of Employees
+2,000+
+Aggregate Capacity Utilization
+Delivering Customer Success through Agile and Robust 
+Manufacturing
+15
+Maharashtra
+Aurangabad (3), 
+Pune (4)
+Gujarat
+Vithalapur (1) 
+Rajasthan
+Bhiwadi (2) 
+Karnataka
+Narsapura (1) 
+Tamil Nadu
+Chennai (1) 
+Madhya Pradesh
+Indore (1) 
+Uttar Pradesh
+Greater Noida (1) 
+Uttarakhand
+Pantnagar (2) 
+Haryana
+Bawal (1) 
+Source: Prospectus
+Maps not to scale . All data , information , and maps are provided " as is " without warranty or any representation of accuracy
+New Facilities
+Existing Facilities
+No. of Job workers
+5,500+
+Sheet Metal Fabrication Capability
+800+ Robots for 
+Welding
+
+>>>

@@ -1,0 +1,102 @@
+Company: SEAMECLTD (NSE/BSE symbol SEAMECLTD), an Indian listed company. Document: investor presentation filed 2026-01-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Seamec Limited | Investors Presentation
+15
+Company Overview
+SEAMEC Limited is a leading provider of Diving Support Vessels (DSVs) and Offshore Support Vessels (OSVs) with a robust presence both in India and 
+internationally. The company’s fleet includes 6 DSVs, 1 OSV, and 1 Accommodation Barge, all equipped to meet diverse offshore needs. SEAMEC is committed 
+to maintaining high standards, demonstrated by its ISM certification and ISO 31000:2018, ISO 45001:2018, ISO 9001:2015, and ISO 14001:2015 certifications.
+Our fleet of multi-functional DSVs and support vessels, 
+including SEAMEC II, SEAMEC III, SEAMEC PRINCESS, SEAMEC 
+PALADIN, SEAMEC SWORDFISH, SEAMEC DIAMOND, and 
+SEAMEC GLORIOUS, supports a wide range of offshore 
+activities.
+Offshore Shipping
+01
+Managed through SEAMEC International FZE and SEAMATE 
+Shipping FZC, operating two bulk carriers, SEAMEC GALLANT 
+and ASIAN PEARL. SEAMEC NIDHI was sold in April 2024.
+Bulk Carrier Division
+02
+SEAMEC Nirman Infra Limited undertook the NATM Tunnel 
+construction for the High-Speed Rail Project in Vapi, Gujarat, in 
+a joint venture with Nayavridhi Infra LLP. With completion of 
+80% of the project, the company has withdrawn from the 
+project with effect from July due to unavoidable circumstances.
+Tunnel Construction
+03
+Current Operations
+Our Subsidiaries 
+Incorporated in 2010, our wholly 
+owned 
+subsidiary 
+Seamec 
+International FZE, is actively 
+engaged 
+in 
+providing 
+bulk 
+transportation 
+services, 
+and 
+currently 
+operates 
+two 
+bulk 
+carriers.
+Seamec International FZE
+We recently established a step 
+down 
+subsidiary 
+Seamate 
+Shipping 
+FZC 
+by 
+forming 
+a 
+strategic joint venture with Arete 
+Shipping DMCC to further expand 
+our bulk carrier operations. 
+Set-up a JV with M/s. Nayavridhi 
+Infra 
+LLP 
+by 
+name 
+Seamec 
+Nirman Infra Limited to diversify 
+into 
+tunnel 
+and 
+other 
+EPC 
+contracts.
+It is the wholly owned subsidiary 
+of Seamec Limited and was 
+incorporated in March 2023 to 
+explore business opportunities in 
+UK & Europe Region
+Seamate Shipping FZC
+Seamec Nirman Infra Limited
+Seamec UK Investments Ltd
+It is the wholly owned subsidiary 
+of Seamec Limited and was 
+acquired in May 2023.
+Aarey Organic Industries 
+Private limited
+~ 
+~ 
+SEAMEC LIMITED 
+( ____ 
+) 
+
+>>>

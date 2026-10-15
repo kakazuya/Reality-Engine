@@ -1,0 +1,62 @@
+Company: SAPPHIRE (NSE/BSE symbol SAPPHIRE), an Indian listed company. Document: investor presentation filed 2023-02-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+0 SapphireFoods 
+Notes to Consolidated financial results: 
+1. The above consolidated financial results have been reviewed and recommended by the Audit 
+Committee and approved by the Board of Directors at their meetings held on February 09, 2023. 
+2. These consolidated financial results have been prepared in accordance with the Indian Accounting 
+Standards (Ind AS) prescribed under section 133 of the Companies Act, 2013 read with rule 3 of the 
+Companies (Indian Accounting Standards) Rules, 2015 and the Companies (Indian Accounting 
+Standards) Rules, 2016. 
+3. The Board of Directors ("the Board") of the Parent Company at its meeting held on February 11, 2022 
+has inter-alia, subject to requisite approvals/consents, considered and approved the Scheme of Merger 
+by Absorption between Sapphire Foods India Limited (the "Transferee Company" or "Company") and 
+wholly owned subsidiaries namely Gamma Pizzakraft Private Limited (Transferor Company I) and 
+Gamma Pizzakraft (Overseas) Private Limited (Transferor Company 2") under Sections 230 to 232 of 
+the Companies Act, 2013 ("Scheme"). The Scheme is subject to necessary statutory and regulatory 
+approvals including the approval of Hon' ble National Company Law Tribunal (NCL T), Mumbai 
+bench. The Appointed Date of the Scheme is April 1, 2022. The scheme/ application was filed and 
+admitted with National Company Law Tribunal (NCL T), Mumbai Bench on May 5, 2022. This scheme 
+has no impact on consolidated financial results of the group. 
+4. The Group is in the business of operating restaurants and has only one reportable operating segment 
+as per Ind AS 108 - Operating Segments. 
+5. The consolidated financial results of the Group include financial results of one of the subsidiary 
+Gamma Pizzakraft (Lanka) Private Limited (GPLPL) which operates Pizza Hut brand in Sri Lanka. 
+Sri Lanka has been facing macroeconomic challenges on account of rising prices, depletion of forex 
+reserves, depreciation of Sri Lankan currency to INR and other inflationary pressures though the forex 
+rates started stabilizing during the quarter ended December 31, 2022, the management has considered 
+all internal and external sources of information including economic forecasts and estimates from 
+market sources as at the date of the approval of these consolidated financial results. On the basis of 
+the evaluation and current indicators of future economic conditions, the Group has concluded that no 
+adjustments are required in respect to Goodwill and other assets pertaining to Sri Lanka operations. 
+Management will continue to monitor the situation. Further, during the nine months ended December 
+31, 2022, the Group incurred Other comprehensive loss on account of exchange difference on 
+translation of the foreign operation amounting to Rs. 52.20 million and during the quarter ended 
+December 31, 2022, the Group had Other comprehensive gain on account of exchange difference on 
+translation of the foreign operation amounting to Rs. 13 .21 million due to movement of forex rates in 
+Sri Lanka. 
+Fol~~nF~~half of the Board of Directors 
+Sa~
+ods :ra 
+Limited 
+Sanjay Purobff<. 
+Whole Time Di 
+DIN:0011 7 6 
+Place: Mumbai 
+Date: February 09, 2023 
+SIGNED FOR IDENTIFICATIO~J 
+BY \),i 
+SR BC & CO LLP 
+MUMBAI 
+
+>>>

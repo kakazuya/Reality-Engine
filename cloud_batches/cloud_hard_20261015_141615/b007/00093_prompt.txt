@@ -1,0 +1,43 @@
+Company: IKS (NSE/BSE symbol IKS), an Indian listed company. Document: investor presentation filed 2026-04-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+​This​ ​historical​ ​performance​ ​gives​ ​us​ ​confidence​ ​that​ ​we​ ​will​ ​similarly​ ​manage​ ​the​ ​debt​
+​associated​ ​with​ ​the​ ​IKS​ ​Health​ ​and​ ​TruBridge​ ​merger.​ ​Our​ ​strategic​​plan​​includes​​a​​clear​
+​pathway​​to​​deleveraging,​​ensuring​​that​​the​​merged​​entity​​maintains​​a​​strong​​and​​sustainable​
+​financial foundation for future growth and investment.​
+​18.​​What are the expected synergies and how quickly will they be realized?​
+​Based​​on​​our​​current​​estimates,​​we​​expect​​synergies​​to​​be​​realized​​in​​a​​3​​year​​timeframe​
+​post closing. We are targeting ~INR 3000 crore in EBITDA for the combined entity by FY30.​
+​19.​​Will​​this​​transaction​​be​​accretive​​or​​dilutive​​to​​EPS​​in​​the​​first​​full​​year,​​and​​what​​is​​the​
+​expected timeline to reach accretion?​
+​Post closing, the transaction is expected to be EPS accretive in Year 1.​
+​20.​​Is it possible that the transaction is not approved at the end of this 3 month period?​
+​The​​transaction​​is​​reviewable​​by​​the​​Federal​​Trade​​Commission​​or​​the​​Department​​of​​Justice​
+​Antitrust​ ​Division,​ ​which​ ​are​ ​the​ ​U.S.​ ​competition​ ​enforcement​ ​agencies.​ ​The​ ​reviewing​
+​agency​​will​​evaluate​​whether​​the​​transaction​​will​​result​​in​​any​​harm​​to​​competition.​​While​
+​we​​are​​confident​​that​​the​​reviewing​​agency​​will​​find​​that​​the​​companies’​​respective​​offerings​
+​are​ ​complementary​ ​to​ ​one​ ​another​ ​and​ ​face​ ​intense​ ​competition​ ​from​ ​a​ ​large​ ​and​
+​fragmented​​field,​​the​​reviewing​​agency​​will​​take​​the​​amount​​of​​time​​it​​deems​​necessary​​and​
+​appropriate to complete its review.​
+​21.​​Whom should media or investors contact if they need additional information?​
+​●​ ​Investor Relations:​
+​○​ ​Saransh Mundra​
+​■​
+​investor_relations@ikshealth.com​​|+91  9022198422​
+​●​ ​Media Relations:​
+​○​ ​India: Sameer Arora/ Deepti Kenjale​
+​■​ ​press@ikshealth.com​​|+91  7045258989​
+​○​ ​US: Jill Gross/Sarah Bennight​
+​■​ ​press@ikshealth.com​
+​7​
+
+>>>

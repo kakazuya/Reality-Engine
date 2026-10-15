@@ -1,0 +1,55 @@
+Company: IEX (NSE/BSE symbol IEX), an Indian listed company. Document: investor presentation filed 2024-05-16. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Indian Energy Exchange Ltd
+Registered Office: C/o Avanta Business Centre, First Floor, Unit No. 1.14(a), D2, Southern Park, District Centre, Saket, New Delhi–
+110017, India
+Corporate Office: 9th Floor, Max Towers, Sector 16B, Noida, Uttar Pradesh–201301 , India
+Tel: +91-011-3044 6596 | Tel: +91-120-4648 100 | Fax No.: +91-120-4648 115
+CIN: L74999DL2007PLC277039 | Website: www.iexindia.com
+For fiscal year 2024, the Board of Directors of the Company announced a final dividend of
+Rs.1.50/- equivalent to 150% of the face value of equity shares.
+On the power sector front, according to government data, India’s electricity consumption in
+FY’24 reached 1,622 BUs, representing a 7.7% increase on a year-on-year basis. On the fuel
+side, during FY’24, India's coal production increased by 11.7% YoY to reach around 1 billion
+tonnes and coal dispatch to the power sector increased nearly 8.8% YoY to 810 million tonnes.
+E-auction coal premium continued to decline throughout the financial year. The coal premium
+under Shakti B8 action has come down to around 20%. Coal inventory on 31st March 2024
+stood at nearly 20 days, the highest since 2021. The imported coal price at USD55/tonne for
+the month of April’24, represents a decline of 23% on YoY basis.
+This improved supply scenario resulted in increased sell liquidity at IEX, despite an increase in
+the country’s energy demand in the fiscal year 2024. In FY’24, the sell liquidity on the exchange
+increased by 17% YoY.
+The regulatory and policy landscape for the power market witnessed positive developments
+during the fiscal year. Notable among these were the General Network Access (GNA)
+regulation, the Indian Electricity Grid Code (IEGC) regulations, and Transmission Charges
+Sharing regulations. In preparation for the summer months, the Ministry of Power has
+announced several measures, such as mandating the sale of surplus un-requisitioned power
+on power exchanges by all thermal generating stations and rescheduling of planned
+maintenance of thermal power plants to the monsoon season. Additionally, section 11
+directions for operationalization of imported coal-based plants are extended till 15 October
+2024. Further, the Government has directed all gas-based power generating stations to
+operationalise their plants from May 1 to June 30 in view of rise in electricity demand.
+On the gas market front, the Indian Gas Exchange (IGX) traded total volumes of 41 Million
+MMBtu in FY’24, lower by 20% YoY. The profit after tax for IGX for FY’24 is Rs. 23.1 Crores,
+about 18% lower with respect to FY’23.
+ABOUT IEX
+IEX is India’s premier energy exchange providing a nationwide, automated trading platform for physical delivery
+of electricity, renewable power, renewable energy certificates and energy saving certificates. The exchange
+platform enables efficient price discovery and increases the accessibility and transparency of the power market
+in India while also enhancing the speed and efficiency of trade execution. The Exchange is ISO Certified for quality
+management, Information security management and environment management since August 2016. The
+Exchange is a publicly listed company with NSE and BSE since October 2017 and is approved and regulated by
+Central Electricity Regulatory Commission since 27 June 2008.
+For further details, log on to: www.iexindia.com
+
+>>>

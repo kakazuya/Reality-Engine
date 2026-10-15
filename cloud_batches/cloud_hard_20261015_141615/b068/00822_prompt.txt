@@ -1,0 +1,105 @@
+Company: CARTRADE (NSE/BSE symbol CARTRADE), an Indian listed company. Document: investor presentation filed 2023-01-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Auction Listings and Volumes
+9
+839,542 
+845,646 
+780,000
+790,000
+800,000
+810,000
+820,000
+830,000
+840,000
+850,000
+Listing
+Auction Listing 9M (FY22) vs 9M (FY23)  
+9M (FY22)
+9M (FY23)
+1%
+166,305 
+180,901 
+100,000
+110,000
+120,000
+130,000
+140,000
+150,000
+160,000
+170,000
+180,000
+190,000
+Volume ( Sold Nos )
+Auction Volume 9M (FY22) vs 9M (FY23)  
+9M (FY22)
+9M (FY23)
+9%
+326,319 
+268,506 
+110,000
+160,000
+210,000
+260,000
+310,000
+Listing
+Auction Listing Q3 vs Q3 
+Q3 (FY22)
+Q3 (FY23)
+-18%
+72,639 
+59,202 
+20,000
+30,000
+40,000
+50,000
+60,000
+70,000
+Volume ( Sold Nos )
+Auction Volume Q3 vs Q3
+Q3 (FY22)
+Q3 (FY23)
+-18%
+168,913 173,809
+213,090
+258,504
+212,552
+300,671
+326,319 323,693
+272,275
+304,865
+268,506
+17,194
+31,131
+45,370
+62,994
+30,133
+63,533
+72,639
+74,603
+57,710
+63,989
+59,202
+0
+50,000
+100,000
+150,000
+200,000
+250,000
+300,000
+350,000
+Q1 (FY 21) Q2 (FY 21) Q3 (FY 21) Q4 (FY 21) Q1 (FY 22) Q2 (FY 22) Q3 (FY 22) Q4 (FY 22) Q1 (FY 23) Q2 (FY 23) Q3 (FY 23)
+Auction Listing & Volume
+Auction Listing
+Auction Volume ( Sold Nos.)
+
+>>>

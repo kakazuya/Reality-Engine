@@ -1,0 +1,113 @@
+Company: BAJAJHFL (NSE/BSE symbol BAJAJHFL), an Indian listed company. Document: investor presentation filed 2026-07-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+20
+Shareholding Profile
+Holding of Top-20 Investors
+S. No.
+Name of Shareholder
+Holding %
+1
+Bajaj Finance Limited
+86.70
+2
+Catamaran Ventures LLP
+0.21
+3
+Tata AIG General Insurance Company Limited
+0.20
+4
+Vanguard Total International Stock Index Fund
+0.19
+5
+Vanguard Emerging Markets Stock Index Fund, a series of 
+Vanguard International Equity Index Funds
+0.18
+6
+NPS Trust- a/c ICICI Prudential Pension Fund Scheme E - Tier I
+0.14
+7
+NPS Trust- a/c SBI Pension Fund Scheme - Central Govt
+0.13
+8
+Government Pension Fund Global
+0.13
+9
+Vanguard Fiduciary Trust Company Institutional Total 
+International Stock Market Index Trust II
+0.10
+10
+ICICI Prudential Banking And Financial Services Fund
+0.06
+11
+Nippon Life India Trustee Ltd- a/c Nippon India Growth Mid Cap 
+Fund
+0.06
+12
+ICICI Prudential Life Insurance Company Limited
+0.06
+13
+SBI General Insurance Company Limited
+0.05
+14
+Canada Pension Plan Investment Board
+0.05
+15
+Serum Institute Of India Pvt Ltd
+0.05
+16
+Ultra Sigma Private Limited
+0.03
+17
+Vanguard FTSE All-world Ex-us Index Fund, a series of Vanguard 
+International Equity Index Funds
+0.03
+18
+Cholamandalam MS General Insurance Company Ltd
+0.03
+19
+International Conveyors Limited
+0.03
+20
+Canara HSBC Life Insurance Co Ltd
+0.03
+0.91%
+10.40%
+86.70%
+1.35%
+0.28%
+Corporates
+Promoters & Promoter Group
+Mutual Funds
+FII & FPIs
+Resident & Non-resident Individuals
+Others
+0.36%
+Note: Shareholding as of 30th Jun 2026
+OVERVIEW OF BAJAJ HOUSING FINANCE
+Executive 
+Summary
+Overview of Bajaj 
+Housing Finance
+Business Wise 
+Update
+Financial 
+Performance
+Treasury 
+Update
+Asset 
+Quality
+Management 
+Assessment - FY27
+20
+
+>>>

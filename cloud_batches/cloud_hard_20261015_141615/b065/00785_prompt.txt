@@ -1,0 +1,54 @@
+Company: SHRIRAMFIN (NSE/BSE symbol SHRIRAMFIN), an Indian listed company. Document: investor presentation filed 2024-04-26. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Place: Mumbai 
+Date: April 26, 2024 
+. S. Chakravaytt 
+Managing Director & CEO 
+DIN: 00052308 
+SHRIRAM FINANCE LIMITED (formerly Shriram Transport Finance Company Limited) 
+CIN: L65191TN1979PLC007874 
+Regd. Office: Sri Towers, 14A, South Phase, Industrial Estate, Guindy, Chennai — 600 032, Tamil Nadu. 
+12
+The Board of Directors has recommended a final dividend of Rs, 15/- per equity share of nominal face value of Rs. 10/- each fully paid 
+up i.e. 150%, for the financial year 2023-24 subject to approval by Members in the ensuing 45th Annual General Meeting (45th AGM) of 
+the Company. This is in addition to the interim dividend and second interim dividend of Rs. 20/- per equity share and Rs. 10/- per equity 
+share of Rs. 10/- each fully paid-up (300%) for the financial year 2023-24 declared by the Company on October 26, 2023 and January 25, 
+2024 respectively. With this the total dividend for the financial year 2023-24 will be Rs. 45/- per share (i.e. 450%). Pursuant to 
+Regulation 42 of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015 and 
+subject to the confirmation by the Stock Exchanges, the book closure period for the purpose of payment of the final dividend and 45th 
+AGM will be from July 24, 2024 to July 30, 2024 (both days inclusive). The final dividend will be paid to eligible Members on or before 
+August 28, 2024 subject to deduction of tax at source as per the applicable rate(s) to the eligible shareholders. 
+13 On January 22, 2024, the Company issued and allotted USD 750,000,000 6.625% senior secured notes due 2027 in offshore market 
+(Social Bonds) for a sum of Rs.62,31,94,35,937.50 under USD 3.5 Billion Global Medium Term Note Programme. The said Social 
+Bonds were listed on Global Securities Market - India International Exchange (INX) on January 24, 2024. The proceeds of the issue of 
+the Social Bonds are being utilised as per the Company's Social Finance Framework and as may be permitted by the RBI ECB Guidelines 
+for onward lending and other activities. 
+14 Information as required by Regulation 52(4) of the Securities and Exchange Board of India (Listing Obligations and Disclosure 
+Requirements) Regulations, 2015 is attached in Annexure 1. 
+15 The Group's secured non-convertible debentures of Rs. 32,696.93 crores as on March 31, 2024 are secured by specific assets covered 
+under hypothecation loan agreements and by way of exclusive charge and mortgage of immovable property and with a cover of 100% and 
+above as per the terms of issue. 
+16
+As on March 31, 2024 the security cover available in respect of secured non-convertible debt securities is 1.09 times. The security cover 
+certificate as per Regulation 54(3) of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) 
+Regulations, 2015 is attached as per Annexure 2. 
+17
+The Company and its subsidiary Shriram Housing Finance Limited are in the business of financing and there are no separate reportable 
+segments identified as per Ind AS 108-Operating segments. Further its associate is primarily engaged in the business of facilitation 
+service. 
+18 The figures for the previous periods have been regrouped/ rearranged wherever necessary to conform to the current period/ year 
+presentation. There are no significant regroupings/ reclassification for the quarter under report. 
+For Shriram Finance Limited 
+(formerly Shriram Transport Finance Company Limited) 
+
+>>>

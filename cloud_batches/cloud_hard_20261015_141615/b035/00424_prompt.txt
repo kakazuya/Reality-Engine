@@ -1,0 +1,153 @@
+Company: CLASSICEIL (NSE/BSE symbol CLASSICEIL), an Indian listed company. Document: investor presentation filed 2026-05-21. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Capacity and Capacity Utilisation
+Year
+Electrodes
+MIG Wire
+Flux Core Wire
+Installed 
+Capacity
+Utilized 
+Capacity
+% 
+Utilization
+Installed 
+Capacity
+Utilized 
+Capacity
+% 
+Utilization
+Installed 
+Capacity
+Utilized 
+Capacity
+% 
+Utilization
+2023–24
+10,608
+7,823
+73.74%
+5,000
+2,686
+53.72%
+-
+-
+-
+2024-25
+10,608
+7,831
+73.82%
+5,000
+3,420
+68.41%
+-
+-
+-
+2025-26
+10,608
+9,148
+86.24%
+7,000
+5,207
+74.38%
+2,500
+350
+13.98%
+Manufacturing Unit: West Bengal
+10,608
+10,608
+10,608
+7,823
+7,831
+9,148
+73.74%
+73.82%
+86.24%
+0.00%
+20.00%
+40.00%
+60.00%
+80.00%
+100.00%
+120.00%
+140.00%
+160.00%
+180.00%
+200.00%
+0
+2,000
+4,000
+6,000
+8,000
+10,000
+12,000
+2023–24
+2024-25
+2025-26
+Electrodes
+Installed Capacity
+Utilized Capacity
+% Utilization
+5,000
+5,000
+7,000
+2,686
+3,240
+5,207
+53.72%
+68.41%
+74.38%
+0.00%
+20.00%
+40.00%
+60.00%
+80.00%
+100.00%
+120.00%
+140.00%
+160.00%
+180.00%
+200.00%
+0
+1,000
+2,000
+3,000
+4,000
+5,000
+6,000
+7,000
+8,000
+2023–24
+2024-25
+2025-26
+MIG Wire
+Installed Capacity
+Utilized Capacity
+% Utilization
+Values in MT
+13
+2,500
+350
+0
+500
+1,000
+1,500
+2,000
+2,500
+3,000
+2025-26
+Flux Core Wire
+Installed Capacity
+Utilized Capacity
+
+>>>

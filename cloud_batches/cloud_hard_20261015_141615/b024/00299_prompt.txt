@@ -1,0 +1,97 @@
+Company: HONAUT (NSE/BSE symbol HONAUT), an Indian listed company. Document: investor presentation filed 2026-07-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+5
+©2026 Honeywell Technologies Inc. Neither this document nor the information contained herein may be reproduced, used, distributed, or disclosed to others without the written consent of Honeywell Technologies.
+CSR Program Charter FY 25-26
+Thematic Area
+On ground Partner
+Scope of Work of the Project
+SAKSHAM
+Education, Skills & Research
+IIT Bombay
+IIT Bombay-Honeywell Centre of Excellence for Future Skills and 
+Innovation:
+•
+Launched 
+in 
+FY25–26 
+to 
+upskill 
+100,000+ 
+students 
+in 
+sustainability skills by 2030, driving social and environmental 
+impact through education, research, and innovation.
+•
+Reached 1,000 colleges and initiated pilot training for 364 
+students.
+BharatCares
+Honeywell Future Skills EDGE:
+•
+Launched in FY25–26 to upskill 200,000+ students in AI and 
+Cybersecurity by 2029, enhancing youth employability through 
+industry-relevant future skills.
+•
+Reached 28,000+ students through the digital learning platform, 
+with 864 students completing training by March 2026.
+SAMRAKSHAN
+Holistic & Sustainable 
+Community Development
+Swades Foundation
+Honeywell’s Sustainable Community Development:
+•
+The project drives sustainable development by providing 
+community-centric solutions across four key areas i.e. Water & 
+Sanitation, Clean Energy, Education, Environmental Sustainability 
+and Economic Development
+•
+Improved the lives of 4,000+ community members.
+Give Me Trees Trust
+Plant the Future Campaign:
+• Launched in FY2022–23, planted approximately 240,000 saplings 
+across Pune, Bengaluru, and Mumbai, with a three-year 
+maintenance commitment.
+• FY2025–26 support extended maintenance efforts to strengthen 
+green cover, enhance biodiversity, and build resilient ecosystems
+Note- Certain projects may have been executed in collaboration with other Honeywell entities based in India
+Sustainable Ecosystems & Empowered Communities
+3 GOOOHULIH 
+ANOWlll·BOliG 
+4 ~~i~DN 
+5 GrnDER 
+EOIW.ITT 
+4• Mi 
+Cf/ 
+6 C:U,l.Kl'IATER 
+AIIOWOAllOt! 
+V 
+8 ::~w~~~~;~ 9KIJSIR'l'. tt(J't'AJl(lj 13 :~~[ 
+"'"""""""' 
+61 & <i> 
+1~m 
+3 :~tt17'NG 
+6 =~:::J~ON 
+MttT 4• 9 
+15 1'~, ... 
+7 ~;:::~:ci 8 D!:COITWORUhll 
+13 ~~:~( 
+6-:": 
+[OONOIOCGIIIWTII 
+I 
+-0'·' ... 
+-
+-
+,,, 
+ffl ~ 
+
+>>>

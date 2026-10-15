@@ -1,0 +1,84 @@
+Company: BTML (NSE/BSE symbol BTML), an Indian listed company. Document: investor presentation filed 2023-05-05. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Television Penetration
+TV
+Digital 
+Media
+Print
+Music
+Online 
+Gaming
+Films
+Radio
+OOH
+Live 
+Events
+Animation
+5%
+Per Year
+Is the growth rate of TV connections in India
+Source:
+1)
+Boston Consulting Group – Dec’20
+2)
+EY – Mar’21
+3)
+https://www.exchange4media.com/marketing-news/400-mn-exclusive-tv-viewers-in-india-cannot-be-reached-by-digital-video-
+122911.html#:~:text=TV's%20audience%20universe%20of%20900,accessed%20by%20digital%20video%20platforms.
+66.4%
+92.8%
+98.7%
+67.2%
+92.7%
+99.3%
+0%
+20%
+40%
+60%
+80%
+100%
+120%
+India
+USA
+China
+% of Households with Tv Cable 
+Connection In Each  Country
+2019
+2020
+176
+231
+0
+50
+100
+150
+200
+250
+2020
+2025
+INR (Mn)
+Total TV Subscriptions (Mn)
+400
+900
+0
+200
+400
+600
+800
+1000
+OTT
+TV
+Viewers (Million)
+TV vs OTT Viewers (2022)
+30
+
+>>>

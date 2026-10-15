@@ -1,0 +1,110 @@
+Company: KALYANKJIL (NSE/BSE symbol KALYANKJIL), an Indian listed company. Document: investor presentation filed 2025-11-07. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+KALYAN JEWELLERS INDIA LIMITED
+7
+\
+Evolution Of A Trusted Pan
+-India Brand
+1993
+Opened first 
+showroom under 
+the brand ‘Kalyan 
+Jewellers’ in 
+Thrissur, Kerala
+2010
+Launched “My Kalyan” 
+customer outreach 
+initiative
+Entered Telangana 
+and Karnataka 
+markets
+2013
+Entered Maharashtra
+and Middle East markets
+2015
+Entered Chennai 
+and East India 
+(Orissa) markets
+2017
+Incremental equity 
+investment by Warburg 
+Pincus
+Purchased a stake in
+Enovate Lifestyles
+Private Limited and its
+online platform at
+www.candere.com
+2004
+2012
+2014
+2016
+2018
+2019
+Key Milestones
+Opened first 
+showroom outside 
+Kerala, in Coimbatore, 
+Tamil Nadu
+Opened first 
+showroom outside 
+South India in 
+Ahmedabad, Gujarat
+Entered West Bengal 
+and Rajasthan markets
+Launched the Kalyan 
+Matrimony (formerly 
+known as Sanskriti 
+Matrimony) website
+Entered 
+Northeast (Assam), 
+Chhattisgarh and 
+Jharkhand markets
+Entered Bihar 
+market
+Equity investment 
+by Warburg Pincus, 
+a global private equity 
+firm
+Entered North India
+(Delhi) market
+2021
+Listed on NSE & BSE 
+as Kalyan Jewellers 
+India Limited - Initial 
+Public Offering 
+(“IPO”)
+2022
+Launched 1st franchise store 
+(Aurangabad) as a pilot to a new 
+capital efficient model expected to 
+add a further leg of growth to the 
+company’s own-store expansion
+Appointed an Independent 
+Chairman to the Board (Vinod Rai) 
+as a Non-Executive Director
+Q2 FY26
+300 Kalyan showrooms
+(174 FOCO1) and 
+96 Candere Showrooms 
+(54 FOCO) in India. 
+38 Kalyan showrooms 
+(4 FOCO) in the Middle East 
+and 2 Kalyan showroom in 
+the USA.
+Last Twelve Months 
+Revenues of ₹2,85,841 Mn 
+and Profit After Tax of ₹9,309 
+Mn
+Note: 1 FOCO - Franchisee Owned Company Operated
+
+>>>

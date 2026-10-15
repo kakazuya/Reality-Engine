@@ -1,0 +1,91 @@
+Company: GANESHHOU (NSE/BSE symbol GANESHHOU), an Indian listed company. Document: investor presentation filed 2023-05-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Our Journey So Far
+21
+Early Phase & IPO
+(1991-2004)
+Fund Raising
+(2004-2009)
+Robust Execution
+(2009-2014)
+Scaling Up…
+(2014-2020)
+• Incorporated in June 1991.
+• Raised INR 21mn through 
+IPO in 1993. 
+• Amalgamation with another 
+listed group company in 
+1998.
+• Started Real estate 
+development business 
+(1999)
+• Bonus issue 2:1 (2006)
+• NSE listing in 2007.
+• Qualified Institutional 
+Placement (QIP) in 2007 of 
+INR 2,275mn @ INR 
+325/share.
+• Crossed INR 1,000mn 
+Turnover (2008) 
+• ISO and OHAS certification 
+received
+• Delivered 15 msf
+• Amalgamation with 5 group 
+companies in 2007.
+• Delivered 17 msf.
+• Turnover of more than INR 
+2,000mn and PAT of INR 
+500mn (2012)
+• Net worth INR 500mn 
+(2010)
+• CREDAI Real Estate Award 
+2012 for MAHALAYA-II, Best 
+Individual Dwelling Row 
+House
+• GIHED Award for GCP 
+Business Center, 
+Ahmedabad – Best 
+Commercial Project 2013
+• Highest ever cash flow of 
+INR 2,800 Mn; crossed 
+turnover of INR 3,000 Mn 
+(2016); delivered 22 msf 
+(2019)
+• Bonus issue 1:2 (2016)
+• CREDAI CSR award 2015 for 
+Public Awareness; CNBC 
+award for Best Residential 
+Project (MID) for Malabar 
+County 2016.
+• ABP Asmita Award for Best 
+Brand-Real Estate 2019; 
+Realtors Award 2020 for 
+Real Estate Awareness & 
+Education
+) 
+) 
+) 
+···... 
+. ... •··/ 
+··... 
+..· 
+······•... 
+..... 
+···... 
+. ... •··/ 
+···•··•··········································································· 
+·····················································································•• 
+··•··············································································· 
+···•··•··········································································· 
+
+>>>

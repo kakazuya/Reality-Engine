@@ -1,0 +1,68 @@
+Company: VAIBHAVGBL (NSE/BSE symbol VAIBHAVGBL), an Indian listed company. Document: investor presentation filed 2023-01-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Delivering 
+Joy 
+26
+OTT & OTA – Widening Digital Platform
+In US, OTT and OTA are projected to be the fastest growing video distribution medium
+OTT
+Live & Interactive 
+Apps
+OTA
+25.7 
+46.8 
+ -
+ 20.0
+ 40.0
+ 60.0
+ 80.0
+2020
+2021
+2022
+2023
+2024
+2025
+2026
+Projected US residential video households
+2020-2026 (million)
+Over-The-Air households
+Over-The-Top households
+As of June-2022
+Source: Industry estimates
+Shop LC
+17mn HH
+Low Power: ~17mn HH
+High Power: ~4mn HH
+HH: Households
+Revenue Mix:
+~20%-25% of TV 
+revenue
+Total HH in US:
+22mn
+$0
+$500
+$1,000
+$1,500
+$2,000
+$2,500
+Q1
+Q2
+Q3
+Q4
+Thousands
+OTT Revenue
+2020-21
+2021-22
+2022-23
+
+>>>

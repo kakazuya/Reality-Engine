@@ -1,0 +1,93 @@
+Company: SENCO (NSE/BSE symbol SENCO), an Indian listed company. Document: investor presentation filed 2026-08-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+24 
+ 
+ 
+ 
+Senco 
+Everlite 
+Gossip 
+Aham 
+Perfect Love 
+Sennes 
+Price Range 
+INR 20,500– INR 
+50,00,000 
+INR 4,000 – INR 
+11,41,000 
+INR 800 – INR 20,000 
+INR 15,000 – INR 
+45,00,000 
+INR 20,000 – INR 
+5,30,000 
+LGD – INR 5,000 onwards 
+Fragrance – INR 800 to 
+INR 2,900 
+Bags – INR 2,500 to INR 
+29,800 
+Accessories – INR 999 to 
+INR 6,000 
+Collection 
+Gold, diamond, platinum, 
+and silver jewellery 
+featuring Bengal artistry 
+along with wedding and 
+bridal collections. 
+Lightweight, Everyday 
+fine Jewellery 
+Silver and Fashion 
+Jewellery 
+Men’s Jewellery 
+Solitaire Diamonds 
+Lab-grown Diamonds, 
+Leather Bags & 
+Fragrances 
+Significance 
+Symbolizes trust, 
+heritage, and emotional 
+connection; known for 
+blending tradition with 
+technology and 
+representing enduring 
+value for diverse Indian 
+customers. 
+Everlite offers fine 
+jewellery collections, 
+from bold statements to 
+minimal pieces, 
+embodying effortless 
+everyday elegance. 
+Gossip offers stylish 
+jewellery from fashion 
+pieces to American 
+diamond, zircon, fine 
+silver, antique, polki, and 
+oxidized silver designs. 
+Aham offers wide range 
+of men’s jewellery that 
+embodies subtle 
+masculine luxury. 
+Perfect Love offers an 
+exclusive range of 
+solitaire diamond 
+jewellery, crafted with 
+timeless elegance and 
+sophistication. 
+Sennes is a premium, 
+contemporary jewellery 
+brand targeting younger, 
+urban customers with 
+lifestyle designs. 
+Diverse Brands From Aspirational to Premium 
+
+>>>

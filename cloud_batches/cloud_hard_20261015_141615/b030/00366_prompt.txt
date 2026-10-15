@@ -1,0 +1,56 @@
+Company: WESTLIFE (NSE/BSE symbol WESTLIFE), an Indian listed company. Document: investor presentation filed 2022-12-01. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Emerging trends and tailwinds
+Source: Online media, Mirae Asset, BCG, HSBC, Axismyindia, NPCI 
+India likely to surpass China to become most populous 
+country in the world around 2025
+Only ~ 35% of the Indian population lives in cities vs 
+60% for China and 80-85% for USA
+Consumers in tier 2 and tier 3 cities order food ‘multiple 
+times a week’, higher vs metros and tier 1 cities
+Functional needs replace celebratory reasons to order 
+food across income segments
+India bought 17 crores (170mn) smartphones in 2021
+61% surveyed population watches online video content 
+like YouTube/OTT on their mobile/home TV.
+UPI payment crossed Rs 11 lakh crore (~$140 bn) 
+milestone in Sep’22
+Favourable
+demographics
+Nuclearization
+of families
+Shift towards 
+consumption vs 
+saving
+Increasing 
+frequency of 
+eating out
+Increasing 
+urbanization and 
+‘rurban’ India 
+Increasing digital 
+penetration
+Rising value of 
+convenience
+Increased 
+preference of 
+hygiene
+Rising aspirations 
+and 
+premiumization
+Favorable funding 
+landscape for 
+aggregators
+17
+
+>>>

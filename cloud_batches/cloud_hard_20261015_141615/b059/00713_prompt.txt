@@ -1,0 +1,62 @@
+Company: KAYNES (NSE/BSE symbol KAYNES), an Indian listed company. Document: investor presentation filed 2022-12-22. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+28
+Manufacturing Facilities
+Sl No 
+Location
+Verticals
+Area (Square Feet)
+Owned / Leased
+1
+Mysore, Karnataka – Unit I
+Railways, Defence and Aerospace, Medical 
+and Industrials
+1,26,085
+Owned
+2
+Mysore, Karnataka – Unit II
+Leased
+3
+Parwanoo, Himachal Pradesh
+IT, Telecom, Industrial, Medical and 
+Automotive
+5,253
+Owned
+4
+Selaqui, Uttarakhand
+IT and Industrial
+5,500
+Leased
+5
+Bengaluru, Karnataka – Unit I
+Automotive, Medical, IOT, IT and Industrial
+12,425
+Leased
+6
+Bengaluru, Karnataka – Unit II
+Automotive and Industrial
+13,447
+Leased
+7
+Chennai, Tamil Nadu
+Automotive, Medical and Industrial
+10,125
+Leased
+8
+Manesar, Haryana
+Industrial, Medical and Automotive
+88,000
+Leased
+Source: RHP
+
+>>>

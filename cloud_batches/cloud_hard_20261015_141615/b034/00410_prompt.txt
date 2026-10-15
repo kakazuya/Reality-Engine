@@ -1,0 +1,70 @@
+Company: ADANIENSOL (NSE/BSE symbol ADANIENSOL), an Indian listed company. Document: investor presentation filed 2021-03-09. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+AEML (Integrated Utility): Regulated Growth Opportunities
+Notes: 1) Average billing rate (ABR) in chart excludes impact of past revenue gap and regulatory assets that may be approved for recovery by MERC during the year. Real ABR computed @ 5% Inflation rate
+31
+Capex Schedule (Rs. bn) 
+Share of Power Procurement 
+Average Billing Rate (ABR) – Rs. /unit1
+13.1
+15.7
+16.0
+16.1
+16.6
+17.5
+0
+2
+4
+6
+8
+10
+12
+14
+16
+18
+20
+FY20
+FY21
+FY22
+FY23
+FY24
+FY25
+Project Capex
+Replacement & Maintenance capex
+FY20
+FY21
+FY22
+FY23
+FY24
+FY25
+Nominal ABR
+Real ABR
+Capex plan of ~Rs.95 bn for FY20-25 
+Despite capex outlay, overall 
+tariff  to fall in real terms
+Committed to increasing % of renewable power 
+procurement from current 3% to 50% by FY25
+Reliability from capex led network strengthening
+Affordability due to reduced power cost
+Sustainable Growth through RE power
+3%
+FY20
+50%
+FY25
+Conventional
+Renewable
+Capex-led growth in RAB to drive 
+EBITDA growth
+Sustainable growth in AEML by maintaining affordable tariffs through optimum power purchase, consumer growth and best O&M practices ensuring alignment with Regulator’s Charter
+
+>>>

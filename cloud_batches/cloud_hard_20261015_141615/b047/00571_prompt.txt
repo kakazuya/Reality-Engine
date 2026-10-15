@@ -1,0 +1,42 @@
+Company: LEMONTREE (NSE/BSE symbol LEMONTREE), an Indian listed company. Document: investor presentation filed 2024-05-30. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Q4 FY24 performance across key financial metrics
+29-May-2024
+Q4 FY24 Earnings Presentation
+6
+Total Revenue
+EBITDA
+EBITDA %
+Rs. 331.2 Cr
+Rs. 175.3 Cr
+52.9%
+Up 30%
+Up 24%
+Down 278 bps
+PAT
+Cash Profit#
+Cost of Debt %
+Rs. 84.0 Cr
+Rs. 117.4 Cr
+8.86%*
+Up 42%
+Up 42%
+Down 22 bps
+Q4 FY24 performance snapshot vs Q4 FY23
+Aurika, Udaipur
+* As on 31st March 2024
+# Cash Profit = PAT + Depreciation
+Figures include Aurika, Mumbai SkyCity which opened in Q3 FY24 and is 
+not yet stable.
+
+>>>

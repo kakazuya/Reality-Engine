@@ -1,0 +1,101 @@
+Company: CLSEL (NSE/BSE symbol CLSEL), an Indian listed company. Document: investor presentation filed 2022-12-20. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+10
+Indian Basmati rice industry
+Top importing countries of Indian basmati rice (Rs. Cr.)*
+0
+2,000
+4,000
+6,000
+8,000
+10,000
+Iran
+Saudi Arab
+U Arab Emts
+Yemen
+Republc
+Iraq
+U S A
+Kuwait
+FY20
+FY21
+FY22
+H1FY23
+Indian basmati rice exports (Quantity and Value)*
+4,415
+4,455
+4,630
+3,948
+1,950
+2,156
+0
+10,000
+20,000
+30,000
+40,000
+50,000
+0
+1,000
+2,000
+3,000
+4,000
+5,000
+FY19
+FY20
+FY21
+FY22
+H1FY22
+H1FY23
+Basmati Rice ('000 MT)
+Basmati Rice (Rs. Cr.)
+Basmati rice is majorly produced in India, with balance quantity from
+Pakistan. Indian Basmati rice has got Geographic Indication (GI) recognition.
+India has strong dominance in the export of basmati rice (160+ countries)
+especially to the Middle East. Basmati Rice exports have witnessed a CAGR
+growth of 5.5% in last 10 fiscals with its export standing at Rs. 17,886
+Crores* as on H1 FY2023.
+Introduction of higher yielding and shorter duration varieties has supported
+strong growth in Basmati production in the last two decades. New variety is
+increasingly adopted by farmers due to shorter growth cycle, lower irrigation
+requirements and higher yields compared to other traditional varieties.
+Basmati rice Industry* and CLSEL realisation (Rs. per kg)
+56
+78
+75
+56
+54
+66
+74
+70
+65
+67
+83
+72
+69
+70
+95
+FY 13
+FY 14
+FY 15
+FY 16
+FY 17
+FY 18
+FY 19
+FY 20
+FY 21
+FY 22H1FY 23
+Realisation
+CLSEL Realisation
+*Source : APEDA
+
+>>>

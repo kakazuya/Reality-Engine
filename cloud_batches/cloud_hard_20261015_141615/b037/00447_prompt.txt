@@ -1,0 +1,51 @@
+Company: ARIHANTSUP (NSE/BSE symbol ARIHANTSUP), an Indian listed company. Document: investor presentation filed 2021-06-21. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Multi Modal Corridor
+•
+Virar-Alibaug Multi Modal Corridor is a 126 kms road network
+connecting NH-8, Bhiwandi bypass, NH-3, NH-4 and NH-4B,
+Mumbai-Pune Expressway, NH-17, etc.
+•
+Designed to promote 7 growth centers in MMR such as Virar,
+Bhiwandi, Kalyan, Dombivali, Panvel, Taloja and Uran.
+INFRASTRUCTURE DEVELOPMENT
+Navi Mumbai Metro
+•
+The Navi Mumbai Metro, implemented by CIDCO spans across
+106.4 kms
+•
+The 23 kms phase I will consist of 20 stations and link CBD
+Belapur,
+Kharghar,
+Taloja,
+Taloja
+MIDC,
+Kalamboli
+and
+the Khandeshwar and eventually terminate at Navi Mumbai
+Airport
+•
+Services
+between
+Kharghar
+to
+Taloja
+is
+planned
+to
+be
+operational by Dec-21 with the remaining sections at the route
+likely to be started by Dec-22
+31
+
+>>>

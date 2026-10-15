@@ -1,0 +1,104 @@
+Company: ASTERDM (NSE/BSE symbol ASTERDM), an Indian listed company. Document: investor presentation filed 2022-05-24. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+11
+• Holistic healthcare 
+solutions for people, 
+including primary, secondary, tertiary and quaternary care
+• 27* Hospitals equipped with state
+- of - the
+- art 
+equipment
+• Extensive network of 
+120 clinics enabling 
+patient
+-feeder structure
+• Strategically located 
+371**
+pharmacies 
+serving patients across geographies
+Robust & 
+Expansive 
+Healthcare 
+Ecosystem
+• Strong track
+- record of financial, operational, 
+societal growth trajectory in GCC
+• Brisk scaling
+-up of operations 
+across 
+segments and geographies
+• India contribution both increasing and improving with additional capacity and maturing of assets
+Sturdy 
+Performance 
+Record
+• Combination of leased and owned assets, with concentration of leased assets for an 
+asset 
+light model
+• All assets in GCC (except in KSA) are leased while India has a mix of owned, leased and O&M assets
+• Established units in GCC exhibit 
+higher 
+average return 
+on capital employed
+Asset-Light 
+Business 
+Model
+• Upholding the highest standards 
+of 
+patient care, echoed in numerous industry recognitions and patient endorsements
+Touchstone of 
+Healthcare 
+Practices
+• Revenue contribution by GCC and Indian operations stand at 
+77%
+and 
+23% respectively
+• GCC network leveraged to promotemedical value tourism to India
+• Sourcing of excellent and experienced medical professionals from India
+• Relatively lower cost of debt in GCC 
+(3.5%
+-
+4.5%), at consolidated level (5.5%
+- 6.5%)
+Synergies 
+Across 
+Geographies
+• Directors/officers with 
+decades
+of 
+healthcare experience
+• Strong second line of management with managerial, healthcare and regulatory experience 
+provides stability
+Proficient & 
+Experienced 
+Management 
+Team
+• Revenue diversification from 
+multi
+-
+geography presence
+with targeted and 
+stratified segment operations
+• Heterogeneous brands Medcare, Aster and Access creating a mark across 
+multifarious 
+economic segments
+• GCC operations engirdled by stable currencies pegged to US dollars, creating an inherent 
+hedge to currency fluctuations
+De-Risked
+Business Model
+The Aster DM
+Healthcare Edge
+* Count is 29 including 
+Aster Hospital, Sharjah and Aster Mother Hospital, Kerala which 
+have commenced operations in April 22 and May 22 respectively** Includes 131 pharmacies in India operated by ARPPL under brand license from Aster
+
+>>>

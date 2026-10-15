@@ -1,0 +1,71 @@
+Company: MOTHERSON (NSE/BSE symbol MOTHERSON), an Indian listed company. Document: investor presentation filed 2025-05-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+1,257 
+2233
+1,480 
+1,120 
+Q4 FY24
+Q4 FY25
+2,733 
+2,675 
+2662
+2,999 
+2,675 
+ 1, 000
+ 3, 000
+Q4 FY24
+Q4 FY25
+918 
+1,006 
+454 4
+45 5
+1,372 
+1,051 
+ (100 )
+ 100
+ 300
+ 500
+ 700
+ 900
+ 1,100
+ 1,300
+ 1,500
+Q4 FY24
+Q4 FY25
+27,058
+29,317
+ 10 ,000
+ 15 ,000
+ 20 ,000
+ 25 ,000
+ 30 ,000
+Q4 FY24
+Q4 FY25
+SAMIL Consolidated Q4FY25 vs Q4FY24.
+Revenues1
+PBT
+(before exceptional items and share of associates)
+EBITDA
+PAT
+(Concern Share)
+29
+Notes : 
+1. Revenue from operations
+2. Q4FY24 EBITDA includes a positive impact of 266 cr contributed by a) Rs 197 Cr of contributed by customers towards forex losses and b) Rs 69 cr of forex gains
+3. Q4FY24 PBT includes a positive impact Rs. 223 Cr on account of a) Rs 27 crores of gain in net monetary position in subsidiaries located in the hyperinflationary economy of Argentina b) positive impact of Rs 197 cr contributed by customers towards forex losses
+4. Q4FY24 PAT includes a positive impact Rs. 454 Cr on account of a) Rs 27 crores of gain in net monetary position in subsidiaries located in the hyperinflationary economy of Argentina b) positive impact of Rs 197 cr contributed by customers towards forex losses  and c) positive impact              
+of Rs 231 cr on account of deferred tax assets in various geographies
+5. Q4FY25 includes  positive impact of 45 Crs as the net impact of Deferred tax assets creation and reversal in different businesses, amortization of upfront fee on prepayment of loan and accelerated depreciation on revaluation
+(all figures are Rs. in Crores)
+
+>>>

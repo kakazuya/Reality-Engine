@@ -1,0 +1,55 @@
+Company: AJOONI (NSE/BSE symbol AJOONI), an Indian listed company. Document: investor presentation filed 2022-06-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+26
+KEY RATIO
+IMPROVING RETURN RATIOS (In %)
+IMPROVING LEVERAGE RATIOS (IN TIMES)
+5.13
+6.28
+10.54
+2.22
+2.41
+6.41
+0.00
+5.00
+10.00
+15.00
+20.00
+25.00
+FY20
+FY21
+FY22
+ROCE
+ROE
+0.25
+0.43
+0.33
+2.47
+1.86
+3.70
+0
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+FY20
+FY21
+FY22
+Debt To Equity
+Intrest Coverage Ratio
+
+>>>

@@ -1,0 +1,55 @@
+Company: VAISHALI (NSE/BSE symbol VAISHALI), an Indian listed company. Document: investor presentation filed 2024-02-06. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Investor Presentation
+Stock Data
+SHARE HOLDING PATTERN 
+NSE: VAISHALI ISIN: INE972X01014
+Share Performance From 15 January 2020 Till Date
+26.74%
+73.26%
+Promoter & Promoter Group
+Public
+Share Price (₹)
+175.95
+Market Capitalization (₹ Cr)
+186.44
+No. of Shares Outstanding 
+1,05,96,213
+Face Value (₹)
+10
+52 week High-Low (₹)
+179.85 – 114.85
+As on 01-02-2024
+As on 30-09-2023
+48.60
+175.95
+0
+5,00,000
+10,00,000
+15,00,000
+20,00,000
+25,00,000
+30,00,000
+35,00,000
+0.00
+50.00
+100.00
+150.00
+200.00
+250.00
+Volume
+Price
+Source - NSE
+38
+
+>>>

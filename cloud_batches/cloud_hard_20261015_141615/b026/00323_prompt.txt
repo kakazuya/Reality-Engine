@@ -1,0 +1,86 @@
+Company: MAPMYINDIA (NSE/BSE symbol MAPMYINDIA), an Indian listed company. Document: investor presentation filed 2023-06-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Built a Super App for Maps, Navigation, Safety and more
+See reported hyperlocal 
+issues like traffic, road 
+blocks, potholes, unsafe 
+zones
+Road Safety Features
+Simplified location code 
+for complex addresses 
+providing doorstep  
+navigation
+Doorstep Navigation
+Helps you navigate 
+safely while approaching 
+flyovers, complex 
+intersections
+Junction View
+Enables insights into 
+vehicle health and fault 
+diagnostics
+Vehicle Diagnostics
+Enables you to track 
+your vehicle and loved 
+ones’ in real-time, 
+ensuring their safety
+Mappls IoT Gadgets
+Deep installed 
+With safety features like Panic button 
+and driving behaviour analysis
+Bike Tracker 
+Enables live location, 
+speed alerts, geo fencing 
+A Gamified Social Travel App for users and creators
+M A P P L S A P P 
+K O G O A P P 
+Users can plan, 
+discover and share travel 
+itineraries and content 
+and earn KOGOCOIN
+Plan, Discover & 
+Share Experiences
+Spend KOGOCOIN on 
+hotels, experiences, and 
+travel accessories
+Spend KOGOCOIN
+Mappls App and IoT gadgets combined with KOGO App will allow 
+MapmyIndia to offer integrated apps/solutions to consumers, the travel 
+eco‐system, businesses & government – opening up travel commerce 
+market opportunity for the company.
+Notes – To know more, follow these links – Mappls App | Mappls IoT Gadgets | KOGO
+A N A L Y S T & I N V E S T O R D A Y 2 0 2 3
+49
+A Glimpse of our Consumer Offerings
+• 
+B ,, .... u ICl:m 
+• • 
+i'i 
+CHECK 
+I 
+c.. 
+IEng,ne 
+Engine 
+.... ,M 
+F.u!u 
+t.o,d 
+On 
+'-FevlU 
+'°" 
+lmin Ill 
+A 
+250m 
+0 ~
+ls.com/lTI82A 
+
+>>>

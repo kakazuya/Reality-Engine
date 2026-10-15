@@ -1,0 +1,105 @@
+Company: SHAILY (NSE/BSE symbol SHAILY), an Indian listed company. Document: investor presentation filed 2022-01-29. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+New Business confirmations… gaining traction across segments
+Q1 FY21
+Home Furnishing
+Confirmation for additional 
+business of Rs 120 cr received from 
+Home Furnishing major 
+Toys
+Expansion of Rania facility to meet 
+new and existing projects of Toys 
+business
+Facility to be operational by end of 
+current fiscal year 
+1 new product confirmed from 
+customer; business value of US$ 1.5 
+mn/year 
+Carbon Steel
+Commenced commercial 
+production at Steel Furniture plant 
+in Dec 20
+Healthcare
+Developed IP for 1 pen injector
+Home Furnishing
+Additional business of Rs 60 cr
+awarded by Home furnishing 
+customer. Supplies to start from 
+Q4FY21. Will add 9 new SKU’s
+Toys
+Have been awarded 3 projects with 
+a leading Toy Manufacturer. 
+Commercial supplies to start from 
+Q4FY21. New customer account 
+added with total business value of 
+US$ 6 mn/year
+Healthcare
+Finalised development & supply 
+contract with a global pharma 
+customer for supply of pens for US 
+market
+Large supplies of CRC caps supplied 
+to a large domestic pharma 
+company
+Automotive & Engineering
+3 new projects awarded by Garett 
+(Honeywell)
+Carbon Steel
+2 new SKU’s confirmed for Steel 
+furniture 
+FMCG
+Consolidation of business with 
+increase in volumes and addition of 
+moulds from customer
+Toys
+New projects confirmed across 2 
+customers. Total value US$ 3.85 mn
+Healthcare
+Development and supply contract 
+for 2 rectal devices received
+Automotive & Engineering
+2 new insulator rod project 
+confirmed for development from 
+Garett (Honeywell)
+Carbon Steel
+Trial production at Carbon Steel 
+factory commenced
+Q2 FY21
+Q3 FY21
+Set up subsidiary in UK
+“Shaily UK Ltd”
+Toys
+Started production of 2 products for 
+Global Toy Major post approval in 
+Q4FY21
+Ramp up in FY22 
+Carbon Steel
+Commercialised supply of 2 
+products
+Healthcare
+2 new pen development projects 
+concluded; This includes supplies to 
+global companies
+Order for supply of CRC caps 
+received 
+Update on Capacity Expansion
+On track to complete the 
+construction on time as committed  
+Q4 FY21
+Expansion of Capacity
+Started construction of new plastic 
+plant at Halol new complex
+Plant to be operational in H1 FY22
+23
+
+>>>

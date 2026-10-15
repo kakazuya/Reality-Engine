@@ -1,0 +1,130 @@
+Company: GMRAIRPORT (NSE/BSE symbol GMRAIRPORT), an Indian listed company. Document: investor presentation filed 2023-08-14. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+34
+ESG
+Environment
+Social 
+•
+Strict governance principles through guided values of the organization and
+all the secretarial compliances in place
+•
+Internal audits, MAG audits keep processes very transparent
+•
+Regular Board meetings conducted to keep Board updated on all aspects
+•
+Periodic training of employees on the CoC guidelines
+•
+Risk management framework and governance process, including SOPs
+around risk assessment and mitigation
+Governance
+DIAL
+•
+DIAL became Asia Pacific's 1st Level 4+ (Transition) accredited airport and 2nd
+airport
+globally
+under
+Airport
+Council
+International’s
+(ACI)
+Airport
+Carbon
+Accreditation program. Target is to achieve Net Zero by 2030.
+•
+DIAL received ACI Asia-Pacific Green Airport Recognition 2023- Silver Level for
+Single-Use Plastic Elimination
+•
+DIAL has received Wings India Environment & Sustainability Award 2022 & FICCI
+Water Award in 2022
+•
+DIAL has achieved LEED NC Gold and IGBC Platinum for Terminal 3 green
+building & Platinum Pre-Cert for Terminal 1
+•
+DIAL achieved PEER Platinum as the first Airport globally
+•
+DIAL is the first airport in the world to achieve ISO 50001 for Energy Management
+•
+First airport in the country to run entirely on hydro and solar power from June’22
+•
+DIAL has 7.84 MW solar plant and has replaced >95% of its vehicle fleets by EVs
+GHIAL
+•
+GHIAL’s terminal building is certified for “Leadership in Energy & Environmental
+Design” (LEED) “gold rating” by US Green Building Council
+•
+GHIAL has received ACI Asia-Pacific Green Airports Recognition 2023- Gold Level
+for the single use plastic control.
+•
+GHIAL commissioned its Second Continuous Ambient Air Quality Monitoring
+Station (CAAQMS)
+•
+GHIAL has aimed to become Net Zero Carbon(NZC) emission organisation by the
+year 2035 and developed the action plan accordingly.
+•
+GHIAL has been using 100% green power for the Airport operations since 01st
+June 2023 with zero carbon emission renewable energy from the state electricity
+board i.e., TSSPDCL. This is in addition to the onsite 10MWp solar power
+generation and use
+GGIAL
+•
+GGIAL declared winner of 21st Greentech Safety Awards 2023 for outstanding
+Achievements in Construction Safety by Greentech Foundation.
+•
+Plaque of Excellence presented to GGIAL, in recognition of being adjudged 2nd
+place
+in
+Best
+Environmental
+Practice
+Competition
+on
+the
+eve
+of
+World
+Environment Day, by Goa State Pollution Control Board.
+•
+Renewable Energy Generation from onsite solar power generation unit of 5 MW.
+•
+Usage of Bridge Mounted Equipment (BME) – Preconditioned Air (PCA) and Fixed
+Electrical Ground Power Unit (FEGPU) for reducing GHG emissions.
+People
+•
+Learning and Development
+39 business/corporate trainings conducted in Q1FY24
+20,992 work hours of training provided covering 1134 unique
+permanent employees in the Q1FY24 out of which 991 are male and
+143 are female employees
+CSR Spend (Q1FY24) - INR 21.68 mn
+Total beneficiaries - Over 18,000
+•
+CSR activities implemented in the thrust areas of Education, Health
+and Livelihoods
+•
+10 students from Rajam got selected for National Means-cum-Merit
+Scholarship from central govt. with GMRVF’s coaching support
+•
+Inaugurated Smart classroom at Airport Colony primary school and at
+Zilla Parishat Girls High School at Shamshabad
+•
+GMRVF has been empaneled with Khadi and Village Industries
+Commission (KVIC) for conducting vocational training programs at
+Hyderabad and Rajam
+•
+Commemorated 10th Anniversary of Center for Empowerment and
+Livelihoods at Delhi with 4 days of job fair; two panel discussions and
+grand inaugural and valedictory events
+•
+Trained over 1500 youth in all GMRVF’s Vocational training centers
+
+>>>

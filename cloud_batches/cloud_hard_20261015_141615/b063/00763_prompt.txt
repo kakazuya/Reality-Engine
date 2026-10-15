@@ -1,0 +1,75 @@
+Company: APRAMEYA (NSE/BSE symbol APRAMEYA), an Indian listed company. Document: investor presentation filed 2025-05-08. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Current Order Book Details
+Sr No
+Client Name
+Description of the Project
+Location
+Contract Value (Rs Mn)
+1
+Medical Education Research & Ayush (DMER)
+3D Electro Anatomical Mapping Systems (EP LAB) Turnkey Basis
+Nagpur, Miraj Maharashtra
+82.20
+2
+Medical Education Research & Ayush (DMER)
+Modular O. T. Complex Turnkey Basis
+Mumbai, Maharashtra
+252.97
+3
+Rajasthan Medical Service Corporation Limited 
+(RMSCL)
+Rate Contract Of Dialysis Machine And R.O. System On Turnkey 
+Basis
+Rajasthan 
+163.45
+4
+RNT Medical College, Udaipur
+Modular O. T. On Turnkey Basis
+Udaipur,
+Rajasthan
+16.78
+5
+HLL Infratech Service Limited
+JNJ Gen11 & Alan MBXXP
+Patna, Bihar
+1.88
+6
+HLL Infratech Service Limited
+JNJ Gen11
+New Delhi
+1.75
+7
+Chief Engineer, Project Implementation Unit, 
+Gandhinagar 
+Rate Contract Of Repairing Rehabilitation Of Comprehensive 
+Maintenance Of M.O.T
+Gujarat
+30.00
+8
+Govt. Hospitals & Medical Colleges & Private 
+Hospitals
+Sales Of Electro Surgical Units, Vessel Sealer Systems, Laparoscopy 
+Systems, Harmonic GEN11, Accessories, OT Table & OT Light
+Gujarat & 
+Rajasthan
+25.00
+9
+Govt. Hospitals & Medical Colleges & Private 
+Hospitals
+Service Sales Of Consumable, Parts,  Repairing, CAMC, AMC
+Gujarat & 
+Rajasthan
+25.00
+
+>>>

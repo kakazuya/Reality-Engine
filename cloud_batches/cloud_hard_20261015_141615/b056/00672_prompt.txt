@@ -1,0 +1,101 @@
+Company: CMLL (NSE/BSE symbol CMLL), an Indian listed company. Document: investor presentation filed 2026-08-12. Indian fiscal year runs April-March (Q1 = Apr-Jun).
+List every number on this investor-presentation slide, one per line, in this exact format:
+metric | period | number | unit
+Copy each number EXACTLY as printed, character for character, including commas, brackets, decimal points and % (e.g. 28,00,000 or (1.44) or 18.2%). Do not convert or round. Use - for an unknown period or unit. First line must be: TITLE | <slide title>. If there are no numbers, output only the TITLE line.
+Rules for each line:
+- metric: the specific label from the slide (row/column/axis/legend/caption text, including the segment or product it belongs to). Never write the word 'metric'.
+- period: the period the number refers to, as printed in the column/axis header or caption (e.g. Q1FY27, FY26, 9MFY26, Jun-26). Use - only if the slide gives no period for it.
+- unit: the unit printed next to the number or in the table/chart header (e.g. Rs Cr, %, MT, homes, sft). Use - only if none is printed.
+- Skip page numbers, footnote markers, phone numbers, addresses and registration numbers.
+
+Text extracted from this page's PDF text layer (order may be jumbled; use it to confirm exact digits, use the image for which label, period and unit each number belongs to):
+<<<
+Caliber Mining and Logistics Limited
+Q1 FY27 Results Presentation
+TM
+Order book details
+12
+Ongoing contracts as on June 30, 2026
+S. 
+No.
+Project / Principal
+Area / Site
+Start Date
+End Date
+Tenure
+Balance Work
+(₹ Cr, incl. GST)
+SEGMENT A  - OVERBURDEN REMOVAL & COAL MINING
+1
+Lalpeth OB
+WCL, Chandrapur Area
+Jul-2023
+Oct-2027
+48 Months
+49.46 
+2
+Jayant OCP (including 10% extension)
+NCL
+Sep-2023
+Sep-2026
+32 Months
+140.29 
+3
+Sasti OC 
+WCL, Ballaprur Area
+Sep-2023
+Jul-2029
+68 Months
+853.78 
+4
+New Majri UG to OC
+WCL, Majri Area
+Oct-2023
+Apr-2027
+42 Months
+769.73 
+5
+Dudhichua
+NCL
+Aug-2025
+Aug-2029
+48 Months
+1,171.89 
+6
+Gouri Pouni New
+WCL, Ballaprur Area
+Mar-2026
+Feb-2031
+60 Months
+1,837.25 
+Orders received during the Quarter
+1
+Dhoptala - 2 (New)
+WCL, Ballaprur Area
+May-2026
+May-2031
+60 Months
+1,024.17 
+2
+Dudhichua - New -2
+NCL
+Jun-2026
+Jun-2029
+36 Months
+1,430.51 
+3
+Jayant - New -2 
+NCL
+Jun-2026
+Sep-2028
+27 Months
+1,485.91 
+Subtotal - Segment A (Mining)
+8,763.00
+SEGMENT B  - LOGISTICS
+Subtotal - Segment B (Logistics)
+361.81
+GRAND TOTAL  (A + B)
+9,124.81
+
+>>>
