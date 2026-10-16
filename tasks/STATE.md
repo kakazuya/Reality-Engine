@@ -37,6 +37,20 @@
     Fixed `new_reader_check.py`: an unfinished test is resumed for up to 3 days, never scored. Both tests reset and
     resumed at 14:28; they finish after the 05:30 Zen reset and are scored by the 2-hourly check.
   - Also listed but not routed on Zen: glm-5.3-flash-free, ll-alpha-free (Shivam can allow them on the account).
+- **CLEANUP ROUND 2 2026-10-16 night (Claude):**
+  - **All placeholder ISINs merged** (`scripts/merge_placeholder_isins.py --apply`, map `data/ar_queue/
+    placeholder_isin_map.json`): 1,143 of 1,365 INE_AUTO ISINs resolved (602 master, 335 NSE prices, 206 BSE prices);
+    388 real ISINs added to master, stubs set is_active=0. Re-keyed: ar_facts 536,259 (0 placeholder facts left),
+    daily_price_delivery 257,009, filings 2,868, plus FTS/chunks/moat/profiles/metrics/risks. Financials merged; rows the
+    real ISIN already had were archived to `<table>_placeholder_archive` (93 quarterly, 82 annual, 219 forensic, 847
+    distilled). Left: 222 unmatched (mostly rights `-RE`, ETFs, bare scrip codes; 44.6k price rows). All in isin_rekey_log.
+  - AR workers restarted 21:5x so new facts carry real ISINs; leftovers re-keyed (5,544).
+  - **Debt-issuer reports dropped** (`scripts/drop_debt_issuer_reports.py`): 360 reports under BSE debt scrips (9xxxxx),
+    none a rating report -> 444,286 facts moved to ar_facts.db `ar_facts_dropped`, ar_docs status 'dropped_debt',
+    filings re-typed ANNUAL_REPORT_DEBT_ISSUER (+49 unread ones), so workers skip them.
+  - substrate_hygiene degradation rule `ar_docs_identity_unconfirmed` over new table `ar_doc_scan` (scan verdicts):
+    322 reports (1.3%) whose company their own text does not confirm; hand-checked ones drop out of the count.
+  - Hand check of the 225 candidates (session local_e2914960, commit 7eb8d667): no new wrong PDFs.
 - **CLEANUP DONE 2026-10-16 ~21:00-21:45 (Claude, this session):**
   1. ISINs: `scripts/rekey_placeholder_isins.py --apply` re-keyed INE_AUTO -> real ISIN for 393 symbols (one real ISIN
      each by nse_symbol): corporate_documents 9,233, ar_docs 1,996, **ar_facts 1,791,744**, ar_facts_replaced 3,069,

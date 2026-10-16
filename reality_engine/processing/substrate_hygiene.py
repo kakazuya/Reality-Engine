@@ -164,6 +164,19 @@ DEGRADATION_RULES: Tuple[Dict[str, str], ...] = (
         ),
         "denominator_sql": "SELECT COUNT(DISTINCT company_id) FROM geographic_exposure",
     },
+    {
+        # 2026-10-16: annual-report PDFs whose company the identity scan could not confirm from the text (only BSE's
+        # listing ties them, the name appears only deep inside, or the text is scanned/garbled). Not quarantined:
+        # reported next to answers. A hand-checked verdict in ar_doc_identity takes the doc out of the count.
+        "rule_id": "ar_docs_identity_unconfirmed",
+        "table_name": "ar_doc_scan",
+        "description": "annual-report PDFs whose company is not confirmed by their own text (listed_only/name_late/unknown)",
+        "sql": (
+            "SELECT COUNT(*) FROM ar_doc_scan s WHERE s.verdict IN ('listed_only','name_late','unknown') "
+            "AND NOT EXISTS (SELECT 1 FROM ar_doc_identity i WHERE i.doc_id = s.doc_id)"
+        ),
+        "denominator_sql": "SELECT COUNT(*) FROM ar_doc_scan",
+    },
 )
 
 QUARANTINE_DDL = """
