@@ -37,6 +37,15 @@
     Fixed `new_reader_check.py`: an unfinished test is resumed for up to 3 days, never scored. Both tests reset and
     resumed at 14:28; they finish after the 05:30 Zen reset and are scored by the 2-hourly check.
   - Also listed but not routed on Zen: glm-5.3-flash-free, ll-alpha-free (Shivam can allow them on the account).
+- **2026-10-16 23:00-23:45 weekly-quota burn (Claude):** Haiku runs h05a, h05b, h06-h10 (~37 reports, ~600 pages) read
+  and imported. Haiku facts in use now 37,508 (31,044 verified). Lesson: `export-docs --misses-only` sends font-garbled
+  pages as TEXT (no image) when the page kind is 'clean'; Haiku then cannot read their figures (h05a PNC/QGO). Prefer
+  `--mode image` for reports whose diagnosis cause is encoded/garbled.
+- **Readers 2026-10-17 02:20:** Cat Jam left both Zen (retired 20:18) and Go; the main run still lists cat-jam readers
+  (benched, harmless; drop them from reader_profiles.json at the next restart). New Go model **beam-free** failed only on
+  must-find 23/25 (0.1% not found, 11.3k facts): candidate for admission if Shivam accepts 23/25. Zen tests for
+  nemotron-3.5-super-vl / deepseek-v4.1-flash are still at 25/110 and 36/110 (drivers died again); the 2-hourly check
+  resumes them. **Resource watchdog had died silently after 23:43** (no traceback); restarted 02:23 (pid 6292).
 - **CLEANUP ROUND 2 2026-10-16 night (Claude):**
   - **All placeholder ISINs merged** (`scripts/merge_placeholder_isins.py --apply`, map `data/ar_queue/
     placeholder_isin_map.json`): 1,143 of 1,365 INE_AUTO ISINs resolved (602 master, 335 NSE prices, 206 BSE prices);
