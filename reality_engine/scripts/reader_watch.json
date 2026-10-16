@@ -2,66 +2,76 @@
  "zen": {
   "big-pickle": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "longcat-2.5-preview-free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "mimo-v2.6-flash-free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "muse-spark-1.3-contributor-free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "nemotron-3-ultra-free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "nemotron-3.5-lightning-free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "space-bunny-free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "nemotron-3.5-super-vl-free": {
    "first_seen": "2026-10-16T05:31:50",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "deepseek-v4.1-flash-free": {
    "first_seen": "2026-10-16T05:38:13",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
+   "info": {}
+  },
+  "beam-free": {
+   "first_seen": "2026-10-17T02:27:46",
+   "last_seen": "2026-10-17T02:31:35",
+   "info": {}
+  },
+  "glm-5.3-flash-free": {
+   "first_seen": "2026-10-17T02:27:46",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   }
  },
  "go": {
   "longcat-2.5-preview-free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   },
   "beam-free": {
    "first_seen": "2026-10-16T20:18:22",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {}
   }
  },
  "kilo": {
   "kilo-auto/free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -70,7 +80,7 @@
   },
   "nvidia/nemotron-3-ultra-550b-a55b:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -79,7 +89,7 @@
   },
   "dots-studio/dots-3-note-preview:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -88,7 +98,7 @@
   },
   "poolside/laguna-s-2.1:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -97,7 +107,7 @@
   },
   "stealth/glyph-cluster": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -106,7 +116,7 @@
   },
   "liquid/lfm-2.5-2.6b:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -115,7 +125,7 @@
   },
   "nvidia/nemotron-3.5-lightning:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -124,7 +134,7 @@
   },
   "thinkingmachines/inkling-small:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -133,7 +143,7 @@
   },
   "poolside/laguna-xs-2.1:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -142,7 +152,7 @@
   },
   "cohere/north-mini-code:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -151,7 +161,7 @@
   },
   "nvidia/nemotron-3.5-content-safety:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -160,7 +170,7 @@
   },
   "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -169,7 +179,7 @@
   },
   "google/lyria-3-pro-preview": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -178,7 +188,7 @@
   },
   "google/lyria-3-clip-preview": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -187,7 +197,7 @@
   },
   "nvidia/nemotron-3-super-120b-a12b:free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -196,7 +206,7 @@
   },
   "openrouter/free": {
    "first_seen": "2026-10-12T18:41:57",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -205,16 +215,25 @@
   },
   "nvidia/nemotron-3.5-super-vl:free": {
    "first_seen": "2026-10-15T22:05:24",
-   "last_seen": "2026-10-16T20:18:22",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
     "image": true
    }
   },
-  "stealth/cat-jam": {
-   "first_seen": "2026-10-16T16:14:08",
-   "last_seen": "2026-10-16T20:18:22",
+  "reflection/beam-free": {
+   "first_seen": "2026-10-17T02:27:46",
+   "last_seen": "2026-10-17T02:31:35",
+   "info": {
+    "free": true,
+    "discount": null,
+    "image": false
+   }
+  },
+  "xingchen-agi/xing4.0-29b-a4b:free": {
+   "first_seen": "2026-10-17T02:27:46",
+   "last_seen": "2026-10-17T02:31:35",
    "info": {
     "free": true,
     "discount": null,
@@ -263,7 +282,18 @@
   },
   "go:beam-free": {
    "run": "t-go-beam-1016",
-   "started": "2026-10-16T20:18:22"
+   "started": "2026-10-16T20:18:22",
+   "result": "admitted",
+   "scored": "2026-10-16T22:18:39",
+   "admitted": "2026-10-17 by Shivam (23/25 must-find)"
+  },
+  "beam-free": {
+   "run": "t-beam-1017",
+   "started": "2026-10-17T02:27:46"
+  },
+  "glm-5.3-flash-free": {
+   "run": "t-glm53flash-1017",
+   "started": "2026-10-17T02:27:46"
   }
  }
 }

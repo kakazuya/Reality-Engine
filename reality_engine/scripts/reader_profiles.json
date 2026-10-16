@@ -5,7 +5,7 @@
       "piece_chars": 18000,
       "readers": [
         "longcat-2.5-preview-free",
-        "cat-jam-free",
+        "beam-free",
         "gemma-4-31b-it"
       ]
     },
@@ -62,7 +62,8 @@
       "go_keys": [
         "OPENCODE_GO_API_KEY",
         "OPENCODE_GO_API_KEY_2"
-      ]
+      ],
+      "retired": "2026-10-17: gone from Zen and Go free lists"
     },
     "gemma-4-31b-it": {
       "api": "google",
@@ -143,6 +144,20 @@
       "rpd": null,
       "per_key": false,
       "test": "Zen copy of LongCat; follows the Go LongCat exhaustive result"
+    },
+    "beam-free": {
+      "api": "opencode-go",
+      "prompt": "plain",
+      "slots": 32,
+      "rpm": null,
+      "tpm": null,
+      "rpd": null,
+      "per_key": false,
+      "test": "2026-10-16 22:18 auto Go API test t-go-beam-1016: 11,304 facts, must-find 23/25, 0.1% not in text; admitted by Shivam 2026-10-17 despite 23/25",
+      "go_keys": [
+        "OPENCODE_GO_API_KEY",
+        "OPENCODE_GO_API_KEY_2"
+      ]
     }
   },
   "_fallback_note": "2026-10-15: Flash-Lite fallback switched from Gemma 31B to Gemma 26B. 31B is in HTTP 500 outage most hours; Flash-Lite's empty answers waited on hung 31B calls and the 3.5 route read 2 pieces all day (10,460 on 10-13)."

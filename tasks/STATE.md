@@ -37,6 +37,22 @@
     Fixed `new_reader_check.py`: an unfinished test is resumed for up to 3 days, never scored. Both tests reset and
     resumed at 14:28; they finish after the 05:30 Zen reset and are scored by the 2-hourly check.
   - Also listed but not routed on Zen: glm-5.3-flash-free, ll-alpha-free (Shivam can allow them on the account).
+- **2026-10-17 02:35 hand-off (this session ends; pending work goes to a fresh session):**
+  - **Beam admitted** to the main AR run (Shivam, despite must-find 23/25): `beam-free` x32 on each Go key, plain prompt;
+    reading at once (74 pieces first minute, 0 errors). Cat Jam removed from the main-run readers (gone from Zen and Go).
+  - **Tests running** (detached drivers; the 2-hourly check scores and auto-adds passes):
+    Zen `nemotron-3.5-super-vl-free` (t-nemotron35superv-1016, 25/110), `deepseek-v4.1-flash-free` (t-deepseekv41flash-1016,
+    36/110), `beam-free` on Zen (t-beam-1017), `glm-5.3-flash-free` (t-glm53flash-1017); Go `beam-free` with the
+    exhaustive+core prompt (t-go-beam-exc-1017; score with `ar_queue test-score --run t-go-beam-exc-1017` and compare to
+    the plain run t-go-beam-1016: 11,304 facts; switch the profile prompt if it gives clearly more facts).
+    Zen is rate-limited until the 05:30 IST reset, so Zen tests finish after that.
+  - **Pending:**
+    1. Go key 1 lists ~30 subscription (non -free) models (hy4-preview, omen-alpha, qwen3.8-*, kimi-k3, glm-5.3, ...):
+       they use the paid Go allowance; ask Shivam before testing any.
+    2. Zen still not routed: jev-1.13-free, ll-alpha-free (Shivam can allow them on the account).
+    3. Haiku hard-report batches: next by the ranking query minus h01-h10; use `--mode image` for encoded/garbled reports.
+    4. 222 placeholder ISINs left (rights/ETFs/bare scrip codes), 44.6k price rows.
+    5. Tune Beam slots by pages/min (bisection), as done for LongCat.
 - **2026-10-16 23:00-23:45 weekly-quota burn (Claude):** Haiku runs h05a, h05b, h06-h10 (~37 reports, ~600 pages) read
   and imported. Haiku facts in use now 37,508 (31,044 verified). Lesson: `export-docs --misses-only` sends font-garbled
   pages as TEXT (no image) when the page kind is 'clean'; Haiku then cannot read their figures (h05a PNC/QGO). Prefer
