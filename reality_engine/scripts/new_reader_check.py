@@ -160,6 +160,14 @@ def main():
             n_out = len(list(run_dir.glob("*.out.txt"))); n_all = len(list(run_dir.glob("*.prompt.txt")))
             if driving(t["run"]):
                 lines.append(f"- test {m}: running, {n_out}/{n_all} pieces"); continue
+            # 2026-10-16: the drivers of two tests died at 25/110 and 36/110 on Zen rate limits and the half-done runs were
+            # scored FAIL by the depth rule. An unfinished test is resumed (for up to 3 days), never scored.
+            if n_out < n_all and (datetime.now() - datetime.fromisoformat(t["started"])).days < 3:
+                subprocess.Popen([PY, "-m", "reality_engine.scripts.ar_queue", "drive", "--run", t["run"],
+                                  "--workers", "4" if m.startswith("go:") else "1"],
+                                 cwd=HERE.parents[1], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | ar_queue.NO_WINDOW)
+                lines.append(f"- test {m}: driver had stopped at {n_out}/{n_all} pieces; resumed"); continue
             ar_queue.test_score(t["run"])
             score = (run_dir / "SCORE.md").read_text(encoding="utf-8")
             mf = re.search(r"Must-find (\d+)/(\d+)", score); nf = re.search(r"not in the text (\d+)/(\d+)", score)
@@ -223,6 +231,17 @@ def main():
             days = (datetime.fromisoformat(v["free_until"]) - datetime.now()).days
             if days <= 2:
                 lines.append(f"- **promo ending**: {m} free until {v['free_until']} ({'past' if days < 0 else f'{days} d left'})")
+    # 2026-10-16: Zen's API lists free models the CLI refuses ('Model unavailable', provider.no-route), e.g.
+    # deepseek-v4.1-flash-free. They cannot be tested yet, but are reported so a later unlock is not missed.
+    try:
+        api = {m["id"] for m in requests.get("https://opencode.ai/zen/v1/models", timeout=60).json().get("data", [])
+               if m["id"].endswith("-free")}
+        blocked = sorted(api - set(seen.get("zen") or {}) - {m for m, v in reg.items() if isinstance(v, dict)
+                                                               and v.get("status") in ("failed", "unavailable")})
+        if blocked and seen.get("zen") is not None:
+            lines.append(f"- **zen listed but not routed** (CLI says 'Model unavailable'; untestable for now): {blocked}")
+    except Exception as e:
+        errors.append(f"zen api list failed ({str(e)[:120]})")
     passed = [m for m, v in reg.items() if isinstance(v, dict) and v.get("status") == "passed"]
     out = [f"## New-reader check ({now()[:16]})", f"- Zen readers in use (register): {', '.join(passed)}"]
     out += lines or ["- no changes since the last check"]

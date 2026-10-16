@@ -701,7 +701,7 @@ def missing_folders(run):
     print(" ".join(sorted(todo)) or "none")
 
 
-def import_docs(run, dry=False, redo=False):
+def import_docs(run, dry=False, redo=False, skip=()):
     """Store Haiku's answers. Per report, over the pages Haiku re-read: old facts (any other reader) vs Haiku's facts.
     Haiku's replace the old ones only when they verify better: a lower not_found share AND at least 80% as many verified
     numbers (a short answer must not win by saying less). Replaced rows move to ar_facts_replaced (never deleted
@@ -717,6 +717,8 @@ def import_docs(run, dry=False, redo=False):
     docs = {d["doc_id"]: d for d in m["docs"]}
     report = []
     for doc_id, d in docs.items():
+        if doc_id in skip:   # 2026-10-16: e.g. a PDF that is another company's report (stored under the wrong symbol)
+            report.append(f"{doc_id} {d['symbol']}: skipped (--skip-docs)"); continue
         us = [u for u in m["units"] if u["doc_id"] == doc_id]
         if not us:
             continue
@@ -760,7 +762,9 @@ def import_docs(run, dry=False, redo=False):
         o_n, n_n = sum(old.values()), sum(new.values())
         o_v, n_v = old["page"] + old["piece"], new["page"] + new["piece"] + new["ocr"]
         o_s, n_s = old["not_found"] / max(1, o_n), new["not_found"] / max(1, n_n)
-        better = n_n > 0 and n_s < o_s and n_v >= 0.8 * o_v
+        # 2026-10-16: with no old numbers on these pages (scans no reader got text from) nothing is replaced, so Haiku's
+        # facts are pure gain; they were kept as rejected because 'n_s < 0%' can never hold. Each row keeps its value_check.
+        better = n_n > 0 and (n_s < 0.5 if o_n == 0 else n_s < o_s and n_v >= 0.8 * o_v)
         line = (f"{doc_id} {d['symbol']} FY {d['fiscal_year'][:4]} pages {len(covered)}: old {o_n} numbers, not_found "
                 f"{100 * o_s:.0f}%, verified {o_v} | haiku {n_n} numbers, not_found {100 * n_s:.0f}%, verified {n_v} "
                 f"({dict(new)}) -> {'REPLACE' if better else 'keep old'}")
@@ -807,6 +811,7 @@ if __name__ == "__main__":
     ap.add_argument("--write", action="store_true", help="recheck: store the new value_check results")
     ap.add_argument("--dry", action="store_true", help="import-docs: report the decision only")
     ap.add_argument("--redo", action="store_true", help="import-docs: decide reports already imported again")
+    ap.add_argument("--skip-docs", default="", help="import-docs: comma list of doc ids to leave out")
     ap.add_argument("--out", default=str(QUEUE / "hard_diagnosis.csv"), help="diagnose: CSV path")
     ap.add_argument("--run", help="run name; for drive a comma list (runs read in parallel)")
     ap.add_argument("--workers", type=int, default=2, help="drive: opencode processes per run")
@@ -825,4 +830,4 @@ if __name__ == "__main__":
      "drive": lambda: drive(a.run.split(","), a.workers), "diagnose": lambda: diagnose(a.doc_ids, a.out),
      "recheck": lambda: recheck(a.doc_ids, a.write), "missing": lambda: missing_folders(a.run),
      "export-docs": lambda: export_docs(a.run, a.doc_ids, a.pages, a.mode, a.per_agent, a.misses_only, a.image_only),
-     "import-docs": lambda: import_docs(a.run, a.dry, a.redo)}[a.cmd]()
+     "import-docs": lambda: import_docs(a.run, a.dry, a.redo, {int(x) for x in a.skip_docs.split(",") if x.strip()})}[a.cmd]()
