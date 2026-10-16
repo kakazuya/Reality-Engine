@@ -591,3 +591,10 @@ the company's corrected upload, and we never downloaded it:
 - **Debt scrips:** about 119 reports belong to debt-instrument scrips (NCD/bond symbols), not equities.
 - **PDF portfolio:** DALBHARAT 23830 has the real report as an embedded file, so it read 0 facts.
 
+
+## Wrong-company hand check (225 candidates, 2026-10-16)
+- Result: 0 new wrong-company PDFs. Only VENUSREM 92565 stays wrong (already quarantined).
+- Counts: 119 debt_instrument (parent handles), 80 ok, 15 renamed, plus 20 earlier hand checks (11 same-company, 8 incl. LADIAMO/Turner = ok per parent, 1 wrong).
+- Method: PyMuPDF text for scrip code/ISIN/CIN/name; RapidOCR on pages 1-3 for the 9 blank or scanned PDFs (COMPUPN, SIDDHA, ESHAMEDIA, ARTEFACT, RICHAIND, HANMAN, SSPNFIN, SAILANI, BAMPSL). All matched their company.
+- Renames confirmed (same CIN or BSE scrip): MIIL=Naysaa Securities, BYLD=TRC Financial Services, WARDHEALTH=Ayoki Merchantile, CUPIDALBV=Cupid Trades and Finance, EDVENSWA=KLK Electrical, KARANWO=Manor Estates, SPARKLEGR=Sree Jayalakshmi Autospin, CHALLANI=Indo Asia Finance, ESHAMEDIA=Laser Dot, HANMAN=Powerhouse Gym, NIVAKA=B.T. Syndicate, THYROCARE.
+- ar_doc_identity now has 106 ok + 1 wrong_company rows; substrate_hygiene.apply run. The CSV carries the hand_check column (data, not committed).
