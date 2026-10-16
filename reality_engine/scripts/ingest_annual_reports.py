@@ -627,6 +627,7 @@ def main():
     remaining = {}   # doc_id -> pieces left
     need = {}        # doc_id -> text pages this run's split must see read
     oversize = set()  # doc_ids with a piece that alone exceeds a Google key's tokens/min: released to the main run when done
+    too_big = set()   # main run: (doc_id, piece) a Gemma key refused alone (tokens/min); Gemma readers leave it to the others
 
     def covered_pages(doc_id):
         """Pages read by an ok piece of any prompt_version or piece size."""
@@ -679,7 +680,9 @@ def main():
             if item is None:
                 work.put(None); return
             d, k, p_from, p_to, text, tries = item
-            prompt = r.get("tmpl", PROMPT).format(company=d["company"], symbol=d["symbol"], filed=str(d["filed_at"])[:10], text=text)
+            if r["kind"] == "gemini" and (d["doc_id"], k) in too_big:   # a Gemma key can never take it: hand it back
+                retry.append(item); time.sleep(2); continue
+            prompt =r.get("tmpl", PROMPT).format(company=d["company"], symbol=d["symbol"], filed=str(d["filed_at"])[:10], text=text)
             t = time.time()
             try:
                 res = call(r, prompt, http)
@@ -740,7 +743,16 @@ def main():
                 # 2026-10-14: Google sheds free Gemma load in a daily cycle (31B fine ~04:00-10:00 IST, HTTP 500 on every
                 # key most other hours; 26B from 13:00). Retrying every 10 s meant ~1,300 failing calls/min. A Google key
                 # that answers 500/503 now rests 2 min and its piece goes back to the queue for any reader.
+                # 2026-10-17: from ~19:00 on 10-16 Google refuses a single Gemma request over 16k input tokens (before it
+                # took 35-47k); main-run Gemma 31B slept 65 s per refusal (~1,000 -> ~800 pieces/h). Such a piece now goes
+                # straight back to the queue, uncounted, for LongCat/Beam, and no Gemma key takes it again.
+                if r["kind"] == "gemini" and "InputTokensPerModelPerMinute" in msg and r.get("pacer") \
+                        and len([1 for t_, _ in r["pacer"].log if time.time() - t_ < 60]) <= 1:
+                    with slock:
+                        too_big.add((d["doc_id"], k))
+                    retry.append((d, k, p_from, p_to, text, tries)); continue
                 if r["kind"] == "gemini" and re.search(r"HTTP 50[03]", msg) and tries < 6:
+                    log.info("5xx %s: key rested 2 min", r["name"])   # 2026-10-17: these benches were invisible in the log
                     r["bench_until"] = time.time() + 120
                     retry.append((d, k, p_from, p_to, text, tries + 1)); continue
                 transient = re.search(r"HTTP 50[023]|timed out|overloaded|Internal error", msg)   # server-side: try harder
@@ -812,7 +824,8 @@ def main():
         # Google's real input limit per key per minute (the pacer's tpm is set lower for headroom; comparing with it
         # released 1,163 ordinary reports in 25 min on 2026-10-15 04:34-05:00)
         tpm = GOOGLE_REAL_TPM.get(rs[0]["model"]) if a.route == "google" else None
-        if tpm and ps and max(est_tokens(t) + 2000 for _, _, t in ps) > tpm:
+        # 2026-10-17: x1.10 because est_tokens undercounts number-dense pages (pieces at est ~15.4k were refused alone)
+        if tpm and ps and max(est_tokens(t) * 1.10 + 2000 for _, _, t in ps) > tpm:
             # 2026-10-15: a piece larger than the key's tokens/min limit can never be read here; it bounced between keys
             # for ever (429 hands it back uncounted) and starved Gemma 26B. Release the report to the main run (LongCat).
             store.x("DELETE FROM ar_claims WHERE doc_id=?", (d["doc_id"],))

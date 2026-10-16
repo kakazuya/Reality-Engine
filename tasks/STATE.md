@@ -8,6 +8,13 @@
   (est_tokens undercounts number-dense pages) bounced between all 37 keys for ever (uncounted 429, key rested 65 s):
   26B fell ~250 -> ~50 pages/min from 19:00 on 10-16. Now after 2 such refusals the piece is given up and the report's
   claim is released to the main run. Route back to ~64 pages/min within 10 min of the 02:41 restart.
+- **Root cause of the evening drop (~900 -> ~500 pages/min):** from ~19:00 on 10-16 Google refuses a single Gemma request
+  over 16k input tokens (before, 35-47k token requests passed) on BOTH 26B and 31B. Fixes: 26B route pre-check now
+  est x1.10 + oversize hand-off (above); main-run Gemma 31B hands a refused-alone piece straight back for LongCat/Beam
+  (`too_big`, no 65 s sleep, never retaken by Gemma). 5xx key rests now logged. 03:12-03:25: LongCat ~400, 26B ~206,
+  31B ~54 pages/min (31B/26B also get night-time HTTP 500s from Google).
+- **Beam upstream rate limit from ~03:00:** both Go keys 429 'Upstream request failed' (LongCat fine on the same keys);
+  likely a daily upstream budget like Cat Jam's (reset 05:30 IST?). The 3-min Go bench handles it.
 - **All routes + watchdog died 23:43-02:27** with exit 0xC000026B (session logoff): an RDP sign-out kills them; disconnect instead.
 - Claude heartbeat every ~40 min (session cron) checks watchdog, routes and tests.
 
