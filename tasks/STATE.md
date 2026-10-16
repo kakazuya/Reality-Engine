@@ -1,5 +1,65 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## OVERNIGHT 2026-10-16 05:15-06:25 (Claude, main checkout; Shivam asleep)
+
+- **AR workers restarted 05:25** on the page-based resume code (all 5 routes). At restart: 19,342 done, 14,307 to read
+  (includes the 2,053 partial). Gemma 31B pages/min fell ~165 -> ~60 because gap-fill pieces are ~3 pages, not ~6;
+  requests/min unchanged. Recovers once the partials are cleared.
+- **OpenCode CLI 2.0.27 -> 2.0.30** (bun). New Zen free models need Shivam to allow them on the account first.
+  - Testing (auto-scored by the 2-hourly new_reader_check, added to `zen_models.json` and the Zen worker on a pass):
+    `nemotron-3.5-super-vl-free` (run t-nemotron35superv-1016), `deepseek-v4.1-flash-free` (t-deepseekv41flash-1016).
+  - Still not routed: jev-1.13-free, muse-spark-1.2-contributor-free (deprecated). Neither new model is free on Go.
+  - `new_reader_check.py` now lists 'zen listed but not routed' models.
+- **Haiku hard reports:** h02-scanned finished and imported (24 reports); h03-misses (14 reports, top misses per page)
+  read and imported. 5-hour window 49% -> ~86%. Haiku facts in use: 14,784 (12,091 verified).
+  - `ar_queue.py import-docs`: (1) fixed rule: pages with NO old numbers now take Haiku's facts (before, 16 reports'
+    answers were stored as rejected because 'not_found < 0%' never holds); h02 re-imported with --redo.
+    (2) new `--skip-docs`.
+  - **CORRECTION (16:00):** the 4 "wrong-company PDFs" below are NOT wrong: they are renames (scan session
+    local_f36db5fe, commit e21746ff on claude/quirky-murdock-6a0654: SIGMAADV=Megasoft, VEGA=PH Trading,
+    SKYBIOTECH=Kapil Cotex, UCIL=Shree Worstex; BSE scrip codes in the PDFs). Flags cleared, Haiku answers imported
+    (SIGMAADV, VEGA, UCIL replaced; SKYBIOTECH kept old). Only confirmed wrong PDF: VENUSREM 92565 (Home First's AGM
+    notice). Agents must not be told to NONE "other company" pages; renames are common.
+  - ~~Wrong-company PDFs~~ (found by Haiku, confirmed by OCR; `ar_docs.error` set, facts NOT removed):
+    SIGMAADV 79913 = Megasoft Ltd, VEGA 125476 = PH Trading Ltd, SKYBIOTECH 125486 = Kapil Cotex Ltd.
+    To do: quarantine their facts and re-fetch the right PDFs; check other hard reports for the same problem
+    (a company-name check of page text vs `ar_docs.company` would find them for free).
+  - Old readers invented numbers on scanned pages (HINDMILL 532 numbers on one page, Haiku found none); they are
+    tagged not_found. The import keeps them where Haiku has fewer verified numbers (BEL, AIAENG, ZDHJERK, HINDMILL).
+  - Next Haiku batch: ranking query in this session (hard_diagnosis.csv minus h01-h03, by not_found per page);
+    the next 26 reports cover ~185 pages. Agents need exact file names (they cannot list folders).
+- **Afternoon 2026-10-16 (14:15-~15:30, fresh 5-hour window, 2% -> ~92%):** run `h04-misses` (26 reports, 581 pages:
+  next by not_found per page) read by 58 Haiku agents and imported: 24 replaced, COFORGE kept old, UCIL skipped.
+  Haiku facts in use now 27,779 (23,296 verified). Next batch: the ranking query again, minus h01-h04.
+  - 4th wrong-company PDF: **UCIL 138000** pages 60-62 = Shree Worstex Ltd (`ar_docs.error` set). CCAVENUE = Infibeam
+    Avenues and COFORGE = NIIT Technologies are former names, not mismatches.
+  - **Zen tests had been scored FAIL at 08:10 while unfinished** (drivers died at 25/110 and 36/110 on Zen rate limits).
+    Fixed `new_reader_check.py`: an unfinished test is resumed for up to 3 days, never scored. Both tests reset and
+    resumed at 14:28; they finish after the 05:30 Zen reset and are scored by the 2-hourly check.
+  - Also listed but not routed on Zen: glm-5.3-flash-free, ll-alpha-free (Shivam can allow them on the account).
+- **CLEANUP DONE 2026-10-16 ~21:00-21:45 (Claude, this session):**
+  1. ISINs: `scripts/rekey_placeholder_isins.py --apply` re-keyed INE_AUTO -> real ISIN for 393 symbols (one real ISIN
+     each by nse_symbol): corporate_documents 9,233, ar_docs 1,996, **ar_facts 1,791,744**, ar_facts_replaced 3,069,
+     deck pages 1,233. Logged in equity_intelligence `isin_rekey_log` (undo: set isin=old_isin per row). Left alone:
+     128 symbols with no real ISIN in master (535k facts), and price/financials tables (need a merge, not a re-key).
+     **Re-run the script after the AR workers next restart**: their current pass still writes the old ISIN.
+  2. Quarantine: `substrate_hygiene` rule `ar_wrong_company_pdf` (keys stored under table 'ar_facts' = doc_ids) +
+     table `ar_doc_identity` in equity_intelligence.db. VENUSREM 92565 = wrong_company (quarantined); LADIAMO
+     131564/131568 = ok (FY2019 report: Laser Diamonds renamed Turner Industries 08.02.2018). Tests pass. No analysis
+     code reads ar_facts yet; the first one must drop `quarantined_keys(conn, "ar_facts")`.
+  3. `scripts/fetch_missed_ar_files.py`: BSE-listed later AR files we lacked: 9 rows were OTHER_FILING without a
+     file -> now ANNUAL_REPORT with the file (incl. **VENUSREM 92559 = the real FY2026 report, 137 pages**), 1 new
+     (MERCATOR FY2022), 11 same bytes as files we have, 2 gone from BSE (404). 22 scrip-years, not 104.
+  4. DALBHARAT 23830: real report (249 pages) extracted from the PDF portfolio, path updated, its empty reading
+     deleted so the workers read it. It was the only portfolio PDF among short reports.
+- ~~CLEANUP queued~~ (done above) **for the next 5-hour window (after 19:10 IST 2026-10-16), from scan commit e21746ff:**
+  1. Fix 1,826 ar_docs rows (373 symbols) with placeholder `INE_AUTO_*` ISIN where the master has the real ISIN.
+  2. Quarantine VENUSREM 92565 (ar_doc_identity table + substrate_hygiene rule `ar_wrong_company_pdf`); fetch BSE's
+     second FY2026 upload `29971821-bfab-4659-a9d8-7cf5dc170d02.pdf`.
+  3. Fetch the later BSE files missed in 104 company-years; unwrap DALBHARAT 23830 (PDF with attachment).
+  4. Resolve LADIAMO 131564/131568; merge or cherry-pick e21746ff (branch claude/quirky-murdock-6a0654).
+- Not committed: `ar_queue.py`, `new_reader_check.py`.
+
 ## HARD ANNUAL REPORTS (Haiku session, 2026-10-16 ~03:00; brief `tasks/HARD_AR_HAIKU_SESSION.md`)
 
 **Hard set:** 345 reports with > 10% of numbers not found in the text (43,953 of ~148k numbers).
@@ -467,3 +527,67 @@ BSE insider 2023+ (paged API); MCX blocked; NSDL company-level limits need a for
 **OPEN, needs an owner (found 2026-10-10 by the AR study session; Shivam to pick up in another session):**
 1. **RESOLVED 2026-10-10 (main session):** the download died at report 638/23,712 on 2026-09-26 (no traceback, process killed) and the hourly job only ran the Nifty200 stage, logging "complete". Fixed by the full-universe download + coverage report above. Original note: **Annual-report download job stopped part-way and nobody noticed.** `reality_engine/scripts/run_annual_report_ingest.py` orders Nifty200 → Nifty500 → rest. The only run (all rows `created_at` 2026-08-28 18:56) stopped inside the Nifty500 tier. Coverage now: Nifty200 197/197 companies (2,429/2,430 reports); Nifty500-only **117/288 companies** (1,085/2,882 reports); rest 0/1,936. Example: GESHIP has 15 indexed AR links (FY12-FY26) with 0 downloaded, so study candidate queries silently skipped it while Screener shows the reports. No log or STATE note recorded the stop or its reason. To do: find why it stopped (limit flag, crash, or a deliberate pause), add a coverage check (indexed vs downloaded per tier) so a partial run is visible, then resume. The AR value study decides *what* to keep, not whether to download.
 2. **Partly addressed 2026-10-10:** `results_xbrl.db` facts carry cash-flow concepts where filed (mostly half-yearly), up to Dec 2024. Original note: **No cash-flow data held.** `annual_financials.operating_cash_flow_inr_cr` is 0 or null on 12,432 of 13,015 rows (source yfinance), e.g. COCHINSHIP, CONCOR, GESHIP FY24 all 0.0. `mkt_nse_pit_xbrl_facts` is insider-trading XBRL only (no financial statement concepts). So cash flow, contract liabilities, receivables, contingent liabilities and related-party figures currently exist only in the annual-report PDFs (or the unparsed results XBRL, Next #1; quarterly results usually carry cash flow only half-yearly). The AR study found a negative operating cash flow at COCHINSHIP FY24 (₹-172.8 cr vs ₹2,046 cr FY23) that no structured table holds.
+
+## WRONG-COMPANY ANNUAL REPORTS (side session, 2026-10-16 15:15; free local checks only, no model quota)
+
+**Scan:** `python -m reality_engine.scripts.ar_wrong_company_scan --data <main>/reality_engine/data --workers 8`
+- Read-only, about 25 min for 25,432 reports. Same PyMuPDF text as `ar_queue.page_texts`.
+- Output: `reality_engine/data/ar_queue/wrong_company_scan_all.csv` (every report) and `wrong_company_candidates.csv`
+  (225 rows to check by hand, plus the hand-check results).
+- Ties a PDF to its company by any of:
+  - a known name on the first 5 pages or the auditor's report;
+  - its ISIN issuer prefix;
+  - its BSE scrip code.
+- "Known names" include every name the scrip or ISIN traded under on BSE since 2019 (`mkt_bse_eq_daily`) and NSE names.
+  So renames count as matches.
+- Negative control: 400 reports scanned with another company's names. 0 came back ok, 1 landed in `name_late` (the
+  review list).
+
+**Result (verdicts):**
+- ok: 24,767.
+- former_name: 341 (own ISIN or scrip code in the text).
+- listed_only: 125 (only BSE's listing ties the file to the company; 110+ are debt-instrument "symbols" like 9TCAP28).
+- name_late: 100 (name only deep inside: mostly renames, or a cover with no text).
+- unknown: 99 (fewer than 2 clean evidence pages: scanned or encoded files, PDF portfolios).
+
+**The 3 known cases are NOT wrong PDFs.** They are the same companies under their former names:
+- SIGMAADV 79913 = Megasoft (scrip 532408 on p1).
+- VEGA 125476 = PH Trading (BSE name history of scrip 512026).
+- SKYBIOTECH 125486 = Kapil Cotex (scrip 512036 on p1).
+- BSE's own listing has each file under the right scrip.
+- Their `ar_docs.error` 'WRONG COMPANY PDF' flags are wrong and should be cleared. Not done: this session is read-only.
+
+**Confirmed wrong:**
+- VENUSREM 92565, FY2026, 119 facts. It is Home First Finance's AGM notice (Home First's CIN, homefirstindia.com).
+- BSE itself lists it under Venus's scrip 526953, so a BSE listing is not proof.
+- **Unresolved:** LADIAMO 131564 and 131568 (Turner Industries notices; shared director, Laser Diamonds named later in
+  the file).
+- Hand-checked 20 others: all the right company (12 renames). Details are in the `hand_check` column.
+
+**Quarantine proposal (AGENTS.md rule 13; facts stay where they are):**
+1. Add a table `ar_doc_identity(doc_id PK, verdict, true_company, true_isin, evidence, checked_by, checked_at)` in
+   ar_facts.db. Write a row only after a hand check (`verdict='wrong_company'`; start with 92565). The ingest workers
+   never read it, so no restart is needed.
+2. Add a rule `ar_wrong_company_pdf` to `substrate_hygiene.QUARANTINE_RULES`: `table_name='ar_facts'`,
+   `key_expr='doc_id'`, selecting from `ar_doc_identity WHERE verdict='wrong_company'`.
+   - `apply()` runs on equity_intelligence.db, so it needs `ATTACH ar_facts.db` read-only.
+   - Or materialise the doc_ids from the table in a small step of its own.
+3. Every reader of ar_facts (ar_yoy, dossiers, the substrate promotion) filters with
+   `quarantined_keys(conn, 'ar_facts')` before use. Rows stay in place, and the quarantine is re-materialised
+   idempotently.
+4. Report `listed_only` and `unknown` counts next to answers as degradation (rule 13). Do not quarantine them.
+
+**Re-fetch:** Venus is fixable. BSE lists a second FY2026 file uploaded 11 minutes after the wrong one, which looks like
+the company's corrected upload, and we never downloaded it:
+`https://www.bseindia.com/xml-data/corpfiling/AttachHis/29971821-bfab-4659-a9d8-7cf5dc170d02.pdf`.
+- The same pattern is general: in **104 scrip-years** BSE's latest listed AR file was never fetched. Re-fetching those
+  is cheap and may hold more corrections.
+- The LADIAMO files cannot be settled from our data.
+
+**Found on the way (not fixed):**
+- **ISINs:** 1,826 `ar_docs` rows (373 symbols) carry a synthetic `INE_AUTO_*` ISIN although master_companies has the
+  real one for the symbol (e.g. SIGMAADV -> INE933B01012). Rule 13 quarantines INE_AUTO rows, so these real facts would
+  be dropped. Re-key them to the real ISIN.
+- **Debt scrips:** about 119 reports belong to debt-instrument scrips (NCD/bond symbols), not equities.
+- **PDF portfolio:** DALBHARAT 23830 has the real report as an embedded file, so it read 0 facts.
+

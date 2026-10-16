@@ -103,7 +103,26 @@ QUARANTINE_RULES: Tuple[Dict[str, str], ...] = (
         "where": "isin LIKE 'INE_AUTO%'",
         "reason": "synthetic backfill ISIN, not a listed instrument",
     },
+    {
+        # 2026-10-16: an annual-report PDF that is another company's document (hand-checked; see
+        # scripts/ar_wrong_company_scan.py). Keys are ar_facts.doc_id values: readers of ar_facts.db call
+        # quarantined_keys(conn, "ar_facts") and drop those doc_ids. Facts stay in ar_facts.db.
+        "rule_id": "ar_wrong_company_pdf",
+        "table_name": "ar_doc_identity",
+        "applies_to": "ar_facts",
+        "key_expr": "CAST(doc_id AS TEXT)",
+        "where": "verdict = 'wrong_company'",
+        "reason": "annual-report PDF is another company's document (hand-checked)",
+    },
 )
+
+AR_DOC_IDENTITY_DDL = """
+CREATE TABLE IF NOT EXISTS ar_doc_identity (
+    doc_id INTEGER PRIMARY KEY,   -- ar_facts.db ar_docs.doc_id (= corporate_documents.id)
+    verdict TEXT NOT NULL,        -- 'wrong_company' | 'ok' | 'unresolved'
+    true_company TEXT, true_isin TEXT, evidence TEXT, checked_by TEXT, checked_at TEXT
+)
+"""
 
 # Degradation probes: count-only structural weaknesses in otherwise real rows.
 # ``sql`` must return a single integer.  ``denominator_sql`` is optional and
@@ -173,6 +192,7 @@ def _table_exists(conn, table: str) -> bool:
 def ensure_schema(conn) -> None:
     """Create this module's own tables (idempotent)."""
     conn.execute(QUARANTINE_DDL)
+    conn.execute(AR_DOC_IDENTITY_DDL)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_substrate_quarantine_table ON substrate_quarantine(table_name)"
     )
@@ -258,7 +278,7 @@ def apply(conn) -> Dict[str, Any]:
             conn.executemany(
                 "INSERT OR REPLACE INTO substrate_quarantine "
                 "(rule_id, table_name, row_key, severity, reason) VALUES (?,?,?,?,?)",
-                [(rule["rule_id"], table, k, SEVERITY_QUARANTINE, rule["reason"]) for k in keys],
+                [(rule["rule_id"], rule.get("applies_to", table), k, SEVERITY_QUARANTINE, rule["reason"]) for k in keys],
             )
         written[rule["rule_id"]] = len(keys)
     return written
