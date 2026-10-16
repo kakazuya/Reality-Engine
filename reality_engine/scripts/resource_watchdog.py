@@ -52,6 +52,7 @@ CHECK_SEC = 120
 READER_REPORT = LOGS / "reader_watch_report.md"
 AR_REVIEW_EVERY = 200   # ar_review.py after this many newly finished annual reports (Shivam 2026-10-13)
 STUCK_MIN = 30  # a managed job reading no pages (and no second readings) this long is restarted as hung
+RETIRED_READERS = {"Cat Jam"}   # gone from Zen and Go (2026-10-16); a drop there is no news
 READER_CHECK_EVERY_S = 2 * 3600   # new_reader_check.py runs every 2 h (OpenCode posts free models at any hour; 2026-10-13 Cat Jam came at 23:29)
 RESTART_GAP_MIN = 30
 MAX_RESTARTS_PER_DAY = 6
@@ -142,7 +143,8 @@ def reader_drops():
         fam = ("CASE WHEN model LIKE 'longcat%' THEN 'LongCat' WHEN model LIKE 'cat-jam%' THEN 'Cat Jam' "
                "WHEN model LIKE 'zen:%' THEN 'Zen' WHEN model LIKE 'gemma-4-26b%' THEN 'Gemma 26B' "
                "WHEN model LIKE 'gemma-4-31b%' THEN 'Gemma 31B' WHEN model LIKE 'gemini-3.5%' THEN 'Flash-Lite 3.5' "
-               "ELSE 'Flash-Lite 3.1' END")
+               "WHEN model LIKE 'gemini-3.1%' THEN 'Flash-Lite 3.1' WHEN model LIKE 'beam%' THEN 'Beam' "
+               "ELSE model END")   # 2026-10-17: ELSE was 'Flash-Lite 3.1', so Beam's pages were counted as Flash-Lite 3.1
         rows = con.execute(f"SELECT {fam}, substr(ts, 1, 13), SUM(page_to - page_from + 1) FROM ar_pieces "
                            "WHERE status='ok' AND ts >= ? GROUP BY 1, 2", (since,)).fetchall()
         last_hour = (datetime.now() - timedelta(hours=1)).strftime("%Y-%m-%dT%H")
@@ -150,6 +152,8 @@ def reader_drops():
         for f, h, p in rows:
             by.setdefault(f, {})[h] = p or 0
         for f, hours in by.items():
+            if f in RETIRED_READERS:
+                continue
             best = max(hours.values())
             now_p = hours.get(last_hour, 0)
             if best >= 3000 and now_p < 0.3 * best:   # a reader that mattered (>= 50 pages/min at its best) fell under 30%
