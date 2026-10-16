@@ -626,6 +626,7 @@ def main():
     slock = threading.Lock(); t0 = time.time()
     remaining = {}   # doc_id -> pieces left
     need = {}        # doc_id -> text pages this run's split must see read
+    oversize = set()  # doc_ids with a piece that alone exceeds a Google key's tokens/min: released to the main run when done
 
     def covered_pages(doc_id):
         """Pages read by an ok piece of any prompt_version or piece size."""
@@ -658,7 +659,9 @@ def main():
                 bad = len(need.pop(d["doc_id"], set()) - covered_pages(d["doc_id"]))
                 store.x("UPDATE ar_docs SET status=?, ts=? WHERE doc_id=?", ("partial" if bad else "done",
                         datetime.now().isoformat(timespec="seconds"), d["doc_id"]))
-                if zen:   # done: claim kept for good; partial: renewed so a restart of this route re-reads the failed pieces
+                if zen and bad and d["doc_id"] in oversize:   # this route can never read the piece: the main run takes it
+                    store.x("DELETE FROM ar_claims WHERE doc_id=?", (d["doc_id"],))
+                elif zen:   # done: claim kept for good; partial: renewed so a restart of this route re-reads the failed pieces
                     store.x("UPDATE ar_claims SET status=?, ts=? WHERE doc_id=?", ("claimed" if bad else "imported",
                             datetime.now().isoformat(timespec="seconds"), d["doc_id"]))
                 stats["docs"] += 1
@@ -693,8 +696,22 @@ def main():
                 if isinstance(e, DailyCap) or (r.get("fallback") and "429" in msg):   # route google: a daily cap rests the key until Google's reset
                     daily = re.search(r"per ?day|PerDay|RequestsPerDay", msg)
                     g = r.get("pacer")
+                    recent = [n for t_, n in g.log if time.time() - t_ < 60] if g else []
                     log.info("429 %s %s | pacer last-min est %s tokens, %s requests", r["name"], (re.search(r"quota=(\S+)", msg) or [None, "?"])[1],
-                             sum(n for t_, n in g.log if time.time() - t_ < 60) if g else "-", len(g.log) if g else "-")
+                             sum(recent) if g else "-", len(g.log) if g else "-")
+                    # 2026-10-17: a piece whose real token count alone tops the per-minute limit (est_tokens undercounts
+                    # number-dense pages) was 429'd on every key, handed back uncounted and rested each key 65 s: Gemma 26B
+                    # fell ~260 -> ~50 pages/min from 19:00 on 10-16 (4,594 such 429s in 3 h). After 2 refusals while it was
+                    # the key's only request that minute, the piece is given up here and its report goes to the main run.
+                    if "InputTokensPerModelPerMinute" in msg and len(recent) <= 1:
+                        if tries >= 1:
+                            with slock:
+                                oversize.add(d["doc_id"])
+                            log.info("%s piece %s: alone exceeds the key's tokens/min; left to the main run", d["symbol"], k)
+                            finish_piece(d, k, p_from, p_to, text, r, "", round(time.time() - t, 1), None, None,
+                                         "oversize for Google tokens/min: " + msg[:200], r.get("pv"))
+                            continue
+                        tries += 1
                     # 2026-10-13: keys still refused after the 12:30 IST reset (quota looks rolling, not a clean PT-midnight
                     # reset), so a daily refusal rests the key 1 h and retries instead of sleeping until PT midnight
                     r["bench_until"] = time.time() + (3600 if daily else 65)

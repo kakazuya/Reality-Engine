@@ -1,5 +1,16 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## 2026-10-17 02:30-03:00 (Claude, main checkout)
+
+- **Beam prompt decided: keep plain.** Go exhaustive+core (t-go-beam-exc-1017): 14,001 facts vs plain 11,304, but
+  must-find 20/25 (plain 23/25) and 15 regrouped numbers (plain 5). More facts, worse quality.
+- **Gemma 26B fix** (`ingest_annual_reports.py`): pieces whose real token count alone tops the 16k tokens/min per key
+  (est_tokens undercounts number-dense pages) bounced between all 37 keys for ever (uncounted 429, key rested 65 s):
+  26B fell ~250 -> ~50 pages/min from 19:00 on 10-16. Now after 2 such refusals the piece is given up and the report's
+  claim is released to the main run. Route back to ~64 pages/min within 10 min of the 02:41 restart.
+- **All routes + watchdog died 23:43-02:27** with exit 0xC000026B (session logoff): an RDP sign-out kills them; disconnect instead.
+- Claude heartbeat every ~40 min (session cron) checks watchdog, routes and tests.
+
 ## OVERNIGHT 2026-10-16 05:15-06:25 (Claude, main checkout; Shivam asleep)
 
 - **AR workers restarted 05:25** on the page-based resume code (all 5 routes). At restart: 19,342 done, 14,307 to read
