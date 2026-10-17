@@ -24,9 +24,13 @@ GOOGLE = {"gemma-4-26b-a4b-it", "gemma-4-31b-it", "gemini-3.5-flash-lite", "gemi
 GO = {"longcat-2.5-preview-free", "beam-free"}
 
 
-def prompt_for(item):
+# reader name -> (model id, prompt file): round 2 (2026-10-18) adds rules learned from round 1's judged errors
+ALIASES = {"longcat-v2": ("longcat-2.5-preview-free", "prompt_v2.md")}
+
+
+def prompt_for(item, prompt_file="prompt.md"):
     text = (PILOT / "text" / f"{item['doc_id']}_{item['symbol']}.txt").read_text(encoding="utf-8")
-    p = (PILOT / "prompt.md").read_text(encoding="utf-8")
+    p = (PILOT / prompt_file).read_text(encoding="utf-8")
     return (p.replace("{company}", item["symbol"]).replace("{symbol}", item["symbol"])
              .replace("{date}", item["date"]).replace("{text}", text))
 
@@ -66,12 +70,13 @@ def run_one(model, item, key):
     if out.exists():
         return model, item["symbol"], "have"
     out.parent.mkdir(parents=True, exist_ok=True)
-    fn = call_google if model in GOOGLE else call_go
+    mid, pfile = ALIASES.get(model, (model, "prompt.md"))
+    fn = call_google if mid in GOOGLE else call_go
     last = ""
     for attempt in range(4):
         t0 = time.time()
         try:
-            text, it, ot = fn(model, prompt_for(item), key)
+            text, it, ot = fn(mid, prompt_for(item, pfile), key)
             data = parse_json(text)
             out.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
             out.with_suffix(".meta.json").write_text(json.dumps(
@@ -91,7 +96,7 @@ def run(models, workers):
     jobs = []
     for m in models:
         for n, item in enumerate(sample):
-            key = gkeys[n % len(gkeys)] if m in GOOGLE else env["OPENCODE_GO_API_KEY" if n % 2 == 0 else "OPENCODE_GO_API_KEY_2"]
+            key = gkeys[n % len(gkeys)] if ALIASES.get(m, (m,))[0] in GOOGLE else env["OPENCODE_GO_API_KEY" if n % 2 == 0 else "OPENCODE_GO_API_KEY_2"]
             jobs.append((m, item, key))
     with cf.ThreadPoolExecutor(workers) as ex:
         for m, sym, st in ex.map(lambda j: run_one(*j), jobs):
@@ -166,14 +171,97 @@ def score():
               f"{100 * rec:14.1f}% {r['in'] / docs:11.0f} {r['out'] / docs:11.0f} {r['sec'] / docs:7.0f}")
 
 
+VERIFY_PROMPT = """You are checking another reader's extraction from an earnings-call transcript. For EACH item below,
+decide from the transcript alone whether it is supported. Rules: a quote must exist word for word and mean what the item
+says (watch negations such as "not"); numbers, periods and units must match; basis standalone/consolidated must be said;
+guidance direction raised/maintained/lowered needs an earlier figure referenced in the call; nothing may be inferred.
+Return ONE JSON object only: {"checks": [{"id": "<id>", "verdict": "supported|wrong|unsupported", "reason": "<short>"}]}
+
+ITEMS:
+{items}
+
+TRANSCRIPT:
+{text}
+"""
+
+
+def machine_check(doc_text, data):
+    """Free checks: quote word-for-word (whitespace-insensitive), every number of a value in the text, basis word said.
+    Returns (data with failing items removed and basis fixed, counts)."""
+    nt = _norm(doc_text); low = doc_text.lower()
+    tdig = set(x.replace(",", "") for x in re.findall(r"\d[\d,]*\.?\d*", doc_text))
+    c = {"items": 0, "bad_quote": 0, "bad_number": 0, "basis_fixed": 0}
+    for k in LISTS:
+        keep = []
+        for it in (data.get(k) or []):
+            if not isinstance(it, dict):
+                continue
+            c["items"] += 1
+            q = it.get("quote")
+            if q and _norm(q) not in nt:
+                c["bad_quote"] += 1; continue
+            if any(x not in tdig for vk in VALUE_KEYS for x in _digits(it.get(vk, ""))):
+                c["bad_number"] += 1; continue
+            if it.get("basis") in ("standalone", "consolidated") and it["basis"] not in low:
+                it["basis"] = "unknown"; c["basis_fixed"] += 1
+            keep.append(it)
+        data[k] = keep
+    return data, c
+
+
+def verify(reader, workers):
+    """round 2: machine checks, then a LongCat verifier call per transcript; unsupported/wrong items are dropped.
+    Writes out/<reader>-checked/<doc_id>.json and prints what was removed."""
+    env = ar.user_env()
+    sample = json.loads((PILOT / "sample.json").read_text())
+    dst = PILOT / "out" / f"{reader}-checked"; dst.mkdir(parents=True, exist_ok=True)
+
+    def one(n_item):
+        n, item = n_item
+        src = PILOT / "out" / reader / f"{item['doc_id']}.json"
+        if not src.exists() or (dst / src.name).exists():
+            return None
+        text = (PILOT / "text" / f"{item['doc_id']}_{item['symbol']}.txt").read_text(encoding="utf-8")
+        data, c = machine_check(text, json.loads(src.read_text(encoding="utf-8")))
+        ids = {}
+        lines = []
+        for k in LISTS:
+            for i, it in enumerate(data.get(k) or []):
+                iid = f"{k}:{i}"; ids[iid] = (k, it); lines.append(json.dumps({"id": iid, **it}, ensure_ascii=False))
+        key = env["OPENCODE_GO_API_KEY" if n % 2 == 0 else "OPENCODE_GO_API_KEY_2"]
+        p = VERIFY_PROMPT.replace("{items}", "\n".join(lines)).replace("{text}", text)
+        for attempt in range(4):
+            try:
+                out, it_, ot_ = call_go("longcat-2.5-preview-free", p, key)
+                checks = parse_json(out).get("checks", [])
+                break
+            except Exception as e:
+                time.sleep(30); checks = None
+        if checks is None:
+            return item["symbol"], c, "verifier failed"
+        bad = {ch["id"] for ch in checks if ch.get("verdict") in ("wrong", "unsupported")}
+        for k in LISTS:
+            data[k] = [it for i, it in enumerate(data.get(k) or []) if f"{k}:{i}" not in bad]
+        c["verifier_dropped"] = len(bad)
+        (dst / src.name).write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
+        return item["symbol"], c, "ok"
+
+    with cf.ThreadPoolExecutor(workers) as ex:
+        for r in ex.map(one, enumerate(sample)):
+            if r:
+                print(*r, flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "score"])
+    ap.add_argument("cmd", choices=["run", "score", "verify"])
     ap.add_argument("--models", default="")
     ap.add_argument("--workers", type=int, default=25)
     a = ap.parse_args()
     if a.cmd == "score":
         return score()
+    if a.cmd == "verify":
+        return verify(a.models, a.workers)
     run(a.models.split(","), a.workers)
 
 
