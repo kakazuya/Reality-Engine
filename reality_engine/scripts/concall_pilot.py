@@ -25,7 +25,13 @@ GO = {"longcat-2.5-preview-free", "beam-free"}
 
 
 # reader name -> (model id, prompt file): round 2 (2026-10-18) adds rules learned from round 1's judged errors
-ALIASES = {"longcat-v2": ("longcat-2.5-preview-free", "prompt_v2.md")}
+ALIASES = {"longcat-v2": ("longcat-2.5-preview-free", "prompt_v2.md"),
+           # round 3 (2026-10-18): paid Go models, prompt v2, all on Go key 2 (key 1's monthly allowance is used up)
+           "mimo-v2.6-flash": ("mimo-v2.6-flash", "prompt_v2.md"),
+           "deepseek-v4.1-flash": ("deepseek-v4.1-flash", "prompt_v2.md"),
+           "muse-spark-1.3-contributor": ("muse-spark-1.3-contributor", "prompt_v2.md")}
+GO_KEY2_ONLY = {"mimo-v2.6-flash", "deepseek-v4.1-flash", "muse-spark-1.3-contributor"}
+RESPONSES_API = {"muse-spark-1.3-contributor"}   # Muse answers only on /responses (chat/completions gives 400)
 
 
 def prompt_for(item, prompt_file="prompt.md"):
@@ -50,6 +56,18 @@ def call_google(model, prompt, key):
 
 
 def call_go(model, prompt, key):
+    if model in RESPONSES_API:
+        r = requests.post("https://opencode.ai/zen/go/v1/responses", timeout=900,
+                          headers={"Authorization": f"Bearer {key}", "x-opencode-session": str(uuid.uuid4())},
+                          json={"model": model, "input": prompt, "max_output_tokens": 32000})
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
+        j = r.json(); u = j.get("usage") or {}
+        if j.get("status") != "completed":
+            raise RuntimeError(f"response {j.get('status')}: {str(j.get('incomplete_details') or j.get('error'))[:150]}")
+        text = "".join(c.get("text", "") for o in j.get("output", []) if o.get("type") == "message"
+                       for c in o.get("content", []) if c.get("type") == "output_text")
+        return text, u.get("input_tokens"), u.get("output_tokens")
     r = requests.post("https://opencode.ai/zen/go/v1/chat/completions", timeout=900,
                       headers={"Authorization": f"Bearer {key}", "x-opencode-session": str(uuid.uuid4())},
                       json={"model": model, "max_tokens": 32000, "messages": [{"role": "user", "content": prompt}]})
@@ -96,7 +114,12 @@ def run(models, workers):
     jobs = []
     for m in models:
         for n, item in enumerate(sample):
-            key = gkeys[n % len(gkeys)] if ALIASES.get(m, (m,))[0] in GOOGLE else env["OPENCODE_GO_API_KEY" if n % 2 == 0 else "OPENCODE_GO_API_KEY_2"]
+            if ALIASES.get(m, (m,))[0] in GOOGLE:
+                key = gkeys[n % len(gkeys)]
+            elif m in GO_KEY2_ONLY:
+                key = env["OPENCODE_GO_API_KEY_2"]
+            else:
+                key = env["OPENCODE_GO_API_KEY" if n % 2 == 0 else "OPENCODE_GO_API_KEY_2"]
             jobs.append((m, item, key))
     with cf.ThreadPoolExecutor(workers) as ex:
         for m, sym, st in ex.map(lambda j: run_one(*j), jobs):

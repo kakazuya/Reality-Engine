@@ -1,5 +1,22 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## 2026-10-18 05:40 concall pilot round 3 (Go key 2, paid models) - done, decision pending (Shivam)
+
+- Ran mimo-v2.6-flash, deepseek-v4.1-flash, muse-spark-1.3-contributor (Responses API) on the 25 transcripts with
+  prompt v2 + machine_check (`out/<m>-machine/`), all on Go key 2 (Shivam's go-ahead; key 2 was 0% used; extra usage off).
+  Pilot cost about $0.6 in total.
+- Blind Opus judge3 (5 transcripts, 6 readers; `judge3/`, key `judge3_key.json`), /30 and errors on 5 calls:
+  **DeepSeek 25.2 (11)**, MiMo 23.2 (25), Opus 23.0 (20), LongCat v2 21.6 (32), Muse 20.4 (13, accurate but thin),
+  Sonnet 20.2 (16). Auto recall vs union: DeepSeek 78%, MiMo 71%, Opus 68%, LongCat v2 66%, Muse 49%.
+- Measured tokens/transcript (in / out incl. reasoning): DeepSeek 10.6k / 23.3k, MiMo 10.8k / 13.1k, Muse 10.4k / 11.6k.
+  Full backfill (21,695): DeepSeek ~$338 (limit $80/month: ~4.2 months), MiMo ~$109 (~1.8 months of $60), Muse ~$73
+  (~1.2 months of $60). Weekly window = 50% of monthly, 5-hour window = 20%. Off-peak DeepSeek prices assumed.
+- Open errors common to all readers: 'maintained' guidance with no earlier figure, unit added to bare numbers,
+  analyst words quoted as management's, unflagged in-call inconsistencies (dates/figures said two ways).
+- Options for Shivam: (a) DeepSeek with reasoning cut (test whether a lower reasoning effort keeps quality and halves
+  output tokens), (b) DeepSeek on both Go keys from Oct 21 + MiMo, (c) Go Plus, (d) LongCat v2 free for bulk + DeepSeek
+  for the most-traded names. Round-3 prompt checks (speaker attribution, label keywords) still not built.
+
 ## 2026-10-18 04:15 hand-off (session ends; next session starts here)
 
 **Running (detached, survive this session):** Drive archive (`scripts/run_archive_to_drive.cmd`, rclone; 9.6 GiB of
