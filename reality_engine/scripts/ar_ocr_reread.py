@@ -281,6 +281,9 @@ def main(run, spec, model, workers, dry, kinds, limit):
         if not r:
             print(f"{doc_id}: not in ar_docs"); continue
         d = dict(zip(("doc_id", "isin", "symbol", "company", "fiscal_year", "filed_at", "path"), r))
+        # 2026-10-17: SDC's PDF (main run: 'text split timed out after 180 s') held page_texts at 100% CPU for 75 min
+        if "timed out" in (con.execute("SELECT error FROM ar_docs WHERE doc_id=?", (doc_id,)).fetchone()[0] or ""):
+            print(f"{doc_id} {d['symbol']}: skipped (the main run's text split timed out on this PDF)"); continue
         try:
             pages = aq.page_texts(d["path"])
         except Exception as e:
