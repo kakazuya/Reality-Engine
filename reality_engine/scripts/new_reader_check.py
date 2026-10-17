@@ -145,13 +145,16 @@ def main():
     # register upkeep and admission tests (Zen only)
     zen = seen.get("zen")
     if zen is not None:
+        touched = set()   # register keys this run changed: only these are written back (see the write below)
         for m, v in reg.items():
             if m.startswith("_") or not isinstance(v, dict):
                 continue
+            # status 'deprecated' (set by hand: Zen still lists the model but refuses it) is never changed here
             if v.get("status") == "passed" and m not in zen:
-                v["status"] = "retired"; v["retired"] = now(); lines.append(f"- register: **{m} retired** (gone from Zen)")
+                v["status"] = "retired"; v["retired"] = now(); touched.add(m)
+                lines.append(f"- register: **{m} retired** (gone from Zen)")
             elif v.get("status") == "retired" and m in zen:
-                v["status"] = "passed"; lines.append(f"- register: **{m} back** on Zen, in use again")
+                v["status"] = "passed"; touched.add(m); lines.append(f"- register: **{m} back** on Zen, in use again")
         added = restart_main = False
         for m, t in list(watch["tests"].items()):   # score finished tests
             if t.get("result"):
@@ -188,6 +191,7 @@ def main():
                 added = True
             else:
                 reg[m] = {"slots": 0, "status": "failed", "ar_test": f"{now()[:16]} auto: {line}; answered {n_out}/{n_all}"}
+            touched.add(m)
             lines.append(f"- test {m}: **{t['result'].upper()}** ({line})")
         for m in zen:   # start tests for unregistered models
             if m in reg or m in watch["tests"] or a.no_tests:
@@ -220,7 +224,12 @@ def main():
                              creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | ar_queue.NO_WINDOW)
             watch["tests"][f"go:{m}"] = {"run": run, "started": now()}
             lines.append(f"- test go:{m}: **started** (Go API, run {run})")
-        REGISTER.write_text(json.dumps(reg, indent=2) + "\n", encoding="utf-8")
+        # 2026-10-17: the register was read at start and written whole after minutes of scoring, so a hand edit made
+        # meanwhile (muse-spark-1.3 retired at 06:10) was overwritten. Re-read now and write back only our changes.
+        fresh = load(REGISTER, {})
+        for m in touched:
+            fresh[m] = reg[m]
+        REGISTER.write_text(json.dumps(fresh, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         if added and restart_zen_worker():
             lines.append("- Zen AR worker restarted with the new register")
         if restart_main and restart_main_run():
