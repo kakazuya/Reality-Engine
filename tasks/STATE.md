@@ -21,6 +21,11 @@
   reports released to the main run. muse-spark-1.3-contributor-free retired (deprecated). deepseek-v4.1-flash passed
   on rerun of its 6 rate-limited pieces (25/25, 8,529 facts, 0.0%); Beam on Zen passed (25/25, 14,110 facts).
 - Killed an orphaned `grep -rl nimbusprojectsltd .` (parent gone, 24 min, 72 MB/s) at 05:44.
+- **RAM leak 04:30-08:10 found:** 4 orphaned Git-bash `find / -name *<hash>*` (started 05:08-05:26) + a `grep -rl
+  nimbusprojectsltd .` (killed 05:44) whose shells had died (some agent's command timeout) held ~11.6 M handles: kernel
+  paged pool 7.5 GB, RAM free 6 -> 0.8 GB. Killed at 08:15 -> paged pool 0.9 GB, 7.4 GB available. Watchdog now kills
+  orphaned find/grep/rg/xargs older than 10 min and reports any process over 200k handles (handle_hog). Agents: never
+  run `find /` (whole disk) on this machine. Beam's Go upstream limit hit again 07:xx after ~2,000 pieces per key.
 - **All routes + watchdog died 23:43-02:27** with exit 0xC000026B (session logoff): an RDP sign-out kills them; disconnect instead.
 - Claude heartbeat every ~40 min (session cron) checks watchdog, routes and tests.
 

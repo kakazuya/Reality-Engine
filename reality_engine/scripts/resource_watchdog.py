@@ -52,6 +52,7 @@ CHECK_SEC = 120
 READER_REPORT = LOGS / "reader_watch_report.md"
 AR_REVIEW_EVERY = 200   # ar_review.py after this many newly finished annual reports (Shivam 2026-10-13)
 STUCK_MIN = 30  # a managed job reading no pages (and no second readings) this long is restarted as hung
+HANDLE_HOG = 200_000   # open handles in one process (explorer ~7k, our main run ~4k; the 10-17 orphan finds held ~3 M each)
 RETIRED_READERS = {"Cat Jam"}   # gone from Zen and Go (2026-10-16); a drop there is no news
 READER_CHECK_EVERY_S = 2 * 3600   # new_reader_check.py runs every 2 h (OpenCode posts free models at any hour; 2026-10-13 Cat Jam came at 23:29)
 RESTART_GAP_MIN = 30
@@ -175,7 +176,15 @@ def orphan_workers():
     for p in psutil.process_iter(["name", "cmdline", "ppid"]):
         try:
             cmd = " ".join(p.info["cmdline"] or [])
-            if (p.info["name"] or "").lower() != "python.exe":
+            name = (p.info["name"] or "").lower()
+            # 2026-10-17: four Git-bash `find / -name *hash*` and one `grep -rl ... .` outlived their shells (an agent's
+            # command timeout kills bash, not the child) and held ~11.6 M handles: kernel paged pool 7.5 GB, RAM free
+            # 6 -> 0.8 GB over 3 h. Read-only search tools whose parent is gone, running > 10 min, are killed.
+            if name in ("find.exe", "grep.exe", "rg.exe", "xargs.exe"):
+                if not psutil.pid_exists(p.info["ppid"]) and time.time() - p.create_time() > 600:
+                    out.append(p)
+                continue
+            if name != "python.exe":
                 continue
             # AR report-cutting children (ingest_annual_reports --pieces-json): orphaned, or past the parent's 3-min limit
             # (2026-10-14: three orphans read the disk at ~1 GB/s for up to 15 h after their parents were killed)
@@ -450,6 +459,14 @@ def run():
             st["reader_drop_ts"] = time.time()
             for kind, where, text in reader_drops():
                 inc.add(kind, where, text)
+
+        for p in psutil.process_iter(["name"]):   # handle hogs fill the kernel's paged pool, invisible in RSS
+            try:
+                if p.num_handles() > HANDLE_HOG:
+                    inc.add("handle_hog", f"{p.info['name']} pid {p.pid}",
+                            f"{p.num_handles():,} handles: {' '.join(p.cmdline())[:150]}")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+                pass
 
         orphans = orphan_workers()
         if orphans:
