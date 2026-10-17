@@ -26,6 +26,13 @@
   paged pool 7.5 GB, RAM free 6 -> 0.8 GB. Killed at 08:15 -> paged pool 0.9 GB, 7.4 GB available. Watchdog now kills
   orphaned find/grep/rg/xargs older than 10 min and reports any process over 200k handles (handle_hog). Agents: never
   run `find /` (whole disk) on this machine. Beam's Go upstream limit hit again 07:xx after ~2,000 pieces per key.
+- **21 unreadable AR PDFs (2026-10-17):** BSE itself serves them broken (15 zero-filled, 6 bad page tree; re-download
+  byte-identical). 7 replaced with NSE archive copies (ADVANIHOTR, AMRUTANJAN, CCHHL, INDBANK, INDOTHAI, MONTECARLO,
+  SURYALAXMI FY22; every page checked, sha updated in corporate_documents); they get read at the next route restart.
+  14 are BSE-only (BIMETAL x2, GENSOL, SKYGOLD, VOLKAI, IGLFXPL-B, WINSOMBR, SICAPIT, SEATV, SDC FY26, SCL, MEAPL, HUIL,
+  SKIEL): need the company website copy. NSE API: /api/annual-reports?index=equities&symbol=X (zip per year).
+- **Muse Spark 1.3 (paid, Go key 1)** added to the main run 14:15 (Responses API; profile protocol 'responses'):
+  ~113 pages/min, 6.4 facts/page, ~$0.33 per 1,000 pages; monthly allowance 93% -> 97% by 15:21 ($2.21).
 - **All routes + watchdog died 23:43-02:27** with exit 0xC000026B (session logoff): an RDP sign-out kills them; disconnect instead.
 - Claude heartbeat every ~40 min (session cron) checks watchdog, routes and tests.
 

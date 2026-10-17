@@ -248,8 +248,12 @@ def readers(env, route="python", google_model=None):
             if env.get(var):
                 # bench_until is required: the 429 bench reads it (2026-10-14 02:25-06:53 it was missing, the bench raised
                 # KeyError inside the except block and silently killed every Cat Jam thread at its first 429)
-                out.append({"name": m + ("" if n == 1 else f"@go{n}"), "kind": "chat",
-                            "url": "https://opencode.ai/zen/go/v1/chat/completions", "key": env[var],
+                # protocol 'responses' (2026-10-17): Muse Spark answers only on /responses (chat/completions and /messages
+                # give 400 ModelProtocolUnsupported)
+                proto = prof.get("protocol", "chat")
+                out.append({"name": m + ("" if n == 1 else f"@go{n}"), "kind": "chat", "protocol": proto,
+                            "url": "https://opencode.ai/zen/go/v1/" + ("responses" if proto == "responses" else "chat/completions"),
+                            "key": env[var],
                             "model": m, "slots": prof["slots"], "pacer": None, "bench_until": 0.0, "tmpl": tmpl, "pv": pv})
     for n, v in enumerate(gemini_keys(env), 1):
         out.append(g_reader("gemma-4-31b-it", n, v))
@@ -287,6 +291,18 @@ def call(r, prompt, http):
         if not parse_lines(out) and out.strip().upper() != "NONE":
             raise RuntimeError(f"rc={rc} {(err or out)[-200:]}")
         return out, None, None
+    if r["kind"] == "chat" and r.get("protocol") == "responses":   # OpenAI Responses shape (Muse Spark on Go)
+        resp = http.post(r["url"], timeout=900, json={"model": r["model"], "input": prompt, "max_output_tokens": 32000},
+                         headers={"Authorization": f"Bearer {r['key']}", "x-opencode-session": str(uuid.uuid4()),
+                                  "User-Agent": "reality-engine-ar-ingest/1.0"})
+        if resp.status_code != 200:
+            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
+        j = resp.json(); u = j.get("usage") or {}
+        if j.get("status") != "completed":   # e.g. cut at max_output_tokens: a partial answer is not stored as complete
+            raise RuntimeError(f"response {j.get('status')}: {str(j.get('incomplete_details') or j.get('error'))[:150]}")
+        text = "".join(c.get("text", "") for o in j.get("output", []) if o.get("type") == "message"
+                       for c in o.get("content", []) if c.get("type") == "output_text")
+        return text, u.get("input_tokens"), u.get("output_tokens")
     if r["kind"] == "chat":
         resp = http.post(r["url"], timeout=900, json={"model": r["model"], "max_tokens": 32000,
                                                      "messages": [{"role": "user", "content": prompt}]},

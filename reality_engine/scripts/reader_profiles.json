@@ -6,6 +6,7 @@
       "readers": [
         "longcat-2.5-preview-free",
         "beam-free",
+        "muse-spark-1.3-contributor",
         "gemma-4-31b-it"
       ]
     },
@@ -157,6 +158,20 @@
       "go_keys": [
         "OPENCODE_GO_API_KEY",
         "OPENCODE_GO_API_KEY_2"
+      ]
+    },
+    "muse-spark-1.3-contributor": {
+      "api": "opencode-go",
+      "protocol": "responses",
+      "prompt": "plain",
+      "slots": 8,
+      "rpm": null,
+      "tpm": null,
+      "rpd": null,
+      "per_key": false,
+      "test": "2026-10-12 Zen route 25/25, 0/4156 not in text (as muse-spark-1.3-contributor-free); 2026-10-17 Go key 1 paid (Shivam: use the ~7% monthly allowance left): 1 piece 33k chars, 86 facts, 24 s, 8.2k in / 9.3k out",
+      "go_keys": [
+        "OPENCODE_GO_API_KEY"
       ]
     }
   },
