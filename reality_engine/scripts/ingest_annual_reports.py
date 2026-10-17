@@ -886,6 +886,11 @@ def main():
             if all(v <= 0 for v in remaining.values()):
                 break
         time.sleep(10)
+    if zen:
+        # 2026-10-17: a route that finished its queue exits for good (exit 0 ends its .cmd loop), but it kept 'claimed' on
+        # its partial reports, meant for its own restart: 100 reports sat locked from the main run for 1.5 h. Hand them over.
+        store.x("DELETE FROM ar_claims WHERE owner=? AND status='claimed'", (owner,))
+        log.info("released this route's unfinished claims to the main run")
     log.info("finished: %s", stats)
 
 
