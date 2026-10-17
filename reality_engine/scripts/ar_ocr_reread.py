@@ -233,7 +233,8 @@ def decide(con, d, units, answers, pages, ocr, dry, run):
     o_n, n_n = sum(old.values()), sum(new.values())
     o_v, n_v = old["page"] + old["piece"] + old["ocr"], new["page"] + new["piece"] + new["ocr"]
     o_s, n_s = old["not_found"] / max(1, o_n), new["not_found"] / max(1, n_n)
-    better = n_n > 0 and n_s < o_s and n_v >= 0.8 * o_v
+    # 2026-10-17: pages with no old numbers (whole scanned reports) never passed 'n_s < o_s' (0% vs 0%): take the OCR read
+    better = n_n > 0 and ((o_n == 0 and n_v > 0) or (n_s < o_s and n_v >= 0.8 * o_v))
     line = (f"{doc_id} {d['symbol']} FY {d['fiscal_year'][:4]} pages {len(covered)}: old {o_n} numbers, not_found "
             f"{100 * o_s:.0f}%, verified {o_v} ({', '.join(f'{m}:{c}' for m, c in old_models.most_common(2))}) | ocr-read "
             f"{n_n} numbers, not_found {100 * n_s:.0f}%, verified {n_v} ({dict(new)}) -> {'REPLACE' if better else 'keep old'}")

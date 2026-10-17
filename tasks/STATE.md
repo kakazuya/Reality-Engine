@@ -31,6 +31,12 @@
   SURYALAXMI FY22; every page checked, sha updated in corporate_documents); they get read at the next route restart.
   14 are BSE-only (BIMETAL x2, GENSOL, SKYGOLD, VOLKAI, IGLFXPL-B, WINSOMBR, SICAPIT, SEATV, SDC FY26, SCL, MEAPL, HUIL,
   SKIEL): need the company website copy. NSE API: /api/annual-reports?index=equities&symbol=X (zip per year).
+- **'no_text' (109) + 'unreadable' reports recovered 2026-10-17 evening:** most 'scanned' files were broken BSE copies
+  (0 pages / zero-filled, mostly FY2021-22). Replaced: 23 from NSE archive (`/api/annual-reports`, zip or plain PDF),
+  44 from the BSE *announcement* copy (Reg 34 filing, AnnSubCategoryGetData -> xml-data/corpfiling/AttachHis/<att>;
+  kept only if >= 40 pages and >= 300 chars/page). Old files backed up in the session scratchpad. 70 true scans go to
+  OCR (`ar_ocr_reread --run o03-scans`, decide() now takes OCR when old pages had 0 numbers). Still missing:
+  CIANAGRO, NBFOOT, MEAPL FY22 (company website). NAVA's NSE copy was a 1-page notice: reverted.
 - **Muse Spark 1.3 (paid, Go key 1)** added to the main run 14:15 (Responses API; profile protocol 'responses'):
   ~113 pages/min, 6.4 facts/page, ~$0.33 per 1,000 pages; monthly allowance 93% -> 97% by 15:21 ($2.21).
 - **All routes + watchdog died 23:43-02:27** with exit 0xC000026B (session logoff): an RDP sign-out kills them; disconnect instead.
