@@ -1,5 +1,38 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## 2026-10-18 04:15 hand-off (session ends; next session starts here)
+
+**Running (detached, survive this session):** Drive archive (`scripts/run_archive_to_drive.cmd`, rclone; 9.6 GiB of
+pdfs/ at ~1.2 MiB/s, then decks/, then MD5 checks; logs `data/logs/archive_*.log`; local copies stay until Shivam
+confirms). Resource watchdog. Zen AR route (idle: OpenCode refuses all free Zen calls since 10-17 06:00).
+**Not running any more:** the Claude heartbeat cron (session-only) - recreate it in the new session (every ~40 min:
+watchdog report, AR/route logs, drive.log, archive progress). AR reading is finished.
+
+**Next task (Shivam):** concall pilot round on OpenCode Go key 2 (`OPENCODE_GO_API_KEY_2`): `mimo-v2.6-flash`,
+`deepseek-v4.1-flash`, `muse-spark-1.3-contributor` on the same 25 transcripts; count tokens per model to see whether
+the Go budget covers a full backfill (21,695 transcripts, ~11k input tokens each). Notes:
+- Runner: `python -m reality_engine.scripts.concall_pilot run --models <m> --workers N` (outputs
+  `data/concall_pilot/out/<model>/<doc_id>.json` + `.meta.json` with tokens); score with `... score`. Go readers use
+  chat/completions in `call_go`; it picks key 1/2 by index - force key 2 for this test. **Muse needs the Responses API**
+  (`/zen/go/v1/responses`, see `ingest_annual_reports.call` protocol 'responses'); call_go must get that branch.
+- Use prompt v2 (`data/concall_pilot/prompt_v2.md`, alias pattern `ALIASES` in concall_pilot.py) + `machine_check`.
+- Judge: blind Opus subagent on the same 5 transcripts (118440, 55951, 80352, 36223, 25608) as judge2 (scores
+  `data/concall_pilot/judge2/`, key `judge2_key.json`); include Opus/Sonnet/LongCat-v2 for comparison.
+- Go key 1 monthly allowance ~99-100% used until Oct 21 (MiMo/Muse are paid models on the Go plan); check key 2's
+  console usage before and after.
+- Results so far (blind Opus judge, /30, errors on 5 calls): round 1 Opus 27.2 (3), Sonnet 26.0 (3), LongCat 24.8
+  (13), Gemini 3.8 Flash 22.0 (9), Gemma 26B 17.0, Flash-Lite 17.0. Round 2: Opus 25.4 (4), LongCat v2 + machine checks
+  24.4 (10), Sonnet 23.8 (2), LongCat v1 21.4 (15). Remaining LongCat errors: analyst words as management's, inferred
+  facts (dividend 'declared' vs 'considered'), unsupported 'firm' labels. Proposed round 3: speaker-attribution check
+  (quote must sit in a management turn) + label-keyword check. The LLM verifier dropped correct items: keep it off.
+- Concalls: 21,695 transcripts filed, only 5,260 in the search layer; 4,917 re-dated to BSE dissemination time, 318
+  have no true date (exclude from tests). Fact extraction for concalls not started.
+
+**Done this session (10-17/18):** AR reading complete (33,278 done; 60 true scans OCR'd by run o03; 4 unreadable;
+CIANAGRO/NBFOOT/MEAPL FY22 still missing). 67 broken/scanned ARs replaced from NSE archive / BSE announcement copies;
+OCR facts on text-recovered reports removed and 788 text-read facts restored. Macro set ingested: 480 docs 2019-2026
+(Union budgets, Economic Surveys, RBI policy/MPC/AR/FSR summaries, PRS state budgets), real publication dates.
+
 ## 2026-10-17 23:40 archive to Google Drive (running)
 
 - rclone 1.75.1 (winget) remote `gdrive` (scope drive.file; Drive has 4.9 TiB free). `scripts/run_archive_to_drive.cmd`
