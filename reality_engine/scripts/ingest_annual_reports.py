@@ -717,7 +717,10 @@ def main():
                         tries += 1
                     # 2026-10-13: keys still refused after the 12:30 IST reset (quota looks rolling, not a clean PT-midnight
                     # reset), so a daily refusal rests the key 1 h and retries instead of sleeping until PT midnight
-                    r["bench_until"] = time.time() + (3600 if daily else 65)
+                    # 2026-10-17: refusals at 12:28 rested every key to 13:28, an hour of fresh quota lost; a daily rest now
+                    # ends 5 min after the next 07:00 UTC (12:30 IST, PDT; from Nov 2 PST it is 08:00 UTC) reset when sooner
+                    to_reset = (7 * 3600 - time.time() % 86400) % 86400 + 300
+                    r["bench_until"] = time.time() + (min(3600, to_reset) if daily else 65)
                     retry.append((d, k, p_from, p_to, text, tries)); continue
                 # 2026-10-14: Go Cat Jam hit an upstream quota (HTTP 429 'Rate limit exceeded', both Go accounts in the same
                 # second); with no bench its threads re-took the refused pieces and burnt their 3 tries in minutes (~1,900
