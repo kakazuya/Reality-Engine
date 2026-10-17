@@ -1,5 +1,14 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## 2026-10-17 23:40 archive to Google Drive (running)
+
+- rclone 1.75.1 (winget) remote `gdrive` (scope drive.file; Drive has 4.9 TiB free). `scripts/run_archive_to_drive.cmd`
+  copies `data/pdfs` (157 GB) then `data/decks` (111 GB) to `gdrive:InfoDiffusion_archive/`, then `rclone check
+  --one-way` (MD5) per folder; logs `data/logs/archive_*.log`, misses in `archive_<folder>_missing.txt` / `_differ.txt`.
+  **Local copies are NOT to be deleted until Shivam confirms.** Plan after a clean check: delete local FY2019-2023, keep
+  FY2024+. rclone's shared client_id is being retired during 2026: create our own Google client_id (rclone.org/drive).
+- **Concall transcripts: all 5,228 have published_date in 2026** (fetch date, not call date): fix before any test.
+
 ## 2026-10-17 02:30-03:00 (Claude, main checkout)
 
 - **Beam prompt decided: keep plain.** Go exhaustive+core (t-go-beam-exc-1017): 14,001 facts vs plain 11,304, but
