@@ -784,8 +784,12 @@ def main():
                     r["bench_until"] = time.time() + 120
                     retry.append((d, k, p_from, p_to, text, tries + 1)); continue
                 transient = re.search(r"HTTP 50[023]|timed out|overloaded|Internal error", msg)   # server-side: try harder
-                if tries < (6 if transient else 3):   # another reader (or this one later) takes it
-                    time.sleep(65 if "429" in msg or "rate limit" in msg.lower() else 10)
+                # 2026-10-17 16:35-16:40: a network blip reset every connection (OpenCode and Google alike); 3 tries 10 s
+                # apart burnt 61 pieces. A connection failure is our network: wait it out with 6 tries 60 s apart.
+                netdown = re.search(r"Connection aborted|ConnectionResetError|ConnectionError|Max retries exceeded|"
+                                    r"NameResolution|getaddrinfo", msg)
+                if tries < (6 if transient or netdown else 3):   # another reader (or this one later) takes it
+                    time.sleep(65 if "429" in msg or "rate limit" in msg.lower() else 60 if netdown else 10)
                     retry.append((d, k, p_from, p_to, text, tries + 1))
                 else:
                     finish_piece(d, k, p_from, p_to, text, r, "", round(time.time() - t, 1), None, None, msg, r.get("pv"))
