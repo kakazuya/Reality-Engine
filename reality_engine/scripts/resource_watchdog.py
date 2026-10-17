@@ -180,8 +180,12 @@ def orphan_workers():
             # 2026-10-17: four Git-bash `find / -name *hash*` and one `grep -rl ... .` outlived their shells (an agent's
             # command timeout kills bash, not the child) and held ~11.6 M handles: kernel paged pool 7.5 GB, RAM free
             # 6 -> 0.8 GB over 3 h. Read-only search tools whose parent is gone, running > 10 min, are killed.
+            # Narrowed 19:50 the same day: in Git-bash pipelines (`python ... | grep -v x`) the recorded parent is often a
+            # short-lived bash, so 'parent gone' alone killed a live pipeline's grep and with it the job writing into it.
+            # Only a whole-disk scan or a handle hog counts now.
             if name in ("find.exe", "grep.exe", "rg.exe", "xargs.exe"):
-                if not psutil.pid_exists(p.info["ppid"]) and time.time() - p.create_time() > 600:
+                wide = re.search(r"\bfind(\.exe)?\"?\s+/(\s|$)", cmd) or p.num_handles() > 100_000
+                if wide and not psutil.pid_exists(p.info["ppid"]) and time.time() - p.create_time() > 600:
                     out.append(p)
                 continue
             if name != "python.exe":
