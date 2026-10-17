@@ -722,7 +722,9 @@ def main():
                 # 2026-10-14: Go Cat Jam hit an upstream quota (HTTP 429 'Rate limit exceeded', both Go accounts in the same
                 # second); with no bench its threads re-took the refused pieces and burnt their 3 tries in minutes (~1,900
                 # pieces marked error). Go readers (kind 'chat') now bench like the Zen CLI.
-                if r["kind"] in ("cli", "chat") and ("rate limit" in msg.lower() or "HTTP 429" in msg):   # quota, not a bad piece: bench the model and
+                if r["kind"] in ("cli", "chat") and ("rate limit" in msg.lower() or "HTTP 429" in msg or "free tier can only be used" in msg):
+                    # 2026-10-17 06:00: Zen refused every free-tier call ('free tier can only be used from within OpenCode',
+                    # server-side; CLI 2.0.32 too): 352 pieces burnt in 15 min. Treated as a quota now: bench, piece uncounted.   # quota, not a bad piece: bench the model and
                     # Zen: one daily allowance, so a long bench. Go: 429s also come from too many slots (LongCat at 192,
                     # 2026-10-14 07:05), where a 20-min bench idled the whole reader; Go benches 3 min and retries.
                     if r["kind"] == "chat":   # Go: an occasional 429 is the per-request rate (2026-10-15: LongCat at 18k pieces

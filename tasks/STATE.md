@@ -15,6 +15,12 @@
   31B ~54 pages/min (31B/26B also get night-time HTTP 500s from Google).
 - **Beam upstream rate limit from ~03:00:** both Go keys 429 'Upstream request failed' (LongCat fine on the same keys);
   likely a daily upstream budget like Cat Jam's (reset 05:30 IST?). The 3-min Go bench handles it.
+- **Zen free tier refused from ~06:00 10-17** ('OpenCode's free tier can only be used from within OpenCode', even for a
+  plain `opencode run` from Temp; CLI updated 2.0.31 -> 2.0.32 with bun, still refused). Server-side gate (see GitHub
+  anomalyco/opencode #51315, #49590). Zen route now benches on this message (no burnt pieces); 93 Zen-claimed partial
+  reports released to the main run. muse-spark-1.3-contributor-free retired (deprecated). deepseek-v4.1-flash passed
+  on rerun of its 6 rate-limited pieces (25/25, 8,529 facts, 0.0%); Beam on Zen passed (25/25, 14,110 facts).
+- Killed an orphaned `grep -rl nimbusprojectsltd .` (parent gone, 24 min, 72 MB/s) at 05:44.
 - **All routes + watchdog died 23:43-02:27** with exit 0xC000026B (session logoff): an RDP sign-out kills them; disconnect instead.
 - Claude heartbeat every ~40 min (session cron) checks watchdog, routes and tests.
 

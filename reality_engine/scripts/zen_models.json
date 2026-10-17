@@ -17,9 +17,10 @@
   },
   "muse-spark-1.3-contributor-free": {
     "slots": 5,
-    "status": "passed",
+    "status": "retired",
     "ar_test": "2026-10-12 17:30 25/25, 0/4156",
-    "deck_test": "2026-10-12 93.6% identifiable, 0 misreads"
+    "deck_test": "2026-10-12 93.6% identifiable, 0 misreads",
+    "retired": "2026-10-17 05:40: Zen says 'has been deprecated'"
   },
   "big-pickle": {
     "slots": 5,
@@ -68,5 +69,10 @@
     "status": "retired",
     "ar_test": "2026-10-14T00:33 auto: **Facts extracted 12191** (depth rule: at least 4500 = half the passed models' median ~9000; a reader that hits the must-find list but skips most facts loses data)",
     "retired": "2026-10-16T20:18:22"
+  },
+  "beam-free": {
+    "slots": 3,
+    "status": "passed",
+    "ar_test": "2026-10-17T04:30 auto: **Facts extracted 14110** (depth rule: at least 4500 = half the passed models' median ~9000; a reader that hits the must-find list but skips most facts loses data)"
   }
 }
