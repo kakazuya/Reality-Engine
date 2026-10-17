@@ -33,6 +33,13 @@ from pathlib import Path
 import pymupdf
 import requests
 
+if __import__("sys").platform == "win32":
+    # 2026-10-17: a start of the 213 MB opencode.exe now and then fails with 'not a valid Win32 application'; Windows then
+    # opened an 'Unsupported 16-Bit Application' dialog per failure, which piled up on the desktop overnight. These runs
+    # are unattended: fail the call (it is retried) instead of raising a dialog. Children inherit this error mode.
+    import ctypes
+    ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002 | 0x8000)   # FAILCRITICALERRORS | NOGPFAULTERRORBOX | NOOPENFILEERRORBOX
+
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "reality_engine" / "data"
 LIVE_DB = DATA / "equity_intelligence.db"
