@@ -82,6 +82,23 @@ def load_index():
                 u = r.get("xbrl") or ""
                 if u.endswith(".xml"):
                     idx[os.path.basename(u)] = r
+    # 'Integrated Filing - Financials' index (results from the Mar-2025 quarter; fetch_nse_api_raw --datasets
+    # nse_integrated): mapped onto the old index's field names. broadcast_Date = when NSE published the filing = the
+    # point-in-time stamp (creation_Date is ~15 s later); there is no ISIN in this index (the XBRL carries it).
+    for d in ("nse_integrated_equities", "nse_integrated_sme"):
+        for f in glob.glob(str(RAW / d / "*.json")):
+            try:
+                rows = json.load(open(f, encoding="utf-8"))
+            except Exception:
+                continue
+            for r in rows:
+                u = r.get("xbrl") or ""
+                if u.endswith(".xml"):
+                    idx[os.path.basename(u)] = {
+                        "xbrl": u, "symbol": r.get("symbol"), "companyName": r.get("cmName") or r.get("smName"),
+                        "period": f"Integrated-{r.get('type_Sub') or 'Original'}", "consolidated": r.get("consolidated"),
+                        "audited": r.get("audited"), "broadCastDate": r.get("broadcast_Date"),
+                        "exchdisstime": r.get("broadcast_Date"), "filingDate": r.get("creation_Date")}
     return idx
 
 

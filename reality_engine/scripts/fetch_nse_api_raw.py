@@ -255,9 +255,73 @@ def fetch_pit_xml():
     return counts
 
 
+INTEGRATED_TYPE = "Integrated%20Filing-%20Financials"
+
+
+def fetch_integrated_index():
+    """Results filed as 'Integrated Filing - Financials' (SEBI format from the Mar-2025 quarter; the old
+    corporates-financial-results feed has almost nothing after Feb 2025). One JSON per page of 500, newest first;
+    every page is re-fetched (the list is small and revisions are inserted near the top). Fields: symbol, qe_Date,
+    consolidated, audited, broadcast_Date / creation_Date (IST), type_Sub Original/Revision, xbrl URL."""
+    counts = {}
+    for idx in RESULT_INDICES:
+        name = f"nse_integrated_{idx}"
+        f = NseFetcher(name, date.today(), date.today())
+        c = {"ok": 0, "error": 0, "rows": 0}
+        page, total = 1, None
+        while total is None or (page - 1) * 500 < total:
+            for attempt in range(4):
+                try:
+                    j = f.get(f"{API}integrated-filing-results?index={idx}&type={INTEGRATED_TYPE}&page={page}&size=500").json()
+                    total = int(j.get("totalCount") or 0)
+                    data = j.get("data") or []
+                    (f.dir / f"page_{page:03d}.json").write_text(json.dumps(data), encoding="utf-8")
+                    c["ok"] += 1; c["rows"] += len(data)
+                    break
+                except Exception:
+                    f.s = None
+                    time.sleep(PACE_SEC * (2 ** (attempt + 1)))
+            else:
+                c["error"] += 1
+                total = total or 0
+            page += 1
+            time.sleep(PACE_SEC)
+        counts[name] = c
+    return counts
+
+
+def fetch_integrated_xbrl():
+    """Download every XBRL listed in the integrated-filing index into nse_results_xbrl/ (same folder and parser)."""
+    out = ROOT / "nse_results_xbrl"
+    out.mkdir(parents=True, exist_ok=True)
+    have = {p.name for p in out.iterdir()}
+    urls = set()
+    for idx in RESULT_INDICES:
+        for jf in (ROOT / f"nse_integrated_{idx}").glob("*.json"):
+            for rec in json.loads(jf.read_text(encoding="utf-8")):
+                u = rec.get("xbrl")
+                if u and u.startswith("http") and u.endswith(".xml") and u.rsplit("/", 1)[-1] not in have:
+                    urls.add(u)
+    f = NseFetcher("nse_results_xbrl", date.today(), date.today())
+    counts = {"todo": len(urls), "ok": 0, "error": 0}
+    for n, u in enumerate(sorted(urls), 1):
+        try:
+            body = f.get(u).content
+            if body.lstrip()[:1] == b"<":
+                (out / u.rsplit("/", 1)[-1]).write_bytes(body); counts["ok"] += 1
+            else:
+                counts["error"] += 1
+        except Exception:
+            f.s = None; counts["error"] += 1
+        if n % 500 == 0:
+            print(f"integrated xbrl {n}/{len(urls)} {counts}", flush=True)
+        time.sleep(0.4)
+    return counts
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    names = [*MONTHLY, *DAILY_CSV, "nse_pit_gg_xml", "nse_results", "nse_results_xbrl"]
+    names = [*MONTHLY, *DAILY_CSV, "nse_pit_gg_xml", "nse_results", "nse_results_xbrl", "nse_integrated", "nse_integrated_xbrl"]
     ap.add_argument("--datasets", default="all", help="comma list or 'all' (" + ",".join(names) + ")")
     ap.add_argument("--start", default="2019-01-01")
     ap.add_argument("--end", default=(date.today() - timedelta(days=1)).isoformat())
@@ -286,6 +350,10 @@ def main():
         results["nse_results"] = fetch_results_index(start, end)
     if "nse_results_xbrl" in wanted:
         results["nse_results_xbrl"] = fetch_results_xbrl()
+    if "nse_integrated" in wanted:
+        results["nse_integrated"] = fetch_integrated_index()
+    if "nse_integrated_xbrl" in wanted:
+        results["nse_integrated_xbrl"] = fetch_integrated_xbrl()
     for n in wanted:
         print(f"{n:12} {results.get(n)}")
 
