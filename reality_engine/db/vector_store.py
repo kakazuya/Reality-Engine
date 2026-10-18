@@ -215,6 +215,10 @@ class VectorStoreManager:
 
         if required <= self._append_capacity:
             return
+        # Windows refuses os.replace on a file that is still memory-mapped: release our read map first. Without this
+        # (2026-10-18) every add after the store filled hit OSError and fell back to rewriting the whole vectors.json
+        # (~450 MB per document, ~150 MB/s of writes), and those vectors never reached vectors.f32.
+        self.close()
         new_capacity = max(required, max(1024, self._append_capacity * 2))
         raw_tmp = self._append_vectors_path.with_suffix(".f32.tmp")
         with raw_tmp.open("wb") as fh:
@@ -269,8 +273,10 @@ class VectorStoreManager:
                 shape=(self._append_capacity, self.dimension),
             )
             self._matrix = matrix[:end]
-        except (ImportError, OSError, TypeError, ValueError):
-            # Keep the dependency-free legacy path as a correctness fallback.
+        except (ImportError, OSError, TypeError, ValueError) as exc:
+            # Keep the dependency-free legacy path as a correctness fallback, but say so: it rewrites the full corpus.
+            import logging
+            logging.getLogger(__name__).warning("append store failed (%s); falling back to full vectors.json rewrite", exc)
             self._save()
 
     def embed(self, text: str, is_query: bool = False) -> list[float]:
