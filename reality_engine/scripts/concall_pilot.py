@@ -29,8 +29,11 @@ ALIASES = {"longcat-v2": ("longcat-2.5-preview-free", "prompt_v2.md"),
            # round 3 (2026-10-18): paid Go models, prompt v2, all on Go key 2 (key 1's monthly allowance is used up)
            "mimo-v2.6-flash": ("mimo-v2.6-flash", "prompt_v2.md"),
            "deepseek-v4.1-flash": ("deepseek-v4.1-flash", "prompt_v2.md"),
-           "muse-spark-1.3-contributor": ("muse-spark-1.3-contributor", "prompt_v2.md")}
-GO_KEY2_ONLY = {"mimo-v2.6-flash", "deepseek-v4.1-flash", "muse-spark-1.3-contributor"}
+           "muse-spark-1.3-contributor": ("muse-spark-1.3-contributor", "prompt_v2.md"),
+           # round 4 (2026-10-18 evening): same model id after DeepSeek's 1017 release; tokens/quality vs round 3 tell
+           # whether Go now serves V4.1-Flash-1017
+           "deepseek-v4.1-flash-r4": ("deepseek-v4.1-flash", "prompt_v2.md")}
+GO_KEY2_ONLY = {"mimo-v2.6-flash", "deepseek-v4.1-flash", "muse-spark-1.3-contributor", "deepseek-v4.1-flash-r4"}
 RESPONSES_API = {"muse-spark-1.3-contributor"}   # Muse answers only on /responses (chat/completions gives 400)
 
 
