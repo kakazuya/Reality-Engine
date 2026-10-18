@@ -30,6 +30,9 @@ from reality_engine.scripts.concall_pilot import call_go, parse_json
 
 ROOT = Path(__file__).resolve().parents[2]
 DB = ROOT / "reality_engine/data/equity_intelligence.db"
+# 12k characters per section (was 24k: answers of 50+ events took minutes, broke as JSON and blocked the run;
+# sections already read at 24k keep their ids 0.. and are not re-read unless their numbering differs)
+SECTION = 12000
 DDL = """
 CREATE TABLE IF NOT EXISTS policy_events (id INTEGER PRIMARY KEY AUTOINCREMENT, source_kind TEXT, source_id TEXT,
     section INTEGER, published_at TEXT, title TEXT, policy_name TEXT, instrument TEXT, stage TEXT,
@@ -82,7 +85,7 @@ def sources(con, kind, limit, doc_ids):
         title, pub, st = con.execute("SELECT title, published_date, source_type FROM raw_documents WHERE doc_id=?", (d,)).fetchone()
         text = "\n".join(r[0] for r in con.execute("SELECT content FROM document_chunks WHERE doc_id=? ORDER BY chunk_index", (d,)))
         text = re.sub(r"\[Metadata:[^\]]*\]\n?", "", text)
-        parts = [text[i:i + 24000] for i in range(0, len(text), 24000)]
+        parts = [text[i:i + SECTION] for i in range(0, len(text), SECTION)]
         out += [("doc", str(d), pub, f"{st}: {title}", p, n) for n, p in enumerate(parts)]
     return out
 
@@ -145,7 +148,9 @@ def main():
     key = ar.user_env()[a.key]
     n_ev = 0
     with cf.ThreadPoolExecutor(a.workers) as ex:
-        for doc, rows in ex.map(lambda it: run_one(it, a.model, key, DB), items):
+        futs = [ex.submit(run_one, it, a.model, key, DB) for it in items]
+        for fut in cf.as_completed(futs):   # save each section as soon as it is read (map() waited in queue order)
+            doc, rows = fut.result()
             with con:
                 con.execute("DELETE FROM policy_events WHERE source_kind=? AND source_id=? AND section=?", doc[:3])
                 con.executemany("INSERT INTO policy_events (source_kind, source_id, section, published_at, title, "
