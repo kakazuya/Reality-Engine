@@ -92,7 +92,7 @@ then switch readers over. Never assume; measure.
 - Policy link: RBI / SEBI overseas-investment limits into policy_events (supply caps drive premiums).
 - Check: MONQ50 shows ~+235% premium on 21 Sep 2026 and the unwind after; MON100 premium series sane.
 
-### B2. Total-return indices (benchmark rule)
+### B2. Total-return indices (benchmark rule) - DONE 2026-10-19 (NSE official; BSE derived, error measured)
 - Fetch TRI history for Nifty Smallcap 250, Nifty Midcap 150 (niftyindices.com historical TRI) and BSE 250
   SmallCap, Sensex, BSE IPO (BSE TR / total-return series) → `index_tri (index_name, date, tri)`; daily via EOD job.
 - Benchmark selector uses trailing-12-month TRI return, chosen before each month.

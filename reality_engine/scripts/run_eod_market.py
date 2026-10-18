@@ -14,8 +14,9 @@ Steps
   7 rebuild security_master / symbol_isin_history
   8 PIB English releases of the last 3 days (pib_feed.py)
   9 trading ISIN for results XBRL filings (resolve_results_isin.py -> filings_isin)
- 10 DuckDB analysis snapshot data/snapshots/truth_<date>.duckdb (build_truth_snapshot.py, ~20 min, keeps 7)
- 11 query speed check (query_speed_check.py; over-limit queries go into the watchdog report)
+ 10 total-return indices (fetch_index_tri.py: Nifty official last 10 days, BSE derived)
+ 11 DuckDB analysis snapshot data/snapshots/truth_<date>.duckdb (build_truth_snapshot.py, ~20 min, keeps 7)
+ 12 query speed check (query_speed_check.py; over-limit queries go into the watchdog report)
 Log: reality_engine/data/logs/eod_market.log
 
     python -m reality_engine.scripts.run_eod_market
@@ -55,6 +56,7 @@ def main():
         step("security master", ["reality_engine.scripts.build_security_master"]),
         step("pib releases", ["reality_engine.scripts.pib_feed", "--start", (end - dt.timedelta(days=3)).isoformat(), "--end", e]),
         step("results isin", ["reality_engine.scripts.resolve_results_isin"]),
+        step("index tri", ["reality_engine.scripts.fetch_index_tri", "--start", start, "--end", e]),
         step("analysis snapshot", ["reality_engine.scripts.build_truth_snapshot"]),
         step("query speed check", ["reality_engine.scripts.query_speed_check"]),
     ]

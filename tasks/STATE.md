@@ -37,6 +37,20 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 - concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
   facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
+**2026-10-19 05:30 (Claude): B2 done; A2 sample running.**
+- B2 `scripts/fetch_index_tri.py` -> `index_tri`: official TRI from niftyindices.com (new endpoint
+  /BackPage/getTotalReturnIndexString, 1 year per call) for Nifty Smallcap 250, Midcap 150, 50, 500 since 2019; BSE
+  publishes no TRI (bseindia archive = price only, asiaindex.co.in parked) so BSE 250 SmallCap / Sensex / BSE IPO TRI is
+  derived from price + BSE's daily div_yield x 0.8 (scale calibrated on the 4 NSE indices vs official TRI 2020-25:
+  mean error -0.02%/yr, worst 0.38%). Check: official TRI - price = 0.5-1.5%/yr = index yield. benchmark_for_month()
+  picks: Jan-2024 Nifty Smallcap 250, Jan-2025 BSE IPO, Jan-2026 Sensex, Oct-2026 BSE IPO. Nightly step added.
+- A2 `scripts/pib_regional.py` (new tables pib_ml_*): 29 PIB offices x their languages (62 combos, 22 languages;
+  e.g. Mumbai Marathi/Konkani, Chennai Tamil). One day = ~527 releases, ~9 min with bodies -> 2021+ backfill ~13 days
+  at full bodies; plan: titles for all, bodies for releases not matched as translations. Translation marking: (1) page
+  links the English PRID ('release_link', exact), (2) EmbeddingGemma title(+body) similarity - threshold to tune on
+  the 20-day sample (2026-09-26..10-14, running detached: `scripts/run_pib_regional.cmd`, log pib_regional.log).
+  Note: Delhi English for recent days is not in pib_releases until tonight's EOD run (backfill is at 2021-07).
+
 **2026-10-19 04:45 (Claude): A1 done.** `scripts/build_tax_rules.py` -> table `tax_rules` (20 rows) +
 `tax_rule(rule, date)`. Sources are the enacted Gazette texts in `data/tax_sources/` (Finance Act 2018, Finance (No. 2)
 Act 2024, Income-tax Act 2025, Finance Act 2026, NSE STT circular 2023); every quote is verified against the PDF text.
