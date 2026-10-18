@@ -93,7 +93,7 @@ SNAPSHOT_QUERIES = [
     ("snap_px_one_stock", 0.1, "SELECT * FROM px_daily WHERE entity_id = 'INE511C' ORDER BY date"),
 ]
 VECTOR = ("vector_search_top20", 1.0)   # query embedding + dot product over the append store (store load reported apart)
-PENDING = [("state_isin_t", 1.0, "after Q4 (reality_engine/query/state.py)")]
+PENDING = []
 
 
 def boot_age_min():
@@ -171,6 +171,17 @@ def main():
             recs.append({"run_id": run_id, "name": name, "db": snaps[-1].name, "limit_s": limit,
                          "first_s": times[0] and round(times[0], 4), "warm_s": times[1] and round(times[1], 4),
                          "rows": rows, "ok": ok, "error": err, "boot_age_min": boot})
+    if snaps and (not only or "state_isin_t" in only):
+        from reality_engine.query.state import state
+        times = []
+        for t in ("2025-02-14 15:20", "2026-08-01 09:15"):    # first call opens the snapshot
+            t0 = time.perf_counter()
+            n = sum(len(v) for v in state(ISIN, t).values() if isinstance(v, list))
+            times.append(time.perf_counter() - t0)
+        recs.append({"run_id": run_id, "name": "state_isin_t", "db": snaps[-1].name, "limit_s": 1.0,
+                     "first_s": round(times[0], 4), "warm_s": round(times[1], 4), "rows": n,
+                     "ok": times[1] <= 1.0, "error": None, "boot_age_min": boot,
+                     "note": "first = snapshot open; limit applies to warm"})
     if not only or VECTOR[0] in only:
         try:
             load_s, (first, warm), rows, n = run_vector()

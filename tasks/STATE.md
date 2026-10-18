@@ -37,6 +37,13 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 - concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
   facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
+**2026-10-19 04:50 (Claude): Q4 v1.** `reality_engine/query/state.py`: state(isin, t) over the newest snapshot (naive t
+= IST); sections identity, prices (bar known 18:00 IST), results (trading ISIN), guidance (+checks), orders, deck_kpis,
+ar_facts, announcements, insider, sast, deals, pead, policy (company-name match only). `scripts/state_check.py`:
+300 random (isin, t): 0 leaks, p50 0.08 s, p95 0.16 s. Hand-checked TITAGARH (Q3 FY25 visible from 15:12 IST
+14-Feb-2025, revenue 902 cr) and HAL across the 2023 split. Pending: 18 more hand checks, search(), results 2025+
+(integrated XBRL still downloading), policy sector mapping (A3).
+
 **2026-10-19 04:00-04:35 (Claude): Q2 done.** `build_truth_snapshot.py` now also writes 32 research tables
 (`snapshot_research_tables.py`): security master, results (filings + trading_isin, long facts with period_kind,
 results_key quarter pivot), AR, decks, concalls, Telegram, BSE announcements, insider / SAST / PIT XBRL / deals / short,
