@@ -63,9 +63,12 @@ LIMIT ?
 
 
 # --local-only (2026-10-18): files already downloaded (download-only runs) but never chunked; --before keeps rows filed
-# before a date (Shivam: pre-2026 transcripts go to CPU chunks + embeddings, 2026 ones to the DeepSeek reader)
+# before a date. The date passed on is the real filing date, never doc_date (= crawl date: the first run on 2026-10-18
+# stamped 5,725 transcripts with 2026 dates; repaired by scripts/repair_transcript_dates.py) (Shivam: pre-2026 transcripts go to CPU chunks + embeddings, 2026 ones to the DeepSeek reader)
 LOCAL_SQL = """
-SELECT cd.id, cd.symbol, cd.isin, cd.title, cd.doc_date, cd.source_url, cd.local_file_path
+SELECT cd.id, cd.symbol, cd.isin, cd.title,
+       substr(COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date), 1, 10) AS real_date,
+       cd.source_url, cd.local_file_path
 FROM corporate_documents cd
 WHERE cd.doc_type = ?
   AND cd.local_file_path IS NOT NULL AND cd.local_file_path <> ''
