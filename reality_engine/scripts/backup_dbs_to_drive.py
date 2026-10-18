@@ -60,8 +60,10 @@ def snapshot_and_pack(db, set_dir):
     copy = set_dir / db.name
     src = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=600)
     dst = sqlite3.connect(copy)
+    # one step (pages=-1): a stepwise backup restarts whenever another connection writes, so with the PIB / EOD jobs
+    # writing every second a 39 GB copy would never finish; a single step reads one consistent snapshot instead
     with dst:
-        src.backup(dst, pages=65536)
+        src.backup(dst, pages=-1)
     src.close(); dst.close()
     subprocess.run([SEVENZIP, "a", "-t7z", "-mx1", "-mmt=4", "-v1g", str(set_dir / f"{db.stem}.7z"), str(copy)],
                    check=True, stdout=subprocess.DEVNULL)

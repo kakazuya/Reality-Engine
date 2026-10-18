@@ -12,6 +12,7 @@ Steps
   6 BSE announcements, all companies (order wins, transcripts, decks, results, board meetings ...) ->
     analysis/bse_announcements.db, then new concall transcripts / decks into corporate_documents
   7 rebuild security_master / symbol_isin_history
+  8 PIB English releases of the last 3 days (pib_feed.py)
 Log: reality_engine/data/logs/eod_market.log
 
     python -m reality_engine.scripts.run_eod_market
@@ -49,6 +50,7 @@ def main():
         step("bse announcements", ["reality_engine.scripts.fetch_bse_announcements_daily", "--start", start, "--end", e]),
         step("new transcripts/decks", ["reality_engine.scripts.discover_bse_feed_docs", "--since", start]),
         step("security master", ["reality_engine.scripts.build_security_master"]),
+        step("pib releases", ["reality_engine.scripts.pib_feed", "--start", (end - dt.timedelta(days=3)).isoformat(), "--end", e]),
     ]
     return max(rcs)
 
