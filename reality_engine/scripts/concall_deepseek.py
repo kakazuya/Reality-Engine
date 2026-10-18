@@ -193,7 +193,9 @@ def work(item, keys, out_path):
     if base["chars"] < MIN_CHARS:
         save(out_path, {**base, "status": "skip_cover_letter"}); return "skip_cover_letter"
     env = ar.user_env()
-    for attempt in range(4):
+    attempt = 0
+    while attempt < 4:
+        attempt += 1
         wait_budget(out_path)
         kname = min(keys, key=lambda k: bench.get(k, 0))
         if bench.get(kname, 0) > time.time():
@@ -219,6 +221,15 @@ def work(item, keys, out_path):
             return "ok"
         except Exception as e:
             msg = str(e)
+            if "GoUsageLimitError" in msg:
+                # Go's 5-hour / weekly window is spent: wait for it to roll, without using up this doc's attempts
+                # (2026-10-19 00:06: four 30-min retries would have turned the rest of the queue into errors)
+                bench[kname] = time.time() + 900
+                attempt -= 1
+                with lock:
+                    if time.time() - bench.get("_logged", 0) > 600:
+                        bench["_logged"] = time.time(); log(f"{kname} Go usage limit reached; waiting 15 min steps")
+                continue
             if "429" in msg:
                 bench[kname] = time.time() + 1800
                 log(f"{kname} 429 -> benched 30 min: {msg[:160]}")
