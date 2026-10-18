@@ -1,6 +1,7 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
 ## ORDER OF WORK (Shivam, 2026-10-19 00:40) - the data-stitching plan
+Phase-wise queue of new items (policy pillar, ETFs, TRI, shareholding): **`tasks/PIPELINE_TODO.md`**.
 Goal: one point-in-time knowledge ledger that quantifies companies and feeds the shared backtest harness.
 1. **Quarterly results Mar 2025 -> now** (results_xbrl.db stops at the Dec-2024 quarter: SEBI moved results to
    'Integrated Filing (Financials)') + BSE-only companies; restart the EOD price job (prices end 2026-10-09). <- IN PROGRESS
