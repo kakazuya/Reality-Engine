@@ -81,8 +81,8 @@ Gaps: pre-2026 holding period (s.2(42A) 1961) has no stored source; cess / surch
 = IST); sections identity, prices (bar known 18:00 IST), results (trading ISIN), guidance (+checks), orders, deck_kpis,
 ar_facts, announcements, insider, sast, deals, pead, policy (company-name match only). `scripts/state_check.py`:
 300 random (isin, t): 0 leaks, p50 0.08 s, p95 0.16 s. Hand-checked TITAGARH (Q3 FY25 visible from 15:12 IST
-14-Feb-2025, revenue 902 cr) and HAL across the 2023 split. Pending: 18 more hand checks, search(), results 2025+
-(integrated XBRL still downloading), policy sector mapping (A3).
+14-Feb-2025, revenue 902 cr) and HAL across the 2023 split. Hand checks: `scripts/state_handcheck.py`, 20 companies x 4 times, 53 field checks vs raw XBRL / bhavcopy / BSE
+feed, 0 mismatches (05:45). Pending: search() (after the Gemma index), policy sector mapping (A3).
 
 **2026-10-19 04:00-04:35 (Claude): Q2 done.** `build_truth_snapshot.py` now also writes 32 research tables
 (`snapshot_research_tables.py`): security master, results (filings + trading_isin, long facts with period_kind,
