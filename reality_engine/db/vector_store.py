@@ -365,6 +365,11 @@ class VectorStoreManager:
         table = self._table_handle()
         if table and rows:
             table.add(rows)
+        if self._append_store and self._append_rows == len(self._rows):
+            # the matrix holds these vectors; keeping Python float lists in self._rows as well grew a long ingest run
+            # by ~1 GB per 1,000 transcripts (2026-10-18: 2.4 GB after 1,900, machine RAM free 1.5 GB)
+            for row in fresh:
+                row.pop("vector", None)
         return len(rows)
 
     def search(self, query: str, symbol: Optional[str] = None, top_k: int = 10) -> list[dict[str, Any]]:
