@@ -37,7 +37,24 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 - concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
   facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
-**2026-10-19 05:30 (Claude): B2 done; A2 sample running.**
+**2026-10-19 05:35 (Claude): B1 done, B3 running, results 2025-26 verified.**
+- Integrated results job finished: 30,181 INTEGRATED filings ok (Mar-2025 -> Sep-2026 quarters), 106,613 filings in
+  all; filings_isin rebuilt. Cross-check vs concall statements: POONAWALLA Q2 FY27 PAT 374.9 cr (call: "375 crore"),
+  BEL Q1 FY27 revenue 5,533.1 cr (call: "INR5,533 crores"). Snapshot rebuilt (9.0 GB now: 7 kept = ~63 GB of 120 GB
+  free on C: - Shivam to decide keep count); DuckDB capped at 4 GB after the build took ~11 GB (watchdog low_ram 05:05).
+- B1 `scripts/fetch_etf_nav.py`: etf_px (432 ETF ISINs, 2019 ->, from NSE bhavcopy-with-ISIN files + old table),
+  fund_nav (AMFI monthly NAV history, raw gz in raw_market/amfi_nav; 366 ETFs matched), view etf_premium, etf_inav for
+  5 international ETFs (Nasdaq-100, Nasdaq Q-50, FANG+, S&P 500, Hang Seng). Measured: AMFI NAV of date t uses the
+  underlying close of the same date t, so iNAV at the Indian close = k_{t-1} x previous index close x FX_t.
+  Check: MONQ50 +235.45% premium to NAV on 18-Sep-2026 (Fri; 21-Sep +163.7%), then -49% in 3 sessions; NIFTYBEES /
+  GOLDBEES within +-0.4%. Nightly step added. Not done: ETFs in security_master as instrument_type (kept in
+  etf_master instead), circuit days, RBI/SEBI overseas-limit rows in policy_events.
+- B3 `scripts/fetch_shareholding.py` (+ `run_shareholding.cmd`, detached, log shareholding.log): NSE SHP index
+  (broadcast time IST), XBRL gz, shp_facts + view shareholding (promoter, pledged / encumbered as % of promoter
+  holding, FII, DII, MF, insurance, retail, FPI limit used). The date-range listing is nearly empty before 2021, so
+  history comes from a per-symbol listing (~4k symbols). Check pending: 10 companies x 2 quarters vs exchange site.
+
+**2026-10-19 04:55 (Claude): B2 done; A2 sample running.**
 - B2 `scripts/fetch_index_tri.py` -> `index_tri`: official TRI from niftyindices.com (new endpoint
   /BackPage/getTotalReturnIndexString, 1 year per call) for Nifty Smallcap 250, Midcap 150, 50, 500 since 2019; BSE
   publishes no TRI (bseindia archive = price only, asiaindex.co.in parked) so BSE 250 SmallCap / Sensex / BSE IPO TRI is

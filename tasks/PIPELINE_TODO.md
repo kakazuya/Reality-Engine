@@ -82,7 +82,7 @@ then switch readers over. Never assume; measure.
 
 ## Phase B — instruments and benchmarks
 
-### B1. ETF NAV and premium
+### B1. ETF NAV and premium - DONE 2026-10-19 (MONQ50 check passes; circuit days + overseas-limit policy rows pending)
 - Security master: add INF ETF ISINs as `instrument_type='ETF'` (symbol_isin_history already sees them in UDiFF).
 - AMFI NAV history 2019→ (portal.amfiindia.com NAV history download, by scheme and date range; has ISIN) →
   `fund_nav (isin, date, nav)`; daily via run_eod_market.
@@ -98,7 +98,7 @@ then switch readers over. Never assume; measure.
 - Benchmark selector uses trailing-12-month TRI return, chosen before each month.
 - Check: TRI − price-index return over a year ≈ the index dividend yield (1–1.5%).
 
-### B3. Shareholding pattern and promoter pledge
+### B3. Shareholding pattern and promoter pledge - backfill RUNNING 2026-10-19
 - Quarterly shareholding XBRL (NSE / BSE shareholding-pattern filings, same style as results XBRL) →
   `shareholding (isin, quarter_end, filed_at, promoter_pct, promoter_pledged_pct, fii_pct, dii_pct, mf_pct,
   retail_pct, ...)`; SAST / pledge-creation disclosures (Reg 31) for intra-quarter pledge changes.

@@ -9,14 +9,15 @@
                raw kept gzipped in raw_market/amfi_nav/YYYY-MM.txt.gz). NAV of day d is struck after the close of d
                (published that night): known at the end of day d IST, never before.
   etf_premium  (view: isin, symbol, date, close, nav, premium_pct): close vs the same day's NAV.
-  etf_inav     (isin, date, underlying, idx_close, idx_date, fx, k, inav, close, premium_vs_inav_pct): international
-               ETFs. The official NAV arrives at night; at the Indian close (15:30 IST) the latest underlying close is the
-               previous session's (US / Europe close after India; Hong Kong / Tokyo close before 15:30 IST but we take
-               the last close dated before the Indian session's date to stay point-in-time safe). Indicative NAV:
-                   k_t   = NAV_t / (idx_{last close dated < t} x FX_t)          (units, expenses, cash drag)
+  etf_inav     (isin, date, underlying, idx_close, idx_date, fx, k, inav, close, nav, premium_vs_inav_pct):
+               international ETFs. Measured 2026-10-19: AMFI NAV dated t uses the underlying index close of the SAME
+               date t (k = NAV / (idx x FX) moves a median 0.16%/day aligned that way vs 1.0% with a one-day lag), so
+               for US-listed underlyings NAV_t is not knowable at the Indian close. Point-in-time indicative NAV at
+               15:30 IST of day t:
+                   k_t    = NAV_t / (idx_t x FX_t)                         (units, expenses, cash drag; same-date)
                    iNAV_t = k_{t-1} x idx_{last close dated < t} x FX_t
-               FX_t: Yahoo INR=X close of day t (taken at the Indian close; an approximation, logged as such).
-               Accuracy is measured (--check): iNAV_t vs the official NAV_t.
+               Its gap to NAV_t is the underlying's day-t session (not yet traded), not an error. A unit split
+               (k jumps > 30%) blanks that day's iNAV. FX_t: Yahoo INR=X close of t (approximation).
 
     python -m reality_engine.scripts.fetch_etf_nav [--start 2019-01] [--end 2026-10] [--check]
 """
@@ -88,7 +89,7 @@ def load_px(db):
 
 def month_file(a):
     out = RAW / "amfi_nav" / f"{a:%Y-%m}.txt.gz"
-    if out.exists():
+    if out.exists() and a.strftime("%Y-%m") < dt.date.today().strftime("%Y-%m"):   # the running month is re-fetched
         return out
     out.parent.mkdir(parents=True, exist_ok=True)
     b = (a.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
@@ -177,15 +178,21 @@ def build_inav(db):
                           "AND n.date = p.date WHERE p.isin = ? ORDER BY p.date", (isin,)).fetchall()
         k_prev = None
         for d, close, nav in rows:
-            idate, iclose = before(idx, d)
+            idate, iclose = before(idx, d)                    # last close dated before t: known at 15:30 IST
             _, fxv = before(fx, d, strict=False)
             if not iclose or not fxv:
                 continue
             inav = k_prev * iclose * fxv if k_prev else None
+            k_now = None
+            if nav:
+                _, same = before(idx, d, strict=False)        # same-date close: what NAV_t is struck on
+                k_now = nav / (same * fxv) if same else None
+                if k_now and k_prev and abs(k_now / k_prev - 1) > 0.3:
+                    inav = None                               # unit split / face-value change on this day
             out.append((isin, d, idx, iclose, idate, fxv, k_prev, inav, close, nav,
                         100 * (close / inav - 1) if inav and close else None))
-            if nav:
-                k_prev = nav / (iclose * fxv)
+            if k_now:
+                k_prev = k_now
     with db:
         db.execute("DELETE FROM etf_inav")
         db.executemany("INSERT OR REPLACE INTO etf_inav VALUES (?,?,?,?,?,?,?,?,?,?,?)", out)
@@ -202,7 +209,7 @@ def check(db):
         for r in db.execute("SELECT underlying, COUNT(*), ROUND(AVG(ABS(inav / nav - 1)) * 100, 3), "
                             "ROUND(MAX(ABS(inav / nav - 1)) * 100, 2) FROM etf_inav WHERE inav IS NOT NULL AND nav IS NOT NULL "
                             "GROUP BY 1"):
-            print("iNAV vs official NAV: underlying, days, mean |err| %, max |err| %:", r)
+            print("iNAV vs same-day NAV (gap = underlying's day-t session): underlying, days, mean |gap| %, max %:", r)
         print(db.execute("SELECT date, close, round(inav, 2), round(nav, 2), round(premium_vs_inav_pct, 1) FROM etf_inav "
                          "i JOIN etf_master m USING (isin) WHERE m.symbol = 'MONQ50' AND date BETWEEN '2026-09-16' "
                          "AND '2026-09-23' ORDER BY date").fetchall())
