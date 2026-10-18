@@ -37,7 +37,16 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 - concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
   facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
-**2026-10-19 04:50 (Claude): Q4 v1.** `reality_engine/query/state.py`: state(isin, t) over the newest snapshot (naive t
+**2026-10-19 04:45 (Claude): A1 done.** `scripts/build_tax_rules.py` -> table `tax_rules` (20 rows) +
+`tax_rule(rule, date)`. Sources are the enacted Gazette texts in `data/tax_sources/` (Finance Act 2018, Finance (No. 2)
+Act 2024, Income-tax Act 2025, Finance Act 2026, NSE STT circular 2023); every quote is verified against the PDF text.
+STCG 15% -> 20% and LTCG 10% -> 12.5% for transfers on/after 23-Jul-2024; LTCG exemption Rs 1 lakh (FY18-19..23-24)
+-> Rs 1.25 lakh for all of FY 2024-25 (one limit over both rate periods); ITA 2025 s.196/198 keep 20% / 12.5% /
+Rs 1.25 lakh from 1-Apr-2026; STT delivery 0.1% buy + sell throughout (2024 and 2026 changes are F&O only).
+Gaps: pre-2026 holding period (s.2(42A) 1961) has no stored source; cess / surcharge cap rows only for FY 2024-25 and
+2026-27 (other years' Finance Acts not stored).
+
+**2026-10-19 04:35 (Claude): Q4 v1.** `reality_engine/query/state.py`: state(isin, t) over the newest snapshot (naive t
 = IST); sections identity, prices (bar known 18:00 IST), results (trading ISIN), guidance (+checks), orders, deck_kpis,
 ar_facts, announcements, insider, sast, deals, pead, policy (company-name match only). `scripts/state_check.py`:
 300 random (isin, t): 0 leaks, p50 0.08 s, p95 0.16 s. Hand-checked TITAGARH (Q3 FY25 visible from 15:12 IST

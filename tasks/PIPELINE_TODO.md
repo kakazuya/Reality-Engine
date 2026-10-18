@@ -52,7 +52,7 @@ then switch readers over. Never assume; measure.
 
 ## Phase A — policy pillar (core; do first)
 
-### A1. Tax-rule table for the backtest harness
+### A1. Tax-rule table for the backtest harness - DONE 2026-10-19 (check passes; holding-period pre-2026 source pending)
 - Build `tax_rules` (equity_intelligence.db): `rule` (stcg_rate, ltcg_rate, ltcg_exemption_inr, ltcg_holding_months,
   stt_delivery_rate, ...), `value`, `effective_from`, `effective_to`, `announced_at`, `source` (Finance Act / CBDT
   notification + policy_events row id), `quote`.
