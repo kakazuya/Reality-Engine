@@ -128,7 +128,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--doc-ids", default="")
     ap.add_argument("--doc-types", default="", help="raw_documents.source_type LIKE patterns, comma-separated "
-                    "(e.g. Union_Budget,State_Budget%,RBI%,Economic_Survey); sections already done are skipped")
+                    "(SQL LIKE patterns, e.g. Union_Budget,Economic_Survey; use %% as wildcard); sections already done are skipped")
     ap.add_argument("--model", default="longcat-2.5-preview-free")
     ap.add_argument("--key", default="OPENCODE_GO_API_KEY")
     ap.add_argument("--workers", type=int, default=8)
