@@ -123,6 +123,10 @@ def build(out_path: Path):
     con.execute("INSTALL sqlite; LOAD sqlite;")
     con.execute(f"ATTACH '{cfg.DB_PATH.as_posix()}' AS re (TYPE sqlite, READ_ONLY)")
     con.execute("SET preserve_insertion_order=false")
+    # DuckDB defaults to 80% of RAM; the 2026-10-19 build took ~11 GB and left the machine at 0 GB free while other
+    # jobs ran (watchdog low_ram). Capped: it spills to a temp dir beside the snapshot instead.
+    con.execute("SET memory_limit='4GB'")
+    con.execute(f"SET temp_directory='{(out_path.parent / 'duckdb_tmp').as_posix()}'")
     sq = con.execute
 
     # ---------------- masters ----------------
@@ -472,6 +476,8 @@ def main():
     if not args.prices_only:
         from reality_engine.scripts.snapshot_research_tables import add_research_tables
         con = duckdb.connect(str(tmp))
+        con.execute("SET memory_limit='4GB'")
+        con.execute(f"SET temp_directory='{(SNAP_DIR / 'duckdb_tmp').as_posix()}'")
         research = add_research_tables(con)
         rep["research_tables"] = len(research)
         rep["research_count_fail"] = [r[0] for r in research if r[4] is False]
