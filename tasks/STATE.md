@@ -1,5 +1,32 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## 2026-10-18 15:40 transcripts, PEAD, Drive, disk (Claude, main checkout)
+
+- **Transcript plan (Shivam):** 2026 transcripts -> DeepSeek extraction (PEAD companies first; wait for
+  DeepSeek-V4.1-Flash-1017 on Go / key 1 reset Oct 21, then re-pilot ~$0.40). Pre-2026 -> chunks + bge-small embeddings.
+- **Running:** `run_annual_report_ingest.py --doc-type CONCALL_TRANSCRIPT --local-only --before 2026-01-01` (new mode:
+  chunk + embed already-downloaded, never-processed files), 8,484 transcripts, ~14/min, ~10 h, log
+  `data/logs/concall_cpu_chunk.log`. Embeds on GPU (DirectML) - Shivam OK. Stores: equity_intelligence.db
+  (raw_documents, document_chunks.embedding JSON, FTS5) + data/lancedb.
+- **Next after it finishes (Shivam):** embedding model test - ~50 real concall questions, bge-small vs Qwen3-Embedding-0.6B
+  vs EmbeddingGemma-300M (retrieval hit rate + GPU speed, DirectML/ONNX support). Switch only on a clear gain, then
+  re-embed everything in one pass (text/chunks are reused).
+- **PEAD (Telegram topic 683):** session re-logged in; topic refreshed to 2026-10-17 (no posts Aug 27 - Oct 8).
+  `scripts/tg_pead_signals.py` builds table `tg_pead_signals` (post id/time UTC, symbol from Chart button, ISIN, label,
+  filing URL) and `data/concall_priority_pead.json`: since 2026-06-18, 513 companies, 356 hold concalls.
+  Transcript counts: PEAD cos 2026: 895; 2022+: 4,871; all 2026: 3,597. DeepSeek v4.1 est. $0.0156/transcript off-peak.
+  BSE feed refreshed for 2026 for these companies; Q2 FY27 transcripts: 8 so far (4 got 404 on AttachHis - retry via
+  AttachLive).
+- **Drive:** rclone stopped (it saturated the uplink, RDP lag ~5 s). Shivam set up his own rclone client_id (drive.file:
+  it cannot see files the old shared client uploaded). Shivam uploads `C:\Users\warri\Downloads\InfoDiffusion_to_upload`
+  by hand (hard links: pdfs 37,436 files 140 GiB not yet uploaded + decks 25,660 files 111 GiB). 4,134 pdfs were
+  uploaded by rclone to `InfoDiffusion_archive/pdfs`. **`D:\RealityEngine\pdfs` (19,609 files, 110 GiB, referenced by
+  corporate_documents) is in neither copy** - Shivam to upload it too.
+- **Disk:** Reality Engine ~491 GB (C: ~381: pdfs 157, decks 112, DBs 65, other ~27; D: 110). Cleanup proposal for C:
+  after upload verified (Drive count 63,096 / ~251 GB): decks 112 (extraction complete: 815,837 pages ok/skipped,
+  second_queue 0), ARs 114, pre-2024 offer docs etc ~15, old DB backups ~6 -> ~245 GB. Keep transcripts. Nothing deleted
+  yet; awaiting Shivam.
+
 ## 2026-10-18 05:40 concall pilot round 3 (Go key 2, paid models) - done, decision pending (Shivam)
 
 - Ran mimo-v2.6-flash, deepseek-v4.1-flash, muse-spark-1.3-contributor (Responses API) on the 25 transcripts with

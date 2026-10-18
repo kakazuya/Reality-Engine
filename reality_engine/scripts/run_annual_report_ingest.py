@@ -62,6 +62,44 @@ LIMIT ?
 """
 
 
+# --local-only (2026-10-18): files already downloaded (download-only runs) but never chunked; --before keeps rows filed
+# before a date (Shivam: pre-2026 transcripts go to CPU chunks + embeddings, 2026 ones to the DeepSeek reader)
+LOCAL_SQL = """
+SELECT cd.id, cd.symbol, cd.isin, cd.title, cd.doc_date, cd.source_url, cd.local_file_path
+FROM corporate_documents cd
+WHERE cd.doc_type = ?
+  AND cd.local_file_path IS NOT NULL AND cd.local_file_path <> ''
+  AND COALESCE(cd.is_processed, 0) = 0
+  AND (? = '' OR COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date, '') < ?)
+  AND COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date, '') <> ''
+ORDER BY COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date) DESC
+LIMIT ?
+"""
+
+
+def _local_only(conn_rows, doc_type, ingestor, db_manager) -> int:
+    ok = failed = 0
+    t0 = time.time()
+    for n, (did, sym, isin, title, ddate, url, path) in enumerate(conn_rows, 1):
+        try:
+            if not Path(path).exists():
+                failed += 1; log.warning("missing file %s %s", sym, path); continue
+            res = ingestor.ingest_pdf(Path(path), title=title, source_type=doc_type, published_date=ddate,
+                                      source_url=url, symbol=sym, isin=isin)
+            status = (res or {}).get("status")
+            if status not in ("ingested", "skipped_duplicate"):
+                failed += 1; log.warning("ingest %s %s: %s %s", sym, ddate, status, str((res or {}).get("error"))[:120]); continue
+            with db_manager.session() as conn:
+                conn.execute("UPDATE corporate_documents SET is_processed=1 WHERE id=?", (did,))
+            ok += 1
+            if n % 25 == 0:
+                log.info("[%d/%d] local ok=%d failed=%d (%.0fs)", n, len(conn_rows), ok, failed, time.time() - t0)
+        except Exception as exc:  # noqa: BLE001
+            failed += 1; log.warning("row error %s: %s", sym, str(exc)[:160])
+    log.info("RUN_COMPLETE local ingested=%d failed=%d seconds=%.0f", ok, failed, time.time() - t0)
+    return 0 if ok or failed == 0 else 1
+
+
 def _candidates(conn, limit: int, doc_type: str = "ANNUAL_REPORT", nifty200_only: bool = False, nifty50_only: bool = False,
                 since: str = "", active_since: str = "") -> List[Dict[str, Any]]:
     """`since` (YYYY-MM-DD) keeps rows filed on/after that date by their real filing time (BSE feed or BSE annual-report
@@ -130,6 +168,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     help="only companies that traded on/after YYYY-MM-DD (skips delisted ones)")
     ap.add_argument("--download-only", action="store_true", dest="download_only",
                     help="fetch PDFs and record paths without chunking them (chunking strategy decided separately)")
+    ap.add_argument("--local-only", action="store_true", dest="local_only",
+                    help="chunk + embed files already downloaded but never processed (no downloads)")
+    ap.add_argument("--before", default="", help="with --local-only: only rows filed before YYYY-MM-DD (undated skipped)")
     args = ap.parse_args(argv)
 
     from reality_engine.db.database import db_manager
@@ -138,6 +179,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     from reality_engine.ingestion.resource_guard import ResourceGuard
 
     started = time.time()
+    if args.local_only:
+        with db_manager.session() as conn:
+            rows = conn.execute(LOCAL_SQL, (args.doc_type, args.before, args.before, args.limit or 1000000)).fetchall()
+        log.info("local-only %s: %d pending (before %s)", args.doc_type, len(rows), args.before or "-")
+        if args.dry_run or not rows:
+            return 0
+        guard = ResourceGuard.from_env(root=cfg.PROJECT_ROOT)
+        return _local_only(rows, args.doc_type, PDFIngestor(db=db_manager, resource_guard=guard), db_manager)
     with db_manager.session() as conn:
         todo = _candidates(conn, args.limit or 100000, args.doc_type, args.nifty200_only, args.nifty50_only, args.since,
                            args.active_since)
