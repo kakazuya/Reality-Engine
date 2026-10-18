@@ -1,5 +1,29 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## SESSION CLOSE 2026-10-19 03:20 — read this first
+**Shivam's order:** fix data gaps, query gaps and latency first (Phase Q + A + B in `tasks/PIPELINE_TODO.md`); NO
+backtests until he says so. Implement carefully: new tables/files, verify on real rows, never break running jobs.
+
+**Running detached (survive the session; check, don't restart unless dead):**
+| Job | Launcher / log | State at close | Verify when done |
+|---|---|---|---|
+| DeepSeek 2026 concalls (Telegram PEAD + Big Orders companies only, 730 ISINs) | `scripts/run_concall_deepseek.cmd`; `data/logs/concall_deepseek.log`; out `data/concall_facts.db` | 917 ok, ~167 left; paused by its own 5 h guard ($15/5 h of its own spend), resumes by itself; also waits out Go 'usage limit' and peak hours (Mon-Fri 06:30-09:30, 11:30-15:30 IST) | `python -m reality_engine.scripts.concall_deepseek_check` (all checks pass), then `concall_facts_checks` (flags + computed direction), then `concall_query_test` |
+| Quarterly results Mar-2025 -> now (NSE Integrated Filing XBRL) | `scripts/run_integrated_results.cmd`; `data/logs/integrated_results.log` | 17.5k of 30,197 XBRL downloaded (~2/s); parser runs automatically after | `results_xbrl.db` filings with period_end >= 2025-03-31 ~30k, status ok; spot-check 5 companies' revenue vs exchange site |
+| PIB English backfill 2021 -> now | `scripts/run_pib_backfill.cmd`; `data/logs/pib_backfill.log`; table `pib_releases` | at 2021-03, ~30 s/day, ~1-1.5 days total | posted_at filled, bodies in search layer (raw_documents source_type PIB_Press_Release) |
+| Policy register over macro docs (LongCat free on Go key 1) | background python from this session (DIES with the session): relaunch `python -m reality_engine.scripts.policy_register --source doc --doc-types "Union_Budget,Union Budget%,Economic_Survey,RBI%,State_Budget%,PIB_Circular" --workers 24` (resumes: done sections skipped); log `data/logs/policy_register_docs.log` | ~281 of 3,014 sections done | quote_ok >= 98%; then run `--source pib` as PIB backfill fills |
+| DB backup to Drive | Task `RealityEngine-DBBackup` daily 05:00, uploads only 05:00-13:00; `data/logs/db_backup.log`; state `data/backups/state.json` | first full set today | Drive `InfoDiffusion_archive/db_backups/<date>/` parts + MD5 check passed |
+| EOD market + disclosures | Task `RealityEngine-EODMarket` weekdays 19:35; `data/logs/eod_market.log` | first run today 19:35 | prices / deals / FII-DII / announcements / PIB dated today; security_master rebuilt |
+
+**Built this session (2026-10-18/19):** DeepSeek runner + validator + fact checks (cc_item_checks: verified vs
+inferred, speaker, computed guidance direction) + query test; Telegram PEAD signals, Big Orders mentions (OCR) and
+`tg_orders` + `tg_order_schedule`; search-layer date repair (10k docs; hygiene probe `search_docs_date_mismatch`);
+vector store fixes (append matrix grows in place); EmbeddingGemma test win (80% vs bge-small 51% hit@5, re-embed
+pending); security_master (8,434 equity ISINs incl. delisted/SME) + symbol_isin_history; market-wide BSE announcements
+daily (order wins included); PIB feed; policy register; DB backup; EOD job extended; indexes: results 32 s -> 0.018 s,
+NSE symbol, AR FTS 49 s -> 0.39 s. Zen free models blocked for this IP (OpenCode: 'abusive traffic'); our Zen route is
+off and `new_reader_check.ZEN_BLOCKED = True`. Google Gemma free has a 16k input-tokens/min cap per key: fine for our
+API pipeline, unusable from the OpenCode app (its prompt alone exceeds it).
+
 ## ORDER OF WORK (Shivam, 2026-10-19 00:40) - the data-stitching plan
 Phase-wise queue of new items (policy pillar, ETFs, TRI, shareholding): **`tasks/PIPELINE_TODO.md`**.
 Goal: one point-in-time knowledge ledger that quantifies companies and feeds the shared backtest harness.

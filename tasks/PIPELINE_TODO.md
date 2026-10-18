@@ -4,6 +4,52 @@ Authority stays `tasks/FRAMEWORK.md`; live status in `tasks/STATE.md`. Each item
 and the check that says it is done. Tick an item only when its check passes. Point-in-time rule for every item:
 store the time the information became public (exchange / publication / posting time), never a crawl date.
 
+**Shivam's order (2026-10-19 03:20): fix DATA gaps, QUERY gaps and LATENCY first. No backtests until Shivam says so
+(his first one is extensive).** Every change must be implemented carefully without breaking running jobs or existing
+tables: work on new tables / new files, verify with a check on real rows (dates vs source, counts, sample by hand), only
+then switch readers over. Never assume; measure.
+
+## Phase Q — query layer and latency (do first, alongside Phase A)
+
+### Q1. Query speed checks (small; do first)
+- `reality_engine/scripts/query_speed_check.py`: a fixed list of the queries backtests and analysis run, each with a
+  time limit; results appended to `data/logs/query_speed.jsonl` and any over-limit query reported in the watchdog
+  report. Run nightly (add a step to run_eod_market) and after every index/schema change.
+- Queries + limits: one stock's full price history NSE and BSE (< 0.1 s); whole market one day (< 0.5 s); 20-day
+  traded value all stocks (< 2 s); one company all quarterly results (< 0.1 s); whole market one quarter (< 2 s);
+  one company AR category (< 0.5 s); market-wide AR item search via ar_facts_fts (< 1 s); one company deck KPIs
+  (< 0.5 s); market-wide deck metric search (< 1 s, needs Q3); FTS keyword over chunks (< 0.5 s); vector search
+  top-20 (< 1 s); concall facts one company (< 0.1 s); state(isin, t) (< 1 s, after Q4).
+- Already fixed 2026-10-19 (keep in the check list): results one company 32 s -> 0.018 s (index facts(file, concept,
+  context) + ANALYZE in results_xbrl.db); NSE one stock -> 0.013 s (idx_mkt_nse_full_symbol); AR item search 49 s ->
+  0.39 s (FTS5 ar_facts_fts, external content on ar_facts; rebuild/insert-sync it when ar_facts gets new rows).
+- Check: all queries under limit on a cold start (first run after reboot) and warm.
+
+### Q2. Nightly DuckDB analysis snapshot (the backtest data layer)
+- SQLite stays the write store; backtests and heavy analysis read a columnar DuckDB snapshot rebuilt nightly
+  (extend `build_truth_snapshot.py`, which already makes `data/snapshots/truth_<date>.duckdb` with adjusted and
+  total-return prices). Add: security_master + symbol_isin_history, results XBRL (filings + key facts pivoted),
+  ar_facts, deck facts (+ deck_sources known_at), concall facts + cc_item_checks, tg_orders/schedule, exchange
+  announcements (events), insider/SAST/deals, FII/DII, policy_events, pib_releases (metadata), corporate actions.
+- Every table carries its point-in-time column (known_at / filed_at / dissem / posted_at) in UTC-normalised form plus
+  the original local string (fixes the IST-vs-UTC mixing risk).
+- Keep the last 7 snapshots; backtests record the snapshot date they used (framework: research runs on dated snapshots).
+- Check: market-wide scans over ar_facts (32M) and deck facts (13.6M) < 1 s; row counts equal the SQLite sources.
+
+### Q3. Missing indexes / text indexes
+- deck_figures: FTS5 on facts(metric) (1.48M distinct strings) and index on deck_sources(isin, known_at).
+- concall_facts: FTS5 over cc_items(metric, statement, quote).
+- policy_events: indexes on published_at, instrument, stage; FTS over policy_name + quote.
+- Check: each listed query in Q1 under limit.
+
+### Q4. One query entry point
+- `reality_engine/query/state.py`: `state(isin, t)` = everything known about a company at time t across all stores
+  (latest results, guidance + computed direction, orders schedule, deck KPIs, AR facts, policy events touching its
+  sectors, ownership, prices up to t) - reading only rows public before t. `search(text, isin=None, t=None)` =
+  hybrid FTS + EmbeddingGemma vectors over all text with the same point-in-time filter.
+- Needs the metric ontology (Phase C) for clean cross-source metrics; ship a first version on raw metrics.
+- Check: leak test (nothing filed after t returned), latency under limit, 20 hand-checked company snapshots.
+
 ## Phase A — policy pillar (core; do first)
 
 ### A1. Tax-rule table for the backtest harness
