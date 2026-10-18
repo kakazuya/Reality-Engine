@@ -1,5 +1,32 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## ORDER OF WORK (Shivam, 2026-10-19 00:40) - the data-stitching plan
+Goal: one point-in-time knowledge ledger that quantifies companies and feeds the shared backtest harness.
+1. **Quarterly results Mar 2025 -> now** (results_xbrl.db stops at the Dec-2024 quarter: SEBI moved results to
+   'Integrated Filing (Financials)') + BSE-only companies; restart the EOD price job (prices end 2026-10-09). <- IN PROGRESS
+2. PIT audit of every store (known_at = exchange/publication time, never crawl date; hygiene probe exists for the search
+   layer only) + ISIN history map + add NSE SME companies to master_companies (orders/PEAD name SME cos we lack).
+3. Metric ontology (~200-300 canonical metrics) + canonical long fact ledger, XBRL-anchored: map XBRL concepts directly;
+   deck (1.48M distinct metric strings), AR items and concall metrics by embedding + one LLM pass over DISTINCT strings.
+4. Cross-source reconciliation (XBRL vs deck vs AR vs concall) -> per-fact quality score.
+5. Events table (results, calls, decks, ARs, orders, PEAD posts, insider/SAST, deals) + as-of API state(isin, t).
+6. First hypothesis cards through the harness: order surprise (from dissemination time), computed guidance raise x
+   management credibility, PEAD + call confirm/veto, results vs own prior guidance.
+7. Valuation drivers v1: order-book schedule (tg_order_schedule), capacity x utilisation, capex->capacity lag,
+   management credibility (guidance vs later XBRL actuals), peer-relative forward multiples.
+Data behaviour notes: numbers + verbatim quotes are data (97-98% inside own quote); LLM labels are interpretation
+(direction backed 25%, period 55%) -> use cc_item_checks flags and computed_direction. Concall facts exist for 2026
+only; 2021-25 transcripts are text chunks (EmbeddingGemma beat bge-small 80% vs 51% hit@5; re-embed pending).
+
+## 2026-10-19 00:40 running / done tonight
+- DeepSeek 2026 concalls (Telegram-covered companies only: PEAD 602 + Big Orders 154 = 730 ISINs,
+  `data/tg_company_isins.json`): `scripts/run_concall_deepseek.cmd` (detached, 25 workers, key 2, waits out Go limits and
+  peak hours). 850 read, 243 left, resumes ~03:00 when Go's 5 h window frees. Validate after: concall_deepseek_check,
+  concall_facts_checks (re-run: flags + computed direction), concall_query_test.
+- New tables: concall_facts.db (cc_docs, cc_items, cc_item_checks); tg_company_mentions, tg_orders, tg_order_schedule.
+- Zen free models blocked for this IP ('abusive traffic'); ar-zen route idle - stop it (Shivam OK pending).
+- Heartbeat cron stopped (Shivam).
+
 ## 2026-10-18 15:40 transcripts, PEAD, Drive, disk (Claude, main checkout)
 
 - **Transcript plan (Shivam):** 2026 transcripts -> DeepSeek extraction (PEAD companies first; wait for
