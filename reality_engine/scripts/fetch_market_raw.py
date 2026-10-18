@@ -154,6 +154,22 @@ class NseCm(Source):
         return body[:4] == b"PK\x03\x04"
 
 
+class NseCmIsin(NseCm):
+    """NSE CM bhavcopy for its ISIN column (2026-10-19): sec_bhavdata_full, our NSE price file since 2021-11, has
+    no ISIN, so symbols could not be mapped to ISINs after Oct 2021 (615 symbols trading in 2026 had no ISIN).
+    Old-format zip up to 2024-07-05, UDiFF CSV zip from 2024-07-08. Used by build_security_master.py only."""
+    name = "nse_cm_isin"
+    UDIFF_FROM = date(2024, 7, 8)
+
+    def filename(self, d):
+        return (f"BhavCopy_NSE_CM_0_0_0_{d:%Y%m%d}_F_0000.csv.zip" if d >= self.UDIFF_FROM else super().filename(d))
+
+    def fetch(self, d):
+        if d >= self.UDIFF_FROM:
+            return self.s.get(f"https://nsearchives.nseindia.com/content/cm/{self.filename(d)}", timeout=30).content
+        return super().fetch(d)
+
+
 class NseMto(Source):
     name = "nse_mto"
     referer = "https://www.nseindia.com/"
@@ -326,6 +342,7 @@ def fetch_commodities(start: date):
 SOURCES = {
     "nse_cm": (NseCm, NSE_OLD_FORMAT_END),
     "nse_mto": (NseMto, NSE_OLD_FORMAT_END),
+    "nse_cm_isin": (NseCmIsin, None),
     "nse_full": (NseFull, None),
     "nse_part_oi": (NseParticipantOi, None),
     "nse_part_vol": (NseParticipantVol, None),

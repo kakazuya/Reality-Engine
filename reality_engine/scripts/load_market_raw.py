@@ -550,13 +550,16 @@ SOURCES = {
 
 
 def load_file_sources(conn, names, dry_run):
-    loaded = {(s, f) for s, f in conn.execute("SELECT source, file FROM mkt_load_log")}
+    # reload a file when it changed after it was loaded: some fetchers rewrite one growing file (Moneycontrol FII/DII
+    # per year, NSDL, BSE index JSON); keyed on name alone those froze in early Oct 2026. Rows are INSERT OR REPLACE.
+    loaded = {(s, f): t for s, f, t in conn.execute("SELECT source, file, loaded_at FROM mkt_load_log")}
     summary = {}
     for name in names:
         pattern, parser = SOURCES[name]
         n_files = n_rows = n_err = 0
         for path in ok_files(name, pattern):
-            if (name, path.name) in loaded:
+            t = loaded.get((name, path.name))
+            if t and datetime.fromtimestamp(path.stat().st_mtime).isoformat(timespec="seconds") <= t:
                 continue
             try:
                 table, ncol, rows = parser(path)
