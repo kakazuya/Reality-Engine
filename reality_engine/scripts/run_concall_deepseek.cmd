@@ -5,7 +5,7 @@ cd /d "%~dp0\..\.."
 set /a tries=0
 :loop
 set /a tries+=1
-"C:\Users\warri\AppData\Local\Programs\Python\Python314\python.exe" -u -m reality_engine.scripts.concall_deepseek --workers 8 %*
+"C:\Users\warri\AppData\Local\Programs\Python\Python314\python.exe" -u -m reality_engine.scripts.concall_deepseek --workers 25 --week-cap 1000 %*
 set rc=%errorlevel%
 echo [%date% %time%] pass %tries% exit %rc% >> reality_engine\data\logs\concall_deepseek.passes.log
 if %rc%==0 goto done

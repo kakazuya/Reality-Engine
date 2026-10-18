@@ -224,15 +224,25 @@ def work(item, keys, out_path):
     return "error"
 
 
+def _set_caps(week, five_h):
+    global WEEK_CAP, FIVE_H_CAP
+    WEEK_CAP, FIVE_H_CAP = week, five_h
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--sample", type=int, default=0, help="random validation batch of N docs (seeded by N)")
     ap.add_argument("--keys", default="OPENCODE_GO_API_KEY_2")
+    ap.add_argument("--week-cap", type=float, default=WEEK_CAP,
+                    help="our own 7-day spend guard; Go's weekly limit resets on a fixed day, so set this high and let "
+                         "Go's 429 (bench 30 min) enforce the week when a reset is due")
+    ap.add_argument("--five-h-cap", type=float, default=FIVE_H_CAP)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--renormalise", action="store_true", help="re-save stored answers with current label rules; no API")
     a = ap.parse_args()
+    _set_caps(a.week_cap, a.five_h_cap)
     if a.renormalise:
         return renormalise(OUT_DB)
     out = sqlite3.connect(OUT_DB, timeout=120)
