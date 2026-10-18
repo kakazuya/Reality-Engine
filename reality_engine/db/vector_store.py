@@ -5,8 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import mmap
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any, Optional
 
@@ -46,12 +48,14 @@ class VectorStoreManager:
         matrix = getattr(self, "_matrix", None)
         if matrix is None:
             return
+        # walk view -> np.memmap -> mmap.mmap; the old loop ended on the raw mmap (no '_mmap' attribute) and closed
+        # nothing, which left vectors.f32 mapped and made growing it fail on Windows (2026-10-18)
         base = matrix
-        while getattr(base, "base", None) is not None:
-            base = base.base
-        mmap_handle = getattr(base, "_mmap", None)
-        if mmap_handle is not None:
-            mmap_handle.close()
+        while base is not None:
+            if isinstance(base, mmap.mmap):
+                base.close()
+                break
+            base = getattr(base, "base", None)
         self._matrix = None
 
     def __del__(self):
@@ -220,24 +224,21 @@ class VectorStoreManager:
         # (~450 MB per document, ~150 MB/s of writes), and those vectors never reached vectors.f32.
         self.close()
         new_capacity = max(required, max(1024, self._append_capacity * 2))
-        raw_tmp = self._append_vectors_path.with_suffix(".f32.tmp")
-        with raw_tmp.open("wb") as fh:
-            fh.truncate(new_capacity * self.dimension * 4)
-        old = np.memmap(
-            str(self._append_vectors_path), mode="r", dtype="float32",
-            shape=(self._append_capacity, self.dimension),
-        )
-        new = np.memmap(str(raw_tmp), mode="r+", dtype="float32", shape=(new_capacity, self.dimension))
-        try:
-            for start in range(0, self._append_rows, 1024):
-                end = min(start + 1024, self._append_rows)
-                new[start:end] = old[start:end]
-            new.flush()
-        finally:
-            del old
-            del new
-        os.replace(raw_tmp, self._append_vectors_path)
+        # Extend the file in place (zero-filled): rows are append-only, so nothing moves. Replaces copy-to-.tmp +
+        # os.replace, which copied the whole matrix and failed with WinError 5 whenever anything held the file.
+        last = None
+        for attempt in range(5):
+            try:
+                with self._append_vectors_path.open("r+b") as fh:
+                    fh.truncate(new_capacity * self.dimension * 4)
+                break
+            except OSError as exc:
+                last = exc
+                time.sleep(1 + attempt)
+        else:
+            raise last
         self._append_capacity = new_capacity
+        self._write_append_shape()
 
     def _save_append(self, vecs: list, metas: list, existing_rows: int) -> None:
         """Append vectors/metadata without copying the complete corpus."""
