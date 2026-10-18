@@ -14,6 +14,20 @@ Goal: one point-in-time knowledge ledger that quantifies companies and feeds the
    management credibility, PEAD + call confirm/veto, results vs own prior guidance.
 7. Valuation drivers v1: order-book schedule (tg_order_schedule), capacity x utilisation, capex->capacity lag,
    management credibility (guidance vs later XBRL actuals), peer-relative forward multiples.
+Added 2026-10-19 (Shivam), ahead of TRI + shareholding:
+- **PIB / policy pillar**: phase 1 English Delhi feed + backfill 2021-> RUNNING (`pib_feed.py`, `run_pib_backfill.cmd`,
+  table pib_releases with minute posting time; daily step in run_eod_market). Phase 2: Hindi/Urdu + regional PIB
+  offices, drop translations of English releases by EmbeddingGemma (multilingual) similarity, translate the unique
+  ones. Then the **policy register**: LLM extraction over PIB + Budget + RBI + PRS into dated policy rows (what
+  changed, stage hinted/consultation/draft/announced/notified/effective, sectors/companies, old->new values,
+  announced_at PIT, effective date). Tax-rule table for the harness (STCG/LTCG by effective date from Budget speeches).
+- **ETFs**: add INF ETFs to security master as a separate type; AMFI daily NAV history 2019->; etf_premium table
+  (premium/discount to NAV; for international ETFs an indicative NAV from the underlying index x USDINR, since the
+  official NAV is a day stale). Long-only uses: buy deep discounts, switch between near-identical ETFs, exit before a
+  premium unwinds (MONQ50 Sep 2026: +235% premium under RBI overseas cap, then -49% in 3 sessions).
+- Done tonight: daily DB backup to Drive 05:00-13:00 (`backup_dbs_to_drive.py`); security_master (8,434 equity
+  ISINs incl. delisted/SME) + symbol_isin_history; EOD job extended to deals/short/insider/SAST/corp actions/FPI/
+  FII-DII/market-wide BSE announcements (incl. order wins)/new docs/PIB; loader reloads rewritten files.
 Data behaviour notes: numbers + verbatim quotes are data (97-98% inside own quote); LLM labels are interpretation
 (direction backed 25%, period 55%) -> use cc_item_checks flags and computed_direction. Concall facts exist for 2026
 only; 2021-25 transcripts are text chunks (EmbeddingGemma beat bge-small 80% vs 51% hit@5; re-embed pending).
