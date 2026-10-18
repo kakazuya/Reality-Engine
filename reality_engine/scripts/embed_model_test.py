@@ -78,7 +78,9 @@ class Model:
                 v = h[:, 0]
         return v / np.linalg.norm(v, axis=1, keepdims=True)
 
-    def embed(self, texts, query=False, bs=16):
+    def embed(self, texts, query=False, bs=None):
+        # small batches for the big models: a long DirectML call trips Windows TDR (device suspended, 2026-10-18)
+        bs = bs or (16 if self.name.startswith("bge") else 4)
         order = np.argsort([len(t) for t in texts])
         out = np.zeros((len(texts), 0), dtype=np.float32)
         res = [None] * len(texts)

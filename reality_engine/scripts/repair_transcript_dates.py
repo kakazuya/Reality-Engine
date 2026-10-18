@@ -1,4 +1,4 @@
-"""Repair concall-transcript dates in the search layer (2026-10-18).
+"""Repair filing dates in the search layer (2026-10-18; --types widens it beyond concall transcripts).
 
 Some transcripts were chunked with doc_date (the crawl date, mostly 2026) as their published date instead of the real
 filing date: 5,725 from the 2026-10-18 --local-only run and 318 older ones. A wrong date is a look-ahead / mis-dating bug
@@ -9,7 +9,7 @@ Fixes, per affected raw_documents row: raw_documents.published_date; document_ch
 the vector store's vectors_meta.jsonl (document_date + text). The vectors themselves still embed the old header date
 token: re-embed these docs with whichever model the embedding test picks.
 
-    python -m reality_engine.scripts.repair_transcript_dates [--dry-run]
+    python -m reality_engine.scripts.repair_transcript_dates [--types CONCALL_TRANSCRIPT,ANNUAL_REPORT,...] [--dry-run]
 """
 import argparse
 import json
@@ -30,38 +30,51 @@ def fix_header(text, new):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--types", default="CONCALL_TRANSCRIPT", help="raw_documents.source_type list, comma-separated")
     a = ap.parse_args()
     db = sqlite3.connect(DB, timeout=600)
-    real = {os.path.normcase(p): (d or "")[:10] for p, d in db.execute(
-        "select local_file_path, coalesce(bse_dissem_ts, publication_date, call_date) from corporate_documents "
-        "where doc_type='CONCALL_TRANSCRIPT' and local_file_path<>''")}
+    types = [t.strip() for t in a.types.split(",") if t.strip()]
     bad = {}
-    for doc_id, p, pub in db.execute("select doc_id, local_file_path, published_date from raw_documents "
-                                     "where source_type='CONCALL_TRANSCRIPT'"):
-        r = real.get(os.path.normcase(p or ""))
-        if r and (pub or "")[:10] != r:
-            bad[doc_id] = r
+    for doc_id, real in db.execute(
+            f"""SELECT r.doc_id, substr(COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date), 1, 10)
+                FROM raw_documents r JOIN corporate_documents cd
+                  ON cd.source_url = r.source_url AND cd.doc_type = r.source_type
+                WHERE r.source_type IN ({','.join('?' * len(types))})
+                  AND COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date) IS NOT NULL
+                  AND substr(r.published_date, 1, 10) <>
+                      substr(COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date), 1, 10)""", types):
+        bad[doc_id] = min(real, bad.get(doc_id, real))   # two filings of one PDF: the earlier public date
     print(f"documents with a wrong date: {len(bad)}")
     if a.dry_run or not bad:
         return
-    new_date_of_chunk = {}
+    # streamed in batches of documents: the first version held every chunk's text at once and pushed RAM to 0.5 GB
+    # free on 1.4M annual-report/deck chunks (2026-10-18)
+    date_of_chunk = {}
     ids = list(bad)
-    for i in range(0, len(ids), 500):
-        part = ids[i:i + 500]
-        for cid, did, content in db.execute(
-                f"select chunk_id, doc_id, content from document_chunks where doc_id in ({','.join('?' * len(part))})", part):
-            new_date_of_chunk[str(cid)] = (bad[did], fix_header(content, bad[did]))
+    for i in range(0, len(ids), 200):
+        part = ids[i:i + 200]
+        rows = db.execute(f"select chunk_id, doc_id, content from document_chunks where doc_id in ({','.join('?' * len(part))})",
+                          part).fetchall()
+        with db:
+            db.executemany("update document_chunks set published_date=?, content=? where chunk_id=?",
+                           [(bad[did], fix_header(c, bad[did]), cid) for cid, did, c in rows])
+        for cid, did, _ in rows:
+            date_of_chunk[str(cid)] = bad[did]
     with db:
         db.executemany("update raw_documents set published_date=? where doc_id=?", [(d, k) for k, d in bad.items()])
-        db.executemany("update document_chunks set published_date=?, content=? where chunk_id=?",
-                       [(d, c, int(cid)) for cid, (d, c) in new_date_of_chunk.items()])
-    print(f"chunks fixed: {len(new_date_of_chunk)}")
-    rows = [(rid, str(cid)) for rid, cid in db.execute(
-        "select rowid, chunk_id from intelligence_fts where source_type='CONCALL_TRANSCRIPT'")]
-    upd = [(new_date_of_chunk[c][0], new_date_of_chunk[c][1], rid) for rid, c in rows if c in new_date_of_chunk]
-    with db:
-        db.executemany("update intelligence_fts set document_date=?, document_text=? where rowid=?", upd)
-    print(f"fts rows fixed: {len(upd)}")
+    print(f"chunks fixed: {len(date_of_chunk)}")
+    todo = [(rid, date_of_chunk[str(cid)]) for rid, cid in db.execute(
+        f"select rowid, chunk_id from intelligence_fts where source_type in ({','.join('?' * len(types))})", types)
+        if str(cid) in date_of_chunk]
+    for i in range(0, len(todo), 2000):
+        part = dict(todo[i:i + 2000])
+        rows = db.execute(f"select rowid, document_text from intelligence_fts where rowid in ({','.join('?' * len(part))})",
+                          list(part)).fetchall()
+        with db:
+            db.executemany("update intelligence_fts set document_date=?, document_text=? where rowid=?",
+                           [(part[r], fix_header(t, part[r]), r) for r, t in rows])
+    print(f"fts rows fixed: {len(todo)}")
+    new_date_of_chunk = {k: (d, None) for k, d in date_of_chunk.items()}
     if META.exists():
         tmp = META.with_suffix(".jsonl.tmp"); n = 0
         with META.open(encoding="utf-8") as src, tmp.open("w", encoding="utf-8") as dst:
@@ -74,7 +87,9 @@ def main():
         os.replace(tmp, META)
         print(f"vector-store metadata rows fixed: {n}")
     (ROOT / "reality_engine/data/embed_test").mkdir(parents=True, exist_ok=True)
-    (ROOT / "reality_engine/data/embed_test/redated_doc_ids.json").write_text(json.dumps(sorted(bad)), encoding="utf-8")
+    out = ROOT / "reality_engine/data/embed_test/redated_doc_ids.json"
+    prev = json.loads(out.read_text()) if out.exists() else []
+    out.write_text(json.dumps(sorted(set(prev) | set(bad))), encoding="utf-8")
 
 
 if __name__ == "__main__":

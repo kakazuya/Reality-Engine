@@ -177,6 +177,25 @@ DEGRADATION_RULES: Tuple[Dict[str, str], ...] = (
         ),
         "denominator_sql": "SELECT COUNT(*) FROM ar_doc_scan",
     },
+    {
+        # 2026-10-18: search-layer documents whose published_date is not their filing date (ingest runs passed
+        # corporate_documents.doc_date, the crawl date: 5,725 transcripts that day, 3,496 annual reports earlier).
+        # A wrong date is a look-ahead bug for any point-in-time use. Fix: scripts/repair_transcript_dates.py --types.
+        "rule_id": "search_docs_date_mismatch",
+        "table_name": "raw_documents",
+        "description": "search-layer filings whose published_date differs from the filing date in corporate_documents",
+        "sql": (
+            "SELECT COUNT(DISTINCT r.doc_id) FROM raw_documents r JOIN corporate_documents cd "
+            "ON cd.source_url = r.source_url AND cd.doc_type = r.source_type "
+            "WHERE COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date) IS NOT NULL "
+            "AND substr(r.published_date, 1, 10) <> "
+            "substr(COALESCE(cd.bse_dissem_ts, cd.publication_date, cd.call_date), 1, 10)"
+        ),
+        "denominator_sql": (
+            "SELECT COUNT(DISTINCT r.doc_id) FROM raw_documents r JOIN corporate_documents cd "
+            "ON cd.source_url = r.source_url AND cd.doc_type = r.source_type"
+        ),
+    },
 )
 
 QUARANTINE_DDL = """
