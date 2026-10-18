@@ -7,12 +7,35 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 **Running detached (survive the session; check, don't restart unless dead):**
 | Job | Launcher / log | State at close | Verify when done |
 |---|---|---|---|
-| DeepSeek 2026 concalls (Telegram PEAD + Big Orders companies only, 730 ISINs) | `scripts/run_concall_deepseek.cmd`; `data/logs/concall_deepseek.log`; out `data/concall_facts.db` | 917 ok, ~167 left; paused by its own 5 h guard ($15/5 h of its own spend), resumes by itself; also waits out Go 'usage limit' and peak hours (Mon-Fri 06:30-09:30, 11:30-15:30 IST) | `python -m reality_engine.scripts.concall_deepseek_check` (all checks pass), then `concall_facts_checks` (flags + computed direction), then `concall_query_test` |
+| DeepSeek 2026 concalls (Telegram PEAD + Big Orders companies only, 730 ISINs) | `scripts/run_concall_deepseek.cmd`; `data/logs/concall_deepseek.log`; out `data/concall_facts.db` | **DONE 2026-10-19 03:35** (RUN_COMPLETE): 1,056 ok, 131 cover letters, 14 duplicates; $17.69 est. on key 2. The last 89 ran with `--five-h-cap 1000` because the runner's own 5 h guard counted spend from before Go's window reset (Shivam) | concall_deepseek_check: 3 checks fail on 23 docs (labels, see below); concall_facts_checks re-run; concall_query_test see below |
 | Quarterly results Mar-2025 -> now (NSE Integrated Filing XBRL) | `scripts/run_integrated_results.cmd`; `data/logs/integrated_results.log` | 17.5k of 30,197 XBRL downloaded (~2/s); parser runs automatically after | `results_xbrl.db` filings with period_end >= 2025-03-31 ~30k, status ok; spot-check 5 companies' revenue vs exchange site |
 | PIB English backfill 2021 -> now | `scripts/run_pib_backfill.cmd`; `data/logs/pib_backfill.log`; table `pib_releases` | at 2021-03, ~30 s/day, ~1-1.5 days total | posted_at filled, bodies in search layer (raw_documents source_type PIB_Press_Release) |
 | Policy register over macro docs (LongCat free on Go key 1) | `scripts/run_policy_register.cmd` (detached, resumable); log `data/logs/policy_register_docs.log` | ~294 of 3,014 sections done, 2,720 left (~7 h) | quote_ok >= 98%; then run `--source pib` as PIB backfill fills |
 | DB backup to Drive | Task `RealityEngine-DBBackup` daily 05:00, uploads only 05:00-13:00; `data/logs/db_backup.log`; state `data/backups/state.json` | first full set today | Drive `InfoDiffusion_archive/db_backups/<date>/` parts + MD5 check passed |
 | EOD market + disclosures | Task `RealityEngine-EODMarket` weekdays 19:35; `data/logs/eod_market.log` | first run today 19:35 | prices / deals / FII-DII / announcements / PIB dated today; security_master rebuilt |
+
+**2026-10-19 03:20-04:00 (Claude):**
+- Q1 `scripts/query_speed_check.py` built: 15 queries + state(isin,t) pending; nightly step in run_eod_market; log
+  `data/logs/query_speed.jsonl`, summary `query_speed_report.md` appended to the watchdog report (watchdog restarted).
+  All 15 under limit first + warm (boot age 52 h: a cold-after-reboot run is still to be seen in the nightly log).
+- Q3 `scripts/build_query_indexes.py` (idempotent): deck pages/deck_sources(isin, known_at) + facts_metric_fts (13.6M rows),
+  cc_items_fts, policy_events_fts + instrument/stage indexes, filings(period_end), covering indexes for results facts
+  and NSE/BSE prices. FTS kept in sync by triggers (all writers use DELETE + INSERT). Before -> after (first run):
+  deck company KPIs 10.6 -> 0.40 s, deck metric search 12.7 -> 0.88 s, NSE price history 0.29 -> 0.007 s, results one
+  quarter 2.4 -> 0.21 s; vector top-20 1.0 -> 0.08 s (vector_store.search_by_vector no longer copies the whole
+  matrix when unfiltered; same ranking verified).
+- **Data gap fixed:** results_xbrl `filings.isin` is the ISIN written in the XBRL; ~15% of filings (11.7k of 76.4k) carry
+  a pre-split / malformed ISIN (BEL, HAL, CANBK, DIXON, HINDZINC ...). New table `filings_isin` (results_xbrl.db) via
+  `scripts/resolve_results_isin.py`: trading ISIN at dissemination date from symbol_isin_history (NSE symbol, then BSE
+  code, then the filed ISIN); 172+3 unresolved; 247 'other issuer' rows are typo ISINs (checked by name). Nightly step
+  in run_eod_market. Readers must join results by `filings_isin.isin`, not `filings.isin`.
+- concall_deepseek_check fails (labels, not numbers): period_unparsed 18 (checker does not parse 'Quarter ended June 30,
+  2026', calendar-year 'Q2 CY'26', half-years 'H2 FY26'), period_vs_filing_date 4 (RAIN calendar-year FY read as
+  Indian FY; IDFCFIRSTB / SHREDIGCEM non-results calls labelled Q4), not_a_call_transcript 1 (SSWL doc 82474, no
+  participants). concall_facts_checks: value_in_quote 98.4% (31,757/32,287), period_in_quote 55%, direction backed 24%,
+  analyst-quoted 412 of 87,868; computed_direction raised 90 / lowered 75 / maintained 115 / new 960.
+- concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
+  facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
 **Built this session (2026-10-18/19):** DeepSeek runner + validator + fact checks (cc_item_checks: verified vs
 inferred, speaker, computed guidance direction) + query test; Telegram PEAD signals, Big Orders mentions (OCR) and

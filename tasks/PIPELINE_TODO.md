@@ -11,7 +11,7 @@ then switch readers over. Never assume; measure.
 
 ## Phase Q — query layer and latency (do first, alongside Phase A)
 
-### Q1. Query speed checks (small; do first)
+### Q1. Query speed checks (small; do first) - BUILT 2026-10-19, all 15 under limit warm + first run; cold-after-reboot pending
 - `reality_engine/scripts/query_speed_check.py`: a fixed list of the queries backtests and analysis run, each with a
   time limit; results appended to `data/logs/query_speed.jsonl` and any over-limit query reported in the watchdog
   report. Run nightly (add a step to run_eod_market) and after every index/schema change.
@@ -36,7 +36,7 @@ then switch readers over. Never assume; measure.
 - Keep the last 7 snapshots; backtests record the snapshot date they used (framework: research runs on dated snapshots).
 - Check: market-wide scans over ar_facts (32M) and deck facts (13.6M) < 1 s; row counts equal the SQLite sources.
 
-### Q3. Missing indexes / text indexes
+### Q3. Missing indexes / text indexes - DONE 2026-10-19 (`build_query_indexes.py`; Q1 queries all under limit)
 - deck_figures: FTS5 on facts(metric) (1.48M distinct strings) and index on deck_sources(isin, known_at).
 - concall_facts: FTS5 over cc_items(metric, statement, quote).
 - policy_events: indexes on published_at, instrument, stage; FTS over policy_name + quote.

@@ -382,13 +382,23 @@ class VectorStoreManager:
         mat = getattr(self, "_matrix", None)
         if mat is not None:
             import numpy as np
-            idx = [i for i, r in enumerate(self._rows) if not symbol or r.get("symbol") == symbol]
-            if not idx:
-                return []
             q = np.asarray(query_vec, dtype="float32")
-            scores = mat[idx] @ q
-            order = np.argsort(-scores, kind="stable")[: max(0, top_k)]
-            return [dict(self._rows[idx[i]], vector_score=float(scores[i])) for i in order]
+            if symbol:
+                idx = [i for i, r in enumerate(self._rows) if r.get("symbol") == symbol]
+                if not idx:
+                    return []
+                scores = mat[idx] @ q
+            else:
+                # Unfiltered: dot over the memmap directly. mat[idx] with every row copied the whole matrix
+                # (~400 MB at 260k rows) per query; this halves the time (query_speed_check, 2026-10-19).
+                idx = None
+                scores = mat[: len(self._rows)] @ q
+            k = min(max(0, top_k), len(scores))
+            if k == 0:
+                return []
+            top = np.argpartition(-scores, k - 1)[:k]
+            order = top[np.argsort(-scores[top], kind="stable")]
+            return [dict(self._rows[i if idx is None else idx[i]], vector_score=float(scores[i])) for i in order]
         candidates = [r for r in self._rows if not symbol or r.get("symbol") == symbol]
         scored = [(sum(a * b for a, b in zip(query_vec, r.get("vector", []))), r) for r in candidates]
         return [dict(row, vector_score=score) for score, row in sorted(scored, key=lambda x: x[0], reverse=True)[:top_k]]

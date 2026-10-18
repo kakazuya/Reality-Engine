@@ -50,6 +50,7 @@ REPORT = LOGS / "resource_watchdog_report.md"
 
 CHECK_SEC = 120
 READER_REPORT = LOGS / "reader_watch_report.md"
+QUERY_SPEED_REPORT = LOGS / "query_speed_report.md"   # query_speed_check.py (nightly in run_eod_market), 2026-10-19
 AR_REVIEW_EVERY = 200   # ar_review.py after this many newly finished annual reports (Shivam 2026-10-13)
 STUCK_MIN = 30  # a managed job reading no pages (and no second readings) this long is restarted as hung
 HANDLE_HOG = 200_000   # open handles in one process (explorer ~7k, our main run ~4k; the 10-17 orphan finds held ~3 M each)
@@ -359,6 +360,10 @@ def write_report(status_lines):
         out.append(f"- **{r['kind']}** [{r['key']}] {r['first'][5:16]} -> {r['last'][5:16]} (x{r['count']}): {r['detail']}")
     try:   # 2-hourly new-reader check (new_reader_check.py), started from the loop in main()
         out += ["", READER_REPORT.read_text(encoding="utf-8").strip()]
+    except OSError:
+        pass
+    try:
+        out += ["", QUERY_SPEED_REPORT.read_text(encoding="utf-8").strip()]
     except OSError:
         pass
     tmp = REPORT.with_suffix(".tmp")

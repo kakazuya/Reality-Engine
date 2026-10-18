@@ -13,6 +13,8 @@ Steps
     analysis/bse_announcements.db, then new concall transcripts / decks into corporate_documents
   7 rebuild security_master / symbol_isin_history
   8 PIB English releases of the last 3 days (pib_feed.py)
+  9 trading ISIN for results XBRL filings (resolve_results_isin.py -> filings_isin)
+ 10 query speed check (query_speed_check.py; over-limit queries go into the watchdog report)
 Log: reality_engine/data/logs/eod_market.log
 
     python -m reality_engine.scripts.run_eod_market
@@ -51,7 +53,10 @@ def main():
         step("new transcripts/decks", ["reality_engine.scripts.discover_bse_feed_docs", "--since", start]),
         step("security master", ["reality_engine.scripts.build_security_master"]),
         step("pib releases", ["reality_engine.scripts.pib_feed", "--start", (end - dt.timedelta(days=3)).isoformat(), "--end", e]),
+        step("results isin", ["reality_engine.scripts.resolve_results_isin"]),
+        step("query speed check", ["reality_engine.scripts.query_speed_check"]),
     ]
+    rcs[-1] = 0   # an over-limit query is reported (watchdog report), it is not a failed EOD run
     return max(rcs)
 
 
