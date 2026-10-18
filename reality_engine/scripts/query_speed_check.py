@@ -82,6 +82,16 @@ QUERIES = [
      "SELECT i.filed_at, i.metric, i.value, i.unit, i.period, i.direction, c.computed_direction FROM cc_items i "
      "LEFT JOIN cc_item_checks c USING (doc_id, list_name, idx) WHERE i.isin = ?", (ISIN,)),
 ]
+# DuckDB analysis snapshot (Q2): newest data/snapshots/truth_*.duckdb
+SNAPSHOT_QUERIES = [
+    ("snap_ar_item_search", 1.0,
+     "SELECT f.isin, f.item, f.value FROM ar_facts f SEMI JOIN (SELECT t.docid FROM fts_main_ar_facts.terms t "
+     "JOIN fts_main_ar_facts.dict d USING (termid) WHERE d.term IN ('order', 'book') GROUP BY t.docid "
+     "HAVING count(DISTINCT d.term) = 2) m ON m.docid = f.fact_id"),
+    ("snap_ar_category_scan", 1.0, "SELECT isin, avg(value) FROM ar_facts WHERE category = 'borrowings' GROUP BY 1"),
+    ("snap_deck_metric_scan", 1.0, "SELECT isin, known_at_utc, value FROM deck_facts WHERE metric ILIKE '%order book%'"),
+    ("snap_px_one_stock", 0.1, "SELECT * FROM px_daily WHERE entity_id = 'INE511C' ORDER BY date"),
+]
 VECTOR = ("vector_search_top20", 1.0)   # query embedding + dot product over the append store (store load reported apart)
 PENDING = [("state_isin_t", 1.0, "after Q4 (reality_engine/query/state.py)")]
 
@@ -140,6 +150,27 @@ def main():
         ok = err is None and err2 is None and first <= limit and warm <= limit
         recs.append({"run_id": run_id, "name": name, "db": db.name, "limit_s": limit, "first_s": round(first, 4),
                      "warm_s": round(warm, 4), "rows": rows, "ok": ok, "error": err or err2, "boot_age_min": boot})
+    snaps = sorted((DATA / "snapshots").glob("truth_????-??-??.duckdb"))
+    if snaps:
+        import duckdb
+        for name, limit, sql in SNAPSHOT_QUERIES:
+            if only and name not in only:
+                continue
+            times, rows, err = [], None, None
+            try:
+                con = duckdb.connect(str(snaps[-1]), read_only=True)
+                con.execute("LOAD fts")
+                for _ in range(2):
+                    t0 = time.perf_counter()
+                    rows = len(con.execute(sql).fetchall())
+                    times.append(time.perf_counter() - t0)
+                con.close()
+            except Exception as e:   # noqa: BLE001
+                err, times = repr(e)[:200], [None, None]
+            ok = err is None and all(t <= limit for t in times)
+            recs.append({"run_id": run_id, "name": name, "db": snaps[-1].name, "limit_s": limit,
+                         "first_s": times[0] and round(times[0], 4), "warm_s": times[1] and round(times[1], 4),
+                         "rows": rows, "ok": ok, "error": err, "boot_age_min": boot})
     if not only or VECTOR[0] in only:
         try:
             load_s, (first, warm), rows, n = run_vector()

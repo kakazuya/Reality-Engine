@@ -37,6 +37,29 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 - concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
   facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
+**2026-10-19 04:00-04:35 (Claude): Q2 done.** `build_truth_snapshot.py` now also writes 32 research tables
+(`snapshot_research_tables.py`): security master, results (filings + trading_isin, long facts with period_kind,
+results_key quarter pivot), AR, decks, concalls, Telegram, BSE announcements, insider / SAST / PIT XBRL / deals / short,
+FII-DII, NSDL FPI, policy_events, PIB. Every table: known_at_src + known_at_utc + known_at_precision (IST sources
+-5:30; Telegram already UTC; date-only = end of day IST; NSDL = next day end). pit_report: all counts within the
+source before/after copy, 0 unparsed times. Built to `.building`, renamed when complete, last 7 kept, snapshot_meta
+records the date. Nightly step in run_eod_market (~20 min, ~5.4 GB each -> ~40 GB for 7). Market-wide scans: AR item
+search via fts_main_ar_facts terms 0.27 s (ILIKE was 3.1 s), AR category 0.05 s, deck metric 0.17 s.
+Notes: truth_2026-10-19 was patched after its build (bse_ann text columns, AR item index), so its pit_report holds only
+the bse_ann row; snapshot_meta has the full report; tomorrow's build is complete.
+- **Results XBRL parser bug (data):** facts.period_start/end are blank before 2022 and for FourD (year to date) carry
+  the quarter's dates. Snapshot uses the context (OneD quarter, FourD YTD) via results_facts.period_kind; the SQLite
+  parser itself is not fixed yet.
+- **Data gap:** mkt_nse_insider ends 2026-05-02; later insider trades are only in nse_pit_filings + PIT XBRL facts
+  (not yet parsed into trade rows).
+- FY2026 transcripts not read by DeepSeek (1,307) + DeepSeek-read ones not in the search layer (583): chunk + bge-small
+  run started 04:10 (`run_annual_report_ingest.py --doc-type CONCALL_TRANSCRIPT --local-only`, log
+  `data/logs/concall_2026_chunk.log`).
+- **EmbeddingGemma re-embed approved (Shivam 04:15):** `scripts/reembed_gemma.py` -> new index `data/vector_index_gemma/`
+  (same layout as data/vector_index; live bge index untouched). Plan 2,214,107 chunks; tiers transcripts 249,571 ->
+  macro 27,781 -> decks 7,637 -> AR 1,367,706 -> offer docs 557,421 -> other 3,991. Starts after the 2026 chunk job
+  (one GPU embedder at a time). Then `--plan-new`, retrieval check vs bge on the 51 questions, then switch readers.
+
 **Built this session (2026-10-18/19):** DeepSeek runner + validator + fact checks (cc_item_checks: verified vs
 inferred, speaker, computed guidance direction) + query test; Telegram PEAD signals, Big Orders mentions (OCR) and
 `tg_orders` + `tg_order_schedule`; search-layer date repair (10k docs; hygiene probe `search_docs_date_mismatch`);

@@ -28,8 +28,13 @@ Steps
   5. Adjusted series and the primary series (NSE when it traded that day, else BSE).
   6. ``truth_report``: coverage, unmapped rows, unparsed actions, residual jumps.
 
+  7. Research tables (snapshot_research_tables.py, Q2 2026-10-19): results, AR, decks, concalls, Telegram, BSE
+     announcements, insider / SAST / deals, FII-DII, policy, PIB - each with known_at_utc; pit_report, snapshot_meta.
+Built as truth_<date>.duckdb.building and renamed when complete; the last 7 snapshots are kept. Backtests record the
+snapshot date they read (snapshot_meta.snapshot_date).
+
 Usage:
-    python -m reality_engine.scripts.build_truth_snapshot
+    python -m reality_engine.scripts.build_truth_snapshot [--date YYYY-MM-DD] [--prices-only]
 """
 
 import argparse
@@ -450,15 +455,37 @@ def build(out_path: Path):
     return rep
 
 
+KEEP = 7   # dated snapshots kept (PIPELINE_TODO Q2)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--date", default=date.today().isoformat(), help="snapshot label")
+    ap.add_argument("--prices-only", action="store_true", help="skip the research tables (snapshot_research_tables)")
     args = ap.parse_args()
     SNAP_DIR.mkdir(parents=True, exist_ok=True)
     out = SNAP_DIR / f"truth_{args.date}.duckdb"
-    if out.exists():
-        out.unlink()
-    rep = build(out)
+    tmp = SNAP_DIR / f"truth_{args.date}.duckdb.building"   # renamed only when complete: readers never see a half file
+    tmp.unlink(missing_ok=True)
+    t0 = datetime.now()
+    rep = build(tmp)
+    if not args.prices_only:
+        from reality_engine.scripts.snapshot_research_tables import add_research_tables
+        con = duckdb.connect(str(tmp))
+        research = add_research_tables(con)
+        rep["research_tables"] = len(research)
+        rep["research_count_fail"] = [r[0] for r in research if r[4] is False]
+        rep["research_time_unparsed"] = [r[0] for r in research if r[7]]
+        con.execute("CREATE OR REPLACE TABLE snapshot_meta AS SELECT ?::VARCHAR snapshot_date, ?::TIMESTAMP built_from, "
+                    "now()::TIMESTAMP built_to, ?::VARCHAR report_json",
+                    [args.date, t0, json.dumps(rep, default=str)])
+        con.close()
+    out.unlink(missing_ok=True)
+    tmp.rename(out)
+    old = sorted(SNAP_DIR.glob("truth_????-??-??.duckdb"))[:-KEEP]
+    for f in old:
+        f.unlink()
+    rep["removed_old_snapshots"] = [f.name for f in old]
     print(json.dumps(rep, indent=1, default=str))
     print(f"snapshot: {out}")
 

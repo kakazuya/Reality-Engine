@@ -25,7 +25,7 @@ then switch readers over. Never assume; measure.
   0.39 s (FTS5 ar_facts_fts, external content on ar_facts; rebuild/insert-sync it when ar_facts gets new rows).
 - Check: all queries under limit on a cold start (first run after reboot) and warm.
 
-### Q2. Nightly DuckDB analysis snapshot (the backtest data layer)
+### Q2. Nightly DuckDB analysis snapshot (the backtest data layer) - DONE 2026-10-19 (counts match, scans < 1 s)
 - SQLite stays the write store; backtests and heavy analysis read a columnar DuckDB snapshot rebuilt nightly
   (extend `build_truth_snapshot.py`, which already makes `data/snapshots/truth_<date>.duckdb` with adjusted and
   total-return prices). Add: security_master + symbol_isin_history, results XBRL (filings + key facts pivoted),
