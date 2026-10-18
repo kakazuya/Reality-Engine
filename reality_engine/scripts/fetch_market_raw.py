@@ -116,7 +116,9 @@ class Source:
     def run(self):
         for d in self.dates():
             key = d.isoformat()
-            if self.done.get(key) in ("ok", "missing"):
+            # 'missing' is final only once the day is > 3 days old: a run before the exchange publishes (e.g. the
+            # daily EOD task, or a manual run at 01:00) used to mark today missing for good (2026-10-19)
+            if self.done.get(key) == "ok" or (self.done.get(key) == "missing" and (date.today() - d).days > 3):
                 self.counts["skipped"] += 1
                 continue
             body, status = b"", "error"
