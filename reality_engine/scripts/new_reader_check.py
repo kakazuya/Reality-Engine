@@ -116,6 +116,12 @@ def restart_zen_worker():
     return False
 
 
+# 2026-10-19 (Shivam): OpenCode blocked its free Zen models for this IP ('abusive traffic'); our Zen reader route and these
+# 2-hourly Zen admission-test resumes were the likely cause. No Zen calls at all while this is True (no listing, no test
+# resume, no Zen worker restart). Go and Kilo checks continue.
+ZEN_BLOCKED = True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-tests", action="store_true", help="report only; start no admission test")
@@ -126,6 +132,8 @@ def main():
     lines, errors = [], []
     seen = {}
     for src, fn in (("zen", zen_models), ("go", lambda: go_models(env)), ("kilo", lambda: kilo_models(env))):
+        if src == "zen" and ZEN_BLOCKED:
+            continue
         try:
             seen[src] = fn()
         except Exception as e:
