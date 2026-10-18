@@ -33,6 +33,8 @@ ROOT = Path(__file__).resolve().parents[2]
 MAIN_DB = ROOT / "reality_engine/data/equity_intelligence.db"
 OUT_DB = ROOT / "reality_engine/data/concall_facts.db"
 PRIORITY = ROOT / "reality_engine/data/concall_priority_pead.json"
+# Shivam 2026-10-18: read ONLY companies covered in the Telegram feed (PEAD + Big Orders topics); built by tg_company_isins
+TG_ISINS = ROOT / "reality_engine/data/tg_company_isins.json"
 LOG = ROOT / "reality_engine/data/logs/concall_deepseek.log"
 MODEL = "deepseek-v4.1-flash"
 PRICE_IN, PRICE_OUT = 0.15, 0.60          # $/M tokens off-peak (we never call at peak)
@@ -66,7 +68,7 @@ def is_peak(now=None):
     return u.weekday() < 5 and (1 <= u.hour < 4 or 6 <= u.hour < 10)
 
 
-def queue(out):
+def queue(out, only_tg=True):
     main = sqlite3.connect(f"file:{MAIN_DB}?mode=ro", uri=True)
     rows = main.execute("""SELECT id, isin, symbol, COALESCE(bse_dissem_ts, publication_date, call_date) AS filed,
                                   local_file_path, sha256_hash
@@ -74,6 +76,9 @@ def queue(out):
                              AND COALESCE(bse_dissem_ts, publication_date, call_date) >= ?
                              AND local_file_path IS NOT NULL AND local_file_path <> ''""", (SINCE,)).fetchall()
     pr = {r["isin"]: n for n, r in enumerate(json.loads(PRIORITY.read_text(encoding="utf-8")))} if PRIORITY.exists() else {}
+    if only_tg:
+        allowed = set(json.loads(TG_ISINS.read_text(encoding="utf-8")))
+        rows = [r for r in rows if r[1] in allowed]
     done = {d for (d,) in out.execute("SELECT doc_id FROM cc_docs WHERE status='ok' OR status LIKE 'skip_%'")}
     # duplicates decided oldest-first: the EARLIEST public filing of a PDF is the one we keep (point-in-time); a later
     # re-filing of the same file (same sha256) or a second filing on the same ISIN + day is skipped
@@ -240,6 +245,7 @@ def main():
                          "Go's 429 (bench 30 min) enforce the week when a reset is due")
     ap.add_argument("--five-h-cap", type=float, default=FIVE_H_CAP)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--all-companies", action="store_true", help="ignore the Telegram company list (off by default)")
     ap.add_argument("--renormalise", action="store_true", help="re-save stored answers with current label rules; no API")
     a = ap.parse_args()
     _set_caps(a.week_cap, a.five_h_cap)
@@ -247,7 +253,7 @@ def main():
         return renormalise(OUT_DB)
     out = sqlite3.connect(OUT_DB, timeout=120)
     out.executescript(DDL)
-    todo = queue(out)
+    todo = queue(out, only_tg=not a.all_companies)
     if a.sample:   # validation batch: random docs across the year and both priority groups, duplicates included
         import random
         random.Random(a.sample).shuffle(todo)
