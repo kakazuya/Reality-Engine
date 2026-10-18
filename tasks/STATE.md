@@ -8,7 +8,17 @@
   chunk + embed already-downloaded, never-processed files), 8,484 transcripts, ~14/min, ~10 h, log
   `data/logs/concall_cpu_chunk.log`. Embeds on GPU (DirectML) - Shivam OK. Stores: equity_intelligence.db
   (raw_documents, document_chunks.embedding JSON, FTS5) + data/lancedb.
-- **Next after it finishes (Shivam):** embedding model test - ~50 real concall questions, bge-small vs Qwen3-Embedding-0.6B
+- **Embedding test DONE (20:30-21:40):** 51 paraphrased analyst questions over 8,452 transcript chunks of 60 companies
+  (`scripts/embed_model_test.py`, `data/embed_test/`). hit@1 / hit@5 / hit@10, chunks/s on DirectML:
+  bge-small (current) 29/51/63%, 27/s; bge-base 16/39/47%; **EmbeddingGemma-300M 45/80/86%, ~7/s**; Qwen3-0.6B
+  31/67/84%, 3.6/s. Big models need DML batch 4 (batch 16 tripped a Windows GPU reset). Production chunks average ~550
+  tokens, over bge's 512 limit (truncated). Decision pending (Shivam): re-embed with EmbeddingGemma - 2.2M chunks total
+  (AR 1.37M, offer docs 0.56M, transcripts 0.25M, macro/decks ~25k) ~87 h at 7/s; transcripts+macro+decks ~11 h.
+- **Dates repaired (2026-10-18):** search-layer docs were stamped with corporate_documents.doc_date (crawl date):
+  5,725 transcripts (my --local-only run) + 3,496 ARs + ~936 decks (older runs). All fixed from BSE dissemination /
+  publication / call date (`scripts/repair_transcript_dates.py --types ...`); hygiene probe `search_docs_date_mismatch`
+  now 0 / 19,024. Vectors still embed the old header date text: re-embed covers it.
+- **Was next (Shivam):** embedding model test - ~50 real concall questions, bge-small vs Qwen3-Embedding-0.6B
   vs EmbeddingGemma-300M (retrieval hit rate + GPU speed, DirectML/ONNX support). Switch only on a clear gain, then
   re-embed everything in one pass (text/chunks are reused).
 - **PEAD (Telegram topic 683):** session re-logged in; topic refreshed to 2026-10-17 (no posts Aug 27 - Oct 8).
