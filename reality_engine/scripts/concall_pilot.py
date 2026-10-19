@@ -35,6 +35,36 @@ ALIASES = {"longcat-v2": ("longcat-2.5-preview-free", "prompt_v2.md"),
            "deepseek-v4.1-flash-r4": ("deepseek-v4.1-flash", "prompt_v2.md")}
 GO_KEY2_ONLY = {"mimo-v2.6-flash", "deepseek-v4.1-flash", "muse-spark-1.3-contributor", "deepseek-v4.1-flash-r4"}
 RESPONSES_API = {"muse-spark-1.3-contributor"}   # Muse answers only on /responses (chat/completions gives 400)
+# round 5 (2026-10-19, Shivam: every free model on Zen and Go vs DeepSeek, prompt v2): reader 'zen-<id>' runs
+# opencode/<id> through `opencode run` (Zen free tier answers only inside OpenCode; 200k context, transcripts ~12k
+# tokens), reader 'go-<id>' calls the Go API with <id>, keys alternating. Dir names avoid ':' (Windows).
+ZEN_PREFIX, GO_PREFIX = "zen-", "go-"
+
+
+def resolve(reader):
+    """reader name -> (route, model id, prompt file); route is 'zen', 'google' or 'go'."""
+    if reader.startswith(ZEN_PREFIX):
+        return "zen", reader[len(ZEN_PREFIX):], "prompt_v2.md"
+    if reader.startswith(GO_PREFIX):
+        return "go", reader[len(GO_PREFIX):], "prompt_v2.md"
+    mid, pfile = ALIASES.get(reader, (reader, "prompt.md"))
+    return ("google" if mid in GOOGLE else "go"), mid, pfile
+
+
+def call_zen(model, prompt, _key=None):
+    """OpenCode Zen free model via `opencode run` with the prompt attached as a file (the AR Zen route's reader).
+    No token counts come back from the CLI."""
+    from reality_engine.scripts.ar_queue import opencode_exe, read_piece
+    tmp = PILOT / "tmp" / f"{uuid.uuid4().hex}.txt"
+    tmp.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_text(prompt, encoding="utf-8")
+    try:
+        out, rc, err = read_piece(opencode_exe(), model, tmp, timeout=1500)
+    finally:
+        tmp.unlink(missing_ok=True)
+    if rc != 0 or not out:
+        raise RuntimeError(f"opencode rc={rc}: {err[-200:]}")
+    return out, None, None
 
 
 def prompt_for(item, prompt_file="prompt.md"):
@@ -91,8 +121,8 @@ def run_one(model, item, key):
     if out.exists():
         return model, item["symbol"], "have"
     out.parent.mkdir(parents=True, exist_ok=True)
-    mid, pfile = ALIASES.get(model, (model, "prompt.md"))
-    fn = call_google if mid in GOOGLE else call_go
+    route, mid, pfile = resolve(model)
+    fn = {"google": call_google, "zen": call_zen, "go": call_go}[route]
     last = ""
     for attempt in range(4):
         t0 = time.time()
@@ -117,7 +147,9 @@ def run(models, workers):
     jobs = []
     for m in models:
         for n, item in enumerate(sample):
-            if ALIASES.get(m, (m,))[0] in GOOGLE:
+            if resolve(m)[0] == "zen":
+                key = None
+            elif resolve(m)[0] == "google":
                 key = gkeys[n % len(gkeys)]
             elif m in GO_KEY2_ONLY:
                 key = env["OPENCODE_GO_API_KEY_2"]
@@ -144,7 +176,7 @@ def _digits(v):
     return [x.replace(",", "") for x in re.findall(r"\d[\d,]*\.?\d*", str(v)) if any(c.isdigit() for c in x)]
 
 
-def score():
+def score(bench=None):
     sample = json.loads((PILOT / "sample.json").read_text())
     texts = {s["doc_id"]: (PILOT / "text" / f"{s['doc_id']}_{s['symbol']}.txt").read_text(encoding="utf-8") for s in sample}
     ntext = {d: _norm(t) for d, t in texts.items()}
@@ -188,13 +220,20 @@ def score():
             r["found"][d] = found
             union.setdefault(d, set()).update(found)
         res[m] = r
-    print(f"{'model':28} docs items/doc guid/doc quotes_verbatim nums_in_text recall_vs_union  in_tok/doc out_tok/doc sec/doc")
+    bf = res.get(bench, {}).get("found", {}) if bench else {}
+    print(f"bench = {bench or '-'}: recall_vs_bench = share of the bench's verified numbers (guidance, key_numbers, capex, "
+          f"order_book) the reader also found, over docs both answered; extra = the reader's verified numbers the bench lacks")
+    print(f"{'model':36} docs items/doc guid/doc quotes_verbatim nums_in_text recall_vs_union recall_vs_bench extra/doc  "
+          f"in_tok/doc out_tok/doc sec/doc")
     for m, r in sorted(res.items(), key=lambda x: -sum(len(v) for v in x[1]["found"].values())):
         docs = max(1, r["docs"])
         rec = sum(len(r["found"].get(d, set())) for d in union) / max(1, sum(len(union[d]) for d in union))
-        print(f"{m:28} {r['docs']:4} {r['items'] / docs:9.1f} {r['guid'] / docs:8.1f} "
+        both = [d for d in r["found"] if d in bf]
+        rb = sum(len(r["found"][d] & bf[d]) for d in both) / max(1, sum(len(bf[d]) for d in both))
+        ex = sum(len(r["found"][d] - bf[d]) for d in both) / max(1, len(both))
+        print(f"{m:36} {r['docs']:4} {r['items'] / docs:9.1f} {r['guid'] / docs:8.1f} "
               f"{100 * r['quotes_ok'] / max(1, r['quotes']):14.1f}% {100 * r['nums_ok'] / max(1, r['nums']):11.1f}% "
-              f"{100 * rec:14.1f}% {r['in'] / docs:11.0f} {r['out'] / docs:11.0f} {r['sec'] / docs:7.0f}")
+              f"{100 * rec:14.1f}% {100 * rb:14.1f}% {ex:9.1f}  {r['in'] / docs:11.0f} {r['out'] / docs:11.0f} {r['sec'] / docs:7.0f}")
 
 
 VERIFY_PROMPT = """You are checking another reader's extraction from an earnings-call transcript. For EACH item below,
@@ -283,9 +322,10 @@ def main():
     ap.add_argument("cmd", choices=["run", "score", "verify"])
     ap.add_argument("--models", default="")
     ap.add_argument("--workers", type=int, default=25)
+    ap.add_argument("--bench", default="deepseek-v4.1-flash-r4", help="score: reader the others are measured against")
     a = ap.parse_args()
     if a.cmd == "score":
-        return score()
+        return score(a.bench)
     if a.cmd == "verify":
         return verify(a.models, a.workers)
     run(a.models.split(","), a.workers)
