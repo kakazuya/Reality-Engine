@@ -1,5 +1,6 @@
 """Live-state context file for worker models (Shivam, 2026-10-20: a worker cannot answer from information it never got;
-the orchestrator must hand over what it knows). Writes data/dsh_tasks/context_now.md, read by DeepSeek / Go workers.
+the orchestrator must hand over what it knows). Writes data/hotline/generated/context_now.md, read by DeepSeek / Go
+workers (see data/hotline/README.md).
 
 Contents: IST time; every running job process (python / pythonw / rclone / opencode / dsh) with command line, start time,
 CPU seconds and memory; measured network upload and disk rates (5 s sample); the Drive upload timetable from
@@ -19,7 +20,7 @@ import psutil
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "reality_engine" / "data"
 LOGS = DATA / "logs"
-OUT = DATA / "dsh_tasks" / "context_now.md"
+OUT = DATA / "hotline" / "generated" / "context_now.md"   # read by workers via ~/.dsh/AGENTS.md
 JOBS = re.compile(r"^(python|pythonw|rclone|opencode|dsh|bun)(\.exe)?$", re.I)
 SECRET = re.compile(r"(key|token|secret|password)[=: ]+\S+", re.I)
 

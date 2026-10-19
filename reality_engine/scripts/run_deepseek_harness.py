@@ -82,6 +82,7 @@ def main():
     ap.add_argument("--allow-paid", action="store_true", help="allow a paid Go model (needs Shivam's go-ahead)")
     ap.add_argument("--peak-ok", action="store_true",
                     help="run a DeepSeek model outside 15:30-06:30 IST (only after Shivam confirms the timing)")
+    ap.add_argument("--no-refresh", action="store_true", help="skip rebuilding the hotline context files")
     a = ap.parse_args()
 
     model, _, effort = a.model.partition("~")
@@ -108,6 +109,15 @@ def main():
     if not env.get(key_env):
         sys.exit(f"{key_env} is not set")
     env["DSH_PERMISSION_MODE"] = a.permission
+
+    # hotline (Shivam 2026-10-20): refresh the shared context before every run, so the worker reads the whole
+    # conversation (session_digest) and the live machine state (worker_context), not a stale or empty picture.
+    # ~/.dsh/AGENTS.md tells dsh to read tasks/hotline/ first. Failures here never block the task.
+    if not a.no_refresh:
+        root = Path(__file__).resolve().parents[2]
+        for mod in ("session_digest", "worker_context"):
+            subprocess.run([sys.executable, "-m", f"reality_engine.scripts.{mod}"], cwd=root, capture_output=True,
+                           timeout=300)
 
     out = Path(a.out_file)
     out.parent.mkdir(parents=True, exist_ok=True)
