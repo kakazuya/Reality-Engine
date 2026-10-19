@@ -37,6 +37,24 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 - concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
   facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
+**2026-10-19 16:45 (Claude): two power cuts (05:58, ~15:25: UPS trips under full GPU load) -> crash recovery.**
+- After a reboot NOTHING has to be restarted by hand: task `RealityEngine-BootRecover` (at logon; pythonw, no wscript)
+  runs `scripts/boot_recover.py`: readers at once (watchdog, PDF upload, Gemma re-embed at --duty 0.6), then on an
+  unclean shutdown (event 6008) SQLite quick_check of all 6 DBs (once per boot; main DB ~38 min), then writers (PIB
+  backfill, policy register, shareholding, circuit hits/bands, NSE industry, PIB regional sample, backup staging)
+  only if every check passes. Jobs already running or finished are skipped. Status: data/logs/boot_recover_status.json
+  (shown in the watchdog report), log boot_recover.log.
+- Gap: without auto-logon the task waits for a login. To run at boot with nobody logged in, Shivam runs once in an
+  admin PowerShell: `powershell -ExecutionPolicy Bypass -File reality_engine\scripts\setup_boot_tasks_admin.ps1`
+  (S4U for BootRecover, EOD, DBBackup).
+- EOD and DBBackup tasks now start via `conhost --headless cmd /c` (no wscript; Bitdefender flagged the wscript/VBS
+  startup launcher as malware), may start on UPS battery, and catch up when missed. The Startup-folder VBS is renamed
+  .disabled. DB backup: fixed the 05:09 crash (launcher redirected into the script's own log), lock file, resume
+  packs DBs missing from an interrupted set, --pack-only staging (first full set staging now).
+- All 6 DBs passed quick_check after the cuts. Gemma re-embed: 60% duty, ~3/s; transcripts+macro+decks ~28 h.
+- PDF/deck upload to Drive by rclone (`scripts/run_pdf_upload.cmd`, resumable, 4 MB/s, 512 KB/s 05:00-13:00):
+  53,562 files / 284 GiB missing at 15:15 (`scripts/drive_upload_check.py`, read-only remote gdrive_ro).
+
 **2026-10-19 05:50 (Claude): events table, circuit hits / bands.**
 - Snapshot table `events` (snapshot_research_tables.EVENTS_SQL): 2.78M company events (BSE announcements 1.95M,
   insider, deals, board-meeting intimations, results, shareholding, SAST, ARs, decks, circuit hits, concalls, PEAD

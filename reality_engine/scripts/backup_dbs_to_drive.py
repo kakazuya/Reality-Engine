@@ -130,6 +130,19 @@ def run(a):
     if open_sets:
         name = sorted(open_sets)[0]
         log(f"continuing unfinished set {name}")
+        # packing interrupted (power cut 2026-10-19): pack the databases this set still lacks; a half-written archive
+        # of the interrupted one is removed first
+        s = st["sets"][name]
+        packed = {x["db"] for x in s["dbs"]}
+        todo = [d for d in DBS if d.exists() and d.name not in packed and (s.get("full") or d.stat().st_size < SMALL)]
+        set_dir = STAGE / name
+        for d in todo:
+            for p in list(set_dir.glob(f"{d.stem}.7z.*")) + [set_dir / d.name, set_dir / (d.name + "-journal")]:
+                p.unlink(missing_ok=True)
+            parts = snapshot_and_pack(d, set_dir)
+            s["dbs"].append({"db": d.name, "parts": parts, "src_bytes": d.stat().st_size})
+            save_state(st)
+            log(f"packed {d.name}: {len(parts)} part(s) (resumed set)")
     else:
         name = dt.date.today().isoformat()
         last_full = st.get("last_full")
