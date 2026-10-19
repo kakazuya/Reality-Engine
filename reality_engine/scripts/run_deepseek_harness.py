@@ -11,7 +11,7 @@ and selects the model. The key is read from the Windows user env (OPENCODE_GO_AP
 
 The task goes in on stdin and the final answer goes to --out-file. dsh's stderr (reasoning, `dsh: <code>` errors) goes
 to <out-file>.log. The exit code is dsh's (0 = task completed, 1 = failed), 124 = timed out (process tree killed),
-2 = bad arguments.
+1 also for a refused setup (unknown/paid model, missing key), 2 = argparse usage error.
 Model ids: beam-free, longcat-2.5-preview-free, minimax-m3.1-flash-free (free); deepseek-v4.1-flash is PAID on Go
 and needs --allow-paid. `<id>~<effort>` sets reasoning effort (low/medium/high/xhigh/max); MiniMax defaults to
 low because at default effort it can reason through its whole output budget and answer empty.
