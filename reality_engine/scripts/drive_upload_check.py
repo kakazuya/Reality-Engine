@@ -10,7 +10,8 @@ Local areas: Downloads/InfoDiffusion_to_upload/{pdfs,decks} (hard links into the
 D:/RealityEngine/pdfs. Output in reality_engine/data/drive_upload_check/: SUMMARY.txt, missing_<area>.txt,
 size_mismatch_<area>.txt. With --links, the missing files are hard-linked (no extra space) into
 Downloads/InfoDiffusion_remaining/{pdfs,decks} and D:/RealityEngine/remaining_pdfs, rebuilt from scratch each run,
-so those folders always hold exactly what is left to upload.
+so those folders always hold exactly what is left to upload. Do NOT use --links while run_pdf_upload.cmd is running
+(it uploads from those folders).
 
     python -m reality_engine.scripts.drive_upload_check [--links]
 """
@@ -23,7 +24,9 @@ import subprocess
 from pathlib import Path
 
 RCLONE = r"C:\Users\warri\AppData\Local\Microsoft\WinGet\Packages\Rclone.Rclone_Microsoft.Winget.Source_8wekyb3d8bbwe\rclone-v1.75.1-windows-amd64\rclone.exe"
-DRIVE_FOLDER = "1aSQEfkMMGmpEpDDq7tI9MH7kmNJNemTH"
+# 17-Oct InfoDiffusion_archive (browser uploads) and 19-Oct one created by rclone (run_pdf_upload.cmd uploads there:
+# pdfs/, decks/, D_pdfs/; db_backups/ is skipped)
+DRIVE_FOLDERS = ["1aSQEfkMMGmpEpDDq7tI9MH7kmNJNemTH", "1A3MOQnFsYw27Vk4DVmypfdIHR9ERydHB"]
 OUT = Path(__file__).resolve().parents[1] / "data" / "drive_upload_check"
 PREFIXES = ("InfoDiffusion_to_upload/", "InfoDiffusion_remaining/")
 AREAS = [  # label, area, local root, remaining-links folder
@@ -36,16 +39,20 @@ AREAS = [  # label, area, local root, remaining-links folder
 
 
 def drive_files():
-    r = subprocess.run([RCLONE, "lsjson", "-R", "--files-only", "--fast-list", "--no-mimetype", "gdrive_ro:",
-                        "--drive-root-folder-id", DRIVE_FOLDER], capture_output=True, text=True, check=True)
+    items = []
+    for fid in DRIVE_FOLDERS:
+        r = subprocess.run([RCLONE, "lsjson", "-R", "--files-only", "--fast-list", "--no-mimetype", "gdrive_ro:",
+                            "--drive-root-folder-id", fid], capture_output=True, text=True, check=True)
+        items += [x for x in json.loads(r.stdout) if not x["Path"].startswith("db_backups/")]
     exact, by_name = {}, collections.defaultdict(set)
-    for x in json.loads(r.stdout):
+    for x in items:
         p = x["Path"]
         for pre in PREFIXES:
             if p.startswith(pre):
                 p = p[len(pre):]
-        if p.startswith("remaining_pdfs/"):
-            p = "pdfs/" + p[len("remaining_pdfs/"):]
+        for alt in ("remaining_pdfs/", "D_pdfs/"):
+            if p.startswith(alt):
+                p = "pdfs/" + p[len(alt):]
         exact[p.lower()] = x["Size"]
         by_name[(p.split("/")[0], p.rsplit("/", 1)[-1].lower())].add(x["Size"])
     return exact, by_name
