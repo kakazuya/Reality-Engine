@@ -130,6 +130,46 @@ class GeminiAPI:
         return v / np.linalg.norm(v, axis=1, keepdims=True)
 
 
+class OpenAIEmbed:
+    """OpenAI-compatible /embeddings endpoint (2026-10-19: Qwen3-Embedding-8B on Nebius Token Factory, $0.01/M tokens;
+    Shivam's $1 trial). Qwen3 needs the instruction on queries only, as in the local 0.6B test."""
+    API = {"qwen3-8b-nebius": ("NEBIUS_API_KEY", "Qwen/Qwen3-Embedding-8B",
+                               ["https://api.tokenfactory.nebius.com/v1", "https://api.studio.nebius.com/v1"])}
+
+    def __init__(self, name):
+        from reality_engine.scripts.resource_watchdog import user_env
+        kenv, self.model, self.bases = self.API[name]
+        self.key = user_env()[kenv]
+        self.name, self.provider, self.calls, self.r429, self.tokens = name, "api:" + kenv, 0, 0, 0
+        self.base = None
+
+    def _post(self, texts):
+        import requests
+        for base in ([self.base] if self.base else self.bases):
+            r = requests.post(f"{base}/embeddings", headers={"Authorization": f"Bearer {self.key}"},
+                              json={"model": self.model, "input": texts}, timeout=300)
+            self.calls += 1
+            if r.status_code == 200:
+                self.base = base
+                self.tokens += (r.json().get("usage") or {}).get("prompt_tokens", 0) or 0
+                return [e["embedding"] for e in sorted(r.json()["data"], key=lambda e: e["index"])]
+            if r.status_code == 429:
+                self.r429 += 1; time.sleep(10); return self._post(texts)
+            last = f"{base}: HTTP {r.status_code} {r.text[:200]}"
+        raise RuntimeError(last)
+
+    def embed(self, texts, query=False, bs=32):
+        if query:
+            texts = [QWEN_INSTRUCT + t for t in texts]
+        out = []
+        for s in range(0, len(texts), bs):
+            out += self._post(texts[s:s + bs])
+            if s // bs % 25 == 0:
+                print(f"  {self.name} {s + bs}/{len(texts)} tokens so far {self.tokens:,}", flush=True)
+        v = np.array(out, dtype=np.float32)
+        return v / np.linalg.norm(v, axis=1, keepdims=True)
+
+
 def evaluate(names):
     corpus = json.load(open(OUT / "corpus.json", encoding="utf-8"))
     qs = json.load(open(OUT / "questions.json", encoding="utf-8"))
@@ -145,7 +185,8 @@ def evaluate(names):
             m = type("Precomputed", (), {"provider": "colab:" + meta.get("gpu", "?")})()
             E, Q, rate = np.load(cache), np.load(qcache), meta.get("chunks_per_s")
         else:
-            m = GeminiAPI(name) if name in GeminiAPI.API else Model(name)
+            m = (GeminiAPI(name) if name in GeminiAPI.API else OpenAIEmbed(name) if name in OpenAIEmbed.API
+                 else Model(name))
             t0 = time.time()
             if cache.exists():
                 E = np.load(cache); rate = None
@@ -160,8 +201,10 @@ def evaluate(names):
                 rank = int((sc > sc[g]).sum()) + 1
                 res[scope].append(rank)
         r = {"model": name, "provider": m.provider, "chunks_per_s": round(rate, 1) if rate else None, "dim": E.shape[1]}
-        if isinstance(m, GeminiAPI):
+        if isinstance(m, (GeminiAPI, OpenAIEmbed)):
             r["api_calls"], r["api_429"] = m.calls, m.r429
+        if isinstance(m, OpenAIEmbed):
+            r["tokens"], r["cost_usd"] = m.tokens, round(m.tokens * 0.01 / 1e6, 4)
         for scope, ranks in res.items():
             a = np.array(ranks)
             r[scope] = {"hit@1": round((a <= 1).mean(), 3), "hit@5": round((a <= 5).mean(), 3),
