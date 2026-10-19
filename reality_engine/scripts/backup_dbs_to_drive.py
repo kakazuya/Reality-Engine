@@ -12,11 +12,12 @@ spreads over several mornings; (4) when a database's parts are all uploaded and 
 parts are deleted. State: reality_engine/data/backups/state.json. Log: data/logs/db_backup.log.
 Scheduled task 'RealityEngine-DBBackup' daily 05:00.
 
-    python -m reality_engine.scripts.backup_dbs_to_drive [--dry-run]
+    python -m reality_engine.scripts.backup_dbs_to_drive [--dry-run] [--pack-only]
 """
 import argparse
 import datetime as dt
 import json
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -27,6 +28,8 @@ DATA = ROOT / "reality_engine/data"
 STAGE = DATA / "backups"
 STATE = STAGE / "state.json"
 LOG = DATA / "logs/db_backup.log"
+RCLONE_LOG = DATA / "logs/db_backup.rclone.log"   # rclone holds its log file open; keep it apart from ours
+LOCK = STAGE / "running.lock"
 RCLONE = r"C:\Users\warri\AppData\Local\Microsoft\WinGet\Packages\Rclone.Rclone_Microsoft.Winget.Source_8wekyb3d8bbwe\rclone-v1.75.1-windows-amd64\rclone.exe"
 SEVENZIP = r"C:\Program Files\7-Zip\7z.exe"
 REMOTE = "gdrive:InfoDiffusion_archive/db_backups"
@@ -79,13 +82,13 @@ def upload(set_dir, remote_dir):
         log("outside the upload window (05:00-13:00); not uploading"); return False
     r = subprocess.run([RCLONE, "copy", str(set_dir), remote_dir, "--bwlimit", BWLIMIT, "--transfers", "2",
                         "--max-duration", f"{secs}s", "--cutoff-mode", "soft", "--drive-chunk-size", "32M",
-                        "--tpslimit", "8", "--log-level", "NOTICE", "--log-file", str(LOG)])
+                        "--tpslimit", "8", "--log-level", "NOTICE", "--log-file", str(RCLONE_LOG)])
     return r.returncode == 0
 
 
 def verify_and_clean(set_dir, remote_dir, st, set_name):
     r = subprocess.run([RCLONE, "check", str(set_dir), remote_dir, "--one-way", "--log-level", "ERROR",
-                        "--log-file", str(LOG)])
+                        "--log-file", str(RCLONE_LOG)])
     if r.returncode == 0:
         for p in set_dir.glob("*.7z.*"):
             p.unlink()
@@ -98,9 +101,30 @@ def verify_and_clean(set_dir, remote_dir, st, set_name):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--pack-only", action="store_true", help="stage (snapshot + 7z) now, any hour; upload at 05:00")
     a = ap.parse_args()
-    if not (dt.time(5, 0) <= dt.datetime.now().time() < STOP_AT) and not a.dry_run:
+    if not (dt.time(5, 0) <= dt.datetime.now().time() < STOP_AT) and not (a.dry_run or a.pack_only):
         log("started outside 05:00-13:00; nothing to do"); return
+    STAGE.mkdir(parents=True, exist_ok=True)
+    try:   # one run at a time (two overlapped on 2026-10-19)
+        fd = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode()); os.close(fd)
+    except FileExistsError:
+        try:
+            import psutil
+            pid = int(LOCK.read_text() or 0)
+            if pid and psutil.pid_exists(pid):
+                log(f"another backup run (pid {pid}) is active; exiting"); return
+        except (ValueError, OSError, ImportError):
+            pass
+        LOCK.write_text(str(os.getpid()))   # stale lock (crash / power cut)
+    try:
+        run(a)
+    finally:
+        LOCK.unlink(missing_ok=True)
+
+
+def run(a):
     st = load_state()
     open_sets = [k for k, v in st["sets"].items() if not v.get("complete")]
     if open_sets:
@@ -128,7 +152,7 @@ def main():
         if full:
             st["last_full"] = name
         save_state(st)
-    if a.dry_run:
+    if a.dry_run or a.pack_only:
         return
     set_dir = STAGE / name
     remote_dir = f"{REMOTE}/{name}"
