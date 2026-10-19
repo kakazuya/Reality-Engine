@@ -173,7 +173,14 @@ def main():
     ap.add_argument("--max-usd", type=float, default=2.3)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--status", action="store_true")
+    ap.add_argument("--tiers", default="0,1,2", help="reembed_gemma tiers; 3 = annual reports (own index)")
+    ap.add_argument("--out", default="", help="index folder name under data/ (default vector_index_qwen8b)")
     a = ap.parse_args()
+    global TIERS, OUT, LOG
+    TIERS = tuple(int(t) for t in a.tiers.split(","))
+    if a.out:   # 2026-10-20 (Shivam): spend the rest of the Nebius trial on annual reports, kept in their own index
+        OUT = DATA / a.out
+        LOG = DATA / "logs" / f"reembed_qwen_nebius_{a.out}.log"
     if not paths()[1].exists():
         make_plan()
     if a.status:
