@@ -161,6 +161,7 @@ def status():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--block", type=int, default=1920, help="chunks read and flushed per step; bigger keeps more requests in flight")
     ap.add_argument("--max-usd", type=float, default=2.3)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--status", action="store_true")
@@ -169,7 +170,7 @@ def main():
         make_plan()
     if a.status:
         return status()
-    run(a.workers, a.max_usd, a.limit)
+    run(a.workers, a.max_usd, a.limit, block=a.block)
 
 
 if __name__ == "__main__":
