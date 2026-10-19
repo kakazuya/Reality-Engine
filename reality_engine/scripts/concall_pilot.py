@@ -340,6 +340,8 @@ def machine_check(doc_text, data):
             if any(x not in tdig for vk in VALUE_KEYS for x in _digits(it.get(vk, ""))):
                 c["bad_number"] += 1; continue
             ok, why = value_in_quote_ok(k, it)
+            if k in GATE:   # always recorded, so a reader can see the gate ran (review 2 read absent counts as "ungated")
+                c["vq_checked"] = c.get("vq_checked", 0) + 1
             if not ok:
                 c[why] = c.get(why, 0) + 1; c["bad_value_in_quote"] = c.get("bad_value_in_quote", 0) + 1; continue
             if it.get("basis") in ("standalone", "consolidated") and it["basis"] not in low:
