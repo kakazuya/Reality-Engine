@@ -62,3 +62,16 @@ gate counts. From now on checks_json always carries "vq_checked" (items examined
 MiniMax scaled to 16 workers on prompt v3 with --reread-models, so BASF (14752) and SINGERIND (80180) are re-read
 under v3 in their queue turn; please use them as the regression test in review 3. Condition 2 (basis blanks, bare
 confirmation on KAJARIACER key_numbers#8) noted for prompt v4 with the order_book/key_numbers duplication.
+
+### 2026-10-20 04:26 IST DeepSeek hypothesis register (hotline job 4)
+Wrote `tasks/HYPOTHESIS_REGISTER.md`: 26 cards (10 ready, 13 partial, 3 blocked), plus the P0 Step-0 gate and the
+parked/buried list. Old names/IDs kept (Card A-G, T1-T12, P1-P7), duplicates merged. **First five for Dussehra:**
+H01 Card B PEAD, H02 Card F bulk/block deals, H03 CMF, H04 P1 momentum, H05 delivery spike; Card A runs as an
+overlay on H01, not a sixth slot.
+
+Read-only findings that shaped it: concall facts are 1,718 ok docs / 152,080 items but only 2025-05 -> 2026-10,
+with 280 computed comparisons (90 raised / 65 docs); results XBRL `known_at` lags the BSE PDF (TITAGARH Q3 FY25:
+13-Feb-2025 20:32 IST vs 14-Feb 15:10 IST); deals are 138,572 NSE + 135,509 BSE rows 2019 -> 2026; shareholding
+pledge is non-null for only 2,757 of 50,329 view rows; ASM has 0 rows (GSM only); `index_membership` is one
+2026-09-30 snapshot; `annual_financials` has no `filed_at`; `insider_trades` has 0 rows. ETF premium is data-ready
+but needs Shivam's ruling under FRAMEWORK §2 (cash equities only). No database or running job touched.

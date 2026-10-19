@@ -1,5 +1,28 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## START HERE - hand-off 2026-10-20 04:35 IST (Dussehra; session 10203977 "workspace check -> embeddings -> worker department")
+Shivam: backtesting starts TODAY (Dussehra = Vijayadashami, 20-Oct-2026, confirmed from PIB). Start a FRESH session for it.
+1. Read `tasks/HYPOTHESIS_REGISTER.md` (26 cards, written by DeepSeek, checked by Claude): the 5 starred cards run first
+   (H01 PEAD, H02 bulk/block deals, H03 CMF/delivery-weighted CMF, H04 momentum vs reversal, H05 delivery spike; H06 is an
+   overlay on H01). All 5 are READY on price/flow data. H14 guidance raises needs the transcript run below.
+2. Shared context for workers: `reality_engine/data/hotline/` (README protocol, decisions.md = 121 Chesterton fences,
+   hotline.md log, generated/ session digests + live state rebuilt before each DeepSeek run).
+3. Department: Claude orchestrates; DeepSeek (dsh, xhigh, off-peak 15:30-06:30 IST, paid) reviews; Beam + MiniMax (free,
+   OpenCode Go, both keys) read. Every Go call uses a stable x-opencode-session (go_session.py).
+
+Running detached (hidden, survive app restarts; WMI + conhost --headless):
+| Job | State 04:35 | Check |
+|---|---|---|
+| Beam transcripts, prompt v3 (`concall_deepseek --model beam-free`, shard 1,2,3/4, 32 workers) | ~13.7k queued incl. v2 re-reads; ~48 s each | concall_facts.db cc_docs model='beam-free', checks_json prompt v3 |
+| MiniMax transcripts, prompt v3 (shard 0/4, 16 workers, ~high effort) | ~4.5k queued | review 3: BASF 14752 + SINGERIND 80180 regression |
+| Nemotron-8B embeddings (DeepInfra) tiers 0-2 -> data/vector_index_nemotron8b | was ~78% at 03:35, finishing ~04:00-04:30 | log reembed_qwen_nebius_vector_index_nemotron8b.log RUN_END |
+| Drive upload (rclone, 24 MB/s 01-07 IST) | 160 GiB left at 02:58 | drive_upload_check.py |
+| PIB English backfill | at 2023-05 | pib_backfill.log |
+Next after transcripts: Nemotron-1B NVFP4 on annual reports (~$9.06, 906M tokens measured), only after the readers finish.
+Search switch (hybrid_search -> Nemotron-8B index for tiers 0-2) not done yet. DeepInfra ~$2.5 left after Nemotron-8B.
+Embedding retrieval test (51 q): Nemotron-8B hit@5 94.1% > Gemini-001 88.2% > Nemotron-1B (BF16 = NVFP4) 90.2% > Qwen3-8B 84.3% > EmbeddingGemma 80.4% > bge-small 51.0%.
+
+
 ## START HERE - hand-off 2026-10-19 19:30 (session "Pipeline framework and detached jobs review" closed)
 Rules (Shivam): data gaps, query gaps, latency first (PIPELINE_TODO Phase Q -> A -> B -> C); NO backtests until he says;
 new tables / files only, verify on real rows (dates vs source, counts, hand samples), never break running jobs; measure.
