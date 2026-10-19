@@ -287,6 +287,40 @@ TRANSCRIPT:
 """
 
 
+# value-in-quote gate (2026-10-20, DeepSeek review 1 -> spec in data/hotline/prompt_v3_changes.md §3): a number in a
+# numeric field must appear in the item's OWN quote, except a labelled "(confirmed analyst's figure)" whose number is in
+# the analyst carrier and whose quote is management's confirmation (not a bare "yes"). Caught: SINGERIND Rs 2.3 cr
+# (analyst-only number stored as a company fact). Necessary, not sufficient: scope/period errors pass it.
+GATE = {"key_numbers": ("value", "metric", "question_gist"), "guidance": ("value", "metric", "question_gist"),
+        "capex": ("amount", "purpose", "question_gist"), "order_book": ("value", "inflow_or_pipeline", "inflow_or_pipeline")}
+_CONFIRMED = re.compile(r"\(\s*confirmed analyst['’]s figure\s*\)", re.I)
+_YESWORDS = {"yes", "yeah", "yep", "no", "nope", "correct", "right", "true", "absolutely", "confirmed", "sure", "okay",
+             "ok", "exactly", "indeed", "definitely"}
+
+
+def _nums(s):
+    return {float(x) for x in re.findall(r"\d+(?:\.\d+)?", str(s or "").replace(",", ""))}
+
+
+def value_in_quote_ok(list_name, it):
+    if list_name not in GATE:
+        return True, ""
+    vf, label, carrier = GATE[list_name]
+    want = _nums(it.get(vf))
+    if not want or want <= _nums(it.get("quote")):
+        return True, ""
+    if not _CONFIRMED.search(str(it.get(label) or "")):
+        return False, "number_not_in_quote"
+    if not want <= _nums(it.get(carrier)):
+        return False, "analyst_number_missing"
+    toks = re.sub(r"[^\w\s]", " ", str(it.get("quote") or "")).lower().split()
+    if not toks:
+        return False, "quote_empty"
+    if len(toks) < 6 or all(t in _YESWORDS for t in toks):
+        return False, "bare_confirmation"
+    return True, ""
+
+
 def machine_check(doc_text, data):
     """Free checks: quote word-for-word (whitespace-insensitive), every number of a value in the text, basis word said.
     Returns (data with failing items removed and basis fixed, counts)."""
@@ -304,6 +338,9 @@ def machine_check(doc_text, data):
                 c["bad_quote"] += 1; continue
             if any(x not in tdig for vk in VALUE_KEYS for x in _digits(it.get(vk, ""))):
                 c["bad_number"] += 1; continue
+            ok, why = value_in_quote_ok(k, it)
+            if not ok:
+                c[why] = c.get(why, 0) + 1; c["bad_value_in_quote"] = c.get("bad_value_in_quote", 0) + 1; continue
             if it.get("basis") in ("standalone", "consolidated") and it["basis"] not in low:
                 it["basis"] = "unknown"; c["basis_fixed"] += 1
             keep.append(it)

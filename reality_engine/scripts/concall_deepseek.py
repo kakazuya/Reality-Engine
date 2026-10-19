@@ -37,6 +37,8 @@ PRIORITY = ROOT / "reality_engine/data/concall_priority_pead.json"
 TG_ISINS = ROOT / "reality_engine/data/tg_company_isins.json"
 LOG = ROOT / "reality_engine/data/logs/concall_deepseek.log"
 MODEL = "deepseek-v4.1-flash"
+PROMPT_FILE = "prompt_v2.md"
+REREAD_MODELS = set()   # --prompt; the tag (v2/v3) is stored in cc_docs.checks_json["prompt"]
 FREE_MODELS = {"beam-free", "minimax-m3.1-flash-free", "longcat-2.5-preview-free"}   # no spend guard, cost 0
 PRICE_IN, PRICE_OUT = 0.15, 0.60          # $/M tokens off-peak (we never call at peak)
 FIVE_H_CAP, WEEK_CAP = 15.0, 38.0         # Go windows are $16 / $40 (20% / 50% of $80); keep a margin
@@ -81,6 +83,11 @@ def queue(out, only_tg=True):
         allowed = set(json.loads(TG_ISINS.read_text(encoding="utf-8")))
         rows = [r for r in rows if r[1] in allowed]
     done = {d for (d,) in out.execute("SELECT doc_id FROM cc_docs WHERE status='ok' OR status LIKE 'skip_%'")}
+    if REREAD_MODELS:   # re-read docs these readers stored under an older prompt (2026-10-20: v2 -> v3)
+        tag = PROMPT_FILE.replace("prompt_", "").replace(".md", "")
+        old = {d for d, m, ck in out.execute("SELECT doc_id, model, checks_json FROM cc_docs WHERE status='ok'")
+               if m in REREAD_MODELS and (json.loads(ck or "{}").get("prompt") or "v2") != tag}
+        done -= old
     # duplicates decided oldest-first: the EARLIEST public filing of a PDF is the one we keep (point-in-time); a later
     # re-filing of the same file (same sha256) or a second filing on the same ISIN + day is skipped
     dup_ids, seen_sha, seen_day = set(), set(), set()
@@ -119,7 +126,7 @@ def text_of(path):
 
 
 def prompt(symbol, filed, text):
-    p = (PILOT / "prompt_v2.md").read_text(encoding="utf-8")
+    p = (PILOT / PROMPT_FILE).read_text(encoding="utf-8")
     return p.replace("{company}", symbol or "").replace("{symbol}", symbol or "").replace("{date}", (filed or "")[:10]).replace("{text}", text)
 
 
@@ -214,6 +221,7 @@ def work(item, keys, out_path):
                                 "run_at": dt.datetime.now().isoformat(timespec="seconds")})
                 continue
             data, checks = machine_check(text, data)
+            checks["prompt"] = PROMPT_FILE.replace("prompt_", "").replace(".md", "")
             pq = parse_period(data.get("period_discussed"))
             save(out_path, {**base, "status": "ok", "period_discussed": data.get("period_discussed"),
                             "period_q": pq[0] if pq else None, "period_fy": pq[1] if pq else None, "key_name": kname, "in_tok": it, "out_tok": ot, "cost_usd": cost,
@@ -248,7 +256,7 @@ def _set_caps(week, five_h):
 
 
 def main():
-    global MODEL, SINCE, LOG
+    global MODEL, SINCE, LOG, PROMPT_FILE, REREAD_MODELS
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--limit", type=int, default=0)
@@ -268,8 +276,11 @@ def main():
     ap.add_argument("--since", default=SINCE, help="earliest filing date to read")
     ap.add_argument("--shard", default="", help="'r1,r2/n': only docs with doc_id %% n in {r1,r2}")
     ap.add_argument("--max-out", type=int, default=32000, help="output-token cap per call")
+    ap.add_argument("--prompt", default=PROMPT_FILE, help="prompt file in data/concall_pilot (v3 from 2026-10-20)")
+    ap.add_argument("--reread-models", default="", help="re-read docs these models stored under another prompt")
     a = ap.parse_args()
-    MODEL, SINCE = a.model, a.since
+    MODEL, SINCE, PROMPT_FILE = a.model, a.since, a.prompt
+    REREAD_MODELS = {m for m in a.reread_models.split(",") if m}
     if MODEL.split("~")[0] in FREE_MODELS:
         LOG = ROOT / f"reality_engine/data/logs/concall_{MODEL.split('~')[0]}.log"
     from reality_engine.scripts import concall_pilot

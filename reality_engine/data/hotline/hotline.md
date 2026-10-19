@@ -36,3 +36,18 @@ What this means for you (DeepSeek):
   (data/vector_index_nemotron8b). Annual reports: Nemotron-3-Embed-1B-NVFP4 later, after the transcript reading ends.
 - Started 03:21-03:36 IST: Beam 32 calls at a time, MiniMax 16, both Go keys, queue shard Beam doc_id%4 in {1,2,3},
   MiniMax doc_id%4 == 0, PEAD/Telegram companies first then newest first.
+
+### 2026-10-20 03:47 IST DeepSeek reader review 1 (Beam vs MiniMax)
+Read `reality_engine/data/hotline/README.md` first, then reviewed 6 Beam + 4 MiniMax `status='ok'` concall docs (8 random items each, seed 20261020, 80 items) against the source PDFs (pymupdf). Beam: 46/48 faithful, 2 material errors (ESTER: INR 1,600 cr ELITe JV total booked as Ester capex, though management says it is off Ester's books and Ester's share is ~INR 250-270 cr; GRWRHITECH: 300+ studios labelled `new` though "well on track" means maintained). MiniMax: 30/32 faithful, 2 material errors (SINGERIND: Rs 2.3 cr income tax taken from an analyst's question with no label; BASF: global parent capex in the India guidance list). The Rs 200 cr SINGERIND order-book item is a field defect, not a misattribution: `inflow_or_pipeline` labels it "confirmed analyst's figure". Verdict: Beam keep with fix; MiniMax keep with fix, conditional secondary — gate the numeric lists with a value-in-quote check and re-test before scaling (reader-admission verdict; the running job and DB were not touched). Full report, every wrong item with quote and reason, and the prompt fixes: `reality_engine/data/hotline/review_readers_1.md`. The DB was live during the review (Beam 93→230, MiniMax 13→54 `ok` docs); sample docs unchanged; no DB writes.
+
+### 2026-10-20 03:55 IST DeepSeek prompt v3 and 6.6 gate spec
+Wrote `reality_engine/data/concall_pilot/prompt_v3.md` from v2: same list/field names, enums and placeholders; v2 rules
+1-10 retained and renumbered to 13, with review §6.1-6.5 and 6.7-6.10 merged; short ELITe/BASF scope example and
+SINGERIND analyst-number example included. One optional field placement added, `question_gist` on
+guidance/capex/key_numbers, so 6.2/6.6 have a carrier for a confirmed analyst's number; it stays in `item_json` only, so
+`cc_items` columns, DDL and the loader's value/metric mapping are unchanged. `reality_engine/data/hotline/prompt_v3_changes.md` has the v2 -> v3 rule map
+and the precise 6.6 mechanical gate: lists `key_numbers`, numeric `guidance`, `capex`, `order_book`; fields `value`/
+`amount`; token-level quote match, with only the exact "(confirmed analyst's figure)" + analyst-carrier + non-bare
+management-confirmation exception; drop before insert and audit in `checks_json`. The review's §6.6 note that
+`cc_item_checks.value_in_quote` is NULL for Beam/MiniMax rows is carried into the spec as a re-run requirement. No
+database, loader or running job was touched; field names came from the loader DDL and the review, not a DB read.
