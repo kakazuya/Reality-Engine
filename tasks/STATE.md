@@ -44,13 +44,13 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
   backfill, policy register, shareholding, circuit hits/bands, NSE industry, PIB regional sample, backup staging)
   only if every check passes. Jobs already running or finished are skipped. Status: data/logs/boot_recover_status.json
   (shown in the watchdog report), log boot_recover.log.
-- Gap: without auto-logon the task waits for a login. To run at boot with nobody logged in, Shivam runs once in an
-  admin PowerShell: `powershell -ExecutionPolicy Bypass -File reality_engine\scripts\setup_boot_tasks_admin.ps1`
-  (S4U for BootRecover, EOD, DBBackup).
+- DONE 18:00 (Shivam ran setup_boot_tasks_admin.ps1): BootRecover (at startup + at logon), EODMarket and DBBackup
+  run as S4U, i.e. with nobody logged in. Tested: the re-embed restarted by the task in session 0 gets the GPU
+  (DirectML, ~2.8 chunks/s at duty 0.6).
 - EOD and DBBackup tasks now start via `conhost --headless cmd /c` (no wscript; Bitdefender flagged the wscript/VBS
   startup launcher as malware), may start on UPS battery, and catch up when missed. The Startup-folder VBS is renamed
   .disabled. DB backup: fixed the 05:09 crash (launcher redirected into the script's own log), lock file, resume
-  packs DBs missing from an interrupted set, --pack-only staging (first full set staging now).
+  packs DBs missing from an interrupted set, --pack-only staging: first full set staged 16:55 (6 DBs, 23 parts, ~22 GB), uploads from 05:00.
 - All 6 DBs passed quick_check after the cuts. Gemma re-embed: 60% duty, ~3/s; transcripts+macro+decks ~28 h.
 - PDF/deck upload to Drive by rclone (`scripts/run_pdf_upload.cmd`, resumable, 4 MB/s, 512 KB/s 05:00-13:00):
   53,562 files / 284 GiB missing at 15:15 (`scripts/drive_upload_check.py`, read-only remote gdrive_ro).
