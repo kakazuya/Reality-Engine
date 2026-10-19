@@ -154,6 +154,7 @@ class OpenAIEmbed:
     for _n, (_repo, _usd, _d, _q) in {
             "nemotron3-8b-di": ("nvidia/Nemotron-3-Embed-8B", 0.035, "passage: ", "query: "),
             "nemotron3-1b-di": ("nvidia/Nemotron-3-Embed-1B-BF16", 0.015, "passage: ", "query: "),
+            "nemotron3-1b-fp4-di": ("nvidia/Nemotron-3-Embed-1B-NVFP4", 0.01, "passage: ", "query: "),   # AR candidate
             "nemotron-vl-1b-di": ("nvidia/llama-nemotron-embed-vl-1b-v2", 0.01, "passage: ", "query: "),
             "qwen3-4b-di": ("Qwen/Qwen3-Embedding-4B", 0.02, "", QWEN_INSTRUCT),
             "qwen3-0.6b-di": ("Qwen/Qwen3-Embedding-0.6B", 0.01, "", QWEN_INSTRUCT),
