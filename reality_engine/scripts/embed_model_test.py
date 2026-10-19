@@ -158,14 +158,21 @@ class OpenAIEmbed:
             last = f"{base}: HTTP {r.status_code} {r.text[:200]}"
         raise RuntimeError(last)
 
-    def embed(self, texts, query=False, bs=32):
+    def embed(self, texts, query=False, bs=32, workers=6):
+        # parallel batches (Nebius default limit 600k tokens/min, 10k req/min; 32 chunks ~ 17.5k tokens, ~12 s each:
+        # one at a time was ~90k tokens/min, 6 in flight ~ 500k)
+        import concurrent.futures as cf
         if query:
             texts = [QWEN_INSTRUCT + t for t in texts]
-        out = []
-        for s in range(0, len(texts), bs):
-            out += self._post(texts[s:s + bs])
-            if s // bs % 25 == 0:
-                print(f"  {self.name} {s + bs}/{len(texts)} tokens so far {self.tokens:,}", flush=True)
+        parts = list(range(0, len(texts), bs))
+        res = {}
+        with cf.ThreadPoolExecutor(workers) as ex:
+            futs = {ex.submit(self._post, texts[s:s + bs]): s for s in parts}
+            for n, f in enumerate(cf.as_completed(futs), 1):
+                res[futs[f]] = f.result()
+                if n % 25 == 0:
+                    print(f"  {self.name} {n}/{len(parts)} batches, tokens so far {self.tokens:,}", flush=True)
+        out = [v for s in parts for v in res[s]]
         v = np.array(out, dtype=np.float32)
         return v / np.linalg.norm(v, axis=1, keepdims=True)
 
