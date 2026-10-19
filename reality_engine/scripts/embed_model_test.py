@@ -92,6 +92,44 @@ class Model:
         return np.vstack(res).astype(np.float32)
 
 
+class GeminiAPI:
+    """Google AI Studio embedding models over the API (2026-10-19, Shivam: compare against the local GPU EmbeddingGemma).
+    batchEmbedContents, 40 texts per request, task type RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY, keys used in turn; a 429
+    moves to the next key. Input is truncated by the API at the model's token limit (001: 2,048, 2: 8,192)."""
+    API = {"gemini-embedding-001": "gemini-embedding-001", "gemini-embedding-2": "gemini-embedding-2"}
+
+    def __init__(self, name):
+        from reality_engine.scripts import ingest_annual_reports as ar
+        env = ar.user_env()
+        self.name, self.model, self.provider = name, self.API[name], "google-api"
+        self.keys = [env[k] for k in ar.gemini_keys(env)]
+        self.k = 0
+        self.calls, self.r429 = 0, 0
+
+    def embed(self, texts, query=False, bs=40):   # 100 real chunks (~28k+ tokens) get 429 on a fresh key; 50 pass
+        import requests
+        out = []
+        for s in range(0, len(texts), bs):
+            reqs = [{"model": f"models/{self.model}", "content": {"parts": [{"text": t}]},
+                     "taskType": "RETRIEVAL_QUERY" if query else "RETRIEVAL_DOCUMENT"} for t in texts[s:s + bs]]
+            for attempt in range(len(self.keys) * 2):
+                key = self.keys[self.k % len(self.keys)]
+                r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:batchEmbedContents",
+                                  headers={"x-goog-api-key": key}, json={"requests": reqs}, timeout=300)
+                self.calls += 1
+                if r.status_code == 200:
+                    out += [e["values"] for e in r.json()["embeddings"]]
+                    self.k += 1
+                    break
+                if r.status_code == 429:
+                    self.r429 += 1; self.k += 1; time.sleep(1); continue
+                raise RuntimeError(f"HTTP {r.status_code}: {r.text[:300]}")
+            else:
+                raise RuntimeError("every key refused (429)")
+        v = np.array(out, dtype=np.float32)
+        return v / np.linalg.norm(v, axis=1, keepdims=True)
+
+
 def evaluate(names):
     corpus = json.load(open(OUT / "corpus.json", encoding="utf-8"))
     qs = json.load(open(OUT / "questions.json", encoding="utf-8"))
@@ -100,7 +138,7 @@ def evaluate(names):
     syms = np.array([c["symbol"] for c in corpus])
     rows = []
     for name in names:
-        m = Model(name)
+        m = GeminiAPI(name) if name in GeminiAPI.API else Model(name)
         cache = OUT / f"emb_{name}.npy"
         t0 = time.time()
         if cache.exists():
@@ -116,6 +154,8 @@ def evaluate(names):
                 rank = int((sc > sc[g]).sum()) + 1
                 res[scope].append(rank)
         r = {"model": name, "provider": m.provider, "chunks_per_s": round(rate, 1) if rate else None, "dim": E.shape[1]}
+        if isinstance(m, GeminiAPI):
+            r["api_calls"], r["api_429"] = m.calls, m.r429
         for scope, ranks in res.items():
             a = np.array(ranks)
             r[scope] = {"hit@1": round((a <= 1).mean(), 3), "hit@5": round((a <= 5).mean(), 3),
@@ -124,7 +164,11 @@ def evaluate(names):
         rows.append(r)
         print(json.dumps({k: v for k, v in r.items() if k != "ranks_global"}), flush=True)
         del m
-    json.dump(rows, open(OUT / "results.json", "w"), indent=1)
+    # merge by model name: a run of some models no longer drops the others' stored results
+    old = json.load(open(OUT / "results.json")) if (OUT / "results.json").exists() else []
+    keep = {r["model"]: r for r in old}
+    keep.update({r["model"]: r for r in rows})
+    json.dump(list(keep.values()), open(OUT / "results.json", "w"), indent=1)
 
 
 if __name__ == "__main__":
