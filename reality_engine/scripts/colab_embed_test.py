@@ -39,7 +39,9 @@ def main():
         Q = m.encode([q["question"] for q in qs], prompt="task: search result | query: ", normalize_embeddings=True)
     else:
         tok = AutoTokenizer.from_pretrained(REPO, padding_side="left")
-        model = AutoModel.from_pretrained(REPO, torch_dtype=torch.bfloat16, attn_implementation="sdpa").cuda().eval()
+        # T4 (free Colab) has no bf16: fp16 there; the 8B (~16 GB) does not fit a T4, the 4B (~8 GB) does
+        dt = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        model = AutoModel.from_pretrained(REPO, torch_dtype=dt, attn_implementation="sdpa").cuda().eval()
 
         @torch.no_grad()
         def embed(texts, bs):
