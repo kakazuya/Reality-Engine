@@ -101,9 +101,14 @@ def call_go(model, prompt, key, timeout=900):
         text = "".join(c.get("text", "") for o in j.get("output", []) if o.get("type") == "message"
                        for c in o.get("content", []) if c.get("type") == "output_text")
         return text, u.get("input_tokens"), u.get("output_tokens")
+    # '<id>~low' sends reasoning_effort=low (2026-10-19: Go MiniMax M3.1 Flash at default effort reasoned through all
+    # 32k output tokens and returned empty content; at low it answered in 30 s)
+    model, _, effort = model.partition("~")
+    body = {"model": model, "max_tokens": 32000, "messages": [{"role": "user", "content": prompt}]}
+    if effort:
+        body["reasoning_effort"] = effort
     r = requests.post("https://opencode.ai/zen/go/v1/chat/completions", timeout=timeout,
-                      headers={"Authorization": f"Bearer {key}", "x-opencode-session": str(uuid.uuid4())},
-                      json={"model": model, "max_tokens": 32000, "messages": [{"role": "user", "content": prompt}]})
+                      headers={"Authorization": f"Bearer {key}", "x-opencode-session": str(uuid.uuid4())}, json=body)
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
     j = r.json(); u = j.get("usage", {})
