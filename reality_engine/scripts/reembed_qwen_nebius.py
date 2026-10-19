@@ -36,6 +36,15 @@ OUT = DATA / "vector_index_qwen8b"
 LOG = DATA / "logs" / "reembed_qwen_nebius.log"
 URL = "https://api.tokenfactory.nebius.com/v1/embeddings"
 MODEL, DIM, USD_PER_M = "Qwen/Qwen3-Embedding-8B", 4096, 0.01
+KEY_ENV, PROVIDER, DOC_PREFIX, QUERY_PROMPT = "NEBIUS_API_KEY", "nebius", "", "embed_model_test.QWEN_INSTRUCT + question"
+# --provider (2026-10-20): Nemotron-3-Embed-8B on DeepInfra won the 51-question test (hit@1 66.7%, hit@5 94.1%,
+# MRR 0.781; Gemini-001 60.8 / 88.2 / 0.731); Shivam: use it for transcripts, decks and macro. 617 tokens/chunk sampled.
+PROVIDERS = {
+    "nebius-qwen8b": dict(URL=URL, MODEL=MODEL, DIM=4096, USD_PER_M=0.01, KEY_ENV="NEBIUS_API_KEY",
+                          PROVIDER="nebius", DOC_PREFIX="", QUERY_PROMPT=QUERY_PROMPT),
+    "deepinfra-nemotron8b": dict(URL="https://api.deepinfra.com/v1/openai/embeddings", MODEL="nvidia/Nemotron-3-Embed-8B",
+                                 DIM=4096, USD_PER_M=0.035, KEY_ENV="DEEPINFRA_API_KEY", PROVIDER="deepinfra",
+                                 DOC_PREFIX="passage: ", QUERY_PROMPT="'query: ' + question")}
 TIERS = (0, 1, 2)
 MAX_CHARS, BATCH_CHARS = 20_000, 100_000   # per text / per request (~25k tokens, under the 40,960 limit)
 lock = threading.Lock()
@@ -70,9 +79,9 @@ def make_plan():
 
 def write_meta(rows, done, extra=None):
     _, _, mp, _, _ = paths()
-    meta = {"rows": int(rows), "dim": DIM, "dtype": "float16", "model": MODEL, "provider": "nebius",
-            "doc_prompt": "<fresh header>\\n<body> (no instruction)",
-            "query_prompt": "embed_model_test.QWEN_INSTRUCT + question", "tiers": list(TIERS), "db_path": str(DB),
+    meta = {"rows": int(rows), "dim": DIM, "dtype": "float16", "model": MODEL, "provider": PROVIDER,
+            "doc_prompt": DOC_PREFIX + "<fresh header>\\n<body>",
+            "query_prompt": QUERY_PROMPT, "tiers": list(TIERS), "db_path": str(DB),
             "done": int(done), "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"), **(extra or {})}
     tmp = mp.with_suffix(".tmp")
     tmp.write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -118,7 +127,7 @@ def run(workers, max_usd, limit, bs=32, block=1920):
     ids, done = np.load(ip), np.load(dp)
     vecs = np.load(vp, mmap_mode="r+")
     state = json.loads(sp.read_text(encoding="utf-8"))
-    key = user_env()["NEBIUS_API_KEY"]
+    key = user_env()[KEY_ENV]
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
     todo = np.flatnonzero(~done)
     if limit:
@@ -133,7 +142,7 @@ def run(workers, max_usd, limit, bs=32, block=1920):
             texts = texts_for(con, ids[pos])
             # 2026-10-20: a request over 40,960 tokens is refused (400): cap each text at MAX_CHARS (~5k tokens; most
             # chunks are ~2.4k chars) and pack batches by characters instead of a fixed count
-            texts = [t[:MAX_CHARS] for t in texts]
+            texts = [(DOC_PREFIX + t[:MAX_CHARS]) if t.strip() else "" for t in texts]
             keep = [i for i, t in enumerate(texts) if t.strip()]
             parts, cur, size = [], [], 0
             for i in keep:
@@ -175,8 +184,10 @@ def main():
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--tiers", default="0,1,2", help="reembed_gemma tiers; 3 = annual reports (own index)")
     ap.add_argument("--out", default="", help="index folder name under data/ (default vector_index_qwen8b)")
+    ap.add_argument("--provider", default="nebius-qwen8b", choices=list(PROVIDERS))
     a = ap.parse_args()
     global TIERS, OUT, LOG
+    globals().update(PROVIDERS[a.provider])
     TIERS = tuple(int(t) for t in a.tiers.split(","))
     if a.out:   # 2026-10-20 (Shivam): spend the rest of the Nebius trial on annual reports, kept in their own index
         OUT = DATA / a.out
