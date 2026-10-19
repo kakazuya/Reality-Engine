@@ -114,11 +114,16 @@ def run_one(item, model, key, con_path):
             amt = float(amt) if amt not in (None, "") else None
         except (TypeError, ValueError):
             amt = None
-        rows.append((kind, sid, section, pub, title, ev.get("policy_name"), ev.get("instrument"), ev.get("stage"),
-                     ev.get("direction_for_industry"), json.dumps(ev.get("sectors") or [], ensure_ascii=False),
-                     json.dumps(ev.get("companies") or [], ensure_ascii=False), ev.get("products"), amt,
-                     ev.get("old_value"), ev.get("new_value"), ev.get("unit"), ev.get("effective_date"), ev.get("end_date"),
-                     ev.get("geography"), q, int(bool(q) and norm(q)[:120] in nt), model,
+        def sc(k):   # scalar field; the model sometimes answers a list (products as a list crashed the run 2026-10-19)
+            v = ev.get(k)
+            return json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else v
+        if not isinstance(q, str):
+            q = json.dumps(q, ensure_ascii=False)
+        rows.append((kind, sid, section, pub, title, sc("policy_name"), sc("instrument"), sc("stage"),
+                     sc("direction_for_industry"), json.dumps(ev.get("sectors") or [], ensure_ascii=False),
+                     json.dumps(ev.get("companies") or [], ensure_ascii=False), sc("products"), amt,
+                     sc("old_value"), sc("new_value"), sc("unit"), sc("effective_date"), sc("end_date"),
+                     sc("geography"), q, int(bool(q) and norm(q)[:120] in nt), model,
                      dt.datetime.now().isoformat(timespec="seconds")))
     doc = (kind, sid, section, "ok", int(bool(data.get("is_policy"))), len(rows), it, ot, model,
            dt.datetime.now().isoformat(timespec="seconds"), None)
