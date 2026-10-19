@@ -51,7 +51,7 @@ def resolve(reader):
     return ("google" if mid in GOOGLE else "go"), mid, pfile
 
 
-def call_zen(model, prompt, _key=None):
+def call_zen(model, prompt, _key=None, timeout=1500):
     """OpenCode Zen free model via `opencode run` with the prompt attached as a file (the AR Zen route's reader).
     No token counts come back from the CLI."""
     from reality_engine.scripts.ar_queue import opencode_exe, read_piece
@@ -59,7 +59,7 @@ def call_zen(model, prompt, _key=None):
     tmp.parent.mkdir(parents=True, exist_ok=True)
     tmp.write_text(prompt, encoding="utf-8")
     try:
-        out, rc, err = read_piece(opencode_exe(), model, tmp, timeout=1500)
+        out, rc, err = read_piece(opencode_exe(), model, tmp, timeout=timeout)
     finally:
         tmp.unlink(missing_ok=True)
     if rc != 0 or not out:
@@ -88,9 +88,9 @@ def call_google(model, prompt, key):
     return text, u.get("promptTokenCount"), (u.get("candidatesTokenCount") or 0) + (u.get("thoughtsTokenCount") or 0)
 
 
-def call_go(model, prompt, key):
+def call_go(model, prompt, key, timeout=900):
     if model in RESPONSES_API:
-        r = requests.post("https://opencode.ai/zen/go/v1/responses", timeout=900,
+        r = requests.post("https://opencode.ai/zen/go/v1/responses", timeout=timeout,
                           headers={"Authorization": f"Bearer {key}", "x-opencode-session": str(uuid.uuid4())},
                           json={"model": model, "input": prompt, "max_output_tokens": 32000})
         if r.status_code != 200:
@@ -101,7 +101,7 @@ def call_go(model, prompt, key):
         text = "".join(c.get("text", "") for o in j.get("output", []) if o.get("type") == "message"
                        for c in o.get("content", []) if c.get("type") == "output_text")
         return text, u.get("input_tokens"), u.get("output_tokens")
-    r = requests.post("https://opencode.ai/zen/go/v1/chat/completions", timeout=900,
+    r = requests.post("https://opencode.ai/zen/go/v1/chat/completions", timeout=timeout,
                       headers={"Authorization": f"Bearer {key}", "x-opencode-session": str(uuid.uuid4())},
                       json={"model": model, "max_tokens": 32000, "messages": [{"role": "user", "content": prompt}]})
     if r.status_code != 200:
@@ -116,10 +116,23 @@ def parse_json(text):
     return json.loads(t[i:j + 1])
 
 
+# time limit (Shivam 2026-10-19: models that are not fast are culled; their answers so far are kept and scored on
+# the transcripts they answered): a call over CALL_LIMIT s is stopped and not retried; CULL_AFTER such calls cull the
+# model (out/<model>/CULLED.txt, its remaining transcripts are skipped). None = no limit (earlier rounds).
+CALL_LIMIT, CULL_AFTER = None, 3
+_slow, _slow_lock = {}, __import__("threading").Lock()
+
+
+def _culled_file(model):
+    return PILOT / "out" / model / "CULLED.txt"
+
+
 def run_one(model, item, key):
     out = PILOT / "out" / model / f"{item['doc_id']}.json"
     if out.exists():
         return model, item["symbol"], "have"
+    if _culled_file(model).exists():
+        return model, item["symbol"], "culled"
     out.parent.mkdir(parents=True, exist_ok=True)
     route, mid, pfile = resolve(model)
     fn = {"google": call_google, "zen": call_zen, "go": call_go}[route]
@@ -127,7 +140,12 @@ def run_one(model, item, key):
     for attempt in range(4):
         t0 = time.time()
         try:
-            text, it, ot = fn(mid, prompt_for(item, pfile), key)
+            if CALL_LIMIT and route == "zen":
+                text, it, ot = call_zen(mid, prompt_for(item, pfile), timeout=CALL_LIMIT)
+            elif CALL_LIMIT and route == "go":
+                text, it, ot = call_go(mid, prompt_for(item, pfile), key, timeout=CALL_LIMIT)
+            else:
+                text, it, ot = fn(mid, prompt_for(item, pfile), key)
             data = parse_json(text)
             out.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
             out.with_suffix(".meta.json").write_text(json.dumps(
@@ -136,6 +154,13 @@ def run_one(model, item, key):
         except Exception as e:
             last = str(e)[:160]
             (PILOT / "out" / model / f"{item['doc_id']}.err.txt").write_text(last, encoding="utf-8")
+            if CALL_LIMIT and "timed out" in str(e).lower():
+                with _slow_lock:
+                    _slow[model] = _slow.get(model, 0) + 1
+                    if _slow[model] >= CULL_AFTER and not _culled_file(model).exists():
+                        _culled_file(model).write_text(f"{_slow[model]} calls over {CALL_LIMIT} s; culled "
+                                                       f"{time.strftime('%Y-%m-%d %H:%M')}", encoding="utf-8")
+                return model, item["symbol"], f"slow (> {CALL_LIMIT} s)"
             time.sleep(65 if "429" in last else 15)
     return model, item["symbol"], f"failed: {last}"
 
@@ -234,7 +259,8 @@ def score(bench=None):
         both = [d for d in r["found"] if d in bf]
         rb = sum(len(r["found"][d] & bf[d]) for d in both) / max(1, sum(len(bf[d]) for d in both))
         ex = sum(len(r["found"][d] - bf[d]) for d in both) / max(1, len(both))
-        print(f"{m:36} {r['docs']:4} {r['items'] / docs:9.1f} {r['guid'] / docs:8.1f} "
+        tag = m + (" [culled]" if _culled_file(m).exists() else "")
+        print(f"{tag:36} {r['docs']:4} {r['items'] / docs:9.1f} {r['guid'] / docs:8.1f} "
               f"{100 * r['quotes_ok'] / max(1, r['quotes']):14.1f}% {100 * r['nums_ok'] / max(1, r['nums']):11.1f}% "
               f"{100 * rec:14.1f}% {100 * rb:14.1f}% {ex:9.1f}  {r['in'] / docs:11.0f} {r['out'] / docs:11.0f} {r['sec'] / docs:7.0f}")
 
@@ -326,7 +352,10 @@ def main():
     ap.add_argument("--models", default="")
     ap.add_argument("--workers", type=int, default=25)
     ap.add_argument("--bench", default="deepseek-v4.1-flash-r4", help="score: reader the others are measured against")
+    ap.add_argument("--call-limit", type=int, default=0, help="run: seconds per call; slower models are culled")
     a = ap.parse_args()
+    global CALL_LIMIT
+    CALL_LIMIT = a.call_limit or None
     if a.cmd == "score":
         return score(a.bench)
     if a.cmd == "verify":
