@@ -134,7 +134,18 @@ class OpenAIEmbed:
     """OpenAI-compatible /embeddings endpoint (2026-10-19: Qwen3-Embedding-8B on Nebius Token Factory, $0.01/M tokens;
     Shivam's $1 trial). Qwen3 needs the instruction on queries only, as in the local 0.6B test."""
     API = {"qwen3-8b-nebius": ("NEBIUS_API_KEY", "Qwen/Qwen3-Embedding-8B",
-                               ["https://api.tokenfactory.nebius.com/v1", "https://api.studio.nebius.com/v1"])}
+                               ["https://api.tokenfactory.nebius.com/v1", "https://api.studio.nebius.com/v1"]),
+           # DeepInfra (2026-10-20): the same EmbeddingGemma-300m as the GPU re-embed at $0.002/M, and EmbeddingGemma 2
+           # (740M, $0.02/M). Prompts are sent by us (PROMPTS), as in the local test.
+           "embeddinggemma-deepinfra": ("DEEPINFRA_API_KEY", "google/embeddinggemma-300m",
+                                        ["https://api.deepinfra.com/v1/openai"]),
+           "embeddinggemma2-deepinfra": ("DEEPINFRA_API_KEY", "google/embeddinggemma-2",
+                                         ["https://api.deepinfra.com/v1/openai"])}
+    # (document prefix, query prefix); Qwen: instruction on queries only
+    PROMPTS = {"qwen3-8b-nebius": ("", QWEN_INSTRUCT),
+               "embeddinggemma-deepinfra": ("title: none | text: ", "task: search result | query: "),
+               "embeddinggemma2-deepinfra": ("title: none | text: ", "task: search result | query: ")}
+    PRICE = {"qwen3-8b-nebius": 0.01, "embeddinggemma-deepinfra": 0.002, "embeddinggemma2-deepinfra": 0.02}
 
     def __init__(self, name):
         from reality_engine.scripts.resource_watchdog import user_env
@@ -162,8 +173,7 @@ class OpenAIEmbed:
         # parallel batches (Nebius default limit 600k tokens/min, 10k req/min; 32 chunks ~ 17.5k tokens, ~12 s each:
         # one at a time was ~90k tokens/min, 6 in flight ~ 500k)
         import concurrent.futures as cf
-        if query:
-            texts = [QWEN_INSTRUCT + t for t in texts]
+        texts = [self.PROMPTS[self.name][1 if query else 0] + t for t in texts]
         parts = list(range(0, len(texts), bs))
         res = {}
         with cf.ThreadPoolExecutor(workers) as ex:
@@ -211,7 +221,7 @@ def evaluate(names):
         if isinstance(m, (GeminiAPI, OpenAIEmbed)):
             r["api_calls"], r["api_429"] = m.calls, m.r429
         if isinstance(m, OpenAIEmbed):
-            r["tokens"], r["cost_usd"] = m.tokens, round(m.tokens * 0.01 / 1e6, 4)
+            r["tokens"], r["cost_usd"] = m.tokens, round(m.tokens * OpenAIEmbed.PRICE[name] / 1e6, 4)
         for scope, ranks in res.items():
             a = np.array(ranks)
             r[scope] = {"hit@1": round((a <= 1).mean(), 3), "hit@5": round((a <= 5).mean(), 3),

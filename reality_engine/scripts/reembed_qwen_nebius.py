@@ -37,6 +37,7 @@ LOG = DATA / "logs" / "reembed_qwen_nebius.log"
 URL = "https://api.tokenfactory.nebius.com/v1/embeddings"
 MODEL, DIM, USD_PER_M = "Qwen/Qwen3-Embedding-8B", 4096, 0.01
 TIERS = (0, 1, 2)
+MAX_CHARS, BATCH_CHARS = 20_000, 100_000   # per text / per request (~25k tokens, under the 40,960 limit)
 lock = threading.Lock()
 
 
@@ -114,8 +115,17 @@ def run(workers, max_usd, limit, bs=32, block=1920):
                 log(f"STOP: spend guard ${max_usd} reached"); break
             pos = todo[s:s + block]
             texts = texts_for(con, ids[pos])
+            # 2026-10-20: a request over 40,960 tokens is refused (400): cap each text at MAX_CHARS (~5k tokens; most
+            # chunks are ~2.4k chars) and pack batches by characters instead of a fixed count
+            texts = [t[:MAX_CHARS] for t in texts]
             keep = [i for i, t in enumerate(texts) if t.strip()]
-            parts = [keep[k:k + bs] for k in range(0, len(keep), bs)]
+            parts, cur, size = [], [], 0
+            for i in keep:
+                if cur and (len(cur) >= bs or size + len(texts[i]) > BATCH_CHARS):
+                    parts.append(cur); cur, size = [], 0
+                cur.append(i); size += len(texts[i])
+            if cur:
+                parts.append(cur)
             futs = {ex.submit(post, key, [texts[i] for i in p]): p for p in parts}
             for f in cf.as_completed(futs):
                 v, tok = f.result()
