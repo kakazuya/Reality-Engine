@@ -18,6 +18,9 @@ Running detached (hidden, survive app restarts; WMI + conhost --headless):
 | Nemotron-8B embeddings (DeepInfra) tiers 0-2 -> data/vector_index_nemotron8b | was ~78% at 03:35, finishing ~04:00-04:30 | log reembed_qwen_nebius_vector_index_nemotron8b.log RUN_END |
 | Drive upload (rclone, 24 MB/s 01-07 IST) | 160 GiB left at 02:58 | drive_upload_check.py |
 | PIB English backfill | at 2023-05 | pib_backfill.log |
+DeepSeek heartbeat: Task Scheduler `RealityEngine-DeepSeekHeartbeat` hourly (run_deepseek_heartbeat.cmd -> deepseek_heartbeat.py):
+restarts dead Beam/MiniMax readers (no LLM), then off-peak runs one DeepSeek check -> hotline.md entry. Claude is never woken;
+**a new Claude session reads `reality_engine/data/hotline/needs_claude.md` FIRST** (DeepSeek writes it when it needs help), then hotline.md tail.
 Next after transcripts: Nemotron-1B NVFP4 on annual reports (~$9.06, 906M tokens measured), only after the readers finish.
 Search switch (hybrid_search -> Nemotron-8B index for tiers 0-2) not done yet. DeepInfra ~$2.5 left after Nemotron-8B.
 Embedding retrieval test (51 q): Nemotron-8B hit@5 94.1% > Gemini-001 88.2% > Nemotron-1B (BF16 = NVFP4) 90.2% > Qwen3-8B 84.3% > EmbeddingGemma 80.4% > bge-small 51.0%.
