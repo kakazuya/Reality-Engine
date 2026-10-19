@@ -39,6 +39,7 @@ MODEL, DIM, USD_PER_M = "Qwen/Qwen3-Embedding-8B", 4096, 0.01
 TIERS = (0, 1, 2)
 MAX_CHARS, BATCH_CHARS = 20_000, 100_000   # per text / per request (~25k tokens, under the 40,960 limit)
 lock = threading.Lock()
+RATE = {"429": 0}
 
 
 def log(msg):
@@ -93,6 +94,13 @@ def post(key, texts):
         last = f"HTTP {r.status_code} {r.text[:200]}"
         if r.status_code in (402, 403):           # out of credit / key refused: stop, do not retry
             raise RuntimeError(last)
+        if r.status_code == 429:
+            # tokens-per-minute quota (600k default; Nebius raises it after sustained use above 80%): wait, retry,
+            # never give up (2026-10-20: 24 in flight crashed the run after 6 tries)
+            with lock:
+                RATE["429"] += 1
+            time.sleep(20)
+            return post(key, texts)
         if r.status_code == 400 and "context length" in r.text:
             # over 40,960 tokens in one request (number-heavy chunks run ~1-2 chars/token): split the batch in
             # halves; a single text that is still too long is cut to half its length and retried
@@ -149,7 +157,7 @@ def run(workers, max_usd, limit, bs=32, block=1920):
             left = int((~done).sum())
             write_meta(len(ids), int(done.sum()), {"rate_per_s": round(rate, 1), "tokens": state["tokens"]})
             log(f"{n:,}/{len(todo):,} this run, {rate:.1f}/s; done {int(done.sum()):,}, left {left:,} "
-                f"(~{left / max(rate, 0.1) / 60:.0f} min); spent ${state['tokens'] * USD_PER_M / 1e6:.3f}")
+                f"(~{left / max(rate, 0.1) / 60:.0f} min); spent ${state['tokens'] * USD_PER_M / 1e6:.3f}; 429s {RATE['429']}")
     log(f"RUN_END done {int(done.sum()):,}/{len(ids):,}, tokens {state['tokens']:,}")
 
 
