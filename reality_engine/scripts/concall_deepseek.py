@@ -37,6 +37,7 @@ PRIORITY = ROOT / "reality_engine/data/concall_priority_pead.json"
 TG_ISINS = ROOT / "reality_engine/data/tg_company_isins.json"
 LOG = ROOT / "reality_engine/data/logs/concall_deepseek.log"
 MODEL = "deepseek-v4.1-flash"
+FREE_MODELS = {"beam-free", "minimax-m3.1-flash-free", "longcat-2.5-preview-free"}   # no spend guard, cost 0
 PRICE_IN, PRICE_OUT = 0.15, 0.60          # $/M tokens off-peak (we never call at peak)
 FIVE_H_CAP, WEEK_CAP = 15.0, 38.0         # Go windows are $16 / $40 (20% / 50% of $80); keep a margin
 MIN_CHARS = 4000
@@ -196,14 +197,15 @@ def work(item, keys, out_path):
     attempt = 0
     while attempt < 4:
         attempt += 1
-        wait_budget(out_path)
+        if MODEL.split("~")[0] not in FREE_MODELS:   # free Go readers: no spend window, no peak pause
+            wait_budget(out_path)
         kname = min(keys, key=lambda k: bench.get(k, 0))
         if bench.get(kname, 0) > time.time():
             time.sleep(bench[kname] - time.time())
         t0 = time.time()
         try:
             out, it, ot = call_go(MODEL, prompt(symbol, filed, text), env[kname])
-            cost = ((it or 0) * PRICE_IN + (ot or 0) * PRICE_OUT) / 1e6
+            cost = 0.0 if MODEL.split("~")[0] in FREE_MODELS else ((it or 0) * PRICE_IN + (ot or 0) * PRICE_OUT) / 1e6
             try:
                 data = parse_json(out)
             except Exception as e:
@@ -246,6 +248,7 @@ def _set_caps(week, five_h):
 
 
 def main():
+    global MODEL, SINCE, LOG
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--limit", type=int, default=0)
@@ -258,13 +261,29 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--all-companies", action="store_true", help="ignore the Telegram company list (off by default)")
     ap.add_argument("--renormalise", action="store_true", help="re-save stored answers with current label rules; no API")
+    # 2026-10-20 (Shivam): the rest of the transcripts (all years, all companies) go to the FREE Go readers, Beam and
+    # MiniMax (high effort), on both keys; DeepSeek checks their output. Shards split the queue so two readers never
+    # read the same transcript (doc_id % n in the listed residues).
+    ap.add_argument("--model", default=MODEL, help="Go model id, '<id>~<effort>' for reasoning effort")
+    ap.add_argument("--since", default=SINCE, help="earliest filing date to read")
+    ap.add_argument("--shard", default="", help="'r1,r2/n': only docs with doc_id %% n in {r1,r2}")
+    ap.add_argument("--max-out", type=int, default=32000, help="output-token cap per call")
     a = ap.parse_args()
+    MODEL, SINCE = a.model, a.since
+    if MODEL.split("~")[0] in FREE_MODELS:
+        LOG = ROOT / f"reality_engine/data/logs/concall_{MODEL.split('~')[0]}.log"
+    from reality_engine.scripts import concall_pilot
+    concall_pilot.MAX_OUT = a.max_out
     _set_caps(a.week_cap, a.five_h_cap)
     if a.renormalise:
         return renormalise(OUT_DB)
     out = sqlite3.connect(OUT_DB, timeout=120)
     out.executescript(DDL)
     todo = queue(out, only_tg=not a.all_companies)
+    if a.shard:
+        res, n = a.shard.split("/")
+        keep = {int(r) for r in res.split(",")}
+        todo = [t for t in todo if t[0][0] % int(n) in keep]
     if a.sample:   # validation batch: random docs across the year and both priority groups, duplicates included
         import random
         random.Random(a.sample).shuffle(todo)
