@@ -196,16 +196,46 @@ def link_pass(db):
     return n
 
 
+# A2 thresholds, set 2026-10-19 on 2026-09-26..10-15 (7,208 non-English releases; PIB Delhi English fetched for the
+# window). Body pass: top-1 = the page's own release link for 121 of 124 (97.6%); hand check 10 per band: >= 0.72
+# 40/40 correct, 0.65-0.72 ~7/10, < 0.65 3/10 (Odia / Manipuri embed poorly). Title pass alone: sim >= 0.70 with a
+# 0.05 lead over the runner-up agrees with the body pass 98.9% and settles ~2/3 of translations without a body fetch.
+BODY_SIM = 0.72
+TITLE_SIM, TITLE_MARGIN = 0.70, 0.05
+
+
+def apply_matches(db, start, end):
+    """translation_of from the match passes, never over a release_link: body >= BODY_SIM ('embed_body'), else title
+    >= TITLE_SIM with a TITLE_MARGIN lead ('embed_title'). Everything else stays NULL (unique or unsure)."""
+    with db:
+        nb = db.execute("""
+            UPDATE pib_ml_releases AS r SET translation_of = m.best_prid, match_method = 'embed_body', match_sim = m.best_sim
+              FROM pib_ml_match m
+             WHERE m.prid = r.prid AND m.mode = 'body' AND m.best_sim >= ? AND r.release_date BETWEEN ? AND ?
+               AND COALESCE(r.match_method, '') <> 'release_link'""", (BODY_SIM, start, end)).rowcount
+        nt = db.execute("""
+            UPDATE pib_ml_releases AS r SET translation_of = m.best_prid, match_method = 'embed_title', match_sim = m.best_sim
+              FROM pib_ml_match m
+             WHERE m.prid = r.prid AND m.mode = 'title' AND m.best_sim >= ? AND m.best_sim - COALESCE(m.second_sim, 0) >= ?
+               AND r.release_date BETWEEN ? AND ? AND r.translation_of IS NULL""",
+                        (TITLE_SIM, TITLE_MARGIN, start, end)).rowcount
+    print(f"apply: embed_body {nb}, embed_title {nt}", flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--start", default=(dt.date.today() - dt.timedelta(days=3)).isoformat())
     ap.add_argument("--end", default=dt.date.today().isoformat())
     ap.add_argument("--match", choices=["title", "body"], help="embedding match pass only (no fetching)")
+    ap.add_argument("--apply", action="store_true", help="set translation_of from the match passes (A2 thresholds)")
     a = ap.parse_args()
     db = sqlite3.connect(DB, timeout=600)
     db.executescript(DDL)
     if a.match:
         return match_pass(db, a.start, a.end, a.match)
+    if a.apply:
+        print(f"release_link {link_pass(db)}", flush=True)
+        return apply_matches(db, a.start, a.end)
     s = session()
     combos = [(r, rn, l, ln) for r, rn, l, ln in offices(s, db) if not (r == 3 and l == 1)]   # Delhi English: pib_feed
     english = {r[0] for r in db.execute("SELECT prid FROM pib_releases")}
