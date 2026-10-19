@@ -70,7 +70,9 @@ def kill_tree(pid):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--model", required=True, help="Go model id, optionally <id>~<effort>")
-    ap.add_argument("--task-file", required=True)
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--task-file")
+    g.add_argument("--task", help="task text inline (one orchestrator call, no task file to write first)")
     ap.add_argument("--out-file", required=True)
     ap.add_argument("--cwd", default=str(REPO), help="workspace root the agent works in (default: repo root)")
     ap.add_argument("--timeout", type=int, default=900, help="seconds before the run is killed (exit 124)")
@@ -95,7 +97,7 @@ def main():
     if effort and (model not in REASONING or effort not in EFFORTS):
         sys.exit(f"effort {effort!r} not valid for {model}")
     effort = effort or REASONING.get(model)
-    task = Path(a.task_file).read_text(encoding="utf-8")
+    task = a.task if a.task is not None else Path(a.task_file).read_text(encoding="utf-8")
     if not task.strip():
         sys.exit("task file is empty")
     if not DSH.exists():

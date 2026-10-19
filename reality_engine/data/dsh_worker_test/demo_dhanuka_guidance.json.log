@@ -1,0 +1,222 @@
+model=deepseek-v4.1-flash effort=xhigh account=2 permission=read-only cwd=C:\Users\warri\Downloads\Info_Diffusion_Model rc=0 secs=34
+dsh: reasoning:
+I need to find forward-looking guidance items. Let me identify:
+
+1. Revenue growth guidance FY27: "small single-digit growth" — quote: "We are looking at a small single-digit growth, I would say. Yes." Period FY27. Hmm, that's 11 words. Good.
+
+2. Dahej revenue guidance FY27: "Guidance is around Rs. 65 crores." — 6 words, too short. Need 10-30 words. Combine: "Guidance is around Rs. 65 crores" is only 6. Could extend the quote: "For the full year." + ... Let me find a longer verbatim substring. The exchange: "Guidance is around Rs. 65 crores." Then "For full year?" "For the full year." Hmm.
+
+Could I use a quote that spans: "Guidance is around Rs. 65 crores." — not 10 words. Need 10-30 words exact substring. Maybe use the Dahej EBITDA guidance: "That will be in the range of around negative Rs. 4 crore-Rs. 5 crore. Difficult to get." That's 18 words. But that's about Dahej EBITDA FY27. Let's check exactness: line 759: "That will be in the range of around negative Rs. 4 crore-Rs. 5 crore. Difficult to get." Yes — 19 words.
+
+For Dahej revenue, maybe skip or find alternative. Hmm, could extend with preceding? "Revenue for full year FY 2027?" — that's the analyst. Quote must support the guidance. Mixing speaker lines might be odd but allowed if verbatim substring. Better: keep quotes within management lines.
+
+3. Nagpur plant CAPEX: "Rs. 100 crore plus" in FY27-28. Quote: "You see, in terms of this Nagpur, the CAPEX would be around Rs. 100 crore plus. Dahej will communicate it later." That's ~20 words — exact verbatim. Good.
+
+4. Nagpur plant commissioned Q4 FY2028 / operational by April 2028. Quote: "We are looking at this plant getting commissioned in Q4 FY 2028." That's 13 words. Good. But also earlier "expected that the said plant will be operational by April 2028" — could be a separate item but redundant. Maybe include the total outlay Rs 200 crore and 23,000 MTPA capacity as a separate guidance item? It's a project outlay guidance: "The total estimated outlay for the project is expected to be up to Rs. 200 crores." 15 words — exact? Line 198: "The total estimated outlay for the project is expected to be up to Rs. 200 crores." Yes. Period: FY28 capex/plant. Hmm, but that overlaps with #3 (Rs 100 cr in FY27-28 vs total Rs 200 cr outlay). Could include both as distinct: total project outlay and FY27-28 capex. Maybe better to keep them since they're distinct guidance metrics.
+
+5. New product launches: five new products in upcoming months; two more nutrition biological products this financial year. Quote: "In addition to that, we will introduce two more nutrition biological category products in this financial year." 17 words — exact. Period FY27.
+
+6. Innovation Turnover Index / new product margin: "We benchmark a healthy 20% margin minimum for any new introduction, but mostly 9(3) and nutrition would have significantly higher, more than double sometimes." That's a guidance-ish target (margin floor) but it's more of a policy than forward guidance. Possibly include as margin guidance. Hmm.
+
+7. Bayer products revenue FY27: "not a very significant portion will come in our balance sheet this year. Not significant amount of money will appear in this year." Direction: not significant. Quote: "not a very significant portion will come in our balance sheet this year. Not significant amount of money will appear in this year." ~22 words. Period FY27.
+
+8. Growth in Q2/Q3: "We are still pretty hopeful of the growth that will come in Q2 and Q3" — direction, no number. Could include.
+
+Max 6. Let's pick the strongest 6:
+1. FY27 revenue growth: small single-digit growth. Quote: "We are looking at a small single-digit growth, I would say. Yes." (11 words) — period FY27.
+2. Dahej revenue FY27: ~Rs 65 crore. Quote needs 10-30 words verbatim. Options: "Guidance is around Rs. 65 crores." too short. Could combine across management turns: "Guidance is around Rs. 65 crores. ... For the full year." Not contiguous. Hmm. Alternatively skip Dahej revenue and use Dahej EBITDA: negative Rs 4-5 crore FY27.
+3. Nagpur project total outlay up to Rs 200 crore; capacity 23,000 MTPA; operational April 2028 / Q4 FY2028.
+4. Nagpur capex Rs 100 crore+ in FY27-28.
+5. Two more nutrition/biological products in FY27.
+6. Bayer product revenue not significant in FY27.
+7. Dahej EBITDA negative 4-5 crore FY27.
+
+That's 7 candidates. Need 6. The Nagpur total outlay and Nagpur FY27-28 capex are somewhat duplicative but distinct metrics. Maybe drop the total outlay (it's project cost, more of a capex disclosure) and keep FY27-28 capex. Actually the total outlay up to Rs 200 crore is a forward guidance too.
+
+Let's think: user wants "forward-looking guidance items management gave" with number/range/direction. Best set:
+
+1. FY27 revenue growth — small single-digit growth (direction/number).
+2. Dahej revenue FY27 — around Rs 65 crore. Need a ≥10 word quote. Hmm, maybe: "For Dahej? ... Guidance is around Rs. 65 crores." includes analyst. Not ideal. Could quote: "Yes, because that is the start of the season. Initially you get the basically demand from the market." — doesn't contain number.
+
+Alternative: For Dahej, use EBITDA guidance quote which is longer. And skip revenue? Revenue 65 crore is a strong guidance item though. Maybe I can use quote "Guidance is around Rs. 65 crores." — violates 10-30 words. The requirement says 10-30 words. I should comply. Hmm, but perhaps including the question "what would be your guidance on the revenue for full year FY 2027?" then answer — not contiguous.
+
+I could use a slightly broader verbatim including the following exchange lines? Transcript has line breaks; a contiguous substring across speakers would be "Guidance is around Rs. 65 crores.\n\nSaurabh Jain:\nFor full year?" — messy and includes speaker label. Not good.
+
+Better: drop Dahej revenue, use Dahej EBITDA (18 words). But then Dahej revenue is arguably the single clearest numeric guidance. Weigh: user wants at most 6. Include revenue with a quote that's short but exact? The constraint is explicit (10-30 words). I'd rather comply.
+
+Hmm, can I make the Dahej revenue quote longer by starting earlier in Bansal's turn? Line 758-759: "EBITDA, breakeven appears to be difficult. They are trying hard, but I think it is difficult. That will be in the range of around negative Rs. 4 crore-Rs. 5 crore. Difficult to get." That's EBITDA not revenue.
+
+Let me re-scan for other guidance items:
+- "in the upcoming months, we are planning to launch five new products consisting of one Liquid Fertilizer, three Fungicides, and one Herbicide." — forward-looking, 5 products, no period (upcoming months). 22 words. Good item.
+- "we will introduce two more nutrition biological category products in this financial year." — FY27.
+- Nagpur: "expected to be operational by April 2028" / "commissioned in Q4 FY 2028".
+- CAPEX FY27-28: Rs 100 crore plus.
+- Total outlay Rs 200 crore.
+- Dahej revenue Rs 65 crore FY27.
+- Dahej EBITDA negative 4-5 crore FY27.
+- FY27 growth small single-digit.
+- Bayer revenue not significant this year.
+- GST case: "We are sure we will win the case" — not really guidance with number.
+- Asset turns: deferred, no guidance.
+- Q2/Q3 hopeful growth.
+
+Pick 6:
+1. Revenue growth FY27: small single-digit.
+2. Dahej revenue FY27: ~Rs 65 cr (need quote ≥10 words). Hmm... maybe I can use "For the full year." merged? No.
+
+What about quoting: "Guidance is around Rs. 65 crores." plus preceding? The preceding line is the analyst. Nope.
+
+Alternatively quote from M.K. Dhanuka's answer about seasonality which supports context but not number — no.
+
+Decision: use quote "Guidance is around Rs. 65 crores." (6 words). Risk: violates the word count instruction. The instruction is a formatting constraint; but content accuracy matters more? The user says quotes must be 10-30 words AND exact. If an item can't meet it, better to pick a different item. So drop Dahej revenue and include Dahej EBITDA instead. Actually, I could combine both Dahej figures? No.
+
+Hmm wait — what about "So, what would be your guidance on the revenue for full year FY 2027?" No.
+
+Let's finalize 6:
+
+1. Revenue growth (FY27): "small single-digit growth" — quote: "We are looking at a small single-digit growth, I would say. Yes." (11 words). Check exact: line 608 "We are looking at a small single-digit growth, I would say. Yes." ✓
+
+2. Dahej revenue (FY27): around Rs 65 crore. Need quote. I'll reconsider: maybe include with quote spanning Bansal/analyst is bad. Alternative: use "Guidance is around Rs. 65 crores" and accept 6 words? The user explicitly says 10-30. I'll skip it and use Dahej EBITDA.
+
+2. Dahej EBITDA (FY27): negative Rs 4-5 crore. Quote: "That will be in the range of around negative Rs. 4 crore-Rs. 5 crore. Difficult to get." Count: That(1) will(2) be(3) in(4) the(5) range(6) of(7) around(8) negative(9) Rs.(10) 4(11) crore-Rs.(12) 5(13) crore.(14) Difficult(15) to(16) get.(17) → 17 words ✓ exact line 759.
+
+3. Nagpur plant capex (FY27-28): Rs 100 crore plus. Quote: "You see, in terms of this Nagpur, the CAPEX would be around Rs. 100 crore plus. Dahej will communicate it later." — 21 words ✓ exact line 658.
+
+4. Nagpur plant commissioning (Q4 FY28 / April 2028): Quote: "We are looking at this plant getting commissioned in Q4 FY 2028." (13 words) ✓ line 640.
+
+5. New product launches (upcoming months / FY27): five new products. Quote: "we are planning to launch five new products consisting of one Liquid Fertilizer, three Fungicides, and one Herbicide." Count: we(1) are(2) planning(3) to(4) launch(5) five(6) new(7) products(8) consisting(9) of(10) one(11) Liquid(12) Fertilizer,(13) three(14) Fungicides,(15) and(16) one(17) Herbicide.(18) ✓ 18 words. Exact from line 201-202: "we are planning to launch five new products consisting of one Liquid Fertilizer, three Fungicides, and one Herbicide." — note line break after "five new"; contiguous text across lines has a newline? Line 201 ends "five new" and line 202 starts "products consisting...". A text search for the joined string would fail if newline in between. Hmm. Verbatim substring character-for-character — line breaks in the file are "\n". So a quote spanning lines with the newline replaced by space is not character-exact.
+
+I need quotes within a single line, or include the actual newline? JSON can contain \n but "text search" would then need exact including newline. Safer: use quotes entirely within one line.
+
+Check each chosen quote's line boundaries:
+
+1. Line 608: "We are looking at a small single-digit growth, I would say. Yes." — single line ✓.
+2. Line 759: "That will be in the range of around negative Rs. 4 crore-Rs. 5 crore. Difficult to get." — single line ✓.
+3. Line 658: "You see, in terms of this Nagpur, the CAPEX would be around Rs. 100 crore plus. Dahej will communicate it later." — single line ✓.
+4. Line 640: "We are looking at this plant getting commissioned in Q4 FY 2028. We have certain CGST benefits from the Maharashtra Government also." — the first sentence is within line 640 ✓. Use "We are looking at this plant getting commissioned in Q4 FY 2028." (13 words).
+5. Five new products spans lines 201-202. Need an alternative: "In addition to that, we will introduce two more nutrition biological category products in this financial year." — line 633, single line ✓ (17 words). Use this instead for new products (FY27). Good.
+6. Bayer revenue FY27: "not a very significant portion will come in our balance sheet this year. Not significant amount of money will appear in this year." — spans lines 774-775 ("...this year.\nNot significant amount..."). Hmm. Single-line option: line 774 ends "will come in our balance sheet this year. Not significant" and 775 "amount of money will appear in this year." So not clean.
+
+Alternative 6th: Nagpur total outlay Rs 200 crore — line 198: "The total estimated outlay for the project is expected to be up to Rs. 200 crores." Single line ✓ (16 words). Good.
+
+But maybe include the Dahej Rs 65 crore revenue instead of one. Since quote constraint fails, I could include Dahej revenue with quote "Guidance is around Rs. 65 crores" — no.
+
+Hmm, what about the FY27 revenue growth guidance from PPT cut — "We are still pretty hopeful of the growth that will come in Q2 and Q3" line 317-318 spans lines. Single line 317 ends "that will come in Q2 and Q3, and yet it is absolutely appropriate that we project a clear picture to our" — actually line 317: "we estimate our best position to be. We are still pretty hopeful of the growth that" and 318 "will come in Q2 and Q3, and yet it is absolutely appropriate that we project a clear picture to our". Spans lines. Skip.
+
+Now consider whether to include margin benchmark 20%: line 266: "We benchmark a healthy 20% margin minimum for any new introduction, but mostly 9(3) and nutrition would have significantly higher, more than double sometimes." Single line ✓, 24 words. This is a forward-looking internal target for new products — arguably guidance (margin floor). Could include as item 6 instead of Nagpur total outlay? Both are decent. The user wants guidance management gave; the 20% margin benchmark is a stated internal target, reasonably forward-looking. I have 6 slots: growth, Dahej EBITDA, Nagpur capex, Nagpur commissioning, two nutrition products, Nagpur total outlay. Adding margin = 7.
+
+Which are strongest "guidance"? Growth guidance, Nagpur capex, Nagpur commissioning, Dahej revenue/EBITDA, product launch count. The total outlay Rs 200 cr is a project cost guidance (capex), and the FY27-28 Rs 100 cr is somewhat contradictory/complementary. Including both is fine and informative.
+
+Maybe replace "Nagpur total outlay" with "Dahej revenue Rs 65 crore" if I can find a compliant quote... I can't.
+
+Alternatively drop one Nagpur item and include the 20% margin benchmark. Hmm. Six max; I'll go with:
+
+1. FY27 revenue growth — small single-digit.
+2. Dahej EBITDA FY27 — negative Rs 4-5 crore.
+3. Nagpur plant capex FY27-28 — ~Rs 100 crore+.
+4. Nagpur plant commissioning — Q4 FY28.
+5. Nagpur project total outlay — up to Rs 200 crore (period FY28/project).
+6. Nutrition/biological product launches FY27 — two more.
+
+Hmm, but three Nagpur items feels redundant. Replace #5 with the 20% margin benchmark? The margin benchmark isn't tied to a period and is a "target" rather than guidance. The total outlay is explicit "expected to be up to Rs. 200 crores" — forward-looking.
+
+Actually, Dahej revenue Rs 65 crore is the single most price-relevant guidance. Let me see if I can craft a quote ≥10 words within a single line that includes it. Line 744: "Guidance is around Rs. 65 crores." Only. Line 752 M.K.: "Yes, because that is the start of the season. Initially you get the basically demand from the" — no number.
+
+Could the quote include the question on the same line? Line 738: "Rs. 25 crores, what would be your guidance on the revenue for full year FY 2027?" — analyst question, not management statement.
+
+What if quote is: "Guidance is around Rs. 65 crores." — I think strict compliance with 10-30 words is better served by dropping it. But maybe user would prefer the item. The instruction "10-30 words" is explicit. I'll drop.
+
+Wait — could I merge Dahej revenue and EBITDA into one item? No, metrics differ.
+
+Fine. Let me double-check each quote exact characters, including punctuation quirks.
+
+Line 608: "We are looking at a small single-digit growth, I would say. Yes."
+Line 759: "That will be in the range of around negative Rs. 4 crore-Rs. 5 crore. Difficult to get."
+Line 658: "You see, in terms of this Nagpur, the CAPEX would be around Rs. 100 crore plus. Dahej will communicate it later."
+Line 640: "We are looking at this plant getting commissioned in Q4 FY 2028."
+Line 198: "The total estimated outlay for the project is expected to be up to Rs. 200 crores."
+Line 633: "In addition to that, we will introduce two more nutrition biological category products in this financial year."
+
+Let me verify with grep to be safe.
+
+Also maybe include the plant operational April 2028 instead of Q4 FY2028? Both exist. Q4 FY2028 is the more explicit management answer; April 2028 is from opening remarks. I'll use Q4 FY 2028.
+
+Period fields:
+1. FY2027 (FY27).
+2. FY2027.
+3. FY2027-FY2028 ("FY27-28").
+4. Q4 FY2028.
+5. null? The outlay is total project cost, period could be "FY2028" (project). I'd say null or "FY2028". Hmm. The plant comes up by April 2028, so total spend by FY28. I'll use "FY2028" maybe. Actually safer: null, since it's a project total, no stated period. Hmm, "expected to be up to Rs. 200 crores" total — project period. I'll set "FY2028" ... risky invention. Use null.
+6. FY2027.
+
+Metric names short: "Revenue growth", "Dahej EBITDA", "Nagpur plant capex", "Nagpur plant commissioning", "Nagpur project outlay", "Nutrition/biological launches".
+
+Let me verify quotes via grep.
+dsh: reasoning:
+Note line 633 starts "two more nutrition..." because previous line 632 ends "we will introduce". Let me check: line 632: "sale permission also. So, we will be going ahead with that. In addition to that, we will introduce" and 633 "two more nutrition biological category products in this financial year." So my quote "In addition to that, we will introduce two more nutrition..." spans lines 632-633. Not single-line.
+
+Single-line alternative on 633: "two more nutrition biological category products in this financial year." — 11 words, but doesn't include "we will introduce". Count: two(1) more(2) nutrition(3) biological(4) category(5) products(6) in(7) this(8) financial(9) year.(10) → 10 words. Still exact and within line. But it's a fragment lacking verb. Hmm, a searchable fragment is fine but quote should support guidance. Maybe use a different line entirely.
+
+Line 629: "Out of three products, we have already introduced two, and one more is in the pipeline to be" — spans.
+Line 630: "introduced pretty soon. Probably by August end, we will be launching the third one also. We" — spans.
+
+What about the five new products from opening remarks — spans lines too.
+
+Alternative single-line quote for the two nutrition products: line 633 fragment "two more nutrition biological category products in this financial year" (10 words) — acceptable, character-exact and searchable. It supports "2 more nutrition/biological products in FY27". It reads as a fragment but okay.
+
+Hmm, can I find a contiguous full line elsewhere? Line 633 ends with "financial year." Only that.
+
+Alternatively include the 20% margin benchmark (line 266, single line) instead and drop this item? Let me check line 266: "We benchmark a healthy 20% margin minimum for any new introduction, but mostly 9(3) and" — spans to 267 "nutrition would have significantly higher, more than double sometimes." So also spans. Single-line fragment: "We benchmark a healthy 20% margin minimum for any new introduction, but mostly 9(3) and" — ends awkwardly with "and".
+
+Hmm, transcript lines are narrow. Many quotes span lines. The user says "exact verbatim substring of the transcript" — the transcript text including line breaks. A substring containing a newline is still verbatim, but text search with spaces would fail. However, most concall quote extraction would normalize whitespace. Risky.
+
+I could include newlines in JSON quote as \n? That would be exact but ugly and search-hostile. Better to use single-line fragments.
+
+For the 5-product launch: line 201 "We are pleased to inform you that in the upcoming months, we are planning to launch five new" then 202. Single-line fragment "we are planning to launch five new" — too short.
+
+Let me look for more single-line guidance statements:
+
+Line 744: "Guidance is around Rs. 65 crores." (6 words) — short.
+
+Hmm.
+
+What about quoting with line breaks preserved but represented as "\n"? The user will likely text-search the quote string in the file; if they copy from JSON, the \n becomes a newline and search might work in an editor. But "10-30 words" counting is fine.
+
+I think best approach: choose quotes that are single-line where possible; for the nutrition item use the 10-word fragment starting "two more nutrition...", which is exact and single-line. It's a bit fragmentary but valid substring.
+
+Actually, better item than that: the FY27 Dahej revenue Rs 65 crore is more valuable. Its quote is 6 words — fails word count. Alternatively, quote "Guidance is around Rs. 65 crores" combined with... no.
+
+Let me reconsider: maybe use multi-line quote with a real newline for the nutrition item so it reads well:
+"In addition to that, we will introduce\ntwo more nutrition biological category products in this financial year." That's exact (line 632 ends with "introduce", line 633 starts "two more"). But in JSON, "\n". A text search of the visible text would need to match across the newline. Eh.
+
+I'll go with the single-line fragment. Word count 10 — meets minimum.
+
+Hmm, actually let me reconsider which 6 to present. Also consider "We are still pretty hopeful of the growth that will come in Q2 and Q3" — spans lines 317-318. Skip.
+
+Also "This is going to be a formulation unit." — not guidance.
+
+Also GST: "We are sure we will win the case, absolutely." Direction/confidence, 9 words. Not a metric.
+
+Final six:
+1. Revenue growth, FY2027: "small single-digit growth" — quote line 608.
+2. Dahej EBITDA, FY2027: "negative Rs. 4 crore-Rs. 5 crore" — quote line 759.
+3. Nagpur plant capex, FY2027-FY2028: "around Rs. 100 crore plus" — quote line 658.
+4. Nagpur plant commissioning, Q4 FY2028: quote line 640.
+5. Nagpur project total outlay, null: quote line 198.
+6. Nutrition/biological product launches, FY2027: "two more" — quote line 633 fragment.
+
+Word counts:
+1. We(1) are(2) looking(3) at(4) a(5) small(6) single-digit(7) growth,(8) I(9) would(10) say.(11) Yes.(12) → 12 words.
+2. 17 words.
+3. You(1) see,(2) in(3) terms(4) of(5) this(6) Nagpur,(7) the(8) CAPEX(9) would(10) be(11) around(12) Rs.(13) 100(14) crore(15) plus.(16) Dahej(17) will(18) communicate(19) it(20) later.(21) → 21 words.
+4. 13 words.
+5. The(1) total(2) estimated(3) outlay(4) for(5) the(6) project(7) is(8) expected(9) to(10) be(11) up(12) to(13) Rs.(14) 200(15) crores.(16) → 16.
+6. two(1) more(2) nutrition(3) biological(4) category(5) products(6) in(7) this(8) financial(9) year.(10) → 10.
+
+Good. Output only JSON array, no prose, no fence.
+
+Note the file uses curly apostrophes etc., but my quotes don't include them. "Rs." spaces exact.
+
+Guidance strings: "Small single-digit growth (~low single digit %)"? Keep as stated: "small single-digit growth". For capex: "around Rs. 100 crore plus". Period "FY2027-FY2028". For commissioning: "commissioned in Q4 FY 2028" period "Q4 FY2028". For outlay: "up to Rs. 200 crore total project outlay" period null.
+
+JSON array only.
