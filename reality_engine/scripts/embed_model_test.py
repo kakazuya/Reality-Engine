@@ -138,14 +138,20 @@ def evaluate(names):
     syms = np.array([c["symbol"] for c in corpus])
     rows = []
     for name in names:
-        m = GeminiAPI(name) if name in GeminiAPI.API else Model(name)
         cache = OUT / f"emb_{name}.npy"
-        t0 = time.time()
-        if cache.exists():
-            E = np.load(cache); rate = None
+        qcache = OUT / f"qemb_{name}.npy"
+        if qcache.exists():   # computed elsewhere (Colab: colab_embed_test.py writes emb_/qemb_/meta_<name>)
+            meta = json.load(open(OUT / f"meta_{name}.json")) if (OUT / f"meta_{name}.json").exists() else {}
+            m = type("Precomputed", (), {"provider": "colab:" + meta.get("gpu", "?")})()
+            E, Q, rate = np.load(cache), np.load(qcache), meta.get("chunks_per_s")
         else:
-            E = m.embed([c["text"] for c in corpus]); rate = len(corpus) / (time.time() - t0); np.save(cache, E)
-        Q = m.embed([q["question"] for q in qs], query=True)
+            m = GeminiAPI(name) if name in GeminiAPI.API else Model(name)
+            t0 = time.time()
+            if cache.exists():
+                E = np.load(cache); rate = None
+            else:
+                E = m.embed([c["text"] for c in corpus]); rate = len(corpus) / (time.time() - t0); np.save(cache, E)
+            Q = m.embed([q["question"] for q in qs], query=True)
         res = {"global": [], "company": []}
         for q, qv in zip(qs, Q):
             g = pos[q["chunk_id"]]; s = E @ qv
