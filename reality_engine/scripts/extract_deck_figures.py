@@ -58,6 +58,7 @@ from pathlib import Path
 
 import pymupdf
 import requests
+from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 LIVE_DB = DATA / "equity_intelligence.db"
@@ -646,7 +647,7 @@ class Client:
     def __init__(self, ledger, limiters, timeout=300):
         self.ledger, self.limiters, self.timeout = ledger, limiters, timeout   # one adaptive limiter per model
         self.pacer = RatePacer(ledger.db, ledger)
-        self.session_id = str(uuid.uuid4())
+        self.session_id = session_id("deck_figures", "client", "", 0)   # one client per run: same id every run
         self.http = requests.Session()
         self.http.mount("https://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=256))
         self.keys = {}   # per gateway; OpenCode Go by default, Kilo for its models

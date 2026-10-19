@@ -30,6 +30,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from reality_engine.scripts import ingest_annual_reports as ar
+from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
 
 QUEUE = ar.DATA / "ar_queue"
 STUDY_TEST = ar.ROOT / "tasks" / "ar_study" / "free_test"
@@ -336,7 +337,7 @@ def read_piece_kilo(model, prompt_file, key_env="KILO_API_KEY", timeout=900, url
     import uuid
     hdr = {"Authorization": f"Bearer {key}"}
     if "opencode.ai" in url:   # OpenCode Go refuses requests without a session id (MissingSessionID)
-        hdr["x-opencode-session"] = str(uuid.uuid4())
+        hdr["x-opencode-session"] = session_id("ar_queue", model, key)
     r = requests.post(url, timeout=timeout, headers=hdr,
                       json={"model": model, "max_tokens": 32000,
                             "messages": [{"role": "user", "content": prompt_file.read_text(encoding="utf-8")}]})

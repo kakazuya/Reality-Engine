@@ -29,6 +29,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from reality_engine.scripts.resource_watchdog import user_env
+from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
 
 DSH = Path.home() / ".bun" / "bin" / "dsh.exe"
 REPO = Path(__file__).resolve().parents[2]
@@ -58,7 +59,7 @@ def build_patch(model, effort, key_env):
     sel = f"    reasoningEffort: {effort}\n" if effort else ""
     return (f"- id: llm-pi-ai\n  config:\n    providers:\n      opencode-go:\n"
             f"        displayName: OpenCode Go\n        apiKeyEnv: {key_env}\n        api: openai-completions\n"
-            f"        baseURL: {BASE_URL}\n        headers:\n          x-opencode-session: {uuid.uuid4()}\n"
+            f"        baseURL: {BASE_URL}\n        headers:\n          x-opencode-session: {session_id("dsh", model, key_env)}\n"
             f"        models:\n{entry}\n"
             f"- id: agent-default-model\n  config:\n    provider: opencode-go\n    model: {model}\n{sel}")
 

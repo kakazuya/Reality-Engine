@@ -32,6 +32,7 @@ from pathlib import Path
 
 import pymupdf
 import requests
+from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
 
 if __import__("sys").platform == "win32":
     # 2026-10-17: a start of the 213 MB opencode.exe now and then fails with 'not a valid Win32 application'; Windows then
@@ -293,7 +294,7 @@ def call(r, prompt, http):
         return out, None, None
     if r["kind"] == "chat" and r.get("protocol") == "responses":   # OpenAI Responses shape (Muse Spark on Go)
         resp = http.post(r["url"], timeout=900, json={"model": r["model"], "input": prompt, "max_output_tokens": 32000},
-                         headers={"Authorization": f"Bearer {r['key']}", "x-opencode-session": str(uuid.uuid4()),
+                         headers={"Authorization": f"Bearer {r['key']}", "x-opencode-session": session_id("ar_ingest", r["model"], r["key"]),
                                   "User-Agent": "reality-engine-ar-ingest/1.0"})
         if resp.status_code != 200:
             raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
@@ -306,7 +307,7 @@ def call(r, prompt, http):
     if r["kind"] == "chat":
         resp = http.post(r["url"], timeout=900, json={"model": r["model"], "max_tokens": 32000,
                                                      "messages": [{"role": "user", "content": prompt}]},
-                         headers={"Authorization": f"Bearer {r['key']}", "x-opencode-session": str(uuid.uuid4()),
+                         headers={"Authorization": f"Bearer {r['key']}", "x-opencode-session": session_id("ar_ingest", r["model"], r["key"]),
                                   "User-Agent": "reality-engine-ar-ingest/1.0"})
         if resp.status_code != 200 or not resp.json().get("choices"):
             raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")

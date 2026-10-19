@@ -17,6 +17,7 @@ from pathlib import Path
 import requests
 
 from reality_engine.scripts import ingest_annual_reports as ar
+from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
 
 PILOT = Path(__file__).resolve().parents[1] / "data" / "concall_pilot"
 GOOGLE = {"gemma-4-26b-a4b-it", "gemma-4-31b-it", "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.1-pro-preview",
@@ -94,7 +95,7 @@ MAX_OUT = 32000   # our own per-call output cap (reasoning + answer) on Go chat 
 def call_go(model, prompt, key, timeout=900):
     if model in RESPONSES_API:
         r = requests.post("https://opencode.ai/zen/go/v1/responses", timeout=timeout,
-                          headers={"Authorization": f"Bearer {key}", "x-opencode-session": str(uuid.uuid4())},
+                          headers={"Authorization": f"Bearer {key}", "x-opencode-session": session_id("concall", model, key)},
                           json={"model": model, "input": prompt, "max_output_tokens": 32000})
         if r.status_code != 200:
             raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
@@ -111,7 +112,7 @@ def call_go(model, prompt, key, timeout=900):
     if effort:
         body["reasoning_effort"] = effort
     r = requests.post("https://opencode.ai/zen/go/v1/chat/completions", timeout=timeout,
-                      headers={"Authorization": f"Bearer {key}", "x-opencode-session": str(uuid.uuid4())}, json=body)
+                      headers={"Authorization": f"Bearer {key}", "x-opencode-session": session_id("concall", model, key)}, json=body)
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
     j = r.json(); u = j.get("usage", {})

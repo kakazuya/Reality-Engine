@@ -28,3 +28,5 @@ so it is never older than the task. It is git-ignored; everything else here is c
 - Never print or copy API keys. Never start, stop or edit a running job unless the task says so.
 - Shivam's standing rules (FRAMEWORK.md, memory): free models unless he approves paid; DeepSeek runs at xhigh,
   off-peak 15:30-06:30 IST; DeepSeek harness runs DeepSeek models only (Beam, MiniMax, LongCat go through OpenCode).
+- Every OpenCode Go call sends a stable `x-opencode-session` from `reality_engine/scripts/go_session.py` session_id();
+  never a fresh uuid per call (OpenCode routes and prompt-caches by it; Shivam's rule 2026-10-20).
