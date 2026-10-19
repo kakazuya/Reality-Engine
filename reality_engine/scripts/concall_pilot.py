@@ -88,6 +88,9 @@ def call_google(model, prompt, key):
     return text, u.get("promptTokenCount"), (u.get("candidatesTokenCount") or 0) + (u.get("thoughtsTokenCount") or 0)
 
 
+MAX_OUT = 32000   # our own per-call output cap (reasoning + answer) on Go chat calls; --max-out changes it
+
+
 def call_go(model, prompt, key, timeout=900):
     if model in RESPONSES_API:
         r = requests.post("https://opencode.ai/zen/go/v1/responses", timeout=timeout,
@@ -104,7 +107,7 @@ def call_go(model, prompt, key, timeout=900):
     # '<id>~low' sends reasoning_effort=low (2026-10-19: Go MiniMax M3.1 Flash at default effort reasoned through all
     # 32k output tokens and returned empty content; at low it answered in 30 s)
     model, _, effort = model.partition("~")
-    body = {"model": model, "max_tokens": 32000, "messages": [{"role": "user", "content": prompt}]}
+    body = {"model": model, "max_tokens": MAX_OUT, "messages": [{"role": "user", "content": prompt}]}
     if effort:
         body["reasoning_effort"] = effort
     r = requests.post("https://opencode.ai/zen/go/v1/chat/completions", timeout=timeout,
@@ -358,9 +361,11 @@ def main():
     ap.add_argument("--workers", type=int, default=25)
     ap.add_argument("--bench", default="deepseek-v4.1-flash-r4", help="score: reader the others are measured against")
     ap.add_argument("--call-limit", type=int, default=0, help="run: seconds per call; slower models are culled")
+    ap.add_argument("--max-out", type=int, default=32000, help="run: output-token cap per Go call")
     a = ap.parse_args()
-    global CALL_LIMIT
+    global CALL_LIMIT, MAX_OUT
     CALL_LIMIT = a.call_limit or None
+    MAX_OUT = a.max_out
     if a.cmd == "score":
         return score(a.bench)
     if a.cmd == "verify":
