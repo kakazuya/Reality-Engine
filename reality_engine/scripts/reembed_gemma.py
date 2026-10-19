@@ -16,7 +16,8 @@ index is usable at any point (rows not yet embedded are zero and score 0); done.
 Text embedded: 'title: none | text: ' + a fresh header built from the current (repaired) metadata + the chunk body
 with its stored '[Metadata: ...]' header removed. Same prompt format as the 80% test run.
 
-GPU: DirectML, batch 4 (batch 16 tripped a Windows GPU reset on 2026-10-18). Do not run next to another GPU embedder.
+GPU: DirectML, batches packed to TOKEN_BUDGET padded tokens (~1.6 s per call; batch 16 tripped a Windows GPU reset
+on 2026-10-18). Do not run next to another GPU embedder.
 
     python -m reality_engine.scripts.reembed_gemma [--limit N] [--tiers 0,1,2]   # embed (resumable)
     python -m reality_engine.scripts.reembed_gemma --status
@@ -111,7 +112,8 @@ def extend_plan():
     tmp = OUT / "chunk_vectors.grow.npy"
     v = np.lib.format.open_memmap(tmp, mode="w+", dtype=np.float32, shape=(len(ids) + len(new), DIM))
     for s in range(0, len(ids), 200_000):
-        v[s:s + 200_000] = old[s:s + 200_000]
+        e = min(s + 200_000, len(ids))
+        v[s:e] = old[s:e]
     v.flush()
     del v, old
     tmp.replace(vp)
@@ -133,6 +135,28 @@ def texts_for(con, cids):
     return [by.get(int(c), "") for c in cids]
 
 
+TOKEN_BUDGET = 5600   # padded tokens per DirectML call: batch 8 x ~700 tokens = ~1.6 s; batch 12 took 2.2 s (Windows
+                      # resets the GPU on calls over ~2 s). Measured 2026-10-19: 3.8/s at batch 4 -> 5.1/s at this budget.
+
+
+def embed_budget(model, texts):
+    """Embed with batches packed to TOKEN_BUDGET padded tokens (long chunks get smaller batches). Same vectors as
+    Model.embed (max |diff| 2e-7 between batch sizes)."""
+    import numpy as np
+    lens = [min(len(model.tok.encode(model.fmt(t, False)).ids), model.max_len) for t in texts]
+    order = sorted(range(len(texts)), key=lambda i: lens[i])
+    res, batch = [None] * len(texts), []
+    for i in order + [None]:
+        if i is not None and (not batch or (len(batch) + 1) * lens[i] <= TOKEN_BUDGET):
+            batch.append(i)
+            continue
+        if batch:
+            for j, v in zip(batch, model._batch([model.fmt(texts[k], False) for k in batch])):
+                res[j] = v
+        batch = [i] if i is not None else []
+    return np.vstack(res).astype(np.float32)
+
+
 def run(limit, tiers_wanted, chunk=256):
     from reality_engine.scripts.embed_model_test import Model
     vp, ip, mp, dp, tp = paths()
@@ -151,7 +175,7 @@ def run(limit, tiers_wanted, chunk=256):
         texts = texts_for(con, ids[pos])
         keep = [i for i, t in enumerate(texts) if t.strip()]
         if keep:
-            v = model.embed([texts[i] for i in keep])
+            v = embed_budget(model, [texts[i] for i in keep])
             vecs[pos[keep]] = v
         vecs.flush()
         done[pos] = True
