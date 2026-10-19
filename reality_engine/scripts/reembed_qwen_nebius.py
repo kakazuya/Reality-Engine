@@ -93,6 +93,14 @@ def post(key, texts):
         last = f"HTTP {r.status_code} {r.text[:200]}"
         if r.status_code in (402, 403):           # out of credit / key refused: stop, do not retry
             raise RuntimeError(last)
+        if r.status_code == 400 and "context length" in r.text:
+            # over 40,960 tokens in one request (number-heavy chunks run ~1-2 chars/token): split the batch in
+            # halves; a single text that is still too long is cut to half its length and retried
+            if len(texts) > 1:
+                h = len(texts) // 2
+                (a, ta), (b, tb) = post(key, texts[:h]), post(key, texts[h:])
+                return a + b, ta + tb
+            return post(key, [texts[0][:len(texts[0]) // 2]])
         time.sleep(10 * (attempt + 1))
     raise RuntimeError(last)
 
