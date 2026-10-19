@@ -96,6 +96,6 @@ touching anything OpenCode-related. Companion files:
 - **A wrong answer allowance caused 429s.** The token pacer assumed a 1,500-token answer; exhaustive answers are about
   3x longer, so the allowance is now 5,000 tokens for exhaustive prompts.
 
-**DeepSeek Harness worker (2026-10-20):** `dsh` installed with bun (`bun add -g @deepseek-ai/dsh`), running Go models through a per-run `--patch` that adds the `x-opencode-session` header. Run one task with `python -m reality_engine.scripts.run_deepseek_harness --model beam-free --task-file T.md --out-file O.md [--cwd DIR] [--timeout 900] [--account 2] [--permission read-only]`.
+**DeepSeek Harness worker (2026-10-20):** `dsh` installed with bun (`bun add -g @deepseek-ai/dsh`), running Go models through a per-run `--patch` that adds the `x-opencode-session` header. Run one task with `python -m reality_engine.scripts.run_deepseek_harness --model beam-free --task-file T.md --out-file O.md [--cwd DIR] [--timeout 900] [--account 1|2, default 2] [--permission read-only]`.
 The answer goes to O.md and the reasoning and errors to O.md.log. Exit codes: 0 ok, 1 failed (e.g. `dsh: QUOTA: 429`), 124 timeout. Free models: beam-free, longcat-2.5-preview-free, minimax-m3.1-flash-free (low effort by default; `~medium` etc. to change it).
 deepseek-v4.1-flash is paid and needs `--allow-paid` (approved for concall transcripts only). Default sandbox is read-only, so workers read and Claude writes. Account 1 hit "Go usage limit exceeded" for paid use on 2026-10-20.

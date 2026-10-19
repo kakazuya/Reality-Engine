@@ -1,0 +1,19 @@
+model=beam-free effort=None account=2 permission=read-only cwd=C:\Users\warri\Downloads\Info_Diffusion_Model rc=0 secs=8
+dsh: reasoning:
+The user wants me to read a file and summarize it. Let me read the file first.
+dsh: reasoning:
+I have read the file. Now I need to summarize in exactly 5 bullet points, specific about inputs, providers/models, what it measures, outputs. No file modifications.
+
+Let me craft 5 bullets.
+
+1. Inputs: reads corpus.json (transcript chunks of 60 random companies from document_chunks), questions.json (51 analyst questions, each with one target chunk), gold_chunks.json (maps each chunk_id to its company symbol) from reality_engine/data/embed_test/.
+
+2. Models/providers: supports local ONNX models (bge-small, bge-base, qwen3-0.6b, embeddinggemma) run via onnxruntime on DirectML (CPU fallback); Google Gemini API models (gemini-embedding-001, gemini-embedding-2) via AI Studio batchEmbedContents; and OpenAI-compatible endpoints (Nebius qwen3-8b, DeepInfra embeddinggemma/2, plus many others) with API keys, prompts, pricing.
+
+3. What it measures: for each model, embeds corpus + questions, computes cosine similarity (dot product on normalized vectors), ranks the gold target chunk globally and within the asked company's chunks only; reports hit@1/5/10, MRR, chunks/s throughput (and API calls/429s/tokens/cost for API models).
+
+4. Outputs: caches embeddings as emb_<model>.npy / qemb_<model>.npy in data/embed_test/, and merges per-model metrics into results.json (model, provider, chunks_per_s, dim, hit rates, MRR, api stats, cost).
+
+5. CLI usage: `python -m reality_engine.scripts.embed_model_test [--models ...]`; defaults to bge-small,bge-base,embeddinggemma,qwen3-0.6b; can reuse precomputed Colab embeddings/meta files.
+
+Let me ensure exactly 5 bullets. Good.

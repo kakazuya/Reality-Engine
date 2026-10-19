@@ -63,7 +63,7 @@ def main():
     ap.add_argument("--out-file", required=True)
     ap.add_argument("--cwd", default=str(REPO), help="workspace root the agent works in (default: repo root)")
     ap.add_argument("--timeout", type=int, default=900, help="seconds before the run is killed (exit 124)")
-    ap.add_argument("--account", choices=("1", "2"), default="1", help="which OpenCode Go key")
+    ap.add_argument("--account", choices=("1", "2"), default="2", help="which OpenCode Go key (default 2; account 1 is exhausted)")
     ap.add_argument("--permission", choices=("read-only", "workspace-write", "danger-full-access"),
                     default="read-only", help="dsh sandbox mode (default read-only: workers read, Claude writes)")
     ap.add_argument("--allow-paid", action="store_true", help="allow a paid Go model (needs Shivam's go-ahead)")
