@@ -1,6 +1,49 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
-## SESSION CLOSE 2026-10-19 03:20 — read this first
+## START HERE - hand-off 2026-10-19 19:30 (session "Pipeline framework and detached jobs review" closed)
+Rules (Shivam): data gaps, query gaps, latency first (PIPELINE_TODO Phase Q -> A -> B -> C); NO backtests until he says;
+new tables / files only, verify on real rows (dates vs source, counts, hand samples), never break running jobs; measure.
+**Power: full GPU load tripped the UPS twice today.** Re-embed runs at --duty 0.6; never run the GPU flat out.
+After any reboot `RealityEngine-BootRecover` (S4U, at startup + logon) runs scripts/boot_recover.py: readers at once,
+quick_check of all DBs after an unclean shutdown (once per boot, ~40 min), then writers. Status in
+data/logs/boot_recover_status.json + watchdog report. Nothing needs restarting by hand.
+
+Running (detached; logs in reality_engine/data/logs):
+| job | launcher | state 19:26 | next check |
+|---|---|---|---|
+| Gemma re-embed (GPU 0.6) | run_reembed_gemma.cmd | 58,368 done; tiers 0-2 (transcripts, macro, decks) 282,519 left ~28 h; all 2.27M ~8 days | after tiers 0-2: retrieval test vs bge, then switch readers (see below) |
+| PDF/deck upload to Drive | run_pdf_upload.cmd (rclone, 4 MB/s; 512 KB/s 05-13) | 53,562 files / 284 GiB at 15:15; ~1.3 days | drive_upload_check.py (NOT --links while uploading) |
+| Shareholding XBRL | run_shareholding.cmd | 20,500 / 50,485 downloaded, then parse | check 10 cos x 2 quarters vs exchange site |
+| PIB English backfill | run_pib_backfill.cmd | at 2022-07 | - |
+| Policy register (macro docs) | run_policy_register.cmd | running | quote_ok >= 98%; then --source pib |
+| DB backup | task DBBackup 05:00 (S4U) | full set staged (23 parts, 22 GB) | 05:00-13:00 Oct 20: rclone check passes, state complete |
+| EOD market | task EODMarket 19:35 weekdays (S4U) | first S4U run tonight | eod_market.log; snapshot rebuilt; query_speed report |
+Finished today: nse_pr (circuit_hits 482k, price_bands 4.04M, 1,927 days), NSE industry (3,155 of 3,178 classified,
+195 basic industries), PIB regional 20-day sample (2026-09-26..10-15), DeepSeek concalls (1,056), 2026 chunks.
+
+Next work, in order:
+1. A2 translations: run `pib_regional --match title` and `--match body` for 2026-09-26..2026-10-15 (CPU Gemma: titles
+   19/s, title+body 2.2/s). Title mode on 9 days: 67/75 page-linked pairs top-1 correct; misses = Tamil re-titles
+   (needs body) + identical-title English duplicates (count as correct). Pick threshold, hand-check 30 matched + 30
+   unique (<5% wrong), then choose backfill mode (full bodies = ~9 min/day = 13 days; titles for all + bodies for
+   unmatched instead). Tables pib_ml_releases / pib_ml_match.
+2. A3 mapping: policy_events.sectors (3,478 distinct strings) -> company_industry (macro/sector/industry/basic_industry)
+   by Gemma similarity + hand check; companies (487 strings) -> ISIN by name (many unlisted PSUs: leave unmapped);
+   policy_threads (stage chain) needs an LLM: free models only (LongCat on Go key 1 is used by the policy register).
+3. Re-embed switch-over (after tiers 0-2): run the 51-question test (embed_model_test data) on data/vector_index_gemma
+   vs bge; if better, point hybrid_search's ChunkVectorIndex to vector_index_gemma and embed queries with Gemma
+   ('task: search result | query: ...'); add search() to query/state.py.
+4. B3 check once parsed; B1 leftovers (RBI/SEBI overseas-limit rows in policy_events).
+5. Phase C: index membership history (no machine-readable source found on niftyindices), order wins from BSE feed
+   (needs an LLM: ask Shivam, paid models need his go-ahead), metric ontology, reconciliation.
+Decisions waiting on Shivam: snapshot keep count (9 GB each, 7 = ~63 GB of ~107 GB free); order-win LLM.
+
+Gotchas learned today: bash heredocs mangle "\n" inside Python code (use the Edit tool); .cmd launchers must be CRLF
+and never edited while running; Stop-Process filters must not match Monitor/tail command lines; DuckDB capped at
+4 GB (took 11 GB); results XBRL known_at can be ~1 day after the BSE results PDF (use events for timing);
+results_xbrl facts: FourD (YTD) carries quarter dates -> use context not dates; join results by filings_isin.isin.
+
+## SESSION CLOSE 2026-10-19 03:20 — (earlier)
 **Shivam's order:** fix data gaps, query gaps and latency first (Phase Q + A + B in `tasks/PIPELINE_TODO.md`); NO
 backtests until he says so. Implement carefully: new tables/files, verify on real rows, never break running jobs.
 
