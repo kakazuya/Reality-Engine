@@ -126,6 +126,63 @@ def fetch_body(s, prid, reg, lang):
     return posted, by, txt[:cut].strip(), linked
 
 
+MATCH_DDL = """CREATE TABLE IF NOT EXISTS pib_ml_match (prid INTEGER, mode TEXT, best_prid INTEGER, best_sim REAL,
+    second_sim REAL, n_candidates INTEGER, matched_at TEXT, PRIMARY KEY (prid, mode))"""
+
+
+def cpu_gemma(threads=4):
+    """EmbeddingGemma on CPU (the GPU belongs to the re-embed job): ~19 titles/s, ~2 title+body texts/s."""
+    import onnxruntime as ort
+    from reality_engine.scripts.embed_model_test import Model
+    m = Model("embeddinggemma")
+    so = ort.SessionOptions()
+    so.intra_op_num_threads = threads
+    m.sess = ort.InferenceSession(str(m.dir / "onnx/model.onnx"), so, providers=["CPUExecutionProvider"])
+    m.provider = "CPU"
+    return m
+
+
+def match_pass(db, start, end, mode="title"):
+    """Best English candidate (same or previous day) per non-English release by cosine of EmbeddingGemma vectors.
+    mode 'title': title only; 'body': title + first 1,000 characters of the body. Results in pib_ml_match; the
+    threshold that turns a match into translation_of is set from the release_link positives + hand checks."""
+    import numpy as np
+    db.execute(MATCH_DDL)
+    m = cpu_gemma()
+    def text(t, b):
+        return t if mode == "title" else t + "\n" + (b or "")[:1000]
+    eng = {}
+    for prid, d, t, b in db.execute(
+            "SELECT prid, release_date, title, body FROM pib_releases WHERE release_date BETWEEN date(?, '-1 day') AND ? "
+            "UNION SELECT prid, release_date, title, body FROM pib_ml_releases WHERE lang_name = 'English' "
+            "AND release_date BETWEEN date(?, '-1 day') AND ?", (start, end, start, end)):
+        eng[prid] = (d, text(t, b))
+    ids = list(eng)
+    ev = m.embed([eng[i][1] for i in ids], bs=16 if mode == "title" else 4) if ids else np.zeros((0, 768))
+    edate = np.array([eng[i][0] for i in ids])
+    todo = db.execute("SELECT prid, release_date, title, body FROM pib_ml_releases WHERE lang_name <> 'English' "
+                      "AND release_date BETWEEN ? AND ? AND prid NOT IN (SELECT prid FROM pib_ml_match WHERE mode = ?)",
+                      (start, end, mode)).fetchall()
+    print(f"match {mode}: {len(ids)} English candidates, {len(todo)} releases", flush=True)
+    now = dt.datetime.now().isoformat(timespec="seconds")
+    for s in range(0, len(todo), 64):
+        part = todo[s:s + 64]
+        qv = m.embed([text(t, b) for _, _, t, b in part], bs=16 if mode == "title" else 4)
+        out = []
+        for (prid, d, _, _), q in zip(part, qv):
+            prev = (dt.date.fromisoformat(d) - dt.timedelta(days=1)).isoformat()
+            idx = np.flatnonzero((edate == d) | (edate == prev))
+            if not len(idx):
+                out.append((prid, mode, None, None, None, 0, now)); continue
+            sims = ev[idx] @ q
+            o = np.argsort(-sims)
+            out.append((prid, mode, ids[idx[o[0]]], float(sims[o[0]]), float(sims[o[1]]) if len(o) > 1 else None,
+                        len(idx), now))
+        with db:
+            db.executemany("INSERT OR REPLACE INTO pib_ml_match VALUES (?,?,?,?,?,?,?)", out)
+    print(f"match {mode} done", flush=True)
+
+
 def link_pass(db):
     """translation_of = the linked PRID when that PRID is an English release (PIB Delhi English in pib_releases, or an
     English release listed here). Run after fetching: the English original may be fetched after its translation."""
@@ -143,9 +200,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--start", default=(dt.date.today() - dt.timedelta(days=3)).isoformat())
     ap.add_argument("--end", default=dt.date.today().isoformat())
+    ap.add_argument("--match", choices=["title", "body"], help="embedding match pass only (no fetching)")
     a = ap.parse_args()
     db = sqlite3.connect(DB, timeout=600)
     db.executescript(DDL)
+    if a.match:
+        return match_pass(db, a.start, a.end, a.match)
     s = session()
     combos = [(r, rn, l, ln) for r, rn, l, ln in offices(s, db) if not (r == 3 and l == 1)]   # Delhi English: pib_feed
     english = {r[0] for r in db.execute("SELECT prid FROM pib_releases")}
