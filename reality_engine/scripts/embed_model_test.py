@@ -146,6 +146,22 @@ class OpenAIEmbed:
                "embeddinggemma-deepinfra": ("title: none | text: ", "task: search result | query: "),
                "embeddinggemma2-deepinfra": ("title: none | text: ", "task: search result | query: ")}
     PRICE = {"qwen3-8b-nebius": 0.01, "embeddinggemma-deepinfra": 0.002, "embeddinggemma2-deepinfra": 0.02}
+    # round 2 on DeepInfra (2026-10-20, Shivam: try the other long-context models at similar cost); 512-token models
+    # skipped (our chunks average ~600 tokens). name: (repo, $/M, doc prefix, query prefix)
+    _DI = "https://api.deepinfra.com/v1/openai"
+    _ICL = ("<instruct>Given an analyst's question about an Indian listed company, retrieve the earnings-call "
+            "transcript passage that answers it\n<query>")
+    for _n, (_repo, _usd, _d, _q) in {
+            "nemotron3-8b-di": ("nvidia/Nemotron-3-Embed-8B", 0.035, "passage: ", "query: "),
+            "nemotron3-1b-di": ("nvidia/Nemotron-3-Embed-1B-BF16", 0.015, "passage: ", "query: "),
+            "nemotron-vl-1b-di": ("nvidia/llama-nemotron-embed-vl-1b-v2", 0.01, "passage: ", "query: "),
+            "qwen3-4b-di": ("Qwen/Qwen3-Embedding-4B", 0.02, "", QWEN_INSTRUCT),
+            "qwen3-0.6b-di": ("Qwen/Qwen3-Embedding-0.6B", 0.01, "", QWEN_INSTRUCT),
+            "bge-m3-di": ("BAAI/bge-m3", 0.01, "", ""),
+            "bge-en-icl-di": ("BAAI/bge-en-icl", 0.01, "", _ICL)}.items():
+        API[_n] = ("DEEPINFRA_API_KEY", _repo, [_DI])
+        PROMPTS[_n] = (_d, _q)
+        PRICE[_n] = _usd
 
     def __init__(self, name):
         from reality_engine.scripts.resource_watchdog import user_env
