@@ -37,6 +37,19 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 - concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
   facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
+**2026-10-19 06:05 (Claude): Phase C board calendar done; industry map + re-embed running.**
+- `scripts/fetch_board_meetings.py` -> board_meetings: 120,451 NSE board meetings (equities + SME) 2019-01 -> 2026-11-14
+  (furthest announced), purpose, intimated_at (IST, when the market learned the date; mean 12 days before the
+  meeting, never after); revisions kept as rows. Nightly -10..+90 days.
+- `scripts/fetch_nse_industry.py` (+ run_nse_industry.cmd, detached): NSE 4-level classification (macro, sector,
+  industry, basic industry, index list) from the new quote API (getSymbolData); master_companies.industry is unusable
+  (1,868 'General Diversified', 1,751 'Other', 2,714 blank); BSE's header API refuses scripts (403). Current labels,
+  not point in time. Feeds A3 sector -> company mapping (3,478 distinct sector strings in policy_events).
+- Re-embed (Gemma) running at 5.1 chunks/s after token-budget batching (was 3.8/s at batch 4; batch 12 calls hit 2.2 s,
+  near the GPU reset limit): tiers 0-2 (transcripts, macro, decks, 327k) ~18 h, all 2.26M ~5 days.
+- Shareholding: NSE SHP XBRL history starts mid-2021 (2019-20 < 210 filings): 2019-20 warm-up years are a gap (BSE).
+- Snapshot now also carries board_meetings, index_tri, tax_rules, etf_px, fund_nav, company_industry, shp_index.
+
 **2026-10-19 05:35 (Claude): B1 done, B3 running, results 2025-26 verified.**
 - Integrated results job finished: 30,181 INTEGRATED filings ok (Mar-2025 -> Sep-2026 quarters), 106,613 filings in
   all; filings_isin rebuilt. Cross-check vs concall statements: POONAWALLA Q2 FY27 PAT 374.9 cr (call: "375 crore"),
