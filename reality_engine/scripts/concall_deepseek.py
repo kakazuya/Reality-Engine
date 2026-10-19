@@ -202,6 +202,7 @@ def work(item, keys, out_path):
         save(out_path, {**base, "status": "skip_cover_letter"}); return "skip_cover_letter"
     env = ar.user_env()
     attempt = 0
+    last = "4 broken-JSON answers"   # 2026-10-20: unset when every attempt was error_json -> UnboundLocalError killed the run
     while attempt < 4:
         attempt += 1
         if MODEL.split("~")[0] not in FREE_MODELS:   # free Go readers: no spend window, no peak pause
