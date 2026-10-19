@@ -139,6 +139,10 @@ TOKEN_BUDGET = 5600   # padded tokens per DirectML call: batch 8 x ~700 tokens =
                       # resets the GPU on calls over ~2 s). Measured 2026-10-19: 3.8/s at batch 4 -> 5.1/s at this budget.
 
 
+DUTY = 1.0   # fraction of wall time the GPU computes (--duty). 2026-10-19: two power cuts ~30 min after full-load
+             # re-embed starts (05:27 -> 05:58, 14:48 -> ~15:25); the UPS trips on sustained GPU draw.
+
+
 def embed_budget(model, texts):
     """Embed with batches packed to TOKEN_BUDGET padded tokens (long chunks get smaller batches). Same vectors as
     Model.embed (max |diff| 2e-7 between batch sizes)."""
@@ -151,8 +155,11 @@ def embed_budget(model, texts):
             batch.append(i)
             continue
         if batch:
+            t0 = time.perf_counter()
             for j, v in zip(batch, model._batch([model.fmt(texts[k], False) for k in batch])):
                 res[j] = v
+            if DUTY < 1.0:
+                time.sleep((time.perf_counter() - t0) * (1 / DUTY - 1))
         batch = [i] if i is not None else []
     return np.vstack(res).astype(np.float32)
 
@@ -206,6 +213,7 @@ def main():
     ap.add_argument("--tiers", default="0,1,2,3,4,5")
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--plan-new", action="store_true", dest="plan_new")
+    ap.add_argument("--duty", type=float, default=1.0, help="GPU duty cycle 0.1-1.0 (rest between calls)")
     a = ap.parse_args()
     if not paths()[1].exists():
         make_plan()
@@ -213,6 +221,8 @@ def main():
         return status()
     if a.plan_new:
         return extend_plan()
+    global DUTY
+    DUTY = max(0.1, min(1.0, a.duty))
     run(a.limit, [int(t) for t in a.tiers.split(",")])
 
 
