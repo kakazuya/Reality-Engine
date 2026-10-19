@@ -14,6 +14,7 @@ store to the same file, read-only from SQLite:
   ownership   nse_insider, nse_sast, nse_pit_filings, bse_insider, nse_deals, bse_deals, nse_short
   flows       fii_dii_cash, nsdl_fpi_daily
   policy      policy_events, pib_releases (metadata only)
+  events      one row per company event across all stores (isin, known_at_utc, kind, source_ref, summary)
 
 Point in time: every table with a time it became public gets
   known_at_src        the original string, unchanged
@@ -195,6 +196,71 @@ def add_ar_item_index(con, log=print):
     log(f"  ar_facts item index: {time.time() - t0:.0f}s")
 
 
+EVENTS_SQL = """
+CREATE OR REPLACE TABLE events AS
+WITH nse_map AS (SELECT symbol, isin, CAST(first_date AS DATE) f, CAST(last_date AS DATE) l FROM symbol_isin_history
+                 WHERE exchange = 'NSE'),
+     bse_map AS (SELECT symbol AS code, isin, CAST(first_date AS DATE) f, CAST(last_date AS DATE) l FROM symbol_isin_history
+                 WHERE exchange = 'BSE'),
+by_sym AS (   -- symbol-keyed sources: ISIN valid on the event's IST date
+    SELECT 'insider' kind, symbol, known_at_utc, CAST(did AS VARCHAR) source_ref,
+           concat_ws(' ', transaction_type, person_category, CAST(securities_value AS VARCHAR)) summary FROM nse_insider
+    UNION ALL SELECT 'sast', symbol, known_at_utc, rec_key, concat_ws(' ', sale_or_acq, acquisition_mode) FROM nse_sast
+    UNION ALL SELECT 'deal_nse', symbol, known_at_utc, concat_ws('|', date, deal_type, CAST(seq AS VARCHAR)),
+           concat_ws(' ', deal_type, buy_sell, client_name) FROM nse_deals
+    UNION ALL SELECT 'circuit_hit', symbol, known_at_utc, concat_ws('|', date, series), high_low FROM circuit_hits
+    UNION ALL SELECT 'board_meeting_intimation', symbol, known_at_utc, concat_ws('|', meeting_date, purpose),
+           concat_ws(' ', 'meeting', meeting_date, purpose) FROM board_meetings
+),
+sym_ev AS (
+    SELECT b.kind, coalesce(m.isin, b2.isin) isin, b.known_at_utc, b.source_ref, b.summary
+      FROM by_sym b
+      LEFT JOIN nse_map m ON m.symbol = b.symbol
+           AND CAST(b.known_at_utc + INTERVAL 330 MINUTE AS DATE) BETWEEN m.f AND m.l
+      LEFT JOIN (SELECT symbol, arg_max(isin, l) isin FROM nse_map GROUP BY 1) b2 ON b2.symbol = b.symbol
+),
+code_ev AS (
+    SELECT 'announcement' kind, coalesce(m.isin, b2.isin) isin, a.known_at_utc, a.NEWSID source_ref,
+           concat_ws(' / ', a.CATEGORYNAME, a.SUBCATNAME, a.HEADLINE) summary
+      FROM bse_ann a
+      LEFT JOIN bse_map m ON m.code = a.SCRIP_CD AND CAST(a.known_at_utc + INTERVAL 330 MINUTE AS DATE) BETWEEN m.f AND m.l
+      LEFT JOIN (SELECT code, arg_max(isin, l) isin FROM bse_map GROUP BY 1) b2 ON b2.code = a.SCRIP_CD
+    UNION ALL
+    SELECT 'deal_bse', coalesce(m.isin, b2.isin), d.known_at_utc, concat_ws('|', d.date, d.deal_type, CAST(d.seq AS VARCHAR)),
+           concat_ws(' ', d.deal_type, d.buy_sell, d.client_name)
+      FROM bse_deals d
+      LEFT JOIN bse_map m ON m.code = d.sc_code AND CAST(d.date AS DATE) BETWEEN m.f AND m.l
+      LEFT JOIN (SELECT code, arg_max(isin, l) isin FROM bse_map GROUP BY 1) b2 ON b2.code = d.sc_code
+),
+isin_ev AS (
+    SELECT 'results' kind, trading_isin isin, known_at_utc, file source_ref,
+           concat_ws(' ', period_end, consolidated, audited) summary FROM results_filings
+    UNION ALL SELECT 'concall', isin, known_at_utc, CAST(doc_id AS VARCHAR), concat_ws(' ', status, period_discussed) FROM cc_docs
+    UNION ALL SELECT 'deck', isin, known_at_utc, concat_ws('|', source, source_id), title FROM deck_sources
+    UNION ALL SELECT 'annual_report', isin, known_at_utc, CAST(doc_id AS VARCHAR), fiscal_year FROM ar_docs
+    UNION ALL SELECT 'order_alert', isin, known_at_utc, order_id,
+           concat_ws(' ', kind, customer, CAST(value_cr AS VARCHAR), 'cr') FROM tg_orders
+    UNION ALL SELECT 'pead_post', isin, known_at_utc, post_id, label FROM tg_pead_signals WHERE CAST(is_test_post AS VARCHAR) = '0'
+    UNION ALL SELECT 'shareholding', isin, known_at_utc, record_id,
+           concat_ws(' ', quarter_end, 'promoter', CAST(promoter_pct AS VARCHAR)) FROM shp_index
+)
+SELECT isin, known_at_utc, kind, source_ref, summary FROM isin_ev
+UNION ALL SELECT isin, known_at_utc, kind, source_ref, summary FROM sym_ev
+UNION ALL SELECT isin, known_at_utc, kind, source_ref, summary FROM code_ev
+ORDER BY isin, known_at_utc
+"""
+
+
+def add_events(con, log=print):
+    """events: one row per company event across stores (isin, known_at_utc, kind, source_ref, summary); source_ref points to
+    the source table's key. Symbol / BSE-code sources take the ISIN valid on the event's IST date."""
+    t0 = time.time()
+    con.execute(EVENTS_SQL)
+    r = con.execute("SELECT count(*), count(isin), count(known_at_utc) FROM events").fetchone()
+    log(f"  events: {r[0]:,} rows, {r[1]:,} with isin, {r[2]:,} with time ({time.time() - t0:.0f}s)")
+    return r
+
+
 def add_research_tables(con, log=print, only=None):
     con.execute("INSTALL sqlite; LOAD sqlite;")
     for alias, path in SOURCES.items():
@@ -236,6 +302,8 @@ def add_research_tables(con, log=print, only=None):
         log(f"  {name}: {n:,} rows (source {before}..{after} ok={count_ok}; {mode}, {time.time() - t0:.0f}s) pit src {with_src} unparsed {bad} {lo} .. {hi}")
     if not only or "ar_facts" in only:
         add_ar_item_index(con, log)
+    if not only:
+        add_events(con, log)
     con.execute("CREATE OR REPLACE TABLE pit_report (table_name VARCHAR, n_rows BIGINT, src_rows_before BIGINT, "
                 "src_rows_after BIGINT, count_ok BOOLEAN, copy_mode VARCHAR, "
                 "n_with_time BIGINT, n_time_unparsed BIGINT, min_known_at_utc VARCHAR, max_known_at_utc VARCHAR, "

@@ -107,8 +107,10 @@ then switch readers over. Never assume; measure.
 
 ## Phase C — carried from the order of work (STATE.md)
 - Index membership history (inclusion / exclusion events), price bands / circuit hits, ASM/GSM history.
+  (2026-10-19: circuit hits 2019-> and bands + GSM/ASM stage 2021-> DONE via fetch_nse_pr.py; index membership pending)
 - Forward board-meeting calendar (results dates ahead). - DONE 2026-10-19 (board_meetings, nightly)
 - Exchange order wins: parse value / customer / execution period from the 'Award of Order / Receipt of Order' filings
   in the BSE announcement feed (complete source; Telegram only covers a subset).
 - Re-embed search layer with EmbeddingGemma (transcripts + macro + decks first, then ARs).
 - Metric ontology + canonical fact ledger; cross-source reconciliation; events table + state(isin, t).
+  (2026-10-19: events table + state() v1 DONE)

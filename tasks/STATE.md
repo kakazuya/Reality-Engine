@@ -37,6 +37,18 @@ backtests until he says so. Implement carefully: new tables/files, verify on rea
 - concall_query_test (50 pilot questions): captured by DeepSeek 88% (numbers 25/25, qualitative 19/25); top-5 hit FTS
   facts 50%, EmbeddingGemma facts 66%, raw chunks 66%; PIT leak 0; PEAD posts with a call already public at post time 387.
 
+**2026-10-19 06:25 (Claude): events table, circuit hits / bands.**
+- Snapshot table `events` (snapshot_research_tables.EVENTS_SQL): 2.78M company events (BSE announcements 1.95M,
+  insider, deals, board-meeting intimations, results, shareholding, SAST, ARs, decks, circuit hits, concalls, PEAD
+  posts, order alerts), 97.5% with ISIN (symbol / BSE code -> ISIN valid on the event's IST date), known_at_utc,
+  source_ref back to the source row. Step 5 of the order of work (events + state) now has both parts.
+- **PIT finding:** results XBRL known_at (NSE integrated-filing dissemination) can be up to a day AFTER the results
+  PDF: TITAGARH Q3 FY25 results PDF on BSE 13-Feb-2025 20:32 IST, XBRL 14-Feb 15:10 IST. Safe (never early) but late;
+  event studies on results timing must use the earliest 'Financial Results' announcement in events, values from XBRL.
+- `scripts/fetch_nse_pr.py` (+ run_nse_pr.cmd, detached backfill 2019 ->): circuit_hits from NSE PR bundle 'bh'
+  (2019 ->), price_bands + GSM/ASM stage remarks from sec_list_DDMMYYYY.csv (2021 ->; 2019-20 not archived). MONQ50:
+  upper circuit 16/17/18-Sep-2026, lower 21/22-Sep. Nightly step added (covers B1 'circuit days').
+
 **2026-10-19 06:05 (Claude): Phase C board calendar done; industry map + re-embed running.**
 - `scripts/fetch_board_meetings.py` -> board_meetings: 120,451 NSE board meetings (equities + SME) 2019-01 -> 2026-11-14
   (furthest announced), purpose, intimated_at (IST, when the market learned the date; mean 12 days before the
