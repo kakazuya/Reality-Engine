@@ -156,6 +156,9 @@ def run(models, workers):
             else:
                 key = env["OPENCODE_GO_API_KEY" if n % 2 == 0 else "OPENCODE_GO_API_KEY_2"]
             jobs.append((m, item, key))
+    # interleave models (transcript 1 of every model, then transcript 2 ...): one failing upstream (Nemotron Lightning
+    # 502s, 2026-10-19) no longer holds every slot while the other models wait
+    jobs.sort(key=lambda j: sample.index(j[1]))
     with cf.ThreadPoolExecutor(workers) as ex:
         for m, sym, st in ex.map(lambda j: run_one(*j), jobs):
             print(m, sym, st, flush=True)
