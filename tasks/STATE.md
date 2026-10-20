@@ -15,6 +15,14 @@
   files inherit it), because SearchIndexer was reading ~130 MB/s. D:\RealityEngine was never indexed.
 - Archive of the old session (local_98041315) is refused while its phone Remote Control is on: Shivam archives it by hand.
 - Shivam: backtesting starts here once he wakes up (afternoon). Begin with H01 PEAD from `tasks/HYPOTHESIS_REGISTER.md`.
+- **Hometown laptop `Sumit`** (MSI GL63, i5-9300H, 16 GB, C: NVMe 112 GB free; Tailscale 100.127.245.98, `ssh sumit@...`
+  key login, admin; profile C:\Users\warri so paths match): goal = run backtests there (own battery survives cuts).
+  Done by Claude: 51 key env vars (names only shown), rclone.conf, OpenCode auth.json. NOT copied: Telegram session
+  (one machine at a time; fresh login there). DeepSeek task `data/dsh_tasks/laptop_setup.md` -> `laptop_setup_report.md`:
+  winget Python 3.14/Git/7-Zip/rclone/Bun, shallow repo bundle clone + `origin`, pip requirements, background scp of
+  truth_2026-10-19.duckdb (log logs/laptop_snapshot_copy.log), review tool `C:\RE_setup\review_space.ps1` + desktop shortcut
+  "Review disk space" (Out-GridView; select -> Explorer opens with the file highlighted). Space scan CSVs: C:\RE_setup\scan\.
+- Boot check change (91a41da9) applies from the next boot; today's boot_recover still runs the old full check first.
 
 ## START HERE - hand-off 2026-10-20 04:35 IST (Dussehra; session 10203977 "workspace check -> embeddings -> worker department")
 Shivam: backtesting starts TODAY (Dussehra = Vijayadashami, 20-Oct-2026, confirmed from PIB). Start a FRESH session for it.
