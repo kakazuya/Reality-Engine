@@ -26,6 +26,10 @@
 - **Beam 2026-10-20 20:05 (Shivam): 6 workers, single tap every 15 min while upstream 429s** (since 11:52); 429 never = error;
   256 docs queued_429 read first. (19:55 bench replaced.) Old note:
   requeued as status queued_429 (no reader). MiniMax still running (~730 left at 19:48).
+- **PC disk cleanup 2026-10-20 21:20 (Shivam OK):** 66,364 files / 384.8 GB deleted after MD5 match on Drive via gdrive_ro
+  (`scripts/cleanup_verify.py`; list logs/cleanup_verified.txt): data/pdfs ARs+offer docs+IPs, data/decks, D:RealityEnginepdfs,
+  the hard-link upload folders and truth_2026-10-08. Transcripts kept (readers). corporate_documents.local_file_path now
+  points at missing files for those types: fetch from Drive (InfoDiffusion_archive/pdfs, decks, D_pdfs). C: 280 GB free, D: 125 GB.
 - **Codex (ChatGPT Plus) on the laptop only, until 2026-11-04.** Next: Shivam starts a Claude session ON the laptop; it
   orchestrates Codex (headless `codex exec`, verify flags first) + DeepSeek like the hotline/dsh protocol. Claude memory
   was copied to the laptop (same project path). DB backup 2026-10-19 (23 parts, MD5 ok) is on Drive db_backups/; laptop
