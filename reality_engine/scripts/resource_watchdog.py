@@ -378,6 +378,14 @@ def write_report(status_lines):
         out += [""] + lines
     except (OSError, ValueError, TypeError):
         pass
+    try:   # background / weekly PRAGMA quick_check (boot_recover --full-check), 2026-10-20
+        f = json.loads((LOGS / "db_full_check.json").read_text(encoding="utf-8"))
+        msg = (f"**DATABASE FULL CHECK FAILED {f.get('failed')}; writers stopped {f.get('writers_stopped')}**"
+               if f.get("state") == "FAILED" else f"{f.get('state')} (started {f.get('started')}, finished "
+               f"{f.get('finished', '-')})")
+        out += ["", f"## DB full check: {msg}"]
+    except (OSError, ValueError, TypeError):
+        pass
     tmp = REPORT.with_suffix(".tmp")
     tmp.write_text("\n".join(out) + "\n", encoding="utf-8")
     os.replace(tmp, REPORT)

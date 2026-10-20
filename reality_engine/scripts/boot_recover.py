@@ -5,14 +5,20 @@ password; pythonw directly, no wscript: Bitdefender quarantined the wscript/VBS 
 2026-10-19). Safe to run any time: a job already running or finished is skipped.
 
   1 readers at once      watchdog, PDF upload (rclone), Gemma re-embed (GPU duty 0.6; reads the DB only)
-  2 integrity            if Windows logged an unexpected shutdown (event 6008) since this boot, or --check: SQLite
-                         quick_check of every database, small ones first (main DB ~40 min)
-  3 writers              only if every check is ok: PIB backfill, policy register, shareholding, circuit hits / bands,
-                         NSE industry, PIB regional sample, DB backup staging (--pack-only)
-A failed check starts no writer and writes the failure to data/logs/boot_recover_status.json, which the watchdog
-report shows. Log: data/logs/boot_recover.log.
+  2 smoke check          if Windows logged an unexpected shutdown (event 6008) since this boot, or --check: open
+                         every database (SQLite rolls back an unfinished write on open) and read its schema and the
+                         first row of every table; seconds, not the ~1 h a full quick_check took (Shivam 2026-10-20:
+                         full checks after every crash waste too much time; 3 cuts x 6 DBs never found damage)
+  3 writers              only if every smoke check is ok: PIB backfill, policy register, shareholding, circuit hits /
+                         bands, NSE industry, PIB regional sample, DB backup staging (--pack-only)
+  4 full check, behind   a detached `--full-check` process runs PRAGMA quick_check on every DB at low CPU / disk
+                         priority while the jobs run; also weekly (Sunday ~02:00, started by deepseek_heartbeat).
+                         On a failure it stops the writer jobs and writes data/hotline/needs_claude.md.
+A failed smoke check starts no writer. Results: data/logs/boot_recover_status.json (smoke) and
+data/logs/db_full_check.json (full), both shown in the watchdog report. Log: data/logs/boot_recover.log.
 
     python -m reality_engine.scripts.boot_recover [--check] [--dry-run]
+    python -m reality_engine.scripts.boot_recover --full-check      # the background full check (low priority)
 """
 import argparse
 import datetime as dt
@@ -138,22 +144,102 @@ def unclean_shutdown():
     return bool(r.stdout.strip())
 
 
-def check_dbs():
+def smoke_check(db):
+    """Open the DB (read-write, so SQLite replays / rolls back a crash-interrupted write), read the schema and the
+    first row of every table. Catches a broken header, schema or root pages in seconds; deep damage is left to the
+    background quick_check."""
+    con = sqlite3.connect(db, timeout=600)
+    try:
+        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+        for t in tables:
+            con.execute(f'SELECT * FROM "{t}" LIMIT 1').fetchall()
+        return len(tables)
+    finally:
+        con.close()
+
+
+def check_dbs(full=False):
     res = {}
     for db in DBS:
         if not db.exists():
             continue
         t0 = time.time()
         try:
-            con = sqlite3.connect(db, timeout=600)
-            r = con.execute("PRAGMA quick_check").fetchall()
-            con.close()
-            ok = r == [("ok",)]
-            res[db.name] = {"ok": ok, "result": str(r[:3])[:300], "seconds": round(time.time() - t0)}
+            if full:
+                con = sqlite3.connect(db, timeout=600)
+                r = con.execute("PRAGMA quick_check").fetchall()
+                con.close()
+                ok, result = r == [("ok",)], str(r[:3])[:300]
+            else:
+                ok, result = True, f"smoke ok ({smoke_check(db)} tables)"
         except Exception as e:  # noqa: BLE001
-            res[db.name] = {"ok": False, "result": repr(e)[:300], "seconds": round(time.time() - t0)}
-        log(f"  quick_check {db.name}: {res[db.name]['result']} ({res[db.name]['seconds']}s)")
+            ok, result = False, repr(e)[:300]
+        res[db.name] = {"ok": ok, "result": result, "seconds": round(time.time() - t0)}
+        log(f"  {'quick_check' if full else 'smoke'} {db.name}: {result} ({res[db.name]['seconds']}s)")
     return res
+
+
+FULL_STATUS = LOGS / "db_full_check.json"
+NEEDS_CLAUDE = DATA / "hotline" / "needs_claude.md"
+
+
+def full_check():
+    """Background PRAGMA quick_check of every DB at low priority. On a failure: stop the writer jobs, tell Claude."""
+    me = psutil.Process()
+    try:
+        me.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+        me.ionice(psutil.IOPRIO_VERYLOW)
+    except (psutil.Error, AttributeError, ValueError):
+        pass
+    t0 = dt.datetime.now()
+    log("full check (background, low priority): start")
+    FULL_STATUS.write_text(json.dumps({"started": t0.isoformat(timespec="seconds"), "state": "running"}),
+                           encoding="utf-8")
+    res = check_dbs(full=True)
+    bad = [k for k, v in res.items() if not v["ok"]]
+    out = {"started": t0.isoformat(timespec="seconds"), "finished": dt.datetime.now().isoformat(timespec="seconds"),
+           "state": "FAILED" if bad else "ok", "failed": bad, "checks": res}
+    if bad:
+        stopped = []
+        for name, k, _, patterns, _ in JOBS:
+            pid = running(patterns) if k == "writer" else None
+            if pid:
+                try:
+                    for p in [psutil.Process(pid), *psutil.Process(pid).children(recursive=True)]:
+                        p.kill()
+                    stopped.append(name)
+                except psutil.Error:
+                    pass
+        out["writers_stopped"] = stopped
+        log(f"  FULL CHECK FAILED {bad}: stopped writers {stopped}")
+        with NEEDS_CLAUDE.open("a", encoding="utf-8") as fh:
+            fh.write(f"\n# Needs Claude - {dt.datetime.now():%Y-%m-%d %H:%M} IST (boot_recover --full-check)\n"
+                     f"PRAGMA quick_check FAILED on {bad}. Writer jobs stopped: {stopped}. Details: "
+                     f"data/logs/db_full_check.json. Repair (or restore from the Drive backup) before restarting "
+                     f"writers.\n")
+    FULL_STATUS.write_text(json.dumps(out, indent=1), encoding="utf-8")
+    log(f"full check done: {out['state']}")
+
+
+def full_check_running():
+    me = psutil.Process().pid
+    for p in psutil.process_iter(["pid", "cmdline"]):
+        try:
+            cl = " ".join(p.info["cmdline"] or [])
+        except (psutil.Error, TypeError):
+            continue
+        if p.info["pid"] != me and "boot_recover" in cl and "--full-check" in cl:
+            return p.info["pid"]
+    return None
+
+
+def start_full_check():
+    if full_check_running():
+        return "already running"
+    subprocess.Popen([str(PYW), "-u", "-m", "reality_engine.scripts.boot_recover", "--full-check"], cwd=str(ROOT),
+                     creationflags=NO_WINDOW, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL, close_fds=True)
+    return "started"
 
 
 def main():
@@ -161,8 +247,12 @@ def main():
     ap.add_argument("--check", action="store_true", help="run the database checks even after a clean shutdown")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--wait", type=int, default=120, help="seconds to wait after boot for network / disks")
+    ap.add_argument("--full-check", action="store_true", help="run the full quick_check now, at low priority")
     a = ap.parse_args()
     LOGS.mkdir(parents=True, exist_ok=True)
+    if a.full_check:
+        full_check()
+        return
     up = time.time() - psutil.boot_time()
     if not a.dry_run and up < a.wait:
         time.sleep(a.wait - up)
@@ -183,7 +273,7 @@ def main():
         status["checks"] = prev.get("checks") or "skipped (writers already running)"
         unclean = False
     if unclean or a.check:
-        log(f"  integrity checks ({'unclean shutdown' if unclean else '--check'})")
+        log(f"  smoke checks ({'unclean shutdown' if unclean else '--check'})")
         status["checks"] = {} if a.dry_run else check_dbs()
         bad = [k for k, v in status["checks"].items() if not v["ok"]]
     else:
@@ -194,6 +284,9 @@ def main():
         status["writers"] = "not started"
     else:
         status["writers"] = start("writer", a.dry_run)
+        if (unclean or a.check) and not a.dry_run:
+            status["full_check"] = start_full_check()
+            log(f"  full check in the background: {status['full_check']}")
     STATUS.write_text(json.dumps(status, indent=1, default=str), encoding="utf-8")
     log("boot recover done")
 

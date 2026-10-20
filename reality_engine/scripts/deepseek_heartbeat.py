@@ -81,6 +81,23 @@ def restart_dead_readers():
         note(f"{name} reader ({model}) was not running and not complete; restarted. Last log line: {last_line(log)[:200]}")
 
 
+def weekly_db_check():
+    """Sunday 02:00-02:59 IST: start the low-priority full DB check (boot_recover --full-check) if none finished in
+    the last 6 days. Boot only smoke-checks since 2026-10-20 (Shivam), so this is the regular deep check."""
+    now = ist()
+    if now.weekday() != 6 or now.hour != 2:
+        return
+    try:
+        import json
+        last = json.loads((LOGS / "db_full_check.json").read_text(encoding="utf-8")).get("finished") or ""
+        if last and (now.replace(tzinfo=None) - dt.datetime.fromisoformat(last)).days < 6:
+            return
+    except (OSError, ValueError):
+        pass
+    from reality_engine.scripts.boot_recover import start_full_check
+    note(f"weekly DB full check: {start_full_check()}")
+
+
 def off_peak():
     from reality_engine.scripts.run_deepseek_harness import off_peak as harness_off_peak
     return harness_off_peak()
@@ -91,6 +108,7 @@ def main():
     ap.add_argument("--no-llm", action="store_true")
     a = ap.parse_args()
     restart_dead_readers()
+    weekly_db_check()
     if a.no_llm or not off_peak():
         return
     out = ROOT / f"reality_engine/data/dsh_tasks/heartbeat_{ist():%Y%m%d_%H%M}.md"
