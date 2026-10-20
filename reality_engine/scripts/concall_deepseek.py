@@ -83,6 +83,8 @@ def queue(out, only_tg=True):
         allowed = set(json.loads(TG_ISINS.read_text(encoding="utf-8")))
         rows = [r for r in rows if r[1] in allowed]
     done = {d for (d,) in out.execute("SELECT doc_id FROM cc_docs WHERE status='ok' OR status LIKE 'skip_%'")}
+    # docs a 429 interrupted (status 'queued_429', 2026-10-20) go first
+    q429 = {d for (d,) in out.execute("SELECT doc_id FROM cc_docs WHERE status='queued_429'")}
     if REREAD_MODELS:   # re-read docs these readers stored under an older prompt (2026-10-20: v2 -> v3)
         tag = PROMPT_FILE.replace("prompt_", "").replace(".md", "")
         old = {d for d, m, ck in out.execute("SELECT doc_id, model, checks_json FROM cc_docs WHERE status='ok'")
@@ -98,7 +100,7 @@ def queue(out, only_tg=True):
         seen_day.add(key_day)
         if r[5]:
             seen_sha.add(r[5])
-    rows.sort(key=lambda r: (0 if r[1] in pr else 1, "".join(chr(255 - ord(c)) for c in (r[3] or ""))))
+    rows.sort(key=lambda r: (0 if r[0] in q429 else 1, 0 if r[1] in pr else 1, "".join(chr(255 - ord(c)) for c in (r[3] or ""))))
     return [(r, r[0] in dup_ids, 0 if r[1] in pr else 1) for r in rows if r[0] not in done]
 
 
@@ -184,6 +186,38 @@ def renormalise(out_path):
 
 
 bench = {}
+# Upstream 429 = the whole model lane is rate-limited (both keys at once, Beam 2026-10-20 11:52-20:00+). Shivam
+# 2026-10-20: never turn a 429 into a permanent 'error'; while the lane is down every worker waits and exactly ONE
+# worker taps it with a single call every LANE_TAP_S; the first answer reopens the lane for all workers.
+LANE_TAP_S = 900
+lane = {"down": False, "until": 0.0, "probing": False}
+
+
+def lane_gate():
+    """Block while the lane is down; return True when this worker is the one allowed to send the probe call."""
+    while True:
+        with lock:
+            now = time.time()
+            if not lane["down"]:
+                return False
+            if lane["until"] <= now and not lane["probing"]:
+                lane["probing"] = True
+                return True
+            wait = max(5.0, lane["until"] - now) if lane["until"] > now else 5.0
+        time.sleep(min(wait, 60))
+
+
+def lane_result(ok, probe):
+    with lock:
+        if ok:
+            if lane["down"]:
+                log("lane answered again: all workers resume")
+            lane.update(down=False, probing=False)
+        else:   # 429
+            first = not lane["down"]
+            lane.update(down=True, until=time.time() + LANE_TAP_S, probing=False)
+            if first or probe:
+                log(f"lane 429 ({'tap failed' if probe else 'lane down'}): next single tap in {LANE_TAP_S // 60} min")
 
 
 def work(item, keys, out_path):
@@ -210,9 +244,11 @@ def work(item, keys, out_path):
         kname = min(keys, key=lambda k: bench.get(k, 0))
         if bench.get(kname, 0) > time.time():
             time.sleep(bench[kname] - time.time())
+        probe = lane_gate()
         t0 = time.time()
         try:
             out, it, ot = call_go(MODEL, prompt(symbol, filed, text), env[kname])
+            lane_result(True, probe)
             cost = 0.0 if MODEL.split("~")[0] in FREE_MODELS else ((it or 0) * PRICE_IN + (ot or 0) * PRICE_OUT) / 1e6
             try:
                 data = parse_json(out)
@@ -242,10 +278,13 @@ def work(item, keys, out_path):
                         bench["_logged"] = time.time(); log(f"{kname} Go usage limit reached; waiting 15 min steps")
                 continue
             if "429" in msg:
-                bench[kname] = time.time() + 1800
-                log(f"{kname} 429 -> benched 30 min: {msg[:160]}")
-            else:
-                time.sleep(20)
+                lane_result(False, probe)
+                attempt -= 1     # a rate limit is not the doc's fault: never spend its attempts on it
+                continue
+            if probe:
+                with lock:
+                    lane["probing"] = False
+            time.sleep(20)
             last = msg
     save(out_path, {**base, "status": "error", "error": last[:300], "run_at": dt.datetime.now().isoformat(timespec="seconds")})
     return "error"
