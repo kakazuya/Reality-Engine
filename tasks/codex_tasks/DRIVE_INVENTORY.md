@@ -37,7 +37,8 @@ Not on Drive:
 from Drive by file name.
 
 ## PC status at shutdown (2026-10-21 ~01:30 IST; PC off until ~2026-11-26/27, flatmate starts it)
-- Shivam shut the PC down after this upload. At the next boot the scheduled tasks start again by themselves
+- **All RealityEngine-* scheduled tasks DISABLED 2026-10-21 01:30 (Shivam: "switch them off")**; nothing starts at the next boot.
+  Re-enable with Enable-ScheduledTask only on his word. (Old note:) Shivam shut the PC down after this upload. At the next boot the scheduled tasks would start again by themselves
   (BootRecover, EODMarket, DBBackup, DeepSeekHeartbeat): readers (Beam 6 workers, MiniMax if anything is queued),
   writers (PIB backfill, policy register ...), DB backup to Drive, hourly paid DeepSeek checks. Decide before
   then whether the PC should still do any of that (disable the tasks from the laptop session via Shivam/RDP if not),
