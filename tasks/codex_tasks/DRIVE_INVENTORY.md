@@ -17,11 +17,15 @@ Every item below was checked with `rclone check --one-way` (MD5) or name+size+MD
 | macro_pdfs (Union budgets, Economic Surveys, RBI, PIB, PRS state budgets) | macro_pdfs | kept |
 | telegram_media | telegram_media | kept |
 | vector_index_nemotron8b (paid DeepInfra, transcripts+macro+decks tiers) | vector_index_nemotron8b | kept |
-| Qwen-8B indexes, bge vector_index, lancedb, work files (inbox, parquet, reader_tests, concall_pilot, reports, tax_sources, hotline, dsh_tasks ...), logs, analysis | vector_index_qwen8b(_ar), vector_index, lancedb, work_files/*.7z | uploading 2026-10-20 23:05 (check misc_upload.log) |
+| vector_index_qwen8b_ar (11.2 GB, Nebius paid), vector_index_qwen8b (2.7 GB), vector_index (bge, 2.5 GB) | same names | kept; MD5 ok 2026-10-21 01:17 (duplicates removed with rclone dedupe) |
+| lancedb (2.3 GB, frozen copy 2026-10-21 ~01:20; the live store kept changing during upload) | lancedb | kept |
+| Work files: data/ small dirs (inbox research reports, parquet, reader_tests, concall_pilot, reports, tax_sources gazette PDFs, hotline, dsh_tasks, cc_query_test, fixtures, seed, index_constituents, news_images, video_out, visual_snapshots ...), logs, analysis (non-DB) | work_files/data_work_files.7z, logs.7z, analysis_nondb.7z | kept |
+| concall_facts.db as of 2026-10-20 23:35 (cc_docs ok 7,477; all reader results incl. MiniMax run complete) | db_backups/2026-10-20_concall | live |
+| PIB + policy tables as of 2026-10-20 23:50 (pib_releases 75,129 to 2026-10-20, pib_days, pib_ml_* regional 8,816 + 14,416 matches, policy_events 21,552, policy_docs 3,054, policy_eni_history 5,470; no FTS tables, rebuild them) | db_backups/2026-10-20_pib_policy/pib_policy_2026-10-20.db | live |
 
 Not on Drive:
-- DB changes after 2026-10-19 16:50 (concall reader results, PIB, policy register): the PC's daily 05:00 DBBackup job
-  makes the next set in db_backups/<date>/ (uploads only 05:00-13:00 IST).
+- Other main-DB (equity_intelligence.db) changes after 2026-10-19 16:50 besides PIB/policy (e.g. raw_documents/chunks
+  added by ingest jobs). The PC is shut down 2026-10-21 until ~2026-11-26/27, so no 05:00 backup runs before then.
 - Gemma re-embed index (vector_index_gemma, partial): re-embed STOPPED 2026-10-20 23:35 by Shivam; annual reports and
   offer docs will be embedded with Nemotron on DeepInfra instead (estimate: Nemotron-1B NVFP4, ~906M tokens, ~$9.06
   for ARs; offer docs ~0.56M chunks more, ~$12-13 total; DeepInfra balance ~$3).
@@ -31,3 +35,12 @@ Not on Drive:
 
 `corporate_documents.local_file_path` for deleted types points at files that no longer exist on the PC: fetch them
 from Drive by file name.
+
+## PC status at shutdown (2026-10-21 ~01:30 IST; PC off until ~2026-11-26/27, flatmate starts it)
+- Shivam shut the PC down after this upload. At the next boot the scheduled tasks start again by themselves
+  (BootRecover, EODMarket, DBBackup, DeepSeekHeartbeat): readers (Beam 6 workers, MiniMax if anything is queued),
+  writers (PIB backfill, policy register ...), DB backup to Drive, hourly paid DeepSeek checks. Decide before
+  then whether the PC should still do any of that (disable the tasks from the laptop session via Shivam/RDP if not),
+  because the laptop is now the main workstation and the PC DBs will diverge from the laptop's.
+- Gemma re-embed: removed from boot recovery (stays off). DeepInfra Nemotron for ARs/offer docs instead.
+- PC disk after cleanup: C: ~280 GB free, D: ~125 GB free.
