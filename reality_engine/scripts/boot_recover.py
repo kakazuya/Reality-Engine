@@ -69,7 +69,8 @@ JOBS = [
     ("pdf_upload", "reader", ["cmd.exe", "/c", str(SCRIPTS / "run_pdf_upload.cmd")], ["run_pdf_upload", "1A3MOQnFsYw27"],
      lambda: "rc 0 0 0" in tail(LOGS / "pdf_upload.passes.log", 200).strip().splitlines()[-1:][0]
      if tail(LOGS / "pdf_upload.passes.log", 200).strip() else False),
-    ("reembed", "reader", ["cmd.exe", "/c", str(SCRIPTS / "run_reembed_gemma.cmd")], ["reembed_gemma"], reembed_done),
+    # Gemma re-embed STOPPED 2026-10-20 23:35 (Shivam): the rest (ARs, offer docs) goes to Nemotron on DeepInfra.
+    ("reembed", "reader", ["cmd.exe", "/c", str(SCRIPTS / "run_reembed_gemma.cmd")], ["reembed_gemma"], lambda: True),
     ("pib_backfill", "writer", ["cmd.exe", "/c", str(SCRIPTS / "run_pib_backfill.cmd")], ["pib_feed --start 2021"],
      lambda: False),
     ("policy_register", "writer", ["cmd.exe", "/c", str(SCRIPTS / "run_policy_register.cmd")], ["policy_register"],
