@@ -23,6 +23,10 @@
   truth_2026-10-19.duckdb (log logs/laptop_snapshot_copy.log), review tool `C:\RE_setup\review_space.ps1` + desktop shortcut
   "Review disk space" (Out-GridView; select -> Explorer opens with the file highlighted). Space scan CSVs: C:\RE_setup\scan\.
 - Boot check change (91a41da9) applies from the next boot; today's boot_recover still runs the old full check first.
+- **Codex (ChatGPT Plus) on the laptop only, until 2026-11-04.** Next: Shivam starts a Claude session ON the laptop; it
+  orchestrates Codex (headless `codex exec`, verify flags first) + DeepSeek like the hotline/dsh protocol. Claude memory
+  was copied to the laptop (same project path). DB backup 2026-10-19 (23 parts, MD5 ok) is on Drive db_backups/; laptop
+  can rclone it down after space is freed (~120 GB).
 
 ## START HERE - hand-off 2026-10-20 04:35 IST (Dussehra; session 10203977 "workspace check -> embeddings -> worker department")
 Shivam: backtesting starts TODAY (Dussehra = Vijayadashami, 20-Oct-2026, confirmed from PIB). Start a FRESH session for it.
