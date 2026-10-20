@@ -23,6 +23,8 @@
   truth_2026-10-19.duckdb (log logs/laptop_snapshot_copy.log), review tool `C:\RE_setup\review_space.ps1` + desktop shortcut
   "Review disk space" (Out-GridView; select -> Explorer opens with the file highlighted). Space scan CSVs: C:\RE_setup\scan\.
 - Boot check change (91a41da9) applies from the next boot; today's boot_recover still runs the old full check first.
+- **Beam reader BENCHED 2026-10-20 19:55** (Shivam: upstream 429 since 11:52): stopped, out of the heartbeat restart list, 256 docs
+  requeued as status queued_429 (no reader). MiniMax still running (~730 left at 19:48).
 - **Codex (ChatGPT Plus) on the laptop only, until 2026-11-04.** Next: Shivam starts a Claude session ON the laptop; it
   orchestrates Codex (headless `codex exec`, verify flags first) + DeepSeek like the hotline/dsh protocol. Claude memory
   was copied to the laptop (same project path). DB backup 2026-10-19 (23 parts, MD5 ok) is on Drive db_backups/; laptop

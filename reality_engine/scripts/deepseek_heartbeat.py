@@ -24,7 +24,9 @@ HOT = ROOT / "reality_engine/data/hotline"
 PY = sys.executable.replace("pythonw.exe", "python.exe")
 KEYS = "OPENCODE_GO_API_KEY,OPENCODE_GO_API_KEY_2"
 READERS = {   # name: (model, args, reader log)
-    "beam": ("beam-free", "--shard 1,2,3/4 --workers 32", "concall_beam-free.log"),
+    # Beam BENCHED 2026-10-20 ~19:55 IST (Shivam): upstream 429 on every call since 11:52; no retry / restart loop.
+    # Its shards 1,2,3/4 stay queued with no reader. Re-add only on Shivam's word, after a 1-2 call probe.
+    # "beam": ("beam-free", "--shard 1,2,3/4 --workers 32", "concall_beam-free.log"),
     "minimax": ("minimax-m3.1-flash-free~high", "--shard 0/4 --workers 16 --max-out 64000",
                 "concall_minimax-m3.1-flash-free.log"),
 }
