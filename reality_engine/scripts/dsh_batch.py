@@ -7,7 +7,7 @@ Each JSONL line: {"id": str, "task": str, "source_file": str (optional), "out": 
 If an output parses as a JSON array whose items carry "quote" fields and source_file is given, every quote is
 checked as a whitespace-normalised exact substring of source_file (mechanical, no LLM). Stdout gets only the table;
 the full per-task detail (every missed quote) goes to summary.json. Worker output stays in each task's `out` file.
-The DeepSeek rules are those of run_deepseek_harness (xhigh only, off-peak 15:30-06:30 IST unless --peak-ok,
+The DeepSeek rules are those of run_deepseek_harness (xhigh only, off-peak (not Mon-Fri 06:30-09:30, 11:30-15:30 IST) unless --peak-ok,
 paid models need --allow-paid) and are enforced up front, before any task starts.
 """
 import argparse
@@ -117,7 +117,7 @@ def main():
     ap.add_argument("--timeout", type=int, default=900)
     ap.add_argument("--summary", default=None, help="summary.json path (default: next to the tasks file)")
     ap.add_argument("--allow-paid", action="store_true")
-    ap.add_argument("--peak-ok", action="store_true", help="DeepSeek outside 15:30-06:30 IST, only after Shivam confirms")
+    ap.add_argument("--peak-ok", action="store_true", help="DeepSeek at peak (Mon-Fri 06:30-09:30, 11:30-15:30 IST), only after Shivam confirms")
     a = ap.parse_args()
 
     tasks = [json.loads(ln) for ln in Path(a.tasks).read_text(encoding="utf-8").splitlines() if ln.strip()]
@@ -131,7 +131,7 @@ def main():
         if model in h.PAID and not a.allow_paid:
             sys.exit(f"{model} is PAID on Go; pass --allow-paid only with Shivam's approval")
         if model.startswith("deepseek") and not h.off_peak() and not a.peak_ok:
-            sys.exit(f"{datetime.now(h.IST):%H:%M} IST is outside the DeepSeek off-peak window (15:30-06:30 IST); "
+            sys.exit(f"{datetime.now(h.IST):%H:%M} IST is in DeepSeek peak hours (Mon-Fri 06:30-09:30, 11:30-15:30 IST); "
                      "ask Shivam, then pass --peak-ok if he confirms")
     for t in tasks:   # xhigh-only rule: the wrapper rejects other efforts; fail before spending anything
         m, _, eff = (t.get("model") or a.model).partition("~")

@@ -3,7 +3,7 @@ RealityEngine-DeepSeekHeartbeat (scripts/run_deepseek_heartbeat.cmd); no Claude 
 
 1. Mechanical, no LLM, every hour: if a transcript reader (Beam / MiniMax, prompt v3) is not running and its log does not
    end in RUN_COMPLETE, restart it with the same command (hidden, detached). Logged to the hotline.
-2. Off-peak only (15:30-06:30 IST, Shivam's DeepSeek rule): run DeepSeek (dsh, xhigh, account 2) with the heartbeat brief:
+2. Off-peak only (peak = Mon-Fri 06:30-09:30 + 11:30-15:30 IST; weekends off-peak): run DeepSeek (dsh, xhigh, account 2) with the heartbeat brief:
    check the jobs, spot-check fresh reader output, append one status entry to data/hotline/hotline.md. If something needs
    the orchestrator (a decision, a fix DeepSeek may not make, a repeated failure), DeepSeek writes
    data/hotline/needs_claude.md; the next Claude session reads that first (DeepSeek cannot open a Claude session).
@@ -74,14 +74,16 @@ def restart_dead_readers():
         args = (f'"{PY}" -u -m reality_engine.scripts.concall_deepseek --model {model} --prompt prompt_v3.md '
                 f'--reread-models {model} --since 2000-01-01 --all-companies --keys {KEYS} {extra} '
                 f'>> reality_engine\\data\\logs\\concall_{name}.out.log 2>> reality_engine\\data\\logs\\concall_{name}.err.log')
-        subprocess.Popen(["conhost.exe", "--headless", "cmd.exe", "/c", args], cwd=ROOT,
+        # one string, not a list: list2cmdline turns the inner quotes into \" which cmd.exe cannot parse
+        # ('"\"...python.exe\"" is not recognized'); /s /c strips exactly the outer pair of quotes.
+        subprocess.Popen(f'conhost.exe --headless cmd.exe /s /c "{args}"', cwd=ROOT,
                          creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
         note(f"{name} reader ({model}) was not running and not complete; restarted. Last log line: {last_line(log)[:200]}")
 
 
 def off_peak():
-    t = ist().time()
-    return t >= dt.time(15, 30) or t < dt.time(6, 30)
+    from reality_engine.scripts.run_deepseek_harness import off_peak as harness_off_peak
+    return harness_off_peak()
 
 
 def main():

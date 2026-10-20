@@ -15,8 +15,8 @@ to <out-file>.log. The exit code is dsh's (0 = task completed, 1 = failed), 124 
 Model ids: beam-free, longcat-2.5-preview-free, minimax-m3.1-flash-free (free); deepseek-v4.1-flash is PAID on Go
 and needs --allow-paid. `<id>~<effort>` sets reasoning effort (low/medium/high/xhigh/max); MiniMax defaults to
 low because at default effort it can reason through its whole output budget and answer empty.
-DeepSeek models always run at xhigh (Shivam 2026-10-20: never max, never below xhigh), and only off-peak: 15:30 to
-06:30 IST. Outside that window a DeepSeek run is refused unless --peak-ok is passed after Shivam confirms the timing.
+DeepSeek models always run at xhigh (Shivam 2026-10-20: never max, never below xhigh), and only off-peak: peak is Mon-Fri
+06:30-09:30 and 11:30-15:30 IST, everything else (weekends too) is off-peak. Outside off-peak a DeepSeek run is refused unless --peak-ok is passed after Shivam confirms the timing.
 """
 import argparse
 import os
@@ -42,9 +42,11 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 
 def off_peak(now=None):
-    """Shivam's off-peak window for DeepSeek runs: 15:30 to 06:30 IST."""
-    t = (now or datetime.now(IST)).astimezone(IST).time()
-    return t >= datetime.strptime("15:30", "%H:%M").time() or t < datetime.strptime("06:30", "%H:%M").time()
+    """DeepSeek off-peak (OpenCode Go docs): peak is Mon-Fri 01:00-04:00 and 06:00-10:00 UTC = 06:30-09:30 and
+    11:30-15:30 IST; every other hour, weekends included, is off-peak (half price). Peak never crosses midnight in UTC,
+    Beijing or IST, so the weekday is the same in all three."""
+    u = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    return not (u.weekday() < 5 and (1 <= u.hour < 4 or 6 <= u.hour < 10))
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 KEY_ENV = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
 
@@ -82,7 +84,7 @@ def main():
                     default="read-only", help="dsh sandbox mode (default read-only: workers read, Claude writes)")
     ap.add_argument("--allow-paid", action="store_true", help="allow a paid Go model (needs Shivam's go-ahead)")
     ap.add_argument("--peak-ok", action="store_true",
-                    help="run a DeepSeek model outside 15:30-06:30 IST (only after Shivam confirms the timing)")
+                    help="run a DeepSeek model in peak hours (Mon-Fri 06:30-09:30, 11:30-15:30 IST) (only after Shivam confirms the timing)")
     ap.add_argument("--no-refresh", action="store_true", help="skip rebuilding the hotline context files")
     a = ap.parse_args()
 
@@ -94,7 +96,7 @@ def main():
     if model in FIXED_EFFORT and effort and effort != FIXED_EFFORT[model]:
         sys.exit(f"{model} always runs at {FIXED_EFFORT[model]} (Shivam's rule); drop ~{effort}")
     if model.startswith("deepseek") and not off_peak() and not a.peak_ok:
-        sys.exit(f"{datetime.now(IST):%H:%M} IST is outside the DeepSeek off-peak window (15:30-06:30 IST); "
+        sys.exit(f"{datetime.now(IST):%H:%M} IST is in DeepSeek peak hours (Mon-Fri 06:30-09:30, 11:30-15:30 IST); "
                  "ask Shivam, then pass --peak-ok if he confirms")
     if effort and (model not in REASONING or effort not in EFFORTS):
         sys.exit(f"effort {effort!r} not valid for {model}")

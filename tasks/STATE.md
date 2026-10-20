@@ -1,5 +1,21 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
 
+## 2026-10-20 09:50 IST (Claude, session 9b87f729): power cut 04:30 -> 09:29; backtest starts THIS session in the afternoon
+- Power lost 04:30:56 (event 6008; Shivam: the UPS does not hold even 20 min). Boot recovery ran (watchdog, PDF upload,
+  re-embed, DB quick_checks, then writers). Every job was down for ~5 h.
+- **Heartbeat bug fixed:** `deepseek_heartbeat.restart_dead_readers` passed a list to Popen, so cmd saw `\"python.exe\"`
+  and the reader restart never worked. It now passes one string with `cmd /s /c`. Beam + MiniMax restarted 09:41 by it.
+  The 09:34 scheduled run returned 0x800710E0 (task is InteractiveToken: runs only while warri is logged on). Fix:
+  `setup_boot_tasks_admin.ps1` now also sets the heartbeat to S4U; Shivam runs it once in an admin PowerShell.
+- **DeepSeek off-peak corrected** (OpenCode Go docs): peak = Mon-Fri 01-04 + 06-10 UTC = 06:30-09:30 + 11:30-15:30 IST;
+  09:30-11:30 IST and weekends are off-peak. `run_deepseek_harness.off_peak()` now encodes this (heartbeat + dsh_batch use it).
+- `needs_claude.md` (04:29, DeepSeek) is still open: Beam 3.9% broken-JSON docs (32 workers?) + ok docs with ~0 kept items
+  (GULPOLY 36969, IPCALAB 44750). Not handled yet.
+- Windows Search: the workspace and `Downloads\InfoDiffusion_to_upload` set to NotContentIndexed (attrib +I /S /D; new
+  files inherit it), because SearchIndexer was reading ~130 MB/s. D:\RealityEngine was never indexed.
+- Archive of the old session (local_98041315) is refused while its phone Remote Control is on: Shivam archives it by hand.
+- Shivam: backtesting starts here once he wakes up (afternoon). Begin with H01 PEAD from `tasks/HYPOTHESIS_REGISTER.md`.
+
 ## START HERE - hand-off 2026-10-20 04:35 IST (Dussehra; session 10203977 "workspace check -> embeddings -> worker department")
 Shivam: backtesting starts TODAY (Dussehra = Vijayadashami, 20-Oct-2026, confirmed from PIB). Start a FRESH session for it.
 1. Read `tasks/HYPOTHESIS_REGISTER.md` (26 cards, written by DeepSeek, checked by Claude): the 5 starred cards run first
@@ -7,7 +23,7 @@ Shivam: backtesting starts TODAY (Dussehra = Vijayadashami, 20-Oct-2026, confirm
    overlay on H01). All 5 are READY on price/flow data. H14 guidance raises needs the transcript run below.
 2. Shared context for workers: `reality_engine/data/hotline/` (README protocol, decisions.md = 121 Chesterton fences,
    hotline.md log, generated/ session digests + live state rebuilt before each DeepSeek run).
-3. Department: Claude orchestrates; DeepSeek (dsh, xhigh, off-peak 15:30-06:30 IST, paid) reviews; Beam + MiniMax (free,
+3. Department: Claude orchestrates; DeepSeek (dsh, xhigh, off-peak only: peak = Mon-Fri 06:30-09:30 + 11:30-15:30 IST, paid) reviews; Beam + MiniMax (free,
    OpenCode Go, both keys) read. Every Go call uses a stable x-opencode-session (go_session.py).
 
 Running detached (hidden, survive app restarts; WMI + conhost --headless):
