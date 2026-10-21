@@ -17,13 +17,18 @@ from core import (
     DEFAULT_RESULT_BYTES,
     Manager,
     PluginError,
+    SERVER_VERSION,
     load_config,
 )
 
 INSTRUCTIONS = (
     "Local DeepSeek/dsh worker control. start_worker returns immediately with a "
     "job_id; poll worker_status rather than assuming PID liveness is progress. "
-    "Use worker_result for the bounded final answer and artifact hints, never the "
+    "worker_status.progress.summary is the one-line answer to 'is it done, is it "
+    "moving, by when'; progress.done is the reliable finished flag (result.md is "
+    "streamed while running, so a non-empty file is NOT completion). "
+    "inspect_run gives the same read-only view of a run launched with the raw "
+    "harness. Use worker_result for the bounded final answer and artifact hints, never the "
     "reasoning log. message_worker kind='status' is a status nudge; kind='followup' "
     "is a genuine same-conversation question delivered to an explicit bounded wait. "
     "Both reject text over the adapter's 4000-character limit; if a call returns "
@@ -36,7 +41,7 @@ INSTRUCTIONS = (
 
 server = MCPServer(
     name="dsh-worker",
-    version="0.1.0",
+    version=SERVER_VERSION,
     instructions=INSTRUCTIONS,
 )
 
@@ -116,8 +121,12 @@ def start_worker(
     name="worker_status",
     description=(
         "Read persisted job, process, heartbeat and session state. Distinguishes "
-        "running, stale, dead/lost and finished; PID liveness is never treated as "
-        "model progress. Makes no inference call."
+        "running, stale, dead/lost, unknown (unreadable record) and finished; PID "
+        "liveness is never treated as model progress. progress.done is the "
+        "finished flag; progress.summary/events give elapsed time, last activity, "
+        "tool-call counts, last tool, recent file writes and the hard upper bound "
+        "(lease/timeout) on when the job will stop. failure_reason explains failed "
+        "jobs. Makes no inference call."
     ),
     annotations=ToolAnnotations(
         read_only_hint=True, destructive_hint=False, open_world_hint=False
@@ -175,7 +184,9 @@ def message_worker(
     description=(
         "Explicitly extend the controller lease for a running job by at most 30 "
         "minutes. This is the only renewal path: worker activity, model calls, "
-        "status/result/list reads and a restarted MCP server never renew it. "
+        "status/result/list reads and a restarted MCP server never renew it "
+        "automatically. After a server restart, pass adopt=true to take the "
+        "still-valid lease over explicitly (an expired lease cannot be adopted). "
         "Refuses finished, expired, malformed, or not-owned leases; the lease "
         "deadline remains a hard upper bound even if Codex disappears."
     ),
@@ -183,8 +194,10 @@ def message_worker(
         read_only_hint=False, destructive_hint=False, open_world_hint=False
     ),
 )
-def renew_worker_lease(job_id: str, extend_seconds: int = 1800) -> dict[str, Any]:
-    return _safe(lambda: _get_manager().renew_worker_lease(job_id, extend_seconds))
+def renew_worker_lease(
+    job_id: str, extend_seconds: int = 1800, adopt: bool = False
+) -> dict[str, Any]:
+    return _safe(lambda: _get_manager().renew_worker_lease(job_id, extend_seconds, adopt=adopt))
 
 
 @server.tool(
@@ -215,6 +228,39 @@ def cancel_worker(
 )
 def list_workers(workspace: str | None = None, limit: int = 20) -> dict[str, Any]:
     return _safe(lambda: _get_manager().list_workers(workspace, limit))
+
+
+@server.tool(
+    name="inspect_run",
+    description=(
+        "Read-only progress view of a dsh run started with the raw "
+        "run_deepseek_harness.py (not start_worker), given its --out-file path "
+        "inside the repository (or its .status.json/.events.jsonl). Returns phase, "
+        "PID check (creation time verified), last activity, tool-call counts, last "
+        "tool, recent file writes and failure reason. Cannot message, renew or "
+        "cancel such runs: their control token never reaches this server."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=True, destructive_hint=False, open_world_hint=False
+    ),
+)
+def inspect_run(out_file: str) -> dict[str, Any]:
+    return _safe(lambda: _get_manager().inspect_run(out_file))
+
+
+@server.tool(
+    name="server_info",
+    description=(
+        "Liveness/config check for this MCP server: version, process id, start "
+        "time, repository root, runtime directory and whether the launcher "
+        "advertises the heartbeat/control contract. Makes no inference call."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=True, destructive_hint=False, open_world_hint=False
+    ),
+)
+def server_info() -> dict[str, Any]:
+    return _safe(lambda: _get_manager().server_info())
 
 
 def main() -> int:

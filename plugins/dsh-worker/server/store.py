@@ -139,8 +139,36 @@ def read_text_bounded(path: Path, max_bytes: int) -> tuple[str, bool, int]:
     except OSError:
         return "", False, 0
     truncated = len(data) > limit or stat.st_size > limit
-    text = data[:limit].decode("utf-8", errors="replace")
+    head = data[:limit]
+    if truncated:
+        # Do not cut a multi-byte UTF-8 character in half (a Hindi answer cut
+        # at the byte cap used to end in U+FFFD).  Drop at most 3 bytes of an
+        # incomplete trailing sequence.
+        head = _trim_partial_utf8(head)
+    text = head.decode("utf-8", errors="replace")
     return text, truncated, stat.st_size
+
+
+def _trim_partial_utf8(data: bytes) -> bytes:
+    for back in range(1, min(4, len(data)) + 1):
+        byte = data[-back]
+        if byte & 0b1100_0000 != 0b1000_0000:  # lead or ASCII byte
+            need = 1 if byte < 0x80 else 2 if byte >> 5 == 0b110 else 3 if byte >> 4 == 0b1110 else 4
+            return data if need <= back else data[:-back]
+    return data
+
+
+def read_text_bounded_tail(path: Path, max_bytes: int) -> str:
+    """Return at most the last ``max_bytes`` of a text file ('' if unreadable)."""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            if size > max_bytes:
+                fh.seek(size - max_bytes)
+            data = fh.read(max_bytes)
+    except OSError:
+        return ""
+    return data.decode("utf-8", errors="replace")
 
 
 def workspace_key(workspace: Path) -> str:

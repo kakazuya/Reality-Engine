@@ -248,6 +248,28 @@ def main() -> int:
     elif heartbeat_mode:
         _status(status_path, state="running", conversation=CONVERSATION, control=None)
 
+    events_path = out.with_name(out.name + ".events.jsonl")
+    if os.environ.get("FAKE_LAUNCHER_EVENTS") == "1":
+        lines = [
+            {"type": "session", "sessionId": "session-fake"},
+            {"type": "status", "phase": "turn_start", "turn": 1},
+            {"type": "thinking", "text": "secret thinking must not be returned"},
+            {"type": "tool_call", "callId": "c1", "tool": "read", "input": {"file_path": "tasks/FRAMEWORK.md"}},
+            {"type": "tool_result", "callId": "c1", "status": "completed", "result": "x"},
+            {"type": "tool_call", "callId": "c2", "tool": "pwsh",
+             "input": {"command": "Get-Secret -Value hunter2", "description": "list files"}},
+            {"type": "tool_result", "callId": "c2", "status": "error", "result": "boom"},
+            {"type": "tool_call", "callId": "c3", "tool": "write", "input": {"file_path": "out/report.md", "content": "c"}},
+            {"type": "status", "phase": "step_end", "usage": {"inputTokens": 100, "outputTokens": 42}},
+        ]
+        with events_path.open("a", encoding="utf-8") as fh:
+            for line in lines:
+                fh.write(json.dumps(line) + chr(10))
+            fh.write('{"type": "tool_call", "tool": "edit", "inp')  # half-written trailing line
+    stderr_text = os.environ.get("FAKE_LAUNCHER_STDERR")
+    if stderr_text:
+        print(stderr_text, file=sys.stderr)
+        return int(os.environ.get("FAKE_LAUNCHER_RC", "1"))
     if mode == "fail":
         print("dsh: reasoning: secret reasoning must not be returned", file=sys.stderr)
         out.write_text(partial, encoding="utf-8")

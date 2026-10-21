@@ -50,6 +50,32 @@ def _write_status(job_dir: Path, status: dict[str, Any]) -> None:
     atomic_write_json(_status_path(job_dir), status)
 
 
+def _write_status_soft(job_dir: Path, status: dict[str, Any]) -> bool:
+    """Periodic status write that never kills a healthy worker.
+
+    A status file locked by antivirus/indexer for longer than the atomic
+    write's retry window, or a momentarily full disk, used to raise out of the
+    poll loop into the generic handler, which killed the worker.  A stale
+    status record is far cheaper than a lost multi-hour run: log and retry on
+    the next poll.
+    """
+    try:
+        _write_status(job_dir, status)
+        return True
+    except OSError as exc:
+        _log(f"status write failed ({type(exc).__name__}: {exc}); will retry")
+        return False
+
+
+def _write_status_final(job_dir: Path, status: dict[str, Any], attempts: int = 30) -> None:
+    """Final status must land; retry for up to ~30 s before giving up."""
+    for attempt in range(attempts):
+        if _write_status_soft(job_dir, status):
+            return
+        time.sleep(1.0)
+    _write_status(job_dir, status)
+
+
 def _release_lock(
     job_dir: Path,
     job: dict[str, Any],
@@ -77,10 +103,15 @@ def _release_lock(
     if isinstance(lock, dict) and lock.get("job_id") == job.get("job_id"):
         try:
             path.unlink()
+        except FileNotFoundError:
+            return True
         except OSError:
             return False
         return True
-    return False
+    # Not held by this job (read-only jobs never take it, or it was already
+    # released): nothing is retained.  Returning False here used to append a
+    # false "lock retained" warning to every read-only job.
+    return True
 
 
 def _containment_error(job: dict[str, Any]) -> str | None:
@@ -193,7 +224,7 @@ def _finalize(
             status["partial"] = (job_dir / "result.md").stat().st_size > 0
         except OSError:
             status["partial"] = False
-    _write_status(job_dir, status)
+    _write_status_final(job_dir, status)
     return status
 
 
@@ -366,7 +397,7 @@ def main(argv: list[str] | None = None) -> int:
                 _release_lock(job_dir, job, status)
                 _log(f"refused mutating job={job_id}: job object assignment failed")
                 return 1
-            _write_status(job_dir, status)
+            _write_status_soft(job_dir, status)
             _log(f"launched worker pid={worker_pid}")
 
             last_write = 0.0
@@ -380,7 +411,7 @@ def main(argv: list[str] | None = None) -> int:
                     cancel_requested = True
                 if cancel_requested:
                     status["phase"] = "cancelling"
-                    _write_status(job_dir, status)
+                    _write_status_soft(job_dir, status)
                     _log("cancel requested; terminating owned process tree")
                     procutil.kill_tree(worker_pid)
                     try:
@@ -403,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
                     status["phase"] = "cancelling"
                     status["controller_lease"] = lease_now
                     status["controller_lease_error"] = lease_now_error or "expired"
-                    _write_status(job_dir, status)
+                    _write_status_soft(job_dir, status)
                     _log(
                         "controller lease expired or invalid "
                         f"({lease_now_error or 'deadline'}); terminating owned process tree"
@@ -436,7 +467,7 @@ def main(argv: list[str] | None = None) -> int:
                             status["worker_activity_at"] = iso(current)
                 now = time.monotonic()
                 if now - last_write >= 1.0:
-                    _write_status(job_dir, status)
+                    _write_status_soft(job_dir, status)
                     last_write = now
                 time.sleep(0.25)
         rc = process.returncode if process is not None else None
@@ -451,7 +482,7 @@ def main(argv: list[str] | None = None) -> int:
                 "repository mutation lock retained because the recorded worker could "
                 "not be proven dead; inspect before starting another writer"
             )
-            _write_status(job_dir, status)
+            _write_status_soft(job_dir, status)
         return 0 if status.get("phase") == "finished" else 1
     except Exception as exc:
         status["warnings"].append(f"supervisor_error:{type(exc).__name__}")
@@ -465,7 +496,7 @@ def main(argv: list[str] | None = None) -> int:
         status["phase"] = "failed"
         status["outcome"] = "supervisor_error"
         status["finished_at"] = iso()
-        _write_status(job_dir, status)
+        _write_status_final(job_dir, status, attempts=10)
         _release_lock(job_dir, job, status)
         _log(f"failed job={job_id}: {type(exc).__name__}")
         return 1

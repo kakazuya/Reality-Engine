@@ -118,7 +118,10 @@ absolute descriptor deadline.
 The MCP server writes `controller_lease.json` with an absolute deadline (default
 30 minutes) and a memory-only owner id. `renew_worker_lease` is the only
 renewal path and may extend by at most 30 minutes; status/result/list reads,
-messaging, model/tool activity, and a restarted MCP server never renew it.
+messaging, model/tool activity, and a restarted MCP server never renew it
+automatically. After an MCP server restart, `renew_worker_lease(adopt=true)`
+explicitly takes over a still-valid lease (recorded as `adoptions` in the
+lease file); an expired lease cannot be adopted.
 Missing, expired, malformed, wrong-job or wrong-owner leases are refused. The
 supervisor checks the lease independently of model activity, kills the verified
 owned process tree on expiry, preserves partial output/artifacts, and reports
@@ -171,11 +174,60 @@ Two honest limits:
   dsh smoke test remains a Codex/reviewer step; this worker did not spend paid
   tokens.
 
+## Progress and visibility (2026-10-22)
+
+`result.md` is streamed by the harness while the worker runs, so a non-empty
+file is **not** completion. Use these instead:
+
+- `worker_status.progress.done` is the finished flag (final phase reached).
+  `progress.succeeded` = finished with a non-empty answer;
+  `progress.answer_empty` = exit 0 but no answer.
+- `result_ready` is true only when final *and* non-empty. `result_is_streaming`
+  says a running job has partial text so far.
+- `progress.summary` is one line, e.g. `running; elapsed 42m; last activity 1m
+  ago (tool_call); 37 tool calls, 51 model steps; last tool edit on
+  reality_engine/x.py; result.md 3200 B so far (streaming, not final); hard stop
+  by 2026-10-22T03:10:00+00:00 (controller_lease_deadline)`.
+- `progress.events` holds counts read incrementally from `result.md.events.jsonl`
+  (at most 8 MB per call, so a stdout flood never blocks status): tool calls by
+  tool, failed tool results, model steps, output tokens, last tool and target,
+  last 10 files written/edited. Never thinking text, tool output or shell
+  command text.
+- `progress.latest_finish_by` is the hard upper bound (lease deadline or
+  explicit timeout). dsh gives no completion estimate, so `eta` is always null
+  rather than invented.
+- `failure_reason` (failed/lost/cancelled jobs) gives the exit code, heartbeat
+  failure, the last launcher stderr lines (reasoning lines dropped, token-like
+  strings redacted) and a `likely_cause` such as `api_key_env_missing`,
+  `dsh_binary_missing`, `peak_hours_refused`, `provider_timeout`.
+- `server_info` answers "is the server up": process id, version, start time,
+  repo root, launcher capabilities, jobs this process owns.
+- `inspect_run(out_file)` gives the same read-only view for a run started with
+  the raw `run_deepseek_harness.py` (from its `--out-file`, `.status.json` or
+  `.events.jsonl`). PID liveness is checked against the PID's creation time vs
+  the run's start, so a recycled PID is reported as `pid_reused`. Such runs
+  cannot be messaged, renewed or cancelled from here: their control token lives
+  only in the launching process.
+
+`start_worker` also refuses a start within 120 s of a peak window
+(`peak_hours_imminent`), and, for the real launcher, refuses up front when the
+dsh binary (`dsh_missing`) or `OPENCODE_GO_API_KEY_2` (`api_key_missing`,
+presence check only) is absent, instead of launching a job that fails seconds
+later. An unreadable `status.json` (e.g. briefly locked by antivirus) is phase
+`unknown`, never `lost`.
+
 ## Shutdown semantics
 
 The MCP server starts a hidden supervisor and a Windows job object around the
-worker. Closing the MCP stdio session ends the server; the host's MCP client may
-terminate the server's process tree, which also stops the supervisor and worker.
+worker. The supervisor is spawned with `CREATE_BREAKAWAY_FROM_JOB` when the
+host job object allows it (`survives_server_exit=true` in the start response);
+then closing or restarting the MCP server leaves the job running under its
+lease, and a restarted server adopts it with `renew_worker_lease(adopt=true)`.
+Claude Desktop and the Python MCP client both put children in job objects that
+refuse breakaway (verified 2026-10-22, `WinError 5`), so there the start
+response says `survives_server_exit=false` with a warning, and the host MCP
+client may terminate the server process tree, which also stops the supervisor
+and worker.
 If the supervisor dies on its own, its job object with `KILL_ON_JOB_CLOSE`
 terminates the worker, so no unowned writer survives. For mutating jobs,
 job-object creation and supervisor self-assignment happen before the worker is
@@ -192,7 +244,26 @@ reconnecting. For deliberate cancellation, use
 supervisor, then validates the recorded PID + kernel creation time before
 killing only that owned tree. No broad image-name kills.
 
-## Registration (Codex performs this after review)
+## Registration for Claude Code
+
+Register at **user scope** with absolute paths, so the server does not depend on
+the Claude session working directory. A project-scoped `.mcp.json` applies only
+while Claude treats this repository as the project; on 2026-10-22 a session
+whose shell had moved under `plugins/dsh-worker/runtime/jobs/<id>` reported
+"MCP server removed from the configuration" twice (cause plausible, not proven).
+
+```powershell
+claude mcp add --scope user dsh-worker --env DSH_WORKER_REPO_ROOT=C:/Users/warri/Downloads/Info_Diffusion_Model --env PYTHONUTF8=1 -- C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/dsh-worker/server/dsh_worker_mcp.py
+claude mcp get dsh-worker
+```
+
+`DSH_WORKER_REPO_ROOT` must be absolute; a relative value is refused
+(`repo_root_relative`) because it would resolve against the host cwd. The
+server itself works from any cwd (tested from a job directory whose path has a
+space and a Devanagari letter). Call `server_info` to confirm which process
+answers.
+
+## Registration for Codex (Codex performs this after review)
 
 Do not register globally from this worker. The repo marketplace entry is:
 

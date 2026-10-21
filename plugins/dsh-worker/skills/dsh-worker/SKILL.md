@@ -47,6 +47,13 @@ it does not replace the launcher, change Codex's model, or add a provider route.
 - `worker_status` — read persisted phase, process ownership, heartbeat/session
   state, last activity, `awaiting_input`, controller-lease deadline/remaining
   time, and whether a result is ready. A live PID is not proof of progress.
+  Report `progress.summary` to the user; `progress.done` is the finished flag.
+  `result.md` streams while running, so never treat a non-empty result file as
+  done (`result_ready` is only true once final). `progress.events` has tool-call
+  counts, the last tool and recent file writes; `progress.latest_finish_by` is
+  the hard stop (lease/timeout), and `eta` is deliberately null. Failed jobs
+  carry `failure_reason.likely_cause`. Phase `unknown` means the status record
+  was momentarily unreadable: poll again, do not treat it as lost.
   `stale` means no committed nested heartbeat activity within the configured
   window; a validated deliberate input wait is surfaced as awaiting input, not
   as progress, and a stale/expired wait descriptor stops suppressing checks.
@@ -77,7 +84,11 @@ it does not replace the launcher, change Codex's model, or add a provider route.
 - `cancel_worker` — destructive; requires `confirm=true`. It validates the
   recorded supervisor PID and kernel creation time before killing the owned
   process tree. Never kill by image name.
-- `list_workers` — inspect persisted jobs, optionally for one workspace.
+- `list_workers` — inspect persisted jobs, optionally for one workspace; each row
+  has a one-line `summary`; corrupt records are listed under `unreadable`.
+- `inspect_run` — read-only progress for a run started with the raw harness,
+  from its `--out-file` path. It cannot message/renew/cancel such runs.
+- `server_info` — confirm the server is up and which process/repo answers.
 
 ## Session identities
 
@@ -114,7 +125,10 @@ the controller keeps reviewing and renewing. If Codex/its quota disappears, the
 supervisor stops the verified owned tree at the persisted deadline even if the
 model is still responsive, preserves partial output/artifacts, and reports
 `controller_lease_expired`. Renewal authority is memory-only, so a restarted
-MCP server can inspect but not extend an existing deadline.
+MCP server never extends a deadline implicitly; call
+`renew_worker_lease(job_id, adopt=true)` once, deliberately, to take over a
+still-valid lease after a restart. Watch `progress.notes`: it warns when the
+lease has under 10 minutes left.
 
 ## Review loop
 
@@ -133,8 +147,10 @@ MCP server can inspect but not extend an existing deadline.
 
 ## Shutdown and cancellation
 
-Closing the MCP session ends the plugin server; the host may terminate the
-server's process tree, which also stops the supervisor and worker. The
+Closing the MCP session ends the plugin server. If the start response says
+`survives_server_exit=false` (Claude Desktop and Python MCP hosts refuse job
+breakaway), the host may terminate the server's process tree, which also stops
+the supervisor and worker. The
 supervisor's own Windows job object prevents an unowned worker if the supervisor
 dies alone; mutating jobs fail closed if containment cannot be established. A
 recorded worker that is still alive keeps the repository mutation lock even when

@@ -456,7 +456,7 @@ class PluginTests(unittest.TestCase):
         started = self._manager_instance().start_worker(brief="missing lease task")
         job_id = started["job_id"]
         job_dir = Path(started["status_path"]).parent
-        self._wait_status(job_id, lambda s: s["running"] and s["result_ready"])
+        self._wait_status(job_id, lambda s: s["running"] and s["result_bytes"] > 0 and not s["result_ready"])
         (job_dir / "controller_lease.json").unlink()
         final = self._wait_status(job_id, lambda s: s["final"], timeout=8.0)
         self.assertEqual(final["outcome"], "controller_lease_expired", final)
@@ -632,6 +632,8 @@ class PluginTests(unittest.TestCase):
                     "cancel_worker",
                     "list_workers",
                     "renew_worker_lease",
+                    "inspect_run",
+                    "server_info",
                 },
             )
             by_name = {tool.name: tool for tool in tools.tools}
@@ -651,7 +653,7 @@ class PluginTests(unittest.TestCase):
             self.assertTrue(started["ok"], started)
             job_id = started["job_id"]
             status = await self._await_tool_status(
-                session, job_id, lambda s: s["running"] and s["result_ready"]
+                session, job_id, lambda s: s["running"] and s["result_bytes"] > 0 and not s["result_ready"]
             )
             self.assertTrue(status["process"]["worker_alive"])
             self.assertFalse(status["final"])

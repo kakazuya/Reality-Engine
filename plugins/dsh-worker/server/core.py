@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -22,6 +23,7 @@ from typing import Any
 import gitutil
 import heartbeat
 import procutil
+import progress
 from store import (
     LEASE_FILE,
     LEASE_SCHEMA,
@@ -34,10 +36,13 @@ from store import (
     read_json_bounded,
     read_lease,
     read_text_bounded,
+    read_text_bounded_tail,
     utc_now,
     valid_job_id,
 )
 
+SERVER_VERSION = "0.2.0"
+SERVER_STARTED_AT = datetime.now(timezone.utc)
 MODEL = "deepseek-v4.1-flash"
 EFFORT = "max"
 ACCOUNT = "2"
@@ -51,15 +56,19 @@ MAX_BRIEF_BYTES = 262_144
 MAX_MESSAGE_BYTES = 32_768
 MAX_RESULT_BYTES = 1_048_576
 DEFAULT_RESULT_BYTES = 65_536
+PEAK_START_MARGIN_SECONDS = 120
 MAX_OUTPUT_TOKENS = 200_000
 SERVER_SHUTDOWN_SEMANTICS = (
-    "The MCP server owns a detached supervisor and a Windows job object around "
-    "the worker. Closing the stdio session ends the server; a host such as the "
-    "MCP client used by Codex may terminate the server's process tree, which "
-    "also stops the supervisor and worker. If the supervisor dies alone, its "
-    "KILL_ON_JOB_CLOSE job object terminates the worker. Persisted job records "
-    "remain for inspection. Use cancel_worker(confirm=true) for deliberate "
-    "cancellation; no writer is left uncontrolled."
+    "The supervisor is spawned outside the MCP host's job object when Windows "
+    "allows it (survives_server_exit=true), so closing or restarting this MCP "
+    "server does not stop a running worker. The worker stays inside the "
+    "supervisor's own KILL_ON_JOB_CLOSE job object, so if the supervisor dies "
+    "the worker dies too. The controller lease deadline remains the hard upper "
+    "bound: a restarted server sees the job via worker_status/list_workers and "
+    "must call renew_worker_lease(adopt=true) to keep it past the deadline; "
+    "otherwise the supervisor stops it at the deadline. A restarted server "
+    "cannot message the job (the control token is memory-only). Use "
+    "cancel_worker(confirm=true) for deliberate cancellation."
 )
 
 
@@ -81,6 +90,29 @@ def is_peak(now: datetime | None = None) -> bool:
         return False
     minutes = local.hour * 60 + local.minute
     return (6 * 60 + 30 <= minutes < 9 * 60 + 30) or (11 * 60 + 30 <= minutes < 15 * 60 + 30)
+
+
+def _as_pid(value: Any) -> int | None:
+    """Coerce a persisted PID/creation-time field; ``None`` when unusable.
+
+    Hand-edited or corrupt records can carry strings, floats or booleans.  A
+    bare ``int()`` raised ValueError and turned every status/list call into an
+    internal error, so callers decide fail-closed policy from ``None`` instead.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if number > 0 else None
+
+
+def _num(value: Any) -> Any:
+    """Round a float-ish heartbeat number so ``_as_pid`` accepts ``900.0``."""
+    if isinstance(value, float):
+        return round(value)
+    return value
 
 
 def _within(root: Path, candidate: Path) -> bool:
@@ -143,7 +175,17 @@ def load_config(environ: dict[str, str] | None = None) -> PluginConfig:
     plugin_root = Path(__file__).resolve().parents[1]
     raw_repo = env.get("DSH_WORKER_REPO_ROOT")
     if raw_repo:
-        repo_root = Path(raw_repo).expanduser().resolve()
+        expanded = Path(raw_repo).expanduser()
+        if not expanded.is_absolute():
+            # A relative root resolves against whatever cwd the MCP host used,
+            # so the same config breaks when the client launches from a
+            # different directory.  Require an absolute path instead.
+            raise PluginError(
+                "repo_root_relative",
+                "DSH_WORKER_REPO_ROOT must be an absolute path (it was relative, so it "
+                "would depend on the MCP host's working directory)",
+            )
+        repo_root = expanded.resolve()
     else:
         candidate = plugin_root.parents[1] if len(plugin_root.parents) > 1 else plugin_root
         if (candidate / "reality_engine").is_dir():
@@ -214,6 +256,8 @@ class Manager:
         # cannot renew a job it did not launch, so the persisted deadline stays
         # a hard upper bound across restarts.
         self._lease_owners: dict[str, str] = {}
+        self._scanner = progress.EventScanner()
+        self._last_breakaway = False
 
     # ------------------------------------------------------------------ paths
     def _job_dir(self, job_id: str) -> Path:
@@ -327,6 +371,55 @@ class Manager:
             )
         return self._capabilities
 
+    # ------------------------------------------------------------ preflight
+    def _key_present(self, name: str) -> bool:
+        """Presence only; the value is never read into a result or log."""
+        env = self.config.environ or {}
+        if env.get(name):
+            return True
+        if (env.get("DSH_WORKER_TESTING") == "1") or os.name != "nt":
+            return False
+        try:
+            import winreg
+
+            for hive, sub in (
+                (winreg.HKEY_CURRENT_USER, "Environment"),
+                (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+            ):
+                try:
+                    with winreg.OpenKey(hive, sub) as key:
+                        value, _ = winreg.QueryValueEx(key, name)
+                        if value:
+                            return True
+                except OSError:
+                    continue
+        except ImportError:
+            return False
+        return False
+
+    def _preflight(self) -> None:
+        """Refuse a start that the real launcher would fail seconds later.
+
+        Without this, a missing dsh binary or key env produced a job that went
+        straight to ``failed/launcher_error`` with a generic message.  Only the
+        real launcher (no DSH_WORKER_LAUNCHER override) is checked, unless a
+        test opts in with DSH_WORKER_PREFLIGHT=1.
+        """
+        env = self.config.environ or {}
+        if self.config.launcher_path is not None and env.get("DSH_WORKER_PREFLIGHT") != "1":
+            return
+        dsh = Path(env.get("DSH_WORKER_DSH_PATH") or (Path.home() / ".bun" / "bin" / "dsh.exe"))
+        if not dsh.is_file():
+            raise PluginError(
+                "dsh_missing",
+                f"dsh binary not found at {dsh}; install with: bun add -g @deepseek-ai/dsh (never npm)",
+            )
+        if not self._key_present(KEY_ENV):
+            raise PluginError(
+                "api_key_missing",
+                f"{KEY_ENV} is not set in the process or Windows user/machine environment",
+            )
+
     # ------------------------------------------------------------- provider
     def _provider_session(self) -> str | None:
         path = self.config.repo_root / "reality_engine" / "scripts" / "go_session.py"
@@ -363,13 +456,14 @@ class Manager:
             return False
         if not isinstance(status, dict):
             return False
-        worker_pid = status.get("worker_pid")
-        if not worker_pid:
+        raw_pid = status.get("worker_pid")
+        if not raw_pid:
             return False
-        worker_ticks = status.get("worker_creation_time")
-        if not worker_ticks:
+        worker_pid = _as_pid(raw_pid)
+        worker_ticks = _as_pid(status.get("worker_creation_time"))
+        if worker_pid is None or worker_ticks is None:
             return True
-        return procutil.process_alive(int(worker_pid), int(worker_ticks))
+        return procutil.process_alive(worker_pid, worker_ticks)
 
     def _lock_active(self, lock: dict[str, Any]) -> bool:
         """Fail closed: only proven-dead ownership frees a mutation lock.
@@ -389,19 +483,17 @@ class Manager:
         if not isinstance(status, dict):
             # No readable status: the job record may still own live processes.
             return True
-        supervisor_pid = status.get("supervisor_pid")
-        supervisor_ticks = status.get("supervisor_creation_time")
-        if supervisor_pid:
-            if not supervisor_ticks:
-                return True
-            if procutil.process_alive(int(supervisor_pid), int(supervisor_ticks)):
-                return True
-        worker_pid = status.get("worker_pid")
-        worker_ticks = status.get("worker_creation_time")
-        if worker_pid:
-            if not worker_ticks:
-                return True
-            if procutil.process_alive(int(worker_pid), int(worker_ticks)):
+        for pid_key, ticks_key in (
+            ("supervisor_pid", "supervisor_creation_time"),
+            ("worker_pid", "worker_creation_time"),
+        ):
+            if not status.get(pid_key):
+                continue
+            pid = _as_pid(status.get(pid_key))
+            ticks = _as_pid(status.get(ticks_key))
+            if pid is None or ticks is None:
+                return True  # unverifiable ownership: fail closed
+            if procutil.process_alive(pid, ticks):
                 return True
         # Both recorded processes are absent or proven dead.  Only a final
         # status is positive proof that this job has stopped owning the tree.
@@ -519,6 +611,15 @@ class Manager:
                 "DeepSeek worker starts are refused during peak hours "
                 "(Mon-Fri 06:30-09:30 and 11:30-15:30 IST)",
             )
+        if is_peak(now + timedelta(seconds=PEAK_START_MARGIN_SECONDS)):
+            # The harness re-checks the real clock when it starts; a start at
+            # 06:29:59 could be refused by the launcher a moment later and
+            # surface as a launcher failure instead of a clear refusal.
+            raise PluginError(
+                "peak_hours_imminent",
+                f"a DeepSeek peak window starts within {PEAK_START_MARGIN_SECONDS}s; "
+                "the launcher would refuse this run. Start after the window ends.",
+            )
         ws = self._workspace(workspace)
         text, task_relative = self._read_brief(brief, task_file)
         if permission not in PERMISSIONS:
@@ -561,6 +662,7 @@ class Manager:
                 f"controller lease must be {minimum_lease}..7200 seconds",
             )
 
+        self._preflight()
         capability = self._capability()
         if not capability.heartbeat_supported:
             missing = [
@@ -729,6 +831,11 @@ class Manager:
 
             supervisor_pid = self._spawn_supervisor(job_dir, control_token)
             supervisor_spawned = True
+            if os.name == "nt" and not self._last_breakaway:
+                warnings.append(
+                    "supervisor could not break away from the MCP host's job object: if this "
+                    "MCP server is closed or restarted, the host may kill this worker too"
+                )
             self._control_tokens[job_id] = control_token
             ticks = procutil.process_creation_time(supervisor_pid)
             if mutating:
@@ -751,6 +858,7 @@ class Manager:
                 "supervisor_log_path": paths["supervisor_log"],
                 "heartbeat": status.get("heartbeat") or heartbeat_record,
                 "warnings": warnings + list(status.get("warnings") or []),
+                "survives_server_exit": bool(self._last_breakaway) or os.name != "nt",
                 "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
             }
         except Exception:
@@ -789,21 +897,43 @@ class Manager:
         kwargs: dict[str, Any] = {}
         if os.name != "nt":
             kwargs["start_new_session"] = True
+        # Break the supervisor out of the MCP host's job object when allowed.
+        # Hosts (the Python MCP stdio client; possibly Claude/Codex) put the
+        # server in a KILL_ON_JOB_CLOSE job, so a server that vanished
+        # mid-session ("MCP server removed from the configuration") used to
+        # take every running worker down with it, with no final status.  The
+        # breakaway supervisor still owns its worker through its own job
+        # object, and the controller lease remains the hard upper bound.
+        want_breakaway = (
+            os.name == "nt" and (self.config.environ or {}).get("DSH_WORKER_BREAKAWAY", "1") != "0"
+        )
+        attempts = [flags | procutil.CREATE_BREAKAWAY_FROM_JOB, flags] if want_breakaway else [flags]
+        self._last_breakaway = False
         with open(log_path, "ab", buffering=0) as log:
-            try:
-                process = subprocess.Popen(
-                    [sys.executable, str(supervisor), str(job_dir)],
-                    cwd=str(self.config.repo_root),
-                    env=env,
-                    stdin=subprocess.DEVNULL,
-                    stdout=log,
-                    stderr=log,
-                    creationflags=flags,
-                    close_fds=True,
-                    **kwargs,
-                )
-            except OSError as exc:
-                raise PluginError("supervisor_spawn_failed", f"could not start supervisor: {exc}") from exc
+            last_exc: OSError | None = None
+            process = None
+            for attempt_flags in attempts:
+                try:
+                    process = subprocess.Popen(
+                        [sys.executable, str(supervisor), str(job_dir)],
+                        cwd=str(self.config.repo_root),
+                        env=env,
+                        stdin=subprocess.DEVNULL,
+                        stdout=log,
+                        stderr=log,
+                        creationflags=attempt_flags,
+                        close_fds=True,
+                        **kwargs,
+                    )
+                except OSError as exc:  # breakaway not permitted by the host job
+                    last_exc = exc
+                    continue
+                self._last_breakaway = bool(attempt_flags & procutil.CREATE_BREAKAWAY_FROM_JOB)
+                break
+            if process is None:
+                raise PluginError(
+                    "supervisor_spawn_failed", f"could not start supervisor: {last_exc}"
+                ) from last_exc
         self._children = [child for child in self._children if child.poll() is None]
         self._children.append(process)
         return int(process.pid)
@@ -855,31 +985,48 @@ class Manager:
             )
         return job, job_dir
 
-    def _read_status(self, job_dir: Path) -> dict[str, Any]:
-        status, error = read_json_bounded(job_dir / "status.json")
-        if not isinstance(status, dict):
-            return {
-                "phase": "starting",
-                "warnings": [f"status record unreadable: {error}"],
-            }
-        return status
+    def _read_status(self, job_dir: Path, attempts: int = 4) -> dict[str, Any]:
+        """Read status.json, retrying a transient lock/garbled read.
+
+        An unreadable record is phase ``unknown``, never ``starting``: the old
+        fallback let a momentary antivirus/indexer lock on a *live* job's
+        status file classify it as ``lost``/final.
+        """
+        error: str | None = None
+        for attempt in range(max(1, attempts)):
+            status, error = read_json_bounded(job_dir / "status.json")
+            if isinstance(status, dict):
+                return status
+            if error == "missing" and attempt == 0 and not (job_dir / "status.json").exists():
+                break
+            time.sleep(0.05 * (attempt + 1))
+        return {
+            "phase": "unknown",
+            "status_unreadable": error or "invalid",
+            "warnings": [f"status record unreadable: {error}"],
+        }
 
     def _process_view(self, status: dict[str, Any], heartbeat_live: dict[str, Any] | None) -> dict[str, Any]:
-        supervisor_pid = status.get("supervisor_pid")
-        supervisor_ticks = status.get("supervisor_creation_time")
-        worker_pid = status.get("worker_pid")
-        worker_ticks = status.get("worker_creation_time")
-        supervisor_alive = bool(
-            supervisor_pid
-            and procutil.process_alive(
-                int(supervisor_pid), int(supervisor_ticks) if supervisor_ticks else None
+        supervisor_pid = _as_pid(status.get("supervisor_pid"))
+        supervisor_ticks = _as_pid(status.get("supervisor_creation_time"))
+        worker_pid = _as_pid(status.get("worker_pid"))
+        worker_ticks = _as_pid(status.get("worker_creation_time"))
+        invalid = [
+            key
+            for key in (
+                "supervisor_pid",
+                "supervisor_creation_time",
+                "worker_pid",
+                "worker_creation_time",
             )
+            if status.get(key) not in (None, "", 0) and _as_pid(status.get(key)) is None
+        ]
+        supervisor_alive = bool(
+            supervisor_pid and procutil.process_alive(supervisor_pid, supervisor_ticks)
         )
-        worker_alive = bool(
-            worker_pid
-            and procutil.process_alive(int(worker_pid), int(worker_ticks) if worker_ticks else None)
-        )
+        worker_alive = bool(worker_pid and procutil.process_alive(worker_pid, worker_ticks))
         return {
+            "record_invalid_fields": invalid,
             "supervisor_pid": supervisor_pid,
             "supervisor_creation_time": supervisor_ticks,
             "supervisor_alive": supervisor_alive,
@@ -964,6 +1111,16 @@ class Manager:
         process = self._process_view(status, heartbeat_live)
         phase = str(status.get("phase") or "starting")
         warnings = list(job.get("warnings") or []) + list(status.get("warnings") or [])
+        if job.get("start_failed") and phase == "unknown":
+            # start_worker failed before a supervisor/status existed.
+            phase = "failed"
+            status = {**status, "outcome": "start_failed", "error": "start_worker failed before launch"}
+        elif phase in ACTIVE_PHASES and process["record_invalid_fields"]:
+            phase = "unknown"
+            warnings.append(
+                "status record has unusable process fields "
+                f"({', '.join(process['record_invalid_fields'])}); liveness cannot be verified"
+            )
         if phase in ACTIVE_PHASES:
             if not process["supervisor_alive"]:
                 if process["worker_alive"]:
@@ -985,9 +1142,9 @@ class Manager:
             running = phase in ACTIVE_PHASES and not final
         last_activity = self._last_activity(job_dir, status, heartbeat_live)
         awaiting_input = _awaiting_input_valid(heartbeat_live)
-        interval = int(heartbeat_record.get("interval_seconds") or 900)
-        window = int(heartbeat_record.get("response_window_seconds") or 900)
-        misses = int(heartbeat_record.get("missed_replies_allowed") or 2)
+        interval = _as_pid(_num(heartbeat_record.get("interval_seconds"))) or 900
+        window = _as_pid(_num(heartbeat_record.get("response_window_seconds"))) or 900
+        misses = _as_pid(_num(heartbeat_record.get("missed_replies_allowed"))) or 2
         stale_after = self.config.stale_after_seconds or max(
             interval + window * max(1, misses), 300
         )
@@ -999,7 +1156,12 @@ class Manager:
                     f"no committed worker activity for more than {stale_after}s; "
                     "heartbeat/status writes and process liveness alone are not progress"
                 )
-        if not process["supervisor_alive"] and not process["worker_alive"] and phase not in FINAL_PHASES:
+        if (
+            not process["supervisor_alive"]
+            and not process["worker_alive"]
+            and phase not in FINAL_PHASES
+            and phase != "unknown"
+        ):
             phase = "lost"
             final = True
             running = False
@@ -1016,7 +1178,7 @@ class Manager:
         if final:
             # Give a just-finished supervisor a bounded moment to exit so its
             # Popen handle does not outlive the test/session as a live child.
-            self._reap_child(status.get("supervisor_pid"), timeout=1.0)
+            self._reap_child(_as_pid(status.get("supervisor_pid")), timeout=1.0)
             self._control_tokens.pop(job_id, None)
             self._lease_owners.pop(job_id, None)
         controller_lease, lease_error = read_lease(
@@ -1030,6 +1192,33 @@ class Manager:
                 "controller lease is past its absolute deadline; the supervisor "
                 "should terminate the owned process tree (controller_lease_expired)"
             )
+        failure_reason = (
+            self._failure_reason(job_dir, status, heartbeat_live)
+            if phase in {"failed", "lost", "cancelled"}
+            else None
+        )
+        if phase == "finished" and result_bytes == 0:
+            warnings.append(
+                "worker finished (exit 0) but wrote an empty answer; treat this as a "
+                "failed run, not a result"
+            )
+        progress_view = self._progress(
+            job_id,
+            job_dir,
+            phase=phase,
+            running=running,
+            final=final,
+            stale=stale,
+            awaiting_input=awaiting_input,
+            started_at=status.get("started_at") or job.get("created_at"),
+            finished_at=status.get("finished_at"),
+            last_activity=last_activity,
+            heartbeat_live=heartbeat_live,
+            controller_lease=controller_lease,
+            result_bytes=result_bytes,
+            limits=job.get("limits") or {},
+            failure_reason=failure_reason,
+        )
         return {
             "ok": True,
             "job_id": job_id,
@@ -1066,8 +1255,15 @@ class Manager:
             "controller_lease": controller_lease,
             "controller_lease_error": lease_error,
             "controller_lease_expired": bool(controller_lease and controller_lease.get("expired")),
-            "result_ready": result_bytes > 0,
+            # result.md is streamed incrementally by the harness, so a non-empty
+            # file is NOT completion.  result_ready means "final and non-empty";
+            # use progress.done / final for the finished flag.
+            "result_ready": final and result_bytes > 0,
+            "result_final": phase == "finished" and result_bytes > 0,
             "result_bytes": result_bytes,
+            "result_is_streaming": running and result_bytes > 0,
+            "failure_reason": failure_reason,
+            "progress": progress_view,
             "result_kind": status.get("result_kind") or ("final" if final else "live"),
             "interim": bool(status.get("interim_result")),
             "partial": bool(status.get("partial")),
@@ -1075,6 +1271,334 @@ class Manager:
             "limits": job.get("limits"),
             "warnings": warnings,
             "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
+        }
+
+    # ------------------------------------------------------------- progress
+    _SECRETISH = re.compile(r"[A-Za-z0-9_\-]{32,}")
+
+    def _failure_reason(
+        self,
+        job_dir: Path,
+        status: dict[str, Any],
+        heartbeat_live: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Why a job failed, from bounded non-reasoning sources only.
+
+        The supervisor's generic "launcher exited nonzero" hid the real cause
+        (missing dsh binary, missing key env, peak refusal, provider error).
+        The launcher's own stderr (``stderr.log``) holds only harness/argparse
+        messages; dsh reasoning goes to ``result.md.log`` and is never read
+        here.  Lines starting ``dsh: reasoning`` are dropped and long
+        token-like strings are redacted defensively.
+        """
+        reason: dict[str, Any] = {
+            "outcome": status.get("outcome"),
+            "exit_code": status.get("exit_code"),
+            "heartbeat_failure": (heartbeat_live or {}).get("failure"),
+            "heartbeat_failure_detail": None,
+            "launcher_stderr_tail": [],
+        }
+        detail = (heartbeat_live or {}).get("failure_detail")
+        if isinstance(detail, str):
+            reason["heartbeat_failure_detail"] = self._SECRETISH.sub("[redacted]", detail)[:400]
+        tail = read_text_bounded_tail(job_dir / "stderr.log", 4096)
+        lines = [
+            self._SECRETISH.sub("[redacted]", line.strip())[:300]
+            for line in tail.splitlines()
+            if line.strip() and not line.lstrip().startswith("dsh: reasoning")
+        ]
+        reason["launcher_stderr_tail"] = lines[-4:]
+        text = " ".join(lines[-4:] + [str(reason["heartbeat_failure_detail"] or "")])
+        hint = None
+        for needle, label in (
+            ("dsh not found", "dsh_binary_missing"),
+            ("is not set", "api_key_env_missing"),
+            ("peak hours", "peak_hours_refused"),
+            ("MissingSessionID", "provider_session_missing"),
+            ("timed out", "provider_timeout"),
+            ("HTTP", "provider_http_error"),
+        ):
+            if needle in text:
+                hint = label
+                break
+        reason["likely_cause"] = hint or reason["heartbeat_failure"] or status.get("outcome")
+        return reason
+
+    def _progress(
+        self,
+        job_id: str,
+        job_dir: Path,
+        *,
+        phase: str,
+        running: bool,
+        final: bool,
+        stale: bool,
+        awaiting_input: bool,
+        started_at: Any,
+        finished_at: Any,
+        last_activity: datetime | None,
+        heartbeat_live: dict[str, Any] | None,
+        controller_lease: dict[str, Any] | None,
+        result_bytes: int,
+        limits: dict[str, Any],
+        failure_reason: dict[str, Any] | None,
+        events_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """One orchestrator-facing answer to "is it done, is it moving, by when"."""
+        now = utc_now()
+        started = parse_iso(started_at)
+        finished = parse_iso(finished_at)
+        end = finished if final and finished else now
+        elapsed = (end - started).total_seconds() if started else None
+        idle = (now - last_activity).total_seconds() if last_activity and running else None
+        events = self._scanner.scan(events_path or job_dir / "result.md.events.jsonl")
+        lease_deadline = parse_iso((controller_lease or {}).get("deadline"))
+        lease_remaining = (
+            (lease_deadline - now).total_seconds() if lease_deadline and running else None
+        )
+        renewable_here = bool(job_id) and job_id in self._lease_owners
+        hard_timeout = limits.get("hard_timeout_seconds") if isinstance(limits, dict) else None
+        upper_bounds: list[tuple[datetime, str]] = []
+        if lease_deadline and running:
+            upper_bounds.append((lease_deadline, "controller_lease_deadline"))
+        if isinstance(hard_timeout, int) and started and running:
+            upper_bounds.append((started + timedelta(seconds=hard_timeout), "hard_timeout"))
+        bound = min(upper_bounds) if upper_bounds else None
+        notes: list[str] = []
+        if running and lease_remaining is not None and lease_remaining < 600:
+            notes.append(
+                f"controller lease ends in {progress.fmt_duration(lease_remaining)}; the job will "
+                "be stopped then unless renew_worker_lease is called"
+                + ("" if renewable_here else " (this MCP server cannot renew it: restart lost ownership)")
+            )
+        last_kind = (heartbeat_live or {}).get("last_activity_kind")
+        if final:
+            if phase == "finished":
+                headline = "done: finished" + ("" if result_bytes else " with an EMPTY answer")
+            else:
+                cause = (failure_reason or {}).get("likely_cause")
+                headline = f"done: {phase}" + (f" ({cause})" if cause else "")
+        elif phase == "unknown":
+            headline = "unknown: status record unreadable; retry worker_status"
+        elif awaiting_input:
+            headline = "waiting for a follow-up (awaiting_input)"
+        elif stale:
+            headline = "running but STALE (no committed model/tool activity)"
+        elif running:
+            headline = "running"
+        else:
+            headline = phase
+        parts = [headline, f"elapsed {progress.fmt_duration(elapsed)}"]
+        if running and idle is not None:
+            parts.append(
+                f"last activity {progress.fmt_duration(idle)} ago"
+                + (f" ({last_kind})" if last_kind else "")
+            )
+        if events.get("available"):
+            parts.append(f"{events['tool_calls']} tool calls, {events['model_steps']} model steps")
+            if events.get("last_tool"):
+                target = events.get("last_tool_target")
+                parts.append(f"last tool {events['last_tool']}" + (f" on {target}" if target else ""))
+        if running:
+            parts.append(f"result.md {result_bytes} B so far (streaming, not final)")
+        if bound:
+            parts.append(f"hard stop by {iso(bound[0])} ({bound[1]})")
+        return {
+            "done": final,
+            "succeeded": phase == "finished" and result_bytes > 0,
+            "answer_empty": phase == "finished" and result_bytes == 0,
+            "phase": phase,
+            "elapsed_seconds": round(elapsed, 1) if elapsed is not None else None,
+            "seconds_since_activity": round(idle, 1) if idle is not None else None,
+            "last_activity_kind": last_kind,
+            "activity_count": (heartbeat_live or {}).get("activity_count"),
+            "events": events,
+            "controller_lease_remaining_seconds": (
+                round(lease_remaining, 1) if lease_remaining is not None else None
+            ),
+            "controller_lease_renewable_here": renewable_here,
+            "eta": None,
+            "eta_note": (
+                "dsh publishes no completion estimate; judge progress by activity "
+                "recency and counts. latest_finish_by is a hard upper bound, not a prediction."
+            ),
+            "latest_finish_by": iso(bound[0]) if bound else None,
+            "latest_finish_reason": bound[1] if bound else None,
+            "notes": notes,
+            "summary": "; ".join(parts),
+        }
+
+    # ---------------------------------------------------------- server_info
+    def server_info(self) -> dict[str, Any]:
+        capability = self._capability()
+        now = utc_now()
+        active = sorted(self._control_tokens)
+        return {
+            "ok": True,
+            "server": "dsh-worker",
+            "version": SERVER_VERSION,
+            "pid": os.getpid(),
+            "started_at": iso(SERVER_STARTED_AT),
+            "uptime_seconds": round((now - SERVER_STARTED_AT).total_seconds(), 1),
+            "cwd": os.getcwd(),
+            "repo_root": str(self.config.repo_root),
+            "runtime_dir": str(self.config.runtime_dir),
+            "launcher": self._launcher_command()[1:],
+            "launcher_capabilities": capability.as_dict(),
+            "peak_now": is_peak(now),
+            "jobs_owned_by_this_server": active,
+            "note": (
+                "Jobs started by an earlier server process are still visible through "
+                "worker_status/list_workers but cannot be messaged or lease-renewed here."
+            ),
+        }
+
+    # ---------------------------------------------------------- inspect_run
+    _RUN_SUFFIXES = (".status.json", ".events.jsonl", ".control.json", ".log")
+
+    def inspect_run(self, out_file: str) -> dict[str, Any]:
+        """Read-only view of a run started with the raw harness, not this server.
+
+        ``run_deepseek_harness.py --out-file X`` writes ``X.status.json``
+        (dsh-heartbeat-status/1), ``X.events.jsonl`` and ``X.control.json``.
+        This reads those files and returns the same progress summary
+        worker_status gives for plugin jobs.  It cannot message, renew or
+        cancel such a run: the harness generates its control token in memory
+        (or reads it from an env var this server never sees) and there is no
+        plugin supervisor/lease.  Liveness is checked against the recorded
+        dsh PID *and* its kernel creation time versus the run's start, so a
+        recycled PID is not reported alive.
+        """
+        if not isinstance(out_file, str) or not out_file.strip():
+            raise PluginError("out_file_invalid", "out_file must be the harness --out-file path")
+        raw = Path(out_file).expanduser()
+        if not raw.is_absolute():
+            raw = self.config.repo_root / raw
+        try:
+            candidate = raw.resolve(strict=False)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise PluginError("out_file_invalid", f"out_file cannot be resolved: {exc}") from exc
+        if not _within(self.config.repo_root, candidate):
+            raise PluginError("out_file_outside_repo", "out_file must be inside the repository root")
+        name = candidate.name
+        for suffix in self._RUN_SUFFIXES:
+            if name.endswith(suffix) and len(name) > len(suffix):
+                candidate = candidate.with_name(name[: -len(suffix)])
+                break
+        status_path = candidate.with_name(candidate.name + ".status.json")
+        record, error = read_json_bounded(status_path, 1_048_576)
+        if not isinstance(record, dict):
+            raise PluginError(
+                "run_not_found",
+                f"no readable harness status file at {status_path}",
+                record_error=error,
+            )
+        if record.get("schema") != heartbeat.STATUS_SCHEMA:
+            raise PluginError("run_schema_mismatch", "status file is not dsh-heartbeat-status/1")
+        hb = record.get("heartbeat") if isinstance(record.get("heartbeat"), dict) else {}
+        pid = _as_pid(record.get("pid"))
+        started = parse_iso(record.get("started_at"))
+        state = str(record.get("state") or "unknown")
+        alive = False
+        pid_check = "no_pid"
+        if pid is not None:
+            ticks = procutil.process_creation_time(pid)
+            if ticks is None:
+                pid_check = "not_running"
+            else:
+                created = datetime.fromtimestamp((ticks - 116_444_736_000_000_000) / 1e7, timezone.utc)
+                if started is not None and not (-30 <= (created - started).total_seconds() <= 300):
+                    pid_check = "pid_reused"
+                else:
+                    alive = procutil.process_alive(pid, ticks)
+                    pid_check = "alive" if alive else "not_running"
+        ended = state in {"completed", "failed"} or record.get("exit_code") is not None
+        if ended:
+            phase = "finished" if state == "completed" and record.get("exit_code") in (0, None) else "failed"
+        elif alive:
+            phase = "running"
+        else:
+            phase = "lost"
+        final = phase != "running"
+        running = phase == "running"
+        last_activity = parse_iso(hb.get("last_activity_at"))
+        result_path = candidate
+        try:
+            result_bytes = result_path.stat().st_size
+        except OSError:
+            result_bytes = 0
+        live = {
+            "last_activity_kind": hb.get("last_activity_kind"),
+            "activity_count": hb.get("activity_count"),
+            "failure": record.get("failure"),
+            "failure_detail": record.get("failure_detail"),
+        }
+        hard_timeout = hb.get("hard_timeout_seconds")
+        failure = None
+        if phase in {"failed", "lost"}:
+            failure = {
+                "outcome": phase,
+                "exit_code": record.get("exit_code"),
+                "heartbeat_failure": record.get("failure"),
+                "heartbeat_failure_detail": (
+                    self._SECRETISH.sub("[redacted]", str(record.get("failure_detail")))[:400]
+                    if record.get("failure_detail")
+                    else None
+                ),
+                "likely_cause": record.get("failure") or phase,
+            }
+        view = self._progress(
+            "",
+            candidate.parent,
+            phase=phase,
+            running=running,
+            final=final,
+            stale=False,
+            awaiting_input=bool(hb.get("awaiting_input")),
+            started_at=record.get("started_at"),
+            finished_at=record.get("ended_at"),
+            last_activity=last_activity,
+            heartbeat_live=live,
+            controller_lease=None,
+            result_bytes=result_bytes,
+            limits={"hard_timeout_seconds": hard_timeout if isinstance(hard_timeout, int) else None},
+            failure_reason=failure,
+            events_path=candidate.with_name(candidate.name + ".events.jsonl"),
+        )
+        control, _ = heartbeat.read_control(candidate.with_name(candidate.name + ".control.json"))
+        return {
+            "ok": True,
+            "source": "raw_harness_run",
+            "out_file": str(candidate),
+            "run_id": record.get("run_id"),
+            "phase": phase,
+            "running": running,
+            "final": final,
+            "state": state,
+            "exit_code": record.get("exit_code"),
+            "pid": pid,
+            "pid_check": pid_check,
+            "started_at": record.get("started_at"),
+            "ended_at": record.get("ended_at"),
+            "updated_at": record.get("updated_at"),
+            "last_activity_at": iso(last_activity) if last_activity else None,
+            "unanswered_pings": hb.get("consecutive_unanswered"),
+            "result_bytes": result_bytes,
+            "result_ready": final and phase == "finished" and result_bytes > 0,
+            "result_is_streaming": running and result_bytes > 0,
+            "model": record.get("model"),
+            "reasoning_effort": record.get("reasoning_effort"),
+            "failure_reason": failure,
+            "progress": view,
+            "control_descriptor_state": (control or {}).get("state"),
+            "messaging": {
+                "available": False,
+                "reason": (
+                    "raw-harness runs keep their control token in the launching process; "
+                    "this MCP server cannot authenticate to them. Start work through "
+                    "start_worker when you need message_worker/renew/cancel."
+                ),
+            },
         }
 
     # --------------------------------------------------------------- result
@@ -1174,6 +1698,7 @@ class Manager:
         self,
         job_id: str,
         extend_seconds: int = 1800,
+        adopt: bool = False,
     ) -> dict[str, Any]:
         """Explicitly renew the controller lease; never called by status reads.
 
@@ -1200,11 +1725,21 @@ class Manager:
                 phase=status["phase"],
             )
         owner = self._lease_owners.get(job_id)
+        adopted = False
+        if not owner and adopt is True:
+            # Explicit takeover after an MCP server restart.  The job keeps
+            # its original owner id (the supervisor validates against it);
+            # adoption is a deliberate controller act, never automatic, and
+            # cannot revive an expired lease (checked below).
+            recorded = job.get("controller_lease_owner_id")
+            if isinstance(recorded, str) and recorded:
+                owner = recorded
+                adopted = True
         if not owner:
             raise PluginError(
                 "controller_unavailable",
                 "this MCP server does not own the job's controller lease (restart or "
-                "wrong process); it cannot extend the persisted deadline",
+                "wrong process); pass adopt=true to take it over explicitly",
             )
         lease_path = job_dir / LEASE_FILE
         lease, error = read_lease(
@@ -1233,7 +1768,13 @@ class Manager:
         updated["deadline"] = iso(now + timedelta(seconds=extend_seconds))
         updated["lease_seconds"] = extend_seconds
         updated["renewals"] = int(lease.get("renewals") or 0) + 1
+        if adopted:
+            updated["adoptions"] = int(lease.get("adoptions") or 0) + 1
+            updated["adopted_by_pid"] = os.getpid()
+            updated["adopted_at"] = iso(now)
         atomic_write_json(lease_path, updated)
+        if adopted:
+            self._lease_owners[job_id] = owner
         current, _ = read_lease(
             lease_path,
             expected_job_id=job_id,
@@ -1245,6 +1786,7 @@ class Manager:
             "job_id": job_id,
             "controller_lease": current,
             "renewed": True,
+            "adopted": adopted,
             "automatic_renewal": False,
             "note": (
                 "Renewal is explicit controller action only. Worker activity, "
@@ -1410,6 +1952,7 @@ class Manager:
         if workspace:
             wanted = os.path.normcase(str(self._workspace(workspace)))
         jobs: list[dict[str, Any]] = []
+        unreadable: list[dict[str, Any]] = []
         try:
             entries = sorted(self.config.jobs_dir.iterdir(), key=lambda p: p.name, reverse=True)
         except OSError:
@@ -1419,9 +1962,16 @@ class Manager:
                 continue
             try:
                 job = self.get_status(entry.name)
-            except PluginError:
+            except Exception as exc:  # one corrupt record must not hide every other job
+                unreadable.append(
+                    {"job_id": entry.name, "error": exc.code if isinstance(exc, PluginError) else type(exc).__name__}
+                )
                 continue
-            if wanted and os.path.normcase(str(Path(job["workspace"]).resolve())) != wanted:
+            job_ws = job.get("workspace")
+            if wanted and (
+                not isinstance(job_ws, str)
+                or os.path.normcase(str(Path(job_ws).resolve())) != wanted
+            ):
                 continue
             jobs.append(
                 {
@@ -1433,11 +1983,19 @@ class Manager:
                     "permission": job["permission"],
                     "started_at": job["started_at"],
                     "updated_at": job["updated_at"],
+                    "final": job["final"],
                     "result_ready": job["result_ready"],
+                    "summary": (job.get("progress") or {}).get("summary"),
                     "result_path": job["paths"]["result"],
                     "status_path": job["paths"]["status"],
                 }
             )
             if len(jobs) >= limit:
                 break
-        return {"ok": True, "jobs": jobs, "count": len(jobs), "limit": limit}
+        return {
+            "ok": True,
+            "jobs": jobs,
+            "count": len(jobs),
+            "limit": limit,
+            "unreadable": unreadable[:limit],
+        }
