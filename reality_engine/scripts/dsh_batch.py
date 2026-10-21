@@ -133,7 +133,7 @@ def main():
         if model.startswith("deepseek") and not h.off_peak() and not a.peak_ok:
             sys.exit(f"{datetime.now(h.IST):%H:%M} IST is in DeepSeek peak hours (Mon-Fri 06:30-09:30, 11:30-15:30 IST); "
                      "ask Shivam, then pass --peak-ok if he confirms")
-    for t in tasks:   # xhigh-only rule: the wrapper rejects other efforts; fail before spending anything
+    for t in tasks:   # max-only rule: the wrapper rejects other efforts; fail before spending anything
         m, _, eff = (t.get("model") or a.model).partition("~")
         if m in h.FIXED_EFFORT and eff and eff != h.FIXED_EFFORT[m]:
             sys.exit(f"{m} always runs at {h.FIXED_EFFORT[m]}; drop ~{eff}")

@@ -1,0 +1,9 @@
+# Narrow final fixture fix
+
+Shivam directs Codex to orchestrate/review and DeepSeek/dsh/xhigh to implement off-peak. You fix only the following test issue and its report. Do not reread whole framework/source or make broad changes: all implementation has already been reviewed; H01, databases, other source, secrets, security, push/upload/cache/install are out of scope. Do not launch model workers or paid probes.
+
+Codex independently ran 41 tests after the main implementation report (tasks/codex_tasks/DSH_EFFICIENT_FOLLOWUPS_FIX_RESULT.md). Forty passed. Only test_controller_lease_renewal_is_explicit_and_restart_cannot_extend failed in reality_engine/tests/test_dsh_worker_plugin.py: deadline after immediate renewal equals prior deadline, both 2026-10-21T00:47:43Z. The fixture initial lease is 4 seconds; after time.sleep(.3) it renews for the same 4 seconds and asserts strictly greater. store.iso() records seconds, so within the same second this is a nondeterministic test. Renewal semantics are reset-from-now, not add-to-current-deadline. Preserve that behavior and all tests proving read-only calls/activity do not renew, restarted manager cannot renew, wrong owner rejected, cancel removes lease.
+
+Make the fixture deterministic without gratuitous sleeps or production changes: request an explicitly longer renewal interval than its 4-second initial lease, assert extension and existing ownership/non-renewal checks. Run the focused method, then the same full independent command below ONCE. Append actual result to the main implementation report, then finish immediately. No repeated self-review.
+
+python -m unittest reality_engine.tests.test_dsh_heartbeat.HeartbeatStateTests reality_engine.tests.test_dsh_heartbeat.ControlTransportTests reality_engine.tests.test_dsh_heartbeat.RealDshControlIntegrationTests.test_ten_followups_use_ten_requests_and_one_conversation reality_engine.tests.test_dsh_worker_plugin -q

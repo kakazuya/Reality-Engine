@@ -1,0 +1,61 @@
+index,trailing_return,base_date,asof_date,method,base_method,month,window
+BSE IPO,0.2804017437629607,2019-12-31,2020-12-31,derived,derived,2021-01-01,12 calendar months
+BSE IPO,0.2009503695984498,2020-01-29,2021-01-29,derived,derived,2021-02-01,12 calendar months
+BSE 250 SmallCap,0.38072965012406956,2020-02-26,2021-02-26,derived,derived,2021-03-01,12 calendar months
+Nifty Smallcap 250,1.1868375849250095,2020-03-31,2021-03-31,official,official,2021-04-01,12 calendar months
+Nifty Smallcap 250,1.025442600920274,2020-04-30,2021-04-30,official,official,2021-05-01,12 calendar months
+Nifty Smallcap 250,1.2785194118465606,2020-05-29,2021-05-31,official,official,2021-06-01,12 calendar months
+BSE IPO,1.1943290315061987,2020-06-30,2021-06-30,derived,derived,2021-07-01,12 calendar months
+BSE IPO,1.3257054655539329,2020-07-30,2021-07-30,derived,derived,2021-08-01,12 calendar months
+BSE IPO,1.0632794612205356,2020-08-31,2021-08-31,derived,derived,2021-09-01,12 calendar months
+BSE IPO,0.8934754401665375,2020-09-30,2021-09-30,derived,derived,2021-10-01,12 calendar months
+BSE IPO,0.9173099830830156,2020-10-29,2021-10-29,derived,derived,2021-11-01,12 calendar months
+BSE IPO,0.8431531302233091,2020-11-27,2021-11-30,derived,derived,2021-12-01,12 calendar months
+Nifty Smallcap 250,0.6333592284161349,2020-12-31,2021-12-31,official,official,2022-01-01,12 calendar months
+Nifty Smallcap 250,0.6125109201951473,2021-01-29,2022-01-31,official,official,2022-02-01,12 calendar months
+Nifty Smallcap 250,0.3007222035606316,2021-02-26,2022-02-28,official,official,2022-03-01,12 calendar months
+Nifty Smallcap 250,0.3701909549623905,2021-03-31,2022-03-31,official,official,2022-04-01,12 calendar months
+Nifty Smallcap 250,0.3134232462511455,2021-04-29,2022-04-29,official,official,2022-05-01,12 calendar months
+Nifty Midcap 150,0.10283499894609704,2021-05-31,2022-05-31,official,official,2022-06-01,12 calendar months
+BSE Sensex,0.018373201506848957,2021-06-30,2022-06-30,derived,derived,2022-07-01,12 calendar months
+BSE Sensex,0.1024024452455028,2021-07-29,2022-07-29,derived,derived,2022-08-01,12 calendar months
+Nifty Midcap 150,0.1257849441272607,2021-08-30,2022-08-30,official,official,2022-09-01,12 calendar months
+Nifty Midcap 150,0.03648451585156409,2021-09-30,2022-09-30,official,official,2022-10-01,12 calendar months
+Nifty Midcap 150,0.052702478153364485,2021-10-29,2022-10-31,official,official,2022-11-01,12 calendar months
+BSE Sensex,0.11567399038188175,2021-11-30,2022-11-30,derived,derived,2022-12-01,12 calendar months
+BSE Sensex,0.062290850583451185,2021-12-30,2022-12-30,derived,derived,2023-01-01,12 calendar months
+BSE Sensex,0.036005284678605864,2022-01-31,2023-01-31,derived,derived,2023-02-01,12 calendar months
+Nifty Midcap 150,0.08281360699434592,2022-02-28,2023-02-28,official,official,2023-03-01,12 calendar months
+Nifty Midcap 150,0.02766724065579451,2022-03-31,2023-03-31,official,official,2023-04-01,12 calendar months
+BSE Sensex,0.07281298905520561,2022-04-28,2023-04-28,derived,derived,2023-05-01,12 calendar months
+Nifty Midcap 150,0.19812271663047665,2022-05-31,2023-05-31,official,official,2023-06-01,12 calendar months
+BSE 250 SmallCap,0.344843236748396,2022-06-30,2023-06-30,derived,derived,2023-07-01,12 calendar months
+BSE 250 SmallCap,0.32297661223585705,2022-07-29,2023-07-31,derived,derived,2023-08-01,12 calendar months
+BSE 250 SmallCap,0.3014548421767149,2022-08-30,2023-08-31,derived,derived,2023-09-01,12 calendar months
+Nifty Smallcap 250,0.3591413004793178,2022-09-29,2023-09-29,official,official,2023-10-01,12 calendar months
+Nifty Smallcap 250,0.2913787955143008,2022-10-31,2023-10-31,official,official,2023-11-01,12 calendar months
+Nifty Smallcap 250,0.38244278802361786,2022-11-30,2023-11-30,official,official,2023-12-01,12 calendar months
+Nifty Smallcap 250,0.5024848164301938,2022-12-29,2023-12-29,official,official,2024-01-01,12 calendar months
+BSE IPO,0.6529872056142489,2023-01-31,2024-01-31,derived,derived,2024-02-01,12 calendar months
+BSE IPO,0.7211964754406095,2023-02-28,2024-02-29,derived,derived,2024-03-01,12 calendar months
+BSE IPO,0.7425586415863281,2023-03-28,2024-03-28,derived,derived,2024-04-01,12 calendar months
+BSE IPO,0.7652565020754023,2023-04-28,2024-04-30,derived,derived,2024-05-01,12 calendar months
+BSE IPO,0.6117762985348407,2023-05-31,2024-05-31,derived,derived,2024-06-01,12 calendar months
+Nifty Smallcap 250,0.6416545071490345,2023-06-28,2024-06-28,official,official,2024-07-01,12 calendar months
+Nifty Smallcap 250,0.5911114705561746,2023-07-31,2024-07-31,official,official,2024-08-01,12 calendar months
+Nifty Smallcap 250,0.5486482872993836,2023-08-30,2024-08-30,official,official,2024-09-01,12 calendar months
+BSE IPO,0.5604588981374952,2023-09-29,2024-09-30,derived,derived,2024-10-01,12 calendar months
+Nifty Smallcap 250,0.4857165951452922,2023-10-31,2024-10-31,official,official,2024-11-01,12 calendar months
+Nifty Smallcap 250,0.35953059098623985,2023-11-29,2024-11-29,official,official,2024-12-01,12 calendar months
+BSE IPO,0.31744011230366587,2023-12-29,2024-12-31,derived,derived,2025-01-01,12 calendar months
+Nifty Midcap 150,0.11599515290314621,2024-01-31,2025-01-31,official,official,2025-02-01,12 calendar months
+BSE Sensex,0.02175336002481676,2024-02-28,2025-02-28,derived,derived,2025-03-01,12 calendar months
+Nifty Midcap 150,0.08167377681724464,2024-03-28,2025-03-28,official,official,2025-04-01,12 calendar months
+BSE Sensex,0.0874256904785422,2024-04-30,2025-04-30,derived,derived,2025-05-01,12 calendar months
+BSE Sensex,0.1125989488804795,2024-05-30,2025-05-30,derived,derived,2025-06-01,12 calendar months
+BSE Sensex,0.06764163072802076,2024-06-28,2025-06-30,derived,derived,2025-07-01,12 calendar months
+BSE Sensex,0.002341487760174843,2024-07-31,2025-07-31,derived,derived,2025-08-01,12 calendar months
+BSE Sensex,-0.019326963903358196,2024-08-29,2025-08-29,derived,derived,2025-09-01,12 calendar months
+BSE Sensex,-0.038974188101179474,2024-09-30,2025-09-30,derived,derived,2025-10-01,12 calendar months
+BSE Sensex,0.06718328553876884,2024-10-31,2025-10-31,derived,derived,2025-11-01,12 calendar months
+BSE Sensex,0.09441071728847272,2024-11-28,2025-11-28,derived,derived,2025-12-01,12 calendar months

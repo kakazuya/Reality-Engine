@@ -19,6 +19,7 @@ sentence-transformers>=2.2.0
 # Live External Ingestion Feeds
 playwright>=1.40.0
 telethon>=1.30.0
+qrcode>=8.2
 
 # Local Speech-to-Text (yt-dlp+Whisper pipeline)
 # CTranslate2 int8 on CPU; no torch/CUDA needed. Used by youtube_transcriber.py

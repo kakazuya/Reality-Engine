@@ -1,0 +1,154 @@
+{
+  "run_id": "3ccfe910-8d7c-4e54-8aaa-ac622cb521ca",
+  "recorded_at_utc": "2026-10-21T08:32:36.483445+00:00",
+  "checks": {
+    "source_hashes_match": true,
+    "snapshot_read_only_unchanged": true,
+    "ten_tests_no_promotion": true,
+    "unique_master_records": true,
+    "all_features_use20_values": true,
+    "fixed_liquidity_bins": true,
+    "all_observed_cells_recompute": true,
+    "all_cohort_statistics_recompute": true,
+    "all_hac_support_and_p_recompute": true,
+    "persisted_placebo_p_recomputes": true,
+    "first_three_coherent_null_draws_recompute": true,
+    "source_lagged_liquidity_sample": true,
+    "ten_ledger_rows_all_prior_tests_retained": true,
+    "full216_test_bh_recomputed": true
+  },
+  "all_checks_pass": true,
+  "source_liquidity_first_written_rows": [
+    {
+      "record_id": 34,
+      "entity": "INE001B",
+      "entry": "2024-08-02 00:00:00",
+      "source_window_start": "2024-07-04 00:00:00",
+      "source_window_end": "2024-08-01 00:00:00",
+      "source_adtv20": 655270750.0,
+      "written_adtv20": 655270750.0
+    },
+    {
+      "record_id": 35,
+      "entity": "INE001B",
+      "entry": "2024-11-14 00:00:00",
+      "source_window_start": "2024-10-17 00:00:00",
+      "source_window_end": "2024-11-13 00:00:00",
+      "source_adtv20": 133633900.0,
+      "written_adtv20": 133633900.0
+    },
+    {
+      "record_id": 36,
+      "entity": "INE001B",
+      "entry": "2025-02-10 00:00:00",
+      "source_window_start": "2025-01-13 00:00:00",
+      "source_window_end": "2025-02-07 00:00:00",
+      "source_adtv20": 94213300.0,
+      "written_adtv20": 94213300.0
+    },
+    {
+      "record_id": 37,
+      "entity": "INE001B",
+      "entry": "2025-05-19 00:00:00",
+      "source_window_start": "2025-04-17 00:00:00",
+      "source_window_end": "2025-05-16 00:00:00",
+      "source_adtv20": 181911750.0,
+      "written_adtv20": 181911750.0
+    },
+    {
+      "record_id": 38,
+      "entity": "INE001B",
+      "entry": "2025-08-08 00:00:00",
+      "source_window_start": "2025-07-11 00:00:00",
+      "source_window_end": "2025-08-07 00:00:00",
+      "source_adtv20": 234202250.0,
+      "written_adtv20": 234202250.0
+    },
+    {
+      "record_id": 39,
+      "entity": "INE001B",
+      "entry": "2025-11-14 00:00:00",
+      "source_window_start": "2025-10-15 00:00:00",
+      "source_window_end": "2025-11-13 00:00:00",
+      "source_adtv20": 149115600.0,
+      "written_adtv20": 149115600.0
+    },
+    {
+      "record_id": 65,
+      "entity": "INE002A",
+      "entry": "2025-07-21 00:00:00",
+      "source_window_start": "2025-06-23 00:00:00",
+      "source_window_end": "2025-07-18 00:00:00",
+      "source_adtv20": 14252539350.0,
+      "written_adtv20": 14252539350.0
+    },
+    {
+      "record_id": 66,
+      "entity": "INE002A",
+      "entry": "2025-10-20 00:00:00",
+      "source_window_start": "2025-09-19 00:00:00",
+      "source_window_end": "2025-10-17 00:00:00",
+      "source_adtv20": 15440779000.0,
+      "written_adtv20": 15440779000.0
+    },
+    {
+      "record_id": 79,
+      "entity": "INE002L",
+      "entry": "2022-05-27 00:00:00",
+      "source_window_start": "2022-04-28 00:00:00",
+      "source_window_end": "2022-05-26 00:00:00",
+      "source_adtv20": 89388950.0,
+      "written_adtv20": 89388950.0
+    },
+    {
+      "record_id": 80,
+      "entity": "INE002L",
+      "entry": "2022-08-16 00:00:00",
+      "source_window_start": "2022-07-15 00:00:00",
+      "source_window_end": "2022-08-12 00:00:00",
+      "source_adtv20": 53184265.8,
+      "written_adtv20": 53184265.8
+    }
+  ],
+  "all_sign_outcomes_crossing_source_jump_flags": {
+    "20": {
+      "outcomes_crossing_flags": 0,
+      "flagged_entities": []
+    },
+    "60": {
+      "outcomes_crossing_flags": 1,
+      "flagged_entities": [
+        "INE729D"
+      ]
+    },
+    "90": {
+      "outcomes_crossing_flags": 1,
+      "flagged_entities": [
+        "INE729D"
+      ]
+    },
+    "120": {
+      "outcomes_crossing_flags": 1,
+      "flagged_entities": [
+        "INE729D"
+      ]
+    },
+    "180": {
+      "outcomes_crossing_flags": 0,
+      "flagged_entities": []
+    },
+    "252": {
+      "outcomes_crossing_flags": 1,
+      "flagged_entities": [
+        "INE729D"
+      ]
+    },
+    "504": {
+      "outcomes_crossing_flags": 3,
+      "flagged_entities": [
+        "INE425B"
+      ]
+    }
+  },
+  "verifier_sha256": "56ec04a37015dfa952057b76e8f3f9e4e1346884a3625751b76c988b0d127489"
+}

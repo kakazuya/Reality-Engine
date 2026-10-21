@@ -1,0 +1,20 @@
+{
+  "name": "local-repo",
+  "interface": {
+    "displayName": "Reality Engine Local Plugins"
+  },
+  "plugins": [
+    {
+      "name": "dsh-worker",
+      "source": {
+        "source": "local",
+        "path": "./plugins/dsh-worker"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

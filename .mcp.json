@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "dsh-worker": {
+      "type": "stdio",
+      "command": "C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe",
+      "args": [
+        "C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/dsh-worker/server/dsh_worker_mcp.py"
+      ],
+      "env": {
+        "DSH_WORKER_REPO_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
+        "PYTHONUTF8": "1"
+      }
+    }
+  }
+}

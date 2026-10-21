@@ -1,0 +1,11 @@
+# H01 selection-vs-timing follow-up — declared after the174-test extension
+
+The longer-horizon run03f51f86-ee1c-4e9f-af61-b67905a0817c shows increasing positive-PAT excess with holding time, but shuffled filing dates do equally well. A timestamp permutation retains stock identities and their earnings labels. It tests announcement timing, not whether earnings labels help choose stocks. Shivam asked to investigate signal value before culling; this targeted follow-up separates those questions.
+
+Freeze **10 additional tests**: both-known PAT, horizons90,120,180,252,504 × any nonzero sign / absolute surprise>=1. Positive minus negative is a research contrast; the negative leg is a control, never a short trade.
+
+Control strata are entry calendar month × prior-known200-session trend (-1,0,+1) × preceding20-session ADTV bins (<Rs1cr,Rs1–10cr,Rs10–100cr,>=Rs100cr). All features are known before admission. No historical industry or market-cap control is invented. Require>=3 positive and>=3 negative events in each contributing stratum. Weight cell contrasts by the smaller leg count. Show retained coverage, issuer concentration, monthly signs and both entry-market regimes. Missing/insufficient common support refuses a claim.
+
+Shuffle the PAT score labels999 times within those fixed strata of the broad both-known outcome-audit master. Keep prices/dates/issuer identities fixed. One global record-level score permutation per draw feeds every horizon and both thresholds. Recompute group memberships, common support and contrasts each time. Report one-sided selection placebo and current10-test max-absolute-cluster-t calibration. Ledger p is max(month-cluster p, horizon-lag monthly HAC p); BH includes all206 prior tests plus these10. This is explicitly exploratory follow-up after seeing earlier results.
+
+Use the same snapshot read-only, no2026 outcomes. Reuse saved source-verified long-grid outcomes; source-check lagged liquidity. Inspect medians and issuer contribution concentration descriptively without fitting new thresholds. Existing94 constrained books and their drawdown kills remain the deployment evidence; a label-selection association does not waive those failures or full data coverage. Preserve earlier reports/results. No new trading strategy, short book, commit/push/upload or paid worker.

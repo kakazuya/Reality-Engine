@@ -1,0 +1,8 @@
+{
+  "name": "dsh-worker",
+  "version": "0.1.0",
+  "description": "Deterministic local control plane for DeepSeek/dsh implementation workers on this Windows machine.",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "requires_local_executor": true
+}

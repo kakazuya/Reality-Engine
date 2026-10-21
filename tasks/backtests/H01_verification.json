@@ -1,0 +1,128 @@
+{
+  "run_id": "4d3bf641-0f00-4502-9321-8a4c10326ada",
+  "recorded_at_utc": "2026-10-21T08:03:42.817719+00:00",
+  "checks": {
+    "source_hashes_match": true,
+    "snapshot_unchanged_during_run": true,
+    "sixteen_variants": true,
+    "all_events_within_evidence": true,
+    "no_special_weekend_fills": true,
+    "current_numbers_known_before_open": true,
+    "decision_policies_exact": true,
+    "variant_csv_counts_and_means": true,
+    "all_placebo_draws_present": true,
+    "all_directional_p_values_valid": true,
+    "scheduled_exit_horizons_exact": true,
+    "exit_delays_exact": true,
+    "t_plus_one_entries_exact": true,
+    "event_tax_cost_matches_scalar": true,
+    "b5_matched_to_actual_exit": true,
+    "all_b5_choices_prior_and_weekday": true,
+    "entry_prices_match_source": true,
+    "returns_match_actual_source_close": true,
+    "first_available_exit_or_true_boundary_censoring": true,
+    "all_xbrl_dates_match_source": true,
+    "sample_bse_dates_match_source": true,
+    "book_cash_nonnegative": true,
+    "no_buys_after_kill": true,
+    "book_drawdown_and_kill_recompute": true,
+    "ledger_appended_sixteen": true,
+    "bh_keeps_all_prior_tests": true,
+    "buggy_runs_annotated_and_retained": true
+  },
+  "all_checks_pass": true,
+  "first_written_rows_source_comparison": [
+    {
+      "file": "INTEGRATED_FILING_INDAS_1441856_16052025111514_WEB.xml",
+      "entity": "INE001B",
+      "source_bse_ist": "2025-05-16T20:21:31.887",
+      "source_subject": "Audited Financial Results For The Quarter And Financial Year Ended March 31, 2025",
+      "source_xbrl_ist": "2025-05-16 23:15:14",
+      "written_entry": "2025-05-19 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INTEGRATED_FILING_INDAS_1506093_07082025081917_WEB.xml",
+      "entity": "INE001B",
+      "source_bse_ist": "2025-08-07T19:45:30.63",
+      "source_subject": "Results- Unaudited Financial Results For The Quarter Ended June 30, 2025.",
+      "source_xbrl_ist": "2025-08-07 20:19:17",
+      "written_entry": "2025-08-08 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INTEGRATED_FILING_INDAS_1574534_13112025103510_WEB.xml",
+      "entity": "INE001B",
+      "source_bse_ist": "2025-11-13T19:54:06.967",
+      "source_subject": "Results- Unaudited Financial Results (Standalone And Consolidated) For The Quarter And Half Year Ended September 30, 2025.",
+      "source_xbrl_ist": "2025-11-13 22:35:11",
+      "written_entry": "2025-11-14 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INTEGRATED_FILING_INDAS_1487275_18072025081722_WEB.xml",
+      "entity": "INE002A",
+      "source_bse_ist": "2025-07-18T19:33:19.293",
+      "source_subject": "Consolidated And Standalone Unaudited Financial Results For The Quarter Ended June 30, 2025",
+      "source_xbrl_ist": "2025-07-18 20:17:22",
+      "written_entry": "2025-07-21 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INTEGRATED_FILING_INDAS_1552809_17102025073643_WEB.xml",
+      "entity": "INE002A",
+      "source_bse_ist": "2025-10-17T19:00:55.18",
+      "source_subject": "Consolidated And Standalone Unaudited Financial Results For The Quarter And Half Year Ended September 30, 2025",
+      "source_xbrl_ist": "2025-10-17 19:36:44",
+      "written_entry": "2025-10-20 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INDAS_657095_3334_12082022163516_WEB.xml",
+      "entity": "INE002L",
+      "source_bse_ist": "2022-08-12T14:23:05.293",
+      "source_subject": "Board Meeting Outcome for Outcome Of Meeting Of The Board Of Directors - Approval Of Financial Results For The Quarter Ending 30Th June,2022",
+      "source_xbrl_ist": "2022-08-12 16:38:09",
+      "written_entry": "2022-08-16 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INDAS_861790_5673_11112022182908_WEB.xml",
+      "entity": "INE002L",
+      "source_bse_ist": "2022-11-11T15:51:19.29",
+      "source_subject": "Board Meeting Outcome for Outcome Of Board Meeting - Financial Results For The Period Ending 30.09.2022",
+      "source_xbrl_ist": "2022-11-11 18:30:35",
+      "written_entry": "2022-11-14 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INDAS_111820_1223771_13082024061004.xml",
+      "entity": "INE002L",
+      "source_bse_ist": "2024-08-13T17:48:17.063",
+      "source_subject": "Financial Results For The Period Ending 30.06.2024",
+      "source_xbrl_ist": "2024-08-13 18:12:21",
+      "written_entry": "2024-08-14 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INDAS_114154_1297274_05112024044123.xml",
+      "entity": "INE002L",
+      "source_bse_ist": "2024-11-05T14:46:14.96",
+      "source_subject": "Financial Results For The Period Ended 30.09.2024",
+      "source_xbrl_ist": "2024-11-05 16:41:31",
+      "written_entry": "2024-11-06 00:00:00",
+      "policy": "bse_next_open"
+    },
+    {
+      "file": "INDAS_661963_3127_13082022152101_WEB.xml",
+      "entity": "INE006I",
+      "source_bse_ist": "2022-08-12T15:49:12.837",
+      "source_subject": "Board Meeting Outcome for Outcome Of Board Meeting",
+      "source_xbrl_ist": "2022-08-13 15:24:02",
+      "written_entry": "2022-08-16 00:00:00",
+      "policy": "bse_next_open"
+    }
+  ],
+  "event_rows_checked": 59082,
+  "verifier_sha256": "c73305a1522f2f54545427e794e2f5a1997b373e5ba89cc6608db60144a72ea4"
+}

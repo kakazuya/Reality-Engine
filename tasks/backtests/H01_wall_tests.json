@@ -1,0 +1,11 @@
+{
+  "total_tests": 107,
+  "passed": true,
+  "modules": {
+    "reality_engine.tests.test_harness_h01_wall": 10,
+    "reality_engine.tests.test_harness_h01_selection": 4,
+    "reality_engine.tests.test_harness_h01_long": 7,
+    "reality_engine.tests.test_harness_h01": 49,
+    "reality_engine.tests.test_horizon_excess": 37
+  }
+}

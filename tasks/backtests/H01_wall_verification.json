@@ -1,0 +1,136 @@
+{
+  "run_id": "34f00e71-a320-4d97-88df-36ff8d2e3cee",
+  "recorded_at_utc": "2026-10-21T09:15:38.627709+00:00",
+  "checks": {
+    "eight_books_and_variants": true,
+    "source_hashes_match": true,
+    "source_snapshot_unchanged": true,
+    "baseline_matches_prior_saved_nav": true,
+    "baseline_daily_attribution_reconciles": true,
+    "all_source_fill_prices": true,
+    "all_fifo_fees_taxes": true,
+    "all_cash_and_nav_replay": true,
+    "all_kill_dates_and_no_later_buys": true,
+    "caps_use_open_pretrade_nav": true,
+    "risk_decisions_use_source_eod_information": true,
+    "risk_fills_next_real_open": true,
+    "no_same_day_risk_reentry": true,
+    "risk_admissions_use_only_prior_quotes": true,
+    "all4285_fall_paths_recompute": true,
+    "sixty_monthly_observations": true,
+    "all999_bootstrap_draws_recompute": true,
+    "all224_tests_retained_and_bh_recomputes": true
+  },
+  "all_checks_pass": true,
+  "worst_stock_stop_gaps": [
+    {
+      "guard": "cap10_trail8_market200",
+      "entity": "INE943D",
+      "decision_date": "2022-12-22",
+      "fill_date": "2022-12-23",
+      "reason": "trail8",
+      "actual_price": 717.9259081961609,
+      "threshold": 838.2939910400661,
+      "fill_below_threshold": -0.14358695652173925
+    },
+    {
+      "guard": "cap10_trail8_market200",
+      "entity": "INE126M",
+      "decision_date": "2022-08-30",
+      "fill_date": "2022-09-01",
+      "reason": "trail8",
+      "actual_price": 49.0,
+      "threshold": 57.132000000000005,
+      "fill_below_threshold": -0.14233704403836733
+    },
+    {
+      "guard": "cap10_trail8_market200",
+      "entity": "INE153T",
+      "decision_date": "2022-12-22",
+      "fill_date": "2022-12-23",
+      "reason": "trail8",
+      "actual_price": 163.31709074552896,
+      "threshold": 182.767876449469,
+      "fill_below_threshold": -0.1064234376510782
+    },
+    {
+      "guard": "cap10_stop5_market200",
+      "entity": "INE540H",
+      "decision_date": "2022-08-16",
+      "fill_date": "2022-08-17",
+      "reason": "fixed5",
+      "actual_price": 2713.8335680469804,
+      "threshold": 3016.0603169991623,
+      "fill_below_threshold": -0.10020580399164003
+    },
+    {
+      "guard": "cap10_trail8_market200",
+      "entity": "INE704H",
+      "decision_date": "2022-08-22",
+      "fill_date": "2022-08-23",
+      "reason": "trail8",
+      "actual_price": 130.74532186036382,
+      "threshold": 144.24301317939222,
+      "fill_below_threshold": -0.09357604934556929
+    },
+    {
+      "guard": "cap10_trail8_market200",
+      "entity": "INE643K",
+      "decision_date": "2022-12-23",
+      "fill_date": "2022-12-26",
+      "reason": "trail8",
+      "actual_price": 196.5191849713759,
+      "threshold": 216.78429871100096,
+      "fill_below_threshold": -0.09348054199552913
+    },
+    {
+      "guard": "cap10_stop5_market200",
+      "entity": "INE142A",
+      "decision_date": "2022-12-21",
+      "fill_date": "2022-12-22",
+      "reason": "fixed5",
+      "actual_price": 39.0,
+      "threshold": 42.68828507646646,
+      "fill_below_threshold": -0.08640040399514115
+    },
+    {
+      "guard": "cap10_trail8_market200",
+      "entity": "INE725A",
+      "decision_date": "2022-08-25",
+      "fill_date": "2022-08-26",
+      "reason": "trail8",
+      "actual_price": 106.37545896115321,
+      "threshold": 116.25887883570466,
+      "fill_below_threshold": -0.0850121726059182
+    },
+    {
+      "guard": "cap10_trail8_market200",
+      "entity": "INE947Q",
+      "decision_date": "2022-11-29",
+      "fill_date": "2022-11-30",
+      "reason": "trail8",
+      "actual_price": 402.1022141994108,
+      "threshold": 438.4468153393589,
+      "fill_below_threshold": -0.08289397908345464
+    },
+    {
+      "guard": "cap10_stop5_market200",
+      "entity": "INE126M",
+      "decision_date": "2022-09-05",
+      "fill_date": "2022-09-06",
+      "reason": "fixed5",
+      "actual_price": 40.05,
+      "threshold": 43.51,
+      "fill_below_threshold": -0.07952194897724663
+    }
+  ],
+  "risk_exits_from_eventual_positive_excess_opportunities": {
+    "cap10_stop5": 12,
+    "cap10_trail8": 7,
+    "cap10_sma50": 6,
+    "cap10_market200": 21,
+    "cap10_trail8_market200": 300,
+    "cap10_stop5_market200": 163
+  },
+  "verifier_sha256": "eddf1a2d347ea5b8e5939edbc56ff25a6b09eebb47c4d6c537d0c541fe25736f"
+}

@@ -1,0 +1,7 @@
+{
+  "harness_tests": 49,
+  "horizon_excess_tests": 37,
+  "total_tests": 86,
+  "passed": true,
+  "command": "python -m unittest reality_engine.tests.test_harness_h01 reality_engine.tests.test_horizon_excess -q"
+}
