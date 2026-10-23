@@ -10,6 +10,18 @@
         "DSH_WORKER_REPO_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
         "PYTHONUTF8": "1"
       }
+    },
+    "reality-data": {
+      "type": "stdio",
+      "command": "C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe",
+      "args": [
+        "C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/reality-data/server/server.py"
+      ],
+      "env": {
+        "REALITY_DATA_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model/reality_engine/data",
+        "REALITY_DATA_REPO_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
+        "PYTHONUTF8": "1"
+      }
     }
   }
 }

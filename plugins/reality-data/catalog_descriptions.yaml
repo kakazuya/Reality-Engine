@@ -1,0 +1,1572 @@
+truth_duckdb:
+  description: 'Dated, read-only research snapshot (2026-10-19) built from the live SQLite DBs: clean entity-level prices with split/bonus/dividend
+    adjustment and point-in-time known_at timestamps (date-only sources stamped 23:59:59 IST), plus consolidated results/AR/deck/concall/ownership/policy
+    tables. Prefer this for historical/as-of research; SQLite is the live source with newer rows and full text.'
+  tables:
+    adj_factor:
+      description: 'Price-adjustment events: one row per entity/ex-date/kind (split, bonus, consolidation, rights, inferred) with the multiplicative
+        price factor.'
+      key_columns:
+      - entity_id
+      - ex_date
+      - kind
+      notes: entity_id is the 7-char ISIN issuer code. Pre-ex prices are multiplied by price_factor; inferred rows come from clean-ratio jumps.
+    adj_factor_cum:
+      description: 'Cumulative log price-adjustment factor per entity/ex-date: run_l (to date) and tot_l (all actions).'
+      key_columns:
+      - entity_id
+      - ex_date
+      notes: Internal helper for px_*_adj; exp(tot_l - run_l) is the cum_price_factor. Not a research table.
+    ar_docs:
+      description: One row per annual report (doc_id) with ISIN/symbol/company, fiscal year and source, filed_at, sha256, page/piece counts, status
+        and PIT known_at.
+      key_columns:
+      - doc_id
+      - isin
+      - symbol
+      notes: Snapshot copy of ar_facts.ar_docs (path excluded) with known_at_utc/precision. known_at is the filing time, so it is safe for as-of
+        joins.
+    ar_facts:
+      description: 'One extracted annual-report fact per row: doc/piece/page, category/item, raw and numeric value, unit, period, basis, quote
+        and model, with PIT known_at.'
+      key_columns:
+      - doc_id
+      - isin
+      - symbol
+      - fiscal_year
+      notes: 32.4M rows copied from ar_facts.db with known_at_utc added; units vary, values may be NULL, duplicates across models/prompts can
+        exist. Filter known_at_utc < t for PIT.
+    board_meetings:
+      description: 'One row per board-meeting intimation: symbol/ISIN, meeting date, purpose, description, intimation time and attachment, with
+        PIT known_at.'
+      key_columns:
+      - symbol
+      - isin
+      - meeting_date
+      notes: Snapshot copy with known_at_utc; use for PIT event studies. Duplicate intimation/purpose rows are possible.
+    bse_ann:
+      description: 'BSE announcements: one row per NEWSID with scrip code, headline/subject, category, timestamps, attachment and derived symbol,
+        plus PIT known_at.'
+      key_columns:
+      - NEWSID
+      - SCRIP_CD
+      - symbol
+      notes: 1.95M rows; metadata only (no body). known_at_utc uses the dissemination time, so it is PIT-safe. Join to ISIN via bse_code_isin/master.
+    bse_code_isin:
+      description: 'BSE scrip code to ISIN mapping windows: first/last date and source.'
+      key_columns:
+      - sc_code
+      - isin
+      - first_date
+      notes: Use an ASOF join on date to survive code/ISIN changes; there can be multiple windows per code.
+    bse_deals:
+      description: 'BSE bulk/block deals: date, deal type, scrip code/name, client, side, quantity, price and PIT known_at.'
+      key_columns:
+      - date
+      - deal_type
+      - sc_code
+      notes: Snapshot copy of mkt_bse_deals with known_at_utc (date-only => end-of-day IST). No ISIN; map sc_code.
+    bse_insider:
+      description: 'BSE insider/PIT disclosure lines: company, ISIN, person and raw_json, with PIT columns.'
+      key_columns:
+      - file
+      - line_no
+      - isin
+      notes: known_at_utc is NULL/unparsed for this table - treat as unknown PIT and do not use for as-of filters. Prefer nse_insider where possible.
+    bse_master:
+      description: 'BSE scrip master snapshot: sc_code, ISIN, BSE symbol, name, status, group and face value.'
+      key_columns:
+      - sc_code
+      - isin
+      notes: Not time-versioned; current master only. 65k rows including inactive scrips.
+    cc_docs:
+      description: 'One row per concall document: doc_id, ISIN/symbol, filing time, processing status/model, token stats, period discussed and
+        PIT known_at.'
+      key_columns:
+      - doc_id
+      - isin
+      - symbol
+      notes: Snapshot copy of concall_facts.cc_docs (raw_json excluded) with known_at_utc. doc_id joins corporate_documents.id.
+    cc_item_checks:
+      description: 'QA checks per concall item: quote/period/direction support, speaker, metric, value range and prior-doc comparison.'
+      key_columns:
+      - doc_id
+      - list_name
+      - idx
+      notes: Copied as-is (no PIT column); joins cc_items. 0/1 booleans; missing rows mean unchecked.
+    cc_items:
+      description: 'Extracted concall items: one row per doc/list/index with metric, textual value, unit, period, basis, direction/firmness and
+        quote, plus PIT known_at.'
+      key_columns:
+      - doc_id
+      - list_name
+      - idx
+      - isin
+      notes: value is TEXT (ranges/percentages), not numeric; known_at_utc from the filing. Check cc_item_checks for verification.
+    circuit_hits:
+      description: 'Price-band circuit hits: one row per date/symbol/series with H or L, plus PIT known_at.'
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: Snapshot has 482k rows vs ~243k in the current SQLite copy - use the snapshot for the fuller history. Band percent is in price_bands.
+    company_industry:
+      description: 'NSE classification snapshot: one row per symbol with macro/sector/industry/basic industry, index list and listing date.'
+      key_columns:
+      - symbol
+      - isin
+      notes: Not time-versioned; classification as of the snapshot build.
+    corp_action:
+      description: 'Parsed corporate actions after dedupe: one row per entity/ex-date/kind with params, source, factor, observed/expected ratios,
+        validation status and residual.'
+      key_columns:
+      - entity_id
+      - ex_date
+      - kind
+      notes: Use this for split/bonus/dividend math. factor_status parsed/missing_ratio/inferred_from_price; residual compares observed with combined
+        factor. corporate_actions has the official NSE rows.
+    corp_action_raw:
+      description: 'Raw corporate-action events from NSE/BSE/SME before dedupe: entity/ISIN, ex-date, kind, params JSON, text and source.'
+      key_columns:
+      - entity_id
+      - isin
+      - ex_date
+      - kind
+      notes: 36.5k rows incl unparsed/restructure events; some entity_id empty. corp_action is the deduped, factor-bearing table.
+    corporate_actions:
+      description: 'Official NSE corporate actions: one row per action with ISIN/symbol, type, ex/record/book-closure/no-delivery dates, face
+        value and source, plus PIT known_at.'
+      key_columns:
+      - isin
+      - symbol
+      - ex_date
+      - action_type
+      notes: Snapshot copy of the SQLite table with known_at_utc. Use corp_action for parsed price factors; this is the reference list.
+    deck_chart_trends:
+      description: 'Chart trend labels from investor presentations: sha256/page, symbol/ISIN, known_at, measure, span and trend text.'
+      key_columns:
+      - sha256
+      - page_no
+      - measure
+      notes: Model-labeled trends (rising/falling/stable), not numeric series; known_at is the deck publication time.
+    deck_facts:
+      description: 'One extracted numeric deck fact per row: ISIN/symbol/doc_type from the page, sha256/page, model, metric, period, raw number,
+        value, unit and final flag, plus PIT known_at.'
+      key_columns:
+      - isin
+      - symbol
+      - sha256
+      - page_no
+      - metric
+      notes: 13.6M rows; values keep their printed unit (Rs mn, %, acres, ...) and are not normalized. is_final=1 selects the chosen extraction;
+        known_at from the page.
+    deck_pages:
+      description: 'One row per deck page per prompt: doc/symbol/ISIN, doc_type, route, fact count, status and PIT known_at.'
+      key_columns:
+      - sha256
+      - page_no
+      - prompt_version
+      notes: Bridge from deck sha256 to symbol/ISIN/known_at; status ok/skipped. 815k page-reader rows.
+    deck_sources:
+      description: 'One row per deck source: symbol/ISIN, exchange code, known_at, title, URL, sha256, size and fetch status.'
+      key_columns:
+      - source
+      - source_id
+      notes: known_at_utc is the publication time; use it for PIT. local_path is excluded from the snapshot.
+    div_factor:
+      description: 'Dividend total-return factors: one row per entity/ex-date with tr_factor=(prev_close-amount)/prev_close.'
+      key_columns:
+      - entity_id
+      - ex_date
+      notes: Used to build tr_close; only dividends with a parsed amount and amount < prev_close appear.
+    div_factor_cum:
+      description: 'Cumulative log dividend factor per entity/ex-date: run_l and tot_l.'
+      key_columns:
+      - entity_id
+      - ex_date
+      notes: Internal helper for tr_close; not a research table.
+    entity:
+      description: 'One row per issuer entity (7-char ISIN issuer code): first/last trade date, trading days, latest ISIN/symbol and NSE/BSE flags.'
+      key_columns:
+      - entity_id
+      notes: Entity survives splits/face-value changes/renames; demergers get a new issuer code. 6,250 entities incl delisted.
+    etf_px:
+      description: 'ETF daily prices: date, symbol, ISIN, close, volume and traded value in rupees.'
+      key_columns:
+      - date
+      - symbol
+      - isin
+      notes: Snapshot copy from the SQLite feed; unadjusted.
+    events:
+      description: 'Unified company event timeline: one row per event across announcements, results, concalls, decks, ARs, shareholding, insider/SAST,
+        deals, board meetings, PEAD posts and order alerts, with ISIN, known_at_utc, kind, source_ref and summary.'
+      key_columns:
+      - isin
+      - known_at_utc
+      - kind
+      - source_ref
+      notes: 3.26M rows; isin can be NULL for unmapped rows. Use this for per-company event scans, then join the source table via kind+source_ref.
+        PIT via known_at_utc.
+    fii_dii_cash:
+      description: Daily FII/DII cash flows in Rs crore plus Nifty close/change, with PIT known_at.
+      key_columns:
+      - date
+      notes: Snapshot copy; known_at for a date-only row is end of that day IST.
+    fund_nav:
+      description: 'Daily fund/ETF NAV: ISIN, date, NAV, AMFI scheme code/name, with PIT known_at.'
+      key_columns:
+      - isin
+      - date
+      notes: Snapshot copy; known_at is day-precision. Includes ETFs as well as mutual funds.
+    index_tri:
+      description: Index total-return and price levels per date with source/method.
+      key_columns:
+      - index_name
+      - date
+      notes: method='derived' means TRI was approximated from price + dividend yield, not the official series.
+    nsdl_fpi_daily:
+      description: 'FPI flows by date/asset class/route: gross purchase/sales, net Rs crore, net USD mn and USDINR, with PIT known_at.'
+      key_columns:
+      - date
+      - asset_class
+      - route
+      notes: known_at is set to the end of the next business day (NSDL publishes next day) - conservative for PIT.
+    nse_deals:
+      description: 'NSE bulk/block deals: date, deal type, symbol, client, side, quantity, price and PIT known_at.'
+      key_columns:
+      - date
+      - deal_type
+      - symbol
+      notes: Snapshot copy; no ISIN (join master_companies.nse_symbol or symbol_isin_history). known_at is date-end IST.
+    nse_insider:
+      description: SEBI PIT insider disclosures with person category, transaction type, quantities, buy/sell values, dates and PIT known_at.
+      key_columns:
+      - did
+      - pid
+      - symbol
+      notes: known_at from dissemination time; values in rupees. Symbol may not resolve to the current master.
+    nse_master:
+      description: 'NSE symbol master: one row per symbol with ISIN, name and segment.'
+      key_columns:
+      - symbol
+      - isin
+      notes: Current-master snapshot (3,178 rows); not time-versioned - use nse_symbol_isin for date windows.
+    nse_pit_filings:
+      description: 'PIT filing metadata: app_id/segment, symbol/company, regulation, submission/revision info, XBRL/iXBRL URLs and PIT known_at.'
+      key_columns:
+      - app_id
+      - segment
+      notes: No parsed values; join nse_pit_xbrl_facts via the xml file name.
+    nse_pit_xbrl_facts:
+      description: 'Long XBRL facts from PIT filings: file/context/concept/seq with value and unit strings.'
+      key_columns:
+      - xml_file
+      - context_id
+      - concept
+      notes: Values are text and units unnormalized; no PIT column (inherits the filing's known_at).
+    nse_sast:
+      description: 'SAST Reg 29 disclosures: symbol, company, acquirer, sale/acquisition and mode, with PIT known_at.'
+      key_columns:
+      - rec_key
+      - symbol
+      notes: Headline fields only; detailed quantities stay in the source JSON (not copied).
+    nse_short:
+      description: NSE daily short-selling quantities per symbol, with PIT known_at.
+      key_columns:
+      - date
+      - symbol
+      notes: Snapshot copy; quantity in shares. Sparse coverage.
+    nse_symbol_isin:
+      description: 'NSE symbol-to-ISIN mapping windows: first/last date and source.'
+      key_columns:
+      - symbol
+      - isin
+      - first_date
+      notes: Use ASOF joins to map a historical symbol to its ISIN on a date; multiple windows per symbol are normal.
+    pib_releases:
+      description: 'Policy-relevant PIB releases: PRID, release/posting dates, ministry, title, relevance flag and doc_id (metadata only).'
+      key_columns:
+      - prid
+      - doc_id
+      notes: Snapshot copy of the policy-relevant subset only, and body text is excluded. For full PIB text use SQLite pib_releases / pib_releases_fts.
+    pit_report:
+      description: 'Per-table point-in-time copy audit: table, row counts before/after, count_ok, copy mode, rows with known_at and unparsed count.'
+      key_columns:
+      - table_name
+      notes: Use to judge whether a snapshot table's PIT coverage is trustworthy; n_time_unparsed should be 0.
+    policy_events:
+      description: 'Extracted policy events: source, title, policy/instrument/stage, direction, sectors/companies/products, amount in Rs crore,
+        effective dates, quote and PIT known_at.'
+      key_columns:
+      - id
+      - source_kind
+      - source_id
+      notes: amount_inr_crore is Rs crore when present; sectors/companies are JSON strings. PIT known_at from the source publication.
+    price_bands:
+      description: 'Daily price band per symbol/series: 2/5/10/20/40 percent or No Band, with remarks and PIT known_at.'
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: 4.04M rows - fuller than the ~1.05M-row SQLite copy; use the snapshot for history. known_at is date-end IST.
+    px_bse:
+      description: 'Unified BSE equity daily rows: date, sc_code, ISIN/symbol/name/group, OHLC, volume, value_inr, trades and delivery, plus entity_id.'
+      key_columns:
+      - date
+      - sc_code
+      - isin
+      notes: Raw (unadjusted) daily bars after exchange-format unification; equity filter is applied. Use px_bse_adj or px_daily for adjusted/TR
+        prices.
+    px_bse_adj:
+      description: BSE daily rows with cumulative price/dividend factors and adjusted OHLC/volume plus total-return close.
+      key_columns:
+      - date
+      - sc_code
+      - isin
+      notes: adj_* multiply raw prices by cum_price_factor; tr_close also applies cum_div_factor. Use px_daily for the primary NSE-preferred series.
+    px_daily:
+      description: 'Primary daily price series: one row per issuer entity per date, NSE row when it traded that day else BSE, with raw and adjusted
+        OHLC/volume plus total-return close.'
+      key_columns:
+      - entity_id
+      - date
+      notes: 'The research price table: survivorship-safe (delisted kept), entity is the issuer code, segment holds NSE series or BSE group. Use
+        adj_* or tr_close, never raw close, for returns across corporate actions. No known_at column: treat a bar as known after that day''s 18:00
+        IST close.'
+    px_nse:
+      description: 'Unified NSE equity daily rows: date, symbol/series/ISIN, OHLC, volume, value_inr, trades and delivery, plus entity_id.'
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: Raw bars with turnover normalized to rupees (from either bhavcopy format). Equity series only. Use px_nse_adj/px_daily for adjusted
+        prices.
+    px_nse_adj:
+      description: NSE daily rows with cumulative price/dividend factors and adjusted OHLC/volume plus total-return close.
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: adj_* and tr_close are derived from adj_factor/div_factor; use for returns. Adjustments are computed as of the snapshot, not as-known-at.
+    px_primary_raw:
+      description: 'Internal one-row-per-entity/day close/open used to compute corporate-action factors: NSE preferred, else BSE, with exchange
+        and previous close/date.'
+      key_columns:
+      - entity_id
+      - date
+      notes: Not a research series (raw, no adjustment); use px_daily. Included because factor validation needs it.
+    results_facts:
+      description: 'Long XBRL facts from results filings: file/context/concept with period start/end/instant, value, unit, decimals and period_kind.'
+      key_columns:
+      - file
+      - concept
+      - context
+      notes: 13.9M rows; context decides the period (OneD quarter, FourD YTD, *I instant, PY_I prior year). Monetary values are rupees. Stored
+        dates are unreliable before 2022.
+    results_filings:
+      description: 'One row per results XBRL filing: taxonomy, company/ISIN/symbol, period, consolidation/audit flags, dates, opinion, fact count,
+        status, trading ISIN resolution and PIT known_at.'
+      key_columns:
+      - file
+      - isin
+      - symbol
+      notes: file joins results_facts/results_key; known_at from dissemination/broadcast/filing time. same_issuer flags stale-ISIN resolutions.
+    results_key:
+      description: One row per results filing with common income-statement concepts pivoted into columns and YTD revenue/PAT, plus PIT known_at.
+      key_columns:
+      - file
+      - trading_isin
+      - symbol
+      notes: Monetary values are rupees. Banks/NBFCs use a different taxonomy, so many columns are NULL; consolidated and standalone are separate
+        rows.
+    security_master:
+      description: 'ISIN-keyed security registry incl delisted names: issuer, NSE/BSE codes, BSE status, segment, listing/first/last trade and
+        last-seen dates.'
+      key_columns:
+      - isin
+      notes: Snapshot copy; in_master_companies says whether the ISIN is in the active master. Broader than master_companies.
+    shp_index:
+      description: 'Shareholding filing summary: symbol/ISIN, quarter end, broadcast/submission dates, promoter/public percent, revised flag and
+        PIT known_at.'
+      key_columns:
+      - record_id
+      - isin
+      - quarter_end
+      notes: Percent values, not fractions. Detailed promoter/FII/DII splits are NOT copied to the snapshot - use SQLite shp_facts/shareholding
+        view for those.
+    snapshot_meta:
+      description: 'One row of snapshot metadata: snapshot_date, build start/end and source DB path.'
+      key_columns:
+      - snapshot_date
+      notes: 'Read this to know which date the snapshot represents; backtests record it. PIT convention: naive exchange times are IST, date-only
+        sources are stamped 23:59:59 IST, tg_* timestamps are already UTC.'
+    symbol_isin_history:
+      description: 'Symbol-to-ISIN mapping windows per exchange: first/last date and trading-day count.'
+      key_columns:
+      - exchange
+      - symbol
+      - isin
+      - first_date
+      notes: Snapshot copy; use ASOF joins for historical symbol/ISIN mapping.
+    tax_rules:
+      description: Capital-gains and transaction-tax rules with effective dates, basis, statute source and verification flag.
+      key_columns:
+      - rule
+      - effective_from
+      notes: Values are fractions (0.15=15%) except *_inr/*_months. Apply by sell date; verify the current Finance Act.
+    tg_company_mentions:
+      description: 'Company mentions in Telegram posts: topic/post/message, timestamp, symbol/ISIN and match source, with PIT known_at.'
+      key_columns:
+      - post_id
+      - isin
+      notes: Symbol resolution is heuristic; use for discovery. post_ts_utc is the post time.
+    tg_order_schedule:
+      description: Order-value schedule by order ID/fiscal year/quarter in Rs crore.
+      key_columns:
+      - order_id
+      - fy
+      - q
+      notes: Parsed from Telegram; no PIT column (inherits the order post time via tg_orders).
+    tg_orders:
+      description: 'Order wins extracted from Telegram: company/customer/description, order and annualized value in Rs crore, duration, revenue
+        context and filing URL, with PIT known_at.'
+      key_columns:
+      - order_id
+      - isin
+      - symbol
+      notes: Extraction may be manual/LLM (kind); value_cr is Rs crore. Verify against filing_url; known_at is the post time.
+    tg_pead_signals:
+      description: 'PEAD labels from Telegram results posts: company text, label, mapped symbol/ISIN, screener/filing links and PIT known_at.'
+      key_columns:
+      - post_id
+      - symbol
+      notes: Labels are free text; is_test_post=1 rows are test data and should be excluded.
+    truth_report:
+      description: 'One row containing the snapshot build report JSON: row counts, unmapped rows, actions by kind/status, residual jumps and entity
+        coverage.'
+      key_columns:
+      - report_json
+      notes: Read it to quantify coverage gaps before relying on the price layer.
+    unexplained_jumps:
+      description: 'Overnight price jumps near a clean ratio with no recorded corporate action: entity/date, prev/current close, exchange, ratio
+        and clean_ratio.'
+      key_columns:
+      - entity_id
+      - date
+      notes: 1,239 flagged events; inferred clean ratios feed adj_factor as kind='inferred'. Treat as suspected unrecorded actions, not confirmed
+        events.
+equity_intelligence:
+  description: 'Live primary equity database: company master, normalized daily prices, financials, corporate actions/documents, ownership/market
+    flows, policy/macro/ripple layers, substrate analytics, Telegram signals and quarantine. Use it for latest/live data and full text; use truth_duckdb
+    for adjusted price history and PIT-stamped research tables. Mixed raw and derived; check per-table notes.'
+  tables:
+    etf_premium:
+      description: 'One row per ETF per trading day: close, NAV and premium/discount percent, joined from etf_px and fund_nav.'
+      key_columns:
+      - isin
+      - symbol
+      - date
+      notes: Derived view; only rows with both a price and a NAV survive. premium_pct = 100*(close/nav-1); value_inr in rupees.
+    shareholding:
+      description: 'One row per shareholding filing (record_id): promoter/pledged/encumbered, FII, DII, MF, insurance, retail and FPI-limit percentages
+        already multiplied by 100.'
+      key_columns:
+      - symbol
+      - isin
+      - quarter_end
+      - record_id
+      notes: Derived view over shp_index+shp_facts; NULL where the filing lacks that context. Revised filings are kept; use broadcast_at for point-in-time
+        filtering.
+    v_document_pit:
+      description: 'One row per corporate_documents row with a resolved public timestamp: pit_ts (BSE dissemination else publication date), pit_date
+        and pit_basis.'
+      key_columns:
+      - id
+      - isin
+      - symbol
+      - pit_date
+      notes: Use for as-of filters on document metadata. pit_basis tells the source; 'unknown' means no reliable timestamp, so exclude from PIT
+        queries.
+    amfi_months:
+      description: 'Operational ledger: one row per AMFI NAVAll month loaded into fund_nav.'
+      key_columns:
+      - month
+      notes: Fetch/resume bookkeeping, not market data. month is YYYY-MM.
+    annual_financials:
+      description: 'One row per ISIN per fiscal year: revenue, EBITDA, net profit, EPS, margins, ROCE/ROE, debt, equity and cash-flow, all in
+        Rs crore.'
+      key_columns:
+      - isin
+      - symbol
+      - fiscal_year
+      notes: Mostly yfinance-derived and partly placeholder (all-zero rows exist, e.g. early ADANIENSOL); source column distinguishes yfinance/bse_*.
+        Prefer results_xbrl/quarterly_financials for reported figures.
+    annual_financials_placeholder_archive:
+      description: Annual-financial rows moved out of annual_financials because a synthetic INE_AUTO* ISIN duplicated a real ISIN; includes archived_reason/archived_ts.
+      key_columns:
+      - isin
+      - symbol
+      - fiscal_year
+      notes: Quarantine table - never use in analysis (AGENTS.md rule 13). Real ISIN stands in the main table.
+    ar_doc_identity:
+      description: 'Hand-review overlay: one row per checked annual-report doc_id with verdict (ok/wrong_company/unresolved), true company/ISIN
+        and evidence.'
+      key_columns:
+      - doc_id
+      notes: Only a small hand-reviewed subset (107 docs in this snapshot) of ar_facts.db ar_docs; drop wrong_company doc_ids before reading AR
+        facts. doc_id matches ar_docs.doc_id / corporate_documents.id.
+    ar_doc_scan:
+      description: One row per annual-report doc_id with the automatic identity-scan verdict and reason.
+      key_columns:
+      - doc_id
+      notes: Verdicts include ok/former_name/listed_only/name_late/unknown; broader but weaker than ar_doc_identity, which is authoritative where
+        it has a verdict.
+    board_meetings:
+      description: 'One row per board-meeting intimation: symbol, meeting date, purpose, description and intimation timestamp.'
+      key_columns:
+      - symbol
+      - isin
+      - meeting_date
+      notes: NSE corporate filings; dates are ISO text; purpose is free text. attached PDF URL is kept in attachment.
+    bse_annual_reports:
+      description: 'BSE annual-report file registry: one row per scrip code + file key, with year and BSE timestamp.'
+      key_columns:
+      - scripcode
+      - file_key
+      - year
+      notes: Discovery metadata only (no text). Map scripcode to ISIN with bse_code_isin/master_companies(BSE code).
+    bse_annual_reports_fetch:
+      description: 'Operational fetch ledger: one row per BSE scrip code with HTTP status, files seen and last fetch time.'
+      key_columns:
+      - scripcode
+      notes: Resume bookkeeping for bse_annual_reports discovery.
+    bulk_block_deals:
+      description: 'Legacy small table of bulk/block deals: deal date, symbol, client, buy/sell, quantity and price.'
+      key_columns:
+      - id
+      - deal_date
+      - symbol
+      notes: Superseded by the fuller mkt_nse_deals and mkt_bse_deals; keep only for the handful of older deals absent there.
+    business_model_profiles:
+      description: 'One row per company: archetype, revenue-recurrence percent, pricing-power, capital-intensity and operating-leverage scores
+        (integer 1-5), plus notes.'
+      key_columns:
+      - isin
+      - symbol
+      - company_id
+      notes: Heuristic/LLM-derived, not an audited fact; qualitative_notes says how it was derived. business_model_profiles_demo is a quarantined
+        mirror - use this table.
+    business_model_profiles_demo:
+      description: Demo seed mirror of business_model_profiles (e.g. HAL tollbooth profile).
+      key_columns:
+      - symbol
+      notes: Demo/quarantine table - exclude wholesale (AGENTS.md rule 13); the canonical table is business_model_profiles.
+    chunk_symbol_tags:
+      description: One row per document chunk-to-symbol tag with score, method and isin.
+      key_columns:
+      - chunk_id
+      - symbol
+      notes: chunk_id joins document_chunks; tagging methods include title+text/screener link; not exhaustive coverage.
+    circuit_hits:
+      description: 'One row per exchange price-band circuit hit: date, symbol, series and high_low (H/L).'
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: NSE-based and incomplete (compare duckdb circuit_hits, which has ~2x rows); the band percent itself is in price_bands.
+    company_business_features:
+      description: 'One row per symbol: business-substance text-feature vector (terms/centroid/sources) used by the business-analog graph.'
+      key_columns:
+      - symbol
+      notes: quarantined flag marks excluded symbols; features_version must match the graph build.
+    company_business_graph:
+      description: One row per anchor-peer business-analog edge with similarity, rank, shared terms and source mix.
+      key_columns:
+      - anchor_symbol
+      - peer_symbol
+      notes: Precomputed nearest neighbours over company_business_features; check company_business_runs for status and thresholds.
+    company_business_runs:
+      description: 'One row per business-analog graph build: status/reason, symbol/chunk/pair counts, min chunks and top_k.'
+      key_columns:
+      - run_id
+      notes: Operational audit; the newest ok run is the one the graph reflects.
+    company_distilled_parameters:
+      description: 'One row per ISIN + parameter_key: LLM-distilled structured JSON parameter, confidence, source document ref and last update
+        date.'
+      key_columns:
+      - isin
+      - parameter_key
+      notes: parameter_key joins dynamic_parameter_definitions. Derived summaries, not reported facts; placeholder ISIN rows were archived out.
+    company_distilled_parameters_placeholder_archive:
+      description: Distilled-parameter rows moved out of company_distilled_parameters because a synthetic INE_AUTO* ISIN duplicated a real ISIN.
+      key_columns:
+      - isin
+      - parameter_key
+      notes: Quarantine table - never use in analysis (AGENTS.md rule 13).
+    company_entity_edges:
+      description: One row per entity-graph edge from a source symbol to a target (company/sector/industry/policy) with edge family and weight.
+      key_columns:
+      - src_symbol
+      - dst_kind
+      - dst_key
+      - edge_family
+      notes: Generated by entity_graph; evidence_json carries cosine/rank/shared terms. Not a hand-curated relationship list.
+    company_forensic_health:
+      description: 'One row per ISIN: latest forensic/solvency snapshot - promoter holding/pledge, FII/DII/public, interest coverage, debt/equity,
+        market cap, P/E, P/B, dividend yield, Altman Z, auditor flags and solvency gate.'
+      key_columns:
+      - isin
+      - symbol
+      notes: Derived from financials/shareholding (fiscal_year + last_evaluated_date); is_solvency_approved encodes the D/E>1.5 / coverage<2.5
+        / pledge>15% gate.
+    company_forensic_health_placeholder_archive:
+      description: Forensic-health rows moved out of company_forensic_health because a synthetic INE_AUTO* ISIN duplicated a real ISIN.
+      key_columns:
+      - isin
+      - symbol
+      notes: Quarantine table - never use in analysis (AGENTS.md rule 13).
+    company_industry:
+      description: 'One row per symbol: NSE classification snapshot (macro, sector, industry, basic industry), index list, series and listing
+        date.'
+      key_columns:
+      - symbol
+      - isin
+      notes: Small snapshot (one row per symbol, not history); fetched_at shows freshness.
+    company_peer_features:
+      description: 'One row per symbol: dense peer-graph feature JSON, present/total counts, quarantine flag and feature version.'
+      key_columns:
+      - symbol
+      notes: Feature values are quantized; near-constant features are dropped by peer_graph and listed in company_peer_runs.
+    company_peer_graph:
+      description: 'One row per anchor-peer analog edge: similarity, coverage, shared features/families and drivers JSON.'
+      key_columns:
+      - anchor_symbol
+      - peer_symbol
+      notes: Precomputed nearest neighbours; company_peer_runs records active features and refusals. Rows are not PIT versioned.
+    company_peer_runs:
+      description: 'One row per peer-graph build: status/reason, symbols, active/dropped features, top_k and diagnostics.'
+      key_columns:
+      - run_id
+      notes: Operational audit; the newest ok run defines the graph's feature set.
+    corporate_actions:
+      description: One row per corporate action (dividend/split/bonus/rights/buyback/merger/etc.) with ex/record/book-closure/no-delivery dates,
+        face value and raw NSE subject.
+      key_columns:
+      - isin
+      - symbol
+      - ex_date
+      - action_type
+      notes: NSE official announcements. Use duckdb corp_action for parsed, validated price/TR factors; action_type normalization can put unusual
+        items in OTHER.
+    corporate_documents:
+      description: 'One row per corporate document metadata (annual report, concall, investor PPT, announcement, result): title, dates, URLs,
+        local path, doc version and BSE/PIT timestamps.'
+      key_columns:
+      - id
+      - isin
+      - symbol
+      - doc_type
+      notes: Metadata only - text lives in raw_documents/document_chunks. v_document_pit resolves a usable public timestamp; doc_type includes
+        OTHER_FILING.
+    corporate_status_flags:
+      description: Delisting/suspension/insolvency (NCLT_CIRP) flags per symbol with source and detail.
+      key_columns:
+      - symbol
+      - status_type
+      - source
+      notes: EMPTY in this snapshot - do not infer absence of distress from it.
+    countries:
+      description: 'Country reference: country_id, name, political-stability and rule-of-law scores, currency.'
+      key_columns:
+      - country_id
+      notes: Only 4 rows; seed_countries_demo is a separate demo table. Joins geographic_exposure.country_id.
+    daily_price_delivery:
+      description: 'One row per symbol per trading day: normalized NSE/BSE OHLCV, turnover_lacs, delivery quantity/percent plus derived technical
+        indicators (SMA/RSI/52-week high-low).'
+      key_columns:
+      - date
+      - symbol
+      - isin
+      notes: Merged NSE + BSE-only names (BSE series groups; delivery 0 where unavailable). turnover_lacs is Rs lakh; technical fields are NULL
+        until technical_engine computes them. For research use duckdb px_daily (adjusted, PIT, delisted kept).
+    distillation_runs:
+      description: 'One row per raw-to-dense distillation run: source type, chunks distilled/purged, summary and moat updates.'
+      key_columns:
+      - run_id
+      notes: Audit only; the distilled outputs live in company_distilled_parameters / moat_evaluations.
+    document_chunks:
+      description: 'One row per chunk of a raw document: full text, embedding JSON, publication/event dates, symbol/isin and inferred fiscal period.'
+      key_columns:
+      - chunk_id
+      - doc_id
+      - isin
+      - symbol
+      notes: embedding is a JSON array of floats (length varies by embedding model) and may be NULL; doc_id joins raw_documents. fiscal_period/confidence
+        are inferred (source column). Use intelligence_fts for lexical search.
+    dynamic_parameter_definitions:
+      description: 'Ontology of distilled parameter keys: display name, data type, description and category.'
+      key_columns:
+      - parameter_key
+      notes: Only a handful of canonical keys; joins company_distilled_parameters.parameter_key.
+    entity_graph_runs:
+      description: 'One row per entity-graph build: status/reason, source symbols, edge count and families.'
+      key_columns:
+      - run_id
+      notes: Operational audit for company_entity_edges.
+    eod_correction_log:
+      description: 'One row per EOD/event self-correction batch: correction type, universe, target date, counts and details JSON.'
+      key_columns:
+      - correction_id
+      - target_date
+      notes: Audit trail; no prices or decisions in it.
+    eod_scrip_calls:
+      description: 'One row per symbol per EOD scoring run: composite/technical/fundamental/sentiment scores, rank, entry range, target, stop,
+        conviction and solvency gate.'
+      key_columns:
+      - date
+      - symbol
+      - isin
+      notes: Derived model output from recent live runs, not a backtest record; may be sparse and is not PIT-audited.
+    etf_inav:
+      description: 'One row per ETF ISIN per date: underlying index close, FX, multiplier k, iNAV and premium versus iNAV.'
+      key_columns:
+      - isin
+      - date
+      notes: 'Partial: many rows have NULL inav/k/premium (source gaps); do not treat NULL as zero premium.'
+    etf_master:
+      description: 'One row per ETF ISIN: symbol, first/last date, trading-day count and optional scheme code/name.'
+      key_columns:
+      - isin
+      notes: Registry for etf_px; scheme fields are often NULL.
+    etf_px:
+      description: 'One row per ETF per trading day: close, volume and traded value in rupees.'
+      key_columns:
+      - date
+      - symbol
+      - isin
+      notes: Collected from NSE CM equity feed by ISIN; prices are unadjusted (ETF splits rare but not handled).
+    financial_metrics:
+      description: 'One row per company-fiscal year: ROIC, WACC, spread, FCF margin, debt/EBITDA and peer gross-margin percentile.'
+      key_columns:
+      - company_id
+      - isin
+      - symbol
+      - fiscal_year
+      notes: Derived ratios, not reported statements; zeros appear where inputs are missing, so check the source statements before treating 0
+        as a real value.
+    financially_free_breadth:
+      description: 'One row per date + sector: advances/declines, advance-decline ratio, momentum score and top gainers/losers JSON.'
+      key_columns:
+      - date
+      - sector_name
+      notes: EMPTY in this snapshot - use nse_index_breadth or derive breadth from daily_price_delivery.
+    forecast_skill_history:
+      description: 'One row per walk-forward forecast-skill round: train/eval windows, lens weights, edge and IC, applied flag.'
+      key_columns:
+      - round_id
+      notes: Internal research audit; weights are proposals/experiments, not the live ranking.
+    fund_nav:
+      description: 'One row per fund/ETF ISIN per date: NAV, AMFI scheme code and scheme name.'
+      key_columns:
+      - isin
+      - date
+      notes: AMFI-sourced daily NAV (includes ETFs); join etf_px for premium. scheme_code identifies the AMFI scheme.
+    geographic_exposure:
+      description: 'One row per company-country: revenue share percent and asset exposure percent.'
+      key_columns:
+      - company_id
+      - country_id
+      notes: Derived/heuristic, not filed segment data; country_id joins countries, company_id joins master_companies rowid.
+    graph_causal_edges:
+      description: 'One row per causal graph edge: source/target node, relationship, impact direction, elasticity, mechanism and confidence.'
+      key_columns:
+      - edge_id
+      - source_node_id
+      - target_node_id
+      notes: Contains TEST_* fixture edges; filter via substrate_quarantine (rule graph_fixture_edges).
+    graph_nodes:
+      description: 'Causal graph node registry: node_id, type, name and metadata JSON.'
+      key_columns:
+      - node_id
+      notes: Contains TEST_* fixture nodes; filter via substrate_quarantine (rule graph_fixture_nodes).
+    inbox_ingestion_manifest:
+      description: 'One row per file ingested from the local inbox: hash, filename/type, detected entity, summary and extracted parameters.'
+      key_columns:
+      - file_hash
+      notes: Local inbox provenance only; no document text and no exchange filings.
+    index_membership:
+      description: One row per index + symbol membership snapshot (nifty50/100/200/500 etc.) with ISIN, industry and as-of date.
+      key_columns:
+      - index_name
+      - symbol
+      notes: 300 rows, current snapshot only - not historical membership; use it with care for survivorship-sensitive work.
+    index_tri:
+      description: 'One row per index per date: total-return index level, price level, source and method (official/derived).'
+      key_columns:
+      - index_name
+      - date
+      notes: 'method matters: ''derived'' TRI = price + published dividend yield, not the official TRI series.'
+    industries:
+      description: 'Industry reference: sector, growth score 1-5, lifecycle stage and TAM growth CAGR.'
+      key_columns:
+      - industry_id
+      - industry_name
+      notes: 12 rows; seed_industries_demo is a separate demo copy. Heuristic scores, not measured.
+    insider_trades:
+      description: 'SEBI PIT insider trades: person, category, buy/sell/pledge, shares, value_inr_lacs and dates.'
+      key_columns:
+      - id
+      - symbol
+      - isin
+      notes: EMPTY in this snapshot - use mkt_nse_insider or mkt_bse_insider.
+    intelligence_fts:
+      description: 'FTS5 lexical index over document chunks: chunk_id, symbol/isin, source type, document date and document text.'
+      key_columns:
+      - rowid
+      - chunk_id
+      - symbol
+      - isin
+      notes: Virtual table - query with MATCH, e.g. WHERE intelligence_fts MATCH 'order book'. Content is derived from document_chunks; some rows
+        use synthetic ids such as CANONICAL_HAL_CHUNK_1 and are not tied to a raw document.
+    isin_rekey_log:
+      description: 'Audit of ISIN re-key migrations: db/table, symbol, old/new ISIN and rows changed.'
+      key_columns:
+      - db
+      - table_name
+      - symbol
+      notes: Migration provenance only; rows already re-keyed in the source tables.
+    lens_activation_log:
+      description: 'One row per decision: MoE temperature, fired lens families and context JSON.'
+      key_columns:
+      - log_id
+      notes: Audit of ensemble gating; not a performance record.
+    macro_events:
+      description: 'One row per macro/policy event node: event_id, name, category, date, summary and affected graph nodes.'
+      key_columns:
+      - event_id
+      - event_date
+      notes: PHASE5_DEMO* seed rows are quarantined (substrate_quarantine rule demo_macro_events); filter them before traversal.
+    master_companies:
+      description: 'Equity master: one row per ISIN with NSE symbol, BSE code, name, industry/sector, market-cap tier, index flags, active and
+        screenable flags.'
+      key_columns:
+      - isin
+      - nse_symbol
+      - bse_code
+      notes: The ISIN anchor for joins. INE_AUTO* synthetic rows are quarantined; is_active=0 includes delisted names, is_screenable=0 marks excluded
+        universes.
+    mkt_bse_deals:
+      description: 'Raw BSE bulk/block deals: one row per date/deal type/scrip/client/side.'
+      key_columns:
+      - date
+      - deal_type
+      - sc_code
+      notes: No ISIN here; map sc_code via bse_code_isin or master_companies.bse_code. Quantity is shares, price rupees.
+    mkt_bse_delivery_daily:
+      description: 'BSE gross delivery: one row per scrip per date with deliverable quantity/value, volume, turnover and delivery percent.'
+      key_columns:
+      - date
+      - sc_code
+      notes: deliverable_value and turnover_inr are rupees (not lakh/crore); join mkt_bse_eq_daily on date+sc_code for OHLC.
+    mkt_bse_eq_daily:
+      description: 'BSE bhavcopy: one row per scrip per date with OHLC, previous close, volume, turnover_inr, trades, group and type.'
+      key_columns:
+      - date
+      - sc_code
+      - isin
+      notes: Raw legacy+UDiFF files; sc_group/sc_type include non-equity series (filter e.g. sc_type=STK or INE ISINs). turnover_inr is rupees;
+        not adjusted.
+    mkt_bse_index_daily:
+      description: BSE index daily OHLC, previous close, P/E, P/B, dividend yield, turnover and shares traded.
+      key_columns:
+      - date
+      - index_code
+      notes: turnover/shares_traded are kept as published strings, units vary by file (likely Rs crore/lakh - unverified); index_name often equals
+        the code.
+    mkt_bse_insider:
+      description: 'BSE PIT/insider disclosure lines: one row per CSV line with company, ISIN, person and the full raw_json record.'
+      key_columns:
+      - file
+      - line_no
+      - isin
+      notes: Only company/ISIN/person are normalized; parse raw_json for transaction details. Loader docstring says coverage is 2019-2022 (later
+        years unverified for BSE PIT).
+    mkt_commodity_daily:
+      description: 'One row per commodity/date: commodity futures OHLC, adjusted close and volume from Yahoo Finance; includes a USDINR series.'
+      key_columns:
+      - date
+      - commodity
+      notes: Prices are in the contract's native quote currency/unit, not INR; ticker identifies the Yahoo symbol.
+    mkt_commodity_monthly:
+      description: 'World Bank pink-sheet monthly commodity prices: series, unit and value.'
+      key_columns:
+      - month
+      - series
+      notes: unit column carries the native unit (e.g. $/bbl); not INR and not adjusted for inflation.
+    mkt_fii_dii_cash:
+      description: 'One row per date: FII/DII cash purchases, sales and net (Rs crore) plus Nifty close and change.'
+      key_columns:
+      - date
+      notes: Provisional moneycontrol data; DII history may come from a third-party archive (FRAMEWORK).
+    mkt_load_log:
+      description: 'One row per raw market file loaded: source, file name, rows and loaded_at.'
+      key_columns:
+      - source
+      - file
+      notes: Idempotency ledger for load_market_raw; proves which files are already ingested.
+    mkt_nsdl_fpi_daily:
+      description: 'One row per date + asset class + route: FPI gross purchase/sales, net in Rs crore and USD million, plus USDINR.'
+      key_columns:
+      - date
+      - asset_class
+      - route
+      notes: NSDL publishes next business day; the duckdb snapshot stamps known_at conservatively at end of the following day.
+    mkt_nse_deals:
+      description: 'Raw NSE bulk/block deals: date, deal type, symbol, client, buy/sell, quantity and price.'
+      key_columns:
+      - date
+      - deal_type
+      - symbol
+      notes: Exchange file as published; no ISIN (join master_companies.nse_symbol or symbol_isin_history).
+    mkt_nse_eq_daily:
+      description: 'NSE old-format bhavcopy (2019-01 to 2021-10): one row per date/symbol/series with OHLC, turnover_inr and delivery.'
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: Superseded by mkt_nse_full_daily after 2021-10-26; turnover_inr is rupees; ISIN is present in this old format.
+    mkt_nse_full_daily:
+      description: 'NSE sec_bhavdata_full: one row per date/symbol/series with OHLC, volume, turnover_lacs and delivery quantity/percent.'
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: turnover_lacs is Rs lakh (multiply by 1e5 for rupees). Covers all series and both pre/post-2021 formats; raw and unadjusted.
+    mkt_nse_index_daily:
+      description: NSE index daily OHLC, points/percent change, volume, turnover_cr, P/E, P/B and dividend yield.
+      key_columns:
+      - date
+      - index_name
+      notes: turnover_cr is Rs crore. Wide index universe including leveraged/inverse variants - filter index_name.
+    mkt_nse_insider:
+      description: 'SEBI PIT insider disclosures: one row per filing/person with category, transaction type, quantities, buy/sell values and acquisition/intimation
+        dates.'
+      key_columns:
+      - did
+      - pid
+      - symbol
+      notes: Normalized SEBI fields; values are rupees. Person category and mode are free text; symbol may not resolve to the current master.
+    mkt_nse_participant:
+      description: 'NSE participant-wise derivatives positions: one row per date/kind (oi or volume)/client type across index and stock futures/options.'
+      key_columns:
+      - date
+      - kind
+      - client_type
+      notes: Quantities are contracts/lots as published (unverified); long/short columns are not in rupees.
+    mkt_nse_pit_filings:
+      description: 'PIT filing metadata: app_id/segment, company, regulation, submission/revision info and XBRL/iXBRL URLs.'
+      key_columns:
+      - app_id
+      - segment
+      notes: No parsed values here; mkt_nse_pit_xbrl_facts holds the XBRL facts for downloaded files.
+    mkt_nse_pit_xbrl_facts:
+      description: 'Long XBRL facts from PIT filings: one row per file/context/concept/sequence with value and unit strings.'
+      key_columns:
+      - xml_file
+      - context_id
+      - concept
+      notes: Values are text and units are not normalized; resolve filing metadata via mkt_nse_pit_filings.xml_url/file name.
+    mkt_nse_sast:
+      description: 'SAST Regulation 29 disclosures: one row per acquisition/sale report with acquirer, sale_or_acq, mode and dissemination time.'
+      key_columns:
+      - rec_key
+      - symbol
+      notes: Only headline fields normalized; quantities/percentages remain in raw_json.
+    mkt_nse_short:
+      description: 'NSE daily short-selling: one row per date/symbol with short quantity.'
+      key_columns:
+      - date
+      - symbol
+      notes: Quantity is shares as published; sparse coverage (short-sale disclosures only).
+    mkt_nse_sme_daily:
+      description: 'NSE SME (Emerge) bhavcopy: one row per date/symbol/series with OHLC, volume, turnover_inr and 52-week range.'
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: SME segment only; turnover_inr is rupees; not adjusted.
+    mkt_report_cells:
+      description: 'Unstructured cell dump of downloaded NSE/BSE report spreadsheets: source, file, table/row/column indices and cell value.'
+      key_columns:
+      - source
+      - file
+      - table_idx
+      - row_idx
+      - col_idx
+      notes: Raw provenance for reports whose tables were not modeled; not a queryable financial table.
+    moat_evaluations:
+      description: 'One row per company: switching costs, network effects, cost advantage, intangibles and efficient scale scores 0-5, total moat
+        score, width and trajectory.'
+      key_columns:
+      - company_id
+      - ticker
+      - isin
+      notes: Heuristic/LLM scoring, not an audited moat fact. The moat layer is explicitly set aside by FRAMEWORK; moat_history has the as-of
+        series.
+    moat_history:
+      description: 'Point-in-time moat score history: one row per symbol/asof_date with score, width, trajectory and source.'
+      key_columns:
+      - symbol
+      - asof_date
+      notes: Backfilled/derived; use for time-series questions rather than moat_evaluations' single latest row.
+    model_explainer_rankings:
+      description: 'Per stock/sector/geo/regime/investor-majority/lens: p-value, explain power and rank.'
+      key_columns:
+      - stock_id
+      - sector_id
+      - geo_id
+      - regime_tag
+      - investor_majority
+      - lens_family
+      notes: Current table is one build (created_at), not a history. '*' in sector/geo/regime marks unconditional rows - report that degradation,
+        do not hide it.
+    model_lens_weight_proposals:
+      description: Proposed lens weights per regime/investor majority/lens family with basis JSON.
+      key_columns:
+      - proposal_id
+      - regime_tag
+      - investor_majority
+      - lens_family
+      notes: Proposals/experiments, not the applied model; uniqueness is per regime/investor/lens.
+    model_validation_scores:
+      description: 'Walk-forward validation metrics per as-of date, horizon, mode and lens: hit rate, mean forward return, universe mean, IC and
+        thesis hit rate.'
+      key_columns:
+      - asof_date
+      - horizon_days
+      - mode
+      - lens_family
+      notes: Research evaluation history; regime_tag/investor_majority subdivide the result. Not a live forecast.
+    move_attribution:
+      description: 'One row per symbol/attribution date: realized move, noise floor, materiality flag, explained share and per-lens direction/weight/share.'
+      key_columns:
+      - symbol
+      - attribution_date
+      notes: Lens shares/weights decompose explained_total; residual is unexplained. is_material compares the move with the per-scrip noise floor.
+    news_visual_artifacts:
+      description: 'OCR text extracted from news images: one row per artifact with doc/symbol, source/media URL, local path, OCR confidence and
+        character count.'
+      key_columns:
+      - artifact_id
+      - doc_id
+      - symbol
+      notes: Small, news-only set; different from visual_evidence_artifacts (slide/video vision evidence). OCR text may be noisy.
+    noise_floors:
+      description: 'One row per symbol: learned materiality floor, realized volatility, liquidity and sample days.'
+      key_columns:
+      - symbol
+      notes: floor is a percent move threshold; per-scrip, not a global cutoff. Used by move_attribution/EOD correction.
+    nse_index_breadth:
+      description: Daily index OHLC plus advances/declines and P/E, P/B, dividend yield for selected Nifty indices.
+      key_columns:
+      - date
+      - index_name
+      notes: Starts 2025-09-01 and advances/declines are 0 for some indices (unverified); use mkt_nse_index_daily for full index history.
+    nse_pr_days:
+      description: 'NSE press-release fetch ledger: one row per date with pr/sec_list fetched flags and done_at.'
+      key_columns:
+      - date
+      notes: Operational resume bookkeeping, not press-release content.
+    pc_restore_doc_links:
+      description: 'Restore mapping: PIB/PR source table + PRID to the preserved PC doc_id and local doc_id.'
+      key_columns:
+      - source_table
+      - prid
+      notes: The 2026-10 restore could not resolve 52k PIB rows; active doc_ids are NULL while original links are kept here.
+    pib_days:
+      description: 'PIB English listing fetch ledger: one row per day with release count and done_at.'
+      key_columns:
+      - day
+      notes: Operational resume bookkeeping for pib_feed.
+    pib_ml_days:
+      description: 'PIB regional-language fetch ledger: one row per day/region/language with count and done_at.'
+      key_columns:
+      - day
+      - reg
+      - lang
+      notes: Operational resume bookkeeping; reg/lang join pib_ml_langs.
+    pib_ml_langs:
+      description: 'PIB region/language code map: region and language numeric codes plus names.'
+      key_columns:
+      - reg
+      - lang
+      notes: 62 code pairs used by the pib_ml_* tables.
+    pib_ml_match:
+      description: 'Translation match results: one row per PRID/mode with best English PRID, similarity, runner-up and candidate count.'
+      key_columns:
+      - prid
+      - mode
+      notes: Matching is similarity-based; use match_sim and mode to judge confidence, not as a guaranteed translation of the same release.
+    pib_ml_releases:
+      description: 'PIB regional-language releases: one row per PRID with language, ministry, title, full body, linked English PRID and translation
+        metadata.'
+      key_columns:
+      - prid
+      - doc_id
+      notes: reg/lang join pib_ml_langs; linked_prid/translation_of point to the English release when matched; FTS is pib_ml_releases_fts.
+    pib_ml_releases_fts:
+      description: FTS5 full-text index over pib_ml_releases (title, body, ministry).
+      key_columns:
+      - rowid
+      notes: Virtual table - query with MATCH against the columns; content is external to pib_ml_releases.
+    pib_releases:
+      description: 'PIB English press releases: one row per PRID with release/posting dates, ministry, title, full body, relevance flag and doc_id.'
+      key_columns:
+      - prid
+      - doc_id
+      notes: 2.3M rows; body is the full release text. Only policy-relevant releases are copied (metadata only, no body) into the duckdb snapshot.
+    pib_releases_fts:
+      description: FTS5 full-text index over pib_releases (title, body, ministry).
+      key_columns:
+      - rowid
+      notes: Virtual table - query with MATCH; content is external to pib_releases.
+    policy_docs:
+      description: 'Extraction ledger: one row per source document section with status, is_policy, event count and model/token usage.'
+      key_columns:
+      - source_kind
+      - source_id
+      - section
+      notes: Audit of which documents the policy extractor processed; events are in policy_events.
+    policy_eni_history:
+      description: 'Per symbol/policy/as-of date: net ENI impact score and severity.'
+      key_columns:
+      - symbol
+      - policy_name
+      - asof_date
+      notes: Backfilled/derived history; source tells how it was produced.
+    policy_events:
+      description: 'One row per extracted policy event: source, title, policy name, instrument/stage, direction, sectors/companies/products, amount
+        in Rs crore, effective/end dates and quote.'
+      key_columns:
+      - id
+      - source_kind
+      - source_id
+      notes: sectors/companies/products are JSON strings; amount_inr_crore is Rs crore (not every event has one); quote_ok flags a verified quote.
+        FTS is policy_events_fts.
+    policy_events_fts:
+      description: FTS5 full-text index over policy_events (policy_name, quote).
+      key_columns:
+      - rowid
+      notes: Virtual table - query with MATCH; content is external to policy_events.
+    portfolio_actions:
+      description: 'Paper portfolio actions: one row per symbol/action date with BUY/SELL/HOLD, entry, target, stop, thesis ref, status and P&L.'
+      key_columns:
+      - action_id
+      - symbol
+      - action_date
+      notes: Model/paper book only - not broker or fund data; open/closed status and pnl are as recorded at action time.
+    price_bands:
+      description: 'One row per symbol/series/date: price band (2/5/10/20/40 percent or No Band) and remarks.'
+      key_columns:
+      - date
+      - symbol
+      - series
+      notes: Current SQLite copy has ~1.05M rows while the 2026-10-19 duckdb snapshot has ~4.04M - prefer the snapshot for full history.
+    quarterly_financials:
+      description: 'One row per ISIN/quarter end: revenue, EBITDA, PAT, margins, EPS and YoY/QoQ growth, in Rs crore.'
+      key_columns:
+      - isin
+      - symbol
+      - quarter_end_date
+      notes: Mostly yfinance-derived, with BSE quarterly/half-yearly rows; many all-NULL/zero placeholder rows. Reported XBRL (results_xbrl) is
+        authoritative.
+    quarterly_financials_placeholder_archive:
+      description: Quarterly-financial rows moved out of quarterly_financials because a synthetic INE_AUTO* ISIN duplicated a real ISIN.
+      key_columns:
+      - isin
+      - symbol
+      - quarter_end_date
+      notes: Quarantine table - never use in analysis (AGENTS.md rule 13).
+    raw_documents:
+      description: 'One row per raw document ingested: title, source type, published date, fiscal period, URL/creator, hash and local path.'
+      key_columns:
+      - doc_id
+      notes: Audit/provenance layer; no text (chunks are in document_chunks). 34k rows and growing; sha256_hash is unique when present.
+    regulatory_political_risks:
+      description: 'One row per symbol-policy risk/tailwind: risk/factor type, severity, probability, net impact, horizon and coverage status.'
+      key_columns:
+      - risk_id
+      - symbol
+      - policy_name
+      notes: net_impact_score = severity*probability (sample-verified); coverage_status is mapped/no_template in this snapshot - a high no_template
+        count means policy coverage is missing for those symbols.
+    ripple_effects:
+      description: 'Causal ripple transmission rows: event, parent ripple, order level, target sector/industry/company, channel, elasticity, magnitude,
+        probability and lag.'
+      key_columns:
+      - ripple_id
+      - event_id
+      - parent_ripple_id
+      notes: PHASE5_DEMO* and target-less rows are quarantined (substrate_quarantine); significance_rank combines magnitude/probability/lag.
+    ripple_history:
+      description: 'Revision history of ripple edges: edge_key, symbol/event, as-of date, significance and beta.'
+      key_columns:
+      - edge_key
+      - asof_date
+      notes: Backfill/revision audit, not the current transmission graph (use ripple_effects).
+    schema_meta:
+      description: Key-value schema metadata (schema hash, row-count snapshots and migration markers).
+      key_columns:
+      - key
+      notes: Check the schema hash before assuming columns; this catalog was written against the current file.
+    security_master:
+      description: 'ISIN-keyed security registry including delisted names: issuer, NSE/BSE symbols and codes, BSE status, segment, listing/first/last
+        trade and last-seen dates.'
+      key_columns:
+      - isin
+      notes: Broader than master_companies (8.4k vs 6.8k); in_master_companies says whether the ISIN is in the active master. Use for survivorship-safe
+        history.
+    seed_countries_demo:
+      description: Demo seed copy of three countries with stability/rule-of-law scores.
+      key_columns:
+      - country_id
+      notes: Demo/quarantine table - exclude wholesale (AGENTS.md rule 13); the canonical table is countries.
+    seed_industries_demo:
+      description: Demo seed copy of 12 industries with growth/lifecycle/TAM scores.
+      key_columns:
+      - industry_name
+      notes: Demo/quarantine table - exclude wholesale (AGENTS.md rule 13); the canonical table is industries.
+    shp_facts:
+      description: 'Long shareholding XBRL facts: one row per file/context/concept with the raw value string.'
+      key_columns:
+      - file
+      - context
+      - concept
+      notes: Values are fractions (the shareholding view multiplies by 100); use the shareholding view for promoter/FII/DII splits. file joins
+        shp_index.file.
+    shp_index:
+      description: 'One row per shareholding filing: symbol/ISIN, quarter end, broadcast/submission dates, promoter/public percent, revised flag
+        and XBRL link.'
+      key_columns:
+      - record_id
+      - isin
+      - quarter_end
+      notes: promoter_pct/public_pct are already percent (not fractions); revised filings are kept - choose by broadcast_at for PIT.
+    shp_parsed:
+      description: 'Parse ledger for shareholding XBRL files: one row per file with fact count, status and parsed_at.'
+      key_columns:
+      - file
+      notes: Operational; unparsed files have no shp_facts rows.
+    substrate_quarantine:
+      description: 'Materialized quarantine key set: rule id, table name, row key, severity and reason for every excluded substrate row/table.'
+      key_columns:
+      - rule_id
+      - table_name
+      - row_key
+      notes: 'AGENTS.md rule 13: exclude matching rows before showing substrate to a model, and exclude business_model_profiles_demo/seed_*_demo
+        wholesale. Rebuilt idempotently by substrate_hygiene.'
+    symbol_isin_history:
+      description: 'Symbol-to-ISIN mapping windows per exchange: first/last date and trading-day count.'
+      key_columns:
+      - exchange
+      - symbol
+      - isin
+      - first_date
+      notes: Use ASOF/window joins to survive renames, splits and ISIN changes. The duckdb snapshot keeps a copy for the same purpose.
+    tax_rules:
+      description: 'Capital-gains and transaction-tax rules: rule, value, effective from/to, basis, statute reference, quote and verification
+        flag.'
+      key_columns:
+      - rule
+      - effective_from
+      notes: values are fractions (0.15 = 15%) except *_inr/*_months; verify the current Finance Act before use. quote_verified=0 means unconfirmed.
+    telegram_post_tags:
+      description: 'One row per symbol tag on a Telegram post: post_id, symbol/ISIN, tagging method and position.'
+      key_columns:
+      - post_id
+      - symbol
+      notes: Tags are inferred by text/screener link; position disambiguates multiple symbols per post.
+    telegram_posts:
+      description: 'One row per Telegram message: channel/thread, message id, raw text, media path, OCR text and detected symbols.'
+      key_columns:
+      - id
+      - channel_id
+      - message_id
+      notes: Includes mock_feed test rows - filter channel_id. Raw text may contain noise; media/OCR fields are often NULL.
+    tg_company_mentions:
+      description: One row per post-ISIN company mention with topic, timestamps and match source.
+      key_columns:
+      - post_id
+      - isin
+      notes: Symbol resolution is heuristic (source column); use for discovery, not as an authoritative filing.
+    tg_order_schedule:
+      description: 'Order-value schedule by order/fiscal year/quarter: amount in Rs crore.'
+      key_columns:
+      - order_id
+      - fy
+      - q
+      notes: Schedules are parsed from Telegram text; amount_cr in Rs crore. order_id joins tg_orders.
+    tg_orders:
+      description: 'Order wins extracted from Telegram posts: company/customer/description, order value and annualized value in Rs crore, duration,
+        revenue context and filing URL.'
+      key_columns:
+      - order_id
+      - isin
+      - symbol
+      notes: Manual/LLM extraction; kind values are recap/alert/manual. value_cr is Rs crore. known_at is the post time - use it for PIT; verify
+        against the filing URL.
+    tg_pead_signals:
+      description: 'PEAD labels from Telegram results posts: post, company text, label, mapped symbol/ISIN and screener/filing links.'
+      key_columns:
+      - post_id
+      - symbol
+      notes: Labels are free text and symbol_source says how the symbol was resolved; is_test_post=1 rows are test data.
+    visual_evidence_artifacts:
+      description: 'Vision/OCR evidence from slides and videos: artifact type, extracted visual data/description, moat implication, timestamps
+        and confidence.'
+      key_columns:
+      - artifact_id
+      - doc_id
+      - chunk_id
+      notes: Multimodal extraction, much sparser than deck_facts; extracted_visual_data is JSON text. Not a substitute for printed figures.
+ar_facts:
+  description: 'Annual-report extraction store: document registry, ~33M extracted facts with quotes/units, processing provenance and FTS. Managed
+    by the AR pipeline and hand-review overlays in equity_intelligence.'
+  tables:
+    ar_claims:
+      description: 'Per annual-report doc_id: claim-extraction run metadata (owner, run, model, timestamp, status).'
+      key_columns:
+      - doc_id
+      notes: Operational claim ledger - one row per doc; actual extracted facts are in ar_facts. Status includes imported.
+    ar_docs:
+      description: 'One row per annual-report PDF: ISIN/symbol/company, fiscal year and its source, filed_at, sha256, local path, page/piece counts
+        and processing status.'
+      key_columns:
+      - doc_id
+      - isin
+      - symbol
+      notes: Doc registry for ar_facts/pieces; fiscal_year is often a date (e.g. 2026-03-31). status done/partial/no_text/unreadable/dropped_debt.
+    ar_facts:
+      description: 'One extracted annual-report fact per row: doc/piece/page, category/item, raw and numeric value, unit, period, basis, quote,
+        model and check status.'
+      key_columns:
+      - doc_id
+      - piece
+      - isin
+      - symbol
+      - category
+      notes: ~33M rows; value units vary (Rs, %, count, years) and value can be NULL for prose. Facts may repeat across prompt/model versions
+        - filter known page/doc and dedupe. Wrong-company docs flagged in equity_intelligence.ar_doc_identity.
+    ar_facts_dropped:
+      description: Facts rejected after extraction, with dropped_reason/dropped_ts.
+      key_columns:
+      - doc_id
+      - isin
+      - symbol
+      notes: Quarantine of bad extractions - do not count as coverage; inspect reason when auditing quality.
+    ar_facts_fts:
+      description: FTS5 full-text index over ar_facts item/category.
+      key_columns:
+      - rowid
+      notes: Virtual table - query with MATCH; rowid is ar_facts.rowid (content is external). Useful for finding categories/items by keyword.
+    ar_facts_replaced:
+      description: 'Superseded ar_facts rows: the old fact plus replaced_by/replaced_ts.'
+      key_columns:
+      - doc_id
+      - isin
+      - symbol
+      notes: Revision history; current facts remain in ar_facts. Use for audit, not for fresh extraction.
+    ar_pieces:
+      description: 'One row per report piece/LLM call: page range, chars, model, tokens, seconds, fact count, status and raw output.'
+      key_columns:
+      - doc_id
+      - piece
+      - prompt_version
+      notes: Processing provenance; raw_output is the model response. Multiple prompt_versions exist per piece.
+    ar_skipped_pages:
+      description: 'Pages skipped as duplicated/contained in another report: doc, page, ref_doc_id and containment ratio.'
+      key_columns:
+      - doc_id
+      - page
+      notes: Skipped pages have no facts by design; containment shows why.
+deck_figures:
+  description: 'Investor-presentation/deck reader store: per-page vision-model calls, extracted printed numeric facts, chart trend labels and
+    spend/queue ledgers, with symbol/ISIN/known_at resolvable via pages.'
+  tables:
+    bad_docs:
+      description: 'Deck documents that repeatedly failed extraction: sha256, path, strike count and last page.'
+      key_columns:
+      - sha256
+      notes: Failure ledger; a row here means the deck's pages are not fully represented in facts.
+    call_log:
+      description: One row per vision-model call with timestamp and model.
+      key_columns:
+      - ts
+      notes: Operational cost/latency log; EMPTY in this database.
+    chart_trends:
+      description: 'One row per chart: sha256/page, symbol/ISIN, known_at, measure, span (years/quarters) and trend text.'
+      key_columns:
+      - sha256
+      - page_no
+      - measure
+      notes: Trend labels (rising/falling/stable) are model judgments, not numeric series; see deck_facts for printed numbers.
+    deck_sources:
+      description: 'One row per deck source (BSE announcement etc.): symbol/ISIN, exchange code, known_at, title, URL, local path, sha256 and
+        fetch status.'
+      key_columns:
+      - source
+      - source_id
+      notes: Discovery registry; known_at is the publication time for PIT. source_id + source identify the document.
+    doc_pages:
+      description: One row per deck sha256 with page count.
+      key_columns:
+      - sha256
+      notes: Page-count cache; pages has the per-page processing rows.
+    facts:
+      description: 'One extracted numeric fact per row: deck sha256/page, prompt/model, line, metric, period, raw number, value, unit and final
+        flag.'
+      key_columns:
+      - sha256
+      - page_no
+      - metric
+      notes: No symbol/ISIN/known_at here - join pages on sha256+page_no+prompt_version for that. is_final=1 marks the chosen fact; values are
+        in the unit column, not normalized.
+    facts_metric_fts:
+      description: FTS5 full-text index over facts.metric.
+      key_columns:
+      - rowid
+      notes: Virtual table - query with MATCH; content is external to facts.
+    facts_unit_fix:
+      description: 'Audit of unit corrections: fact_rowid, old/new unit and how it was changed.'
+      key_columns:
+      - fact_rowid
+      notes: fact_rowid joins facts.rowid; use the corrected facts table, this is provenance only.
+    outputs:
+      description: 'One row per vision-model page output: sha256/page/prompt/model, settings, timing, tokens, USD cost and raw output.'
+      key_columns:
+      - sha256
+      - page_no
+      - prompt_version
+      - model
+      notes: Raw LLM output; facts are the structured extraction. Multiple models/prompts may exist for a page.
+    pages:
+      description: 'One row per deck page per prompt version: doc/symbol/ISIN, doc_type, known_at, route, text/number counts, recall metrics,
+        final model, fact count and status.'
+      key_columns:
+      - sha256
+      - page_no
+      - prompt_version
+      notes: The bridge from deck sha256 to symbol/ISIN/known_at. status ok/skipped; skipped pages were not read.
+    second_queue:
+      description: 'Retry queue for pages that needed a second (stronger) reader: sha256/page/prompt, task, jpeg, primary result and attempts.'
+      key_columns:
+      - sha256
+      - page_no
+      - prompt_version
+      notes: Operational queue; EMPTY in this database.
+    spend:
+      description: 'Vision-model spend ledger: one row per call with timestamp, model, tokens and USD cost.'
+      key_columns:
+      - ts
+      notes: Cost audit only; usd is provider-reported.
+    unlabeled_charts:
+      description: Deck pages read as having no printed values, but where earlier readers put at least 3 numbers (likely unlabeled charts).
+      key_columns:
+      - sha256
+      - page_no
+      notes: View over unlabeled_charts_all; title plus other_estimates. other_estimates are bar-height/axis guesses, not printed data - use only
+        as rough shape.
+    unlabeled_charts_all:
+      description: All deck pages read as having no printed values, with title and count of other readers' guessed numbers.
+      key_columns:
+      - sha256
+      - page_no
+      notes: View; includes pages with zero other estimates. Guesses are NOT printed figures.
+concall_facts:
+  description: 'Concall transcript extraction store: one row per processed concall document, extracted guidance/analyst items as text, QA checks
+    and FTS.'
+  tables:
+    cc_docs:
+      description: 'One row per concall document processed: symbol/ISIN, filing time, status, model, token/cost stats, period discussed and check/raw
+        JSON.'
+      key_columns:
+      - doc_id
+      - isin
+      - symbol
+      notes: doc_id joins corporate_documents.id. status values include ok and skip_cover_letter; raw_json is NULL in the restored copy. PIT from
+        filed_at.
+    cc_item_checks:
+      description: 'QA checks per extracted concall item: quote/period/direction support, speaker, metric key, value range, prior doc and computed
+        direction.'
+      key_columns:
+      - doc_id
+      - list_name
+      - idx
+      notes: Joins cc_items on doc_id/list_name/idx; booleans are 0/1. Missing rows mean the item was not checked.
+    cc_items:
+      description: 'Extracted concall items: one row per doc_id/list_name/idx with metric, textual value, unit, period, basis, direction/firmness/signal,
+        statement and quote.'
+      key_columns:
+      - doc_id
+      - list_name
+      - idx
+      - isin
+      notes: list_name separates guidance/analyst_pushback/etc. value is TEXT (e.g. '200 to 250 bp'), not a number; check cc_item_checks for verification.
+    cc_items_fts:
+      description: FTS5 full-text index over concall items (metric, statement, quote).
+      key_columns:
+      - rowid
+      notes: Virtual table - query with MATCH; content is external to cc_items.
+results_xbrl:
+  description: 'NSE quarterly-results XBRL store: filing registry, long facts and a pivoted quarterly view. Authoritative for reported quarterly
+    financials; monetary values are in rupees.'
+  tables:
+    facts:
+      description: 'Long XBRL facts from NSE results filings: one row per file/context/concept with period, instant, value, unit and decimals.'
+      key_columns:
+      - file
+      - context
+      - concept
+      notes: 13.9M rows; values are in rupees (not crore) for monetary concepts. context controls the period (OneD quarter, FourD year-to-date,
+        *I instant) - stored dates are unreliable before 2022.
+    filings:
+      description: 'One row per NSE results XBRL filing: taxonomy, company/ISIN/symbol, reporting period, consolidation/audit flags, dates, opinion,
+        fact count and parse status.'
+      key_columns:
+      - file
+      - isin
+      - symbol
+      notes: file joins facts; status ok marks parsed. index_period/reporting_quarter are exchange labels and can say Half yearly for a quarter.
+    filings_isin:
+      description: One row per results filing resolving the filed ISIN to the trading ISIN, with method, same_issuer and as_of.
+      key_columns:
+      - file
+      notes: Use when a filing's ISIN is stale (split/face-value change); same_issuer=1 means the resolved trading ISIN is the same issuer.
+    quarterly:
+      description: 'One row per ok results filing: common income-statement concepts pivoted into columns (revenue, income, expenses, PBT, PAT,
+        EPS, capital) for context OneD.'
+      key_columns:
+      - file
+      - isin
+      - symbol
+      - period_end
+      notes: View; only OneD (quarter) context and status=ok. Monetary values are rupees. Many concepts are NULL for banks/NBFCs (different taxonomy).
+bse_announcements:
+  description: 'BSE corporate-announcement feed: one metadata row per NEWSID (headline/category/timestamps/attachment) plus a per-scrip fetch
+    ledger. Metadata only; the duckdb snapshot has a PIT-stamped copy.'
+  tables:
+    ann:
+      description: 'One BSE announcement per NEWSID: scrip code, headline/subject, category/subcategory, news/submission/dissemination timestamps,
+        attachment name and derived symbol.'
+      key_columns:
+      - NEWSID
+      - SCRIP_CD
+      - symbol
+      notes: Metadata only - no PDF body. symbol is derived; join bse_code_isin or master_companies.bse_code on SCRIP_CD. The 2026-10-19 duckdb
+        snapshot has a PIT-stamped copy.
+    done:
+      description: 'Fetch ledger for BSE announcements: one row per scrip/year with window, count and completed_at.'
+      key_columns:
+      - scrip
+      - win
+      notes: Resume bookkeeping; not announcement data.
