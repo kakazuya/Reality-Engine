@@ -85,6 +85,22 @@ start picks it up. Then restart the session (or `/mcp` reconnect) and call
 `server_info`; it should report `version: 0.2.0`. No `~/.claude.json` edit is
 needed. Codex's server (PID seen tonight under `codex.exe`) also needs a restart.
 
+## Live smoke (Fri 2026-10-23 23:39 IST, off-peak, Shivam approved; H02 had completed)
+
+Two tiny real calls through this branch's `Manager` (deepseek-v4.1-flash, max
+effort, Go account 2, read-only, `refresh_context=False`):
+
+| Brief | Result | progress.summary at the end |
+|---|---|---|
+| "Reply with exactly: OK" | finished in 8 s, answer `OK` | `done: finished; elapsed 8s; 0 tool calls, 1 model steps` |
+| read the first line of AGENTS.md | finished in 10 s, correct line | `done: finished; elapsed 10s; 1 tool calls, 2 model steps; last tool read on AGENTS.md` |
+
+While the jobs ran, the summary showed `running ... result.md 0 B so far
+(streaming, not final); hard stop by ... (controller_lease_deadline)`. `server_info`
+reported version 0.2.0 with the heartbeat and control-token contract.
+`survives_server_exit=false`, as expected under Claude Desktop. Item 5 of "Left
+unfixed" is now done.
+
 ## Left unfixed, and why
 
 1. **Survival when the host closes the server.** Claude Desktop and the Python
