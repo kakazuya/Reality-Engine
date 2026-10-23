@@ -175,6 +175,9 @@ class OnnxEmbedder:
     # ------------------------------------------------------------------
     def ensure_downloaded(self) -> bool:
         """Fetch onnx/model.onnx + tokenizer.json via huggingface_hub. True on success."""
+        # Files already in place need no download, so no huggingface_hub either.
+        if self._model_files() is not None:
+            return True
         try:
             from huggingface_hub import hf_hub_download  # type: ignore
         except ImportError:

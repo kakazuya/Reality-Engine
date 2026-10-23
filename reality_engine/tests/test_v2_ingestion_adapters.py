@@ -28,6 +28,23 @@ from reality_engine.ingestion import (
 )
 
 
+# The machine running the suite may carry real TELEGRAM_* credentials in its
+# environment. TelegramListener falls back to them when api_id/api_hash are
+# None, so an "unconfigured" listener would attempt a live login and block on
+# Telethon's interactive phone prompt forever. Hide them for this module.
+_TELEGRAM_ENV_SAVED: dict = {}
+
+
+def setUpModule():
+    for key in [k for k in os.environ if k.startswith("TELEGRAM_")]:
+        _TELEGRAM_ENV_SAVED[key] = os.environ.pop(key)
+
+
+def tearDownModule():
+    os.environ.update(_TELEGRAM_ENV_SAVED)
+    _TELEGRAM_ENV_SAVED.clear()
+
+
 class TestV2IngestionAdapters(unittest.TestCase):
     """Test suite for Telegram and FinanciallyFree ingestion adapters."""
 

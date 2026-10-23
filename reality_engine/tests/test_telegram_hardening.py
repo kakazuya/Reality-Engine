@@ -5,6 +5,7 @@ Runs without live Telethon credentials and without git commit.
 """
 
 import base64
+import os
 import shutil
 import tempfile
 import unittest
@@ -16,6 +17,23 @@ from PIL import Image, ImageDraw  # type: ignore
 from reality_engine.db.database import DatabaseManager
 from reality_engine.db.repository import Repository
 from reality_engine.ingestion.telegram_client import TelegramListener, TELETHON_INSTALLED
+
+
+# The machine running the suite may carry real TELEGRAM_* credentials in its
+# environment. TelegramListener falls back to them when api_id/api_hash are
+# None, so an "unconfigured" listener would attempt a live login and block on
+# Telethon's interactive phone prompt forever. Hide them for this module.
+_TELEGRAM_ENV_SAVED: dict = {}
+
+
+def setUpModule():
+    for key in [k for k in os.environ if k.startswith("TELEGRAM_")]:
+        _TELEGRAM_ENV_SAVED[key] = os.environ.pop(key)
+
+
+def tearDownModule():
+    os.environ.update(_TELEGRAM_ENV_SAVED)
+    _TELEGRAM_ENV_SAVED.clear()
 
 
 class TestTelegramHardening(unittest.TestCase):
