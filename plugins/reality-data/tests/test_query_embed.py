@@ -37,7 +37,8 @@ def vec(first=3.0, second=4.0):
 class QueryEmbedTests(unittest.TestCase):
     def setUp(self):
         query_embed.clear_cache()
-        self.env = {"DEEPINFRA_API_KEY": "test-di", "NEBIUS_API_KEY": "test-neb"}
+        self.env = {"DEEPINFRA_API_KEY": "test-di", "NEBIUS_API_KEY": "test-neb",
+                    query_embed.PAID_EMBED_FLAG: "1"}
 
     def _call_with(self, response, index, text="question"):
         with mock.patch.object(query_embed, "_env", return_value=self.env), \
@@ -85,11 +86,20 @@ class QueryEmbedTests(unittest.TestCase):
         self.assertAlmostEqual(float(np.linalg.norm(out)), 1.0, places=5)
 
     def test_missing_key_is_clear_and_makes_no_call(self):
-        with mock.patch.object(query_embed, "_env", return_value={}), \
+        with mock.patch.object(query_embed, "_env", return_value={query_embed.PAID_EMBED_FLAG: "1"}), \
                 mock.patch("requests.post") as post:
             with self.assertRaises(query_embed.MissingAPIKeyError) as ctx:
                 query_embed.embed_query("question", "qwen8b_ar")
         self.assertIn("NEBIUS_API_KEY", str(ctx.exception))
+        self.assertEqual(post.call_count, 0)
+
+    def test_paid_embedding_off_by_default_makes_no_call(self):
+        env = {"DEEPINFRA_API_KEY": "test-di"}
+        with mock.patch.object(query_embed, "_env", return_value=env), \
+                mock.patch("requests.post") as post:
+            with self.assertRaises(query_embed.MissingAPIKeyError) as ctx:
+                query_embed.embed_query("question", "nemotron8b")
+        self.assertIn(query_embed.PAID_EMBED_FLAG, str(ctx.exception))
         self.assertEqual(post.call_count, 0)
 
     def test_unknown_index(self):

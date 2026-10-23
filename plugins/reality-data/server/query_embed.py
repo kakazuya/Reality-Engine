@@ -116,8 +116,19 @@ def _data_dir() -> Path:
     return Path(os.environ.get("REALITY_DATA_ROOT") or DEFAULT_DATA_DIR)
 
 
+PAID_EMBED_FLAG = "REALITY_DATA_ALLOW_PAID_EMBED"
+
+
 def _key_for(cfg: dict[str, Any]) -> str:
-    value = _env().get(cfg["key_env"])
+    # Query embedding spends the provider allowance (DeepInfra). Shivam,
+    # 2026-10-24: never without his explicit permission, so it is off unless the
+    # flag is set; search_docs then falls back to FTS.
+    env = _env()
+    if str(env.get(PAID_EMBED_FLAG, "")).strip() != "1":
+        raise MissingAPIKeyError(
+            f"paid query embedding disabled ({PAID_EMBED_FLAG} != 1); falling back to FTS"
+        )
+    value = env.get(cfg["key_env"])
     if not value or not str(value).strip():
         raise MissingAPIKeyError(
             f"{cfg['key_env']} is not configured; falling back to FTS"
