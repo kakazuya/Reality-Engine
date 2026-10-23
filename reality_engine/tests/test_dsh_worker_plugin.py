@@ -162,15 +162,8 @@ class PluginTests(unittest.TestCase):
 
     # --------------------------------------------------------------- tests
     def test_manifest_and_layout(self):
-        manifest = json.loads((PLUGIN_ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertFalse((PLUGIN_ROOT / ".codex-plugin").exists())
         mcp = json.loads((PLUGIN_ROOT / ".mcp.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["name"], "dsh-worker")
-        self.assertEqual(manifest["skills"], "./skills/")
-        self.assertEqual(manifest["mcpServers"], "./.mcp.json")
-        self.assertIs(manifest["requires_local_executor"], True)
-        for value in (manifest["skills"], manifest["mcpServers"]):
-            self.assertTrue(value.startswith("./"))
-            self.assertNotIn("..", value)
         server = mcp["mcpServers"]["dsh-worker"]
         self.assertEqual(server["type"], "stdio")
         self.assertEqual(

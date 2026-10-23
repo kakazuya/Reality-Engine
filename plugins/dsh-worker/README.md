@@ -28,7 +28,6 @@ C:\Users\warri\AppData\Local\Programs\Python\Python314\python.exe -c "import mcp
 
 ```
 plugins/dsh-worker/
-  .codex-plugin/plugin.json   compatibility manifest
   .mcp.json                   stdio MCP launch config
   server/                     Python MCP server + detached supervisor
   skills/dsh-worker/SKILL.md  Codex workflow guidance
