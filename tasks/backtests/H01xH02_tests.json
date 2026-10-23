@@ -1,0 +1,13 @@
+{
+  "total_tests": 88,
+  "h02_tests": 18,
+  "existing_harness_tests": 70,
+  "modules": [
+    "reality_engine.tests.test_harness_h02 (18 passed)",
+    "reality_engine.tests.test_harness_h01 (49 passed)",
+    "reality_engine.tests.test_harness_h01_long (7 passed)",
+    "reality_engine.tests.test_harness_h01_selection (4 passed)",
+    "reality_engine.tests.test_harness_h01_wall (10 passed)"
+  ],
+  "note": "Combination-window tests are in test_harness_h02.CombinationTests; all prior ledger rows remain in the BH family."
+}

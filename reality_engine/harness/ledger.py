@@ -40,12 +40,13 @@ def annotate_superseded_h01_runs(corrected_run_id):
     return runs
 
 
-def append_variants(rows, *, snapshot, git_hash, coverage, run_id=None, source_hashes=None):
+def append_variants(rows, *, snapshot, git_hash, coverage, run_id=None,
+                    source_hashes=None, card_id="H01"):
     import duckdb
     LEDGER.parent.mkdir(parents=True, exist_ok=True)
     run_id = run_id or str(uuid4())
     timestamp = datetime.now(timezone.utc)
-    # No update/delete API. All eight pass/fail rows are one transaction.
+    # No update/delete API. All pass/fail rows are one transaction.
     with duckdb.connect(str(LEDGER)) as conn:
         conn.execute('''CREATE TABLE IF NOT EXISTS variants (
             row_id VARCHAR PRIMARY KEY, run_id VARCHAR, card_id VARCHAR,
@@ -58,7 +59,7 @@ def append_variants(rows, *, snapshot, git_hash, coverage, run_id=None, source_h
         try:
             for row in rows:
                 conn.execute("INSERT INTO variants VALUES (" + ",".join(["?"] * 18) + ")", [
-                    str(uuid4()), run_id, "H01", json.dumps(row["params"]), row["n_events"],
+                    str(uuid4()), run_id, row.get("card_id", card_id), json.dumps(row["params"]), row["n_events"],
                     row.get("mean_net_excess"), row.get("median_net_excess"), row.get("t_stat"),
                     row.get("p"), row.get("bh_q"), row.get("placebo_p"),
                     json.dumps(row.get("per_year_signs", {})), json.dumps(coverage),

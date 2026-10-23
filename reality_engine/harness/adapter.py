@@ -96,7 +96,9 @@ class Panel:
               FROM raw GROUP BY ALL
             )
             SELECT p.entity_id,p.date,p.isin,p.value_inr,
-                   p.adj_open*p.cum_div_factor AS tr_open,p.tr_close,r.raw_close
+                   p.adj_open*p.cum_div_factor AS tr_open,p.tr_close,r.raw_close,
+                   p.adj_open AS adj_open,
+                   p.adj_close/NULLIF(p.close,0) AS price_factor
             FROM px_daily p JOIN security_master s ON p.isin=s.isin
             LEFT JOIN unique_raw r ON p.exch=r.exch AND p.entity_id=r.entity_id
               AND p.isin=r.isin AND p.date=r.date
@@ -117,6 +119,8 @@ class Panel:
         self.open = matrix('tr_open')
         self.close = matrix('tr_close')
         self.raw = matrix('raw_close')
+        self.adj_open = matrix('adj_open')
+        self.price_factor = matrix('price_factor')
         values = matrix('value_inr')
         self.median20 = pd.DataFrame(values).rolling(20, min_periods=20).median().shift(1).to_numpy()
         self.adtv20 = pd.DataFrame(values).rolling(20, min_periods=20).mean().shift(1).to_numpy()

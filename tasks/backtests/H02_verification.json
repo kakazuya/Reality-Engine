@@ -1,0 +1,67 @@
+{
+  "card_id": "H02",
+  "verified_at_utc": "2026-10-21T20:48:32.741854+00:00",
+  "results_file": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\tasks\\backtests\\H02_results.json",
+  "events_file": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\tasks\\backtests\\H02_events.csv.gz",
+  "fills_file": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\tasks\\backtests\\H02_book_fills.csv.gz",
+  "checks": [
+    {
+      "check": "sample_net_values",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "sample_entry_exit_prices",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "sample_tax_and_net",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "sample_b5",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "event_means",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "bh_q_recomputation",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "book_fill_replay_and_prices",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "check": "snapshot_size_mtime_unchanged",
+      "passed": true,
+      "detail": {
+        "before": [
+          9130225664,
+          1792423981154000000
+        ],
+        "after": [
+          9130225664,
+          1792423981154000000
+        ]
+      }
+    },
+    {
+      "check": "pre_registration_hash",
+      "passed": true,
+      "detail": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\tasks\\backtests\\H02_preregistration.md"
+    }
+  ],
+  "passed": 9,
+  "failed": 0,
+  "failures": [],
+  "sample_size": 30
+}
