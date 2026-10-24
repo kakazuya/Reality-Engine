@@ -11,6 +11,7 @@ import sqlite3
 from pathlib import Path
 
 from reality_engine.scripts.concall_period import expected_quarters as fy_quarter, parse_period
+from reality_engine.scripts.concall_deepseek import _chunk_map, chunks_text
 
 ROOT = Path(__file__).resolve().parents[2]
 MAIN = ROOT / "reality_engine/data/equity_intelligence.db"
@@ -27,8 +28,9 @@ def main():
     a = ap.parse_args()
     out = sqlite3.connect(f"file:{OUT}?mode=ro", uri=True)
     main_db = sqlite3.connect(f"file:{MAIN}?mode=ro", uri=True)
-    docs = out.execute("SELECT doc_id, isin, symbol, filed_at, status, raw_json, chars FROM cc_docs WHERE run_at >= ?",
-                       (a.since_run,)).fetchall()
+    by_sha, by_url, chunked = _chunk_map(main_db)
+    docs = out.execute("SELECT doc_id, isin, symbol, filed_at, status, raw_json, chars, date_source FROM cc_docs "
+                       "WHERE run_at >= ?", (a.since_run,)).fetchall()
     print(f"docs checked: {len(docs)}  status: " + json.dumps(
         {s: sum(1 for d in docs if d[4] == s) for s in sorted({d[4] for d in docs})}))
     fails = {}
@@ -38,14 +40,16 @@ def main():
         fails.setdefault(check, []).append(ex)
 
     names = {i: n for i, n in main_db.execute("SELECT isin, company_name FROM master_companies")}
-    for doc_id, isin, sym, filed, status, raw, chars in docs:
-        src = main_db.execute("SELECT isin, symbol, bse_dissem_ts, publication_date, call_date, doc_date, local_file_path, sha256_hash "
-                              "FROM corporate_documents WHERE id=?", (doc_id,)).fetchone()
+    for doc_id, isin, sym, filed, status, raw, chars, date_source in docs:
+        src = main_db.execute("SELECT isin, symbol, bse_dissem_ts, publication_date, call_date, doc_date, local_file_path, "
+                              "sha256_hash, source_url FROM corporate_documents WHERE id=?", (doc_id,)).fetchone()
         real = src[2] or src[3] or src[4]
-        # 1 PIT date = the source filing time exactly, never the crawl date
-        if filed != real:
+        # 1 PIT date = the source filing time exactly, never the crawl date. Text-dated undated rows carry the parsed
+        # call date instead (the crawl stamp is not a filing time), recorded in date_source.
+        text_dated = (date_source or "").startswith("text_")
+        if filed != real and not (real is None and text_dated):
             fail("pit_filed_at_mismatch", (doc_id, sym, filed, real))
-        if filed and src[5] and filed[:10] == src[5][:10] and not src[2] and not src[3]:
+        if filed and src[5] and filed[:10] == src[5][:10] and not src[2] and not src[3] and not text_dated:
             fail("pit_only_doc_date", (doc_id, sym, filed))
         # 2 identity
         if (isin, sym) != (src[0], src[1]):
@@ -61,8 +65,14 @@ def main():
         if status != "ok":
             continue
         import pymupdf
-        with pymupdf.open(src[6]) as d:
-            text = "\n".join(p.get_text() for p in d)
+        if src[6] and Path(src[6]).exists():
+            with pymupdf.open(src[6]) as d:
+                text = "\n".join(p.get_text() for p in d)
+        else:   # chunk-mode docs have no PDF on disk
+            rid = by_sha.get(src[7]) if src[7] else None
+            if rid not in chunked:
+                rid = by_url.get(src[8]) if src[8] else None
+            text = chunks_text(rid) if rid in chunked else ""
         low = text.lower()
         words = [w for w in re.findall(r"[a-z0-9&]+", (names.get(isin) or "").lower()) if w not in STOP and len(w) > 2]
         if words and not any(w in low[:20000] for w in words[:2]):

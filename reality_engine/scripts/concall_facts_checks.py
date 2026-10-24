@@ -25,6 +25,7 @@ import sqlite3
 from pathlib import Path
 
 from reality_engine.scripts.concall_period import parse_period
+from reality_engine.scripts.concall_deepseek import _chunk_map, chunks_text
 
 ROOT = Path(__file__).resolve().parents[2]
 FACTS = ROOT / "reality_engine/data/concall_facts.db"
@@ -50,6 +51,39 @@ TIME = re.compile(r"\bfy|\b20\d\d\b|quarter|\bq[1-4]\b|\bh[12]\b|year|month|annu
 CMP = re.compile(r"maintain|reiterat|revis|rais|upgrad|lower|cut|earlier|previous|retain|same as|reaffirm|unchanged|"
                  r"stick|increase our guidance|reduce our guidance|from .* to ", re.I)
 SPEAKER = re.compile(r"(?m)^\s*([A-Z][A-Za-z.'\- ]{2,60}?)\s*:")
+# Chunk text has no line breaks (the chunker normalises whitespace) and some text layers are all lowercase, so the
+# line-anchored uppercase tag above finds nothing there. This second form matches a tag anywhere, and adds the
+# participant names the reader listed (case-insensitive) so lowercased transcripts still resolve a speaker.
+SPEAKER_ANY = re.compile(r"(?:^|\s)([A-Z][A-Za-z.'\- ]{2,60}?)\s*:")
+
+
+def _participant_names(participants):
+    out = set()
+    for p in participants or []:
+        s = (p.get("name") or "") if isinstance(p, dict) else str(p)
+        s = re.split(r"\s+[–\-]\s+|\s*,\s*", s)[0]
+        s = re.sub(r"^(?:mr|ms|mrs|dr|shri)\.?\s+", "", s.strip(), flags=re.I)
+        if 2 <= len(s.split()) <= 5:
+            out.add(s.lower())
+    return out
+
+
+def speaker_regex(participants):
+    names = _participant_names(participants)
+    if not names:
+        return SPEAKER_ANY
+    alt = "|".join(re.escape(n) for n in sorted(names, key=len, reverse=True))
+    return re.compile(rf"(?:^|\s)([A-Z][A-Za-z.'\- ]{{2,60}}?)\s*:|(?<!\w)((?i:{alt}))\s*:")
+
+
+def _tag_name(m):
+    g = m.groups()
+    return (g[0] or (g[1] if len(g) > 1 else "") or "").strip()
+
+
+def _tag_ok(m):
+    g = m.groups()
+    return bool(len(g) > 1 and g[1]) or _is_name(g[0] or "")
 
 
 def unit_class(v):
@@ -96,7 +130,7 @@ def metric_key(m):
     return None
 
 
-def speaker_of(text, ntext_index, quote, participants, recur, analysts):
+def speaker_of(text, ntext_index, quote, participants, recur, analysts, speaker_rx=None):
     """speaker tag nearest before the quote; role by participant surname match"""
     q = norm(quote)[:80]
     if not q:
@@ -109,10 +143,11 @@ def speaker_of(text, ntext_index, quote, participants, recur, analysts):
     # a speaker tag looks like a name (<= 5 capitalised words) and recurs in the call; one-off 'tags' are section
     # headings ('Disclaimer:', 'Now coming to the consolidated financial performance:'), which the first version took
     # for speakers and so marked management facts as analyst words
-    tags = [m for m in SPEAKER.finditer(text, 0, raw_pos) if _is_name(m.group(1)) and recur.get(m.group(1).strip(), 0) >= 2]
+    rx = speaker_rx or SPEAKER
+    tags = [m for m in rx.finditer(text, 0, raw_pos) if _tag_ok(m) and recur.get(_tag_name(m), 0) >= 2]
     if not tags:
         return None, "unknown"
-    name = tags[-1].group(1).strip()
+    name = _tag_name(tags[-1])
     low = name.lower()
     if "moderator" in low or "operator" in low:
         return name, "unknown"   # the moderator hands over; the speaker's own tag was missed
@@ -152,10 +187,12 @@ def _is_name(tag):
     return 1 <= len(w) <= 5 and all(x[0].isupper() or x.lower() in LINK for x in w)
 
 
-def recurring_tags(text):
+def recurring_tags(text, speaker_rx=None):
     out = {}
-    for m in SPEAKER.finditer(text):
-        k = m.group(1).strip(); out[k] = out.get(k, 0) + 1
+    for m in (speaker_rx or SPEAKER).finditer(text):
+        k = _tag_name(m)
+        if k:
+            out[k] = out.get(k, 0) + 1
     return out
 
 
@@ -175,16 +212,26 @@ def main():
     out = sqlite3.connect(FACTS, timeout=300)
     out.execute(DDL)
     main_db = sqlite3.connect(f"file:{MAIN}?mode=ro", uri=True)
+    by_sha, by_url, chunked = _chunk_map(main_db)
     docs = out.execute("SELECT doc_id, isin, filed_at, raw_json FROM cc_docs WHERE status='ok' ORDER BY filed_at").fetchall()
     import pymupdf
     rows, n = [], 0
     for doc_id, isin, filed, raw in docs:
         participants = json.loads(raw).get("participants") or []
-        path = main_db.execute("SELECT local_file_path FROM corporate_documents WHERE id=?", (doc_id,)).fetchone()[0]
-        with pymupdf.open(path) as d:
-            text = "\n".join(p.get_text() for p in d)
+        src = main_db.execute("SELECT local_file_path, sha256_hash, source_url FROM corporate_documents WHERE id=?",
+                              (doc_id,)).fetchone()
+        path = src[0] if src else None
+        if path and Path(path).exists():
+            with pymupdf.open(path) as d:
+                text = "\n".join(p.get_text() for p in d)
+        else:   # --from-chunks docs have no PDF on disk: use the same stored chunks the reader saw
+            rid = by_sha.get(src[1]) if src and src[1] else None
+            if rid not in chunked:
+                rid = by_url.get(src[2]) if src and src[2] else None
+            text = chunks_text(rid) if rid in chunked else ""
         ni = norm_index(text)
-        recur = recurring_tags(text)
+        speaker_rx = speaker_regex(participants)
+        recur = recurring_tags(text, speaker_rx)
         analysts = analyst_names(text)
         for ln, idx, value, period, direction, quote, metric in out.execute(
                 "SELECT list_name, idx, value, period, direction, quote, metric FROM cc_items WHERE doc_id=?", (doc_id,)):
@@ -192,7 +239,7 @@ def main():
             vin = int(bool(vd) and all(any(abs(v - x) < 1e-9 for x in qd) for v in vd)) if vd else None
             pin = int(bool(TIME.search(quote or ""))) if quote else 0
             dsup = (int(bool(CMP.search(quote or ""))) if direction in ("raised", "lowered", "maintained") else None)
-            spk, role = speaker_of(text, ni, quote, participants, recur, analysts)
+            spk, role = speaker_of(text, ni, quote, participants, recur, analysts, speaker_rx)
             mk = metric_key(metric) if ln in ("guidance", "key_numbers", "capex", "order_book") else None
             lo, hi = value_range(value)
             pfy = parse_period(period)

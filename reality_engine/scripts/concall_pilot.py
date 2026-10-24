@@ -90,12 +90,17 @@ def call_google(model, prompt, key):
 
 
 MAX_OUT = 32000   # our own per-call output cap (reasoning + answer) on Go chat calls; --max-out changes it
+KILO_URL = "https://api.kilo.ai/api/gateway/chat/completions"   # Kilo gateway: same OpenAI shape, own rate limit
 
 
-def call_go(model, prompt, key, timeout=900):
-    if model in RESPONSES_API:
-        r = requests.post("https://opencode.ai/zen/go/v1/responses", timeout=timeout,
-                          headers={"Authorization": f"Bearer {key}", "x-opencode-session": session_id("concall", model, key)},
+def call_go(model, prompt, key, timeout=900, session=None, url=None):
+    """OpenAI-compatible chat call. `url` routes the same model to another gateway (Kilo); `session` is the stable
+    x-opencode-session a lane keeps across restarts (go_session.session_id)."""
+    url = url or "https://opencode.ai/zen/go/v1/chat/completions"
+    sess = session or session_id("concall", model, key)
+    if model in RESPONSES_API and url.startswith("https://opencode.ai"):
+        r = requests.post(url.replace("/chat/completions", "/responses"), timeout=timeout,
+                          headers={"Authorization": f"Bearer {key}", "x-opencode-session": sess},
                           json={"model": model, "input": prompt, "max_output_tokens": 32000})
         if r.status_code != 200:
             raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
@@ -111,8 +116,8 @@ def call_go(model, prompt, key, timeout=900):
     body = {"model": model, "max_tokens": MAX_OUT, "messages": [{"role": "user", "content": prompt}]}
     if effort:
         body["reasoning_effort"] = effort
-    r = requests.post("https://opencode.ai/zen/go/v1/chat/completions", timeout=timeout,
-                      headers={"Authorization": f"Bearer {key}", "x-opencode-session": session_id("concall", model, key)}, json=body)
+    r = requests.post(url, timeout=timeout,
+                      headers={"Authorization": f"Bearer {key}", "x-opencode-session": sess}, json=body)
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
     j = r.json(); u = j.get("usage", {})

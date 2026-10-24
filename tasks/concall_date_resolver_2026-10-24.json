@@ -1,0 +1,230 @@
+{
+ "total": 1499,
+ "has_text": 318,
+ "no_text": 1181,
+ "confident": 128,
+ "by_confidence": {
+  "high": 104,
+  "none": 88,
+  "medium": 24,
+  "low": 102
+ },
+ "by_source": {
+  "text_call_date": 104,
+  "no_date": 88,
+  "text_dateline": 24,
+  "text_unverified": 102
+ },
+ "by_year": {
+  "2015": 2,
+  "2016": 29,
+  "2017": 23,
+  "2018": 30,
+  "2019": 34,
+  "2023": 4,
+  "2024": 4,
+  "2025": 2
+ },
+ "examples": [
+  {
+   "doc_id": 4215,
+   "symbol": "20MICRONS",
+   "crawl": "2026-08-28",
+   "date": "2019-06-04",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "at»tgitmttmt? T E 347, GlDC industrial Estate, Waghodia - 391760, Dist. Vadodara. Gujarat. India. 6th June, 2019 To: BOMBAY STOCK EXCHANGE LIMITED Department of Corporate Services Phiroze Jeejeebhoy Towers, Dalal Street,"
+  },
+  {
+   "doc_id": 4798,
+   "symbol": "AARTIIND",
+   "crawl": "2026-08-28",
+   "date": null,
+   "source": "no_date",
+   "confidence": "none",
+   "note": "no date pattern in the first 3000 chars",
+   "first_text": "question and answer session. Thank you. Moderator Thank you very much sir. Ladies and gentlemen we will now begin the question and answer session. We have the first question from the line of Abdul Puranwala from Centrum "
+  },
+  {
+   "doc_id": 4795,
+   "symbol": "AARTIIND",
+   "crawl": "2026-08-28",
+   "date": null,
+   "source": "no_date",
+   "confidence": "none",
+   "note": "no date pattern in the first 3000 chars",
+   "first_text": "question and answer session. Thank you. Moderator: Thank you very much. Ladies and gentlemen, we will now begin the question-and- answer session. We will take the first question from the line of Surya Patra from Phillip "
+  },
+  {
+   "doc_id": 4797,
+   "symbol": "AARTIIND",
+   "crawl": "2026-08-28",
+   "date": null,
+   "source": "no_date",
+   "confidence": "none",
+   "note": "no date pattern in the first 3000 chars",
+   "first_text": "question and answer session. Thank you. Moderator ​Thank you very much sir. Ladies and Gentlemen, we will now begin the question and answer session. The first question is from the line of Surya Patra from Phillip Capital"
+  },
+  {
+   "doc_id": 5043,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2017-05-09",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "Page 1 of 16 “ABB India Limited Q1 2017 Earnings Conference Call” May 09, 2017 MANAGEMENT: MR. SANJEEV SHARMA -- MANAGING DIRECTOR MR. T. K. SRIDHAR -- CHIEF FINANCIAL OFFICER, MR. MADHAV VEMURI -- LOCAL DIVISION HEAD, I"
+  },
+  {
+   "doc_id": 5048,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2016-02-04",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "Page 1 of 17 “ABB India Limited Q4 Results Conference Call” February 4, 2016 MANAGEMENT: MR. SANJEEV SHARMA -- CEO & MANAGING DIRECTOR, ABB INDIA MR. T.K. SRIDHAR – CHIEF FINANCIAL OFFICER, ABB INDIA MR. SUBIR PAL – PRES"
+  },
+  {
+   "doc_id": 5034,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2019-11-13",
+   "source": "text_dateline",
+   "confidence": "medium",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "question and answer session. The first question is from the line of Abhishek Puri from Axis Capital. Please go ahead. Abhishek Puri: My two questions on Robotics capex that you mentioned, I understand that thousand numbe"
+  },
+  {
+   "doc_id": 5045,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2016-10-27",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "Page 1 of 14 “ABB India Q2 FY16 Earnings Conference Call October 27, 2016 MANAGEMENT: MR. SANJEEV SHARMA – COUNTRY MANAGER & MANAGING DIRECTOR, ABB INDIA MR. T.K. SRIDHAR – CHIEF FINANCIAL OFFICER, ABB INDIA MR. PITAMBER"
+  },
+  {
+   "doc_id": 5049,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2015-11-03",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "Page 1 of 14 “ABB India Limited Q3-2015 Results-Investor Relation Conference Call” November 3, 2015 MANAGEMENT: MR. BAZMI HUSAIN – COUNTRY MANAGER & MANAGING DIRECTOR, ABB INDIA LIMITED MR. T.K. SRIDHAR – CHIEF FINANCIAL"
+  },
+  {
+   "doc_id": 5046,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2016-07-21",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "Page 1 of 14 “ABB India Q2 Results Conference Call for Analyst” July 21, 2016 MANAGEMENT: MR. SANJEEV SHARMA – MANAGING DIRECTOR, ABB INDIA LIMITED MR. T.K. SRIDHAR – CHIEF FINANCIAL OFFICER, ABB INDIA LIMITED MR. MADHAV"
+  },
+  {
+   "doc_id": 5050,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2015-07-24",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "Page 1 of 15 ABB India Limited Q2CY15 Investor Conference Call July 24, 2015 Management: Bazmi Husain – Country Manager & Managing Director T.K. Sridhar – Chief Financial Officer N. Venu – Division Head, Power Systems Di"
+  },
+  {
+   "doc_id": 5047,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2016-04-26",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "Page 1 of 16 “ABB India Limited Q1 Results Conference Call” April 26, 2016 MANAGEMENT: MR. SANJEEV SHARMA – MANAGING DIRECTOR, ABB INDIA LIMITED MR. T.K. SRIDHAR – CHIEF FINANCIAL OFFICER, ABB INDIA LIMITED MR. RAIMONDO "
+  },
+  {
+   "doc_id": 5037,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2018-10-30",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "jl It It r,.,., REF:INABB:STATUT:LODRTR CONCAL: November 2, 2018 BSE Limited P.J. Towers Dalal Street Mumbai 400 001 (Attn: DCS CRD) National Stock Exchange of India Ltd Exchange Plaza, 5th Floor Plot No. C/1, G Block Ba"
+  },
+  {
+   "doc_id": 5044,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2017-02-09",
+   "source": "text_call_date",
+   "confidence": "high",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "Page 1 of 13 “ABB India Limited Q4 2016 Earnings Conference Call” February 09, 2017 MANAGEMENT: MR. SANJEEV SHARMA – MANAGING DIRECTOR, ABB INDIA LIMITED MR. T.K. SRIDHAR – CHIEF FINANCIAL OFFICER, ABB INDIA LIMITED MR. "
+  },
+  {
+   "doc_id": 5041,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2018-05-30",
+   "source": "text_dateline",
+   "confidence": "medium",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "REF:INABB:STATUT:LODRANALYSTMEET: BSE Limited P.J. Towers Dalal Street Mumbai 400 001 (Attn: DCS CRD) National Stock Exchange of India Ltd Exchange Plaza, 5th Floor Plot No. C/1, G Block Bandra-Kurla Complex, Bandra (E) "
+  },
+  {
+   "doc_id": 5042,
+   "symbol": "ABB",
+   "crawl": "2026-08-28",
+   "date": "2017-07-20",
+   "source": "text_unverified",
+   "confidence": "low",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "question and answer session. We take the first question from the line of Jay Kakkad from Haitong Securities. Please go ahead. Jay Kakkad: Sir, first question is on the one-off expense that you mentioned this quarter that"
+  },
+  {
+   "doc_id": 5694,
+   "symbol": "ACLGATI",
+   "crawl": "2026-08-28",
+   "date": null,
+   "source": "no_date",
+   "confidence": "none",
+   "note": "no date pattern in the first 3000 chars",
+   "first_text": "question and answer session. Anyone who wishes to ask a question may press “*” then “1” on your touchtone telephone. If you wish to remove yourself from the question queue, you may press “*” and “2”. Participants are req"
+  },
+  {
+   "doc_id": 6451,
+   "symbol": "ADVENZYMES",
+   "crawl": "2026-08-28",
+   "date": "2018-08-13",
+   "source": "text_unverified",
+   "confidence": "low",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "question and answer session. The first question is from the line of Amar Maurya from Emkay Global. Please go ahead. Amar Maurya: I have two questions sir. Number one is what was the revenue from the Evoxx during this qua"
+  },
+  {
+   "doc_id": 6468,
+   "symbol": "ADVENZYMES",
+   "crawl": "2026-08-28",
+   "date": null,
+   "source": "no_date",
+   "confidence": "none",
+   "note": "no date pattern in the first 3000 chars",
+   "first_text": "question and answer session. We will take the first question from the line of Sriram Rathi from ICICI Securities. Please go ahead. Sriram Rathi: Two questions; First, how much of this Rs. 39 crores of revenue comes from "
+  },
+  {
+   "doc_id": 6459,
+   "symbol": "ADVENZYMES",
+   "crawl": "2026-08-28",
+   "date": "2017-09-11",
+   "source": "text_unverified",
+   "confidence": "low",
+   "note": "no trusted filing time; crawl date used as upper bound only",
+   "first_text": "question and answer session. We take the first question Amar Maurya from Emkay Global. Please go ahead. Amar Maurya: Sir thanks for the opportunity. Sir first you said that for financial year 2018 you are looking for rev"
+  }
+ ]
+}
