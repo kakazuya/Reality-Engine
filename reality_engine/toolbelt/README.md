@@ -17,5 +17,6 @@ Databases resolve through `REALITY_DATA_ROOT` when set (the main checkout's
 | `cost_ledger` | Append-only paid-call ledger (`tasks/ledgers/spend.jsonl`); `--cap` refuses a call that would exceed the budget, `--report` totals by purpose/model/job. | `python -m reality_engine.toolbelt.cost_ledger --report --scope concall_facts` |
 | `mod_test` | Claude Code mod checks: `claude plugin validate`, external-tsconfig `tsc`, per-file `claude plugin test`; merges the `claude-plugin-test-report` lines. | `python -m reality_engine.toolbelt.mod_test plugins/dsh-workers-pane` |
 | `job_peek` | Compact dsh job view: phase, elapsed, tool calls by tool, last activity, latest progress digest, `result.md` head — tail-read only. | `python -m reality_engine.toolbelt.job_peek <job_dir>` |
+| `coverage_peek` | Per-symbol row count + earliest/latest date across filings, BSE announcements, concall transcripts/facts, annual reports/AR facts, decks/deck figures, quarterly XBRL and NSE prices; table by default, `--json` for machines, exit 2 on an unknown symbol. | `python -m reality_engine.toolbelt.coverage_peek --symbol DEEDEV` |
 
 Tests: `python -m unittest reality_engine.tests.test_toolbelt`.
