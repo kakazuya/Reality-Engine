@@ -41,7 +41,9 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   (default `None`; omit for pure heartbeat supervision, or pass an explicit
   value for a deliberate wall-clock cutoff), `followup_wait_seconds` (default
   0), `controller_lease_seconds` (default 1800, max 7200), `refresh_context`,
-  and `use_worktree`/`base` for an isolated worktree writer. The launcher must
+  `progress_interval_seconds` (default 1200; `0` disables the supervisor's
+  model-free progress digests), and `use_worktree`/`base` for an isolated
+  worktree writer. The launcher must
   provide the real heartbeat and `--control-token-env` capabilities; the plugin
   refuses to start rather than falling back to a hard timeout. A positive
   `followup_wait_seconds` opts into a bounded host-side wait for explicit
@@ -61,6 +63,14 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   `stale` means no committed nested heartbeat activity within the configured
   window; a validated deliberate input wait is surfaced as awaiting input, not
   as progress, and a stale/expired wait descriptor stops suppressing checks.
+- `worker_progress` — the supervisor's model-free progress digests, newest
+  first (`job_id` omitted = all running jobs). Each has timestamp, phase,
+  elapsed, tool calls (total/by tool/delta), model steps, output tokens, last
+  tool + target, files written since the last digest, idle seconds, lease time
+  left, a >20-minute stall flag, the worker's last 3 committed text lines and
+  the latest `PROGRESS_NOTES.md` line. Prefer this over pinging a running
+  worker; it never touches the worker's conversation. `since` takes an
+  ISO-8601 time or `30m`/`2h`.
 - `worker_result` — bounded final or partial answer, exit outcome, artifact
   hints, and limits. While a deliberate input wait is active it returns the most
   recent committed assistant answer with `interim=true`, `final=false`; thinking
@@ -68,7 +78,9 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   returned.
 - `message_worker` — `kind="status"` (default) posts a status nudge to
   `dsh-heartbeat-control/1` `/ping`; the adapter frames it as
-  `[dsh-heartbeat status check]`. `kind="followup"` posts a genuine question to
+  `[dsh-heartbeat status check]` and the plugin prefixes the delivered text with
+  `Status check — answer in one line, then continue your task; this is not the
+  end of your task.` `kind="followup"` posts a genuine question to
   `/followup` (no status prefix). If a bounded turn-stopping wait is active the
   question is handed to exactly that waiter and steered once; otherwise a
   running turn accepts a direct steer, and a closing/idle run rejects it. Text
@@ -94,7 +106,8 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   process tree. Never kill by image name.
 - `list_workers` — inspect persisted jobs, optionally for one workspace
   (repository root or a registered worktree); each row has a one-line
-  `summary`, `owner_session` and `last_steerer`; corrupt records are listed
+  `summary`, `owner_session`, `last_steerer`, and the newest digest
+  (`last_digest_at`/`digest_summary`); corrupt records are listed
   under `unreadable`.
 - `merge_worker` — merge a finished worktree job's `dsh/<job_id>` into the
   checked-out target (default `main`) under the repo-wide merge lock, with

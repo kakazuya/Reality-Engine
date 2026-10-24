@@ -223,6 +223,7 @@ def main() -> int:
         "cwd": os.getcwd(),
         "task": Path(str(task_file)).read_text(encoding="utf-8") if task_file else "",
         "env_job_dir": os.environ.get("DSH_WORKER_JOB_DIR"),
+        "env_progress_notes": os.environ.get("DSH_WORKER_PROGRESS_NOTES"),
         "env_reality_data_root": os.environ.get("REALITY_DATA_ROOT"),
     }
     (job_dir / "launcher_argv.json").write_text(
@@ -271,6 +272,7 @@ def main() -> int:
              "input": {"command": "Get-Secret -Value hunter2", "description": "list files"}},
             {"type": "tool_result", "callId": "c2", "status": "error", "result": "boom"},
             {"type": "tool_call", "callId": "c3", "tool": "write", "input": {"file_path": "out/report.md", "content": "c"}},
+            {"type": "text", "text": "Implemented the fake change.\nRunning the tests now."},
             {"type": "status", "phase": "step_end", "usage": {"inputTokens": 100, "outputTokens": 42}},
         ]
         with events_path.open("a", encoding="utf-8") as fh:

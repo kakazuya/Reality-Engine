@@ -1,6 +1,6 @@
 """MCP stdio surface for the dsh-worker plugin.
 
-The server is intentionally small: six deterministic tools over persisted job
+The server is intentionally small: deterministic tools over persisted job
 records.  It does not run a model, does not scrape logs for answers, and does
 not append to dsh stdin.  Tool errors are returned as structured objects so
 Codex can distinguish an unavailable transport from a real worker failure.
@@ -14,6 +14,7 @@ from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 
 from core import (
+    DEFAULT_PROGRESS_INTERVAL_SECONDS,
     DEFAULT_RESULT_BYTES,
     Manager,
     PluginError,
@@ -29,7 +30,12 @@ INSTRUCTIONS = (
     "streamed while running, so a non-empty file is NOT completion). "
     "inspect_run gives the same read-only view of a run launched with the raw "
     "harness. Use worker_result for the bounded final answer and artifact hints, never the "
-    "reasoning log. message_worker kind='status' is a status nudge; kind='followup' "
+    "reasoning log. The supervisor also writes model-free progress digests "
+    "(progress.jsonl/progress.md) every progress_interval_seconds (default 1200, "
+    "0=off); read them with worker_progress instead of pinging a running worker. "
+    "message_worker kind='status' is a status nudge prefixed 'Status check — answer "
+    "in one line, then continue your task; this is not the end of your task.'; "
+    "kind='followup' "
     "is a genuine same-conversation question delivered to an explicit bounded wait. "
     "Both reject text over the adapter's 4000-character limit; if a call returns "
     "transport_unavailable, do not append stdin or start a second writer against "
@@ -101,7 +107,9 @@ def _safe(call) -> dict[str, Any]:
         "command merge_worker runs later for this job. Hard timeout "
         "defaults to None. followup_wait_seconds=0 keeps ordinary one-shot exit; "
         "a positive value adds a bounded host-side wait for explicit "
-        "same-conversation follow-ups."
+        "same-conversation follow-ups. progress_interval_seconds (default 1200, "
+        "0=off) is the supervisor's model-free progress-digest cadence; every "
+        "brief gets a standing instruction to append one line to PROGRESS_NOTES.md."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -123,6 +131,7 @@ def start_worker(
     use_worktree: bool = False,
     base: str | None = None,
     test_cmd: str | None = None,
+    progress_interval_seconds: int = DEFAULT_PROGRESS_INTERVAL_SECONDS,
 ) -> dict[str, Any]:
     return _safe(
         lambda: _get_manager().start_worker(
@@ -141,6 +150,7 @@ def start_worker(
             use_worktree=use_worktree,
             base=base,
             test_cmd=test_cmd,
+            progress_interval_seconds=progress_interval_seconds,
         )
     )
 
@@ -184,8 +194,10 @@ def worker_result(job_id: str, max_bytes: int | None = None) -> dict[str, Any]:
     description=(
         "Send a status nudge or an explicit follow-up to the same running worker "
         "through dsh-heartbeat-control/1. kind='status' (default) posts to /ping "
-        "and is framed as a status check; kind='followup' posts to /followup and "
-        "delivers the genuine question without a status prefix. A follow-up is "
+        "and the delivered text is prefixed 'Status check — answer in one line, "
+        "then continue your task; this is not the end of your task.' so the ping "
+        "is never answered as the final result; kind='followup' posts to /followup "
+        "and delivers the genuine question without a status prefix. A follow-up is "
         "handed to an active bounded turn-stopping wait and steered exactly once, "
         "or steered directly while a running turn can accept it. Text over 4000 "
         "characters is rejected with message_too_long. Works from any dsh-worker "
@@ -272,8 +284,9 @@ def cancel_worker(
     description=(
         "List persisted jobs, optionally filtered to one workspace (repository "
         "root or a registered worktree), newest first. Each row includes the "
-        "owner session and the last steerer session in addition to phase/summary. "
-        "Read-only and bounded."
+        "owner session, the last steerer session, and the newest supervisor "
+        "progress digest (last_digest_at/digest_summary) in addition to "
+        "phase/summary. Read-only and bounded."
     ),
     annotations=ToolAnnotations(
         read_only_hint=True, destructive_hint=False, open_world_hint=False
@@ -281,6 +294,29 @@ def cancel_worker(
 )
 def list_workers(workspace: str | None = None, limit: int = 20) -> dict[str, Any]:
     return _safe(lambda: _get_manager().list_workers(workspace, limit))
+
+
+@server.tool(
+    name="worker_progress",
+    description=(
+        "Return the supervisor's model-free progress digests, newest first. "
+        "Omit job_id to read every running job. Each digest has timestamp, "
+        "phase, elapsed, tool calls (total, by tool, delta), model steps, "
+        "output tokens, last tool and target, files written since the previous "
+        "digest, idle seconds, lease time left, a stall flag (no activity for "
+        "more than 20 minutes), the worker's last 3 committed text lines and "
+        "the latest PROGRESS_NOTES.md line. since accepts an ISO-8601 timestamp "
+        "or a duration like 30m or 2h. Read-only; no model call, and nothing is "
+        "sent into the worker's conversation."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=True, destructive_hint=False, open_world_hint=False
+    ),
+)
+def worker_progress(
+    job_id: str | None = None, since: str | None = None
+) -> dict[str, Any]:
+    return _safe(lambda: _get_manager().worker_progress(job_id, since))
 
 
 @server.tool(
@@ -402,14 +438,28 @@ def list_jobs() -> dict[str, Any]:
         "resource locks (db:<file>, gpu, net:<host>) so two jobs never share one; "
         "refuses with resource_busy otherwise. args are extra argv entries. No "
         "paid/GPU/off-peak job starts without confirm=true during a restricted "
-        "window. Returns run_id (the job_id); read job_log for output."
+        "window. progress_interval_seconds (default 1200, 0=off) is the same "
+        "model-free progress-digest cadence as start_worker. Returns run_id "
+        "(the job_id); read job_log for output and worker_progress for digests."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
     ),
 )
-def start_job(name: str, args: list[str] | None = None, confirm: bool = False) -> dict[str, Any]:
-    return _safe(lambda: _get_manager().start_job(name, args=args, confirm=confirm))
+def start_job(
+    name: str,
+    args: list[str] | None = None,
+    confirm: bool = False,
+    progress_interval_seconds: int = DEFAULT_PROGRESS_INTERVAL_SECONDS,
+) -> dict[str, Any]:
+    return _safe(
+        lambda: _get_manager().start_job(
+            name,
+            args=args,
+            confirm=confirm,
+            progress_interval_seconds=progress_interval_seconds,
+        )
+    )
 
 
 @server.tool(

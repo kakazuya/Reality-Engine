@@ -13,12 +13,14 @@ import signal
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import gitutil
 import heartbeat
 import procutil
+import progress
 from store import (
     JOB_LOCK_NAME,
     LEASE_FILE,
@@ -140,6 +142,67 @@ def _containment_error(job: dict[str, Any]) -> str | None:
         "job that could leave an unowned writer behind. Check job_object status and "
         "restart the supervisor on a supported Windows host."
     )
+
+
+def _progress_interval(job: dict[str, Any]) -> int:
+    """Supervisor digest cadence; 0 (or a legacy/invalid record) disables it."""
+    try:
+        value = int(job.get("progress_interval_seconds"))
+    except (TypeError, ValueError):
+        return 0
+    return value if 0 <= value <= 86_400 else 0
+
+
+def _last_activity(
+    job_dir: Path, job: dict[str, Any], status: dict[str, Any]
+) -> datetime | None:
+    """Committed worker activity only; log/status mtimes are supervision health.
+
+    A data job publishes no heartbeat, so its stdout/stderr mtime is the only
+    activity signal it has (the pane makes the same allowance).
+    """
+    candidates: list[datetime] = []
+    parsed = parse_iso(status.get("worker_activity_at"))
+    if parsed:
+        candidates.append(parsed)
+    if job.get("kind") == "data_job":
+        for name in ("stdout.log", "stderr.log"):
+            try:
+                mtime = (job_dir / name).stat().st_mtime
+            except OSError:
+                continue
+            candidates.append(datetime.fromtimestamp(mtime, timezone.utc))
+    if not candidates:
+        parsed = parse_iso(status.get("started_at"))
+        if parsed:
+            candidates.append(parsed)
+    return max(candidates) if candidates else None
+
+
+def _lease_remaining(status: dict[str, Any]) -> float | None:
+    lease = status.get("controller_lease")
+    value = lease.get("remaining_seconds") if isinstance(lease, dict) else None
+    return float(value) if isinstance(value, (int, float)) else None
+
+
+def _emit_digest(
+    writer: progress.DigestWriter,
+    job_dir: Path,
+    job: dict[str, Any],
+    status: dict[str, Any],
+    *,
+    final: bool = False,
+) -> None:
+    """A digest failure is logged, never fatal: a lost update beats a lost run."""
+    try:
+        writer.tick(
+            phase=str(status.get("phase") or "running"),
+            last_activity=_last_activity(job_dir, job, status),
+            lease_remaining=_lease_remaining(status),
+            final=final,
+        )
+    except Exception as exc:  # noqa: BLE001 - a digest bug must never kill a run
+        _log(f"progress digest failed ({type(exc).__name__}: {exc}); will retry")
 
 
 def _create_status(job: dict[str, Any], job_dir: Path) -> dict[str, Any]:
@@ -377,6 +440,9 @@ def main(argv: list[str] | None = None) -> int:
         env[str(key)] = str(value)
     env["DSH_WORKER_JOB_ID"] = job_id
     env["DSH_WORKER_JOB_DIR"] = str(job_dir)
+    # The brief's standing instruction points at this path; the worker appends
+    # one line per milestone and the supervisor folds the latest into a digest.
+    env["DSH_WORKER_PROGRESS_NOTES"] = str(job_dir / progress.PROGRESS_NOTES_FILE)
 
     job_object = procutil.WinJob()
     mutating = job.get("permission") != "read-only"
@@ -509,6 +575,17 @@ def main(argv: list[str] | None = None) -> int:
             last_write = 0.0
             cancel_requested = False
             lease_expired = False
+            # Model-free progress digests: one JSON line + progress.md every
+            # progress_interval_seconds.  Independent of any Claude/Codex
+            # session and never a message into the worker's conversation.
+            interval = _progress_interval(job)
+            digest = (
+                progress.DigestWriter(
+                    job_dir, job_id, status.get("started_at"), interval
+                )
+                if interval
+                else None
+            )
             while True:
                 if _CANCEL:
                     cancel_requested = True
@@ -572,12 +649,18 @@ def main(argv: list[str] | None = None) -> int:
                         if current and (previous is None or current > previous):
                             status["worker_activity_at"] = iso(current)
                 now = time.monotonic()
+                if digest is not None:
+                    _emit_digest(digest, job_dir, job, status)
                 if now - last_write >= 1.0:
                     _write_status_soft(job_dir, status)
                     last_write = now
                 time.sleep(0.25)
         rc = process.returncode if process is not None else None
         status = _finalize(job, job_dir, status, rc, cancel_requested, lease_expired=lease_expired)
+        if digest is not None:
+            # The final digest always lands, even if the worker ended between
+            # two intervals, so progress.md ends with the real outcome.
+            _emit_digest(digest, job_dir, job, status, final=True)
         try:
             with exclusive_lock(job_dir / JOB_LOCK_NAME):
                 lease_path.unlink(missing_ok=True)

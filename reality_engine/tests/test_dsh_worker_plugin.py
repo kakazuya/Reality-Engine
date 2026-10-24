@@ -38,6 +38,7 @@ import core  # noqa: E402
 import heartbeat  # noqa: E402
 import jobs  # noqa: E402
 import procutil  # noqa: E402
+import progress  # noqa: E402
 import store  # noqa: E402
 import supervisor  # noqa: E402
 from dsh_worker_testenv import make_temp_dir, remove_tree, run_async  # noqa: E402
@@ -59,6 +60,9 @@ class PluginTests(unittest.TestCase):
         (scripts / "go_session.py").write_text(FAKE_GO_SESSION, encoding="utf-8")
         self.env = os.environ.copy()
         self.env.pop("DSH_SESSION_LABEL", None)
+        # The offline suite runs against a fake repository; the host's real data
+        # root (set when this suite runs inside a worktree) must not leak in.
+        self.env.pop("REALITY_DATA_ROOT", None)
         self.env.update(
             {
                 "DSH_WORKER_REPO_ROOT": str(self.root),
@@ -276,6 +280,10 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(job["limits"]["hard_timeout_kind"], "none")
         self.assertEqual(job["provider_session"], "provider-session-test")
         self.assertIsNone(job["conversation_id"])
+        self.assertEqual(job["progress_interval_seconds"], 1200)
+        self.assertEqual(started["progress_interval_seconds"], 1200)
+        self.assertEqual(Path(started["progress_path"]).name, "progress.jsonl")
+        self.assertEqual(Path(started["progress_notes_path"]).name, "PROGRESS_NOTES.md")
         argv = job["launcher"]["argv"]
         self.assertIn("--allow-paid", argv)
         self.assertIn("--model", argv)
@@ -299,11 +307,30 @@ class PluginTests(unittest.TestCase):
                 print(f"--- {name} ---")
                 print(path.read_text(encoding="utf-8", errors="replace") if path.exists() else "(missing)")
         record = json.loads(argv_path.read_text(encoding="utf-8"))
-        self.assertEqual(record["task"], "Do the fake task")
+        # The brief keeps the caller's text and appends a standing progress
+        # instruction; it is never phrased as a question the worker must answer.
+        self.assertTrue(record["task"].startswith("Do the fake task"))
+        self.assertIn("PROGRESS_NOTES.md", record["task"])
+        self.assertNotIn("?", core.PROGRESS_NOTES_INSTRUCTION)
+        self.assertEqual(
+            record["env_progress_notes"],
+            str(Path(started["progress_notes_path"]).resolve()),
+        )
         final = self._wait_status(job_id, lambda s: s["final"])
         self.assertEqual(final["phase"], "finished")
         self.assertEqual(final["exit_code"], 0)
         self.assertTrue(final["result_ready"])
+        # A short job produces exactly the final digest (default cadence 20m).
+        digest_path = Path(started["progress_path"])
+        deadline = time.monotonic() + 10
+        while not digest_path.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertTrue(digest_path.exists())
+        digests = progress.read_digests(digest_path.parent)
+        self.assertEqual(len(digests), 1, digests)
+        self.assertTrue(digests[0]["final"])
+        self.assertEqual(digests[0]["phase"], "finished")
+        self.assertEqual(digests[0]["digest"], 1)
         result = self._manager_instance().worker_result(job_id)
         self.assertEqual(result["content"].strip(), "fake final answer")
         self.assertFalse(result["truncated"])
@@ -714,6 +741,7 @@ class PluginTests(unittest.TestCase):
                     "message_worker",
                     "cancel_worker",
                     "list_workers",
+                    "worker_progress",
                     "renew_worker_lease",
                     "claim_worker",
                     "inspect_run",
@@ -733,6 +761,9 @@ class PluginTests(unittest.TestCase):
             self.assertIn("merge --abort", by_name["merge_worker"].description)
             self.assertIn("confirm=true", by_name["push"].description)
             self.assertIn("jobs.yaml", by_name["list_jobs"].description)
+            self.assertIn("stall", by_name["worker_progress"].description)
+            self.assertIn("Status check", by_name["message_worker"].description)
+            self.assertIn("progress_interval_seconds", by_name["start_worker"].description)
             cancel_tool = by_name["cancel_worker"]
             self.assertIs(cancel_tool.annotations.destructive_hint, True)
             self.assertIs(by_name["start_worker"].annotations.open_world_hint, True)
@@ -854,7 +885,28 @@ class PluginTests(unittest.TestCase):
             nudge = json.loads(nudge_path.read_text(encoding="utf-8"))
             self.assertEqual(nudge["run_id"], "fake-run-1")
             self.assertEqual(nudge["session_id"], "conv-test-1")
-            self.assertEqual(nudge["message"][0]["text"], "please continue")
+            # A status ping is explicitly framed as non-final, so the worker
+            # answers one line and keeps working.
+            status_text = nudge["message"][0]["text"]
+            self.assertTrue(status_text.startswith(core.STATUS_CHECK_PREFIX), status_text)
+            self.assertTrue(status_text.endswith("please continue"))
+            followup_path = Path(started["status_path"]).parent / "followup.json"
+            followup_delivery = await self._call(
+                session,
+                "message_worker",
+                {
+                    "job_id": job_id,
+                    "message": "what should the next step be?",
+                    "kind": "followup",
+                    "conversation_id": "conv-test-1",
+                },
+            )
+            self.assertTrue(followup_delivery["ok"], followup_delivery)
+            followup = json.loads(followup_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                followup["message"][0]["text"], "what should the next step be?"
+            )
+            self.assertNotIn(core.STATUS_CHECK_PREFIX, followup["message"][0]["text"])
             mismatch = await self._call(
                 session,
                 "message_worker",
@@ -877,10 +929,9 @@ class PluginTests(unittest.TestCase):
                 job_id, "after restart", conversation_id="conv-test-1"
             )
             self.assertTrue(after_restart["ok"], after_restart)
-            self.assertEqual(
-                json.loads(nudge_path.read_text(encoding="utf-8"))["message"][0]["text"],
-                "after restart",
-            )
+            after_text = json.loads(nudge_path.read_text(encoding="utf-8"))["message"][0]["text"]
+            self.assertTrue(after_text.startswith(core.STATUS_CHECK_PREFIX), after_text)
+            self.assertTrue(after_text.endswith("after restart"))
             await self._call(session, "cancel_worker", {"job_id": job_id, "confirm": True})
 
         self._run(self._with_session(control))
@@ -907,6 +958,121 @@ class PluginTests(unittest.TestCase):
         )
         self.assertIsNone(error)
         self.assertEqual(nudge["path"], "/ping")
+
+    def test_worker_progress_digests_shape_and_list_row(self):
+        self.env["FAKE_LAUNCHER_MODE"] = "slow"
+        self.env["FAKE_LAUNCHER_SLEEP"] = "30"
+        self.env["FAKE_LAUNCHER_EVENTS"] = "1"
+        self._reset_manager()
+
+        async def scenario(session):
+            started = await self._call(
+                session,
+                "start_worker",
+                {"brief": "progress surface", "progress_interval_seconds": 1},
+            )
+            self.assertTrue(started["ok"], started)
+            job_id = started["job_id"]
+            await self._await_tool_status(session, job_id, lambda s: s["running"])
+            digest_path = Path(started["progress_path"])
+            # Wait for the first periodic digest (1 s cadence).
+            deadline = time.monotonic() + 20
+            response: dict = {}
+            while time.monotonic() < deadline:
+                response = await self._call(
+                    session, "worker_progress", {"job_id": job_id}
+                )
+                if response.get("digests"):
+                    break
+                await asyncio.sleep(0.1)
+            self.assertTrue(digest_path.exists(), "no progress.jsonl appeared")
+            self.assertTrue(response.get("digests"), response)
+            self.assertEqual(response["job_id"], job_id)
+            newest = response["digests"][0]
+            for key in (
+                "at",
+                "phase",
+                "elapsed_seconds",
+                "tool_calls",
+                "tool_calls_by_tool",
+                "tool_calls_delta",
+                "model_steps",
+                "output_tokens",
+                "last_tool",
+                "last_tool_target",
+                "files_written",
+                "files_written_count",
+                "idle_seconds",
+                "lease_seconds_left",
+                "stall",
+                "worker_text_tail",
+                "note",
+            ):
+                self.assertIn(key, newest)
+            self.assertEqual(newest["job_id"], job_id)
+            self.assertFalse(newest["final"])
+            self.assertGreaterEqual(newest["tool_calls"], 3)
+            self.assertEqual(newest["last_tool"], "write")
+            self.assertTrue(
+                any(
+                    "out/report.md" in record["files_written"]
+                    for record in response["digests"]
+                ),
+                response["digests"],
+            )
+            # Newest first, and all running jobs when job_id is omitted.
+            positions = [record["at"] for record in response["digests"]]
+            self.assertEqual(positions, sorted(positions, reverse=True))
+            all_running = await self._call(session, "worker_progress", {})
+            self.assertIn(job_id, all_running["jobs_scanned"])
+            self.assertTrue(
+                any(record["job_id"] == job_id for record in all_running["digests"])
+            )
+            future = await self._call(
+                session,
+                "worker_progress",
+                {"job_id": job_id, "since": "2099-01-01T00:00:00Z"},
+            )
+            self.assertEqual(future["count"], 0)
+            self.assertEqual(future["digests"], [])
+            bad_since = await self._call(
+                session, "worker_progress", {"job_id": job_id, "since": "yesterday"}
+            )
+            self.assertEqual(bad_since["error"]["code"], "since_invalid")
+            listed = await self._call(session, "list_workers", {})
+            row = next(item for item in listed["jobs"] if item["job_id"] == job_id)
+            self.assertIsNotNone(row["last_digest_at"])
+            self.assertIn("tool calls", row["digest_summary"])
+
+            await self._call(session, "cancel_worker", {"job_id": job_id, "confirm": True})
+            # Cancellation still leaves a final digest behind.
+            deadline = time.monotonic() + 15
+            last: dict = {}
+            while time.monotonic() < deadline:
+                last = await self._call(session, "worker_progress", {"job_id": job_id})
+                if last.get("digests") and last["digests"][0].get("final"):
+                    break
+                await asyncio.sleep(0.1)
+            self.assertTrue(last["digests"], last)
+            self.assertTrue(last["digests"][0]["final"], last["digests"][0])
+            self.assertEqual(last["digests"][0]["phase"], "cancelled")
+
+        self._run(self._with_session(scenario), timeout=120)
+
+    def test_progress_interval_zero_disables_digests(self):
+        self._reset_manager()
+        started = self._manager_instance().start_worker(
+            brief="no digests", progress_interval_seconds=0
+        )
+        self.assertEqual(started["progress_interval_seconds"], 0)
+        final = self._wait_status(started["job_id"], lambda s: s["final"])
+        self.assertEqual(final["phase"], "finished")
+        self.assertFalse(Path(started["progress_path"]).exists())
+        self.assertFalse(Path(started["progress_md_path"]).exists())
+        listed = self._manager_instance().list_workers()
+        row = next(item for item in listed["jobs"] if item["job_id"] == started["job_id"])
+        self.assertIsNone(row["last_digest_at"])
+        self.assertIsNone(row["digest_summary"])
 
     def test_heartbeat_capable_launcher_flags_and_status(self):
         self.env["FAKE_HEARTBEAT_FLAGS"] = "1"

@@ -61,6 +61,10 @@ Each `start_worker` call creates `runtime/jobs/<job_id>/` containing:
 - `heartbeat.json` — `dsh-heartbeat-status/1` supervision record
 - `stdout.log`, `stderr.log` — launcher process streams
 - `supervisor.log` — supervisor diagnostics
+- `progress.jsonl` — model-free supervisor progress digests (one JSON line per
+  `progress_interval_seconds`; the last is always written on finish)
+- `progress.md` — readable view of the latest digest plus the previous six
+- `PROGRESS_NOTES.md` — optional worker self-notes (one line per milestone)
 - `controller_lease.json` — controller-owned absolute lease (removed on final)
 - `control_token.bin` — per-job control token, DPAPI-encrypted for the current
   Windows user (never plaintext, never returned/logged)
@@ -103,7 +107,9 @@ exclude each other (read-only workers do not take the lock).
 `followup_wait_seconds` defaults to `0` (ordinary one-shot exit). A positive
 value enables the bounded `agent/turn-stopping` input wait described below.
 `controller_lease_seconds` defaults to `1800` and is an independent controller
-lease, not a task duration cap (maximum `7200`).
+lease, not a task duration cap (maximum `7200`). `progress_interval_seconds`
+defaults to `1200` (20 minutes) and controls the supervisor's model-free
+progress digests; `0` disables them (see "Model-free progress digests").
 
 The call returns after the supervisor has published its initial status, not
 after the worker finishes. `hard_timeout_seconds` defaults to `None` and no
@@ -286,11 +292,13 @@ reported as `ack_is_not_a_worker_response: true`; it does not prove the model
 replied.
 
 The status path prefixes every steering text with
-`[dsh-heartbeat status check]` and truncates the message at 4000 characters.
-`message_worker` therefore rejects longer text with `message_too_long` and sends
-nothing, so a manual nudge is never silently shortened. Follow-ups are not
-wrapped as status checks; they are delivered through `/followup` and rejected
-if no wait/running turn can accept them.
+`[dsh-heartbeat status check]` and truncates the message at 4000 characters;
+the plugin additionally prefixes the delivered status text with
+`Status check — answer in one line, then continue your task; this is not the
+end of your task.` `message_worker` therefore rejects longer text with
+`message_too_long` and sends nothing, so a manual nudge is never silently
+shortened. Follow-ups are not wrapped as status checks; they are delivered
+through `/followup` and rejected if no wait/running turn can accept them.
 
 `worker_status.last_activity_at` comes from the nested
 `heartbeat.last_activity_at` that the dsh supervisor advances only for committed
@@ -352,6 +360,58 @@ dsh binary (`dsh_missing`) or `OPENCODE_GO_API_KEY_2` (`api_key_missing`,
 presence check only) is absent, instead of launching a job that fails seconds
 later. An unreadable `status.json` (e.g. briefly locked by antivirus) is phase
 `unknown`, never `lost`.
+
+## Model-free progress digests (2026-10-24)
+
+A `message_worker kind="status"` ping is a turn, not a heartbeat: on
+2026-10-24 a worker answered one as its final result and exited early
+(`20261024T154434Z-b952dbc2`). Polling `list_workers` from a Claude session is
+not enough either — no session means no updates. The **supervisor** now writes
+progress itself, with no model call and nothing sent into the worker's
+conversation:
+
+- Every `progress_interval_seconds` (start parameter, default `1200` = 20 min;
+  `0` disables; `start_worker` and `start_job` both take it) the supervisor
+  appends one JSON line to `<job_dir>/progress.jsonl` and rewrites
+  `<job_dir>/progress.md` with the latest digest expanded plus the previous six
+  entries. A short job gets exactly one digest, written when it finishes, so
+  even a five-minute run leaves a real outcome.
+- The digest is computed from `result.md.events.jsonl` **incrementally**: the
+  scanner remembers its byte offset, so each digest only reads bytes appended
+  since the last one (a half-written trailing line waits for the next digest).
+  It carries: timestamp, phase, elapsed, tool calls (total, by tool, and the
+  delta since the last digest), model steps, output tokens, last tool + target,
+  files written since the last digest, idle seconds, lease time left, a stall
+  flag (no committed activity for more than 20 minutes), the last three lines
+  of the worker's own committed text, and the latest `PROGRESS_NOTES.md` line.
+  Thinking text, tool output and shell command text are never included.
+- `worker_progress(job_id=None, since=None)` returns those digests newest
+  first — all running jobs when `job_id` is omitted — and `list_workers` rows
+  gain `last_digest_at` plus a one-line `digest_summary`. `since` accepts an
+  ISO-8601 timestamp or a duration like `30m` / `2h`.
+- A digest write failure is logged and retried on the next interval; a lost
+  update never kills a healthy worker (same rule as the periodic status write).
+
+### Worker self-notes (cooperative, optional)
+
+Every worker brief ends with a standing instruction — never a question to
+answer: *"Every ~20 minutes of work, or at each milestone, append one line to
+PROGRESS_NOTES.md in your job directory … what's done, what's next, blockers.
+Do not stop or wait after writing it."* The absolute path is in the
+`DSH_WORKER_PROGRESS_NOTES` environment variable (the job dir is also
+`DSH_WORKER_JOB_DIR`). The newest note is folded into each digest as
+`note`/`worker note`. A worker that ignores it costs nothing: the digests still
+come from the event stream.
+
+### Status pings are explicitly non-final
+
+`message_worker kind="status"` keeps the `/ping` transport but now prefixes the
+delivered text with
+`Status check — answer in one line, then continue your task; this is not the
+end of your task.` So a status check can no longer be answered as the final
+result. `kind="followup"` is unchanged: a real question, no prefix. The prefix
+counts toward the adapter's 4000-character limit, so an over-long status
+message is rejected rather than silently truncated.
 
 ## Shutdown semantics
 
@@ -457,3 +517,11 @@ dirty/missing target refusal and push refusal, the jobs.yaml inventory/schema,
 disabled-job refusal, resource-lock contention, live freshness checks, and one
 end-to-end fake data job (`start_job`/`job_log`/`list_jobs`) visible from a
 second server process. No real fetch/ingest job is started by the tests.
+
+Progress digests have their own coverage: cadence on a fake clock, incremental
+offset resume (append + half-written line, deltas not cumulative totals), the
+stall flag, a final digest on finish, `progress_interval_seconds` validation and
+`0` disabling, `worker_progress` output shape (newest first, `since`, running
+jobs when `job_id` is omitted), `list_workers.last_digest_at`/`digest_summary`,
+the appended brief instruction plus `DSH_WORKER_PROGRESS_NOTES`, and the
+non-final "Status check —" prefix on `/ping` status pings.
