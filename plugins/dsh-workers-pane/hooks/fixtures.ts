@@ -19,6 +19,20 @@ export const DATA_RUNNING_ID = '20261024T115500Z-da7a0001'
 export const DATA_FINISHED_ID = '20261024T112000Z-da7a0002'
 export const DATA_FAILED_ID = '20261024T111500Z-da7a0003'
 export const DATA_OLD_ID = '20261023T230000Z-da7a0004'
+/** Started after `APP_START`, so the idle rule has something to show. It is
+ * not in `FIXTURE_ENTRIES`: tests that want the app already busy add it. */
+export const RECENT_ID = '20261024T115900Z-1a2b3c4d'
+export const RECENT_ENTRY = {
+  name: RECENT_ID,
+  kind: 'dir' as const,
+  size: 0,
+  mtimeMs: 0,
+  isLink: false,
+}
+
+/** A session start six minutes before `NOW`: recent enough that the jobs
+ * starting at -5m and -1m are fresh, late enough that the old ones are not. */
+export const APP_START = NOW - 6 * 60_000
 
 export const FIXTURE_IDS = [
   RUNNING_ID,
@@ -259,6 +273,45 @@ const UNREADABLE_JOB = job({
   owner_session: SESSION_A,
 })
 
+const RECENT_STATUS = status({
+  job_id: RECENT_ID,
+  kind: 'worker',
+  phase: 'running',
+  started_at: at(-1),
+  updated_at: at(-1),
+  worker_activity_at: at(-1),
+  owner_session: SESSION_B,
+  controller_lease: { deadline: at(60), lease_seconds: 7200 },
+})
+
+const RECENT_JOB = job({
+  job_id: RECENT_ID,
+  kind: 'worker',
+  created_at: at(-1),
+  brief_first_line: '# Task: Smoke the reconcile pass',
+  workspace: 'C:\\IDM-worktrees\\recent',
+  owner_session: SESSION_B,
+  worktree: { enabled: true, branch: 'dsh/smoke-reconcile' },
+})
+
+const RECENT_HEARTBEAT = heartbeat({
+  state: 'running',
+  heartbeat: {
+    activity_count: 3,
+    awaiting_input: false,
+    last_activity_at: at(-1),
+    last_activity_kind: 'tool_call',
+    events: [
+      { at: at(-1), kind: 'tool_call', detail: { tool: 'pwsh' } },
+    ],
+  },
+})
+
+const RECENT_EVENTS = [
+  '{"type":"tool_call","tool":"pwsh","input":{"description":"pytest"}}',
+  '',
+].join('\n')
+
 function dataStatus(
   id: string,
   phase: string,
@@ -314,6 +367,12 @@ export const FIXTURE_FILES: Record<string, string> = {
 
   [`${FIXTURE_ROOT}/${UNREADABLE_ID}/status.json`]: '{"phase": "runn',
   [`${FIXTURE_ROOT}/${UNREADABLE_ID}/job.json`]: UNREADABLE_JOB,
+
+  [`${FIXTURE_ROOT}/${RECENT_ID}/status.json`]: RECENT_STATUS,
+  [`${FIXTURE_ROOT}/${RECENT_ID}/job.json`]: RECENT_JOB,
+  [`${FIXTURE_ROOT}/${RECENT_ID}/heartbeat.json`]: RECENT_HEARTBEAT,
+  [`${FIXTURE_ROOT}/${RECENT_ID}/brief.md`]: '# Task: Smoke the reconcile pass\n',
+  [`${FIXTURE_ROOT}/${RECENT_ID}/result.md.events.jsonl`]: RECENT_EVENTS,
 
   [`${FIXTURE_ROOT}/${FINISHED_ID}/status.json`]: FINISHED_STATUS,
   [`${FIXTURE_ROOT}/${FINISHED_ID}/job.json`]: FINISHED_JOB,

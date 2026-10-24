@@ -41,16 +41,20 @@ import {
   idleMinutes,
   isActivePhase,
   isFinalPhase,
+  isIdle,
   leaseFraction,
   leaseTone,
+  liveRows,
   outcomeColor,
   outcomeGlyph,
+  phaseColor,
   phaseGlyph,
-  phaseTone,
   resultTailOf,
+  rowMeta,
   rowOf,
   sessionLabel,
   statusMeta,
+  summaryText,
   toolBreakdown,
   viewOf,
 } from './rows'
@@ -77,6 +81,14 @@ const expandedId = atom(
 const finishedOpen = atom(
   { plugin: 'dsh-workers', key: 'finishedOpen' } as const,
   false,
+)
+// `$.clock.now()` read in the `session.start` hook: the earliest reliable
+// app/session start the API exposes. `$.state` (not a module variable) so a
+// hot reload keeps it; kept per session, never in `$.store`, so an app restart
+// starts a fresh quiet window instead of replaying the last run's jobs.
+const startedAt = atom(
+  { plugin: 'dsh-workers', key: 'startedAt' } as const,
+  null as number | null,
 )
 
 let isRefreshing = false
@@ -327,6 +339,42 @@ async function readView(
   return { view: viewOf(rows, metas, now, root, null), scan: nextScan }
 }
 
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/** A hook's own log line; logging itself can never throw the hook out. */
+function log($: EngineInterface, message: string): void {
+  try {
+    $.ui.log(`dsh-workers: ${message}`, { to: 'debug' })
+  } catch {
+    // The debug log is a nicety too.
+  }
+}
+
+/**
+ * The pinned line follows the idle rule: nothing started since the session
+ * began means no line at all. Stale reads say so and keep the last numbers.
+ */
+function setStatus(
+  $: EngineInterface,
+  current: WorkerView,
+  appStartedAt: number | null,
+): void {
+  try {
+    if (isIdle(current, appStartedAt)) {
+      $.ui.status(undefined)
+      return
+    }
+    const stale = current.error === null ? '' : ' · stale'
+    $.ui.status(
+      `dsh: ${current.counts.running} running, ${current.counts.stalled} stalled${stale}`,
+    )
+  } catch {
+    // A status line is a nicety; the pane must still draw without one.
+  }
+}
+
 async function refresh(
   $: EngineInterface,
   options: PluginOptions,
@@ -338,14 +386,14 @@ async function refresh(
 
   try {
     now = await $.clock.now()
-    const [previousView, previousScan, openId, openFinished] = await Promise.all(
-      [
+    const [previousView, previousScan, openId, openFinished, appStartedAt] =
+      await Promise.all([
         readState($, view),
         readState($, scan),
         readState($, expandedId),
         readState($, finishedOpen),
-      ],
-    )
+        readState($, startedAt),
+      ])
     const next = await readView(
       $,
       root,
@@ -357,21 +405,24 @@ async function refresh(
     )
     await updateState($, scan, () => next.scan)
     const stored = await updateState($, view, () => next.view)
-    try {
-      $.ui.status(
-        `dsh: ${stored.counts.running} running, ${stored.counts.stalled} stalled`,
-      )
-    } catch {
-      // A status line is a nicety; the pane must still draw without one.
-    }
+    setStatus($, stored, appStartedAt ?? null)
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error)
-    await updateState($, view, previous => ({
-      ...EMPTY_VIEW,
-      readAt: now,
-      root,
-      error: `cannot read ${root}: ${reason}`,
-    })).catch(() => undefined)
+    // One bad record or an IO error never escapes a hook: the last good view
+    // stays on screen, the pane names the failure, and the next tick retries.
+    const reason = describe(error)
+    log($, `refresh failed: ${reason}`)
+    try {
+      const appStartedAt = (await readState($, startedAt)) ?? null
+      const stored = await updateState($, view, previous => ({
+        ...(previous ?? EMPTY_VIEW),
+        readAt: now,
+        root,
+        error: `cannot read ${root}: ${reason}`,
+      }))
+      setStatus($, stored, appStartedAt)
+    } catch {
+      // Nothing left to draw from; the previous state is already on screen.
+    }
   } finally {
     isRefreshing = false
   }
@@ -455,18 +506,47 @@ function sparkGlyphs(values: readonly number[]): string {
     .join('')
 }
 
-function mixSegments(
+/**
+ * One cell per measured job: each phase segment runs from its bright stop to
+ * its deep stop, so the mix bar is the phase gradient, not flat swatches.
+ */
+function mixCells(
   counts: WorkerView['counts'],
   cells: number,
-): Array<{ key: string; color: string; cells: number }> {
+): Array<{ key: string; color: string }> {
   const parts = [
-    { key: 'running', value: counts.running, color: STATUS.success.fill },
-    { key: 'stalled', value: counts.stalled, color: STATUS.warning.fill },
-    { key: 'failed', value: counts.failed, color: STATUS.error.fill },
-    { key: 'finished', value: counts.finished, color: STATUS.info.fill },
+    {
+      key: 'running',
+      value: counts.running,
+      light: STATUS.success.light,
+      deep: STATUS.success.deep,
+    },
+    {
+      key: 'stalled',
+      value: counts.stalled,
+      light: STATUS.warning.light,
+      deep: STATUS.warning.deep,
+    },
+    {
+      key: 'failed',
+      value: counts.failed,
+      light: STATUS.error.light,
+      deep: STATUS.error.deep,
+    },
+    {
+      key: 'finished',
+      value: counts.finished,
+      light: STATUS.info.light,
+      deep: STATUS.info.deep,
+    },
   ]
   const total = parts.reduce((sum, part) => sum + part.value, 0)
-  if (total <= 0) return [{ key: 'empty', color: C.track, cells }]
+  if (total <= 0) {
+    return Array.from({ length: cells }, (_, index) => ({
+      key: `empty-${index}`,
+      color: C.track,
+    }))
+  }
 
   const used = parts.map(part =>
     part.value <= 0
@@ -485,38 +565,18 @@ function mixSegments(
     used[biggest] = (used[biggest] ?? 0) - 1
     sum -= 1
   }
-  return parts.map((part, index) => ({
-    key: part.key,
-    color: part.color,
-    cells: used[index] ?? 0,
-  }))
-}
 
-/** Blend one cell at each colour boundary so the mix reads as a gradient. */
-function mixRuns(
-  segments: Array<{ key: string; color: string; cells: number }>,
-): Array<{ key: string; color: string; cells: number }> {
-  const runs: Array<{ key: string; color: string; cells: number }> = []
-  let previous: { key: string; color: string; cells: number } | null = null
-  for (const segment of segments) {
-    if (segment.cells <= 0) continue
-    if (previous !== null && segment.cells > 1) {
-      runs.push({
-        key: `blend-${segment.key}`,
-        color: mixHex(previous.color, segment.color, 0.5),
-        cells: 1,
+  const mix: Array<{ key: string; color: string }> = []
+  parts.forEach((part, partIndex) => {
+    const count = used[partIndex] ?? 0
+    for (let index = 0; index < count; index += 1) {
+      mix.push({
+        key: `${part.key}-${index}`,
+        color: mixHex(part.light, part.deep, count <= 1 ? 1 : index / (count - 1)),
       })
-      runs.push({
-        key: segment.key,
-        color: segment.color,
-        cells: segment.cells - 1,
-      })
-    } else {
-      runs.push(segment)
     }
-    previous = segment
-  }
-  return runs.filter(run => run.cells > 0)
+  })
+  return mix
 }
 
 function Divider(props: PaneProps) {
@@ -559,7 +619,7 @@ function HeaderCard(props: PaneProps) {
       tone: STATUS.info,
     },
   ]
-  const mix = mixRuns(mixSegments(counts, Math.max(8, props.width - 2)))
+  const mix = mixCells(counts, Math.max(8, props.width - 2))
 
   return (
     <Box
@@ -592,7 +652,7 @@ function HeaderCard(props: PaneProps) {
             key={chip.key}
             bold
             backgroundColor={chip.value > 0 ? chip.tone.bg : C.axis}
-            color={chip.value > 0 ? chip.tone.fg : C.subtitle}
+            color={chip.value > 0 ? chip.tone.fg : C.cardTitle}
           >
             {`${chip.glyph} ${chip.value} ${chip.label}`}
           </Text>
@@ -602,9 +662,9 @@ function HeaderCard(props: PaneProps) {
         flexDirection="row"
         backgroundColor={C.headerLow}
       >
-        {mix.map(segment => (
-          <Text key={segment.key} backgroundColor={segment.color}>
-            {' '.repeat(segment.cells)}
+        {mix.map(cell => (
+          <Text key={cell.key} backgroundColor={cell.color}>
+            {' '}
           </Text>
         ))}
       </Box>
@@ -615,7 +675,6 @@ function HeaderCard(props: PaneProps) {
 function RunningRow(props: PaneProps & { row: WorkerRow }) {
   const { Box, Text, Button } = props.kit
   const { row } = props
-  const tone = STATUS[phaseTone(row.phase)]
   const live =
     row.startedAt === null ? null : Math.max(0, props.now - row.startedAt)
   const duration = formatLive(live)
@@ -637,7 +696,7 @@ function RunningRow(props: PaneProps & { row: WorkerRow }) {
       backgroundColor={expanded ? C.card : undefined}
     >
       <Button key={row.id} plain onPress={() => props.onToggleRow(row.id)}>
-        <Text bold color={tone.fill}>
+        <Text bold color={phaseColor(row.phase)}>
           {phaseGlyph(row.phase)}
         </Text>
         {job && (
@@ -923,7 +982,7 @@ function DetailCard(props: PaneProps & { row: WorkerRow }) {
       marginBottom={1}
       flexDirection="column"
       borderStyle="round"
-      borderColor={C.cardEdge}
+      borderColor={phaseColor(row.phase)}
       backgroundColor={C.card}
       paddingX={1}
     >
@@ -1105,68 +1164,169 @@ function PaneTree(props: PaneProps) {
 function startTimer($: EngineInterface, options: PluginOptions): void {
   timer?.cancel()
   timer = $.clock.every(REFRESH_MS, () => {
-    void refresh($, options)
+    void refresh($, options).catch(() => undefined)
   })
+}
+
+/**
+ * A hot reload drops the module's timers with the old environment, and a mod
+ * hot-loaded into a running session never saw `session.start`: the next event
+ * that reaches the module re-arms the 15 s tick.
+ */
+function ensureTimer($: EngineInterface, options: PluginOptions): void {
+  if (timer === null) startTimer($, options)
 }
 
 export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({
-      name: COMMAND,
-      description: 'Show DeepSeek worker jobs in a pane',
-    })
-    await refresh($, options)
-    void $.ui.open({ id: PANE, title: TITLE }).catch(() => undefined)
-    startTimer($, options)
+    try {
+      await $.command.register({
+        name: COMMAND,
+        description: 'Show DeepSeek worker jobs in a pane',
+      })
+      const now = await $.clock.now()
+      // The earliest reliable app/session start the API exposes: this hook's
+      // own time, kept in `$.state` so a hot reload keeps the same window.
+      await updateState($, startedAt, previous => previous ?? now)
+      startTimer($, options)
+      await refresh($, options)
+
+      const appStartedAt = (await readState($, startedAt)) ?? null
+      const current = (await readState($, view)) ?? EMPTY_VIEW
+      if (!isIdle(current, appStartedAt)) {
+        void $.ui.open({ id: PANE, title: TITLE }).catch(() => undefined)
+      }
+    } catch (error) {
+      log($, `session.start failed: ${describe(error)}`)
+    }
 
     return next(e)
   })
 
   on('command.run', { command: COMMAND }, async $ => {
     await refresh($, options)
-    await $.ui.open({ id: PANE, title: TITLE })
     // A mod hot-loaded into a running session never saw session.start.
-    startTimer($, options)
+    ensureTimer($, options)
 
-    return { text: `${TITLE} pane opened.` }
-  }).catch(async ($, e, next) =>
-    next.called
-      ? next(e)
-      : { text: `${TITLE} pane could not be opened.` },
-  )
+    let isPlaced = false
+    try {
+      isPlaced = (await $.ui.open({ id: PANE, title: TITLE })).isPlaced
+    } catch {
+      // A surface that refuses the pane (or a hook above) still gets the text.
+    }
+    if (isPlaced) return { text: `${TITLE} pane opened.` }
+
+    // No pane can be placed here (the Android app, a narrow surface): answer
+    // with what the pane would have shown, as command output.
+    const current = (await readState($, view)) ?? EMPTY_VIEW
+    return { text: summaryText(current, await $.clock.now()) }
+  }).catch(async ($, e, next) => {
+    if (next.called) return next(e)
+    log($, `command.run ${e.command}: hook failed; the debug log has the reason`)
+
+    return { text: `${TITLE}: jobs could not be read. Try again.` }
+  })
 
   on('session.end', async ($, e, next) => {
-    timer?.cancel()
-    timer = null
-    try {
-      $.ui.status(undefined)
-    } catch {
-      // The session is going away; nothing depends on the line.
+    // A /clear (or a resume) ends the conversation, not the process: there is
+    // no new session.start, so the tick and the pinned line must survive it.
+    if (e.reason !== 'clear' && e.reason !== 'resume') {
+      timer?.cancel()
+      timer = null
+      try {
+        $.ui.status(undefined)
+      } catch {
+        // The session is going away; nothing depends on the line.
+      }
     }
 
     return next(e)
   })
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const current = (await readState($, view)) ?? EMPTY_VIEW
-    const openId = (await readState($, expandedId)) ?? null
-    const openFinished = (await readState($, finishedOpen)) ?? false
-    const now = await $.clock.now()
-    const width = Math.max(24, e.props.bodyColumns)
-    const toggleRow = (id: string): Promise<void> =>
-      updateState($, expandedId, previous =>
-        previous === id ? null : id,
-      ).then(() => refresh($, options))
-    const toggleFinished = (): Promise<void> =>
-      updateState($, finishedOpen, previous => !previous).then(() =>
-        refresh($, options),
-      )
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    try {
+      // A survey already owns the band; a quiet orbit owns nothing.
+      if (e.props.hasSurvey) return next(e)
+      const current = (await readState($, view)) ?? EMPTY_VIEW
+      const rows = liveRows(current)
+      if (rows.length === 0) return next(e)
 
-    if (e.surface === 'terminal') {
-      const { Box, Text, Button } = $.ui.resolve(e)
+      ensureTimer($, options)
+      const now = await $.clock.now()
+      const { Box, Text } = $.ui.resolve(e)
+      const width = Math.max(20, e.props.bodyColumns)
+      const room = Math.max(1, e.props.maxRows)
+
+      return (
+        <Box flexDirection="column">
+          {rows.slice(0, room).map(row => {
+            const meta = rowMeta(row, now)
+            const title = clip(
+              row.title,
+              Math.max(6, width - meta.length - (row.kind === 'data_job' ? 9 : 5)),
+            )
+            return (
+              <Box key={row.id} flexDirection="row">
+                <Text bold color={phaseColor(row.phase)}>
+                  {phaseGlyph(row.phase)}
+                </Text>
+                {row.kind === 'data_job' && (
+                  <Text bold backgroundColor={C.job} color={C.jobFg}>
+                    {' job '}
+                  </Text>
+                )}
+                <Text bold>{` ${title} `}</Text>
+                <Text dimColor wrap="truncate-end">
+                  {meta}
+                </Text>
+              </Box>
+            )
+          })}
+        </Box>
+      )
+    } catch (error) {
+      log($, `AbovePrompt render failed: ${describe(error)}`)
+      return next(e)
+    }
+  })
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
+    try {
+      ensureTimer($, options)
+      const current = (await readState($, view)) ?? EMPTY_VIEW
+      const openId = (await readState($, expandedId)) ?? null
+      const openFinished = (await readState($, finishedOpen)) ?? false
+      const now = await $.clock.now()
+      const width = Math.max(24, e.props.bodyColumns)
+      const toggleRow = (id: string): Promise<void> =>
+        updateState($, expandedId, previous =>
+          previous === id ? null : id,
+        ).then(() => refresh($, options))
+      const toggleFinished = (): Promise<void> =>
+        updateState($, finishedOpen, previous => !previous).then(() =>
+          refresh($, options),
+        )
+
+      if (e.surface === 'terminal') {
+        const { Box, Text, Button } = $.ui.resolve(e)
+        return (
+          <PaneTree
+            kit={{ Box, Text, Button, Svg: null }}
+            view={current}
+            expandedId={openId}
+            finishedOpen={openFinished}
+            now={now}
+            width={width}
+            onToggleRow={toggleRow}
+            onToggleFinished={toggleFinished}
+          />
+        )
+      }
+
+      const { Box, Text, Button, Svg } = $.ui.resolve(e)
       return (
         <PaneTree
-          kit={{ Box, Text, Button, Svg: null }}
+          kit={{ Box, Text, Button, Svg }}
           view={current}
           expandedId={openId}
           finishedOpen={openFinished}
@@ -1176,20 +1336,9 @@ export const register: Register = (on, options) => {
           onToggleFinished={toggleFinished}
         />
       )
+    } catch (error) {
+      log($, `Pane render failed: ${describe(error)}`)
+      return next(e)
     }
-
-    const { Box, Text, Button, Svg } = $.ui.resolve(e)
-    return (
-      <PaneTree
-        kit={{ Box, Text, Button, Svg }}
-        view={current}
-        expandedId={openId}
-        finishedOpen={openFinished}
-        now={now}
-        width={width}
-        onToggleRow={toggleRow}
-        onToggleFinished={toggleFinished}
-      />
-    )
   })
 }

@@ -17,7 +17,9 @@ import {
   UNREADABLE_ID,
 } from './fixtures'
 import type { WorkerMetrics, WorkerRow } from '../types'
+import { STATUS } from './palette'
 import {
+  EMPTY_VIEW,
   LEASE_WARN_MS,
   barCells,
   briefLinesOf,
@@ -28,13 +30,19 @@ import {
   groupFinished,
   heatRatio,
   idleTone,
+  isIdle,
   leaseFraction,
   leaseTone,
+  liveRows,
+  phaseColor,
   resultTailOf,
+  rowMeta,
   rowOf,
   sessionLabel,
   sparkFromEvents,
   statusMeta,
+  summaryText,
+  todayCounts,
   toolBreakdown,
   viewOf,
 } from './rows'
@@ -350,4 +358,106 @@ test('heat ratios clamp and tool bars keep one filled cell', () => {
   expect(tools.map(tool => tool.tool)).toEqual(['grep', 'pwsh', 'read', 'write'])
   expect(tools[0]?.count).toBe(1)
   expect(toolBreakdown(null)).toEqual([])
+})
+
+/** The whole fixture set as the pane's refresh would build it. */
+function wholeView() {
+  const rows = [
+    rowFor(RUNNING_ID, true),
+    rowFor(STALLED_ID),
+    rowFor(UNREADABLE_ID),
+    rowFor(DATA_RUNNING_ID),
+    rowFor(FINISHED_ID),
+    rowFor(FAILED_TODAY_ID),
+    rowFor(CANCELLED_ID),
+    rowFor(DATA_FINISHED_ID),
+    rowFor(DATA_FAILED_ID),
+    rowFor(DATA_OLD_ID),
+    rowFor(FAILED_OLD_ID),
+  ]
+  const metas = rows.map(row =>
+    statusMeta(
+      row.id,
+      row.id === UNREADABLE_ID ? null : statusOf(row.id),
+      NOW,
+    ),
+  )
+  return viewOf(rows, metas, NOW, FIXTURE_ROOT, null)
+}
+
+test('the idle rule starts the rail only for work begun after the session', () => {
+  const view = wholeView()
+
+  // `insider_trades` started five minutes ago: a session that began six
+  // minutes ago is busy.
+  expect(isIdle(view, NOW - 6 * 60_000)).toBe(false)
+  // A session that begins now has nothing started since it did.
+  expect(isIdle(view, NOW)).toBe(true)
+  // No session.start seen (a hot load): never claim idle over real jobs.
+  expect(isIdle(view, null)).toBe(false)
+  expect(isIdle(EMPTY_VIEW, null)).toBe(true)
+
+  // An old finished job alone does not wake the rail.
+  const old = viewOf(
+    [rowFor(FAILED_OLD_ID)],
+    [statusMeta(FAILED_OLD_ID, statusOf(FAILED_OLD_ID), NOW)],
+    NOW,
+    FIXTURE_ROOT,
+    null,
+  )
+  expect(isIdle(old, NOW - 60 * 60_000)).toBe(true)
+})
+
+test('today counts successes only and keeps cancelled out of both sides', () => {
+  const view = wholeView()
+  expect(todayCounts(view, NOW)).toEqual({ finished: 2, failed: 2 })
+  // A day later none of the fixture jobs are "today" any more.
+  expect(todayCounts(view, NOW + 24 * 60 * 60_000)).toEqual({
+    finished: 0,
+    failed: 0,
+  })
+})
+
+test('the mobile summary lists live rows with elapsed, tools, idle and lease', () => {
+  const view = wholeView()
+  const text = summaryText(view, NOW)
+
+  expect(text).toContain('**DeepSeek workers** — 2 running · 1 stalled')
+  expect(text).toContain(
+    '- ● **Fix the resource watchdog** — 20m 00s · 4 tools · idle 5m · lease 1h40 left',
+  )
+  expect(text).toContain('- ◐ **Chunk every FY26 annual report**')
+  expect(text).toContain('idle 35m')
+  expect(text).toContain('lease 10m left')
+  expect(text).toContain('insider_trades')
+  // A mid-write record has no phase to colour and is left out.
+  expect(text).not.toContain('Mid-write job')
+  expect(text.trimEnd().endsWith('2 finished · 2 failed today')).toBe(true)
+  expect(summaryText(EMPTY_VIEW, NOW)).toContain('No workers running.')
+  expect(summaryText(EMPTY_VIEW, NOW)).toContain('0 finished · 0 failed today')
+})
+
+test('row meta and live rows agree with the pane', () => {
+  const view = wholeView()
+  expect(liveRows(view).map(row => row.id)).toEqual([
+    DATA_RUNNING_ID,
+    RUNNING_ID,
+    STALLED_ID,
+  ])
+  expect(rowMeta(rowFor(RUNNING_ID, true), NOW)).toBe(
+    '20m 00s · 4 tools · idle 5m · lease 1h40 left',
+  )
+  expect(rowMeta(rowFor(DATA_RUNNING_ID), NOW)).toBe(
+    '5m 00s · idle 5m · lease 1h30 left',
+  )
+})
+
+test('the phase palette colours dots, chips and cards alike', () => {
+  expect(phaseColor('running')).toBe(
+    STATUS.success.fill,
+  )
+  expect(phaseColor('stalled')).toBe(STATUS.warning.fill)
+  expect(phaseColor('finished')).toBe(STATUS.info.fill)
+  expect(phaseColor('failed')).toBe(STATUS.error.fill)
+  expect(phaseColor('cancelled')).toBe(STATUS.muted.fill)
 })

@@ -1,7 +1,7 @@
 {
   "name": "dsh-workers",
-  "version": "0.2.0",
-  "description": "Read-only DeepSeek worker rail: running/finished lists, expandable detail cards with live metrics, plus /dsh-workers and a status line.",
+  "version": "0.3.0",
+  "description": "Read-only DeepSeek worker rail: sunset/mango/lime phase colours, idle-hiding status line, an above-prompt band for mobile and desktop, and /dsh-workers with a Markdown fallback where no pane can be placed.",
   "author": {
     "name": "Shivam"
   },

@@ -120,6 +120,12 @@ declare module 'claude-code' {
       scan: ScanCache
       expandedId: string | null
       finishedOpen: boolean
+      /**
+       * The `session.start` hook's `$.clock.now()`: the idle rule's start of
+       * the app/session. `null` until that hook runs (a mod hot-loaded into a
+       * running session), which means "cannot prove idle".
+       */
+      startedAt: number | null
     }
   }
 }
