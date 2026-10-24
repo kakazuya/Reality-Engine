@@ -59,6 +59,11 @@ def _run_git(
             cwd=cwd,
             capture_output=True,
             text=True,
+            # Git for Windows prints repository paths as UTF-8.  Decoding with the
+            # process locale (cp1252 on a non-UTF-8 host) corrupts any non-ASCII
+            # path, so an unchanged workspace compares unequal to the identity
+            # captured at start and every commit is refused as "moved".
+            encoding="utf-8",
             errors="replace",
             timeout=timeout,
             creationflags=_hidden(),
@@ -538,6 +543,7 @@ def snapshot(workspace: Path, timeout: float = 10.0) -> dict[str, Any]:
             ["git", "-C", str(workspace), "rev-parse", "--show-toplevel"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             errors="replace",
             timeout=timeout,
             creationflags=_hidden(),

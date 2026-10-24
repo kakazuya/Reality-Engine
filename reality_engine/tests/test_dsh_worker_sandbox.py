@@ -386,6 +386,50 @@ class CommitRequestTests(unittest.TestCase):
         self.assertIn("worker commit", subject)
         self.assertEqual(base, self._git("rev-parse", "main").strip())
 
+    def test_identity_round_trips_a_non_ascii_worktree_path(self) -> None:
+        # Regression: git paths were decoded with the process locale (cp1252 on
+        # a non-UTF-8 host), so a workspace containing non-ASCII characters no
+        # longer matched its captured toplevel and the commit was refused as
+        # git_workspace_moved.  PYTHONUTF8=0 pins the failing mode independently
+        # of the shell this suite runs in.
+        unicode_root = self.root / "dsh stress ू dir"
+        repo = unicode_root / "repo"
+        repo.mkdir(parents=True)
+
+        def git(*args: str) -> None:
+            subprocess.run(
+                ["git", *args], cwd=repo, check=True, capture_output=True
+            )
+
+        git("init", "-q", "-b", "main")
+        git("config", "user.email", "test@example.com")
+        git("config", "user.name", "Test")
+        (repo / "file.txt").write_text("one\n", encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-q", "-m", "base")
+        worktree = unicode_root / "worktrees" / "wt"
+        git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
+
+        code = (
+            "import sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "import gitutil\n"
+            "identity = gitutil.checkout_identity(sys.argv[2])\n"
+            "print(gitutil.identity_error(sys.argv[2], identity, sys.argv[3]))\n"
+        )
+        env = dict(os.environ)
+        env["PYTHONUTF8"] = "0"
+        env.pop("PYTHONIOENCODING", None)
+        finished = subprocess.run(
+            [sys.executable, "-c", code, str(SERVER_DIR), str(worktree), str(repo)],
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        self.assertEqual(finished.stdout.strip(), "None", finished.stderr)
+
     def test_commit_refuses_a_worker_owned_gitdir_and_never_runs_its_hook(self) -> None:
         # D1(a): the worker rewrites .git to a gitdir it owns, whose pre-commit
         # hook would escape.  The commit must be refused and the hook must not run.
@@ -607,13 +651,31 @@ class WorkerBootstrapTests(unittest.TestCase):
             ["icacls", str(path)], capture_output=True, text=True
         )
 
+        def access_aces(output: str) -> str:
+            # icacls always appends the SACL integrity label ("Mandatory Label\
+            # Low Mandatory Level:(I)(OI)(CI)(NW)"), whose (I) is inherited from
+            # the parent directory even when the DACL has no inherited ACE.
+            return "\n".join(
+                line
+                for line in output.splitlines()
+                if not line.lstrip().startswith("Mandatory Label")
+            )
+
         patched = run("patched", True)
         patched_acl = acl(patched)
-        self.assertIn("(I)", patched_acl.stdout, patched_acl.stdout + patched_acl.stderr)
+        self.assertIn(
+            "(I)",
+            access_aces(patched_acl.stdout),
+            patched_acl.stdout + patched_acl.stderr,
+        )
 
         plain = run("plain", False)
         plain_acl = acl(plain)
-        self.assertNotIn("(I)", plain_acl.stdout, plain_acl.stdout + plain_acl.stderr)
+        self.assertNotIn(
+            "(I)",
+            access_aces(plain_acl.stdout),
+            plain_acl.stdout + plain_acl.stderr,
+        )
 
 
 class DetachedRequestTests(unittest.TestCase):
