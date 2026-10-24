@@ -12,6 +12,7 @@ import json
 import os
 import re
 import secrets
+import socket
 import subprocess
 import sys
 import time
@@ -25,23 +26,34 @@ import heartbeat
 import procutil
 import progress
 from store import (
+    JOB_LOCK_NAME,
     LEASE_FILE,
     LEASE_SCHEMA,
     MUTATION_LOCK_NAME,
+    STEERING_FILE,
+    TOKEN_FILE,
+    append_jsonl_locked,
+    atomic_write_bytes,
     atomic_write_json,
+    atomic_write_json_locked,
     atomic_write_text,
+    dpapi_protect,
+    dpapi_unprotect,
+    exclusive_lock,
     iso,
     new_job_id,
     parse_iso,
+    read_bytes_bounded,
     read_json_bounded,
     read_lease,
     read_text_bounded,
     read_text_bounded_tail,
     utc_now,
     valid_job_id,
+    workspace_lock_name,
 )
 
-SERVER_VERSION = "0.2.0"
+SERVER_VERSION = "0.3.0"
 SERVER_STARTED_AT = datetime.now(timezone.utc)
 MODEL = "deepseek-v4.1-flash"
 EFFORT = "max"
@@ -58,6 +70,18 @@ MAX_RESULT_BYTES = 1_048_576
 DEFAULT_RESULT_BYTES = 65_536
 PEAK_START_MARGIN_SECONDS = 120
 MAX_OUTPUT_TOKENS = 200_000
+MAX_SESSION_LABEL = 120
+MAX_STEERING_TEXT = 200
+SESSION_LABEL_ENV = "DSH_SESSION_LABEL"
+WORKTREES_ROOT_ENV = "DSH_WORKTREES_ROOT"
+REALITY_DATA_ROOT_ENV = "REALITY_DATA_ROOT"
+# The one-line worker preamble for worktree jobs: gitignored data (databases,
+# indexes) lives only in the main checkout, so a worktree worker must read it
+# there by absolute path and never write to it.
+WORKTREE_PREAMBLE = (
+    "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT "
+    "by absolute path and must be treated as read-only."
+)
 SERVER_SHUTDOWN_SEMANTICS = (
     "The supervisor is spawned outside the MCP host's job object when Windows "
     "allows it (survives_server_exit=true), so closing or restarting this MCP "
@@ -65,10 +89,10 @@ SERVER_SHUTDOWN_SEMANTICS = (
     "supervisor's own KILL_ON_JOB_CLOSE job object, so if the supervisor dies "
     "the worker dies too. The controller lease deadline remains the hard upper "
     "bound: a restarted server sees the job via worker_status/list_workers and "
-    "must call renew_worker_lease(adopt=true) to keep it past the deadline; "
-    "otherwise the supervisor stops it at the deadline. A restarted server "
-    "cannot message the job (the control token is memory-only). Use "
-    "cancel_worker(confirm=true) for deliberate cancellation."
+    "must call claim_worker or renew_worker_lease(adopt=true) to own it. The "
+    "per-job control token is persisted DPAPI-encrypted (CurrentUser), so any "
+    "dsh-worker MCP server of this Windows user can message/cancel the job; "
+    "the plaintext token is never returned or logged."
 )
 
 
@@ -154,6 +178,9 @@ class PluginConfig:
     runtime_dir: Path
     launcher_path: Path | None
     launcher_module: str
+    session_label: str
+    worktrees_root: Path
+    data_root: Path
     fake_now: datetime | None = None
     stale_after_seconds: int | None = None
     environ: dict[str, str] | None = None
@@ -168,6 +195,30 @@ class PluginConfig:
 
     def now(self) -> datetime:
         return self.fake_now or datetime.now(timezone.utc)
+
+
+def session_label(environ: dict[str, str] | None = None) -> str:
+    """Stable identity of this MCP server process.
+
+    ``DSH_SESSION_LABEL`` wins (tests and multi-session demos use it); otherwise
+    hostname + pid + process start time.  It is recorded, never authenticated.
+    """
+    env = os.environ if environ is None else environ
+    label = str(env.get(SESSION_LABEL_ENV) or "").strip()
+    if not label:
+        label = (
+            f"{socket.gethostname()}-{os.getpid()}-"
+            f"{SERVER_STARTED_AT.strftime('%Y%m%dT%H%M%SZ')}"
+        )
+    return label[:MAX_SESSION_LABEL]
+
+
+def _first_line(text: str, limit: int = 200) -> str:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped[:limit]
+    return "dsh worker"
 
 
 def load_config(environ: dict[str, str] | None = None) -> PluginConfig:
@@ -214,6 +265,28 @@ def load_config(environ: dict[str, str] | None = None) -> PluginConfig:
         raise PluginError(
             "launcher_missing", "DSH_WORKER_LAUNCHER does not point at a file"
         )
+    raw_worktrees = env.get(WORKTREES_ROOT_ENV)
+    try:
+        worktrees_root = (
+            Path(raw_worktrees).expanduser().resolve()
+            if raw_worktrees
+            else (repo_root.parent / "IDM-worktrees").resolve()
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise PluginError(
+            "worktrees_root_invalid", f"DSH_WORKTREES_ROOT cannot be resolved: {exc}"
+        ) from exc
+    raw_data_root = env.get(REALITY_DATA_ROOT_ENV)
+    try:
+        data_root = (
+            Path(raw_data_root).expanduser().resolve()
+            if raw_data_root
+            else (repo_root / "reality_engine" / "data").resolve()
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise PluginError(
+            "data_root_invalid", f"REALITY_DATA_ROOT cannot be resolved: {exc}"
+        ) from exc
     fake_now = None
     if env.get("DSH_WORKER_TESTING") == "1":
         raw_now = env.get("DSH_WORKER_FAKE_NOW")
@@ -237,6 +310,9 @@ def load_config(environ: dict[str, str] | None = None) -> PluginConfig:
         runtime_dir=runtime_dir,
         launcher_path=launcher_path,
         launcher_module=MODEL_LAUNCHER_MODULE,
+        session_label=session_label(env),
+        worktrees_root=worktrees_root,
+        data_root=data_root,
         fake_now=fake_now,
         stale_after_seconds=stale_override,
         environ=env,
@@ -248,13 +324,13 @@ class Manager:
         self.config = config
         self._capabilities: heartbeat.LauncherCapabilities | None = None
         self._children: list[subprocess.Popen[bytes]] = []
-        # Per-job control tokens are deliberately memory-only.  A restarted MCP
-        # server cannot authenticate a job it did not launch; it says so instead
-        # of reading a token from a file.
+        # Plaintext control tokens are never written to disk.  The encrypted
+        # copy in the job dir is the source of truth; this dict is only a
+        # process-local decryption cache so any dsh-worker server of this
+        # Windows user can message a job it did not launch.
         self._control_tokens: dict[str, str] = {}
-        # Controller lease ownership is memory-only: a restarted MCP server
-        # cannot renew a job it did not launch, so the persisted deadline stays
-        # a hard upper bound across restarts.
+        # Controller lease ownership is a memory cache too; the authoritative
+        # owner session is persisted in job.json (claim_worker) and the lease.
         self._lease_owners: dict[str, str] = {}
         self._scanner = progress.EventScanner()
         self._last_breakaway = False
@@ -283,10 +359,20 @@ class Manager:
             "supervisor_log": str(job_dir / "supervisor.log"),
             "heartbeat": str(job_dir / "heartbeat.json"),
             "control": str(job_dir / "result.md.control.json"),
+            "steering": str(job_dir / STEERING_FILE),
         }
 
-    # ---------------------------------------------------------- validation
+    def _job_lock(self, job_dir: Path) -> Path:
+        return job_dir / JOB_LOCK_NAME
+
+    # ------------------------------------------------------------ validation
     def _workspace(self, candidate: str) -> Path:
+        """Accept the repository root or a registered git worktree of it.
+
+        Arbitrary subdirectories are refused: a distinct lock per workspace
+        path is only safe when a workspace is a whole checkout.  The registered
+        worktree list (``git worktree list --porcelain``) is the allow-list.
+        """
         try:
             path = Path(candidate or ".").expanduser()
             if not path.is_absolute():
@@ -294,14 +380,30 @@ class Manager:
             resolved = path.resolve(strict=True)
         except (OSError, RuntimeError, ValueError) as exc:
             raise PluginError("workspace_invalid", f"workspace cannot be resolved: {exc}") from exc
-        if not _within(self.config.repo_root, resolved):
-            raise PluginError(
-                "workspace_outside_repo",
-                "workspace must be inside the configured repository root",
-            )
         if not resolved.is_dir():
             raise PluginError("workspace_invalid", "workspace is not a directory")
-        return resolved
+        normalized = os.path.normcase(str(resolved))
+        repo_root = os.path.normcase(str(self.config.repo_root.resolve()))
+        if normalized == repo_root:
+            return resolved
+        registered = {
+            os.path.normcase(str(Path(entry["path"]).resolve()))
+            for entry in gitutil.worktrees(self.config.repo_root)
+            if isinstance(entry.get("path"), str)
+        }
+        if normalized in registered:
+            return resolved
+        if _within(self.config.repo_root, resolved):
+            raise PluginError(
+                "workspace_not_registered",
+                "workspace must be the repository root or a registered git worktree "
+                "of it; a subdirectory is not its own workspace",
+                recovery="Create one with start_worker(use_worktree=true) and use its path.",
+            )
+        raise PluginError(
+            "workspace_outside_repo",
+            "workspace must be the repository root or a registered worktree of it",
+        )
 
     def _task_file(self, candidate: str) -> tuple[Path, str]:
         try:
@@ -362,6 +464,10 @@ class Manager:
         existing = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = repo + (os.pathsep + existing if existing else "")
         env["PYTHONUTF8"] = "1"
+        # Worktrees cannot see gitignored data (DBs, indexes); the worker gets
+        # the main checkout's data root by absolute path and the one-line
+        # preamble tells it to read it read-only.
+        env[REALITY_DATA_ROOT_ENV] = str(self.config.data_root)
         return env
 
     def _capability(self) -> heartbeat.LauncherCapabilities:
@@ -435,13 +541,17 @@ class Manager:
 
     # ---------------------------------------------------------------- locks
     def _lock_path(self, workspace: Path | None = None) -> Path:
-        """One mutation lock for the whole repository.
+        """One mutation lock per workspace path.
 
-        Keying by workspace allowed a parent checkout and a subdirectory
-        workspace to take different locks and become concurrent writers.  Every
-        mutating job now contends for this single file.
+        The main checkout keeps the historical filename; each registered
+        worktree gets its own hashed lock, so parallel worktree writers are
+        independent while two writers in one checkout still exclude each other.
         """
-        return self.config.locks_dir / MUTATION_LOCK_NAME
+        ws = workspace or self.config.repo_root
+        return self.config.locks_dir / workspace_lock_name(ws, self.config.repo_root)
+
+    def _locks_guard(self) -> Path:
+        return self.config.locks_dir / ".mutation.guard"
 
     def _recorded_worker_alive(self, job_id: str) -> bool:
         """Return True unless every recorded worker is proven gone.
@@ -510,61 +620,64 @@ class Manager:
             "supervisor_pid": None,
             "supervisor_creation_time": None,
         }
-        for _ in range(3):
-            try:
-                fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            except FileExistsError:
-                existing, error = read_json_bounded(path, 65_536)
-                if not isinstance(existing, dict):
-                    raise PluginError(
-                        "workspace_lock_unreadable",
-                        "the repository mutation lock exists but cannot be validated; "
-                        "inspect it before starting another writer",
-                        lock_path=str(path),
-                        record_error=error,
-                        recovery=(
-                            "Verify no recorded worker is alive, then remove the corrupt "
-                            f"lock file {path} manually or repair it with a valid job_id."
-                        ),
-                    )
-                if self._lock_active(existing):
-                    raise PluginError(
-                        "workspace_busy",
-                        "another mutating dsh worker is active in this repository "
-                        "(one writer covers the root and all subdirectories)",
-                        existing_job_id=existing.get("job_id"),
-                        lock_path=str(path),
-                        recovery=(
-                            "Use worker_status on existing_job_id. If that job is stale "
-                            "or lost, cancel_worker(confirm=true) releases the lock only "
-                            "after its recorded worker is proven dead; otherwise wait for "
-                            "the active writer. If the job record is missing, verify no "
-                            "owned process is alive and remove the lock file manually."
-                        ),
-                    )
+        with exclusive_lock(self._locks_guard()):
+            for _ in range(3):
                 try:
-                    path.unlink()
-                except FileNotFoundError:
-                    pass
-                continue
-            try:
-                os.write(fd, (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8"))
-            finally:
-                os.close(fd)
-            return path
-        raise PluginError("workspace_lock_failed", "could not acquire the repository mutation lock")
+                    fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                except FileExistsError:
+                    existing, error = read_json_bounded(path, 65_536)
+                    if not isinstance(existing, dict):
+                        raise PluginError(
+                            "workspace_lock_unreadable",
+                            "the workspace mutation lock exists but cannot be validated; "
+                            "inspect it before starting another writer",
+                            lock_path=str(path),
+                            record_error=error,
+                            recovery=(
+                                "Verify no recorded worker is alive, then remove the corrupt "
+                                f"lock file {path} manually or repair it with a valid job_id."
+                            ),
+                        )
+                    if self._lock_active(existing):
+                        raise PluginError(
+                            "workspace_busy",
+                            "another mutating dsh worker is active in this workspace "
+                            "(one writer per checkout/worktree; other worktrees stay free)",
+                            existing_job_id=existing.get("job_id"),
+                            workspace=str(workspace),
+                            lock_path=str(path),
+                            recovery=(
+                                "Use worker_status on existing_job_id. If that job is stale "
+                                "or lost, cancel_worker(confirm=true) releases the lock only "
+                                "after its recorded worker is proven dead; otherwise wait for "
+                                "the active writer. If the job record is missing, verify no "
+                                "owned process is alive and remove the lock file manually."
+                            ),
+                        )
+                    try:
+                        path.unlink()
+                    except FileNotFoundError:
+                        pass
+                    continue
+                try:
+                    os.write(fd, (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+                finally:
+                    os.close(fd)
+                return path
+        raise PluginError("workspace_lock_failed", "could not acquire the workspace mutation lock")
 
     def _update_lock(self, workspace: Path, job_id: str, supervisor_pid: int | None, ticks: int | None) -> None:
         path = self._lock_path(workspace)
-        existing, _ = read_json_bounded(path, 65_536)
-        if not isinstance(existing, dict) or existing.get("job_id") != job_id:
-            return
-        existing["supervisor_pid"] = supervisor_pid
-        existing["supervisor_creation_time"] = ticks
-        atomic_write_json(path, existing)
+        with exclusive_lock(self._locks_guard()):
+            existing, _ = read_json_bounded(path, 65_536)
+            if not isinstance(existing, dict) or existing.get("job_id") != job_id:
+                return
+            existing["supervisor_pid"] = supervisor_pid
+            existing["supervisor_creation_time"] = ticks
+            atomic_write_json(path, existing)
 
     def _release_lock(self, workspace: Path, job_id: str, force: bool = False) -> bool:
-        """Release the repository lock, never while a recorded worker lives.
+        """Release the workspace lock, never while a recorded worker lives.
 
         ``force`` is only for failures that occur before a supervisor/worker is
         spawned.  It is not a general bypass.
@@ -577,15 +690,128 @@ class Manager:
                 return False
             if self._recorded_worker_alive(job_id):
                 return False
-        path = self._lock_path(workspace)
-        existing, _ = read_json_bounded(path, 65_536)
-        if isinstance(existing, dict) and existing.get("job_id") == job_id:
+        with exclusive_lock(self._locks_guard()):
+            path = self._lock_path(workspace)
+            existing, _ = read_json_bounded(path, 65_536)
+            if isinstance(existing, dict) and existing.get("job_id") == job_id:
+                try:
+                    path.unlink()
+                except FileNotFoundError:
+                    pass
+                return True
+            return False
+
+    # ------------------------------------------------- shared control state
+    def _steer(self, job_dir: Path, kind: str, text: str, session: str | None = None) -> dict[str, Any]:
+        """Append one audit line (who/when/kind/first 200 chars).  No token."""
+        record = {
+            "at": iso(),
+            "session": (session or self.config.session_label)[:MAX_SESSION_LABEL],
+            "kind": kind,
+            "text": str(text or "")[:MAX_STEERING_TEXT],
+        }
+        append_jsonl_locked(job_dir / STEERING_FILE, record, self._job_lock(job_dir))
+        return record
+
+    def _last_steering(self, job_dir: Path) -> dict[str, Any] | None:
+        tail = read_text_bounded_tail(job_dir / STEERING_FILE, 32_768)
+        for line in reversed(tail.splitlines()):
             try:
-                path.unlink()
-            except FileNotFoundError:
-                pass
-            return True
-        return False
+                value = json.loads(line)
+            except (ValueError, TypeError):
+                continue
+            if isinstance(value, dict):
+                return value
+        return None
+
+    def _persist_control_token(self, job_dir: Path, token: str) -> bool:
+        protected = dpapi_protect(token.encode("utf-8"))
+        if protected is None:
+            return False
+        with exclusive_lock(self._job_lock(job_dir)):
+            atomic_write_bytes(job_dir / TOKEN_FILE, protected)
+        return True
+
+    def _control_token(self, job_id: str, job_dir: Path | None = None) -> str | None:
+        """Decrypt this Windows user's persisted job token; never log it.
+
+        A legacy/partial job without ``control_token.bin`` reports no token
+        (backward compatible), it does not fall back to a default.
+        """
+        cached = self._control_tokens.get(job_id)
+        if cached:
+            return cached
+        directory = job_dir or self._job_dir(job_id)
+        raw, _error = read_bytes_bounded(directory / TOKEN_FILE, 16_384)
+        if not raw:
+            return None
+        plain = dpapi_unprotect(raw)
+        if not plain:
+            return None
+        try:
+            token = plain.decode("utf-8").strip()
+        except UnicodeError:
+            return None
+        if len(token) < 32:
+            return None
+        self._control_tokens[job_id] = token
+        return token
+
+    def _create_worktree(self, job_id: str, base: str | None) -> dict[str, Any]:
+        path = self.config.worktrees_root / job_id
+        branch = f"dsh/{job_id}"
+        info = gitutil.worktree_add(
+            self.config.repo_root, path, branch, base or "HEAD"
+        )
+        return {
+            "enabled": True,
+            "path": info["path"],
+            "branch": info["branch"],
+            "base": base or "HEAD",
+            "base_commit": info["base_commit"],
+            "created_at": iso(),
+        }
+
+    def _owner_view(self, job: dict[str, Any], status: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(job.get("job_id") or "")
+        owner_session = job.get("owner_session")
+        last = self._last_steering(self._job_dir(job_id)) if valid_job_id(job_id) else None
+        claim = job.get("owner_claim") if isinstance(job.get("owner_claim"), dict) else None
+        return {
+            "session_label": self.config.session_label,
+            "owner_session": owner_session,
+            "is_owner": bool(
+                owner_session == self.config.session_label or job_id in self._lease_owners
+            ),
+            "claim": claim,
+            "last_steerer": (last or {}).get("session"),
+            "last_steering_at": (last or {}).get("at"),
+            "last_steering_kind": (last or {}).get("kind"),
+        }
+
+    def _worktree_view(self, job: dict[str, Any], status: dict[str, Any]) -> dict[str, Any]:
+        worktree = job.get("worktree")
+        if not isinstance(worktree, dict) or not worktree.get("enabled"):
+            return {"enabled": False}
+        commit = status.get("worktree_commit")
+        if not isinstance(commit, dict):
+            commit = {}
+        return {
+            "enabled": True,
+            "path": worktree.get("path"),
+            "branch": worktree.get("branch"),
+            "base": worktree.get("base"),
+            "base_commit": worktree.get("base_commit"),
+            "head": commit.get("head") or worktree.get("base_commit"),
+            "commits": commit.get("commits"),
+            "files_changed": commit.get("files_changed"),
+            "files_changed_paths": commit.get("files_changed_paths") or [],
+            "committed": bool(commit.get("committed")),
+            "commit": commit.get("commit") or (commit.get("head") if commit.get("committed") else None),
+            "commit_message": commit.get("message"),
+            "commit_reason": commit.get("reason"),
+            "commit_error": commit.get("error"),
+        }
 
     # ---------------------------------------------------------------- start
     def start_worker(
@@ -603,7 +829,13 @@ class Manager:
         followup_wait_seconds: int = 0,
         controller_lease_seconds: int = 1800,
         refresh_context: bool = True,
+        use_worktree: bool = False,
+        base: str | None = None,
     ) -> dict[str, Any]:
+        if not isinstance(use_worktree, bool):
+            raise PluginError("worktree_flag_invalid", "use_worktree must be true or false")
+        if base is not None and (not isinstance(base, str) or not base.strip()):
+            raise PluginError("base_invalid", "base must be a non-empty git ref or omitted")
         now = self.config.now()
         if is_peak(now):
             raise PluginError(
@@ -620,8 +852,33 @@ class Manager:
                 f"a DeepSeek peak window starts within {PEAK_START_MARGIN_SECONDS}s; "
                 "the launcher would refuse this run. Start after the window ends.",
             )
-        ws = self._workspace(workspace)
+        if use_worktree:
+            # The worktree derives its own workspace; the repository root is
+            # the only meaningful value for the (ignored) workspace argument.
+            raw_ws = str(workspace or ".").strip()
+            if raw_ws in ("", "."):
+                provided = self.config.repo_root
+            else:
+                provided = Path(raw_ws).expanduser()
+                if not provided.is_absolute():
+                    provided = self.config.repo_root / provided
+            try:
+                provided_resolved = provided.resolve(strict=False)
+            except (OSError, RuntimeError, ValueError) as exc:
+                raise PluginError("workspace_invalid", f"workspace cannot be resolved: {exc}") from exc
+            if os.path.normcase(str(provided_resolved)) != os.path.normcase(
+                str(self.config.repo_root)
+            ):
+                raise PluginError(
+                    "workspace_invalid",
+                    "use_worktree creates the workspace itself; omit workspace (the "
+                    "repository root is used only for git commands)",
+                )
+            ws = self.config.repo_root
+        else:
+            ws = self._workspace(workspace)
         text, task_relative = self._read_brief(brief, task_file)
+        brief_first_line = _first_line(text)
         if permission not in PERMISSIONS:
             raise PluginError("permission_invalid", f"permission must be one of {PERMISSIONS}")
         if not isinstance(heartbeat_interval_seconds, int) or not 30 <= heartbeat_interval_seconds <= 86_400:
@@ -697,7 +954,15 @@ class Manager:
         mutating = permission != "read-only"
         lock_path: Path | None = None
         supervisor_spawned = False
+        worktree_record: dict[str, Any] | None = None
         try:
+            if use_worktree:
+                try:
+                    worktree_record = self._create_worktree(job_id, base)
+                except gitutil.GitError as exc:
+                    raise PluginError("worktree_failed", str(exc)) from exc
+                ws = Path(worktree_record["path"])
+                text = f"{WORKTREE_PREAMBLE}\n\n{text}"
             if mutating:
                 lock_path = self._acquire_lock(ws, job_id)
             atomic_write_text(job_dir / "brief.md", text)
@@ -755,6 +1020,12 @@ class Manager:
                     "read-only worker: it does not take the workspace mutation lock, so it "
                     "must not be started alongside a mutating worker in the same checkout"
                 )
+            token_persisted = self._persist_control_token(job_dir, control_token)
+            if not token_persisted:
+                warnings.append(
+                    "control_token_not_persisted: DPAPI is unavailable, so only this MCP "
+                    "server process can steer the job"
+                )
             job = {
                 "schema": 1,
                 "job_id": job_id,
@@ -772,6 +1043,10 @@ class Manager:
                 "provider_session_kind": "opencode_routing_cache",
                 "conversation_id": None,
                 "controller_lease_owner_id": owner_id,
+                "owner_session": self.config.session_label,
+                "brief_first_line": brief_first_line,
+                "worktree": worktree_record,
+                "data_root": str(self.config.data_root),
                 "heartbeat": heartbeat_record,
                 "launcher": {
                     "command": launcher,
@@ -793,20 +1068,21 @@ class Manager:
                 },
                 "warnings": warnings,
             }
-            atomic_write_json(job_dir / "job.json", job)
+            atomic_write_json_locked(job_dir / "job.json", job, self._job_lock(job_dir))
             lease_now = utc_now()
             lease = {
                 "schema": LEASE_SCHEMA,
                 "job_id": job_id,
                 "owner_id": owner_id,
                 "owner_pid": os.getpid(),
+                "owner_session": self.config.session_label,
                 "created_at": iso(lease_now),
                 "renewed_at": iso(lease_now),
                 "deadline": iso(lease_now + timedelta(seconds=controller_lease_seconds)),
                 "lease_seconds": controller_lease_seconds,
                 "renewals": 0,
             }
-            atomic_write_json(job_dir / LEASE_FILE, lease)
+            atomic_write_json_locked(job_dir / LEASE_FILE, lease, self._job_lock(job_dir))
             self._lease_owners[job_id] = owner_id
             initial_status = {
                 "schema": 1,
@@ -827,7 +1103,15 @@ class Manager:
                 "controller_lease": read_lease(job_dir / LEASE_FILE)[0],
                 "warnings": [],
             }
-            atomic_write_json(job_dir / "status.json", initial_status)
+            atomic_write_json_locked(
+                job_dir / "status.json", initial_status, self._job_lock(job_dir)
+            )
+            self._steer(
+                job_dir,
+                "start",
+                f"permission={permission} workspace={ws}"
+                + (f" base={base or 'HEAD'}" if use_worktree else ""),
+            )
 
             supervisor_pid = self._spawn_supervisor(job_dir, control_token)
             supervisor_spawned = True
@@ -857,11 +1141,26 @@ class Manager:
                 "launcher_log_path": paths["launcher_log"],
                 "supervisor_log_path": paths["supervisor_log"],
                 "heartbeat": status.get("heartbeat") or heartbeat_record,
+                "session_label": self.config.session_label,
+                "owner_session": self.config.session_label,
+                "control_token_persisted": token_persisted,
+                "worktree": worktree_record,
                 "warnings": warnings + list(status.get("warnings") or []),
                 "survives_server_exit": bool(self._last_breakaway) or os.name != "nt",
                 "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
             }
         except Exception:
+            if worktree_record is not None and not supervisor_spawned:
+                # No worker ever ran in this worktree: remove it and its branch
+                # so a refused start does not leave a dangling checkout.
+                try:
+                    gitutil.worktree_remove(
+                        self.config.repo_root,
+                        Path(worktree_record["path"]),
+                        worktree_record.get("branch"),
+                    )
+                except Exception:
+                    pass
             if lock_path is not None:
                 # Never release under a recorded worker.  Before the supervisor
                 # exists there is no worker, so the half-created job may release
@@ -869,6 +1168,10 @@ class Manager:
                 self._release_lock(ws, job_id, force=not supervisor_spawned)
             self._control_tokens.pop(job_id, None)
             self._lease_owners.pop(job_id, None)
+            try:
+                (job_dir / TOKEN_FILE).unlink(missing_ok=True)
+            except OSError:
+                pass
             if not (job_dir / "job.json").exists():
                 try:
                     atomic_write_json(
@@ -1072,7 +1375,7 @@ class Manager:
         status = self._read_status(job_dir)
         heartbeat_live, heartbeat_error = heartbeat.read_heartbeat(job_dir)
         heartbeat_record = dict(job.get("heartbeat") or status.get("heartbeat") or {})
-        token_available = job_id in self._control_tokens
+        token_available = self._control_token(job_id, job_dir) is not None
         descriptor_available = heartbeat.control_available(
             Path(self._job_paths(job_id)["control"]), heartbeat_live
         )
@@ -1081,16 +1384,16 @@ class Manager:
                 "present": heartbeat_live is not None,
                 "read_error": heartbeat_error,
                 "adapter": heartbeat_live,
-                # A bound descriptor is not enough after an MCP restart: the
-                # per-job token is memory-only, so control is unavailable unless
-                # this server process still holds it.
+                # The token is persisted DPAPI-encrypted (CurrentUser), so any
+                # dsh-worker server process of this Windows user can decrypt it.
+                # A legacy job with no persisted token reports unavailable.
                 "control_available": descriptor_available and token_available,
                 "control_descriptor_available": descriptor_available,
                 "control_token_available": token_available,
                 "control_unavailable_reason": (
                     None
                     if descriptor_available and token_available
-                    else "control_token_not_in_this_mcp_server"
+                    else "control_token_missing"
                     if descriptor_available
                     else "control_descriptor_unavailable"
                 ),
@@ -1219,6 +1522,8 @@ class Manager:
             limits=job.get("limits") or {},
             failure_reason=failure_reason,
         )
+        owner_view = self._owner_view(job, status)
+        worktree_view = self._worktree_view(job, status)
         return {
             "ok": True,
             "job_id": job_id,
@@ -1251,6 +1556,10 @@ class Manager:
                 "conversation_id_known": conversation_id is not None,
                 "distinct_identities": True,
             },
+            "owner_session": job.get("owner_session"),
+            "last_steerer": owner_view.get("last_steerer"),
+            "steering": owner_view,
+            "worktree": worktree_view,
             "heartbeat": heartbeat_record,
             "controller_lease": controller_lease,
             "controller_lease_error": lease_error,
@@ -1443,13 +1752,19 @@ class Manager:
             "cwd": os.getcwd(),
             "repo_root": str(self.config.repo_root),
             "runtime_dir": str(self.config.runtime_dir),
+            "worktrees_root": str(self.config.worktrees_root),
+            "reality_data_root": str(self.config.data_root),
+            "session_label": self.config.session_label,
             "launcher": self._launcher_command()[1:],
             "launcher_capabilities": capability.as_dict(),
             "peak_now": is_peak(now),
             "jobs_owned_by_this_server": active,
             "note": (
                 "Jobs started by an earlier server process are still visible through "
-                "worker_status/list_workers but cannot be messaged or lease-renewed here."
+                "worker_status/list_workers. Their DPAPI-encrypted control token is "
+                "readable by any dsh-worker server of this Windows user, so message/"
+                "cancel work across processes; renew requires the recorded owner "
+                "session, claim_worker, or adopt=true."
             ),
         }
 
@@ -1637,6 +1952,9 @@ class Manager:
             "max_bytes": max_bytes,
             "paths": status["paths"],
             "artifacts": artifacts,
+            "worktree": status.get("worktree"),
+            "owner_session": status.get("owner_session"),
+            "last_steerer": status.get("last_steerer"),
             "heartbeat": status["heartbeat"],
             "limits": status.get("limits"),
             "error": status.get("error"),
@@ -1681,10 +1999,15 @@ class Manager:
             message,
             kind,
             conversation_id,
-            self._control_tokens.get(job_id),
+            self._control_token(job_id, job_dir),
         )
+        if response.get("ok"):
+            # Auditable cross-session steering: who/when/kind/first 200 chars.
+            # The token and full steering text are never written here.
+            self._steer(job_dir, "message", f"{kind}: {message}")
         response["job_id"] = job_id
         response["phase"] = status["phase"]
+        response["session_label"] = self.config.session_label
         response["conversation_id_known"] = bool(
             response.get("conversation_id")
             or conversation_id
@@ -1702,15 +2025,15 @@ class Manager:
     ) -> dict[str, Any]:
         """Explicitly renew the controller lease; never called by status reads.
 
-        Only the MCP server process that launched this job holds the in-memory
-        owner id.  A restarted server, a malformed/expired lease, or a different
-        job cannot extend the deadline.  Each call may extend at most the normal
-        30-minute window, so indefinite work requires repeated human/controller
-        review rather than a background loop.
+        Allowed for the recorded owner session (``start_worker`` or
+        ``claim_worker``), for this process's in-memory ownership, or for any
+        caller passing ``adopt=true``.  Each call may extend by at most the
+        7200-second cap (Shivam, 2026-10-24), so indefinite work still needs
+        repeated explicit review rather than a background loop.
         """
         testing = (self.config.environ or {}).get("DSH_WORKER_TESTING") == "1"
         minimum = 1 if testing else 60
-        maximum = 3600 if testing else 1800
+        maximum = 7200
         if not isinstance(extend_seconds, int) or not minimum <= extend_seconds <= maximum:
             raise PluginError(
                 "lease_extension_invalid",
@@ -1725,12 +2048,19 @@ class Manager:
                 phase=status["phase"],
             )
         owner = self._lease_owners.get(job_id)
+        owner_session = job.get("owner_session")
         adopted = False
+        if not owner and owner_session == self.config.session_label:
+            # The persisted owner session (this process started or claimed it,
+            # possibly in an earlier process incarnation with the same label).
+            recorded = job.get("controller_lease_owner_id")
+            if isinstance(recorded, str) and recorded:
+                owner = recorded
         if not owner and adopt is True:
-            # Explicit takeover after an MCP server restart.  The job keeps
-            # its original owner id (the supervisor validates against it);
-            # adoption is a deliberate controller act, never automatic, and
-            # cannot revive an expired lease (checked below).
+            # Explicit takeover after a restart.  The job keeps its original
+            # owner id (the supervisor validates against it); adoption is a
+            # deliberate controller act, never automatic, and cannot revive an
+            # expired lease (checked below).
             recorded = job.get("controller_lease_owner_id")
             if isinstance(recorded, str) and recorded:
                 owner = recorded
@@ -1738,60 +2068,142 @@ class Manager:
         if not owner:
             raise PluginError(
                 "controller_unavailable",
-                "this MCP server does not own the job's controller lease (restart or "
-                "wrong process); pass adopt=true to take it over explicitly",
+                "this MCP server does not own the job's controller lease; call "
+                "claim_worker(job_id) to take ownership or renew with adopt=true",
             )
         lease_path = job_dir / LEASE_FILE
-        lease, error = read_lease(
-            lease_path,
-            expected_job_id=job_id,
-            expected_owner_id=owner,
-            max_seconds=maximum,
-        )
-        if lease is None:
-            raise PluginError(
-                "lease_invalid",
-                "the persisted controller lease is missing or malformed; refusing to extend",
-                detail=error,
+        with exclusive_lock(self._job_lock(job_dir)):
+            lease, error = read_lease(
+                lease_path,
+                expected_job_id=job_id,
+                expected_owner_id=owner,
+                max_seconds=maximum,
             )
-        if lease.get("expired"):
-            raise PluginError(
-                "controller_lease_expired",
-                "the controller lease already expired; the supervisor must stop this job",
-                deadline=lease.get("deadline"),
+            if lease is None:
+                raise PluginError(
+                    "lease_invalid",
+                    "the persisted controller lease is missing or malformed; refusing to extend",
+                    detail=error,
+                )
+            if lease.get("expired"):
+                raise PluginError(
+                    "controller_lease_expired",
+                    "the controller lease already expired; the supervisor must stop this job",
+                    deadline=lease.get("deadline"),
+                )
+            now = utc_now()
+            updated = dict(lease)
+            updated.pop("expired", None)
+            updated.pop("remaining_seconds", None)
+            updated["renewed_at"] = iso(now)
+            updated["deadline"] = iso(now + timedelta(seconds=extend_seconds))
+            updated["lease_seconds"] = extend_seconds
+            updated["renewals"] = int(lease.get("renewals") or 0) + 1
+            updated["owner_session"] = owner_session or self.config.session_label
+            updated["last_renewed_by"] = self.config.session_label
+            if adopted:
+                updated["adoptions"] = int(lease.get("adoptions") or 0) + 1
+                updated["adopted_by_pid"] = os.getpid()
+                updated["adopted_at"] = iso(now)
+            atomic_write_json(lease_path, updated)
+            self._steer(
+                job_dir,
+                "renew",
+                f"extend_seconds={extend_seconds} adopt={adopted}",
             )
-        now = utc_now()
-        updated = dict(lease)
-        updated.pop("expired", None)
-        updated.pop("remaining_seconds", None)
-        updated["renewed_at"] = iso(now)
-        updated["deadline"] = iso(now + timedelta(seconds=extend_seconds))
-        updated["lease_seconds"] = extend_seconds
-        updated["renewals"] = int(lease.get("renewals") or 0) + 1
-        if adopted:
-            updated["adoptions"] = int(lease.get("adoptions") or 0) + 1
-            updated["adopted_by_pid"] = os.getpid()
-            updated["adopted_at"] = iso(now)
-        atomic_write_json(lease_path, updated)
-        if adopted:
-            self._lease_owners[job_id] = owner
-        current, _ = read_lease(
-            lease_path,
-            expected_job_id=job_id,
-            expected_owner_id=owner,
-            max_seconds=maximum,
-        )
+            if adopted:
+                self._lease_owners[job_id] = owner
+            current, _ = read_lease(
+                lease_path,
+                expected_job_id=job_id,
+                expected_owner_id=owner,
+                max_seconds=maximum,
+            )
         return {
             "ok": True,
             "job_id": job_id,
             "controller_lease": current,
             "renewed": True,
             "adopted": adopted,
+            "owner_session": updated.get("owner_session"),
+            "session_label": self.config.session_label,
             "automatic_renewal": False,
             "note": (
                 "Renewal is explicit controller action only. Worker activity, "
                 "status/result/list reads and model calls never renew this lease."
             ),
+        }
+
+    # --------------------------------------------------------------- claim
+    def claim_worker(self, job_id: str, reason: str = "manual claim") -> dict[str, Any]:
+        """Take over lease ownership of a running job; records who and why.
+
+        The lease's stable owner id is deliberately unchanged: the supervisor
+        validates every lease against it.  Ownership is the *session* recorded
+        in job.json and in the steering audit, and it authorises future renewals
+        without adopt=true.
+        """
+        job, job_dir = self._load_job(job_id)
+        status = self.get_status(job_id)
+        if not status["running"] or status["final"]:
+            raise PluginError(
+                "job_not_running",
+                "only a running job's controller lease can be claimed",
+                phase=status["phase"],
+            )
+        reason_text = str(reason or "").strip()[:MAX_STEERING_TEXT] or "manual claim"
+        now = utc_now()
+        with exclusive_lock(self._job_lock(job_dir)):
+            current, error = read_json_bounded(job_dir / "job.json")
+            if not isinstance(current, dict):
+                raise PluginError(
+                    "job_not_found",
+                    "no persisted job record for this job_id",
+                    job_id=job_id,
+                    record_error=error,
+                )
+            previous = current.get("owner_session")
+            claim = {
+                "session": self.config.session_label,
+                "at": iso(now),
+                "reason": reason_text,
+            }
+            current["owner_session"] = self.config.session_label
+            current["owner_claim"] = claim
+            atomic_write_json(job_dir / "job.json", current)
+            lease_path = job_dir / LEASE_FILE
+            lease, _lease_error = read_lease(
+                lease_path,
+                expected_job_id=job_id,
+                expected_owner_id=current.get("controller_lease_owner_id"),
+                max_seconds=7200,
+            )
+            if lease is not None:
+                updated = dict(lease)
+                updated.pop("expired", None)
+                updated.pop("remaining_seconds", None)
+                updated["owner_session"] = self.config.session_label
+                updated["claimed_by"] = self.config.session_label
+                updated["claimed_at"] = iso(now)
+                atomic_write_json(lease_path, updated)
+            self._steer(job_dir, "claim", f"reason={reason_text}")
+        owner_id = str(current.get("controller_lease_owner_id") or "")
+        if owner_id:
+            self._lease_owners[job_id] = owner_id
+        return {
+            "ok": True,
+            "job_id": job_id,
+            "claimed": True,
+            "owner_session": self.config.session_label,
+            "previous_owner_session": previous,
+            "claim": claim,
+            "session_label": self.config.session_label,
+            "lease_deadline": (read_lease(
+                job_dir / LEASE_FILE,
+                expected_job_id=job_id,
+                expected_owner_id=owner_id,
+                max_seconds=7200,
+            )[0] or {}).get("deadline"),
         }
 
     # --------------------------------------------------------------- cancel
@@ -1808,6 +2220,7 @@ class Manager:
             }
         job, job_dir = self._load_job(job_id)
         status = self.get_status(job_id)
+        self._steer(job_dir, "cancel", f"reason={reason}")
         if status["final"]:
             lock_released = self._release_lock(Path(job["workspace"]), job_id)
             self._control_tokens.pop(job_id, None)
@@ -1822,13 +2235,14 @@ class Manager:
             if not lock_released and self._recorded_worker_alive(job_id):
                 response["warning"] = (
                     "the job is final but its recorded worker is still alive; the "
-                    "repository mutation lock was retained deliberately. Inspect the "
+                    "workspace mutation lock was retained deliberately. Inspect the "
                     "process before starting another writer."
                 )
             return response
-        atomic_write_json(
+        atomic_write_json_locked(
             job_dir / "cancel.request",
             {"requested_at": iso(), "reason": str(reason)[:500], "job_id": job_id},
+            self._job_lock(job_dir),
         )
         deadline = time.monotonic() + 10.0
         while time.monotonic() < deadline:
@@ -1917,7 +2331,9 @@ class Manager:
                 "finished_at": iso(),
                 "updated_at": iso(),
             }
-            atomic_write_json(job_dir / "status.json", current)
+            atomic_write_json_locked(
+                job_dir / "status.json", current, self._job_lock(job_dir)
+            )
         lock_released = self._release_lock(Path(job["workspace"]), job_id)
         self._control_tokens.pop(job_id, None)
         if current.get("phase") not in FINAL_PHASES:
@@ -1981,6 +2397,9 @@ class Manager:
                     "stale": job["stale"],
                     "workspace": job["workspace"],
                     "permission": job["permission"],
+                    "owner_session": job.get("owner_session"),
+                    "last_steerer": job.get("last_steerer"),
+                    "worktree_branch": (job.get("worktree") or {}).get("branch"),
                     "started_at": job["started_at"],
                     "updated_at": job["updated_at"],
                     "final": job["final"],

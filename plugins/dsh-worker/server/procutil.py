@@ -11,6 +11,7 @@ import ctypes.wintypes as wintypes
 import os
 import subprocess
 import sys
+import time
 
 IS_WINDOWS = os.name == "nt"
 CREATE_NO_WINDOW = 0x08000000
@@ -39,10 +40,44 @@ if IS_WINDOWS:
         ctypes.POINTER(wintypes.BOOL),
     )
     _kernel32.IsProcessInJob.restype = wintypes.BOOL
+    _kernel32.TerminateProcess.argtypes = (wintypes.HANDLE, wintypes.UINT)
+    _kernel32.TerminateProcess.restype = wintypes.BOOL
+    _kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    _kernel32.CreateToolhelp32Snapshot.argtypes = (wintypes.DWORD, wintypes.DWORD)
 
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
     PROCESS_SET_QUOTA = 0x0100
     PROCESS_TERMINATE = 0x0001
+    TH32CS_SNAPPROCESS = 0x00000002
+    INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
+
+
+class _PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", ctypes.c_uint32),
+        ("cntUsage", ctypes.c_uint32),
+        ("th32ProcessID", ctypes.c_uint32),
+        ("th32DefaultHeapID", ctypes.c_size_t),
+        ("th32ModuleID", ctypes.c_uint32),
+        ("cntThreads", ctypes.c_uint32),
+        ("th32ParentProcessID", ctypes.c_uint32),
+        ("pcPriClassBase", ctypes.c_long),
+        ("dwFlags", ctypes.c_uint32),
+        ("szExeFile", ctypes.c_wchar * 260),
+    ]
+
+
+if IS_WINDOWS:
+    _kernel32.Process32FirstW.argtypes = (
+        wintypes.HANDLE,
+        ctypes.POINTER(_PROCESSENTRY32W),
+    )
+    _kernel32.Process32FirstW.restype = wintypes.BOOL
+    _kernel32.Process32NextW.argtypes = (
+        wintypes.HANDLE,
+        ctypes.POINTER(_PROCESSENTRY32W),
+    )
+    _kernel32.Process32NextW.restype = wintypes.BOOL
 
 
 def _filetime_value(ft: "wintypes.FILETIME") -> int:
@@ -110,10 +145,78 @@ def process_alive(pid: int, creation_time: int | None = None) -> bool:
         _kernel32.CloseHandle(handle)
 
 
+def terminate_process(pid: int) -> bool:
+    """Terminate exactly one PID (no tree), by process handle.
+
+    Used by tests and by ``kill_tree`` as the restricted-token-safe primitive:
+    ``OpenProcess(PROCESS_TERMINATE)`` on a process created by the same token
+    succeeds even where ``taskkill`` is denied (e.g. the DSH agent sandbox),
+    and it never matches by image name.
+    """
+    if not pid or int(pid) <= 0:
+        return False
+    if IS_WINDOWS:
+        try:
+            handle = _kernel32.OpenProcess(PROCESS_TERMINATE, False, int(pid))
+        except (OSError, ValueError, OverflowError):
+            return False
+        if not handle:
+            return False
+        try:
+            return bool(_kernel32.TerminateProcess(handle, 1))
+        finally:
+            _kernel32.CloseHandle(handle)
+    try:
+        os.kill(int(pid), 15)
+        return True
+    except OSError:
+        return False
+
+
+def _process_parent_map() -> dict[int, int]:
+    if not IS_WINDOWS:
+        return {}
+    snapshot = _kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    if not snapshot or int(snapshot) == INVALID_HANDLE_VALUE:
+        return {}
+    entry = _PROCESSENTRY32W()
+    entry.dwSize = ctypes.sizeof(entry)
+    parents: dict[int, int] = {}
+    try:
+        ok = _kernel32.Process32FirstW(snapshot, ctypes.byref(entry))
+        while ok:
+            parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
+            ok = _kernel32.Process32NextW(snapshot, ctypes.byref(entry))
+    finally:
+        _kernel32.CloseHandle(snapshot)
+    return parents
+
+
+def process_tree(pid: int) -> list[int]:
+    """Breadth-first [pid, children, grandchildren, ...] from a snapshot."""
+    parents = _process_parent_map()
+    children: dict[int, list[int]] = {}
+    for child, parent in parents.items():
+        children.setdefault(parent, []).append(child)
+    order = [int(pid)]
+    seen = {int(pid)}
+    index = 0
+    while index < len(order):
+        for child in children.get(order[index], []):
+            if child not in seen:
+                seen.add(child)
+                order.append(child)
+        index += 1
+    return order
+
+
 def kill_tree(pid: int, timeout: float = 20.0) -> bool:
     """Terminate exactly the process tree rooted at ``pid``.
 
     The caller must validate ownership first.  No image-name matching is used.
+    ``taskkill /T /F`` is tried first (the normal desktop case); when it is
+    denied -- e.g. under a restricted agent sandbox token -- the same tree is
+    terminated natively by parent PID from a Toolhelp snapshot.
     """
     if not pid or int(pid) <= 0:
         return False
@@ -126,9 +229,21 @@ def kill_tree(pid: int, timeout: float = 20.0) -> bool:
                 timeout=timeout,
                 creationflags=CREATE_NO_WINDOW,
             )
-            return completed.returncode == 0
+            if completed.returncode == 0:
+                return True
         except (OSError, subprocess.TimeoutExpired):
-            return False
+            pass
+        tree = process_tree(int(pid))
+        # Leaves first: parents cannot re-spawn or reparent before their
+        # children are gone.
+        for target in reversed(tree):
+            terminate_process(target)
+        deadline = time.monotonic() + min(5.0, timeout)
+        while time.monotonic() < deadline:
+            if not process_alive(int(pid)):
+                return True
+            time.sleep(0.05)
+        return False
     try:
         os.killpg(int(pid), 15)
     except OSError:

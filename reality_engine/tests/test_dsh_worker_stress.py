@@ -8,11 +8,11 @@ this test itself spawned.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 import unittest
@@ -25,14 +25,18 @@ from mcp.client.stdio import stdio_client
 REPO = Path(__file__).resolve().parents[2]
 SERVER_DIR = REPO / "plugins" / "dsh-worker" / "server"
 SERVER = SERVER_DIR / "dsh_worker_mcp.py"
-FAKE_LAUNCHER = Path(__file__).resolve().parent / "fixtures" / "dsh_worker_fake_launcher.py"
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+FAKE_LAUNCHER = FIXTURES / "dsh_worker_fake_launcher.py"
+TEST_TMP = REPO / "plugins" / "dsh-worker" / "runtime" / "test-tmp"
 sys.path.insert(0, str(SERVER_DIR))
+sys.path.insert(0, str(FIXTURES))
 
 import core  # noqa: E402
 import procutil  # noqa: E402
 import progress  # noqa: E402
 import store  # noqa: E402
 import supervisor  # noqa: E402
+from dsh_worker_testenv import make_temp_dir, remove_tree, run_async  # noqa: E402
 
 OFF_PEAK = "2026-10-21T03:00:00+05:30"
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -43,8 +47,8 @@ class StressBase(unittest.TestCase):
     PREFIX = "dsh stress ू "
 
     def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory(prefix=self.PREFIX)
-        self.root = Path(self.tmp.name)
+        TEST_TMP.mkdir(parents=True, exist_ok=True)
+        self.root = make_temp_dir(TEST_TMP, self.PREFIX)
         scripts = self.root / "reality_engine" / "scripts"
         scripts.mkdir(parents=True)
         (scripts / "go_session.py").write_text(
@@ -54,10 +58,12 @@ class StressBase(unittest.TestCase):
         for key in list(self.env):
             if key.startswith(("FAKE_", "DSH_WORKER_")):
                 self.env.pop(key)
+        self.env.pop("DSH_SESSION_LABEL", None)
         self.env.update(
             {
                 "DSH_WORKER_REPO_ROOT": str(self.root),
                 "DSH_WORKER_RUNTIME_DIR": str(self.root / "runtime"),
+                "DSH_WORKTREES_ROOT": str(self.root / "worktrees"),
                 "DSH_WORKER_LAUNCHER": str(FAKE_LAUNCHER),
                 "DSH_WORKER_TESTING": "1",
                 "DSH_WORKER_FAKE_NOW": OFF_PEAK,
@@ -90,7 +96,7 @@ class StressBase(unittest.TestCase):
                         pass
         for _ in range(30):
             try:
-                self.tmp.cleanup()
+                remove_tree(self.root)
                 return
             except OSError:
                 time.sleep(0.2)
@@ -354,12 +360,17 @@ class StartGuardTests(StressBase):
 
 
 class LifecycleTests(StressBase):
-    def test_restarted_server_adopts_lease_explicitly(self):
-        first = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="8")
+    def test_other_session_claims_adopts_and_messages_after_restart(self):
+        first = self.manager(
+            FAKE_LAUNCHER_MODE="control",
+            FAKE_LAUNCHER_SLEEP="20",
+            DSH_SESSION_LABEL="session-first",
+        )
         job_id = first.start_worker(brief="adopt")["job_id"]
-        self.wait(first, job_id, lambda s: s["running"])
-        restarted = self.manager()
+        self.wait(first, job_id, lambda s: s["running"] and s["heartbeat"].get("control_available"))
+        restarted = self.manager(DSH_SESSION_LABEL="session-restarted")
         status = restarted.get_status(job_id)
+        self.assertEqual(status["owner_session"], "session-first")
         self.assertFalse(status["progress"]["controller_lease_renewable_here"])
         with self.assertRaises(core.PluginError) as caught:
             restarted.renew_worker_lease(job_id, 120)
@@ -368,10 +379,23 @@ class LifecycleTests(StressBase):
         self.assertTrue(renewed["adopted"])
         self.assertEqual(renewed["controller_lease"]["adoptions"], 1)
         self.assertTrue(restarted.get_status(job_id)["progress"]["controller_lease_renewable_here"])
-        # Messaging still needs the memory-only token: explicit, not silent.
+        # Messaging now works from the other server: the token is persisted
+        # DPAPI-encrypted (CurrentUser), not memory-only.
         sent = restarted.message_worker(job_id, "status?")
-        self.assertFalse(sent["ok"])
-        self.assertEqual(sent["error"]["code"], "transport_unavailable")
+        self.assertTrue(sent["ok"], sent)
+        self.assertTrue((Path(status["paths"]["job_dir"]) / "nudge.json").is_file())
+        # Explicit claim transfers the recorded owner session; renewal then
+        # needs no adopt=true, and the cap is two hours.
+        claimed = restarted.claim_worker(job_id, "stress restart takeover")
+        self.assertTrue(claimed["ok"], claimed)
+        self.assertEqual(claimed["owner_session"], "session-restarted")
+        self.assertEqual(claimed["previous_owner_session"], "session-first")
+        owned = restarted.renew_worker_lease(job_id, 7200)
+        self.assertTrue(owned["ok"], owned)
+        self.assertEqual(owned["controller_lease"]["lease_seconds"], 7200)
+        with self.assertRaises(core.PluginError) as caught:
+            restarted.renew_worker_lease(job_id, 7201)
+        self.assertEqual(caught.exception.code, "lease_extension_invalid")
         self.assertTrue(restarted.cancel_worker(job_id, confirm=True)["ok"])
 
     def test_expired_lease_cannot_be_adopted(self):
@@ -393,19 +417,54 @@ class LifecycleTests(StressBase):
         self.assertEqual(final["outcome"], "launcher_error")
         self.assertIsNotNone(final["failure_reason"])
 
+    def test_kill_tree_terminates_child_processes(self):
+        script = self.root / "tree_parent.py"
+        script.write_text(
+            "import subprocess, sys, time\n"
+            "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'])\n"
+            "open(sys.argv[1], 'w', encoding='utf-8').write(str(child.pid))\n"
+            "time.sleep(120)\n",
+            encoding="utf-8",
+        )
+        pid_file = self.root / "tree.pid"
+        parent = subprocess.Popen([sys.executable, str(script), str(pid_file)])
+        try:
+            deadline = time.monotonic() + 15
+            child_pid: int | None = None
+            while time.monotonic() < deadline:
+                try:
+                    child_pid = int(pid_file.read_text(encoding="utf-8").strip())
+                    break
+                except (OSError, ValueError):
+                    time.sleep(0.05)
+            self.assertIsNotNone(child_pid, "parent never published its child pid")
+            self.assertTrue(procutil.process_alive(parent.pid))
+            self.assertTrue(procutil.process_alive(child_pid))
+            # taskkill may be denied to a restricted sandbox token; the native
+            # parent-PID tree walk must still terminate both processes.
+            self.assertTrue(procutil.kill_tree(parent.pid, timeout=15))
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline and (
+                procutil.process_alive(parent.pid) or procutil.process_alive(child_pid)
+            ):
+                time.sleep(0.1)
+            self.assertFalse(procutil.process_alive(parent.pid))
+            self.assertFalse(procutil.process_alive(child_pid))
+        finally:
+            if parent.poll() is None:
+                parent.kill()
+
     def test_supervisor_killed_alone_takes_worker_and_lock_needs_cancel(self):
         manager = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="60")
         job_id = manager.start_worker(brief="kill sup", permission="workspace-write")["job_id"]
         status = self.wait(manager, job_id, lambda s: s["process"]["worker_alive"])
         worker_pid = int(status["process"]["worker_pid"])
         worker_ticks = int(status["process"]["worker_creation_time"])
-        # Kill only the supervisor (no /T): the worker must die with its job object.
-        killed = subprocess.run(
-            ["taskkill", "/PID", str(status["process"]["supervisor_pid"]), "/F"],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(killed.returncode, 0, killed.stdout + killed.stderr)
+        # Kill only the supervisor (no tree): the worker must die with its job
+        # object.  terminate_process avoids taskkill, which restricted agent
+        # sandbox tokens may be denied.
+        killed = procutil.terminate_process(int(status["process"]["supervisor_pid"]))
+        self.assertTrue(killed, "could not terminate the recorded supervisor")
         lost = self.wait(manager, job_id, lambda s: s["phase"] == "lost")
         self.assertFalse(procutil.process_alive(worker_pid, worker_ticks), "job object must kill the worker")
         self.assertTrue(lost["final"])
@@ -581,7 +640,7 @@ class McpSurfaceTests(StressBase):
             listed = await self._call(session, "list_workers", {})
             self.assertTrue(listed["jobs"][0]["summary"].startswith("done:"))
 
-        asyncio.run(asyncio.wait_for(self._session(scenario, cwd=str(foreign)), 90))
+        run_async(self._session(scenario, cwd=str(foreign)), 90)
 
     def test_server_exit_while_job_runs_is_reported(self):
         self.env.update({"FAKE_LAUNCHER_MODE": "slow", "FAKE_LAUNCHER_SLEEP": "20"})
@@ -589,7 +648,7 @@ class McpSurfaceTests(StressBase):
         async def start(session):
             return await self._call(session, "start_worker", {"brief": "server exit"})
 
-        started = asyncio.run(asyncio.wait_for(self._session(start), 60))
+        started = run_async(self._session(start), 60)
         self.assertIn("survives_server_exit", started)
         if not started["survives_server_exit"]:
             # Python's MCP client puts the server in a KILL_ON_JOB_CLOSE job
@@ -607,6 +666,266 @@ class McpSurfaceTests(StressBase):
         else:
             self.assertIn(status["phase"], {"lost", "failed", "cancelled"}, status)
             self.assertFalse(status["process"]["worker_alive"])
+
+
+class SharedControlProcessTests(StressBase):
+    """Phase 1 acceptance: two real MCP server processes share one job.
+
+    Each server is a separate Python process with its own session label.  The
+    tests keep both sessions open for the job's lifetime because the Python MCP
+    client's host job object may kill the server's children on exit.
+    """
+
+    def _git(self, *args: str, repo: Path | None = None) -> str:
+        completed = subprocess.run(
+            ["git", "-C", str(repo or self.root), *args],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=60,
+        )
+        self.assertEqual(
+            completed.returncode, 0, completed.stdout + "\n" + completed.stderr
+        )
+        return completed.stdout.strip()
+
+    def _init_git_repo(self) -> str:
+        self._git("init", "-b", "main")
+        self._git("config", "user.name", "dsh stress test")
+        self._git("config", "user.email", "dsh-stress@example.invalid")
+        (self.root / "README.md").write_text("initial\n", encoding="utf-8")
+        self._git("add", "-A")
+        self._git("commit", "-m", "initial")
+        return self._git("rev-parse", "HEAD")
+
+    def _env(self, label: str, **extra: str) -> dict[str, str]:
+        env = dict(self.env)
+        env["DSH_SESSION_LABEL"] = label
+        env.update(extra)
+        return env
+
+    @staticmethod
+    def _params(env: dict[str, str]) -> StdioServerParameters:
+        return StdioServerParameters(command=sys.executable, args=[str(SERVER)], env=env)
+
+    async def _with_sessions(self, envs: list[dict[str, str]], fn):
+        async with contextlib.AsyncExitStack() as stack:
+            sessions: list[ClientSession] = []
+            for env in envs:
+                read, write = await stack.enter_async_context(stdio_client(self._params(env)))
+                session = await stack.enter_async_context(ClientSession(read, write))
+                await session.initialize()
+                sessions.append(session)
+            return await fn(*sessions)
+
+    @staticmethod
+    async def _call(session, name: str, args: dict | None = None):
+        result = await session.call_tool(name, args or {}, read_timeout_seconds=60)
+        data = getattr(result, "structured_content", None) or getattr(
+            result, "structuredContent", None
+        )
+        if data is None:
+            for block in result.content:
+                if getattr(block, "type", None) == "text":
+                    try:
+                        data = json.loads(block.text)
+                    except ValueError:
+                        data = {"text": block.text, "is_error": result.is_error}
+                    break
+        return data
+
+    async def _wait_tool_status(self, session, job_id: str, predicate, timeout: float = 30.0):
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        last = None
+        while loop.time() < deadline:
+            last = await self._call(session, "worker_status", {"job_id": job_id})
+            if predicate(last):
+                return last
+            await asyncio.sleep(0.1)
+        self.fail(f"status predicate not met: {json.dumps(last, default=str)[:2000]}")
+
+    def test_two_server_worktree_demo_steering_and_auto_commit(self):
+        base_commit = self._init_git_repo()
+        env_x = self._env(
+            "session-X",
+            FAKE_LAUNCHER_MODE="control",
+            FAKE_LAUNCHER_SLEEP="6",
+            FAKE_LAUNCHER_WRITE_FILE="worker_out.txt",
+        )
+        env_y = self._env(
+            "session-Y",
+            FAKE_LAUNCHER_MODE="control",
+            FAKE_LAUNCHER_SLEEP="6",
+        )
+
+        async def scenario(session_x, session_y):
+            started = await self._call(
+                session_x,
+                "start_worker",
+                {
+                    "brief": "Phase 1 acceptance worktree task",
+                    "permission": "workspace-write",
+                    "use_worktree": True,
+                },
+            )
+            self.assertTrue(started["ok"], started)
+            job_id = started["job_id"]
+            await self._wait_tool_status(
+                session_x,
+                job_id,
+                lambda s: s["running"] and s["heartbeat"].get("control_available"),
+            )
+            listed = await self._call(session_y, "list_workers", {})
+            row = next(item for item in listed["jobs"] if item["job_id"] == job_id)
+            self.assertEqual(row["owner_session"], "session-X")
+            self.assertEqual(row["worktree_branch"], f"dsh/{job_id}")
+
+            sent = await self._call(
+                session_y,
+                "message_worker",
+                {"job_id": job_id, "message": "hello from session Y"},
+            )
+            self.assertTrue(sent["ok"], sent)
+            renewed = await self._call(
+                session_y,
+                "renew_worker_lease",
+                {"job_id": job_id, "extend_seconds": 7200, "adopt": True},
+            )
+            self.assertTrue(renewed["ok"], renewed)
+            self.assertEqual(renewed["controller_lease"]["lease_seconds"], 7200)
+            claimed = await self._call(
+                session_y,
+                "claim_worker",
+                {"job_id": job_id, "reason": "acceptance takeover"},
+            )
+            self.assertTrue(claimed["ok"], claimed)
+            self.assertEqual(claimed["owner_session"], "session-Y")
+            self.assertEqual(claimed["previous_owner_session"], "session-X")
+            owned = await self._call(
+                session_y,
+                "renew_worker_lease",
+                {"job_id": job_id, "extend_seconds": 7200},
+            )
+            self.assertTrue(owned["ok"], owned)
+            self.assertFalse(owned["adopted"])
+            final = await self._wait_tool_status(
+                session_y, job_id, lambda s: s["final"], timeout=40
+            )
+            self.assertEqual(final["phase"], "finished", final)
+            return started, final
+
+        started, final = run_async(
+            self._with_sessions([env_x, env_y], scenario), 150
+        )
+        job_id = started["job_id"]
+        job_dir = Path(started["status_path"]).parent
+        tree = final["worktree"]
+        self.assertTrue(tree["committed"], tree)
+        self.assertEqual(tree["branch"], f"dsh/{job_id}")
+        self.assertEqual(tree["base_commit"], base_commit)
+        self.assertEqual(tree["commits"], 1)
+        self.assertEqual(tree["files_changed"], 1)
+        self.assertRegex(tree["head"], r"^[0-9a-f]{40}$")
+        worktree = Path(tree["path"])
+        body = self._git("log", "-1", "--format=%B", repo=worktree)
+        self.assertIn(f"DSH-Job: {job_id}", body)
+        self.assertIn("[dsh " + job_id + "]", body.splitlines()[0])
+        self.assertEqual(self._git("rev-parse", f"dsh/{job_id}"), tree["head"])
+        self.assertEqual(self._git("rev-parse", "main"), base_commit)
+
+        launcher = json.loads((job_dir / "launcher_argv.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            launcher["env_reality_data_root"],
+            str((self.root / "reality_engine" / "data").resolve()),
+        )
+        steering_text = (job_dir / "steering.jsonl").read_text(encoding="utf-8")
+        steering = [json.loads(line) for line in steering_text.splitlines()]
+        kinds = {entry["kind"] for entry in steering}
+        self.assertTrue({"start", "message", "claim", "renew"} <= kinds, kinds)
+        self.assertIn("session-X", {entry["session"] for entry in steering})
+        self.assertTrue(any(entry["session"] == "session-Y" for entry in steering))
+        for entry in steering:
+            self.assertLessEqual(len(entry["text"]), 200)
+        # The plaintext token is decryptable by this user but never persisted or audited.
+        token = store.dpapi_unprotect((job_dir / store.TOKEN_FILE).read_bytes()).decode("utf-8")
+        self.assertGreaterEqual(len(token), 32)
+        for text in (
+            steering_text,
+            (job_dir / "job.json").read_text(encoding="utf-8"),
+            (job_dir / "status.json").read_text(encoding="utf-8"),
+            json.dumps(final),
+        ):
+            self.assertNotIn(token, text)
+
+    def test_two_server_lease_race_loses_no_renewals(self):
+        self._init_git_repo()
+        env_x = self._env(
+            "session-race-X",
+            FAKE_LAUNCHER_MODE="control",
+            FAKE_LAUNCHER_SLEEP="12",
+        )
+        env_y = self._env(
+            "session-race-Y",
+            FAKE_LAUNCHER_MODE="control",
+            FAKE_LAUNCHER_SLEEP="12",
+        )
+        env_z = self._env(
+            "session-race-Z",
+            FAKE_LAUNCHER_MODE="control",
+            FAKE_LAUNCHER_SLEEP="12",
+        )
+        renewals_per_server = 6
+
+        async def scenario(session_x, session_y, session_z):
+            started = await self._call(
+                session_x, "start_worker", {"brief": "lease race", "permission": "read-only"}
+            )
+            job_id = started["job_id"]
+            await self._wait_tool_status(
+                session_x,
+                job_id,
+                lambda s: s["running"] and s["heartbeat"].get("control_available"),
+            )
+
+            async def spam(session):
+                responses = []
+                for _ in range(renewals_per_server):
+                    responses.append(
+                        await self._call(
+                            session,
+                            "renew_worker_lease",
+                            {"job_id": job_id, "extend_seconds": 7200, "adopt": True},
+                        )
+                    )
+                return responses
+
+            results = await asyncio.gather(spam(session_y), spam(session_z))
+            for response in (item for group in results for item in group):
+                self.assertTrue(response["ok"], response)
+            status = await self._call(session_x, "worker_status", {"job_id": job_id})
+            self.assertEqual(
+                status["controller_lease"]["renewals"], renewals_per_server * 2
+            )
+            cancelled = await self._call(
+                session_y, "cancel_worker", {"job_id": job_id, "confirm": True}
+            )
+            self.assertTrue(cancelled["ok"], cancelled)
+            return job_id
+
+        job_id = run_async(
+            self._with_sessions([env_x, env_y, env_z], scenario), 150
+        )
+        job_dir = self.root / "runtime" / "jobs" / job_id
+        lines = [
+            json.loads(line)
+            for line in (job_dir / "steering.jsonl").read_text(encoding="utf-8").splitlines()
+        ]
+        renews = [line for line in lines if line["kind"] == "renew"]
+        self.assertEqual(len(renews), renewals_per_server * 2)
+        self.assertEqual(
+            {line["session"] for line in renews}, {"session-race-Y", "session-race-Z"}
+        )
 
 
 if __name__ == "__main__":

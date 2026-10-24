@@ -223,10 +223,21 @@ def main() -> int:
         "cwd": os.getcwd(),
         "task": Path(str(task_file)).read_text(encoding="utf-8") if task_file else "",
         "env_job_dir": os.environ.get("DSH_WORKER_JOB_DIR"),
+        "env_reality_data_root": os.environ.get("REALITY_DATA_ROOT"),
     }
     (job_dir / "launcher_argv.json").write_text(
         json.dumps(record, indent=2, sort_keys=True), encoding="utf-8"
     )
+
+    # Simulate a worker writing into its workspace (--cwd), never the runtime.
+    write_name = os.environ.get("FAKE_LAUNCHER_WRITE_FILE")
+    if write_name:
+        target = Path(str(_value(args, "--cwd") or os.getcwd())) / write_name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            os.environ.get("FAKE_LAUNCHER_WRITE_TEXT", "fake worker change\n"),
+            encoding="utf-8",
+        )
 
     mode = os.environ.get("FAKE_LAUNCHER_MODE", "fast")
     sleep_seconds = float(os.environ.get("FAKE_LAUNCHER_SLEEP", "5"))

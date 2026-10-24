@@ -21,10 +21,12 @@ it does not replace the launcher, change Codex's model, or add a provider route.
    `workspace-write`, or `danger-full-access`). The default is `read-only`;
    pass `workspace-write` explicitly for an implementation worker. Do not
    broaden it without a reason.
-4. Respect the one-mutating-worker-per-repository lock. The lock covers the
-   repo root and every subdirectory, so do not start a second writer in any
-   checkout path or against the same session. Read-only workers do not take the
-   lock but still must not race a mutating worker.
+4. Respect the one-mutating-worker-per-workspace lock. The main checkout and
+   each registered git worktree have their own lock, so do not start a second
+   writer in the same checkout/worktree (or against the same dsh session).
+   Read-only workers do not take the lock but still must not race a mutating
+   worker. Arbitrary subdirectories are not workspaces; create a worktree
+   instead.
 5. Never put API keys, tokens, auth-file contents, or other secrets in a brief,
    task file, status record, or tool argument. The launcher obtains credentials
    from inherited/user environment.
@@ -38,15 +40,17 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   `max_output_tokens`, `max_result_bytes`, optional `hard_timeout_seconds`
   (default `None`; omit for pure heartbeat supervision, or pass an explicit
   value for a deliberate wall-clock cutoff), `followup_wait_seconds` (default
-  0), `controller_lease_seconds` (default 1800), and `refresh_context`. The
-  launcher must provide the real heartbeat and `--control-token-env`
-  capabilities; the plugin refuses to start rather than falling back to a hard
-  timeout. A positive `followup_wait_seconds` opts into a bounded host-side
-  wait for explicit same-conversation follow-ups; 0 preserves ordinary
-  one-shot exit.
+  0), `controller_lease_seconds` (default 1800, max 7200), `refresh_context`,
+  and `use_worktree`/`base` for an isolated worktree writer. The launcher must
+  provide the real heartbeat and `--control-token-env` capabilities; the plugin
+  refuses to start rather than falling back to a hard timeout. A positive
+  `followup_wait_seconds` opts into a bounded host-side wait for explicit
+  same-conversation follow-ups; 0 preserves ordinary one-shot exit.
 - `worker_status` — read persisted phase, process ownership, heartbeat/session
   state, last activity, `awaiting_input`, controller-lease deadline/remaining
   time, and whether a result is ready. A live PID is not proof of progress.
+  `owner_session`/`last_steerer` say which MCP session started/steered it;
+  `worktree` reports branch/base/head/commits/files_changed for worktree jobs.
   Report `progress.summary` to the user; `progress.done` is the finished flag.
   `result.md` streams while running, so never treat a non-empty result file as
   done (`result_ready` is only true once final). `progress.events` has tool-call
@@ -70,22 +74,28 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   running turn accepts a direct steer, and a closing/idle run rejects it. Text
   over 4000 chars is rejected with `message_too_long`, never silently
   shortened. A successful response means transport delivery, not a model
-  answer. If the adapter/token is unavailable (including after an MCP restart)
-  the tool returns `transport_unavailable` rather than pretending stdin append
-  works.
+  answer. The per-job control token is persisted DPAPI-encrypted for this
+  Windows user, so any dsh-worker MCP server can message a job it did not
+  start (legacy token-less jobs return `transport_unavailable`); each delivery
+  is recorded in `job_dir/steering.jsonl`.
 - `renew_worker_lease` — the only controller-lease renewal path. Explicitly
-  extends a running job by at most 30 minutes (default 1800s). Worker/model
-  activity, status/result/list reads, messaging, and a restarted MCP server do
-  not renew it. Missing, expired, malformed, wrong-job/wrong-owner leases are
+  extends a running job by at most 7200 seconds (2 hours; default 1800).
+  Worker/model activity, status/result/list reads, messaging, and a restarted
+  MCP server do not renew it. It works for the recorded owner session, or with
+  `adopt=true`. Missing, expired, malformed, wrong-job/wrong-owner leases are
   refused. If the lease expires, the supervisor kills the verified owned tree,
   preserves partial output/artifacts, and reports `controller_lease_expired`
-  distinctly. The default lease is 30 minutes; renew after real review/status,
-  not on a timer.
+  distinctly. Renew after real review/status, not on a timer.
+- `claim_worker` — explicit takeover of a running job's lease ownership,
+  recording the new owner session and reason in `job_dir/steering.jsonl`;
+  after it, plain `renew_worker_lease` works without `adopt=true`.
 - `cancel_worker` — destructive; requires `confirm=true`. It validates the
   recorded supervisor PID and kernel creation time before killing the owned
   process tree. Never kill by image name.
-- `list_workers` — inspect persisted jobs, optionally for one workspace; each row
-  has a one-line `summary`; corrupt records are listed under `unreadable`.
+- `list_workers` — inspect persisted jobs, optionally for one workspace
+  (repository root or a registered worktree); each row has a one-line
+  `summary`, `owner_session` and `last_steerer`; corrupt records are listed
+  under `unreadable`.
 - `inspect_run` — read-only progress for a run started with the raw harness,
   from its `--out-file` path. It cannot message/renew/cancel such runs.
 - `server_info` — confirm the server is up and which process/repo answers.
@@ -94,6 +104,10 @@ it does not replace the launcher, change Codex's model, or add a provider route.
 
 Keep these distinct:
 
+- **MCP session label** — this server process's identity (`DSH_SESSION_LABEL`,
+  else hostname+pid+start). Jobs record `owner_session` and every message,
+  renew, claim and cancel in `job_dir/steering.jsonl`, so one Claude/Codex
+  session can see what another told the worker.
 - **Provider routing/cache session** — the deterministic
   `x-opencode-session` value derived by `go_session.py`. Do not reset it on each
   call; it is not the dsh conversation.
@@ -102,6 +116,32 @@ Keep these distinct:
   means exactly that.
 
 The provider session may stay stable across a new dsh conversation.
+
+## Shared control across sessions
+
+The per-job control token is persisted DPAPI-encrypted (CurrentUser) in the job
+directory, so any dsh-worker MCP server of this Windows user can list, message,
+renew and cancel a job started by someone else. The plaintext token is never
+logged or returned. Use `claim_worker(job_id, reason)` to take ownership of a
+running job deliberately; after that, `renew_worker_lease` works without
+`adopt=true`. Legacy jobs with no token file report
+`control_token_available=false` (`control_unavailable_reason=control_token_missing`)
+and cannot be messaged.
+
+## Worktree writers
+
+Start with `start_worker(..., use_worktree=true, base=<optional git ref>)` to
+create `<DSH_WORKTREES_ROOT>/<job_id>` on branch `dsh/<job_id>` from `base`
+(default the main checkout's HEAD). Each registered worktree has its own
+mutation lock, so several worktree writers can run in parallel; the main
+checkout keeps its own lock. On a successful finish the supervisor auto-commits
+the worktree (`git add -A`, author from git config, subject
+`<brief first line> [dsh <job_id>]`, trailer `DSH-Job: <job_id>`); an empty diff
+makes no commit, and failed/cancelled jobs are left uncommitted for review.
+`worker_status`/`worker_result` report `worktree.branch`, `base`, `head`,
+`commits`, `files_changed`. Gitignored data lives only in the main checkout:
+read it from `REALITY_DATA_ROOT` by absolute path, read-only (the one-line
+brief preamble says so).
 
 ## Same-conversation follow-ups
 
@@ -118,14 +158,15 @@ is opt-in: leave `followup_wait_seconds` at 0 for ordinary one-shot work.
 
 ## Controller lease
 
-Every job carries an independent 30-minute controller lease, renewed only by an
-explicit `renew_worker_lease` call after real review/status. It is not a task
-duration cap: productive multi-step/tool work may continue indefinitely while
-the controller keeps reviewing and renewing. If Codex/its quota disappears, the
+Every job carries an independent controller lease (default 30 minutes, capped at
+7200 seconds / 2 hours per extension), renewed only by an explicit
+`renew_worker_lease` call after real review/status. It is not a task duration
+cap: productive multi-step/tool work may continue indefinitely while the
+controller keeps reviewing and renewing. If Codex/its quota disappears, the
 supervisor stops the verified owned tree at the persisted deadline even if the
 model is still responsive, preserves partial output/artifacts, and reports
-`controller_lease_expired`. Renewal authority is memory-only, so a restarted
-MCP server never extends a deadline implicitly; call
+`controller_lease_expired`. Renewal works for the recorded owner session; a
+different session must call `claim_worker(job_id, reason)` or
 `renew_worker_lease(job_id, adopt=true)` once, deliberately, to take over a
 still-valid lease after a restart. Watch `progress.notes`: it warns when the
 lease has under 10 minutes left.
@@ -137,6 +178,8 @@ lease has under 10 minutes left.
    diff, files, and tests yourself. Artifact hints list only paths that became
    newly dirty; a file already dirty at start is omitted even if it changed
    again, and concurrent edits may appear. Never treat the hint as attribution.
+   For a worktree job, review the committed `dsh/<job_id>` branch and its
+   reported `files_changed`; the plugin never merges it.
 3. Send concrete defects back with a real `message_worker` follow-up when the
    heartbeat adapter is available. Otherwise report the pending transport seam
    or start a fresh job with the new context; do not fake a message.
@@ -153,9 +196,10 @@ breakaway), the host may terminate the server's process tree, which also stops
 the supervisor and worker. The
 supervisor's own Windows job object prevents an unowned worker if the supervisor
 dies alone; mutating jobs fail closed if containment cannot be established. A
-recorded worker that is still alive keeps the repository mutation lock even when
+recorded worker that is still alive keeps its workspace mutation lock even when
 the supervisor is gone, so inspect before retrying. Persisted job records remain
-for inspection. Keep the Codex session open for a job that must finish; do not
+for inspection, and another MCP server of this Windows user can claim/message/
+cancel them. Keep the Codex session open for a job that must finish; do not
 assume closing the session detaches it. Use `cancel_worker(confirm=true)` when
 you deliberately want to stop work. The runtime directory is repo-local and
 gitignored.

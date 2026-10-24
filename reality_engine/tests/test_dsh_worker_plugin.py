@@ -10,8 +10,8 @@ import asyncio
 import json
 import os
 import re
+import subprocess
 import sys
-import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -23,14 +23,21 @@ REPO = Path(__file__).resolve().parents[2]
 PLUGIN_ROOT = REPO / "plugins" / "dsh-worker"
 SERVER_DIR = PLUGIN_ROOT / "server"
 SERVER = SERVER_DIR / "dsh_worker_mcp.py"
-FAKE_LAUNCHER = Path(__file__).resolve().parent / "fixtures" / "dsh_worker_fake_launcher.py"
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+FAKE_LAUNCHER = FIXTURES / "dsh_worker_fake_launcher.py"
+# Every test temp dir lives under the plugin's gitignored runtime, not the
+# platform temp: the agent sandbox may only write inside the repository.
+TEST_TMP = PLUGIN_ROOT / "runtime" / "test-tmp"
 
 sys.path.insert(0, str(SERVER_DIR))
+sys.path.insert(0, str(FIXTURES))
 
 import core  # noqa: E402
 import heartbeat  # noqa: E402
 import procutil  # noqa: E402
+import store  # noqa: E402
 import supervisor  # noqa: E402
+from dsh_worker_testenv import make_temp_dir, remove_tree, run_async  # noqa: E402
 
 OFF_PEAK = "2026-10-21T03:00:00+05:30"
 PEAK = "2026-10-21T07:00:00+05:30"
@@ -42,16 +49,19 @@ def session_id(job, model, key="", lane_no=None):
 
 class PluginTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
+        TEST_TMP.mkdir(parents=True, exist_ok=True)
+        self.root = make_temp_dir(TEST_TMP, "plugin-tests-")
         scripts = self.root / "reality_engine" / "scripts"
         scripts.mkdir(parents=True)
         (scripts / "go_session.py").write_text(FAKE_GO_SESSION, encoding="utf-8")
         self.env = os.environ.copy()
+        self.env.pop("DSH_SESSION_LABEL", None)
         self.env.update(
             {
                 "DSH_WORKER_REPO_ROOT": str(self.root),
                 "DSH_WORKER_RUNTIME_DIR": str(self.root / "runtime"),
+                # Worktrees are always created under the test temp root.
+                "DSH_WORKTREES_ROOT": str(self.root / "worktrees"),
                 # Execute the reviewed repo fixture directly; TemporaryDirectory
                 # holds only fixture data, never an executable created there.
                 "DSH_WORKER_LAUNCHER": str(FAKE_LAUNCHER),
@@ -101,7 +111,7 @@ class PluginTests(unittest.TestCase):
                     pass
         for _ in range(20):
             try:
-                self.tmp.cleanup()
+                remove_tree(self.root)
                 return
             except OSError:
                 time.sleep(0.2)
@@ -119,7 +129,7 @@ class PluginTests(unittest.TestCase):
                 return await fn(session)
 
     def _run(self, coro, timeout: float = 60.0):
-        return asyncio.run(asyncio.wait_for(coro, timeout))
+        return run_async(coro, timeout)
 
     @staticmethod
     def _payload(result):
@@ -216,19 +226,20 @@ class PluginTests(unittest.TestCase):
             core.Manager(core.load_config(peak_env)).start_worker(brief="work", workspace=".")
         self.assertEqual(ctx.exception.code, "peak_hours")
 
-        with tempfile.TemporaryDirectory() as outside:
-            outside_path = Path(outside)
-            with self.assertRaises(core.PluginError) as ctx:
-                self._manager_instance().start_worker(brief="work", workspace=str(outside_path))
-            self.assertEqual(ctx.exception.code, "workspace_outside_repo")
-            secret = outside_path / "brief.md"
-            secret.write_text("outside", encoding="utf-8")
-            with self.assertRaises(core.PluginError) as ctx:
-                self._manager_instance().start_worker(task_file=str(secret))
-            self.assertEqual(ctx.exception.code, "task_file_outside_repo")
-            with self.assertRaises(core.PluginError) as ctx:
-                self._manager_instance().start_worker(task_file=f"../{outside_path.name}/brief.md")
-            self.assertEqual(ctx.exception.code, "task_file_outside_repo")
+        # An existing directory outside the configured repository is refused;
+        # TEST_TMP is the parent of this test's temp repo.
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(brief="work", workspace=str(TEST_TMP))
+        self.assertEqual(ctx.exception.code, "workspace_outside_repo")
+        outside_brief = TEST_TMP / f"outside-brief-{os.getpid()}.md"
+        outside_brief.write_text("outside", encoding="utf-8")
+        self.addCleanup(lambda: outside_brief.unlink(missing_ok=True))
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(task_file=str(outside_brief))
+        self.assertEqual(ctx.exception.code, "task_file_outside_repo")
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(task_file=f"../{outside_brief.name}")
+        self.assertEqual(ctx.exception.code, "task_file_outside_repo")
 
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().start_worker(brief="a", task_file="brief.md")
@@ -487,31 +498,100 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(renewed["controller_lease"]["renewals"], 1)
         after_renew = renewed["controller_lease"]["deadline"]
 
-        # A restarted MCP server does not hold the memory-only owner id and
-        # cannot extend the persisted lease.
-        restarted = core.Manager(core.load_config(self.env))
+        # Another MCP server process (different session label) can see the job
+        # but cannot renew an unclaimed lease.  claim_worker takes ownership,
+        # after which renewal needs no adopt=true; the cap is 7200 s.
+        other_env = dict(self.env)
+        other_env["DSH_SESSION_LABEL"] = "session-other"
+        other = core.Manager(core.load_config(other_env))
+        status = other.get_status(job_id)
+        self.assertEqual(status["owner_session"], self._manager_instance().config.session_label)
+        self.assertEqual(status["steering"]["session_label"], "session-other")
         with self.assertRaises(core.PluginError) as ctx:
-            restarted.renew_worker_lease(job_id, extend_seconds=4)
+            other.renew_worker_lease(job_id, extend_seconds=4)
         self.assertEqual(ctx.exception.code, "controller_unavailable")
+        self.assertIn("claim_worker", ctx.exception.message)
         self.assertEqual(
             json.loads(lease_path.read_text(encoding="utf-8"))["deadline"], after_renew
         )
-
-        # A copied/wrong-owner lease is rejected rather than extended.
-        copied = json.loads(lease_path.read_text(encoding="utf-8"))
-        copied["owner_id"] = "wrong-owner"
-        lease_path.write_text(json.dumps(copied), encoding="utf-8")
+        claimed = other.claim_worker(job_id, "acceptance takeover")
+        self.assertTrue(claimed["ok"], claimed)
+        self.assertEqual(claimed["owner_session"], "session-other")
+        self.assertEqual(claimed["previous_owner_session"], self._manager_instance().config.session_label)
+        self.assertEqual(other.get_status(job_id)["owner_session"], "session-other")
+        renewed_other = other.renew_worker_lease(job_id, extend_seconds=7200)
+        self.assertTrue(renewed_other["ok"], renewed_other)
+        self.assertEqual(renewed_other["controller_lease"]["lease_seconds"], 7200)
+        self.assertFalse(renewed_other["adopted"])
         with self.assertRaises(core.PluginError) as ctx:
-            self._manager_instance().renew_worker_lease(job_id, extend_seconds=4)
-        self.assertEqual(ctx.exception.code, "lease_invalid")
-        self.assertEqual(
-            json.loads(lease_path.read_text(encoding="utf-8"))["deadline"], after_renew
+            other.renew_worker_lease(job_id, extend_seconds=7201)
+        self.assertEqual(ctx.exception.code, "lease_extension_invalid")
+        after_renew = renewed_other["controller_lease"]["deadline"]
+        steering = [
+            json.loads(line)
+            for line in (job_dir / "steering.jsonl").read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertIn("claim", {entry["kind"] for entry in steering})
+        self.assertIn("renew", {entry["kind"] for entry in steering})
+        self.assertTrue(any(entry["session"] == "session-other" for entry in steering))
+
+        # A copied/wrong-owner lease is rejected rather than extended.  A fake
+        # job record is used so no real supervisor races the assertion.
+        fake_id = "20261021T030303Z-0000aaaa"
+        fake_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / fake_id
+        fake_dir.mkdir(parents=True)
+        pid = os.getpid()
+        ticks = procutil.process_creation_time(pid)
+        (fake_dir / "job.json").write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "job_id": fake_id,
+                    "created_at": core.iso(),
+                    "workspace": str(self.root),
+                    "permission": "read-only",
+                    "controller_lease_owner_id": "owner-a",
+                    "owner_session": "session-other",
+                }
+            ),
+            encoding="utf-8",
         )
+        (fake_dir / "status.json").write_text(
+            json.dumps(
+                {
+                    "phase": "running",
+                    "started_at": core.iso(),
+                    "supervisor_pid": pid,
+                    "supervisor_creation_time": ticks,
+                    "worker_pid": pid,
+                    "worker_creation_time": ticks,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (fake_dir / "controller_lease.json").write_text(
+            json.dumps(
+                {
+                    "schema": store.LEASE_SCHEMA,
+                    "job_id": fake_id,
+                    "owner_id": "wrong-owner",
+                    "created_at": core.iso(),
+                    "renewed_at": core.iso(),
+                    "deadline": core.iso(core.utc_now() + core.timedelta(seconds=600)),
+                    "lease_seconds": 600,
+                    "renewals": 0,
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaises(core.PluginError) as ctx:
+            other.renew_worker_lease(fake_id, extend_seconds=4)
+        self.assertEqual(ctx.exception.code, "lease_invalid")
 
         self._manager_instance().cancel_worker(job_id, confirm=True)
         self.assertFalse(lease_path.exists(), "cancellation must remove the lease")
 
-    def test_repository_mutation_lock_covers_parent_and_subdirectory(self):
+    def test_workspace_must_be_repo_root_or_registered_worktree(self):
         self.env["FAKE_LAUNCHER_MODE"] = "slow"
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
         self._reset_manager()
@@ -519,11 +599,18 @@ class PluginTests(unittest.TestCase):
             brief="root writer", workspace=".", permission="workspace-write"
         )
         self.assertTrue(first["ok"], first)
+        # A subdirectory is not its own checkout, so it is not a workspace.
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().start_worker(
                 brief="subdir writer",
                 workspace="reality_engine",
                 permission="workspace-write",
+            )
+        self.assertEqual(ctx.exception.code, "workspace_not_registered")
+        # The root workspace is a single checkout: a second root writer waits.
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(
+                brief="second root writer", workspace=".", permission="workspace-write"
             )
         self.assertEqual(ctx.exception.code, "workspace_busy")
         self.assertIn("existing_job_id", ctx.exception.details)
@@ -625,11 +712,15 @@ class PluginTests(unittest.TestCase):
                     "cancel_worker",
                     "list_workers",
                     "renew_worker_lease",
+                    "claim_worker",
                     "inspect_run",
                     "server_info",
                 },
             )
             by_name = {tool.name: tool for tool in tools.tools}
+            self.assertIn("7200", by_name["renew_worker_lease"].description)
+            self.assertIn("steering.jsonl", by_name["claim_worker"].description)
+            self.assertIn("use_worktree", by_name["start_worker"].description)
             cancel_tool = by_name["cancel_worker"]
             self.assertIs(cancel_tool.annotations.destructive_hint, True)
             self.assertIs(by_name["start_worker"].annotations.open_world_hint, True)
@@ -763,17 +854,21 @@ class PluginTests(unittest.TestCase):
             self.assertEqual(still_running["phase"], "running")
             restarted_manager = core.Manager(core.load_config(self.env))
             restarted_status = restarted_manager.get_status(job_id)
-            self.assertFalse(restarted_status["heartbeat"]["control_available"])
-            self.assertFalse(restarted_status["heartbeat"]["control_token_available"])
-            self.assertEqual(
-                restarted_status["heartbeat"]["control_unavailable_reason"],
-                "control_token_not_in_this_mcp_server",
+            # The DPAPI-encrypted token is readable by any server process of
+            # this Windows user, so control survives a server restart.
+            self.assertTrue(restarted_status["heartbeat"]["control_available"])
+            self.assertTrue(restarted_status["heartbeat"]["control_token_available"])
+            self.assertIsNone(
+                restarted_status["heartbeat"]["control_unavailable_reason"]
             )
             after_restart = restarted_manager.message_worker(
                 job_id, "after restart", conversation_id="conv-test-1"
             )
-            self.assertFalse(after_restart["ok"])
-            self.assertEqual(after_restart["error"]["code"], "transport_unavailable")
+            self.assertTrue(after_restart["ok"], after_restart)
+            self.assertEqual(
+                json.loads(nudge_path.read_text(encoding="utf-8"))["message"][0]["text"],
+                "after restart",
+            )
             await self._call(session, "cancel_worker", {"job_id": job_id, "confirm": True})
 
         self._run(self._with_session(control))
@@ -999,6 +1094,292 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(lost["phase"], "lost")
         self.assertTrue(lost["final"])
         self.assertFalse(lost["running"])
+
+    # ------------------------------------------------------ shared control
+    def test_control_token_persisted_encrypted_and_shared_across_sessions(self):
+        self.env["FAKE_LAUNCHER_MODE"] = "control"
+        self.env["FAKE_LAUNCHER_SLEEP"] = "20"
+        self._reset_manager()
+        started = self._manager_instance().start_worker(brief="shared control task")
+        job_id = started["job_id"]
+        job_dir = Path(started["status_path"]).parent
+        self.assertTrue(started["control_token_persisted"])
+        status = self._wait_status(
+            job_id, lambda s: s["running"] and s["heartbeat"].get("control_available")
+        )
+        token = self._manager_instance()._control_tokens[job_id]
+        token_file = job_dir / store.TOKEN_FILE
+        self.assertTrue(token_file.is_file())
+        self.assertNotIn(token.encode(), token_file.read_bytes(), "token must be encrypted")
+        self.assertEqual(
+            store.dpapi_unprotect(token_file.read_bytes()).decode("utf-8"), token
+        )
+        for name in ("job.json", "status.json"):
+            self.assertNotIn(token, (job_dir / name).read_text(encoding="utf-8"))
+        self.assertNotIn(token, json.dumps(status))
+        self.assertNotIn(token, json.dumps(self._manager_instance().worker_result(job_id)))
+
+        # A second MCP server (different session identity) decrypts the same
+        # persisted token and can steer the job.
+        other_env = dict(self.env)
+        other_env["DSH_SESSION_LABEL"] = "session-B"
+        other = core.Manager(core.load_config(other_env))
+        other_status = other.get_status(job_id)
+        self.assertTrue(other_status["heartbeat"]["control_token_available"])
+        self.assertTrue(other_status["heartbeat"]["control_available"])
+        self.assertEqual(
+            other_status["owner_session"], self._manager_instance().config.session_label
+        )
+        listed = other.list_workers()
+        row = next(item for item in listed["jobs"] if item["job_id"] == job_id)
+        self.assertEqual(row["owner_session"], self._manager_instance().config.session_label)
+        self.assertIsNotNone(row["last_steerer"])
+        delivered = other.message_worker(job_id, "steer from session B")
+        self.assertTrue(delivered["ok"], delivered)
+        self.assertTrue((job_dir / "nudge.json").is_file())
+        claimed = other.claim_worker(job_id, "session B takes over")
+        self.assertTrue(claimed["ok"], claimed)
+        renewed = other.renew_worker_lease(job_id, extend_seconds=7200)
+        self.assertTrue(renewed["ok"], renewed)
+        self.assertEqual(renewed["controller_lease"]["lease_seconds"], 7200)
+        self.assertEqual(other.get_status(job_id)["last_steerer"], "session-B")
+        cancelled = other.cancel_worker(job_id, confirm=True, reason="shared control done")
+        self.assertTrue(cancelled["ok"], cancelled)
+
+        steering_text = (job_dir / "steering.jsonl").read_text(encoding="utf-8")
+        self.assertNotIn(token, steering_text)
+        steering = [json.loads(line) for line in steering_text.splitlines()]
+        kinds = {entry["kind"] for entry in steering}
+        self.assertTrue({"start", "message", "claim", "renew", "cancel"} <= kinds, kinds)
+        sessions = {entry["session"] for entry in steering}
+        self.assertIn("session-B", sessions)
+        self.assertIn(self._manager_instance().config.session_label, sessions)
+        for entry in steering:
+            self.assertLessEqual(len(entry["text"]), core.MAX_STEERING_TEXT)
+            self.assertIsInstance(entry["at"], str)
+
+    def test_legacy_job_without_persisted_token_reports_unavailable(self):
+        job_id = "20261021T030404Z-0000bbbb"
+        job_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / job_id
+        job_dir.mkdir(parents=True)
+        pid = os.getpid()
+        ticks = procutil.process_creation_time(pid)
+        (job_dir / "job.json").write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "job_id": job_id,
+                    "created_at": core.iso(),
+                    "workspace": str(self.root),
+                    "permission": "read-only",
+                    "owner_session": "legacy-session",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (job_dir / "status.json").write_text(
+            json.dumps(
+                {
+                    "phase": "running",
+                    "started_at": core.iso(),
+                    "supervisor_pid": pid,
+                    "supervisor_creation_time": ticks,
+                    "worker_pid": pid,
+                    "worker_creation_time": ticks,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (job_dir / "result.md.control.json").write_text(
+            json.dumps(
+                {
+                    "schema": heartbeat.CONTROL_SCHEMA,
+                    "state": "bound",
+                    "host": "127.0.0.1",
+                    "port": 9,
+                    "pid": pid,
+                    "run_id": "legacy-run",
+                    "session_id": "legacy-conversation",
+                }
+            ),
+            encoding="utf-8",
+        )
+        status = self._manager_instance().get_status(job_id)
+        self.assertFalse(status["heartbeat"]["control_token_available"])
+        self.assertFalse(status["heartbeat"]["control_available"])
+        self.assertTrue(status["heartbeat"]["control_descriptor_available"])
+        self.assertEqual(
+            status["heartbeat"]["control_unavailable_reason"], "control_token_missing"
+        )
+        response = self._manager_instance().message_worker(job_id, "legacy?")
+        self.assertFalse(response["ok"])
+        self.assertEqual(response["error"]["code"], "transport_unavailable")
+
+    # ----------------------------------------------------------- worktrees
+    def _git(self, *args: str, expect_ok: bool = True) -> str:
+        completed = subprocess.run(
+            ["git", "-C", str(self.root), *args],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=60,
+        )
+        if expect_ok:
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + "\n" + completed.stderr
+            )
+        return completed.stdout.strip()
+
+    def _init_git_repo(self) -> str:
+        self._git("init", "-b", "main")
+        self._git("config", "user.name", "dsh worker test")
+        self._git("config", "user.email", "dsh-worker-test@example.invalid")
+        (self.root / "README.md").write_text("initial\n", encoding="utf-8")
+        self._git("add", "-A")
+        self._git("commit", "-m", "initial")
+        return self._git("rev-parse", "HEAD")
+
+    def test_worktree_start_auto_commit_branch_and_data_env(self):
+        base_commit = self._init_git_repo()
+        self.env["FAKE_LAUNCHER_WRITE_FILE"] = "worker_out.txt"
+        self.env["FAKE_LAUNCHER_WRITE_TEXT"] = "written in the worktree\n"
+        self._reset_manager()
+        started = self._manager_instance().start_worker(
+            brief="Add worker file\n\nsecond line should not be the subject",
+            permission="workspace-write",
+            use_worktree=True,
+        )
+        self.assertTrue(started["ok"], started)
+        job_id = started["job_id"]
+        job_dir = Path(started["status_path"]).parent
+        worktree = Path(started["workspace"])
+        self.assertEqual(worktree, (self.root / "worktrees" / job_id).resolve())
+        self.assertEqual(started["worktree"]["branch"], f"dsh/{job_id}")
+        self.assertEqual(started["worktree"]["base_commit"], base_commit)
+        job = json.loads((job_dir / "job.json").read_text(encoding="utf-8"))
+        self.assertEqual(job["owner_session"], self._manager_instance().config.session_label)
+        self.assertEqual(job["worktree"]["base"], "HEAD")
+        self.assertEqual(job["data_root"], str((self.root / "reality_engine" / "data").resolve()))
+        # The one-line preamble is at the top of the worker brief; the subject
+        # still comes from the user's own first line.
+        brief = (job_dir / "brief.md").read_text(encoding="utf-8")
+        self.assertTrue(brief.startswith(core.WORKTREE_PREAMBLE), brief[:200])
+        self.assertIn("Add worker file", brief)
+        final = self._wait_status(job_id, lambda s: s["final"])
+        self.assertEqual(final["phase"], "finished", final)
+        tree = final["worktree"]
+        self.assertTrue(tree["committed"], tree)
+        self.assertEqual(tree["branch"], f"dsh/{job_id}")
+        self.assertEqual(tree["base"], "HEAD")
+        self.assertEqual(tree["base_commit"], base_commit)
+        self.assertRegex(tree["head"], r"^[0-9a-f]{40}$")
+        self.assertEqual(tree["commits"], 1)
+        self.assertEqual(tree["files_changed"], 1)
+        self.assertEqual(tree["files_changed_paths"], ["worker_out.txt"])
+        self.assertTrue(tree["commit_message"].startswith("Add worker file [dsh "), tree)
+        self.assertEqual((job_dir / "worker_out.txt").exists(), False)
+        # Branch, commit subject/trailer and clean worktree.
+        self.assertEqual(
+            self._git("rev-parse", f"dsh/{job_id}").strip(), tree["head"]
+        )
+        subject = subprocess.run(
+            ["git", "-C", str(worktree), "log", "-1", "--format=%s"],
+            capture_output=True,
+            text=True,
+            errors="replace",
+        ).stdout.strip()
+        self.assertEqual(subject, f"Add worker file [dsh {job_id}]")
+        body = subprocess.run(
+            ["git", "-C", str(worktree), "log", "-1", "--format=%B"],
+            capture_output=True,
+            text=True,
+            errors="replace",
+        ).stdout
+        self.assertIn(f"DSH-Job: {job_id}", body)
+        dirty = subprocess.run(
+            ["git", "-C", str(worktree), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            errors="replace",
+        ).stdout.strip()
+        self.assertEqual(dirty, "")
+        # Main checkout HEAD is untouched.
+        self.assertEqual(self._git("rev-parse", "main"), base_commit)
+        result = self._manager_instance().worker_result(job_id)
+        self.assertEqual(result["worktree"]["head"], tree["head"])
+        # The worker env points at the main checkout's data root by absolute path.
+        launcher = json.loads((job_dir / "launcher_argv.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            launcher["env_reality_data_root"],
+            str((self.root / "reality_engine" / "data").resolve()),
+        )
+
+    def test_worktree_empty_diff_makes_no_commit(self):
+        base_commit = self._init_git_repo()
+        self._reset_manager()
+        started = self._manager_instance().start_worker(
+            brief="No changes task", permission="workspace-write", use_worktree=True
+        )
+        job_id = started["job_id"]
+        final = self._wait_status(job_id, lambda s: s["final"])
+        self.assertEqual(final["phase"], "finished", final)
+        tree = final["worktree"]
+        self.assertFalse(tree["committed"], tree)
+        self.assertEqual(tree["commit_reason"], "no_changes")
+        self.assertEqual(tree["commits"], 0)
+        self.assertEqual(tree["files_changed"], 0)
+        self.assertEqual(tree["head"], base_commit)
+
+    def test_worktree_writers_run_in_parallel_and_lock_per_worktree(self):
+        base_commit = self._init_git_repo()
+        self.env["FAKE_LAUNCHER_MODE"] = "slow"
+        self.env["FAKE_LAUNCHER_SLEEP"] = "20"
+        self.env["FAKE_LAUNCHER_WRITE_FILE"] = "change.txt"
+        self._reset_manager()
+        manager = self._manager_instance()
+        first = manager.start_worker(
+            brief="writer one", permission="workspace-write", use_worktree=True
+        )
+        second = manager.start_worker(
+            brief="writer two", permission="workspace-write", use_worktree=True
+        )
+        self.assertTrue(first["ok"], first)
+        self.assertTrue(second["ok"], second)
+        self.assertNotEqual(first["workspace"], second["workspace"])
+        locks = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "locks"
+        for started in (first, second):
+            name = store.workspace_lock_name(Path(started["workspace"]), self.root)
+            self.assertTrue((locks / name).is_file(), started)
+        status = manager.get_status(first["job_id"])
+        self.assertTrue(status["running"], status)
+        # Same worktree, second writer: busy.  The main checkout is still free
+        # of a *writer* only because both are in worktrees.
+        with self.assertRaises(core.PluginError) as ctx:
+            manager.start_worker(
+                brief="same worktree",
+                workspace=first["workspace"],
+                permission="workspace-write",
+            )
+        self.assertEqual(ctx.exception.code, "workspace_busy")
+        cancelled = manager.cancel_worker(second["job_id"], confirm=True)
+        self.assertTrue(cancelled["ok"], cancelled)
+        self.assertTrue(manager.cancel_worker(first["job_id"], confirm=True)["ok"])
+        # Cancelled worktrees leave their changes uncommitted (no auto-commit).
+        second_dir = Path(second["status_path"]).parent
+        job = json.loads((second_dir / "job.json").read_text(encoding="utf-8"))
+        self.assertEqual(job["worktree"]["base_commit"], base_commit)
+
+    def test_invalid_worktree_base_is_refused_without_leftovers(self):
+        self._init_git_repo()
+        self._reset_manager()
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(
+                brief="bad base", permission="workspace-write", use_worktree=True, base="no-such-ref"
+            )
+        self.assertEqual(ctx.exception.code, "worktree_failed")
+        worktrees_root = self.root / "worktrees"
+        self.assertFalse(worktrees_root.exists() and any(worktrees_root.iterdir()))
+        self.assertEqual(self._git("branch", "--list", "dsh/*"), "")
 
     def test_heartbeat_launch_args_unit(self):
         capabilities = heartbeat.LauncherCapabilities(

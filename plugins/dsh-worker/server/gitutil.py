@@ -1,4 +1,9 @@
-"""Bounded working-tree snapshots used only as artifact hints."""
+"""Bounded git helpers: working-tree snapshots, worktrees and auto-commit.
+
+Nothing here pushes, resets or switches branches in the main checkout.  Worktree
+creation is the only main-checkout mutation, and it is always explicit
+(``start_worker(use_worktree=true)``).
+"""
 from __future__ import annotations
 
 import os
@@ -9,8 +14,158 @@ from typing import Any
 MAX_ENTRIES = 2000
 
 
+class GitError(RuntimeError):
+    """A git command needed for worktree setup/commit failed."""
+
+
 def _hidden() -> int:
     return 0x08000000 if os.name == "nt" else 0
+
+
+def _git(repo: Path, args: list[str], timeout: float = 30.0) -> tuple[int, str, str]:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo), *args],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=timeout,
+            creationflags=_hidden(),
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 1, "", f"git unavailable: {type(exc).__name__}: {exc}"
+    return completed.returncode, completed.stdout, completed.stderr
+
+
+def worktrees(repo_root: Path) -> list[dict[str, Any]]:
+    """Registered worktrees of ``repo_root`` (empty when it is not a git repo)."""
+    code, out, _err = _git(repo_root, ["worktree", "list", "--porcelain"])
+    if code != 0:
+        return []
+    entries: list[dict[str, Any]] = []
+    current: dict[str, Any] = {}
+    for line in out.splitlines():
+        if not line.strip():
+            if current:
+                entries.append(current)
+                current = {}
+            continue
+        key, _, value = line.partition(" ")
+        if key == "worktree":
+            current["path"] = value
+        elif key == "HEAD":
+            current["head"] = value
+        elif key == "branch":
+            current["branch"] = value.removeprefix("refs/heads/")
+        elif key == "detached":
+            current["detached"] = True
+    if current:
+        entries.append(current)
+    return entries
+
+
+def worktree_add(
+    repo_root: Path, path: Path, branch: str, base_ref: str = "HEAD"
+) -> dict[str, Any]:
+    """``git worktree add <path> -b <branch> <base>``; raises ``GitError``."""
+    if path.exists():
+        raise GitError(f"worktree path already exists: {path}")
+    code, out, err = _git(repo_root, ["rev-parse", "--verify", f"{base_ref}^{{commit}}"])
+    if code != 0:
+        raise GitError(f"base ref {base_ref!r} is not a commit: {(err or out).strip()[:300]}")
+    base_commit = out.strip().splitlines()[-1] if out.strip() else ""
+    if not base_commit:
+        raise GitError(f"base ref {base_ref!r} did not resolve to a commit")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    code, out, err = _git(
+        repo_root, ["worktree", "add", "-b", branch, str(path), base_commit]
+    )
+    if code != 0:
+        raise GitError(f"git worktree add failed: {(err or out).strip()[:500]}")
+    return {
+        "path": str(path),
+        "branch": branch,
+        "base": base_ref,
+        "base_commit": base_commit,
+    }
+
+
+def worktree_remove(repo_root: Path, path: Path, branch: str | None = None) -> None:
+    """Best-effort cleanup used only before a worker was ever spawned."""
+    _git(repo_root, ["worktree", "remove", "--force", str(path)])
+    if branch:
+        _git(repo_root, ["branch", "-D", branch])
+
+
+def commit_worktree(
+    worktree: Path,
+    *,
+    job_id: str,
+    subject: str,
+    base_commit: str | None = None,
+) -> dict[str, Any]:
+    """Commit every change in ``worktree``; no commit on an empty diff.
+
+    The commit author/committer come from the repository's git config.  A git
+    failure is returned as data, never raised: a finished worker must not be
+    reclassified because its post-run commit failed.
+    """
+    worktree = Path(worktree)
+    result: dict[str, Any] = {
+        "committed": False,
+        "branch": None,
+        "base": base_commit,
+        "head": None,
+        "commits": None,
+        "files_changed": None,
+        "files_changed_paths": [],
+        "message": subject,
+        "trailer": f"DSH-Job: {job_id}",
+    }
+
+    def fail(step: str, err: str) -> dict[str, Any]:
+        result["error"] = f"{step}: {err.strip()[:400] or 'git failed'}"
+        return result
+
+    code, out, err = _git(worktree, ["rev-parse", "--abbrev-ref", "HEAD"])
+    if code != 0:
+        return fail("rev-parse --abbrev-ref", err or out)
+    result["branch"] = out.strip()
+    code, out, err = _git(worktree, ["status", "--porcelain=v1", "-z", "--untracked-files=all"])
+    if code != 0:
+        return fail("git status", err or out)
+    dirty = bool(out.replace("\0", "").strip())
+    if dirty:
+        code, out, err = _git(worktree, ["add", "-A"])
+        if code != 0:
+            return fail("git add -A", err or out)
+        code, out, err = _git(
+            worktree, ["commit", "-m", subject, "-m", f"DSH-Job: {job_id}"]
+        )
+        if code != 0:
+            return fail("git commit", err or out)
+        result["committed"] = True
+    else:
+        result["reason"] = "no_changes"
+    code, out, err = _git(worktree, ["rev-parse", "HEAD"])
+    if code != 0:
+        return fail("rev-parse HEAD", err or out)
+    result["head"] = out.strip()
+    if base_commit and result["head"]:
+        code, out, _err = _git(
+            worktree, ["rev-list", "--count", f"{base_commit}..{result['head']}"]
+        )
+        if code == 0 and out.strip().isdigit():
+            result["commits"] = int(out.strip())
+        code, out, _err = _git(
+            worktree,
+            ["diff", "--name-only", "-z", f"{base_commit}..{result['head']}"],
+        )
+        if code == 0:
+            paths = [p for p in out.split("\0") if p]
+            result["files_changed"] = len(paths)
+            result["files_changed_paths"] = sorted(paths)[:MAX_ENTRIES]
+    return result
 
 
 def snapshot(workspace: Path, timeout: float = 10.0) -> dict[str, Any]:

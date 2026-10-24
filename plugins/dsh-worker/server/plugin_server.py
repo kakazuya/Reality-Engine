@@ -34,9 +34,16 @@ INSTRUCTIONS = (
     "Both reject text over the adapter's 4000-character limit; if a call returns "
     "transport_unavailable, do not append stdin or start a second writer against "
     "the same session. cancel_worker is destructive and needs confirm=true. "
-    "Default policy: one mutating worker per repository, DeepSeek V4.1 Flash at "
-    "max effort, Go account 2, no peak-hour starts, no implicit hard timeout, and no "
-    "secrets in briefs."
+    "Session independence: each server has a session_label and the per-job control "
+    "token is persisted DPAPI-encrypted for this Windows user, so any dsh-worker "
+    "server can list/message/cancel a job; claim_worker takes lease ownership and "
+    "renew_worker_lease(adopt=true) is the explicit takeover alternative. "
+    "worktree jobs (start_worker use_worktree=true) create dsh/<job_id> in "
+    "DSH_WORKTREES_ROOT, auto-commit on success, and read gitignored data from "
+    "REALITY_DATA_ROOT read-only. "
+    "Default policy: one mutating worker per workspace/checkout (each worktree has "
+    "its own lock), DeepSeek V4.1 Flash at max effort, Go account 2, no peak-hour "
+    "starts, no implicit hard timeout, and no secrets in briefs."
 )
 
 server = MCPServer(
@@ -76,10 +83,16 @@ def _safe(call) -> dict[str, Any]:
         "Start one DeepSeek/dsh worker from a complete brief or repo-local task "
         "file. Returns promptly with job_id and persisted status/result paths. "
         "Pins deepseek-v4.1-flash, max effort, Go account 2, rejects peak starts, "
-        "requires heartbeat/control capabilities, and defaults to one mutating "
-        "worker per repository. Hard timeout defaults to None. "
-        "followup_wait_seconds=0 keeps ordinary one-shot exit; a positive value "
-        "adds a bounded host-side wait for explicit same-conversation follow-ups."
+        "requires heartbeat/control capabilities, and allows one mutating worker "
+        "per workspace (the main checkout and each worktree have their own lock). "
+        "The per-job control token is persisted DPAPI-encrypted for this Windows "
+        "user, so other dsh-worker servers can message/renew/cancel this job. "
+        "Use use_worktree=true to create <DSH_WORKTREES_ROOT>/<job_id> on branch "
+        "dsh/<job_id> from base (default HEAD); the supervisor auto-commits a "
+        "non-empty diff when the worker finishes successfully. Hard timeout "
+        "defaults to None. followup_wait_seconds=0 keeps ordinary one-shot exit; "
+        "a positive value adds a bounded host-side wait for explicit "
+        "same-conversation follow-ups."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -98,6 +111,8 @@ def start_worker(
     followup_wait_seconds: int = 0,
     controller_lease_seconds: int = 1800,
     refresh_context: bool = True,
+    use_worktree: bool = False,
+    base: str | None = None,
 ) -> dict[str, Any]:
     return _safe(
         lambda: _get_manager().start_worker(
@@ -113,6 +128,8 @@ def start_worker(
             followup_wait_seconds=followup_wait_seconds,
             controller_lease_seconds=controller_lease_seconds,
             refresh_context=refresh_context,
+            use_worktree=use_worktree,
+            base=base,
         )
     )
 
@@ -126,7 +143,8 @@ def start_worker(
         "finished flag; progress.summary/events give elapsed time, last activity, "
         "tool-call counts, last tool, recent file writes and the hard upper bound "
         "(lease/timeout) on when the job will stop. failure_reason explains failed "
-        "jobs. Makes no inference call."
+        "jobs. owner_session/last_steerer plus worktree branch/base/head/commits/"
+        "files_changed are included. Makes no inference call."
     ),
     annotations=ToolAnnotations(
         read_only_hint=True, destructive_hint=False, open_world_hint=False
@@ -159,8 +177,11 @@ def worker_result(job_id: str, max_bytes: int | None = None) -> dict[str, Any]:
         "delivers the genuine question without a status prefix. A follow-up is "
         "handed to an active bounded turn-stopping wait and steered exactly once, "
         "or steered directly while a running turn can accept it. Text over 4000 "
-        "characters is rejected with message_too_long. Fails explicitly with "
-        "transport_unavailable when the adapter/token is unavailable."
+        "characters is rejected with message_too_long. Works from any dsh-worker "
+        "server of this Windows user: the per-job control token is persisted "
+        "DPAPI-encrypted and the attempt is appended to job_dir/steering.jsonl. "
+        "Fails explicitly with transport_unavailable when the adapter is not ready "
+        "or a legacy job has no persisted token."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -182,13 +203,14 @@ def message_worker(
 @server.tool(
     name="renew_worker_lease",
     description=(
-        "Explicitly extend the controller lease for a running job by at most 30 "
-        "minutes. This is the only renewal path: worker activity, model calls, "
-        "status/result/list reads and a restarted MCP server never renew it "
-        "automatically. After a server restart, pass adopt=true to take the "
-        "still-valid lease over explicitly (an expired lease cannot be adopted). "
+        "Explicitly extend the controller lease for a running job by at most 7200 "
+        "seconds (2 hours; default 1800). This is the only renewal path: worker "
+        "activity, model calls, status/result/list reads and a restarted MCP server "
+        "never renew it automatically. Renewal works for the recorded owner session; "
+        "after a restart pass adopt=true to take the still-valid lease over "
+        "explicitly, or call claim_worker first (an expired lease cannot be adopted). "
         "Refuses finished, expired, malformed, or not-owned leases; the lease "
-        "deadline remains a hard upper bound even if Codex disappears."
+        "deadline remains a hard upper bound even if the caller disappears."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=False
@@ -198,6 +220,24 @@ def renew_worker_lease(
     job_id: str, extend_seconds: int = 1800, adopt: bool = False
 ) -> dict[str, Any]:
     return _safe(lambda: _get_manager().renew_worker_lease(job_id, extend_seconds, adopt=adopt))
+
+
+@server.tool(
+    name="claim_worker",
+    description=(
+        "Take over ownership of a running job's controller lease and record who "
+        "and why in job_dir/steering.jsonl. The stable lease owner id is kept (the "
+        "supervisor validates it); the recorded owner session becomes this server, "
+        "so subsequent renew_worker_lease calls need no adopt=true. Works from any "
+        "dsh-worker MCP server of this Windows user because the job's control token "
+        "is persisted DPAPI-encrypted. Refuses finished jobs."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, open_world_hint=False
+    ),
+)
+def claim_worker(job_id: str, reason: str = "manual claim") -> dict[str, Any]:
+    return _safe(lambda: _get_manager().claim_worker(job_id, reason))
 
 
 @server.tool(
@@ -219,7 +259,9 @@ def cancel_worker(
 @server.tool(
     name="list_workers",
     description=(
-        "List persisted jobs, optionally filtered to one workspace, newest first. "
+        "List persisted jobs, optionally filtered to one workspace (repository "
+        "root or a registered worktree), newest first. Each row includes the "
+        "owner session and the last steerer session in addition to phase/summary. "
         "Read-only and bounded."
     ),
     annotations=ToolAnnotations(

@@ -20,13 +20,16 @@ import gitutil
 import heartbeat
 import procutil
 from store import (
+    JOB_LOCK_NAME,
     LEASE_FILE,
-    MUTATION_LOCK_NAME,
     atomic_write_json,
+    exclusive_lock,
     iso,
     parse_iso,
     read_json_bounded,
     read_lease,
+    read_text_bounded,
+    workspace_lock_name,
 )
 
 _CANCEL = False
@@ -47,7 +50,10 @@ def _status_path(job_dir: Path) -> Path:
 
 def _write_status(job_dir: Path, status: dict[str, Any]) -> None:
     status["updated_at"] = iso()
-    atomic_write_json(_status_path(job_dir), status)
+    # Every job-record write is serialised with other server/supervisor
+    # processes by the per-job OS lock; the file replace itself stays atomic.
+    with exclusive_lock(job_dir / JOB_LOCK_NAME):
+        atomic_write_json(_status_path(job_dir), status)
 
 
 def _write_status_soft(job_dir: Path, status: dict[str, Any]) -> bool:
@@ -62,7 +68,7 @@ def _write_status_soft(job_dir: Path, status: dict[str, Any]) -> bool:
     try:
         _write_status(job_dir, status)
         return True
-    except OSError as exc:
+    except (OSError, TimeoutError) as exc:
         _log(f"status write failed ({type(exc).__name__}: {exc}); will retry")
         return False
 
@@ -92,22 +98,25 @@ def _release_lock(
     worker_ticks = status.get("worker_creation_time")
     if worker_pid:
         if not worker_ticks:
-            _log("retaining repository lock: recorded worker has no verifiable creation time")
+            _log("retaining workspace lock: recorded worker has no verifiable creation time")
             return False
         if procutil.process_alive(int(worker_pid), int(worker_ticks)):
-            _log(f"retaining repository lock: worker pid={worker_pid} is still alive")
+            _log(f"retaining workspace lock: worker pid={worker_pid} is still alive")
             return False
     runtime = job_dir.parents[1]
-    path = runtime / "locks" / MUTATION_LOCK_NAME
-    lock, _ = read_json_bounded(path, 65_536)
-    if isinstance(lock, dict) and lock.get("job_id") == job.get("job_id"):
-        try:
-            path.unlink()
-        except FileNotFoundError:
+    repo_root = Path(str(job.get("repo_root") or job_dir))
+    workspace = Path(str(job.get("workspace") or repo_root))
+    path = runtime / "locks" / workspace_lock_name(workspace, repo_root)
+    with exclusive_lock(runtime / "locks" / ".mutation.guard"):
+        lock, _ = read_json_bounded(path, 65_536)
+        if isinstance(lock, dict) and lock.get("job_id") == job.get("job_id"):
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                return True
+            except OSError:
+                return False
             return True
-        except OSError:
-            return False
-        return True
     # Not held by this job (read-only jobs never take it, or it was already
     # released): nothing is retained.  Returning False here used to append a
     # false "lock retained" warning to every read-only job.
@@ -219,6 +228,38 @@ def _finalize(
             "reason": f"artifact_snapshot_error:{type(exc).__name__}",
             "paths": [],
         }
+    # Worktree auto-commit: the worker could not write .git/worktrees/<name>
+    # (outside its sandbox), so the supervisor commits only after a successful
+    # end.  Empty diffs create no commit; a failed commit is reported, never a
+    # phase change.
+    worktree = job.get("worktree")
+    if isinstance(worktree, dict) and worktree.get("enabled"):
+        if phase == "finished":
+            subject = str(job.get("brief_first_line") or "").strip()
+            if not subject:
+                brief, _, _ = read_text_bounded(job_dir / "brief.md", 8192)
+                subject = next((line.strip() for line in brief.splitlines() if line.strip()), "dsh worker")
+            job_id = str(job.get("job_id") or job_dir.name)
+            try:
+                status["worktree_commit"] = gitutil.commit_worktree(
+                    Path(str(worktree.get("path"))),
+                    job_id=job_id,
+                    subject=f"{subject[:200]} [dsh {job_id}]",
+                    base_commit=worktree.get("base_commit"),
+                )
+            except Exception as exc:
+                status["worktree_commit"] = {
+                    "committed": False,
+                    "error": f"{type(exc).__name__}: {exc}"[:400],
+                }
+            commit_error = (status.get("worktree_commit") or {}).get("error")
+            if commit_error:
+                warnings.append(f"worktree auto-commit failed: {commit_error}")
+        else:
+            status["worktree_commit"] = {
+                "committed": False,
+                "reason": f"worker ended {phase}; changes left uncommitted",
+            }
     if phase != "finished":
         try:
             status["partial"] = (job_dir / "result.md").stat().st_size > 0
@@ -282,6 +323,9 @@ def main(argv: list[str] | None = None) -> int:
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(repo) + (os.pathsep + existing if existing else "")
     env["PYTHONUTF8"] = "1"
+    # A worktree has no gitignored data (DBs, indexes): the main checkout's
+    # data root is injected by the MCP server; this default covers old records.
+    env.setdefault("REALITY_DATA_ROOT", str(repo / "reality_engine" / "data"))
     env["DSH_WORKER_JOB_ID"] = job_id
     env["DSH_WORKER_JOB_DIR"] = str(job_dir)
 
@@ -473,7 +517,8 @@ def main(argv: list[str] | None = None) -> int:
         rc = process.returncode if process is not None else None
         status = _finalize(job, job_dir, status, rc, cancel_requested, lease_expired=lease_expired)
         try:
-            lease_path.unlink(missing_ok=True)
+            with exclusive_lock(job_dir / JOB_LOCK_NAME):
+                lease_path.unlink(missing_ok=True)
         except OSError:
             pass
         _log(f"finish job={job_id} phase={status.get('phase')} rc={rc}")
