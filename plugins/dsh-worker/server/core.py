@@ -91,6 +91,22 @@ WORKTREE_PREAMBLE = (
     "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT "
     "by absolute path and must be treated as read-only."
 )
+# Appended to every worker brief.  It is a standing instruction, never a
+# question: the worker must not answer it or stop, only append a progress line.
+PROGRESS_NOTES_INSTRUCTION = (
+    "Standing progress instruction: every ~20 minutes of work, or at each "
+    "milestone, append one line to PROGRESS_NOTES.md in your job directory "
+    "(its absolute path is in the DSH_WORKER_PROGRESS_NOTES environment "
+    "variable): what's done, what's next, blockers. Do not stop or wait after "
+    "writing it."
+)
+DEFAULT_PROGRESS_INTERVAL_SECONDS = 1200
+MAX_PROGRESS_INTERVAL_SECONDS = 86_400
+# The supervisor's own status ping must never read as the end of the task.
+STATUS_CHECK_PREFIX = (
+    "Status check — answer in one line, then continue your task; "
+    "this is not the end of your task."
+)
 SERVER_SHUTDOWN_SEMANTICS = (
     "The supervisor is spawned outside the MCP host's job object when Windows "
     "allows it (survives_server_exit=true), so closing or restarting this MCP "
@@ -229,6 +245,43 @@ def _first_line(text: str, limit: int = 200) -> str:
         if stripped:
             return stripped[:limit]
     return "dsh worker"
+
+
+def _progress_interval(value: Any) -> int:
+    """0 disables supervisor progress digests; otherwise 1..86400 seconds."""
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 <= value <= MAX_PROGRESS_INTERVAL_SECONDS
+    ):
+        raise PluginError(
+            "progress_interval_invalid",
+            "progress_interval_seconds must be 0 (off) or "
+            f"1..{MAX_PROGRESS_INTERVAL_SECONDS} seconds",
+        )
+    return value
+
+
+_SINCE_RE = re.compile(r"^(\d+)([smh])$")
+
+
+def _since_datetime(value: str | None, now: datetime | None = None) -> datetime | None:
+    """Parse ``since``: an ISO-8601 timestamp or a short duration (30m, 2h)."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise PluginError("since_invalid", "since must be an ISO-8601 timestamp or 30m/2h")
+    text = value.strip()
+    parsed = parse_iso(text)
+    if parsed is not None:
+        return parsed
+    match = _SINCE_RE.fullmatch(text)
+    if match is not None:
+        seconds = int(match.group(1)) * {"s": 1, "m": 60, "h": 3600}[match.group(2)]
+        return (now or utc_now()) - timedelta(seconds=seconds)
+    raise PluginError(
+        "since_invalid", "since must be an ISO-8601 timestamp or a duration like 30m or 2h"
+    )
 
 
 def load_config(environ: dict[str, str] | None = None) -> PluginConfig:
@@ -382,6 +435,9 @@ class Manager:
             "heartbeat": str(job_dir / "heartbeat.json"),
             "control": str(job_dir / "result.md.control.json"),
             "steering": str(job_dir / STEERING_FILE),
+            "progress": str(job_dir / progress.PROGRESS_FILE),
+            "progress_md": str(job_dir / progress.PROGRESS_MD_FILE),
+            "progress_notes": str(job_dir / progress.PROGRESS_NOTES_FILE),
         }
 
     def _job_lock(self, job_dir: Path) -> Path:
@@ -854,6 +910,7 @@ class Manager:
         use_worktree: bool = False,
         base: str | None = None,
         test_cmd: str | None = None,
+        progress_interval_seconds: int = DEFAULT_PROGRESS_INTERVAL_SECONDS,
     ) -> dict[str, Any]:
         if not isinstance(use_worktree, bool):
             raise PluginError("worktree_flag_invalid", "use_worktree must be true or false")
@@ -916,6 +973,7 @@ class Manager:
             raise PluginError("permission_invalid", f"permission must be one of {PERMISSIONS}")
         if not isinstance(heartbeat_interval_seconds, int) or not 30 <= heartbeat_interval_seconds <= 86_400:
             raise PluginError("heartbeat_invalid", "heartbeat interval must be 30..86400 seconds")
+        progress_interval_seconds = _progress_interval(progress_interval_seconds)
         if not isinstance(missed_replies, int) or not 2 <= missed_replies <= 10:
             raise PluginError("heartbeat_invalid", "missed replies must be 2..10 (dsh limit)")
         if max_output_tokens is not None and (
@@ -996,6 +1054,9 @@ class Manager:
                     raise PluginError("worktree_failed", str(exc)) from exc
                 ws = Path(worktree_record["path"])
                 text = f"{WORKTREE_PREAMBLE}\n\n{text}"
+            # Standing instruction, not a question: the worker must never stop
+            # or answer it, only append a progress line.
+            text = f"{text.rstrip()}\n\n{PROGRESS_NOTES_INSTRUCTION}\n"
             if mutating:
                 lock_path = self._acquire_lock(ws, job_id)
             atomic_write_text(job_dir / "brief.md", text)
@@ -1081,6 +1142,7 @@ class Manager:
                 "worktree": worktree_record,
                 "data_root": str(self.config.data_root),
                 "test_cmd": test_cmd,
+                "progress_interval_seconds": progress_interval_seconds,
                 "heartbeat": heartbeat_record,
                 "launcher": {
                     "command": launcher,
@@ -1179,6 +1241,10 @@ class Manager:
                 "owner_session": self.config.session_label,
                 "control_token_persisted": token_persisted,
                 "worktree": worktree_record,
+                "progress_interval_seconds": progress_interval_seconds,
+                "progress_path": paths["progress"],
+                "progress_md_path": paths["progress_md"],
+                "progress_notes_path": paths["progress_notes"],
                 "warnings": warnings + list(status.get("warnings") or []),
                 "survives_server_exit": bool(self._last_breakaway) or os.name != "nt",
                 "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
@@ -2011,6 +2077,12 @@ class Manager:
     ) -> dict[str, Any]:
         if not isinstance(message, str) or not message.strip():
             raise PluginError("message_invalid", "message must be non-empty text")
+        if kind not in ("followup", "status"):
+            raise PluginError("message_invalid", "kind must be followup or status")
+        if kind == "status":
+            # The delivered text must not read as the end of the task: a bare
+            # ping used to make a worker answer it as its final result.
+            message = f"{STATUS_CHECK_PREFIX}\n{message}"
         length_error = heartbeat.message_length_error(message)
         if length_error is not None:
             raise PluginError(
@@ -2021,8 +2093,6 @@ class Manager:
             )
         if len(message.encode("utf-8", errors="replace")) > MAX_MESSAGE_BYTES:
             raise PluginError("message_too_large", "message exceeds 32 KiB")
-        if kind not in ("followup", "status"):
-            raise PluginError("message_invalid", "kind must be followup or status")
         status = self.get_status(job_id)
         if not status["running"]:
             raise PluginError(
@@ -2429,6 +2499,8 @@ class Manager:
                 or os.path.normcase(str(Path(job_ws).resolve())) != wanted
             ):
                 continue
+            digests = progress.read_digests(entry, limit=1, max_bytes=65_536)
+            latest_digest = digests[0] if digests else None
             jobs.append(
                 {
                     "job_id": job["job_id"],
@@ -2445,6 +2517,8 @@ class Manager:
                     "final": job["final"],
                     "result_ready": job["result_ready"],
                     "summary": (job.get("progress") or {}).get("summary"),
+                    "last_digest_at": (latest_digest or {}).get("at"),
+                    "digest_summary": progress.digest_line(latest_digest),
                     "result_path": job["paths"]["result"],
                     "status_path": job["paths"]["status"],
                 }
@@ -2457,6 +2531,56 @@ class Manager:
             "count": len(jobs),
             "limit": limit,
             "unreadable": unreadable[:limit],
+        }
+
+    # ----------------------------------------------------- progress digests
+    def worker_progress(
+        self, job_id: str | None = None, since: str | None = None
+    ) -> dict[str, Any]:
+        """Model-free supervisor digests, newest first.
+
+        With no job_id, every *running* job is included.  These records are
+        written by the supervisor on its own timer; nothing here asks the
+        worker anything or touches its conversation.
+        """
+        since_at = _since_datetime(since)
+        if job_id is not None:
+            _job, job_dir = self._load_job(job_id)
+            targets = [(job_id, job_dir)]
+        else:
+            targets = []
+            try:
+                entries = sorted(
+                    self.config.jobs_dir.iterdir(), key=lambda p: p.name, reverse=True
+                )
+            except OSError:
+                entries = []
+            for entry in entries:
+                if not entry.is_dir() or not valid_job_id(entry.name):
+                    continue
+                status, _error = read_json_bounded(entry / "status.json")
+                if isinstance(status, dict) and status.get("phase") in ACTIVE_PHASES:
+                    targets.append((entry.name, entry))
+        digests: list[dict[str, Any]] = []
+        for jid, jdir in targets:
+            for record in progress.read_digests(jdir, limit=progress.MAX_DIGESTS):
+                at = parse_iso(record.get("at"))
+                if since_at is not None and (at is None or at < since_at):
+                    continue
+                digests.append(record)
+        digests.sort(key=lambda record: str(record.get("at") or ""), reverse=True)
+        return {
+            "ok": True,
+            "job_id": job_id,
+            "since": iso(since_at) if since_at is not None else None,
+            "count": len(digests),
+            "digests": digests,
+            "jobs_scanned": [jid for jid, _jdir in targets],
+            "note": (
+                "digests are written by the supervisor every "
+                "progress_interval_seconds (0 disables them); they are computed "
+                "from the event stream and never delivered to the worker"
+            ),
         }
 
     # ------------------------------------------------------------ merge queue
@@ -2938,9 +3062,16 @@ class Manager:
             "jobs": items,
         }
 
-    def start_job(self, name: str, args: list[str] | None = None, confirm: bool = False) -> dict[str, Any]:
+    def start_job(
+        self,
+        name: str,
+        args: list[str] | None = None,
+        confirm: bool = False,
+        progress_interval_seconds: int = DEFAULT_PROGRESS_INTERVAL_SECONDS,
+    ) -> dict[str, Any]:
         if not isinstance(confirm, bool):
             raise PluginError("confirm_invalid", "confirm must be true or false")
+        progress_interval_seconds = _progress_interval(progress_interval_seconds)
         _registry, entry = self._job_entry(name)
         if not entry["enabled"] and not confirm:
             raise PluginError(
@@ -3020,6 +3151,7 @@ class Manager:
                 },
                 "env": dict(entry.get("env") or {}),
                 "resource_locks": locks,
+                "progress_interval_seconds": progress_interval_seconds,
                 "heartbeat": {},
                 "launcher": {
                     "command": argv,
@@ -3103,6 +3235,9 @@ class Manager:
                 "supervisor_log_path": paths["supervisor_log"],
                 "session_label": self.config.session_label,
                 "owner_session": self.config.session_label,
+                "progress_interval_seconds": progress_interval_seconds,
+                "progress_path": paths["progress"],
+                "progress_md_path": paths["progress_md"],
                 "warnings": list(status.get("warnings") or []),
             }
         except Exception:

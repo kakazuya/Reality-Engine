@@ -60,6 +60,9 @@ class StressBase(unittest.TestCase):
             if key.startswith(("FAKE_", "DSH_WORKER_")):
                 self.env.pop(key)
         self.env.pop("DSH_SESSION_LABEL", None)
+        # The offline suite runs against a fake repository; the host's real data
+        # root (set when this suite runs inside a worktree) must not leak in.
+        self.env.pop("REALITY_DATA_ROOT", None)
         self.env.update(
             {
                 "DSH_WORKER_REPO_ROOT": str(self.root),
@@ -281,6 +284,191 @@ class VisibilityTests(StressBase):
         # A replaced (truncated) file is rescanned from zero.
         path.write_text(call + "\n", encoding="utf-8")
         self.assertEqual(scanner.scan(path)["tool_calls"], 1)
+
+
+class FakeClock:
+    """One fake wall+monotonic clock advanced together in tests."""
+
+    def __init__(self, start: datetime) -> None:
+        self.wall = start
+        self.mono = 0.0
+
+    def now(self) -> datetime:
+        return self.wall
+
+    def monotonic(self) -> float:
+        return self.mono
+
+    def advance(self, seconds: float) -> None:
+        self.wall += timedelta(seconds=seconds)
+        self.mono += seconds
+
+
+class ProgressDigestTests(StressBase):
+    """Model-free supervisor digests: cadence, incremental scan, stall, final."""
+
+    JOB_ID = "20261024T000000Z-0000aaaa"
+    START = "2026-10-24T00:00:00+00:00"
+
+    def _writer(self, clock: FakeClock, interval: int = 1200):
+        job_dir = self.root / "digest-job"
+        job_dir.mkdir(parents=True, exist_ok=True)
+        return job_dir, progress.DigestWriter(
+            job_dir,
+            self.JOB_ID,
+            self.START,
+            interval,
+            clock=clock.now,
+            monotonic=clock.monotonic,
+        )
+
+    @staticmethod
+    def _call(tool: str, path: str | None = None) -> str:
+        payload = {"type": "tool_call", "tool": tool, "input": {}}
+        if path is not None:
+            payload["input"] = {"file_path": path}
+        return json.dumps(payload) + "\n"
+
+    def test_cadence_with_fake_clock_and_final_digest(self):
+        clock = FakeClock(datetime(2026, 10, 24, tzinfo=timezone.utc))
+        job_dir, writer = self._writer(clock)
+        events = job_dir / "result.md.events.jsonl"
+        events.write_text(self._call("read", "tasks/FRAMEWORK.md"), encoding="utf-8")
+        # The first tick only primes the interval: nothing is due yet.
+        self.assertIsNone(writer.tick(phase="running", last_activity=clock.now()))
+        clock.advance(1199)
+        self.assertIsNone(writer.tick(phase="running", last_activity=clock.now()))
+        clock.advance(1)
+        first = writer.tick(phase="running", last_activity=clock.now(), lease_remaining=900)
+        self.assertIsNotNone(first)
+        self.assertEqual(first["digest"], 1)
+        self.assertEqual(first["elapsed_seconds"], 1200)
+        self.assertEqual(first["tool_calls"], 1)
+        self.assertFalse(first["final"])
+        digest_path = job_dir / "progress.jsonl"
+        self.assertEqual(len(digest_path.read_text(encoding="utf-8").splitlines()), 1)
+        self.assertEqual(progress.read_digests(job_dir)[0]["digest"], 1)
+        clock.advance(1200)
+        second = writer.tick(
+            phase="running",
+            last_activity=clock.now() - timedelta(minutes=21),
+            lease_remaining=120,
+        )
+        self.assertEqual(second["digest"], 2)
+        self.assertTrue(second["stall"])
+        # A finish does not wait for cadence: the final digest always lands.
+        clock.advance(5)
+        final = writer.tick(phase="finished", last_activity=clock.now(), final=True)
+        self.assertTrue(final["final"])
+        self.assertEqual(final["phase"], "finished")
+        self.assertEqual(final["digest"], 3)
+        self.assertFalse(final["stall"])
+        self.assertEqual(len(progress.read_digests(job_dir)), 3)
+        markdown = (job_dir / "progress.md").read_text(encoding="utf-8")
+        self.assertIn("Digest 3", markdown)
+        self.assertIn("## Earlier (2)", markdown)
+        self.assertIn("phase: finished (final)", markdown)
+
+    def test_incremental_offset_resume_and_deltas(self):
+        clock = FakeClock(datetime(2026, 10, 24, tzinfo=timezone.utc))
+        job_dir, writer = self._writer(clock)
+        events = job_dir / "result.md.events.jsonl"
+        events.write_text(
+            self._call("read", "a.py")
+            + self._call("edit", "a.py")
+            + json.dumps({"type": "text", "text": "First update.\nSecond line."}) + "\n",
+            encoding="utf-8",
+        )
+        self.assertIsNone(writer.tick(phase="running"))
+        clock.advance(1200)
+        first = writer.tick(phase="running")
+        self.assertEqual(first["tool_calls"], 2)
+        self.assertEqual(first["tool_calls_delta"], 2)
+        self.assertEqual(first["tool_calls_by_tool"], {"read": 1, "edit": 1})
+        self.assertEqual(first["files_written"], ["a.py"])
+        self.assertEqual(
+            first["worker_text_tail"], ["First update.", "Second line."]
+        )
+        # Only the appended bytes are read; totals accumulate, deltas do not.
+        with events.open("a", encoding="utf-8") as fh:
+            fh.write(self._call("write", "b.py"))
+            fh.write(json.dumps({"type": "status", "phase": "step_end", "usage": {"outputTokens": 42}}) + "\n")
+        clock.advance(1200)
+        second = writer.tick(phase="running")
+        self.assertEqual(second["tool_calls"], 3)
+        self.assertEqual(second["tool_calls_delta"], 1)
+        self.assertEqual(second["tool_calls_by_tool_delta"], {"write": 1})
+        self.assertEqual(second["files_written"], ["b.py"])
+        self.assertEqual(second["files_written_count"], 1)
+        self.assertEqual(second["model_steps_delta"], 1)
+        self.assertEqual(second["output_tokens"], 42)
+        self.assertEqual(second["output_tokens_delta"], 42)
+        # A half-written trailing line is not consumed twice.
+        with events.open("a", encoding="utf-8") as fh:
+            fh.write('{"type": "tool_call", "tool": "edit", "inp')
+        clock.advance(1200)
+        third = writer.tick(phase="running")
+        self.assertEqual(third["tool_calls"], 3)
+        self.assertEqual(third["tool_calls_delta"], 0)
+        with events.open("a", encoding="utf-8") as fh:
+            fh.write('ut": {"file_path": "c.py"}}' + "\n")
+        clock.advance(1200)
+        fourth = writer.tick(phase="running")
+        self.assertEqual(fourth["tool_calls"], 4)
+        self.assertEqual(fourth["tool_calls_delta"], 1)
+        self.assertEqual(
+            [item["digest"] for item in progress.read_digests(job_dir)],
+            [4, 3, 2, 1],
+        )
+
+    def test_stall_flag_worker_note_and_lease(self):
+        clock = FakeClock(datetime(2026, 10, 24, tzinfo=timezone.utc))
+        job_dir, writer = self._writer(clock)
+        (job_dir / "PROGRESS_NOTES.md").write_text(
+            "first note\nsecond note\n", encoding="utf-8"
+        )
+        self.assertIsNone(writer.tick(phase="running"))
+        clock.advance(1200)
+        fresh = writer.tick(
+            phase="running",
+            last_activity=clock.now() - timedelta(minutes=5),
+            lease_remaining=600,
+        )
+        self.assertFalse(fresh["stall"])
+        self.assertEqual(fresh["idle_seconds"], 300)
+        self.assertEqual(fresh["lease_seconds_left"], 600)
+        self.assertEqual(fresh["note"], "second note")
+        clock.advance(1200)
+        stalled = writer.tick(
+            phase="running", last_activity=clock.now() - timedelta(minutes=21)
+        )
+        self.assertTrue(stalled["stall"])
+        self.assertEqual(stalled["idle_seconds"], 1260)
+        self.assertTrue(progress.digest_line(stalled).startswith("running · elapsed"))
+        self.assertIn("STALL no activity > 20m", progress.digest_line(stalled))
+
+    def test_since_parser(self):
+        now = datetime(2026, 10, 24, 12, 0, tzinfo=timezone.utc)
+        self.assertIsNone(core._since_datetime(None))
+        self.assertEqual(
+            core._since_datetime("2026-10-24T11:00:00Z", now),
+            now - timedelta(hours=1),
+        )
+        self.assertEqual(core._since_datetime("30m", now), now - timedelta(minutes=30))
+        self.assertEqual(core._since_datetime("2h", now), now - timedelta(hours=2))
+        with self.assertRaises(core.PluginError) as ctx:
+            core._since_datetime("yesterday", now)
+        self.assertEqual(ctx.exception.code, "since_invalid")
+
+    def test_progress_interval_validation(self):
+        manager = self.manager()
+        for bad in (-1, 86_401, True, "ten"):
+            with self.subTest(value=bad):
+                with self.assertRaises(core.PluginError) as ctx:
+                    manager.start_worker(brief="bad cadence", progress_interval_seconds=bad)
+                self.assertEqual(ctx.exception.code, "progress_interval_invalid")
+        with self.assertRaises(core.PluginError):
+            manager.start_job("no-such-job", progress_interval_seconds=-5)
 
 
 class StartGuardTests(StressBase):
@@ -633,7 +821,9 @@ class McpSurfaceTests(StressBase):
                 await asyncio.sleep(0.1)
             self.assertTrue(status["progress"]["done"], status)
             brief = (self.root / "runtime" / "jobs" / started["job_id"] / "brief.md").read_text(encoding="utf-8")
-            self.assertEqual(brief, "हिंदी ब्रीफ ✓ 价格")
+            self.assertTrue(brief.startswith("हिंदी ब्रीफ ✓ 价格"), brief[:200])
+            self.assertIn("PROGRESS_NOTES.md", brief)
+            self.assertNotIn("?", brief[len("हिंदी ब्रीफ ✓ 价格"):])  # instruction is not a question
             long_msg = await self._call(
                 session, "message_worker", {"job_id": started["job_id"], "message": "न" * 4001}
             )
