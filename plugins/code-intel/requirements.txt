@@ -1,0 +1,3 @@
+mcp>=2.3.0
+# The language server the tools talk to. `nodejs-wheel-binaries` comes with it (bundles node.exe).
+basedpyright>=1.40.2

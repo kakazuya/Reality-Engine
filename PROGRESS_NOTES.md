@@ -1,0 +1,10 @@
+# Progress — Task 04 (LSP code intelligence)
+
+- 2026-10-24 · DSH_WORKER_PROGRESS_NOTES was empty and no `plugins/dsh-worker/runtime/jobs` dir exists in this worktree, so this log lives at the worktree root.
+- 2026-10-24 · installed `basedpyright` 1.40.2 into `.tmp/lspvenv` for verification (pip's mkdtemp ACL drops the sandbox ACE, so a patched-mkdtemp driver ran pip with `--target`); discovery order in the server: `CODE_INTEL_LANG_SERVER` → PATH → importable `basedpyright`/`pyright` in the main Python or a workspace venv.
+- 2026-10-24 · wrote `plugins/code-intel/server/{lsp,core,server}.py`: definition / references / callers / symbols / hover / diagnostics / module_map over one long-lived `basedpyright-langserver`, background warm (handshake never waits), lifecycle log, restart-on-death, bounded outputs, `{ok:false,error}` failures.
+- 2026-10-24 · facts corrected: MCP stdio is newline-delimited JSON (not LSP headers); `mcp.client.stdio` is unusable here (sandbox denies anyio's overlapped pipes) so the tests speak the wire protocol with Popen; a `plugins/*/server` glob in pyright `include` silently matches nothing (362 files = reality_engine only) → explicit dirs; `start_worker` is a `Manager` method, so the outline reports `name` + `container` separately.
+- 2026-10-24 · measured: cold start 2.8–12.1 s, node RSS 606–608 MB (+~30 MB launcher), `references("connect_ro")` 11 sites in 5 files, `diagnostics(changed=True)` 2.0–3.2 s, MCP handshake 1.9–3.0 s against a 1.9–4.0 s `import mcp.server` floor (reality-data: 2.4–3.2 s).
+- 2026-10-24 · fixed a real leak found while cleaning up: killing the python launcher left the 600 MB node child behind; `LspClient.stop()` now sends `shutdown`+`exit`, closes stdin and waits (verified: `NO LEAK`).
+- 2026-10-24 · tests: 13 OK with basedpyright installed, 6 OK + 7 skipped without; `acceptance_check.py` prints ALL CHECKS PASSED.
+- 2026-10-24 · done: staged registration (`tasks/optimizations/install/`, `tasks/dsh_profiles/code-intel.insert.yml`), README with numbers and known gaps, scratch `.tmp`/`.cache` removed.

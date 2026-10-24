@@ -1,0 +1,58 @@
+{
+  "include": [
+    "reality_engine",
+    "plugins/code-intel/server",
+    "plugins/dsh-worker/server",
+    "plugins/reality-data/server"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.cache",
+    "**/.tmp",
+    "**/.venv",
+    "**/build",
+    "**/data",
+    "**/dist",
+    "**/node_modules",
+    "**/runtime",
+    "**/venv",
+    "**/worktrees"
+  ],
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic",
+  "extraPaths": [
+    "."
+  ],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "."
+      ]
+    },
+    {
+      "root": "plugins/reality-data/server",
+      "extraPaths": [
+        ".",
+        "plugins/reality-data/server"
+      ]
+    },
+    {
+      "root": "plugins/dsh-worker/server",
+      "extraPaths": [
+        ".",
+        "plugins/dsh-worker/server"
+      ]
+    },
+    {
+      "root": "plugins/code-intel/server",
+      "extraPaths": [
+        ".",
+        "plugins/code-intel/server"
+      ]
+    }
+  ],
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none",
+  "useLibraryCodeForTypes": true
+}
