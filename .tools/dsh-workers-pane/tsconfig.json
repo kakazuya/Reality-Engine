@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["es2023"],
+    "types": [],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
+  },
+  "include": [
+    "C:/Users/warri/AppData/Local/Temp/claude/bundled-skills/2.1.308/c21103d36fbfb01c1e250e8defb51a48/plugin-authoring/types/claude-code.d.ts",
+    "../../plugins/dsh-workers-pane/hooks",
+    "../../plugins/dsh-workers-pane/types"
+  ]
+}
