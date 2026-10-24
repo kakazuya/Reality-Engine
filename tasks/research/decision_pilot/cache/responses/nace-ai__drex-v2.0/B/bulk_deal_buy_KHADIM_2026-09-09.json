@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.488
+  }
+ },
+ "usage": {
+  "input_tokens": 113,
+  "output_tokens": 21
+ },
+ "evaluation_time_ms": 16.066,
+ "request_id": "req_a080b3e7c2e44cdc85073eb193c9193d",
+ "status": "ok",
+ "_latency_ms": 1022.9,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_KHADIM_2026-09-09"
+}

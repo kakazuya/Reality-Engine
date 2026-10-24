@@ -1,0 +1,1550 @@
+{
+ "spend_at_start": 1.099e-05,
+ "pricing_usd_per_m": {
+  "Cloudflare/clef-flash": 0.038,
+  "nace-ai/drex-v2.0": 0.06,
+  "nace-ai/drex-max": 0.12
+ },
+ "probes": {
+  "Cloudflare/clef-flash": {
+   "status": "ok",
+   "latency_ms": 1912.8,
+   "response": {
+    "model": "Cloudflare/clef-flash",
+    "answers": {
+     "material": {
+      "type": "noul",
+      "noul": 0.8856
+     },
+     "category": {
+      "type": "choice",
+      "choice": "board",
+      "confidence": 0.8793,
+      "probabilities": {
+       "board": 0.9689,
+       "other": 0.0311
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 215,
+     "output_tokens": 0
+    }
+   },
+   "at": "2026-10-24T17:44:02.456818+00:00"
+  },
+  "nace-ai/drex-max": {
+   "status": "ok",
+   "latency_ms": 1019.4,
+   "response": {
+    "model": "nace-ai/drex-max",
+    "answers": {
+     "material": {
+      "type": "noul",
+      "noul": 0.3498760655559282
+     },
+     "category": {
+      "type": "choice",
+      "probabilities": {
+       "board": 0.9638686266299482,
+       "other": 0.036131373370051734
+      },
+      "choice": "board",
+      "confidence": 0.9277372532598964
+     }
+    },
+    "usage": {
+     "input_tokens": 182,
+     "output_tokens": 124
+    },
+    "timings": {
+     "encode_ms": 1.03,
+     "queue_ms": 18.4,
+     "batch_ms": 9.4,
+     "batch_requests": 1,
+     "read_ms": 0.08,
+     "parse_ms": 0.29,
+     "server_ms": 31.68,
+     "body_bytes": 283
+    }
+   },
+   "at": "2026-10-24T17:44:03.481995+00:00"
+  },
+  "nace-ai/drex-v2.0": {
+   "status": "ok",
+   "latency_ms": 1367.4,
+   "response": {
+    "model": "nace-ai/drex-v2.0",
+    "answers": {
+     "material": {
+      "type": "noul",
+      "noul": 0.3965
+     },
+     "category": {
+      "type": "choice",
+      "choice": "board",
+      "confidence": 0.5941,
+      "probabilities": {
+       "board": 0.7971,
+       "other": 0.2029
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 40,
+     "output_tokens": 74
+    },
+    "evaluation_time_ms": 397.501,
+    "request_id": "req_68c60fd7c81a408c8856f8a0a50946d5"
+   },
+   "at": "2026-10-24T17:44:04.854140+00:00"
+  }
+ },
+ "A1": {
+  "dataset": {
+   "n": 200,
+   "categories": [
+    "Company Update",
+    "AGM/EGM",
+    "Insider Trading / SAST",
+    "Others",
+    "Board Meeting",
+    "Corp. Action",
+    "Mutual Fund",
+    "Result",
+    "Other / not listed"
+   ],
+   "attachment_text": 114
+  },
+  "label_audit": {
+   "n": 30,
+   "wrong": 3,
+   "noise_rate": 0.1,
+   "clean_n": 27,
+   "wrong_ids": [
+    "8ffe4006-329a-44fe-a497-385cd360b440",
+    "78debd57-e033-4d15-9cb8-d4b10f36dbbc",
+    "6eb9c8d0-63ce-4cc5-a896-fbb7e0a8602a"
+   ],
+   "verdicts": [
+    {
+     "n": 1,
+     "id": "73826a84-774b-4241-9f37-d0a94b734883",
+     "label": "Others",
+     "subcategory": "Reg. 34 (1) Annual Report",
+     "subject": "Reg. 34 (1) Annual Report.",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Annual report under Reg 34; 'Others' is a defensible catch-all (no annual-report category)."
+    },
+    {
+     "n": 2,
+     "id": "8ffe4006-329a-44fe-a497-385cd360b440",
+     "label": "Company Update",
+     "subcategory": "General",
+     "subject": "Disclosure Under Regulation 7(2) Of SEBI (Prohibition Of Insider Trading) Regulations, 2015",
+     "has_text": true,
+     "label_ok": 0,
+     "reason": "Reg 7(2) PIT disclosure from promoter director; belongs to Insider Trading / SAST, not Company Update."
+    },
+    {
+     "n": 3,
+     "id": "2b3531a8-4e4e-41fe-b80d-1a6db391eb12",
+     "label": "Insider Trading / SAST",
+     "subcategory": "Closure of Trading Window",
+     "subject": "Closure of Trading Window",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Trading-window closure, PIT."
+    },
+    {
+     "n": 4,
+     "id": "d3c4ed3c-9d65-4e75-bb1c-56c2054cd9ed",
+     "label": "Result",
+     "subcategory": "Financial Results",
+     "subject": "Financial Results For The Quarter And Half Year Ended September 30, 2026",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Financial results."
+    },
+    {
+     "n": 5,
+     "id": "ae6cd148-87b6-4d90-a389-67ece0636e9b",
+     "label": "AGM/EGM",
+     "subcategory": "AGM",
+     "subject": "Notice Of The 42Nd Annual General Meeting Scheduled To Be Held On 25Th September, 2026 And Book Closure And E-Voting Information",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "AGM notice."
+    },
+    {
+     "n": 6,
+     "id": "84905534-e616-4bbc-82dd-a0cd22b8eb3b",
+     "label": "Company Update",
+     "subcategory": "Certificate under Reg. 74 (5) of SEBI (DP) Regulations, 2018",
+     "subject": "National Plastic Technologies Ltd - 531287 - Compliances-Certificate under Reg. 74 (5) of SEBI (DP) Regulations, 2018",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Reg 74(5) compliance certificate; Company Update is the usual bucket."
+    },
+    {
+     "n": 7,
+     "id": "48f9e60a-2457-4d13-a0ff-2b1133fa1c9a",
+     "label": "Corp. Action",
+     "subcategory": "Book Closure",
+     "subject": "Intimation Of Book Closure For The Purpose Of AGM To Be Held On September 30, 2026.",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Book closure for AGM is a corporate action; defensible."
+    },
+    {
+     "n": 8,
+     "id": "77cdb4d2-c22c-4884-8a4f-e0efd83cbdf7",
+     "label": "Corp. Action",
+     "subcategory": "Book Closure",
+     "subject": "Notice Of Book Closure For The Purpose Of 40Th Annual General Meeting",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Book closure for AGM; defensible."
+    },
+    {
+     "n": 9,
+     "id": "5b8a88e0-58a7-4a37-a3cc-31a1ac3c5f75",
+     "label": "Insider Trading / SAST",
+     "subcategory": "Closure of Trading Window",
+     "subject": "Closure of Trading Window",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Trading-window closure, PIT."
+    },
+    {
+     "n": 10,
+     "id": "c889a388-3ab5-40f1-b72e-9e40bfc04db6",
+     "label": "Result",
+     "subcategory": "Financial Results",
+     "subject": "Indian Bank - 532814 - Approval Of Unaudited (Reviewed) Standalone And Consolidated Financial Results Of The Bank For The Second Quarter And Half Year Of FY 2026-27 Ended On September 30, 2026 And Fund Raising Plan Other Than Equity Capital",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Financial results."
+    },
+    {
+     "n": 11,
+     "id": "3ce3aa86-b2f8-4c20-8f25-618da09932b1",
+     "label": "Board Meeting",
+     "subcategory": "Board Meeting",
+     "subject": "Board Meeting Intimation for Baord Meeting To Be Held On Thursday, The 10Th Day Of September, 2026.",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Board meeting intimation."
+    },
+    {
+     "n": 12,
+     "id": "78debd57-e033-4d15-9cb8-d4b10f36dbbc",
+     "label": "Others",
+     "subcategory": "Outcome without intimation",
+     "subject": "Board Meeting Outcome for Outcome Of Board Meeting Held On Wednesday, 16Th September, 2026.",
+     "has_text": false,
+     "label_ok": 0,
+     "reason": "Board meeting outcome filed as 'Others'; clearly a Board Meeting / Company Update item."
+    },
+    {
+     "n": 13,
+     "id": "7198fa81-3396-4c08-a89d-e1cff1035844",
+     "label": "Insider Trading / SAST",
+     "subcategory": "Disclosures under Reg. 29(2) of SEBI (SAST) Regulations, 2011",
+     "subject": "Disclosures under Reg. 29(2) of SEBI (SAST) Regulations, 2011",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "SAST Reg 29(2) disclosure."
+    },
+    {
+     "n": 14,
+     "id": "6eb9c8d0-63ce-4cc5-a896-fbb7e0a8602a",
+     "label": "Others",
+     "subcategory": "Outcome without intimation",
+     "subject": "Kronox Lab Sciences Ltd - 544187 - Board Meeting Outcome for Outcome Of Board Meeting Held On October 14, 2026",
+     "has_text": true,
+     "label_ok": 0,
+     "reason": "Board meeting outcome filed as 'Others'; clearly a Board Meeting / Company Update item."
+    },
+    {
+     "n": 15,
+     "id": "26cab8fc-806f-4120-b0b0-6b1219e82720",
+     "label": "Board Meeting",
+     "subcategory": "Board Meeting",
+     "subject": "Vikram Aroma Ltd - 544371 - Board Meeting Intimation for INTIMATION OF BOARD MEETING UNDER REGULATION 29(1)(A) OF SEBI (LISTING OBLIGATIONS AND DISCLOSURE REQUIREMENTS) REGULATIONS 2015.",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Board meeting intimation."
+    },
+    {
+     "n": 16,
+     "id": "ec1e347e-6043-4c43-b1d4-7566ea2eaea1",
+     "label": "Corp. Action",
+     "subcategory": "Record Date",
+     "subject": "Intimation Of Record Date For Sub-Division/Split Of Equity Shares Of The Company",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Record date for share split."
+    },
+    {
+     "n": 17,
+     "id": "4ed82ac6-9eed-4237-bbb3-f889210bd6ea",
+     "label": "AGM/EGM",
+     "subcategory": "Postal Ballot",
+     "subject": "Intimation And Submission Of Notice Of Postal Ballot",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Postal ballot notice is a shareholder-meeting item."
+    },
+    {
+     "n": 18,
+     "id": "a7a76183-b481-4f1e-8781-c248809f0dbf",
+     "label": "Corp. Action",
+     "subcategory": "Record Date",
+     "subject": "Intimation Of Record Date For Final Dividend For Financial Year 2025-26",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Record date for dividend."
+    },
+    {
+     "n": 19,
+     "id": "12c4ef07-385a-47c6-a481-0811ad20f4b7",
+     "label": "Mutual Fund",
+     "subcategory": "Reg. 90 (1) Declaration of   NAV - Mutual Fund",
+     "subject": "Compliances-Reg. 90 (1) Declaration of   NAV - Mutual Fund",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Mutual fund NAV declaration."
+    },
+    {
+     "n": 20,
+     "id": "fce79b7d-369b-4c51-a539-a489b751181b",
+     "label": "Board Meeting",
+     "subcategory": "Board Meeting",
+     "subject": "Hemo Organic Ltd - 524590 - Board Meeting Intimation for The Meeting To Be Held On Saturday, I.E., 17Th October, 2026",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Board meeting intimation."
+    },
+    {
+     "n": 21,
+     "id": "2a6e2619-c738-4573-9798-c197f9f79b2e",
+     "label": "Company Update",
+     "subcategory": "Certificate under Reg. 74 (5) of SEBI (DP) Regulations, 2018",
+     "subject": "Rex Sealing and Packing Industries Ltd - 543744 - Compliances-Certificate under Reg. 74 (5) of SEBI (DP) Regulations, 2018",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Reg 74(5) compliance certificate."
+    },
+    {
+     "n": 22,
+     "id": "ccbf77f9-51e4-46e3-8ef6-2a97346d3427",
+     "label": "Mutual Fund",
+     "subcategory": "Reg. 90 (1) Declaration of   NAV - Mutual Fund",
+     "subject": "Compliances-Reg. 90 (1) Declaration of   NAV - Mutual Fund",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Mutual fund NAV declaration."
+    },
+    {
+     "n": 23,
+     "id": "67cbc1c5-2104-48b1-bb14-080324c56778",
+     "label": "Mutual Fund",
+     "subcategory": "Reg. 90 (1) - Portfolio of Mutual Fund Schemes",
+     "subject": "Compliances-Reg. 90 (1) - Portfolio of Mutual Fund Schemes",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Mutual fund monthly portfolio."
+    },
+    {
+     "n": 24,
+     "id": "09145f28-978f-486c-b62f-6d925642ea90",
+     "label": "Others",
+     "subcategory": "Reg. 34 (1) Annual Report",
+     "subject": "Reg. 34 (1) Annual Report.",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Annual report; 'Others' catch-all defensible."
+    },
+    {
+     "n": 25,
+     "id": "dcef672a-d3b9-4972-8c24-4c420c8636b2",
+     "label": "Insider Trading / SAST",
+     "subcategory": "Closure of Trading Window",
+     "subject": "Closure of Trading Window",
+     "has_text": false,
+     "label_ok": 1,
+     "reason": "Trading-window closure, PIT."
+    },
+    {
+     "n": 26,
+     "id": "341e8cf0-4b62-47f2-8f34-72b7fd8c4e9d",
+     "label": "AGM/EGM",
+     "subcategory": "AGM",
+     "subject": "Shareholder Meeting / Postal Ballot-Outcome of AGM",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "AGM proceedings."
+    },
+    {
+     "n": 27,
+     "id": "b12d30a7-621a-433a-bc83-2a15a49194f1",
+     "label": "Board Meeting",
+     "subcategory": "Board Meeting",
+     "subject": "Board Meeting Intimation for Considering And Approving The  Proposal To Raise Funds By Way Of Issuance Of Non-Convertible Debentures (Tier II Bonds) On Preferential Basis Through Private Placement.",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Board meeting intimation."
+    },
+    {
+     "n": 28,
+     "id": "fc3e5ec7-a355-441a-8a46-9a0dc0ee1c75",
+     "label": "Result",
+     "subcategory": "Financial Results",
+     "subject": "ICICI Prudential Life Insurance Company Ltd - 540133 - Outcome Of The Board Meeting Held On October 13, 2026",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "Financial results."
+    },
+    {
+     "n": 29,
+     "id": "125c2b82-f4b1-49b5-b813-bb3537178a82",
+     "label": "AGM/EGM",
+     "subcategory": "Court Convened Meeting",
+     "subject": "Shareholder Meeting / Postal Ballot-Outcome of Court Convened Meeting",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "NCLT court-convened shareholder meeting; AGM/EGM is the exchange's shareholder-meeting bucket."
+    },
+    {
+     "n": 30,
+     "id": "74fe86b8-2bb5-4e2f-baff-3f9c7b04b632",
+     "label": "Company Update",
+     "subcategory": "General",
+     "subject": "Communication To Shareholders - TDS On Dividend",
+     "has_text": true,
+     "label_ok": 1,
+     "reason": "TDS-on-dividend communication; Company Update defensible."
+    }
+   ]
+  },
+  "models": {
+   "Cloudflare/clef-flash": {
+    "n_scored": 200,
+    "accuracy": 0.805,
+    "accuracy_incl_errors": 0.805,
+    "macro_f1": 0.7571,
+    "per_class_f1": {
+     "Company Update": 0.75,
+     "AGM/EGM": 0.7463,
+     "Insider Trading / SAST": 0.9434,
+     "Others": 0.0,
+     "Board Meeting": 0.8065,
+     "Corp. Action": 0.9167,
+     "Mutual Fund": 1.0,
+     "Result": 0.8936
+    },
+    "per_class_accuracy": {
+     "Company Update": 0.72,
+     "AGM/EGM": 1.0,
+     "Insider Trading / SAST": 1.0,
+     "Others": 0.0,
+     "Board Meeting": 1.0,
+     "Corp. Action": 0.88,
+     "Mutual Fund": 1.0,
+     "Result": 0.84
+    },
+    "ece_top_label": 0.0985,
+    "reliability": [
+     {
+      "bin": "0.3-0.4",
+      "n": 4,
+      "mean_p": 0.3632,
+      "obs": 0.25
+     },
+     {
+      "bin": "0.4-0.5",
+      "n": 8,
+      "mean_p": 0.4429,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 8,
+      "mean_p": 0.5353,
+      "obs": 0.5
+     },
+     {
+      "bin": "0.6-0.7",
+      "n": 9,
+      "mean_p": 0.6522,
+      "obs": 0.5556
+     },
+     {
+      "bin": "0.7-0.8",
+      "n": 11,
+      "mean_p": 0.7525,
+      "obs": 0.9091
+     },
+     {
+      "bin": "0.8-0.9",
+      "n": 11,
+      "mean_p": 0.8602,
+      "obs": 0.9091
+     },
+     {
+      "bin": "0.9-1.0",
+      "n": 149,
+      "mean_p": 0.9616,
+      "obs": 0.8792
+     }
+    ],
+    "format_errors": 0,
+    "format_error_rate": 0.0,
+    "clean_n": 27,
+    "clean_accuracy": 0.8519,
+    "clean_macro_f1": 0.7722,
+    "clean_ece": 0.1007,
+    "clean_reliability": [
+     {
+      "bin": "0.4-0.5",
+      "n": 2,
+      "mean_p": 0.4498,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 1,
+      "mean_p": 0.5383,
+      "obs": 1.0
+     },
+     {
+      "bin": "0.6-0.7",
+      "n": 4,
+      "mean_p": 0.6642,
+      "obs": 0.5
+     },
+     {
+      "bin": "0.9-1.0",
+      "n": 20,
+      "mean_p": 0.9649,
+      "obs": 1.0
+     }
+    ],
+    "histogram": [
+     0,
+     0,
+     0,
+     4,
+     8,
+     8,
+     9,
+     11,
+     11,
+     149
+    ],
+    "latency_ms": {
+     "p50": 1026.8,
+     "p95": 1933.4
+    },
+    "retries": 0,
+    "http_429": 0,
+    "truncated": 0,
+    "cost_usd": 0.0051,
+    "cost_per_1k": 0.026,
+    "confusion": {
+     "Company Update": {
+      "Company Update": 18,
+      "AGM/EGM": 2,
+      "Insider Trading / SAST": 3,
+      "Others": 0,
+      "Board Meeting": 1,
+      "Corp. Action": 1,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "AGM/EGM": {
+      "Company Update": 0,
+      "AGM/EGM": 25,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 0,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "Insider Trading / SAST": {
+      "Company Update": 0,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 25,
+      "Others": 0,
+      "Board Meeting": 0,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "Others": {
+      "Company Update": 3,
+      "AGM/EGM": 15,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 6,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 1
+     },
+     "Board Meeting": {
+      "Company Update": 0,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 25,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "Corp. Action": {
+      "Company Update": 2,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 1,
+      "Corp. Action": 22,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "Mutual Fund": {
+      "Company Update": 0,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 0,
+      "Corp. Action": 0,
+      "Mutual Fund": 25,
+      "Result": 0
+     },
+     "Result": {
+      "Company Update": 0,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 4,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 21
+     }
+    }
+   },
+   "nace-ai/drex-v2.0": {
+    "n_scored": 200,
+    "accuracy": 0.77,
+    "accuracy_incl_errors": 0.77,
+    "macro_f1": 0.754,
+    "per_class_f1": {
+     "Company Update": 0.5946,
+     "AGM/EGM": 0.8475,
+     "Insider Trading / SAST": 0.9434,
+     "Others": 0.0,
+     "Board Meeting": 0.8136,
+     "Corp. Action": 0.9167,
+     "Mutual Fund": 1.0,
+     "Result": 0.9167
+    },
+    "per_class_accuracy": {
+     "Company Update": 0.44,
+     "AGM/EGM": 1.0,
+     "Insider Trading / SAST": 1.0,
+     "Others": 0.0,
+     "Board Meeting": 0.96,
+     "Corp. Action": 0.88,
+     "Mutual Fund": 1.0,
+     "Result": 0.88
+    },
+    "ece_top_label": 0.0955,
+    "reliability": [
+     {
+      "bin": "0.3-0.4",
+      "n": 3,
+      "mean_p": 0.3886,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.4-0.5",
+      "n": 12,
+      "mean_p": 0.4624,
+      "obs": 0.4167
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 14,
+      "mean_p": 0.5537,
+      "obs": 0.4286
+     },
+     {
+      "bin": "0.6-0.7",
+      "n": 16,
+      "mean_p": 0.6569,
+      "obs": 0.4375
+     },
+     {
+      "bin": "0.7-0.8",
+      "n": 14,
+      "mean_p": 0.7489,
+      "obs": 0.7143
+     },
+     {
+      "bin": "0.8-0.9",
+      "n": 12,
+      "mean_p": 0.8579,
+      "obs": 0.9167
+     },
+     {
+      "bin": "0.9-1.0",
+      "n": 129,
+      "mean_p": 0.9762,
+      "obs": 0.8915
+     }
+    ],
+    "format_errors": 0,
+    "format_error_rate": 0.0,
+    "clean_n": 27,
+    "clean_accuracy": 0.8889,
+    "clean_macro_f1": 0.8361,
+    "clean_ece": 0.0574,
+    "clean_reliability": [
+     {
+      "bin": "0.3-0.4",
+      "n": 1,
+      "mean_p": 0.3713,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 1,
+      "mean_p": 0.5029,
+      "obs": 1.0
+     },
+     {
+      "bin": "0.6-0.7",
+      "n": 3,
+      "mean_p": 0.6833,
+      "obs": 0.6667
+     },
+     {
+      "bin": "0.7-0.8",
+      "n": 4,
+      "mean_p": 0.7621,
+      "obs": 0.75
+     },
+     {
+      "bin": "0.8-0.9",
+      "n": 2,
+      "mean_p": 0.8557,
+      "obs": 1.0
+     },
+     {
+      "bin": "0.9-1.0",
+      "n": 16,
+      "mean_p": 0.9816,
+      "obs": 1.0
+     }
+    ],
+    "histogram": [
+     0,
+     0,
+     0,
+     3,
+     12,
+     14,
+     16,
+     14,
+     12,
+     129
+    ],
+    "latency_ms": {
+     "p50": 1127.7,
+     "p95": 1720.2
+    },
+    "retries": 11,
+    "http_429": 11,
+    "truncated": 0,
+    "cost_usd": 0.00582,
+    "cost_per_1k": 0.029,
+    "confusion": {
+     "Company Update": {
+      "Company Update": 11,
+      "AGM/EGM": 3,
+      "Insider Trading / SAST": 3,
+      "Others": 1,
+      "Board Meeting": 1,
+      "Corp. Action": 1,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "AGM/EGM": {
+      "Company Update": 0,
+      "AGM/EGM": 25,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 0,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "Insider Trading / SAST": {
+      "Company Update": 0,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 25,
+      "Others": 0,
+      "Board Meeting": 0,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "Others": {
+      "Company Update": 1,
+      "AGM/EGM": 5,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 6,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "Board Meeting": {
+      "Company Update": 0,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 24,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 1
+     },
+     "Corp. Action": {
+      "Company Update": 0,
+      "AGM/EGM": 1,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 0,
+      "Corp. Action": 22,
+      "Mutual Fund": 0,
+      "Result": 0
+     },
+     "Mutual Fund": {
+      "Company Update": 0,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 0,
+      "Corp. Action": 0,
+      "Mutual Fund": 25,
+      "Result": 0
+     },
+     "Result": {
+      "Company Update": 0,
+      "AGM/EGM": 0,
+      "Insider Trading / SAST": 0,
+      "Others": 0,
+      "Board Meeting": 3,
+      "Corp. Action": 0,
+      "Mutual Fund": 0,
+      "Result": 22
+     }
+    }
+   }
+  }
+ },
+ "spend": {
+  "usd": 0.061313,
+  "cap": 0.45
+ },
+ "generated_at": "2026-10-24T18:03:11+00:00",
+ "A2": {
+  "dataset": {
+   "questions": 48,
+   "pairs": 288,
+   "candidate_model": "nvidia/Nemotron-3-Embed-1B-NVFP4",
+   "ranks": [
+    1,
+    30,
+    1,
+    6,
+    6,
+    1,
+    2,
+    1,
+    10,
+    2,
+    69,
+    1,
+    6,
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1,
+    3,
+    1,
+    4,
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    1,
+    2,
+    1,
+    1,
+    4,
+    2,
+    1,
+    1,
+    1,
+    6,
+    1,
+    3,
+    1,
+    3,
+    1
+   ],
+   "questions_without_candidate": 3,
+   "max_hit@3": 0.9375
+  },
+  "baselines": {
+   "nvfp4_alone": {
+    "hit@1": 0.5625,
+    "hit@3": 0.7916666666666666
+   },
+   "nemotron35_rerank_8b": {
+    "hit@1": 0.812,
+    "hit@3": 0.958,
+    "cost_usd": 0.0345
+   },
+   "nemotron3_embed_8b": {
+    "hit@1": 0.625,
+    "hit@3": 0.917
+   }
+  },
+  "models": {
+   "Cloudflare/clef-flash": {
+    "auc": 0.8683,
+    "hit@1": 0.625,
+    "hit@3": 0.8958,
+    "ranks": [
+     1,
+     null,
+     2,
+     4,
+     2,
+     1,
+     2,
+     1,
+     null,
+     1,
+     null,
+     1,
+     2,
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     3,
+     1,
+     1,
+     3,
+     1,
+     3,
+     3,
+     5,
+     1,
+     1,
+     1,
+     1,
+     3,
+     1,
+     1,
+     2,
+     1,
+     1,
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2,
+     1,
+     1,
+     1
+    ],
+    "brier": 0.1882,
+    "ece": 0.2145,
+    "format_errors": 0,
+    "format_error_rate": 0.0,
+    "histogram": [
+     141,
+     22,
+     8,
+     7,
+     3,
+     2,
+     3,
+     10,
+     21,
+     71
+    ],
+    "reliability": [
+     {
+      "bin": "0.0-0.1",
+      "n": 141,
+      "mean_p": 0.0534,
+      "obs": 0.0213
+     },
+     {
+      "bin": "0.1-0.2",
+      "n": 22,
+      "mean_p": 0.1312,
+      "obs": 0.0455
+     },
+     {
+      "bin": "0.2-0.3",
+      "n": 8,
+      "mean_p": 0.2358,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.3-0.4",
+      "n": 7,
+      "mean_p": 0.3497,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.4-0.5",
+      "n": 3,
+      "mean_p": 0.4701,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 2,
+      "mean_p": 0.5722,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.6-0.7",
+      "n": 3,
+      "mean_p": 0.659,
+      "obs": 0.3333
+     },
+     {
+      "bin": "0.7-0.8",
+      "n": 10,
+      "mean_p": 0.7599,
+      "obs": 0.3
+     },
+     {
+      "bin": "0.8-0.9",
+      "n": 21,
+      "mean_p": 0.862,
+      "obs": 0.3333
+     },
+     {
+      "bin": "0.9-1.0",
+      "n": 71,
+      "mean_p": 0.9406,
+      "obs": 0.493
+     }
+    ],
+    "latency_ms": {
+     "p50": 1067.0,
+     "p95": 1475.8
+    },
+    "retries": 0,
+    "http_429": 0,
+    "truncated": 0,
+    "cost_usd": 0.00922,
+    "cost_per_1k_pairs": 0.032,
+    "cost_per_query": 0.00019
+   },
+   "nace-ai/drex-v2.0": {
+    "auc": 0.9215,
+    "hit@1": 0.7292,
+    "hit@3": 0.9375,
+    "ranks": [
+     1,
+     null,
+     1,
+     1,
+     1,
+     1,
+     3,
+     1,
+     null,
+     1,
+     null,
+     2,
+     3,
+     2,
+     1,
+     2,
+     1,
+     1,
+     1,
+     1,
+     3,
+     1,
+     1,
+     1,
+     1,
+     3,
+     1,
+     1,
+     1,
+     2,
+     1,
+     1,
+     3,
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "brier": 0.2701,
+    "ece": 0.3827,
+    "format_errors": 0,
+    "format_error_rate": 0.0,
+    "histogram": [
+     19,
+     46,
+     32,
+     23,
+     17,
+     13,
+     12,
+     18,
+     24,
+     84
+    ],
+    "reliability": [
+     {
+      "bin": "0.0-0.1",
+      "n": 19,
+      "mean_p": 0.0722,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.1-0.2",
+      "n": 46,
+      "mean_p": 0.1471,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.2-0.3",
+      "n": 32,
+      "mean_p": 0.2492,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.3-0.4",
+      "n": 23,
+      "mean_p": 0.3596,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.4-0.5",
+      "n": 17,
+      "mean_p": 0.4583,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 13,
+      "mean_p": 0.5482,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.6-0.7",
+      "n": 12,
+      "mean_p": 0.6592,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.7-0.8",
+      "n": 18,
+      "mean_p": 0.7467,
+      "obs": 0.1111
+     },
+     {
+      "bin": "0.8-0.9",
+      "n": 24,
+      "mean_p": 0.8496,
+      "obs": 0.1667
+     },
+     {
+      "bin": "0.9-1.0",
+      "n": 84,
+      "mean_p": 0.9424,
+      "obs": 0.5238
+     }
+    ],
+    "latency_ms": {
+     "p50": 1092.5,
+     "p95": 1813.2
+    },
+    "retries": 26,
+    "http_429": 26,
+    "truncated": 0,
+    "cost_usd": 0.01233,
+    "cost_per_1k_pairs": 0.043,
+    "cost_per_query": 0.00026
+   },
+   "nace-ai/drex-max": {
+    "auc": 0.9343,
+    "hit@1": 0.8125,
+    "hit@3": 0.8958,
+    "ranks": [
+     1,
+     null,
+     1,
+     4,
+     1,
+     1,
+     1,
+     1,
+     null,
+     1,
+     null,
+     2,
+     2,
+     1,
+     1,
+     1,
+     1,
+     2,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     3,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     5,
+     1,
+     1,
+     1
+    ],
+    "brier": 0.2077,
+    "ece": 0.2917,
+    "format_errors": 0,
+    "format_error_rate": 0.0,
+    "histogram": [
+     71,
+     48,
+     21,
+     13,
+     8,
+     12,
+     6,
+     11,
+     19,
+     79
+    ],
+    "reliability": [
+     {
+      "bin": "0.0-0.1",
+      "n": 71,
+      "mean_p": 0.0363,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.1-0.2",
+      "n": 48,
+      "mean_p": 0.1471,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.2-0.3",
+      "n": 21,
+      "mean_p": 0.2382,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.3-0.4",
+      "n": 13,
+      "mean_p": 0.3525,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.4-0.5",
+      "n": 8,
+      "mean_p": 0.4557,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 12,
+      "mean_p": 0.5347,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.6-0.7",
+      "n": 6,
+      "mean_p": 0.6448,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.7-0.8",
+      "n": 11,
+      "mean_p": 0.7768,
+      "obs": 0.0909
+     },
+     {
+      "bin": "0.8-0.9",
+      "n": 19,
+      "mean_p": 0.8414,
+      "obs": 0.1579
+     },
+     {
+      "bin": "0.9-1.0",
+      "n": 79,
+      "mean_p": 0.9662,
+      "obs": 0.5823
+     }
+    ],
+    "latency_ms": {
+     "p50": 1087.3,
+     "p95": 1904.9
+    },
+    "retries": 0,
+    "http_429": 0,
+    "truncated": 0,
+    "cost_usd": 0.02718,
+    "cost_per_1k_pairs": 0.094,
+    "cost_per_query": 0.00057
+   }
+  }
+ },
+ "B": {
+  "dataset": {
+   "n": 100,
+   "base_rate": 0.52,
+   "insider": 46,
+   "bulk": 54,
+   "window": [
+    "2026-08-03 18:29:59",
+    "2026-09-10 18:29:59"
+   ],
+   "pit_ok": 99,
+   "sector_unknown": 0,
+   "delivery_missing": 1,
+   "max_state_chars": 286,
+   "base_rate_brier": 0.2496
+  },
+  "models": {
+   "Cloudflare/clef-flash": {
+    "brier": 0.2691,
+    "base_brier": 0.2496,
+    "brier_skill": -0.078,
+    "log_loss": 0.7408,
+    "ece": 0.1096,
+    "slope": 0.1044,
+    "auc": 0.5355,
+    "format_errors": 0,
+    "format_error_rate": 0.0,
+    "histogram": [
+     0,
+     4,
+     17,
+     16,
+     24,
+     25,
+     14,
+     0,
+     0,
+     0
+    ],
+    "reliability": [
+     {
+      "bin": "0.1-0.2",
+      "n": 4,
+      "mean_p": 0.1826,
+      "obs": 0.75
+     },
+     {
+      "bin": "0.2-0.3",
+      "n": 17,
+      "mean_p": 0.252,
+      "obs": 0.6471
+     },
+     {
+      "bin": "0.3-0.4",
+      "n": 16,
+      "mean_p": 0.3524,
+      "obs": 0.25
+     },
+     {
+      "bin": "0.4-0.5",
+      "n": 24,
+      "mean_p": 0.454,
+      "obs": 0.4583
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 25,
+      "mean_p": 0.5549,
+      "obs": 0.56
+     },
+     {
+      "bin": "0.6-0.7",
+      "n": 14,
+      "mean_p": 0.6505,
+      "obs": 0.6429
+     }
+    ],
+    "latency_ms": {
+     "p50": 1077.3,
+     "p95": 2044.6
+    },
+    "retries": 0,
+    "http_429": 0,
+    "truncated": 0,
+    "cost_usd": 0.00092,
+    "cost_per_1k": 0.009,
+    "mean_p": 0.4453,
+    "hit_rate": 0.52
+   },
+   "nace-ai/drex-v2.0": {
+    "brier": 0.2525,
+    "base_brier": 0.2496,
+    "brier_skill": -0.0115,
+    "log_loss": 0.6981,
+    "ece": 0.0635,
+    "slope": 0.6221,
+    "auc": 0.5116,
+    "format_errors": 0,
+    "format_error_rate": 0.0,
+    "histogram": [
+     0,
+     0,
+     0,
+     1,
+     84,
+     15,
+     0,
+     0,
+     0,
+     0
+    ],
+    "reliability": [
+     {
+      "bin": "0.3-0.4",
+      "n": 1,
+      "mean_p": 0.3994,
+      "obs": 0.0
+     },
+     {
+      "bin": "0.4-0.5",
+      "n": 84,
+      "mean_p": 0.4576,
+      "obs": 0.5238
+     },
+     {
+      "bin": "0.5-0.6",
+      "n": 15,
+      "mean_p": 0.5075,
+      "obs": 0.5333
+     }
+    ],
+    "latency_ms": {
+     "p50": 1066.7,
+     "p95": 1504.0
+    },
+    "retries": 11,
+    "http_429": 11,
+    "truncated": 0,
+    "cost_usd": 0.0007,
+    "cost_per_1k": 0.007,
+    "mean_p": 0.4645,
+    "hit_rate": 0.52
+   }
+  }
+ },
+ "verdicts": {
+  "A1": {
+   "Cloudflare/clef-flash": {
+    "pass": false,
+    "strong": false
+   },
+   "nace-ai/drex-v2.0": {
+    "pass": false,
+    "strong": false
+   }
+  },
+  "A2": {
+   "Cloudflare/clef-flash": {
+    "pass": false,
+    "strong": false
+   },
+   "nace-ai/drex-v2.0": {
+    "pass": true,
+    "strong": false
+   },
+   "nace-ai/drex-max": {
+    "pass": false,
+    "strong": false
+   }
+  },
+  "B": {
+   "Cloudflare/clef-flash": {
+    "pass": false,
+    "strong": false
+   },
+   "nace-ai/drex-v2.0": {
+    "pass": false,
+    "strong": false
+   }
+  }
+ }
+}

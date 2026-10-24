@@ -1,0 +1,21 @@
+{
+ "model": "Cloudflare/clef-flash",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.6758
+  }
+ },
+ "usage": {
+  "input_tokens": 241,
+  "output_tokens": 0
+ },
+ "status": "ok",
+ "_latency_ms": 1068.6,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "Cloudflare/clef-flash",
+ "_id": "insider_buy_NCLIND_2026-08-10"
+}

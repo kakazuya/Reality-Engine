@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4904
+  }
+ },
+ "usage": {
+  "input_tokens": 116,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 18.249,
+ "request_id": "req_e39a367e4f504cf8818b74aec869f804",
+ "status": "ok",
+ "_latency_ms": 1054.3,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_SHAKTIPUMP_2026-09-08"
+}

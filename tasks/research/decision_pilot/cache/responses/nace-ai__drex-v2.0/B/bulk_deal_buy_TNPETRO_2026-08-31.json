@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4639
+  }
+ },
+ "usage": {
+  "input_tokens": 118,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 264.155,
+ "request_id": "req_9d84b0da128f40fe9159e7ca35d1c6d0",
+ "status": "ok",
+ "_latency_ms": 1224.6,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_TNPETRO_2026-08-31"
+}

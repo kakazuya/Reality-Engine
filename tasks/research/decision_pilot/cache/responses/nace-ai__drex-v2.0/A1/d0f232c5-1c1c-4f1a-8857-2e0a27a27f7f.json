@@ -1,0 +1,35 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "category": {
+   "type": "choice",
+   "choice": "Mutual Fund",
+   "confidence": 0.9906,
+   "probabilities": {
+    "Company Update": 0.0001,
+    "AGM/EGM": 0.0,
+    "Insider Trading / SAST": 0.0,
+    "Others": 0.0057,
+    "Board Meeting": 0.0,
+    "Corp. Action": 0.0,
+    "Mutual Fund": 0.9917,
+    "Result": 0.0,
+    "Other / not listed": 0.0025
+   }
+  }
+ },
+ "usage": {
+  "input_tokens": 190,
+  "output_tokens": 134
+ },
+ "evaluation_time_ms": 41.297,
+ "request_id": "req_da18c58115bb474fb6964494bc42dcb8",
+ "status": "ok",
+ "_latency_ms": 1211.9,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "A1",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "d0f232c5-1c1c-4f1a-8857-2e0a27a27f7f"
+}

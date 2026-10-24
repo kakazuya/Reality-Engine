@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4424
+  }
+ },
+ "usage": {
+  "input_tokens": 111,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 36.062,
+ "request_id": "req_e14ab4ebc0f5425cab7e3c08021c01e9",
+ "status": "ok",
+ "_latency_ms": 1474.0,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_NAVA_2026-08-25"
+}

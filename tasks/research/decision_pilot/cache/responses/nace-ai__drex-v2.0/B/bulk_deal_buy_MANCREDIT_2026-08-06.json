@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4573
+  }
+ },
+ "usage": {
+  "input_tokens": 118,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 33.503,
+ "request_id": "req_7286894023784e33a1dcfac14cdeef41",
+ "status": "ok",
+ "_latency_ms": 1051.2,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_MANCREDIT_2026-08-06"
+}

@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4674
+  }
+ },
+ "usage": {
+  "input_tokens": 109,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 286.788,
+ "request_id": "req_5f426260c77f417ba791be91ab0a2703",
+ "status": "ok",
+ "_latency_ms": 1293.4,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_OBCL_2026-08-11"
+}

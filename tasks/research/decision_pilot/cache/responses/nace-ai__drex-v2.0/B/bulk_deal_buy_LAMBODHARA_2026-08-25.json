@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4505
+  }
+ },
+ "usage": {
+  "input_tokens": 119,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 154.982,
+ "request_id": "req_a3d90ddd0db9443a8c4cad78b55a6ce4",
+ "status": "ok",
+ "_latency_ms": 1146.0,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_LAMBODHARA_2026-08-25"
+}

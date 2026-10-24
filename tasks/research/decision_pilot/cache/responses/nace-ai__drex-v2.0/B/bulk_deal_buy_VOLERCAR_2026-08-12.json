@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4212
+  }
+ },
+ "usage": {
+  "input_tokens": 114,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 17.277,
+ "request_id": "req_1abe735e79de44549a00b3b766035f09",
+ "status": "ok",
+ "_latency_ms": 996.1,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_VOLERCAR_2026-08-12"
+}

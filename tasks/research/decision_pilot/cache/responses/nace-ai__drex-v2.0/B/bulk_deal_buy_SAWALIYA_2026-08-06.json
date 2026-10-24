@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4449
+  }
+ },
+ "usage": {
+  "input_tokens": 115,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 16.861,
+ "request_id": "req_3b9ab120fb6f4e0bb8d358e84ed6e1cd",
+ "status": "ok",
+ "_latency_ms": 1016.6,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_SAWALIYA_2026-08-06"
+}

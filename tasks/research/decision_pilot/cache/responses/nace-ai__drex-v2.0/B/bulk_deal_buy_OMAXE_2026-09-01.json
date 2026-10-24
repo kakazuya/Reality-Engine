@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4537
+  }
+ },
+ "usage": {
+  "input_tokens": 115,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 31.672,
+ "request_id": "req_401ba91b468043188edbf47cac414ea7",
+ "status": "ok",
+ "_latency_ms": 989.8,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_OMAXE_2026-09-01"
+}

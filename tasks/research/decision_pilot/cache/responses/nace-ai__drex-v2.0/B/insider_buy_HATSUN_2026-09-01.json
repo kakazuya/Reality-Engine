@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.5214
+  }
+ },
+ "usage": {
+  "input_tokens": 117,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 45.399,
+ "request_id": "req_0d711693f793484c88b31cee819e7323",
+ "status": "ok",
+ "_latency_ms": 1044.5,
+ "_retries": 1,
+ "_429": 1,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_HATSUN_2026-09-01"
+}

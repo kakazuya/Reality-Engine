@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4859
+  }
+ },
+ "usage": {
+  "input_tokens": 113,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 15.902,
+ "request_id": "req_d53356c124244286b7963381be8f5351",
+ "status": "ok",
+ "_latency_ms": 1072.9,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_AURIONPRO_2026-07-30"
+}

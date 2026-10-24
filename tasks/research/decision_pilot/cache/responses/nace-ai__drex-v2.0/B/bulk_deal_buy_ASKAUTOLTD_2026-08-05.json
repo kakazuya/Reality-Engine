@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4719
+  }
+ },
+ "usage": {
+  "input_tokens": 119,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 15.966,
+ "request_id": "req_bf0133767ec44af1b084ec39714de754",
+ "status": "ok",
+ "_latency_ms": 1059.4,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_ASKAUTOLTD_2026-08-05"
+}

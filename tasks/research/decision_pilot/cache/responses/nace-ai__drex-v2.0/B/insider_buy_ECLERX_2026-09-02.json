@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4726
+  }
+ },
+ "usage": {
+  "input_tokens": 111,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 20.234,
+ "request_id": "req_6a8a03e5cc8d42c388ef326001acf3f8",
+ "status": "ok",
+ "_latency_ms": 994.1,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_ECLERX_2026-09-02"
+}

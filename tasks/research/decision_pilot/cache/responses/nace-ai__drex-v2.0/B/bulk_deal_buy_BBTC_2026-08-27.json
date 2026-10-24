@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4349
+  }
+ },
+ "usage": {
+  "input_tokens": 118,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 18.373,
+ "request_id": "req_2517dab6d5a5482087501b084b30bc18",
+ "status": "ok",
+ "_latency_ms": 1075.5,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_BBTC_2026-08-27"
+}

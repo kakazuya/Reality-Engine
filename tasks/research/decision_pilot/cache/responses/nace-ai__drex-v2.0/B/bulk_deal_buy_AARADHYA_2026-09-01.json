@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4571
+  }
+ },
+ "usage": {
+  "input_tokens": 119,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 302.521,
+ "request_id": "req_4b45b35a9c524f869356e64be561f7cb",
+ "status": "ok",
+ "_latency_ms": 1325.0,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_AARADHYA_2026-09-01"
+}

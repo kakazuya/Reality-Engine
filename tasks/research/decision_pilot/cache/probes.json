@@ -1,0 +1,95 @@
+{
+ "Cloudflare/clef-flash": {
+  "status": "ok",
+  "latency_ms": 1912.8,
+  "response": {
+   "model": "Cloudflare/clef-flash",
+   "answers": {
+    "material": {
+     "type": "noul",
+     "noul": 0.8856
+    },
+    "category": {
+     "type": "choice",
+     "choice": "board",
+     "confidence": 0.8793,
+     "probabilities": {
+      "board": 0.9689,
+      "other": 0.0311
+     }
+    }
+   },
+   "usage": {
+    "input_tokens": 215,
+    "output_tokens": 0
+   }
+  },
+  "at": "2026-10-24T17:44:02.456818+00:00"
+ },
+ "nace-ai/drex-max": {
+  "status": "ok",
+  "latency_ms": 1019.4,
+  "response": {
+   "model": "nace-ai/drex-max",
+   "answers": {
+    "material": {
+     "type": "noul",
+     "noul": 0.3498760655559282
+    },
+    "category": {
+     "type": "choice",
+     "probabilities": {
+      "board": 0.9638686266299482,
+      "other": 0.036131373370051734
+     },
+     "choice": "board",
+     "confidence": 0.9277372532598964
+    }
+   },
+   "usage": {
+    "input_tokens": 182,
+    "output_tokens": 124
+   },
+   "timings": {
+    "encode_ms": 1.03,
+    "queue_ms": 18.4,
+    "batch_ms": 9.4,
+    "batch_requests": 1,
+    "read_ms": 0.08,
+    "parse_ms": 0.29,
+    "server_ms": 31.68,
+    "body_bytes": 283
+   }
+  },
+  "at": "2026-10-24T17:44:03.481995+00:00"
+ },
+ "nace-ai/drex-v2.0": {
+  "status": "ok",
+  "latency_ms": 1367.4,
+  "response": {
+   "model": "nace-ai/drex-v2.0",
+   "answers": {
+    "material": {
+     "type": "noul",
+     "noul": 0.3965
+    },
+    "category": {
+     "type": "choice",
+     "choice": "board",
+     "confidence": 0.5941,
+     "probabilities": {
+      "board": 0.7971,
+      "other": 0.2029
+     }
+    }
+   },
+   "usage": {
+    "input_tokens": 40,
+    "output_tokens": 74
+   },
+   "evaluation_time_ms": 397.501,
+   "request_id": "req_68c60fd7c81a408c8856f8a0a50946d5"
+  },
+  "at": "2026-10-24T17:44:04.854140+00:00"
+ }
+}

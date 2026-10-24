@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4877
+  }
+ },
+ "usage": {
+  "input_tokens": 118,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 28.592,
+ "request_id": "req_7e6b244be076420c9decd2316923d864",
+ "status": "ok",
+ "_latency_ms": 1023.3,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_ASHAPURMIN_2026-08-26"
+}

@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.5031
+  }
+ },
+ "usage": {
+  "input_tokens": 116,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 401.802,
+ "request_id": "req_061c8b1f93b4427bae53f423b2ed1c68",
+ "status": "ok",
+ "_latency_ms": 1345.0,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_DIAMONDYD_2026-08-07"
+}

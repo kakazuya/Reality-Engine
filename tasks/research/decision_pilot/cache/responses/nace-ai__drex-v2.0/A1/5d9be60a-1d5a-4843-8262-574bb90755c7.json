@@ -1,0 +1,35 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "category": {
+   "type": "choice",
+   "choice": "Other / not listed",
+   "confidence": 0.3415,
+   "probabilities": {
+    "Company Update": 0.2624,
+    "AGM/EGM": 0.0001,
+    "Insider Trading / SAST": 0.0002,
+    "Others": 0.3217,
+    "Board Meeting": 0.0002,
+    "Corp. Action": 0.0006,
+    "Mutual Fund": 0.0,
+    "Result": 0.0,
+    "Other / not listed": 0.4147
+   }
+  }
+ },
+ "usage": {
+  "input_tokens": 570,
+  "output_tokens": 144
+ },
+ "evaluation_time_ms": 44.801,
+ "request_id": "req_3fa80b8dc1c94eeca86db17c85cbe156",
+ "status": "ok",
+ "_latency_ms": 1073.8,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "A1",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "5d9be60a-1d5a-4843-8262-574bb90755c7"
+}

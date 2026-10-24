@@ -1,0 +1,20 @@
+{
+ "model": "Cloudflare/clef-flash",
+ "answers": {
+  "answers": {
+   "type": "noul",
+   "noul": 0.0432
+  }
+ },
+ "usage": {
+  "input_tokens": 774,
+  "output_tokens": 0
+ },
+ "status": "ok",
+ "_latency_ms": 1098.9,
+ "_retries": 0,
+ "_truncated": false,
+ "_arm": "A2",
+ "_model": "Cloudflare/clef-flash",
+ "_id": "q00_c2"
+}

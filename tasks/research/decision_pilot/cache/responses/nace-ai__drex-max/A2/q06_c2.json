@@ -1,0 +1,31 @@
+{
+ "model": "nace-ai/drex-max",
+ "answers": {
+  "answers": {
+   "type": "noul",
+   "noul": 0.963868656071976
+  }
+ },
+ "usage": {
+  "input_tokens": 821,
+  "output_tokens": 33
+ },
+ "timings": {
+  "encode_ms": 1.98,
+  "queue_ms": 0.2,
+  "batch_ms": 19.1,
+  "batch_requests": 1,
+  "read_ms": 0.14,
+  "parse_ms": 0.32,
+  "server_ms": 24.8,
+  "body_bytes": 2936
+ },
+ "status": "ok",
+ "_latency_ms": 1097.7,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "A2",
+ "_model": "nace-ai/drex-max",
+ "_id": "q06_c2"
+}
