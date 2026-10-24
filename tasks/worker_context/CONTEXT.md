@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-25T04:00:51+05:30 · git HEAD: `5414ef0` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-25T04:18:12+05:30 · git HEAD: `4546541` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -37,7 +37,7 @@ tasks/
   dsh_profiles/ (1 md)
   dsh_tasks/ (16 md)
   handoff/ (3 md)
-  optimizations/ (9 md)
+  optimizations/ (10 md)
   research/ (1 md)
 analysis/ (31 entries)
 h02test_s6wwsqyr/ (0 entries)
