@@ -26,6 +26,7 @@ import heartbeat
 import jobs
 import procutil
 import progress
+from context_pack import attach_brief as attach_context_pack, lint_brief as lint_worker_brief
 from store import (
     JOB_LOCK_NAME,
     LEASE_FILE,
@@ -979,6 +980,7 @@ class Manager:
         followup_wait_seconds: int = 0,
         controller_lease_seconds: int = 1800,
         refresh_context: bool = True,
+        context_pack: bool = True,
         use_worktree: bool = False,
         base: str | None = None,
         test_cmd: str | None = None,
@@ -986,6 +988,8 @@ class Manager:
     ) -> dict[str, Any]:
         if not isinstance(use_worktree, bool):
             raise PluginError("worktree_flag_invalid", "use_worktree must be true or false")
+        if not isinstance(context_pack, bool):
+            raise PluginError("context_pack_flag_invalid", "context_pack must be true or false")
         if base is not None and (not isinstance(base, str) or not base.strip()):
             raise PluginError("base_invalid", "base must be a non-empty git ref or omitted")
         if test_cmd is not None and (
@@ -1041,6 +1045,7 @@ class Manager:
             ws = self._workspace(workspace)
         text, task_relative = self._read_brief(brief, task_file)
         brief_first_line = _first_line(text)
+        brief_warnings = lint_worker_brief(text)
         if permission not in PERMISSIONS:
             raise PluginError("permission_invalid", f"permission must be one of {PERMISSIONS}")
         if write_scope not in WRITE_SCOPES:
@@ -1197,6 +1202,24 @@ class Manager:
             write_roots = [str(ws)]
             if write_scope in ("data", "full"):
                 write_roots += [str(self.config.data_root), D_REALITY_ENGINE]
+            # The generated repo/data map (tasks/worker_context/CONTEXT.md) is
+            # attached before the task brief, unless the caller opts out.  A
+            # stale pack is regenerated with a 60 s bound; failure is a warning,
+            # never a refused start.
+            warnings: list[str] = list(brief_warnings)
+            context_info: dict[str, Any] = {
+                "enabled": False,
+                "path": None,
+                "regenerated": False,
+            }
+            if context_pack:
+                text, pack_warnings, context_info = attach_context_pack(
+                    text,
+                    repo_root=self.config.repo_root,
+                    data_root=self.config.data_root,
+                    now=now,
+                )
+                warnings.extend(pack_warnings)
             # Standing instruction, not a question: the worker must never stop
             # or answer it, only append a progress line.
             text = f"{text.rstrip()}\n\n{PROGRESS_NOTES_INSTRUCTION}\n"
@@ -1243,7 +1266,6 @@ class Manager:
                 argv += ["--timeout", str(hard_timeout_seconds)]
 
             provider_session = self._provider_session()
-            warnings: list[str] = []
             owner_id = secrets.token_hex(16)
             if provider_session is None:
                 warnings.append("provider_session_unavailable: could not import go_session.py")
@@ -1317,6 +1339,7 @@ class Manager:
                 "git": git_identity,
                 "approved_by": approved_by,
                 "data_root": str(self.config.data_root),
+                "context_pack": context_info,
                 "test_cmd": test_cmd,
                 "progress_interval_seconds": progress_interval_seconds,
                 "heartbeat": heartbeat_record,
@@ -1441,6 +1464,7 @@ class Manager:
                 "owner_session": self.config.session_label,
                 "control_token_persisted": token_persisted,
                 "worktree": worktree_record,
+                "context_pack": context_info,
                 "progress_interval_seconds": progress_interval_seconds,
                 "progress_path": paths["progress"],
                 "progress_md_path": paths["progress_md"],
@@ -3324,7 +3348,10 @@ class Manager:
                     }
                 else:
                     freshness = jobs.run_success_check(
-                        check, self.config.data_root, timeout=min(2.0, remaining)
+                        check,
+                        self.config.data_root,
+                        timeout=min(2.0, remaining),
+                        repo_root=self.config.repo_root,
                     )
             max_age = jobs.cadence_max_age_days(entry)
             success_age = jobs.last_success_age_days(last_success)

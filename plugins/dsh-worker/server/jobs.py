@@ -106,6 +106,20 @@ def validate_job(entry: Any, index: int) -> None:
     if check is not None:
         if not isinstance(check, dict):
             raise RegistryError(f"{name}: success_check must be a mapping or null")
+        kind = check.get("kind")
+        if kind == "file":
+            path = check.get("path")
+            if (
+                not isinstance(path, str)
+                or not path
+                or Path(path).is_absolute()
+                or ".." in Path(path).parts
+            ):
+                raise RegistryError(f"{name}: success_check.path must be a relative file path")
+            age = check.get("max_age_hours")
+            if not isinstance(age, (int, float)) or age <= 0:
+                raise RegistryError(f"{name}: file check needs a positive max_age_hours")
+            return
         db = check.get("db")
         if not isinstance(db, str) or not db or Path(db).is_absolute() or ".." in Path(db).parts:
             raise RegistryError(f"{name}: success_check.db must be a relative db filename")
@@ -207,8 +221,47 @@ def _parse_date(value: Any) -> date | None:
     return None
 
 
-def run_success_check(check: dict[str, Any], data_root: Path, timeout: float = 2.0) -> dict[str, Any]:
-    """Execute one read-only freshness query with a bounded time budget."""
+def _run_file_check(
+    check: dict[str, Any], data_root: Path, repo_root: Path | None
+) -> dict[str, Any]:
+    """Freshness of a generated file (e.g. tasks/worker_context/CONTEXT.md)."""
+    base = (
+        Path(repo_root).resolve()
+        if repo_root is not None
+        else Path(data_root).resolve().parents[1]
+    )
+    path = (base / str(check["path"])).resolve()
+    try:
+        inside = path == base or base in path.parents
+    except OSError:
+        inside = False
+    if not inside:
+        return {"available": False, "ok": False, "error": "file_outside_repo"}
+    try:
+        modified = path.stat().st_mtime
+    except OSError:
+        return {"available": False, "ok": False, "error": "file_missing", "path": str(path)}
+    max_age = float(check["max_age_hours"])
+    age_hours = (time.time() - modified) / 3600.0
+    return {
+        "available": True,
+        "ok": age_hours <= max_age,
+        "path": str(path),
+        "age_hours": round(age_hours, 1),
+        "expected": {"kind": "file", "max_age_hours": max_age},
+        "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+
+
+def run_success_check(
+    check: dict[str, Any],
+    data_root: Path,
+    timeout: float = 2.0,
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    """Execute one read-only freshness check with a bounded time budget."""
+    if check.get("kind") == "file":
+        return _run_file_check(check, data_root, repo_root)
     sql = validate_sql(check["sql"])
     root = Path(data_root).resolve()
     db_path = (root / str(check["db"])).resolve()

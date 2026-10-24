@@ -119,7 +119,12 @@ def _safe(call) -> dict[str, Any]:
         "approval. dsh 0.2.1 runs both data and full as danger-full-access, so the "
         "OS sandbox does not separate them: the named DB locks and the brief are "
         "the real scope. approved_by records who approved a data/full job. The "
-        "supervisor creates <workspace>/.tmp and points TMP/TEMP/caches at it."
+        "supervisor creates <workspace>/.tmp and points TMP/TEMP/caches at it. "
+        "context_pack (default true) prepends the generated "
+        "tasks/worker_context/CONTEXT.md path + standing header to the brief and "
+        "regenerates the pack when it is older than 26 h (bounded 60 s; failure is "
+        "a warning). Briefs missing Goal / Acceptance checks / Test command(s) get "
+        "brief_lint warnings, never a refusal."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -143,6 +148,7 @@ def start_worker(
     followup_wait_seconds: int = 0,
     controller_lease_seconds: int = 1800,
     refresh_context: bool = True,
+    context_pack: bool = True,
     use_worktree: bool = False,
     base: str | None = None,
     test_cmd: str | None = None,
@@ -167,6 +173,7 @@ def start_worker(
             followup_wait_seconds=followup_wait_seconds,
             controller_lease_seconds=controller_lease_seconds,
             refresh_context=refresh_context,
+            context_pack=context_pack,
             use_worktree=use_worktree,
             base=base,
             test_cmd=test_cmd,

@@ -22,6 +22,17 @@
         "REALITY_DATA_REPO_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
         "PYTHONUTF8": "1"
       }
+    },
+    "code-intel": {
+      "type": "stdio",
+      "command": "C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe",
+      "args": [
+        "C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/code-intel/server/server.py"
+      ],
+      "env": {
+        "CODE_INTEL_REPO_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
+        "PYTHONUTF8": "1"
+      }
     }
   }
 }
