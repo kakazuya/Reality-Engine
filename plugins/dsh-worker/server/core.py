@@ -755,6 +755,21 @@ class Manager:
         # status is positive proof that this job has stopped owning the tree.
         return status.get("phase") not in FINAL_PHASES
 
+    def _repo_root_writer_active(self) -> bool:
+        """Whether a mutating worker currently holds the repo-root lock.
+
+        Only mutating jobs take a workspace lock, so an active repo-root lock is
+        exactly "a mutating repo-root job may be rewriting code the manager is
+        about to execute".  Fails closed when the record is unreadable.
+        """
+        try:
+            existing, _ = read_json_bounded(self._lock_path(self.config.repo_root), 65_536)
+        except PluginError:
+            return True
+        if not isinstance(existing, dict):
+            return False
+        return self._lock_active(existing)
+
     def _acquire_lock(self, workspace: Path, job_id: str) -> Path:
         self.config.locks_dir.mkdir(parents=True, exist_ok=True)
         path = self._lock_path(workspace)
@@ -970,6 +985,7 @@ class Manager:
         write_scope: str = "workspace",
         confirm_data_write: bool = False,
         confirm_full_access: bool = False,
+        confirm_repo_root_write: bool = False,
         writes: list[str] | None = None,
         approved_by: str | None = None,
         heartbeat_interval_seconds: int = 900,
@@ -1056,6 +1072,10 @@ class Manager:
             raise PluginError("confirm_invalid", "confirm_data_write must be true or false")
         if not isinstance(confirm_full_access, bool):
             raise PluginError("confirm_invalid", "confirm_full_access must be true or false")
+        if not isinstance(confirm_repo_root_write, bool):
+            raise PluginError(
+                "confirm_invalid", "confirm_repo_root_write must be true or false"
+            )
         if approved_by is not None:
             if (
                 not isinstance(approved_by, str)
@@ -1103,6 +1123,24 @@ class Manager:
         effective_permission = (
             "danger-full-access" if write_scope in ("data", "full") else permission
         )
+        mutating = effective_permission != "read-only"
+        repo_root_workspace = (
+            not use_worktree
+            and os.path.normcase(str(ws.resolve()))
+            == os.path.normcase(str(self.config.repo_root.resolve()))
+        )
+        if mutating and repo_root_workspace and not confirm_repo_root_write:
+            # A mutating worker in the main checkout root can rewrite code that
+            # later runs unconfined (the context-pack builder, supervisor.py,
+            # .git/config, other jobs' records).  Worktree and read-only jobs
+            # cannot reach those, so only this case needs the explicit flag.
+            raise PluginError(
+                "repo_root_write_requires_confirmation",
+                "this mutating job would write the main checkout root, where code "
+                "that runs unsandboxed lives (the context-pack builder, supervisor.py, "
+                ".git/config and other jobs' records). Pass confirm_repo_root_write="
+                "true only after Shivam approved a worker that may rewrite the repo root.",
+            )
         data_locks = [f"db:{name}" for name in write_dbs]
         if not isinstance(heartbeat_interval_seconds, int) or not 30 <= heartbeat_interval_seconds <= 86_400:
             raise PluginError("heartbeat_invalid", "heartbeat interval must be 30..86400 seconds")
@@ -1183,7 +1221,6 @@ class Manager:
         job_dir = self.config.jobs_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=False)
         paths = self._job_paths(job_id)
-        mutating = effective_permission != "read-only"
         lock_path: Path | None = None
         supervisor_spawned = False
         worktree_record: dict[str, Any] | None = None
@@ -1218,6 +1255,10 @@ class Manager:
                     repo_root=self.config.repo_root,
                     data_root=self.config.data_root,
                     now=now,
+                    # A mutating repo-root worker can rewrite the builder that
+                    # this unsandboxed manager would execute; never run it
+                    # while such a writer holds the repo-root lock.
+                    allow_regeneration=not self._repo_root_writer_active(),
                 )
                 warnings.extend(pack_warnings)
             # Standing instruction, not a question: the worker must never stop
@@ -1226,7 +1267,15 @@ class Manager:
             if mutating:
                 lock_path = self._acquire_lock(ws, job_id)
             atomic_write_text(job_dir / "brief.md", text)
-            baseline = gitutil.snapshot(ws) if mutating else {"available": False, "reason": "read_only"}
+            baseline = (
+                gitutil.snapshot(
+                    ws,
+                    identity=git_identity,
+                    repo_root=self.config.repo_root,
+                )
+                if mutating
+                else {"available": False, "reason": "read_only"}
+            )
             atomic_write_json(job_dir / "baseline.json", baseline)
 
             heartbeat_args, heartbeat_record = heartbeat.heartbeat_launch_args(
@@ -1338,6 +1387,7 @@ class Manager:
                 "worktree": worktree_record,
                 "git": git_identity,
                 "approved_by": approved_by,
+                "confirm_repo_root_write": confirm_repo_root_write,
                 "data_root": str(self.config.data_root),
                 "context_pack": context_info,
                 "test_cmd": test_cmd,
@@ -1389,6 +1439,7 @@ class Manager:
                 "writes": write_dbs,
                 "write_roots": write_roots,
                 "approved_by": approved_by,
+                "confirm_repo_root_write": confirm_repo_root_write,
                 "tmp_dir": None,
                 "tool_calls_before_first_edit": None,
                 "first_edit_at": None,
@@ -1449,6 +1500,7 @@ class Manager:
                 "writes": write_dbs,
                 "write_roots": write_roots,
                 "approved_by": approved_by,
+                "confirm_repo_root_write": confirm_repo_root_write,
                 "resource_locks": data_locks,
                 "model": MODEL,
                 "effort": EFFORT,
@@ -1880,6 +1932,12 @@ class Manager:
             "writes": status.get("writes") or job.get("writes") or [],
             "write_roots": status.get("write_roots") or job.get("write_roots") or [],
             "approved_by": status.get("approved_by") or job.get("approved_by"),
+            "confirm_repo_root_write": bool(
+                status.get(
+                    "confirm_repo_root_write",
+                    job.get("confirm_repo_root_write", False),
+                )
+            ),
             "resource_locks": status.get("resource_locks") or job.get("resource_locks") or [],
             "tmp_dir": status.get("tmp_dir"),
             "tool_calls_before_first_edit": (
@@ -2762,6 +2820,9 @@ class Manager:
                     "permission": job["permission"],
                     "write_scope": job.get("write_scope") or "workspace",
                     "writes": job.get("writes") or [],
+                    "confirm_repo_root_write": bool(
+                        job.get("confirm_repo_root_write")
+                    ),
                     "resource_locks": job.get("resource_locks") or [],
                     "tool_calls_before_first_edit": (
                         job.get("tool_calls_before_first_edit")

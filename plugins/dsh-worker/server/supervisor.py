@@ -559,6 +559,7 @@ def _create_status(job: dict[str, Any], job_dir: Path) -> dict[str, Any]:
         "writes": list(job.get("writes") or []),
         "write_roots": list(job.get("write_roots") or []),
         "approved_by": job.get("approved_by"),
+        "confirm_repo_root_write": bool(job.get("confirm_repo_root_write")),
         "tmp_dir": None,
         "tool_calls_before_first_edit": None,
         "first_edit_at": None,
@@ -643,7 +644,14 @@ def _finalize(
             status["artifacts"] = {"available": False, "reason": "data_job"}
         else:
             baseline, _ = read_json_bounded(job_dir / "baseline.json", 1_048_576)
-            final_snapshot = gitutil.snapshot(Path(str(job.get("workspace"))))
+            # The snapshot runs only against the manager-captured identity; a
+            # worker that rewrote .git cannot redirect it (and no git process
+            # runs when the pointer no longer matches the stored git dir).
+            final_snapshot = gitutil.snapshot(
+                Path(str(job.get("workspace"))),
+                identity=job.get("git"),
+                repo_root=job.get("repo_root"),
+            )
             status["artifacts"] = gitutil.changed_since(baseline, final_snapshot)
     except Exception as exc:  # artifact hints must never fail a job
         status["artifacts"] = {

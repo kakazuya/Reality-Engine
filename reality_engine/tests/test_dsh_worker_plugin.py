@@ -634,7 +634,10 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
         self._reset_manager()
         first = self._manager_instance().start_worker(
-            brief="root writer", workspace=".", permission="workspace-write"
+            brief="root writer",
+            workspace=".",
+            permission="workspace-write",
+            confirm_repo_root_write=True,
         )
         self.assertTrue(first["ok"], first)
         # A subdirectory is not its own checkout, so it is not a workspace.
@@ -648,7 +651,10 @@ class PluginTests(unittest.TestCase):
         # The root workspace is a single checkout: a second root writer waits.
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().start_worker(
-                brief="second root writer", workspace=".", permission="workspace-write"
+                brief="second root writer",
+                workspace=".",
+                permission="workspace-write",
+                confirm_repo_root_write=True,
             )
         self.assertEqual(ctx.exception.code, "workspace_busy")
         self.assertIn("existing_job_id", ctx.exception.details)
@@ -772,6 +778,7 @@ class PluginTests(unittest.TestCase):
             self.assertIn("stall", by_name["worker_progress"].description)
             self.assertIn("Status check", by_name["message_worker"].description)
             self.assertIn("progress_interval_seconds", by_name["start_worker"].description)
+            self.assertIn("confirm_repo_root_write", by_name["start_worker"].description)
             cancel_tool = by_name["cancel_worker"]
             self.assertIs(cancel_tool.annotations.destructive_hint, True)
             self.assertIs(by_name["start_worker"].annotations.open_world_hint, True)
@@ -782,7 +789,12 @@ class PluginTests(unittest.TestCase):
             started = await self._call(
                 session,
                 "start_worker",
-                {"brief": "Slow fake task", "workspace": ".", "permission": "workspace-write"},
+                {
+                    "brief": "Slow fake task",
+                    "workspace": ".",
+                    "permission": "workspace-write",
+                    "confirm_repo_root_write": True,
+                },
             )
             elapsed = time.monotonic() - begin
             self.assertTrue(started["ok"], started)
@@ -1212,16 +1224,22 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_MODE"] = "slow"
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
         self._reset_manager()
-        first = self._manager_instance().start_worker(brief="writer one", permission="workspace-write")
+        first = self._manager_instance().start_worker(
+            brief="writer one", permission="workspace-write", confirm_repo_root_write=True
+        )
         self.assertTrue(first["ok"], first)
         with self.assertRaises(core.PluginError) as ctx:
-            self._manager_instance().start_worker(brief="writer two", permission="workspace-write")
+            self._manager_instance().start_worker(
+                brief="writer two", permission="workspace-write", confirm_repo_root_write=True
+            )
         self.assertEqual(ctx.exception.code, "workspace_busy")
         read_only = self._manager_instance().start_worker(brief="reader", permission="read-only")
         self.assertTrue(read_only["ok"], read_only)
         self._manager_instance().cancel_worker(read_only["job_id"], confirm=True)
         self._manager_instance().cancel_worker(first["job_id"], confirm=True)
-        third = self._manager_instance().start_worker(brief="writer three", permission="workspace-write")
+        third = self._manager_instance().start_worker(
+            brief="writer three", permission="workspace-write", confirm_repo_root_write=True
+        )
         self.assertTrue(third["ok"], third)
         self._manager_instance().cancel_worker(third["job_id"], confirm=True)
 
@@ -1539,6 +1557,13 @@ class PluginTests(unittest.TestCase):
         self.assertIn("Add worker file", brief)
         final = self._wait_status(job_id, lambda s: s["final"])
         self.assertEqual(final["phase"], "finished", final)
+        # The baseline and final snapshots both ran through the stored identity:
+        # a normal job still gets artifact hints (NEW-1 must not disable them).
+        baseline = json.loads((job_dir / "baseline.json").read_text(encoding="utf-8"))
+        raw_status = json.loads((job_dir / "status.json").read_text(encoding="utf-8"))
+        self.assertTrue(baseline["available"], baseline)
+        self.assertTrue(raw_status["artifacts"]["available"], raw_status["artifacts"])
+        self.assertIn("worker_out.txt", raw_status["artifacts"]["paths"])
         tree = final["worktree"]
         self.assertTrue(tree["committed"], tree)
         self.assertEqual(tree["branch"], f"dsh/{job_id}")

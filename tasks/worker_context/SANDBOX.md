@@ -106,6 +106,23 @@ job record sits in a directory a worker could reach when its workspace is the
 main checkout, so a hand-edited `job.json` scope does not change the reported
 scope (and never changed the launch decision).
 
+### The main checkout root is special
+
+A **mutating** worker whose workspace is the main checkout root needs
+`confirm_repo_root_write=true`; without it the start is refused with
+`repo_root_write_requires_confirmation` before anything runs. Read-only workers
+and worktree workers do not need the flag. The reason is plain: the main
+checkout contains code that later runs *outside* the sandbox — the context-pack
+builder (`reality_engine/scripts/build_worker_context.py`), the plugin's
+`supervisor.py`, `.git/config` and other jobs' records. A worker that can rewrite
+any of those can make the next supervisord/manager start execute its code. The
+flag is an explicit statement that Shivam approved a worker which may rewrite
+the repository root; it is recorded in `job.json`, `status.json`,
+`worker_status` and `list_workers` next to `approved_by`. While such a worker
+holds the repo-root lock, a new start does **not** regenerate
+`tasks/worker_context/CONTEXT.md` (the stale pack is attached with a warning),
+because the builder is worker-writable at that moment.
+
 Never start a `data` job unless the brief is approved to write there. Never use
 `full` without Shivam's explicit go-ahead.
 
@@ -133,11 +150,35 @@ The commit never trusts the worktree's `.git`. When the job starts, the manager
 
 ```
 git --git-dir=<stored git_dir> --work-tree=<stored toplevel> \
+    --attr-source=4b825dc642cb6eb9a060e54bf8d69288fbee4904 \
     -c core.hooksPath=NUL -c core.fsmonitor=false \
     -c core.sshCommand= -c diff.external= \
+    -c core.attributesFile=NUL -c commit.gpgSign=false \
+    -c gpg.program= -c core.editor= -c sequence.editor= -c core.pager= \
     add -A                      # then
     commit --no-verify -m ...   # only on refs/heads/dsh/...
 ```
+
+with `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=NUL`,
+`GIT_TERMINAL_PROMPT=0` and `GIT_ATTR_SOURCE=<empty tree>`. The empty-tree
+attribute source means no in-tree `.gitattributes` can select a
+`filter=`/`diff=`/`merge=` driver; `<git_dir>/info/attributes` cannot be
+redirected that way, so a commit is refused (`git_attributes_driver_refused`)
+when it names a driver. A clean filter or `gpg.program` planted in repo config
+therefore never runs (pinned by tests).
+
+Before `git add -A`, every path in `git status --porcelain -z` is checked with
+`os.lstat`; a symlink or Windows reparse point (junction) at the path or any of
+its ancestors refuses the commit (`reparse_point_in_workspace`) instead of
+staging data from outside the workspace.
+
+The post-run snapshot is taken through the same stored identity and the same
+hardened runner — never `git -C <workspace>`: a rewritten `.git` means **no git
+process runs** and `artifacts` reports `final_snapshot_unavailable` (the
+snapshot reason is `git_dir_tampered`). Job records with no stored identity
+(older records) are treated the same way: no snapshot. The start-of-run
+baseline in `baseline.json` uses the identity too, so `artifacts.paths` still
+works for normal worktree and main-checkout jobs.
 
 It refuses when the stored common dir is not `<repo>/.git`, when the stored git
 dir is the main checkout's own `.git` (the main checkout is never a worker

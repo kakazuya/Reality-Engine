@@ -7,11 +7,18 @@ creation is the only main-checkout mutation, and it is always explicit
 from __future__ import annotations
 
 import os
+import re
+import stat
 import subprocess
 from pathlib import Path
 from typing import Any
 
 MAX_ENTRIES = 2000
+# The empty tree.  Git can resolve it without the object being present for the
+# SHA-1 object format (every checkout in this repository); a SHA-256 repository
+# would refuse the command, which fails closed.
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+FILE_ATTRIBUTE_REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 
 class GitError(RuntimeError):
@@ -22,20 +29,52 @@ def _hidden() -> int:
     return 0x08000000 if os.name == "nt" else 0
 
 
-# Repository-local config that could execute code is neutralised on the
-# supervisor's commit path.  Hooks (pre-commit, post-index-change, ...) and the
-# fsmonitor daemon/hook are disabled by config as well as by ``--no-verify``:
-# the worktree belongs to a sandboxed worker and is not trusted.
+# One entry per code path git could take from repository config/attributes.
+# These are passed to EVERY trusted invocation, not only to the commit: a
+# worker-writable checkout may set any of them, and a snapshot must not execute
+# worker code either.  Command-line config wins over repository-local config,
+# including values pulled in with include.path.
 _SAFE_GIT_CONFIG = (
+    # Hooks (pre-commit, post-checkout, post-index-change, ...) live in the git
+    # dir, which a repo-root worker can write; point them at the null device.
     "-c",
     f"core.hooksPath={os.devnull}",
+    # fsmonitor names a program/hook git runs on status/index refresh.
     "-c",
     "core.fsmonitor=false",
+    # sshCommand and external diff programs are executed by git.
     "-c",
     "core.sshCommand=",
     "-c",
     "diff.external=",
+    # Attribute files can select filter/diff/merge drivers; --attr-source (below)
+    # replaces the in-tree files and this drops the configured global one.
+    "-c",
+    f"core.attributesFile={os.devnull}",
+    # Commit signing runs gpg.program; a worker commit is never signed.
+    "-c",
+    "commit.gpgSign=false",
+    "-c",
+    "gpg.program=",
+    # Editors are not launched for -m commits, but neutralise them anyway.
+    "-c",
+    "core.editor=",
+    "-c",
+    "sequence.editor=",
+    # An empty pager means no pager process is started at all.
+    "-c",
+    "core.pager=",
 )
+# Environment hardening for every trusted invocation: no system/global config
+# (host hooksPath/filter/gpg/fsmonitor), no credential prompt, and attributes
+# read from the empty tree instead of any in-tree/info attribute file.
+_SAFE_GIT_ENV = {
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_TERMINAL_PROMPT": "0",
+    "GIT_ATTR_SOURCE": EMPTY_TREE,
+    "GIT_PAGER": "",
+}
 _GIT_ENV_KEYS = (
     "GIT_DIR",
     "GIT_WORK_TREE",
@@ -78,23 +117,116 @@ def _git(repo: Path, args: list[str], timeout: float = 30.0) -> tuple[int, str, 
     return _run_git(["git", "-C", str(repo), *args], timeout=timeout)
 
 
-def _trusted_git(
-    git_dir: str, work_tree: str, args: list[str], timeout: float = 30.0
-) -> tuple[int, str, str]:
-    """Run git against a stored git dir/work tree with repo hooks disabled."""
+def _git_env() -> dict[str, str]:
     env = {key: value for key, value in os.environ.items() if key not in _GIT_ENV_KEYS}
-    return _run_git(
-        [
-            "git",
-            f"--git-dir={git_dir}",
-            f"--work-tree={work_tree}",
-            *_SAFE_GIT_CONFIG,
-            *args,
-        ],
-        cwd=work_tree,
-        timeout=timeout,
-        env=env,
-    )
+    env.update(_SAFE_GIT_ENV)
+    return env
+
+
+_ATTR_SOURCE_SUPPORTED: bool | None = None
+_ATTR_DRIVER = re.compile(r"(?:^|\s)(?:filter|diff|merge)=", re.MULTILINE)
+
+
+def _attr_source_supported() -> bool:
+    """Whether this git accepts ``--attr-source`` (Git 2.40+; detected, cached)."""
+    global _ATTR_SOURCE_SUPPORTED
+    if _ATTR_SOURCE_SUPPORTED is None:
+        try:
+            completed = subprocess.run(
+                ["git", f"--attr-source={EMPTY_TREE}", "--version"],
+                capture_output=True,
+                timeout=10,
+                creationflags=_hidden(),
+                env=_git_env(),
+            )
+            _ATTR_SOURCE_SUPPORTED = completed.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            _ATTR_SOURCE_SUPPORTED = False
+    return _ATTR_SOURCE_SUPPORTED
+
+
+def _attributes_driver_error(git_dir: str, work_tree: str) -> str | None:
+    """Refuse to touch a checkout whose attributes select an external driver.
+
+    ``--attr-source`` replaces in-tree ``.gitattributes``, but git still reads
+    ``<git_dir>/info/attributes`` (there is no config switch for it) and a
+    repo-root job can write it.  Older git also cannot replace in-tree
+    attributes, so scan them, bounded, and refuse any ``filter=``/``diff=``/
+    ``merge=`` selection rather than run a worker-controlled program.
+    """
+    info = Path(git_dir) / "info" / "attributes"
+    try:
+        if info.is_file() and _ATTR_DRIVER.search(
+            info.read_text(encoding="utf-8", errors="replace")[:65_536]
+        ):
+            return "git_attributes_driver_refused"
+    except OSError:
+        return "git_attributes_driver_refused"
+    if _attr_source_supported():
+        return None
+    seen = 0
+    for root, dirs, files in os.walk(work_tree):
+        dirs[:] = [name for name in dirs if name != ".git"]
+        seen += len(files)
+        if seen > 20_000:
+            # Cannot prove the attributes are inert; fail closed.
+            return "git_attributes_scan_incomplete"
+        if ".gitattributes" not in files:
+            continue
+        try:
+            text = (Path(root) / ".gitattributes").read_text(
+                encoding="utf-8", errors="replace"
+            )[:65_536]
+        except OSError:
+            return "git_attributes_driver_refused"
+        if _ATTR_DRIVER.search(text):
+            return "git_attributes_driver_refused"
+    return None
+
+
+def _identity_git_config(identity: Any) -> list[str]:
+    """Checkout settings captured at start that affect working-tree content/commit.
+
+    The hardened runner ignores global/system config, so ``core.autocrlf`` /
+    ``core.eol`` must be replayed from the identity; otherwise a worktree
+    checked out with CRLF looks fully modified and every commit rewrites whole
+    files.  ``user.name``/``user.email`` are replayed for the same reason: this
+    repository keeps its author identity in the global config, which the
+    hardened runner deliberately does not read.  The values come from the
+    manager's pre-launch capture, never from the worker-writable repository
+    config read at commit time; each is a single bounded argv value.
+    """
+    if not isinstance(identity, dict):
+        return []
+    options: list[str] = []
+    for key in ("core.autocrlf", "core.eol", "user.name", "user.email"):
+        value = identity.get(key)
+        if (
+            isinstance(value, str)
+            and 0 < len(value) <= 200
+            and "\x00" not in value
+            and "\r" not in value
+            and "\n" not in value
+        ):
+            options += ["-c", f"{key}={value}"]
+    return options
+
+
+def _trusted_git(
+    git_dir: str,
+    work_tree: str,
+    args: list[str],
+    timeout: float = 30.0,
+    identity: Any = None,
+) -> tuple[int, str, str]:
+    """Run git against a stored git dir/work tree with repo code paths disabled."""
+    argv = ["git", f"--git-dir={git_dir}", f"--work-tree={work_tree}"]
+    if _attr_source_supported():
+        # Read attributes from the empty tree: in-tree .gitattributes cannot
+        # select a filter=/diff=/merge= driver.
+        argv.append(f"--attr-source={EMPTY_TREE}")
+    argv += [*_SAFE_GIT_CONFIG, *_identity_git_config(identity), *args]
+    return _run_git(argv, cwd=work_tree, timeout=timeout, env=_git_env())
 
 
 def _path_key(path: Any) -> str:
@@ -180,7 +312,7 @@ def checkout_identity(workspace: Path) -> dict[str, Any] | None:
     if code != 0 or not out.strip():
         return None
     head_ref = out.strip()
-    return {
+    identity: dict[str, Any] = {
         "git_dir": _path_key(git_dir),
         "common_dir": _path_key(common),
         "toplevel": _path_key(toplevel),
@@ -191,6 +323,15 @@ def checkout_identity(workspace: Path) -> dict[str, Any] | None:
             else None
         ),
     }
+    # Replay the checkout's author identity and line-ending settings on the
+    # hardened runner (which ignores global/system config); otherwise an
+    # autocrlf checkout commits every CRLF file as changed and a repository
+    # whose identity lives only in the global config cannot commit at all.
+    for key in ("core.autocrlf", "core.eol", "user.name", "user.email"):
+        code, out, _err = _git(workspace, ["config", "--get", key])
+        if code == 0 and out.strip():
+            identity[key] = out.strip()
+    return identity
 
 
 def _git_pointer(worktree: Path) -> Path | None:
@@ -214,9 +355,18 @@ def _git_pointer(worktree: Path) -> Path | None:
 
 
 def identity_error(
-    worktree: Path, identity: Any, repo_root: Path | str | None
+    worktree: Path,
+    identity: Any,
+    repo_root: Path | str | None,
+    *,
+    allow_main_checkout: bool = False,
 ) -> str | None:
-    """Return why ``identity`` may not be used for a commit, else ``None``."""
+    """Return why ``identity`` may not be used for a commit/snapshot, else ``None``.
+
+    ``allow_main_checkout`` is only for the read-only snapshot path: the main
+    checkout may be snapshotted through its stored identity, but it is never a
+    commit target.
+    """
     if not isinstance(identity, dict):
         return "git_identity_missing"
     stored: dict[str, str] = {}
@@ -233,13 +383,78 @@ def identity_error(
     if stored["common_dir"] != main_git:
         # A commit may only ever land in this repository's object store.
         return "git_common_dir_untrusted"
-    if stored["git_dir"] == main_git:
+    if stored["git_dir"] == main_git and not allow_main_checkout:
         # The main checkout is never a worker commit target.
         return "git_main_checkout_refused"
     pointer = _git_pointer(worktree)
     if pointer is None or _path_key(pointer) != stored["git_dir"]:
         # The worker rewrote .git (fake gitdir / another repository).
         return "git_dir_tampered"
+    return None
+
+
+def _parse_status_paths(
+    output: str, limit: int | None = None
+) -> tuple[list[str], bool]:
+    """Paths from ``git status --porcelain=v1 -z`` (both sides of a rename)."""
+    tokens = output.split("\0")
+    paths: list[str] = []
+    index = 0
+    truncated = False
+    while index < len(tokens):
+        token = tokens[index]
+        index += 1
+        if len(token) < 4:
+            continue
+        code = token[:2]
+        paths.append(token[3:])
+        if code[:1] in ("R", "C") and index < len(tokens):
+            # The rename/copy source follows as its own NUL-delimited token.
+            paths.append(tokens[index])
+            index += 1
+        if limit is not None and len(paths) >= limit:
+            truncated = True
+            break
+    return paths, truncated
+
+
+def _is_reparse_point(path: Path) -> bool:
+    """True for a symlink or a Windows reparse point (junction, mount, ...)."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    if stat.S_ISLNK(info.st_mode):
+        return True
+    return bool(getattr(info, "st_file_attributes", 0) & FILE_ATTRIBUTE_REPARSE_POINT)
+
+
+def reparse_point_path(work_tree: Path, paths: list[str]) -> str | None:
+    """First status path whose leaf or any ancestor inside the worktree is a link.
+
+    ``git add -A`` follows a junction/symlink and would stage files from outside
+    the workspace.  ``status --untracked-files=all`` lists ``link/secret.txt``,
+    so every path component (not just the leaf) is checked with ``lstat``.
+    """
+    root = Path(work_tree)
+    for relative in paths:
+        parts = [
+            part
+            for part in relative.replace("\\", "/").split("/")
+            if part not in ("", ".")
+        ]
+        if (
+            not parts
+            or ".." in parts
+            or Path(relative).is_absolute()
+            or ":" in parts[0]
+        ):
+            return relative or "?"
+        current = root
+        for part in parts:
+            current = current / part
+            if _is_reparse_point(current):
+                return relative
     return None
 
 
@@ -324,7 +539,7 @@ def commit_worktree(
     stored_tree = str(git["toplevel"])
 
     def trust(args: list[str], timeout: float = 30.0) -> tuple[int, str, str]:
-        return _trusted_git(git_dir, stored_tree, args, timeout)
+        return _trusted_git(git_dir, stored_tree, args, timeout, identity=git)
 
     code, out, err = trust(["symbolic-ref", "--quiet", "HEAD"])
     if code != 0 or not out.strip():
@@ -345,6 +560,19 @@ def commit_worktree(
         return fail("git status", err or out)
     dirty = bool(out.replace("\0", "").strip())
     if dirty:
+        attribute_error = _attributes_driver_error(git_dir, stored_tree)
+        if attribute_error is not None:
+            result["reason"] = attribute_error
+            result["error"] = f"refused: {attribute_error}"
+            return result
+        changed, _truncated = _parse_status_paths(out)
+        linked = reparse_point_path(worktree, changed)
+        if linked is not None:
+            # ``git add -A`` follows a junction/symlink and would stage data from
+            # outside the workspace; refuse instead of including it.
+            result["reason"] = "reparse_point_in_workspace"
+            result["error"] = f"refused: reparse_point_in_workspace: {linked[:300]}"
+            return result
         code, out, err = trust(["add", "-A"])
         if code != 0:
             return fail("git add -A", err or out)
@@ -532,65 +760,53 @@ def mergiraf_path(environ: dict[str, str] | None = None) -> str | None:
     return shutil.which("mergiraf", path=path) if path else shutil.which("mergiraf")
 
 
-def snapshot(workspace: Path, timeout: float = 10.0) -> dict[str, Any]:
-    """Return a bounded ``git status --porcelain`` snapshot.
+def snapshot(
+    workspace: Path,
+    *,
+    identity: Any = None,
+    repo_root: Path | str | None = None,
+    timeout: float = 10.0,
+) -> dict[str, Any]:
+    """Return a bounded ``git status --porcelain`` snapshot through a stored identity.
 
-    The snapshot is explicitly a working-tree comparison, not a claim that the
-    dsh worker made every change: another process may edit the same checkout.
+    ``<workspace>/.git`` is worker-writable, so the snapshot never lets git
+    derive a git dir from it: ``identity`` is the checkout identity the manager
+    captured before the worker started, and the command runs through
+    ``_trusted_git`` with hooks/fsmonitor/filters/gpg neutralised.  A missing
+    identity (legacy job records), a moved workspace or a rewritten pointer
+    means no git process runs at all and the snapshot is reported unavailable.
+    The snapshot is a working-tree comparison, not attribution: another process
+    may edit the same checkout.
     """
+    refusal = identity_error(
+        Path(workspace), identity, repo_root, allow_main_checkout=True
+    )
+    if refusal is not None:
+        return {"available": False, "reason": refusal, "paths": []}
+    assert isinstance(identity, dict)  # identity_error guarantees this
+    git_dir = str(identity["git_dir"])
+    stored_tree = str(identity["toplevel"])
     try:
-        root = subprocess.run(
-            ["git", "-C", str(workspace), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            creationflags=_hidden(),
+        code, out, err = _trusted_git(
+            git_dir,
+            stored_tree,
+            ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+            timeout,
+            identity=identity,
         )
-        if root.returncode != 0:
-            return {"available": False, "reason": "not_a_git_worktree", "paths": []}
-        status = subprocess.run(
-            [
-                "git",
-                "-C",
-                str(workspace),
-                "status",
-                "--porcelain=v1",
-                "-z",
-                "--untracked-files=all",
-            ],
-            capture_output=True,
-            timeout=timeout,
-            creationflags=_hidden(),
-        )
-        if status.returncode != 0:
-            return {"available": False, "reason": "git_status_failed", "paths": []}
     except (OSError, subprocess.TimeoutExpired):
         return {"available": False, "reason": "git_unavailable", "paths": []}
-    tokens = status.stdout.decode("utf-8", "replace").split("\0")
-    paths: list[str] = []
-    index = 0
-    truncated = False
-    while index < len(tokens):
-        token = tokens[index]
-        index += 1
-        if not token:
-            continue
-        if len(token) < 4:
-            continue
-        code = token[:2]
-        path = token[3:]
-        paths.append(path)
-        if code[:1] in ("R", "C") and index < len(tokens):
-            # The rename/copy source follows as its own NUL-delimited token.
-            index += 1
-        if len(paths) >= MAX_ENTRIES:
-            truncated = True
-            break
+    if code != 0:
+        return {
+            "available": False,
+            "reason": "git_status_failed",
+            "paths": [],
+            "error": (err or out).strip()[:300],
+        }
+    paths, truncated = _parse_status_paths(out, MAX_ENTRIES)
     return {
         "available": True,
-        "root": root.stdout.strip(),
+        "root": stored_tree,
         "paths": sorted(set(paths)),
         "truncated": truncated,
     }

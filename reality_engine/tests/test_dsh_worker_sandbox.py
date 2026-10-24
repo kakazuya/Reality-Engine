@@ -176,6 +176,7 @@ class WriteScopeValidationTests(unittest.TestCase):
             brief="orientation probe",
             workspace=".",
             permission="workspace-write",
+            confirm_repo_root_write=True,
             progress_interval_seconds=1,
         )
         self.addCleanup(manager.cancel_worker, started["job_id"], True, "test cleanup")
@@ -217,7 +218,9 @@ class WriteScopeValidationTests(unittest.TestCase):
         # A worker whose workspace is the main checkout can edit job.json; the
         # supervisor's status.json is the launch-time record and must win.
         started = self.manager.start_worker(
-            brief="scope spoof probe", permission="workspace-write"
+            brief="scope spoof probe",
+            permission="workspace-write",
+            confirm_repo_root_write=True,
         )
         self.addCleanup(
             self.manager.cancel_worker, started["job_id"], True, "test cleanup"
@@ -231,11 +234,90 @@ class WriteScopeValidationTests(unittest.TestCase):
         row = next(item for item in rows if item["job_id"] == started["job_id"])
         self.assertEqual(row["write_scope"], "workspace")
 
+    def test_repo_root_mutating_start_requires_confirmation(self) -> None:
+        # A mutating repo-root worker can rewrite the context-pack builder,
+        # supervisor.py, .git/config and other jobs' records, so it needs an
+        # explicit confirmation flag.  Read-only workers are unaffected.
+        with self.assertRaises(core.PluginError) as raised:
+            self.manager.start_worker(brief="root writer", permission="workspace-write")
+        self.assertEqual(
+            raised.exception.code, "repo_root_write_requires_confirmation"
+        )
+        started = self.manager.start_worker(
+            brief="root writer",
+            permission="workspace-write",
+            confirm_repo_root_write=True,
+        )
+        self.addCleanup(
+            self.manager.cancel_worker, started["job_id"], True, "test cleanup"
+        )
+        self.assertTrue(started["confirm_repo_root_write"])
+        job_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / started["job_id"]
+        record = json.loads((job_dir / "job.json").read_text(encoding="utf-8"))
+        self.assertTrue(record["confirm_repo_root_write"])
+        status = self.manager.get_status(started["job_id"])
+        self.assertTrue(status["confirm_repo_root_write"])
+        rows = self.manager.list_workers(limit=5)["jobs"]
+        row = next(item for item in rows if item["job_id"] == started["job_id"])
+        self.assertTrue(row["confirm_repo_root_write"])
+        # A read-only repo-root worker writes nothing and needs no flag.
+        reader = self.manager.start_worker(brief="reader", permission="read-only")
+        self.addCleanup(
+            self.manager.cancel_worker, reader["job_id"], True, "test cleanup"
+        )
+        self.assertFalse(reader["confirm_repo_root_write"])
+
+    def test_context_pack_is_not_regenerated_while_a_repo_root_writer_runs(self) -> None:
+        # NEW-2/4: attach_context_pack executes a builder in the repo root.  While
+        # a mutating repo-root worker can rewrite that file, regeneration must be
+        # skipped (stale pack + warning), never executed by this manager.
+        pack = self.root / "tasks" / "worker_context" / "CONTEXT.md"
+        pack.parent.mkdir(parents=True, exist_ok=True)
+        pack.write_text("# old pack\n", encoding="utf-8")
+        stamp = time.time() - 30 * 3600
+        os.utime(pack, (stamp, stamp))
+        builder = self.root / "reality_engine" / "scripts" / "build_worker_context.py"
+        builder.parent.mkdir(parents=True, exist_ok=True)
+        marker = self.root / "BUILDER-RAN.txt"
+        builder.write_text(
+            f"open({str(marker)!r}, 'w').write('ran')\n", encoding="utf-8"
+        )
+        writer = self.manager.start_worker(
+            brief="root writer",
+            permission="workspace-write",
+            confirm_repo_root_write=True,
+        )
+        self.addCleanup(
+            self.manager.cancel_worker, writer["job_id"], True, "test cleanup"
+        )
+        deadline = time.monotonic() + 15.0
+        while time.monotonic() < deadline and not self.manager._repo_root_writer_active():
+            time.sleep(0.1)
+        self.assertTrue(self.manager._repo_root_writer_active())
+        reader = self.manager.start_worker(
+            brief="Goal: read only", permission="read-only"
+        )
+        self.addCleanup(
+            self.manager.cancel_worker, reader["job_id"], True, "test cleanup"
+        )
+        self.assertFalse(reader["context_pack"]["regenerated"], reader["context_pack"])
+        self.assertEqual(
+            reader["context_pack"].get("regeneration_skipped"),
+            "repo_root_writer_active",
+        )
+        self.assertFalse(marker.exists(), "the manager executed the builder")
+        self.assertTrue(
+            any("skipped regeneration" in warning for warning in reader["warnings"]),
+            reader["warnings"],
+        )
+        self.assertEqual(pack.read_text(encoding="utf-8"), "# old pack\n")
+
     def test_data_job_records_scope_and_holds_db_lock(self) -> None:
         started = self.manager.start_worker(
             brief="data probe",
             write_scope="data",
             confirm_data_write=True,
+            confirm_repo_root_write=True,
             writes=["db:probe.db"],
             approved_by="Shivam (test approval)",
         )
@@ -273,6 +355,7 @@ class WriteScopeValidationTests(unittest.TestCase):
                 brief="second data probe",
                 write_scope="data",
                 confirm_data_write=True,
+                confirm_repo_root_write=True,
                 writes=["probe.db"],
             )
         self.assertEqual(raised.exception.code, "resource_busy")
@@ -553,6 +636,235 @@ class CommitRequestTests(unittest.TestCase):
         )
         result = json.loads((tmp / "commit.result.json").read_text(encoding="utf-8"))
         self.assertEqual(result["error"], "commit_request_requires_worktree")
+
+    def test_snapshot_uses_the_stored_identity_and_refuses_a_tampered_pointer(self) -> None:
+        # NEW-1: the post-run snapshot must never derive a git dir from the
+        # worker-writable <workspace>/.git.  A fake gitdir with a native
+        # fsmonitor program is exactly what the review executed through it.
+        base = self._init_repo()
+        worktree = self.root / "wt"
+        self._git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
+        identity = gitutil.checkout_identity(worktree)
+        self.assertIsNotNone(identity)
+        (worktree / "file.txt").write_text("one\ntwo\n", encoding="utf-8")
+        # The normal path still works through the stored identity.
+        before = gitutil.snapshot(worktree, identity=identity, repo_root=self.repo)
+        self.assertTrue(before["available"], before)
+        self.assertIn("file.txt", before["paths"])
+        self.assertEqual(os.path.normcase(before["root"]), os.path.normcase(str(worktree)))
+
+        outside = self.root / "outside"
+        outside.mkdir()
+        fake = self.root / "fake-git"
+        subprocess.run(
+            ["git", "init", "-q", "--separate-git-dir", str(fake), str(self.root / "fake-wt")],
+            check=True,
+            cwd=self.root,
+        )
+        config = fake / "config"
+        config.write_text(
+            config.read_text(encoding="utf-8")
+            + f"\n[core]\n\tworktree = {outside.as_posix()}\n"
+            + f"\tfsmonitor = {Path(sys.executable).as_posix()}\n",
+            encoding="utf-8",
+        )
+        marker = self.root / "FSMONITOR-EXECUTED.txt"
+        # Git execs the fsmonitor program in core.worktree; python.exe runs the
+        # file named "2" that git passes as its first argument.
+        (outside / "2").write_text(
+            f"open({str(marker)!r}, 'w').write('ran\\n')\n", encoding="utf-8"
+        )
+        self._rewrite_git_pointer(worktree, str(fake))
+
+        after = gitutil.snapshot(worktree, identity=identity, repo_root=self.repo)
+        self.assertFalse(after["available"], after)
+        self.assertEqual(after["reason"], "git_dir_tampered")
+        self.assertFalse(marker.exists(), "a git command ran against the worker gitdir")
+
+        # Legacy job records have no stored identity: no snapshot, no git run.
+        legacy = gitutil.snapshot(worktree)
+        self.assertFalse(legacy["available"], legacy)
+        self.assertEqual(legacy["reason"], "git_identity_missing")
+        self.assertFalse(marker.exists(), "a git command ran without a stored identity")
+
+    def test_snapshot_allows_the_main_checkout_identity(self) -> None:
+        # The main checkout is never a commit target, but its own snapshot must
+        # still work when the manager captured its identity at start.
+        base = self._init_repo()
+        (self.repo / "file.txt").write_text("one\ntwo\n", encoding="utf-8")
+        identity = gitutil.checkout_identity(self.repo)
+        snap = gitutil.snapshot(self.repo, identity=identity, repo_root=self.repo)
+        self.assertTrue(snap["available"], snap)
+        self.assertIn("file.txt", snap["paths"])
+        self.assertEqual(self._git("rev-parse", "main").strip(), base)
+
+    def test_commit_ignores_filter_and_gpg_config(self) -> None:
+        # NEW-3: a committed .gitattributes + repo config must not run a clean
+        # filter, and commit.gpgSign/gpg.program must not run a program.
+        base = self._init_repo()
+        worktree = self.root / "wt"
+        self._git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
+        identity = gitutil.checkout_identity(worktree)
+        filter_marker = self.root / "FILTER-RAN.txt"
+        gpg_marker = self.root / "GPG-RAN.txt"
+        gpg = self.root / "gpg.cmd"
+        gpg.write_text(
+            "@echo off\r\n"
+            f'echo ran > "{gpg_marker}"\r\n'
+            "exit /b 1\r\n",
+            encoding="utf-8",
+        )
+        config = self.repo / ".git" / "config"
+        config.write_text(
+            config.read_text(encoding="utf-8")
+            + "\n[filter \"evil\"]\n"
+            + f"\tclean = {Path(sys.executable).as_posix()}\n"
+            + "[gpg]\n"
+            + f"\tprogram = {gpg.as_posix()}\n"
+            + "[commit]\n"
+            + "\tgpgsign = true\n",
+            encoding="utf-8",
+        )
+        (worktree / ".gitattributes").write_text("* filter=evil\n", encoding="utf-8")
+        # If the filter ran, python.exe would execute this file content.
+        (worktree / "file.txt").write_text(
+            f"open({str(filter_marker)!r}, 'w').write('ran')\n", encoding="utf-8"
+        )
+        result = gitutil.commit_worktree(
+            worktree,
+            job_id="20261025T000005Z-abcdef12",
+            subject="filter probe",
+            base_commit=base,
+            git=identity,
+            repo_root=self.repo,
+        )
+        self.assertTrue(result["committed"], result)
+        self.assertFalse(filter_marker.exists(), "clean filter ran")
+        self.assertFalse(gpg_marker.exists(), "gpg.program ran")
+        # The file is stored raw: no filter output replaced its content.
+        stored = subprocess.run(
+            ["git", "show", "HEAD:file.txt"],
+            cwd=worktree,
+            capture_output=True,
+            text=True,
+        ).stdout
+        self.assertIn("FILTER-RAN", stored)
+
+        # <git_dir>/info/attributes cannot be replaced by --attr-source, so a
+        # driver selected there is refused instead of executed.
+        info = self.repo / ".git" / "worktrees" / "wt" / "info"
+        info.mkdir(parents=True, exist_ok=True)
+        (info / "attributes").write_text("* filter=evil\n", encoding="utf-8")
+        (worktree / "file.txt").write_text(
+            f"open({str(filter_marker)!r}, 'w').write('ran')\nsecond\n",
+            encoding="utf-8",
+        )
+        refused = gitutil.commit_worktree(
+            worktree,
+            job_id="20261025T000006Z-abcdef12",
+            subject="info attributes probe",
+            base_commit=base,
+            git=identity,
+            repo_root=self.repo,
+        )
+        self.assertFalse(refused["committed"], refused)
+        self.assertEqual(refused["reason"], "git_attributes_driver_refused")
+        self.assertFalse(filter_marker.exists(), "clean filter ran from info/attributes")
+
+    def test_commit_refuses_a_junction_in_the_workspace(self) -> None:
+        # NEW-5: git add -A followed a worker-created junction and committed data
+        # from outside the workspace.
+        if sys.platform != "win32":
+            self.skipTest("junctions are a Windows reparse-point feature")
+        base = self._init_repo()
+        worktree = self.root / "wt"
+        self._git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
+        identity = gitutil.checkout_identity(worktree)
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "secret.txt").write_text("outside-secret\n", encoding="utf-8")
+        made = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(worktree / "link"), str(outside)],
+            capture_output=True,
+            text=True,
+        )
+        if made.returncode != 0:
+            self.skipTest(f"cannot create a junction here: {made.stderr.strip()[:200]}")
+        self.addCleanup(
+            lambda: subprocess.run(
+                ["cmd", "/c", "rmdir", str(worktree / "link")],
+                capture_output=True,
+                text=True,
+            )
+        )
+        (worktree / "file.txt").write_text("one\nworker edit\n", encoding="utf-8")
+        result = gitutil.commit_worktree(
+            worktree,
+            job_id="20261025T000007Z-abcdef12",
+            subject="junction probe",
+            base_commit=base,
+            git=identity,
+            repo_root=self.repo,
+        )
+        self.assertFalse(result["committed"], result)
+        self.assertEqual(result["reason"], "reparse_point_in_workspace")
+        tree = subprocess.run(
+            ["git", "ls-tree", "-r", "--name-only", "HEAD"],
+            cwd=worktree,
+            capture_output=True,
+            text=True,
+        ).stdout
+        self.assertNotIn("secret.txt", tree)
+        self.assertEqual(self._git("rev-parse", "main").strip(), base)
+
+    def test_commit_replays_the_identity_captured_from_global_config(self) -> None:
+        # This repository keeps user.name/user.email in the GLOBAL config, which
+        # the hardened runner deliberately does not read.  The manager captures
+        # them at start and the commit replays them, or every real worktree
+        # commit would fail with "Author identity unknown".
+        base = self._init_repo()
+        subprocess.run(
+            ["git", "config", "--unset", "user.name"], cwd=self.repo, check=False
+        )
+        subprocess.run(
+            ["git", "config", "--unset", "user.email"], cwd=self.repo, check=False
+        )
+        global_config = self.root / "global.gitconfig"
+        global_config.write_text(
+            "[user]\n\tname = Captured Author\n\temail = captured@example.invalid\n",
+            encoding="utf-8",
+        )
+        previous = os.environ.get("GIT_CONFIG_GLOBAL")
+        os.environ["GIT_CONFIG_GLOBAL"] = str(global_config)
+        try:
+            worktree = self.root / "wt"
+            self._git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
+            identity = gitutil.checkout_identity(worktree)
+        finally:
+            if previous is None:
+                os.environ.pop("GIT_CONFIG_GLOBAL", None)
+            else:
+                os.environ["GIT_CONFIG_GLOBAL"] = previous
+        self.assertIsNotNone(identity)
+        self.assertEqual(identity.get("user.name"), "Captured Author")
+        self.assertEqual(identity.get("user.email"), "captured@example.invalid")
+        (worktree / "file.txt").write_text("one\ntwo\n", encoding="utf-8")
+        result = gitutil.commit_worktree(
+            worktree,
+            job_id="20261025T000008Z-abcdef12",
+            subject="identity replay",
+            base_commit=base,
+            git=identity,
+            repo_root=self.repo,
+        )
+        self.assertTrue(result["committed"], result)
+        author = subprocess.run(
+            ["git", "log", "-1", "--format=%an <%ae>"],
+            cwd=worktree,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        self.assertEqual(author, "Captured Author <captured@example.invalid>")
 
     def test_request_history_is_capped(self) -> None:
         status: dict = {"worker_commits": []}

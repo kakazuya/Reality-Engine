@@ -121,8 +121,15 @@ def ensure_pack(
     data_root: Path,
     now: datetime | None = None,
     timeout: float = REGENERATE_TIMEOUT_SECONDS,
+    allow_regeneration: bool = True,
 ) -> dict[str, Any]:
-    """Return pack state, regenerating only when stale (bounded, never raises)."""
+    """Return pack state, regenerating only when stale (bounded, never raises).
+
+    ``allow_regeneration=False`` skips the builder subprocess.  The manager
+    passes it while a mutating repo-root worker is active: that worker can
+    rewrite the builder the unsandboxed manager would execute, so the stale
+    pack is attached as-is with a warning instead.
+    """
     root = Path(repo_root).resolve()
     data = Path(data_root).resolve()
     path = pack_path(root)
@@ -133,6 +140,9 @@ def ensure_pack(
         "stale": is_stale(path, now, repo_root=root, data_root=data),
     }
     if not info["stale"]:
+        return info
+    if not allow_regeneration:
+        info["regeneration_skipped"] = "repo_root_writer_active"
         return info
     builder = root / "reality_engine" / "scripts" / "build_worker_context.py"
     if not builder.is_file():
@@ -169,11 +179,17 @@ def attach_brief(
     repo_root: Path,
     data_root: Path,
     now: datetime | None = None,
+    allow_regeneration: bool = True,
 ) -> tuple[str, list[str], dict[str, Any]]:
     """Prepend the standing header + absolute CONTEXT.md path to a brief."""
-    info = ensure_pack(repo_root, data_root, now)
+    info = ensure_pack(repo_root, data_root, now, allow_regeneration=allow_regeneration)
     warnings: list[str] = []
-    if info.get("error"):
+    if info.get("regeneration_skipped"):
+        warnings.append(
+            "context_pack: skipped regeneration while a mutating repo-root worker "
+            "is active; the attached pack may be stale"
+        )
+    elif info.get("error"):
         warnings.append(
             f"context_pack: {info['error']} (worker launched without a fresh pack)"
         )
