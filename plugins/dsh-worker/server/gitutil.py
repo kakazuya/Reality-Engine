@@ -168,6 +168,164 @@ def commit_worktree(
     return result
 
 
+# -------------------------------------------------------------- merge queue
+def rev_parse(repo: Path, ref: str) -> str | None:
+    code, out, _err = _git(repo, ["rev-parse", "--verify", f"{ref}^{{commit}}"])
+    if code != 0 or not out.strip():
+        return None
+    return out.strip().splitlines()[-1]
+
+
+def current_branch(repo: Path) -> str | None:
+    code, out, _err = _git(repo, ["symbolic-ref", "--quiet", "--short", "HEAD"])
+    return out.strip() if code == 0 and out.strip() else None
+
+
+def is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
+    code, _out, _err = _git(repo, ["merge-base", "--is-ancestor", ancestor, descendant])
+    return code == 0
+
+
+def merge_base(repo: Path, left: str, right: str) -> str | None:
+    code, out, _err = _git(repo, ["merge-base", left, right])
+    return out.strip() if code == 0 and out.strip() else None
+
+
+def changed_paths(repo: Path, revision_range: str) -> list[str]:
+    code, out, _err = _git(repo, ["diff", "--name-only", "-z", revision_range])
+    if code != 0:
+        return []
+    return [path for path in out.split("\0") if path]
+
+
+def status_paths(repo: Path) -> tuple[set[str], set[str]]:
+    """Return (tracked-dirty paths, untracked paths) for a checkout."""
+    code, out, _err = _git(repo, ["status", "--porcelain=v1", "-z", "--untracked-files=all"])
+    if code != 0:
+        raise GitError("git status failed while checking the target checkout")
+    tracked: set[str] = set()
+    untracked: set[str] = set()
+    tokens = out.split("\0")
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        index += 1
+        if not token or len(token) < 4:
+            continue
+        code2 = token[:2]
+        path = token[3:]
+        if code2 == "??":
+            untracked.add(path)
+        else:
+            tracked.add(path)
+        if code2[:1] in ("R", "C") and index < len(tokens):
+            index += 1  # rename/copy source token
+    return tracked, untracked
+
+
+def merge_in_progress(repo: Path) -> bool:
+    code, _out, _err = _git(repo, ["rev-parse", "--quiet", "--verify", "MERGE_HEAD"])
+    return code == 0
+
+
+def merge_no_ff(
+    repo: Path,
+    branch: str,
+    message: str,
+    mergiraf: str | None = None,
+    attributes_file: Path | None = None,
+) -> tuple[int, str, str]:
+    args = ["merge", "--no-ff", "-m", message]
+    if mergiraf and attributes_file is not None:
+        driver = (
+            f'"{mergiraf}" merge --git %O %A %B -s %S -x %X -y %Y -p %P -l %L'
+        )
+        args = [
+            "-c",
+            f"merge.mergiraf.driver={driver}",
+            "-c",
+            f"core.attributesFile={attributes_file}",
+            *args,
+        ]
+    return _git(repo, [*args, branch], timeout=120.0)
+
+
+def conflicted_paths(repo: Path) -> list[str]:
+    code, out, _err = _git(repo, ["diff", "--name-only", "--diff-filter=U", "-z"])
+    if code != 0:
+        return []
+    return [path for path in out.split("\0") if path]
+
+
+def conflict_hunks(repo: Path, path: str, limit: int = 10) -> dict[str, Any]:
+    """Count combined-diff hunks for one conflicted file (bounded summary)."""
+    code, out, _err = _git(repo, ["diff", "--cc", "--unified=0", "--", path])
+    if code != 0:
+        return {"hunks": 0, "headers": []}
+    headers = [line.strip()[:200] for line in out.splitlines() if line.startswith("@@")]
+    return {"hunks": len(headers), "headers": headers[:limit]}
+
+
+def abort_merge(repo: Path) -> bool:
+    code, _out, _err = _git(repo, ["merge", "--abort"])
+    return code == 0
+
+
+def reset_hard(repo: Path, head: str) -> bool:
+    code, _out, _err = _git(repo, ["reset", "--hard", head], timeout=120.0)
+    return code == 0
+
+
+def count_commits(repo: Path, revision_range: str) -> int | None:
+    code, out, _err = _git(repo, ["rev-list", "--count", revision_range])
+    if code != 0 or not out.strip().isdigit():
+        return None
+    return int(out.strip())
+
+
+def delete_branch(repo: Path, branch: str, force: bool = False) -> tuple[bool, str]:
+    flag = "-D" if force else "-d"
+    code, out, err = _git(repo, ["branch", flag, branch])
+    return code == 0, (out or err).strip()[:300]
+
+
+def remove_worktree_path(repo: Path, path: Path) -> tuple[bool, str]:
+    code, out, err = _git(repo, ["worktree", "remove", str(path)], timeout=120.0)
+    return code == 0, (out or err).strip()[:500]
+
+
+def remove_worktree_registration(repo: Path) -> None:
+    _git(repo, ["worktree", "prune"])
+
+
+def remote_url(repo: Path, remote: str = "origin") -> str | None:
+    code, out, _err = _git(repo, ["remote", "get-url", remote])
+    return out.strip() if code == 0 and out.strip() else None
+
+
+def push_ref(repo: Path, remote: str, target: str, timeout: float = 120.0) -> tuple[int, str, str]:
+    return _git(repo, ["push", remote, target], timeout=timeout)
+
+
+def mergiraf_path(environ: dict[str, str] | None = None) -> str | None:
+    """Detect mergiraf on PATH; never installs or configures anything globally.
+
+    ``DSH_WORKER_MERGIRAF=0`` (or an empty value) disables detection, which the
+    offline tests use; a path overrides the PATH lookup.
+    """
+    import shutil
+
+    env = os.environ if environ is None else environ
+    override = env.get("DSH_WORKER_MERGIRAF")
+    if override is not None:
+        if override.strip() in ("", "0", "false", "off"):
+            return None
+        candidate = Path(override).expanduser()
+        return str(candidate) if candidate.is_file() else None
+    path = env.get("PATH")
+    return shutil.which("mergiraf", path=path) if path else shutil.which("mergiraf")
+
+
 def snapshot(workspace: Path, timeout: float = 10.0) -> dict[str, Any]:
     """Return a bounded ``git status --porcelain`` snapshot.
 

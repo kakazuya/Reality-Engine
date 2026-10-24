@@ -19,6 +19,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import yaml
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -857,6 +858,88 @@ class SharedControlProcessTests(StressBase):
             json.dumps(final),
         ):
             self.assertNotIn(token, text)
+
+    def test_data_job_run_visible_from_second_server(self):
+        registry_path = self.root / "test-jobs.yaml"
+        registry_path.write_text(
+            yaml.safe_dump(
+                {
+                    "schema": "dsh-worker-jobs/1",
+                    "jobs": [
+                        {
+                            "name": "fake_data_job",
+                            "description": "offline fake data job (no network, no DB)",
+                            "argv": [
+                                "python",
+                                "-c",
+                                "import pathlib, time; time.sleep(1); "
+                                "print('fake data job ran'); "
+                                "pathlib.Path('fake_job_out.txt').write_text('ok')",
+                            ],
+                            "cwd": ".",
+                            "env": {},
+                            "writes": ["fake_job_out.txt"],
+                            "resource_locks": ["db:test-standalone.db"],
+                            "cadence": "daily",
+                            "success_check": None,
+                            "off_peak_only": False,
+                            "market_hours": "any",
+                            "needs_paid_api": False,
+                            "needs_gpu": False,
+                            "enabled": True,
+                        }
+                    ],
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        env_x = self._env(
+            "data-job-X", DSH_WORKER_JOBS_FILE=str(registry_path)
+        )
+        env_y = self._env(
+            "data-job-Y", DSH_WORKER_JOBS_FILE=str(registry_path)
+        )
+
+        async def scenario(session_x, session_y):
+            started = await self._call(session_x, "start_job", {"name": "fake_data_job"})
+            self.assertTrue(started["ok"], started)
+            run_id = started["run_id"]
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + 20
+            entry = None
+            while loop.time() < deadline:
+                listed = await self._call(session_y, "list_jobs", {})
+                entry = next(
+                    item for item in listed["jobs"] if item["name"] == "fake_data_job"
+                )
+                if entry["last_run"] is not None:
+                    break
+                await asyncio.sleep(0.1)
+            self.assertIsNotNone(entry and entry["last_run"], entry)
+            final = await self._wait_tool_status(
+                session_y, run_id, lambda s: s["final"], timeout=40
+            )
+            self.assertEqual(final["phase"], "finished", final)
+            log = await self._call(
+                session_y, "job_log", {"run_id": run_id, "tail": 50}
+            )
+            self.assertTrue(log["ok"], log)
+            self.assertTrue(
+                any("fake data job ran" in line for line in log["stdout"]), log
+            )
+            listed = await self._call(session_y, "list_jobs", {})
+            entry = next(
+                item for item in listed["jobs"] if item["name"] == "fake_data_job"
+            )
+            self.assertIsNotNone(entry["last_success"], entry)
+            self.assertFalse(entry["never_ran"], entry)
+            return started, final
+
+        started, final = run_async(
+            self._with_sessions([env_x, env_y], scenario), 120
+        )
+        self.assertTrue((self.root / "fake_job_out.txt").is_file())
 
     def test_two_server_lease_race_loses_no_renewals(self):
         self._init_git_repo()

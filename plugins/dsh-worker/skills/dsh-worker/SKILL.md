@@ -96,6 +96,29 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   (repository root or a registered worktree); each row has a one-line
   `summary`, `owner_session` and `last_steerer`; corrupt records are listed
   under `unreadable`.
+- `merge_worker` — merge a finished worktree job's `dsh/<job_id>` into the
+  checked-out target (default `main`) under the repo-wide merge lock, with
+  `--no-ff` and a `DSH-Job:` trailer. Refuses a dirty overlapping target,
+  wrong checkout or unfinished merge. Runs `test_cmd` (or the job's declared
+  command, else a compile-only quick suite); failing tests reset the target to
+  its pre-merge HEAD. Conflicts are reported with hunk counts and the target is
+  left clean after `merge --abort`. Uses mergiraf only if it is already on
+  PATH. Never pushes.
+- `remove_worktree` — safely remove a finished job's worktree; a dirty
+  worktree is refused, not forced. `delete_branch=true` deletes the merged
+  branch with `git branch -d` (unmerged branches are reported).
+- `push` — refuses unless `confirm=true`. Only pass `confirm=true` on Shivam's
+  explicit go-ahead. Never force-push.
+- `list_jobs` — the jobs.yaml registry with enabled state, latest run and last
+  success, never-ran flag, live read-only SQL freshness, staleness vs cadence,
+  resource locks, paid/GPU flags. Every job ships disabled.
+- `start_job` — start one registry job through the same supervisor/status/
+  lease/steering machinery, with named `db:`/`gpu`/`net:` resource locks. A
+  disabled job needs `confirm=true` (re-enable only on Shivam's word); paid/
+  off-peak/market-hours rules also need confirmation outside their window.
+  `args` are extra argv entries. Returns `run_id`; use `job_log`.
+- `job_log` — bounded stdout/stderr/supervisor tails for a run id, or the
+  newest run of a job name.
 - `inspect_run` — read-only progress for a run started with the raw harness,
   from its `--out-file` path. It cannot message/renew/cancel such runs.
 - `server_info` — confirm the server is up and which process/repo answers.
@@ -142,6 +165,32 @@ makes no commit, and failed/cancelled jobs are left uncommitted for review.
 `commits`, `files_changed`. Gitignored data lives only in the main checkout:
 read it from `REALITY_DATA_ROOT` by absolute path, read-only (the one-line
 brief preamble says so).
+
+## Merge queue
+
+`merge_worker(job_id, target="main", run_tests=true, test_cmd=None)` merges the
+finished worktree branch from the main checkout under a repo-wide merge lock.
+It refuses when the checkout is not on `target`, a merge is already in progress,
+or the target has local changes to files the branch touches (and any unrelated
+tracked change, because rollback is `reset --hard`; the queue never stashes).
+Declare the job's tests with `start_worker(..., test_cmd=...)`; otherwise a
+compile-only quick suite runs. On failing tests the target is reset to its
+pre-merge HEAD; on conflict the queue reports conflicted files and hunk counts,
+runs `merge --abort`, and leaves the target clean. Mergiraf is used only when
+already on PATH. Never push: `push(target, confirm=true)` only on Shivam's
+explicit go-ahead. After a successful merge, `remove_worktree(job_id,
+delete_branch=true)` cleans up.
+
+## Data jobs
+
+`jobs.yaml` registers every audited data job (all `enabled: false`; re-enable
+only on Shivam's word). `list_jobs` shows run history plus a live read-only SQL
+freshness check and cadence staleness, so a job that exits 0 while writing
+nothing still shows stale. `start_job(name, args=None, confirm=True)` runs a
+disabled job only with `confirm=true`, takes its named db:/gpu/net: resource
+locks (refusing `resource_busy`), and uses the same supervisor/status/lease/
+steering machinery; `job_log(run_id)` shows the output. Never start a real
+fetch/ingest job without Shivam's direction, and never from a test.
 
 ## Same-conversation follow-ups
 

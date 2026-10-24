@@ -40,7 +40,15 @@ INSTRUCTIONS = (
     "renew_worker_lease(adopt=true) is the explicit takeover alternative. "
     "worktree jobs (start_worker use_worktree=true) create dsh/<job_id> in "
     "DSH_WORKTREES_ROOT, auto-commit on success, and read gitignored data from "
-    "REALITY_DATA_ROOT read-only. "
+    "REALITY_DATA_ROOT read-only. merge_worker merges a finished worktree branch "
+    "into the checked-out target under a repo-wide merge lock, runs its declared "
+    "test command (or a compile-only default), and rolls the target back if tests "
+    "fail; conflicts are reported and aborted cleanly. push refuses unless "
+    "confirm=true and only after Shivam's explicit go-ahead. Data jobs come from "
+    "jobs.yaml: list_jobs reports run history and a live read-only SQL freshness "
+    "check, start_job runs them through the same supervisor/lease/steering "
+    "machinery with named db:/gpu/net: resource locks (every job ships disabled; "
+    "confirm=true is required), and job_log returns bounded stdout/stderr tails. "
     "Default policy: one mutating worker per workspace/checkout (each worktree has "
     "its own lock), DeepSeek V4.1 Flash at max effort, Go account 2, no peak-hour "
     "starts, no implicit hard timeout, and no secrets in briefs."
@@ -89,7 +97,8 @@ def _safe(call) -> dict[str, Any]:
         "user, so other dsh-worker servers can message/renew/cancel this job. "
         "Use use_worktree=true to create <DSH_WORKTREES_ROOT>/<job_id> on branch "
         "dsh/<job_id> from base (default HEAD); the supervisor auto-commits a "
-        "non-empty diff when the worker finishes successfully. Hard timeout "
+        "non-empty diff when the worker finishes successfully. test_cmd is the "
+        "command merge_worker runs later for this job. Hard timeout "
         "defaults to None. followup_wait_seconds=0 keeps ordinary one-shot exit; "
         "a positive value adds a bounded host-side wait for explicit "
         "same-conversation follow-ups."
@@ -113,6 +122,7 @@ def start_worker(
     refresh_context: bool = True,
     use_worktree: bool = False,
     base: str | None = None,
+    test_cmd: str | None = None,
 ) -> dict[str, Any]:
     return _safe(
         lambda: _get_manager().start_worker(
@@ -130,6 +140,7 @@ def start_worker(
             refresh_context=refresh_context,
             use_worktree=use_worktree,
             base=base,
+            test_cmd=test_cmd,
         )
     )
 
@@ -303,6 +314,117 @@ def inspect_run(out_file: str) -> dict[str, Any]:
 )
 def server_info() -> dict[str, Any]:
     return _safe(lambda: _get_manager().server_info())
+
+
+@server.tool(
+    name="merge_worker",
+    description=(
+        "Merge a finished worktree job's dsh/<job_id> branch into target (default "
+        "main) from the checked-out main checkout, under a repo-wide merge lock. "
+        "Refuses when the target is not checked out, has a merge in progress, or "
+        "has local changes to files the branch touches. Uses git merge --no-ff "
+        "with a DSH-Job trailer; uses mergiraf as a per-command merge driver only "
+        "when it is already on PATH. Runs test_cmd (or the job's declared test "
+        "command, or a compile-only quick suite); on failure the target is reset "
+        "to its pre-merge HEAD. On conflict it runs merge --abort and returns the "
+        "conflicted files and hunk summaries with the target clean. Never pushes."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, open_world_hint=False
+    ),
+)
+def merge_worker(
+    job_id: str,
+    target: str = "main",
+    run_tests: bool = True,
+    test_cmd: str | None = None,
+) -> dict[str, Any]:
+    return _safe(
+        lambda: _get_manager().merge_worker(
+            job_id, target=target, run_tests=run_tests, test_cmd=test_cmd
+        )
+    )
+
+
+@server.tool(
+    name="remove_worktree",
+    description=(
+        "Remove a finished job's worktree with a safe git worktree remove (it "
+        "refuses when the worktree is dirty). delete_branch=true also deletes the "
+        "merged branch with git branch -d; unmerged branches are reported, not "
+        "forced."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, open_world_hint=False
+    ),
+)
+def remove_worktree(job_id: str, delete_branch: bool = False) -> dict[str, Any]:
+    return _safe(lambda: _get_manager().remove_worktree(job_id, delete_branch))
+
+
+@server.tool(
+    name="push",
+    description=(
+        "Push target to origin. Refuses unless confirm=true; only pass confirm=true "
+        "on Shivam's explicit go-ahead. Never forces or pushes tags automatically."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=True, open_world_hint=True
+    ),
+)
+def push(target: str = "main", confirm: bool = False) -> dict[str, Any]:
+    return _safe(lambda: _get_manager().push(target, confirm))
+
+
+@server.tool(
+    name="list_jobs",
+    description=(
+        "List the jobs.yaml data-job registry with last run/last successful run "
+        "from job history, a live read-only SQL freshness check (max-date or "
+        "minimum-count rule), staleness against cadence, never-ran flag, enabled "
+        "state, resource locks and paid/GPU/freshness metadata. Read-only; no job "
+        "is started."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=True, destructive_hint=False, open_world_hint=False
+    ),
+)
+def list_jobs() -> dict[str, Any]:
+    return _safe(lambda: _get_manager().list_jobs())
+
+
+@server.tool(
+    name="start_job",
+    description=(
+        "Start one data job from jobs.yaml through the same supervisor/status/"
+        "lease/steering machinery as workers. Jobs ship enabled=false; a disabled "
+        "job requires confirm=true (re-enable only on Shivam's word). Takes named "
+        "resource locks (db:<file>, gpu, net:<host>) so two jobs never share one; "
+        "refuses with resource_busy otherwise. args are extra argv entries. No "
+        "paid/GPU/off-peak job starts without confirm=true during a restricted "
+        "window. Returns run_id (the job_id); read job_log for output."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, open_world_hint=True
+    ),
+)
+def start_job(name: str, args: list[str] | None = None, confirm: bool = False) -> dict[str, Any]:
+    return _safe(lambda: _get_manager().start_job(name, args=args, confirm=confirm))
+
+
+@server.tool(
+    name="job_log",
+    description=(
+        "Return the last `tail` lines (1..2000) of a data job run's stdout, stderr "
+        "and supervisor log. run_id is a run/job id, or a jobs.yaml job name to "
+        "resolve to its newest run. Bounded and read-only."
+    ),
+    annotations=ToolAnnotations(
+        read_only_hint=True, destructive_hint=False, open_world_hint=False
+    ),
+)
+def job_log(run_id: str, tail: int = 200) -> dict[str, Any]:
+    return _safe(lambda: _get_manager().job_log(run_id, tail))
 
 
 def main() -> int:

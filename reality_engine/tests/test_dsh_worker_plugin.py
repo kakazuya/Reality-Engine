@@ -10,12 +10,14 @@ import asyncio
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 import time
 import unittest
 from pathlib import Path
 
+import yaml
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -34,6 +36,7 @@ sys.path.insert(0, str(FIXTURES))
 
 import core  # noqa: E402
 import heartbeat  # noqa: E402
+import jobs  # noqa: E402
 import procutil  # noqa: E402
 import store  # noqa: E402
 import supervisor  # noqa: E402
@@ -715,12 +718,21 @@ class PluginTests(unittest.TestCase):
                     "claim_worker",
                     "inspect_run",
                     "server_info",
+                    "merge_worker",
+                    "remove_worktree",
+                    "push",
+                    "list_jobs",
+                    "start_job",
+                    "job_log",
                 },
             )
             by_name = {tool.name: tool for tool in tools.tools}
             self.assertIn("7200", by_name["renew_worker_lease"].description)
             self.assertIn("steering.jsonl", by_name["claim_worker"].description)
             self.assertIn("use_worktree", by_name["start_worker"].description)
+            self.assertIn("merge --abort", by_name["merge_worker"].description)
+            self.assertIn("confirm=true", by_name["push"].description)
+            self.assertIn("jobs.yaml", by_name["list_jobs"].description)
             cancel_tool = by_name["cancel_worker"]
             self.assertIs(cancel_tool.annotations.destructive_hint, True)
             self.assertIs(by_name["start_worker"].annotations.open_world_hint, True)
@@ -1239,6 +1251,87 @@ class PluginTests(unittest.TestCase):
         self._git("commit", "-m", "initial")
         return self._git("rev-parse", "HEAD")
 
+    def _start_worktree_job(
+        self, write_file=None, write_text="worker change\n", brief="worktree task", test_cmd=None
+    ):
+        if write_file:
+            self.env["FAKE_LAUNCHER_WRITE_FILE"] = write_file
+            self.env["FAKE_LAUNCHER_WRITE_TEXT"] = write_text
+        self._reset_manager()
+        started = self._manager_instance().start_worker(
+            brief=brief,
+            permission="workspace-write",
+            use_worktree=True,
+            test_cmd=test_cmd,
+        )
+        final = self._wait_status(started["job_id"], lambda s: s["final"])
+        self.assertEqual(final["phase"], "finished", final)
+        return started, final
+
+    def _commit_main(self, relative: str, text: str, message: str) -> str:
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        self._git("add", "-A")
+        self._git("commit", "-m", message)
+        return self._git("rev-parse", "HEAD")
+
+    def _write_jobs_registry(self, entries: list[dict]) -> Path:
+        path = self.root / "test-jobs.yaml"
+        path.write_text(
+            yaml.safe_dump(
+                {"schema": "dsh-worker-jobs/1", "jobs": entries}, sort_keys=False
+            ),
+            encoding="utf-8",
+        )
+        self.env["DSH_WORKER_JOBS_FILE"] = str(path)
+        self._reset_manager()
+        return path
+
+    @staticmethod
+    def _fake_job(
+        name: str,
+        command: str,
+        *,
+        enabled: bool = True,
+        locks: list[str] | None = None,
+        success_check: dict | None = None,
+        cadence: str = "daily",
+        off_peak_only: bool = False,
+    ) -> dict:
+        return {
+            "name": name,
+            "description": f"offline fake job {name}",
+            "argv": ["python", "-c", command],
+            "cwd": ".",
+            "env": {},
+            "writes": ["none (offline fake)"],
+            "resource_locks": locks or [],
+            "cadence": cadence,
+            "success_check": success_check,
+            "off_peak_only": off_peak_only,
+            "market_hours": "any",
+            "needs_paid_api": False,
+            "needs_gpu": False,
+            "enabled": enabled,
+        }
+
+    def _make_test_db(self, value: str) -> Path:
+        data_root = self.root / "reality_engine" / "data"
+        data_root.mkdir(parents=True, exist_ok=True)
+        path = data_root / "test-standalone.db"
+        connection = sqlite3.connect(path)
+        try:
+            connection.execute("DROP TABLE IF EXISTS runs")
+            connection.execute("CREATE TABLE runs (d TEXT)")
+            connection.execute("INSERT INTO runs (d) VALUES (?)", (value,))
+            connection.commit()
+        finally:
+            # sqlite3 connections live in reference cycles; the context manager
+            # does not close them, and an open handle blocks Windows cleanup.
+            connection.close()
+        return path
+
     def test_worktree_start_auto_commit_branch_and_data_env(self):
         base_commit = self._init_git_repo()
         self.env["FAKE_LAUNCHER_WRITE_FILE"] = "worker_out.txt"
@@ -1380,6 +1473,245 @@ class PluginTests(unittest.TestCase):
         worktrees_root = self.root / "worktrees"
         self.assertFalse(worktrees_root.exists() and any(worktrees_root.iterdir()))
         self.assertEqual(self._git("branch", "--list", "dsh/*"), "")
+
+    # --------------------------------------------------------------- merge queue
+    def test_merge_worker_success_runs_tests_and_removes_worktree(self):
+        self._init_git_repo()
+        self.env["DSH_WORKER_MERGIRAF"] = "0"
+        declared = f'"{sys.executable}" -c "print(\'declared job test ran\')"'
+        started, _final = self._start_worktree_job(
+            write_file="merged.txt", test_cmd=declared
+        )
+        job_id = started["job_id"]
+        pre_head = self._commit_main("main_only.txt", "main\n", "main advances")
+        result = self._manager_instance().merge_worker(job_id, run_tests=True)
+        self.assertTrue(result["ok"], result)
+        self.assertTrue(result["merged"], result)
+        self.assertEqual(result["outcome"], "merged")
+        self.assertFalse(result["mergiraf_available"], result)
+        self.assertEqual(result["pre_head"], pre_head)
+        self.assertNotEqual(result["head"], pre_head)
+        self.assertEqual(self._git("rev-parse", "main"), result["head"])
+        parents = self._git("rev-list", "--parents", "-n", "1", result["head"]).split()
+        self.assertEqual(len(parents), 3, "merge commit must have two parents")
+        body = self._git("show", "-s", "--format=%B", result["head"])
+        self.assertIn(f"[dsh {job_id}]", body.splitlines()[0])
+        self.assertIn(f"DSH-Job: {job_id}", body)
+        self.assertTrue((self.root / "merged.txt").is_file())
+        self.assertEqual(result["files_changed"], 1)
+        self.assertEqual(result["files_changed_paths"], ["merged.txt"])
+        self.assertTrue(result["tests"]["passed"], result["tests"])
+        # The job's declared test command ran, not the compile-only default.
+        self.assertIn("declared job test ran", result["tests"]["stdout_tail"])
+        self.assertNotIn("compileall", result["tests"]["command"])
+        self.assertFalse(result["pushed"])
+        refusal = self._manager_instance().push("main")
+        self.assertFalse(refusal["ok"])
+        self.assertEqual(refusal["error"]["code"], "confirmation_required")
+        removed = self._manager_instance().remove_worktree(job_id, delete_branch=True)
+        self.assertTrue(removed["worktree_removed"], removed)
+        self.assertTrue(removed["branch_deleted"], removed)
+        self.assertFalse(Path(started["workspace"]).exists())
+        self.assertEqual(self._git("branch", "--list", f"dsh/{job_id}"), "")
+
+    def test_merge_worker_default_quick_suite_runs(self):
+        self._init_git_repo()
+        self.env["DSH_WORKER_MERGIRAF"] = "0"
+        started, _final = self._start_worktree_job(write_file="default_suite.txt")
+        self._commit_main("main_only.txt", "main\n", "main advances")
+        result = self._manager_instance().merge_worker(started["job_id"], run_tests=True)
+        self.assertTrue(result["merged"], result)
+        self.assertTrue(result["tests"]["passed"], result["tests"])
+        self.assertIn("compileall", result["tests"]["command"])
+
+    def test_merge_worker_test_failure_rolls_back(self):
+        self._init_git_repo()
+        self.env["DSH_WORKER_MERGIRAF"] = "0"
+        started, _final = self._start_worktree_job(write_file="would_merge.txt")
+        job_id = started["job_id"]
+        pre_head = self._commit_main("main_only.txt", "main\n", "main advances")
+        failing = f'"{sys.executable}" -c "import sys; sys.exit(7)"'
+        result = self._manager_instance().merge_worker(job_id, test_cmd=failing)
+        self.assertFalse(result["merged"], result)
+        self.assertEqual(result["outcome"], "tests_failed")
+        self.assertTrue(result["rolled_back"], result)
+        self.assertTrue(result["target_clean"], result)
+        self.assertEqual(result["head"], pre_head)
+        self.assertEqual(result["tests"]["exit_code"], 7)
+        self.assertEqual(self._git("rev-parse", "main"), pre_head)
+        self.assertEqual(self._git("rev-list", "--merges", "--count", "main"), "0")
+        self.assertEqual(self._git("status", "--porcelain", "--untracked-files=no"), "")
+        self.assertFalse((self.root / "would_merge.txt").exists())
+
+    def test_merge_worker_conflict_is_reported_and_aborted_clean(self):
+        self._init_git_repo()
+        self.env["DSH_WORKER_MERGIRAF"] = "0"
+        started, _final = self._start_worktree_job(
+            write_file="conflict.txt", write_text="worker\n"
+        )
+        job_id = started["job_id"]
+        pre_head = self._commit_main("conflict.txt", "main\n", "main edits the same file")
+        result = self._manager_instance().merge_worker(job_id, run_tests=False)
+        self.assertFalse(result["merged"], result)
+        self.assertEqual(result["outcome"], "conflict")
+        self.assertEqual(result["conflicted_files"], ["conflict.txt"])
+        self.assertGreaterEqual(result["hunks"]["conflict.txt"]["hunks"], 1)
+        self.assertTrue(result["aborted"], result)
+        self.assertTrue(result["target_clean"], result)
+        self.assertEqual(self._git("rev-parse", "main"), pre_head)
+        self.assertEqual(
+            (self.root / "conflict.txt").read_text(encoding="utf-8"), "main\n"
+        )
+        merge_head = subprocess.run(
+            ["git", "-C", str(self.root), "rev-parse", "--verify", "--quiet", "MERGE_HEAD"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(merge_head.returncode, 0)
+        self.assertEqual(self._git("status", "--porcelain", "--untracked-files=no"), "")
+
+    def test_merge_worker_refuses_dirty_or_missing_target(self):
+        self._init_git_repo()
+        self.env["DSH_WORKER_MERGIRAF"] = "0"
+        started, _final = self._start_worktree_job(write_file="dirty.txt")
+        job_id = started["job_id"]
+        (self.root / "dirty.txt").write_text("local\n", encoding="utf-8")
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().merge_worker(job_id, run_tests=False)
+        self.assertEqual(ctx.exception.code, "target_dirty")
+        self.assertIn("dirty.txt", ctx.exception.details.get("files", []))
+        (self.root / "dirty.txt").unlink()
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().merge_worker(
+                job_id, target="no-such-branch", run_tests=False
+            )
+        self.assertEqual(ctx.exception.code, "target_not_found")
+
+    # ------------------------------------------------------------------ data jobs
+    def test_jobs_yaml_audit_inventory_and_schema(self):
+        registry = jobs.load_registry(PLUGIN_ROOT / "jobs.yaml")
+        expected = {
+            # 3.1 market chain
+            "market_raw_exchange", "nse_api_raw", "bse_api_raw", "nsdl_fpi_raw",
+            "fii_dii_moneycontrol", "load_market_raw", "security_master",
+            "nse_pr_circuits", "nse_industry", "shareholding", "etf_nav",
+            "index_tri", "board_meetings", "bse_announcements",
+            "discover_bse_feed_docs", "bse_annual_report_dates", "commodity_series",
+            "nse_sme_bhavcopy", "index_ohlc_breadth",
+            "market_breadth_financially_free", "index_membership",
+            "price_delivery_backfill", "insider_trades_normalized",
+            "nse_pit_monthly_legacy", "results_xbrl_legacy",
+            "integrated_results_xbrl",
+            # 3.2 document corpus
+            "pib_english", "pib_regional", "pib_legacy_ingest", "policy_register",
+            "macro_documents", "ar_download", "ar_fact_extraction", "ar_chunking",
+            "deck_discovery", "deck_figure_extraction", "concall_extraction",
+            "weekly_sebi_ingest", "telegram_ingest", "video_youtube_ingest",
+            "news_loop", "inbox_ingest",
+            # 3.3 derived / promotion
+            "truth_snapshot", "nightly_chain", "peer_substrate_promotion",
+            "data_quality_gates", "query_speed_check",
+            # 3.4 ops
+            "boot_recover", "resource_watchdog", "deepseek_heartbeat", "db_backup",
+            "capacity_loop", "continuous_loop", "forecast_tester",
+            "routines_dispatcher", "drive_upload", "db_merge_migrations",
+        }
+        self.assertEqual(len(expected), 57)
+        self.assertEqual(set(registry["order"]), expected)
+        self.assertEqual(registry["schema"], jobs.REGISTRY_SCHEMA)
+        sql_checks = 0
+        for name, entry in registry["jobs"].items():
+            self.assertFalse(entry["enabled"], f"{name} must ship disabled")
+            self.assertIn("success_check", entry)
+            for field in (
+                "argv", "cwd", "env", "description", "writes", "resource_locks",
+                "cadence", "off_peak_only", "market_hours", "needs_paid_api",
+                "needs_gpu", "enabled",
+            ):
+                self.assertIn(field, entry, f"{name}.{field}")
+            if entry["success_check"] is not None:
+                sql_checks += 1
+                self.assertTrue(
+                    entry["success_check"]["sql"].lower().startswith(("select", "with"))
+                )
+        self.assertGreaterEqual(sql_checks, 30, "most data jobs need SQL freshness checks")
+        self.assertFalse(registry["jobs"]["concall_extraction"]["enabled"])
+        self.assertTrue(registry["jobs"]["deck_figure_extraction"]["needs_gpu"])
+
+    def test_list_jobs_freshness_history_and_disabled_refusal(self):
+        check = {
+            "db": "test-standalone.db",
+            "sql": "SELECT max(d) AS value FROM runs",
+            "expect": {"kind": "max_date", "max_age_days": 30},
+        }
+        self._make_test_db("2020-01-01")
+        entries = [
+            self._fake_job(
+                "fake_fresh",
+                "import pathlib; print('fresh job ran'); "
+                "pathlib.Path('fresh_out.txt').write_text('ok')",
+                success_check=check,
+            ),
+            self._fake_job("fake_disabled", "print('disabled job ran')", enabled=False),
+        ]
+        self._write_jobs_registry(entries)
+        manager = self._manager_instance()
+        listed = manager.list_jobs()
+        self.assertEqual(listed["count"], 2)
+        fresh = next(item for item in listed["jobs"] if item["name"] == "fake_fresh")
+        self.assertTrue(fresh["never_ran"], fresh)
+        self.assertTrue(fresh["stale"], fresh)
+        self.assertFalse(fresh["freshness"]["ok"], fresh["freshness"])
+        with self.assertRaises(core.PluginError) as ctx:
+            manager.start_job("fake_disabled")
+        self.assertEqual(ctx.exception.code, "job_disabled")
+        started = manager.start_job("fake_fresh")
+        self.assertTrue(started["ok"], started)
+        final = self._wait_status(started["job_id"], lambda s: s["final"])
+        self.assertEqual(final["phase"], "finished", final)
+        self.assertTrue(final["progress"]["succeeded"], final)
+        self.assertFalse(final["progress"]["answer_empty"], final)
+        self.assertFalse(any("EMPTY answer" in w for w in final["warnings"]), final)
+        self.assertTrue((self.root / "fresh_out.txt").is_file())
+        self._make_test_db(core.utc_now().date().isoformat())
+        listed = manager.list_jobs()
+        fresh = next(item for item in listed["jobs"] if item["name"] == "fake_fresh")
+        self.assertFalse(fresh["never_ran"], fresh)
+        self.assertIsNotNone(fresh["last_success"], fresh)
+        self.assertTrue(fresh["freshness"]["ok"], fresh["freshness"])
+        self.assertFalse(fresh["stale"], fresh)
+        confirmed = manager.start_job("fake_disabled", confirm=True)
+        confirmed_final = self._wait_status(confirmed["job_id"], lambda s: s["final"])
+        self.assertEqual(confirmed_final["phase"], "finished", confirmed_final)
+
+    def test_resource_lock_contention(self):
+        hold = self._fake_job(
+            "hold_db", "import time; time.sleep(20)",
+            enabled=False, locks=["db:equity_intelligence.db"],
+        )
+        same = self._fake_job(
+            "same_db", "print('same lock')",
+            enabled=False, locks=["db:equity_intelligence.db"],
+        )
+        other = self._fake_job(
+            "other_gpu", "print('other lock')", enabled=False, locks=["gpu"],
+        )
+        self._write_jobs_registry([hold, same, other])
+        manager = self._manager_instance()
+        started = manager.start_job("hold_db", confirm=True)
+        self._wait_status(started["job_id"], lambda s: s["running"])
+        with self.assertRaises(core.PluginError) as ctx:
+            manager.start_job("same_db", confirm=True)
+        self.assertEqual(ctx.exception.code, "resource_busy")
+        self.assertIn(
+            "db:equity_intelligence.db", ctx.exception.details.get("resource_locks", [])
+        )
+        allowed = manager.start_job("other_gpu", confirm=True)
+        self.assertEqual(
+            self._wait_status(allowed["job_id"], lambda s: s["final"])["phase"],
+            "finished",
+        )
+        self.assertTrue(manager.cancel_worker(started["job_id"], confirm=True)["ok"])
 
     def test_heartbeat_launch_args_unit(self):
         capabilities = heartbeat.LauncherCapabilities(

@@ -194,6 +194,71 @@ def atomic_write_json_locked(path: Path, value: Any, lock_path: Path | None = No
         atomic_write_json(path, value)
 
 
+RESOURCE_LOCK_DIR = "resources"
+
+
+def resource_lock_path(locks_dir: Path, name: str) -> Path:
+    """Stable file for one named resource lock (``db:``, ``gpu``, ``net:``)."""
+    key = hashlib.sha256(str(name).encode("utf-8", "replace")).hexdigest()[:32]
+    return Path(locks_dir) / RESOURCE_LOCK_DIR / f"{key}.lock"
+
+
+class HeldFileLock:
+    """A byte-range lock held for a process/job lifetime.
+
+    The supervisor keeps one of these open per resource lock for the whole job,
+    so the Windows kernel releases it if the supervisor dies -- a crashed job
+    can never leave a stale named lock behind.
+    """
+
+    def __init__(self, path: Path, fd: int) -> None:
+        self.path = path
+        self.fd = fd
+
+    def write_record(self, record: dict[str, Any]) -> None:
+        payload = (json.dumps(record, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        if self.fd is None:
+            return
+        os.lseek(self.fd, 0, os.SEEK_SET)
+        os.ftruncate(self.fd, 0)
+        os.write(self.fd, payload)
+
+    def release(self) -> None:
+        if self.fd is None:
+            return
+        try:
+            _unlock_fd(self.fd)
+        except OSError:
+            pass
+        try:
+            os.close(self.fd)
+        finally:
+            self.fd = None
+
+
+def acquire_lock_file(path: Path, timeout: float = 2.0) -> HeldFileLock | None:
+    """Acquire one byte-range lock without the thread-local reentrancy path.
+
+    Returns ``None`` when the lock is held elsewhere (or the timeout expires).
+    Used for job-lifetime resource locks in the supervisor and non-blocking
+    probes from the MCP server.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(path), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        if os.fstat(fd).st_size == 0:
+            os.write(fd, b"\0")
+        _lock_fd(fd, max(0.0, float(timeout)))
+    except (OSError, TimeoutError):
+        os.close(fd)
+        return None
+    return HeldFileLock(path, fd)
+
+
+def try_lock_file(path: Path) -> HeldFileLock | None:
+    return acquire_lock_file(path, timeout=0.0)
+
+
 def append_jsonl_locked(path: Path, record: dict[str, Any], lock_path: Path | None = None) -> None:
     """Append one complete JSON line under the shared job lock."""
     line = json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n"

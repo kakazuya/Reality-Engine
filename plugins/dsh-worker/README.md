@@ -12,6 +12,7 @@ provider route, credentials, or Codex's main model.
   rely on Codex's `PATH`: a bundled Python may not have the MCP dependency.
 - `mcp` Python SDK `>=2.3,<3` (declared in `requirements.txt`; verify with the
   pinned interpreter: `<python.exe> -m pip show mcp`)
+- PyYAML `>=6,<7` for `jobs.yaml` (also declared in `requirements.txt`)
 - Windows job objects, `taskkill` (with a native parent-PID fallback for
   restricted tokens) and DPAPI (`CryptProtectData`, ctypes) for owned-tree
   containment/cancellation and the persisted per-job control token
@@ -31,6 +32,7 @@ C:\Users\warri\AppData\Local\Programs\Python\Python314\python.exe -c "import mcp
 ```
 plugins/dsh-worker/
   .mcp.json                   stdio MCP launch config
+  jobs.yaml                   data-job registry (every job disabled; see below)
   server/                     Python MCP server + detached supervisor
   skills/dsh-worker/SKILL.md  Codex workflow guidance
   runtime/                    gitignored job/status/result records
@@ -195,6 +197,70 @@ worktree. The worker environment gets `REALITY_DATA_ROOT`
 (`<repo>/reality_engine/data` by default, overridable with the env var) and the
 first line of a worktree brief tells the worker to read it by absolute path and
 treat it as read-only.
+
+## Merge queue (Phase 2)
+
+`merge_worker(job_id, target="main", run_tests=true, test_cmd=None)` merges a
+finished worktree branch into `target` from the main checkout, holding the
+repo-wide merge lock (`runtime/locks/merge-queue.lock`) for the whole
+merge+test+rollback. It refuses unless the main checkout is on `target` and has
+no unfinished merge. It also refuses when the target working tree has local
+changes to files the branch touches (and, more strictly, any unrelated tracked
+change, because a rollback uses `reset --hard` and the queue never stashes).
+
+The merge is `git merge --no-ff` with subject `Merge dsh/<job_id> [dsh <job_id>]`
+and a `DSH-Job: <job_id>` body trailer. If `mergiraf` is already on `PATH` it is
+used as a per-command merge driver (temporary `core.attributesFile` + driver
+`-c` config); nothing is installed or configured globally. `run_tests` then runs
+`test_cmd`, else the job's declared `test_cmd` (from `start_worker`), else a
+compile-only quick suite (`compileall` over `reality_engine`/`plugins`). On a
+non-zero test exit the target is reset to its pre-merge `HEAD`; failed test
+output tails are returned. On conflict the queue reports the conflicted files
+and combined-diff hunk counts, runs `merge --abort`, and verifies the target is
+back at its pre-merge `HEAD` with a clean tracked working tree. Nothing is ever
+pushed.
+
+`remove_worktree(job_id, delete_branch=false)` removes a finished job's worktree
+with a safe `git worktree remove` (a dirty worktree is refused, not forced) and
+optionally deletes the branch with `git branch -d` (unmerged branches are
+reported). `push(target="main", confirm=false)` refuses unless `confirm=true`;
+only pass that on Shivam's explicit go-ahead, and it refuses when `origin` is
+not configured.
+
+## Data-job runner (Phase 2)
+
+`plugins/dsh-worker/jobs.yaml` is the shared registry for the recurring data jobs
+inventoried in `tasks/DATA_JOBS_AUDIT_2026-10-24.md` (all 57). `DSH_WORKER_JOBS_FILE`
+overrides the registry path for isolated tests. Each entry has
+name, argv (with `{date}`/`{start}`/`{repo_root}`/`{data_root}` placeholders),
+cwd, env, description, writes, named resource locks (`db:<file>`, `gpu`,
+`net:<host>`), cadence, a read-only SQL freshness check
+(`success_check: {db, sql, expect: {kind: max_date|min_count, ...}}`),
+off-peak/market-hours rules, `needs_paid_api`, `needs_gpu`, and `enabled`.
+Every job ships `enabled: false` because Shivam disabled the scheduled tasks on
+2026-10-21; re-enable only on his word. `start_job` therefore refuses a disabled
+job unless `confirm=true` (an explicit one-off), and also refuses paid/off-peak
+or market-hours jobs in a restricted window unless confirmed.
+
+`start_job(name, args=None, confirm=False)` runs the argv through the same
+supervisor/status/lease/steering machinery as a worker (7200 s lease, owner
+session, cancel/renew/claim all work), with no dsh model call, and returns
+`run_id` (= job_id). The supervisor takes the named resource locks as OS
+byte-range locks for its whole lifetime — a crashed job cannot leave a stale
+lock, and a second job needing `db:equity_intelligence.db` or `gpu` is refused
+with `resource_busy` (the MCP server probes the locks first to fail fast; the
+supervisor re-checks atomically). `list_jobs()` reports each job's enabled state,
+latest run and last successful run from the job history, never-ran flag, live
+freshness from the SQL check, staleness against cadence, resource locks and
+paid/GPU flags. The checks are read-only (`mode=ro`, `PRAGMA query_only`) and
+bounded; a slow/locked DB is reported as unverifiable, not as success.
+`job_log(run_id_or_name, tail=200)` returns bounded stdout/stderr/supervisor
+tails for one run (or the newest run of a job name).
+
+Run data jobs only through these tools: failure classes that exit 0 while
+writing nothing (the 2026-10-20 EOD stall) are caught by the freshness check, not
+by the exit code. Do not start real fetch/ingest jobs from a test or review
+session.
 
 ## Heartbeat / message integration
 
@@ -385,4 +451,9 @@ processes. They cover prompt startup, path rejection, concurrency, status/result
 persistence, result bounds, cancellation cleanup, DPAPI shared control across
 two server processes, claim/renew/steering audit, the two-hour lease cap, the
 per-job write race, worktree creation, per-worktree locks, two parallel
-worktree writers, and supervisor auto-commit on `dsh/<job_id>`.
+worktree writers, supervisor auto-commit on `dsh/<job_id>`, merge success with
+tests, rollback on failing tests, a real merge conflict that is aborted cleanly,
+dirty/missing target refusal and push refusal, the jobs.yaml inventory/schema,
+disabled-job refusal, resource-lock contention, live freshness checks, and one
+end-to-end fake data job (`start_job`/`job_log`/`list_jobs`) visible from a
+second server process. No real fetch/ingest job is started by the tests.

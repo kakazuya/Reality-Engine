@@ -1,0 +1,1021 @@
+# dsh-worker data-job registry (Phase 2, tasks/DSH_FLEET_PLAN_2026-10-24.md)
+#
+# Source of every entry: tasks/DATA_JOBS_AUDIT_2026-10-24.md (job numbers in
+# comments).  Every job is disabled: Shivam disabled the scheduled tasks on
+# 2026-10-21; re-enable only on his word.  start_job refuses a disabled entry
+# unless the caller passes confirm=true (an explicit one-off).
+#
+# argv[0] "python" is replaced with the MCP server's interpreter.  In argv,
+# {date} = today (YYYY-MM-DD), {start} = today-10d, {repo_root}, {data_root}.
+# extra start_job(name, args=[...]) entries are appended to argv.
+#
+# success_check runs as a read-only SQLite query (mode=ro + PRAGMA query_only)
+# with a bounded budget.  expect.kind=max_date compares the returned date to
+# max_age_days; expect.kind=min_count compares the returned count to min_count.
+# A job that exits 0 while writing nothing is therefore still reported stale.
+#
+# resource_locks are held for the job's lifetime by the supervisor with OS byte
+# range locks (db:<filename>, gpu, net:<host>), so two jobs never share one.
+schema: dsh-worker-jobs/1
+jobs:
+  # ---------------------------------------------------------------- market chain
+  - name: market_raw_exchange  # audit #1
+    description: "Exchange daily files: NSE full/CM-ISIN/indices/SME, BSE bhav+delivery, participant OI+volume, FII stats."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_market_raw", "--sources", "nse_full,nse_cm_isin,nse_index,bse_bhav,bse_deliv,nse_part_oi,nse_part_vol,nse_fii_stats", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/raw_market/"]
+    resource_locks: ["net:www.nseindia.com", "net:www.bseindia.com"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM mkt_nse_full_daily"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: nse_api_raw  # audit #2
+    description: "NSE API raw: bulk/block/short deals, PIT feed/XML, SAST, corporate actions."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_nse_api_raw", "--datasets", "nse_bulk,nse_block,nse_short,nse_pit_gg,nse_pit_gg_sme,nse_pit_gg_xml,nse_sast,nse_corpact,nse_corpact_sme", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/raw_market/nse_*"]
+    resource_locks: ["net:www.nseindia.com"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(broadcast_at) AS value FROM mkt_nse_pit_filings"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: bse_api_raw  # audit #3
+    description: "BSE API raw: bulk/block/insider/index datasets and corporate actions."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_bse_api_raw", "--datasets", "bse_bulk,bse_block,bse_insider,bse_index,bse_corpact", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/raw_market/bse_*"]
+    resource_locks: ["net:www.bseindia.com"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM mkt_bse_deals"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: nsdl_fpi_raw  # audit #4
+    description: "NSDL FPI daily raw feed."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_nsdl_raw", "--datasets", "nsdl_fpi_daily", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/raw_market/nsdl_fpi_daily/"]
+    resource_locks: ["net:www.fpi.nsdl.co.in"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM mkt_nsdl_fpi_daily"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: fii_dii_moneycontrol  # audit #5
+    description: "FII/DII cash-market statistics (Moneycontrol protobuf)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_fiidii_moneycontrol", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/raw_market/mc_fiidii/<year>.pb"]
+    resource_locks: ["net:www.moneycontrol.com"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM mkt_fii_dii_cash"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: load_market_raw  # audit #6
+    description: "Load raw market files into the mkt_* tables and mkt_load_log."
+    argv: ["python", "-m", "reality_engine.scripts.load_market_raw", "--sources", "nse_full,nse_index,bse_bhav,bse_deliv,nse_part_oi,nse_part_vol,nse_fii_stats,nse_bulk,nse_block,nse_short,nse_pit_gg,nse_pit_gg_sme,nse_pit_gg_xml,nse_sast,nse_corpact,bse_bulk,bse_block,bse_insider,bse_index,nsdl_fpi_daily,mc_fiidii"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:mkt_*", "equity_intelligence.db:mkt_load_log"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(loaded_at) AS value FROM mkt_load_log"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: security_master  # audit #7
+    description: "Security master and symbol-ISIN history from the loaded market layer."
+    argv: ["python", "-m", "reality_engine.scripts.build_security_master"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:security_master", "equity_intelligence.db:symbol_isin_history"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(last_seen_nse) AS value FROM security_master"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: nse_pr_circuits  # audit #8
+    description: "NSE circuit hits, price bands and GSM/ASM days (2019 backfill + last-10-day refresh)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_nse_pr", "--start", "{start}"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:circuit_hits", "equity_intelligence.db:price_bands", "equity_intelligence.db:nse_pr_days"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM circuit_hits"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: nse_industry  # audit #9
+    description: "NSE industry classification (one-shot + monthly)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_nse_industry"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:company_industry"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: monthly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(fetched_at) AS value FROM company_industry"
+      expect: {kind: max_date, max_age_days: 40}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: shareholding  # audit #10
+    description: "Shareholding pattern index, XBRL facts and parsed view (quarterly + backfill)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_shareholding", "--index", "--start", "2021-01", "--symbols", "--xbrl", "--parse"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:shp_index", "equity_intelligence.db:shp_facts", "equity_intelligence.db:shareholding"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: quarterly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(broadcast_at) AS value FROM shp_index"
+      expect: {kind: max_date, max_age_days: 100}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: etf_nav  # audit #11
+    description: "ETF prices, AMFI NAV and iNAV (EOD step 11)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_etf_nav"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:etf_px", "equity_intelligence.db:etf_master", "equity_intelligence.db:fund_nav", "equity_intelligence.db:etf_inav"]
+    resource_locks: ["net:www.nseindia.com", "net:www.amfiindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM etf_px"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: index_tri  # audit #12
+    description: "Total-return indices used by the benchmark rule."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_index_tri", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:index_tri"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM index_tri"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: board_meetings  # audit #13
+    description: "Board-meeting calendar, 90 days ahead."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_board_meetings", "--ahead", "90"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:board_meetings"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(fetched_at) AS value FROM board_meetings"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: bse_announcements  # audit #14
+    description: "BSE market-wide announcements feed (dedicated announcements DB)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_bse_announcements_daily", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["bse_announcements.db:ann"]
+    resource_locks: ["net:www.bseindia.com", "db:bse_announcements.db"]
+    cadence: daily
+    success_check:
+      db: bse_announcements.db
+      sql: "SELECT max(DT_TM) AS value FROM ann"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: discover_bse_feed_docs  # audit #15
+    description: "Discover new transcripts/decks from the BSE feed."
+    argv: ["python", "-m", "reality_engine.scripts.discover_bse_feed_docs", "--since", "{start}"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:corporate_documents"]
+    resource_locks: ["net:www.bseindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(created_at) AS value FROM corporate_documents"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: bse_annual_report_dates  # audit #16
+    description: "BSE annual-report filing dates (PIT): fetch, apply, report."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_bse_annual_report_dates", "fetch"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:bse_annual_reports"]
+    resource_locks: ["net:www.bseindia.com", "db:equity_intelligence.db"]
+    cadence: once
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(fetched_at) AS value FROM bse_annual_reports"
+      expect: {kind: max_date, max_age_days: 400}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: commodity_series  # audit #17
+    description: "Commodity daily/monthly series loaded into the market layer."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_market_raw", "--sources", "commodity_daily,commodity_monthly", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:mkt_commodity_daily", "equity_intelligence.db:mkt_commodity_monthly"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM mkt_commodity_daily"
+      expect: {kind: max_date, max_age_days: 8}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: nse_sme_bhavcopy  # audit #18
+    description: "NSE SME bhavcopy (upstream URL changed; SME prices still arrive in mkt_nse_full_daily)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_market_raw", "--sources", "nse_sme", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:mkt_nse_sme_daily"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM mkt_nse_sme_daily"
+      expect: {kind: max_date, max_age_days: 400}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: index_ohlc_breadth  # audit #19
+    description: "Index OHLC breadth for the four universe legs."
+    argv: ["python", "-m", "reality_engine.scripts.backfill_index_ohlc"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:nse_index_breadth"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM nse_index_breadth"
+      expect: {kind: max_date, max_age_days: 8}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: market_breadth_financially_free  # audit #20
+    description: "FinanciallyFree advance/decline market breadth (never populated)."
+    argv: ["python", "reality_engine/cli.py", "run-phase1"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:financially_free_breadth"]
+    resource_locks: ["net:www.moneycontrol.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT count(*) AS value FROM financially_free_breadth"
+      expect: {kind: min_count, min_count: 1}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: index_membership  # audit #21
+    description: "Index membership snapshot (currently one non-PIT snapshot)."
+    argv: ["python", "-m", "reality_engine.scripts.load_index_membership"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:index_membership"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: monthly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(as_of) AS value FROM index_membership"
+      expect: {kind: max_date, max_age_days: 120}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: price_delivery_backfill  # audit #22
+    description: "Normalized price+delivery table read by every backtest (short and stale history)."
+    argv: ["python", "reality_engine/cli.py", "backfill", "--days", "10"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:daily_price_delivery"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM daily_price_delivery"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: insider_trades_normalized  # audit #23
+    description: "PIT insider trades normalized into insider_trades (never populated)."
+    argv: ["python", "reality_engine/cli.py", "run-phase1"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:insider_trades"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT count(*) AS value FROM insider_trades"
+      expect: {kind: min_count, min_count: 1}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: nse_pit_monthly_legacy  # audit #24
+    description: "Legacy NSE PIT monthly feed (superseded by mkt_nse_pit_filings)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_nse_api_raw", "--datasets", "nse_pit", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:mkt_nse_insider"]
+    resource_locks: ["net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: monthly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(intimation_date) AS value FROM mkt_nse_insider"
+      expect: {kind: max_date, max_age_days: 400}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: results_xbrl_legacy  # audit #25
+    description: "Legacy NSE results XBRL one-shot fetch (superseded by the integrated feed)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_nse_api_raw", "--datasets", "nse_results_xbrl", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["results_xbrl.db:filings", "results_xbrl.db:facts"]
+    resource_locks: ["net:www.nseindia.com", "db:results_xbrl.db"]
+    cadence: once
+    success_check:
+      db: results_xbrl.db
+      sql: "SELECT max(period_end) AS value FROM filings"
+      expect: {kind: max_date, max_age_days: 120}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: integrated_results_xbrl  # audit #26
+    description: "Integrated results (Mar-2025 onward): fetch + XBRL parse into filings/facts."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_nse_api_raw", "--datasets", "nse_integrated,nse_integrated_xbrl", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["results_xbrl.db:filings", "results_xbrl.db:facts", "results_xbrl.db:filings_isin"]
+    resource_locks: ["net:www.nseindia.com", "db:results_xbrl.db"]
+    cadence: daily
+    success_check:
+      db: results_xbrl.db
+      sql: "SELECT max(period_end) AS value FROM filings"
+      expect: {kind: max_date, max_age_days: 120}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  # --------------------------------------------------------- document corpus
+  - name: pib_english  # audit #27
+    description: "PIB English daily (last 3 days); historical backfill uses --start 2021-01-01."
+    argv: ["python", "-m", "reality_engine.scripts.pib_feed", "--start", "{start}", "--end", "{date}"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:pib_releases", "equity_intelligence.db:pib_days", "equity_intelligence.db:raw_documents"]
+    resource_locks: ["net:pib.gov.in", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(release_date) AS value FROM pib_releases"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: pib_regional  # audit #28
+    description: "PIB regional/multilingual sample feed and title/body translation matching."
+    argv: ["python", "-m", "reality_engine.scripts.pib_regional", "--start", "{start}", "--end", "{date}", "--match", "body"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:pib_ml_releases", "equity_intelligence.db:pib_ml_days", "equity_intelligence.db:pib_ml_match"]
+    resource_locks: ["net:pib.gov.in", "db:equity_intelligence.db"]
+    cadence: weekly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(release_date) AS value FROM pib_ml_releases"
+      expect: {kind: max_date, max_age_days: 8}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: pib_legacy_ingest  # audit #29
+    description: "Legacy PIB ingest into raw_documents (superseded; was never scheduled)."
+    argv: ["python", "-m", "reality_engine.scripts.run_pib_ingest", "--limit", "100"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:raw_documents"]
+    resource_locks: ["net:pib.gov.in", "db:equity_intelligence.db"]
+    cadence: once
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT count(*) AS value FROM raw_documents WHERE source_type LIKE 'PIB%'"
+      expect: {kind: min_count, min_count: 1}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: policy_register  # audit #30
+    description: "Policy-event register over macro documents (doc pass complete; --source pib pass never started)."
+    argv: ["python", "-m", "reality_engine.scripts.policy_register", "--source", "doc", "--doc-types", "Union_Budget,Union Budget%,Economic_Survey,RBI%,State_Budget%,PIB_Circular", "--workers", "24"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:policy_events", "equity_intelligence.db:policy_docs"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: once
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(published_at) AS value FROM policy_events"
+      expect: {kind: max_date, max_age_days: 14}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: macro_documents  # audit #31
+    description: "Macro document fetch: Union Budget, Economic Survey, RBI, state budgets."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_macro_docs", "--sources", "union,survey,rbi,states"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/macro_pdfs/", "equity_intelligence.db:raw_documents"]
+    resource_locks: ["net:www.indiabudget.gov.in", "net:www.rbi.org.in", "db:equity_intelligence.db"]
+    cadence: monthly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(published_date) AS value FROM raw_documents WHERE source_type LIKE 'Union%' OR source_type LIKE 'Economic%' OR source_type LIKE 'RBI%'"
+      expect: {kind: max_date, max_age_days: 400}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: ar_download  # audit #32
+    description: "Annual-report PDF download (corpus directory is external; download only)."
+    argv: ["python", "-m", "reality_engine.scripts.run_annual_report_ingest", "--download-only", "--since", "2019-04-01", "--active-since", "2025-10-01"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:corporate_documents", "external:REALITY_ENGINE_PDFS_DIR"]
+    resource_locks: ["net:www.bseindia.com", "net:www.nseindia.com", "db:equity_intelligence.db"]
+    cadence: manual
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT count(*) AS value FROM corporate_documents WHERE doc_type LIKE '%ANNUAL%'"
+      expect: {kind: min_count, min_count: 1}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: ar_fact_extraction  # audit #33
+    description: "Annual-report fact extraction with reader routes (quota-bound; AnnualDrain task disabled)."
+    argv: ["python", "-m", "reality_engine.scripts.ingest_annual_reports"]
+    cwd: "."
+    env: {}
+    writes: ["ar_facts.db:ar_docs", "ar_facts.db:ar_facts", "ar_facts.db:ar_pieces", "ar_facts.db:ar_claims"]
+    resource_locks: ["net:opencode.ai", "db:ar_facts.db"]
+    cadence: continuous
+    success_check:
+      db: ar_facts.db
+      sql: "SELECT max(filed_at) AS value FROM ar_docs"
+      expect: {kind: max_date, max_age_days: 30}
+    off_peak_only: true
+    market_hours: any
+    needs_paid_api: true
+    needs_gpu: false
+    enabled: false
+
+  - name: ar_chunking  # audit #34
+    description: "Chunk annual reports into the search layer (ingestion queue)."
+    argv: ["python", "-m", "reality_engine.scripts.run_ingestion_queue", "--only", "annual_n200", "--batch", "10"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:document_chunks", "equity_intelligence.db:intelligence_fts"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: hourly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(published_date) AS value FROM raw_documents WHERE source_type = 'ANNUAL_REPORT'"
+      expect: {kind: max_date, max_age_days: 400}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: deck_discovery  # audit #35
+    description: "Investor-presentation deck discovery from BSE/NSE (2021 onward)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_decks", "bse", "--since", "2021-01-01"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/decks/", "deck_figures.db:deck_sources"]
+    resource_locks: ["net:www.bseindia.com", "net:www.nseindia.com", "db:deck_figures.db"]
+    cadence: daily
+    success_check:
+      db: deck_figures.db
+      sql: "SELECT max(known_at) AS value FROM deck_sources"
+      expect: {kind: max_date, max_age_days: 30}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: deck_figure_extraction  # audit #36
+    description: "Vision extraction of deck pages/figures/chart trends (quota + GPU-bound; stopped)."
+    argv: ["python", "-m", "reality_engine.scripts.extract_deck_figures"]
+    cwd: "."
+    env: {}
+    writes: ["deck_figures.db:pages", "deck_figures.db:outputs", "deck_figures.db:facts", "deck_figures.db:chart_trends"]
+    resource_locks: ["gpu", "db:deck_figures.db", "net:opencode.ai"]
+    cadence: continuous
+    success_check:
+      db: deck_figures.db
+      sql: "SELECT count(*) AS value FROM pages"
+      expect: {kind: min_count, min_count: 1}
+    off_peak_only: true
+    market_hours: any
+    needs_paid_api: true
+    needs_gpu: true
+    enabled: false
+
+  - name: concall_extraction  # audit #37
+    description: "Concall transcript extraction (2026 set complete to 2026-10-14; Go quota-bound)."
+    argv: ["python", "-m", "reality_engine.scripts.concall_deepseek", "--workers", "25", "--week-cap", "1000"]
+    cwd: "."
+    env: {}
+    writes: ["concall_facts.db:cc_docs", "concall_facts.db:cc_items"]
+    resource_locks: ["net:opencode.ai", "db:concall_facts.db"]
+    cadence: continuous
+    success_check:
+      db: concall_facts.db
+      sql: "SELECT max(filed_at) AS value FROM cc_docs"
+      expect: {kind: max_date, max_age_days: 30}
+    off_peak_only: true
+    market_hours: any
+    needs_paid_api: true
+    needs_gpu: false
+    enabled: false
+
+  - name: weekly_sebi_ingest  # audit #38
+    description: "Weekly SEBI offer documents (DRHP) into raw_documents + chunks."
+    argv: ["python", "-m", "reality_engine.scripts.weekly_sebi_ingest", "--since", "2021", "--workers", "4"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:raw_documents", "equity_intelligence.db:document_chunks", "equity_intelligence.db:company_distilled_parameters"]
+    resource_locks: ["net:www.sebi.gov.in", "db:equity_intelligence.db"]
+    cadence: weekly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT count(*) AS value FROM raw_documents WHERE source_type = 'OFFER_DOCUMENT'"
+      expect: {kind: min_count, min_count: 1}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: true
+    needs_gpu: false
+    enabled: false
+
+  - name: telegram_ingest  # audit #39
+    description: "Telegram posts / PEAD signals / orders (live listener + backfill)."
+    argv: ["python", "reality_engine/scripts/tg_backfill.py"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:telegram_posts", "equity_intelligence.db:tg_pead_signals", "equity_intelligence.db:tg_orders"]
+    resource_locks: ["net:api.telegram.org", "db:equity_intelligence.db"]
+    cadence: continuous
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(post_timestamp) AS value FROM telegram_posts"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: video_youtube_ingest  # audit #40
+    description: "YouTube/video ingestion with timestamps and Whisper transcription."
+    argv: ["python", "reality_engine/scripts/ingest_video_batch.py", "--all"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:raw_documents", "equity_intelligence.db:document_chunks"]
+    resource_locks: ["gpu", "net:www.youtube.com", "db:equity_intelligence.db"]
+    cadence: manual
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT count(*) AS value FROM raw_documents WHERE source_type LIKE 'YouTube%'"
+      expect: {kind: min_count, min_count: 1}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: true
+    enabled: false
+
+  - name: news_loop  # audit #41
+    description: "News RSS + infographic OCR + prune loop (no log has ever been produced)."
+    argv: ["python", "-m", "reality_engine.pipeline.news_loop", "--run"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:raw_documents", "equity_intelligence.db:intelligence_fts", "equity_intelligence.db:news_visual_artifacts"]
+    resource_locks: ["gpu", "net:news.google.com", "db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(created_at) AS value FROM raw_documents WHERE source_type LIKE 'news%'"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: true
+    enabled: false
+
+  - name: inbox_ingest  # audit #42
+    description: "Ingest local inbox PDFs/images into raw_documents and chunks (inbox empty)."
+    argv: ["python", "reality_engine/cli.py", "process-inbox"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:raw_documents", "equity_intelligence.db:document_chunks", "equity_intelligence.db:inbox_ingestion_manifest"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: manual
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT count(*) AS value FROM inbox_ingestion_manifest"
+      expect: {kind: min_count, min_count: 1}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  # ---------------------------------------------- derived / promotion / checks
+  - name: truth_snapshot  # audit #43
+    description: "Nightly research-layer DuckDB truth snapshot (EOD step 14)."
+    argv: ["python", "-m", "reality_engine.scripts.build_truth_snapshot"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/snapshots/truth_<date>.duckdb"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: daily
+    success_check: null
+    success_check_note: "DuckDB snapshot has no SQLite table; check the newest truth_*.duckdb mtime."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: nightly_chain  # audit #44
+    description: "Nightly master sync -> backfill -> fundamentals -> screens -> EOD correction (never scheduled)."
+    argv: ["python", "-m", "reality_engine.pipeline.nightly_runner"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:daily_price_delivery", "equity_intelligence.db:eod_scrip_calls", "equity_intelligence.db:move_attribution"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM daily_price_delivery"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: peer_substrate_promotion  # audit #45
+    description: "Peer graph / entity graph / substrate hygiene promotion runs (on demand)."
+    argv: ["python", "-m", "reality_engine.scripts.run_peer_graph"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:company_peer_graph", "equity_intelligence.db:substrate_quarantine"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: manual
+    success_check: null
+    success_check_note: "On-demand graph run; no per-run freshness date contract."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: data_quality_gates  # audit #46
+    description: "Data-quality gates: coverage report, data audit, state handcheck (report-only)."
+    argv: ["python", "reality_engine/cli.py", "audit-data"]
+    cwd: "."
+    env: {}
+    writes: ["stdout:coverage+audit report"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: manual
+    success_check: null
+    success_check_note: "Report-only; inspect job stdout/run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: query_speed_check  # audit #47
+    description: "Query-speed advisory check (EOD step 15)."
+    argv: ["python", "-m", "reality_engine.scripts.query_speed_check"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/logs/query_speed.jsonl"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: daily
+    success_check: null
+    success_check_note: "Writes a JSONL report; inspect the newest query_speed.jsonl / run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  # --------------------------------------------------------------- ops / supervision
+  - name: boot_recover  # audit #48
+    description: "Boot recovery: restart all jobs after a power cut (startup/logon task)."
+    argv: ["pythonw", "-u", "-m", "reality_engine.scripts.boot_recover"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/logs/boot_recover_status.json"]
+    resource_locks: []
+    cadence: once
+    success_check: null
+    success_check_note: "Ops supervisor; verify boot_recover.log and run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: resource_watchdog  # audit #49
+    description: "Resource watchdog (CPU/RAM/network incident recorder; not auto-started here)."
+    argv: ["python", "-m", "reality_engine.scripts.resource_watchdog"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/logs/resource_watchdog_report.md", "reality_engine/data/logs/resource_incidents.jsonl"]
+    resource_locks: []
+    cadence: continuous
+    success_check: null
+    success_check_note: "Watchdog reports to logs; verify the live report/run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: deepseek_heartbeat  # audit #50
+    description: "Hourly DeepSeek heartbeat (scheduled task disabled)."
+    argv: ["python", "-m", "reality_engine.scripts.deepseek_heartbeat"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/logs/deepseek_heartbeat.log"]
+    resource_locks: ["net:opencode.ai"]
+    cadence: hourly
+    success_check: null
+    success_check_note: "Log-only hourly probe; verify the log tail and run history."
+    off_peak_only: true
+    market_hours: any
+    needs_paid_api: true
+    needs_gpu: false
+    enabled: false
+
+  - name: db_backup  # audit #51
+    description: "Database backup to Drive (currently broken: PermissionError on its own log)."
+    argv: ["python", "-m", "reality_engine.scripts.backup_dbs_to_drive"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/logs/db_backup.log", "external:Drive backup set"]
+    resource_locks: ["db:equity_intelligence.db", "db:results_xbrl.db", "db:concall_facts.db", "db:ar_facts.db", "db:deck_figures.db", "db:bse_announcements.db", "net:drive.google.com"]
+    cadence: daily
+    success_check: null
+    success_check_note: "File/Drive copy; verify the backup set and run history (currently broken)."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: capacity_loop  # audit #52
+    description: "Capacity loop, report-only (no evidence since September)."
+    argv: ["python", "-m", "reality_engine.pipeline.capacity_loop"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/logs/capacity/"]
+    resource_locks: []
+    cadence: continuous
+    success_check: null
+    success_check_note: "Report-only loop; verify data/logs/capacity and run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: continuous_loop  # audit #53
+    description: "30-minute continuous agent pass (stopped 2026-09-26)."
+    argv: ["python", "-m", "reality_engine.pipeline.continuous_loop", "--agent"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/logs/loop/"]
+    resource_locks: []
+    cadence: continuous
+    success_check: null
+    success_check_note: "Agent loop; verify data/logs/loop and run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: forecast_tester  # audit #54
+    description: "Forecast tester loop (no evidence since September)."
+    argv: ["python", "-m", "reality_engine.pipeline.forecast_tester"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/data/logs/forecast/"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: continuous
+    success_check: null
+    success_check_note: "Loop writes logs; verify data/logs/forecast and run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: routines_dispatcher  # audit #55
+    description: "Five-minute routines dispatcher (routines.json is empty, so it does nothing)."
+    argv: ["python", "-m", "reality_engine.pipeline.routines", "--tick"]
+    cwd: "."
+    env: {}
+    writes: ["reality_engine/agent/routines.json (read only)"]
+    resource_locks: []
+    cadence: continuous
+    success_check: null
+    success_check_note: "Dispatcher has no output table; verify run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: drive_upload  # audit #56
+    description: "PDF/archive upload to Drive via rclone (stopped)."
+    argv: ["rclone", "copy", "reality_engine/data/pdfs", "gdrive:RealityEngine/pdfs", "--bwlimit", "8M"]
+    cwd: "."
+    env: {}
+    writes: ["external:Drive"]
+    resource_locks: ["net:drive.google.com"]
+    cadence: daily
+    success_check: null
+    success_check_note: "rclone copy; verify the rclone log and run history."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
+  - name: db_merge_migrations  # audit #57
+    description: "One-off DB merge/migration/restore scripts (done, not recurring)."
+    argv: ["python", "-m", "reality_engine.scripts.merge_lane_db", "--help"]
+    cwd: "."
+    env: {}
+    writes: ["various local databases"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: once
+    success_check: null
+    success_check_note: "One-off migration; no recurring freshness contract."
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false

@@ -23,6 +23,7 @@ from typing import Any
 
 import gitutil
 import heartbeat
+import jobs
 import procutil
 import progress
 from store import (
@@ -48,12 +49,14 @@ from store import (
     read_lease,
     read_text_bounded,
     read_text_bounded_tail,
+    resource_lock_path,
+    try_lock_file,
     utc_now,
     valid_job_id,
     workspace_lock_name,
 )
 
-SERVER_VERSION = "0.3.0"
+SERVER_VERSION = "0.4.0"
 SERVER_STARTED_AT = datetime.now(timezone.utc)
 MODEL = "deepseek-v4.1-flash"
 EFFORT = "max"
@@ -74,7 +77,13 @@ MAX_SESSION_LABEL = 120
 MAX_STEERING_TEXT = 200
 SESSION_LABEL_ENV = "DSH_SESSION_LABEL"
 WORKTREES_ROOT_ENV = "DSH_WORKTREES_ROOT"
+JOBS_FILE_ENV = "DSH_WORKER_JOBS_FILE"
 REALITY_DATA_ROOT_ENV = "REALITY_DATA_ROOT"
+MERGE_LOCK_NAME = "merge-queue.lock"
+MAX_TEST_CMD_CHARS = 4000
+MAX_JOB_LOG_LINES = 2000
+MAX_JOB_LOG_BYTES = 262_144
+JOBS_CHECK_DEADLINE_SECONDS = 12.0
 # The one-line worker preamble for worktree jobs: gitignored data (databases,
 # indexes) lives only in the main checkout, so a worktree worker must read it
 # there by absolute path and never write to it.
@@ -181,6 +190,7 @@ class PluginConfig:
     session_label: str
     worktrees_root: Path
     data_root: Path
+    jobs_file: Path
     fake_now: datetime | None = None
     stale_after_seconds: int | None = None
     environ: dict[str, str] | None = None
@@ -287,6 +297,17 @@ def load_config(environ: dict[str, str] | None = None) -> PluginConfig:
         raise PluginError(
             "data_root_invalid", f"REALITY_DATA_ROOT cannot be resolved: {exc}"
         ) from exc
+    raw_jobs_file = env.get(JOBS_FILE_ENV)
+    try:
+        jobs_file = (
+            Path(raw_jobs_file).expanduser().resolve()
+            if raw_jobs_file
+            else (plugin_root / "jobs.yaml").resolve()
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise PluginError(
+            "jobs_file_invalid", f"{JOBS_FILE_ENV} cannot be resolved: {exc}"
+        ) from exc
     fake_now = None
     if env.get("DSH_WORKER_TESTING") == "1":
         raw_now = env.get("DSH_WORKER_FAKE_NOW")
@@ -313,6 +334,7 @@ def load_config(environ: dict[str, str] | None = None) -> PluginConfig:
         session_label=session_label(env),
         worktrees_root=worktrees_root,
         data_root=data_root,
+        jobs_file=jobs_file,
         fake_now=fake_now,
         stale_after_seconds=stale_override,
         environ=env,
@@ -831,11 +853,22 @@ class Manager:
         refresh_context: bool = True,
         use_worktree: bool = False,
         base: str | None = None,
+        test_cmd: str | None = None,
     ) -> dict[str, Any]:
         if not isinstance(use_worktree, bool):
             raise PluginError("worktree_flag_invalid", "use_worktree must be true or false")
         if base is not None and (not isinstance(base, str) or not base.strip()):
             raise PluginError("base_invalid", "base must be a non-empty git ref or omitted")
+        if test_cmd is not None and (
+            not isinstance(test_cmd, str)
+            or not test_cmd.strip()
+            or len(test_cmd) > MAX_TEST_CMD_CHARS
+            or "\x00" in test_cmd
+        ):
+            raise PluginError(
+                "test_cmd_invalid",
+                f"test_cmd must be a non-empty command of at most {MAX_TEST_CMD_CHARS} chars",
+            )
         now = self.config.now()
         if is_peak(now):
             raise PluginError(
@@ -1047,6 +1080,7 @@ class Manager:
                 "brief_first_line": brief_first_line,
                 "worktree": worktree_record,
                 "data_root": str(self.config.data_root),
+                "test_cmd": test_cmd,
                 "heartbeat": heartbeat_record,
                 "launcher": {
                     "command": launcher,
@@ -1500,7 +1534,7 @@ class Manager:
             if phase in {"failed", "lost", "cancelled"}
             else None
         )
-        if phase == "finished" and result_bytes == 0:
+        if phase == "finished" and result_bytes == 0 and job.get("kind") != "data_job":
             warnings.append(
                 "worker finished (exit 0) but wrote an empty answer; treat this as a "
                 "failed run, not a result"
@@ -1521,6 +1555,7 @@ class Manager:
             result_bytes=result_bytes,
             limits=job.get("limits") or {},
             failure_reason=failure_reason,
+            data_job=job.get("kind") == "data_job",
         )
         owner_view = self._owner_view(job, status)
         worktree_view = self._worktree_view(job, status)
@@ -1652,6 +1687,7 @@ class Manager:
         limits: dict[str, Any],
         failure_reason: dict[str, Any] | None,
         events_path: Path | None = None,
+        data_job: bool = False,
     ) -> dict[str, Any]:
         """One orchestrator-facing answer to "is it done, is it moving, by when"."""
         now = utc_now()
@@ -1683,7 +1719,10 @@ class Manager:
         last_kind = (heartbeat_live or {}).get("last_activity_kind")
         if final:
             if phase == "finished":
-                headline = "done: finished" + ("" if result_bytes else " with an EMPTY answer")
+                if data_job:
+                    headline = "done: finished"
+                else:
+                    headline = "done: finished" + ("" if result_bytes else " with an EMPTY answer")
             else:
                 cause = (failure_reason or {}).get("likely_cause")
                 headline = f"done: {phase}" + (f" ({cause})" if cause else "")
@@ -1714,8 +1753,8 @@ class Manager:
             parts.append(f"hard stop by {iso(bound[0])} ({bound[1]})")
         return {
             "done": final,
-            "succeeded": phase == "finished" and result_bytes > 0,
-            "answer_empty": phase == "finished" and result_bytes == 0,
+            "succeeded": phase == "finished" and (data_job or result_bytes > 0),
+            "answer_empty": phase == "finished" and not data_job and result_bytes == 0,
             "phase": phase,
             "elapsed_seconds": round(elapsed, 1) if elapsed is not None else None,
             "seconds_since_activity": round(idle, 1) if idle is not None else None,
@@ -1754,6 +1793,7 @@ class Manager:
             "runtime_dir": str(self.config.runtime_dir),
             "worktrees_root": str(self.config.worktrees_root),
             "reality_data_root": str(self.config.data_root),
+            "jobs_file": str(self.config.jobs_file),
             "session_label": self.config.session_label,
             "launcher": self._launcher_command()[1:],
             "launcher_capabilities": capability.as_dict(),
@@ -2418,3 +2458,713 @@ class Manager:
             "limit": limit,
             "unreadable": unreadable[:limit],
         }
+
+    # ------------------------------------------------------------ merge queue
+    def _merge_lock(self) -> Path:
+        return self.config.locks_dir / MERGE_LOCK_NAME
+
+    def _job_branch(self, job: dict[str, Any]) -> str:
+        worktree = job.get("worktree")
+        if not isinstance(worktree, dict) or not worktree.get("enabled") or not worktree.get("branch"):
+            raise PluginError(
+                "not_a_worktree_job",
+                "merge_worker only merges jobs started with use_worktree=true",
+            )
+        return str(worktree["branch"])
+
+    def _merge_test_cmd(self, value: Any) -> str | None:
+        if value is None:
+            return None
+        if (
+            not isinstance(value, str)
+            or not value.strip()
+            or len(value) > MAX_TEST_CMD_CHARS
+            or "\x00" in value
+        ):
+            raise PluginError(
+                "test_cmd_invalid",
+                f"test_cmd must be a non-empty command of at most {MAX_TEST_CMD_CHARS} chars",
+            )
+        return value.strip()
+
+    def _default_test_command(self, repo: Path) -> list[str]:
+        directories = [name for name in ("reality_engine", "plugins") if (repo / name).is_dir()]
+        if not directories:
+            return [sys.executable, "-c", "print('no source directories to compile')"]
+        return [sys.executable, "-m", "compileall", "-q", *directories]
+
+    def _run_merge_tests(self, repo: Path, command: str | list[str] | None) -> dict[str, Any]:
+        shell = isinstance(command, str)
+        args: Any = command if shell else (command or self._default_test_command(repo))
+        started = time.monotonic()
+        timed_out = False
+        try:
+            completed = subprocess.run(
+                args,
+                cwd=str(repo),
+                shell=shell,
+                capture_output=True,
+                text=True,
+                errors="replace",
+                timeout=1800,
+                creationflags=procutil.hidden_creationflags(),
+            )
+            exit_code: int | None = completed.returncode
+            stdout = completed.stdout or ""
+            stderr = completed.stderr or ""
+        except subprocess.TimeoutExpired as exc:
+            timed_out = True
+            exit_code = None
+            stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
+            stderr = (exc.stderr or "") if isinstance(exc.stderr, str) else ""
+        except OSError as exc:
+            return {
+                "passed": False,
+                "exit_code": None,
+                "timed_out": False,
+                "command": args if isinstance(args, str) else " ".join(args),
+                "duration_seconds": round(time.monotonic() - started, 2),
+                "stdout_tail": "",
+                "stderr_tail": f"{type(exc).__name__}: {exc}"[:4000],
+            }
+        return {
+            "passed": exit_code == 0 and not timed_out,
+            "exit_code": exit_code,
+            "timed_out": timed_out,
+            "command": args if isinstance(args, str) else " ".join(args),
+            "duration_seconds": round(time.monotonic() - started, 2),
+            "stdout_tail": stdout[-4000:],
+            "stderr_tail": stderr[-4000:],
+        }
+
+    def merge_worker(
+        self,
+        job_id: str,
+        target: str = "main",
+        run_tests: bool = True,
+        test_cmd: str | None = None,
+    ) -> dict[str, Any]:
+        """Merge one finished worktree branch into ``target`` under a queue lock."""
+        if not isinstance(target, str) or not target.strip() or len(target) > 200 or "\x00" in target:
+            raise PluginError("target_invalid", "target must be a local branch name")
+        if not isinstance(run_tests, bool):
+            raise PluginError("run_tests_invalid", "run_tests must be true or false")
+        command = self._merge_test_cmd(test_cmd)
+        job, _job_dir = self._load_job(job_id)
+        branch = self._job_branch(job)
+        status = self.get_status(job_id)
+        if status["running"]:
+            raise PluginError(
+                "job_running",
+                "the job is still running; merge only after it finishes",
+                phase=status["phase"],
+            )
+        try:
+            with exclusive_lock(self._merge_lock(), timeout=5.0):
+                return self._merge_locked(
+                    job, job_id, branch, target.strip(), run_tests, command
+                )
+        except TimeoutError as exc:
+            raise PluginError(
+                "merge_busy",
+                "another merge is in progress under the repo-wide merge lock",
+                lock_path=str(self._merge_lock()),
+            ) from exc
+
+    def _merge_locked(
+        self,
+        job: dict[str, Any],
+        job_id: str,
+        branch: str,
+        target: str,
+        run_tests: bool,
+        test_cmd: str | None,
+    ) -> dict[str, Any]:
+        repo = self.config.repo_root
+        target_head = gitutil.rev_parse(repo, target)
+        if target_head is None:
+            raise PluginError("target_not_found", f"target {target!r} is not a commit", target=target)
+        branch_head = gitutil.rev_parse(repo, branch)
+        if branch_head is None:
+            raise PluginError("branch_not_found", f"branch {branch!r} does not exist", branch=branch)
+        current = gitutil.current_branch(repo)
+        if current != target:
+            raise PluginError(
+                "target_not_checked_out",
+                f"the main checkout is on {current!r}; check out {target!r} before merging",
+                current_branch=current,
+                target=target,
+            )
+        if gitutil.merge_in_progress(repo):
+            raise PluginError(
+                "merge_in_progress",
+                "the main checkout already has an unfinished merge",
+            )
+        base = gitutil.merge_base(repo, target, branch)
+        if base is None:
+            raise PluginError(
+                "unrelated_histories", "the branch and target share no merge base"
+            )
+        common = {
+            "job_id": job_id,
+            "target": target,
+            "branch": branch,
+            "pre_head": target_head,
+            "branch_head": branch_head,
+            "mergiraf_available": gitutil.mergiraf_path(self.config.environ) is not None,
+        }
+        if gitutil.is_ancestor(repo, branch_head, target_head) or branch_head == target_head:
+            return {
+                **common,
+                "ok": True,
+                "merged": False,
+                "outcome": "already_merged",
+                "head": target_head,
+                "tests": None,
+                "pushed": False,
+            }
+        touched = set(gitutil.changed_paths(repo, f"{base}..{branch_head}"))
+        try:
+            tracked_dirty, untracked = gitutil.status_paths(repo)
+        except gitutil.GitError as exc:
+            raise PluginError("target_status_failed", str(exc)) from exc
+        overlap = sorted(touched & (tracked_dirty | untracked))
+        if overlap:
+            raise PluginError(
+                "target_dirty",
+                "the target checkout has local changes to files this branch touches",
+                files=overlap,
+                dirty_paths=sorted(tracked_dirty | untracked)[:200],
+            )
+        if tracked_dirty:
+            # A rollback uses ``reset --hard``; refuse unrelated tracked changes
+            # rather than destroy work that is not ours.
+            raise PluginError(
+                "target_dirty",
+                "the target checkout has unrelated local tracked changes; commit or "
+                "move them before merging (the queue will never stash or reset them)",
+                files=sorted(tracked_dirty)[:200],
+            )
+        mergiraf = gitutil.mergiraf_path(self.config.environ)
+        attributes_file: Path | None = None
+        if mergiraf:
+            attributes_file = self.config.locks_dir / "mergiraf.attributes"
+            atomic_write_text(attributes_file, "* merge=mergiraf\n")
+        message = f"Merge {branch} [dsh {job_id}]\n\nDSH-Job: {job_id}"
+        code, out, err = gitutil.merge_no_ff(
+            repo, branch, message, mergiraf=mergiraf, attributes_file=attributes_file
+        )
+        common["mergiraf_available"] = mergiraf is not None
+        if code != 0:
+            conflicted = gitutil.conflicted_paths(repo)
+            if conflicted:
+                hunks = {
+                    path: gitutil.conflict_hunks(repo, path) for path in conflicted[:50]
+                }
+                aborted = gitutil.abort_merge(repo)
+                post_head = gitutil.rev_parse(repo, "HEAD")
+                try:
+                    clean = not gitutil.status_paths(repo)[0]
+                except gitutil.GitError:
+                    clean = False
+                return {
+                    **common,
+                    "ok": True,
+                    "merged": False,
+                    "outcome": "conflict",
+                    "conflicted_files": conflicted,
+                    "hunks": hunks,
+                    "aborted": aborted,
+                    "head": post_head,
+                    "target_clean": bool(aborted and clean and post_head == target_head),
+                    "tests": None,
+                    "pushed": False,
+                }
+            return {
+                **common,
+                "ok": True,
+                "merged": False,
+                "outcome": "merge_failed",
+                "detail": (err or out).strip()[-2000:],
+                "head": gitutil.rev_parse(repo, "HEAD"),
+                "tests": None,
+                "pushed": False,
+            }
+        merge_head = gitutil.rev_parse(repo, "HEAD")
+        tests = self._run_merge_tests(repo, test_cmd or job.get("test_cmd")) if run_tests else None
+        if tests is not None and not tests["passed"]:
+            rolled_back = gitutil.reset_hard(repo, target_head)
+            post_head = gitutil.rev_parse(repo, "HEAD")
+            try:
+                clean = not gitutil.status_paths(repo)[0]
+            except gitutil.GitError:
+                clean = False
+            return {
+                **common,
+                "ok": True,
+                "merged": False,
+                "outcome": "tests_failed",
+                "head": post_head,
+                "merge_commit": merge_head,
+                "rolled_back": rolled_back,
+                "target_clean": bool(rolled_back and clean and post_head == target_head),
+                "tests": tests,
+                "pushed": False,
+            }
+        changed = gitutil.changed_paths(repo, f"{target_head}..HEAD")
+        return {
+            **common,
+            "ok": True,
+            "merged": True,
+            "outcome": "merged",
+            "head": merge_head,
+            "commits": gitutil.count_commits(repo, f"{target_head}..HEAD"),
+            "files_changed": len(changed),
+            "files_changed_paths": sorted(changed)[:200],
+            "tests": tests,
+            "pushed": False,
+        }
+
+    def remove_worktree(self, job_id: str, delete_branch: bool = False) -> dict[str, Any]:
+        if not isinstance(delete_branch, bool):
+            raise PluginError("delete_branch_invalid", "delete_branch must be true or false")
+        job, _job_dir = self._load_job(job_id)
+        worktree = job.get("worktree")
+        if not isinstance(worktree, dict) or not worktree.get("enabled"):
+            raise PluginError("not_a_worktree_job", "this job has no worktree to remove")
+        status = self.get_status(job_id)
+        if status["running"]:
+            raise PluginError(
+                "job_running", "refusing to remove a worktree while its worker runs",
+                phase=status["phase"],
+            )
+        repo = self.config.repo_root
+        path = Path(str(worktree.get("path")))
+        branch = str(worktree.get("branch"))
+        removed = True
+        detail = "already_absent"
+        if path.exists():
+            removed, detail = gitutil.remove_worktree_path(repo, path)
+            if not removed:
+                raise PluginError(
+                    "worktree_remove_failed",
+                    "git refused to remove the worktree; commit or discard its changes first",
+                    path=str(path),
+                    detail=detail,
+                )
+        gitutil.remove_worktree_registration(repo)
+        branch_deleted = False
+        branch_error: str | None = None
+        if delete_branch:
+            if gitutil.rev_parse(repo, branch) is None:
+                branch_deleted = True
+            else:
+                branch_deleted, branch_error = gitutil.delete_branch(repo, branch)
+        return {
+            "ok": True,
+            "job_id": job_id,
+            "worktree_removed": removed,
+            "path": str(path),
+            "branch": branch,
+            "delete_branch": delete_branch,
+            "branch_deleted": branch_deleted,
+            "branch_error": branch_error,
+        }
+
+    def push(self, target: str = "main", confirm: bool = False) -> dict[str, Any]:
+        if confirm is not True:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "confirmation_required",
+                    "message": (
+                        "push is outward-facing; pass confirm=true only after Shivam's "
+                        "explicit go-ahead"
+                    ),
+                },
+                "destructive_hint": True,
+                "target": target,
+            }
+        if not isinstance(target, str) or not target.strip() or len(target) > 200 or "\x00" in target:
+            raise PluginError("target_invalid", "target must be a local branch name")
+        repo = self.config.repo_root
+        head = gitutil.rev_parse(repo, target)
+        if head is None:
+            raise PluginError("target_not_found", f"target {target!r} is not a commit")
+        remote = gitutil.remote_url(repo, "origin")
+        if remote is None:
+            raise PluginError(
+                "no_remote",
+                "no 'origin' remote is configured for this repository; nothing was pushed",
+            )
+        code, out, err = gitutil.push_ref(repo, "origin", target)
+        return {
+            "ok": code == 0,
+            "target": target,
+            "head": head,
+            "remote": remote,
+            "pushed": code == 0,
+            "output": (out or err).strip()[-2000:],
+            "error": None
+            if code == 0
+            else {"code": "push_failed", "message": (err or out).strip()[-1000:]},
+        }
+
+    # ------------------------------------------------------------ data jobs
+    def _jobs_registry(self) -> dict[str, Any]:
+        path = self.config.jobs_file
+        if not path.is_file():
+            raise PluginError(
+                "jobs_registry_missing",
+                f"no data-job registry at {path}",
+                recovery="Point DSH_WORKER_JOBS_FILE at a jobs.yaml file.",
+            )
+        try:
+            return jobs.load_registry(path)
+        except jobs.RegistryError as exc:
+            raise PluginError("jobs_registry_invalid", str(exc), path=str(path)) from exc
+
+    def _job_entry(self, name: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        registry = self._jobs_registry()
+        if not isinstance(name, str) or name not in registry["jobs"]:
+            raise PluginError(
+                "job_unknown",
+                f"no data job named {name!r}",
+                available=sorted(registry["jobs"])[:100],
+            )
+        return registry, registry["jobs"][name]
+
+    def _resource_lock_busy(self, names: list[str]) -> list[str]:
+        busy: list[str] = []
+        for name in names:
+            handle = try_lock_file(resource_lock_path(self.config.locks_dir, name))
+            if handle is None:
+                busy.append(name)
+            else:
+                handle.release()
+        return busy
+
+    def _data_job_cwd(self, cwd: str, name: str) -> Path:
+        path = Path(cwd).expanduser()
+        if not path.is_absolute():
+            path = self.config.repo_root / path
+        try:
+            resolved = path.resolve(strict=True)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise PluginError(
+                "job_cwd_invalid", f"data job {name!r} cwd cannot be resolved: {exc}"
+            ) from exc
+        if not _within(self.config.repo_root, resolved) or not resolved.is_dir():
+            raise PluginError(
+                "job_cwd_invalid", f"data job {name!r} cwd must be a directory inside the repo"
+            )
+        return resolved
+
+    def _resolve_job_argv(self, entry: dict[str, Any], extra: list[str], now: datetime) -> list[str]:
+        argv = jobs.expand_argv(
+            entry, extra, self.config.repo_root, self.config.data_root, now
+        )
+        if argv and argv[0].lower() in ("python", "python.exe"):
+            argv[0] = sys.executable
+        return argv
+
+    def list_jobs(self) -> dict[str, Any]:
+        registry = self._jobs_registry()
+        history = jobs.run_history(self.config.jobs_dir)
+        deadline = time.monotonic() + JOBS_CHECK_DEADLINE_SECONDS
+        items: list[dict[str, Any]] = []
+        for name in registry["order"]:
+            entry = registry["jobs"][name]
+            history_entry = history.get(name) or {}
+            latest = history_entry.get("latest")
+            last_success = history_entry.get("last_success")
+            check = entry.get("success_check")
+            freshness: dict[str, Any] | None = None
+            if check is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0.05:
+                    freshness = {
+                        "available": False,
+                        "ok": False,
+                        "error": "freshness_check_deadline_exceeded",
+                    }
+                else:
+                    freshness = jobs.run_success_check(
+                        check, self.config.data_root, timeout=min(2.0, remaining)
+                    )
+            max_age = jobs.cadence_max_age_days(entry)
+            success_age = jobs.last_success_age_days(last_success)
+            reasons: list[str] = []
+            if latest is None:
+                reasons.append("never_ran")
+            if max_age is not None and success_age is not None and success_age > max_age:
+                reasons.append(
+                    f"last_success_{success_age:.1f}d_old (cadence {entry['cadence']})"
+                )
+            if freshness is not None and not freshness.get("ok"):
+                reasons.append("freshness_check_failed")
+            items.append(
+                {
+                    "name": name,
+                    "description": entry["description"],
+                    "enabled": entry["enabled"],
+                    "cadence": entry["cadence"],
+                    "needs_paid_api": entry["needs_paid_api"],
+                    "needs_gpu": entry["needs_gpu"],
+                    "resource_locks": entry["resource_locks"],
+                    "writes": entry["writes"],
+                    "off_peak_only": entry["off_peak_only"],
+                    "market_hours": entry.get("market_hours", "any"),
+                    "argv": entry["argv"],
+                    "cwd": entry["cwd"],
+                    "success_check": check,
+                    "last_run": latest,
+                    "last_success": last_success,
+                    "last_success_age_days": round(success_age, 1) if success_age is not None else None,
+                    "run_count_seen": history_entry.get("runs", 0),
+                    "never_ran": latest is None,
+                    "running": bool(latest and not latest.get("final")),
+                    "freshness": freshness,
+                    "stale": bool(reasons),
+                    "stale_reasons": reasons,
+                }
+            )
+        return {
+            "ok": True,
+            "schema": registry["schema"],
+            "registry": registry["path"],
+            "generated_at": iso(),
+            "count": len(items),
+            "jobs": items,
+        }
+
+    def start_job(self, name: str, args: list[str] | None = None, confirm: bool = False) -> dict[str, Any]:
+        if not isinstance(confirm, bool):
+            raise PluginError("confirm_invalid", "confirm must be true or false")
+        _registry, entry = self._job_entry(name)
+        if not entry["enabled"] and not confirm:
+            raise PluginError(
+                "job_disabled",
+                f"data job {name!r} is disabled; re-enable only on Shivam's word, or "
+                "pass confirm=true for an explicit one-off run",
+                name=name,
+            )
+        now = self.config.now()
+        if not confirm:
+            if entry["off_peak_only"] and is_peak(now):
+                raise PluginError(
+                    "off_peak_hours",
+                    f"data job {name!r} is off-peak-only (Mon-Fri 06:30-09:30 and "
+                    "11:30-15:30 IST); pass confirm=true to override deliberately",
+                    name=name,
+                )
+            if entry.get("market_hours") == "avoid_market" and _market_session(now):
+                raise PluginError(
+                    "market_hours",
+                    f"data job {name!r} does not start between 09:15 and 15:30 IST on weekdays",
+                    name=name,
+                )
+        extra: list[str] = []
+        if args is not None:
+            if (
+                not isinstance(args, list)
+                or len(args) > 100
+                or not all(
+                    isinstance(arg, str) and arg and "\x00" not in arg and len(arg) <= 2000
+                    for arg in args
+                )
+            ):
+                raise PluginError(
+                    "args_invalid", "args must be a list of at most 100 non-empty strings"
+                )
+            extra = list(args)
+        cwd = self._data_job_cwd(entry["cwd"], name)
+        argv = self._resolve_job_argv(entry, extra, now)
+        locks = list(entry.get("resource_locks") or [])
+        busy = self._resource_lock_busy(locks)
+        if busy:
+            raise PluginError(
+                "resource_busy",
+                f"data job {name!r} needs resource locks that are already held",
+                name=name,
+                resource_locks=busy,
+            )
+        job_id = new_job_id()
+        job_dir = self.config.jobs_dir / job_id
+        job_dir.mkdir(parents=True, exist_ok=False)
+        paths = self._job_paths(job_id)
+        owner_id = secrets.token_hex(16)
+        try:
+            job = {
+                "schema": 1,
+                "job_id": job_id,
+                "kind": "data_job",
+                "created_at": iso(now),
+                "repo_root": str(self.config.repo_root),
+                "plugin_root": str(self.config.plugin_root),
+                "workspace": str(self.config.repo_root),
+                "permission": "workspace-write",
+                "owner_session": self.config.session_label,
+                "controller_lease_owner_id": owner_id,
+                "data_job": {
+                    "name": name,
+                    "description": entry["description"],
+                    "cadence": entry["cadence"],
+                    "resource_locks": locks,
+                    "writes": entry["writes"],
+                    "success_check": entry.get("success_check"),
+                    "needs_paid_api": entry["needs_paid_api"],
+                    "needs_gpu": entry["needs_gpu"],
+                    "enabled": entry["enabled"],
+                    "confirm_override": bool(confirm and not entry["enabled"]),
+                },
+                "env": dict(entry.get("env") or {}),
+                "resource_locks": locks,
+                "heartbeat": {},
+                "launcher": {
+                    "command": argv,
+                    "cwd": str(cwd),
+                    "argv": argv,
+                    "capabilities": {},
+                },
+                "paths": paths,
+                "limits": {
+                    "max_output_tokens": None,
+                    "max_result_bytes": DEFAULT_RESULT_BYTES,
+                    "hard_timeout_seconds": None,
+                    "hard_timeout_kind": "none",
+                    "followup_wait_seconds": 0,
+                    "controller_lease_seconds": 7200,
+                    "brief_bytes": 0,
+                },
+                "warnings": [],
+            }
+            atomic_write_json_locked(job_dir / "job.json", job, self._job_lock(job_dir))
+            lease_now = utc_now()
+            lease = {
+                "schema": LEASE_SCHEMA,
+                "job_id": job_id,
+                "owner_id": owner_id,
+                "owner_pid": os.getpid(),
+                "owner_session": self.config.session_label,
+                "created_at": iso(lease_now),
+                "renewed_at": iso(lease_now),
+                "deadline": iso(lease_now + timedelta(seconds=7200)),
+                "lease_seconds": 7200,
+                "renewals": 0,
+            }
+            atomic_write_json_locked(job_dir / LEASE_FILE, lease, self._job_lock(job_dir))
+            self._lease_owners[job_id] = owner_id
+            initial_status = {
+                "schema": 1,
+                "job_id": job_id,
+                "kind": "data_job",
+                "phase": "starting",
+                "started_at": iso(now),
+                "updated_at": iso(now),
+                "supervisor_pid": None,
+                "supervisor_creation_time": None,
+                "worker_pid": None,
+                "worker_creation_time": None,
+                "worker_activity_at": None,
+                "exit_code": None,
+                "outcome": None,
+                "error": None,
+                "artifacts": None,
+                "heartbeat": {},
+                "controller_lease": read_lease(job_dir / LEASE_FILE)[0],
+                "resource_locks": locks,
+                "warnings": [],
+            }
+            atomic_write_json_locked(
+                job_dir / "status.json", initial_status, self._job_lock(job_dir)
+            )
+            self._steer(
+                job_dir,
+                "start",
+                f"data_job={name} locks={','.join(locks) or '-'} "
+                f"{'confirm=true' if confirm else ''}",
+            )
+            supervisor_pid = self._spawn_supervisor(job_dir, None)
+            status = self._wait_for_start(job_dir, supervisor_pid)
+            return {
+                "ok": True,
+                "job_id": job_id,
+                "run_id": job_id,
+                "name": name,
+                "phase": status.get("phase", "starting"),
+                "argv": argv,
+                "cwd": str(cwd),
+                "resource_locks": locks,
+                "status_path": paths["status"],
+                "result_path": paths["result"],
+                "stdout_path": paths["stdout_log"],
+                "stderr_path": paths["stderr_log"],
+                "supervisor_log_path": paths["supervisor_log"],
+                "session_label": self.config.session_label,
+                "owner_session": self.config.session_label,
+                "warnings": list(status.get("warnings") or []),
+            }
+        except Exception:
+            self._lease_owners.pop(job_id, None)
+            if not (job_dir / "job.json").exists():
+                try:
+                    atomic_write_json(
+                        job_dir / "job.json",
+                        {
+                            "schema": 1,
+                            "job_id": job_id,
+                            "kind": "data_job",
+                            "created_at": iso(now),
+                            "workspace": str(self.config.repo_root),
+                            "start_failed": True,
+                        },
+                    )
+                except OSError:
+                    pass
+            raise
+
+    def job_log(self, run_id: str, tail: int = 200) -> dict[str, Any]:
+        if not isinstance(tail, int) or not 1 <= tail <= MAX_JOB_LOG_LINES:
+            raise PluginError("tail_invalid", f"tail must be 1..{MAX_JOB_LOG_LINES}")
+        if not isinstance(run_id, str) or not run_id.strip():
+            raise PluginError("run_id_invalid", "run_id must be a job id or data-job name")
+        found = jobs.find_run(self.config.jobs_dir, run_id.strip())
+        if found is None:
+            raise PluginError("run_not_found", f"no run matched {run_id!r}")
+        job_dir, job = found
+
+        def last_lines(path: Path) -> list[str]:
+            text = read_text_bounded_tail(path, MAX_JOB_LOG_BYTES)
+            return text.splitlines()[-tail:]
+
+        status = self._read_status(job_dir)
+        data_job = job.get("data_job") if isinstance(job.get("data_job"), dict) else {}
+        return {
+            "ok": True,
+            "run_id": str(job.get("job_id") or job_dir.name),
+            "name": data_job.get("name"),
+            "phase": status.get("phase"),
+            "final": status.get("phase") in FINAL_PHASES,
+            "exit_code": status.get("exit_code"),
+            "outcome": status.get("outcome"),
+            "stdout": last_lines(job_dir / "stdout.log"),
+            "stderr": last_lines(job_dir / "stderr.log"),
+            "supervisor": last_lines(job_dir / "supervisor.log"),
+            "tail": tail,
+            "paths": {
+                "job_dir": str(job_dir),
+                "stdout": str(job_dir / "stdout.log"),
+                "stderr": str(job_dir / "stderr.log"),
+                "status": str(job_dir / "status.json"),
+            },
+        }
+
+
+def _market_session(now: datetime | None = None) -> bool:
+    """True on weekdays 09:15-15:30 IST (the cash-market session)."""
+    local = (now or datetime.now(timezone.utc)).astimezone(IST)
+    if local.weekday() >= 5:
+        return False
+    minutes = local.hour * 60 + local.minute
+    return 9 * 60 + 15 <= minutes < 15 * 60 + 30

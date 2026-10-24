@@ -22,6 +22,7 @@ import procutil
 from store import (
     JOB_LOCK_NAME,
     LEASE_FILE,
+    acquire_lock_file,
     atomic_write_json,
     exclusive_lock,
     iso,
@@ -29,6 +30,7 @@ from store import (
     read_json_bounded,
     read_lease,
     read_text_bounded,
+    resource_lock_path,
     workspace_lock_name,
 )
 
@@ -144,6 +146,7 @@ def _create_status(job: dict[str, Any], job_dir: Path) -> dict[str, Any]:
     return {
         "schema": 1,
         "job_id": job.get("job_id"),
+        "kind": job.get("kind") or "worker",
         "phase": "starting",
         "started_at": job.get("created_at") or iso(),
         "updated_at": iso(),
@@ -159,6 +162,7 @@ def _create_status(job: dict[str, Any], job_dir: Path) -> dict[str, Any]:
         "heartbeat": job.get("heartbeat") or {},
         "heartbeat_live": None,
         "job_object": None,
+        "resource_locks": list(job.get("resource_locks") or []),
         "warnings": [],
     }
 
@@ -219,9 +223,13 @@ def _finalize(
     elif phase == "finished":
         status["error"] = None
     try:
-        baseline, _ = read_json_bounded(job_dir / "baseline.json", 1_048_576)
-        final_snapshot = gitutil.snapshot(Path(str(job.get("workspace"))))
-        status["artifacts"] = gitutil.changed_since(baseline, final_snapshot)
+        if job.get("kind") == "data_job":
+            # A data job is not attributed to working-tree edits.
+            status["artifacts"] = {"available": False, "reason": "data_job"}
+        else:
+            baseline, _ = read_json_bounded(job_dir / "baseline.json", 1_048_576)
+            final_snapshot = gitutil.snapshot(Path(str(job.get("workspace"))))
+            status["artifacts"] = gitutil.changed_since(baseline, final_snapshot)
     except Exception as exc:  # artifact hints must never fail a job
         status["artifacts"] = {
             "available": False,
@@ -318,6 +326,45 @@ def main(argv: list[str] | None = None) -> int:
         _release_lock(job_dir, job, status)
         return 1
 
+    # Named resource locks (db:<file>, gpu, net:<host>) are held for this
+    # supervisor's whole lifetime by open OS byte-range locks, so they cannot go
+    # stale: if this process dies, the kernel releases them.
+    runtime_dir = job_dir.parents[1]
+    held_resource_locks: list[Any] = []
+    for lock_name in job.get("resource_locks") or []:
+        handle = acquire_lock_file(
+            resource_lock_path(runtime_dir / "locks", str(lock_name)), timeout=2.0
+        )
+        if handle is None:
+            for held in held_resource_locks:
+                held.release()
+            status.update(
+                {
+                    "phase": "failed",
+                    "outcome": "resource_busy",
+                    "error": (
+                        f"resource lock {lock_name!r} is held by another job; "
+                        "the worker was not started"
+                    ),
+                    "finished_at": iso(),
+                }
+            )
+            _write_status(job_dir, status)
+            _log(f"refused job={job_id}: resource lock {lock_name!r} is busy")
+            return 1
+        handle.write_record(
+            {
+                "name": str(lock_name),
+                "job_id": job_id,
+                "supervisor_pid": os.getpid(),
+                "acquired_at": iso(),
+            }
+        )
+        held_resource_locks.append(handle)
+    status["resource_locks"] = list(job.get("resource_locks") or [])
+    if held_resource_locks:
+        _write_status_soft(job_dir, status)
+
     repo = Path(str(job.get("repo_root") or job_dir))
     env = os.environ.copy()
     existing = env.get("PYTHONPATH", "")
@@ -326,6 +373,8 @@ def main(argv: list[str] | None = None) -> int:
     # A worktree has no gitignored data (DBs, indexes): the main checkout's
     # data root is injected by the MCP server; this default covers old records.
     env.setdefault("REALITY_DATA_ROOT", str(repo / "reality_engine" / "data"))
+    for key, value in (job.get("env") or {}).items():
+        env[str(key)] = str(value)
     env["DSH_WORKER_JOB_ID"] = job_id
     env["DSH_WORKER_JOB_DIR"] = str(job_dir)
 
@@ -372,6 +421,19 @@ def main(argv: list[str] | None = None) -> int:
 
     stdout_path = job_dir / "stdout.log"
     stderr_path = job_dir / "stderr.log"
+    run_cwd = Path(str((job.get("launcher") or {}).get("cwd") or repo))
+    if not run_cwd.is_dir():
+        status.update(
+            {
+                "phase": "failed",
+                "outcome": "cwd_missing",
+                "error": f"job working directory does not exist: {run_cwd}",
+                "finished_at": iso(),
+            }
+        )
+        _write_status(job_dir, status)
+        _release_lock(job_dir, job, status)
+        return 1
     process: subprocess.Popen[bytes] | None = None
     try:
         with open(stdout_path, "ab", buffering=0) as out, open(stderr_path, "ab", buffering=0) as err:
@@ -380,7 +442,7 @@ def main(argv: list[str] | None = None) -> int:
                 kwargs["start_new_session"] = True
             process = subprocess.Popen(
                 args_argv,
-                cwd=str(repo),
+                cwd=str(run_cwd),
                 env=env,
                 stdin=subprocess.DEVNULL,
                 stdout=out,
