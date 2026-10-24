@@ -1,0 +1,72 @@
+{
+ "pages_ocr": 140,
+ "haiku_facts": 4583,
+ "ocr_alone_value_recall": 0.927,
+ "by_year_type": {
+  "2021/chart": {
+   "hit": 221,
+   "n": 233,
+   "recall": 0.948
+  },
+  "2021/kpi": {
+   "hit": 74,
+   "n": 76,
+   "recall": 0.974
+  },
+  "2021/table": {
+   "hit": 1346,
+   "n": 1373,
+   "recall": 0.98
+  },
+  "2022/chart": {
+   "hit": 171,
+   "n": 176,
+   "recall": 0.972
+  },
+  "2022/kpi": {
+   "hit": 109,
+   "n": 132,
+   "recall": 0.826
+  },
+  "2022/table": {
+   "hit": 485,
+   "n": 565,
+   "recall": 0.858
+  },
+  "2023/chart": {
+   "hit": 190,
+   "n": 196,
+   "recall": 0.969
+  },
+  "2023/kpi": {
+   "hit": 93,
+   "n": 140,
+   "recall": 0.664
+  },
+  "2023/table": {
+   "hit": 644,
+   "n": 724,
+   "recall": 0.89
+  },
+  "2024/chart": {
+   "hit": 214,
+   "n": 250,
+   "recall": 0.856
+  },
+  "2024/kpi": {
+   "hit": 106,
+   "n": 114,
+   "recall": 0.93
+  },
+  "2024/table": {
+   "hit": 594,
+   "n": 604,
+   "recall": 0.983
+  }
+ },
+ "rapidocr_cpu_s_per_page": {
+  "mean": 4.69,
+  "median": 4.03,
+  "max": 11.08
+ }
+}
