@@ -19,7 +19,7 @@ useful edit in ≤ 25 tool calls instead of 40–100. Briefs follow one template
      list the ~40 most-used scripts (count references in `tasks/STATE.md`, `jobs.yaml`, recent `tasks/dsh_tasks/*.md`).
    - **Data map**: for each DB in `reality_engine/data/*.db` + the DuckDB snapshot: tables with row counts (use
      `sqlite_stat1` / `catalog_cache.json` from `plugins/reality-data/server/` — do NOT `COUNT(*)` the 50 GB DB),
-     key columns, the curated one-liners from `plugins/reality-data/server/catalog_descriptions.yaml`, date coverage
+     key columns, the curated one-liners from `plugins/reality-data/catalog_descriptions.yaml`, date coverage
      where the catalog has it. Put full column lists in `schemas/<db>.md`; CONTEXT.md gets the top 60 tables.
    - **How to query**: `connect_ro` snippet, the reality-data MCP tools and when to prefer each, the document_chunks
      rule, doc_date-is-crawl-date rule, known_at rule.

@@ -810,7 +810,7 @@ class McpSurfaceTests(StressBase):
             self.assertEqual(both["error"]["code"], "brief_required")
             big = await self._call(session, "start_worker", {"brief": "x" * 262_145})
             self.assertEqual(big["error"]["code"], "brief_too_large")
-            started = await self._call(session, "start_worker", {"brief": "हिंदी ब्रीफ ✓ 价格"})
+            started = await self._call(session, "start_worker", {"brief": "हिंदी ब्रीफ ✓ 价格? क्यों"})
             self.assertTrue(started["ok"], started)
             loop = asyncio.get_running_loop()
             deadline = loop.time() + 20
@@ -821,9 +821,13 @@ class McpSurfaceTests(StressBase):
                 await asyncio.sleep(0.1)
             self.assertTrue(status["progress"]["done"], status)
             brief = (self.root / "runtime" / "jobs" / started["job_id"] / "brief.md").read_text(encoding="utf-8")
-            self.assertTrue(brief.startswith("हिंदी ब्रीफ ✓ 价格"), brief[:200])
+            self.assertTrue(brief.startswith("## Worker context pack (auto-attached)"), brief[:200])
+            self.assertIn("हिंदी ब्रीफ ✓ 价格", brief)
             self.assertIn("PROGRESS_NOTES.md", brief)
-            self.assertNotIn("?", brief[len("हिंदी ब्रीफ ✓ 价格"):])  # instruction is not a question
+            # Only the standing instruction must not read as a question; the
+            # delivered brief may legitimately contain "?" in the task text.
+            self.assertIn(core.PROGRESS_NOTES_INSTRUCTION, brief)
+            self.assertNotIn("?", core.PROGRESS_NOTES_INSTRUCTION)
             long_msg = await self._call(
                 session, "message_worker", {"job_id": started["job_id"], "message": "न" * 4001}
             )

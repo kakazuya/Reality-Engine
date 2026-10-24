@@ -1019,3 +1019,22 @@ jobs:
     needs_paid_api: false
     needs_gpu: false
     enabled: false
+
+  # ------------------------------------------------------------ worker context
+  - name: worker_context  # Task 01: generated orientation pack for new workers
+    description: "Generate tasks/worker_context/CONTEXT.md (repo map, data map, query rules, test map, sandbox, decisions)."
+    argv: ["python", "-m", "reality_engine.scripts.build_worker_context"]
+    cwd: "."
+    env: {}
+    writes: ["tasks/worker_context/"]
+    resource_locks: []
+    cadence: daily
+    success_check:
+      kind: file
+      path: tasks/worker_context/CONTEXT.md
+      max_age_hours: 26
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false

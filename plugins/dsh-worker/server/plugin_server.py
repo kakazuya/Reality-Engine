@@ -109,7 +109,12 @@ def _safe(call) -> dict[str, Any]:
         "a positive value adds a bounded host-side wait for explicit "
         "same-conversation follow-ups. progress_interval_seconds (default 1200, "
         "0=off) is the supervisor's model-free progress-digest cadence; every "
-        "brief gets a standing instruction to append one line to PROGRESS_NOTES.md."
+        "brief gets a standing instruction to append one line to PROGRESS_NOTES.md. "
+        "context_pack (default true) prepends the generated "
+        "tasks/worker_context/CONTEXT.md path + standing header to the brief and "
+        "regenerates the pack when it is older than 26 h (bounded 60 s; failure is "
+        "a warning). Briefs missing Goal / Acceptance checks / Test command(s) get "
+        "brief_lint warnings, never a refusal."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -128,6 +133,7 @@ def start_worker(
     followup_wait_seconds: int = 0,
     controller_lease_seconds: int = 1800,
     refresh_context: bool = True,
+    context_pack: bool = True,
     use_worktree: bool = False,
     base: str | None = None,
     test_cmd: str | None = None,
@@ -147,6 +153,7 @@ def start_worker(
             followup_wait_seconds=followup_wait_seconds,
             controller_lease_seconds=controller_lease_seconds,
             refresh_context=refresh_context,
+            context_pack=context_pack,
             use_worktree=use_worktree,
             base=base,
             test_cmd=test_cmd,
