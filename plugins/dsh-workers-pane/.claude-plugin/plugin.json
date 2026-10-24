@@ -1,7 +1,7 @@
 {
   "name": "dsh-workers",
-  "version": "0.1.0",
-  "description": "Read-only DeepSeek worker progress pane plus /dsh-workers and a status line.",
+  "version": "0.2.0",
+  "description": "Read-only DeepSeek worker rail: running/finished lists, expandable detail cards with live metrics, plus /dsh-workers and a status line.",
   "author": {
     "name": "Shivam"
   },
