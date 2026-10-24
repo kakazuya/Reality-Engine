@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4739
+  }
+ },
+ "usage": {
+  "input_tokens": 125,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 164.332,
+ "request_id": "req_ae6ca95c8d3b4cb984476b812009d624",
+ "status": "ok",
+ "_latency_ms": 1151.6,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_PKTEA_2026-08-19"
+}

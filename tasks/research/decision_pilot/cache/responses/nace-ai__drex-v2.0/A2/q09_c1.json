@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "answers": {
+   "type": "noul",
+   "noul": 0.9306
+  }
+ },
+ "usage": {
+  "input_tokens": 686,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 31.24,
+ "request_id": "req_0c3d3c7cdb89454eb8b3e56b6451dbfd",
+ "status": "ok",
+ "_latency_ms": 934.8,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "A2",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "q09_c1"
+}

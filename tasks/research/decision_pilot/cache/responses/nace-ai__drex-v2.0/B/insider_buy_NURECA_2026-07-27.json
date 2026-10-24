@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4658
+  }
+ },
+ "usage": {
+  "input_tokens": 111,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 17.311,
+ "request_id": "req_be18268056d0408ebf03da3443699a66",
+ "status": "ok",
+ "_latency_ms": 1049.9,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_NURECA_2026-07-27"
+}

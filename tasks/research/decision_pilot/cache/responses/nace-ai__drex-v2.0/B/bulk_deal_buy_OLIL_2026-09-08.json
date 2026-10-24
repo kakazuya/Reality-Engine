@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4285
+  }
+ },
+ "usage": {
+  "input_tokens": 116,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 91.07,
+ "request_id": "req_c6c9596a4d984808a47293680bb621d7",
+ "status": "ok",
+ "_latency_ms": 1038.1,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_OLIL_2026-09-08"
+}

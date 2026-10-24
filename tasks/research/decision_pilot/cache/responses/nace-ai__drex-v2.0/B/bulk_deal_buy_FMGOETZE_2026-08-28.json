@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4181
+  }
+ },
+ "usage": {
+  "input_tokens": 124,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 32.628,
+ "request_id": "req_4cf88926228b415895b506000fe7a546",
+ "status": "ok",
+ "_latency_ms": 977.7,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_FMGOETZE_2026-08-28"
+}

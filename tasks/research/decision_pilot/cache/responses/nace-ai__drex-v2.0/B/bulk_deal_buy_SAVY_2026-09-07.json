@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4865
+  }
+ },
+ "usage": {
+  "input_tokens": 117,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 78.682,
+ "request_id": "req_f1dbbd2db7c34953bf52d8c0cddd659b",
+ "status": "ok",
+ "_latency_ms": 1013.7,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_SAVY_2026-09-07"
+}

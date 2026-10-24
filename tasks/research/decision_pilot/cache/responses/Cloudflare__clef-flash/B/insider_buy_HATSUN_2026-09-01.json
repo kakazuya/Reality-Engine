@@ -1,0 +1,21 @@
+{
+ "model": "Cloudflare/clef-flash",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.5851
+  }
+ },
+ "usage": {
+  "input_tokens": 243,
+  "output_tokens": 0
+ },
+ "status": "ok",
+ "_latency_ms": 1077.3,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "Cloudflare/clef-flash",
+ "_id": "insider_buy_HATSUN_2026-09-01"
+}

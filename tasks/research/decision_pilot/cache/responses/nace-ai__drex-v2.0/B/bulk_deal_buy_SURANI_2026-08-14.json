@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.409
+  }
+ },
+ "usage": {
+  "input_tokens": 116,
+  "output_tokens": 21
+ },
+ "evaluation_time_ms": 214.308,
+ "request_id": "req_6eb548f40258460989e8e67b4ea87a08",
+ "status": "ok",
+ "_latency_ms": 1295.8,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_SURANI_2026-08-14"
+}

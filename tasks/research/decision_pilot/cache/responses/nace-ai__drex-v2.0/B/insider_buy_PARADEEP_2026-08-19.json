@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.5061
+  }
+ },
+ "usage": {
+  "input_tokens": 115,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 37.579,
+ "request_id": "req_6bfb5c246f414da4a8e91a489f8ca3b2",
+ "status": "ok",
+ "_latency_ms": 1024.6,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_PARADEEP_2026-08-19"
+}

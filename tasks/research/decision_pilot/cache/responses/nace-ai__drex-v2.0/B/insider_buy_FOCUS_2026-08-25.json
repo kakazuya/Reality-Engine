@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.5
+  }
+ },
+ "usage": {
+  "input_tokens": 114,
+  "output_tokens": 19
+ },
+ "evaluation_time_ms": 21.683,
+ "request_id": "req_42ffb43add48421caa06942e71986c23",
+ "status": "ok",
+ "_latency_ms": 1078.8,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_FOCUS_2026-08-25"
+}

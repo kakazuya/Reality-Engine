@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.427
+  }
+ },
+ "usage": {
+  "input_tokens": 119,
+  "output_tokens": 21
+ },
+ "evaluation_time_ms": 288.289,
+ "request_id": "req_3a8dcda7e77748489ce61a51b05a49bd",
+ "status": "ok",
+ "_latency_ms": 1319.3,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_MOBIKWIK_2026-08-03"
+}

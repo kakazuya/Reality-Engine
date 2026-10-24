@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4514
+  }
+ },
+ "usage": {
+  "input_tokens": 121,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 15.628,
+ "request_id": "req_c6ee1b7e20254db0adb2775e7d916796",
+ "status": "ok",
+ "_latency_ms": 1064.3,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "insider_buy_INDORAMA_2026-09-08"
+}

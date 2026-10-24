@@ -1,0 +1,242 @@
+[
+ {
+  "n": 1,
+  "id": "73826a84-774b-4241-9f37-d0a94b734883",
+  "label": "Others",
+  "subcategory": "Reg. 34 (1) Annual Report",
+  "subject": "Reg. 34 (1) Annual Report.",
+  "has_text": false
+ },
+ {
+  "n": 2,
+  "id": "8ffe4006-329a-44fe-a497-385cd360b440",
+  "label": "Company Update",
+  "subcategory": "General",
+  "subject": "Disclosure Under Regulation 7(2) Of SEBI (Prohibition Of Insider Trading) Regulations, 2015",
+  "has_text": true
+ },
+ {
+  "n": 3,
+  "id": "2b3531a8-4e4e-41fe-b80d-1a6db391eb12",
+  "label": "Insider Trading / SAST",
+  "subcategory": "Closure of Trading Window",
+  "subject": "Closure of Trading Window",
+  "has_text": true
+ },
+ {
+  "n": 4,
+  "id": "d3c4ed3c-9d65-4e75-bb1c-56c2054cd9ed",
+  "label": "Result",
+  "subcategory": "Financial Results",
+  "subject": "Financial Results For The Quarter And Half Year Ended September 30, 2026",
+  "has_text": true
+ },
+ {
+  "n": 5,
+  "id": "ae6cd148-87b6-4d90-a389-67ece0636e9b",
+  "label": "AGM/EGM",
+  "subcategory": "AGM",
+  "subject": "Notice Of The 42Nd Annual General Meeting Scheduled To Be Held On 25Th September, 2026 And Book Closure And E-Voting Information",
+  "has_text": true
+ },
+ {
+  "n": 6,
+  "id": "84905534-e616-4bbc-82dd-a0cd22b8eb3b",
+  "label": "Company Update",
+  "subcategory": "Certificate under Reg. 74 (5) of SEBI (DP) Regulations, 2018",
+  "subject": "National Plastic Technologies Ltd - 531287 - Compliances-Certificate under Reg. 74 (5) of SEBI (DP) Regulations, 2018",
+  "has_text": true
+ },
+ {
+  "n": 7,
+  "id": "48f9e60a-2457-4d13-a0ff-2b1133fa1c9a",
+  "label": "Corp. Action",
+  "subcategory": "Book Closure",
+  "subject": "Intimation Of Book Closure For The Purpose Of AGM To Be Held On September 30, 2026.",
+  "has_text": false
+ },
+ {
+  "n": 8,
+  "id": "77cdb4d2-c22c-4884-8a4f-e0efd83cbdf7",
+  "label": "Corp. Action",
+  "subcategory": "Book Closure",
+  "subject": "Notice Of Book Closure For The Purpose Of 40Th Annual General Meeting",
+  "has_text": false
+ },
+ {
+  "n": 9,
+  "id": "5b8a88e0-58a7-4a37-a3cc-31a1ac3c5f75",
+  "label": "Insider Trading / SAST",
+  "subcategory": "Closure of Trading Window",
+  "subject": "Closure of Trading Window",
+  "has_text": true
+ },
+ {
+  "n": 10,
+  "id": "c889a388-3ab5-40f1-b72e-9e40bfc04db6",
+  "label": "Result",
+  "subcategory": "Financial Results",
+  "subject": "Indian Bank - 532814 - Approval Of Unaudited (Reviewed) Standalone And Consolidated Financial Results Of The Bank For The Second Quarter And Half Year Of FY 2026-27 Ended On September 30, 2026 And Fund Raising Plan Other Than Equity Capital",
+  "has_text": true
+ },
+ {
+  "n": 11,
+  "id": "3ce3aa86-b2f8-4c20-8f25-618da09932b1",
+  "label": "Board Meeting",
+  "subcategory": "Board Meeting",
+  "subject": "Board Meeting Intimation for Baord Meeting To Be Held On Thursday, The 10Th Day Of September, 2026.",
+  "has_text": false
+ },
+ {
+  "n": 12,
+  "id": "78debd57-e033-4d15-9cb8-d4b10f36dbbc",
+  "label": "Others",
+  "subcategory": "Outcome without intimation",
+  "subject": "Board Meeting Outcome for Outcome Of Board Meeting Held On Wednesday, 16Th September, 2026.",
+  "has_text": false
+ },
+ {
+  "n": 13,
+  "id": "7198fa81-3396-4c08-a89d-e1cff1035844",
+  "label": "Insider Trading / SAST",
+  "subcategory": "Disclosures under Reg. 29(2) of SEBI (SAST) Regulations, 2011",
+  "subject": "Disclosures under Reg. 29(2) of SEBI (SAST) Regulations, 2011",
+  "has_text": false
+ },
+ {
+  "n": 14,
+  "id": "6eb9c8d0-63ce-4cc5-a896-fbb7e0a8602a",
+  "label": "Others",
+  "subcategory": "Outcome without intimation",
+  "subject": "Kronox Lab Sciences Ltd - 544187 - Board Meeting Outcome for Outcome Of Board Meeting Held On October 14, 2026",
+  "has_text": true
+ },
+ {
+  "n": 15,
+  "id": "26cab8fc-806f-4120-b0b0-6b1219e82720",
+  "label": "Board Meeting",
+  "subcategory": "Board Meeting",
+  "subject": "Vikram Aroma Ltd - 544371 - Board Meeting Intimation for INTIMATION OF BOARD MEETING UNDER REGULATION 29(1)(A) OF SEBI (LISTING OBLIGATIONS AND DISCLOSURE REQUIREMENTS) REGULATIONS 2015.",
+  "has_text": true
+ },
+ {
+  "n": 16,
+  "id": "ec1e347e-6043-4c43-b1d4-7566ea2eaea1",
+  "label": "Corp. Action",
+  "subcategory": "Record Date",
+  "subject": "Intimation Of Record Date For Sub-Division/Split Of Equity Shares Of The Company",
+  "has_text": false
+ },
+ {
+  "n": 17,
+  "id": "4ed82ac6-9eed-4237-bbb3-f889210bd6ea",
+  "label": "AGM/EGM",
+  "subcategory": "Postal Ballot",
+  "subject": "Intimation And Submission Of Notice Of Postal Ballot",
+  "has_text": false
+ },
+ {
+  "n": 18,
+  "id": "a7a76183-b481-4f1e-8781-c248809f0dbf",
+  "label": "Corp. Action",
+  "subcategory": "Record Date",
+  "subject": "Intimation Of Record Date For Final Dividend For Financial Year 2025-26",
+  "has_text": false
+ },
+ {
+  "n": 19,
+  "id": "12c4ef07-385a-47c6-a481-0811ad20f4b7",
+  "label": "Mutual Fund",
+  "subcategory": "Reg. 90 (1) Declaration of   NAV - Mutual Fund",
+  "subject": "Compliances-Reg. 90 (1) Declaration of   NAV - Mutual Fund",
+  "has_text": false
+ },
+ {
+  "n": 20,
+  "id": "fce79b7d-369b-4c51-a539-a489b751181b",
+  "label": "Board Meeting",
+  "subcategory": "Board Meeting",
+  "subject": "Hemo Organic Ltd - 524590 - Board Meeting Intimation for The Meeting To Be Held On Saturday, I.E., 17Th October, 2026",
+  "has_text": true
+ },
+ {
+  "n": 21,
+  "id": "2a6e2619-c738-4573-9798-c197f9f79b2e",
+  "label": "Company Update",
+  "subcategory": "Certificate under Reg. 74 (5) of SEBI (DP) Regulations, 2018",
+  "subject": "Rex Sealing and Packing Industries Ltd - 543744 - Compliances-Certificate under Reg. 74 (5) of SEBI (DP) Regulations, 2018",
+  "has_text": true
+ },
+ {
+  "n": 22,
+  "id": "ccbf77f9-51e4-46e3-8ef6-2a97346d3427",
+  "label": "Mutual Fund",
+  "subcategory": "Reg. 90 (1) Declaration of   NAV - Mutual Fund",
+  "subject": "Compliances-Reg. 90 (1) Declaration of   NAV - Mutual Fund",
+  "has_text": false
+ },
+ {
+  "n": 23,
+  "id": "67cbc1c5-2104-48b1-bb14-080324c56778",
+  "label": "Mutual Fund",
+  "subcategory": "Reg. 90 (1) - Portfolio of Mutual Fund Schemes",
+  "subject": "Compliances-Reg. 90 (1) - Portfolio of Mutual Fund Schemes",
+  "has_text": false
+ },
+ {
+  "n": 24,
+  "id": "09145f28-978f-486c-b62f-6d925642ea90",
+  "label": "Others",
+  "subcategory": "Reg. 34 (1) Annual Report",
+  "subject": "Reg. 34 (1) Annual Report.",
+  "has_text": false
+ },
+ {
+  "n": 25,
+  "id": "dcef672a-d3b9-4972-8c24-4c420c8636b2",
+  "label": "Insider Trading / SAST",
+  "subcategory": "Closure of Trading Window",
+  "subject": "Closure of Trading Window",
+  "has_text": false
+ },
+ {
+  "n": 26,
+  "id": "341e8cf0-4b62-47f2-8f34-72b7fd8c4e9d",
+  "label": "AGM/EGM",
+  "subcategory": "AGM",
+  "subject": "Shareholder Meeting / Postal Ballot-Outcome of AGM",
+  "has_text": true
+ },
+ {
+  "n": 27,
+  "id": "b12d30a7-621a-433a-bc83-2a15a49194f1",
+  "label": "Board Meeting",
+  "subcategory": "Board Meeting",
+  "subject": "Board Meeting Intimation for Considering And Approving The  Proposal To Raise Funds By Way Of Issuance Of Non-Convertible Debentures (Tier II Bonds) On Preferential Basis Through Private Placement.",
+  "has_text": true
+ },
+ {
+  "n": 28,
+  "id": "fc3e5ec7-a355-441a-8a46-9a0dc0ee1c75",
+  "label": "Result",
+  "subcategory": "Financial Results",
+  "subject": "ICICI Prudential Life Insurance Company Ltd - 540133 - Outcome Of The Board Meeting Held On October 13, 2026",
+  "has_text": true
+ },
+ {
+  "n": 29,
+  "id": "125c2b82-f4b1-49b5-b813-bb3537178a82",
+  "label": "AGM/EGM",
+  "subcategory": "Court Convened Meeting",
+  "subject": "Shareholder Meeting / Postal Ballot-Outcome of Court Convened Meeting",
+  "has_text": true
+ },
+ {
+  "n": 30,
+  "id": "74fe86b8-2bb5-4e2f-baff-3f9c7b04b632",
+  "label": "Company Update",
+  "subcategory": "General",
+  "subject": "Communication To Shareholders - TDS On Dividend",
+  "has_text": true
+ }
+]

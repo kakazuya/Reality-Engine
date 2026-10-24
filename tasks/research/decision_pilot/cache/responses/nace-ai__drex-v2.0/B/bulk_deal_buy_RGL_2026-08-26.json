@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4842
+  }
+ },
+ "usage": {
+  "input_tokens": 117,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 46.162,
+ "request_id": "req_a0485ca572be46ffa899d4bacce06b50",
+ "status": "ok",
+ "_latency_ms": 1266.9,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_RGL_2026-08-26"
+}

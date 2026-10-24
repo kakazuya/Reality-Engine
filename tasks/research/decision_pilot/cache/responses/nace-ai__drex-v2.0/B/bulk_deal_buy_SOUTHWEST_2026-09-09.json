@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.455
+  }
+ },
+ "usage": {
+  "input_tokens": 115,
+  "output_tokens": 21
+ },
+ "evaluation_time_ms": 25.019,
+ "request_id": "req_3e9a8ce30422463db93491681d4985ff",
+ "status": "ok",
+ "_latency_ms": 1488.9,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_SOUTHWEST_2026-09-09"
+}

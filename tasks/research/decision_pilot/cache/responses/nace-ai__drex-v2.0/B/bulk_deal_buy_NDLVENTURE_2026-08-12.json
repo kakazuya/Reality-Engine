@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4638
+  }
+ },
+ "usage": {
+  "input_tokens": 115,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 38.58,
+ "request_id": "req_01fd2fa1e82b4506a4161ed40d6caeaa",
+ "status": "ok",
+ "_latency_ms": 1019.7,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_NDLVENTURE_2026-08-12"
+}

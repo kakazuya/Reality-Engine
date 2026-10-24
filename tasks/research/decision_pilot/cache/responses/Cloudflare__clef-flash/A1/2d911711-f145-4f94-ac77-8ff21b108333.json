@@ -1,0 +1,33 @@
+{
+ "model": "Cloudflare/clef-flash",
+ "answers": {
+  "category": {
+   "type": "choice",
+   "choice": "AGM/EGM",
+   "confidence": 0.9508,
+   "probabilities": {
+    "Company Update": 0.0045,
+    "AGM/EGM": 0.9778,
+    "Insider Trading / SAST": 0.0027,
+    "Others": 0.0024,
+    "Board Meeting": 0.0036,
+    "Corp. Action": 0.0029,
+    "Mutual Fund": 0.0021,
+    "Result": 0.0018,
+    "Other / not listed": 0.0021
+   }
+  }
+ },
+ "usage": {
+  "input_tokens": 361,
+  "output_tokens": 0
+ },
+ "status": "ok",
+ "_latency_ms": 1080.3,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "A1",
+ "_model": "Cloudflare/clef-flash",
+ "_id": "2d911711-f145-4f94-ac77-8ff21b108333"
+}

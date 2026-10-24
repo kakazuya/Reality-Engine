@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.3994
+  }
+ },
+ "usage": {
+  "input_tokens": 115,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 16.904,
+ "request_id": "req_69c04e619d534eaeaf8a4f3d8abc49ea",
+ "status": "ok",
+ "_latency_ms": 1012.5,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_SILKY_2026-08-05"
+}

@@ -1,0 +1,21 @@
+{
+ "model": "Cloudflare/clef-flash",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.2415
+  }
+ },
+ "usage": {
+  "input_tokens": 246,
+  "output_tokens": 0
+ },
+ "status": "ok",
+ "_latency_ms": 1081.0,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "Cloudflare/clef-flash",
+ "_id": "bulk_deal_buy_GKSL_2026-08-18"
+}

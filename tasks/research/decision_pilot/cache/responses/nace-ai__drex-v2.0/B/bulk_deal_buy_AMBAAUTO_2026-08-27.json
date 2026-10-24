@@ -1,0 +1,23 @@
+{
+ "model": "nace-ai/drex-v2.0",
+ "answers": {
+  "beat": {
+   "type": "noul",
+   "noul": 0.4886
+  }
+ },
+ "usage": {
+  "input_tokens": 119,
+  "output_tokens": 22
+ },
+ "evaluation_time_ms": 24.8,
+ "request_id": "req_0a7e42e34ed44e2d843f595c967771ff",
+ "status": "ok",
+ "_latency_ms": 1074.9,
+ "_retries": 0,
+ "_429": 0,
+ "_truncated": false,
+ "_arm": "B",
+ "_model": "nace-ai/drex-v2.0",
+ "_id": "bulk_deal_buy_AMBAAUTO_2026-08-27"
+}
