@@ -213,7 +213,7 @@ def fetch(items: Sequence[str], dest: str | Path | None = None, *, remote: str =
     """Resolve and (unless ``dry_run``) download each item; per-file ok/missing/blocked."""
     if not items:
         raise ValueError("give at least one path, sha256 or DB local path")
-    if dest is None and _in_sandbox():
+    if dest is None and _in_sandbox() and not dry_run:
         raise ValueError("--dest is required inside a sandbox (the original DB path may be unwritable)")
     index_file = Path(index_path)
     index = load_index(index_file, remote)

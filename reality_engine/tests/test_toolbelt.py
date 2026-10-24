@@ -113,7 +113,8 @@ class TestFindDocs(ToolbeltTestCase):
               None, None, "2025-08-12", None, 0),
              (3, "INE050001010", "DEEDEV", "CONCALL_TRANSCRIPT", "Undated call",
               None, None, None, None, 0)])
-        con.executemany("INSERT INTO document_chunks(doc_id) VALUES (?)", [(1,), (1,), (2,)])
+        con.executemany("INSERT INTO document_chunks(doc_id) VALUES (?)",
+                        [(1,), (1,), (7,), (10,), (10,)])
         con.execute("INSERT INTO raw_documents VALUES (?,?,?,?,?,?,?)",
                     (10, "DEEDEV", "INE050001010", "CONCALL_TRANSCRIPT", "raw copy",
                      "2026-08-11", "reality_engine\\data\\pdfs\\DEEDEV\\x.pdf"))
@@ -127,11 +128,14 @@ class TestFindDocs(ToolbeltTestCase):
                 fiscal_year TEXT, fiscal_year_source TEXT, filed_at TEXT, filed_at_source TEXT,
                 sha256 TEXT, path TEXT, n_pages INTEGER, n_text_pages INTEGER, n_pieces INTEGER,
                 status TEXT, error TEXT, ts TEXT);
+            CREATE TABLE ar_pieces (doc_id INTEGER, piece INTEGER, prompt_version TEXT);
         """)
         con.execute("INSERT INTO ar_docs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (7, "INE050001010", "DEEDEV", "Deedee Labs", "2026-03-31", "filing_month_rule",
                      "2026-07-09T14:35:01", "bse_feed", "sha", "C:\\data\\pdfs\\DEEDEV\\AR.pdf",
                      100, 99, 10, "done", None, "2026-10-16"))
+        con.executemany("INSERT INTO ar_pieces(doc_id, piece) VALUES (?, ?)",
+                        [(7, i) for i in range(4)])
         con.commit()
         con.close()
 
@@ -142,11 +146,14 @@ class TestFindDocs(ToolbeltTestCase):
                 exch_code TEXT, known_at TEXT, title TEXT, url TEXT, local_path TEXT,
                 sha256 TEXT, size_bytes INTEGER, status TEXT, error TEXT, fetched_at TEXT,
                 PRIMARY KEY (source, source_id));
+            CREATE TABLE pages (sha256 TEXT, page_no INTEGER, doc_id TEXT, prompt_version TEXT);
         """)
         con.execute("INSERT INTO deck_sources VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     ("bse", "deck-1", "DEEDEV", "INE050001010", "540145", "2026-08-01",
                      "Investor presentation", "https://example", "C:\\data\\decks\\bse\\1\\d.pdf",
                      "sha", 10, "ok", None, "2026-10-09"))
+        con.executemany("INSERT INTO pages(sha256, page_no, doc_id) VALUES (?, ?, ?)",
+                        [("sha", i, "bse:deck-1") for i in range(5)])
         con.commit()
         con.close()
 
@@ -158,10 +165,13 @@ class TestFindDocs(ToolbeltTestCase):
                 cost_usd REAL, seconds REAL, checks_json TEXT, raw_json TEXT, error TEXT, run_at TEXT,
                 priority INTEGER, period_discussed TEXT, period_q INTEGER, period_fy INTEGER,
                 date_source TEXT);
+            CREATE TABLE cc_items (doc_id INTEGER, list_name TEXT, idx INTEGER, metric TEXT);
         """)
         con.execute("INSERT INTO cc_docs (doc_id, isin, symbol, filed_at, status, date_source) "
                     "VALUES (?,?,?,?,?,?)",
                     (1, "INE050001010", "DEEDEV", "2026-08-11T23:38:08", "ok", "bse_dissem_ts"))
+        con.executemany("INSERT INTO cc_items(doc_id, list_name, idx) VALUES (?,?,?)",
+                        [(1, "guidance", i) for i in range(3)])
         con.commit()
         con.close()
 
@@ -171,20 +181,23 @@ class TestFindDocs(ToolbeltTestCase):
         first = rows[("corporate_documents", 1)]
         self.assertEqual(first["filing_date"], "2026-08-11T23:38:08")
         self.assertEqual(first["date_source"], "bse_dissem_ts")
-        self.assertEqual(first["chunk_count"], 2)
+        self.assertIsNone(first["chunk_count"])
         self.assertEqual(first["read_status"], "processed")
         self.assertTrue(first["path_exists"])
         self.assertEqual(rows[("corporate_documents", 2)]["date_source"], "call_date")
         self.assertTrue(rows[("corporate_documents", 3)]["undated"])
-        self.assertEqual(rows[("raw_documents", 10)]["chunk_count"], 0)
-        self.assertEqual(rows[("raw_documents", 10)]["read_status"], "not_indexed")
+        self.assertEqual(rows[("raw_documents", 10)]["chunk_count"], 2)
+        self.assertEqual(rows[("raw_documents", 10)]["read_status"], "indexed")
+        self.assertEqual(rows[("cc_docs", 1)]["chunk_count"], 3)
         self.assertEqual(rows[("cc_docs", 1)]["filing_date"], "2026-08-11T23:38:08")
 
     def test_doc_type_routes_to_the_right_stores(self) -> None:
         annual = find_docs.find(symbol="DEEDEV", doc_type="ANNUAL_REPORT")
         self.assertEqual([r["store"] for r in annual["documents"]], ["ar_docs"])
+        self.assertEqual(annual["documents"][0]["chunk_count"], 4)
         deck = find_docs.find(symbol="DEEDEV", doc_type="DECK")
         self.assertEqual([r["store"] for r in deck["documents"]], ["deck_sources"])
+        self.assertEqual(deck["documents"][0]["chunk_count"], 5)
 
     def test_date_window_filters(self) -> None:
         result = find_docs.find(symbol="DEEDEV", since="2026-01-01", until="2026-12-31")
@@ -198,7 +211,7 @@ class TestRenderPages(ToolbeltTestCase):
         path = self.dir / "tiny.pdf"
         doc = pymupdf.open()
         page = doc.new_page()
-        page.insert_text((72, 72), "Revenue 2026 123 456 and the annual report discusses growth plans.")
+        page.insert_text((72, 72), "Revenue 123 456 789 and the annual report discusses growth plans.")
         doc.new_page()
         doc.save(path)
         doc.close()
@@ -210,19 +223,35 @@ class TestRenderPages(ToolbeltTestCase):
         page = out["pages"][0]
         self.assertEqual(page["page"], 1)
         self.assertTrue(Path(page["png"]).exists())
-        self.assertGreater(page["width"], 0)
+        self.assertEqual(max(page["width"], page["height"]), 842)
         text = render_pages.render(pdf, pages="all", text=True)
         first, second = text["pages"]
         self.assertGreater(first["chars"], 0)
         self.assertGreater(first["text_coverage"], 0)
         self.assertFalse(first["low_text"])
         self.assertEqual(first["deck_route"], "vision")
+        self.assertEqual(first["text_numbers"], 3)
         self.assertTrue(second["low_text"])
         self.assertEqual(second["deck_route"], "skip")
 
-    def test_max_side_matches_deck_cap(self) -> None:
-        out = render_pages.render(self._pdf(), pages="1", max_side=1600, out_dir=self.dir / "png")
-        self.assertEqual(max(out["pages"][0]["width"], out["pages"][0]["height"]), 1600)
+    def test_default_caps_long_side_at_deck_max(self) -> None:
+        out = render_pages.render(self._pdf(), pages="1", out_dir=self.dir / "png")
+        self.assertEqual(out["max_side"], render_pages.DECK_MAX_SIDE)
+        self.assertEqual(max(out["pages"][0]["width"], out["pages"][0]["height"]),
+                         render_pages.DECK_MAX_SIDE)
+
+    def test_deck_gate_uses_production_text_numbers(self) -> None:
+        import pymupdf
+        path = self.dir / "numbers.pdf"
+        doc = pymupdf.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "FY26 2026 0.5 123 456")
+        doc.save(path)
+        doc.close()
+        stats = render_pages.render(path, pages="1", text=True)["pages"][0]
+        # keep() drops the bare year and the sub-1 value; 123 and 456 stay, below the 3-number gate.
+        self.assertEqual(stats["text_numbers"], 2)
+        self.assertEqual(stats["deck_route"], "skip")
 
 
 class TestDriveFetch(ToolbeltTestCase):
@@ -288,10 +317,12 @@ class TestDriveFetch(ToolbeltTestCase):
                          "pdfs/DEEDEV/ANNUAL_REPORT/x.pdf")
         self.assertEqual(by_sha["items"][0]["status"], "ok")
 
-    def test_dest_required_in_sandbox(self) -> None:
+    def test_dry_run_needs_no_dest_in_sandbox(self) -> None:
         with mock.patch.dict(os.environ, {"DSH_WORKER_JOB_ID": "job"}, clear=False):
+            present = self._fetch(["pdfs/DEEDEV/ANNUAL_REPORT/x.pdf"], dry_run=True)
+            self.assertEqual(present["items"][0]["status"], "present")
             with self.assertRaises(ValueError):
-                self._fetch(["pdfs/DEEDEV/ANNUAL_REPORT/x.pdf"], dry_run=True)
+                self._fetch(["pdfs/DEEDEV/ANNUAL_REPORT/x.pdf"])
 
 
 class TestCostLedger(ToolbeltTestCase):
@@ -344,12 +375,14 @@ class TestModTest(ToolbeltTestCase):
         self.assertEqual(summary["ms"], 6.0)
         self.assertEqual(summary["failed"][0]["title"], "t2")
 
-    def test_run_skips_cleanly_without_cli(self) -> None:
+    def test_all_skipped_is_not_ok(self) -> None:
         mod = self.dir / "mod"
         (mod / "hooks").mkdir(parents=True)
         result = mod_test.run(mod, skip_validate=True, skip_tsc=True, claude=str(self.dir / "nope"))
         self.assertIsNone(result["validate"]["ok"])
         self.assertEqual(result["tests"]["skipped"], "claude CLI not found")
+        self.assertEqual(result["skipped"], ["validate", "tsc", "tests"])
+        self.assertFalse(result["ok"])
 
 
 class TestJobPeek(ToolbeltTestCase):

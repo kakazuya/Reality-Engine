@@ -17,9 +17,10 @@ Examples:
 from __future__ import annotations
 
 import argparse
-import re
 from pathlib import Path
 from typing import Any
+
+from reality_engine.scripts.extract_deck_figures import text_numbers
 
 from ._common import add_format, main_guard, parse_pages, print_result
 
@@ -30,7 +31,6 @@ GATE_TEXT_NUMBERS = 3
 GATE_IMG_COV = 0.15
 MIN_TEXT_CHARS = 40
 EXPECTED_CHARS_PER_SQ_IN = 15.0
-DEFAULT_DPI = 150
 
 
 def _pymupdf():
@@ -39,11 +39,6 @@ def _pymupdf():
     except ImportError:  # older installs expose the fitz name
         import fitz as pymupdf  # type: ignore
     return pymupdf
-
-
-def _text_numbers(text: str) -> list[str]:
-    """Numbers in the text layer, the reference the deck gate counts."""
-    return re.findall(r"\d[\d,.]*", text or "")
 
 
 def _page_geometry(page) -> tuple[float, float]:
@@ -64,7 +59,7 @@ def _text_stats(page, pymupdf) -> dict[str, Any]:
     width, height = _page_geometry(page)
     area_sq_in = max((width / 72.0) * (height / 72.0), 0.001)
     coverage = min(1.0, chars / (area_sq_in * EXPECTED_CHARS_PER_SQ_IN))
-    numbers = _text_numbers(text)
+    numbers = text_numbers(text)
     img_cov = _image_coverage(page, pymupdf)
     if len(numbers) >= GATE_TEXT_NUMBERS:
         deck_route = "vision"
@@ -83,12 +78,17 @@ def _text_stats(page, pymupdf) -> dict[str, Any]:
     }
 
 
-def render(pdf: str | Path, pages: str | None = None, dpi: int = DEFAULT_DPI,
+def render(pdf: str | Path, pages: str | None = None, dpi: int | None = None,
            max_side: int = 0, out_dir: str | Path | None = None,
            text: bool = False) -> dict[str, Any]:
-    """Render selected pages (or dump text); ``max_side`` overrides ``dpi`` when > 0."""
-    if dpi < 1:
+    """Render selected pages (or dump text); ``max_side`` overrides ``dpi`` when > 0.
+
+    With neither given, the longest side is capped at ``DECK_MAX_SIDE`` (the deck
+    renderer's default); ``dpi`` is an explicit override.
+    """
+    if dpi is not None and dpi < 1:
         raise ValueError("--dpi must be >= 1")
+    cap = max_side if max_side > 0 else (DECK_MAX_SIDE if dpi is None else 0)
     pymupdf = _pymupdf()
     source = Path(pdf)
     if not source.exists():
@@ -102,9 +102,9 @@ def render(pdf: str | Path, pages: str | None = None, dpi: int = DEFAULT_DPI,
             if text:
                 results.append({"page": page_no, **_text_stats(page, pymupdf)})
                 continue
-            if max_side > 0:
+            if cap > 0:
                 width, height = _page_geometry(page)
-                zoom = max_side / max(width, height, 1.0)
+                zoom = cap / max(width, height, 1.0)
                 pix = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
                 used_dpi = round(72.0 * zoom, 1)
             else:
@@ -116,7 +116,7 @@ def render(pdf: str | Path, pages: str | None = None, dpi: int = DEFAULT_DPI,
             results.append({"page": page_no, "png": str(target), "width": pix.width,
                             "height": pix.height, "bytes": target.stat().st_size,
                             "dpi": used_dpi})
-    return {"pdf": str(source), "text_mode": text, "dpi": dpi, "max_side": max_side,
+    return {"pdf": str(source), "text_mode": text, "dpi": dpi, "max_side": cap,
             "pages": results}
 
 
@@ -126,10 +126,10 @@ def main(argv: list[str] | None = None) -> int:
         description="Render PDF pages to PNG or dump text with a text_coverage score.")
     ap.add_argument("--pdf", required=True, help="PDF path")
     ap.add_argument("--pages", help="e.g. 3,5-7 or all (default: all)")
-    ap.add_argument("--dpi", type=int, default=DEFAULT_DPI,
-                    help=f"raster density (default: {DEFAULT_DPI}; deck pipeline caps the longest side at 1600 px)")
+    ap.add_argument("--dpi", type=int, default=None,
+                    help=f"raster density override (default: cap the longest side at {DECK_MAX_SIDE} px)")
     ap.add_argument("--max-side", type=int, default=0,
-                    help=f"cap the longest side in px ({DECK_MAX_SIDE} reproduces the deck renderer)")
+                    help=f"cap the longest side in px (default: {DECK_MAX_SIDE}, the deck renderer)")
     ap.add_argument("--out", help="PNG output directory (default: .tmp/render_pages)")
     ap.add_argument("--text", action="store_true", help="dump the text layer instead of rendering")
     add_format(ap)

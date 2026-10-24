@@ -192,7 +192,11 @@ def run(mod: str | Path, *, tsconfig: str | Path | None = None, skip_validate: b
         summary["errors"] = errors
         result["tests"] = summary
 
-    result["ok"] = (result.get("validate", {}).get("ok") is not False
+    checks = ("validate", "tsc", "tests")
+    skipped = [name for name in checks if (result.get(name) or {}).get("skipped")]
+    result["skipped"] = skipped
+    result["ok"] = (len(skipped) < len(checks)
+                    and result.get("validate", {}).get("ok") is not False
                     and result.get("tsc", {}).get("ok") is not False
                     and result.get("tests", {}).get("failures", 0) == 0
                     and not result.get("tests", {}).get("errors"))

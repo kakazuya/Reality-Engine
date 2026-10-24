@@ -16,6 +16,7 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -55,14 +56,17 @@ def _path_exists(local_path: str | None) -> bool:
     return (REPO_ROOT / p).exists() or (Path.cwd() / p).exists()
 
 
-def _chunk_count(equity_con, doc_id: Any) -> int:
-    if equity_con is None or doc_id is None:
-        return 0
+def _chunk_count(con, table: str, column: str, key: Any) -> int | None:
+    """Count rows in the store's own piece table; ``None`` when that table is absent."""
+    if con is None or not key:
+        return None
     try:
-        return int(equity_con.execute(
-            "SELECT count(*) FROM document_chunks WHERE doc_id=?", (doc_id,)).fetchone()[0])
-    except Exception:  # noqa: BLE001 - fixture stores may not have the table
-        return 0
+        return int(con.execute(
+            f"SELECT count(*) FROM {table} WHERE {column}=?", (key,)).fetchone()[0])
+    except sqlite3.OperationalError as exc:
+        if "no such table" in str(exc).lower():
+            return None
+        raise
 
 
 def _base_row(store: str, doc_id: Any, symbol: str | None, isin: str | None,
@@ -80,7 +84,7 @@ def _base_row(store: str, doc_id: Any, symbol: str | None, isin: str | None,
         "undated": not filing_date,
         "local_path": local_path,
         "path_exists": _path_exists(local_path),
-        "chunk_count": 0,
+        "chunk_count": None,
         "read_status": read_status,
     }
 
@@ -144,9 +148,12 @@ def _raw(con, symbol, isin, doc_type, since, until, limit) -> list[dict[str, Any
            f"FROM raw_documents {clause} ORDER BY published_date DESC LIMIT ?")
     out = []
     for row in con.execute(sql, (*params, limit)).fetchall():
-        out.append(_base_row("raw_documents", row[0], row[1], row[2], row[3], row[4],
-                             row[5], "published_date" if row[5] else None, row[6],
-                             "not_indexed"))
+        record = _base_row("raw_documents", row[0], row[1], row[2], row[3], row[4],
+                           row[5], "published_date" if row[5] else None, row[6],
+                           "not_indexed")
+        record["chunk_count"] = _chunk_count(con, "document_chunks", "doc_id", row[0])
+        record["read_status"] = "indexed" if record["chunk_count"] else "not_indexed"
+        out.append(record)
     return out
 
 
@@ -169,9 +176,11 @@ def _ar(con, symbol, isin, since, until, limit) -> list[dict[str, Any]]:
            f"filed_at_source, path, status FROM ar_docs {clause} ORDER BY filed_at DESC LIMIT ?")
     out = []
     for row in con.execute(sql, (*params, limit)).fetchall():
-        out.append(_base_row("ar_docs", row[0], row[1], row[2], "ANNUAL_REPORT", row[3],
-                             row[4], (row[5] or "filed_at") if row[4] else None, row[6],
-                             row[7] or "unknown"))
+        record = _base_row("ar_docs", row[0], row[1], row[2], "ANNUAL_REPORT", row[3],
+                           row[4], (row[5] or "filed_at") if row[4] else None, row[6],
+                           row[7] or "unknown")
+        record["chunk_count"] = _chunk_count(con, "ar_pieces", "doc_id", row[0])
+        out.append(record)
     return out
 
 
@@ -190,13 +199,15 @@ def _deck(con, symbol, isin, since, until, limit) -> list[dict[str, Any]]:
         where.append("known_at <= ?")
         params.append(until)
     clause = f"WHERE {' AND '.join(where)}" if where else ""
-    sql = (f"SELECT source_id, symbol, isin, title, known_at, local_path, status "
+    sql = (f"SELECT source_id, symbol, isin, title, known_at, local_path, status, sha256 "
            f"FROM deck_sources {clause} ORDER BY known_at DESC LIMIT ?")
     out = []
     for row in con.execute(sql, (*params, limit)).fetchall():
-        out.append(_base_row("deck_sources", row[0], row[1], row[2],
-                             "INVESTOR_PRESENTATION", row[3], row[4],
-                             "known_at" if row[4] else None, row[5], row[6] or "unknown"))
+        record = _base_row("deck_sources", row[0], row[1], row[2],
+                           "INVESTOR_PRESENTATION", row[3], row[4],
+                           "known_at" if row[4] else None, row[5], row[6] or "unknown")
+        record["chunk_count"] = _chunk_count(con, "pages", "sha256", row[7])
+        out.append(record)
     return out
 
 
@@ -219,9 +230,11 @@ def _cc(con, symbol, isin, since, until, limit) -> list[dict[str, Any]]:
            f"date_source, status FROM cc_docs {clause} ORDER BY filed_at DESC LIMIT ?")
     out = []
     for row in con.execute(sql, (*params, limit)).fetchall():
-        out.append(_base_row("cc_docs", row[0], row[1], row[2], "CONCALL_TRANSCRIPT", row[3],
-                             row[4], (row[5] or "filed_at") if row[4] else None, None,
-                             row[6] or "unknown"))
+        record = _base_row("cc_docs", row[0], row[1], row[2], "CONCALL_TRANSCRIPT", row[3],
+                           row[4], (row[5] or "filed_at") if row[4] else None, None,
+                           row[6] or "unknown")
+        record["chunk_count"] = _chunk_count(con, "cc_items", "doc_id", row[0])
+        out.append(record)
     return out
 
 
@@ -257,10 +270,6 @@ def find(symbol: str | None = None, isin: str | None = None, doc_type: str | Non
                 documents += _cc(cc, symbol, isin, since, until_full, limit)
             finally:
                 cc.close()
-        for row in documents:
-            row["chunk_count"] = _chunk_count(equity, row["id"])
-            if row["store"] == "raw_documents":
-                row["read_status"] = "indexed" if row["chunk_count"] else "not_indexed"
         documents.sort(key=lambda r: r["filing_date"] or "", reverse=True)
         documents = documents[:limit]
         counts: dict[str, int] = {}
