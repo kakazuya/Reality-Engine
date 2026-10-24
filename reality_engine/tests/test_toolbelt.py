@@ -261,16 +261,29 @@ class TestDriveFetch(ToolbeltTestCase):
         payload = b"hello"
         self.md5 = hashlib.md5(payload).hexdigest()
         self.sha = hashlib.sha256(payload).hexdigest()
+        self.hash8 = "9041611d"
+        self.rest = "4be8a863-82ec-4642-82c2-b0bd10618a7a.pdf"
+        self.requested = f"20261010_{self.hash8}_{self.rest}"
+        self.newer = f"20260828_{self.hash8}_{self.rest}"
+        self.older = f"20260101_{self.hash8}_{self.rest}"
+        hashes = {"md5": self.md5, "sha256": self.sha}
+        listings = {
+            "pdfs/DEEDEV/ANNUAL_REPORT": [{"Path": "x.pdf", "Size": 5, "Hashes": hashes}],
+            "pdfs/ONE/ANNUAL_REPORT": [{"Path": self.newer, "Size": 5, "Hashes": hashes}],
+            "pdfs/MANY/ANNUAL_REPORT": [
+                {"Path": self.older, "Size": 5, "Hashes": hashes},
+                {"Path": self.newer, "Size": 5, "Hashes": hashes},
+                {"Path": "20250101_deadbeef_other.pdf", "Size": 5, "Hashes": {}},
+            ],
+        }
         lines = [
             "import json, sys",
+            f"listings = {listings!r}",
             "args = sys.argv[1:]",
             "if args[0] == 'lsjson':",
             "    target = args[-1]",
-            "    if 'MISSING' in target:",
-            "        print('[]')",
-            "    else:",
-            f"        print(json.dumps([{{'Path': 'x.pdf', 'Size': 5, "
-            f"'Hashes': {{'md5': '{self.md5}', 'sha256': '{self.sha}'}}}}]))",
+            "    folder = next((f for f in listings if target.endswith(f)), None)",
+            "    print(json.dumps(listings[folder] if folder else []))",
             "elif args[0] == 'copyto':",
             "    open(args[2], 'wb').write(b'hello')",
             "else:",
@@ -323,6 +336,37 @@ class TestDriveFetch(ToolbeltTestCase):
             self.assertEqual(present["items"][0]["status"], "present")
             with self.assertRaises(ValueError):
                 self._fetch(["pdfs/DEEDEV/ANNUAL_REPORT/x.pdf"])
+
+    def test_exact_match_reports_exact(self) -> None:
+        record = self._fetch(["pdfs/DEEDEV/ANNUAL_REPORT/x.pdf"], dest=self.dir,
+                             dry_run=True)["items"][0]
+        self.assertEqual(record["status"], "present")
+        self.assertEqual(record["matched_by"], "exact")
+
+    def test_one_hash_suffix_match_uses_remote_path_and_requested_name(self) -> None:
+        out = self.dir / "out"
+        record = self._fetch([f"pdfs/ONE/ANNUAL_REPORT/{self.requested}"], dest=out)["items"][0]
+        self.assertEqual(record["status"], "ok")
+        self.assertEqual(record["matched_by"], "hash_suffix")
+        self.assertEqual(record["remote_path"], f"pdfs/ONE/ANNUAL_REPORT/{self.newer}")
+        self.assertNotIn("alternates", record)
+        self.assertEqual((out / self.requested).read_bytes(), b"hello")
+        kept = self._fetch([f"pdfs/ONE/ANNUAL_REPORT/{self.requested}"],
+                           dest=self.dir / "remote", keep_remote_name=True)["items"][0]
+        self.assertTrue((self.dir / "remote" / self.newer).exists())
+
+    def test_several_suffix_matches_pick_newest_and_list_alternates(self) -> None:
+        record = self._fetch([f"pdfs/MANY/ANNUAL_REPORT/{self.requested}"], dest=self.dir,
+                             dry_run=True)["items"][0]
+        self.assertEqual(record["status"], "present")
+        self.assertEqual(record["matched_by"], "hash_suffix")
+        self.assertEqual(record["remote_path"], f"pdfs/MANY/ANNUAL_REPORT/{self.newer}")
+        self.assertEqual(record["alternates"], [f"pdfs/MANY/ANNUAL_REPORT/{self.older}"])
+
+    def test_no_suffix_match_is_missing(self) -> None:
+        record = self._fetch([f"pdfs/NONE/ANNUAL_REPORT/{self.requested}"], dest=self.dir,
+                             dry_run=True)["items"][0]
+        self.assertEqual(record["status"], "missing")
 
 
 class TestCostLedger(ToolbeltTestCase):
