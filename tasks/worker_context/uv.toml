@@ -1,0 +1,4 @@
+# uv network timeouts for this network (large wheels exceed the default).
+# Copy to %APPDATA%\uv\uv.toml (Claude installs it outside the worker sandbox).
+[network]
+timeout = 120

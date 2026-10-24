@@ -1,0 +1,21 @@
+# Packages dsh workers repeatedly needed and had to install mid-task.
+# Install with:  python reality_engine/scripts/setup_worker_env.py
+# Check wheels:  python reality_engine/scripts/setup_worker_env.py --dry-run
+#
+# Pins are deliberately loose: the main Python is 3.14 and the newest release
+# with a cp314 Windows wheel is what works.  No pytest here: worker tests use
+# unittest (the repo convention), and the suite lives in the repo anyway.
+pymupdf
+pyyaml
+requests
+numpy
+pandas
+duckdb
+openpyxl
+xlrd
+
+# Deliberately NOT installed:
+#   rapidocr / rapidocr-onnxruntime - rapidocr's only backend is onnxruntime,
+#   which has no cp314 wheel (checked 2026-10-25), so the install cannot work on
+#   this Python.  OCR work stays on the repo's existing OCR path.
+#   pytest - not needed; the repo uses unittest.

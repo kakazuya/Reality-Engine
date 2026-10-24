@@ -43,7 +43,16 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   0), `controller_lease_seconds` (default 1800, max 7200), `refresh_context`,
   `progress_interval_seconds` (default 1200; `0` disables the supervisor's
   model-free progress digests), and `use_worktree`/`base` for an isolated
-  worktree writer. The launcher must
+  worktree writer. `write_scope="workspace"` (default) writes the workspace and
+  `<workspace>/.tmp` only. `write_scope="data"` additionally approves
+  `REALITY_DATA_ROOT` and `D:\RealityEngine` for an approved data job: it needs
+  `confirm_data_write=true` and `writes=[db files]`; the supervisor holds
+  `db:<file>` locks, and a second job naming a held DB is refused
+  (`resource_busy`). `write_scope="full"` disables the dsh file sandbox and
+  needs `confirm_full_access=true` after Shivam's approval. Data/full run the
+  dsh `danger-full-access` mode because dsh 0.2.1 has one writable root per
+  session. Every job gets `<workspace>/.tmp` with `TMP`/`TEMP` and the
+  pip/npm/uv caches inside it. The launcher must
   provide the real heartbeat and `--control-token-env` capabilities; the plugin
   refuses to start rather than falling back to a hard timeout. A positive
   `followup_wait_seconds` opts into a bounded host-side wait for explicit
@@ -59,7 +68,10 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   counts, the last tool and recent file writes; `progress.latest_finish_by` is
   the hard stop (lease/timeout), and `eta` is deliberately null. Failed jobs
   carry `failure_reason.likely_cause`. Phase `unknown` means the status record
-  was momentarily unreadable: poll again, do not treat it as lost.
+  was momentarily unreadable: poll again, do not treat it as lost. The status
+  also reports `write_scope`, `writes`, `write_roots`, `resource_locks`,
+  `tmp_dir`, `worker_commits`, `detached`, and the orientation metric
+  `tool_calls_before_first_edit` / `orientation_seconds`.
   `stale` means no committed nested heartbeat activity within the configured
   window; a validated deliberate input wait is surfaced as awaiting input, not
   as progress, and a stale/expired wait descriptor stops suppressing checks.
@@ -68,7 +80,10 @@ it does not replace the launcher, change Codex's model, or add a provider route.
   elapsed, tool calls (total/by tool/delta), model steps, output tokens, last
   tool + target, files written since the last digest, idle seconds, lease time
   left, a >20-minute stall flag, the worker's last 3 committed text lines and
-  the latest `PROGRESS_NOTES.md` line. Prefer this over pinging a running
+  the latest `PROGRESS_NOTES.md` line (`<workspace>/.tmp/PROGRESS_NOTES.md`, the
+  `DSH_WORKER_PROGRESS_NOTES` path the brief quotes). Each digest also carries `write_scope`,
+  `tool_calls_before_first_edit` and `orientation_seconds` (the orientation
+  metric: how many tool calls, and how long, before the first edit/write). Prefer this over pinging a running
   worker; it never touches the worker's conversation. `since` takes an
   ISO-8601 time or `30m`/`2h`.
 - `worker_result` — bounded final or partial answer, exit outcome, artifact
@@ -175,7 +190,13 @@ the worktree (`git add -A`, author from git config, subject
 `<brief first line> [dsh <job_id>]`, trailer `DSH-Job: <job_id>`); an empty diff
 makes no commit, and failed/cancelled jobs are left uncommitted for review.
 `worker_status`/`worker_result` report `worktree.branch`, `base`, `head`,
-`commits`, `files_changed`. Gitignored data lives only in the main checkout:
+`commits`, `files_changed`. A worker can commit its own change: write
+`<workspace>/.tmp/commit.request.json` with `{"message": "..."}`; the
+supervisor commits on its next poll, records `status.worker_commits`, and
+writes `.tmp/commit.result.json`. This covers both a job-created worktree and a
+workspace pointed at an existing worktree; the main checkout is refused, and a
+direct `git commit` inside a sandboxed job is always blocked (the linked git
+dir is outside the writable root). Gitignored data lives only in the main checkout:
 read it from `REALITY_DATA_ROOT` by absolute path, read-only (the one-line
 brief preamble says so).
 

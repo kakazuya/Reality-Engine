@@ -64,6 +64,14 @@ ACCOUNT = "2"
 KEY_ENV = "OPENCODE_GO_API_KEY_2"
 MODEL_LAUNCHER_MODULE = "reality_engine.scripts.run_deepseek_harness"
 PERMISSIONS = ("read-only", "workspace-write", "danger-full-access")
+# Additional write authority on top of the dsh sandbox mode.  dsh 0.2.1 has one
+# writable root per session (the workspace cwd) and no extra-roots config, so
+# "data" and "full" both run the dsh danger-full-access mode; the difference is
+# that "data" is scoped by instructions + per-DB locks and "full" needs its own
+# confirmation.  Recorded per job so status/list/progress show the real scope.
+WRITE_SCOPES = ("workspace", "data", "full")
+D_REALITY_ENGINE = "D:\\RealityEngine"
+MAX_WRITE_DBS = 20
 FINAL_PHASES = frozenset({"finished", "failed", "cancelled", "lost"})
 ACTIVE_PHASES = frozenset({"starting", "running", "cancelling"})
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -245,6 +253,43 @@ def _first_line(text: str, limit: int = 200) -> str:
         if stripped:
             return stripped[:limit]
     return "dsh worker"
+
+
+def _normalize_writes(writes: Any) -> list[str]:
+    """Validate the ``writes`` DB list and return basenames without ``db:``.
+
+    Each entry names one SQLite file (with or without the ``db:`` prefix) that
+    the brief is approved to write.  The supervisor takes the matching
+    ``db:<file>`` resource lock for the job's lifetime, so two data writers
+    never share a DB.
+    """
+    if writes is None:
+        return []
+    if not isinstance(writes, list) or len(writes) > MAX_WRITE_DBS:
+        raise PluginError(
+            "writes_invalid", f"writes must be a list of at most {MAX_WRITE_DBS} DB file names"
+        )
+    names: list[str] = []
+    for value in writes:
+        if not isinstance(value, str) or not value.strip() or "\x00" in value:
+            raise PluginError("writes_invalid", "every writes entry must be a non-empty string")
+        name = value.strip()
+        if name.startswith("db:"):
+            name = name[3:]
+        if (
+            not name.endswith(".db")
+            or Path(name).name != name
+            or len(name) > 120
+            or "/" in name
+            or "\\" in name
+        ):
+            raise PluginError(
+                "writes_invalid",
+                f"writes entry {value!r} must be a bare SQLite file name ending in .db",
+            )
+        if name not in names:
+            names.append(name)
+    return names
 
 
 def _progress_interval(value: Any) -> int:
@@ -442,6 +487,24 @@ class Manager:
 
     def _job_lock(self, job_dir: Path) -> Path:
         return job_dir / JOB_LOCK_NAME
+
+    def _status_paths(self, job_id: str, job: dict[str, Any]) -> dict[str, str]:
+        """Job paths with the live progress-notes path inside the workspace.
+
+        The worker writes ``<workspace>/.tmp/PROGRESS_NOTES.md`` because the
+        job directory is outside its sandbox; the legacy job-dir path is still
+        reported (and still read by the digest) for jobs started before that.
+        """
+        paths = self._job_paths(job_id)
+        workspace = job.get("workspace")
+        if isinstance(workspace, str) and workspace:
+            paths["progress_notes"] = str(
+                Path(workspace) / ".tmp" / progress.PROGRESS_NOTES_FILE
+            )
+        paths["progress_notes_legacy"] = str(
+            self._job_dir(job_id) / progress.PROGRESS_NOTES_FILE
+        )
+        return paths
 
     # ------------------------------------------------------------ validation
     def _workspace(self, candidate: str) -> Path:
@@ -899,6 +962,10 @@ class Manager:
         task_file: str | None = None,
         workspace: str = ".",
         permission: str = "read-only",
+        write_scope: str = "workspace",
+        confirm_data_write: bool = False,
+        confirm_full_access: bool = False,
+        writes: list[str] | None = None,
         heartbeat_interval_seconds: int = 900,
         missed_replies: int = 2,
         max_output_tokens: int | None = None,
@@ -971,6 +1038,41 @@ class Manager:
         brief_first_line = _first_line(text)
         if permission not in PERMISSIONS:
             raise PluginError("permission_invalid", f"permission must be one of {PERMISSIONS}")
+        if write_scope not in WRITE_SCOPES:
+            raise PluginError(
+                "write_scope_invalid", f"write_scope must be one of {WRITE_SCOPES}"
+            )
+        if not isinstance(confirm_data_write, bool):
+            raise PluginError("confirm_invalid", "confirm_data_write must be true or false")
+        if not isinstance(confirm_full_access, bool):
+            raise PluginError("confirm_invalid", "confirm_full_access must be true or false")
+        if write_scope == "data" and not confirm_data_write:
+            raise PluginError(
+                "confirm_data_write_required",
+                "write_scope='data' can write REALITY_DATA_ROOT and D:\\RealityEngine; "
+                "pass confirm_data_write=true only for a brief approved to write there",
+            )
+        if write_scope == "full" and not confirm_full_access:
+            raise PluginError(
+                "confirm_full_access_required",
+                "write_scope='full' removes the file sandbox entirely; ask Shivam first, "
+                "then pass confirm_full_access=true",
+            )
+        write_dbs = _normalize_writes(writes)
+        if write_dbs and write_scope != "data":
+            raise PluginError(
+                "writes_requires_data_scope",
+                "writes=[...] names the DBs a data-scope job may write; pass "
+                "write_scope='data' (with confirm_data_write=true) to use it",
+            )
+        # dsh 0.2.1 has one writable root per session (the workspace cwd) and no
+        # extra-roots config.  Data/full scope therefore runs the dsh
+        # danger-full-access mode; "data" is narrowed by the brief's write
+        # roots, the per-DB locks, and the confirmation, not by the sandbox.
+        effective_permission = (
+            "danger-full-access" if write_scope in ("data", "full") else permission
+        )
+        data_locks = [f"db:{name}" for name in write_dbs]
         if not isinstance(heartbeat_interval_seconds, int) or not 30 <= heartbeat_interval_seconds <= 86_400:
             raise PluginError("heartbeat_invalid", "heartbeat interval must be 30..86400 seconds")
         progress_interval_seconds = _progress_interval(progress_interval_seconds)
@@ -1038,11 +1140,19 @@ class Manager:
                 capabilities=capability.as_dict(),
                 help_error=capability.help_error,
             )
+        busy = self._resource_lock_busy(data_locks) if data_locks else []
+        if busy:
+            raise PluginError(
+                "resource_busy",
+                "the DBs named in writes are already held by another job; two "
+                "writers must never share a SQLite DB",
+                resource_locks=busy,
+            )
         job_id = new_job_id()
         job_dir = self.config.jobs_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=False)
         paths = self._job_paths(job_id)
-        mutating = permission != "read-only"
+        mutating = effective_permission != "read-only"
         lock_path: Path | None = None
         supervisor_spawned = False
         worktree_record: dict[str, Any] | None = None
@@ -1054,6 +1164,9 @@ class Manager:
                     raise PluginError("worktree_failed", str(exc)) from exc
                 ws = Path(worktree_record["path"])
                 text = f"{WORKTREE_PREAMBLE}\n\n{text}"
+            write_roots = [str(ws)]
+            if write_scope in ("data", "full"):
+                write_roots += [str(self.config.data_root), D_REALITY_ENGINE]
             # Standing instruction, not a question: the worker must never stop
             # or answer it, only append a progress line.
             text = f"{text.rstrip()}\n\n{PROGRESS_NOTES_INSTRUCTION}\n"
@@ -1083,7 +1196,7 @@ class Manager:
                 "--account",
                 ACCOUNT,
                 "--permission",
-                permission,
+                effective_permission,
                 "--allow-paid",
             ]
             if max_output_tokens is not None:
@@ -1114,6 +1227,25 @@ class Manager:
                     "read-only worker: it does not take the workspace mutation lock, so it "
                     "must not be started alongside a mutating worker in the same checkout"
                 )
+            if write_scope in ("data", "full") and permission != "danger-full-access":
+                warnings.append(
+                    "write_scope_uses_full_access: dsh 0.2.1 has one writable root per "
+                    "session and no extra-roots config, so write_scope="
+                    f"{write_scope!r} runs the dsh danger-full-access mode; the brief's "
+                    "write roots and (for data) the per-DB locks are the real scope"
+                )
+            if write_scope == "data":
+                warnings.append(
+                    "data_scope: write only inside "
+                    + ", ".join(write_roots)
+                    + "; the supervisor holds "
+                    + (", ".join(data_locks) if data_locks else "no DB lock (writes=[] given)")
+                )
+            if write_scope == "full":
+                warnings.append(
+                    "full_access: the file sandbox is disabled for this job; Shivam must "
+                    "approve it before Claude passes confirm_full_access=true"
+                )
             token_persisted = self._persist_control_token(job_dir, control_token)
             if not token_persisted:
                 warnings.append(
@@ -1128,7 +1260,12 @@ class Manager:
                 "plugin_root": str(self.config.plugin_root),
                 "workspace": str(ws),
                 "task_file": task_relative,
-                "permission": permission,
+                "permission": effective_permission,
+                "permission_requested": permission,
+                "write_scope": write_scope,
+                "writes": write_dbs,
+                "write_roots": write_roots,
+                "resource_locks": data_locks,
                 "model": MODEL,
                 "effort": EFFORT,
                 "account": ACCOUNT,
@@ -1186,6 +1323,15 @@ class Manager:
                 "phase": "starting",
                 "started_at": iso(now),
                 "updated_at": iso(now),
+                "write_scope": write_scope,
+                "write_roots": write_roots,
+                "tmp_dir": None,
+                "tool_calls_before_first_edit": None,
+                "first_edit_at": None,
+                "orientation_seconds": None,
+                "worker_commits": [],
+                "detached": [],
+                "resource_locks": data_locks,
                 "supervisor_pid": None,
                 "supervisor_creation_time": None,
                 "worker_pid": None,
@@ -1205,7 +1351,8 @@ class Manager:
             self._steer(
                 job_dir,
                 "start",
-                f"permission={permission} workspace={ws}"
+                f"permission={effective_permission} write_scope={write_scope} "
+                f"workspace={ws}"
                 + (f" base={base or 'HEAD'}" if use_worktree else ""),
             )
 
@@ -1226,7 +1373,12 @@ class Manager:
                 "job_id": job_id,
                 "phase": status.get("phase", "starting"),
                 "workspace": str(ws),
-                "permission": permission,
+                "permission": effective_permission,
+                "permission_requested": permission,
+                "write_scope": write_scope,
+                "writes": write_dbs,
+                "write_roots": write_roots,
+                "resource_locks": data_locks,
                 "model": MODEL,
                 "effort": EFFORT,
                 "account": ACCOUNT,
@@ -1244,7 +1396,7 @@ class Manager:
                 "progress_interval_seconds": progress_interval_seconds,
                 "progress_path": paths["progress"],
                 "progress_md_path": paths["progress_md"],
-                "progress_notes_path": paths["progress_notes"],
+                "progress_notes_path": str(ws / ".tmp" / progress.PROGRESS_NOTES_FILE),
                 "warnings": warnings + list(status.get("warnings") or []),
                 "survives_server_exit": bool(self._last_breakaway) or os.name != "nt",
                 "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
@@ -1647,6 +1799,21 @@ class Manager:
             "error": status.get("error"),
             "workspace": job.get("workspace"),
             "permission": job.get("permission"),
+            "permission_requested": job.get("permission_requested"),
+            "write_scope": job.get("write_scope") or status.get("write_scope") or "workspace",
+            "writes": job.get("writes") or [],
+            "write_roots": job.get("write_roots") or status.get("write_roots") or [],
+            "resource_locks": status.get("resource_locks") or job.get("resource_locks") or [],
+            "tmp_dir": status.get("tmp_dir"),
+            "tool_calls_before_first_edit": (
+                status.get("tool_calls_before_first_edit")
+                if status.get("tool_calls_before_first_edit") is not None
+                else (progress_view.get("events") or {}).get("tool_calls_before_first_edit")
+            ),
+            "orientation_seconds": status.get("orientation_seconds"),
+            "first_edit_at": status.get("first_edit_at"),
+            "worker_commits": status.get("worker_commits") or [],
+            "detached": status.get("detached") or [],
             "model": job.get("model"),
             "effort": job.get("effort"),
             "account": job.get("account"),
@@ -1677,7 +1844,7 @@ class Manager:
             "result_kind": status.get("result_kind") or ("final" if final else "live"),
             "interim": bool(status.get("interim_result")),
             "partial": bool(status.get("partial")),
-            "paths": self._job_paths(job_id),
+            "paths": self._status_paths(job_id, job),
             "limits": job.get("limits"),
             "warnings": warnings,
             "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
@@ -1810,6 +1977,10 @@ class Manager:
             )
         if events.get("available"):
             parts.append(f"{events['tool_calls']} tool calls, {events['model_steps']} model steps")
+            if events.get("tool_calls_before_first_edit") is not None:
+                parts.append(
+                    f"first edit after {events['tool_calls_before_first_edit']} calls"
+                )
             if events.get("last_tool"):
                 target = events.get("last_tool_target")
                 parts.append(f"last tool {events['last_tool']}" + (f" on {target}" if target else ""))
@@ -1827,6 +1998,9 @@ class Manager:
             "last_activity_kind": last_kind,
             "activity_count": (heartbeat_live or {}).get("activity_count"),
             "events": events,
+            "tool_calls_before_first_edit": (
+                events.get("tool_calls_before_first_edit") if events.get("available") else None
+            ),
             "controller_lease_remaining_seconds": (
                 round(lease_remaining, 1) if lease_remaining is not None else None
             ),
@@ -2509,6 +2683,19 @@ class Manager:
                     "stale": job["stale"],
                     "workspace": job["workspace"],
                     "permission": job["permission"],
+                    "write_scope": job.get("write_scope") or "workspace",
+                    "writes": job.get("writes") or [],
+                    "resource_locks": job.get("resource_locks") or [],
+                    "tool_calls_before_first_edit": (
+                        job.get("tool_calls_before_first_edit")
+                        if job.get("tool_calls_before_first_edit") is not None
+                        else (latest_digest or {}).get("tool_calls_before_first_edit")
+                    ),
+                    "orientation_seconds": (
+                        job.get("orientation_seconds")
+                        if job.get("orientation_seconds") is not None
+                        else (latest_digest or {}).get("orientation_seconds")
+                    ),
                     "owner_session": job.get("owner_session"),
                     "last_steerer": job.get("last_steerer"),
                     "worktree_branch": (job.get("worktree") or {}).get("branch"),

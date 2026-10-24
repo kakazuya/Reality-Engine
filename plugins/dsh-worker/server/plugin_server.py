@@ -109,7 +109,14 @@ def _safe(call) -> dict[str, Any]:
         "a positive value adds a bounded host-side wait for explicit "
         "same-conversation follow-ups. progress_interval_seconds (default 1200, "
         "0=off) is the supervisor's model-free progress-digest cadence; every "
-        "brief gets a standing instruction to append one line to PROGRESS_NOTES.md."
+        "brief gets a standing instruction to append one line to PROGRESS_NOTES.md. "
+        "write_scope='workspace' (default) writes only the workspace + its .tmp; "
+        "'data' additionally approves REALITY_DATA_ROOT and D:\\RealityEngine for "
+        "an approved data job and needs confirm_data_write=true plus writes=[db "
+        "files] (the supervisor holds db:<file> locks so two writers never share "
+        "a DB); 'full' disables the dsh file sandbox and needs "
+        "confirm_full_access=true after Shivam's approval. The supervisor creates "
+        "<workspace>/.tmp and points TMP/TEMP/caches at it."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -120,6 +127,10 @@ def start_worker(
     task_file: str | None = None,
     workspace: str = ".",
     permission: str = "read-only",
+    write_scope: str = "workspace",
+    confirm_data_write: bool = False,
+    confirm_full_access: bool = False,
+    writes: list[str] | None = None,
     heartbeat_interval_seconds: int = 900,
     missed_replies: int = 2,
     max_output_tokens: int | None = None,
@@ -139,6 +150,10 @@ def start_worker(
             task_file=task_file,
             workspace=workspace,
             permission=permission,
+            write_scope=write_scope,
+            confirm_data_write=confirm_data_write,
+            confirm_full_access=confirm_full_access,
+            writes=writes,
             heartbeat_interval_seconds=heartbeat_interval_seconds,
             missed_replies=missed_replies,
             max_output_tokens=max_output_tokens,

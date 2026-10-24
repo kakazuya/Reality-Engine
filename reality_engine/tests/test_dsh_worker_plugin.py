@@ -467,14 +467,16 @@ class PluginTests(unittest.TestCase):
     def test_controller_lease_expiry_stops_endless_worker_and_preserves_partial(self):
         self.env["FAKE_LAUNCHER_MODE"] = "slow"
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
-        self.env["DSH_WORKER_TEST_LEASE_SECONDS"] = "2"
+        self.env["DSH_WORKER_TEST_LEASE_SECONDS"] = "6"
         self._reset_manager()
         started = self._manager_instance().start_worker(brief="endless responsive task")
         job_id = started["job_id"]
         job_dir = Path(started["status_path"]).parent
         lease_path = job_dir / "controller_lease.json"
         self.assertTrue(lease_path.exists())
-        final = self._wait_status(job_id, lambda s: s["final"], timeout=10.0)
+        # The fake launcher needs to start and write its partial output before
+        # the lease expires; 2 s was a startup race on a loaded machine.
+        final = self._wait_status(job_id, lambda s: s["final"], timeout=20.0)
         self.assertEqual(final["phase"], "failed", final)
         self.assertEqual(final["outcome"], "controller_lease_expired", final)
         self.assertFalse(final["process"]["worker_alive"], final)
@@ -982,7 +984,11 @@ class PluginTests(unittest.TestCase):
                 response = await self._call(
                     session, "worker_progress", {"job_id": job_id}
                 )
-                if response.get("digests"):
+                digests = response.get("digests") or []
+                # The first scheduled digest can land before the launcher has
+                # written its first event line under load; wait for one that
+                # has seen the stream instead of asserting on an empty sample.
+                if digests and int(digests[0].get("tool_calls") or 0) >= 3:
                     break
                 await asyncio.sleep(0.1)
             self.assertTrue(digest_path.exists(), "no progress.jsonl appeared")

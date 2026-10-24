@@ -64,6 +64,33 @@ def worktrees(repo_root: Path) -> list[dict[str, Any]]:
     return entries
 
 
+def worktree_git_dirs(
+    workspace: Path,
+) -> tuple[Path | None, Path | None, Path | None]:
+    """Return ``(git_dir, common_dir, toplevel)`` for a checkout.
+
+    ``(None, None, None)`` when ``workspace`` is not inside a git checkout.  A
+    linked worktree's ``git_dir`` is ``<main>/.git/worktrees/<name>`` while its
+    own ``.git`` is a file; ``toplevel`` lets the caller reject an arbitrary
+    subdirectory of a checkout (git would otherwise walk up to its root).
+    """
+    code, out, _err = _git(Path(workspace), ["rev-parse", "--absolute-git-dir"])
+    if code != 0 or not out.strip():
+        return None, None, None
+    git_dir = Path(out.strip())
+    code, out, _err = _git(Path(workspace), ["rev-parse", "--show-toplevel"])
+    if code != 0 or not out.strip():
+        return git_dir, None, None
+    toplevel = Path(out.strip())
+    code, out, _err = _git(Path(workspace), ["rev-parse", "--git-common-dir"])
+    if code != 0 or not out.strip():
+        return git_dir, None, toplevel
+    common = Path(out.strip())
+    if not common.is_absolute():
+        common = Path(workspace) / common
+    return git_dir, common, toplevel
+
+
 def worktree_add(
     repo_root: Path, path: Path, branch: str, base_ref: str = "HEAD"
 ) -> dict[str, Any]:
