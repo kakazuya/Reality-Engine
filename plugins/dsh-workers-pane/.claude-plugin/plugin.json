@@ -1,0 +1,17 @@
+{
+  "name": "dsh-workers",
+  "version": "0.1.0",
+  "description": "Read-only DeepSeek worker progress pane plus /dsh-workers and a status line.",
+  "author": {
+    "name": "Shivam"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "jobsRoot": {
+      "type": "string",
+      "title": "dsh-worker jobs folder",
+      "description": "Folder holding one subfolder per dsh-worker job. A relative path is resolved inside the plugin folder.",
+      "default": "C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/dsh-worker/runtime/jobs"
+    }
+  }
+}
