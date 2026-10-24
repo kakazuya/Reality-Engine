@@ -1152,7 +1152,7 @@ Open:
 
 ## START HERE — next session (written 2026-10-25 ~00:45 IST, session ae59bca5)
 
-**First: worker optimisations** (Shivam: DeepSeek workers too slow — 90–270 tool calls / 30–50 min per task, mostly
+**First: worker optimisations — launch sheet + per-worker briefs in `tasks/optimizations/` (README.md, 00_SHARED_CONTEXT.md, 01–04)** (Shivam: DeepSeek workers too slow — 90–270 tool calls / 30–50 min per task, mostly
 orientation + sandbox friction). Build, in this order (dsh-worker items after a restart has loaded progress reports):
 1. Worker context pack (repo map, live schemas/row counts, which DB/tool for what, `connect_ro`, test commands,
    sandbox limits + workarounds, conventions: known_at PIT, free models only, newest-first), regenerated nightly,
