@@ -821,9 +821,10 @@ class McpSurfaceTests(StressBase):
                 await asyncio.sleep(0.1)
             self.assertTrue(status["progress"]["done"], status)
             brief = (self.root / "runtime" / "jobs" / started["job_id"] / "brief.md").read_text(encoding="utf-8")
-            self.assertTrue(brief.startswith("हिंदी ब्रीफ ✓ 价格"), brief[:200])
+            self.assertTrue(brief.startswith("## Worker context pack (auto-attached)"), brief[:200])
+            self.assertIn("हिंदी ब्रीफ ✓ 价格", brief)
             self.assertIn("PROGRESS_NOTES.md", brief)
-            self.assertNotIn("?", brief[len("हिंदी ब्रीफ ✓ 价格"):])  # instruction is not a question
+            self.assertNotIn("?", brief)  # instruction is not a question
             long_msg = await self._call(
                 session, "message_worker", {"job_id": started["job_id"], "message": "न" * 4001}
             )

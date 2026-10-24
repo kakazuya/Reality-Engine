@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
@@ -33,7 +34,10 @@ TEST_TMP = PLUGIN_ROOT / "runtime" / "test-tmp"
 
 sys.path.insert(0, str(SERVER_DIR))
 sys.path.insert(0, str(FIXTURES))
+sys.path.insert(0, str(REPO / "reality_engine" / "scripts"))
 
+import build_worker_context  # noqa: E402
+import context_pack  # noqa: E402
 import core  # noqa: E402
 import heartbeat  # noqa: E402
 import jobs  # noqa: E402
@@ -307,9 +311,11 @@ class PluginTests(unittest.TestCase):
                 print(f"--- {name} ---")
                 print(path.read_text(encoding="utf-8", errors="replace") if path.exists() else "(missing)")
         record = json.loads(argv_path.read_text(encoding="utf-8"))
-        # The brief keeps the caller's text and appends a standing progress
-        # instruction; it is never phrased as a question the worker must answer.
-        self.assertTrue(record["task"].startswith("Do the fake task"))
+        # The brief carries the standing context header + the caller's text and
+        # appends a standing progress instruction; it is never a question.
+        self.assertTrue(record["task"].startswith("## Worker context pack (auto-attached)"))
+        self.assertIn("Do the fake task", record["task"])
+        self.assertIn("CONTEXT.md", record["task"])
         self.assertIn("PROGRESS_NOTES.md", record["task"])
         self.assertNotIn("?", core.PROGRESS_NOTES_INSTRUCTION)
         self.assertEqual(
@@ -1519,10 +1525,11 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(job["owner_session"], self._manager_instance().config.session_label)
         self.assertEqual(job["worktree"]["base"], "HEAD")
         self.assertEqual(job["data_root"], str((self.root / "reality_engine" / "data").resolve()))
-        # The one-line preamble is at the top of the worker brief; the subject
-        # still comes from the user's own first line.
+        # The context header is first; the one-line worktree preamble follows
+        # it so the worker knows gitignored data comes from REALITY_DATA_ROOT.
         brief = (job_dir / "brief.md").read_text(encoding="utf-8")
-        self.assertTrue(brief.startswith(core.WORKTREE_PREAMBLE), brief[:200])
+        self.assertTrue(brief.startswith("## Worker context pack (auto-attached)"), brief[:200])
+        self.assertIn(core.WORKTREE_PREAMBLE, brief)
         self.assertIn("Add worker file", brief)
         final = self._wait_status(job_id, lambda s: s["final"])
         self.assertEqual(final["phase"], "finished", final)
@@ -1781,11 +1788,14 @@ class PluginTests(unittest.TestCase):
             "boot_recover", "resource_watchdog", "deepseek_heartbeat", "db_backup",
             "capacity_loop", "continuous_loop", "forecast_tester",
             "routines_dispatcher", "drive_upload", "db_merge_migrations",
+            # worker orientation pack (Task 01)
+            "worker_context",
         }
-        self.assertEqual(len(expected), 57)
+        self.assertEqual(len(expected), 58)
         self.assertEqual(set(registry["order"]), expected)
         self.assertEqual(registry["schema"], jobs.REGISTRY_SCHEMA)
         sql_checks = 0
+        file_checks = 0
         for name, entry in registry["jobs"].items():
             self.assertFalse(entry["enabled"], f"{name} must ship disabled")
             self.assertIn("success_check", entry)
@@ -1796,11 +1806,16 @@ class PluginTests(unittest.TestCase):
             ):
                 self.assertIn(field, entry, f"{name}.{field}")
             if entry["success_check"] is not None:
-                sql_checks += 1
-                self.assertTrue(
-                    entry["success_check"]["sql"].lower().startswith(("select", "with"))
-                )
+                check = entry["success_check"]
+                if check.get("kind") == "file":
+                    file_checks += 1
+                    self.assertEqual(check["path"], "tasks/worker_context/CONTEXT.md")
+                    self.assertGreater(check["max_age_hours"], 0)
+                else:
+                    sql_checks += 1
+                    self.assertTrue(check["sql"].lower().startswith(("select", "with")))
         self.assertGreaterEqual(sql_checks, 30, "most data jobs need SQL freshness checks")
+        self.assertEqual(file_checks, 1)
         self.assertFalse(registry["jobs"]["concall_extraction"]["enabled"])
         self.assertTrue(registry["jobs"]["deck_figure_extraction"]["needs_gpu"])
 
@@ -1879,6 +1894,101 @@ class PluginTests(unittest.TestCase):
         )
         self.assertTrue(manager.cancel_worker(started["job_id"], confirm=True)["ok"])
 
+    # ------------------------------------------------- worker context pack
+    def _write_context_pack(self, text: str = "# generated pack\n") -> Path:
+        pack = self.root / "tasks" / "worker_context" / "CONTEXT.md"
+        pack.parent.mkdir(parents=True, exist_ok=True)
+        pack.write_text(text, encoding="utf-8")
+        return pack
+
+    @staticmethod
+    def _age_path(path: Path, hours: float, base: datetime | None = None) -> None:
+        anchor = base or datetime.now(timezone.utc)
+        stamp = (anchor - timedelta(hours=hours)).timestamp()
+        os.utime(path, (stamp, stamp))
+
+    def test_start_worker_attaches_context_pack_header(self):
+        pack = self._write_context_pack()
+        started = self._manager_instance().start_worker(
+            brief=(
+                "Goal: attach the pack\n\n"
+                "## Acceptance checks\n1. the brief starts with the header\n\n"
+                "## Test command(s)\n"
+                "python -m unittest reality_engine.tests.test_dsh_worker_plugin"
+            )
+        )
+        self.assertTrue(started["ok"], started)
+        self.assertFalse(started["context_pack"]["regenerated"], started["context_pack"])
+        job_dir = Path(started["status_path"]).parent
+        brief = (job_dir / "brief.md").read_text(encoding="utf-8")
+        self.assertTrue(brief.startswith("## Worker context pack (auto-attached)"), brief[:300])
+        self.assertIn(str(pack), brief)
+        self.assertIn("Goal: attach the pack", brief)
+        self.assertEqual([w for w in started["warnings"] if "brief_lint:" in w], [])
+
+    def test_start_worker_context_pack_false_and_lint_warning(self):
+        started = self._manager_instance().start_worker(
+            brief="do the thing", context_pack=False
+        )
+        self.assertTrue(started["ok"], started)
+        self.assertEqual(started["context_pack"]["enabled"], False)
+        job_dir = Path(started["status_path"]).parent
+        brief = (job_dir / "brief.md").read_text(encoding="utf-8")
+        self.assertFalse(brief.startswith("## Worker context pack"), brief[:300])
+        self.assertIn("do the thing", brief)
+        lint = [w for w in started["warnings"] if w.startswith("brief_lint:")]
+        self.assertEqual(len(lint), 3, lint)
+        self.assertTrue(any("Goal" in w for w in lint))
+        self.assertTrue(any("Acceptance checks" in w for w in lint))
+        self.assertTrue(any("Test command" in w for w in lint))
+
+    def test_start_worker_regenerates_stale_pack(self):
+        pack = self._write_context_pack("# old pack\n")
+        self._age_path(pack, 30, datetime.fromisoformat(OFF_PEAK))
+        (self.root / "reality_engine" / "__init__.py").write_text("", encoding="utf-8")
+        builder = self.root / "reality_engine" / "scripts" / "build_worker_context.py"
+        builder.write_text(
+            "from pathlib import Path\n"
+            "path = Path.cwd() / 'tasks' / 'worker_context' / 'CONTEXT.md'\n"
+            "path.parent.mkdir(parents=True, exist_ok=True)\n"
+            "path.write_text('# regenerated by fake builder\\n', encoding='utf-8')\n",
+            encoding="utf-8",
+        )
+        started = self._manager_instance().start_worker(brief="Goal: x")
+        self.assertTrue(started["ok"], started)
+        self.assertTrue(started["context_pack"]["regenerated"], started["context_pack"])
+        self.assertEqual(pack.read_text(encoding="utf-8"), "# regenerated by fake builder\n")
+
+    def test_start_worker_stale_pack_failure_is_warning(self):
+        pack = self._write_context_pack("# old pack\n")
+        self._age_path(pack, 30, datetime.fromisoformat(OFF_PEAK))
+        started = self._manager_instance().start_worker(brief="Goal: x")
+        self.assertTrue(started["ok"], started)
+        self.assertFalse(started["context_pack"]["regenerated"], started["context_pack"])
+        self.assertTrue(
+            any("context_pack:" in w for w in started["warnings"]), started["warnings"]
+        )
+        brief = (Path(started["status_path"]).parent / "brief.md").read_text(encoding="utf-8")
+        self.assertIn("Goal: x", brief)
+        self.assertIn("# old pack", pack.read_text(encoding="utf-8"))
+
+    def test_file_success_check_for_worker_context(self):
+        pack = self._write_context_pack()
+        data_root = self.root / "reality_engine" / "data"
+        check = {
+            "kind": "file",
+            "path": "tasks/worker_context/CONTEXT.md",
+            "max_age_hours": 26,
+        }
+        fresh = jobs.run_success_check(check, data_root, repo_root=self.root)
+        self.assertTrue(fresh["ok"], fresh)
+        self._age_path(pack, 30)
+        stale = jobs.run_success_check(check, data_root, repo_root=self.root)
+        self.assertFalse(stale["ok"], stale)
+        pack.unlink()
+        missing = jobs.run_success_check(check, data_root, repo_root=self.root)
+        self.assertEqual(missing["error"], "file_missing")
+
     def test_heartbeat_launch_args_unit(self):
         capabilities = heartbeat.LauncherCapabilities(
             frozenset(
@@ -1916,6 +2026,165 @@ class PluginTests(unittest.TestCase):
         # JavaScript counts UTF-16 code units; astral characters must not slip
         # past a 4000-character Python len() check and get truncated.
         self.assertIsNotNone(heartbeat.message_length_error("\U0001f600" * 2001))
+
+
+class WorkerContextBuilderTests(unittest.TestCase):
+    """Offline tests for the generated orientation pack (no live DBs)."""
+
+    def setUp(self) -> None:
+        TEST_TMP.mkdir(parents=True, exist_ok=True)
+        self.root = make_temp_dir(TEST_TMP, "context-builder-")
+        self.addCleanup(remove_tree, self.root)
+        engine = self.root / "reality_engine"
+        engine.mkdir(parents=True)
+        # A regular package (not a namespace portion) so a PYTHONPATH entry for
+        # the real checkout cannot shadow the fixture in the builder subprocess.
+        (engine / "__init__.py").write_text("", encoding="utf-8")
+        (engine / "db").mkdir(parents=True)
+        (engine / "db" / "readonly.py").write_text(
+            '"""Read-only SQLite connections."""\nVALUE = 1\n', encoding="utf-8"
+        )
+        (engine / "scripts").mkdir()
+        (engine / "scripts" / "run_thing.py").write_text(
+            '"""Run the thing."""\n', encoding="utf-8"
+        )
+        (engine / "tests").mkdir()
+        (engine / "tests" / "test_readonly.py").write_text(
+            "from reality_engine.db.readonly import connect_ro\n", encoding="utf-8"
+        )
+        plugin = self.root / "plugins" / "fake" / "server"
+        plugin.mkdir(parents=True)
+        (plugin / "core.py").write_text('"""Fake plugin core."""\n', encoding="utf-8")
+        cache = self.root / "plugins" / "reality-data" / "server" / "catalog_cache.json"
+        cache.parent.mkdir(parents=True)
+        cache.write_text(
+            json.dumps(
+                {
+                    "databases": {
+                        "truth_duckdb": {
+                            "kind": "duckdb",
+                            "path": str(self.root / "snap.duckdb"),
+                            "tables": {
+                                "px_nse_adj": {
+                                    "columns": [["isin", "VARCHAR"], ["date", "DATE"]],
+                                    "rows": 2540,
+                                    "rows_approx": False,
+                                    "date_coverage": {
+                                        "column": "date",
+                                        "min": "2019-01-01",
+                                        "max": "2026-10-19",
+                                    },
+                                }
+                            },
+                        },
+                        "equity_intelligence": {
+                            "kind": "sqlite",
+                            "path": str(self.root / "eq.db"),
+                            "tables": {
+                                "security_master": {
+                                    "columns": [["isin", "TEXT"], ["symbol", "TEXT"]],
+                                    "rows": 4285,
+                                    "rows_approx": False,
+                                },
+                                "document_chunks": {
+                                    "columns": [["chunk_id", "INTEGER"], ["doc_id", "INTEGER"]],
+                                    "rows": 2259771,
+                                    "rows_approx": False,
+                                },
+                            },
+                        },
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        tasks = self.root / "tasks"
+        (tasks / "dsh_tasks").mkdir(parents=True)
+        (tasks / "dsh_tasks" / "A.md").write_text("Use run_thing.py\n", encoding="utf-8")
+        (tasks / "STATE.md").write_text(
+            "# STATE\n\npreamble\n\n## First section\nalpha\n\n## Second section\nbeta\n",
+            encoding="utf-8",
+        )
+        (tasks / "optimizations").mkdir()
+        (tasks / "optimizations" / "00_SHARED_CONTEXT.md").write_text(
+            "# shared\n\n## Known sandbox limits\n\n| problem | fix |\n|---|---|\n| x | y |\n\n"
+            "## Next\nz\n",
+            encoding="utf-8",
+        )
+        self.data = self.root / "reality_engine" / "data"
+        (self.data / "hotline").mkdir(parents=True)
+        (self.data / "hotline" / "decisions.md").write_text(
+            "- first decision\n"
+            "- second decision mentions task-notification and sk-secretvalue\n",
+            encoding="utf-8",
+        )
+        self.out = tasks / "worker_context"
+
+    def _build(self, hour: int = 12):
+        return build_worker_context.build(
+            repo_root=self.root,
+            data_root=self.data,
+            out_dir=self.out,
+            now=datetime(2026, 10, 25, hour, 0, tzinfo=timezone.utc),
+        )
+
+    def test_build_is_deterministic_and_covers_all_sections(self):
+        stats = self._build()
+        text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
+        headings = [line for line in text.splitlines() if line.startswith("## ")]
+        self.assertEqual(len(headings), 7, headings)
+        self.assertLessEqual(stats["tokens_estimate"], 25000)
+        self.assertLess(stats["seconds"], 60)
+        self.assertEqual(stats["databases"], 2)
+        self.assertIn("security_master", text)
+        self.assertIn("2.3M", text)
+        self.assertIn("reality_engine/db/readonly.py", text)
+        self.assertIn("Read-only SQLite connections.", text)
+        self.assertIn("test_readonly.py", text)
+        self.assertIn("Second section", text)
+        self.assertIn("2019-01-01..2026-10-19", text)
+        # Secret-like lines are dropped; no key/token markers survive.
+        self.assertNotIn("sk-", text)
+        self.assertNotIn("KEY", text)
+        self.assertNotIn("TOKEN", text)
+        schema = self.out / "schemas" / "equity_intelligence.md"
+        self.assertTrue(schema.is_file())
+        self.assertIn("chunk_id", schema.read_text(encoding="utf-8"))
+        # Same content, different clock: identical except the generated header line.
+        again = self._build(hour=13)
+        text2 = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
+        strip = lambda value: "\n".join(
+            line for line in value.splitlines() if not line.startswith("Generated:")
+        )
+        self.assertEqual(strip(text), strip(text2))
+        self.assertEqual(stats["schemas"], again["schemas"])
+
+    def test_is_stale_uses_injected_clock(self):
+        pack = self.root / "pack.md"
+        pack.write_text("x", encoding="utf-8")
+        base = datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc)
+        stamp = base.timestamp()
+        os.utime(pack, (stamp, stamp))
+        self.assertFalse(context_pack.is_stale(pack, base))
+        self.assertTrue(context_pack.is_stale(pack, base + timedelta(hours=27)))
+        self.assertTrue(context_pack.is_stale(self.root / "missing.md", base))
+
+    def test_lint_brief(self):
+        conformant = (
+            "## Goal\nx\n\n## Acceptance checks\n1. y\n\n"
+            "## Test command(s)\npython -m unittest x\n"
+        )
+        self.assertEqual(context_pack.lint_brief(conformant), [])
+        warnings = context_pack.lint_brief("just do it")
+        self.assertEqual(len(warnings), 3, warnings)
+        self.assertTrue(all(w.startswith("brief_lint:") for w in warnings))
+        # A bare command line counts even without the heading.
+        self.assertEqual(
+            context_pack.lint_brief(
+                "## Goal\nx\n## Acceptance checks\n1. y\npython -m pytest -q"
+            ),
+            [],
+        )
 
 
 if __name__ == "__main__":

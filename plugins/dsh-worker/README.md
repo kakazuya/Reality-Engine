@@ -51,7 +51,9 @@ in the Codex MCP environment).
 
 Each `start_worker` call creates `runtime/jobs/<job_id>/` containing:
 
-- `brief.md` — frozen copy of the complete brief
+- `brief.md` — frozen copy of the complete brief (standing context header +
+  `tasks/worker_context/CONTEXT.md` path + the task brief, unless
+  `context_pack=false`)
 - `job.json` — immutable job/settings/launcher record
 - `status.json` — supervisor-owned mutable status (phase, PIDs, activity, outcome)
 - `result.md` — launcher final answer
@@ -117,6 +119,37 @@ after the worker finishes. `hard_timeout_seconds` defaults to `None` and no
 automatic duration fallback: if the launcher lacks the required heartbeat or
 `--control-token-env` capability, `start_worker` refuses with an actionable
 `heartbeat_unavailable` / `control_token_unavailable` error.
+
+## Worker context pack
+
+Every new worker otherwise spends its first 40-100 tool calls finding the repo,
+the data and the test commands. `python -m
+reality_engine.scripts.build_worker_context` generates
+`tasks/worker_context/CONTEXT.md` (target <= 25k tokens, measured as chars/4;
+deterministic; read-only on every database; under 60 s). It contains seven
+sections: repo map (module docstring one-liners + most-referenced scripts), data
+map (DB/table/row count/key columns/date coverage from
+`plugins/reality-data/server/catalog_cache.json`, never `COUNT(*)` on the 50 GB
+DB), how to query (`connect_ro`, the `reality-data` tools, `document_chunks` /
+`doc_date` / `known_at` rules), the module -> test-file map, sandbox limits
+(`tasks/worker_context/SANDBOX.md`, included verbatim; Task 03 owns that file),
+conventions (AGENTS.md §3.2/§3.13) and recent decisions (`hotline/decisions.md`
++ the last two `tasks/STATE.md` sections). Full column lists go to
+`tasks/worker_context/schemas/<db>.md`.
+
+`start_worker(context_pack=true)` is the default: it prepends a standing header
+(<= 15 lines: read CONTEXT.md first, budget <= 25 tool calls before the first
+edit, report format) plus the absolute CONTEXT.md path to the brief. If the pack
+is older than 26 h it is regenerated before launch with a 60 s bound; a failure
+is a `context_pack:` warning in the job record and the worker still starts.
+`context_pack=false` sends the original brief only. Briefs are also linted
+against `tasks/worker_context/BRIEF_TEMPLATE.md`: a missing Goal / Acceptance
+checks / Test command(s) section adds a `brief_lint:` warning, never a refusal.
+The worked example is `tasks/worker_context/EXAMPLE_BRIEF.md`.
+
+The `worker_context` job in `jobs.yaml` (daily, `enabled: false` like every
+other job) runs the builder and its file freshness check requires
+`tasks/worker_context/CONTEXT.md` to be under 26 h old.
 
 ## Same-conversation follow-ups
 
@@ -236,7 +269,8 @@ not configured.
 ## Data-job runner (Phase 2)
 
 `plugins/dsh-worker/jobs.yaml` is the shared registry for the recurring data jobs
-inventoried in `tasks/DATA_JOBS_AUDIT_2026-10-24.md` (all 57). `DSH_WORKER_JOBS_FILE`
+inventoried in `tasks/DATA_JOBS_AUDIT_2026-10-24.md` (all 57) plus the generated
+`worker_context` refresh (58). `DSH_WORKER_JOBS_FILE`
 overrides the registry path for isolated tests. Each entry has
 name, argv (with `{date}`/`{start}`/`{repo_root}`/`{data_root}` placeholders),
 cwd, env, description, writes, named resource locks (`db:<file>`, `gpu`,
