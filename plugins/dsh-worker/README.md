@@ -130,13 +130,19 @@ writable root per session, the `--cwd` workspace, and no extra-roots config).
 | `write_scope` | dsh mode | confirmation | extra |
 |---|---|---|---|
 | `workspace` | `permission` as given | — | workspace + `<workspace>/.tmp` |
-| `data` | forced `danger-full-access` | `confirm_data_write=true` | `REALITY_DATA_ROOT`, `D:\RealityEngine`; holds `db:<file>` locks for `writes=[...]` |
-| `full` | forced `danger-full-access` | `confirm_full_access=true` (Shivam approves first) | none |
+| `data` | forced `danger-full-access` | `confirm_data_write=true`, non-empty `writes=[...]`, `approved_by` text | `REALITY_DATA_ROOT`, `D:\RealityEngine`; holds `db:<file>` locks for `writes=[...]` |
+| `full` | forced `danger-full-access` | `confirm_full_access=true` (Shivam approves first), `approved_by` text | none |
 
-A second `data` job naming a held DB is refused with `resource_busy` (the
-supervisor holds OS lock files for its lifetime, so they cannot go stale). The
-scope, `writes` and `resource_locks` are recorded in `job.json`, `status.json`,
-progress digests, `worker_status` and `list_workers`.
+A `data` job must name its DBs: `writes=[]` is refused with `writes_required`
+(otherwise it would hold no lock and could write any database). A second `data`
+job naming a held DB is refused with `resource_busy` before launch (the manager
+writes a start-window reservation and the supervisor holds the OS lock files for
+its lifetime, so they cannot go stale). **dsh 0.2.1 makes `data` and `full` the
+same access at the OS level** — both run `danger-full-access`; the named locks
+and the brief are the real scope, not the sandbox. `write_scope`, `writes`,
+`approved_by` and `resource_locks` are recorded in `job.json`, `status.json`,
+progress digests, `worker_status` and `list_workers` (`worker_status` prefers
+`status.json`, so a hand-edited `job.json` cannot spoof the reported scope).
 
 For every job the supervisor creates `<workspace>/.tmp` and points `TMP`,
 `TEMP`, `TMPDIR`, `npm_config_cache`, `PIP_CACHE_DIR`, `UV_CACHE_DIR`,
@@ -231,14 +237,19 @@ An empty diff creates no commit. Failed/cancelled jobs leave their changes
 uncommitted for review. A worker that wants its own commit writes
 `<workspace>/.tmp/commit.request.json` (`{"message": "..."}`); the supervisor,
 which runs unconfined, commits on the next poll, appends the outcome to
-`status.worker_commits` and writes `.tmp/commit.result.json`. This works for a
-job-created worktree and for a workspace pointed at an existing worktree (the
-linked git dir lives under the main checkout's `.git/worktrees/<id>` either way);
-the main checkout itself is refused, and direct `git commit` inside the job is
-always blocked by the sandbox. `worker_status`/`worker_result` report
-`worktree.branch`, `base`, `base_commit`, `head`, `commits`, `files_changed`
-(and the paths), `committed`, `commit_message` and any commit error. Main's
-`HEAD` is never moved by the plugin.
+`status.worker_commits` (last 50 only) and writes `.tmp/commit.result.json`. This
+works for a job-created worktree and for a workspace pointed at an existing
+worktree (the linked git dir lives under the main checkout's
+`.git/worktrees/<id>` either way); the main checkout itself is refused, and
+direct `git commit` inside the job is always blocked by the sandbox. The commit
+uses only the `git_dir`/`common_dir`/`toplevel`/`head_ref`/`branch` the manager
+captured at job start (`job.json` → `git`), with hooks and fsmonitor disabled
+and `--no-verify`, so a worker that rewrites `.git`, points it at another
+repository, or ships a fake gitdir with a `pre-commit` hook cannot redirect the
+commit or run code; only a `dsh/...` branch is accepted. `worker_status`/
+`worker_result` report `worktree.branch`, `base`, `base_commit`, `head`,
+`commits`, `files_changed` (and the paths), `committed`, `commit_message` and
+any commit error. Main's `HEAD` is never moved by the plugin.
 
 Gitignored data (DBs, indexes) exists only in the main checkout, not in a
 worktree. The worker environment gets `REALITY_DATA_ROOT`

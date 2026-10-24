@@ -1871,7 +1871,10 @@ class PluginTests(unittest.TestCase):
         self._write_jobs_registry([hold, same, other])
         manager = self._manager_instance()
         started = manager.start_job("hold_db", confirm=True)
-        self._wait_status(started["job_id"], lambda s: s["running"])
+        # No wait for the supervisor to reach "running": the manager's
+        # reservation closes the start window, so the second start is refused
+        # immediately (the old pre-check released the lock before the
+        # supervisor took it).
         with self.assertRaises(core.PluginError) as ctx:
             manager.start_job("same_db", confirm=True)
         self.assertEqual(ctx.exception.code, "resource_busy")

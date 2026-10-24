@@ -2,7 +2,7 @@
   "schema": "dsh-worker-orientation-baseline/1",
   "date": "2026-10-24",
   "generated_at": "2026-10-25",
-  "note": "Before baseline from the 2026-10-24 worker run's dsh event streams. tool_calls_before_first_edit is the 0-based index of the first write/edit tool call.",
+  "note": "Before baseline from the 2026-10-24 worker run's dsh event streams. tool_calls_before_first_edit is the 0-based index of the first write/edit tool call. The four 19:27 jobs were regenerated after they finished (2026-10-25); every count is the final event-stream total for a finished job.",
   "jobs": [
     {
       "job": "20261024T080304Z-3fc60999",
@@ -144,33 +144,33 @@
       "job": "20261024T192703Z-4b9de800",
       "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
       "tool_calls_before_first_edit": 34,
-      "total_tool_calls": 82,
-      "wall_seconds": null,
-      "phase": "running"
+      "total_tool_calls": 138,
+      "wall_seconds": 2695.0,
+      "phase": "finished"
     },
     {
       "job": "20261024T192707Z-46114a74",
       "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
       "tool_calls_before_first_edit": 15,
-      "total_tool_calls": 59,
-      "wall_seconds": null,
-      "phase": "running"
+      "total_tool_calls": 105,
+      "wall_seconds": 1524.0,
+      "phase": "finished"
     },
     {
       "job": "20261024T192711Z-cecb3619",
       "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
       "tool_calls_before_first_edit": 32,
-      "total_tool_calls": 103,
-      "wall_seconds": null,
-      "phase": "running"
+      "total_tool_calls": 221,
+      "wall_seconds": 3945.0,
+      "phase": "finished"
     },
     {
       "job": "20261024T192715Z-b16ead85",
       "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
       "tool_calls_before_first_edit": 13,
-      "total_tool_calls": 57,
-      "wall_seconds": null,
-      "phase": "running"
+      "total_tool_calls": 189,
+      "wall_seconds": 3789.0,
+      "phase": "finished"
     }
   ],
   "summary": {
@@ -178,6 +178,6 @@
     "jobs_with_a_first_edit": 20,
     "median_tool_calls_before_first_edit": 45.0,
     "mean_tool_calls_before_first_edit": 47.7,
-    "median_wall_seconds": 2489.0
+    "median_wall_seconds": 2681.0
   }
 }

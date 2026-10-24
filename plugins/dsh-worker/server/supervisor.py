@@ -29,6 +29,7 @@ from store import (
     LEASE_FILE,
     acquire_lock_file,
     atomic_write_json,
+    drop_resource_reservation,
     exclusive_lock,
     iso,
     parse_iso,
@@ -216,7 +217,17 @@ def _emit_digest(
 AUX_POLL_SECONDS = 2.0
 MAX_REQUEST_BYTES = 65_536
 MAX_DETACHED_ENV = 20
+# Request history is bounded so a worker hammering the channels cannot grow
+# status.json without limit; the newest entries are the useful ones.
+MAX_REQUEST_HISTORY = 50
 _SAFE_ENV_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _append_history(status: dict[str, Any], key: str, entry: dict[str, Any]) -> None:
+    history = status.get(key)
+    history = list(history) if isinstance(history, list) else []
+    history.append(entry)
+    status[key] = history[-MAX_REQUEST_HISTORY:]
 
 
 def _workspace(job: dict[str, Any], job_dir: Path) -> Path:
@@ -300,8 +311,11 @@ def _handle_commit_request(
 
     The worker writes ``.tmp/commit.request.json`` (``{"message": "..."}``); the
     supervisor, which is not sandboxed, runs the commit and writes
-    ``.tmp/commit.result.json``.  Worktree jobs only: committing in the main
-    checkout is the supervisor's own finalize step, not a worker action.
+    ``.tmp/commit.result.json``.  The commit target comes ONLY from the git
+    identity the manager captured in the job record before the worker started:
+    the worker-writable ``<workspace>/.git`` is never consulted for the git
+    dir, hooks are disabled, and only the job's own ``dsh/...`` branch is
+    accepted.  The main checkout is never a commit target.
     """
     request = _read_request(tmp / "commit.request.json")
     if request is None:
@@ -310,61 +324,55 @@ def _handle_commit_request(
     error = request.get("_error")
     worktree = job.get("worktree") if isinstance(job.get("worktree"), dict) else {}
     workspace = _workspace(job, job_dir)
-    target: Path | None = None
+    identity = job.get("git") if isinstance(job.get("git"), dict) else None
     base_commit: str | None = None
     result: dict[str, Any]
     if error:
         result = {"ok": False, "error": error}
+    elif identity is None:
+        result = {
+            "ok": False,
+            "error": "commit_request_requires_worktree",
+            "workspace": str(workspace),
+        }
     else:
         if worktree.get("enabled"):
             target = Path(str(worktree.get("path")))
             base_commit = worktree.get("base_commit")
         else:
             # A job may point its workspace at an EXISTING worktree (not created
-            # by use_worktree); its index/refs live under the main checkout's
-            # .git/worktrees, so the same supervisor commit path is needed.
-            # Require the workspace itself to be the checkout root, so a plain
-            # subdirectory does not resolve to its enclosing repository.
-            git_dir, _common, toplevel = gitutil.worktree_git_dirs(workspace)
-            if (
-                git_dir is not None
-                and toplevel is not None
-                and toplevel.resolve() == workspace.resolve()
-                and git_dir.resolve() != (workspace / ".git").resolve()
-            ):
-                target = workspace
-        if target is None:
-            result = {
-                "ok": False,
-                "error": "commit_request_requires_worktree",
-                "workspace": str(workspace),
-            }
-        else:
-            message = request.get("message")
-            subject = (
-                message.strip()[:200]
-                if isinstance(message, str) and message.strip()
-                else str(job.get("brief_first_line") or "dsh worker")[:200]
+            # by use_worktree); the stored identity proves it is one and the
+            # identity/tamper checks in commit_worktree run for both cases.
+            target = workspace
+        message = request.get("message")
+        subject = (
+            message.strip()[:200]
+            if isinstance(message, str) and message.strip()
+            else str(job.get("brief_first_line") or "dsh worker")[:200]
+        )
+        job_id = str(job.get("job_id") or job_dir.name)
+        try:
+            commit = gitutil.commit_worktree(
+                target,
+                job_id=job_id,
+                subject=f"{subject} [dsh {job_id}]",
+                base_commit=base_commit,
+                git=identity,
+                repo_root=job.get("repo_root"),
             )
-            job_id = str(job.get("job_id") or job_dir.name)
-            try:
-                commit = gitutil.commit_worktree(
-                    target,
-                    job_id=job_id,
-                    subject=f"{subject} [dsh {job_id}]",
-                    base_commit=base_commit,
-                )
-                result = {
-                    "ok": bool(commit.get("committed")),
-                    "commit": commit,
-                    "reason": commit.get("reason"),
-                    "error": commit.get("error"),
-                }
-            except Exception as exc:  # noqa: BLE001 - report, never fail the run
-                result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:400]}
+            result = {
+                "ok": bool(commit.get("committed")),
+                "commit": commit,
+                "reason": commit.get("reason"),
+                "error": commit.get("error"),
+            }
+        except Exception as exc:  # noqa: BLE001 - report, never fail the run
+            result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:400]}
     _finish_request(tmp / "commit.request.json", result_path, result)
-    status.setdefault("worker_commits", []).append(
-        {"at": result["at"], "ok": bool(result.get("ok")), "error": result.get("error")}
+    _append_history(
+        status,
+        "worker_commits",
+        {"at": result["at"], "ok": bool(result.get("ok")), "error": result.get("error")},
     )
     _log(f"worker commit request: ok={result.get('ok')} error={result.get('error')}")
 
@@ -516,14 +524,16 @@ def _handle_launch_request(
     else:
         result = _launch_detached(job, job_dir, tmp, request)
     _finish_request(tmp / "launch.request.json", result_path, result)
-    status.setdefault("detached", []).append(
+    _append_history(
+        status,
+        "detached",
         {
             "at": result["at"],
             "ok": bool(result.get("ok")),
             "pid": result.get("pid"),
             "log": result.get("log"),
             "error": result.get("error"),
-        }
+        },
     )
     _log(f"worker launch request: ok={result.get('ok')} pid={result.get('pid')}")
 
@@ -546,7 +556,9 @@ def _create_status(job: dict[str, Any], job_dir: Path) -> dict[str, Any]:
         "started_at": job.get("created_at") or iso(),
         "updated_at": iso(),
         "write_scope": job.get("write_scope") or "workspace",
+        "writes": list(job.get("writes") or []),
         "write_roots": list(job.get("write_roots") or []),
+        "approved_by": job.get("approved_by"),
         "tmp_dir": None,
         "tool_calls_before_first_edit": None,
         "first_edit_at": None,
@@ -657,6 +669,10 @@ def _finalize(
                     job_id=job_id,
                     subject=f"{subject[:200]} [dsh {job_id}]",
                     base_commit=worktree.get("base_commit"),
+                    # The manager-captured identity is the only commit target;
+                    # see _handle_commit_request.
+                    git=job.get("git"),
+                    repo_root=job.get("repo_root"),
                 )
             except Exception as exc:
                 status["worktree_commit"] = {
@@ -749,14 +765,18 @@ def main(argv: list[str] | None = None) -> int:
     # supervisor's whole lifetime by open OS byte-range locks, so they cannot go
     # stale: if this process dies, the kernel releases them.
     runtime_dir = job_dir.parents[1]
+    locks_dir = runtime_dir / "locks"
     held_resource_locks: list[Any] = []
     for lock_name in job.get("resource_locks") or []:
         handle = acquire_lock_file(
-            resource_lock_path(runtime_dir / "locks", str(lock_name)), timeout=2.0
+            resource_lock_path(locks_dir, str(lock_name)), timeout=2.0
         )
         if handle is None:
             for held in held_resource_locks:
                 held.release()
+            # Drop this job's own reservation (the manager also cleans up if
+            # the supervisor exits before the start call returns).
+            drop_resource_reservation(locks_dir, str(lock_name), job_id)
             status.update(
                 {
                     "phase": "failed",
@@ -771,6 +791,9 @@ def main(argv: list[str] | None = None) -> int:
             _write_status(job_dir, status)
             _log(f"refused job={job_id}: resource lock {lock_name!r} is busy")
             return 1
+        # The real kernel lock is held now: the manager's start-window
+        # reservation for this name may go.
+        drop_resource_reservation(locks_dir, str(lock_name), job_id)
         handle.write_record(
             {
                 "name": str(lock_name),
@@ -833,6 +856,13 @@ def main(argv: list[str] | None = None) -> int:
     env["PIP_DEFAULT_TIMEOUT"] = "120"
     env["PIP_RETRIES"] = "5"
     env["UV_HTTP_TIMEOUT"] = "120"
+    # Mark file-sandboxed workers only: worker_bootstrap/sitecustomize.py then
+    # drops Python's explicit 0o700 temp-dir DACL (which cuts off the sandbox
+    # capability).  A danger-full-access job needs no patch, and an inherited
+    # marker from the manager's own environment must never leak in.
+    env.pop("DSH_WORKER_SANDBOXED", None)
+    if job.get("permission") != "danger-full-access":
+        env["DSH_WORKER_SANDBOXED"] = "1"
 
     job_object = procutil.WinJob()
     mutating = job.get("permission") != "read-only"

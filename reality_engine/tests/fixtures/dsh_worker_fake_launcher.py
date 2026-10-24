@@ -225,6 +225,7 @@ def main() -> int:
         "env_job_dir": os.environ.get("DSH_WORKER_JOB_DIR"),
         "env_progress_notes": os.environ.get("DSH_WORKER_PROGRESS_NOTES"),
         "env_reality_data_root": os.environ.get("REALITY_DATA_ROOT"),
+        "env_sandboxed": os.environ.get("DSH_WORKER_SANDBOXED"),
     }
     (job_dir / "launcher_argv.json").write_text(
         json.dumps(record, indent=2, sort_keys=True), encoding="utf-8"

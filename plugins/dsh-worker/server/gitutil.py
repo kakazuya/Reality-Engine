@@ -22,19 +22,83 @@ def _hidden() -> int:
     return 0x08000000 if os.name == "nt" else 0
 
 
-def _git(repo: Path, args: list[str], timeout: float = 30.0) -> tuple[int, str, str]:
+# Repository-local config that could execute code is neutralised on the
+# supervisor's commit path.  Hooks (pre-commit, post-index-change, ...) and the
+# fsmonitor daemon/hook are disabled by config as well as by ``--no-verify``:
+# the worktree belongs to a sandboxed worker and is not trusted.
+_SAFE_GIT_CONFIG = (
+    "-c",
+    f"core.hooksPath={os.devnull}",
+    "-c",
+    "core.fsmonitor=false",
+    "-c",
+    "core.sshCommand=",
+    "-c",
+    "diff.external=",
+)
+_GIT_ENV_KEYS = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+)
+
+
+def _run_git(
+    argv: list[str],
+    *,
+    cwd: str | None = None,
+    timeout: float = 30.0,
+    env: dict[str, str] | None = None,
+) -> tuple[int, str, str]:
     try:
         completed = subprocess.run(
-            ["git", "-C", str(repo), *args],
+            argv,
+            cwd=cwd,
             capture_output=True,
             text=True,
             errors="replace",
             timeout=timeout,
             creationflags=_hidden(),
+            env=env,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 1, "", f"git unavailable: {type(exc).__name__}: {exc}"
     return completed.returncode, completed.stdout, completed.stderr
+
+
+def _git(repo: Path, args: list[str], timeout: float = 30.0) -> tuple[int, str, str]:
+    return _run_git(["git", "-C", str(repo), *args], timeout=timeout)
+
+
+def _trusted_git(
+    git_dir: str, work_tree: str, args: list[str], timeout: float = 30.0
+) -> tuple[int, str, str]:
+    """Run git against a stored git dir/work tree with repo hooks disabled."""
+    env = {key: value for key, value in os.environ.items() if key not in _GIT_ENV_KEYS}
+    return _run_git(
+        [
+            "git",
+            f"--git-dir={git_dir}",
+            f"--work-tree={work_tree}",
+            *_SAFE_GIT_CONFIG,
+            *args,
+        ],
+        cwd=work_tree,
+        timeout=timeout,
+        env=env,
+    )
+
+
+def _path_key(path: Any) -> str:
+    candidate = Path(path)
+    try:
+        candidate = candidate.resolve()
+    except (OSError, RuntimeError, ValueError):
+        candidate = candidate.absolute()
+    return os.path.normcase(os.path.normpath(str(candidate)))
 
 
 def worktrees(repo_root: Path) -> list[dict[str, Any]]:
@@ -91,6 +155,89 @@ def worktree_git_dirs(
     return git_dir, common, toplevel
 
 
+def checkout_identity(workspace: Path) -> dict[str, Any] | None:
+    """Capture a checkout's real git identity BEFORE a worker can touch it.
+
+    The manager calls this outside the sandbox and persists the result in
+    ``job.json``.  The supervisor later commits only against these stored paths:
+    ``<workspace>/.git`` is worker-writable, so it must never be the source of
+    the git dir.  ``None`` when the workspace is not a checkout or HEAD is
+    detached (nothing to commit to).
+    """
+    workspace = Path(workspace)
+    try:
+        git_dir, common, toplevel = worktree_git_dirs(workspace)
+    except (OSError, RuntimeError, ValueError):
+        return None
+    if git_dir is None or common is None or toplevel is None:
+        return None
+    code, out, _err = _git(workspace, ["symbolic-ref", "--quiet", "HEAD"])
+    if code != 0 or not out.strip():
+        return None
+    head_ref = out.strip()
+    return {
+        "git_dir": _path_key(git_dir),
+        "common_dir": _path_key(common),
+        "toplevel": _path_key(toplevel),
+        "head_ref": head_ref,
+        "branch": (
+            head_ref.removeprefix("refs/heads/")
+            if head_ref.startswith("refs/heads/")
+            else None
+        ),
+    }
+
+
+def _git_pointer(worktree: Path) -> Path | None:
+    """Resolve ``<worktree>/.git`` as data; never trust it, only compare it."""
+    dot = Path(worktree) / ".git"
+    try:
+        if dot.is_dir():
+            return dot
+        if not dot.is_file():
+            return None
+        text = dot.read_text(encoding="utf-8", errors="replace")[:4096]
+    except OSError:
+        return None
+    value = text.strip()
+    if not value.startswith("gitdir:"):
+        return None
+    target = Path(value.partition(":")[2].strip())
+    if not target.is_absolute():
+        target = dot.parent / target
+    return target
+
+
+def identity_error(
+    worktree: Path, identity: Any, repo_root: Path | str | None
+) -> str | None:
+    """Return why ``identity`` may not be used for a commit, else ``None``."""
+    if not isinstance(identity, dict):
+        return "git_identity_missing"
+    stored: dict[str, str] = {}
+    for key in ("git_dir", "common_dir", "toplevel"):
+        value = identity.get(key)
+        if not isinstance(value, str) or not value:
+            return "git_identity_missing"
+        stored[key] = _path_key(value)
+    if _path_key(worktree) != stored["toplevel"]:
+        return "git_workspace_moved"
+    if repo_root is None:
+        return "git_identity_missing"
+    main_git = _path_key(Path(repo_root) / ".git")
+    if stored["common_dir"] != main_git:
+        # A commit may only ever land in this repository's object store.
+        return "git_common_dir_untrusted"
+    if stored["git_dir"] == main_git:
+        # The main checkout is never a worker commit target.
+        return "git_main_checkout_refused"
+    pointer = _git_pointer(worktree)
+    if pointer is None or _path_key(pointer) != stored["git_dir"]:
+        # The worker rewrote .git (fake gitdir / another repository).
+        return "git_dir_tampered"
+    return None
+
+
 def worktree_add(
     repo_root: Path, path: Path, branch: str, base_ref: str = "HEAD"
 ) -> dict[str, Any]:
@@ -130,12 +277,20 @@ def commit_worktree(
     job_id: str,
     subject: str,
     base_commit: str | None = None,
+    git: dict[str, Any] | None = None,
+    repo_root: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Commit every change in ``worktree``; no commit on an empty diff.
+    """Commit every change in the checkout recorded by the MANAGER.
 
-    The commit author/committer come from the repository's git config.  A git
-    failure is returned as data, never raised: a finished worker must not be
-    reclassified because its post-run commit failed.
+    ``git`` is the identity captured before the worker started
+    (``checkout_identity``) and is the only source of the git dir and work
+    tree, so a worker that rewrites ``<workspace>/.git`` cannot redirect the
+    commit or run its own hooks.  Hooks, fsmonitor, ssh and external diff are
+    neutralised and ``--no-verify`` is passed; a missing or tampered identity
+    is refused, never re-derived from the worker's checkout.
+
+    A git failure is returned as data, never raised: a finished worker must not
+    be reclassified because its post-run commit failed.
     """
     worktree = Path(worktree)
     result: dict[str, Any] = {
@@ -154,39 +309,58 @@ def commit_worktree(
         result["error"] = f"{step}: {err.strip()[:400] or 'git failed'}"
         return result
 
-    code, out, err = _git(worktree, ["rev-parse", "--abbrev-ref", "HEAD"])
+    refusal = identity_error(worktree, git, repo_root)
+    if refusal is not None:
+        result["reason"] = refusal
+        result["error"] = f"refused: {refusal}"
+        return result
+    assert isinstance(git, dict)  # identity_error guarantees this
+    git_dir = str(git["git_dir"])
+    stored_tree = str(git["toplevel"])
+
+    def trust(args: list[str], timeout: float = 30.0) -> tuple[int, str, str]:
+        return _trusted_git(git_dir, stored_tree, args, timeout)
+
+    code, out, err = trust(["symbolic-ref", "--quiet", "HEAD"])
+    if code != 0 or not out.strip():
+        return fail("symbolic-ref HEAD", err or "HEAD is detached or unreadable")
+    head_ref = out.strip()
+    recorded_head = git.get("head_ref")
+    if not (
+        head_ref.startswith("refs/heads/dsh/")
+        or (isinstance(recorded_head, str) and head_ref == recorded_head)
+    ):
+        return fail("branch guard", f"HEAD {head_ref!r} is not the job's dsh branch")
+    code, out, err = trust(["rev-parse", "--abbrev-ref", "HEAD"])
     if code != 0:
         return fail("rev-parse --abbrev-ref", err or out)
     result["branch"] = out.strip()
-    code, out, err = _git(worktree, ["status", "--porcelain=v1", "-z", "--untracked-files=all"])
+    code, out, err = trust(["status", "--porcelain=v1", "-z", "--untracked-files=all"])
     if code != 0:
         return fail("git status", err or out)
     dirty = bool(out.replace("\0", "").strip())
     if dirty:
-        code, out, err = _git(worktree, ["add", "-A"])
+        code, out, err = trust(["add", "-A"])
         if code != 0:
             return fail("git add -A", err or out)
-        code, out, err = _git(
-            worktree, ["commit", "-m", subject, "-m", f"DSH-Job: {job_id}"]
+        code, out, err = trust(
+            ["commit", "--no-verify", "-m", subject, "-m", f"DSH-Job: {job_id}"]
         )
         if code != 0:
             return fail("git commit", err or out)
         result["committed"] = True
     else:
         result["reason"] = "no_changes"
-    code, out, err = _git(worktree, ["rev-parse", "HEAD"])
+    code, out, err = trust(["rev-parse", "HEAD"])
     if code != 0:
         return fail("rev-parse HEAD", err or out)
     result["head"] = out.strip()
     if base_commit and result["head"]:
-        code, out, _err = _git(
-            worktree, ["rev-list", "--count", f"{base_commit}..{result['head']}"]
-        )
+        code, out, _err = trust(["rev-list", "--count", f"{base_commit}..{result['head']}"])
         if code == 0 and out.strip().isdigit():
             result["commits"] = int(out.strip())
-        code, out, _err = _git(
-            worktree,
-            ["diff", "--name-only", "-z", f"{base_commit}..{result['head']}"],
+        code, out, _err = trust(
+            ["diff", "--name-only", "-z", f"{base_commit}..{result['head']}"]
         )
         if code == 0:
             paths = [p for p in out.split("\0") if p]

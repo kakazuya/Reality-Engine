@@ -195,12 +195,41 @@ def atomic_write_json_locked(path: Path, value: Any, lock_path: Path | None = No
 
 
 RESOURCE_LOCK_DIR = "resources"
+# Serialises the manager's reserve-then-spawn decision and the supervisor's
+# reservation hand-off (a different file from the per-workspace mutation guard).
+RESOURCE_GUARD_NAME = ".resource.guard"
+
+
+def _resource_key(name: str) -> str:
+    return hashlib.sha256(str(name).encode("utf-8", "replace")).hexdigest()[:32]
 
 
 def resource_lock_path(locks_dir: Path, name: str) -> Path:
     """Stable file for one named resource lock (``db:``, ``gpu``, ``net:``)."""
-    key = hashlib.sha256(str(name).encode("utf-8", "replace")).hexdigest()[:32]
-    return Path(locks_dir) / RESOURCE_LOCK_DIR / f"{key}.lock"
+    return Path(locks_dir) / RESOURCE_LOCK_DIR / f"{_resource_key(name)}.lock"
+
+
+def resource_reservation_path(locks_dir: Path, name: str) -> Path:
+    """Reservation held by the manager until a supervisor owns the real lock."""
+    return Path(locks_dir) / RESOURCE_LOCK_DIR / f"{_resource_key(name)}.reserve"
+
+
+def drop_resource_reservation(locks_dir: Path, name: str, job_id: str) -> None:
+    """Remove ``name``'s reservation when it belongs to ``job_id``.
+
+    The manager reserves a named resource before spawning its supervisor (the
+    old pre-check took and instantly released the OS lock, so two simultaneous
+    starts both passed).  The supervisor calls this right after acquiring the
+    real OS lock.  A reservation owned by another job is never removed.
+    """
+    path = resource_reservation_path(locks_dir, name)
+    with exclusive_lock(Path(locks_dir) / RESOURCE_GUARD_NAME):
+        value, _error = read_json_bounded(path, 65_536)
+        if isinstance(value, dict) and value.get("job_id") == job_id:
+            try:
+                path.unlink()
+            except OSError:
+                pass
 
 
 class HeldFileLock:

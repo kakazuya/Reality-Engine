@@ -112,11 +112,14 @@ def _safe(call) -> dict[str, Any]:
         "brief gets a standing instruction to append one line to PROGRESS_NOTES.md. "
         "write_scope='workspace' (default) writes only the workspace + its .tmp; "
         "'data' additionally approves REALITY_DATA_ROOT and D:\\RealityEngine for "
-        "an approved data job and needs confirm_data_write=true plus writes=[db "
-        "files] (the supervisor holds db:<file> locks so two writers never share "
-        "a DB); 'full' disables the dsh file sandbox and needs "
-        "confirm_full_access=true after Shivam's approval. The supervisor creates "
-        "<workspace>/.tmp and points TMP/TEMP/caches at it."
+        "an approved data job and needs confirm_data_write=true plus a non-empty "
+        "writes=[db files] (refused as writes_required otherwise; the supervisor "
+        "holds db:<file> locks so two writers never share a DB); 'full' disables "
+        "the dsh file sandbox and needs confirm_full_access=true after Shivam's "
+        "approval. dsh 0.2.1 runs both data and full as danger-full-access, so the "
+        "OS sandbox does not separate them: the named DB locks and the brief are "
+        "the real scope. approved_by records who approved a data/full job. The "
+        "supervisor creates <workspace>/.tmp and points TMP/TEMP/caches at it."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -131,6 +134,7 @@ def start_worker(
     confirm_data_write: bool = False,
     confirm_full_access: bool = False,
     writes: list[str] | None = None,
+    approved_by: str | None = None,
     heartbeat_interval_seconds: int = 900,
     missed_replies: int = 2,
     max_output_tokens: int | None = None,
@@ -154,6 +158,7 @@ def start_worker(
             confirm_data_write=confirm_data_write,
             confirm_full_access=confirm_full_access,
             writes=writes,
+            approved_by=approved_by,
             heartbeat_interval_seconds=heartbeat_interval_seconds,
             missed_replies=missed_replies,
             max_output_tokens=max_output_tokens,

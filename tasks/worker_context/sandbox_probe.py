@@ -4,14 +4,17 @@ It proves, in whatever sandbox the caller is confined to, that
 ``tempfile.mkdtemp()`` is writable, ``pip install --target .tmp/...`` works and
 ``npx --version`` runs, with caches inside ``<cwd>/.tmp``.
 
-Claude (unconfined) runs it after installing the staged profiles:
+Claude (unconfined) runs it from the repository root after installing the staged
+profiles. Paths are derived from the current directory, so no machine-specific
+absolute path is needed:
 
-    $ws = "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\.tmp\\sandbox-probe"
-    New-Item -ItemType Directory -Force "$ws\\.tmp" | Out-Null
-    $env:TMP = "$ws\\.tmp"; $env:TEMP = "$ws\\.tmp"; $env:TMPDIR = "$ws\\.tmp"
-    $env:PIP_CACHE_DIR = "$ws\\.tmp\\pip-cache"
-    $env:npm_config_cache = "$ws\\.tmp\\npm-cache"
-    $env:PYTHONPATH = "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\plugins\\dsh-worker\\worker_bootstrap"
+    $repo = (Get-Location).Path
+    $ws = Join-Path $repo ".tmp\sandbox-probe"
+    New-Item -ItemType Directory -Force "$ws\.tmp" | Out-Null
+    $env:TMP = "$ws\.tmp"; $env:TEMP = "$ws\.tmp"; $env:TMPDIR = "$ws\.tmp"
+    $env:PIP_CACHE_DIR = "$ws\.tmp\pip-cache"
+    $env:npm_config_cache = "$ws\.tmp\npm-cache"
+    $env:PYTHONPATH = Join-Path $repo "plugins\dsh-worker\worker_bootstrap"
     python tasks/worker_context/sandbox_probe.py
 
 Then remove ``.tmp/sandbox-probe``.

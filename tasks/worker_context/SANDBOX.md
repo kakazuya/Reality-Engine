@@ -59,10 +59,13 @@ writable).
 Two sandbox facts drive the rest of the setup:
 
 - The supervisor prepends `plugins/dsh-worker/worker_bootstrap` to the worker's
-  `PYTHONPATH`. Its `sitecustomize` drops Python 3.14's explicit `0o700` DACL
-  when creating temp directories: under the write-restricted token that DACL
-  cuts off the inherited workspace capability, so `tempfile.mkdtemp()` could
-  create a directory but not write inside it (`python -S` bypasses this).
+  `PYTHONPATH` and sets `DSH_WORKER_SANDBOXED=1` only for file-sandboxed jobs
+  (`read-only`/`workspace-write`; never `danger-full-access`). Its
+  `sitecustomize` drops Python 3.14's explicit `0o700` DACL when creating temp
+  directories only when that marker is present: under the write-restricted
+  token that DACL cuts off the inherited workspace capability, so
+  `tempfile.mkdtemp()` could create a directory but not write inside it
+  (`python -S`` bypasses this, and an ordinary Python process is never patched).
 - `DSH_WORKER_PROGRESS_NOTES` points at `<workspace>/.tmp/PROGRESS_NOTES.md`,
   not the job directory (outside the sandbox). Digests read the new path first
   and fall back to the legacy `<job_dir>/PROGRESS_NOTES.md`.
@@ -75,23 +78,33 @@ there under `workspace-write`.
 | `write_scope` | dsh mode used | Confirmation | Extra authority |
 |---|---|---|---|
 | `workspace` (default) | the requested `permission` | — | workspace + `.tmp` only |
-| `data` | forced `danger-full-access` | `confirm_data_write=true` | `REALITY_DATA_ROOT` (`reality_engine/data`) and `D:\RealityEngine`; the supervisor holds `db:<file>` locks for each entry in `writes=[...]` |
-| `full` | forced `danger-full-access` | `confirm_full_access=true` (Shivam approves first) | no file restriction |
+| `data` | forced `danger-full-access` | `confirm_data_write=true` + `writes=[...]` + `approved_by` text | `REALITY_DATA_ROOT` (`reality_engine/data`) and `D:\RealityEngine`; the supervisor holds `db:<file>` locks for each entry in `writes=[...]` |
+| `full` | forced `danger-full-access` | `confirm_full_access=true` (Shivam approves first) + `approved_by` text | no file restriction |
 
-Because dsh has one writable root per session, `data` cannot be expressed as
-"workspace-write plus two roots". It runs full access and is narrowed by:
+**dsh 0.2.1 makes `data` == `full` access at the OS level.** Because the dsh
+sandbox has one writable root per session and no extra-roots setting, a `data`
+job runs the same `danger-full-access` mode as a `full` job: nothing at the OS
+level stops it writing any file. The difference is process policy, not
+enforcement — the brief's write roots, the named `db:<file>` locks and the human
+approval. Treat `write_scope='data'` as full access that happens to be briefed
+to touch only the named DBs.
 
-1. the brief's explicit write roots (recorded in `job.json` → `write_roots`,
-   returned by `worker_status` as `write_roots`),
-2. the per-DB OS locks (`resource_locks`, e.g. `db:equity_intelligence.db`),
-   taken for the supervisor's lifetime — a second job naming a held DB is
-   refused with `resource_busy`,
-3. the human confirmation flag.
+`writes=[...]` is required for `data`: it accepts bare file names with or
+without a `db:` prefix (`["equity_intelligence.db"]`), and a `data` job with an
+empty list is refused with `writes_required` (it would hold no lock and could
+write every DB). A non-`data` job that passes `writes` is refused with
+`writes_requires_data_scope`. `approved_by` records who approved a `data`/`full`
+job in `job.json`, `status.json` and `worker_status`; `confirm_*` is only the
+caller's own flag, so the approval text is the audit trail. The manager writes a
+start-window reservation for each named lock before it spawns the supervisor
+(the supervisor removes it after taking the real OS lock), so a simultaneous
+second start is refused with `resource_busy` before anything is launched.
 
-`writes=[...]` accepts bare file names with or without a `db:` prefix
-(`["equity_intelligence.db"]`); a non-`data` job that passes `writes` is refused.
 `write_scope` is recorded in `job.json`, `status.json`, every progress digest,
-`worker_status` and `list_workers`.
+`worker_status` and `list_workers`. `worker_status` prefers `status.json`: the
+job record sits in a directory a worker could reach when its workspace is the
+main checkout, so a hand-edited `job.json` scope does not change the reported
+scope (and never changed the launch decision).
 
 Never start a `data` job unless the brief is approved to write there. Never use
 `full` without Shivam's explicit go-ahead.
@@ -105,16 +118,34 @@ inside the job is denied. Supported path:
 1. The worker writes `<workspace>/.tmp/commit.request.json` with
    `{"message": "feat: ..."}` (its own `write` tool).
 2. The supervisor (unconfined) runs the commit on the next ~2 s poll, appends
-   the result to `status.worker_commits`, and writes
+   the result to `status.worker_commits` (last 50 only), and writes
    `<workspace>/.tmp/commit.result.json` (`{"ok": true, "commit": {...}}`).
 3. Works for a job-created worktree **and** for a workspace pointed at an
-   existing worktree (detected from `git rev-parse --git-dir` versus
-   `<workspace>/.git`). The main checkout is refused with
-   `commit_request_requires_worktree`. Direct `git add`/`git commit` inside the
-   job cannot work in either case: the index/refs live under
-   `<main>/.git/worktrees/<id>`, outside the writable root, so use the request
-   file. The supervisor's end-of-run auto-commit still runs and creates no
-   second commit when the tree is clean.
+   existing worktree. Direct `git add`/`git commit` inside the job cannot work
+   in either case: the index/refs live under `<main>/.git/worktrees/<id>`,
+   outside the writable root, so use the request file. The supervisor's
+   end-of-run auto-commit still runs and creates no second commit when the tree
+   is clean.
+
+The commit never trusts the worktree's `.git`. When the job starts, the manager
+(outside the sandbox) records the real `git_dir`, `common_dir`, `toplevel`,
+`head_ref` and `branch` in `job.json` (`job["git"]`). The supervisor then runs:
+
+```
+git --git-dir=<stored git_dir> --work-tree=<stored toplevel> \
+    -c core.hooksPath=NUL -c core.fsmonitor=false \
+    -c core.sshCommand= -c diff.external= \
+    add -A                      # then
+    commit --no-verify -m ...   # only on refs/heads/dsh/...
+```
+
+It refuses when the stored common dir is not `<repo>/.git`, when the stored git
+dir is the main checkout's own `.git` (the main checkout is never a worker
+commit target), when `<workspace>/.git` no longer points at the stored git dir
+(worker-owned fake gitdir / redirect to another repository), or when HEAD is not
+a `refs/heads/dsh/...` branch (or the recorded branch). So a worker that
+rewrites `.git` cannot run its own `pre-commit` hook or commit into another
+repository, and the request file can never supply git `-c` options.
 
 ## 5. Detached long-running processes (`write_scope` data/full only)
 

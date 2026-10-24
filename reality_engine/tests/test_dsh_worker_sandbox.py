@@ -23,6 +23,7 @@ sys.path.insert(0, str(SERVER_DIR))
 sys.path.insert(0, str(FIXTURES))
 
 import core  # noqa: E402
+import gitutil  # noqa: E402
 import progress  # noqa: E402
 import supervisor  # noqa: E402
 from dsh_worker_testenv import make_temp_dir, remove_tree  # noqa: E402
@@ -138,6 +139,15 @@ class WriteScopeValidationTests(unittest.TestCase):
             self.manager.start_worker(brief="probe", write_scope="data")
         self.assertEqual(raised.exception.code, "confirm_data_write_required")
 
+    def test_data_scope_requires_named_writes(self) -> None:
+        # A data job with writes=[] holds no db: lock, so it could write any DB:
+        # refuse it instead of silently granting un-locked full access.
+        with self.assertRaises(core.PluginError) as raised:
+            self.manager.start_worker(
+                brief="probe", write_scope="data", confirm_data_write=True
+            )
+        self.assertEqual(raised.exception.code, "writes_required")
+
     def test_full_scope_needs_confirmation(self) -> None:
         with self.assertRaises(core.PluginError) as raised:
             self.manager.start_worker(brief="probe", write_scope="full")
@@ -200,6 +210,26 @@ class WriteScopeValidationTests(unittest.TestCase):
         self.assertTrue(launcher["env_progress_notes"].startswith(str(self.root)))
         self.assertIn(".tmp", launcher["env_progress_notes"])
         self.assertTrue((self.root / ".tmp").is_dir())
+        # A workspace-write job is sandboxed: the bootstrap marker must be set.
+        self.assertEqual(launcher["env_sandboxed"], "1")
+
+    def test_status_scope_wins_over_a_rewritten_job_record(self) -> None:
+        # A worker whose workspace is the main checkout can edit job.json; the
+        # supervisor's status.json is the launch-time record and must win.
+        started = self.manager.start_worker(
+            brief="scope spoof probe", permission="workspace-write"
+        )
+        self.addCleanup(
+            self.manager.cancel_worker, started["job_id"], True, "test cleanup"
+        )
+        job_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / started["job_id"]
+        record = json.loads((job_dir / "job.json").read_text(encoding="utf-8"))
+        record["write_scope"] = "data"
+        (job_dir / "job.json").write_text(json.dumps(record), encoding="utf-8")
+        self.assertEqual(self.manager.get_status(started["job_id"])["write_scope"], "workspace")
+        rows = self.manager.list_workers(limit=5)["jobs"]
+        row = next(item for item in rows if item["job_id"] == started["job_id"])
+        self.assertEqual(row["write_scope"], "workspace")
 
     def test_data_job_records_scope_and_holds_db_lock(self) -> None:
         started = self.manager.start_worker(
@@ -207,35 +237,37 @@ class WriteScopeValidationTests(unittest.TestCase):
             write_scope="data",
             confirm_data_write=True,
             writes=["db:probe.db"],
+            approved_by="Shivam (test approval)",
         )
         self.addCleanup(
             self.manager.cancel_worker, started["job_id"], True, "test cleanup"
         )
         self.assertEqual(started["write_scope"], "data")
         self.assertEqual(started["writes"], ["probe.db"])
+        self.assertEqual(started["approved_by"], "Shivam (test approval)")
         self.assertEqual(started["permission"], "danger-full-access")
-        record = json.loads(
-            (Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / started["job_id"] / "job.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        job_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / started["job_id"]
+        record = json.loads((job_dir / "job.json").read_text(encoding="utf-8"))
         self.assertEqual(record["write_scope"], "data")
         self.assertEqual(record["resource_locks"], ["db:probe.db"])
         self.assertEqual(record["permission_requested"], "read-only")
+        self.assertEqual(record["approved_by"], "Shivam (test approval)")
         status = self.manager.get_status(started["job_id"])
         self.assertEqual(status["write_scope"], "data")
         self.assertEqual(status["writes"], ["probe.db"])
+        self.assertEqual(status["approved_by"], "Shivam (test approval)")
         self.assertIn("db:probe.db", status["resource_locks"])
-        # The lock is taken before the worker is launched; wait for the launch
-        # so the second start cannot race the supervisor's lock acquisition.
+        # The supervisor spawns the launcher asynchronously; wait only for its
+        # env dump (the lock check below must not depend on the worker running).
+        launcher_path = job_dir / "launcher_argv.json"
         deadline = time.monotonic() + 15.0
-        while time.monotonic() < deadline:
-            if self.manager.get_status(started["job_id"]).get("phase") == "running":
-                break
+        while time.monotonic() < deadline and not launcher_path.is_file():
             time.sleep(0.1)
-        else:
-            self.fail("data job never reached running; cannot test the DB lock")
-        # A second data job naming the same DB is refused.
+        launcher = json.loads(launcher_path.read_text(encoding="utf-8"))
+        # A danger-full-access job is not file-sandboxed: no mkdir patch marker.
+        self.assertIsNone(launcher["env_sandboxed"])
+        # The reservation is taken before the supervisor is spawned, so the
+        # second start is refused immediately -- no need to wait for running.
         with self.assertRaises(core.PluginError) as raised:
             self.manager.start_worker(
                 brief="second data probe",
@@ -267,32 +299,58 @@ class CommitRequestTests(unittest.TestCase):
             ["git", *args], cwd=self.repo, capture_output=True, text=True, check=True
         ).stdout
 
-    def test_worker_commit_request_commits_a_worktree(self) -> None:
-        self._git("init", "-q")
+    def _init_repo(self) -> str:
+        self._git("init", "-q", "-b", "main")
         self._git("config", "user.email", "test@example.com")
         self._git("config", "user.name", "Test")
         (self.repo / "file.txt").write_text("one\n", encoding="utf-8")
         self._git("add", "-A")
         self._git("commit", "-q", "-m", "base")
-        base = self._git("rev-parse", "HEAD").strip()
-        worktree = self.root / "wt"
-        self._git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
-        (worktree / "file.txt").write_text("one\ntwo\n", encoding="utf-8")
+        return self._git("rev-parse", "HEAD").strip()
+
+    def _rewrite_git_pointer(self, worktree: Path, gitdir: str) -> None:
+        """What a worker does with ``.git`` (hidden file: unlink then write)."""
+        pointer = worktree / ".git"
+        pointer.unlink()
+        pointer.write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+
+    def _commit_request(self, worktree: Path, job: dict) -> dict:
         tmp = worktree / ".tmp"
-        tmp.mkdir()
+        tmp.mkdir(exist_ok=True)
         (tmp / "commit.request.json").write_text(
             json.dumps({"message": "worker commit"}), encoding="utf-8"
         )
+        supervisor._handle_commit_request(job, self.root / "job", job["_status"], tmp)
+        return json.loads((tmp / "commit.result.json").read_text(encoding="utf-8"))
+
+    def test_worker_commit_request_commits_a_worktree(self) -> None:
+        base = self._init_repo()
+        worktree = self.root / "wt"
+        self._git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
+        identity = gitutil.checkout_identity(worktree)
+        self.assertIsNotNone(identity)
+        # A pre-commit hook in the repository must not run for a worker commit.
+        hook = self.repo / ".git" / "hooks" / "pre-commit"
+        hook.parent.mkdir(parents=True, exist_ok=True)
+        escaped = self.root / "hook-escaped.txt"
+        hook.write_text(
+            f"#!/bin/sh\necho hooked > '{escaped.as_posix()}'\n", encoding="utf-8"
+        )
+        (worktree / "file.txt").write_text("one\ntwo\n", encoding="utf-8")
+        status: dict = {"worker_commits": []}
         job = {
             "job_id": "20261025T000000Z-abcdef12",
+            "repo_root": str(self.repo),
+            "workspace": str(worktree),
             "brief_first_line": "worker commit",
+            "git": identity,
             "worktree": {"enabled": True, "path": str(worktree), "base_commit": base},
+            "_status": status,
         }
-        status: dict = {"worker_commits": []}
-        supervisor._handle_commit_request(job, self.root / "job", status, tmp)
-        result = json.loads((tmp / "commit.result.json").read_text(encoding="utf-8"))
+        result = self._commit_request(worktree, job)
         self.assertTrue(result["ok"], result)
-        self.assertFalse((tmp / "commit.request.json").exists())
+        self.assertFalse((worktree / ".tmp" / "commit.request.json").exists())
+        self.assertFalse(escaped.exists(), "pre-commit hook ran")
         subject = subprocess.run(
             ["git", "log", "-1", "--format=%s"], cwd=worktree, capture_output=True, text=True
         ).stdout.strip()
@@ -301,29 +359,23 @@ class CommitRequestTests(unittest.TestCase):
 
     def test_commit_request_works_for_an_existing_worktree_workspace(self) -> None:
         """A workspace pointed at an existing worktree (no job worktree record)."""
-        self._git("init", "-q")
-        self._git("config", "user.email", "test@example.com")
-        self._git("config", "user.name", "Test")
-        (self.repo / "file.txt").write_text("one\n", encoding="utf-8")
-        self._git("add", "-A")
-        self._git("commit", "-q", "-m", "base")
+        base = self._init_repo()
         worktree = self.root / "existing-wt"
         self._git("worktree", "add", "-q", "-b", "dsh/existing", str(worktree))
+        identity = gitutil.checkout_identity(worktree)
+        self.assertIsNotNone(identity)
         (worktree / "file.txt").write_text("one\nexisting\n", encoding="utf-8")
-        tmp = worktree / ".tmp"
-        tmp.mkdir()
-        (tmp / "commit.request.json").write_text(
-            json.dumps({"message": "existing worktree commit"}), encoding="utf-8"
-        )
+        status: dict = {"worker_commits": []}
         job = {
             "job_id": "20261025T000001Z-abcdef12",
+            "repo_root": str(self.repo),
             "workspace": str(worktree),
             "worktree": None,
             "brief_first_line": "existing worktree",
+            "git": identity,
+            "_status": status,
         }
-        status: dict = {"worker_commits": []}
-        supervisor._handle_commit_request(job, self.root / "job", status, tmp)
-        result = json.loads((tmp / "commit.result.json").read_text(encoding="utf-8"))
+        result = self._commit_request(worktree, job)
         self.assertTrue(result["ok"], result)
         subject = subprocess.run(
             ["git", "log", "-1", "--format=%s"],
@@ -331,7 +383,121 @@ class CommitRequestTests(unittest.TestCase):
             capture_output=True,
             text=True,
         ).stdout.strip()
-        self.assertIn("existing worktree commit", subject)
+        self.assertIn("worker commit", subject)
+        self.assertEqual(base, self._git("rev-parse", "main").strip())
+
+    def test_commit_refuses_a_worker_owned_gitdir_and_never_runs_its_hook(self) -> None:
+        # D1(a): the worker rewrites .git to a gitdir it owns, whose pre-commit
+        # hook would escape.  The commit must be refused and the hook must not run.
+        base = self._init_repo()
+        worktree = self.root / "wt"
+        self._git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
+        identity = gitutil.checkout_identity(worktree)
+        fake = self.root / "fake-git"
+        fake.mkdir()
+        subprocess.run(["git", "init", "-q", str(fake)], check=True, cwd=self.root)
+        hook = fake / "hooks" / "pre-commit"
+        hook.parent.mkdir(parents=True, exist_ok=True)
+        escaped = self.root / "handler-hook-escaped.txt"
+        hook.write_text(
+            f"#!/bin/sh\necho escaped > '{escaped.as_posix()}'\n", encoding="utf-8"
+        )
+        self._rewrite_git_pointer(worktree, str(fake))
+        (worktree / "file.txt").write_text("one\ntwo\n", encoding="utf-8")
+        status: dict = {"worker_commits": []}
+        job = {
+            "job_id": "20261025T000002Z-abcdef12",
+            "repo_root": str(self.repo),
+            "workspace": str(worktree),
+            "brief_first_line": "fake gitdir",
+            "git": identity,
+            "worktree": {"enabled": True, "path": str(worktree), "base_commit": base},
+            "_status": status,
+        }
+        result = self._commit_request(worktree, job)
+        self.assertFalse(result["ok"], result)
+        self.assertEqual((result.get("commit") or {}).get("reason"), "git_dir_tampered")
+        self.assertFalse(escaped.exists(), "fake pre-commit hook ran")
+        self.assertEqual(self._git("rev-parse", "main").strip(), base)
+        # Nothing was committed to the worker-owned fake repository either.
+        fake_head = subprocess.run(
+            ["git", "-C", str(fake), "rev-parse", "--verify", "HEAD"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(fake_head.returncode, 0)
+
+    def test_commit_refuses_a_git_pointer_redirected_at_another_repo(self) -> None:
+        # D1(b): .git redirected at a scratch repository must not commit there.
+        base = self._init_repo()
+        worktree = self.root / "wt"
+        self._git("worktree", "add", "-q", "-b", "dsh/test", str(worktree))
+        identity = gitutil.checkout_identity(worktree)
+        other = self.root / "other"
+        other.mkdir()
+        subprocess.run(["git", "init", "-q"], check=True, cwd=other)
+        subprocess.run(
+            ["git", "config", "user.email", "other@example.com"], check=True, cwd=other
+        )
+        subprocess.run(["git", "config", "user.name", "Other"], check=True, cwd=other)
+        (other / "other.txt").write_text("other\n", encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], check=True, cwd=other)
+        subprocess.run(["git", "commit", "-q", "-m", "other base"], check=True, cwd=other)
+        other_head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=other, capture_output=True, text=True
+        ).stdout.strip()
+        self._rewrite_git_pointer(worktree, str(other / ".git"))
+        (worktree / "file.txt").write_text("one\ntwo\n", encoding="utf-8")
+        status: dict = {"worker_commits": []}
+        job = {
+            "job_id": "20261025T000003Z-abcdef12",
+            "repo_root": str(self.repo),
+            "workspace": str(worktree),
+            "brief_first_line": "redirected",
+            "git": identity,
+            # No worktree record: the stored identity is what allows the commit
+            # path at all, and it is derived from the pre-launch checkout.
+            "worktree": None,
+            "_status": status,
+        }
+        result = self._commit_request(worktree, job)
+        self.assertFalse(result["ok"], result)
+        self.assertEqual((result.get("commit") or {}).get("reason"), "git_dir_tampered")
+        other_after = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=other, capture_output=True, text=True
+        ).stdout.strip()
+        self.assertEqual(other_after, other_head)
+        self.assertEqual(
+            subprocess.run(
+                ["git", "log", "-1", "--format=%s"], cwd=other, capture_output=True, text=True
+            ).stdout.strip(),
+            "other base",
+        )
+        self.assertEqual(self._git("rev-parse", "main").strip(), base)
+
+    def test_commit_refuses_the_main_checkout_identity(self) -> None:
+        base = self._init_repo()
+        identity = gitutil.checkout_identity(self.repo)
+        self.assertIsNotNone(identity)
+        (self.repo / "file.txt").write_text("one\ntwo\n", encoding="utf-8")
+        tmp = self.root / "scratch"
+        tmp.mkdir()
+        status: dict = {"worker_commits": []}
+        job = {
+            "job_id": "20261025T000004Z-abcdef12",
+            "repo_root": str(self.repo),
+            "workspace": str(self.repo),
+            "worktree": None,
+            "brief_first_line": "main checkout",
+            "git": identity,
+            "_status": status,
+        }
+        result = self._commit_request(self.repo, job)
+        self.assertFalse(result["ok"], result)
+        self.assertEqual(
+            (result.get("commit") or {}).get("reason"), "git_main_checkout_refused"
+        )
+        self.assertEqual(self._git("rev-parse", "main").strip(), base)
 
     def test_commit_request_is_worktree_only(self) -> None:
         tmp = self.root / "scratch"
@@ -343,6 +509,13 @@ class CommitRequestTests(unittest.TestCase):
         )
         result = json.loads((tmp / "commit.result.json").read_text(encoding="utf-8"))
         self.assertEqual(result["error"], "commit_request_requires_worktree")
+
+    def test_request_history_is_capped(self) -> None:
+        status: dict = {"worker_commits": []}
+        for index in range(supervisor.MAX_REQUEST_HISTORY + 10):
+            supervisor._append_history(status, "worker_commits", {"at": str(index)})
+        self.assertEqual(len(status["worker_commits"]), supervisor.MAX_REQUEST_HISTORY)
+        self.assertEqual(status["worker_commits"][-1]["at"], str(supervisor.MAX_REQUEST_HISTORY + 9))
 
 
 class ProgressNotesTests(unittest.TestCase):
@@ -372,32 +545,75 @@ class ProgressNotesTests(unittest.TestCase):
 
 
 class WorkerBootstrapTests(unittest.TestCase):
+    def _run_with_bootstrap(self, work: Path, sandboxed: bool, code: str):
+        env = dict(os.environ)
+        env.update(
+            {
+                "PYTHONPATH": str(REPO / "plugins" / "dsh-worker" / "worker_bootstrap"),
+                "TMP": str(work),
+                "TEMP": str(work),
+                "TMPDIR": str(work),
+            }
+        )
+        if sandboxed:
+            env["DSH_WORKER_SANDBOXED"] = "1"
+        else:
+            env.pop("DSH_WORKER_SANDBOXED", None)
+        return subprocess.run(
+            [sys.executable, "-c", code, str(work)], env=env, capture_output=True, text=True
+        )
+
     def test_bootstrap_keeps_tempfile_mkdtemp_writable(self) -> None:
         TEST_TMP.mkdir(parents=True, exist_ok=True)
         root = make_temp_dir(TEST_TMP, "sandbox-bootstrap-")
         self.addCleanup(lambda: remove_tree(root))
         scratch = root / ".tmp"
         scratch.mkdir()
-        bootstrap = REPO / "plugins" / "dsh-worker" / "worker_bootstrap"
-        env = dict(os.environ)
-        env.update(
-            {
-                "PYTHONPATH": str(bootstrap),
-                "TMP": str(scratch),
-                "TEMP": str(scratch),
-                "TMPDIR": str(scratch),
-            }
-        )
         code = (
             "import os, tempfile\n"
             "d = tempfile.mkdtemp()\n"
             "open(os.path.join(d, 'x'), 'w').write('ok')\n"
             "print('ok')\n"
         )
-        finished = subprocess.run(
-            [sys.executable, "-c", code], env=env, capture_output=True, text=True
-        )
+        finished = self._run_with_bootstrap(scratch, True, code)
         self.assertEqual(finished.returncode, 0, finished.stderr)
+
+    def test_bootstrap_only_patches_a_sandboxed_windows_worker(self) -> None:
+        # D3: the patch must not widen 0o700 for every Python process.  With the
+        # supervisor's marker the directory inherits the sandbox DACL; without
+        # it (or off win32) os.mkdir stays untouched and keeps the explicit DACL.
+        if sys.platform != "win32":
+            self.skipTest("the 0o700 DACL problem only exists on Windows")
+        TEST_TMP.mkdir(parents=True, exist_ok=True)
+        root = make_temp_dir(TEST_TMP, "sandbox-marker-")
+        self.addCleanup(lambda: remove_tree(root, attempts=5))
+        scratch = root / ".tmp"
+        scratch.mkdir()
+        code = (
+            "import os, sys\n"
+            "d = os.path.join(sys.argv[1], 'mine')\n"
+            "os.mkdir(d, 0o700)\n"
+            "print(d)\n"
+        )
+
+        def run(name: str, sandboxed: bool) -> Path:
+            work = scratch / name
+            work.mkdir()
+            finished = self._run_with_bootstrap(work, sandboxed, code)
+            self.assertEqual(finished.returncode, 0, finished.stderr)
+            return Path(finished.stdout.strip())
+
+        acl = lambda path: subprocess.run(
+            ["icacls", str(path)], capture_output=True, text=True
+        )
+
+        patched = run("patched", True)
+        patched_acl = acl(patched)
+        self.assertIn("(I)", patched_acl.stdout, patched_acl.stdout + patched_acl.stderr)
+
+        plain = run("plain", False)
+        plain_acl = acl(plain)
+        self.assertNotIn("(I)", plain_acl.stdout, plain_acl.stdout + plain_acl.stderr)
 
 
 class DetachedRequestTests(unittest.TestCase):
