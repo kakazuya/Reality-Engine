@@ -1,0 +1,40 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.19.0
+2 info using node@v24.20.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\warri\Downloads\IDM-worktrees\20261024T154434Z-b952dbc2\.npmrc
+5 silly config load:file:C:\Users\warri\.npmrc
+6 silly config load:file:C:\Users\warri\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm exec tsc -p .tools/dsh-workers-pane/tsconfig.json --pretty false
+8 verbose argv "exec" "--yes" "--package" "typescript@5.9.3" "--" "tsc" "-p" ".tools/dsh-workers-pane/tsconfig.json" "--pretty" "false"
+9 verbose logfile logs-max:10 dir:C:\Users\warri\Downloads\IDM-worktrees\20261024T154434Z-b952dbc2\.cache\npm\_logs\2026-10-24T16_11_22_347Z-
+10 verbose logfile C:\Users\warri\Downloads\IDM-worktrees\20261024T154434Z-b952dbc2\.cache\npm\_logs\2026-10-24T16_11_22_347Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 http fetch GET 200 https://registry.npmjs.org/typescript 604ms (cache miss)
+14 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+15 silly idealTree buildDeps
+16 silly fetch manifest typescript@5.9.3
+17 silly packumentCache full:https://registry.npmjs.org/typescript cache-miss
+18 http fetch GET 200 https://registry.npmjs.org/npm 964ms
+19 http fetch GET 200 https://registry.npmjs.org/typescript 400ms (cache miss)
+20 silly packumentCache full:https://registry.npmjs.org/typescript set size:undefined disposed:false
+21 silly placeDep ROOT typescript@5.9.3 OK for:  want: 5.9.3
+22 silly reify moves {}
+23 silly audit bulk request { typescript: [ '5.9.3' ] }
+24 http cache typescript@https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz 1ms (cache hit)
+25 silly tarball no local data for typescript@https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz. Extracting by manifest.
+26 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 305ms
+27 silly audit report {}
+28 http fetch GET 200 https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz 1745ms (cache miss)
+29 verbose cwd C:\Users\warri\Downloads\IDM-worktrees\20261024T154434Z-b952dbc2
+30 verbose os Windows_NT 10.0.26300
+31 verbose node v24.20.0
+32 verbose npm  v11.19.0
+33 notice
+33 notice New major version of npm available! 11.19.0 -> 12.2.1
+33 notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+33 notice To update run: npm install -g npm@12.2.1
+33 notice  { force: true, Symbol(proc-log.meta): true }
+34 verbose exit 2
+35 verbose code 2

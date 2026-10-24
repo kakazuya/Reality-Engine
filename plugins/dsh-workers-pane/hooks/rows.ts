@@ -14,6 +14,7 @@ import type {
   WorkerRow,
   WorkerView,
 } from '../types'
+import { STATUS } from './palette'
 
 export type { WorkerPhase, WorkerRow, WorkerView }
 
@@ -626,6 +627,100 @@ export function viewOf(
   }
 }
 
+/**
+ * The jobs still in flight, in the order the pane shows them. An unreadable
+ * record (a `status.json` caught mid-write) has no phase to colour and no
+ * start time to compare, so the band and the mobile summary leave it out.
+ */
+export function liveRows(view: WorkerView): WorkerRow[] {
+  return view.running.filter(row => row.phase !== 'unreadable')
+}
+
+/**
+ * The idle rule: nothing has started since the Claude session that hosts the
+ * pane began. `appStartedAt` is `$.clock.now()` read in the `session.start`
+ * hook and kept in `$.state` (the earliest reliable app/session start the API
+ * exposes), so a fresh session starts quiet instead of replaying the last app
+ * run's jobs. A job already running when the app restarted still counts (its
+ * progress is live), and a mod hot-loaded into a running session never claims
+ * idle: with no start time to compare, any job at all keeps the pane up.
+ */
+export function isIdle(
+  view: WorkerView,
+  appStartedAt: number | null,
+): boolean {
+  if (appStartedAt === null) {
+    return view.running.length === 0 && view.finished.length === 0
+  }
+  for (const row of [...view.running, ...view.finished]) {
+    const at = row.startedAt ?? row.finishedAt
+    if (row.phase === 'running' || row.phase === 'stalled') {
+      if (at === null || at >= appStartedAt) return false
+    } else if (at !== null && at >= appStartedAt) {
+      return false
+    }
+  }
+  return true
+}
+
+/** Midnight UTC of `now`: dsh records timestamps in UTC, so "today" is UTC. */
+export function dayStart(now: number): number {
+  const date = new Date(now)
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
+/**
+ * Jobs that ended since UTC midnight: `finished` counts successes only, so a
+ * cancelled run is neither a finish nor a failure.
+ */
+export function todayCounts(
+  view: WorkerView,
+  now: number,
+): { finished: number; failed: number } {
+  const start = dayStart(now)
+  let finished = 0
+  let failed = 0
+  for (const row of view.finished) {
+    const at = row.finishedAt ?? row.startedAt
+    if (at === null || at < start) continue
+    if (row.outcome === 'ok') finished += 1
+    else if (row.outcome === 'failed') failed += 1
+  }
+  return { finished, failed }
+}
+
+/** One running row's live facts: elapsed, tool calls, idle, lease left. */
+export function rowMeta(row: WorkerRow, now: number): string {
+  const bits: string[] = []
+  if (row.startedAt !== null) {
+    bits.push(formatLive(Math.max(0, now - row.startedAt)))
+  }
+  if (row.metrics !== null) bits.push(`${row.metrics.toolCalls} tools`)
+  const idle = idleMinutes(row)
+  if (idle !== null) bits.push(`idle ${idle}m`)
+  if (row.leaseMs !== null) bits.push(`lease ${formatLease(row.leaseMs)}`)
+  return bits.join(' · ')
+}
+
+/**
+ * `/dsh-workers`' answer where no pane can be placed (the Android app, a
+ * narrow surface): a compact Markdown block, one line per live job, then the
+ * day's roll-up.
+ */
+export function summaryText(view: WorkerView, now: number): string {
+  const live = liveRows(view)
+  const today = todayCounts(view, now)
+  const head = `**DeepSeek workers** — ${view.counts.running} running · ${view.counts.stalled} stalled`
+  const rows =
+    live.length === 0
+      ? ['No workers running.']
+      : live.map(row => {
+          const job = row.kind === 'data_job' ? ' `job`' : ''
+          return `- ${phaseGlyph(row.phase)}${job} **${row.title}** — ${rowMeta(row, now)}`
+        })
+  return [head, '', ...rows, '', `${today.finished} finished · ${today.failed} failed today`].join('\n')
+}
+
 export function formatDuration(ms: number | null): string {
   if (ms === null || !Number.isFinite(ms)) return '–'
   const seconds = Math.max(0, Math.floor(ms / 1000))
@@ -717,12 +812,17 @@ export function outcomeGlyph(outcome: WorkerOutcome | null): string {
   return '⊘'
 }
 
-export function outcomeColor(
-  outcome: WorkerOutcome | null,
-): 'success' | 'error' | 'inactive' {
-  if (outcome === 'ok') return 'success'
-  if (outcome === 'failed') return 'error'
-  return 'inactive'
+/** The hex a phase draws with on the dark card (chips use their own pair). */
+export function phaseColor(phase: WorkerPhase): string {
+  return STATUS[phaseTone(phase)].fill
+}
+
+export function outcomeColor(outcome: WorkerOutcome | null): string {
+  // A finished row's dot follows the phase palette, not the theme: lime for a
+  // clean finish, red for a failure, grey for cancelled (and a missing outcome).
+  if (outcome === 'ok') return STATUS.info.fill
+  if (outcome === 'failed') return STATUS.error.fill
+  return STATUS.muted.fill
 }
 
 export function branchLabel(branch: string | null): string | null {

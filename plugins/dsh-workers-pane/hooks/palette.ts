@@ -1,19 +1,63 @@
-// One palette for the pane. Hex values are tuned for the dark theme; status
-// labels use ThemeKey colours where the theme should win (success/warning/
-// error/subtle/merged) and filled chips carry explicit dark backgrounds with
-// light text so they stay readable on a light theme too.
+// One palette for the pane. Phase colours are the v3 sunset/mango/lime set:
+// a bright fill (row dots, the mix bar's end stop) with dark text on the chip,
+// so every chip clears 4.5:1 on the dark card. Lease colours stay their own
+// green/amber/red signal; they are not a phase.
 
 export type StatusTone = 'success' | 'warning' | 'error' | 'muted' | 'info'
 
-export const STATUS: Record<
-  StatusTone,
-  { fg: string; bg: string; fill: string; light: string }
-> = {
-  success: { fg: '#bbf7d0', bg: '#166534', fill: '#22c55e', light: '#86efac' },
-  warning: { fg: '#fde68a', bg: '#78350f', fill: '#f59e0b', light: '#fde68a' },
-  error: { fg: '#fecaca', bg: '#7f1d1d', fill: '#ef4444', light: '#fecaca' },
-  muted: { fg: '#cbd5e1', bg: '#334155', fill: '#64748b', light: '#94a3b8' },
-  info: { fg: '#bfdbfe', bg: '#1e3a8a', fill: '#3b82f6', light: '#93c5fd' },
+export type StatusColour = {
+  /** Text on the filled chip: dark on the bright fills, light on grey. */
+  fg: string
+  /** The chip's fill, the phase colour itself. */
+  bg: string
+  /** The phase colour for text and glyphs on the dark card. */
+  fill: string
+  /** Gradient stops: bright end first, then the deep end. */
+  light: string
+  deep: string
+}
+
+export const STATUS: Record<StatusTone, StatusColour> = {
+  // running: sunset yellow #ffd166 -> #ff9f1c
+  success: {
+    fg: '#1c1400',
+    bg: '#ffb627',
+    fill: '#ffb627',
+    light: '#ffd166',
+    deep: '#ff9f1c',
+  },
+  // stalled: mango orange #ffa552 -> #ff7518
+  warning: {
+    fg: '#1c0d00',
+    bg: '#ff8243',
+    fill: '#ff8243',
+    light: '#ffa552',
+    deep: '#ff7518',
+  },
+  // failed stays red
+  error: {
+    fg: '#2b0808',
+    bg: '#ff5c5c',
+    fill: '#ff5c5c',
+    light: '#ffa3a3',
+    deep: '#e02d2d',
+  },
+  // cancelled (and an unreadable record) stays grey
+  muted: {
+    fg: '#f1f5f9',
+    bg: '#475569',
+    fill: '#94a3b8',
+    light: '#cbd5e1',
+    deep: '#64748b',
+  },
+  // finished: lime green #b8f35a -> #32cd32
+  info: {
+    fg: '#10240a',
+    bg: '#9be15d',
+    fill: '#9be15d',
+    light: '#b8f35a',
+    deep: '#32cd32',
+  },
 }
 
 export const C = {

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "reality-engine",
+  "description": "Local Claude Code plugins for the Reality Engine repo on this laptop.",
+  "owner": {
+    "name": "Shivam"
+  },
+  "plugins": [
+    {
+      "name": "dsh-workers",
+      "source": "./plugins/dsh-workers-pane"
+    }
+  ]
+}

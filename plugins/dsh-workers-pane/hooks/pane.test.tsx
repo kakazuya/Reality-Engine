@@ -1,6 +1,8 @@
 import { expect, mock, test } from 'claude-code/testing'
 
+import { STATUS } from './palette'
 import {
+  APP_START,
   CANCELLED_ID,
   DATA_FINISHED_ID,
   DATA_RUNNING_ID,
@@ -10,6 +12,8 @@ import {
   FIXTURE_FILES,
   FIXTURE_ROOT,
   NOW,
+  RECENT_ENTRY,
+  RECENT_ID,
   RUNNING_ID,
   STALLED_ID,
   byteLength,
@@ -30,6 +34,20 @@ const PANE = {
   },
 } as const
 
+const BAND = {
+  plugin: 'dsh-workers',
+  component: 'AbovePrompt',
+  requestId: 'dsh-workers-band',
+  props: {
+    hasSurvey: false,
+    isWorking: false,
+    maxRows: 6,
+    bodyColumns: 100,
+    scroll: { offset: 0, bodyRows: 6 },
+    view: {},
+  },
+} as const
+
 // The engine normalises a path before raising fs.list / fs.read.
 const pathKey = (path: string): string => path.replace(/\\/g, '/')
 
@@ -39,11 +57,73 @@ function textsOf(
   return elements.map(element => element.text)
 }
 
+type TestOn = Parameters<typeof mock.clock>[0]
+type FixtureEntry = {
+  name: string
+  kind: 'dir'
+  size: number
+  mtimeMs: number
+  isLink: boolean
+}
+
+/**
+ * The fixture filesystem for one test, with the jobs folder under the test's
+ * control: `entries` is read on every list, so a test can make a job appear
+ * midway, and `isBroken` makes reads fail on demand.
+ */
+function wire(
+  on: TestOn,
+  entries: () => readonly FixtureEntry[],
+  options: { isBroken?: () => boolean; isPlaced?: boolean } = {},
+): { statuses: Array<string | undefined>; opened: string[] } {
+  const statuses: Array<string | undefined> = []
+  const opened: string[] = []
+  const isBroken = options.isBroken ?? (() => false)
+  const isPlaced = options.isPlaced ?? true
+
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('ui.open', (_, e) => {
+    opened.push(e.id)
+    return isPlaced
+      ? { value: { isPlaced: true as const } }
+      : { value: { isPlaced: false as const, reason: 'not placed' } }
+  })
+  on('ui.status', (_, e) => {
+    statuses.push(e.text)
+    return { value: undefined }
+  })
+  on('fs.list', () => {
+    if (isBroken()) throw new Error('EIO: fixtures unreadable')
+    return { value: [...entries()] }
+  })
+  on('fs.read', (_, e) => {
+    const text = FIXTURE_FILES[pathKey(e.path)]
+    if (text === undefined) return { deny: 'ENOENT' }
+    return e.as === 'bytes'
+      ? { value: { base64: encodeBase64(text) } }
+      : { value: text }
+  })
+  on('fs.stat', (_, e) => {
+    const text = FIXTURE_FILES[pathKey(e.path)]
+    if (text === undefined) return { deny: 'ENOENT' }
+    return {
+      value: {
+        kind: 'file' as const,
+        size: byteLength(text),
+        mtimeMs: NOW,
+        isLink: false,
+      },
+    }
+  })
+  return { statuses, opened }
+}
+
 test(
   'the rail draws running rows, chips and one expandable detail at a time',
   { options: { jobsRoot: FIXTURE_ROOT } },
   async ($, on) => {
-    mock.clock(on, { now: NOW })
+    const clock = mock.clock(on, { now: APP_START })
     const statuses: Array<string | undefined> = []
 
     on('session.start', (_, e) => ({ cwd: e.cwd }))
@@ -82,6 +162,9 @@ test(
       isInteractive: true,
     })
     expect(statuses.at(-1)).toBe('dsh: 2 running, 1 stalled')
+    // Move on to the fixtures' reference moment; the 15 s timer keeps the
+    // view fresh across it.
+    await clock.set(NOW)
 
     for (const surface of ['terminal', 'desktop'] as const) {
       const ui = await $.ui.mount({
@@ -96,6 +179,16 @@ test(
       expect(joined).toContain('◐ 1 stalled')
       expect(joined).toContain('✕ 3 failed')
       expect(joined).toContain('✓ 3 finished')
+      // The chips carry the v3 phase colours, dark text on the bright fill.
+      const runningChip = await ui.find({ type: 'Text', text: '● 2 running' })
+      expect(runningChip?.props.backgroundColor).toBe(STATUS.success.bg)
+      expect(runningChip?.props.color).toBe(STATUS.success.fg)
+      // The mix bar runs each phase across its gradient.
+      const backgrounds = (await ui.findAll({ type: 'Text' })).map(
+        text => text.props.backgroundColor,
+      )
+      expect(backgrounds).toContain(STATUS.success.light)
+      expect(backgrounds).toContain(STATUS.info.deep)
       expect(joined).toContain('Running')
       expect(joined).toContain('Fix the resource watchdog')
       expect(joined).toContain('Chunk every FY26 annual report')
@@ -166,7 +259,7 @@ test(
   'finished opens into owner-session groups and its rows expand in place',
   { options: { jobsRoot: FIXTURE_ROOT } },
   async ($, on) => {
-    mock.clock(on, { now: NOW })
+    const clock = mock.clock(on, { now: APP_START })
 
     on('session.start', (_, e) => ({ cwd: e.cwd }))
     on('command.register', (_, e) => ({ value: { command: e.name } }))
@@ -200,6 +293,7 @@ test(
       surface: 'terminal',
       isInteractive: true,
     })
+    await clock.set(NOW)
 
     const ui = await $.ui.mount({
       ...PANE,
@@ -254,7 +348,7 @@ test(
   'the terminal fallback draws its own bars and never an Svg',
   { options: { jobsRoot: FIXTURE_ROOT } },
   async ($, on) => {
-    mock.clock(on, { now: NOW })
+    const clock = mock.clock(on, { now: APP_START })
 
     on('session.start', (_, e) => ({ cwd: e.cwd }))
     on('command.register', (_, e) => ({ value: { command: e.name } }))
@@ -288,6 +382,7 @@ test(
       surface: 'terminal',
       isInteractive: true,
     })
+    await clock.set(NOW)
 
     const ui = await $.ui.mount({
       ...PANE,
@@ -305,5 +400,194 @@ test(
     expect(await ui.findAll({ type: 'Svg' })).toHaveLength(0)
 
     await ui.unmount()
+  },
+)
+
+test(
+  'idle until a job starts after the session: no pane, no band, no status line',
+  { options: { jobsRoot: FIXTURE_ROOT } },
+  async ($, on) => {
+    const clock = mock.clock(on, { now: APP_START })
+    let entries: readonly FixtureEntry[] = []
+    const { statuses, opened } = wire(on, () => entries)
+    // Stands for the engine's own band, drawn only where the mod passes.
+    on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine band</Text>
+    })
+
+    await $.session.start({
+      cwd: 'C:/',
+      surface: 'desktop',
+      isInteractive: true,
+    })
+    // An empty jobs folder: nothing started since the session did.
+    expect(opened).toEqual([])
+    expect(statuses.every(text => text === undefined)).toBe(true)
+
+    const band = await $.ui.mount({
+      ...BAND,
+      surface: 'desktop',
+      viewport: { columns: 100, rows: 40 },
+    })
+    const idle = textsOf(await band.findAll({ type: 'Text' })).join('\n')
+    expect(idle).toContain('engine band')
+    expect(idle).not.toContain('Fix the resource watchdog')
+
+    // A worker starts after the session began: the next 15 s tick shows it.
+    entries = [...FIXTURE_ENTRIES, RECENT_ENTRY]
+    await clock.advance(15_000)
+
+    expect(statuses.at(-1)).toBe('dsh: 3 running, 1 stalled')
+    const shown = textsOf(await band.findAll({ type: 'Text' })).join('\n')
+    expect(shown).toContain('Smoke the reconcile pass')
+    expect(shown).toContain('Fix the resource watchdog')
+    expect(shown).not.toContain('Mid-write job')
+    expect(shown).not.toContain('engine band')
+    expect(opened).toEqual([])
+
+    await band.unmount()
+  },
+)
+
+test(
+  'the above-prompt band is one coloured line per running job',
+  { options: { jobsRoot: FIXTURE_ROOT } },
+  async ($, on) => {
+    const clock = mock.clock(on, { now: APP_START })
+    wire(on, () => FIXTURE_ENTRIES)
+
+    await $.session.start({
+      cwd: 'C:/',
+      surface: 'desktop',
+      isInteractive: true,
+    })
+    await clock.set(NOW)
+
+    for (const surface of ['terminal', 'desktop', 'mobile'] as const) {
+      const band = await $.ui.mount({
+        ...BAND,
+        surface,
+        viewport: { columns: 100, rows: 40 },
+      })
+      const texts = textsOf(await band.findAll({ type: 'Text' })).join('\n')
+      expect(texts).toContain('Fix the resource watchdog')
+      expect(texts).toContain('Chunk every FY26 annual report')
+      expect(texts).toContain('insider_trades')
+      expect(texts).toContain('20m 00s')
+      expect(texts).toContain('idle 5m')
+      expect(texts).toContain('1h40 left')
+
+      const glyphs = await band.findAll({ type: 'Text', text: '●' })
+      expect(glyphs.length).toBeGreaterThan(0)
+      expect(
+        glyphs.every(glyph => glyph.props.color === STATUS.success.fill),
+      ).toBe(true)
+      const stalled = await band.findAll({ type: 'Text', text: '◐' })
+      expect(stalled[0]?.props.color).toBe(STATUS.warning.fill)
+
+      await band.unmount()
+    }
+  },
+)
+
+test(
+  '/dsh-workers answers with a Markdown summary where no pane can be placed',
+  { options: { jobsRoot: FIXTURE_ROOT } },
+  async ($, on) => {
+    const clock = mock.clock(on, { now: APP_START })
+    wire(on, () => FIXTURE_ENTRIES, { isPlaced: false })
+
+    await $.session.start({
+      cwd: 'C:/',
+      surface: 'mobile',
+      isInteractive: true,
+    })
+    await clock.set(NOW)
+
+    const run = await $.command.run({
+      command: 'dsh-workers',
+      args: '',
+      origin: { kind: 'composer' },
+      presentation: { isFullscreen: false, columns: 60 },
+    })
+    const text = run.text ?? ''
+    expect(text).toContain('**DeepSeek workers** — 2 running · 1 stalled')
+    expect(text).toContain(
+      '- ● **Fix the resource watchdog** — 20m 00s · 4 tools · idle 5m · lease 1h40 left',
+    )
+    expect(text).toContain('- ◐ **Chunk every FY26 annual report**')
+    expect(text).toContain('lease 10m left')
+    expect(text).toContain('insider_trades')
+    expect(text).toContain('2 finished · 2 failed today')
+  },
+)
+
+test(
+  'an unreadable jobs folder is logged, not thrown, and keeps the last good view',
+  { options: { jobsRoot: FIXTURE_ROOT } },
+  async ($, on) => {
+    const clock = mock.clock(on, { now: APP_START })
+    let isBroken = false
+    const { statuses } = wire(on, () => FIXTURE_ENTRIES, {
+      isBroken: () => isBroken,
+    })
+
+    await $.session.start({
+      cwd: 'C:/',
+      surface: 'desktop',
+      isInteractive: true,
+    })
+    await clock.set(NOW)
+
+    const ui = await $.ui.mount({
+      ...PANE,
+      surface: 'desktop',
+      viewport: { columns: 100, rows: 50 },
+    })
+    expect(textsOf(await ui.findAll({ type: 'Text' })).join('\n')).toContain(
+      'Fix the resource watchdog',
+    )
+
+    // The next tick reads a broken folder: the view stays as it was, the pane
+    // names the failure and the status line marks it stale.
+    isBroken = true
+    await clock.advance(15_000)
+    const after = textsOf(await ui.findAll({ type: 'Text' })).join('\n')
+    expect(after).toContain('Fix the resource watchdog')
+    expect(after).toContain('cannot read')
+    expect(statuses.at(-1)).toContain('stale')
+
+    await ui.unmount()
+  },
+)
+
+test(
+  'a broken jobs folder never throws out of session.start or /dsh-workers',
+  { options: { jobsRoot: FIXTURE_ROOT } },
+  async ($, on) => {
+    mock.clock(on, { now: NOW })
+    const { statuses, opened } = wire(on, () => FIXTURE_ENTRIES, {
+      isBroken: () => true,
+      isPlaced: false,
+    })
+
+    const started = await $.session.start({
+      cwd: 'C:/',
+      surface: 'mobile',
+      isInteractive: true,
+    })
+    expect(started.cwd).toBe('C:/')
+    expect(opened).toEqual([])
+    expect(statuses.every(text => text === undefined)).toBe(true)
+
+    const run = await $.command.run({
+      command: 'dsh-workers',
+      args: '',
+      origin: { kind: 'composer' },
+      presentation: { isFullscreen: false, columns: 60 },
+    })
+    expect(run.text).toContain('No workers running.')
+    expect(run.text).toContain('0 finished · 0 failed today')
   },
 )
