@@ -229,20 +229,48 @@ def sql(query: str, db: str = "truth", limit: int = 200,
     return _safe(lambda: core.sql(query, db=db, limit=limit, timeout_seconds=timeout_seconds))
 
 
-def main() -> int:
-    core.warm()
+def _warm_data() -> None:
+    # 2026-10-24: warming before server.run delayed the initialize reply past the client's version probe (6.5 s
+    # cold start); warm in the background so the handshake is answered at once. Tools still lazy-open on first use.
+    def run() -> None:
+        try:
+            core.warm()
+            catalog_mod.get_catalog()  # load the cache before the first model call
+        except Exception:
+            pass
+    threading.Thread(target=run, name="reality-data-warm", daemon=True).start()
+
+
+def _lifecycle(event: str) -> None:
+    # one line per start/exit, so a dropped session shows whether the client closed stdin or the server died
     try:
-        catalog_mod.get_catalog()  # load the cache before the first model call
+        import datetime
+        log = SERVER_DIR / ".cache" / "lifecycle.log"
+        log.parent.mkdir(exist_ok=True)
+        with log.open("a", encoding="utf-8") as fh:
+            fh.write(f"{datetime.datetime.now().isoformat(timespec='seconds')} pid={os.getpid()} {event}\n")
     except Exception:
         pass
+
+
+def main() -> int:
+    _lifecycle("start")
+    _warm_data()
     _warm_search()
+    reason = "stdin closed by client"
     try:
         server.run("stdio")
     except KeyboardInterrupt:
+        reason = "KeyboardInterrupt"
         return 0
     except BrokenPipeError:
+        reason = "BrokenPipeError"
         return 0
+    except BaseException as exc:
+        reason = f"crash {type(exc).__name__}: {exc}"
+        raise
     finally:
+        _lifecycle(f"exit ({reason})")
         core.close_all()
     return 0
 

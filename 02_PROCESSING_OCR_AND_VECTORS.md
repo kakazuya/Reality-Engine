@@ -1,5 +1,7 @@
 # Module 02: Processing, GPU OCR & Vector Pipeline
 
+> **Live status (2026-10-24):** storage is SQLite (WAL) files plus a read-only DuckDB snapshot; there is no PostgreSQL, pgvector or LanceDB in the live path. Dense search uses NumPy index folders (`reality_engine/data/vector_index_nemotron8b`, Nemotron-3-Embed-8B 4096-d) plus SQLite FTS5, served by the `reality-data` MCP server. See AGENTS.md rule 2. Sections below that describe PostgreSQL/pgvector, LanceDB or bge-m3 are the original design, not what runs.
+
 ---
 
 ## 1. Overview & GPU Hardware Optimization
