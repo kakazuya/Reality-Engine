@@ -54,12 +54,13 @@ class Store:
 '''
 
 MAIN_PY = '''"""Fixture entry point."""
-from pkg.util import connect_ro
+from pkg.util import Store, connect_ro
 
 
 def run() -> str:
     """Call the helper."""
-    return connect_ro("db")
+    store = Store()
+    return connect_ro("db") + store.open()
 
 
 def broken() -> int:
@@ -267,9 +268,31 @@ class LspToolTests(FixtureMixin, unittest.TestCase):
         self.assertEqual(callers["count"], len(callers["callers"]))
         self.assertTrue(callers["count"] >= 1)
 
+    def test_indented_method_definition_references_hover(self):
+        method_line = line_of(self.util_py, "def open")
+        definition = core.definition(symbol="open")
+        first = definition["definitions"][0]
+        self.assertEqual(first["file"], "pkg/util.py")
+        self.assertEqual(first["line"], method_line)
+        self.assertEqual(first["col"], 9)          # the name, not the `def` keyword
+        self.assertEqual(first["text"], "def open(self) -> str:")
+        references = core.references(symbol="open")
+        self.assertIn("pkg/main.py", {hit["file"] for hit in references["references"]})
+        self.assertTrue(any("store.open()" in hit["text"] for hit in references["references"]))
+        hovered = core.hover("pkg/util.py", first["line"], first["col"])
+        self.assertTrue(hovered["ok"])
+        self.assertIn("open", hovered["hover"])
+
     def test_references_bounded(self):
         out = core.references(symbol="connect_ro", limit=1)
         self.assertLessEqual(len(out["references"]), 1)
+
+    def test_first_call_after_cold_start(self):
+        core.close()                       # next tool call must start a fresh language server
+        out = core.definition(symbol="connect_ro")
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["definitions"][0]["file"], "pkg/util.py")
+        self.assertEqual(out["definitions"][0]["line"], self.def_line)
 
     def test_hover(self):
         text = self.util_py.read_text(encoding="utf-8").splitlines()[self.def_line - 1]
@@ -296,6 +319,28 @@ class LspToolTests(FixtureMixin, unittest.TestCase):
         self.assertTrue(out["ok"])
         self.assertTrue(any(symbol["name"] == "connect_ro" for symbol in out["symbols"]))
         self.assertTrue(all(symbol["file"] for symbol in out["symbols"]))
+
+
+@unittest.skipUnless(LANG_SERVER, LSP_SKIP)
+class LifecycleTests(unittest.TestCase):
+    def test_stop_leaves_no_open_handles(self):
+        client = core.LspClient(build_fixture(), LANG_SERVER, log_path=FIXTURE / "langserver.log")
+        self.addCleanup(client.stop)
+        client.start(timeout=60)
+        first_stderr = client._stderr_fh
+        self.assertIsNotNone(first_stderr)
+        self.assertIsNotNone(client.proc)
+        stdout = client.proc.stdout
+        client.stop()
+        self.assertTrue(stdout.closed)
+        self.assertTrue(first_stderr.closed)
+        self.assertIsNone(client._stderr_fh)
+        client.start(timeout=60)                  # a restart reopens the log, not accumulate handles
+        second_stderr = client._stderr_fh
+        self.assertIsNotNone(second_stderr)
+        client.stop()
+        self.assertTrue(second_stderr.closed)
+        self.assertIsNone(client._stderr_fh)
 
 
 class HandshakeTests(unittest.TestCase):

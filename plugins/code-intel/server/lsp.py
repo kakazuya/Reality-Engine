@@ -64,6 +64,12 @@ class LspClient:
         if self.proc is not None and self.proc.poll() is None:
             return
         self._closed = False
+        if self._stderr_fh is not None:      # left over from a start() that failed midway
+            try:
+                self._stderr_fh.close()
+            except OSError:
+                pass
+            self._stderr_fh = None
         kwargs: dict = {"cwd": str(self.root), "stdin": subprocess.PIPE,
                         "stdout": subprocess.PIPE, "stderr": subprocess.DEVNULL}
         if self.log_path is not None:
@@ -105,29 +111,47 @@ class LspClient:
         self._closed = True
         proc = self.proc
         self.proc = None
-        if proc is not None and proc.poll() is None:
-            # Speak the LSP lifecycle instead of TerminateProcess: basedpyright's node child
-            # outlives the python launcher when the launcher is killed, leaking ~600 MB per
-            # restart (measured: three orphans after a handful of test runs).  Closing stdin
-            # afterwards gives node the EOF it also exits on, in case it never sees `exit`.
-            try:
-                if proc.stdin is not None:
-                    for message in ({"id": 0, "method": "shutdown", "params": None},
-                                    {"method": "exit", "params": None}):
-                        body = json.dumps({"jsonrpc": "2.0", **message}).encode("utf-8")
-                        proc.stdin.write(f"Content-Length: {len(body)}\r\n\r\n".encode("ascii"))
-                        proc.stdin.write(body)
-                    proc.stdin.flush()
-                    proc.stdin.close()
-            except (OSError, ValueError):
-                pass
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
+        if proc is not None:
+            if proc.poll() is None:
+                # Speak the LSP lifecycle instead of TerminateProcess: basedpyright's node child
+                # outlives the python launcher when the launcher is killed, leaking ~600 MB per
+                # restart (measured: three orphans after a handful of test runs).  Closing stdin
+                # afterwards gives node the EOF it also exits on, in case it never sees `exit`.
                 try:
-                    proc.kill()
-                except OSError:
+                    if proc.stdin is not None:
+                        for message in ({"id": 0, "method": "shutdown", "params": None},
+                                        {"method": "exit", "params": None}):
+                            body = json.dumps({"jsonrpc": "2.0", **message}).encode("utf-8")
+                            proc.stdin.write(f"Content-Length: {len(body)}\r\n\r\n".encode("ascii"))
+                            proc.stdin.write(body)
+                        proc.stdin.flush()
+                        proc.stdin.close()
+                except (OSError, ValueError):
                     pass
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try:
+                        proc.kill()
+                    except OSError:
+                        pass
+                    try:
+                        proc.wait(timeout=5)       # reap the killed child, else its handle leaks
+                    except subprocess.TimeoutExpired:
+                        pass
+            for stream in (proc.stdin, proc.stdout):   # Popen does not close these itself
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except OSError:
+                        pass
+        stderr_fh = self._stderr_fh
+        self._stderr_fh = None
+        if stderr_fh is not None:
+            try:
+                stderr_fh.close()
+            except OSError:
+                pass
         self._fail_pending(LspError("lsp_closed", "language server stopped"))
 
     @property

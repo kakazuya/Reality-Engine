@@ -126,6 +126,10 @@ def main() -> int:
           f"{outline['count']} symbols, start_worker container "
           f"{next((s['container'] for s in outline['symbols'] if s['name'] == 'start_worker'), None)}")
 
+    worker_refs = core.references("start_worker", limit=50)
+    check("references(start_worker) on an indented method", worker_refs["count"] >= 1,
+          f"{worker_refs['count']} sites in {len({hit['file'] for hit in worker_refs['references']})} files")
+
     started = time.monotonic()
     diag = core.diagnostics(changed=True)
     elapsed = time.monotonic() - started

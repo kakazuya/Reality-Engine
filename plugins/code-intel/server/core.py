@@ -31,6 +31,8 @@ LANG_SERVER_LOG = CACHE_DIR / "langserver.log"
 
 REQUEST_TIMEOUT = float(os.environ.get("CODE_INTEL_TIMEOUT", "30"))
 DIAGNOSTICS_TIMEOUT = float(os.environ.get("CODE_INTEL_DIAGNOSTICS_TIMEOUT", "25"))
+COLD_INDEX_WAIT = float(os.environ.get("CODE_INTEL_COLD_INDEX_WAIT", "5"))
+COLD_INDEX_WINDOW = 120.0
 MAX_REFERENCES = 500
 MAX_SYMBOLS = 300
 MAX_DIAGNOSTIC_FILES = 20
@@ -337,8 +339,24 @@ def _kind_name(kind: object) -> str:
 
 
 def _search_symbols(query: str, timeout: float) -> list[dict]:
-    hits = _call("workspace/symbol", {"query": query}, timeout=timeout) or []
-    return [hit for hit in hits if isinstance(hit, dict) and isinstance(hit.get("location"), dict)]
+    def search() -> list[dict]:
+        hits = _call("workspace/symbol", {"query": query}, timeout=timeout) or []
+        return [hit for hit in hits if isinstance(hit, dict) and isinstance(hit.get("location"), dict)]
+
+    hits = search()
+    if hits or _server.started_at is None or \
+            time.monotonic() - _server.started_at > COLD_INDEX_WINDOW:
+        return hits
+    # A language server that was just started answers workspace/symbol from a
+    # partially built index: the first cold call on the fixture returned [] and
+    # needed ~1.5 s.  Poll briefly instead of reporting not_found.
+    # ponytail: bounded poll instead of a pyright "index ready" signal; raise
+    # CODE_INTEL_COLD_INDEX_WAIT on a slower box.
+    deadline = time.monotonic() + COLD_INDEX_WAIT
+    while not hits and time.monotonic() < deadline:
+        time.sleep(min(0.5, max(0.0, deadline - time.monotonic())))
+        hits = search()
+    return hits
 
 
 def _pick_symbol(hits: list[dict], symbol: str) -> dict | None:
@@ -358,7 +376,8 @@ def _name_position(hit: dict, symbol: str) -> tuple[Path, int, int]:
     path = uri_to_path(location["uri"])
     start = location.get("range", {}).get("start", {})
     line0 = int(start.get("line", 0))
-    text = _line_text(path, line0)
+    lines = _lines(path)
+    text = lines[line0] if 0 <= line0 < len(lines) else ""   # raw: keep the indent
     index = text.find(symbol)
     return path, line0, index if index >= 0 else int(start.get("character", 0))
 
