@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-25T01:40:21+05:30 · git HEAD: `551226e` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-25T04:00:51+05:30 · git HEAD: `5414ef0` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -10,7 +10,7 @@ Top-level tree to depth 2 (tests/fixtures skipped):
 ```
 reality_engine/
   agent/ (4 py) — Agent module for Reality Engine.
-  data/ (0 py)
+  data/ (131 py)
   db/ (9 py) — Database services.
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
@@ -21,25 +21,35 @@ reality_engine/
   reporting/ (3 py) — Reporting module for Reality Engine.
   scripts/ (122 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
+  toolbelt/ (9 py) — Ready-made, read-only tools for dsh workers (Task 02).
   ui/ (2 py) — Reality Engine UI Module.
 plugins/
+  code-intel/ (3 py) — code-intel: LSP-backed code intelligence over the reality-engine checkout.
   dsh-worker/ (11 py) — Job manager for the local dsh-worker Codex plugin.
   dsh-workers-pane/ (0 py)
-  reality-data/ (11 py) — Data access core for the reality-data MCP server.
+  reality-data/ (5 py) — Data access core for the reality-data MCP server.
 tasks/
   ar_study/ (13 md)
   backtests/ (11 md)
   codex_tasks/ (37 md)
   council_2026-10-06/ (10 md)
+  coverage/ (0 md)
   dsh_profiles/ (1 md)
-  dsh_tasks/ (7 md)
+  dsh_tasks/ (16 md)
   handoff/ (3 md)
-  optimizations/ (6 md)
+  optimizations/ (9 md)
   research/ (1 md)
-analysis/ (30 entries)
+analysis/ (31 entries)
+h02test_s6wwsqyr/ (0 entries)
+h02test_vijd0qtc/ (0 entries)
 ```
 
 Module one-liners (first docstring line):
+
+### plugins/code-intel/server/
+- `plugins/code-intel/server/core.py` — code-intel: LSP-backed code intelligence over the reality-engine checkout.
+- `plugins/code-intel/server/lsp.py` — Minimal JSON-RPC/LSP client for one long-lived ``basedpyright-langserver``.
+- `plugins/code-intel/server/server.py` — code-intel MCP server (stdio).
 
 ### plugins/dsh-worker/server/
 - `plugins/dsh-worker/server/context_pack.py` — Worker context pack: attach the generated repo/data map to every brief.
@@ -71,6 +81,167 @@ Module one-liners (first docstring line):
 - `reality_engine/agent/orchestrator.py` — Agent Orchestrator Module
 - `reality_engine/agent/schemas.py` — Agent Schemas Module
 - `reality_engine/agent/tools.py` — Agent Tool Registry & Dispatcher Module
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/apply_annual_report_pit.py` — Annual-report PIT labels from the BSE filename (additive, idempotent). No network.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/apply_bse_join.py` — Join corporate_documents to the harvested BSE announcement feed by PDF name (additive, idempotent).
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/apply_pit_repair.py` — Apply analysis/proposed_changes.csv to corporate_documents (additive, reversible).
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/bse_announcement_harvest.py` — Harvest BSE corporate-announcement metadata (exact dissemination timestamps) into a SEPARATE sqlite.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/bse_harvest_missing.py` — List equity-ISIN symbols whose BSE harvest is incomplete (any year-window missing in `done`).
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/build_snapshot_and_proposal.py` — Build the reversible change set for the crawl-date defect.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/export_parquet.py` — Export the analysis-ready tables to Parquet (chunked, low memory) -> reality_engine/data/parquet/.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/extract_call_date.py` — Extract the real (call-date, filing-date) pair from a BSE/NSE Reg-30 earnings-call
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/make_sample_db.py` — Build a small, public-data-only sample of the live DB so the code can be run on another machine before the full DB is fe
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/overnight_part2.py` — Queue behind overnight_pipeline.py: starts when its step 8 is done (or it has failed/finished), so the machine never idl
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/overnight_pipeline.py` — Overnight chain (resumable via analysis/overnight_state.json). Each step is isolated: a failure is logged and the chain 
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/package_for_drive.py` — Build the Drive upload pack in C:/pack_drive (originals untouched):
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/pit_validate.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/run_extract_all.py` — Run the call-date extractor over every processed concall and emit a reviewable
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/secrets_scan.py` — Scan files git would publish (tracked + untracked-not-ignored, text, <2MB) for likely secrets.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/tariff_event_study.py` — Tariff event study per tasks/tariff_event_card_2026-09-29.md. Read-only on the DB.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/tg_collect_video_links.py` — Collect YouTube links from selected Telegram forum topics (read-only) -> analysis/tg_video_links.csv.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/video_load_loop.py` — Loop: load every finished transcript into the DB (frames+OCR+chunks) until all 65 batch videos are loaded.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/video_transcribe_batch.py` — Transcribe finished videos from analysis/yt_batch_3mo.txt with whisper.cpp (Vulkan, RX 6700 XT).
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/yt_download_batch.py` — Download the batch listed in analysis/yt_batch_3mo.txt (newest first): <=1080p video+audio -> reality_engine/data/video_
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/yt_probe.py` — Metadata-only probe (no download): duration + availability for each unique video. -> analysis/yt_probe.csv
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/01_build_events.py` — Build the event table: BSE announcements (exact DissemDT, IST) -> (isin, t0 session, timing bucket, family).
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/02_event_engine.py` — Vectorised market-model event study over every event-day (read-only on inputs).
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/03_estimate.py` — Stratum-level estimation for the price-side information-diffusion study (numpy/pandas only).
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/04_negative_reaction_matched.py` — Negative-reaction puzzle, test 1 (closeout 2026-10-05 §3): do matched NON-announcers with the same prior-week run-up
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/05_negative_reaction_splits.py` — Negative-reaction puzzle, test 3 (closeout 2026-10-05 §3): is the announcer-vs-matched-control gap in CAR(0,1) related t
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/common.py` — Shared constants for the price-side information-diffusion study (read-only on all databases).
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/concall_pilot/gemma_v3/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/concall_pilot/gemma_v3/run_pilot.py` — Gemma 4 vs MiniMax on 10 transcripts, prompt v3 + machine_check (Shivam 2026-10-20 'run it'). Free Google keys.
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/ctx_hb2100.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/items_hb2100.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q1.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q10.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q2.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q3.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q4.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q5.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q6.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q7.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q8.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q9.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_err.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100b.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100c.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100d.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100e.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/schema.py` — (no docstring)
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q1.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q2.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q3.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q4.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q5.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q6.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q7.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q8.py` — (no docstring)
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/dump.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/final.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/hb_counts.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/hb_other.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/hb_spot.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/inspect2.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/inspect_cc.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/quotecheck.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/slow.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/vq.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/zero.py` — (no docstring)
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb4/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb4/q.py` — (no docstring)
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/ccl.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/extract.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/measure_2301.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/measure_2301b.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/pib.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/q.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/q2.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/q3.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/q4.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/sample.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/sample2.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/src.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/verify.py` — (no docstring)
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/count2.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/ctx.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/detail.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/dump.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/dump_json.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/extract.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/inspect_db.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/inspect_eq.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/inspect_items.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/inspect_join.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/numcheck.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/pattern.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/sample.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/scan_all.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/shortquotes.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/state_now.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/valquote.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/verify_extra.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/verify_triton.py` — (no docstring)
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/inspect_calls.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/inspect_calls2.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/step1_ensemble_snapshot.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/step2_diff.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/step5_detail.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/step5_inspect.py` — (no docstring)
+
+### reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/p0_network.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA10_pink_cols.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA1_ppac.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA2_ppac_links.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA3_ppac_tables.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA4_ppac_js.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA5_ICB_text.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA6_pdfs.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA7_fallbacks.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA8_pinksheet.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA9_pink_parse.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pB1_rbi.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pB2_rbi_mine.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pB3_rbi_paths.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pC1_budget.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pC2_budget_mine.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/probe_lib.py` — Throwaway network probe harness. Read-only, no DB writes, no repo source edits.
+
+### reality_engine/data/backups/restore_2026-10-21/
+- `reality_engine/data/backups/restore_2026-10-21/inspect_backups.py` — (no docstring)
+- `reality_engine/data/backups/restore_2026-10-21/restore_databases.py` — Audited, local-only restore of the two final PC exports. No snapshot writes.
+
+### reality_engine/data/embed_test/
+- `reality_engine/data/embed_test/colab_embed_test.py` — Colab side of the embedding retrieval test (2026-10-19, Shivam: is Qwen3-Embedding-8B worth it vs gemini-embedding-001).
+
+### reality_engine/data/logs/
+- `reality_engine/data/logs/date_resolver_coverage.py` — Coverage of the text date resolver on the 1,499 undated concall transcripts (2026-10-24 patch check).
+- `reality_engine/data/logs/dsh_plugin_overnight_audit.py` — Read-only installed MCP audit. Never starts an inference worker.
+- `reality_engine/data/logs/probe_lanes_20261024.py` — One-off lane probe for the concall-reader patch (2026-10-24): Go key 1/2 Beam + LongCat on both Go endpoints,
+- `reality_engine/data/logs/run_provider_probes.py` — Small authorized live probes. Logs controls/usage, never credentials or reasoning text.
+
+### reality_engine/data/logs/dsh_heartbeat_bootstrap/
+- `reality_engine/data/logs/dsh_heartbeat_bootstrap/run_deepseek_harness.before.py` — Run one task headlessly in DeepSeek Harness (dsh) on an OpenCode Go model, so a Claude orchestrator can use it
+- `reality_engine/data/logs/dsh_heartbeat_bootstrap/test_deepseek_harness_controls.before.py` — Local checks only: no credentials, subprocesses, inference or database access.
 
 ### reality_engine/db/
 - `reality_engine/db/__init__.py` — Database services.
@@ -347,6 +518,17 @@ Module one-liners (first docstring line):
 - `reality_engine/search/hybrid_search.py` — Lexical plus dense search using reciprocal rank fusion.
 - `reality_engine/search/intel_search.py` — Tier-aware unified search over ``intelligence_fts`` (news-feed v1).
 
+### reality_engine/toolbelt/
+- `reality_engine/toolbelt/__init__.py` — Ready-made, read-only tools for dsh workers (Task 02).
+- `reality_engine/toolbelt/_common.py` — Shared helpers for the toolbelt CLIs.
+- `reality_engine/toolbelt/cost_ledger.py` — Append-only paid-call ledger with a hard budget gate.
+- `reality_engine/toolbelt/drive_fetch.py` — Fetch a document from ``gdrive:InfoDiffusion_archive`` by path, sha256 or stale DB path.
+- `reality_engine/toolbelt/find_docs.py` — Find a company's documents across every store and report their real state.
+- `reality_engine/toolbelt/job_peek.py` — Compact view of a dsh job directory without loading whole event files.
+- `reality_engine/toolbelt/mod_test.py` — Run a Claude Code mod's checks the way this sandbox actually allows.
+- `reality_engine/toolbelt/render_pages.py` — Render PDF pages to PNG, or dump the text layer with the pipeline's low-text rule.
+- `reality_engine/toolbelt/sample_rows.py` — Random row samples from a live SQLite store without scanning it.
+
 ### reality_engine/ui/
 - `reality_engine/ui/__init__.py` — Reality Engine UI Module.
 - `reality_engine/ui/dashboard.py` — Reality Engine - Streamlit Equity Intelligence Dashboard
@@ -357,9 +539,9 @@ Ranked by mentions in `tasks/STATE.md`, `plugins/dsh-worker/jobs.yaml` and the 2
 
 - `reality_engine/scripts/ar_queue.py` (22 refs) — Annual-report work queue for readers that only answer inside the OpenCode app (OpenCode Zen free models).
 - `reality_engine/scripts/ingest_annual_reports.py` (16 refs) — Annual-report fact extraction with the free readers that passed the AR must-find test (tasks/ar_study/free_test):
-- `reality_engine/scripts/resource_watchdog.py` (12 refs) — Machine-wide resource watchdog: keeps the long jobs alive and records every case of wasted compute.
+- `reality_engine/scripts/resource_watchdog.py` (13 refs) — Machine-wide resource watchdog: keeps the long jobs alive and records every case of wasted compute.
 - `reality_engine/scripts/boot_recover.py` (10 refs) — Crash recovery: bring every job back after a reboot or power cut, with nobody logged in (Shivam 2026-10-19).
-- `reality_engine/scripts/concall_deepseek.py` (8 refs) — 2026 concall transcripts -> DeepSeek V4.1 Flash on OpenCode Go (Shivam, 2026-10-18: 2026 transcripts are read by
+- `reality_engine/scripts/concall_deepseek.py` (9 refs) — 2026 concall transcripts -> DeepSeek V4.1 Flash on OpenCode Go (Shivam, 2026-10-18: 2026 transcripts are read by
 - `reality_engine/scripts/extract_deck_figures.py` (8 refs) — Extract the figures printed on investor-presentation slides with OpenCode Go vision models.
 - `reality_engine/scripts/new_reader_check.py` (8 refs) — Daily check for new free readers (STATE to-do 1, 2026-10-13). Run once a day by the resource watchdog; safe to run
 - `reality_engine/scripts/deepseek_heartbeat.py` (6 refs) — DeepSeek heartbeat (Shivam, 2026-10-20): wakes DeepSeek, never Claude. Run hourly by the Windows task
@@ -384,17 +566,17 @@ Ranked by mentions in `tasks/STATE.md`, `plugins/dsh-worker/jobs.yaml` and the 2
 - `reality_engine/scripts/discover_bse_feed_docs.py` (3 refs) — Add filings from the harvested BSE announcement feed (analysis/bse_announcements.db, every BSE company, 2020-01 ->
 - `reality_engine/scripts/drive_upload_check.py` (3 refs) — Which local PDFs / decks are not on Google Drive yet (2026-10-19, after the power cut stopped Shivam's browser upload).
 - `reality_engine/scripts/fetch_bse_annual_report_dates.py` (3 refs) — Date the annual reports in corporate_documents from BSE's own annual-report list.
+- `reality_engine/scripts/go_session.py` (3 refs) — Stable `x-opencode-session` ids for every OpenCode Go call (Shivam, 2026-10-20: standing rule for all routing calls).
 - `reality_engine/scripts/query_speed_check.py` (3 refs) — Query speed check (PIPELINE_TODO Q1, 2026-10-19): a fixed list of the queries backtests and analysis run, each with a
 - `reality_engine/scripts/tg_orders.py` (3 refs) — Orders from the Telegram 'Big Orders' topic (7) -> tg_orders + tg_order_schedule (2026-10-19).
 - `reality_engine/scripts/tg_pead_signals.py` (3 refs) — PEAD signal table from the Financially Free 'PEAD' Telegram topic (683), for backtesting and transcript priority.
 - `reality_engine/scripts/backup_dbs_to_drive.py` (2 refs) — Back up the project databases to Google Drive (Shivam 2026-10-19: uploads only 05:00-13:00 IST, every day).
+- `reality_engine/scripts/embed_ar_test.py` (2 refs) — Annual-report embedding pilot on DeepInfra (2026-10-24, Shivam: pick the AR embedder on cost-to-value, as the
 - `reality_engine/scripts/embed_model_test.py` (2 refs) — Embedding-model retrieval test on our own concall chunks (2026-10-18, Shivam: test before switching from bge-small).
 - `reality_engine/scripts/fetch_board_meetings.py` (2 refs) — Board-meeting calendar, NSE (PIPELINE_TODO phase C: forward board-meeting calendar / results dates ahead; 2026-10-19).
 - `reality_engine/scripts/fetch_bse_api_raw.py` (2 refs) — Raw BSE disclosure fetcher (download only, no DB writes).
 - `reality_engine/scripts/fetch_etf_nav.py` (2 refs) — ETF prices, NAV and premium (PIPELINE_TODO B1, 2026-10-19). Tables in equity_intelligence.db:
 - `reality_engine/scripts/fetch_fiidii_moneycontrol.py` (2 refs) — Daily FII / DII cash-market flows from Moneycontrol (third-party archive; approved by
-- `reality_engine/scripts/fetch_index_tri.py` (2 refs) — Total-return indices for the benchmark rule (PIPELINE_TODO B2, 2026-10-19). Table `index_tri` in equity_intelligence.db.
-- `reality_engine/scripts/fetch_nsdl_raw.py` (2 refs) — Raw NSDL FPI report fetcher (download only, no DB writes).
 
 ## 2. Data map
 
@@ -402,78 +584,78 @@ Data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data` (
 
 | DB | file | size | tables | use |
 |---|---|---|---|---|
-| truth_duckdb | `truth_2026-10-19.duckdb` | 8.5 GB | 63 | Point-in-time research snapshot (adjusted prices, facts, policy). |
-| equity_intelligence | `equity_intelligence.db` | 50.1 GB | 123 | Main search/data DB: documents, chunks+FTS, prices, flows, substrate. |
-| ar_facts | `ar_facts.db` | 19.1 GB | 8 | Annual-report extraction: item/value rows with page, quote, period, basis. |
-| deck_figures | `deck_figures.db` | 9.9 GB | 14 | Investor-presentation facts by page, sources and URLs. |
-| concall_facts | `concall_facts.db` | 741 MB | 4 | Concall extraction: documents and guidance/KPI items with quotes. |
-| results_xbrl | `results_xbrl.db` | 6.1 GB | 4 | NSE XBRL results: filings, facts, trading-ISIN map. |
-| bse_announcements | `bse_announcements.db` | 1.1 GB | 2 | BSE announcement feed with dissemination timestamps. |
+| truth_duckdb | `truth_2026-10-19.duckdb` | 8.5 GB | 63 | Dated, read-only research snapshot (2026-10-19) built from the live SQLite DBs: clean entity-level prices with split/bonus/dividend adjustment and point-in-time known_at timestamps (date-only sources stamped 23:59:59 IST), plus consolidated results/AR/deck/concall/ownership/policy tables. Prefer this for historical/as-of research; SQLite is the live source with newer rows and full text. |
+| equity_intelligence | `equity_intelligence.db` | 50.1 GB | 123 | Live primary equity database: company master, normalized daily prices, financials, corporate actions/documents, ownership/market flows, policy/macro/ripple layers, substrate analytics, Telegram signals and quarantine. Use it for latest/live data and full text; use truth_duckdb for adjusted price history and PIT-stamped research tables. Mixed raw and derived; check per-table notes. |
+| ar_facts | `ar_facts.db` | 19.1 GB | 8 | Annual-report extraction store: document registry, ~33M extracted facts with quotes/units, processing provenance and FTS. Managed by the AR pipeline and hand-review overlays in equity_intelligence. |
+| deck_figures | `deck_figures.db` | 9.9 GB | 14 | Investor-presentation/deck reader store: per-page vision-model calls, extracted printed numeric facts, chart trend labels and spend/queue ledgers, with symbol/ISIN/known_at resolvable via pages. |
+| concall_facts | `concall_facts.db` | 741 MB | 4 | Concall transcript extraction store: one row per processed concall document, extracted guidance/analyst items as text, QA checks and FTS. |
+| results_xbrl | `results_xbrl.db` | 6.1 GB | 4 | NSE quarterly-results XBRL store: filing registry, long facts and a pivoted quarterly view. Authoritative for reported quarterly financials; monetary values are in rupees. |
+| bse_announcements | `bse_announcements.db` | 1.1 GB | 2 | BSE corporate-announcement feed: one metadata row per NEWSID (headline/category/timestamps/attachment) plus a per-scrip fetch ledger. Metadata only; the duckdb snapshot has a PIT-stamped copy. |
 
 Top 60 tables (key tables first, then by row count; full lists in `schemas/`):
 
 | table | rows | key columns | what it is | coverage |
 |---|---|---|---|---|
-| truth_duckdb.ar_facts | 32.4M | `isin`, `symbol`, `period`, `fiscal_year`, `known_at_utc` | Annual-report extracted facts with page, quote, period and basis. | 2015-03-31..2026-03-31 |
-| ar_facts.ar_facts | 32.4M | `isin`, `symbol`, `period`, `fiscal_year`, `filed_at` | Annual-report extracted facts with page, quote, period and basis. | 2015-03-31..2026-03-31 |
-| results_xbrl.facts | 13.9M | `period_end`, `file`, `concept` | Extracted item/value facts with page, quote and period. |  |
-| deck_figures.facts | 13.6M | `period`, `metric` | Extracted item/value facts with page, quote and period. |  |
-| truth_duckdb.px_bse_adj | 6.8M | `isin`, `symbol`, `date`, `sc_code` | BSE daily bars with cumulative adjustment factors. | 2019-01-01..2026-10-19 |
-| truth_duckdb.px_nse_adj | 4.3M | `isin`, `symbol`, `date` | NSE daily bars with cumulative split/dividend adjustment factors. | 2019-01-01..2026-10-19 |
-| truth_duckdb.events | 3.3M | `isin`, `known_at_utc` | Unified company event ledger keyed by ISIN and known-at time. | 2018-11-29T11:36:00..2026-10-19T18:29:59 |
-| equity_intelligence.daily_price_delivery | 3.1M | `isin`, `symbol`, `date` | Daily price + delivery + technical indicators by symbol. | 2021-10-27..2026-09-24 |
-| equity_intelligence.pib_releases | ~2.3M | `doc_id`, `prid` | PIB press releases with publication and posting times. |  |
-| equity_intelligence.document_chunks | 2.3M | `isin`, `symbol`, `published_date`, `doc_id`, `chunk_id` | Indexed text chunks with embeddings and symbol/date. |  |
-| equity_intelligence.intelligence_fts | 2.3M | `isin`, `symbol`, `chunk_id`, `source_type` | FTS5 index over document chunks (lexical search). |  |
-| bse_announcements.ann | 1.9M | `symbol`, `NEWSID` | BSE announcements with headline, category and dissemination time. | 2019-12-31..2026-10-19 |
-| deck_figures.pages | 815.8k | `isin`, `symbol`, `known_at`, `doc_id` | Deck page register (known_at, source, page number). | 2021-01-04T08:39:52.927..2026-09-29T22:49:57.223 |
-| concall_facts.cc_items | 645.0k | `isin`, `period`, `filed_at`, `doc_id`, `metric` | Concall guidance/KPI items with quotes and direction. | 2016-05-20..2026-10-14T17:21:32.7 |
-| equity_intelligence.corporate_documents | 127.2k | `isin`, `symbol`, `id` | Corporate filing registry with PIT dates and local paths. | 2015-01-13..2026-10-17 |
-| truth_duckdb.results_filings | 106.6k | `isin`, `symbol`, `period_end`, `known_at_utc`, `file` | XBRL filing register with dissemination time and trading ISIN. | 2017-06-30..2026-09-30 |
-| results_xbrl.filings | 106.6k | `isin`, `symbol`, `period_end`, `file` | XBRL filing register with dissemination time and trading ISIN. | 2017-06-30..2026-09-30 |
-| truth_duckdb.cc_items | 87.9k | `isin`, `period`, `known_at_utc`, `filed_at`, `doc_id` | Concall guidance/KPI items with quotes and direction. | 2026-01-13T18:47:08.04..2026-10-14T17:21:32.7 |
-| equity_intelligence.raw_documents | 34.8k | `published_date`, `doc_id`, `source_type` | Search-layer document registry (title, type, date, URL). | 2012-03-26..2026-10-16 |
-| truth_duckdb.ar_docs | 33.7k | `isin`, `symbol`, `fiscal_year`, `known_at_utc`, `filed_at` | Annual-report document register. | 2015-03-31..2026-09-07 |
-| ar_facts.ar_docs | 33.7k | `isin`, `symbol`, `fiscal_year`, `filed_at`, `doc_id` | Annual-report document register. | 2015-03-31..2026-03-31 |
-| truth_duckdb.pib_releases | 28.9k | `known_at_utc`, `doc_id`, `prid` | PIB press releases with publication and posting times. | 2021-01-01..2026-10-19 |
-| truth_duckdb.deck_sources | 26.4k | `isin`, `symbol`, `known_at_utc`, `known_at` | Presentation/deck source registry with URLs and PIT dates. | 2021-01-04T08:39:52.927..2026-09-29T22:49:57.223 |
-| deck_figures.deck_sources | 26.4k | `isin`, `symbol`, `known_at` | Presentation/deck source registry with URLs and PIT dates. | 2021-01-04T08:39:52.927..2026-09-29T22:49:57.223 |
-| equity_intelligence.policy_events | ~21.8k | `id` | Extracted policy events with stage, sectors and effective dates. |  |
-| truth_duckdb.policy_events | 21.6k | `known_at_utc`, `id` | Extracted policy events with stage, sectors and effective dates. | 2019-01-31..2026-10-16T21:39 |
-| equity_intelligence.quarterly_financials | 15.2k | `isin`, `symbol`, `id` | Quarterly revenue/PAT/margin table with XBRL source path. |  |
-| equity_intelligence.annual_financials | 12.9k | `isin`, `symbol`, `fiscal_year`, `id` | Annual revenue/EBITDA/PAT/leverage table by fiscal year. |  |
-| truth_duckdb.symbol_isin_history | 9.4k | `isin`, `symbol` | Symbol/ISIN validity windows (splits, renames, delistings). | 2019-01-01..2026-10-19 |
-| equity_intelligence.symbol_isin_history | ~9.4k | `isin`, `symbol` | Symbol/ISIN validity windows (splits, renames, delistings). |  |
-| concall_facts.cc_docs | 9.3k | `isin`, `symbol`, `filed_at`, `doc_id` | Concall transcript document register. | 2026-01-06T21:49:52.907..2026-10-14T17:21:32.7 |
-| truth_duckdb.security_master | 8.4k | `isin`, `nse_symbol`, `bse_symbol` | Canonical equity identity: ISIN, NSE/BSE symbols and listing dates. |  |
-| equity_intelligence.security_master | ~8.4k | `isin`, `nse_symbol`, `bse_symbol` | Canonical equity identity: ISIN, NSE/BSE symbols and listing dates. |  |
-| equity_intelligence.master_companies | ~6.8k | `isin`, `nse_symbol` | Legacy company identity table (ISIN anchor). |  |
-| truth_duckdb.nse_master | 3.2k | `isin`, `symbol` | truth_duckdb table 'nse_master' (auto-described; inspect columns in schemas/). | 20MICRONS..ZYDUSWELL |
-| truth_duckdb.fii_dii_cash | 1.9k | `date`, `known_at_utc` | truth_duckdb table 'fii_dii_cash' (auto-described; inspect columns in schemas/). | 2019-01-01..2026-10-19 |
-| truth_duckdb.cc_docs | 1.2k | `isin`, `symbol`, `known_at_utc`, `filed_at`, `doc_id` | Concall transcript document register. | 2026-01-06T21:49:52.907..2026-10-14T17:21:32.7 |
-| equity_intelligence.shareholding | ? | `isin`, `symbol`, `file` | Quarterly shareholding pattern (promoter/FII/DII/retail). |  |
-| ar_facts.ar_facts_fts | ~33.0M | `item` | ar_facts table 'ar_facts_fts' (auto-described; inspect columns in schemas/). |  |
-| deck_figures.facts_metric_fts | ~15.1M | `metric` | deck_figures table 'facts_metric_fts' (auto-described; inspect columns in schemas/). |  |
-| truth_duckdb.results_facts | 13.9M | `period_end`, `file`, `concept` | truth_duckdb table 'results_facts' (auto-described; inspect columns in schemas/). | 2017-06-30..2026-09-30 |
-| truth_duckdb.deck_facts | 13.6M | `isin`, `symbol`, `period`, `known_at_utc`, `metric` | Investor-presentation metrics by page. | 2021-01-04T03:09:52.927000..2026-09-29T17:19:57.223000 |
-| equity_intelligence.mkt_bse_eq_daily | ~7.5M | `isin`, `symbol`, `date`, `sc_code` | equity_intelligence table 'mkt_bse_eq_daily' (auto-described; inspect columns in schemas/). |  |
-| equity_intelligence.mkt_bse_delivery_daily | ~7.5M | `date`, `sc_code` | equity_intelligence table 'mkt_bse_delivery_daily' (auto-described; inspect columns in schemas/). |  |
-| truth_duckdb.px_daily | 7.3M | `isin`, `symbol`, `date` | truth_duckdb table 'px_daily' (auto-described; inspect columns in schemas/). |  |
-| truth_duckdb.px_primary_raw | 7.3M | `date` | truth_duckdb table 'px_primary_raw' (auto-described; inspect columns in schemas/). |  |
-| truth_duckdb.px_bse | 6.8M | `isin`, `symbol`, `date`, `sc_code` | BSE daily OHLCV, delivery and traded value. | 2019-01-01..2026-10-19 |
-| deck_figures.facts_unit_fix | ~6.4M | `fact_rowid`, `old_unit`, `new_unit`, `how` | deck_figures table 'facts_unit_fix' (auto-described; inspect columns in schemas/). |  |
-| equity_intelligence.mkt_nse_full_daily | ~4.5M | `symbol`, `date` | equity_intelligence table 'mkt_nse_full_daily' (auto-described; inspect columns in schemas/). |  |
-| truth_duckdb.px_nse | 4.3M | `isin`, `symbol`, `date` | NSE daily OHLCV, delivery quantity/percent and traded value. | 2019-01-01..2026-10-19 |
-| truth_duckdb.price_bands | 4.0M | `symbol`, `date`, `known_at_utc` | truth_duckdb table 'price_bands' (auto-described; inspect columns in schemas/). |  |
-| equity_intelligence.pib_releases_fts | ~2.3M | `title`, `body`, `ministry` | equity_intelligence table 'pib_releases_fts' (auto-described; inspect columns in schemas/). |  |
-| equity_intelligence.pib_ml_releases | ~2.3M | `doc_id`, `prid` | equity_intelligence table 'pib_ml_releases' (auto-described; inspect columns in schemas/). |  |
-| equity_intelligence.pib_ml_releases_fts | ~2.3M | `title`, `body`, `ministry` | equity_intelligence table 'pib_ml_releases_fts' (auto-described; inspect columns in schemas/). |  |
-| truth_duckdb.bse_ann | 1.9M | `symbol`, `known_at_utc`, `NEWSID` | truth_duckdb table 'bse_ann' (auto-described; inspect columns in schemas/). | 2019-12-31T20:59:43.797..2026-10-19T14:10:50.513 |
-| equity_intelligence.mkt_nse_eq_daily | ~1.4M | `isin`, `symbol`, `date` | equity_intelligence table 'mkt_nse_eq_daily' (auto-described; inspect columns in schemas/). |  |
-| equity_intelligence.price_bands | ~1.1M | `symbol`, `date` | equity_intelligence table 'price_bands' (auto-described; inspect columns in schemas/). |  |
-| deck_figures.outputs | ~822.2k | `sha256`, `page_no`, `prompt_version`, `model`, `settings` | deck_figures table 'outputs' (auto-described; inspect columns in schemas/). |  |
-| truth_duckdb.deck_pages | 815.8k | `isin`, `symbol`, `known_at_utc`, `doc_id` | truth_duckdb table 'deck_pages' (auto-described; inspect columns in schemas/). |  |
-| concall_facts.cc_items_fts | ~717.8k | `metric` | concall_facts table 'cc_items_fts' (auto-described; inspect columns in schemas/). |  |
+| truth_duckdb.ar_facts | 32.4M | `doc_id`, `isin`, `symbol`, `fiscal_year` | One extracted annual-report fact per row: doc/piece/page, category/item, raw and numeric value, unit, period, basis, quote and model, with PIT known_at. | 2015-03-31..2026-03-31 |
+| ar_facts.ar_facts | 32.4M | `doc_id`, `piece`, `isin`, `symbol`, `category` | One extracted annual-report fact per row: doc/piece/page, category/item, raw and numeric value, unit, period, basis, quote, model and check status. | 2015-03-31..2026-03-31 |
+| results_xbrl.facts | 13.9M | `file`, `context`, `concept` | Long XBRL facts from NSE results filings: one row per file/context/concept with period, instant, value, unit and decimals. |  |
+| deck_figures.facts | 13.6M | `sha256`, `page_no`, `metric` | One extracted numeric fact per row: deck sha256/page, prompt/model, line, metric, period, raw number, value, unit and final flag. |  |
+| truth_duckdb.px_bse_adj | 6.8M | `date`, `sc_code`, `isin` | BSE daily rows with cumulative price/dividend factors and adjusted OHLC/volume plus total-return close. | 2019-01-01..2026-10-19 |
+| truth_duckdb.px_nse_adj | 4.3M | `date`, `symbol`, `series` | NSE daily rows with cumulative price/dividend factors and adjusted OHLC/volume plus total-return close. | 2019-01-01..2026-10-19 |
+| truth_duckdb.events | 3.3M | `isin`, `known_at_utc`, `kind`, `source_ref` | Unified company event timeline: one row per event across announcements, results, concalls, decks, ARs, shareholding, insider/SAST, deals, board meetings, PEAD posts and order alerts, with ISIN, known_at_utc, kind, source_ref and summary. | 2018-11-29T11:36:00..2026-10-19T18:29:59 |
+| equity_intelligence.daily_price_delivery | 3.1M | `date`, `symbol`, `isin` | One row per symbol per trading day: normalized NSE/BSE OHLCV, turnover_lacs, delivery quantity/percent plus derived technical indicators (SMA/RSI/52-week high-low). | 2021-10-27..2026-09-24 |
+| equity_intelligence.pib_releases | ~2.3M | `prid`, `doc_id` | PIB English press releases: one row per PRID with release/posting dates, ministry, title, full body, relevance flag and doc_id. |  |
+| equity_intelligence.document_chunks | 2.3M | `chunk_id`, `doc_id`, `isin`, `symbol` | One row per chunk of a raw document: full text, embedding JSON, publication/event dates, symbol/isin and inferred fiscal period. |  |
+| equity_intelligence.intelligence_fts | 2.3M | `rowid`, `chunk_id`, `symbol`, `isin` | FTS5 lexical index over document chunks: chunk_id, symbol/isin, source type, document date and document text. |  |
+| bse_announcements.ann | 1.9M | `NEWSID`, `SCRIP_CD`, `symbol` | One BSE announcement per NEWSID: scrip code, headline/subject, category/subcategory, news/submission/dissemination timestamps, attachment name and derived symbol. | 2019-12-31..2026-10-19 |
+| deck_figures.pages | 815.8k | `sha256`, `page_no`, `prompt_version` | One row per deck page per prompt version: doc/symbol/ISIN, doc_type, known_at, route, text/number counts, recall metrics, final model, fact count and status. | 2021-01-04T08:39:52.927..2026-09-29T22:49:57.223 |
+| concall_facts.cc_items | 645.0k | `doc_id`, `list_name`, `idx`, `isin` | Extracted concall items: one row per doc_id/list_name/idx with metric, textual value, unit, period, basis, direction/firmness/signal, statement and quote. | 2016-05-20..2026-10-14T17:21:32.7 |
+| equity_intelligence.corporate_documents | 127.2k | `id`, `isin`, `symbol`, `doc_type` | One row per corporate document metadata (annual report, concall, investor PPT, announcement, result): title, dates, URLs, local path, doc version and BSE/PIT timestamps. | 2015-01-13..2026-10-17 |
+| truth_duckdb.results_filings | 106.6k | `file`, `isin`, `symbol` | One row per results XBRL filing: taxonomy, company/ISIN/symbol, period, consolidation/audit flags, dates, opinion, fact count, status, trading ISIN resolution and PIT known_at. | 2017-06-30..2026-09-30 |
+| results_xbrl.filings | 106.6k | `file`, `isin`, `symbol` | One row per NSE results XBRL filing: taxonomy, company/ISIN/symbol, reporting period, consolidation/audit flags, dates, opinion, fact count and parse status. | 2017-06-30..2026-09-30 |
+| truth_duckdb.cc_items | 87.9k | `doc_id`, `list_name`, `idx`, `isin` | Extracted concall items: one row per doc/list/index with metric, textual value, unit, period, basis, direction/firmness and quote, plus PIT known_at. | 2026-01-13T18:47:08.04..2026-10-14T17:21:32.7 |
+| equity_intelligence.raw_documents | 34.8k | `doc_id` | One row per raw document ingested: title, source type, published date, fiscal period, URL/creator, hash and local path. | 2012-03-26..2026-10-16 |
+| truth_duckdb.ar_docs | 33.7k | `doc_id`, `isin`, `symbol` | One row per annual report (doc_id) with ISIN/symbol/company, fiscal year and source, filed_at, sha256, page/piece counts, status and PIT known_at. | 2015-03-31..2026-09-07 |
+| ar_facts.ar_docs | 33.7k | `doc_id`, `isin`, `symbol` | One row per annual-report PDF: ISIN/symbol/company, fiscal year and its source, filed_at, sha256, local path, page/piece counts and processing status. | 2015-03-31..2026-03-31 |
+| truth_duckdb.pib_releases | 28.9k | `prid`, `doc_id` | Policy-relevant PIB releases: PRID, release/posting dates, ministry, title, relevance flag and doc_id (metadata only). | 2021-01-01..2026-10-19 |
+| truth_duckdb.deck_sources | 26.4k | `source`, `source_id` | One row per deck source: symbol/ISIN, exchange code, known_at, title, URL, sha256, size and fetch status. | 2021-01-04T08:39:52.927..2026-09-29T22:49:57.223 |
+| deck_figures.deck_sources | 26.4k | `source`, `source_id` | One row per deck source (BSE announcement etc.): symbol/ISIN, exchange code, known_at, title, URL, local path, sha256 and fetch status. | 2021-01-04T08:39:52.927..2026-09-29T22:49:57.223 |
+| equity_intelligence.policy_events | ~21.8k | `id`, `source_kind`, `source_id` | One row per extracted policy event: source, title, policy name, instrument/stage, direction, sectors/companies/products, amount in Rs crore, effective/end dates and quote. |  |
+| truth_duckdb.policy_events | 21.6k | `id`, `source_kind`, `source_id` | Extracted policy events: source, title, policy/instrument/stage, direction, sectors/companies/products, amount in Rs crore, effective dates, quote and PIT known_at. | 2019-01-31..2026-10-16T21:39 |
+| equity_intelligence.quarterly_financials | 15.2k | `isin`, `symbol`, `quarter_end_date` | One row per ISIN/quarter end: revenue, EBITDA, PAT, margins, EPS and YoY/QoQ growth, in Rs crore. |  |
+| equity_intelligence.annual_financials | 12.9k | `isin`, `symbol`, `fiscal_year` | One row per ISIN per fiscal year: revenue, EBITDA, net profit, EPS, margins, ROCE/ROE, debt, equity and cash-flow, all in Rs crore. |  |
+| truth_duckdb.symbol_isin_history | 9.4k | `exchange`, `symbol`, `isin`, `first_date` | Symbol-to-ISIN mapping windows per exchange: first/last date and trading-day count. | 2019-01-01..2026-10-19 |
+| equity_intelligence.symbol_isin_history | ~9.4k | `exchange`, `symbol`, `isin`, `first_date` | Symbol-to-ISIN mapping windows per exchange: first/last date and trading-day count. |  |
+| concall_facts.cc_docs | 9.3k | `doc_id`, `isin`, `symbol` | One row per concall document processed: symbol/ISIN, filing time, status, model, token/cost stats, period discussed and check/raw JSON. | 2026-01-06T21:49:52.907..2026-10-14T17:21:32.7 |
+| truth_duckdb.security_master | 8.4k | `isin` | ISIN-keyed security registry incl delisted names: issuer, NSE/BSE codes, BSE status, segment, listing/first/last trade and last-seen dates. |  |
+| equity_intelligence.security_master | ~8.4k | `isin` | ISIN-keyed security registry including delisted names: issuer, NSE/BSE symbols and codes, BSE status, segment, listing/first/last trade and last-seen dates. |  |
+| equity_intelligence.master_companies | ~6.8k | `isin`, `nse_symbol`, `bse_code` | Equity master: one row per ISIN with NSE symbol, BSE code, name, industry/sector, market-cap tier, index flags, active and screenable flags. |  |
+| truth_duckdb.nse_master | 3.2k | `symbol`, `isin` | NSE symbol master: one row per symbol with ISIN, name and segment. | 20MICRONS..ZYDUSWELL |
+| truth_duckdb.fii_dii_cash | 1.9k | `date` | Daily FII/DII cash flows in Rs crore plus Nifty close/change, with PIT known_at. | 2019-01-01..2026-10-19 |
+| truth_duckdb.cc_docs | 1.2k | `doc_id`, `isin`, `symbol` | One row per concall document: doc_id, ISIN/symbol, filing time, processing status/model, token stats, period discussed and PIT known_at. | 2026-01-06T21:49:52.907..2026-10-14T17:21:32.7 |
+| equity_intelligence.shareholding | 40 | `symbol`, `isin`, `quarter_end`, `record_id` | One row per shareholding filing (record_id): promoter/pledged/encumbered, FII, DII, MF, insurance, retail and FPI-limit percentages already multiplied by 100. |  |
+| ar_facts.ar_facts_fts | ~33.0M | `rowid` | FTS5 full-text index over ar_facts item/category. |  |
+| deck_figures.facts_metric_fts | ~15.1M | `rowid` | FTS5 full-text index over facts.metric. |  |
+| truth_duckdb.results_facts | 13.9M | `file`, `concept`, `context` | Long XBRL facts from results filings: file/context/concept with period start/end/instant, value, unit, decimals and period_kind. | 2017-06-30..2026-09-30 |
+| truth_duckdb.deck_facts | 13.6M | `isin`, `symbol`, `sha256`, `page_no`, `metric` | One extracted numeric deck fact per row: ISIN/symbol/doc_type from the page, sha256/page, model, metric, period, raw number, value, unit and final flag, plus PIT known_at. | 2021-01-04T03:09:52.927000..2026-09-29T17:19:57.223000 |
+| equity_intelligence.mkt_bse_eq_daily | ~7.5M | `date`, `sc_code`, `isin` | BSE bhavcopy: one row per scrip per date with OHLC, previous close, volume, turnover_inr, trades, group and type. |  |
+| equity_intelligence.mkt_bse_delivery_daily | ~7.5M | `date`, `sc_code` | BSE gross delivery: one row per scrip per date with deliverable quantity/value, volume, turnover and delivery percent. |  |
+| truth_duckdb.px_daily | 7.3M | `entity_id`, `date` | Primary daily price series: one row per issuer entity per date, NSE row when it traded that day else BSE, with raw and adjusted OHLC/volume plus total-return close. |  |
+| truth_duckdb.px_primary_raw | 7.3M | `entity_id`, `date` | Internal one-row-per-entity/day close/open used to compute corporate-action factors: NSE preferred, else BSE, with exchange and previous close/date. |  |
+| truth_duckdb.px_bse | 6.8M | `date`, `sc_code`, `isin` | Unified BSE equity daily rows: date, sc_code, ISIN/symbol/name/group, OHLC, volume, value_inr, trades and delivery, plus entity_id. | 2019-01-01..2026-10-19 |
+| deck_figures.facts_unit_fix | ~6.4M | `fact_rowid` | Audit of unit corrections: fact_rowid, old/new unit and how it was changed. |  |
+| equity_intelligence.mkt_nse_full_daily | ~4.5M | `date`, `symbol`, `series` | NSE sec_bhavdata_full: one row per date/symbol/series with OHLC, volume, turnover_lacs and delivery quantity/percent. |  |
+| truth_duckdb.px_nse | 4.3M | `date`, `symbol`, `series` | Unified NSE equity daily rows: date, symbol/series/ISIN, OHLC, volume, value_inr, trades and delivery, plus entity_id. | 2019-01-01..2026-10-19 |
+| truth_duckdb.price_bands | 4.0M | `date`, `symbol`, `series` | Daily price band per symbol/series: 2/5/10/20/40 percent or No Band, with remarks and PIT known_at. |  |
+| equity_intelligence.pib_releases_fts | ~2.3M | `rowid` | FTS5 full-text index over pib_releases (title, body, ministry). |  |
+| equity_intelligence.pib_ml_releases | ~2.3M | `prid`, `doc_id` | PIB regional-language releases: one row per PRID with language, ministry, title, full body, linked English PRID and translation metadata. |  |
+| equity_intelligence.pib_ml_releases_fts | ~2.3M | `rowid` | FTS5 full-text index over pib_ml_releases (title, body, ministry). |  |
+| truth_duckdb.bse_ann | 1.9M | `NEWSID`, `SCRIP_CD`, `symbol` | BSE announcements: one row per NEWSID with scrip code, headline/subject, category, timestamps, attachment and derived symbol, plus PIT known_at. | 2019-12-31T20:59:43.797..2026-10-19T14:10:50.513 |
+| equity_intelligence.mkt_nse_eq_daily | ~1.4M | `date`, `symbol`, `series` | NSE old-format bhavcopy (2019-01 to 2021-10): one row per date/symbol/series with OHLC, turnover_inr and delivery. |  |
+| equity_intelligence.price_bands | ~1.1M | `date`, `symbol`, `series` | One row per symbol/series/date: price band (2/5/10/20/40 percent or No Band) and remarks. |  |
+| deck_figures.outputs | ~822.2k | `sha256`, `page_no`, `prompt_version`, `model` | One row per vision-model page output: sha256/page/prompt/model, settings, timing, tokens, USD cost and raw output. |  |
+| truth_duckdb.deck_pages | 815.8k | `sha256`, `page_no`, `prompt_version` | One row per deck page per prompt: doc/symbol/ISIN, doc_type, route, fact count, status and PIT known_at. |  |
+| concall_facts.cc_items_fts | ~717.8k | `rowid` | FTS5 full-text index over concall items (metric, statement, quote). |  |
 
 Row counts are the 2026-10-24 catalog measurements (exact for the large tables, `~` = sqlite_stat1/MAX(rowid) estimate). **Never run `COUNT(*)` on `equity_intelligence.db`**; use the cache or `sqlite_stat1`.
 
@@ -482,6 +664,7 @@ Row counts are the 2026-10-24 catalog measurements (exact for the large tables, 
 Open SQLite read-only; never a bare `sqlite3.connect`:
 
 ```python
+import os
 from pathlib import Path
 from reality_engine.db.readonly import connect_ro
 DATA = Path(os.environ["REALITY_DATA_ROOT"])  # or repo/reality_engine/data
@@ -614,6 +797,13 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.run_deepseek_harness` | test_deepseek_harness_controls.py, test_dsh_heartbeat.py |
 | `reality_engine.scripts.seed_track_record` | test_portfolio_ledger.py |
 | `reality_engine.search.intel_search` | test_intel_search.py, test_rumor_backfill.py |
+| `reality_engine.toolbelt.cost_ledger` | test_toolbelt.py |
+| `reality_engine.toolbelt.drive_fetch` | test_toolbelt.py |
+| `reality_engine.toolbelt.find_docs` | test_toolbelt.py |
+| `reality_engine.toolbelt.job_peek` | test_toolbelt.py |
+| `reality_engine.toolbelt.mod_test` | test_toolbelt.py |
+| `reality_engine.toolbelt.render_pages` | test_toolbelt.py |
+| `reality_engine.toolbelt.sample_rows` | test_toolbelt.py |
 | `reality_engine.ui.dashboard` | test_cli_and_dashboard.py |
 
 ## 5. Sandbox limits + workarounds
@@ -679,6 +869,7 @@ Last 30 one-line entries from `reality_engine/data/hotline/decisions.md`:
 - **The hotline is the shared-context protocol, with `.dsh/AGENTS.md` for DeepSeek** (2026-10-20 03:13 IST): after Shivam's challenge that a worker cannot know what happened in the chat, the session wrote `hotline/README.md`, `hotline/hotli …
 - **The generated hotline directory is git-ignored** (2026-10-20 03:12 IST): both generators write into `reality_engine/data/hotline/generated/`, and that path was added to `.gitignore` -> why: it is regenerated content, not source -> commi …
 - **A whole session is digested into a readable worker context** (2026-10-20 03:08 IST): the Claude Code transcript was 6.20 MB at `~/.claude/projects/.../10203977-....jsonl`; `session_digest.py` turned it into a 229 KB (about 59k tokens) d …
+- **Every digest is secret-scanned by value before a worker reads it** (2026-10-20 03:08 IST): a naive scan flagged 30 lines, all false alarms (`task-notification` tags) -> the real check tested whether any of 50 secret environment values a …
 - **`worker_context.py` writes a fresh live-state file before every worker task** (2026-10-20 03:05 IST, 099f7224): a worker had answered from incomplete facts and was blamed for it -> the script writes `data/dsh_tasks/context_now.md` with …
 - **When a worker answer is wrong, first ask what it could not see** (2026-10-20 03:04 IST): the first Drive-status answer was blamed on the model, but the live facts it needed were not in its task -> rule: on a wrong worker answer, fix the …
 - **Beam transcript reader BENCHED** (2026-10-20 ~19:55 IST, Shivam via the laptop session): beam-free got an upstream HTTP 429 on every call from 11:52 and wrote ~32 docs/hour as permanent `error` -> stopped the reader (shards 1,2,3/4), re …
@@ -728,5 +919,3 @@ DeepSeek-workers pane v3 is a user-level plugin (`dsh-workers@reality-engine`, r
   needs approval.
 - Chart/image pass (AR image pages + deck leftovers,
 … (truncated; read tasks/STATE.md)
-
-_(1 line(s) omitted by the secret filter)_

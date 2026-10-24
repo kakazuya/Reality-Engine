@@ -2,8 +2,10 @@
 
 File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\concall_facts.db` (741 MB)
 
+Concall transcript extraction store: one row per processed concall document, extracted guidance/analyst items as text, QA checks and FTS.
+
 ## cc_docs
-rows: 9.3k · key columns: isin, symbol, filed_at, doc_id
+rows: 9.3k · key columns: doc_id, isin, symbol
 
 - `doc_id` INTEGER
 - `isin` TEXT
@@ -27,7 +29,7 @@ rows: 9.3k · key columns: isin, symbol, filed_at, doc_id
 - `period_fy` INTEGER
 
 ## cc_item_checks
-rows: ~87.9k · key columns: doc_id
+rows: ~87.9k · key columns: doc_id, list_name, idx
 
 - `doc_id` INTEGER
 - `list_name` TEXT
@@ -48,7 +50,7 @@ rows: ~87.9k · key columns: doc_id
 - `checked_at` TEXT
 
 ## cc_items
-rows: 645.0k · key columns: isin, period, filed_at, doc_id, metric
+rows: 645.0k · key columns: doc_id, list_name, idx, isin
 
 - `doc_id` INTEGER
 - `list_name` TEXT
@@ -68,7 +70,7 @@ rows: 645.0k · key columns: isin, period, filed_at, doc_id, metric
 - `item_json` TEXT
 
 ## cc_items_fts
-rows: ~717.8k · key columns: metric
+rows: ~717.8k · key columns: rowid
 
 - `metric`
 - `statement`

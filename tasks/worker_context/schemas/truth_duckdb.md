@@ -2,8 +2,10 @@
 
 File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\snapshots\truth_2026-10-19.duckdb` (8.5 GB)
 
+Dated, read-only research snapshot (2026-10-19) built from the live SQLite DBs: clean entity-level prices with split/bonus/dividend adjustment and point-in-time known_at timestamps (date-only sources stamped 23:59:59 IST), plus consolidated results/AR/deck/concall/ownership/policy tables. Prefer this for historical/as-of research; SQLite is the live source with newer rows and full text.
+
 ## adj_factor
-rows: 2.5k · key columns: entity_id, ex_date, kind, price_factor
+rows: 2.5k · key columns: entity_id, ex_date, kind
 
 - `entity_id` VARCHAR
 - `ex_date` TIMESTAMP
@@ -11,7 +13,7 @@ rows: 2.5k · key columns: entity_id, ex_date, kind, price_factor
 - `price_factor` DOUBLE
 
 ## adj_factor_cum
-rows: 2.5k · key columns: entity_id, ex_date, run_l, tot_l
+rows: 2.5k · key columns: entity_id, ex_date
 
 - `entity_id` VARCHAR
 - `ex_date` DATE
@@ -19,7 +21,7 @@ rows: 2.5k · key columns: entity_id, ex_date, run_l, tot_l
 - `tot_l` DOUBLE
 
 ## ar_docs
-rows: 33.7k · key columns: isin, symbol, fiscal_year, known_at_utc, filed_at, doc_id
+rows: 33.7k · key columns: doc_id, isin, symbol
 
 - `doc_id` BIGINT
 - `isin` VARCHAR
@@ -41,7 +43,7 @@ rows: 33.7k · key columns: isin, symbol, fiscal_year, known_at_utc, filed_at, d
 - `known_at_precision` VARCHAR
 
 ## ar_facts
-rows: 32.4M · key columns: isin, symbol, period, fiscal_year, known_at_utc, filed_at, doc_id, item
+rows: 32.4M · key columns: doc_id, isin, symbol, fiscal_year
 
 - `fact_id` BIGINT
 - `doc_id` BIGINT
@@ -67,7 +69,7 @@ rows: 32.4M · key columns: isin, symbol, period, fiscal_year, known_at_utc, fil
 - `known_at_precision` VARCHAR
 
 ## board_meetings
-rows: 120.6k · key columns: isin, symbol, known_at_utc
+rows: 120.6k · key columns: symbol, isin, meeting_date
 
 - `symbol` VARCHAR
 - `isin` VARCHAR
@@ -84,7 +86,7 @@ rows: 120.6k · key columns: isin, symbol, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## bse_ann
-rows: 1.9M · key columns: symbol, known_at_utc, NEWSID
+rows: 1.9M · key columns: NEWSID, SCRIP_CD, symbol
 
 - `NEWSID` VARCHAR
 - `SCRIP_CD` VARCHAR
@@ -106,7 +108,7 @@ rows: 1.9M · key columns: symbol, known_at_utc, NEWSID
 - `known_at_precision` VARCHAR
 
 ## bse_code_isin
-rows: 13.1k · key columns: isin, sc_code
+rows: 13.1k · key columns: sc_code, isin, first_date
 
 - `sc_code` VARCHAR
 - `isin` VARCHAR
@@ -115,7 +117,7 @@ rows: 13.1k · key columns: isin, sc_code
 - `src` VARCHAR
 
 ## bse_deals
-rows: 135.5k · key columns: date, known_at_utc, sc_code
+rows: 135.5k · key columns: date, deal_type, sc_code
 
 - `date` VARCHAR
 - `deal_type` VARCHAR
@@ -131,7 +133,7 @@ rows: 135.5k · key columns: date, known_at_utc, sc_code
 - `known_at_precision` VARCHAR
 
 ## bse_insider
-rows: 153.9k · key columns: isin, known_at_utc, file
+rows: 153.9k · key columns: file, line_no, isin
 
 - `file` VARCHAR
 - `line_no` BIGINT
@@ -144,7 +146,7 @@ rows: 153.9k · key columns: isin, known_at_utc, file
 - `known_at_precision` VARCHAR
 
 ## bse_master
-rows: 65.1k · key columns: isin, bse_symbol, sc_code
+rows: 65.1k · key columns: sc_code, isin
 
 - `sc_code` VARCHAR
 - `isin` VARCHAR
@@ -155,7 +157,7 @@ rows: 65.1k · key columns: isin, bse_symbol, sc_code
 - `face_value` DOUBLE
 
 ## cc_docs
-rows: 1.2k · key columns: isin, symbol, known_at_utc, filed_at, doc_id
+rows: 1.2k · key columns: doc_id, isin, symbol
 
 - `doc_id` BIGINT
 - `isin` VARCHAR
@@ -180,7 +182,7 @@ rows: 1.2k · key columns: isin, symbol, known_at_utc, filed_at, doc_id
 - `known_at_precision` VARCHAR
 
 ## cc_item_checks
-rows: 87.9k · key columns: doc_id
+rows: 87.9k · key columns: doc_id, list_name, idx
 
 - `doc_id` BIGINT
 - `list_name` VARCHAR
@@ -201,7 +203,7 @@ rows: 87.9k · key columns: doc_id
 - `checked_at` VARCHAR
 
 ## cc_items
-rows: 87.9k · key columns: isin, period, known_at_utc, filed_at, doc_id, metric
+rows: 87.9k · key columns: doc_id, list_name, idx, isin
 
 - `doc_id` BIGINT
 - `list_name` VARCHAR
@@ -223,7 +225,7 @@ rows: 87.9k · key columns: isin, period, known_at_utc, filed_at, doc_id, metric
 - `known_at_precision` VARCHAR
 
 ## circuit_hits
-rows: 482.3k · key columns: symbol, date, known_at_utc
+rows: 482.3k · key columns: date, symbol, series
 
 - `date` VARCHAR
 - `symbol` VARCHAR
@@ -234,7 +236,7 @@ rows: 482.3k · key columns: symbol, date, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## company_industry
-rows: 3.2k · key columns: isin, symbol
+rows: 3.2k · key columns: symbol, isin
 
 - `isin` VARCHAR
 - `symbol` VARCHAR
@@ -248,7 +250,7 @@ rows: 3.2k · key columns: isin, symbol
 - `fetched_at` VARCHAR
 
 ## corp_action
-rows: 16.8k · key columns: entity_id, ex_date, kind, params, text, source, factor, prev_close
+rows: 16.8k · key columns: entity_id, ex_date, kind
 
 - `entity_id` VARCHAR
 - `ex_date` TIMESTAMP
@@ -268,7 +270,7 @@ rows: 16.8k · key columns: entity_id, ex_date, kind, params, text, source, fact
 - `residual` DOUBLE
 
 ## corp_action_raw
-rows: 36.5k · key columns: isin
+rows: 36.5k · key columns: entity_id, isin, ex_date, kind
 
 - `entity_id` VARCHAR
 - `isin` VARCHAR
@@ -279,7 +281,7 @@ rows: 36.5k · key columns: isin
 - `source` VARCHAR
 
 ## corporate_actions
-rows: 18.2k · key columns: isin, symbol, known_at_utc, id
+rows: 18.2k · key columns: isin, symbol, ex_date, action_type
 
 - `id` BIGINT
 - `isin` VARCHAR
@@ -304,7 +306,7 @@ rows: 18.2k · key columns: isin, symbol, known_at_utc, id
 - `known_at_precision` VARCHAR
 
 ## deck_chart_trends
-rows: 531 · key columns: isin, symbol, known_at_utc, known_at
+rows: 531 · key columns: sha256, page_no, measure
 
 - `sha256` VARCHAR
 - `page_no` BIGINT
@@ -320,7 +322,7 @@ rows: 531 · key columns: isin, symbol, known_at_utc, known_at
 - `known_at_precision` VARCHAR
 
 ## deck_facts
-rows: 13.6M · key columns: isin, symbol, period, known_at_utc, metric
+rows: 13.6M · key columns: isin, symbol, sha256, page_no, metric
 
 - `isin` VARCHAR
 - `symbol` VARCHAR
@@ -341,7 +343,7 @@ rows: 13.6M · key columns: isin, symbol, period, known_at_utc, metric
 - `known_at_precision` VARCHAR
 
 ## deck_pages
-rows: 815.8k · key columns: isin, symbol, known_at_utc, doc_id
+rows: 815.8k · key columns: sha256, page_no, prompt_version
 
 - `sha256` VARCHAR
 - `page_no` INTEGER
@@ -358,7 +360,7 @@ rows: 815.8k · key columns: isin, symbol, known_at_utc, doc_id
 - `known_at_precision` VARCHAR
 
 ## deck_sources
-rows: 26.4k · key columns: isin, symbol, known_at_utc, known_at
+rows: 26.4k · key columns: source, source_id
 
 - `source` VARCHAR
 - `source_id` VARCHAR
@@ -378,14 +380,14 @@ rows: 26.4k · key columns: isin, symbol, known_at_utc, known_at
 - `known_at_precision` VARCHAR
 
 ## div_factor
-rows: 11.1k · key columns: entity_id, ex_date, tr_factor
+rows: 11.1k · key columns: entity_id, ex_date
 
 - `entity_id` VARCHAR
 - `ex_date` TIMESTAMP
 - `tr_factor` DOUBLE
 
 ## div_factor_cum
-rows: 11.1k · key columns: entity_id, ex_date, run_l, tot_l
+rows: 11.1k · key columns: entity_id, ex_date
 
 - `entity_id` VARCHAR
 - `ex_date` DATE
@@ -393,7 +395,7 @@ rows: 11.1k · key columns: entity_id, ex_date, run_l, tot_l
 - `tot_l` DOUBLE
 
 ## entity
-rows: 6.2k · key columns: entity_id, first_date, last_date, n_days, latest_isin, latest_symbol, on_nse, bse_only_days
+rows: 6.2k · key columns: entity_id
 
 - `entity_id` VARCHAR
 - `first_date` DATE
@@ -405,7 +407,7 @@ rows: 6.2k · key columns: entity_id, first_date, last_date, n_days, latest_isin
 - `bse_only_days` BOOLEAN
 
 ## etf_px
-rows: 314.2k · key columns: isin, symbol, date
+rows: 314.2k · key columns: date, symbol, isin
 
 - `date` VARCHAR
 - `symbol` VARCHAR
@@ -416,7 +418,7 @@ rows: 314.2k · key columns: isin, symbol, date
 - `source` VARCHAR
 
 ## events
-rows: 3.3M · key columns: isin, known_at_utc
+rows: 3.3M · key columns: isin, known_at_utc, kind, source_ref
 
 - `isin` VARCHAR
 - `known_at_utc` TIMESTAMP
@@ -425,7 +427,7 @@ rows: 3.3M · key columns: isin, known_at_utc
 - `summary` VARCHAR
 
 ## fii_dii_cash
-rows: 1.9k · key columns: date, known_at_utc
+rows: 1.9k · key columns: date
 
 - `date` VARCHAR
 - `fii_purchase_cr` DOUBLE
@@ -443,7 +445,7 @@ rows: 1.9k · key columns: date, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## fund_nav
-rows: 322.1k · key columns: isin, date, known_at_utc
+rows: 322.1k · key columns: isin, date
 
 - `isin` VARCHAR
 - `date` VARCHAR
@@ -455,7 +457,7 @@ rows: 322.1k · key columns: isin, date, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## index_tri
-rows: 13.5k · key columns: date
+rows: 13.5k · key columns: index_name, date
 
 - `index_name` VARCHAR
 - `date` VARCHAR
@@ -466,7 +468,7 @@ rows: 13.5k · key columns: date
 - `fetched_at` VARCHAR
 
 ## nsdl_fpi_daily
-rows: 30.1k · key columns: date, known_at_utc
+rows: 30.1k · key columns: date, asset_class, route
 
 - `date` VARCHAR
 - `asset_class` VARCHAR
@@ -481,7 +483,7 @@ rows: 30.1k · key columns: date, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## nse_deals
-rows: 138.6k · key columns: symbol, date, known_at_utc
+rows: 138.6k · key columns: date, deal_type, symbol
 
 - `date` VARCHAR
 - `deal_type` VARCHAR
@@ -498,7 +500,7 @@ rows: 138.6k · key columns: symbol, date, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## nse_insider
-rows: 176.1k · key columns: symbol, known_at_utc
+rows: 176.1k · key columns: did, pid, symbol
 
 - `did` VARCHAR
 - `pid` VARCHAR
@@ -531,7 +533,7 @@ rows: 176.1k · key columns: symbol, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## nse_master
-rows: 3.2k · key columns: isin, symbol
+rows: 3.2k · key columns: symbol, isin
 
 - `symbol` VARCHAR
 - `isin` VARCHAR
@@ -539,7 +541,7 @@ rows: 3.2k · key columns: isin, symbol
 - `segment` VARCHAR
 
 ## nse_pit_filings
-rows: 3.8k · key columns: symbol, known_at_utc
+rows: 3.8k · key columns: app_id, segment
 
 - `app_id` VARCHAR
 - `segment` VARCHAR
@@ -558,7 +560,7 @@ rows: 3.8k · key columns: symbol, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## nse_pit_xbrl_facts
-rows: 157.4k · key columns: concept
+rows: 157.4k · key columns: xml_file, context_id, concept
 
 - `xml_file` VARCHAR
 - `context_id` VARCHAR
@@ -568,7 +570,7 @@ rows: 157.4k · key columns: concept
 - `unit` VARCHAR
 
 ## nse_sast
-rows: 37.0k · key columns: symbol, known_at_utc
+rows: 37.0k · key columns: rec_key, symbol
 
 - `rec_key` VARCHAR
 - `symbol` VARCHAR
@@ -582,7 +584,7 @@ rows: 37.0k · key columns: symbol, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## nse_short
-rows: 45.3k · key columns: symbol, date, known_at_utc
+rows: 45.3k · key columns: date, symbol
 
 - `date` VARCHAR
 - `symbol` VARCHAR
@@ -593,7 +595,7 @@ rows: 45.3k · key columns: symbol, date, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## nse_symbol_isin
-rows: 4.1k · key columns: isin, symbol
+rows: 4.1k · key columns: symbol, isin, first_date
 
 - `symbol` VARCHAR
 - `isin` VARCHAR
@@ -602,7 +604,7 @@ rows: 4.1k · key columns: isin, symbol
 - `src` VARCHAR
 
 ## pib_releases
-rows: 28.9k · key columns: known_at_utc, doc_id, prid
+rows: 28.9k · key columns: prid, doc_id
 
 - `prid` BIGINT
 - `release_date` VARCHAR
@@ -617,7 +619,7 @@ rows: 28.9k · key columns: known_at_utc, doc_id, prid
 - `known_at_precision` VARCHAR
 
 ## pit_report
-rows: 41 · key columns: table_name, n_rows, src_rows_before, src_rows_after, count_ok, copy_mode, n_with_time, n_time_unparsed
+rows: 41 · key columns: table_name
 
 - `table_name` VARCHAR
 - `n_rows` BIGINT
@@ -632,7 +634,7 @@ rows: 41 · key columns: table_name, n_rows, src_rows_before, src_rows_after, co
 - `seconds` DOUBLE
 
 ## policy_events
-rows: 21.6k · key columns: known_at_utc, id
+rows: 21.6k · key columns: id, source_kind, source_id
 
 - `id` BIGINT
 - `source_kind` VARCHAR
@@ -663,7 +665,7 @@ rows: 21.6k · key columns: known_at_utc, id
 - `known_at_precision` VARCHAR
 
 ## price_bands
-rows: 4.0M · key columns: symbol, date, known_at_utc
+rows: 4.0M · key columns: date, symbol, series
 
 - `date` VARCHAR
 - `symbol` VARCHAR
@@ -675,7 +677,7 @@ rows: 4.0M · key columns: symbol, date, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## px_bse
-rows: 6.8M · key columns: isin, symbol, date, sc_code
+rows: 6.8M · key columns: date, sc_code, isin
 
 - `date` DATE
 - `sc_code` VARCHAR
@@ -697,7 +699,7 @@ rows: 6.8M · key columns: isin, symbol, date, sc_code
 - `entity_id` VARCHAR
 
 ## px_bse_adj
-rows: 6.8M · key columns: isin, symbol, date, sc_code
+rows: 6.8M · key columns: date, sc_code, isin
 
 - `date` DATE
 - `sc_code` VARCHAR
@@ -727,7 +729,7 @@ rows: 6.8M · key columns: isin, symbol, date, sc_code
 - `tr_close` DOUBLE
 
 ## px_daily
-rows: 7.3M · key columns: isin, symbol, date
+rows: 7.3M · key columns: entity_id, date
 
 - `exch` VARCHAR
 - `entity_id` VARCHAR
@@ -753,7 +755,7 @@ rows: 7.3M · key columns: isin, symbol, date
 - `tr_close` DOUBLE
 
 ## px_nse
-rows: 4.3M · key columns: isin, symbol, date
+rows: 4.3M · key columns: date, symbol, series
 
 - `date` DATE
 - `symbol` VARCHAR
@@ -773,7 +775,7 @@ rows: 4.3M · key columns: isin, symbol, date
 - `entity_id` VARCHAR
 
 ## px_nse_adj
-rows: 4.3M · key columns: isin, symbol, date
+rows: 4.3M · key columns: date, symbol, series
 
 - `date` DATE
 - `symbol` VARCHAR
@@ -801,7 +803,7 @@ rows: 4.3M · key columns: isin, symbol, date
 - `tr_close` DOUBLE
 
 ## px_primary_raw
-rows: 7.3M · key columns: date
+rows: 7.3M · key columns: entity_id, date
 
 - `entity_id` VARCHAR
 - `date` DATE
@@ -812,7 +814,7 @@ rows: 7.3M · key columns: date
 - `prev_date` DATE
 
 ## results_facts
-rows: 13.9M · key columns: period_end, file, concept
+rows: 13.9M · key columns: file, concept, context
 
 - `file` VARCHAR
 - `concept` VARCHAR
@@ -826,7 +828,7 @@ rows: 13.9M · key columns: period_end, file, concept
 - `period_kind` VARCHAR
 
 ## results_filings
-rows: 106.6k · key columns: isin, symbol, period_end, known_at_utc, file
+rows: 106.6k · key columns: file, isin, symbol
 
 - `file` VARCHAR
 - `taxonomy` VARCHAR
@@ -859,7 +861,7 @@ rows: 106.6k · key columns: isin, symbol, period_end, known_at_utc, file
 - `known_at_precision` VARCHAR
 
 ## results_key
-rows: 106.6k · key columns: symbol, period_end, known_at_utc, file
+rows: 106.6k · key columns: file, trading_isin, symbol
 
 - `file` VARCHAR
 - `trading_isin` VARCHAR
@@ -903,7 +905,7 @@ rows: 106.6k · key columns: symbol, period_end, known_at_utc, file
 - `ytd_ProfitLossForPeriod` DOUBLE
 
 ## security_master
-rows: 8.4k · key columns: isin, nse_symbol, bse_symbol
+rows: 8.4k · key columns: isin
 
 - `isin` VARCHAR
 - `issuer` VARCHAR
@@ -922,7 +924,7 @@ rows: 8.4k · key columns: isin, nse_symbol, bse_symbol
 - `source` VARCHAR
 
 ## shp_index
-rows: 50.8k · key columns: isin, symbol, known_at_utc, file
+rows: 50.8k · key columns: record_id, isin, quarter_end
 
 - `record_id` VARCHAR
 - `idx` VARCHAR
@@ -942,7 +944,7 @@ rows: 50.8k · key columns: isin, symbol, known_at_utc, file
 - `known_at_precision` VARCHAR
 
 ## snapshot_meta
-rows: 1 · key columns: snapshot_date, built_from, built_to, report_json
+rows: 1 · key columns: snapshot_date
 
 - `snapshot_date` VARCHAR
 - `built_from` TIMESTAMP
@@ -950,7 +952,7 @@ rows: 1 · key columns: snapshot_date, built_from, built_to, report_json
 - `report_json` VARCHAR
 
 ## symbol_isin_history
-rows: 9.4k · key columns: isin, symbol
+rows: 9.4k · key columns: exchange, symbol, isin, first_date
 
 - `exchange` VARCHAR
 - `symbol` VARCHAR
@@ -960,7 +962,7 @@ rows: 9.4k · key columns: isin, symbol
 - `n_days` BIGINT
 
 ## tax_rules
-rows: 20 · key columns: rule, value, effective_from, effective_to, basis, announced_at, policy_event_ids, source_title
+rows: 20 · key columns: rule, effective_from
 
 - `rule` VARCHAR
 - `value` DOUBLE
@@ -979,7 +981,7 @@ rows: 20 · key columns: rule, value, effective_from, effective_to, basis, annou
 - `built_at` VARCHAR
 
 ## tg_company_mentions
-rows: 261 · key columns: isin, symbol, known_at_utc
+rows: 261 · key columns: post_id, isin
 
 - `topic_id` BIGINT
 - `post_id` VARCHAR
@@ -993,7 +995,7 @@ rows: 261 · key columns: isin, symbol, known_at_utc
 - `known_at_precision` VARCHAR
 
 ## tg_order_schedule
-rows: 1.0k · key columns: isin
+rows: 1.0k · key columns: order_id, fy, q
 
 - `order_id` VARCHAR
 - `isin` VARCHAR
@@ -1002,7 +1004,7 @@ rows: 1.0k · key columns: isin
 - `amount_cr` DOUBLE
 
 ## tg_orders
-rows: 219 · key columns: isin, symbol, known_at_utc, known_at
+rows: 219 · key columns: order_id, isin, symbol
 
 - `order_id` VARCHAR
 - `post_id` VARCHAR
@@ -1031,7 +1033,7 @@ rows: 219 · key columns: isin, symbol, known_at_utc, known_at
 - `known_at_precision` VARCHAR
 
 ## tg_pead_signals
-rows: 731 · key columns: isin, symbol, known_at_utc
+rows: 731 · key columns: post_id, symbol
 
 - `post_id` VARCHAR
 - `message_id` BIGINT
@@ -1054,7 +1056,7 @@ rows: 1 · key columns: report_json
 - `report_json` VARCHAR
 
 ## unexplained_jumps
-rows: 1.2k · key columns: date
+rows: 1.2k · key columns: entity_id, date
 
 - `entity_id` VARCHAR
 - `date` TIMESTAMP

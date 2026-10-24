@@ -2,8 +2,10 @@
 
 File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\deck_figures.db` (9.9 GB)
 
+Investor-presentation/deck reader store: per-page vision-model calls, extracted printed numeric facts, chart trend labels and spend/queue ledgers, with symbol/ISIN/known_at resolvable via pages.
+
 ## bad_docs
-rows: ~9 · key columns: sha256, path, strikes, last_page, ts
+rows: ~9 · key columns: sha256
 
 - `sha256` TEXT
 - `path` TEXT
@@ -12,13 +14,13 @@ rows: ~9 · key columns: sha256, path, strikes, last_page, ts
 - `ts` TEXT
 
 ## call_log
-rows: ? · key columns: ts, model
+rows: 0 · key columns: ts
 
 - `ts` REAL
 - `model` TEXT
 
 ## chart_trends
-rows: ~1.7k · key columns: isin, symbol, known_at
+rows: ~1.7k · key columns: sha256, page_no, measure
 
 - `sha256` TEXT
 - `page_no` INT
@@ -31,7 +33,7 @@ rows: ~1.7k · key columns: isin, symbol, known_at
 - `model` TEXT
 
 ## deck_sources
-rows: 26.4k · key columns: isin, symbol, known_at
+rows: 26.4k · key columns: source, source_id
 
 - `source` TEXT
 - `source_id` TEXT
@@ -49,13 +51,13 @@ rows: 26.4k · key columns: isin, symbol, known_at
 - `fetched_at` TEXT
 
 ## doc_pages
-rows: ~41.1k · key columns: sha256, n_pages
+rows: ~41.1k · key columns: sha256
 
 - `sha256` TEXT
 - `n_pages` INTEGER
 
 ## facts
-rows: 13.6M · key columns: period, metric
+rows: 13.6M · key columns: sha256, page_no, metric
 
 - `sha256` TEXT
 - `page_no` INTEGER
@@ -70,12 +72,12 @@ rows: 13.6M · key columns: period, metric
 - `is_final` INTEGER
 
 ## facts_metric_fts
-rows: ~15.1M · key columns: metric
+rows: ~15.1M · key columns: rowid
 
 - `metric`
 
 ## facts_unit_fix
-rows: ~6.4M · key columns: fact_rowid, old_unit, new_unit, how
+rows: ~6.4M · key columns: fact_rowid
 
 - `fact_rowid` INTEGER
 - `old_unit` TEXT
@@ -83,7 +85,7 @@ rows: ~6.4M · key columns: fact_rowid, old_unit, new_unit, how
 - `how` TEXT
 
 ## outputs
-rows: ~822.2k · key columns: sha256, page_no, prompt_version, model, settings, run_ts, seconds, in_tok
+rows: ~822.2k · key columns: sha256, page_no, prompt_version, model
 
 - `sha256` TEXT
 - `page_no` INTEGER
@@ -98,7 +100,7 @@ rows: ~822.2k · key columns: sha256, page_no, prompt_version, model, settings, 
 - `raw_output` TEXT
 
 ## pages
-rows: 815.8k · key columns: isin, symbol, known_at, doc_id
+rows: 815.8k · key columns: sha256, page_no, prompt_version
 
 - `sha256` TEXT
 - `page_no` INTEGER
@@ -121,7 +123,7 @@ rows: 815.8k · key columns: isin, symbol, known_at, doc_id
 - `run_ts` TEXT
 
 ## second_queue
-rows: ? · key columns: sha256, page_no, prompt_version, task, jpeg, primary_res, queued_ts, tries
+rows: 0 · key columns: sha256, page_no, prompt_version
 
 - `sha256` TEXT
 - `page_no` INTEGER
@@ -133,7 +135,7 @@ rows: ? · key columns: sha256, page_no, prompt_version, task, jpeg, primary_res
 - `tries` INTEGER
 
 ## spend
-rows: ~71.6k · key columns: ts, model, in_tok, out_tok, usd
+rows: ~71.6k · key columns: ts
 
 - `ts` REAL
 - `model` TEXT
@@ -142,7 +144,7 @@ rows: ~71.6k · key columns: ts, model, in_tok, out_tok, usd
 - `usd` REAL
 
 ## unlabeled_charts
-rows: ? · key columns: isin, symbol, known_at
+rows: ? · key columns: sha256, page_no
 
 - `sha256` TEXT
 - `page_no` INTEGER
@@ -153,7 +155,7 @@ rows: ? · key columns: isin, symbol, known_at
 - `other_estimates`
 
 ## unlabeled_charts_all
-rows: ? · key columns: isin, symbol, known_at
+rows: ? · key columns: sha256, page_no
 
 - `sha256` TEXT
 - `page_no` INTEGER

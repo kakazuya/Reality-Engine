@@ -2,8 +2,10 @@
 
 File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\results_xbrl.db` (6.1 GB)
 
+NSE quarterly-results XBRL store: filing registry, long facts and a pivoted quarterly view. Authoritative for reported quarterly financials; monetary values are in rupees.
+
 ## facts
-rows: 13.9M · key columns: period_end, file, concept
+rows: 13.9M · key columns: file, context, concept
 
 - `file` TEXT
 - `concept` TEXT
@@ -16,7 +18,7 @@ rows: 13.9M · key columns: period_end, file, concept
 - `decimals` TEXT
 
 ## filings
-rows: 106.6k · key columns: isin, symbol, period_end, file
+rows: 106.6k · key columns: file, isin, symbol
 
 - `file` TEXT
 - `taxonomy` TEXT
@@ -43,7 +45,7 @@ rows: 106.6k · key columns: isin, symbol, period_end, file
 - `parsed_at` TEXT
 
 ## filings_isin
-rows: ~183.0k · key columns: isin, file
+rows: ~183.0k · key columns: file
 
 - `file` TEXT
 - `isin_filed` TEXT
@@ -54,7 +56,7 @@ rows: ~183.0k · key columns: isin, file
 - `resolved_at` TEXT
 
 ## quarterly
-rows: ? · key columns: isin, symbol, period_end, file
+rows: ? · key columns: file, isin, symbol, period_end
 
 - `file` TEXT
 - `taxonomy` TEXT

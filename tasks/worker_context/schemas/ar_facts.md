@@ -2,6 +2,8 @@
 
 File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\ar_facts.db` (19.1 GB)
 
+Annual-report extraction store: document registry, ~33M extracted facts with quotes/units, processing provenance and FTS. Managed by the AR pipeline and hand-review overlays in equity_intelligence.
+
 ## ar_claims
 rows: ~140.3k · key columns: doc_id
 
@@ -13,7 +15,7 @@ rows: ~140.3k · key columns: doc_id
 - `status` TEXT
 
 ## ar_docs
-rows: 33.7k · key columns: isin, symbol, fiscal_year, filed_at, doc_id
+rows: 33.7k · key columns: doc_id, isin, symbol
 
 - `doc_id` INTEGER
 - `isin` TEXT
@@ -33,7 +35,7 @@ rows: 33.7k · key columns: isin, symbol, fiscal_year, filed_at, doc_id
 - `ts` TEXT
 
 ## ar_facts
-rows: 32.4M · key columns: isin, symbol, period, fiscal_year, filed_at, doc_id, item
+rows: 32.4M · key columns: doc_id, piece, isin, symbol, category
 
 - `doc_id` INTEGER
 - `piece` INTEGER
@@ -55,7 +57,7 @@ rows: 32.4M · key columns: isin, symbol, period, fiscal_year, filed_at, doc_id,
 - `prompt_version` TEXT
 
 ## ar_facts_dropped
-rows: ~449.4k · key columns: isin, symbol, period, fiscal_year, filed_at, doc_id, item
+rows: ~449.4k · key columns: doc_id, isin, symbol
 
 - `doc_id` INT
 - `piece` INT
@@ -79,13 +81,13 @@ rows: ~449.4k · key columns: isin, symbol, period, fiscal_year, filed_at, doc_i
 - `dropped_ts`
 
 ## ar_facts_fts
-rows: ~33.0M · key columns: item
+rows: ~33.0M · key columns: rowid
 
 - `item`
 - `category`
 
 ## ar_facts_replaced
-rows: ~31.5k · key columns: isin, symbol, period, fiscal_year, filed_at, doc_id, item
+rows: ~31.5k · key columns: doc_id, isin, symbol
 
 - `doc_id` INT
 - `piece` INT
@@ -109,7 +111,7 @@ rows: ~31.5k · key columns: isin, symbol, period, fiscal_year, filed_at, doc_id
 - `replaced_ts`
 
 ## ar_pieces
-rows: ~681.9k · key columns: doc_id
+rows: ~681.9k · key columns: doc_id, piece, prompt_version
 
 - `doc_id` INTEGER
 - `piece` INTEGER
@@ -128,7 +130,7 @@ rows: ~681.9k · key columns: doc_id
 - `ts` TEXT
 
 ## ar_skipped_pages
-rows: ~521.2k · key columns: doc_id
+rows: ~521.2k · key columns: doc_id, page
 
 - `doc_id` INTEGER
 - `page` INTEGER

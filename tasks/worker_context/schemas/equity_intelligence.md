@@ -2,15 +2,17 @@
 
 File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\equity_intelligence.db` (50.1 GB)
 
+Live primary equity database: company master, normalized daily prices, financials, corporate actions/documents, ownership/market flows, policy/macro/ripple layers, substrate analytics, Telegram signals and quarantine. Use it for latest/live data and full text; use truth_duckdb for adjusted price history and PIT-stamped research tables. Mixed raw and derived; check per-table notes.
+
 ## amfi_months
-rows: ~95 · key columns: month, rows, fetched_at
+rows: ~95 · key columns: month
 
 - `month` TEXT
 - `rows` INTEGER
 - `fetched_at` TEXT
 
 ## annual_financials
-rows: 12.9k · key columns: isin, symbol, fiscal_year, id
+rows: 12.9k · key columns: isin, symbol, fiscal_year
 
 - `id` INTEGER
 - `isin` TEXT
@@ -53,7 +55,7 @@ rows: ~140.7k · key columns: doc_id
 - `scanned_at` TEXT
 
 ## board_meetings
-rows: ~122.8k · key columns: isin, symbol
+rows: ~122.8k · key columns: symbol, isin, meeting_date
 
 - `symbol` TEXT
 - `isin` TEXT
@@ -67,7 +69,7 @@ rows: ~122.8k · key columns: isin, symbol
 - `fetched_at` TEXT
 
 ## bse_annual_reports
-rows: ~76.3k · key columns: scripcode
+rows: ~76.3k · key columns: scripcode, file_key, year
 
 - `scripcode` TEXT
 - `year` TEXT
@@ -85,7 +87,7 @@ rows: ~12.9k · key columns: scripcode
 - `fetched_at` TEXT
 
 ## bulk_block_deals
-rows: ~228 · key columns: symbol, id
+rows: ~228 · key columns: id, deal_date, symbol
 
 - `id` TEXT
 - `deal_date` DATE
@@ -99,7 +101,7 @@ rows: ~228 · key columns: symbol, id
 - `created_at` TIMESTAMP
 
 ## business_model_profiles
-rows: ~6.4k · key columns: isin, symbol
+rows: ~6.4k · key columns: isin, symbol, company_id
 
 - `company_id` INTEGER
 - `isin` TEXT
@@ -113,7 +115,7 @@ rows: ~6.4k · key columns: isin, symbol
 - `updated_at` TEXT
 
 ## chunk_symbol_tags
-rows: ~194 · key columns: isin, symbol, chunk_id
+rows: ~194 · key columns: chunk_id, symbol
 
 - `chunk_id` INTEGER
 - `symbol` TEXT
@@ -122,7 +124,7 @@ rows: ~194 · key columns: isin, symbol, chunk_id
 - `method` TEXT
 
 ## circuit_hits
-rows: ~282.2k · key columns: symbol, date
+rows: ~282.2k · key columns: date, symbol, series
 
 - `date` TEXT
 - `symbol` TEXT
@@ -142,7 +144,7 @@ rows: ~1.0k · key columns: symbol
 - `computed_at` TEXT
 
 ## company_business_graph
-rows: ~20.6k · key columns: anchor_symbol, peer_symbol, rank, similarity, shared_terms_json, source_mix_json, anchor_chunks, peer_chunks
+rows: ~20.6k · key columns: anchor_symbol, peer_symbol
 
 - `anchor_symbol` TEXT
 - `peer_symbol` TEXT
@@ -156,7 +158,7 @@ rows: ~20.6k · key columns: anchor_symbol, peer_symbol, rank, similarity, share
 - `computed_at` TEXT
 
 ## company_business_runs
-rows: ~4 · key columns: run_id, status, reason, n_symbols, n_chunks, n_pairs, min_chunks, top_k
+rows: ~4 · key columns: run_id
 
 - `run_id` INTEGER
 - `status` TEXT
@@ -169,7 +171,7 @@ rows: ~4 · key columns: run_id, status, reason, n_symbols, n_chunks, n_pairs, m
 - `computed_at` TEXT
 
 ## company_distilled_parameters
-rows: ~17.7k · key columns: isin, symbol
+rows: ~17.7k · key columns: isin, parameter_key
 
 - `isin` TEXT
 - `symbol` TEXT
@@ -180,7 +182,7 @@ rows: ~17.7k · key columns: isin, symbol
 - `last_updated_date` DATE
 
 ## company_entity_edges
-rows: ~73.5k · key columns: src_symbol, dst_kind, dst_key, edge_family, weight, evidence_json
+rows: ~73.5k · key columns: src_symbol, dst_kind, dst_key, edge_family
 
 - `src_symbol` TEXT
 - `dst_kind` TEXT
@@ -190,7 +192,7 @@ rows: ~73.5k · key columns: src_symbol, dst_kind, dst_key, edge_family, weight,
 - `evidence_json` TEXT
 
 ## company_forensic_health
-rows: ~4.3k · key columns: isin, symbol, fiscal_year
+rows: ~4.3k · key columns: isin, symbol
 
 - `isin` TEXT
 - `symbol` TEXT
@@ -215,7 +217,7 @@ rows: ~4.3k · key columns: isin, symbol, fiscal_year
 - `last_evaluated_date` DATE
 
 ## company_industry
-rows: ~2.1k · key columns: isin, symbol
+rows: ~2.1k · key columns: symbol, isin
 
 - `isin` TEXT
 - `symbol` TEXT
@@ -241,7 +243,7 @@ rows: ~5.0k · key columns: symbol
 - `baseline_similarity` REAL
 
 ## company_peer_graph
-rows: ~51.5k · key columns: anchor_symbol, peer_symbol, rank, similarity, coverage, shared_features, drivers_json, features_version
+rows: ~51.5k · key columns: anchor_symbol, peer_symbol
 
 - `anchor_symbol` TEXT
 - `peer_symbol` TEXT
@@ -255,7 +257,7 @@ rows: ~51.5k · key columns: anchor_symbol, peer_symbol, rank, similarity, cover
 - `shared_families` INTEGER
 
 ## company_peer_runs
-rows: ~10 · key columns: run_id, status, reason, n_symbols, n_active_features, active_features_json, dropped_features_json, top_k
+rows: ~10 · key columns: run_id
 
 - `run_id` INTEGER
 - `status` TEXT
@@ -269,7 +271,7 @@ rows: ~10 · key columns: run_id, status, reason, n_symbols, n_active_features, 
 - `diagnostics_json` TEXT
 
 ## corporate_actions
-rows: ~27.6k · key columns: isin, symbol, id
+rows: ~27.6k · key columns: isin, symbol, ex_date, action_type
 
 - `id` INTEGER
 - `isin` TEXT
@@ -291,7 +293,7 @@ rows: ~27.6k · key columns: isin, symbol, id
 - `fetched_at` TIMESTAMP
 
 ## corporate_documents
-rows: 127.2k · key columns: isin, symbol, id
+rows: 127.2k · key columns: id, isin, symbol, doc_type
 
 - `id` INTEGER
 - `isin` TEXT
@@ -323,7 +325,7 @@ rows: 127.2k · key columns: isin, symbol, id
 - `fiscal_period_end` TEXT
 
 ## corporate_status_flags
-rows: ? · key columns: isin, symbol, id
+rows: 0 · key columns: symbol, status_type, source
 
 - `id` INTEGER
 - `isin` TEXT
@@ -334,7 +336,7 @@ rows: ? · key columns: isin, symbol, id
 - `detected_at` TIMESTAMP
 
 ## countries
-rows: ~4 · key columns: country_id, country_name, political_stability_score, rule_of_law_index, currency
+rows: ~4 · key columns: country_id
 
 - `country_id` VARCHAR(3)
 - `country_name` VARCHAR(100)
@@ -343,7 +345,7 @@ rows: ~4 · key columns: country_id, country_name, political_stability_score, ru
 - `currency` VARCHAR(10)
 
 ## daily_price_delivery
-rows: 3.1M · key columns: isin, symbol, date
+rows: 3.1M · key columns: date, symbol, isin
 
 - `date` DATE
 - `symbol` TEXT
@@ -371,7 +373,7 @@ rows: 3.1M · key columns: isin, symbol, date
 - `distance_from_52w_high_pct` REAL
 
 ## distillation_runs
-rows: ~6 · key columns: source_type
+rows: ~6 · key columns: run_id
 
 - `run_id` INTEGER
 - `run_date` TEXT
@@ -382,7 +384,7 @@ rows: ~6 · key columns: source_type
 - `moat_updates` TEXT
 
 ## document_chunks
-rows: 2.3M · key columns: isin, symbol, published_date, doc_id, chunk_id
+rows: 2.3M · key columns: chunk_id, doc_id, isin, symbol
 
 - `chunk_id` INTEGER
 - `doc_id` INTEGER
@@ -404,7 +406,7 @@ rows: 2.3M · key columns: isin, symbol, published_date, doc_id, chunk_id
 - `doc_version` INTEGER
 
 ## dynamic_parameter_definitions
-rows: ~5 · key columns: parameter_key, display_name, data_type, description, category, created_at
+rows: ~5 · key columns: parameter_key
 
 - `parameter_key` TEXT
 - `display_name` TEXT
@@ -414,7 +416,7 @@ rows: ~5 · key columns: parameter_key, display_name, data_type, description, ca
 - `created_at` TIMESTAMP
 
 ## entity_graph_runs
-rows: ~1 · key columns: run_id, status, reason, n_src_symbols, n_edges, families_json, computed_at
+rows: ~1 · key columns: run_id
 
 - `run_id` INTEGER
 - `status` TEXT
@@ -425,7 +427,7 @@ rows: ~1 · key columns: run_id, status, reason, n_src_symbols, n_edges, familie
 - `computed_at` TEXT
 
 ## eod_correction_log
-rows: ~57 · key columns: correction_id, correction_type, universe, target_date, symbols_corrected, noise_floors_updated, lens_rank_changes, event_id
+rows: ~57 · key columns: correction_id, target_date
 
 - `correction_id` INTEGER
 - `correction_type` TEXT
@@ -439,7 +441,7 @@ rows: ~57 · key columns: correction_id, correction_type, universe, target_date,
 - `created_at` TEXT
 
 ## eod_scrip_calls
-rows: ~5.5k · key columns: isin, symbol, date
+rows: ~5.5k · key columns: date, symbol, isin
 
 - `date` DATE
 - `symbol` TEXT
@@ -478,7 +480,7 @@ rows: ~6.8k · key columns: isin, date
 - `premium_vs_inav_pct` REAL
 
 ## etf_master
-rows: ~432 · key columns: isin, symbol
+rows: ~432 · key columns: isin
 
 - `isin` TEXT
 - `symbol` TEXT
@@ -489,7 +491,7 @@ rows: ~432 · key columns: isin, symbol
 - `scheme_name` TEXT
 
 ## etf_premium
-rows: ? · key columns: isin, symbol, date
+rows: 267.6k · key columns: isin, symbol, date
 
 - `isin` TEXT
 - `symbol` TEXT
@@ -500,7 +502,7 @@ rows: ? · key columns: isin, symbol, date
 - `value_inr` REAL
 
 ## etf_px
-rows: ~313.8k · key columns: isin, symbol, date
+rows: ~313.8k · key columns: date, symbol, isin
 
 - `date` TEXT
 - `symbol` TEXT
@@ -511,7 +513,7 @@ rows: ~313.8k · key columns: isin, symbol, date
 - `source` TEXT
 
 ## financial_metrics
-rows: ~2.6k · key columns: isin, symbol, fiscal_year
+rows: ~2.6k · key columns: company_id, isin, symbol, fiscal_year
 
 - `company_id` INTEGER
 - `isin` TEXT
@@ -525,7 +527,7 @@ rows: ~2.6k · key columns: isin, symbol, fiscal_year
 - `gross_margin_peer_percentile` INTEGER
 
 ## financially_free_breadth
-rows: ? · key columns: date
+rows: 0 · key columns: date, sector_name
 
 - `date` DATE
 - `sector_name` TEXT
@@ -538,7 +540,7 @@ rows: ? · key columns: date
 - `created_at` TIMESTAMP
 
 ## forecast_skill_history
-rows: ~158 · key columns: round_id, mode, horizon_days, train_from, train_to, eval_from, eval_to, n_train_dates
+rows: ~158 · key columns: round_id
 
 - `round_id` INTEGER
 - `mode` TEXT
@@ -568,7 +570,7 @@ rows: ~329.5k · key columns: isin, date
 - `scheme_name` TEXT
 
 ## geographic_exposure
-rows: ~3.6k · key columns: company_id, country_id, revenue_share_pct, asset_exposure_pct, created_at
+rows: ~3.6k · key columns: company_id, country_id
 
 - `company_id` INTEGER
 - `country_id` TEXT
@@ -577,7 +579,7 @@ rows: ~3.6k · key columns: company_id, country_id, revenue_share_pct, asset_exp
 - `created_at` TEXT
 
 ## graph_causal_edges
-rows: ~15 · key columns: edge_id, source_node_id, target_node_id, relationship_type, impact_direction, elasticity_score, transmission_mechanism, evidence_document_ref
+rows: ~15 · key columns: edge_id, source_node_id, target_node_id
 
 - `edge_id` TEXT
 - `source_node_id` TEXT
@@ -591,7 +593,7 @@ rows: ~15 · key columns: edge_id, source_node_id, target_node_id, relationship_
 - `created_at` TIMESTAMP
 
 ## graph_nodes
-rows: ~19 · key columns: node_id, node_type, name, metadata_json, created_at
+rows: ~19 · key columns: node_id
 
 - `node_id` TEXT
 - `node_type` TEXT
@@ -600,7 +602,7 @@ rows: ~19 · key columns: node_id, node_type, name, metadata_json, created_at
 - `created_at` TIMESTAMP
 
 ## inbox_ingestion_manifest
-rows: ~343 · key columns: file_hash, original_filename, file_type, detected_entity_type, target_entity_key, summary, extracted_parameters_json, associated_graph_nodes_json
+rows: ~343 · key columns: file_hash
 
 - `file_hash` TEXT
 - `original_filename` TEXT
@@ -614,7 +616,7 @@ rows: ~343 · key columns: file_hash, original_filename, file_type, detected_ent
 - `ingested_timestamp` TIMESTAMP
 
 ## index_membership
-rows: ~300 · key columns: isin, symbol
+rows: ~300 · key columns: index_name, symbol
 
 - `index_name` TEXT
 - `symbol` TEXT
@@ -625,7 +627,7 @@ rows: ~300 · key columns: isin, symbol
 - `source` TEXT
 
 ## index_tri
-rows: ~19.3k · key columns: date
+rows: ~19.3k · key columns: index_name, date
 
 - `index_name` TEXT
 - `date` TEXT
@@ -636,7 +638,7 @@ rows: ~19.3k · key columns: date
 - `fetched_at` TEXT
 
 ## industries
-rows: ~12 · key columns: industry_id, sector_name, industry_name, secular_growth_score, lifecycle_stage, tam_growth_cagr
+rows: ~12 · key columns: industry_id, industry_name
 
 - `industry_id` INTEGER
 - `sector_name` TEXT
@@ -646,7 +648,7 @@ rows: ~12 · key columns: industry_id, sector_name, industry_name, secular_growt
 - `tam_growth_cagr` REAL
 
 ## insider_trades
-rows: ? · key columns: isin, symbol, id
+rows: 0 · key columns: id, symbol, isin
 
 - `id` TEXT
 - `symbol` TEXT
@@ -661,7 +663,7 @@ rows: ? · key columns: isin, symbol, id
 - `intimation_date` DATE
 
 ## intelligence_fts
-rows: 2.3M · key columns: isin, symbol, chunk_id, source_type
+rows: 2.3M · key columns: rowid, chunk_id, symbol, isin
 
 - `chunk_id`
 - `symbol`
@@ -671,7 +673,7 @@ rows: 2.3M · key columns: isin, symbol, chunk_id, source_type
 - `document_text`
 
 ## isin_rekey_log
-rows: ~7.8k · key columns: symbol
+rows: ~7.8k · key columns: db, table_name, symbol
 
 - `db` TEXT
 - `table_name` TEXT
@@ -682,7 +684,7 @@ rows: ~7.8k · key columns: symbol
 - `ts` TEXT
 
 ## lens_activation_log
-rows: ~1.1k · key columns: log_id, temperature, fired_lenses, context_json, created_at
+rows: ~1.1k · key columns: log_id
 
 - `log_id` INTEGER
 - `temperature` REAL
@@ -691,7 +693,7 @@ rows: ~1.1k · key columns: log_id, temperature, fired_lenses, context_json, cre
 - `created_at` TEXT
 
 ## macro_events
-rows: ~30 · key columns: doc_id
+rows: ~30 · key columns: event_id, event_date
 
 - `event_id` TEXT
 - `event_name` TEXT
@@ -704,7 +706,7 @@ rows: ~30 · key columns: doc_id
 - `doc_id` INTEGER
 
 ## master_companies
-rows: ~6.8k · key columns: isin, nse_symbol
+rows: ~6.8k · key columns: isin, nse_symbol, bse_code
 
 - `isin` TEXT
 - `nse_symbol` TEXT
@@ -725,7 +727,7 @@ rows: ~6.8k · key columns: isin, nse_symbol
 - `is_screenable` INTEGER
 
 ## mkt_bse_deals
-rows: ~135.5k · key columns: date, sc_code
+rows: ~135.5k · key columns: date, deal_type, sc_code
 
 - `date` TEXT
 - `deal_type` TEXT
@@ -749,7 +751,7 @@ rows: ~7.5M · key columns: date, sc_code
 - `delivery_pct` REAL
 
 ## mkt_bse_eq_daily
-rows: ~7.5M · key columns: isin, symbol, date, sc_code
+rows: ~7.5M · key columns: date, sc_code, isin
 
 - `date` TEXT
 - `sc_code` TEXT
@@ -770,7 +772,7 @@ rows: ~7.5M · key columns: isin, symbol, date, sc_code
 - `file_format` TEXT
 
 ## mkt_bse_index_daily
-rows: ~143.6k · key columns: date
+rows: ~143.6k · key columns: date, index_code
 
 - `date` TEXT
 - `index_code` TEXT
@@ -787,7 +789,7 @@ rows: ~143.6k · key columns: date
 - `shares_traded` TEXT
 
 ## mkt_bse_insider
-rows: ~153.9k · key columns: isin, file
+rows: ~153.9k · key columns: file, line_no, isin
 
 - `file` TEXT
 - `line_no` INTEGER
@@ -797,7 +799,7 @@ rows: ~153.9k · key columns: isin, file
 - `raw_json` TEXT
 
 ## mkt_commodity_daily
-rows: ~25.3k · key columns: date
+rows: ~25.3k · key columns: date, commodity
 
 - `date` TEXT
 - `commodity` TEXT
@@ -811,7 +813,7 @@ rows: ~25.3k · key columns: date
 - `source` TEXT
 
 ## mkt_commodity_monthly
-rows: ~9.2k · key columns: month, series, unit, value, source
+rows: ~9.2k · key columns: month, series
 
 - `month` TEXT
 - `series` TEXT
@@ -835,7 +837,7 @@ rows: ~1.9k · key columns: date
 - `source` TEXT
 
 ## mkt_load_log
-rows: ~25.1k · key columns: file
+rows: ~25.1k · key columns: source, file
 
 - `source` TEXT
 - `file` TEXT
@@ -843,7 +845,7 @@ rows: ~25.1k · key columns: file
 - `loaded_at` TEXT
 
 ## mkt_nsdl_fpi_daily
-rows: ~33.1k · key columns: date
+rows: ~33.1k · key columns: date, asset_class, route
 
 - `date` TEXT
 - `asset_class` TEXT
@@ -855,7 +857,7 @@ rows: ~33.1k · key columns: date
 - `usdinr` REAL
 
 ## mkt_nse_deals
-rows: ~138.6k · key columns: symbol, date
+rows: ~138.6k · key columns: date, deal_type, symbol
 
 - `date` TEXT
 - `deal_type` TEXT
@@ -869,7 +871,7 @@ rows: ~138.6k · key columns: symbol, date
 - `seq` INTEGER
 
 ## mkt_nse_eq_daily
-rows: ~1.4M · key columns: isin, symbol, date
+rows: ~1.4M · key columns: date, symbol, series
 
 - `date` TEXT
 - `symbol` TEXT
@@ -888,7 +890,7 @@ rows: ~1.4M · key columns: isin, symbol, date
 - `delivery_pct` REAL
 
 ## mkt_nse_full_daily
-rows: ~4.5M · key columns: symbol, date
+rows: ~4.5M · key columns: date, symbol, series
 
 - `date` TEXT
 - `symbol` TEXT
@@ -907,7 +909,7 @@ rows: ~4.5M · key columns: symbol, date
 - `delivery_pct` REAL
 
 ## mkt_nse_index_daily
-rows: ~205.9k · key columns: date
+rows: ~205.9k · key columns: date, index_name
 
 - `date` TEXT
 - `index_name` TEXT
@@ -924,7 +926,7 @@ rows: ~205.9k · key columns: date
 - `div_yield` REAL
 
 ## mkt_nse_insider
-rows: ~176.9k · key columns: symbol
+rows: ~176.9k · key columns: did, pid, symbol
 
 - `did` TEXT
 - `pid` TEXT
@@ -954,7 +956,7 @@ rows: ~176.9k · key columns: symbol
 - `raw_json` TEXT
 
 ## mkt_nse_participant
-rows: ~19.2k · key columns: date
+rows: ~19.2k · key columns: date, kind, client_type
 
 - `date` TEXT
 - `kind` TEXT
@@ -975,7 +977,7 @@ rows: ~19.2k · key columns: date
 - `total_short` REAL
 
 ## mkt_nse_pit_filings
-rows: ~3.9k · key columns: symbol
+rows: ~3.9k · key columns: app_id, segment
 
 - `app_id` TEXT
 - `segment` TEXT
@@ -991,7 +993,7 @@ rows: ~3.9k · key columns: symbol
 - `ixbrl_url` TEXT
 
 ## mkt_nse_pit_xbrl_facts
-rows: ~157.1k · key columns: concept
+rows: ~157.1k · key columns: xml_file, context_id, concept
 
 - `xml_file` TEXT
 - `context_id` TEXT
@@ -1001,7 +1003,7 @@ rows: ~157.1k · key columns: concept
 - `unit` TEXT
 
 ## mkt_nse_sast
-rows: ~37.1k · key columns: symbol
+rows: ~37.1k · key columns: rec_key, symbol
 
 - `rec_key` TEXT
 - `symbol` TEXT
@@ -1013,7 +1015,7 @@ rows: ~37.1k · key columns: symbol
 - `raw_json` TEXT
 
 ## mkt_nse_short
-rows: ~45.5k · key columns: symbol, date
+rows: ~45.5k · key columns: date, symbol
 
 - `date` TEXT
 - `symbol` TEXT
@@ -1021,7 +1023,7 @@ rows: ~45.5k · key columns: symbol, date
 - `quantity` INTEGER
 
 ## mkt_nse_sme_daily
-rows: ~254.2k · key columns: symbol, date
+rows: ~254.2k · key columns: date, symbol, series
 
 - `date` TEXT
 - `symbol` TEXT
@@ -1039,7 +1041,7 @@ rows: ~254.2k · key columns: symbol, date
 - `low_52w` REAL
 
 ## mkt_report_cells
-rows: ~528.5k · key columns: file
+rows: ~528.5k · key columns: source, file, table_idx, row_idx, col_idx
 
 - `source` TEXT
 - `file` TEXT
@@ -1049,7 +1051,7 @@ rows: ~528.5k · key columns: file
 - `value` TEXT
 
 ## moat_evaluations
-rows: ~6.4k · key columns: isin
+rows: ~6.4k · key columns: company_id, ticker, isin
 
 - `company_id` INTEGER
 - `ticker` TEXT
@@ -1065,7 +1067,7 @@ rows: ~6.4k · key columns: isin
 - `isin` TEXT
 
 ## moat_history
-rows: ~71.6k · key columns: symbol
+rows: ~71.6k · key columns: symbol, asof_date
 
 - `history_id` INTEGER
 - `symbol` TEXT
@@ -1077,7 +1079,7 @@ rows: ~71.6k · key columns: symbol
 - `created_at` TEXT
 
 ## model_explainer_rankings
-rows: ~95.0k · key columns: ranking_id, stock_id, sector_id, geo_id, regime_tag, investor_majority, lens_family, p_value
+rows: ~95.0k · key columns: stock_id, sector_id, geo_id, regime_tag, investor_majority, lens_family
 
 - `ranking_id` INTEGER
 - `stock_id` TEXT
@@ -1092,7 +1094,7 @@ rows: ~95.0k · key columns: ranking_id, stock_id, sector_id, geo_id, regime_tag
 - `created_at` TEXT
 
 ## model_lens_weight_proposals
-rows: ~28 · key columns: proposal_id, regime_tag, investor_majority, lens_family, weight, basis_json, created_at
+rows: ~28 · key columns: proposal_id, regime_tag, investor_majority, lens_family
 
 - `proposal_id` INTEGER
 - `regime_tag` TEXT
@@ -1103,7 +1105,7 @@ rows: ~28 · key columns: proposal_id, regime_tag, investor_majority, lens_famil
 - `created_at` TEXT
 
 ## model_validation_scores
-rows: ~40.0k · key columns: score_id, asof_date, horizon_days, mode, lens_family, regime_tag, investor_majority, n
+rows: ~40.0k · key columns: asof_date, horizon_days, mode, lens_family
 
 - `score_id` INTEGER
 - `asof_date` DATE
@@ -1122,7 +1124,7 @@ rows: ~40.0k · key columns: score_id, asof_date, horizon_days, mode, lens_famil
 - `created_at` TEXT
 
 ## move_attribution
-rows: ~167.9k · key columns: symbol
+rows: ~167.9k · key columns: symbol, attribution_date
 
 - `attribution_id` INTEGER
 - `symbol` TEXT
@@ -1148,7 +1150,7 @@ rows: ~167.9k · key columns: symbol
 - `regime_tag` TEXT
 
 ## news_visual_artifacts
-rows: ~52 · key columns: symbol, doc_id, source_type
+rows: ~52 · key columns: artifact_id, doc_id, symbol
 
 - `artifact_id` INTEGER
 - `doc_id` INTEGER
@@ -1173,7 +1175,7 @@ rows: ~201 · key columns: symbol
 - `learned_at` TEXT
 
 ## nse_index_breadth
-rows: ~5.0k · key columns: date
+rows: ~5.0k · key columns: date, index_name
 
 - `date` DATE
 - `index_name` TEXT
@@ -1201,7 +1203,7 @@ rows: ~783 · key columns: date
 - `done_at` TEXT
 
 ## pc_restore_doc_links
-rows: ~63.8k · key columns: prid
+rows: ~63.8k · key columns: source_table, prid
 
 - `source_table` TEXT
 - `prid` INTEGER
@@ -1210,14 +1212,14 @@ rows: ~63.8k · key columns: prid
 - `restore_source` TEXT
 
 ## pib_days
-rows: ~1.8k · key columns: day, n, done_at
+rows: ~1.8k · key columns: day
 
 - `day` TEXT
 - `n` INTEGER
 - `done_at` TEXT
 
 ## pib_ml_days
-rows: ~1.2k · key columns: day, reg, lang, n, done_at
+rows: ~1.2k · key columns: day, reg, lang
 
 - `day` TEXT
 - `reg` INTEGER
@@ -1226,7 +1228,7 @@ rows: ~1.2k · key columns: day, reg, lang, n, done_at
 - `done_at` TEXT
 
 ## pib_ml_langs
-rows: ~62 · key columns: reg, reg_name, lang, lang_name
+rows: ~62 · key columns: reg, lang
 
 - `reg` INTEGER
 - `reg_name` TEXT
@@ -1234,7 +1236,7 @@ rows: ~62 · key columns: reg, reg_name, lang, lang_name
 - `lang_name` TEXT
 
 ## pib_ml_match
-rows: ~14.4k · key columns: prid
+rows: ~14.4k · key columns: prid, mode
 
 - `prid` INTEGER
 - `mode` TEXT
@@ -1245,7 +1247,7 @@ rows: ~14.4k · key columns: prid
 - `matched_at` TEXT
 
 ## pib_ml_releases
-rows: ~2.3M · key columns: doc_id, prid
+rows: ~2.3M · key columns: prid, doc_id
 
 - `prid` INTEGER
 - `release_date` TEXT
@@ -1265,14 +1267,14 @@ rows: ~2.3M · key columns: doc_id, prid
 - `doc_id` INTEGER
 
 ## pib_ml_releases_fts
-rows: ~2.3M · key columns: title, body, ministry
+rows: ~2.3M · key columns: rowid
 
 - `title`
 - `body`
 - `ministry`
 
 ## pib_releases
-rows: ~2.3M · key columns: doc_id, prid
+rows: ~2.3M · key columns: prid, doc_id
 
 - `prid` INTEGER
 - `release_date` TEXT
@@ -1285,14 +1287,14 @@ rows: ~2.3M · key columns: doc_id, prid
 - `doc_id` INTEGER
 
 ## pib_releases_fts
-rows: ~2.3M · key columns: title, body, ministry
+rows: ~2.3M · key columns: rowid
 
 - `title`
 - `body`
 - `ministry`
 
 ## policy_docs
-rows: ~3.1k · key columns: source_kind, source_id, section, status, is_policy, n_events, in_tok, out_tok
+rows: ~3.1k · key columns: source_kind, source_id, section
 
 - `source_kind` TEXT
 - `source_id` TEXT
@@ -1307,7 +1309,7 @@ rows: ~3.1k · key columns: source_kind, source_id, section, status, is_policy, 
 - `error` TEXT
 
 ## policy_eni_history
-rows: ~5.5k · key columns: symbol
+rows: ~5.5k · key columns: symbol, policy_name, asof_date
 
 - `history_id` INTEGER
 - `symbol` TEXT
@@ -1319,7 +1321,7 @@ rows: ~5.5k · key columns: symbol
 - `created_at` TEXT
 
 ## policy_events
-rows: ~21.8k · key columns: id
+rows: ~21.8k · key columns: id, source_kind, source_id
 
 - `id` INTEGER
 - `source_kind` TEXT
@@ -1347,13 +1349,13 @@ rows: ~21.8k · key columns: id
 - `extracted_at` TEXT
 
 ## policy_events_fts
-rows: ~21.8k · key columns: policy_name, quote
+rows: ~21.8k · key columns: rowid
 
 - `policy_name`
 - `quote`
 
 ## portfolio_actions
-rows: ~3.1k · key columns: symbol
+rows: ~3.1k · key columns: action_id, symbol, action_date
 
 - `action_id` INTEGER
 - `symbol` TEXT
@@ -1369,7 +1371,7 @@ rows: ~3.1k · key columns: symbol
 - `pnl_pct` REAL
 
 ## price_bands
-rows: ~1.1M · key columns: symbol, date
+rows: ~1.1M · key columns: date, symbol, series
 
 - `date` TEXT
 - `symbol` TEXT
@@ -1388,7 +1390,7 @@ rows: ~7 · key columns: category, half_life_months, lambda, significance_floor,
 - `is_structural_milestone` INTEGER
 
 ## quarterly_financials
-rows: 15.2k · key columns: isin, symbol, id
+rows: 15.2k · key columns: isin, symbol, quarter_end_date
 
 - `id` INTEGER
 - `isin` TEXT
@@ -1413,7 +1415,7 @@ rows: 15.2k · key columns: isin, symbol, id
 - `source` TEXT
 
 ## raw_documents
-rows: 34.8k · key columns: published_date, doc_id, source_type
+rows: 34.8k · key columns: doc_id
 
 - `doc_id` INTEGER
 - `title` TEXT
@@ -1432,7 +1434,7 @@ rows: 34.8k · key columns: published_date, doc_id, source_type
 - `doc_version` INTEGER
 
 ## regulatory_political_risks
-rows: ~7.9k · key columns: isin, symbol
+rows: ~7.9k · key columns: risk_id, symbol, policy_name
 
 - `risk_id` INTEGER
 - `company_id` INTEGER
@@ -1450,7 +1452,7 @@ rows: ~7.9k · key columns: isin, symbol
 - `coverage_status` TEXT
 
 ## ripple_effects
-rows: ~379 · key columns: ripple_id, event_id, parent_ripple_id, order_level, target_type, target_sector_id, target_industry_id, target_company_id
+rows: ~379 · key columns: ripple_id, event_id, parent_ripple_id
 
 - `ripple_id` INTEGER
 - `event_id` TEXT
@@ -1471,7 +1473,7 @@ rows: ~379 · key columns: ripple_id, event_id, parent_ripple_id, order_level, t
 - `last_revised_at` TEXT
 
 ## ripple_history
-rows: ~76 · key columns: symbol
+rows: ~76 · key columns: edge_key, asof_date
 
 - `history_id` INTEGER
 - `edge_key` TEXT
@@ -1487,13 +1489,13 @@ rows: ~76 · key columns: symbol
 - `created_at` TEXT
 
 ## schema_meta
-rows: ~13 · key columns: key, value
+rows: ~13 · key columns: key
 
 - `key` TEXT
 - `value` TEXT
 
 ## security_master
-rows: ~8.4k · key columns: isin, nse_symbol, bse_symbol
+rows: ~8.4k · key columns: isin
 
 - `isin` TEXT
 - `issuer` TEXT
@@ -1512,7 +1514,7 @@ rows: ~8.4k · key columns: isin, nse_symbol, bse_symbol
 - `source` TEXT
 
 ## shareholding
-rows: ? · key columns: isin, symbol, file
+rows: 40 · key columns: symbol, isin, quarter_end, record_id
 
 - `symbol` TEXT
 - `isin` TEXT
@@ -1532,7 +1534,7 @@ rows: ? · key columns: isin, symbol, file
 - `fpi_limit_utilised_pct`
 
 ## shp_facts
-rows: ~30.5k · key columns: file, concept
+rows: ~30.5k · key columns: file, context, concept
 
 - `file` TEXT
 - `context` TEXT
@@ -1540,7 +1542,7 @@ rows: ~30.5k · key columns: file, concept
 - `value` TEXT
 
 ## shp_index
-rows: ~156.9k · key columns: isin, symbol, file
+rows: ~156.9k · key columns: record_id, isin, quarter_end
 
 - `record_id` TEXT
 - `idx` TEXT
@@ -1565,7 +1567,7 @@ rows: ~40 · key columns: file
 - `parsed_at` TEXT
 
 ## substrate_quarantine
-rows: ~11.0k · key columns: rule_id, table_name, row_key, severity, reason, detected_at
+rows: ~11.0k · key columns: rule_id, table_name, row_key
 
 - `rule_id` TEXT
 - `table_name` TEXT
@@ -1575,7 +1577,7 @@ rows: ~11.0k · key columns: rule_id, table_name, row_key, severity, reason, det
 - `detected_at` TEXT
 
 ## symbol_isin_history
-rows: ~9.4k · key columns: isin, symbol
+rows: ~9.4k · key columns: exchange, symbol, isin, first_date
 
 - `exchange` TEXT
 - `symbol` TEXT
@@ -1585,7 +1587,7 @@ rows: ~9.4k · key columns: isin, symbol
 - `n_days` INTEGER
 
 ## tax_rules
-rows: ~20 · key columns: rule, value, effective_from, effective_to, basis, announced_at, policy_event_ids, source_title
+rows: ~20 · key columns: rule, effective_from
 
 - `rule` TEXT
 - `value` REAL
@@ -1604,7 +1606,7 @@ rows: ~20 · key columns: rule, value, effective_from, effective_to, basis, anno
 - `built_at` TEXT
 
 ## telegram_post_tags
-rows: ~420 · key columns: isin, symbol
+rows: ~420 · key columns: post_id, symbol
 
 - `post_id` TEXT
 - `symbol` TEXT
@@ -1613,7 +1615,7 @@ rows: ~420 · key columns: isin, symbol
 - `position` INT
 
 ## telegram_posts
-rows: ~1.7k · key columns: id
+rows: ~1.7k · key columns: id, channel_id, message_id
 
 - `id` TEXT
 - `channel_id` TEXT
@@ -1631,7 +1633,7 @@ rows: ~1.7k · key columns: id
 - `button_links_json` TEXT
 
 ## tg_company_mentions
-rows: ~261 · key columns: isin, symbol
+rows: ~261 · key columns: post_id, isin
 
 - `topic_id` INTEGER
 - `post_id` TEXT
@@ -1642,7 +1644,7 @@ rows: ~261 · key columns: isin, symbol
 - `source` TEXT
 
 ## tg_order_schedule
-rows: ~1.0k · key columns: isin
+rows: ~1.0k · key columns: order_id, fy, q
 
 - `order_id` TEXT
 - `isin` TEXT
@@ -1651,7 +1653,7 @@ rows: ~1.0k · key columns: isin
 - `amount_cr` REAL
 
 ## tg_orders
-rows: ~219 · key columns: isin, symbol, known_at
+rows: ~219 · key columns: order_id, isin, symbol
 
 - `order_id` TEXT
 - `post_id` TEXT
@@ -1677,7 +1679,7 @@ rows: ~219 · key columns: isin, symbol, known_at
 - `filing_url` TEXT
 
 ## tg_pead_signals
-rows: ~731 · key columns: isin, symbol
+rows: ~731 · key columns: post_id, symbol
 
 - `post_id` TEXT
 - `message_id` INTEGER
@@ -1692,7 +1694,7 @@ rows: ~731 · key columns: isin, symbol
 - `is_test_post` INTEGER
 
 ## v_document_pit
-rows: ? · key columns: isin, symbol, id
+rows: 127.2k · key columns: id, isin, symbol, pit_date
 
 - `id` INTEGER
 - `isin` TEXT
@@ -1708,7 +1710,7 @@ rows: ? · key columns: isin, symbol, id
 - `crawl_doc_date` DATE
 
 ## visual_evidence_artifacts
-rows: ~100 · key columns: symbol, doc_id, chunk_id
+rows: ~100 · key columns: artifact_id, doc_id, chunk_id
 
 - `artifact_id` INTEGER
 - `doc_id` INTEGER

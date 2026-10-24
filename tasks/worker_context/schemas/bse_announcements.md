@@ -2,8 +2,10 @@
 
 File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\bse_announcements.db` (1.1 GB)
 
+BSE corporate-announcement feed: one metadata row per NEWSID (headline/category/timestamps/attachment) plus a per-scrip fetch ledger. Metadata only; the duckdb snapshot has a PIT-stamped copy.
+
 ## ann
-rows: 1.9M · key columns: symbol, NEWSID
+rows: 1.9M · key columns: NEWSID, SCRIP_CD, symbol
 
 - `NEWSID` TEXT
 - `SCRIP_CD`
@@ -22,7 +24,7 @@ rows: 1.9M · key columns: symbol, NEWSID
 - `symbol` TEXT
 
 ## done
-rows: ~33.2k · key columns: scrip, win, n, at
+rows: ~33.2k · key columns: scrip, win
 
 - `scrip` TEXT
 - `win` INT
