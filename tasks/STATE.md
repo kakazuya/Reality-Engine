@@ -1149,3 +1149,40 @@ Open:
 2. Staged, NOT installed: tasks/dsh_profiles/{headless,web}.cordis.patch.yml pin pwsh timeoutMs 600000 (consider promoteOnTimeout:false). Install = back up ~/.dsh/profiles/*/cordis.patch.yml, copy staged files.
 3. AR embedding run after Shivam picks the model; SDC + 70 garbled reports; July-2026 insider filing count looks low (759).
 4. Restart the Claude app was done; scheduled tasks remain disabled (dsh job runner with confirm=true is the path).
+
+## START HERE — next session (written 2026-10-25 ~00:45 IST, session ae59bca5)
+
+**First: worker optimisations** (Shivam: DeepSeek workers too slow — 90–270 tool calls / 30–50 min per task, mostly
+orientation + sandbox friction). Build, in this order (dsh-worker items after a restart has loaded progress reports):
+1. Worker context pack (repo map, live schemas/row counts, which DB/tool for what, `connect_ro`, test commands,
+   sandbox limits + workarounds, conventions: known_at PIT, free models only, newest-first), regenerated nightly,
+   auto-attached by `start_worker`.
+2. Brief template with a definition of done (goal → files → acceptance checks → test command → report format).
+3. Toolbelt scripts: PDF→PNG, Drive fetch by sha, table sampler, per-file mod tests, paid-call cost ledger.
+4. Sandbox fixes: pre-installed deps, permitted temp dir (tempfile DACL issue), data-writer mode for approved DB jobs,
+   worktree commit permission (OCR worker's commit was blocked); metric "tool calls before first edit".
+5. LSP: pyright + Claude Code Python LSP plugin; an LSP MCP server (definition/references/symbols) for DeepSeek workers.
+   (3 and 5 independent; 1, 2, 4 touch plugins/dsh-worker.)
+
+**Just landed (on main, not pushed):** dsh-worker progress digests every 20 min (`progress.jsonl`/`progress.md`,
+`worker_progress` tool, safe status-ping prefix) — merged `6c0f59e`, 73 tests pass; needs an app restart to load.
+DeepSeek-workers pane v3 is a user-level plugin (`dsh-workers@reality-engine`, reads plugins/dsh-workers-pane).
+
+**Paused work — read the hand-offs in `tasks/handoff/`, code is on branches (NOT merged, needs review):**
+- Concall runner patch + pilot → branch `wip/concall-runner-2026-10-24` (`dfdeb7a`), `CONCALL_RUNNER_2026-10-24.md`.
+  Pilot 25/25 done. Open: output truncation (output caps), chunk text lowercased/no line breaks breaks speaker
+  detection, date resolver. Free readers left: beam-free on Go key 2 + Kilo keys 1/2 (Go key 1 dead; MiniMax gone;
+  LongCat free listed on the docs but 403/429 — recheck). Plan: newest → oldest; Shivam approved patch+pilot, full run
+  needs approval.
+- Chart/image pass (AR image pages + deck leftovers, free dots-3) → branch `dsh/20261024T180421Z-eed294f4`,
+  `CHART_PASS_2026-10-24.md` (22 tests; launcher `run_chart_pass.cmd`; start from main after review via WMI).
+- Local OCR pilot (GTX 1050 Ti) → branch `dsh/20261024T181301Z-e5311613`, `LOCAL_OCR_PILOT_2026-10-24.md`:
+  RapidOCR DirectML ran (≈3.9 s/page, no speed-up vs CPU); PaddleOCR-VL GPU not tested yet; 140/200 pages OCR'd.
+
+**Reports from today:** `tasks/coverage/COVERAGE_2026-10-24.html` (document coverage), `tasks/research/EXTRACTION_AND_DECISION_MODELS_2026-10-24.md`,
+`tasks/research/decision_pilot/REPORT.md` (drex-v2.0 passes only as a cheap reranker; $0.06 spent),
+`tasks/CONCALL_READER_READINESS_2026-10-24.md`.
+
+**Decisions waiting on Shivam:** AR embedding model (8B ~$20 vs NVFP4 ~$5.6 + reranker; free NVIDIA/OpenRouter 8B
+were down); Drex vs Clef-only for gates (Drex RAIL-M needs human oversight); concall full run approval; PC (RX 6700 XT)
+availability for OCR; staged dsh pwsh 10-min timeout (`tasks/dsh_profiles/`) install.
