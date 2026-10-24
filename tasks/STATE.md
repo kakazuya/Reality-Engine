@@ -1131,3 +1131,21 @@ the company's corrected upload, and we never downloaded it:
 - Method: PyMuPDF text for scrip code/ISIN/CIN/name; RapidOCR on pages 1-3 for the 9 blank or scanned PDFs (COMPUPN, SIDDHA, ESHAMEDIA, ARTEFACT, RICHAIND, HANMAN, SSPNFIN, SAILANI, BAMPSL). All matched their company.
 - Renames confirmed (same CIN or BSE scrip): MIIL=Naysaa Securities, BYLD=TRC Financial Services, WARDHEALTH=Ayoki Merchantile, CUPIDALBV=Cupid Trades and Finance, EDVENSWA=KLK Electrical, KARANWO=Manor Estates, SPARKLEGR=Sree Jayalakshmi Autospin, CHALLANI=Indo Asia Finance, ESHAMEDIA=Laser Dot, HANMAN=Powerhouse Gym, NIVAKA=B.T. Syndicate, THYROCARE.
 - ar_doc_identity now has 106 ok + 1 wrong_company rows; substrate_hygiene.apply run. The CSV carries the hand_check column (data, not committed).
+
+## Hand-off 2026-10-24 evening (laptop session ae59bca5)
+
+Done today (all committed on main, nothing pushed after 2f7f71b):
+- Market data refreshed to 2026-10-23: exchange prices/delivery, FII/DII (xlrd installed for NSE fii_stats), NSDL FPI, bulk/block/short deals, NSE PIT + SAST, BSE announcements, PIB; `daily_price_delivery` now to 2026-10-23.
+- `insider_trades_v2`: 333,712 trades (NSE legacy 2019-01..2026-05-02, NSE PIT XBRL 2026-05-03.., BSE 2019-22 with no known_at); 67 implausible dates nulled + flagged. Legacy `insider_trades` left empty; `repository.get_recent_insider_trades` reads v2.
+- FY26 annual reports: all 5,362 PDFs on disk (Drive restore to data/pdfs + D:\RealityEngine\pdfs, rest from BSE); 5,361 chunked (SDC hangs PyMuPDF); `document_chunks` 2,939,096; FY26 corpus 908,969 chunks; 70 reports have garbled font layers (quality follow-up). `raw_documents` now has symbol/isin/symbol_source (all 8,268 AR docs filled).
+- AR embedding decision PENDING (Shivam): FY26 chunks ~$20 on DeepInfra Nemotron-8B vs ~$5.6 NVFP4 (+ Nemotron-3.5-Rerank-8B, ~$0.0007/search). Pilot: tasks via scripts/embed_ar_test.py + embed_ar_rerank_test.py (test spend $0.216 of $0.25). Free NVIDIA/OpenRouter 3.5-8B endpoints timed out all afternoon.
+- reality-data MCP drop: root cause = server only in project .mcp.json (dsh-worker also in user scope survived a config reload). Fixed: added to user scope (`claude mcp add-json -s user`), allowlisted, warm-up moved off the handshake, lifecycle log in plugins/reality-data/server/.cache/lifecycle.log. dsh profiles: reality-data reconnect maxAttempts 40.
+- `reality_engine/db/readonly.connect_ro` (timeout + temp_store=MEMORY) used by reality-data; AGENTS.md updated (live storage, query rule, subagent 15-min interrupt rule).
+- Resource watchdog: laptop profile = monitor-only (no job auto-starts; paid/GPU/PC-only refuse), Startup entry installed, running. Start it only via WMI (`Invoke-CimMethod Win32_Process Create`) — processes started from Claude's shell die with its tree.
+- Subagents already enabled by dsh-base (maxDepth 1, max 8 active); no per-child time cap exists in dsh 0.2.1.
+
+Open:
+1. DeepSeek workers pane mod v2 (plugins/dsh-workers-pane, live copy in ~/.claude/dev-mods/<session>/dsh-workers): app reports the pane open but Shivam sees nothing; v1 drew fine. Debug the v2 render against live runtime data (likely a ui.render shape refusal or a throw on a real job record).
+2. Staged, NOT installed: tasks/dsh_profiles/{headless,web}.cordis.patch.yml pin pwsh timeoutMs 600000 (consider promoteOnTimeout:false). Install = back up ~/.dsh/profiles/*/cordis.patch.yml, copy staged files.
+3. AR embedding run after Shivam picks the model; SDC + 70 garbled reports; July-2026 insider filing count looks low (759).
+4. Restart the Claude app was done; scheduled tasks remain disabled (dsh job runner with confirm=true is the path).
