@@ -1,0 +1,57 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      opencode-go:
+        models:
+          - id: deepseek-v4.1-flash
+            name: DeepSeek V4.1 Flash
+            contextWindow: 1000000
+            maxTokens: 384000
+            input:
+              - text
+              - image
+        apiKeyEnv: OPENCODE_GO_API_KEY_2
+        baseURL: https://opencode.ai/inference/go/openai/v1
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: opencode-go
+    model: deepseek-v4.1-flash
+    reasoningEffort: max
+- id: ponytail
+  name: "@wenaixi/dsh-ponytail"
+  config:
+    defaultMode: full
+- insert:
+    - id: mcp-reality-data
+      name: "@deepseek-ai/dsh-mcp-client"
+      config:
+        serverName: reality-data
+        transport: stdio
+        command: C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe
+        args:
+          - C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/reality-data/server/server.py
+        cwd: C:/Users/warri/Downloads/Info_Diffusion_Model
+        env:
+          REALITY_DATA_ROOT: C:/Users/warri/Downloads/Info_Diffusion_Model/reality_engine/data
+          REALITY_DATA_REPO_ROOT: C:/Users/warri/Downloads/Info_Diffusion_Model
+          PYTHONUTF8: "1"
+        toolCallTimeoutMs: 120000
+        reconnect:
+          enabled: true
+          initialDelayMs: 500
+          maxDelayMs: 30000
+          maxAttempts: 40
+
+# Per-tool-call shell cap (2026-10-24): a foreground PowerShell command is
+# killed/promoted at 10 min and a model-supplied timeoutMs cannot exceed it.
+# dsh-base leaves this row without config, so these are the complete values.
+- id: pwsh-sandbox
+  name: "@deepseek-ai/dsh-pwsh-sandbox"
+  config:
+    timeoutMs: 600000
+    maxTimeoutMs: 600000

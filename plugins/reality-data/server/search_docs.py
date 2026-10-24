@@ -37,11 +37,18 @@ import logging
 import os
 import re
 import sqlite3
+import sys
 import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 from urllib.request import urlopen
+
+try:
+    from reality_engine.db.readonly import connect_ro
+except ModuleNotFoundError:  # a script launch may not have the checkout root on sys.path
+    sys.path.append(str(Path(__file__).resolve().parents[3]))
+    from reality_engine.db.readonly import connect_ro
 
 logger = logging.getLogger("reality_engine.plugins.search_docs")
 
@@ -169,15 +176,12 @@ def _open_db(path: Path) -> Optional[sqlite3.Connection]:
     if not path.exists():
         return None
     try:
-        con = sqlite3.connect(
-            f"file:{path.as_posix()}?mode=ro",
-            uri=True,
-            timeout=30,
+        con = connect_ro(
+            path,
+            timeout_s=30,
             check_same_thread=False,
+            cache_size_kib=-262144,   # 256 MB page cache
         )
-        con.execute("PRAGMA query_only = ON")
-        con.execute("PRAGMA busy_timeout = 30000")
-        con.execute("PRAGMA cache_size = -262144")   # 256 MB page cache
         con.execute("PRAGMA mmap_size = 1073741824")
         return con
     except sqlite3.Error as exc:

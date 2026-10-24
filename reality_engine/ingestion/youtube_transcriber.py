@@ -47,7 +47,10 @@ def _ensure_raw_tables(conn) -> None:
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             sha256_hash TEXT UNIQUE,
             local_file_path TEXT,
-            file_size_bytes INTEGER
+            file_size_bytes INTEGER,
+            symbol TEXT,
+            isin TEXT,
+            symbol_source TEXT
         )
         """
     )
@@ -86,6 +89,18 @@ def _ensure_raw_tables(conn) -> None:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_fiscal ON document_chunks(fiscal_period, fiscal_confidence)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_docchunks_doc ON document_chunks(doc_id, chunk_index)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_rawdoc_hash ON raw_documents(sha256_hash)")
+    except Exception:
+        pass
+    # Additive company-identity columns (same migration as pdf_ingestor).
+    try:
+        _raw_cols = {r[1] for r in conn.execute("PRAGMA table_info(raw_documents)").fetchall()}
+        for _col, _ddl in (
+            ("symbol", "TEXT"),
+            ("isin", "TEXT"),
+            ("symbol_source", "TEXT"),
+        ):
+            if _col not in _raw_cols:
+                conn.execute(f"ALTER TABLE raw_documents ADD COLUMN {_col} {_ddl}")
     except Exception:
         pass
     conn.execute(

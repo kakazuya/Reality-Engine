@@ -461,7 +461,10 @@ CREATE TABLE IF NOT EXISTS raw_documents (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     sha256_hash TEXT UNIQUE,
     local_file_path TEXT,
-    file_size_bytes INTEGER
+    file_size_bytes INTEGER,
+    symbol TEXT,                       -- additive: company identity for audit/replay docs
+    isin TEXT,
+    symbol_source TEXT                 -- corporate_documents | document_chunks | local_file_path | ingest_input
 );
 
 CREATE INDEX IF NOT EXISTS idx_rawdoc_hash ON raw_documents(sha256_hash);

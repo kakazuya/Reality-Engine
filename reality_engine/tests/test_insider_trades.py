@@ -273,6 +273,62 @@ class InsiderTradeBuildTests(unittest.TestCase):
         self.build()
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM insider_trades_v2").fetchone()[0], 1)
 
+    def test_implausible_dates_are_nulled_flagged_and_raw_kept(self):
+        self.history([("NSE", "AAA", "INE000A01010", "2019-01-01", "2025-12-31")])
+        self.conn.executemany(
+            "INSERT INTO mkt_nse_insider VALUES (:did,:symbol,:company,:acquirer_name,"
+            ":person_category,:security_type,:transaction_type,:acquisition_mode,"
+            ":securities_qty,:securities_value,:buy_qty,:buy_value,:sell_qty,:sell_value,"
+            ":before_pct,:after_pct,:acq_from,:acq_to,:intimation_date,:disseminated_at)",
+            [legacy_row("bad", "AAA", acq_from="1922-07-22", acq_to="1922-07-22",
+                        intimation_date="2036-07-25", disseminated_at="2022-07-27 16:32"),
+             # known_at + 1 day is still plausible; only later is a typo.
+             legacy_row("edge", "AAA", acq_from="2021-01-07", acq_to="2021-01-07",
+                        intimation_date="2021-01-07", disseminated_at="2021-01-06 18:00"),
+             legacy_row("late", "AAA", acq_from="2021-01-08", acq_to="2021-01-08",
+                        intimation_date="2021-01-06", disseminated_at="2021-01-06 18:00")])
+        summary = self.build()
+        rows = {row["source_key"]: row for row in self.v2()}
+
+        bad = rows["nse_legacy:bad"]
+        self.assertIsNone(bad["trade_from"])
+        self.assertIsNone(bad["trade_to"])
+        self.assertIsNone(bad["intimation_date"])
+        self.assertEqual(bad["trade_from_raw"], "1922-07-22")
+        self.assertEqual(bad["intimation_date_raw"], "2036-07-25")
+        self.assertIn("implausible_trade_date", bad["date_flag"])
+        self.assertIn("implausible_intimation_date", bad["date_flag"])
+
+        edge = rows["nse_legacy:edge"]
+        self.assertEqual(edge["trade_from"], "2021-01-07")  # known_at + 1 day is allowed
+        self.assertIsNone(edge["date_flag"])
+
+        late = rows["nse_legacy:late"]
+        self.assertIsNone(late["trade_from"])
+        self.assertEqual(late["trade_from_raw"], "2021-01-08")
+        self.assertEqual(late["date_flag"], "implausible_trade_date")
+
+        self.assertEqual(summary["audit"]["rows_with_implausible_date"], 2)
+        self.assertEqual(summary["audit"]["implausible_trade_date"], 2)
+        self.assertEqual(summary["audit"]["implausible_intimation_date"], 1)
+
+
+class DateFlagRuleTests(unittest.TestCase):
+    def test_before_2000_is_implausible(self):
+        self.assertTrue(bit.date_is_implausible("1999-12-31", "2022-07-27 16:32"))
+        self.assertFalse(bit.date_is_implausible("2000-01-01", "2022-07-27 16:32"))
+
+    def test_after_known_at_plus_one_is_implausible(self):
+        self.assertFalse(bit.date_is_implausible("2022-07-28", "2022-07-27 16:32"))
+        self.assertTrue(bit.date_is_implausible("2022-07-29", "2022-07-27 16:32"))
+
+    def test_null_known_at_uses_today(self):
+        self.assertFalse(bit.date_is_implausible("2026-10-24", None, today="2026-10-24"))
+        self.assertTrue(bit.date_is_implausible("2026-10-25", None, today="2026-10-24"))
+
+    def test_missing_date_is_not_flagged(self):
+        self.assertFalse(bit.date_is_implausible(None, "2022-07-27 16:32"))
+
 
 class InsiderTradeRepositoryTests(unittest.TestCase):
     def setUp(self):

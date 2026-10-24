@@ -182,7 +182,10 @@ def _ensure_raw_tables(conn) -> None:
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             sha256_hash TEXT UNIQUE,
             local_file_path TEXT,
-            file_size_bytes INTEGER
+            file_size_bytes INTEGER,
+            symbol TEXT,
+            isin TEXT,
+            symbol_source TEXT
         )
         """
     )
@@ -223,6 +226,18 @@ def _ensure_raw_tables(conn) -> None:
             if _col not in _cols:
                 conn.execute(f"ALTER TABLE document_chunks ADD COLUMN {_col} {_ddl}")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_fiscal ON document_chunks(fiscal_period, fiscal_confidence)")
+    except Exception:
+        pass
+    # Additive company-identity columns for raw_documents (symbol/isin gap).
+    try:
+        _raw_cols = {r[1] for r in conn.execute("PRAGMA table_info(raw_documents)").fetchall()}
+        for _col, _ddl in (
+            ("symbol", "TEXT"),
+            ("isin", "TEXT"),
+            ("symbol_source", "TEXT"),
+        ):
+            if _col not in _raw_cols:
+                conn.execute(f"ALTER TABLE raw_documents ADD COLUMN {_col} {_ddl}")
     except Exception:
         pass
     # Helpful index for hybrid search fallback
@@ -455,6 +470,31 @@ class PDFIngestor:
         # Fallback: last row id
         return int(conn.execute("SELECT last_insert_rowid()").fetchone()[0])
 
+    def _stamp_raw_document_company(self, conn, doc_id: int,
+                                    symbol: Optional[str], isin: Optional[str]) -> None:
+        """Fill raw_documents.symbol/isin for a freshly ingested document.
+
+        ``symbol_source='ingest_input'`` records that the caller supplied the
+        identity (the annual-report backfill records its own method names).
+        COALESCE keeps a stronger earlier value when the same doc is re-ingested.
+        """
+        symbol = (symbol or "").strip() or None
+        isin = (isin or "").strip() or None
+        if not symbol and not isin:
+            return
+        conn.execute(
+            """
+            UPDATE raw_documents
+            SET symbol = COALESCE(NULLIF(symbol, ''), ?),
+                isin = COALESCE(NULLIF(isin, ''), ?),
+                symbol_source = CASE
+                    WHEN COALESCE(symbol, '') = '' THEN 'ingest_input'
+                    ELSE symbol_source END
+            WHERE doc_id = ?
+            """,
+            (symbol, isin, doc_id),
+        )
+
     def _persist_chunks(
         self,
         *,
@@ -515,6 +555,7 @@ class PDFIngestor:
                 except Exception:
                     derived_iid = None
             doc_id = self._insert_raw_document(conn, path, title, source_type, published_date, fiscal_period, source_url, sha, creator_or_ministry)
+            self._stamp_raw_document_company(conn, doc_id, symbol, isin)
             chunk_rows = []
             for idx, ch in enumerate(chunks):
                 content = ch.text

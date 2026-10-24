@@ -224,6 +224,7 @@ def run_success_check(check: dict[str, Any], data_root: Path, timeout: float = 2
     deadline = time.monotonic() + max(0.2, float(timeout))
     try:
         connection = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True, timeout=timeout)
+        connection.execute("PRAGMA temp_store = MEMORY")
         connection.execute("PRAGMA query_only = ON")
         connection.set_progress_handler(
             lambda: 1 if time.monotonic() > deadline else 0, 2000

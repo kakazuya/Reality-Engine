@@ -93,12 +93,13 @@ import json
 import re
 import sqlite3
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from reality_engine import config as cfg
 
 V2_TABLE = "insider_trades_v2"
+MIN_PLAUSIBLE_DATE = "2000-01-01"
 
 DDL = """
 CREATE TABLE insider_trades_v2 (
@@ -119,6 +120,10 @@ CREATE TABLE insider_trades_v2 (
     trade_from TEXT,
     trade_to TEXT,
     intimation_date TEXT,
+    trade_from_raw TEXT,
+    trade_to_raw TEXT,
+    intimation_date_raw TEXT,
+    date_flag TEXT,               -- implausible_trade_date / implausible_intimation_date, comma separated
     known_at TEXT,
     is_revision INTEGER NOT NULL DEFAULT 0,
     supersedes TEXT,
@@ -135,7 +140,8 @@ INDEXES = (
 ROW_COLS = (
     "source", "source_key", "symbol", "isin", "company", "person_name", "person_category",
     "transaction_type", "mode", "security_type", "qty", "value_inr", "before_pct", "after_pct",
-    "trade_from", "trade_to", "intimation_date", "known_at", "is_revision", "supersedes",
+    "trade_from", "trade_to", "intimation_date", "trade_from_raw", "trade_to_raw",
+    "intimation_date_raw", "date_flag", "known_at", "is_revision", "supersedes",
     "is_superseded", "also_on",
 )
 
@@ -270,6 +276,59 @@ def pct(value, scale=1.0):
     return None if got is None else round(got * scale, 6)
 
 
+def _plausible_upper(known_at, today=None):
+    """known_at date + 1 day; today when the row has no dissemination stamp."""
+    day = iso_date((known_at or "")[:10])
+    if day:
+        return (datetime.strptime(day, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+    return today or datetime.now().strftime("%Y-%m-%d")
+
+
+def date_is_implausible(day, known_at, today=None):
+    """NSE publishes typo dates (1922, 3034); do not guess a correction."""
+    if not day:
+        return False
+    if day < MIN_PLAUSIBLE_DATE:
+        return True
+    return day > _plausible_upper(known_at, today)
+
+
+DATE_FIELDS = (
+    ("trade_from", "trade_from_raw", "implausible_trade_date"),
+    ("trade_to", "trade_to_raw", "implausible_trade_date"),
+    ("intimation_date", "intimation_date_raw", "implausible_intimation_date"),
+)
+
+
+def apply_date_flags(rows, today=None, audit=None):
+    """NULL implausible dates, keep the published text in *_raw, flag the row.
+
+    A date is implausible before 2000-01-01 or after known_at + 1 day (today
+    when known_at is NULL).  The raw text is always retained so a later pass can
+    audit the source without a rebuild guessing what the typo meant.
+    """
+    counts = Counter()
+    for row in rows:
+        flags = []
+        for field, raw_field, token in DATE_FIELDS:
+            if row.get(raw_field) is None:
+                row[raw_field] = row.get(field)
+            if date_is_implausible(row.get(field), row.get("known_at"), today):
+                row[field] = None
+                if token not in flags:
+                    flags.append(token)
+        row["date_flag"] = ",".join(flags) or None
+        for token in flags:
+            counts[token] += 1
+        if flags:
+            counts["rows_with_implausible_date"] += 1
+    if audit is not None:
+        for token in ("implausible_trade_date", "implausible_intimation_date",
+                      "rows_with_implausible_date"):
+            audit[token] = counts[token]
+    return counts
+
+
 # ----------------------------------------------------------------------------
 # ISIN / symbol resolution
 # ----------------------------------------------------------------------------
@@ -364,6 +423,10 @@ def load_legacy(conn, imap, audit):
             "trade_from": trade_from,
             "trade_to": iso_date(acq_to),
             "intimation_date": iso_date(intim),
+            "trade_from_raw": clean(acq_from),
+            "trade_to_raw": clean(acq_to),
+            "intimation_date_raw": clean(intim),
+            "date_flag": None,
             "known_at": known_at,
             "is_revision": 0,
             "supersedes": None,
@@ -457,6 +520,10 @@ def load_pit(conn, imap, audit):
             "trade_from": trade_from,
             "trade_to": trade_to,
             "intimation_date": iso_date(facts.get(PIT_INTIM)),
+            "trade_from_raw": clean(facts.get(PIT_FROM)),
+            "trade_to_raw": clean(facts.get(PIT_TO)),
+            "intimation_date_raw": clean(facts.get(PIT_INTIM)),
+            "date_flag": None,
             "known_at": known_at,
             "is_revision": 1 if (filing.get("submission_type") == "Revision"
                                  or str(main.get("RevisedFilling")).lower() == "true") else 0,
@@ -573,6 +640,10 @@ def load_bse(conn, imap, audit):
             "trade_from": trade_from,
             "trade_to": trade_from,
             "intimation_date": None,
+            "trade_from_raw": clean(raw.get(BSE_DATE)),
+            "trade_to_raw": clean(raw.get(BSE_DATE)),
+            "intimation_date_raw": None,
+            "date_flag": None,
             "known_at": None,
             "is_revision": 0,
             "supersedes": None,
@@ -626,6 +697,8 @@ def build(conn, dry_run=False):
         "trade_contexts": 0, "contract_contexts": 0, "revision_filings": 0,
         "revision_rows": 0, "superseded_rows": 0, "revisions_without_original": 0,
         "dedupe_matched": 0, "bse_rows_dropped": 0, "bse_rows_without_date": 0,
+        "implausible_trade_date": 0, "implausible_intimation_date": 0,
+        "rows_with_implausible_date": 0,
     })
     imap = IsinMap(conn)
     rows = load_legacy(conn, imap, audit)
@@ -634,6 +707,7 @@ def build(conn, dry_run=False):
     rows += pit_rows
     rows += load_bse(conn, imap, audit)
     rows = dedupe_bse(rows, audit)
+    apply_date_flags(rows, audit=audit)
     for row in rows:
         row.pop("_xml", None)
         row.pop("_filing", None)
@@ -723,7 +797,9 @@ def report(summary):
     if summary["unmapped_modes"]:
         print("  non-vocabulary modes: " + ", ".join(
             f"{m}={n}" for m, n in summary["unmapped_modes"].most_common(8)))
-    print(f"  raw trade years outside 2013..2026 (kept as published): {summary['odd_year_rows']} rows")
+    print(f"  implausible dates nulled: {audit['rows_with_implausible_date']} rows "
+          f"(trade={audit['implausible_trade_date']}, "
+          f"intimation={audit['implausible_intimation_date']}); raw text kept in *_raw")
 
     print("\n  rows per source per year (trade_from year, else known_at year)")
     sources = sorted(summary["by_source"])

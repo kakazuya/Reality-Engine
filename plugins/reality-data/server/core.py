@@ -22,6 +22,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 import threading
 import time
 from pathlib import Path
@@ -37,6 +38,14 @@ except ImportError:  # pragma: no cover - the pinned interpreter has duckdb
 # so the server also works with no environment at all.
 ROOT = Path(os.environ.get("REALITY_DATA_REPO_ROOT") or Path(__file__).resolve().parents[3])
 DATA = Path(os.environ.get("REALITY_DATA_ROOT") or ROOT / "reality_engine" / "data")
+
+try:
+    from reality_engine.db.readonly import QueryTimeout, connect_ro
+except ModuleNotFoundError:  # a script launch may not have the checkout root on sys.path
+    sys.path.append(str(ROOT))
+    from reality_engine.db.readonly import QueryTimeout, connect_ro
+
+READ_TIMEOUT_S = 30.0
 
 DB_FILES: dict[str, Path] = {
     "equity_intelligence": DATA / "equity_intelligence.db",
@@ -158,10 +167,10 @@ def connect_sqlite(key: str):
         path = db_path(key)
         if not path.exists():
             raise DataError("db_missing", f"{key} database missing: {path}")
-        con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False, timeout=30)
+        con = connect_ro(path, timeout_s=READ_TIMEOUT_S, check_same_thread=False,
+                         cache_size_kib=-131072)
         con.row_factory = sqlite3.Row
-        for pragma in ("PRAGMA query_only=ON", "PRAGMA busy_timeout=30000",
-                       "PRAGMA cache_size=-131072", "PRAGMA mmap_size=268435456"):
+        for pragma in ("PRAGMA busy_timeout=30000", "PRAGMA mmap_size=268435456"):
             try:
                 con.execute(pragma)
             except sqlite3.DatabaseError:
@@ -235,16 +244,17 @@ def _run_duck(sql: str, params: Sequence[Any] = (), timeout: float = 15.0) -> tu
 def _run_sqlite(key: str, sql: str, params: Sequence[Any] = (), timeout: float = 15.0) -> list[sqlite3.Row]:
     con = connect_sqlite(key)
     with _lock:
-        deadline = time.monotonic() + timeout
-        con.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 10000)
+        con.set_timeout(timeout)
         try:
             return con.execute(sql, params).fetchall()
+        except QueryTimeout as exc:
+            raise DataError("query_timeout", str(exc)) from exc
         except sqlite3.OperationalError as exc:
             if "interrupted" in str(exc).lower():
-                raise DataError("query_timeout", f"query exceeded {timeout:.1f}s")
+                raise DataError("query_timeout", f"query exceeded {timeout:.1f}s") from exc
             raise
         finally:
-            con.set_progress_handler(None, 0)
+            con.set_timeout(READ_TIMEOUT_S)
 
 
 def _in_clause(values: Iterable[str]) -> tuple[str, list[str]]:
