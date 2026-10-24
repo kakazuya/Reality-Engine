@@ -1514,10 +1514,29 @@ class Repository:
 
     def get_recent_insider_trades(self, symbol: Optional[str] = None, days: int = 30,
                                   as_of_date: Optional[str] = None) -> pd.DataFrame:
-        query = """SELECT * FROM insider_trades
-                   WHERE acquisition_date >= date(COALESCE(?, 'now'), ?)
+        """Recent SEBI PIT trades from insider_trades_v2, in the legacy column names.
+
+        ``known_at`` is the exchange dissemination time (IST). When ``as_of_date`` is
+        given, rows the market had not seen by that date are excluded (BSE rows carry
+        no dissemination stamp and therefore never pass an as-of filter).
+        """
+        query = """SELECT source_key AS id, symbol, isin,
+                          person_name AS acquirer_name,
+                          person_category AS category_of_person,
+                          transaction_type,
+                          qty AS num_shares,
+                          value_inr / 100000.0 AS value_inr_lacs,
+                          mode AS mode_of_acquisition,
+                          trade_from AS acquisition_date,
+                          intimation_date, known_at, source, also_on
+                   FROM insider_trades_v2
+                   WHERE is_superseded = 0
+                     AND trade_from >= date(COALESCE(?, 'now'), ?)
                 """
         params: List[Any] = [as_of_date, f"-{max(0, int(days))} days"]
+        if as_of_date:
+            query += " AND date(known_at) <= date(?)"
+            params.append(as_of_date)
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol)
