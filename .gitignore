@@ -177,3 +177,4 @@ reality_engine/data/backups/
 
 # hotline: regenerated worker context (session digests, live state)
 reality_engine/data/hotline/generated/
+tasks/research/decision_pilot/cache/
