@@ -4,7 +4,11 @@ The DB keeps local paths from two machines (``...\\reality_engine\\data\\pdfs\\X
 and ``D:\\RealityEngine\\pdfs\\X``); both map to the archive's ``pdfs/X`` and
 ``D_pdfs/X``.  Decks map to ``decks/...``.  Lookups use a small on-disk index of
 one Drive folder (``rclone lsjson -R --hash``), so a worker does not re-list the
-whole archive; ``--reindex`` refreshes it.
+whole archive; ``--reindex`` refreshes it.  The crawl-date prefix in
+``<YYYYMMDD>_<hash8>_<rest>.pdf`` drifts between the DB, local disk and Drive, so
+an exact-path miss is retried on the ``_<hash8>_<rest>`` suffix in the same folder
+(``matched_by: hash_suffix``); downloads keep the requested name unless
+``--keep-remote-name``.
 
 Examples:
     python -m reality_engine.toolbelt.drive_fetch --dry-run \\
@@ -36,6 +40,7 @@ from ._common import add_format, data_root, main_guard, print_result
 DEFAULT_REMOTE = "gdrive:InfoDiffusion_archive"
 DEFAULT_INDEX = Path(".tmp") / "drive_index.json"
 _HASH = re.compile(r"[0-9a-fA-F]{64}\Z")
+_DATED_NAME = re.compile(r"(\d{8})_(.+)")
 _REMOTE_PREFIXES = ("pdfs/", "decks/", "d_pdfs/", "macro_pdfs/", "bhavcopy/",
                     "raw_market/", "snapshots/", "vector_index", "work_files/",
                     "telegram_media/", "lancedb/")
@@ -159,6 +164,40 @@ def find_path(index: dict[str, Any], rel: str, rclone: Sequence[str] | None = No
     return entry
 
 
+def suffix_of(name: str) -> str | None:
+    """``_<hash8>_<rest>`` of ``<YYYYMMDD>_<hash8>_<rest>`` (None when undated)."""
+    match = _DATED_NAME.fullmatch(posixpath.basename(name))
+    return "_" + match.group(2) if match else None
+
+
+def find_suffix(index: dict[str, Any], rel: str, rclone: Sequence[str] | None = None,
+                reindex: bool = False,
+                timeout: float = 600.0) -> tuple[str, dict[str, Any], list[str]] | None:
+    """Newest same-folder file whose ``_<hash8>_<rest>`` equals ``rel``'s.
+
+    The crawl-date prefix drifts, so the exact path can miss while hash and rest
+    still identify the file.  Returns ``(remote_path, entry, alternates)``.
+    """
+    rel = rel.replace("\\", "/").lstrip("/")
+    folder = posixpath.dirname(rel)
+    suffix = suffix_of(rel)
+    if suffix is None:
+        return None
+    index_folder(index, folder, rclone, force=reindex, timeout=timeout)
+    matches = [(posixpath.basename(path), path, entry)
+               for path, entry in index["folders"][folder]["files"].items()
+               if (suffix_of(path) or "").lower() == suffix.lower()]
+    if not matches:
+        return None
+
+    def newest(item: tuple[str, str, dict[str, Any]]) -> tuple[str, str]:
+        match = _DATED_NAME.fullmatch(item[0])
+        return (match.group(1) if match else "", item[0].lower())
+
+    matches.sort(key=newest, reverse=True)
+    return matches[0][1], matches[0][2], [path for _, path, _ in matches[1:]]
+
+
 def find_sha(index: dict[str, Any], sha256: str, folder: str | None = None,
              rclone: Sequence[str] | None = None, reindex: bool = False,
              timeout: float = 600.0) -> tuple[str, dict[str, Any]] | None:
@@ -208,7 +247,8 @@ def _download(remote: str, rel: str, dest: Path, rclone: Sequence[str] | None,
 
 def fetch(items: Sequence[str], dest: str | Path | None = None, *, remote: str = DEFAULT_REMOTE,
           folder: str | None = None, reindex: bool = False, transfers: int = 8,
-          dry_run: bool = False, verify: bool = False, index_path: str | Path = DEFAULT_INDEX,
+          dry_run: bool = False, verify: bool = False, keep_remote_name: bool = False,
+          index_path: str | Path = DEFAULT_INDEX,
           rclone: Sequence[str] | None = None, timeout: float = 600.0) -> dict[str, Any]:
     """Resolve and (unless ``dry_run``) download each item; per-file ok/missing/blocked."""
     if not items:
@@ -222,27 +262,44 @@ def fetch(items: Sequence[str], dest: str | Path | None = None, *, remote: str =
     for raw in items:
         kind, value = classify(raw)
         record: dict[str, Any] = {"input": raw, "kind": kind}
+        requested_name: str | None = None
         try:
             if kind == "sha256":
                 hit = find_sha(index, value, folder, rclone, reindex, timeout)
                 rel, entry = hit if hit else (None, None)
                 record.update({"sha256": value, "remote_path": rel, "entry": entry})
+                if rel:
+                    record["matched_by"] = "sha256"
             else:
                 rel = local_to_remote(value) if kind == "local" else value.replace("\\", "/")
+                requested_name = posixpath.basename(rel)
                 entry = find_path(index, rel, rclone, reindex, timeout)
                 record.update({"remote_path": rel, "entry": entry})
+                if entry is not None:
+                    record["matched_by"] = "exact"
+                else:
+                    # find_path just listed (or refreshed) this folder, so no force here.
+                    alt = find_suffix(index, rel, rclone, timeout=timeout)
+                    if alt is not None:
+                        remote_rel, entry, alternates = alt
+                        record.update({"remote_path": remote_rel, "entry": entry,
+                                       "matched_by": "hash_suffix"})
+                        if alternates:
+                            record["alternates"] = alternates
             if not record.get("entry"):
                 record["status"] = "missing"
                 record["reason"] = "not found in the Drive folder index"
             elif dry_run:
                 record["status"] = "present"
             else:
+                name = (Path(record["remote_path"]).name if keep_remote_name or not requested_name
+                        else requested_name)
                 if dest_dir is not None:
-                    target = dest_dir / Path(record["remote_path"]).name
+                    target = dest_dir / name
                 elif kind == "local":
-                    target = Path(value)
+                    target = Path(value).parent / name
                 else:
-                    target = data_root() / record["remote_path"]
+                    target = data_root() / Path(record["remote_path"]).parent / name
                 record["dest"] = str(target)
         except (ValueError, RuntimeError, OSError) as exc:
             record["status"] = "error"
@@ -294,6 +351,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--transfers", type=int, default=8, help="parallel downloads (default: 8)")
     ap.add_argument("--dry-run", action="store_true", help="report present/missing without downloading")
     ap.add_argument("--verify", action="store_true", help="compare the downloaded file's md5/sha256")
+    ap.add_argument("--keep-remote-name", action="store_true",
+                    help="save under the matched Drive name instead of the requested name")
     ap.add_argument("--index", default=str(DEFAULT_INDEX), help=f"index cache (default: {DEFAULT_INDEX})")
     ap.add_argument("--rclone", help="rclone executable (default: rclone on PATH)")
     ap.add_argument("--timeout", type=float, default=600.0, help="seconds per rclone call")
@@ -301,10 +360,12 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     result = fetch(args.items, args.dest, remote=args.remote, folder=args.folder,
                    reindex=args.reindex, transfers=args.transfers, dry_run=args.dry_run,
-                   verify=args.verify, index_path=args.index,
+                   verify=args.verify, keep_remote_name=args.keep_remote_name,
+                   index_path=args.index,
                    rclone=[args.rclone] if args.rclone else None, timeout=args.timeout)
     print_result(result, args.format,
-                 columns=["input", "kind", "remote_path", "status", "dest", "verified", "reason"])
+                 columns=["input", "kind", "matched_by", "remote_path", "status", "dest",
+                          "verified", "alternates", "reason"])
     bad = {"missing", "blocked", "error", "verify_failed"}
     return 1 if any(record["status"] in bad for record in result["items"]) else 0
 
