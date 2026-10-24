@@ -59,7 +59,15 @@ reality_engine/data/inbox/*
 reality_engine/data/lancedb/*
 reality_engine/data/reports/*
 reality_engine/data/ar_queue/*
+reality_engine/data/chart_gate/*
+reality_engine/data/chart_gate_src/*
+reality_engine/data/chart_pdfs/*
 !reality_engine/data/**/.gitkeep
+
+# Local sandbox/test scratch (ACL-locked after a confined pip/tempfile run)
+.test_tmp_ar_vision/
+.tools/tmp/
+.tools/tmp2/
 
 # Continuous loop runtime state (briefs, run log, agent transcripts, sessions)
 reality_engine/data/logs/loop/*
