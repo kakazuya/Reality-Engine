@@ -1972,6 +1972,56 @@ class PluginTests(unittest.TestCase):
         self.assertIn("Goal: x", brief)
         self.assertIn("# old pack", pack.read_text(encoding="utf-8"))
 
+    def test_context_pack_header_mismatch_is_stale(self):
+        """A fresh mtime is not enough: header HEAD and data root must match."""
+        data_root = self.root / "reality_engine" / "data"
+        base = datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc)
+        stamp = base.timestamp()
+
+        def write(header_head: str, header_data_root: str) -> Path:
+            pack = self._write_context_pack(
+                "# Worker context pack\n\n"
+                f"Generated: 2026-10-25T12:00:00+05:30 · git HEAD: `{header_head}` · "
+                f"data root: `{header_data_root}`\n"
+            )
+            os.utime(pack, (stamp, stamp))
+            return pack
+
+        foreign = write("deadbee", "C:/some/other/data")
+        self.assertFalse(context_pack.is_stale(foreign, base))
+        info = context_pack.ensure_pack(self.root, data_root, base)
+        self.assertTrue(info["stale"], info)
+        self.assertEqual(info.get("error"), "builder_missing")
+
+        # A matching header needs the real short HEAD (the temp root sits inside
+        # this repository, so git resolves upward to REPO).
+        head = subprocess.run(
+            ["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        ).stdout.strip() or "deadbee"
+        local = write(head, str(data_root.resolve()))
+        self.assertFalse(
+            context_pack.is_stale(local, base, repo_root=self.root, data_root=data_root)
+        )
+        self.assertFalse(
+            context_pack.is_stale(
+                write(head, str(data_root.resolve())),
+                base,
+                repo_root=REPO,
+                data_root=data_root,
+            )
+        )
+        self.assertTrue(
+            context_pack.is_stale(
+                write("deadbee", str(data_root.resolve())),
+                base,
+                repo_root=REPO,
+                data_root=data_root,
+            )
+        )
+
     def test_file_success_check_for_worker_context(self):
         pack = self._write_context_pack()
         data_root = self.root / "reality_engine" / "data"
@@ -2055,6 +2105,11 @@ class WorkerContextBuilderTests(unittest.TestCase):
         plugin = self.root / "plugins" / "fake" / "server"
         plugin.mkdir(parents=True)
         (plugin / "core.py").write_text('"""Fake plugin core."""\n', encoding="utf-8")
+        runtime = self.root / "plugins" / "fake" / "runtime"
+        runtime.mkdir(parents=True)
+        (runtime / "fixture_ignored.py").write_text(
+            '"""Ignored runtime fixture."""\n', encoding="utf-8"
+        )
         cache = self.root / "plugins" / "reality-data" / "server" / "catalog_cache.json"
         cache.parent.mkdir(parents=True)
         cache.write_text(
@@ -2091,11 +2146,32 @@ class WorkerContextBuilderTests(unittest.TestCase):
                                     "rows": 2259771,
                                     "rows_approx": False,
                                 },
+                                # No catalog row count: exercises the bounded
+                                # COUNT(*) fallback (the live one is a view).
+                                "shareholding": {
+                                    "columns": [["isin", "TEXT"], ["promoter_pct", "REAL"]],
+                                    "rows": None,
+                                },
                             },
                         },
                     }
                 }
             ),
+            encoding="utf-8",
+        )
+        descriptions = self.root / "plugins" / "reality-data" / "catalog_descriptions.yaml"
+        descriptions.write_text(
+            "truth_duckdb:\n"
+            "  description: Curated snapshot description.\n"
+            "  tables:\n"
+            "    px_nse_adj:\n"
+            "      description: Curated adjusted-price table.\n"
+            "equity_intelligence:\n"
+            "  description: Curated main DB.\n"
+            "  tables:\n"
+            "    security_master:\n"
+            "      description: Curated identity table.\n"
+            "      key_columns: [symbol, isin]\n",
             encoding="utf-8",
         )
         tasks = self.root / "tasks"
@@ -2112,6 +2188,17 @@ class WorkerContextBuilderTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.data = self.root / "reality_engine" / "data"
+        self.data.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(self.data / "equity_intelligence.db")
+        connection.execute(
+            "CREATE TABLE shareholding (isin TEXT PRIMARY KEY, promoter_pct REAL) WITHOUT ROWID"
+        )
+        connection.executemany(
+            "INSERT INTO shareholding VALUES (?, ?)",
+            [("INE1", 55.0), ("INE2", 60.0), ("INE3", 50.0)],
+        )
+        connection.commit()
+        connection.close()
         (self.data / "hotline").mkdir(parents=True)
         (self.data / "hotline" / "decisions.md").write_text(
             "- first decision\n"
@@ -2143,10 +2230,18 @@ class WorkerContextBuilderTests(unittest.TestCase):
         self.assertIn("test_readonly.py", text)
         self.assertIn("Second section", text)
         self.assertIn("2019-01-01..2026-10-19", text)
-        # Secret-like lines are dropped; no key/token markers survive.
-        self.assertNotIn("sk-", text)
+        # The secret filter drops secret values, not every line mentioning one;
+        # the legitimate decision line survives (only its sk- value is masked).
+        self.assertNotIn("sk-secretvalue", text)
+        self.assertIn("task-notification", text)
+        self.assertNotIn("line(s) omitted", text)
         self.assertNotIn("KEY", text)
         self.assertNotIn("TOKEN", text)
+        # The connect_ro snippet must be runnable as pasted.
+        self.assertIn('DATA = Path(os.environ["REALITY_DATA_ROOT"])', text)
+        self.assertIn("import os", text)
+        # A WITHOUT ROWID/view has no rowid: rows come from a bounded COUNT(*).
+        self.assertIn("| equity_intelligence.shareholding | 3 |", text)
         schema = self.out / "schemas" / "equity_intelligence.md"
         self.assertTrue(schema.is_file())
         self.assertIn("chunk_id", schema.read_text(encoding="utf-8"))
@@ -2158,6 +2253,25 @@ class WorkerContextBuilderTests(unittest.TestCase):
         )
         self.assertEqual(strip(text), strip(text2))
         self.assertEqual(stats["schemas"], again["schemas"])
+
+    def test_curated_catalog_descriptions_are_loaded(self):
+        self.assertEqual(
+            build_worker_context.DESCRIPTIONS_RELATIVE.as_posix(),
+            "plugins/reality-data/catalog_descriptions.yaml",
+        )
+        self._build()
+        text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
+        self.assertIn("Curated identity table.", text)
+        self.assertIn("Curated adjusted-price table.", text)
+        self.assertIn("Curated main DB.", text)
+        # Curated key columns win over the PREFERRED_KEYS projection.
+        self.assertIn("`symbol`, `isin`", text)
+
+    def test_repo_map_python_counts_prune_skipped_dirs(self):
+        self._build()
+        text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
+        # plugins/fake has server/core.py plus an ignored runtime/ fixture.
+        self.assertIn("fake/ (1 py)", text)
 
     def test_is_stale_uses_injected_clock(self):
         pack = self.root / "pack.md"

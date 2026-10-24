@@ -274,9 +274,12 @@ inventoried in `tasks/DATA_JOBS_AUDIT_2026-10-24.md` (all 57) plus the generated
 overrides the registry path for isolated tests. Each entry has
 name, argv (with `{date}`/`{start}`/`{repo_root}`/`{data_root}` placeholders),
 cwd, env, description, writes, named resource locks (`db:<file>`, `gpu`,
-`net:<host>`), cadence, a read-only SQL freshness check
-(`success_check: {db, sql, expect: {kind: max_date|min_count, ...}}`),
-off-peak/market-hours rules, `needs_paid_api`, `needs_gpu`, and `enabled`.
+`net:<host>`), cadence, a read-only freshness check, off-peak/market-hours rules,
+`needs_paid_api`, `needs_gpu`, and `enabled`. A freshness check is either SQL
+(`success_check: {db, sql, expect: {kind: max_date|min_count, ...}}`, run
+`mode=ro` with `PRAGMA query_only` and a bounded budget) or a produced file
+(`success_check: {kind: file, path: <repo-relative>, max_age_hours: N}`), e.g.
+the `worker_context` job's `tasks/worker_context/CONTEXT.md` under 26 h.
 Every job ships `enabled: false` because Shivam disabled the scheduled tasks on
 2026-10-21; re-enable only on his word. `start_job` therefore refuses a disabled
 job unless `confirm=true` (an explicit one-off), and also refuses paid/off-peak

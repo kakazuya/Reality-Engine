@@ -21,6 +21,12 @@ TEMPLATE_RELATIVE = Path("tasks") / "worker_context" / "BRIEF_TEMPLATE.md"
 MAX_PACK_AGE_HOURS = 26.0
 REGENERATE_TIMEOUT_SECONDS = 60
 BUILDER_MODULE = "reality_engine.scripts.build_worker_context"
+# The builder stamps its own git HEAD and absolute data root on line 3.  A pack
+# committed from another checkout has a fresh mtime on clone but neither matches,
+# so mtime alone would call it current.
+PACK_HEADER = re.compile(
+    r"(?m)^Generated:.*?git HEAD: `(?P<head>[^`]*)`.*?data root: `(?P<data>[^`]*)`"
+)
 
 # At most 15 lines: the worker reads CONTEXT.md once, then only task files.
 STANDING_HEADER = """\
@@ -46,12 +52,57 @@ def _aware(value: datetime | None) -> datetime:
     return value
 
 
-def is_stale(path: Path, now: datetime | None = None, max_age_hours: float = MAX_PACK_AGE_HOURS) -> bool:
-    """A missing pack is stale; a future mtime (clock skew) is not."""
+def _git_head(repo_root: Path) -> str:
+    """Short HEAD of ``repo_root``, or "" when git cannot answer."""
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return completed.stdout.strip() if completed.returncode == 0 else ""
+
+
+def _header_mismatch(path: Path, repo_root: Path, data_root: Path) -> bool:
+    """True when the pack header names another HEAD or another data root."""
+    try:
+        with Path(path).open(encoding="utf-8", errors="replace") as handle:
+            head_lines = "".join(handle.readline() for _ in range(8))
+    except OSError:
+        return True
+    match = PACK_HEADER.search(head_lines)
+    if match is None:
+        return True
+    if Path(match.group("data")) != Path(data_root).resolve():
+        return True
+    head = _git_head(repo_root)
+    stamped = match.group("head").strip()
+    return bool(head) and stamped not in {"", "unknown"} and stamped != head
+
+
+def is_stale(
+    path: Path,
+    now: datetime | None = None,
+    max_age_hours: float = MAX_PACK_AGE_HOURS,
+    repo_root: Path | None = None,
+    data_root: Path | None = None,
+) -> bool:
+    """A missing pack is stale; a future mtime (clock skew) is not.
+
+    When ``repo_root`` and ``data_root`` are given, a header naming a different
+    git HEAD or data root is stale too (a fresh checkout clones an old pack with
+    an unmodified mtime).
+    """
     try:
         modified = datetime.fromtimestamp(Path(path).stat().st_mtime, tz=timezone.utc)
     except OSError:
         return True
+    if repo_root is not None and data_root is not None:
+        if _header_mismatch(Path(path), Path(repo_root).resolve(), Path(data_root)):
+            return True
     age = _aware(now) - modified
     return age > timedelta(hours=max_age_hours)
 
@@ -73,12 +124,13 @@ def ensure_pack(
 ) -> dict[str, Any]:
     """Return pack state, regenerating only when stale (bounded, never raises)."""
     root = Path(repo_root).resolve()
+    data = Path(data_root).resolve()
     path = pack_path(root)
     info: dict[str, Any] = {
         "enabled": True,
         "path": str(path),
         "regenerated": False,
-        "stale": is_stale(path, now),
+        "stale": is_stale(path, now, repo_root=root, data_root=data),
     }
     if not info["stale"]:
         return info
@@ -90,7 +142,7 @@ def ensure_pack(
         completed = subprocess.run(
             [sys.executable, "-m", BUILDER_MODULE],
             cwd=str(root),
-            env=_builder_env(root, Path(data_root).resolve()),
+            env=_builder_env(root, data),
             capture_output=True,
             text=True,
             encoding="utf-8",

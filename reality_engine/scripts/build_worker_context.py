@@ -9,7 +9,8 @@ and recent decisions.  Full column lists go to ``schemas/<db>.md``.
 Read-only on every database.  Deterministic: two runs differ only in the header
 timestamp (and git HEAD).  Full column lists are written from
 ``plugins/reality-data/server/catalog_cache.json``; missing row counts fall back
-to ``sqlite_stat1`` / ``MAX(rowid)``, never a table scan.
+to ``sqlite_stat1`` / ``MAX(rowid)``, then a bounded ``COUNT(*)`` for tables and
+views without a rowid.
 
     python -m reality_engine.scripts.build_worker_context
 """
@@ -33,7 +34,7 @@ DATA_ROOT = Path(
     os.environ.get("REALITY_DATA_ROOT") or (ROOT / "reality_engine" / "data")
 ).resolve()
 CACHE_RELATIVE = Path("plugins") / "reality-data" / "server" / "catalog_cache.json"
-DESCRIPTIONS_RELATIVE = Path("plugins") / "reality-data" / "server" / "catalog_descriptions.yaml"
+DESCRIPTIONS_RELATIVE = Path("plugins") / "reality-data" / "catalog_descriptions.yaml"
 SHARED_CONTEXT_RELATIVE = Path("tasks") / "optimizations" / "00_SHARED_CONTEXT.md"
 STATE_RELATIVE = Path("tasks") / "STATE.md"
 SANDBOX_RELATIVE = Path("tasks") / "worker_context" / "SANDBOX.md"
@@ -164,6 +165,15 @@ def _clip(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[:limit].rstrip() + " …"
 
 
+def _count_files(base: Path, pattern: str) -> int:
+    """Count files under ``base``, pruning SKIP_DIRS (ignored runtime fixtures)."""
+    return sum(
+        1
+        for path in base.rglob(pattern)
+        if not (set(path.relative_to(base).parts[:-1]) & SKIP_DIRS)
+    )
+
+
 def _repo_map(root: Path, data_root: Path, out_dir: Path) -> str:
     lines = ["## 1. Repo map", "", "Top-level tree to depth 2 (tests/fixtures skipped):", "```"]
     skip_out = out_dir.resolve()
@@ -177,7 +187,7 @@ def _repo_map(root: Path, data_root: Path, out_dir: Path) -> str:
                 continue
             if child.resolve() == skip_out:
                 continue
-            count = len(list(child.rglob("*.py"))) if family != "tasks" else len(
+            count = _count_files(child, "*.py") if family != "tasks" else len(
                 list(child.glob("*.md"))
             )
             purpose = _dir_purpose(child) if family != "tasks" else ""
@@ -282,16 +292,16 @@ def _key_columns(columns: list[list[str]] | list[tuple[str, str]]) -> list[str]:
 
 
 def _fallback_rows(db_path: Path, tables: set[str]) -> dict[str, tuple[int, bool]]:
-    """Rows from sqlite_stat1, else MAX(rowid); bounded, read-only, no COUNT(*)."""
+    """Rows from sqlite_stat1, else MAX(rowid); views get a bounded COUNT(*)."""
     out: dict[str, tuple[int, bool]] = {}
     if not db_path.is_file() or not tables:
         return out
+    deadline = [time.monotonic() + 1.5]
     try:
         connection = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True, timeout=2.0)
         connection.execute("PRAGMA query_only = ON")
         connection.execute("PRAGMA temp_store = MEMORY")
-        deadline = time.monotonic() + 1.5
-        connection.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 20000)
+        connection.set_progress_handler(lambda: 1 if time.monotonic() > deadline[0] else 0, 20000)
     except sqlite3.Error:
         return out
     try:
@@ -308,10 +318,22 @@ def _fallback_rows(db_path: Path, tables: set[str]) -> dict[str, tuple[int, bool
                 continue
             try:
                 row = connection.execute(f'SELECT max(rowid) FROM "{table}"').fetchone()
-                if row and row[0] is not None:
-                    out[table] = (int(row[0]), True)
+            except sqlite3.Error:
+                row = None
+            if row and row[0] is not None:
+                out[table] = (int(row[0]), True)
+                continue
+            # Views (and WITHOUT ROWID tables) have no rowid: COUNT(*) is the only
+            # exact answer, so bound it per table instead of scanning a huge view.
+            # ponytail: fixed 3 s per table; a cold cache can still time out a
+            # borderline view, so rows stay "?" rather than slowing the build.
+            deadline[0] = time.monotonic() + 3.0
+            try:
+                counted = connection.execute(f'SELECT count(*) FROM "{table}"').fetchone()
             except sqlite3.Error:
                 continue
+            if counted and counted[0] is not None:
+                out[table] = (int(counted[0]), False)
     finally:
         connection.close()
     return out
@@ -492,6 +514,7 @@ def _how_to_query() -> str:
 Open SQLite read-only; never a bare `sqlite3.connect`:
 
 ```python
+import os
 from pathlib import Path
 from reality_engine.db.readonly import connect_ro
 DATA = Path(os.environ["REALITY_DATA_ROOT"])  # or repo/reality_engine/data
@@ -616,7 +639,7 @@ def _conventions_section() -> str:
 def _secret_marker(text: str) -> bool:
     """Drop lines carrying secret-like names; conservative on purpose."""
     text = str(text)
-    return "KEY" in text or "TOKEN" in text or "sk-" in text
+    return "KEY" in text or "TOKEN" in text or bool(SECRET_VALUE.search(text))
 
 
 def _recent_section(root: Path, data_root: Path) -> str:
@@ -739,12 +762,12 @@ def main(argv: list[str] | None = None) -> int:
         out_dir=args.out_dir,
     )
     print(
-        f"wrote {stats['path']}: {stats['tokens_estimate']}k tokens est "
+        f"wrote {stats['path']}: {stats['tokens_estimate']} tokens est "
         f"({stats['chars']} chars), {stats['databases']} DBs / {stats['tables']} tables, "
         f"{len(stats['schemas'])} schema files, {stats['seconds']}s"
     )
     if stats["over_budget"]:
-        print(f"WARNING: over the {MAX_TOKENS}k token budget; trim the repo map")
+        print(f"WARNING: over the {MAX_TOKENS} token budget; trim the repo map")
     return 0
 
 
