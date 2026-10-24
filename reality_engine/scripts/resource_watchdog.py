@@ -1,8 +1,8 @@
 """Machine-wide resource watchdog: keeps the long jobs alive and records every case of wasted compute.
 
 Runs permanently (started at logon from the Windows Startup folder, see install_startup()). Every CHECK_SEC it:
-  - keeps each managed job (JOBS) alive: restarts it with the same command line it last ran with if it stopped
-    without finishing, or if its log went silent for the job's stale_min (hung); restarts are rate-limited
+  - keeps each managed job (JOBS) alive ONLY when that is explicitly allowed (see "Who may be started" below);
+    otherwise a stopped/hung job is recorded as an incident and left alone
   - kills orphaned multiprocessing workers left in this project's folder by a dead parent
     (2026-10-10: 16 orphaned render workers at ~3 GB commit each pushed RAM to 98%)
   - records WASTE INCIDENTS, naming the process and the numbers:
@@ -10,9 +10,23 @@ Runs permanently (started at logon from the Windows Startup folder, see install_
                   (2026-10-11: the extractor re-read its 5 GB queue every second, ~135 MB/s, run fell to 0.4 pages/s)
       cpu_hog     machine CPU above CPU_BUSY_PCT for 3 checks; the top processes are named
       low_ram     available RAM under LOW_RAM_GB; the largest processes are named
+      low_disk    free space under DISK_FREE_MIN_GB on C: or on the D: volume holding D:\\RealityEngine
       job_slow    a managed job below its slow_rate, with what the job itself was waiting on (readers idle or full)
       job_hung / job_stopped / orphans_killed / restart_limit
 It never kills anything except orphans in this project and the managed jobs it restarts.
+
+Who may be started (2026-10-24, laptop safety):
+  - restarts are opt-in: a job needs "auto_restart": True (default False)
+  - a job tagged paid / gpu / pc_only is NEVER auto-started, whatever its flag says: a human starts those
+    (`paid` = spends an external model API budget, free-tier quotas included; `pc_only` = needs the PC's corpus)
+  - profile "laptop" (env REALITY_WATCHDOG_PROFILE=laptop, or --install-startup --profile laptop) is monitor-only:
+    no managed job and no side job (new_reader_check, ar_review) is started, and the laptop is not kept awake
+Every refusal is recorded with its reason. To let the PC restart a job again: auto_restart True there, drop its
+paid/gpu/pc_only tag (that is the explicit OK), and run with profile "pc".
+
+Laptop values (2026-10-24: 8 logical cores, 16 GiB RAM, C: 460 GB SSD + D: 931 GB with our PDFs in
+D:\\RealityEngine): CPU >= 90% for 3 checks (6 min), RAM free < 1.5 GB, disk I/O >= 50 MB/s for 3 checks,
+free space < 20 GB on C: / < 30 GB on D:. Only D:\\RealityEngine is ours: nothing else on D: is scanned or touched.
 
 Output (all in reality_engine/data/logs/):
   resource_watchdog.log            one status line per check plus every action
@@ -22,6 +36,7 @@ Output (all in reality_engine/data/logs/):
 
 Start now:   wscript reality_engine\\scripts\\run_hidden.vbs reality_engine\\scripts\\run_resource_watchdog.cmd
 Report:      python -m reality_engine.scripts.resource_watchdog --report
+Dry run:     python -m reality_engine.scripts.resource_watchdog --once --dry-run   (one check, acts on nothing)
 Stop:        end the python process running resource_watchdog (managed jobs keep running)
 """
 import argparse
@@ -64,35 +79,88 @@ DISK_HOG_MBS = 50
 CPU_BUSY_PCT = 90
 REPORT_HOURS = 48
 
+# Machine profile: "pc" (historic behaviour) or "laptop" (monitor only). Env wins over the file written by
+# --install-startup; anything that is not "pc" is treated as monitor-only, so a typo cannot start paid work.
+PROFILE_ENV = "REALITY_WATCHDOG_PROFILE"
+PROFILE_FILE = LOGS / "resource_watchdog_profile.txt"
+DEFAULT_PROFILE = "pc"
+HAZARD_TAGS = frozenset({"paid", "gpu", "pc_only"})   # never auto-started, whatever auto_restart says
+
+# Free space watched: C: always, D: only through D:\RealityEngine (the laptop's PDF corpus; nothing else on D: is
+# read). Floors: 20 GB on the 460 GB system SSD (Windows + SQLite WAL churn), 30 GB on D: (corpus + ar_facts.db).
+DISK_FREE_MIN_GB = {"C:\\": 20.0, "D:\\": 30.0}
+REALITY_DATA_DISK = Path(r"D:\RealityEngine")
+
 # Managed jobs. `match`: text in the cmd.exe command line; `log`: the job's own log (staleness, rate);
-# `done_exit`: the last line of `passes` ends with this exit code when the job has nothing left to do.
+# `done_exit`: the last line of `passes` ends with this exit code when the job has nothing left to do;
+# `auto_restart`: may the watchdog restart it (opt-in, default False); `tags`: why it maybe must not (HAZARD_TAGS).
 JOBS = [
     {"name": "deck-extract", "match": "run_deck_", "log": LOGS / "extract_deck_figures.log",
      "passes": LOGS / "extract_deck_figures.passes.log", "done_exit": 0, "stale_min": 20, "slow_rate": 2.0,
+     "auto_restart": False, "tags": ("paid", "pc_only"),
      "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO pages (\d+) ",
      "second_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO pages .*?second reads (\d+)"},
     # annual-report fact extraction (2026-10-12); rate = report pages read per second
     {"name": "ar-ingest", "match": "run_ar_ingest", "log": LOGS / "ingest_annual_reports.log",
      "passes": LOGS / "ingest_annual_reports.passes.log", "done_exit": 0, "stale_min": 20, "slow_rate": 1.0,
+     "auto_restart": False, "tags": ("paid",),
      "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
     # annual reports, Zen route (2026-10-12): OpenCode Zen free models via `opencode run`, oldest filing first
     # annual reports, Google route (2026-10-13): Flash-Lite 3.5 on all Gemini keys; idle_ok: daily caps can idle it
     {"name": "ar-google", "match": "run_ar_google", "idle_ok": True, "log": LOGS / "ingest_annual_reports_google.log",
      "passes": LOGS / "ingest_annual_reports_google.passes.log", "done_exit": 0, "stale_min": 30, "slow_rate": 0.2,
+     "auto_restart": False, "tags": ("paid",),
      "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
     {"name": "ar-ggemma26", "match": "run_ar_ggemma26", "idle_ok": True, "log": LOGS / "ingest_annual_reports_google_gemma-4-26b.log",
      "passes": LOGS / "ingest_annual_reports_google_gemma-4-26b.passes.log", "done_exit": 0, "stale_min": 30, "slow_rate": 0.2,
+     "auto_restart": False, "tags": ("paid",),
      "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
     {"name": "ar-gflash31", "match": "run_ar_gflash31", "idle_ok": True, "log": LOGS / "ingest_annual_reports_google_3.1fl.log",
      "passes": LOGS / "ingest_annual_reports_google_3.1fl.passes.log", "done_exit": 0, "stale_min": 30, "slow_rate": 0.2,
+     "auto_restart": False, "tags": ("paid",),
      "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
     # idle_ok: it legitimately reads nothing while the Zen free quota is used up, so no-pages is not a hang
     {"name": "ar-zen", "match": "run_ar_zen", "idle_ok": True, "log": LOGS / "ingest_annual_reports_zen.log",
      "passes": LOGS / "ingest_annual_reports_zen.passes.log", "done_exit": 0, "stale_min": 30, "slow_rate": 0.2,
+     "auto_restart": False, "tags": ("paid",),
      "rate_re": r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ INFO ar docs .*? pages (\d+) "},
 ]
 
+# Side jobs the watchdog starts on a timer (not managed, never restarted): same refusal rules, but they are not
+# opt-in with auto_restart because the PC has always started them.
+SIDE_JOBS = {
+    "new-reader-check": {"auto_restart": True, "tags": ("network", "quota")},
+    "ar-review": {"auto_restart": True},
+}
+
 log = logging.getLogger("resource_watchdog")
+
+
+def machine_profile():
+    """pc | laptop: env REALITY_WATCHDOG_PROFILE, else the file written by --install-startup, else pc."""
+    p = os.environ.get(PROFILE_ENV, "").strip().lower()
+    if not p:
+        try:
+            p = PROFILE_FILE.read_text(encoding="utf-8").strip().lower()
+        except OSError:
+            p = ""
+    return p or DEFAULT_PROFILE
+
+
+PROFILE = machine_profile()
+
+
+def blocked_reason(job):
+    """Why this job must not be started here, or None if it may. Every start/restart goes through this check."""
+    why = []
+    if PROFILE != "pc":
+        why.append(f"profile={PROFILE} is monitor-only")
+    tags = [t for t in job.get("tags", ()) if t in HAZARD_TAGS]
+    if tags:
+        why.append(f"tagged {'/'.join(tags)}: a human starts it, never the watchdog")
+    if not job.get("auto_restart", False):
+        why.append("auto_restart is off (restarts are opt-in)")
+    return "; ".join(why) or None
 
 
 # ---------------------------------------------------------------- helpers
@@ -140,8 +208,11 @@ def reader_drops():
     were watched). Also flags a burst of reports marked unreadable. Returns (kind, where, text) incidents."""
     import sqlite3
     out = []
+    db = ROOT / "reality_engine" / "data" / "ar_facts.db"
+    if not db.exists():   # laptop / fresh checkout: no AR database, so no reader rates to judge
+        return out
     try:
-        con = sqlite3.connect(f"file:{ROOT / 'reality_engine' / 'data' / 'ar_facts.db'}?mode=ro", uri=True, timeout=60)
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
         since = (datetime.now() - timedelta(hours=24)).isoformat(timespec="seconds")
         fam = ("CASE WHEN model LIKE 'longcat%' THEN 'LongCat' WHEN model LIKE 'cat-jam%' THEN 'Cat Jam' "
                "WHEN model LIKE 'zen:%' THEN 'Zen' WHEN model LIKE 'gemma-4-26b%' THEN 'Gemma 26B' "
@@ -172,8 +243,17 @@ def reader_drops():
     return out
 
 
+def in_project(p):
+    """True when the process runs inside this project's folder: the only place this watchdog ever kills."""
+    try:
+        return Path(p.cwd()).resolve().is_relative_to(ROOT)
+    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+        return False
+
+
 def orphan_workers():
-    """multiprocessing children whose parent is gone, running in this project's folder."""
+    """multiprocessing children whose parent is gone, running in this project's folder. Every pattern below is
+    limited to the project folder (2026-10-24: the docstring above promises never to kill outside it)."""
     out = []
     for p in psutil.process_iter(["name", "cmdline", "ppid"]):
         try:
@@ -187,7 +267,8 @@ def orphan_workers():
             # Only a whole-disk scan or a handle hog counts now.
             if name in ("find.exe", "grep.exe", "rg.exe", "xargs.exe"):
                 wide = re.search(r"\bfind(\.exe)?\"?\s+/(\s|$)", cmd) or p.num_handles() > 100_000
-                if wide and not psutil.pid_exists(p.info["ppid"]) and time.time() - p.create_time() > 600:
+                if (wide and not psutil.pid_exists(p.info["ppid"]) and time.time() - p.create_time() > 600
+                        and in_project(p)):
                     out.append(p)
                 continue
             if name != "python.exe":
@@ -195,7 +276,7 @@ def orphan_workers():
             # AR report-cutting children (ingest_annual_reports --pieces-json): orphaned, or past the parent's 3-min limit
             # (2026-10-14: three orphans read the disk at ~1 GB/s for up to 15 h after their parents were killed)
             if "--pieces-json" in cmd:
-                if not psutil.pid_exists(p.info["ppid"]) or time.time() - p.create_time() > 300:
+                if (not psutil.pid_exists(p.info["ppid"]) or time.time() - p.create_time() > 300) and in_project(p):
                     out.append(p)
                 continue
             if "multiprocessing.spawn" not in cmd:
@@ -203,7 +284,7 @@ def orphan_workers():
             m = re.search(r"parent_pid=(\d+)", cmd)
             if psutil.pid_exists(int(m.group(1)) if m else p.info["ppid"]):
                 continue
-            if Path(p.cwd()).resolve() == ROOT:
+            if in_project(p):
                 out.append(p)
         except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
             pass
@@ -230,6 +311,58 @@ def start_cmd(cmdline_target):
     wrapper.write_text(f'@echo off\r\ncd /d "{ROOT}"\r\ncmd /c {cmdline_target}\r\n', encoding="utf-8")
     subprocess.Popen(["wscript.exe", str(HIDDEN_VBS), str(wrapper)], cwd=str(ROOT), env=user_env(),
                      creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+
+
+def restart_or_report(job, js, procs, fault, now, inc, dry_run=False):
+    """The one place a managed job would be (re)started. A refused job only records the incident and the reason."""
+    day = [t for t in js["restarts"] if now - t < 86400]
+    js["restarts"] = day
+    why = blocked_reason(job) or (None if js.get("target") else "no command line saved to start it with")
+    if why:
+        inc.add(fault[0], job["name"], f"{fault[1]}; NOT restarting: {why}")
+    elif len(day) >= MAX_RESTARTS_PER_DAY:
+        inc.add("restart_limit", job["name"], f"{fault[1]}; {len(day)} restarts in 24 h, left for a human")
+    elif day and now - day[-1] < RESTART_GAP_MIN * 60:
+        pass
+    else:
+        inc.add(fault[0], job["name"],
+                f"{fault[1]}; {'would restart' if dry_run else 'restarting'}: {js['target']}")
+        if dry_run:
+            print(f"would restart {job['name']}: {js['target']}")
+            return
+        for p in procs:
+            kill_tree(p)
+        time.sleep(5)
+        for o in orphan_workers():
+            kill_tree(o)
+        start_cmd(js["target"])
+        js["restarts"].append(now)
+
+
+def disk_paths():
+    """Volumes whose free space is checked: the system drive, plus D:\\RealityEngine when it exists (the laptop's
+    PDF corpus). Nothing else on D: is looked at."""
+    out = [Path(os.environ.get("SystemDrive", "C:") + "\\")]
+    if REALITY_DATA_DISK.exists():
+        out.append(REALITY_DATA_DISK)
+    return [p for p in out if p.anchor in DISK_FREE_MIN_GB]
+
+
+def disk_checks():
+    """(status lines, [(key, detail)]) for free space on the watched volumes; a volume under its floor is an incident."""
+    lines, low = [], []
+    for p in disk_paths():
+        lim = DISK_FREE_MIN_GB[p.anchor]
+        name = str(p).rstrip("\\")
+        try:
+            free = psutil.disk_usage(str(p)).free / 1e9
+        except OSError as e:
+            lines.append(f"disk {name}: unreadable ({e})")
+            continue
+        lines.append(f"disk {name} {free:.0f} GB free (min {lim:.0f})")
+        if free < lim:
+            low.append((str(p), f"{free:.1f} GB free, under the {lim:.0f} GB floor: free space on {name}"))
+    return lines, low
 
 
 def job_target(cmdline):
@@ -317,10 +450,14 @@ def top_cpu(n=5):
 class Incidents:
     """Deduplicated incidents: the same (kind, key) within 30 min extends one record instead of adding lines."""
 
-    def __init__(self):
+    def __init__(self, dry_run=False):
         self.open = {}
+        self.dry_run = dry_run
 
     def add(self, kind, key, detail):
+        if self.dry_run:   # --dry-run: say what would be recorded, write nothing
+            print(f"INCIDENT would be recorded: {kind} [{key}]: {detail}")
+            return
         now = datetime.now().isoformat(timespec="seconds")
         rec = self.open.get((kind, key))
         if rec and (datetime.now() - datetime.fromisoformat(rec["last"])).total_seconds() < 1800:
@@ -412,8 +549,13 @@ def print_report():
         print("no report yet")
 
 
-def install_startup():
-    """Starts the watchdog at every logon via a script in the user's Startup folder (no admin rights needed)."""
+def install_startup(profile_name=None):
+    """Starts the watchdog at every logon via a script in the user's Startup folder (no admin rights needed).
+    --profile also writes the machine profile the watchdog reads at start (the env var overrides it)."""
+    if profile_name:
+        LOGS.mkdir(parents=True, exist_ok=True)
+        PROFILE_FILE.write_text(profile_name + "\n", encoding="utf-8")
+        print(f"profile {profile_name} -> {PROFILE_FILE}")
     startup = Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
     vbs = startup / "reality_engine_resource_watchdog.vbs"
     vbs.write_text(f'CreateObject("Wscript.Shell").Run """{SCRIPTS / "run_resource_watchdog.cmd"}""", 0, False\r\n', encoding="utf-8")
@@ -432,32 +574,44 @@ def save_state(st):
     STATE.write_text(json.dumps(st, indent=1), encoding="utf-8")
 
 
-def run():
-    LOGS.mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(filename=LOGS / "resource_watchdog.log", level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s")
-    try:
-        other = int(LOCK.read_text())
-        if other != os.getpid() and psutil.pid_exists(other) and "resource_watchdog" in " ".join(psutil.Process(other).cmdline()):
-            print(f"watchdog already running (pid {other})"); return
-    except (OSError, ValueError, psutil.Error):
-        pass
-    LOCK.write_text(str(os.getpid()))
-    ctypes.windll.kernel32.SetThreadExecutionState(0x80000001)   # keep the PC awake while it runs
-    log.info("watchdog started (pid %d)", os.getpid())
-    inc, st = Incidents(), load_state()
+def run(once=False, dry_run=False):
+    if dry_run:
+        logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
+    else:
+        LOGS.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(filename=LOGS / "resource_watchdog.log", level=logging.INFO,
+                            format="%(asctime)s %(levelname)s %(message)s")
+        try:
+            other = int(LOCK.read_text())
+            if other != os.getpid() and psutil.pid_exists(other) and "resource_watchdog" in " ".join(psutil.Process(other).cmdline()):
+                print(f"watchdog already running (pid {other})"); return
+        except (OSError, ValueError, psutil.Error):
+            pass
+        LOCK.write_text(str(os.getpid()))
+        if PROFILE == "pc":   # a monitor-only laptop decides its own sleep, so it is not pinned awake
+            ctypes.windll.kernel32.SetThreadExecutionState(0x80000001)   # keep the PC awake while it runs
+        log.info("watchdog started (pid %d) profile %s", os.getpid(), PROFILE)
+    inc, st = Incidents(dry_run), load_state()
     st.setdefault("jobs", {})
     disk_prev, io_prev, t_prev = psutil.disk_io_counters(), io_snapshot(), time.time()
     psutil.cpu_percent(None); top_cpu()
+    if once:   # one check still needs an I/O sampling window (the 3-check streaks cannot fire on one sample)
+        time.sleep(3)
     hog_streak, cpu_streak = {}, 0
     while True:
-        time.sleep(CHECK_SEC)
-        now = time.time(); dt = now - t_prev
+        if not once:
+            time.sleep(CHECK_SEC)
+        now = time.time(); dt = max(now - t_prev, 0.001)
         disk, io = psutil.disk_io_counters(), io_snapshot()
         mbs = ((disk.read_bytes - disk_prev.read_bytes) + (disk.write_bytes - disk_prev.write_bytes)) / dt / 1e6
         ram = psutil.virtual_memory().available / 1e9
         cpu = psutil.cpu_percent(None)
-        status = [f"machine: CPU {cpu:.0f}% | RAM free {ram:.1f} GB | disk {mbs:.0f} MB/s"]
+        disk_lines, disk_low = disk_checks()
+        for key, detail in disk_low:
+            inc.add("low_disk", key, detail)
+        status = [f"profile: {PROFILE}" + ("" if PROFILE == "pc" else " (monitor-only: nothing is started or restarted)"),
+                  f"machine: CPU {cpu:.0f}% | RAM free {ram:.1f} GB | "
+                  + (f"disk {mbs:.0f} MB/s" if not once else "disk rate needs two checks")] + disk_lines
 
         # per-process disk hogs
         rates = {}
@@ -499,10 +653,11 @@ def run():
 
         orphans = orphan_workers()
         if orphans:
-            inc.add("orphans_killed", "project", f"killed {len(orphans)} orphaned workers "
+            inc.add("orphans_killed", "project", f"{'would kill' if dry_run else 'killed'} {len(orphans)} orphaned workers "
                     f"({sum(o.memory_info().rss for o in orphans) / 1e9:.1f} GB): {[o.pid for o in orphans]}")
-            for o in orphans:
-                kill_tree(o)
+            if not dry_run:
+                for o in orphans:
+                    kill_tree(o)
 
         for job in JOBS:
             js = st["jobs"].setdefault(job["name"], {"restarts": []})
@@ -510,21 +665,24 @@ def run():
             if procs:
                 js["target"] = job_target(" ".join(procs[0].cmdline()))
             lines = log_tail(job["log"])
-            age = (now - job["log"].stat().st_mtime) / 60 if job["log"].exists() else 1e9
+            has_log = job["log"].exists()
+            age = (now - job["log"].stat().st_mtime) / 60 if has_log else 1e9
             rate = series_rate(lines, job["rate_re"]) if procs else None
             r2 = series_rate(lines, job["second_re"]) if procs and job.get("second_re") else None
             status.append(f"{job['name']}: {'running' if procs else 'not running'}"
                           + (f" | {rate:.1f} pages/s" if rate is not None else "")
                           + (f" | {r2 * 60:.0f} second readings/min" if r2 is not None else "")
-                          + f" | log age {age:.0f} min" + (f" | {js['target']}" if procs else ""))
+                          + (f" | log age {age:.0f} min" if has_log else " | no log on this machine")
+                          + (f" | {js['target']}" if procs else ""))
             if procs and rate is not None and rate < job["slow_rate"] and age < job["stale_min"] and not (r2 and r2 > 0.05):
                 inc.add("job_slow", job["name"], f"{rate:.1f} pages/s (10 min); disk {mbs:.0f} MB/s, CPU {cpu:.0f}%, "
                         f"RAM free {ram:.1f} GB; {deck_diagnosis(lines)}")
             fault = None
             if not procs:
                 ex = last_exit(job["passes"])
-                if ex != job["done_exit"] and js.get("target"):
-                    fault = ("job_stopped", f"not running, last pass exit {ex}")
+                if ex != job["done_exit"]:
+                    fault = ("job_stopped", f"not running, last pass exit {ex}" if ex is not None
+                             else "not running (no pass log on this machine)")
             elif age >= job["stale_min"]:
                 fault = ("job_hung", f"log silent {age:.0f} min")
             # 2026-10-12: the AR run froze inside a C call for 4 h while each restart still wrote a log line, so a fresh
@@ -538,65 +696,73 @@ def run():
             else:
                 js.pop("zero_since", None)
             if fault:
-                day = [t for t in js["restarts"] if now - t < 86400]
-                js["restarts"] = day
-                if len(day) >= MAX_RESTARTS_PER_DAY:
-                    inc.add("restart_limit", job["name"], f"{fault[1]}; {len(day)} restarts in 24 h, left for a human")
-                elif day and now - day[-1] < RESTART_GAP_MIN * 60:
-                    pass
-                else:
-                    inc.add(fault[0], job["name"], f"{fault[1]}; restarting: {js['target']}")
-                    for p in procs:
-                        kill_tree(p)
-                    time.sleep(5)
-                    for o in orphan_workers():
-                        kill_tree(o)
-                    start_cmd(js["target"])
-                    js["restarts"].append(time.time())
+                restart_or_report(job, js, procs, fault, now, inc, dry_run)
         if time.time() - st.get("reader_check_ts", 0) >= READER_CHECK_EVERY_S:
             st["reader_check_ts"] = time.time()
-            subprocess.Popen([sys.executable, "-m", "reality_engine.scripts.new_reader_check"], cwd=ROOT,
-                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                             creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
-            log.info("new-reader check started")
-        try:   # AR extraction review after every AR_REVIEW_EVERY newly finished reports (ar_review.py)
-            import sqlite3
-            con = sqlite3.connect(f"file:{ROOT / 'reality_engine' / 'data' / 'ar_facts.db'}?mode=ro", uri=True, timeout=30)
-            done_n = con.execute("SELECT COUNT(*) FROM ar_docs WHERE status='done'").fetchone()[0]; con.close()
-            # 2026-10-14: with Cat Jam 200 reports finish in ~4 min, faster than one review runs; three reviews piled up
-            # (a core each, reading ar_facts.db) and the main run fell from ~950 to ~120 pages/min. One review at a time,
-            # at most hourly.
-            running = any("reality_engine.scripts.ar_review" in " ".join(p.info["cmdline"] or [])
-                          for p in psutil.process_iter(["cmdline"]))
-            if (done_n >= st.get("ar_review_at", 0) + AR_REVIEW_EVERY and not running
-                    and time.time() - st.get("ar_review_ts", 0) >= 12 * 3600):   # 2026-10-15: a run scans all facts (a core +
-                # ~0.9 GB for 30+ min, and its long read blocks the WAL checkpoint: WAL grew to ~1 GB); twice a day is enough
-                st["ar_review_at"] = done_n; st["ar_review_ts"] = time.time()
-                subprocess.Popen([sys.executable, "-m", "reality_engine.scripts.ar_review"], cwd=ROOT,
+            why = blocked_reason(SIDE_JOBS["new-reader-check"])
+            if why:
+                status.append(f"new-reader-check: not started ({why})")
+            elif dry_run:
+                status.append("new-reader-check: would start")
+            else:
+                subprocess.Popen([sys.executable, "-m", "reality_engine.scripts.new_reader_check"], cwd=ROOT,
                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-                                 | subprocess.BELOW_NORMAL_PRIORITY_CLASS)
-                log.info("AR review started at %d finished reports", done_n)
-        except Exception as e:
-            log.warning("AR review trigger failed: %s", e)
-        save_state(st)
-        log.info(" || ".join(status))
-        write_report(status)
+                                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+                log.info("new-reader check started")
+        why = blocked_reason(SIDE_JOBS["ar-review"])
+        if why:   # refused before the DB is even opened: on a laptop there are no AR facts to review
+            status.append(f"ar-review: not started ({why})")
+        else:
+            try:   # AR extraction review after every AR_REVIEW_EVERY newly finished reports (ar_review.py)
+                import sqlite3
+                con = sqlite3.connect(f"file:{ROOT / 'reality_engine' / 'data' / 'ar_facts.db'}?mode=ro", uri=True, timeout=30)
+                done_n = con.execute("SELECT COUNT(*) FROM ar_docs WHERE status='done'").fetchone()[0]; con.close()
+                # 2026-10-14: with Cat Jam 200 reports finish in ~4 min, faster than one review runs; three reviews piled up
+                # (a core each, reading ar_facts.db) and the main run fell from ~950 to ~120 pages/min. One review at a time,
+                # at most hourly.
+                running = any("reality_engine.scripts.ar_review" in " ".join(p.info["cmdline"] or [])
+                              for p in psutil.process_iter(["cmdline"]))
+                if (done_n >= st.get("ar_review_at", 0) + AR_REVIEW_EVERY and not running
+                        and time.time() - st.get("ar_review_ts", 0) >= 12 * 3600):   # 2026-10-15: a run scans all facts (a core +
+                    # ~0.9 GB for 30+ min, and its long read blocks the WAL checkpoint: WAL grew to ~1 GB); twice a day is enough
+                    st["ar_review_at"] = done_n; st["ar_review_ts"] = time.time()
+                    if dry_run:
+                        status.append(f"ar-review: would start at {done_n} finished reports")
+                    else:
+                        subprocess.Popen([sys.executable, "-m", "reality_engine.scripts.ar_review"], cwd=ROOT,
+                                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                         creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                                         | subprocess.BELOW_NORMAL_PRIORITY_CLASS)
+                        log.info("AR review started at %d finished reports", done_n)
+            except Exception as e:
+                log.warning("AR review trigger failed: %s", e)
+        if dry_run:
+            print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] one check, nothing written")
+            print("\n".join(status))
+        else:
+            save_state(st)
+            log.info(" || ".join(status))
+            write_report(status)
         disk_prev, io_prev, t_prev = disk, io, now
+        if once:
+            return
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--report", action="store_true", help="print the report (used by the Claude Code SessionStart hook)")
     ap.add_argument("--install-startup", action="store_true", help="start the watchdog at every logon")
+    ap.add_argument("--profile", choices=("pc", "laptop"), help="with --install-startup: machine profile to write")
+    ap.add_argument("--once", action="store_true", help="do one check and exit")
+    ap.add_argument("--dry-run", action="store_true", help="print what would be done and act on nothing (implies --once)")
     a = ap.parse_args()
     if a.report:
         print_report()
     elif a.install_startup:
-        install_startup()
+        install_startup(a.profile)
     else:
         try:
-            run()
+            run(once=a.once or a.dry_run, dry_run=a.dry_run)
         except Exception:
             log.exception("watchdog crashed")
             sys.exit(1)
