@@ -10,6 +10,7 @@ Run from the repo root:
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -18,6 +19,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVER_DIR = REPO_ROOT / "plugins" / "code-intel" / "server"
@@ -25,9 +27,25 @@ SERVER = SERVER_DIR / "server.py"
 FIXTURE = REPO_ROOT / ".tmp" / "code_intel_fixture"
 LIFECYCLE = SERVER_DIR / ".cache" / "lifecycle.log"
 PROTOCOL_VERSION = "2026-07-28"
-sys.path.insert(0, str(SERVER_DIR))
+sys.path.insert(0, str(SERVER_DIR))          # so core.py's own ``import lsp`` resolves
 
-import core  # noqa: E402
+
+def _load_server_module(stem: str) -> Any:
+    """Load ``plugins/code-intel/server/<stem>.py`` under a unique module name.
+
+    dsh-worker ships a different top-level ``core``; importing this one plainly
+    makes whichever suite runs first win (the loser fails at import).
+    """
+    name = f"code_intel_server_{stem}"
+    spec = importlib.util.spec_from_file_location(name, SERVER_DIR / f"{stem}.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+core = _load_server_module("core")
 
 LANG_SERVER = core.langserver_command()
 LSP_SKIP = "no basedpyright-langserver/pyright-langserver found; " + core.INSTALL_HINT
