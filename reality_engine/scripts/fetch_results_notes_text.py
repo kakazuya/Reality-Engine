@@ -30,6 +30,7 @@ from datetime import datetime
 from pathlib import Path
 
 from reality_engine.toolbelt._common import resolve_db
+from reality_engine.raw_store import store_bytes
 
 DEFAULT_RAW_ROOT = r"D:\RealityEngine\raw"
 BSE_PDF = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/{name}"
@@ -141,8 +142,6 @@ def download(newsid: str, attachment: str, root: Path, offline: bool) -> Path | 
         return dest
     if offline:
         return None
-    part = dest.with_name(dest.name + ".part")
-    part.parent.mkdir(parents=True, exist_ok=True)
     for attempt in range(DOWNLOAD_ATTEMPTS):
         try:
             request = urllib.request.Request(BSE_PDF.format(name=attachment), headers=BSE_HEADERS)
@@ -151,10 +150,10 @@ def download(newsid: str, attachment: str, root: Path, offline: bool) -> Path | 
             if not content.startswith(b"%PDF"):
                 print(f"  not a PDF {newsid}: {content[:20]!r}")
             else:
-                part.write_bytes(content)
-                if pdf_page_count(part) > 0:
-                    os.replace(part, dest)
+                store_bytes(dest, content, index_path=root / "_dedupe" / "sha_index.db")
+                if pdf_page_count(dest) > 0:
                     return dest
+                dest.unlink(missing_ok=True)   # a truncated PDF is a cache miss, not a cache entry
                 print(f"  truncated PDF {newsid}: {len(content)} bytes")
         except urllib.error.HTTPError as exc:
             print(f"  download failed {newsid} try {attempt + 1}: HTTP {exc.code}")
@@ -164,7 +163,6 @@ def download(newsid: str, attachment: str, root: Path, offline: bool) -> Path | 
             print(f"  download failed {newsid} try {attempt + 1}: {type(exc).__name__}: {exc}")
         if attempt + 1 < DOWNLOAD_ATTEMPTS:
             time.sleep(0.5 * 2 ** attempt)
-    part.unlink(missing_ok=True)
     return None
 
 

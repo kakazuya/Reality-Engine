@@ -35,6 +35,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
 from reality_engine.config import raw_dir
+from reality_engine.raw_store import store_bytes
 
 import duckdb
 import requests
@@ -104,7 +105,7 @@ def save_pdf(content, path):
     if not content.startswith(b"%PDF"):
         raise ValueError(f"not a PDF ({content[:20]!r})")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(content)
+    store_bytes(path, content)
     return hashlib.sha256(content).hexdigest(), len(content)
 
 
