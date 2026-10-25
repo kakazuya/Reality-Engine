@@ -176,17 +176,36 @@ def cadence_max_age_days(entry: dict[str, Any]) -> float | None:
     return CADENCE_MAX_AGE_DAYS.get(str(entry.get("cadence")))
 
 
+def _coerce_day(value: Any) -> date | None:
+    """A caller-supplied window bound: date, datetime, ISO string or None."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except ValueError as exc:
+        raise RegistryError(f"window date {value!r} is not YYYY-MM-DD") from exc
+
+
 def expand_argv(
     entry: dict[str, Any],
     extra_args: list[str] | None,
     repo_root: Path,
     data_root: Path,
     now: datetime | None = None,
+    start: "date | datetime | str | None" = None,
+    end: "date | datetime | str | None" = None,
 ) -> list[str]:
+    """Expand path/date tokens; ``start``/``end`` override the default window."""
     today = (now or datetime.now(timezone.utc)).date()
+    start_day = _coerce_day(start) or date.fromordinal(today.toordinal() - 10)
+    end_day = _coerce_day(end) or today
     replacements = {
-        "{date}": today.isoformat(),
-        "{start}": date.fromordinal(today.toordinal() - 10).isoformat(),
+        "{date}": end_day.isoformat(),
+        "{start}": start_day.isoformat(),
         "{repo_root}": str(repo_root),
         "{data_root}": str(data_root),
     }

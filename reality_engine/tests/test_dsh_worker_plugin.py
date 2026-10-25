@@ -1898,6 +1898,25 @@ class PluginTests(unittest.TestCase):
         confirmed_final = self._wait_status(confirmed["job_id"], lambda s: s["final"])
         self.assertEqual(confirmed_final["phase"], "finished", confirmed_final)
 
+    def test_expand_argv_window_override(self):
+        """start_job's optional window replaces {start}/{date}; defaults stay."""
+        entry = {"argv": ["python", "job.py", "--start", "{start}", "--end", "{date}"]}
+        now = datetime(2026, 10, 21, 3, 0, tzinfo=timezone.utc)
+        data_root = self.root / "reality_engine" / "data"
+        default = jobs.expand_argv(entry, [], self.root, data_root, now)
+        self.assertEqual(default[2:], ["--start", "2026-10-11", "--end", "2026-10-21"])
+        explicit = jobs.expand_argv(
+            entry, [], self.root, data_root, now, start="2026-09-01", end="2026-09-05"
+        )
+        self.assertEqual(
+            explicit[2:], ["--start", "2026-09-01", "--end", "2026-09-05"]
+        )
+        # positionally identical to the old signature
+        legacy = jobs.expand_argv(entry, [], self.root, data_root, now)
+        self.assertEqual(legacy, default)
+        with self.assertRaises(jobs.RegistryError):
+            jobs.expand_argv(entry, [], self.root, data_root, now, start="yesterday")
+
     def test_resource_lock_contention(self):
         hold = self._fake_job(
             "hold_db", "import time; time.sleep(20)",
