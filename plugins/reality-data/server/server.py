@@ -206,16 +206,17 @@ def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
     description=(
         "Hybrid vector + FTS search over concalls, presentations, annual reports, "
         "announcements, RBI, government/budget/PIB documents. Filters: symbol, doc_types, "
-        "date_from, date_to. Each hit carries text, doc_id, doc_type, symbol, isin, date, "
-        "page, url, score and source. Degrades to FTS when the local dense index/embedder "
-        "is unavailable (reported by the search module's warm/status). Results are "
-        "quarantine-filtered."
+        "date_from, date_to, as_of (point-in-time; rows dated later are dropped and "
+        "counted in hidden_after_as_of). Each hit carries text, doc_id, doc_type, symbol, "
+        "isin, date, page, url, score and source (fts, local_dense, seed_dense or "
+        "paid_dense; '+' when fused). Degrades to FTS when no dense path is available "
+        "(reported by the search module's warm/status). Results are quarantine-filtered."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
 def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | None = None,
                 date_from: str | None = None, date_to: str | None = None,
-                top_k: int = 10) -> dict[str, Any]:
+                top_k: int = 10, as_of: str | None = None) -> dict[str, Any]:
     def call() -> dict[str, Any]:
         mod = _load_search()
         if mod is None:
@@ -242,12 +243,16 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
                 if hit.get("match_type") in ("symbol", "isin") and hit.get("score", 0) >= 95:
                     inferred = hit.get("nse_symbol") or hit.get("bse_symbol") or hit.get("isin")
                     break
+        hidden = 0
+        results_as_of = as_of
         try:
             results = fn(query, symbol=symbol or inferred, doc_types=doc_types, date_from=date_from,
-                         date_to=date_to, top_k=top)
+                         date_to=date_to, top_k=top, as_of=as_of)
         except ValueError as exc:
             raise core.DataError("bad_request", str(exc))
         if isinstance(results, dict):
+            hidden = int(results.get("hidden_after_as_of") or 0)
+            results_as_of = results.get("as_of", as_of)
             results = results.get("results", [])
         results = list(results or [])
         qids = core.quarantined_doc_ids()
@@ -262,7 +267,7 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
                 if doc_id not in qids:
                     filtered.append(hit)
             results = filtered
-        return {
+        payload = {
             "query": query,
             "symbol_scope": symbol or inferred,
             "count": len(results),
@@ -274,6 +279,10 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
                 "quarantine_doc_ids_excluded": len(qids),
             },
         }
+        if as_of is not None:
+            payload["as_of"] = results_as_of
+            payload["hidden_after_as_of"] = hidden
+        return payload
     return _safe(call)
 
 

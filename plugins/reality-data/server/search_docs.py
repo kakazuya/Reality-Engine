@@ -1,20 +1,25 @@
 """Hybrid document search over the Reality Engine data root.
 
-Index choice (2026-10-24, updated)
+Index choice (2026-10-25, updated)
 ---------------------------------
-The current dense indexes are the 4,096-dim cloud-model indexes:
-``vector_index_nemotron8b`` (340,887 chunks, tiers 0-2: concall, presentation,
-announcement, news, macro) and ``vector_index_qwen8b_ar`` (1,367,706 rows,
-tier 3 annual reports; only 61,440 rows have ``done=True`` and only those are
-searchable).  Query vectors come from :mod:`query_embed` (DeepInfra
-Nemotron-3-Embed-8B / Nebius Qwen3-Embedding-8B).  The old bge-small
-``vector_index`` (384-dim) is kept as an optional local leg for when its ONNX
-embedder exists, but it is not the primary path.
+Dense retrieval runs on the vectors that are already stored, at no cost
+(:mod:`dense_free`):
+
+* ``seed_dense`` — the 4,096-dim Nemotron (340,887 chunks, tiers 0-2) and Qwen
+  (1,367,706 AR rows, 61,440 ``done``) indexes.  FTS finds the best 3-5 chunks,
+  their stored vectors are averaged into the query vector, and cosine top-k
+  runs against the same mmap'd matrix.  No provider call.
+* ``local_dense`` — the old bge-small ``vector_index`` (384-dim), embedded
+  locally through the ONNX embedder (DirectML/CPU).
+* ``paid_dense`` — only with ``REALITY_DATA_ALLOW_PAID_EMBED=1`` and only when
+  the seed path found nothing; :mod:`query_embed` then buys the query vector.
 
 Search is FTS5 lexical (``intelligence_fts``) + annual-report fact quotes
-(``ar_facts.db``) + dense retrieval, fused with reciprocal rank fusion.  When a
-provider key or call fails, the dense leg silently degrades and every hit stays
-honestly labelled ``fts``.  ``ar_facts`` is queried only for a
+(``ar_facts.db``) + dense retrieval, fused with reciprocal rank fusion.  Each
+hit reports the path(s) that produced it (``fts``, ``local_dense``,
+``seed_dense``, ``paid_dense``; ``+`` when fused).  ``as_of`` drops candidates
+whose document date is later and returns ``hidden_after_as_of``.  ``ar_facts``
+is queried only for a
 ``symbol``/ISIN-scoped request: annual reports are stored there (quote + page)
 while ``document_chunks`` keeps the other document types, and a symbol-less
 scan of the 20 GB AR DB is too slow to sit in the general path.  This is also
@@ -50,6 +55,12 @@ except ModuleNotFoundError:  # a script launch may not have the checkout root on
     sys.path.append(str(Path(__file__).resolve().parents[3]))
     from reality_engine.db.readonly import connect_ro
 
+try:
+    import dense_free
+except ModuleNotFoundError:  # script launch: the server dir may not be on sys.path
+    sys.path.append(str(Path(__file__).resolve().parent))
+    import dense_free
+
 logger = logging.getLogger("reality_engine.plugins.search_docs")
 
 DEFAULT_DATA_ROOT = Path(
@@ -59,6 +70,8 @@ DB_NAME = "equity_intelligence.db"
 AR_DB_NAME = "ar_facts.db"
 RRF_K = 60
 MAX_QUERY_TOKENS = 12
+PAID_EMBED_FLAG = "REALITY_DATA_ALLOW_PAID_EMBED"
+SOURCE_ORDER = ("fts", "local_dense", "seed_dense", "paid_dense")
 
 # Official policy corpus gets a small fusion boost for policy-intent queries so
 # "repo rate decision" ranks RBI/MPC statements above company filings that
@@ -531,6 +544,30 @@ def _passes(
     return True
 
 
+def _equity_row_ok(
+    state: _State,
+    row: Dict[str, Any],
+    types: Optional[Set[str]],
+    date_lo: Optional[str],
+    date_hi: Optional[str],
+) -> bool:
+    """Filters + quarantine for an equity/vector row (AR fact rows differ)."""
+    return (
+        _passes(row["doc_type"], row["date"], row["isin"], types, date_lo, date_hi)
+        and str(row["_isin"]).upper() not in state.quarantined["master_companies"]
+        and str(row["_cid"]) not in state.quarantined["document_chunks"]
+        and str(row["_doc_id"]) not in state.quarantined["raw_documents"]
+    )
+
+
+def _tie_cid(row: Dict[str, Any]) -> int:
+    """Chunk id for deterministic tie-breaks; AR fact rows sort last."""
+    try:
+        return int(row["_cid"]) if row.get("_cid") is not None else 1 << 62
+    except (TypeError, ValueError):
+        return 1 << 62
+
+
 def _resolve_symbol(state: _State, symbol: Optional[str]) -> Tuple[Set[str], Set[str]]:
     aliases: Set[str] = set()
     isins: Set[str] = set()
@@ -664,6 +701,7 @@ def _rows_from_hits(state: _State, hits: Sequence[Dict[str, Any]],
                     limit: int) -> List[Dict[str, Any]]:
     if not hits or state.db is None:
         return []
+    hits = dense_free.order_hits(hits)   # score desc, chunk id asc (reproducible)
     ids = [int(h["chunk_id"]) for h in hits]
     placeholders = ",".join("?" * len(ids))
     try:
@@ -728,6 +766,38 @@ def _vector_rows(
     return _rows_from_hits(state, hits, limit)
 
 
+def _seed_rows(
+    state: _State,
+    fts_rows: Sequence[Dict[str, Any]],
+    query: str,
+    index_name: str,
+    aliases: Set[str],
+    isins: Set[str],
+    limit: int,
+) -> List[Dict[str, Any]]:
+    """Free dense leg: average the stored vectors of the top FTS chunks.
+
+    No provider call: the query vector is built from vectors already in the
+    index (see :mod:`dense_free`).
+    """
+    if state.db is None or not fts_rows:
+        return []
+    seed_ids = [
+        int(row["_cid"]) for row in fts_rows if row.get("_cid") is not None
+    ][: dense_free.SEED_K * 4]
+    allowed = _allowed_chunk_ids(state, aliases, isins)
+    if allowed is not None and not allowed:
+        return []
+    try:
+        hits = dense_free.seed_search(
+            query, index_name, seed_ids, top_k=max(limit, 1), allow_ids=allowed
+        )
+    except Exception as exc:  # corrupt/missing index: honest FTS-only fallback
+        logger.debug("search_docs: seed dense %s miss: %s", index_name, exc)
+        return []
+    return _rows_from_hits(state, hits, limit)
+
+
 def _dense_rows(
     state: _State,
     query: str,
@@ -736,7 +806,7 @@ def _dense_rows(
     isins: Set[str],
     limit: int,
 ) -> List[Dict[str, Any]]:
-    """4096-d cloud-index dense leg; returns [] on any key/provider failure."""
+    """Paid 4096-d dense leg; returns [] on any key/provider failure."""
     if state.db is None:
         return []
     try:
@@ -918,14 +988,20 @@ def search_docs(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     top_k: int = 10,
-) -> List[Dict[str, Any]]:
+    as_of: Optional[str] = None,
+) -> Any:
     """Hybrid document search.
 
     Returns up to ``top_k`` passages with keys ``text``, ``doc_id``,
     ``doc_type``, ``symbol``, ``isin``, ``date``, ``page``, ``url``,
-    ``score`` and ``source``.  ``source`` is ``vector``, ``fts`` or ``both``;
-    when the dense index/embedder is unavailable every hit is ``fts`` (the
-    fallback is reported by :func:`warm`/:func:`status`).
+    ``score`` and ``source``.  ``source`` names the path that produced the hit
+    — ``fts``, ``local_dense``, ``seed_dense`` or ``paid_dense``, joined with
+    ``+`` when several legs agree.
+
+    ``as_of`` (``YYYY``, ``YYYY-MM`` or ``YYYY-MM-DD``) is a point-in-time
+    cut: candidate rows dated after it are dropped.  With ``as_of`` the return
+    is ``{"results": [...], "hidden_after_as_of": n, "as_of": day}``; without
+    it, a plain list.
     """
     if not query or not str(query).strip():
         return []
@@ -941,6 +1017,7 @@ def search_docs(
     date_hi = _date_bound(date_to, end=True)
     if date_lo and date_hi and date_lo > date_hi:
         raise ValueError("date_from is after date_to")
+    as_of_day = _date_bound(as_of, end=True) if as_of is not None else None
 
     state = _state()
     if state is None or (state.db is None and state.ar is None):
@@ -953,10 +1030,7 @@ def search_docs(
         fts_rows = [
             row
             for row in _equity_fts_rows(state, query, aliases, isins, pool)
-            if _passes(row["doc_type"], row["date"], row["isin"], types, date_lo, date_hi)
-            and str(row["_isin"]).upper() not in state.quarantined["master_companies"]
-            and str(row["_cid"]) not in state.quarantined["document_chunks"]
-            and str(row["_doc_id"]) not in state.quarantined["raw_documents"]
+            if _equity_row_ok(state, row, types, date_lo, date_hi)
         ]
         ar_rows = [
             row
@@ -964,51 +1038,71 @@ def search_docs(
             if _passes(row["doc_type"], row["date"], row["isin"], types, date_lo, date_hi)
         ]
 
-        vector_rows: List[Dict[str, Any]] = []
+        # Dense legs, kept as (rows, source) so each leg's ranks survive the
+        # fusion.  Free legs first; paid only as a flagged fallback.
+        dense_legs: List[Tuple[List[Dict[str, Any]], str]] = []
+
+        local_rows: List[Dict[str, Any]] = []
         if state.vector is not None and state.embedder is not None:
             try:
-                query_vec = state.embedder.embed(query, is_query=True)
+                query_vec = dense_free.local_query_vector(state.embedder, query)
             except Exception as exc:
-                logger.debug("search_docs: query embed miss: %s", exc)
+                logger.debug("search_docs: local query embed miss: %s", exc)
                 query_vec = None
-            if query_vec:
-                vector_rows = [
+            if query_vec is not None:
+                local_rows = [
                     row
                     for row in _vector_rows(state, query_vec, aliases, isins, pool)
-                    if _passes(row["doc_type"], row["date"], row["isin"], types, date_lo, date_hi)
-                    and str(row["_isin"]).upper() not in state.quarantined["master_companies"]
-                    and str(row["_cid"]) not in state.quarantined["document_chunks"]
-                    and str(row["_doc_id"]) not in state.quarantined["raw_documents"]
+                    if _equity_row_ok(state, row, types, date_lo, date_hi)
                 ]
+        dense_legs.append((local_rows, "local_dense"))
 
-        def _add_dense(index_name: str) -> None:
-            rows = _dense_rows(state, query, index_name, aliases, isins, pool)
+        # Seed-vector expansion on the already-paid Nemotron/Qwen indexes:
+        # FTS's top chunks supply the query vector, so no provider call.
+        seeded: Set[str] = set()
+        tiers = (
+            ("qwen8b_ar", types is None or "annual_report" in types),
+            ("nemotron8b", types is None or bool(types - {"annual_report"})),
+        )
+        for index_name, applies in tiers:
+            if applies:
+                rows = [
+                    row
+                    for row in _seed_rows(
+                        state, fts_rows, query, index_name, aliases, isins, pool
+                    )
+                    if _equity_row_ok(state, row, types, date_lo, date_hi)
+                ]
+                if rows:
+                    seeded.add(index_name)
+                    dense_legs.append((rows, "seed_dense"))
+
+        if os.environ.get(PAID_EMBED_FLAG, "").strip() == "1":
+            for index_name, applies in tiers:
+                if not applies or index_name in seeded:
+                    continue
+                paid_rows = [
+                    row
+                    for row in _dense_rows(state, query, index_name, aliases, isins, pool)
+                    if _equity_row_ok(state, row, types, date_lo, date_hi)
+                ]
+                dense_legs.append((paid_rows, "paid_dense"))
+
+        # A chunk can come from several dense legs; keep its best-ranked leg.
+        seen_dense: Set[Tuple[str, Any]] = set()
+        deduped_legs: List[Tuple[List[Dict[str, Any]], str]] = []
+        for rows, source in dense_legs:
+            kept = []
             for row in rows:
-                if not _passes(row["doc_type"], row["date"], row["isin"], types, date_lo, date_hi):
+                if row["key"] in seen_dense:
                     continue
-                if str(row["_isin"]).upper() in state.quarantined["master_companies"]:
-                    continue
-                if str(row["_cid"]) in state.quarantined["document_chunks"]:
-                    continue
-                if str(row["_doc_id"]) in state.quarantined["raw_documents"]:
-                    continue
-                vector_rows.append(row)
-
-        # Tier split: qwen8b_ar carries annual reports (tier 3); nemotron8b
-        # carries concall/presentation/announcement/news/macro (tiers 0-2).
-        if types is None or "annual_report" in types:
-            _add_dense("qwen8b_ar")
-        if types is None or bool(types - {"annual_report"}):
-            _add_dense("nemotron8b")
-        # A chunk can be returned by both the optional bge leg and a 4096-d leg.
-        seen_vec = set()
-        vector_rows = [
-            row for row in vector_rows
-            if not (row["key"] in seen_vec or seen_vec.add(row["key"]))
-        ]
+                seen_dense.add(row["key"])
+                kept.append(row)
+            if kept:
+                deduped_legs.append((kept, source))
 
         # Reciprocal rank fusion.  Equity FTS first (it carries the richest
-        # metadata), then AR facts, then the dense list.
+        # metadata), then AR facts, then the dense legs.
         merged: Dict[str, Dict[str, Any]] = {}
 
         def add(rows: List[Dict[str, Any]], source: str) -> None:
@@ -1021,7 +1115,8 @@ def search_docs(
 
         add(fts_rows, "fts")
         add(ar_rows, "fts")
-        add(vector_rows, "vector")
+        for rows, source in deduped_legs:
+            add(rows, source)
 
         tokens = set(_query_tokens(query))
         policy_query = bool(tokens & POLICY_TERMS)
@@ -1032,13 +1127,22 @@ def search_docs(
             if policy_query and row["doc_type"] in OFFICIAL_TYPES:
                 score += POLICY_BOOST
             ranked.append((score, entry))
-        ranked.sort(key=lambda item: item[0], reverse=True)
+        # Equal scores drop to chunk id, so the same query always ranks the same.
+        ranked.sort(
+            key=lambda item: (-item[0], _tie_cid(item[1]["row"]), item[1]["row"]["key"])
+        )
 
         out: List[Dict[str, Any]] = []
-        for score, entry in ranked[:top_k]:
+        hidden = 0
+        for score, entry in ranked:
             row = entry["row"]
+            day = (row.get("date") or "")[:10]
+            if as_of_day and day and day > as_of_day:
+                hidden += 1
+                continue
+            if len(out) >= top_k:
+                continue
             sources = entry["sources"]
-            source = "both" if len(sources) > 1 else next(iter(sources))
             out.append(
                 {
                     "text": row["text"],
@@ -1050,9 +1154,11 @@ def search_docs(
                     "page": row["page"],
                     "url": row["url"],
                     "score": round(float(score), 6),
-                    "source": source,
+                    "source": "+".join(s for s in SOURCE_ORDER if s in sources),
                 }
             )
+        if as_of is not None:
+            return {"as_of": as_of_day, "hidden_after_as_of": hidden, "results": out}
         return out
 
 
