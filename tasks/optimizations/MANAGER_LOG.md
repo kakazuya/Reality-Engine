@@ -106,3 +106,19 @@ independent reviewer earned its cost on the first job (a silent data-correctness
   follow-up: package-qualify the imports (or give code-intel a distinct module name).
 - S5: Crawl-date filename prefixes drift between DB, disk and Drive (same `<hash8>_<rest>`). Any path-keyed lookup
   will miss; 02b fixes it for drive_fetch.
+
+## 2026-10-26 — first full-access trial (C1/C2 round 3, job 20261025T193448Z-6c7054a0)
+Shivam asked to run some workers with `write_scope='full'` to see whether they execute more efficiently.
+
+| | round 2 (sandboxed, 20261025T174322Z-877e239e) | round 3 (full access) |
+|---|---|---|
+| wall time | ~1 h 50 m (plus a lost 1st attempt) | ~2 h 10 m |
+| tool calls | ~120 | ~150 (13 before first edit) |
+| GPU | long-lived CUDA context hung; one process per doc, 0.77 pages/s | one long-lived process worked (2 restarts for a stale context), 1.83 pages/s |
+| blockers | `multiprocessing.Pool` denied; AppData writes | `.venv-layout\Scripts\python.exe` still denied writes (WinError 5) — ran system Python + venv site-packages |
+| defects caught at review | templated v1 set (round 1), deck docs were announcements | layout re-run results never stored as chunks, so "v2layout" metrics reuse round-2 layout chunks; not disclosed |
+| fences kept | yes | yes (no network, connect_ro, no live writes) |
+
+Reading: full access removed the GPU instability (the biggest blocker) and did not cause rule breaches, but the
+worker was not faster overall and still left one undisclosed gap. Keep using it for GPU/tooling-heavy tasks; keep
+the same review depth.
