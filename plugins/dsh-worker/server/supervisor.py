@@ -234,8 +234,18 @@ def _workspace(job: dict[str, Any], job_dir: Path) -> Path:
     return Path(str(job.get("workspace") or job.get("repo_root") or job_dir))
 
 
-def _tmp_dir(job: dict[str, Any], job_dir: Path) -> Path:
-    return _workspace(job, job_dir) / ".tmp"
+def _tmp_dir(job: dict[str, Any], job_dir: Path) -> Path | None:
+    """The workspace scratch dir, or None when it escapes via a reparse point.
+
+    The supervisor runs unsandboxed and writes request results into
+    ``<workspace>/.tmp``.  A worker can replace that directory with a junction
+    (or symlink) to somewhere else, so a reparse point is refused instead of
+    followed, and the caller records ``tmp_reparse_point`` in status.
+    """
+    tmp = _workspace(job, job_dir) / ".tmp"
+    if gitutil._is_reparse_point(tmp):
+        return None
+    return tmp
 
 
 class _Orientation:
@@ -279,6 +289,8 @@ class _Orientation:
 
 
 def _read_request(path: Path) -> dict[str, Any] | None:
+    if gitutil._is_reparse_point(path.parent):
+        return None
     try:
         raw = path.read_text(encoding="utf-8")[:MAX_REQUEST_BYTES]
     except FileNotFoundError:
@@ -293,6 +305,12 @@ def _read_request(path: Path) -> dict[str, Any] | None:
 
 
 def _finish_request(request: Path, result_path: Path, result: dict[str, Any]) -> None:
+    # Re-check at write time: the worker may have swapped .tmp for a junction
+    # between the poll's check and this result.
+    if gitutil._is_reparse_point(request.parent) or gitutil._is_reparse_point(
+        result_path.parent
+    ):
+        return
     result["at"] = iso()
     try:
         atomic_write_json(result_path, result)
@@ -540,6 +558,15 @@ def _handle_launch_request(
 
 def _poll_aux(job: dict[str, Any], job_dir: Path, status: dict[str, Any]) -> None:
     tmp = _tmp_dir(job, job_dir)
+    if tmp is None:
+        if not status.get("tmp_reparse_point"):
+            status["tmp_reparse_point"] = True
+            status.setdefault("warnings", []).append(
+                "tmp_reparse_point: <workspace>/.tmp is a junction/symlink; "
+                "worker requests are refused"
+            )
+            _write_status_soft(job_dir, status)
+        return
     try:
         _handle_commit_request(job, job_dir, status, tmp)
         _handle_launch_request(job, job_dir, status, tmp)
@@ -844,14 +871,22 @@ def main(argv: list[str] | None = None) -> int:
     # must be inside the workspace, or the worker's own write is denied by the
     # sandbox (the old job-dir path is outside it).
     notes_path = job_dir / progress.PROGRESS_NOTES_FILE
-    try:
-        tmp.mkdir(parents=True, exist_ok=True)
-        status["tmp_dir"] = str(tmp)
-        notes_path = tmp / progress.PROGRESS_NOTES_FILE
-    except OSError as exc:
-        _log(f"cannot create {tmp} ({type(exc).__name__}: {exc}); worker keeps ambient temp")
+    if tmp is None:
+        status["tmp_reparse_point"] = True
+        status.setdefault("warnings", []).append(
+            "tmp_reparse_point: <workspace>/.tmp is a junction/symlink; "
+            "worker requests are refused and the worker keeps ambient temp"
+        )
+        _write_status_soft(job_dir, status)
+    else:
+        try:
+            tmp.mkdir(parents=True, exist_ok=True)
+            status["tmp_dir"] = str(tmp)
+            notes_path = tmp / progress.PROGRESS_NOTES_FILE
+        except OSError as exc:
+            _log(f"cannot create {tmp} ({type(exc).__name__}: {exc}); worker keeps ambient temp")
     env["DSH_WORKER_PROGRESS_NOTES"] = str(notes_path)
-    if tmp.is_dir():
+    if tmp is not None and tmp.is_dir():
         env["TMP"] = str(tmp)
         env["TEMP"] = str(tmp)
         env["TMPDIR"] = str(tmp)

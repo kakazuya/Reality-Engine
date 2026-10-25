@@ -760,14 +760,20 @@ class Manager:
 
         Only mutating jobs take a workspace lock, so an active repo-root lock is
         exactly "a mutating repo-root job may be rewriting code the manager is
-        about to execute".  Fails closed when the record is unreadable.
+        about to execute".  A missing lock means no writer; a lock that exists
+        but cannot be read or validated (partial write, bad JSON, permissions,
+        a directory) fails closed instead of being treated as absent.
         """
+        path = self._lock_path(self.config.repo_root)
         try:
-            existing, _ = read_json_bounded(self._lock_path(self.config.repo_root), 65_536)
-        except PluginError:
-            return True
-        if not isinstance(existing, dict):
+            path.lstat()
+        except FileNotFoundError:
             return False
+        except OSError:
+            return True
+        existing, _ = read_json_bounded(path, 65_536)
+        if not isinstance(existing, dict):
+            return True
         return self._lock_active(existing)
 
     def _acquire_lock(self, workspace: Path, job_id: str) -> Path:
@@ -1249,6 +1255,12 @@ class Manager:
                 "path": None,
                 "regenerated": False,
             }
+            # Take the mutation lock BEFORE attaching the pack: the pack guard
+            # reads this lock, and a starting repo-root writer must never let
+            # the unsandboxed manager run the builder.  The lock's status is
+            # not published yet, so the guard fails closed for this start.
+            if mutating:
+                lock_path = self._acquire_lock(ws, job_id)
             if context_pack:
                 text, pack_warnings, context_info = attach_context_pack(
                     text,
@@ -1264,8 +1276,6 @@ class Manager:
             # Standing instruction, not a question: the worker must never stop
             # or answer it, only append a progress line.
             text = f"{text.rstrip()}\n\n{PROGRESS_NOTES_INSTRUCTION}\n"
-            if mutating:
-                lock_path = self._acquire_lock(ws, job_id)
             atomic_write_text(job_dir / "brief.md", text)
             baseline = (
                 gitutil.snapshot(
@@ -1940,6 +1950,7 @@ class Manager:
             ),
             "resource_locks": status.get("resource_locks") or job.get("resource_locks") or [],
             "tmp_dir": status.get("tmp_dir"),
+            "tmp_reparse_point": bool(status.get("tmp_reparse_point")),
             "tool_calls_before_first_edit": (
                 status.get("tool_calls_before_first_edit")
                 if status.get("tool_calls_before_first_edit") is not None

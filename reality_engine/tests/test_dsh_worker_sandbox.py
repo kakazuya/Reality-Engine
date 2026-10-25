@@ -290,6 +290,16 @@ class WriteScopeValidationTests(unittest.TestCase):
         self.addCleanup(
             self.manager.cancel_worker, writer["job_id"], True, "test cleanup"
         )
+        # The writer's OWN start takes the lock before attaching the pack, so
+        # its own unverifiable lock already suppresses builder execution.  This
+        # assertion holds in every environment, not only where the fake builder
+        # happens to fail to import.
+        self.assertFalse(writer["context_pack"]["regenerated"], writer["context_pack"])
+        self.assertEqual(
+            writer["context_pack"].get("regeneration_skipped"),
+            "repo_root_writer_active",
+        )
+        self.assertFalse(marker.exists(), "the writer's own start executed the builder")
         deadline = time.monotonic() + 15.0
         while time.monotonic() < deadline and not self.manager._repo_root_writer_active():
             time.sleep(0.1)
@@ -311,6 +321,19 @@ class WriteScopeValidationTests(unittest.TestCase):
             reader["warnings"],
         )
         self.assertEqual(pack.read_text(encoding="utf-8"), "# old pack\n")
+
+    def test_context_pack_guard_fails_closed_on_an_unreadable_lock(self) -> None:
+        # Outside the sandbox the lock record can be a partial write, bad JSON
+        # or unreadable.  Only a MISSING lock proves no repo-root writer exists;
+        # an existing but unverifiable record must skip regeneration too.
+        lock = self.manager._lock_path(self.manager.config.repo_root)
+        self.assertFalse(self.manager._repo_root_writer_active())
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        for corrupt in ("{not json", "", "[]"):
+            lock.write_text(corrupt, encoding="utf-8")
+            self.assertTrue(self.manager._repo_root_writer_active(), corrupt)
+        lock.unlink()
+        self.assertFalse(self.manager._repo_root_writer_active())
 
     def test_data_job_records_scope_and_holds_db_lock(self) -> None:
         started = self.manager.start_worker(
@@ -1032,6 +1055,55 @@ class DetachedRequestTests(unittest.TestCase):
         )
         result = json.loads((tmp / "launch.result.json").read_text(encoding="utf-8"))
         self.assertEqual(result["error"], "log_outside_allowed_roots")
+
+
+class TmpReparsePointTests(unittest.TestCase):
+    def test_tmp_junction_is_refused_not_followed(self) -> None:
+        # LOW from the final review: a worker can replace <workspace>/.tmp with a
+        # junction; the unsandboxed supervisor must not read requests from it or
+        # write answers through it.
+        if sys.platform != "win32":
+            self.skipTest("junctions are a Windows reparse-point feature")
+        TEST_TMP.mkdir(parents=True, exist_ok=True)
+        root = make_temp_dir(TEST_TMP, "sandbox-tmp-junction-")
+        self.addCleanup(lambda: remove_tree(root))
+        outside = root / "outside"
+        outside.mkdir()
+        request = outside / "commit.request.json"
+        request.write_text(json.dumps({"message": "worker commit"}), encoding="utf-8")
+        made = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(root / ".tmp"), str(outside)],
+            capture_output=True,
+            text=True,
+        )
+        if made.returncode != 0:
+            self.skipTest(f"cannot create a junction here: {made.stderr.strip()[:200]}")
+        self.addCleanup(
+            lambda: subprocess.run(
+                ["cmd", "/c", "rmdir", str(root / ".tmp")],
+                capture_output=True,
+                text=True,
+            )
+        )
+        job = {"job_id": "x", "workspace": str(root), "repo_root": str(root)}
+        self.assertIsNone(supervisor._tmp_dir(job, root))
+        status: dict = {"worker_commits": [], "detached": []}
+        supervisor._poll_aux(job, root, status)
+        self.assertTrue(status["tmp_reparse_point"])
+        self.assertTrue(
+            any("tmp_reparse_point" in warning for warning in status["warnings"]),
+            status["warnings"],
+        )
+        self.assertFalse((outside / "commit.result.json").exists())
+        self.assertTrue(request.is_file(), "the request must not be consumed")
+        # The answer path re-checks too (a swap between read and write).
+        supervisor._finish_request(
+            root / ".tmp" / "commit.request.json",
+            root / ".tmp" / "commit.result.json",
+            {"ok": True},
+        )
+        self.assertFalse((outside / "commit.result.json").exists())
+        self.assertTrue(request.is_file(), "the request must not be answered")
 
 
 if __name__ == "__main__":
