@@ -320,6 +320,7 @@ def connect(db_path, timeout=DB_TIMEOUT):
         db.executescript(DDL)
         db.execute("BEGIN IMMEDIATE")
         db.rollback()
+        db.execute("PRAGMA busy_timeout = 600000")   # fail fast only at startup; later brief locks wait as before
         return db
     except sqlite3.OperationalError as e:
         db.close()
