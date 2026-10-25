@@ -19,6 +19,7 @@ import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
+from reality_engine.config import PDFS_DIR
 
 from curl_cffi import requests
 
@@ -81,7 +82,7 @@ def main():
         sha = hashlib.sha256(r.content).hexdigest()
         if eq.execute("SELECT 1 FROM corporate_documents WHERE sha256_hash=?", (sha,)).fetchone():
             print(f"  {sym} {key}: same bytes already stored under another URL; skipped"); continue
-        d = DATA / "pdfs" / sym / "ANNUAL_REPORT"
+        d = PDFS_DIR / sym / "ANNUAL_REPORT"
         d.mkdir(parents=True, exist_ok=True)
         path = d / f"{datetime.now():%Y%m%d}_{sha[:8]}_{key}.pdf"
         path.write_bytes(r.content)

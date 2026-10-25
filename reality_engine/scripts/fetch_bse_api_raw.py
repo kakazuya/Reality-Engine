@@ -3,7 +3,7 @@ Raw BSE disclosure fetcher (download only, no DB writes).
 
 Uses the shared BSE session from ``bse_client`` (curl_cffi browser TLS; plain
 ``requests`` gets HTTP 403 from api.bseindia.com) and writes one file per month
-into ``reality_engine/data/raw_market/<dataset>/``.
+into ``RAW_ROOT/raw_market/<dataset>/``.
 
 Datasets:
   bse_bulk      Bulk deals    BulkDealData_ng/w?DealType=1  monthly JSON
@@ -24,10 +24,11 @@ import json
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 from reality_engine.ingestion.bse_client import BSE_HEADERS, _module_session
 
-ROOT = Path(__file__).resolve().parents[1] / "data" / "raw_market"
+ROOT = raw_dir("raw_market")
 API = "https://api.bseindia.com/BseIndiaAPI/api/"
 PACE_SEC = 1.5
 

@@ -1,6 +1,6 @@
 """Merge every remaining INE_AUTO_* placeholder ISIN into its real ISIN, across all tables (2026-10-16).
 
-Follows rekey_placeholder_isins.py (documents/AR facts, by symbol). Mapping file: reality_engine/data/ar_queue/
+Follows rekey_placeholder_isins.py (documents/AR facts, by symbol). Mapping file: RAW_ROOT/ar_queue/
 placeholder_isin_map.json  {placeholder: [source, real_isin, history]} where source is master (one real ISIN in
 master_companies for the symbol), nse / bse (latest ISIN the symbol traded under in mkt_nse_eq_daily /
 mkt_bse_eq_daily) or none (left alone).
@@ -21,6 +21,7 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 EQ_PLAIN = ["corporate_documents", "daily_price_delivery", "eod_scrip_calls", "intelligence_fts", "document_chunks",
@@ -43,8 +44,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     a = ap.parse_args()
-    m = {p: v[1] for p, v in json.loads((DATA / "ar_queue" / "placeholder_isin_map.json").read_text()).items() if v[1]}
-    src = {p: v[0] for p, v in json.loads((DATA / "ar_queue" / "placeholder_isin_map.json").read_text()).items()}
+    m = {p: v[1] for p, v in json.loads((raw_dir("ar_queue") / "placeholder_isin_map.json").read_text()).items() if v[1]}
+    src = {p: v[0] for p, v in json.loads((raw_dir("ar_queue") / "placeholder_isin_map.json").read_text()).items()}
     eq = sqlite3.connect(DATA / "equity_intelligence.db", timeout=300)
     ts = datetime.now().isoformat(timespec="seconds")
     log = []

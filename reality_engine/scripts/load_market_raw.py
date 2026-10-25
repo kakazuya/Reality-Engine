@@ -51,7 +51,7 @@ import pandas as pd
 from reality_engine import config as cfg
 from reality_engine.ingestion.corporate_actions_client import CorporateActionsClient
 
-RAW = cfg.DATA_DIR / "raw_market"
+RAW = cfg.raw_dir("raw_market")
 
 DDL = """
 CREATE TABLE IF NOT EXISTS mkt_load_log (

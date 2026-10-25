@@ -17,7 +17,7 @@ Hard reports (> 10% of numbers not found in the text; Claude Haiku helper agents
   python -m reality_engine.scripts.ar_queue export-docs --run h01 --doc-ids 63537 --misses-only
   python -m reality_engine.scripts.ar_queue missing --run h01                 # folders still without answers
   python -m reality_engine.scripts.ar_queue import-docs --run h01 [--dry]
-Run folders: reality_engine/data/ar_queue/<run>/ (manifest.json, NNNN.prompt.txt from export, NNNN.out.txt from readers).
+Run folders: RAW_ROOT/ar_queue/<run>/ (manifest.json, NNNN.prompt.txt from export, NNNN.out.txt from readers).
 """
 import argparse
 import collections
@@ -28,11 +28,12 @@ import sqlite3
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 from reality_engine.scripts import ingest_annual_reports as ar
 from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
 
-QUEUE = ar.DATA / "ar_queue"
+QUEUE = raw_dir("ar_queue")
 STUDY_TEST = ar.ROOT / "tasks" / "ar_study" / "free_test"
 MAX_LINES = 1800          # OpenCode's read tool returns 2000 lines per call; keep a piece readable in one call
 CLAIM_HOURS = 72

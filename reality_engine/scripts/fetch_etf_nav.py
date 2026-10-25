@@ -30,12 +30,13 @@ import sqlite3
 import time
 import zipfile
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 import requests
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 DB = DATA / "equity_intelligence.db"
-RAW = DATA / "raw_market"
+RAW = raw_dir("raw_market")
 AMFI = "https://portal.amfiindia.com/DownloadNAVHistoryReport_Po.aspx?frmdt={a}&todt={b}"
 DDL = """
 CREATE TABLE IF NOT EXISTS etf_px (date TEXT, symbol TEXT, isin TEXT, close REAL, volume REAL, value_inr REAL,

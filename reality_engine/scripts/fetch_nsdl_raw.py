@@ -1,7 +1,7 @@
 """
 Raw NSDL FPI report fetcher (download only, no DB writes).
 
-Saves HTML pages from fpi.nsdl.co.in into ``reality_engine/data/raw_market/<dataset>/``:
+Saves HTML pages from fpi.nsdl.co.in into ``RAW_ROOT/raw_market/<dataset>/``:
 
   nsdl_fpi_daily       Daily FPI flows (equity / debt / debt-VRR / hybrid, by route).
                        The Archive form returns every day of the month up to the
@@ -29,10 +29,11 @@ import re
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 import requests
 
-ROOT = Path(__file__).resolve().parents[1] / "data" / "raw_market"
+ROOT = raw_dir("raw_market")
 BASE = "https://www.fpi.nsdl.co.in/web/"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")

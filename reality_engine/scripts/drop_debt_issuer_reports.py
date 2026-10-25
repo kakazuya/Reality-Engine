@@ -7,7 +7,7 @@ rationale / rating letter / rating action). Reversible:
   - facts move to ar_facts.db table ar_facts_dropped (+ dropped_reason, dropped_ts); none are deleted outright;
   - ar_docs.status -> 'dropped_debt';
   - corporate_documents.doc_type -> 'ANNUAL_REPORT_DEBT_ISSUER', so the AR workers' inventory never reads them again.
-Input: reality_engine/data/ar_queue/wrong_company_scan_all.csv (bse_code column from ar_wrong_company_scan.py).
+Input: RAW_ROOT/ar_queue/wrong_company_scan_all.csv (bse_code column from ar_wrong_company_scan.py).
 
     python -m reality_engine.scripts.drop_debt_issuer_reports            # dry run
     python -m reality_engine.scripts.drop_debt_issuer_reports --apply
@@ -18,6 +18,7 @@ import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 import pymupdf
 
@@ -38,7 +39,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     a = ap.parse_args()
-    rows = [r for r in csv.DictReader(open(DATA / "ar_queue" / "wrong_company_scan_all.csv", encoding="utf-8"))
+    rows = [r for r in csv.DictReader(open(raw_dir("ar_queue") / "wrong_company_scan_all.csv", encoding="utf-8"))
             if (r["bse_code"] or "").startswith("9")]
     keep = [r for r in rows if is_rating_doc(r["path"])]
     drop = [r for r in rows if r not in keep]

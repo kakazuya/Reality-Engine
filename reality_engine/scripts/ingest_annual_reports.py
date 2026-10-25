@@ -29,6 +29,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 import pymupdf
 import requests
@@ -283,7 +284,7 @@ def call(r, prompt, http):
     t = time.time()
     if r["kind"] == "cli":
         from reality_engine.scripts.ar_queue import opencode_exe, read_piece
-        tmp = DATA / "ar_queue" / "tmp" / f"{uuid.uuid4().hex}.txt"
+        tmp = raw_dir("ar_queue") / "tmp" / f"{uuid.uuid4().hex}.txt"
         tmp.parent.mkdir(parents=True, exist_ok=True); tmp.write_text(prompt, encoding="utf-8")
         try:
             out, rc, err = read_piece(opencode_exe(), r["model"], tmp)

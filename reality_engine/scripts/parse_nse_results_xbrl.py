@@ -26,10 +26,11 @@ import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 from lxml import etree
 
-RAW = Path(__file__).resolve().parents[1] / "data" / "raw_market"
+RAW = raw_dir("raw_market")
 OUT = Path(__file__).resolve().parents[1] / "data" / "results_xbrl.db"
 NS = {"xbrli": "http://www.xbrl.org/2003/instance"}
 STD_CTX = __import__("re").compile(r"^(One|Two|Three|Four|Five|Six)(D|I)$")

@@ -18,10 +18,11 @@ import json
 import sqlite3
 import time
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 DB = DATA / "equity_intelligence.db"
-MASTERS = DATA / "raw_market" / "masters"
+MASTERS = raw_dir("raw_market") / "masters"
 URL = ("https://www.nseindia.com/api/NextApi/apiClient/GetQuoteApi?functionName=getSymbolData&marketType=N"
        "&series={series}&symbol={symbol}")
 DDL = """CREATE TABLE IF NOT EXISTS company_industry (isin TEXT, symbol TEXT PRIMARY KEY, series TEXT, macro TEXT,

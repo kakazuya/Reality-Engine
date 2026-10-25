@@ -2,7 +2,7 @@
 Raw NSE disclosure fetcher (download only, no DB writes).
 
 Pulls NSE's historical disclosure APIs from 2019-01-01 into
-``reality_engine/data/raw_market/<dataset>/`` as one file per window, so they
+``RAW_ROOT/raw_market/<dataset>/`` as one file per window, so they
 can be loaded into the DB later under the single-writer queue lock.
 
 Datasets:
@@ -30,10 +30,11 @@ import threading
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 import requests
 
-ROOT = Path(__file__).resolve().parents[1] / "data" / "raw_market"
+ROOT = raw_dir("raw_market")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 API = "https://www.nseindia.com/api/"

@@ -19,10 +19,11 @@ import sqlite3
 import time
 import zipfile
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 DB = DATA / "equity_intelligence.db"
-RAW = DATA / "raw_market"
+RAW = raw_dir("raw_market")
 PR = "https://nsearchives.nseindia.com/archives/equities/bhavcopy/pr/PR{d:%d%m%y}.zip"
 SEC = "https://nsearchives.nseindia.com/content/equities/sec_list_{d:%d%m%Y}.csv"
 DDL = """

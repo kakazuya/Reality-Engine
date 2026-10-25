@@ -90,8 +90,15 @@ class TestMacroPDFConfig(unittest.TestCase):
 class TestMacroPDFBranching(unittest.TestCase):
     """Verifies direct-GET vs browser-fallback host branching logic."""
 
+    def setUp(self):
+        # Never touch the real raw root (MACRO_PDFS_DIR lives on D since Task G0).
+        self.tmp_dir = Path(__file__).resolve().parent / "tmp_macro_branching"
+        self.tmp_dir.mkdir(exist_ok=True)
+        import shutil
+        self.addCleanup(shutil.rmtree, self.tmp_dir, ignore_errors=True)
+
     def test_03_headless_vs_browser_branching(self):
-        fetcher = MacroPDFFetcher(use_browser_fallback=True)
+        fetcher = MacroPDFFetcher(use_browser_fallback=True, data_dir=self.tmp_dir)
 
         # Direct allow-list hosts -> plain GET (needs_browser False).
         # RBI (rbi.org.in / rbidocs.rbi.org.in) is now on the direct allow-list:
@@ -130,7 +137,7 @@ class TestMacroPDFBranching(unittest.TestCase):
 
         # When browser fallback is disabled, needs_browser must still report truthfully
         # but the available check returns False.
-        fetcher_off = MacroPDFFetcher(use_browser_fallback=False)
+        fetcher_off = MacroPDFFetcher(use_browser_fallback=False, data_dir=self.tmp_dir)
         self.assertFalse(fetcher_off._browser_available())
         # TN / KA / RBI / AP are no longer browser-required (direct allow-list); use a
         # JS-state host (Gujarat) to prove the truthful branching still holds for hosts

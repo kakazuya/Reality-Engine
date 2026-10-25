@@ -6,6 +6,7 @@ Excludes: Telegram posts/tags, YouTube (member-video) rows, *_demo tables, quara
 Output: C:/pack_drive/sample/equity_intelligence_sample.db (+ .xz). NOT for git (third-party exchange data)."""
 import csv, os, random, re, sqlite3, subprocess, time
 from pathlib import Path
+from reality_engine.config import raw_dir
 SRC = Path('reality_engine/data/equity_intelligence.db')
 OUT = Path('C:/pack_drive/sample'); OUT.mkdir(parents=True, exist_ok=True)
 DST = OUT / 'equity_intelligence_sample.db'
@@ -13,8 +14,9 @@ if DST.exists(): DST.unlink()
 EXCLUDE = {'telegram_posts', 'telegram_post_tags', 'news_visual_artifacts', 'chunk_symbol_tags', 'substrate_quarantine'}
 SMALL = 20_000
 uni = set()
+_IDX = raw_dir('index_constituents')
 for f in ('nifty50_current.csv', 'niftymidcap150_current.csv'):
-    uni |= {r['Symbol'].strip() for r in csv.DictReader(open(f'reality_engine/data/index_constituents/{f}', encoding='utf-8-sig'))}
+    uni |= {r['Symbol'].strip() for r in csv.DictReader(open(_IDX / f, encoding='utf-8-sig'))}
 s = sqlite3.connect(f'file:{SRC}?mode=ro', uri=True, timeout=600); d = sqlite3.connect(DST); d.execute('pragma foreign_keys=off')
 objs = s.execute("select type, name, tbl_name, sql from sqlite_master where sql is not null and name not like 'sqlite_%'").fetchall()
 virtual = [n for t, n, _, q in objs if t == 'table' and q.upper().startswith('CREATE VIRTUAL')]

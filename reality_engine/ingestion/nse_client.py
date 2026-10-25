@@ -154,7 +154,7 @@ class NSEClient:
     def fetch_bhavcopy(self, target_date: datetime) -> Optional[pd.DataFrame]:
         """
         Fetches the full deliverable bhavcopy (sec_bhavdata_full_DDMMYYYY.csv) for a given date.
-        Saves a local backup copy in DATA/bhavcopy.
+        Saves a local backup copy under BHAVCOPY_DIR (D drive raw root).
         """
         date_str = target_date.strftime("%d%m%Y")
         url = NSE_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str)

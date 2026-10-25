@@ -25,10 +25,11 @@ import re
 import sqlite3
 import time
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 DB = DATA / "equity_intelligence.db"
-RAW = DATA / "raw_market"
+RAW = raw_dir("raw_market")
 DDL = """
 CREATE TABLE IF NOT EXISTS shp_index (record_id TEXT PRIMARY KEY, idx TEXT, symbol TEXT, isin TEXT, name TEXT,
     quarter_end TEXT, broadcast_at TEXT, submission_date TEXT, promoter_pct REAL, public_pct REAL, revised TEXT,
