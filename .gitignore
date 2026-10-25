@@ -185,6 +185,3 @@ tasks/research/decision_pilot/cache/
 .tmp/
 # per-task virtualenvs (setup_worker_env.py documents them; never commit)
 .venv-*/
-# test/build scratch dirs (ACL-safe local temp)
-.tmp_universe_tests/
-.tmp_universe/

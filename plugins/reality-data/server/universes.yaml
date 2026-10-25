@@ -1,12 +1,20 @@
 # Theme definitions for the point-in-time universe builder.
 #
-# keywords  matched against segment names in AR/XBRL facts, deck metrics, concall
-#           statements and BSE announcements.
-# industries matched (case-insensitively) against company_industry.sector /
-#           .industry / .basic_industry, i.e. the NSE industry classification labels.
-# seeds     curated membership, each with the reason it is known.  `since` is the
-#           date the knowledge applies from (default 2000-01-01); a curated seed is
-#           a fallback, the builder prefers live evidence for the same company.
+# keywords            matched against segment names in AR revenue-mix rows, deck
+#                     metrics, concall statements and BSE announcements.
+# exclude_keywords    a theme keyword match is dropped when the same text also hits one
+#                     of these (upstream "crude petroleum" is not refining).
+# industries          matched (case-insensitively, exactly) against
+#                     company_industry.industry / .basic_industry, i.e. the NSE
+#                     industry labels.  An industry match is an *unweighted* member.
+# exclude_industries  an NSE industry label that disqualifies a company for this theme
+#                     even when a revenue row matches (a bank is not housing finance).
+# seeds               curated membership, each with the reason it is known.  A seed is
+#                     an unweighted member and needs a resolvable ISIN; a seed with no
+#                     ISIN is reported in the run diff instead of being dropped.
+# min_segment_weight  optional, default 0.5: a revenue-mix share below this is not a
+#                     membership (16.7% of revenue from a product line is not "a dairy
+#                     company").  Industry and curated members are never weighted.
 themes:
   gold_jewellery_finance:
     keywords:
@@ -36,11 +44,25 @@ themes:
       - petroleum refining
       - refining and marketing
       - petroleum products
+      - petroleum
+      - refining
+      - refineries
       - oil marketing
       - fuel retail
       - petrol and diesel
+      - lpg
+    exclude_keywords:
+      - crude petroleum
+      - natural gas
+      - extraction
+      - exploration
+      - drilling
+      - upstream
+      - support activities
+      - trading
+      - specialty oils
+      - speciality oils
     industries:
-      - Petroleum Products
       - Refineries & Marketing
     seeds:
       - symbol: IOC
@@ -51,15 +73,27 @@ themes:
         reason: Hindustan Petroleum (NSE HINDPETRO, known as HPCL) is a crude-refining and petroleum-products marketing company.
       - symbol: MRPL
         reason: MRPL operates a refinery and sells petroleum products.
+      - symbol: CHENNPETRO
+        reason: Chennai Petroleum operates the Manali refinery and sells petroleum products.
   housing_finance:
     keywords:
       - housing finance
       - home loan
+      - home loans
+      - housing loan
+      - housing loans
       - mortgage
       - affordable housing
-      - housing loans
+      - housing
     industries:
       - Housing Finance Company
+    exclude_industries:
+      - Banks
+      - Private Sector Bank
+      - Public Sector Bank
+      - Realty
+      - Residential Commercial Projects
+      - Construction
     seeds:
       - symbol: LICHSGFIN
         reason: LIC Housing Finance is a dedicated housing-finance company.
@@ -95,6 +129,8 @@ themes:
         reason: Sify Technologies operates data centres and cloud infrastructure services.
       - symbol: NETWEB
         reason: Netweb Technologies supplies data-centre servers and high-performance computing systems.
+      - symbol: XTRANET
+        reason: Xtranet reports ~48% of Q1 FY27 revenue from data-centre infrastructure and IT operations.
   defence:
     keywords:
       - defence

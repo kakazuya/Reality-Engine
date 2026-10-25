@@ -404,8 +404,9 @@ def _fund_matches(query: str) -> list[dict[str, Any]]:
 
     # Open-ended MF / ETF scheme names + scheme codes (AMFI feed).  A single OR
     # over 322k rows is slow, so pick the narrow predicate for the query shape.
-    want_nav = (not out or qu.isdigit() or qu.startswith("INF") or
-                any(k in query.lower() for k in ("fund", "etf", "plan", "scheme")))
+    # Only ask when nothing else matched: fund_nav has no index on scheme_code, and
+    # an equity code / exchange symbol already short-circuits on its own match.
+    want_nav = not out
     if want_nav:
         if qu.isdigit():
             nav_where, nav_params = "scheme_code = ?", [query.strip()]
