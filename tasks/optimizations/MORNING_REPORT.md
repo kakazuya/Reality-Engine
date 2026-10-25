@@ -46,6 +46,17 @@ Reading: **target met (45 → 8–42, median ≈ 18), but the win comes from the
 pack.** Both arms used the template; adding the 27k-token pack + tools note showed no measurable benefit (variance
 between identical runs, 12 vs 28, exceeds the arm difference). n is small, so this does not prove harm either.
 
+### Follow-up test 2026-10-25 (after restart): Shivam's 10 data questions, 2 workers per arm, read-only
+
+| Arm | tool calls | output tokens | wall | correct |
+|---|---|---|---|---|
+| pack (9541b376, 9e836525) | 110, 136 | 59.6k, 63.6k | 12.5, 13.7 min | 9/10, 10/10 |
+| no pack (69644a44, e57200d9) | 113, 119 | 45.1k, 47.7k | 9.1, 12.2 min | 9/10, 10/10 |
+
+The one miss in each arm was the same: Q5 share count taken from rounded XBRL capital (68,157,500) instead of the
+annual report's 6,81,57,705 (verified in `ar_facts` doc 53803 p121). Same accuracy, pack arm ~30% more output tokens →
+third result pointing the same way: **default `context_pack=false`** (or a much smaller pack).
+
 ## Decisions for you
 
 1. **Context pack default** — recommend `context_pack=false` by default, or slim the pack to a 3–5k-token index, then
