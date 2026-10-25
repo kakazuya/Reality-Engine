@@ -343,6 +343,96 @@ def _bse_row(where: str, params: Sequence[Any], limit: int = 10) -> list[dict[st
     return [dict(zip(cols, row)) for row in rows]
 
 
+def _fund_kind(name: str) -> str:
+    return "etf" if "ETF" in str(name or "").upper() else "mf"
+
+
+def _fund_matches(query: str) -> list[dict[str, Any]]:
+    """ETF / mutual-fund identity from etf_master, fund_nav and BSE INF* codes.
+
+    Their INF* ISINs never reach ``security_master``, so the equity path cannot see
+    them.  Every match already carries ``kind`` (etf|mf); equity matches default to
+    ``equity`` in ``_merge_match``.
+    """
+    qu = query.strip().upper()
+    out: list[dict[str, Any]] = []
+
+    def push(isin, symbol, name, kind, match_type, score, first="", last="", code=""):
+        if not isin or _synthetic_isin(str(isin)):
+            return
+        out.append({
+            "isin": str(isin), "name": name or "", "nse_symbol": symbol or "",
+            "bse_symbol": symbol or "", "bse_code": str(code or ""), "segment": kind.upper(),
+            "status": "", "listing_date": first or "", "first_trade": first or "",
+            "last_trade": last or "", "last_seen_nse": last or "", "last_seen_bse": last or "",
+            "aliases": [], "isin_history": [], "isin_changed": False,
+            "match_type": match_type, "score": score, "kind": kind,
+        })
+
+    # BSE master covers exchange-listed ETFs and funds (INF* ISINs only).
+    try:
+        _, rows = _run_duck(
+            "SELECT sc_code, isin, bse_symbol, name FROM bse_master "
+            "WHERE isin LIKE 'INF%' AND (upper(bse_symbol) = ? OR upper(isin) = ? OR sc_code = ? "
+            "OR upper(COALESCE(name, '')) LIKE ?) LIMIT 10",
+            [qu, qu, query.strip(), f"%{qu}%"],
+        )
+    except DataError:
+        rows = []
+    for sc, isin, sym, name in rows:
+        score = (98 if str(isin).upper() == qu else
+                 95 if str(sym).upper() == qu else
+                 93 if str(sc) == query.strip() else 66)
+        push(isin, sym, name, _fund_kind(name), "bse_master", score, code=sc)
+
+    # ETF master (equity_intelligence) has the trading symbol + scheme name.
+    try:
+        etf_rows = _run_sqlite(
+            "equity_intelligence",
+            "SELECT isin, symbol, scheme_name, first_date, last_date FROM etf_master "
+            "WHERE upper(isin) = ? OR upper(symbol) = ? OR upper(COALESCE(scheme_name, '')) LIKE ? LIMIT 10",
+            [qu, qu, f"%{qu}%"],
+        )
+    except sqlite3.DatabaseError:
+        etf_rows = []
+    for row in etf_rows:
+        score = (98 if str(row["isin"]).upper() == qu else
+                 95 if str(row["symbol"]).upper() == qu else
+                 90 if str(row["scheme_name"] or "").upper() == qu else 68)
+        push(row["isin"], row["symbol"], row["scheme_name"], "etf", "etf_master", score,
+             row["first_date"], row["last_date"])
+
+    # Open-ended MF / ETF scheme names + scheme codes (AMFI feed).  A single OR
+    # over 322k rows is slow, so pick the narrow predicate for the query shape.
+    want_nav = (not out or qu.isdigit() or qu.startswith("INF") or
+                any(k in query.lower() for k in ("fund", "etf", "plan", "scheme")))
+    if want_nav:
+        if qu.isdigit():
+            nav_where, nav_params = "scheme_code = ?", [query.strip()]
+        elif qu.startswith("INF"):
+            nav_where, nav_params = "upper(isin) = ?", [qu]
+        else:
+            nav_where, nav_params = ("upper(COALESCE(scheme_name, '')) LIKE ? OR upper(isin) = ?",
+                                     [f"%{qu}%", qu])
+        try:
+            nav_rows = _run_sqlite(
+                "equity_intelligence",
+                f"SELECT isin, scheme_code, scheme_name FROM fund_nav WHERE {nav_where} LIMIT 20",
+                nav_params,
+            )
+        except sqlite3.DatabaseError:
+            nav_rows = []
+        for row in nav_rows:
+            name = row["scheme_name"] or ""
+            score = (98 if str(row["isin"]).upper() == qu else
+                     92 if str(row["scheme_code"] or "") == query.strip() else
+                     90 if name.upper() == qu else 66)
+            push(row["isin"], "", name, _fund_kind(name), "fund_nav", score,
+                 code=row["scheme_code"])
+
+    return out
+
+
 def _history(isin: str = "", symbol: str = "") -> list[dict[str, Any]]:
     clauses, params = [], []
     if isin:
@@ -387,6 +477,7 @@ def _merge_match(base: dict[str, Any], match_type: str, score: int) -> dict[str,
         "isin_changed": len(isins) > 1,
         "match_type": match_type,
         "score": score,
+        "kind": base.get("kind") or "equity",
     }
 
 
@@ -432,6 +523,13 @@ def resolve(query: str) -> dict[str, Any]:
         ):
             add(row, "fuzzy", 70)
 
+    # ETF / mutual funds: their INF* ISINs live in etf_master, fund_nav and the
+    # BSE master, never in security_master, so add them as first-class matches.
+    for fund in _fund_matches(q):
+        old = matches.get(fund["isin"])
+        if old is None or fund["score"] > old["score"]:
+            matches[fund["isin"]] = fund
+
     # Fallbacks for names that exist only in an exchange master.
     if not matches:
         for row in _nse_row("upper(symbol) = ? OR upper(name) LIKE ? OR upper(isin) = ?", [q.upper(), like, q.upper()]):
@@ -447,6 +545,7 @@ def resolve(query: str) -> dict[str, Any]:
                     "bse_symbol": "", "bse_code": "", "segment": "", "status": "history_only",
                     "aliases": [h.get("symbol") or ""], "isin_history": _history(isin=isin),
                     "isin_changed": False, "match_type": "symbol_history", "score": 50,
+                    "kind": "equity",
                 }
 
     ranked = sorted(matches.values(), key=lambda m: (-m["score"], m["name"]))
@@ -455,7 +554,10 @@ def resolve(query: str) -> dict[str, Any]:
         "count": len(ranked),
         "ambiguous": len(ranked) > 1,
         "matches": ranked[:10],
-        "provenance": provenance(DUCK_KEY, ["security_master", "symbol_isin_history", "nse_master", "bse_master"]),
+        "provenance": provenance(
+            DUCK_KEY, ["security_master", "symbol_isin_history", "nse_master", "bse_master"],
+            funds=provenance("equity_intelligence", ["etf_master", "fund_nav"]),
+        ),
     }
 
 

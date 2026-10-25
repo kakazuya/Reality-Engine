@@ -292,6 +292,26 @@ def sql(query: str, db: str = "truth", limit: int = 200,
     return _safe(lambda: core.sql(query, db=db, limit=limit, timeout_seconds=timeout_seconds))
 
 
+# --- lookups: universe ---
+import universe as _universe  # noqa: E402  (co-located module, same import style)
+
+
+@server.tool(
+    name="universe",
+    description=(
+        "Point-in-time theme members: companies in a theme (gold_jewellery_finance, "
+        "omc_refining, housing_finance, dairy, data_centres, defence, "
+        "specialty_chemicals, textiles_exporters, ...) on a date, sorted by weight, "
+        "each with method, since, evidence_id and pivot. stale_days is the age of the "
+        "last build; an unknown theme returns the closest themes."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
+)
+def universe(theme: str, as_of: str | None = None, min_weight: float = 0.0) -> dict[str, Any]:
+    return _safe(lambda: _universe.universe(theme, as_of=as_of, min_weight=min_weight))
+# --- end lookups: universe ---
+
+
 # --- lookups: docs ---
 import lookups_docs as _lookups_docs  # noqa: E402  (co-located module, same import style)
 

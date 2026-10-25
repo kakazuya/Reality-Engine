@@ -1,0 +1,155 @@
+# Theme definitions for the point-in-time universe builder.
+#
+# keywords  matched against segment names in AR/XBRL facts, deck metrics, concall
+#           statements and BSE announcements.
+# industries matched (case-insensitively) against company_industry.sector /
+#           .industry / .basic_industry, i.e. the NSE industry classification labels.
+# seeds     curated membership, each with the reason it is known.  `since` is the
+#           date the knowledge applies from (default 2000-01-01); a curated seed is
+#           a fallback, the builder prefers live evidence for the same company.
+themes:
+  gold_jewellery_finance:
+    keywords:
+      - gold jewellery
+      - jewellery
+      - gems and jewellery
+      - precious metals
+      - gold loan
+      - gold metal loan
+      - gold finance
+      - ornaments
+    industries:
+      - Gems Jewellery And Watches
+      - Precious Metals
+    seeds:
+      - symbol: TITAN
+        reason: Titan's jewellery segment (Tanishq) is its largest revenue segment.
+      - symbol: KALYANKJIL
+        reason: Kalyan Jewellers is a listed jewellery retailer; jewellery is the whole business.
+      - symbol: MUTHOOTFIN
+        reason: Muthoot Finance's gold loan book is its core business.
+      - symbol: MANAPPURAM
+        reason: Manappuram's gold loan segment is its largest revenue segment.
+  omc_refining:
+    keywords:
+      - oil refining
+      - petroleum refining
+      - refining and marketing
+      - petroleum products
+      - oil marketing
+      - fuel retail
+      - petrol and diesel
+    industries:
+      - Petroleum Products
+      - Refineries & Marketing
+    seeds:
+      - symbol: IOC
+        reason: Indian Oil is a crude-refining and petroleum-products marketing company.
+      - symbol: BPCL
+        reason: BPCL is a crude-refining and petroleum-products marketing company.
+      - symbol: HINDPETRO
+        reason: Hindustan Petroleum (NSE HINDPETRO, known as HPCL) is a crude-refining and petroleum-products marketing company.
+      - symbol: MRPL
+        reason: MRPL operates a refinery and sells petroleum products.
+  housing_finance:
+    keywords:
+      - housing finance
+      - home loan
+      - mortgage
+      - affordable housing
+      - housing loans
+    industries:
+      - Housing Finance Company
+    seeds:
+      - symbol: LICHSGFIN
+        reason: LIC Housing Finance is a dedicated housing-finance company.
+      - symbol: PNBHOUSING
+        reason: PNB Housing Finance is a dedicated housing-finance company.
+      - symbol: AAVAS
+        reason: Aavas Financiers is an affordable-housing finance company.
+  dairy:
+    keywords:
+      - dairy
+      - milk
+      - milk products
+      - dairy products
+    industries:
+      - Dairy Products
+    seeds:
+      - symbol: PARAGMILK
+        reason: Parag Milk Foods sells milk, cheese, ghee and other dairy products.
+      - symbol: HATSUN
+        reason: Hatsun Agro Product is a milk and dairy-products company.
+  data_centres:
+    keywords:
+      - data centre
+      - data center
+      - colocation
+      - co-location
+      - hyperscale
+    industries: []
+    seeds:
+      - symbol: ANANTRAJ
+        reason: Anant Raj is building and leasing data-centre capacity.
+      - symbol: SIFY
+        reason: Sify Technologies operates data centres and cloud infrastructure services.
+      - symbol: NETWEB
+        reason: Netweb Technologies supplies data-centre servers and high-performance computing systems.
+  defence:
+    keywords:
+      - defence
+      - defense
+      - aerospace
+      - missiles
+      - ammunition
+      - radar
+      - warship
+      - artillery
+    industries:
+      - Aerospace & Defense
+    seeds:
+      - symbol: HAL
+        reason: Hindustan Aeronautics is a defence aerospace manufacturer.
+      - symbol: BEL
+        reason: Bharat Electronics makes defence electronics and radar systems.
+      - symbol: BDL
+        reason: Bharat Dynamics makes missiles and allied defence equipment.
+  specialty_chemicals:
+    keywords:
+      - specialty chemicals
+      - speciality chemicals
+      - dyes and pigments
+      - agrochemical intermediates
+      - fluorochemicals
+      - performance chemicals
+    industries:
+      - Specialty Chemicals
+      - Dyes And Pigments
+    seeds:
+      - symbol: AARTIIND
+        reason: Aarti Industries is a specialty-chemicals manufacturer.
+      - symbol: PIIND
+        reason: PI Industries is an agrochemical and specialty-chemicals manufacturer.
+      - symbol: SRF
+        reason: SRF's chemicals business makes specialty and fluorochemicals.
+  textiles_exporters:
+    keywords:
+      - textile export
+      - garment export
+      - apparel export
+      - yarn
+      - fabric
+      - home textiles
+      - spinning
+      - cotton textile
+    industries:
+      - Textiles & Apparels
+      - TEXTILES - COTTON
+      - Garments & Apparels
+      - SPINNING-COTTON/BLENDED
+      - Other Textile Products
+    seeds:
+      - symbol: KPRMILL
+        reason: K.P.R. Mill is a cotton-yarn and garment exporter.
+      - symbol: TRIDENT
+        reason: Trident is a home-textiles and yarn exporter.
