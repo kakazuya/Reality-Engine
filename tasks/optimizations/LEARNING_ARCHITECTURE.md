@@ -48,7 +48,32 @@ companies cannot pick their exposure to them: sudden tariffs, wars, unscheduled 
   - bge-small (old).
 
   Pick one primary model and backfill everything into it, so every search compares like with like. bge-small is
-  retired (Shivam). Whether Qwen is kept is decided by the quality test below.
+  retired (Shivam).
+  - **Qwen3-8B is already tested and dropped as a primary.** The 2026-10-19 test used 51 concall questions.
+  - hit@5 scores:
+
+    | Model | hit@5 |
+    |---|---|
+    | Nemotron-8B | 94.1% |
+    | Nemotron-1B | 90.2% |
+    | Gemini-001 | 88.2% |
+    | Qwen3-8B | 84.3% |
+    | EmbeddingGemma | 80.4% |
+    | bge-small | 51.0% |
+
+  - The AR Qwen index is only 4.5% done, so nothing is lost.
+  - C2 re-runs this test on the new chunks and on all doc types, not only concalls. The finalists are Nemotron-8B,
+    Gemini-001 and anything new from C0.
+- **Re-chunk the past corpus, not only new filings.** The old chunks were cut by length. Re-chunking costs $0
+  (code only), but every new chunk needs a new vector, so the backfill is priced from local token counts in C0.
+  - C2 first proves on a sample that the new chunks beat the old ones.
+  - Then the backfill runs per doc type, highest value first: concalls, results notes, AR notes, decks, then circulars.
+- **Topic-change splitting** applies only to long runs of prose with no structure (AR MD&A, long circular
+  paragraphs).
+  - Embedding every sentence multiplies vector calls by 10–30×. So free LLMs (OpenCode Go `-free`, Kilo free,
+    Google free tier) mark the topic boundaries and write the one-line chunk summaries instead.
+  - Both stay optional until C2 shows a gain.
+  - If C0 confirms Google's embedding free tier and its rate limits, sentence-level similarity can run there at $0.
 - **Chunking that follows document structure.** Cutting by length is out. Chunks follow the document's own units:
   - a results note, a table or a schedule stays whole;
   - concalls split by speaker turn, with Q&A pairs together;
