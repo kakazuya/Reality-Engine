@@ -17,7 +17,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -3391,9 +3391,22 @@ class Manager:
             )
         return resolved
 
-    def _resolve_job_argv(self, entry: dict[str, Any], extra: list[str], now: datetime) -> list[str]:
+    def _resolve_job_argv(
+        self,
+        entry: dict[str, Any],
+        extra: list[str],
+        now: datetime,
+        window_start: str | None = None,
+        window_end: str | None = None,
+    ) -> list[str]:
         argv = jobs.expand_argv(
-            entry, extra, self.config.repo_root, self.config.data_root, now
+            entry,
+            extra,
+            self.config.repo_root,
+            self.config.data_root,
+            now,
+            start=window_start,
+            end=window_end,
         )
         if argv and argv[0].lower() in ("python", "python.exe"):
             argv[0] = sys.executable
@@ -3478,10 +3491,23 @@ class Manager:
         args: list[str] | None = None,
         confirm: bool = False,
         progress_interval_seconds: int = DEFAULT_PROGRESS_INTERVAL_SECONDS,
+        window_start: str | None = None,
+        window_end: str | None = None,
     ) -> dict[str, Any]:
         if not isinstance(confirm, bool):
             raise PluginError("confirm_invalid", "confirm must be true or false")
         progress_interval_seconds = _progress_interval(progress_interval_seconds)
+        for label, value in (("window_start", window_start), ("window_end", window_end)):
+            if value is None:
+                continue
+            if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                raise PluginError("window_invalid", f"{label} must be a YYYY-MM-DD date")
+            try:
+                date.fromisoformat(value)
+            except ValueError as exc:
+                raise PluginError(
+                    "window_invalid", f"{label} must be a real YYYY-MM-DD date"
+                ) from exc
         _registry, entry = self._job_entry(name)
         if not entry["enabled"] and not confirm:
             raise PluginError(
@@ -3520,7 +3546,7 @@ class Manager:
                 )
             extra = list(args)
         cwd = self._data_job_cwd(entry["cwd"], name)
-        argv = self._resolve_job_argv(entry, extra, now)
+        argv = self._resolve_job_argv(entry, extra, now, window_start, window_end)
         locks = list(entry.get("resource_locks") or [])
         job_id = new_job_id()
         busy = self._reserve_resource_locks(locks, job_id)

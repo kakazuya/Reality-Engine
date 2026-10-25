@@ -1898,6 +1898,41 @@ class PluginTests(unittest.TestCase):
         confirmed_final = self._wait_status(confirmed["job_id"], lambda s: s["final"])
         self.assertEqual(confirmed_final["phase"], "finished", confirmed_final)
 
+    def test_expand_argv_window_override(self):
+        """start_job's optional window replaces {start}/{date}; defaults stay."""
+        entry = {"argv": ["python", "job.py", "--start", "{start}", "--end", "{date}"]}
+        now = datetime(2026, 10, 21, 3, 0, tzinfo=timezone.utc)
+        data_root = self.root / "reality_engine" / "data"
+        default = jobs.expand_argv(entry, [], self.root, data_root, now)
+        self.assertEqual(default[2:], ["--start", "2026-10-11", "--end", "2026-10-21"])
+        explicit = jobs.expand_argv(
+            entry, [], self.root, data_root, now, start="2026-09-01", end="2026-09-05"
+        )
+        self.assertEqual(
+            explicit[2:], ["--start", "2026-09-01", "--end", "2026-09-05"]
+        )
+        # positionally identical to the old signature
+        legacy = jobs.expand_argv(entry, [], self.root, data_root, now)
+        self.assertEqual(legacy, default)
+        with self.assertRaises(jobs.RegistryError):
+            jobs.expand_argv(entry, [], self.root, data_root, now, start="yesterday")
+
+    def test_start_job_refuses_impossible_window_date(self):
+        """Regex-shaped but impossible dates are window_invalid, not internal_error."""
+        self._write_jobs_registry(
+            [self._fake_job("fake_window", "print('x')", enabled=False)]
+        )
+        manager = self._manager_instance()
+        for label, value in (
+            ("window_start", "2026-02-30"),
+            ("window_end", "2026-13-01"),
+        ):
+            with self.assertRaises(core.PluginError) as ctx:
+                manager.start_job("fake_window", confirm=True, **{label: value})
+            self.assertEqual(ctx.exception.code, "window_invalid", label)
+        jobs_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs"
+        self.assertFalse(jobs_dir.exists() and any(jobs_dir.iterdir()))
+
     def test_resource_lock_contention(self):
         hold = self._fake_job(
             "hold_db", "import time; time.sleep(20)",
