@@ -32,7 +32,6 @@ import numpy as np
 logger = logging.getLogger("reality_engine.plugins.dense_free")
 
 SEED_K = 5
-INDEX_MODELS = ("nemotron8b", "qwen8b_ar")
 LOCAL_MODEL = "bge-small-en-v1.5"
 QCACHE_DIR = Path(__file__).resolve().parents[3] / ".tmp" / "qcache"
 
@@ -195,13 +194,12 @@ def local_query_vector(embedder, query: str, model: str = LOCAL_MODEL) -> Option
 
 
 def clear() -> None:
-    """Drop in-process caches (tests; the on-disk cache is left alone)."""
+    """Drop the in-process chunk-id cache (tests; the on-disk query cache is left alone)."""
     with _lock:
         _ids_cache.clear()
 
 
 __all__ = [
-    "INDEX_MODELS",
     "LOCAL_MODEL",
     "QCACHE_DIR",
     "SEED_K",

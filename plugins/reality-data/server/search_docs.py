@@ -1045,7 +1045,10 @@ def search_docs(
         local_rows: List[Dict[str, Any]] = []
         if state.vector is not None and state.embedder is not None:
             try:
-                query_vec = dense_free.local_query_vector(state.embedder, query)
+                query_vec = dense_free.local_query_vector(
+                    state.embedder, query,
+                    model=Path(str(getattr(state.embedder, "model_dir", dense_free.LOCAL_MODEL))).name,
+                )
             except Exception as exc:
                 logger.debug("search_docs: local query embed miss: %s", exc)
                 query_vec = None
@@ -1137,7 +1140,7 @@ def search_docs(
         for score, entry in ranked:
             row = entry["row"]
             day = (row.get("date") or "")[:10]
-            if as_of_day and day and day > as_of_day:
+            if as_of_day and (not day or day > as_of_day):
                 hidden += 1
                 continue
             if len(out) >= top_k:
