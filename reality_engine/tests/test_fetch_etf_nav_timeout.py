@@ -72,6 +72,7 @@ class WallClockCapTest(unittest.TestCase):
 
 class DbLockFailFastTest(unittest.TestCase):
     def test_locked_db_fails_fast_with_clear_message(self):
+        BASE.mkdir(parents=True, exist_ok=True)
         db_path = BASE / "locked.db"
         db_path.unlink(missing_ok=True)
         setup = sqlite3.connect(db_path)
