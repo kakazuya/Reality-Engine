@@ -144,7 +144,7 @@ rows: ~71.6k · key columns: ts
 - `usd` REAL
 
 ## unlabeled_charts
-rows: ? · key columns: sha256, page_no
+rows: 976 · key columns: sha256, page_no
 
 - `sha256` TEXT
 - `page_no` INTEGER
@@ -155,7 +155,7 @@ rows: ? · key columns: sha256, page_no
 - `other_estimates`
 
 ## unlabeled_charts_all
-rows: ? · key columns: sha256, page_no
+rows: 3.0k · key columns: sha256, page_no
 
 - `sha256` TEXT
 - `page_no` INTEGER

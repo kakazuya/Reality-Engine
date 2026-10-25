@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-25T05:49:41+05:30 · git HEAD: `d6d1306` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-25T06:05:23+05:30 · git HEAD: `e1754e2` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -10,11 +10,9 @@ Top-level tree to depth 2 (tests/fixtures skipped):
 ```
 reality_engine/
   agent/ (4 py) — Agent module for Reality Engine.
-  data/ (131 py)
   db/ (9 py) — Database services.
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
-  notebooks/ (0 py)
   pipeline/ (19 py) — Pipeline runners.
   processing/ (41 py) — Document and image processing components.
   query/ (2 py) — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company at time t.
@@ -26,25 +24,12 @@ reality_engine/
 plugins/
   code-intel/ (3 py) — code-intel: LSP-backed code intelligence over the reality-engine checkout.
   dsh-worker/ (12 py) — Job manager for the local dsh-worker Codex plugin.
-  dsh-workers-pane/ (0 py)
   reality-data/ (5 py) — Data access core for the reality-data MCP server.
 tasks/
-  ar_study/ (13 md)
-  backtests/ (11 md)
-  codex_tasks/ (37 md)
-  council_2026-10-06/ (10 md)
-  coverage/ (0 md)
-  dsh_profiles/ (1 md)
-  dsh_tasks/ (16 md)
-  handoff/ (3 md)
-  optimizations/ (11 md)
-  research/ (1 md)
-analysis/ (31 entries)
-h02test_s6wwsqyr/ (0 entries)
-h02test_vijd0qtc/ (0 entries)
+analysis/ (25 entries) — Annual-report PIT labels from the BSE filename (additive, idempotent). No network.
 ```
 
-Module one-liners (first docstring line):
+Module one-liners (first docstring line, clipped; `__init__.py` and modules without a docstring skipped):
 
 ### plugins/code-intel/server/
 - `plugins/code-intel/server/core.py` — code-intel: LSP-backed code intelligence over the reality-engine checkout.
@@ -72,12 +57,10 @@ Module one-liners (first docstring line):
 - `plugins/reality-data/server/server.py` — reality-data MCP server (stdio).
 
 ### reality_engine/
-- `reality_engine/__init__.py` — Reality Engine - Phase 1 Market Data Ingestion & Quantitative Reality Engine
 - `reality_engine/cli.py` — Reality Engine CLI Tool
 - `reality_engine/config.py` — Configuration Module for Reality Engine (Phase 1)
 
 ### reality_engine/agent/
-- `reality_engine/agent/__init__.py` — Agent module for Reality Engine.
 - `reality_engine/agent/orchestrator.py` — Agent Orchestrator Module
 - `reality_engine/agent/schemas.py` — Agent Schemas Module
 - `reality_engine/agent/tools.py` — Agent Tool Registry & Dispatcher Module
@@ -91,160 +74,50 @@ Module one-liners (first docstring line):
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/build_snapshot_and_proposal.py` — Build the reversible change set for the crawl-date defect.
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/export_parquet.py` — Export the analysis-ready tables to Parquet (chunked, low memory) -> reality_engine/data/parquet/.
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/extract_call_date.py` — Extract the real (call-date, filing-date) pair from a BSE/NSE Reg-30 earnings-call
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/make_sample_db.py` — Build a small, public-data-only sample of the live DB so the code can be run on another machine before the full DB is fe
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/overnight_part2.py` — Queue behind overnight_pipeline.py: starts when its step 8 is done (or it has failed/finished), so the machine never idl
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/overnight_pipeline.py` — Overnight chain (resumable via analysis/overnight_state.json). Each step is isolated: a failure is logged and the chain 
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/make_sample_db.py` — Build a small, public-data-only sample of the live DB so the code can be run on another machine befo …
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/overnight_part2.py` — Queue behind overnight_pipeline.py: starts when its step 8 is done (or it has failed/finished), so t …
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/overnight_pipeline.py` — Overnight chain (resumable via analysis/overnight_state.json). Each step is isolated: a failure is l …
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/package_for_drive.py` — Build the Drive upload pack in C:/pack_drive (originals untouched):
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/pit_validate.py` — (no docstring)
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/run_extract_all.py` — Run the call-date extractor over every processed concall and emit a reviewable
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/secrets_scan.py` — Scan files git would publish (tracked + untracked-not-ignored, text, <2MB) for likely secrets.
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/tariff_event_study.py` — Tariff event study per tasks/tariff_event_card_2026-09-29.md. Read-only on the DB.
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/tg_collect_video_links.py` — Collect YouTube links from selected Telegram forum topics (read-only) -> analysis/tg_video_links.csv.
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/video_load_loop.py` — Loop: load every finished transcript into the DB (frames+OCR+chunks) until all 65 batch videos are loaded.
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/tg_collect_video_links.py` — Collect YouTube links from selected Telegram forum topics (read-only) -> analysis/tg_video_links.csv …
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/video_load_loop.py` — Loop: load every finished transcript into the DB (frames+OCR+chunks) until all 65 batch videos are l …
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/video_transcribe_batch.py` — Transcribe finished videos from analysis/yt_batch_3mo.txt with whisper.cpp (Vulkan, RX 6700 XT).
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/yt_download_batch.py` — Download the batch listed in analysis/yt_batch_3mo.txt (newest first): <=1080p video+audio -> reality_engine/data/video_
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/yt_probe.py` — Metadata-only probe (no download): duration + availability for each unique video. -> analysis/yt_probe.csv
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/yt_download_batch.py` — Download the batch listed in analysis/yt_batch_3mo.txt (newest first): <=1080p video+audio -> realit …
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/yt_probe.py` — Metadata-only probe (no download): duration + availability for each unique video. -> analysis/yt_pro …
 
 ### reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/01_build_events.py` — Build the event table: BSE announcements (exact DissemDT, IST) -> (isin, t0 session, timing bucket, family).
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/01_build_events.py` — Build the event table: BSE announcements (exact DissemDT, IST) -> (isin, t0 session, timing bucket, …
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/02_event_engine.py` — Vectorised market-model event study over every event-day (read-only on inputs).
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/03_estimate.py` — Stratum-level estimation for the price-side information-diffusion study (numpy/pandas only).
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/04_negative_reaction_matched.py` — Negative-reaction puzzle, test 1 (closeout 2026-10-05 §3): do matched NON-announcers with the same prior-week run-up
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/05_negative_reaction_splits.py` — Negative-reaction puzzle, test 3 (closeout 2026-10-05 §3): is the announcer-vs-matched-control gap in CAR(0,1) related t
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/04_negative_reaction_matched.py` — Negative-reaction puzzle, test 1 (closeout 2026-10-05 §3): do matched NON-announcers with the same p …
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/05_negative_reaction_splits.py` — Negative-reaction puzzle, test 3 (closeout 2026-10-05 §3): is the announcer-vs-matched-control gap i …
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/diffusion_study/common.py` — Shared constants for the price-side information-diffusion study (read-only on all databases).
 
 ### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/concall_pilot/gemma_v3/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/concall_pilot/gemma_v3/run_pilot.py` — Gemma 4 vs MiniMax on 10 transcripts, prompt v3 + machine_check (Shivam 2026-10-20 'run it'). Free Google keys.
-
-### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/ctx_hb2100.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/items_hb2100.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q1.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q10.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q2.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q3.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q4.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q5.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q6.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q7.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q8.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q9.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_err.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100b.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100c.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100d.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/q_hb2100e.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_hb_tmp/schema.py` — (no docstring)
-
-### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q1.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q2.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q3.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q4.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q5.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q6.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q7.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb/q8.py` — (no docstring)
-
-### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/dump.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/final.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/hb_counts.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/hb_other.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/hb_spot.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/inspect2.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/inspect_cc.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/quotecheck.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/slow.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/vq.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb3/zero.py` — (no docstring)
-
-### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb4/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb4/q.py` — (no docstring)
-
-### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/ccl.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/extract.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/measure_2301.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/measure_2301b.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/pib.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/q.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/q2.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/q3.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/q4.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/sample.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/sample2.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/src.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_hb5/verify.py` — (no docstring)
-
-### reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/count2.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/ctx.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/detail.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/dump.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/dump_json.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/extract.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/inspect_db.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/inspect_eq.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/inspect_items.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/inspect_join.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/numcheck.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/pattern.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/sample.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/scan_all.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/shortquotes.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/state_now.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/valquote.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/verify_extra.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp/verify_triton.py` — (no docstring)
-
-### reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/inspect_calls.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/inspect_calls2.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/step1_ensemble_snapshot.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/step2_diff.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/step5_detail.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/step5_inspect.py` — (no docstring)
+- `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/concall_pilot/gemma_v3/run_pilot.py` — Gemma 4 vs MiniMax on 10 transcripts, prompt v3 + machine_check (Shivam 2026-10-20 'run it'). Free G …
 
 ### reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/p0_network.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA10_pink_cols.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA1_ppac.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA2_ppac_links.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA3_ppac_tables.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA4_ppac_js.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA5_ICB_text.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA6_pdfs.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA7_fallbacks.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA8_pinksheet.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pA9_pink_parse.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pB1_rbi.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pB2_rbi_mine.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pB3_rbi_paths.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pC1_budget.py` — (no docstring)
-- `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/pC2_budget_mine.py` — (no docstring)
 - `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/probe/probe_lib.py` — Throwaway network probe harness. Read-only, no DB writes, no repo source edits.
 
 ### reality_engine/data/backups/restore_2026-10-21/
-- `reality_engine/data/backups/restore_2026-10-21/inspect_backups.py` — (no docstring)
 - `reality_engine/data/backups/restore_2026-10-21/restore_databases.py` — Audited, local-only restore of the two final PC exports. No snapshot writes.
 
 ### reality_engine/data/embed_test/
-- `reality_engine/data/embed_test/colab_embed_test.py` — Colab side of the embedding retrieval test (2026-10-19, Shivam: is Qwen3-Embedding-8B worth it vs gemini-embedding-001).
+- `reality_engine/data/embed_test/colab_embed_test.py` — Colab side of the embedding retrieval test (2026-10-19, Shivam: is Qwen3-Embedding-8B worth it vs ge …
 
 ### reality_engine/data/logs/
-- `reality_engine/data/logs/date_resolver_coverage.py` — Coverage of the text date resolver on the 1,499 undated concall transcripts (2026-10-24 patch check).
+- `reality_engine/data/logs/date_resolver_coverage.py` — Coverage of the text date resolver on the 1,499 undated concall transcripts (2026-10-24 patch check) …
 - `reality_engine/data/logs/dsh_plugin_overnight_audit.py` — Read-only installed MCP audit. Never starts an inference worker.
-- `reality_engine/data/logs/probe_lanes_20261024.py` — One-off lane probe for the concall-reader patch (2026-10-24): Go key 1/2 Beam + LongCat on both Go endpoints,
+- `reality_engine/data/logs/probe_lanes_20261024.py` — One-off lane probe for the concall-reader patch (2026-10-24): Go key 1/2 Beam + LongCat on both Go e …
 - `reality_engine/data/logs/run_provider_probes.py` — Small authorized live probes. Logs controls/usage, never credentials or reasoning text.
 
 ### reality_engine/data/logs/dsh_heartbeat_bootstrap/
-- `reality_engine/data/logs/dsh_heartbeat_bootstrap/run_deepseek_harness.before.py` — Run one task headlessly in DeepSeek Harness (dsh) on an OpenCode Go model, so a Claude orchestrator can use it
+- `reality_engine/data/logs/dsh_heartbeat_bootstrap/run_deepseek_harness.before.py` — Run one task headlessly in DeepSeek Harness (dsh) on an OpenCode Go model, so a Claude orchestrator …
 - `reality_engine/data/logs/dsh_heartbeat_bootstrap/test_deepseek_harness_controls.before.py` — Local checks only: no credentials, subprocesses, inference or database access.
 
 ### reality_engine/db/
-- `reality_engine/db/__init__.py` — Database services.
 - `reality_engine/db/bootstrap.py` — Reality Engine Database Bootstrap Module
 - `reality_engine/db/database.py` — Database Engine Module
 - `reality_engine/db/fixtures.py` — Test Fixture & Isolation Utilities Module
@@ -255,7 +128,6 @@ Module one-liners (first docstring line):
 - `reality_engine/db/vector_store.py` — LanceDB-backed vectors with a dependency-free JSON/NumPy fallback.
 
 ### reality_engine/harness/
-- `reality_engine/harness/__init__.py` — Shared, point-in-time research harness. Importing never opens a database.
 - `reality_engine/harness/adapter.py` — Schema-checked adapter for the sole authorized dated snapshot.
 - `reality_engine/harness/benchmark.py` — B5 selection frozen before each month, using strictly earlier TRI data.
 - `reality_engine/harness/book.py` — Daily cash book over one predeclared long H01 variant.
@@ -281,13 +153,11 @@ Module one-liners (first docstring line):
 - `reality_engine/harness/verify_h02.py` — Independent H02 verification: different queries and arithmetic paths.
 
 ### reality_engine/harness/cards/
-- `reality_engine/harness/cards/__init__.py` — Registered hypothesis implementations.
 - `reality_engine/harness/cards/h01_pead.py` — H01 Card B: PIT earnings surprise on normalized snapshot facts.
 - `reality_engine/harness/cards/h02_combine.py` — H01 x H02 combination rules, fixed before Stage 2 is run.
 - `reality_engine/harness/cards/h02_deals.py` — H02 Card F: bulk/block deal accumulation, point-in-time from the snapshot.
 
 ### reality_engine/ingestion/
-- `reality_engine/ingestion/__init__.py` — Reality Engine Ingestion Subsystem
 - `reality_engine/ingestion/bse_client.py` — BSE Ingestion Client Module
 - `reality_engine/ingestion/bse_fundamentals_client.py` — BSE fundamentals client: financials, shareholding, sector identity, announcements.
 - `reality_engine/ingestion/bulk_fetch_template.py` — Bulk Fundamentals Fetch Template
@@ -316,7 +186,6 @@ Module one-liners (first docstring line):
 - `reality_engine/ingestion/youtube_transcriber.py` — YouTube / MP4 transcription wrapper for Fundamental Reality Engine.
 
 ### reality_engine/pipeline/
-- `reality_engine/pipeline/__init__.py` — Pipeline runners.
 - `reality_engine/pipeline/backfill.py` — Historical Backfill Pipeline Module
 - `reality_engine/pipeline/bootstrap.py` — Deterministic Bootstrap & Test-Data Seeding Pipeline Module
 - `reality_engine/pipeline/bse_backfill.py` — BSE Bhavcopy Backfill Pipeline Module
@@ -337,7 +206,6 @@ Module one-liners (first docstring line):
 - `reality_engine/pipeline/routines.py` — Clock-time Oh My Pi routines (Claude Code local-schedule analog).
 
 ### reality_engine/processing/
-- `reality_engine/processing/__init__.py` — Document and image processing components.
 - `reality_engine/processing/ar_row_guards.py` — Guards for the annual-report row clean-up pass (tasks/AR_INGESTION_PROTOCOL.md, LLM stage a).
 - `reality_engine/processing/attention_ranker.py` — Tier-3 attention ranking + morning digest (news-feed Tier-2/3 slice).
 - `reality_engine/processing/business_peer_graph.py` — Business-substance cross-map: analog companies by what they actually do.
@@ -380,147 +248,19 @@ Module one-liners (first docstring line):
 - `reality_engine/processing/vision_engine.py` — Multimodal Vision Alpha Pipeline - keyframe extraction + VisualArtifact schema.
 
 ### reality_engine/query/
-- `reality_engine/query/__init__.py` — (no docstring)
-- `reality_engine/query/state.py` — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company at time t.
+- `reality_engine/query/state.py` — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company …
 
 ### reality_engine/reporting/
-- `reality_engine/reporting/__init__.py` — Reporting module for Reality Engine.
 - `reality_engine/reporting/notifier.py` — Wave B — Telegram alerts + 23:00 nightly digest (stdlib only, no new deps).
 - `reality_engine/reporting/writer.py` — Report Writer Module
 
-### reality_engine/scripts/
-- `reality_engine/scripts/ar_ocr_reread.py` — Free re-read of annual-report pages whose text layer is unusable (garbled OCR, scans, digit-encoding fonts).
-- `reality_engine/scripts/ar_queue.py` — Annual-report work queue for readers that only answer inside the OpenCode app (OpenCode Zen free models).
-- `reality_engine/scripts/ar_review.py` — Annual-report extraction review, run after every 200 newly finished reports (Shivam 2026-10-13: "keep optimizing after
-- `reality_engine/scripts/ar_wrong_company_scan.py` — Find annual-report PDFs in ar_docs that are another company's report. Read-only; free local checks only.
-- `reality_engine/scripts/ar_yoy.py` — Year-over-year page skip for annual-report reading (to-do 2026-10-13 in tasks/STATE.md).
-- `reality_engine/scripts/backfill_call_rows.py` — Backfill missing ``eod_scrip_calls`` rows for attribution dates.
-- `reality_engine/scripts/backfill_fiscal_periods.py` — Backfill body-genuine fiscal-period labels on document_chunks (findings §11).
-- `reality_engine/scripts/backfill_index_ohlc.py` — Backfill universe-index OHLC rows into ``nse_index_breadth``.
-- `reality_engine/scripts/backfill_raw_document_symbols.py` — Backfill ``raw_documents.symbol`` / ``.isin`` (+ ``.symbol_source``).
-- `reality_engine/scripts/backup_dbs_to_drive.py` — Back up the project databases to Google Drive (Shivam 2026-10-19: uploads only 05:00-13:00 IST, every day).
-- `reality_engine/scripts/bench_method_a.py` — bench_method_a.py — Method A: Tightened filing_discovery._classify benchmark
-- `reality_engine/scripts/bench_method_b.py` — bench_method_b.py — Method B: Title-based DB backfill reclassification benchmark
-- `reality_engine/scripts/bench_method_c.py` — Method C: Post-download content classifier benchmark (PyMuPDF + GPU OCR fallback)
-- `reality_engine/scripts/boot_recover.py` — Crash recovery: bring every job back after a reboot or power cut, with nobody logged in (Shivam 2026-10-19).
-- `reality_engine/scripts/build_chunk_vector_index.py` — Build (or rebuild) the local dense-retrieval index over document_chunks.
-- `reality_engine/scripts/build_insider_trades.py` — Normalized insider trades (insider_trades_v2) from the raw feeds already on disk.
-- `reality_engine/scripts/build_query_indexes.py` — Missing indexes and text indexes for the query layer (PIPELINE_TODO Q3, 2026-10-19). Idempotent: every statement is
-- `reality_engine/scripts/build_security_master.py` — Security master from the exchanges' own files (2026-10-19, Shivam: survivorship-safe universe).
-- `reality_engine/scripts/build_tax_rules.py` — Tax-rule table for the backtest harness (PIPELINE_TODO A1, 2026-10-19). Table `tax_rules` in equity_intelligence.db.
-- `reality_engine/scripts/build_truth_snapshot.py` — Truth layer: build a dated, read-only research snapshot of clean daily prices.
-- `reality_engine/scripts/build_worker_context.py` — Generate the worker context pack (``tasks/worker_context/CONTEXT.md``).
-- `reality_engine/scripts/claude_page_queue.py` — Hand-off between the deck-figure database and Claude Code helper agents (Claude Haiku 5.5), which cannot be called
-- `reality_engine/scripts/cleanup_verify.py` — Which local PDFs / decks are safe to delete? (Shivam 2026-10-20: free the PC disk; the laptop is the workstation.)
-- `reality_engine/scripts/colab_embed_test.py` — Colab side of the embedding retrieval test (2026-10-19, Shivam: is Qwen3-Embedding-8B worth it vs gemini-embedding-001).
-- `reality_engine/scripts/concall_deepseek.py` — 2026 concall transcripts -> DeepSeek V4.1 Flash on OpenCode Go (Shivam, 2026-10-18: 2026 transcripts are read by
-- `reality_engine/scripts/concall_deepseek_check.py` — Validation of concall_facts.db against its sources (2026-10-18, Shivam: test labels / PIT / metadata on a sample
-- `reality_engine/scripts/concall_facts_checks.py` — Verified-vs-inferred flags for DeepSeek concall facts + our own guidance direction (2026-10-18).
-- `reality_engine/scripts/concall_period.py` — Normalise the quarter / fiscal year a concall discusses (Indian FY: Q1 = Apr-Jun; FY27 = Apr 2026 - Mar 2027).
-- `reality_engine/scripts/concall_pilot.py` — Concall semantic-extraction pilot (2026-10-18): the same prompt (data/concall_pilot/prompt.md) on 25 transcripts,
-- `reality_engine/scripts/concall_query_test.py` — Can we query the DeepSeek concall facts? (2026-10-18 pilot of 118 transcripts, Shivam: test before the full run.)
-- `reality_engine/scripts/coverage_report.py` — Coverage report: for every company that traded on BSE or NSE in a year (2019 onwards), which datasets we hold.
-- `reality_engine/scripts/deck_zen_test.py` — 40-page deck reader test for OpenCode Zen free models (they answer only inside OpenCode, so each page is one
-- `reality_engine/scripts/deepseek_heartbeat.py` — DeepSeek heartbeat (Shivam, 2026-10-20): wakes DeepSeek, never Claude. Run hourly by the Windows task
-- `reality_engine/scripts/discover_bse_feed_docs.py` — Add filings from the harvested BSE announcement feed (analysis/bse_announcements.db, every BSE company, 2020-01 ->
-- `reality_engine/scripts/drive_upload_check.py` — Which local PDFs / decks are not on Google Drive yet (2026-10-19, after the power cut stopped Shivam's browser upload).
-- `reality_engine/scripts/drop_debt_issuer_reports.py` — Drop annual reports filed under BSE debt-instrument scrips (scrip codes 9xxxxx: NCDs/bonds), keeping rating reports
-- `reality_engine/scripts/dsh_batch.py` — Run a JSONL of worker tasks in parallel through run_deepseek_harness and print ONE compact summary table.
-- `reality_engine/scripts/dsh_heartbeat.py` — Heartbeat supervision for one-shot dsh runs.
-- `reality_engine/scripts/embed_ar_rerank_test.py` — Reranker leg of the annual-report embedding pilot (2026-10-24, Shivam: can Nemotron-3-Embed-1B-NVFP4 + a reranker
-- `reality_engine/scripts/embed_ar_test.py` — Annual-report embedding pilot on DeepInfra (2026-10-24, Shivam: pick the AR embedder on cost-to-value, as the
-- `reality_engine/scripts/embed_model_test.py` — Embedding-model retrieval test on our own concall chunks (2026-10-18, Shivam: test before switching from bge-small).
-- `reality_engine/scripts/embed_prototype_compare.py` — Prototype: bge-small-en-v1.5 (incumbent, 384d) vs bge-base-en-v1.5 (challenger, 768d).
-- `reality_engine/scripts/embed_video_chunks.py` — Embed YouTube/Telegram video chunks that have no embedding yet (bge-small-en-v1.5, 384-d, DirectML on the RX 6700 XT,
-- `reality_engine/scripts/extract_deck_figures.py` — Extract the figures printed on investor-presentation slides with OpenCode Go vision models.
-- `reality_engine/scripts/fetch_board_meetings.py` — Board-meeting calendar, NSE (PIPELINE_TODO phase C: forward board-meeting calendar / results dates ahead; 2026-10-19).
-- `reality_engine/scripts/fetch_bse_announcements_daily.py` — Market-wide BSE announcements by date -> analysis/bse_announcements.db table `ann` (2026-10-19).
-- `reality_engine/scripts/fetch_bse_annual_report_dates.py` — Date the annual reports in corporate_documents from BSE's own annual-report list.
-- `reality_engine/scripts/fetch_bse_api_raw.py` — Raw BSE disclosure fetcher (download only, no DB writes).
-- `reality_engine/scripts/fetch_decks.py` — Download historical investor-presentation PDFs (2021 onwards) from BSE and, for companies listed only on NSE,
-- `reality_engine/scripts/fetch_etf_nav.py` — ETF prices, NAV and premium (PIPELINE_TODO B1, 2026-10-19). Tables in equity_intelligence.db:
-- `reality_engine/scripts/fetch_fiidii_moneycontrol.py` — Daily FII / DII cash-market flows from Moneycontrol (third-party archive; approved by
-- `reality_engine/scripts/fetch_index_tri.py` — Total-return indices for the benchmark rule (PIPELINE_TODO B2, 2026-10-19). Table `index_tri` in equity_intelligence.db.
-- `reality_engine/scripts/fetch_macro_docs.py` — Fetch macro policy documents 2019-2026 with their real publication dates, then ingest them (2026-10-17).
-- `reality_engine/scripts/fetch_market_raw.py` — Raw market-data fetcher (download only, no DB writes).
-- `reality_engine/scripts/fetch_missed_ar_files.py` — Fetch annual-report files BSE lists but we never downloaded, and register them as ANNUAL_REPORT filings (2026-10-16).
-- `reality_engine/scripts/fetch_nsdl_raw.py` — Raw NSDL FPI report fetcher (download only, no DB writes).
-- `reality_engine/scripts/fetch_nse_api_raw.py` — Raw NSE disclosure fetcher (download only, no DB writes).
-- `reality_engine/scripts/fetch_nse_industry.py` — NSE industry classification per listed company (2026-10-19, for A3 policy -> company mapping and sector peers).
-- `reality_engine/scripts/fetch_nse_pr.py` — NSE daily circuit hits, price bands and surveillance stages (PIPELINE_TODO phase C, 2026-10-19).
-- `reality_engine/scripts/fetch_shareholding.py` — Quarterly shareholding pattern (PIPELINE_TODO B3, 2026-10-19). Tables in equity_intelligence.db:
-- `reality_engine/scripts/go_session.py` — Stable `x-opencode-session` ids for every OpenCode Go call (Shivam, 2026-10-20: standing rule for all routing calls).
-- `reality_engine/scripts/ingest_annual_reports.py` — Annual-report fact extraction with the free readers that passed the AR must-find test (tasks/ar_study/free_test):
-- `reality_engine/scripts/ingest_video_batch.py` — Frames + OCR + DB load for transcribed member videos (Telegram Daily Bytes etc.).
-- `reality_engine/scripts/install_annual_drain_task.py` — Register the hourly annual-drain watchdog as a Windows Scheduled Task.
-- `reality_engine/scripts/load_index_membership.py` — Load official index constituent CSVs (niftyindices.com) into index_membership.
-- `reality_engine/scripts/load_market_raw.py` — Load raw market files (from fetch_market_raw.py / fetch_nse_api_raw.py) into the DB.
-- `reality_engine/scripts/measure_cross_map_quality.py` — Measure cross-map quality: does an anchor's neighbourhood land in its own industry?
-- `reality_engine/scripts/merge_lane_db.py` — Worktree lane DB merger for Reality Engine.
-- `reality_engine/scripts/merge_placeholder_isins.py` — Merge every remaining INE_AUTO_* placeholder ISIN into its real ISIN, across all tables (2026-10-16).
-- `reality_engine/scripts/migrate_event_version.py` — Idempotent event-date/version migration for document tables (handover §4 item 1).
-- `reality_engine/scripts/migrate_vector_store.py` — One-time migration: vectors.json -> vectors.npy + vectors_meta.json.
-- `reality_engine/scripts/new_reader_check.py` — Daily check for new free readers (STATE to-do 1, 2026-10-13). Run once a day by the resource watchdog; safe to run
-- `reality_engine/scripts/parse_nse_results_xbrl.py` — Parse the NSE financial-results XBRL files into a dated quarterly table.
-- `reality_engine/scripts/pib_feed.py` — PIB (Press Information Bureau) English releases: daily feed + backfill (2026-10-19; Shivam: government policy change,
-- `reality_engine/scripts/pib_regional.py` — PIB phase 2 (PIPELINE_TODO A2, 2026-10-19): Hindi / Urdu releases of PIB Delhi and every regional PIB office in every
-- `reality_engine/scripts/policy_register.py` — Policy register: dated policy changes extracted from Government / RBI documents (2026-10-19, Shivam: policy change -
-- `reality_engine/scripts/profile_tuner.py` — Overnight profile tuner (2026-10-13, Shivam: "do the same for the Zen models when they come back"). Runs detached
-- `reality_engine/scripts/query_speed_check.py` — Query speed check (PIPELINE_TODO Q1, 2026-10-19): a fixed list of the queries backtests and analysis run, each with a
-- `reality_engine/scripts/reader_quality_test.py` — 40-page reader quality test for deck pages (Shivam's rule: a new reader needs identifiable >= ~85%, zero misread
-- `reality_engine/scripts/reembed_gemma.py` — Re-embed every document chunk with EmbeddingGemma-300M (Shivam approved 2026-10-19).
-- `reality_engine/scripts/reembed_qwen_nebius.py` — Qwen3-Embedding-8B over Nebius Token Factory for the priority tiers (Shivam, 2026-10-20: pay ~$2 so transcripts,
-- `reality_engine/scripts/refetch_all_ip_method_c.py` — Refetch all true Investor Presentations with Method C, delete notices immediately.
-- `reality_engine/scripts/rekey_placeholder_isins.py` — Re-key document and annual-report rows from placeholder INE_AUTO_* ISINs to the real ISIN (2026-10-16).
-- `reality_engine/scripts/repair_transcript_dates.py` — Repair filing dates in the search layer (2026-10-18; --types widens it beyond concall transcripts).
-- `reality_engine/scripts/resolve_results_isin.py` — Trading ISIN for every results XBRL filing (2026-10-19). New table results_xbrl.db `filings_isin`; `filings` is untouche
-- `reality_engine/scripts/resource_watchdog.py` — Machine-wide resource watchdog: keeps the long jobs alive and records every case of wasted compute.
-- `reality_engine/scripts/run_annual_report_ingest.py` — Annual-report ingestion: turn the 26k indexed-but-never-downloaded filings into substrate.
-- `reality_engine/scripts/run_business_peer_graph.py` — Build the business-substance analog cross-map over the embedded corpus.
-- `reality_engine/scripts/run_deepseek_harness.py` — Run one task headlessly in DeepSeek Harness (dsh) on an OpenCode Go model, so a Claude orchestrator can use it
-- `reality_engine/scripts/run_distill_all.py` — Wave 0 — Substrate promotion runner for ALL macro raw_documents.
-- `reality_engine/scripts/run_entity_graph.py` — Build the unified entity cross-map (A + B + C) from substrate only.
-- `reality_engine/scripts/run_eod_market.py` — End-of-day market + disclosure update (Shivam OK 2026-10-19). Scheduled task 'RealityEngine-EODMarket', weekdays
-- `reality_engine/scripts/run_factor_peer.py` — Peer 1 (Factor/Statistical) substrate promotion runner.
-- `reality_engine/scripts/run_full_suite.py` — Full-suite runner that writes a machine-readable verdict (shell pipes are unreliable here).
-- `reality_engine/scripts/run_ingestion_queue.py` — Ingestion queue: run every pending filing/backfill stage ONE AT A TIME.
-- `reality_engine/scripts/run_moe_eod.py` — Final Wave - MoE seeding & EOD correction loop (continuous improvement engine).
-- `reality_engine/scripts/run_offer_drhp_backfill.py` — Resumable DRHP/Offer-document download + ingest + distill driver (v3).
-- `reality_engine/scripts/run_offer_pdf_resolve.py` — Fan-out PDF resolver for SEBI offer-document filings.
-- `reality_engine/scripts/run_peer_graph.py` — Analog peer graph promotion — precompute substrate nearest neighbours.
-- `reality_engine/scripts/run_pib_ingest.py` — PIB (Press Information Bureau) release ingestion — the macro transmission channel.
-- `reality_engine/scripts/run_policy_peer.py` — Peer 3 (Policy Macro) — isolated substrate promotion runner.
-- `reality_engine/scripts/run_quality_peer.py` — Peer 2 (Business Quality / Moat) substrate promotion runner.
-- `reality_engine/scripts/run_rag_slice.py` — Bounded detached RAG slice: archive + ingest in idempotent bounded batches.
-- `reality_engine/scripts/run_skill_loop.py` — Walk-forward skill loop driver: fit on early occurrences, evaluate on later ones.
-- `reality_engine/scripts/run_substrate_hygiene.py` — Substrate trust layer promotion — materialize quarantine keys, print degradation.
-- `reality_engine/scripts/run_supply_peer.py` — Peer 4 — Supply Chain substrate promotion (isolated, parallel-safe).
-- `reality_engine/scripts/seed_track_record.py` — Seed the audited portfolio track record from existing history.
-- `reality_engine/scripts/session_digest.py` — Whole-conversation context for worker models (Shivam, 2026-10-20: "how would DeepSeek know what happened in the whole
-- `reality_engine/scripts/setup_gdrive_readonly.py` — Create an rclone remote 'gdrive_ro' with READ-ONLY access to the whole Google Drive (2026-10-19).
-- `reality_engine/scripts/setup_worker_env.py` — Install the packages dsh workers repeatedly need into the main Python.
-- `reality_engine/scripts/snapshot_research_tables.py` — Research tables for the nightly DuckDB analysis snapshot (PIPELINE_TODO Q2, 2026-10-19).
-- `reality_engine/scripts/state_check.py` — Check for reality_engine/query/state.py (PIPELINE_TODO Q4): leak test + latency over random (isin, t).
-- `reality_engine/scripts/state_handcheck.py` — Hand check of state(isin, t) against raw sources (PIPELINE_TODO Q4, 2026-10-19): 20 random companies with 2025-26
-- `reality_engine/scripts/tag_telegram_posts.py` — Tag Telegram posts with companies using screener.in/company/<slug> links found in the message text or buttons.
-- `reality_engine/scripts/tag_video_chunks.py` — Tag YouTube/Telegram video chunks with company symbols (title-guided + exact-name matching).
-- `reality_engine/scripts/tg_backfill.py` — Backfill Telegram forum-topic history (TEXT + LINKS + timestamps only; no media downloads).
-- `reality_engine/scripts/tg_company_mentions.py` — Companies named in Telegram topics (Financially Free community), with point-in-time post times (2026-10-18).
-- `reality_engine/scripts/tg_list_topics.py` — Read-only: list forum topics of a Telegram channel with message counts and date range.
-- `reality_engine/scripts/tg_login.py` — One-time interactive Telegram login. Run this yourself in a terminal (it asks for your phone
-- `reality_engine/scripts/tg_orders.py` — Orders from the Telegram 'Big Orders' topic (7) -> tg_orders + tg_order_schedule (2026-10-19).
-- `reality_engine/scripts/tg_pead_signals.py` — PEAD signal table from the Financially Free 'PEAD' Telegram topic (683), for backtesting and transcript priority.
-- `reality_engine/scripts/weekly_sebi_ingest.py` — Weekly SEBI filing ingestion (new DRHP/Prospectus filings -> dense substrate).
-- `reality_engine/scripts/worker_context.py` — Live-state context file for worker models (Shivam, 2026-10-20: a worker cannot answer from information it never got;
-
+- `reality_engine/scripts/` — 123 data-job modules (one per data job); most-referenced ranked below.
 ### reality_engine/search/
-- `reality_engine/search/__init__.py` — Search services.
 - `reality_engine/search/chunk_vector_index.py` — Local dense-retrieval index over ``document_chunks.embedding``.
 - `reality_engine/search/hybrid_search.py` — Lexical plus dense search using reciprocal rank fusion.
 - `reality_engine/search/intel_search.py` — Tier-aware unified search over ``intelligence_fts`` (news-feed v1).
 
 ### reality_engine/toolbelt/
-- `reality_engine/toolbelt/__init__.py` — Ready-made, read-only tools for dsh workers (Task 02).
 - `reality_engine/toolbelt/_common.py` — Shared helpers for the toolbelt CLIs.
 - `reality_engine/toolbelt/cost_ledger.py` — Append-only paid-call ledger with a hard budget gate.
 - `reality_engine/toolbelt/coverage_peek.py` — One command: what data do we hold for a symbol, per store, with row counts and date ranges.
@@ -532,7 +272,6 @@ Module one-liners (first docstring line):
 - `reality_engine/toolbelt/sample_rows.py` — Random row samples from a live SQLite store without scanning it.
 
 ### reality_engine/ui/
-- `reality_engine/ui/__init__.py` — Reality Engine UI Module.
 - `reality_engine/ui/dashboard.py` — Reality Engine - Streamlit Equity Intelligence Dashboard
 
 ### Most-referenced scripts
@@ -551,34 +290,11 @@ Ranked by mentions in `tasks/STATE.md`, `plugins/dsh-worker/jobs.yaml` and the 2
 - `reality_engine/scripts/claude_page_queue.py` (5 refs) — Hand-off between the deck-figure database and Claude Code helper agents (Claude Haiku 5.5), which cannot be called
 - `reality_engine/scripts/concall_pilot.py` (5 refs) — Concall semantic-extraction pilot (2026-10-18): the same prompt (data/concall_pilot/prompt.md) on 25 transcripts,
 - `reality_engine/scripts/fetch_nse_api_raw.py` (5 refs) — Raw NSE disclosure fetcher (download only, no DB writes).
-- `reality_engine/scripts/load_market_raw.py` (5 refs) — Load raw market files (from fetch_market_raw.py / fetch_nse_api_raw.py) into the DB.
-- `reality_engine/scripts/policy_register.py` (5 refs) — Policy register: dated policy changes extracted from Government / RBI documents (2026-10-19, Shivam: policy change -
-- `reality_engine/scripts/run_annual_report_ingest.py` (5 refs) — Annual-report ingestion: turn the 26k indexed-but-never-downloaded filings into substrate.
-- `reality_engine/scripts/worker_context.py` (5 refs) — Live-state context file for worker models (Shivam, 2026-10-20: a worker cannot answer from information it never got;
-- `reality_engine/scripts/ar_yoy.py` (4 refs) — Year-over-year page skip for annual-report reading (to-do 2026-10-13 in tasks/STATE.md).
-- `reality_engine/scripts/coverage_report.py` (4 refs) — Coverage report: for every company that traded on BSE or NSE in a year (2019 onwards), which datasets we hold.
-- `reality_engine/scripts/fetch_decks.py` (4 refs) — Download historical investor-presentation PDFs (2021 onwards) from BSE and, for companies listed only on NSE,
-- `reality_engine/scripts/fetch_market_raw.py` (4 refs) — Raw market-data fetcher (download only, no DB writes).
-- `reality_engine/scripts/run_eod_market.py` (4 refs) — End-of-day market + disclosure update (Shivam OK 2026-10-19). Scheduled task 'RealityEngine-EODMarket', weekdays
-- `reality_engine/scripts/build_insider_trades.py` (3 refs) — Normalized insider trades (insider_trades_v2) from the raw feeds already on disk.
-- `reality_engine/scripts/build_truth_snapshot.py` (3 refs) — Truth layer: build a dated, read-only research snapshot of clean daily prices.
-- `reality_engine/scripts/concall_deepseek_check.py` (3 refs) — Validation of concall_facts.db against its sources (2026-10-18, Shivam: test labels / PIT / metadata on a sample
-- `reality_engine/scripts/concall_facts_checks.py` (3 refs) — Verified-vs-inferred flags for DeepSeek concall facts + our own guidance direction (2026-10-18).
-- `reality_engine/scripts/concall_query_test.py` (3 refs) — Can we query the DeepSeek concall facts? (2026-10-18 pilot of 118 transcripts, Shivam: test before the full run.)
-- `reality_engine/scripts/discover_bse_feed_docs.py` (3 refs) — Add filings from the harvested BSE announcement feed (analysis/bse_announcements.db, every BSE company, 2020-01 ->
-- `reality_engine/scripts/drive_upload_check.py` (3 refs) — Which local PDFs / decks are not on Google Drive yet (2026-10-19, after the power cut stopped Shivam's browser upload).
-- `reality_engine/scripts/fetch_bse_annual_report_dates.py` (3 refs) — Date the annual reports in corporate_documents from BSE's own annual-report list.
-- `reality_engine/scripts/go_session.py` (3 refs) — Stable `x-opencode-session` ids for every OpenCode Go call (Shivam, 2026-10-20: standing rule for all routing calls).
-- `reality_engine/scripts/query_speed_check.py` (3 refs) — Query speed check (PIPELINE_TODO Q1, 2026-10-19): a fixed list of the queries backtests and analysis run, each with a
-- `reality_engine/scripts/tg_orders.py` (3 refs) — Orders from the Telegram 'Big Orders' topic (7) -> tg_orders + tg_order_schedule (2026-10-19).
-- `reality_engine/scripts/tg_pead_signals.py` (3 refs) — PEAD signal table from the Financially Free 'PEAD' Telegram topic (683), for backtesting and transcript priority.
-- `reality_engine/scripts/backup_dbs_to_drive.py` (2 refs) — Back up the project databases to Google Drive (Shivam 2026-10-19: uploads only 05:00-13:00 IST, every day).
-- `reality_engine/scripts/embed_ar_test.py` (2 refs) — Annual-report embedding pilot on DeepInfra (2026-10-24, Shivam: pick the AR embedder on cost-to-value, as the
-- `reality_engine/scripts/embed_model_test.py` (2 refs) — Embedding-model retrieval test on our own concall chunks (2026-10-18, Shivam: test before switching from bge-small).
-- `reality_engine/scripts/fetch_board_meetings.py` (2 refs) — Board-meeting calendar, NSE (PIPELINE_TODO phase C: forward board-meeting calendar / results dates ahead; 2026-10-19).
-- `reality_engine/scripts/fetch_bse_api_raw.py` (2 refs) — Raw BSE disclosure fetcher (download only, no DB writes).
-- `reality_engine/scripts/fetch_etf_nav.py` (2 refs) — ETF prices, NAV and premium (PIPELINE_TODO B1, 2026-10-19). Tables in equity_intelligence.db:
-- `reality_engine/scripts/fetch_fiidii_moneycontrol.py` (2 refs) — Daily FII / DII cash-market flows from Moneycontrol (third-party archive; approved by
+
+### Tools
+
+- Toolbelt (`reality_engine/toolbelt/README.md`; `python -m reality_engine.toolbelt.<tool>`, read-only): `coverage_peek --symbol X`, `find_docs --symbol X`, `sample_rows --db <db> --table <t> --n 5`, `job_peek <job>`, `render_pages --pdf <f> --pages 3,5-7`, `drive_fetch`, `cost_ledger`, `mod_test`.
+- Code-intel MCP (`mcp__code-intel__*`) — use before grep: `module_map(package)`, `symbols(file= | query=)`, `definition(symbol)`, `references(symbol)`, `callers(fn)`, `hover(file,line)`, `diagnostics(files= | changed=True)`.
 
 ## 2. Data map
 
@@ -811,265 +527,20 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 
 ## 5. Sandbox limits + workarounds
 
-# Worker sandbox, temp, write scopes and detached processes
+Digest only; full rules in `tasks/worker_context/SANDBOX.md` (read it before installing, writing outside the workspace, committing or launching).
 
-Written 2026-10-25 (Task 03) from the live dsh 0.2.1 sources and the two profile
-patches. Read this before starting a worker that needs to install packages,
-write outside the worktree, commit, or launch something long-lived.
+| `permission` | dsh mode / approval | effect |
+|---|---|---|
+| `read-only` | `read-only`, `ask` | no writes; confined pwsh gets no temp dir, so `tempfile.mkdtemp()` fails |
+| `workspace-write` | `workspace-write`, `ask` | writes under the session cwd plus a private per-session temp |
+| `danger-full-access` | `danger-full-access`, `never` | unconfined |
 
-## 1. What `permission` actually does (verified mapping)
-
-`start_worker(permission=...)` → `run_deepseek_harness.py --permission` → the
-launcher sets `DSH_PERMISSION_MODE` → `dsh-base/cordis.patch.yml` reads it in two
-rows:
-
-| `permission` | `dsh-sandbox-policy.mode` | `dsh-user-approval.policy` | Effect |
-|---|---|---|---|
-| `read-only` | `read-only` | `ask` | No write grants. Confined pwsh gets no private temp either, so `tempfile.mkdtemp()` fails. |
-| `workspace-write` (default for mutating jobs) | `workspace-write` | `ask` | Writes under the session cwd (the `--cwd` workspace) plus a per-session private temp dir; `dsh-pwsh-sandbox` rewrites `TMP`/`TEMP` to that private dir for every confined command. |
-| `danger-full-access` | `danger-full-access` | `never` | No confinement; the sandbox provider is never consulted. |
-
-Key facts:
-
-- The **writable root is the session cwd**, i.e. the `--cwd` passed to dsh
-  (`workspace` / the worktree). `sandbox-policy.workspaceRoot` is only a
-  fallback for calls without a session cwd.
-- Windows enforcement is the **ACL restricted-token rung**
-  (`dsh-sandbox-windows-acl`): a `WRITE_RESTRICTED` token whose restricting SIDs
-  carry the workspace SID (deterministic per workspace path) and a random
-  per-session temp SID, lowered to Low integrity. It is reported as `partial`
-  (hard links alias file objects, reads are unconfined).
-- **There is no extra-writable-roots setting in dsh 0.2.1.** One writable root
-  per session; the fs fence (`dsh-fs-sandbox`) and the pwsh runner both derive
-  their roots from the same policy. A junction/symlink inside the workspace to
-  `reality_engine/data` does not help: both the fence and the ACL token check the
-  resolved target.
-- The fs fence (`dsh-fs-sandbox`) also allows `os.tmpdir()` in
-  `workspace-write`, but the confined pwsh child is the stricter boundary.
-
-## 2. Per-job temp and caches (supervisor)
-
-For every job the supervisor creates `<workspace>/.tmp/` and exports to the
-worker process:
-
-| Variable | Value |
-|---|---|
-| `TMP`, `TEMP`, `TMPDIR` | `<workspace>/.tmp` |
-| `npm_config_cache` | `<workspace>/.tmp/npm-cache` |
-| `PIP_CACHE_DIR` | `<workspace>/.tmp/pip-cache` |
-| `UV_CACHE_DIR` | `<workspace>/.tmp/uv-cache` |
-| `PYTHONPYCACHEPREFIX` | `<workspace>/.tmp/pycache` |
-| `PIP_DEFAULT_TIMEOUT`, `PIP_RETRIES` | `120`, `5` |
-| `UV_HTTP_TIMEOUT` | `120` |
-
-`.tmp/` is gitignored (root `.gitignore`). Use it for `tempfile`, `pip install
---target .tmp/x ...`, `npx`, and scratch outputs; never write to the ambient
-`%LOCALAPPDATA%\Temp` (denied under `read-only`, unlabelled under
-`workspace-write`). `tempfile.mkdtemp()` works because `TMP` now points into the
-workspace; inside a confined pwsh it points at the sandbox's private temp (also
-writable).
-
-Two sandbox facts drive the rest of the setup:
-
-- The supervisor prepends `plugins/dsh-worker/worker_bootstrap` to the worker's
-  `PYTHONPATH` and sets `DSH_WORKER_SANDBOXED=1` only for file-sandboxed jobs
-  (`read-only`/`workspace-write`; never `danger-full-access`). Its
-  `sitecustomize` drops Python 3.14's explicit `0o700` DACL when creating temp
-  directories only when that marker is present: under the write-restricted
-  token that DACL cuts off the inherited workspace capability, so
-  `tempfile.mkdtemp()` could create a directory but not write inside it
-  (`python -S`` bypasses this, and an ordinary Python process is never patched).
-- `DSH_WORKER_PROGRESS_NOTES` points at `<workspace>/.tmp/PROGRESS_NOTES.md`,
-  not the job directory (outside the sandbox). Digests read the new path first
-  and fall back to the legacy `<job_dir>/PROGRESS_NOTES.md`.
-
-`.tmp/` is also the supervisor's request channel (below). The worker can write
-there under `workspace-write`.
-
-## 3. Write scopes (`start_worker(write_scope=...)`)
-
-| `write_scope` | dsh mode used | Confirmation | Extra authority |
-|---|---|---|---|
-| `workspace` (default) | the requested `permission` | — | workspace + `.tmp` only |
-| `data` | forced `danger-full-access` | `confirm_data_write=true` + `writes=[...]` + `approved_by` text | `REALITY_DATA_ROOT` (`reality_engine/data`) and `D:\RealityEngine`; the supervisor holds `db:<file>` locks for each entry in `writes=[...]` |
-| `full` | forced `danger-full-access` | `confirm_full_access=true` (Shivam approves first) + `approved_by` text | no file restriction |
-
-**dsh 0.2.1 makes `data` == `full` access at the OS level.** Because the dsh
-sandbox has one writable root per session and no extra-roots setting, a `data`
-job runs the same `danger-full-access` mode as a `full` job: nothing at the OS
-level stops it writing any file. The difference is process policy, not
-enforcement — the brief's write roots, the named `db:<file>` locks and the human
-approval. Treat `write_scope='data'` as full access that happens to be briefed
-to touch only the named DBs.
-
-`writes=[...]` is required for `data`: it accepts bare file names with or
-without a `db:` prefix (`["equity_intelligence.db"]`), and a `data` job with an
-empty list is refused with `writes_required` (it would hold no lock and could
-write every DB). A non-`data` job that passes `writes` is refused with
-`writes_requires_data_scope`. `approved_by` records who approved a `data`/`full`
-job in `job.json`, `status.json` and `worker_status`; `confirm_*` is only the
-caller's own flag, so the approval text is the audit trail. The manager writes a
-start-window reservation for each named lock before it spawns the supervisor
-(the supervisor removes it after taking the real OS lock), so a simultaneous
-second start is refused with `resource_busy` before anything is launched.
-
-`write_scope` is recorded in `job.json`, `status.json`, every progress digest,
-`worker_status` and `list_workers`. `worker_status` prefers `status.json`: the
-job record sits in a directory a worker could reach when its workspace is the
-main checkout, so a hand-edited `job.json` scope does not change the reported
-scope (and never changed the launch decision).
-
-### The main checkout root is special
-
-A **mutating** worker whose workspace is the main checkout root needs
-`confirm_repo_root_write=true`; without it the start is refused with
-`repo_root_write_requires_confirmation` before anything runs. Read-only workers
-and worktree workers do not need the flag. The reason is plain: the main
-checkout contains code that later runs *outside* the sandbox — the context-pack
-builder (`reality_engine/scripts/build_worker_context.py`), the plugin's
-`supervisor.py`, `.git/config` and other jobs' records. A worker that can rewrite
-any of those can make the next supervisord/manager start execute its code. The
-flag is an explicit statement that Shivam approved a worker which may rewrite
-the repository root; it is recorded in `job.json`, `status.json`,
-`worker_status` and `list_workers` next to `approved_by`. While such a worker
-holds the repo-root lock, a new start does **not** regenerate
-`tasks/worker_context/CONTEXT.md` (the stale pack is attached with a warning),
-because the builder is worker-writable at that moment.
-
-Never start a `data` job unless the brief is approved to write there. Never use
-`full` without Shivam's explicit go-ahead.
-
-## 4. Committing from a worktree job
-
-The worktree index/objects live in the main checkout's
-`.git/worktrees/<id>`, outside the sandbox's writable root, so `git commit`
-inside the job is denied. Supported path:
-
-1. The worker writes `<workspace>/.tmp/commit.request.json` with
-   `{"message": "feat: ..."}` (its own `write` tool).
-2. The supervisor (unconfined) runs the commit on the next ~2 s poll, appends
-   the result to `status.worker_commits` (last 50 only), and writes
-   `<workspace>/.tmp/commit.result.json` (`{"ok": true, "commit": {...}}`).
-3. Works for a job-created worktree **and** for a workspace pointed at an
-   existing worktree. Direct `git add`/`git commit` inside the job cannot work
-   in either case: the index/refs live under `<main>/.git/worktrees/<id>`,
-   outside the writable root, so use the request file. The supervisor's
-   end-of-run auto-commit still runs and creates no second commit when the tree
-   is clean.
-
-The commit never trusts the worktree's `.git`. When the job starts, the manager
-(outside the sandbox) records the real `git_dir`, `common_dir`, `toplevel`,
-`head_ref` and `branch` in `job.json` (`job["git"]`). The supervisor then runs:
-
-```
-git --git-dir=<stored git_dir> --work-tree=<stored toplevel> \
-    --attr-source=4b825dc642cb6eb9a060e54bf8d69288fbee4904 \
-    -c core.hooksPath=NUL -c core.fsmonitor=false \
-    -c core.sshCommand= -c diff.external= \
-    -c core.attributesFile=NUL -c commit.gpgSign=false \
-    -c gpg.program= -c core.editor= -c sequence.editor= -c core.pager= \
-    add -A                      # then
-    commit --no-verify -m ...   # only on refs/heads/dsh/...
-```
-
-with `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=NUL`,
-`GIT_TERMINAL_PROMPT=0` and `GIT_ATTR_SOURCE=<empty tree>`. The empty-tree
-attribute source means no in-tree `.gitattributes` can select a
-`filter=`/`diff=`/`merge=` driver; `<git_dir>/info/attributes` cannot be
-redirected that way, so a commit is refused (`git_attributes_driver_refused`)
-when it names a driver. A clean filter or `gpg.program` planted in repo config
-therefore never runs (pinned by tests).
-
-Before `git add -A`, every path in `git status --porcelain -z` is checked with
-`os.lstat`; a symlink or Windows reparse point (junction) at the path or any of
-its ancestors refuses the commit (`reparse_point_in_workspace`) instead of
-staging data from outside the workspace.
-
-The post-run snapshot is taken through the same stored identity and the same
-hardened runner — never `git -C <workspace>`: a rewritten `.git` means **no git
-process runs** and `artifacts` reports `final_snapshot_unavailable` (the
-snapshot reason is `git_dir_tampered`). Job records with no stored identity
-(older records) are treated the same way: no snapshot. The start-of-run
-baseline in `baseline.json` uses the identity too, so `artifacts.paths` still
-works for normal worktree and main-checkout jobs.
-
-It refuses when the stored common dir is not `<repo>/.git`, when the stored git
-dir is the main checkout's own `.git` (the main checkout is never a worker
-commit target), when `<workspace>/.git` no longer points at the stored git dir
-(worker-owned fake gitdir / redirect to another repository), or when HEAD is not
-a `refs/heads/dsh/...` branch (or the recorded branch). So a worker that
-rewrites `.git` cannot run its own `pre-commit` hook or commit into another
-repository, and the request file can never supply git `-c` options.
-
-## 5. Detached long-running processes (`write_scope` data/full only)
-
-A child of a confined shell dies with it, and the supervisor holds a
-`KILL_ON_JOB_CLOSE` job object, so a normal background child dies too. The
-supported escape is WMI: the supervisor runs `Invoke-CimMethod Win32_Process
-Create`, so WmiPrvSE — not the worker or the supervisor — is the parent.
-
-Worker protocol: write `<workspace>/.tmp/launch.request.json`:
-
-```json
-{
-  "cmd": "python -m reality_engine.scripts.some_job --flag",
-  "log": ".tmp/some-job.log",
-  "cwd": ".",
-  "env": {"REALITY_DATA_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model/reality_engine/data"}
-}
-```
-
-- `cmd` is a string or an argv list; it runs through `cmd.exe /c` (a `.cmd`
-  wrapper is generated under `.tmp`).
-- `log` and `cwd` must resolve inside `.tmp`, the workspace, `REALITY_DATA_ROOT`
-  or `D:\RealityEngine`; the default log is `.tmp/detached-<ts>.log`.
-- Optional `env` is written as `set` lines into the wrapper (WMI-created
-  processes do not inherit the worker's environment — Winmgmt's environment is
-  the parent — so pass absolute interpreter paths or an explicit `PATH`).
-- The supervisor writes `.tmp/launch.result.json` with `ok`, `pid`, `log`, and
-  records `pid`/`command`/`log` in `status.detached` (the job record view).
-- Refused unless `write_scope` is `data` or `full`
-  (`launch_detached_requires_write_scope_data_or_full`).
-
-## 5a. Testing the sandbox from inside a sandbox
-
-A nested sandbox cannot be created from an already-confined token: *** runner's
-`SetNamedSecurityInfoW` fails with Win32 5 (our token has no `WRITE_DAC`) and
-`CreateRestrictedToken` fails with Win32 87 when the caller is already
-write-restricted. Run end-to-end sandbox demos from Claude's unconfined shell,
-from a supervisor-launched worker, or (as Task 03 did) exercise the same
-workspace-write token that the session already holds. The Task 03 probe is
-`tasks/worker_context/sandbox_probe.py` (its docstring has the exact command).
-
-## 6. Dependencies and per-task venvs
-
-- `requirements-worker.txt` (repo root): pymupdf, pyyaml, requests, numpy,
-  pandas, duckdb, openpyxl, xlrd. All have a cp314/abi3 Windows wheel
-  (`setup_worker_env.py --dry-run` prints the exact filename). `rapidocr` is
-  excluded: its onnxruntime backend has no cp314 wheel. No pytest (unittest).
-- `python reality_engine/scripts/setup_worker_env.py` installs missing packages
-  into the user site with `--timeout 120 --retries 5`; it is idempotent and
-  prints what changed. `--dry-run` installs nothing.
-- Optional per-task venv: `python -m venv .venv-<task>` (gitignored), then
-  `.venv-<task>\Scripts\python -m pip install -r requirements-worker.txt`. Use
-  one only when a task needs pins that conflict with the shared site.
-- `tasks/worker_context/pip.ini` and `uv.toml` are the same timeouts as a config
-  file for interactive use; workers already inherit them through env vars.
-
-## 7. Files Claude must install outside the worker sandbox
-
-The worker cannot write `~/.dsh`, `%APPDATA%`, or the main checkout's `.git`.
-Claude (unconfined) installs these after review; exact commands are in the Task
-03 report and in `tasks/dsh_profiles/README.md`:
-
-- `tasks/dsh_profiles/headless.cordis.patch.yml` → `~/.dsh/profiles/headless/cordis.patch.yml`
-- `tasks/dsh_profiles/web.cordis.patch.yml` → `~/.dsh/profiles/web/cordis.patch.yml`
-- `tasks/worker_context/pip.ini` → `%APPDATA%\pip\pip.ini`
-- `tasks/worker_context/uv.toml` → `%APPDATA%\uv\uv.toml`
-
-Back up each existing file first. The profile change adds the 10-minute pwsh cap
-and turns `promoteOnTimeout` off, so a command that reaches the cap is killed
-instead of being promoted to a background job.
+- Writable root = session cwd only; there is no extra-writable-roots setting, and a junction to `REALITY_DATA_ROOT` does not help (the resolved target is checked).
+- Temp/caches: `.tmp/` (`TMP`/`TEMP`, pip/uv/npm caches). Never `%LOCALAPPDATA%\Temp`. `pip install --target .tmp/x ...`; optional `.venv-<task>`.
+- `write_scope='data'`: needs `confirm_data_write=true` + `writes=[...]` + `approved_by`; runs `danger-full-access` exactly like `full` (`confirm_full_access=true`) — policy, not enforcement. A mutating main-checkout worker needs `confirm_repo_root_write=true`.
+- Commit: write `.tmp/commit.request.json` `{"message": ...}` -> `.tmp/commit.result.json`; direct `git commit` is denied.
+- Detached launch (data/full only): write `.tmp/launch.request.json` (`cmd`, `log`, `cwd`, `env`) -> `.tmp/launch.result.json`.
+- Nested-sandbox demos cannot run from a confined token; see `tasks/worker_context/sandbox_probe.py`.
 
 ## 6. Conventions
 
