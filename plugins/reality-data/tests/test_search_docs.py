@@ -293,7 +293,60 @@ class SearchDocsTest(unittest.TestCase):
             self.assertTrue(status["vector"])
             rows = search_docs.search_docs("container volumes", symbol="CONCOR")
         self.assertTrue(rows)
-        self.assertEqual(rows[0]["source"], "both")
+        self.assertEqual(rows[0]["source"], "fts+local_dense")
+
+    def test_seed_dense_returns_fts_miss_without_paid_call(self):
+        index_dir = self.root / "vector_index_nemotron8b"
+        index_dir.mkdir(exist_ok=True)
+        import numpy as np
+        import query_embed
+
+        vectors = np.zeros((2, 4096), dtype=np.float16)
+        vectors[0, 0] = 1.0     # chunk 100, the only FTS hit
+        vectors[1, 0] = 1.0     # chunk 200, a paraphrase FTS misses
+        np.save(index_dir / "chunk_vectors.npy", vectors)
+        np.save(index_dir / "chunk_ids.npy", np.array([100, 200], dtype=np.int64))
+        (index_dir / "chunk_index_meta.json").write_text(
+            json.dumps({"rows": 2, "dim": 4096}), encoding="utf-8"
+        )
+        old = os.environ.pop("REALITY_DATA_ALLOW_PAID_EMBED", None)
+        try:
+            with mock.patch.object(query_embed, "CACHE_DIR", self.root / ".qcache_compact"), \
+                    mock.patch.object(search_docs.dense_free, "QCACHE_DIR",
+                                      self.root / ".qcache_vectors"), \
+                    mock.patch.object(query_embed, "_call",
+                                      side_effect=AssertionError("paid embed called")), \
+                    mock.patch.object(query_embed, "embed_query",
+                                      side_effect=AssertionError("paid embed called")):
+                query_embed.close()
+                search_docs.warm(force=True)
+                rows = search_docs.search_docs("container volumes", top_k=5)
+        finally:
+            search_docs.dense_free.clear()
+            query_embed.close()
+            if old is not None:
+                os.environ["REALITY_DATA_ALLOW_PAID_EMBED"] = old
+        self.assertTrue(rows)
+        seed_hit = next(r for r in rows if "repo rate" in r["text"])
+        self.assertIn("seed_dense", seed_hit["source"])
+        self.assertEqual(rows[0]["source"], "fts+seed_dense")
+
+    def test_as_of_drops_future_rows_and_counts_them(self):
+        result = search_docs.search_docs(
+            "segment revenue", symbol="ACME", top_k=20, as_of="2024-12-31"
+        )
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["as_of"], "2024-12-31")
+        self.assertGreaterEqual(result["hidden_after_as_of"], 1)
+        self.assertTrue(result["results"])
+        self.assertTrue(all(r["date"] <= "2024-12-31" for r in result["results"]))
+        self.assertFalse(
+            any("order book guidance" in r["text"] for r in result["results"])
+        )
+        # Without as_of the list contract is unchanged.
+        self.assertIsInstance(
+            search_docs.search_docs("segment revenue", symbol="ACME"), list
+        )
 
     def test_invalid_date_rejected(self):
         with self.assertRaises(ValueError):

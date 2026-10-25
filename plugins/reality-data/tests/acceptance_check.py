@@ -163,8 +163,8 @@ async def main() -> int:
                 sources = [r.get("source") for r in semantic["results"]]
                 report["semantic"] = {"count": len(semantic["results"]), "sources": sources,
                                       "symbols": [r.get("symbol") for r in semantic["results"]]}
-                if not any(s in ("vector", "both") for s in sources):
-                    failures.append("semantic query returned no vector/both hit")
+                if not any(p in ("local_dense", "seed_dense", "paid_dense") for s in sources for p in str(s or "").split("+")):
+                    failures.append("semantic query returned no dense hit")
                 await call(session, "search_docs",
                            {"query": "management commentary on demand slowdown in pipes", "top_k": 5},
                            timeout=180)
