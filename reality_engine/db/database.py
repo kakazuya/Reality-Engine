@@ -298,6 +298,25 @@ class DatabaseManager:
                     conn.execute(f"ALTER TABLE {tbl} ADD COLUMN source TEXT DEFAULT 'yfinance'")
             except Exception:
                 pass
+        # Deal labels (exchange, ISIN) on bulk_block_deals — ADDITIVE ONLY. The canonical DDL is
+        # schema.sql §7; these live here as well so a pre-existing DB gets the columns before any
+        # reader/index needs them (CREATE INDEX on a missing column would abort init_db). One deal
+        # can be reported by both exchanges and a symbol is not unique to an ISIN over time, so the
+        # label is (exchange, ISIN resolved on the deal date), not the ticker. See
+        # scripts/build_bulk_block_deals.py.
+        try:
+            dcols = {r[1] for r in conn.execute("PRAGMA table_info(bulk_block_deals)").fetchall()}
+            if dcols:
+                for _col in ("exchange", "isin"):
+                    if _col not in dcols:
+                        conn.execute(f"ALTER TABLE bulk_block_deals ADD COLUMN {_col} TEXT")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_deals_isin_date "
+                             "ON bulk_block_deals(isin, deal_date DESC)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_deals_exchange_date "
+                             "ON bulk_block_deals(exchange, deal_date DESC)")
+        except Exception:
+            # Table absent on a minimal bootstrap; never crash init_db.
+            pass
 
         # Raw document registry (macro PDF audit trail). Ensure table + columns +
         # UNIQUE source_url index so repository.upsert_raw_document dedups cleanly.

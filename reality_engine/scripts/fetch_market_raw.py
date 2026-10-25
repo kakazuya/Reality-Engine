@@ -65,6 +65,11 @@ def weekdays(start: date, end: date):
         d += timedelta(days=1)
 
 
+def sessions(start: date, end: date, only=None):
+    """Every weekday in the window, or exactly the sessions listed in ``only``."""
+    return list(only) if only else list(weekdays(start, end))
+
+
 def session(referer: str = "") -> requests.Session:
     s = requests.Session()
     s.headers["User-Agent"] = UA
@@ -79,8 +84,9 @@ class Source:
     name = ""
     referer = ""
 
-    def __init__(self, start: date, end: date):
+    def __init__(self, start: date, end: date, only: list | None = None):
         self.start, self.end = start, end
+        self.only = only  # explicit sessions: special Saturday / Muhurat days the weekday loop skips
         self.dir = ROOT / self.name
         self.dir.mkdir(parents=True, exist_ok=True)
         self.manifest = self.dir / "_manifest.csv"
@@ -103,7 +109,7 @@ class Source:
             w.writerow([d.isoformat(), status, nbytes, datetime.now().isoformat(timespec="seconds")])
 
     def dates(self):
-        return weekdays(self.start, self.end)
+        return sessions(self.start, self.end, self.only)
 
     def filename(self, d: date) -> str:
         raise NotImplementedError
@@ -360,10 +366,16 @@ def main():
     ap.add_argument("--sources", default="all", help="comma list or 'all' (" + ",".join([*SOURCES, "commod"]) + ")")
     ap.add_argument("--start", default="2019-01-01")
     ap.add_argument("--end", default=(date.today() - timedelta(days=1)).isoformat())
+    # NSE/BSE hold a few sessions on a Saturday or Sunday (Budget-day Saturdays, Muhurat trading).
+    # weekdays() never asks for them, so a normal run leaves those sessions out of the bhavcopy;
+    # --dates fetches exactly the sessions named.
+    ap.add_argument("--dates", default="",
+                    help="comma list of explicit sessions to fetch, e.g. 2024-03-02,2025-02-01")
     args = ap.parse_args()
 
     start = date.fromisoformat(args.start)
     end = date.fromisoformat(args.end)
+    only = [date.fromisoformat(d.strip()) for d in args.dates.split(",") if d.strip()]
     wanted = [*SOURCES, "commod"] if args.sources == "all" else args.sources.split(",")
 
     results, threads = {}, []
@@ -373,7 +385,7 @@ def main():
             results[name] = fetch_commodities(start)
             return
         cls, cap = SOURCES[name]
-        results[name] = cls(start, min(end, cap) if cap else end).run()
+        results[name] = cls(start, min(end, cap) if cap else end, only=only).run()
 
     for name in wanted:
         t = threading.Thread(target=work, args=(name,), name=name)

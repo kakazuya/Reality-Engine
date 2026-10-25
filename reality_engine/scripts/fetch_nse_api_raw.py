@@ -21,6 +21,7 @@ The bulk/block/short JSON endpoint silently caps a response at 70 rows; the
 
 Usage:
     python -m reality_engine.scripts.fetch_nse_api_raw --datasets all
+    python -m reality_engine.scripts.fetch_nse_api_raw --datasets nse_bulk,nse_block --window year
 """
 
 import argparse
@@ -75,9 +76,18 @@ def day_windows(start: date, end: date):
         d += timedelta(days=1)
 
 
+def year_windows(start: date, end: date):
+    d = date(start.year, 1, 1)
+    while d <= end:
+        nxt = date(d.year + 1, 1, 1)
+        yield max(d, start), min(nxt - timedelta(days=1), end)
+        d = nxt
+
+
 class NseFetcher:
-    def __init__(self, name: str, start: date, end: date):
+    def __init__(self, name: str, start: date, end: date, window: str = "day"):
         self.name = name
+        self.window = window
         self.dir = ROOT / name
         self.dir.mkdir(parents=True, exist_ok=True)
         self.manifest = self.dir / "_manifest.csv"
@@ -114,7 +124,9 @@ class NseFetcher:
 
     def run(self):
         monthly = self.name in MONTHLY
-        windows = month_windows(self.start, self.end) if monthly else day_windows(self.start, self.end)
+        span = {"day": day_windows, "month": month_windows, "year": year_windows}[
+            "month" if monthly else self.window]
+        windows = span(self.start, self.end)
         for a, b in windows:
             key = f"{a.isoformat()}_{b.isoformat()}"
             if self.done.get(key) in ("ok", "empty"):
@@ -326,6 +338,11 @@ def main():
     ap.add_argument("--datasets", default="all", help="comma list or 'all' (" + ",".join(names) + ")")
     ap.add_argument("--start", default="2019-01-01")
     ap.add_argument("--end", default=(date.today() - timedelta(days=1)).isoformat())
+    # The historical deals/short CSV endpoint honours a from/to range (a whole year comes back
+    # complete; checks cross-checked against the monthly sum), so a backfill does not need one
+    # request per weekday. Monthly stays the default fetch granularity for the daily feeds.
+    ap.add_argument("--window", default="day", choices=("day", "month", "year"),
+                    help="window size for the daily CSV feeds (bulk/block/short)")
     args = ap.parse_args()
     wanted = names if args.datasets == "all" else args.datasets.split(",")
     start, end = date.fromisoformat(args.start), date.fromisoformat(args.end)
@@ -336,7 +353,7 @@ def main():
 
     def work(group):
         for n in group:
-            results[n] = NseFetcher(n, start, end).run()
+            results[n] = NseFetcher(n, start, end, args.window).run()
 
     for g in groups:
         if g:

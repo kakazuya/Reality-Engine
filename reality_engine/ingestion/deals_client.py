@@ -122,8 +122,15 @@ def is_marquee_institution(client_name: Optional[str]) -> int:
     return 1 if any(k in text for k in MARQUEE_KEYWORDS) else 0
 
 
-def make_deal_id(deal_date: str, symbol: str, client: str, side: str, qty: int, price: float) -> str:
-    raw = f"{deal_date}|{symbol}|{client}|{side}|{qty}|{price}"
+def make_deal_id(deal_date: str, symbol: str, client: str, side: str, qty: int, price: float,
+                 exchange: str = "") -> str:
+    """Stable id for one deal row.
+
+    ``exchange`` is only appended when supplied, so ids minted before the label columns
+    existed (NSE-only feed) stay valid; the BSE backfill passes it so an identical
+    NSE+BSE row cannot collide on the primary key.
+    """
+    raw = f"{deal_date}|{symbol}|{client}|{side}|{qty}|{price}" + (f"|{exchange}" if exchange else "")
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 

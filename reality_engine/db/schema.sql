@@ -158,6 +158,11 @@ CREATE TABLE IF NOT EXISTS bulk_block_deals (
     buy_sell TEXT CHECK(buy_sell IN ('BUY', 'SELL')),
     quantity INTEGER NOT NULL,
     trade_price REAL NOT NULL,
+    -- Label columns: one deal can be reported by both exchanges, and a symbol is not
+    -- unique to an ISIN over time (splits, face-value changes), so the buyer/seller
+    -- label is (exchange, ISIN-resolved-on-deal-date), not the ticker.
+    exchange TEXT,
+    isin TEXT,
     is_marquee_institution BOOLEAN DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
