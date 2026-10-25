@@ -80,7 +80,7 @@ export const EMPTY_VIEW: WorkerView = {
   running: [],
   finished: [],
   finishedGroups: [],
-  counts: { running: 0, stalled: 0, failed: 0, finished: 0 },
+  counts: { running: 0, stalled: 0, failed: 0, cancelled: 0, finished: 0 },
   maxima: {
     tools: METRIC_FLOORS.tools,
     steps: METRIC_FLOORS.steps,
@@ -609,11 +609,15 @@ export function viewOf(
   const finished = rows
     .filter(row => isFinalPhase(row.phase))
     .sort(byFinishedDesc)
+  // Count by outcome, not phase: a job whose phase is `finished` but whose
+  // exit was non-zero is a failure, and cancelled gets its own count so the
+  // tiles add up to `finished.length` (every final phase).
   const counts: WorkerCounts = {
     running: metas.filter(meta => meta.phase === 'running').length,
     stalled: metas.filter(meta => meta.phase === 'stalled').length,
-    failed: metas.filter(meta => meta.phase === 'failed').length,
-    finished: metas.filter(meta => meta.phase === 'finished').length,
+    failed: metas.filter(meta => meta.outcome === 'failed').length,
+    cancelled: metas.filter(meta => meta.outcome === 'cancelled').length,
+    finished: metas.filter(meta => meta.outcome === 'ok').length,
   }
   return {
     running,
