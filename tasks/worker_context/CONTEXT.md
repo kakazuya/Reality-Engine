@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-26T01:04:51+05:30 · git HEAD: `ab9ab1b` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-26T03:52:55+05:30 · git HEAD: `fd02671` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -530,6 +530,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.dedupe_raw` | test_dedupe_raw.py |
 | `reality_engine.scripts.dsh_heartbeat` | test_dsh_worker_plugin.py |
 | `reality_engine.scripts.embed_prototype_compare` | test_embed_prototype.py |
+| `reality_engine.scripts.eval_retrieval` | test_eval_budget.py |
 | `reality_engine.scripts.extract_deck_figures` | test_extract_deck_figures.py |
 | `reality_engine.scripts.fetch_etf_nav` | test_fetch_etf_nav_timeout.py |
 | `reality_engine.scripts.fetch_results_notes_text` | test_new_feeds_g2.py |
