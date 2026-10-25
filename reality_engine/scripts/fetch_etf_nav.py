@@ -19,13 +19,15 @@
                Its gap to NAV_t is the underlying's day-t session (not yet traded), not an error. A unit split
                (k jumps > 30%) blanks that day's iNAV. FX_t: Yahoo INR=X close of t (approximation).
 
-    python -m reality_engine.scripts.fetch_etf_nav [--start 2019-01] [--end 2026-10] [--check]
+    python -m reality_engine.scripts.fetch_etf_nav [--start 2019-01] [--end 2026-10] [--check] [--db PATH]
+        [--net-timeout 120] [--net-max-mb 128] [--db-timeout 15]
 """
 import argparse
 import csv
 import datetime as dt
 import gzip
 import io
+import os
 import sqlite3
 import time
 import zipfile
@@ -38,6 +40,16 @@ DATA = Path(__file__).resolve().parents[1] / "data"
 DB = DATA / "equity_intelligence.db"
 RAW = raw_dir("raw_market")
 AMFI = "https://portal.amfiindia.com/DownloadNAVHistoryReport_Po.aspx?frmdt={a}&todt={b}"
+NET_TIMEOUT = 120.0             # total wall-clock cap for ONE response (timeout= is per socket read only)
+NET_MAX_BYTES = 128 * 2**20     # one AMFI month is ~18 MB; past this the response is not a NAV report
+NET_ATTEMPTS = 4                # one try + 3 retries
+DB_TIMEOUT = 15.0               # seconds to wait for the SQLite write lock, then fail with who holds it
+
+
+class DownloadTooSlow(requests.RequestException):
+    """A streamed response outlived its wall-clock or byte cap."""
+
+
 DDL = """
 CREATE TABLE IF NOT EXISTS etf_px (date TEXT, symbol TEXT, isin TEXT, close REAL, volume REAL, value_inr REAL,
     source TEXT, PRIMARY KEY (date, symbol));
@@ -58,7 +70,9 @@ def num(x):
 
 def load_px(db):
     rows = []
-    for z in sorted((RAW / "nse_cm_isin").glob("*.zip")):
+    zips = sorted((RAW / "nse_cm_isin").glob("*.zip"))
+    print(f"etf_px: reading {len(zips)} raw zips from {RAW / 'nse_cm_isin'}", flush=True)
+    for z in zips:
         try:
             with zipfile.ZipFile(z) as zf:
                 text = zf.read(zf.namelist()[0]).decode("utf-8", "replace")
@@ -85,37 +99,70 @@ def load_px(db):
         db.execute("DELETE FROM etf_master")
         db.execute("INSERT INTO etf_master (isin, symbol, first_date, last_date, n_days) SELECT isin, "
                    "max(symbol), min(date), max(date), count(*) FROM etf_px GROUP BY isin")
-    print("etf_px rows", db.execute("SELECT COUNT(*), COUNT(DISTINCT isin), MIN(date), MAX(date) FROM etf_px").fetchone())
+    print("etf_px rows", db.execute("SELECT COUNT(*), COUNT(DISTINCT isin), MIN(date), MAX(date) FROM etf_px").fetchone(),
+          flush=True)
 
 
-def month_file(a):
-    out = RAW / "amfi_nav" / f"{a:%Y-%m}.txt.gz"
-    if out.exists() and a.strftime("%Y-%m") < dt.date.today().strftime("%Y-%m"):   # the running month is re-fetched
+def fetch(url, total_seconds=NET_TIMEOUT, max_bytes=NET_MAX_BYTES):
+    """GET url streaming, so a trickle cannot outlast total_seconds or max_bytes.
+
+    requests' ``timeout=`` is per socket read: a server sending one byte every 29s
+    never trips it. The wall clock below is what bounds the call.
+    """
+    started = time.monotonic()
+    r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, stream=True, timeout=(15, 30))
+    try:
+        if r.status_code != 200:
+            raise requests.HTTPError(f"HTTP {r.status_code}", response=r)
+        chunks, size = [], 0
+        for chunk in r.iter_content(65536):
+            size += len(chunk)
+            if size > max_bytes:
+                raise DownloadTooSlow(f"response passed {max_bytes // 2**20} MB")
+            if time.monotonic() - started > total_seconds:
+                raise DownloadTooSlow(f"response passed {total_seconds:.0f}s wall clock at {size // 1024} KB")
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        r.close()
+
+
+def month_file(a, net_timeout=NET_TIMEOUT, max_bytes=NET_MAX_BYTES, attempts=NET_ATTEMPTS):
+    month = f"{a:%Y-%m}"
+    out = RAW / "amfi_nav" / f"{month}.txt.gz"
+    if out.exists() and month < dt.date.today().strftime("%Y-%m"):   # the running month is re-fetched
+        print(f"{month}: cached {out.name}", flush=True)
         return out
     out.parent.mkdir(parents=True, exist_ok=True)
     b = (a.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
-    for attempt in range(4):
+    url = AMFI.format(a=a.strftime("%d-%b-%Y"), b=b.strftime("%d-%b-%Y"))
+    for attempt in range(1, attempts + 1):
+        started = time.monotonic()
         try:
-            r = requests.get(AMFI.format(a=a.strftime("%d-%b-%Y"), b=b.strftime("%d-%b-%Y")),
-                             headers={"User-Agent": "Mozilla/5.0"}, timeout=300)
-            if r.status_code == 200 and "Scheme Code" in r.text[:200]:
-                tmp = out.with_suffix(".tmp")
-                tmp.write_bytes(gzip.compress(r.content))
-                tmp.replace(out)
-                return out
-        except requests.RequestException:
-            pass
-        time.sleep(20 * (attempt + 1))
+            body = fetch(url, net_timeout, max_bytes)
+            if b"Scheme Code" not in body[:200]:
+                raise ValueError(f"not an AMFI NAV report: {body[:60]!r}")
+            tmp = out.with_suffix(".tmp")
+            tmp.write_bytes(gzip.compress(body))
+            tmp.replace(out)
+            print(f"{month}: {len(body) / 1e6:.1f} MB in {time.monotonic() - started:.0f}s -> {out.name}", flush=True)
+            return out
+        except (requests.RequestException, ValueError, OSError) as e:
+            print(f"{month}: attempt {attempt}/{attempts} failed after {time.monotonic() - started:.0f}s: "
+                  f"{type(e).__name__}: {e}", flush=True)
+            if attempt < attempts:
+                time.sleep(min(5 * 2 ** (attempt - 1), 30))
+    print(f"{month}: download failed after {attempts} attempts: {url}", flush=True)
     return None
 
 
-def load_nav(db, start, end):
+def load_nav(db, start, end, net_timeout=NET_TIMEOUT, max_bytes=NET_MAX_BYTES):
     etf = {r[0] for r in db.execute("SELECT isin FROM etf_master")}
     a = start
     while a <= end:
-        f = month_file(a)
+        f = month_file(a, net_timeout, max_bytes)
         if f is None:
-            print(a, "download failed")
+            print(f"{a:%Y-%m}: download failed", flush=True)
         else:
             rows = []
             for line in gzip.decompress(f.read_bytes()).decode("utf-8", "replace").splitlines():
@@ -151,7 +198,7 @@ UNDERLYING = [   # AMFI scheme-name pattern -> (Yahoo index, Yahoo FX to INR)
     ("nikkei|japan", "^N225", "JPYINR=X"), ("euro stoxx|eurostoxx", "^STOXX50E", "EURINR=X")]
 
 
-def build_inav(db):
+def build_inav(db, net_timeout=NET_TIMEOUT):
     import re
     import yfinance as yf
     etfs = []
@@ -162,10 +209,13 @@ def build_inav(db):
     need = {x for e in etfs for x in e[2:]}
     series = {}
     for t in need:
-        d = yf.download(t, start="2018-12-01", progress=False, auto_adjust=False)
+        print(f"iNAV: fetching Yahoo series {t}", flush=True)
+        d = yf.download(t, start="2018-12-01", progress=False, auto_adjust=False,
+                        timeout=min(net_timeout, 60))
         c = d["Close"]
         c = c.iloc[:, 0] if hasattr(c, "columns") else c
         series[t] = sorted((i.date().isoformat(), float(v)) for i, v in c.dropna().items())
+        print(f"iNAV: {t} {len(series[t])} closes", flush=True)
     import bisect
     def before(t, day, strict=True):
         s = series[t]; ks = [x[0] for x in s]
@@ -218,21 +268,94 @@ def check(db):
         pass
 
 
+def lock_holders(db_path):
+    """Best-effort pid/name of processes holding the DB (SQLite itself does not expose the writer)."""
+    try:
+        import psutil
+    except ImportError:
+        return []
+    target = str(Path(db_path).resolve())
+    names = []
+    for p in psutil.process_iter(["pid", "name"]):
+        try:
+            if not any(k in (p.info["name"] or "").lower() for k in ("python", "sqlite", "dsh", "node")):
+                continue
+            if any(f.path in (target, target + "-wal", target + "-shm") for f in p.open_files()):
+                names.append(f"pid {p.pid} ({p.info['name']})")
+        except (psutil.Error, OSError):
+            continue
+    return names
+
+
+def queue_lock_state(db_path):
+    """('held'|'free'|'absent'|'unreadable', path): the ingest-queue OS lock that serialises DB writers."""
+    path = Path(db_path).parent / "ingestion_queue.lock"
+    if not path.exists():
+        return "absent", path
+    try:
+        with path.open("a+b") as h:
+            h.seek(0)
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    msvcrt.locking(h.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(h.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return "free", path
+            except OSError:
+                return "held", path
+    except OSError:
+        return "unreadable", path
+
+
+def connect(db_path, timeout=DB_TIMEOUT):
+    """Open the DB, create the tables and prove the writer lock is free now.
+
+    The probe is an empty BEGIN IMMEDIATE/ROLLBACK (no rows written): without it a
+    busy DB would only surface 10 minutes later inside load_px's first INSERT.
+    """
+    db = sqlite3.connect(db_path, timeout=timeout)
+    try:
+        db.executescript(DDL)
+        db.execute("BEGIN IMMEDIATE")
+        db.rollback()
+        return db
+    except sqlite3.OperationalError as e:
+        db.close()
+        if "lock" not in str(e).lower() and "busy" not in str(e).lower():
+            raise
+        holders = lock_holders(db_path)
+        queue, queue_path = queue_lock_state(db_path)
+        wal = Path(str(db_path) + "-wal")
+        wal_info = (f"WAL {wal.stat().st_size / 1e6:.0f} MB, last write "
+                    f"{dt.datetime.fromtimestamp(wal.stat().st_mtime):%Y-%m-%d %H:%M:%S}") if wal.exists() else "no WAL"
+        raise SystemExit(
+            f"ERROR: {db_path} is locked (waited {timeout:.0f}s): {e}. "
+            f"Holder: {'; '.join(holders) if holders else 'another process (handle names not visible to this user)'}; "
+            f"ingestion queue lock {queue_path}: {queue}; {wal_info}. "
+            f"Check the running dsh-worker job, then rerun (or raise --db-timeout).")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--start", default="2019-01")
     ap.add_argument("--end", default=dt.date.today().strftime("%Y-%m"))
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--inav", action="store_true", help="only rebuild etf_inav")
+    ap.add_argument("--db", default=str(DB), help="SQLite path (point at a temp DB for probes)")
+    ap.add_argument("--net-timeout", type=float, default=NET_TIMEOUT, help="wall-clock cap per HTTP response (s)")
+    ap.add_argument("--net-max-mb", type=float, default=NET_MAX_BYTES / 2**20, help="max bytes per month file")
+    ap.add_argument("--db-timeout", type=float, default=DB_TIMEOUT, help="seconds to wait for the DB write lock")
     a = ap.parse_args()
-    db = sqlite3.connect(DB, timeout=600)
-    db.executescript(DDL)
+    db = connect(a.db, a.db_timeout)
     if a.inav:
-        build_inav(db)
+        build_inav(db, a.net_timeout)
     elif not a.check:
         load_px(db)
-        load_nav(db, dt.date.fromisoformat(a.start + "-01"), dt.date.fromisoformat(a.end + "-01"))
-        build_inav(db)
+        load_nav(db, dt.date.fromisoformat(a.start + "-01"), dt.date.fromisoformat(a.end + "-01"),
+                 a.net_timeout, int(a.net_max_mb * 2**20))
+        build_inav(db, a.net_timeout)
     check(db)
 
 
