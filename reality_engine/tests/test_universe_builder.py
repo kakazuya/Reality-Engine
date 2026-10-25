@@ -2,10 +2,12 @@
 
 The fixture is the shape production actually has: an ``ar_facts`` revenue-mix table
 (``Revenue from Operations`` plus ``Revenue from Operations (Gold Jewellery)`` for the
-same document, fiscal period, basis and unit) and a deck percentage row.  It checks the
-weight, the prior-year column being ignored, the materiality floor, the pivot flag, the
-expiry of a stale weight, and that an acquisition announcement is a candidate, not a
-member.
+same document, fiscal period, basis and unit) and deck rows.  It checks the weight, the
+prior-year column being ignored, the materiality floor, the pivot flag, the expiry of a
+stale weight, that a deck weight beats an AR weight and expires after four quarters,
+that a deck slide's own segment revenue over its stated total is a weight, that deck
+guidance / market-share rows are rejected, and that an acquisition announcement is a
+candidate, not a member.
 
 Run from the repo root:
     python -m unittest reality_engine.tests.test_universe_builder
@@ -44,6 +46,10 @@ ETA = "INE00ETA0001"     # parent segment listed with its children -> must be re
 THETA = "INE00THETA01"   # the PDF is someone else's AR -> the document does not name it
 IOTA = "INE00IOTA001"    # a revenue row with no filing date -> no interval
 KAPPA = "INE00KAPPA01"   # two weights with a hole between them -> the industry row fills it
+MU = "INE00MU00001"      # a deck share beats an older AR weight
+NU = "INE00NU00001"      # a deck share that expired; the AR weight applies again
+XI = "INE00XI00001"      # deck guidance / market-share rows are never weights
+OMICRON = "INE00OMICR1"  # a deck pivot: jewellery becomes the largest revenue line
 FILED_AT = "2019-07-30T11:27:07"
 
 
@@ -71,6 +77,10 @@ def _fixture(root: Path) -> None:
         (THETA, "THETA", "500007", "Theta Retail Limited"),
         (IOTA, "IOTA", "500008", "Iota Jewels Limited"),
         (KAPPA, "KAPPA", "500009", "Kappa Jewellers Limited"),
+        (MU, "MU", "500010", "Mu Jewellers Limited"),
+        (NU, "NU", "500011", "Nu Jewellers Limited"),
+        (XI, "XI", "500012", "Xi Jewellers Limited"),
+        (OMICRON, "OMICRON", "500013", "Omicron Jewellers Limited"),
     ])
     eq.executemany("INSERT INTO company_industry VALUES (?,?,?,?,?,?,?)", [
         (ACME, "ACME", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
@@ -84,6 +94,12 @@ def _fixture(root: Path) -> None:
         (IOTA, "IOTA", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
         (KAPPA, "KAPPA", "Consumer Durables", "Consumer Durables", "Gems Jewellery And Watches",
          "2026-01-01", "01-Jan-2015"),
+        (MU, "MU", "Consumer Durables", "Consumer Durables", "Gems Jewellery And Watches",
+         "2026-01-01", "15-Mar-2016"),
+        (NU, "NU", "Consumer Durables", "Consumer Durables", "Gems Jewellery And Watches",
+         "2026-01-01", "15-Mar-2016"),
+        (OMICRON, "OMICRON", "Consumer Durables", "Consumer Durables", "Packaging",
+         "2026-01-01", "10-May-1995"),
     ])
     eq.commit()
     eq.close()
@@ -177,6 +193,20 @@ def _fixture(root: Path) -> None:
         (9, 9, KAPPA, "KAPPA", "2024-03-31", "2024-07-30T10:00:00", "financial",
          "Revenue from Operations (Gold Jewellery)", 950.0, "Rs crore", "FY24", "standalone",
          "Kappa Jewellers Limited: Revenue from Operations"),
+        # A 55% AR weight, beaten later by a 60% deck share.
+        (10, 20, MU, "MU", "2024-03-31", "2024-07-30T10:00:00", "financial",
+         "Revenue from Operations", 1000.0, "Rs crore", "FY24", "standalone",
+         "Mu Jewellers Limited: Revenue from Operations"),
+        (10, 20, MU, "MU", "2024-03-31", "2024-07-30T10:00:00", "financial",
+         "Revenue from Operations (Gold Jewellery)", 550.0, "Rs crore", "FY24", "standalone",
+         "Mu Jewellers Limited: Revenue from Operations"),
+        # A deck share from 2020, long expired by the 2022 AR: the AR weight must apply.
+        (11, 21, NU, "NU", "2022-03-31", "2022-07-30T10:00:00", "financial",
+         "Revenue from Operations", 1000.0, "Rs crore", "FY22", "standalone",
+         "Nu Jewellers Limited: Revenue from Operations"),
+        (11, 21, NU, "NU", "2022-03-31", "2022-07-30T10:00:00", "financial",
+         "Revenue from Operations (Gold Jewellery)", 800.0, "Rs crore", "FY22", "standalone",
+         "Nu Jewellers Limited: Revenue from Operations"),
     ]
     ar.executemany(
         "INSERT INTO ar_facts(doc_id, piece, isin, symbol, fiscal_year, filed_at, category, item,"
@@ -190,18 +220,46 @@ def _fixture(root: Path) -> None:
         "CREATE TABLE facts(sha256 TEXT, page_no INTEGER, prompt_version TEXT, model TEXT,"
         " line_no INTEGER, metric TEXT, period TEXT, raw_number TEXT, value REAL, unit TEXT,"
         " is_final INTEGER);"
+        "CREATE INDEX ix_facts_page ON facts(sha256, page_no);"
         "CREATE VIRTUAL TABLE facts_metric_fts USING fts5(metric, content='facts',"
         " content_rowid='rowid');"
         "CREATE TABLE deck_sources(source TEXT, source_id TEXT, symbol TEXT, isin TEXT,"
         " exch_code TEXT, known_at TEXT, title TEXT, url TEXT, local_path TEXT, sha256 TEXT,"
         " size_bytes INTEGER, status TEXT, error TEXT, fetched_at TEXT);"
     )
-    dk.execute("INSERT INTO facts VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-               ("sha-delta", 12, "v1", "m", 3, "Gold jewellery revenue mix", "FY25",
-                "60", 60.0, "%", 1))
+    # (sha, page, line, metric, period, raw_number, value, unit)
+    deck_facts = [
+        ("sha-delta", 12, 3, "Gold jewellery revenue mix", "FY25", "60", 60.0, "%"),
+        ("sha-mu", 5, 3, "Gold jewellery revenue mix", "FY25", "60", 60.0, "%"),
+        ("sha-nu", 4, 2, "Gold jewellery revenue mix", "FY20", "65", 65.0, "%"),
+        # Not weights: one is guidance and one is a market share, not company revenue.
+        ("sha-xi", 3, 3, "Gold jewellery revenue mix guidance", "FY25", "70", 70.0, "%"),
+        ("sha-xi", 3, 4, "Gold jewellery market share of revenue", "FY25", "64", 64.0, "%"),
+        # Two decks of segment revenue over the deck's own total revenue.
+        ("sha-omicron-1", 5, 1, "Jewellery Revenue", "FY25", "500", 500.0, "Rs crore"),
+        ("sha-omicron-1", 5, 2, "Packaging Revenue", "FY25", "850", 850.0, "Rs crore"),
+        ("sha-omicron-1", 5, 3, "Other Revenue", "FY25", "50", 50.0, "Rs crore"),
+        ("sha-omicron-1", 5, 4, "Total Revenue", "FY25", "1,400", 1400.0, "Rs crore"),
+        ("sha-omicron-2", 6, 1, "Jewellery Revenue", "FY25", "1,500", 1500.0, "Rs crore"),
+        ("sha-omicron-2", 6, 2, "Packaging Revenue", "FY25", "400", 400.0, "Rs crore"),
+        ("sha-omicron-2", 6, 3, "Other Revenue", "FY25", "100", 100.0, "Rs crore"),
+        ("sha-omicron-2", 6, 4, "Total Revenue", "FY25", "2,000", 2000.0, "Rs crore"),
+    ]
+    dk.executemany(
+        "INSERT INTO facts(sha256, page_no, prompt_version, model, line_no, metric, period,"
+        " raw_number, value, unit, is_final) VALUES (?,?,'v1','m',?,?,?,?,?,?,1)",
+        [(sha, page, line, metric, period, raw, value, unit)
+         for sha, page, line, metric, period, raw, value, unit in deck_facts])
     dk.execute("INSERT INTO facts_metric_fts(facts_metric_fts) VALUES('rebuild')")
-    dk.execute("INSERT INTO deck_sources(source, symbol, isin, known_at, sha256) VALUES (?,?,?,?,?)",
-               ("bse", "DELTA", DELTA, "2025-05-20T18:00:00", "sha-delta"))
+    dk.executemany(
+        "INSERT INTO deck_sources(source, symbol, isin, known_at, sha256) VALUES (?,?,?,?,?)", [
+            ("bse", "DELTA", DELTA, "2025-05-20T18:00:00", "sha-delta"),
+            ("bse", "MU", MU, "2025-02-10T18:00:00", "sha-mu"),
+            ("bse", "NU", NU, "2020-05-20T18:00:00", "sha-nu"),
+            ("bse", "XI", XI, "2025-03-01T18:00:00", "sha-xi"),
+            ("bse", "OMICRON", OMICRON, "2025-02-10T18:00:00", "sha-omicron-1"),
+            ("bse", "OMICRON", OMICRON, "2025-05-15T18:00:00", "sha-omicron-2"),
+        ])
     dk.commit()
     dk.close()
 
@@ -273,8 +331,47 @@ class UniverseBuilderTests(unittest.TestCase):
         delta = self._rows(DELTA)
         self.assertEqual(len(delta), 1)
         self.assertAlmostEqual(delta[0][4], 0.6, places=4)
+        self.assertEqual(delta[0][5], "deck")
         self.assertEqual(delta[0][2], "2025-05-20")
-        self.assertEqual(delta[0][3], "2027-03-31")
+        self.assertEqual(delta[0][3], "2026-05-20")   # four quarters, not two fiscal years
+
+    def test_deck_weight_beats_an_older_ar_weight(self):
+        self._run()
+        rows = sorted(self._rows(MU), key=lambda row: row[2])
+        deck = [row for row in rows if row[5] == "deck"]
+        self.assertEqual(len(deck), 1)
+        self.assertEqual((deck[0][2], deck[0][3]), ("2025-02-10", "2026-02-10"))
+        self.assertAlmostEqual(deck[0][4], 0.6, places=4)
+        segment = [row for row in rows if row[5] == "segment"]
+        # The AR weight is clipped where the deck takes over and resumes after it expires.
+        self.assertEqual(segment[0][3], "2025-02-10")
+        self.assertEqual((segment[-1][2], segment[-1][3]), ("2026-02-10", "2026-03-31"))
+        self.assertAlmostEqual(segment[-1][4], 0.55, places=4)
+
+    def test_expired_deck_falls_back_to_the_ar_weight(self):
+        self._run()
+        rows = sorted(self._rows(NU), key=lambda row: row[2])
+        deck = next(row for row in rows if row[5] == "deck")
+        self.assertEqual((deck[2], deck[3]), ("2020-05-20", "2021-05-20"))
+        self.assertAlmostEqual(deck[4], 0.65, places=4)
+        # Four quarters later the deck is gone and the 2022 AR weight applies.
+        segment = next(row for row in rows if row[5] == "segment")
+        self.assertEqual(segment[2], "2022-07-30")
+        self.assertAlmostEqual(segment[4], 0.8, places=4)
+        self.assertFalse([row for row in rows
+                          if row[5] == "deck" and row[2] <= "2022-07-30" < row[3]])
+
+    def test_deck_guidance_and_market_share_are_rejected(self):
+        self._run()
+        self.assertEqual(self._rows(XI), [])
+
+    def test_deck_pivot_fires_on_the_transition(self):
+        self._run()
+        rows = [row for row in self._rows(OMICRON) if row[5] == "deck"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0][2], rows[0][3]), ("2025-05-15", "2026-05-15"))
+        self.assertAlmostEqual(rows[0][4], 0.75, places=4)   # 1,500 / 2,000 of the deck
+        self.assertEqual(rows[0][7], 1)   # it became the largest line; deck 1 was not
 
     def test_subsidiary_is_a_candidate_not_a_member(self):
         self._run()
