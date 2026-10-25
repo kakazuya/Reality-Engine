@@ -148,6 +148,59 @@ def facts(symbol: str, kind: str | None = None, period: str | None = None,
     return _safe(lambda: core.facts(symbol, kind=kind, period=period, limit=limit))
 
 
+# --- lookups: market ---
+import lookups_market  # noqa: E402  (kept inside this block so the diff stays one hunk)
+
+
+@server.tool(
+    name="delivery",
+    description=(
+        "Deliverable quantity and delivery % per exchange for one or more dates, in "
+        "one call. NSE + BSE rows, the sum, traded volume and delivery % per exchange, "
+        "plus a total. Always the raw (unadjusted) px_nse/px_bse tables. A date with no "
+        "row returns status 'no_trading' when the market was shut (no px_nse rows at "
+        "all) or 'missing_for_symbol' naming the exchanges missing. dates is a list "
+        '(["2026-04-13","2026-04-14"]) or one date; with end it becomes a span.'
+    ),
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
+)
+def delivery(symbol: str, dates: list[str] | str, end: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: lookups_market.delivery(symbol, dates, end=end))
+
+
+@server.tool(
+    name="price_extreme",
+    description=(
+        "Highest high and/or lowest low (with date and exchange) across NSE and BSE "
+        "for one window, and which exchange holds the overall extreme. Default window "
+        "is calendar YTD of the snapshot's last date; the answer states that snapshot "
+        "end date (data freshness). kind: high | low | both. adjusted=True reads the "
+        "split/dividend-adjusted tables."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
+)
+def price_extreme(symbol: str, start: str | None = None, end: str | None = None,
+                  kind: str = "high", adjusted: bool = False) -> dict[str, Any]:
+    return _safe(lambda: lookups_market.price_extreme(symbol, start=start, end=end,
+                                                      kind=kind, adjusted=adjusted))
+
+
+@server.tool(
+    name="holding",
+    description=(
+        "Promoter %, public %, total shares and every share-count candidate found, for "
+        "the latest shp_index quarter <= as_of (default today). share_count_candidates "
+        "lists ar_facts exact counts and the results_xbrl paid-up/face-value division "
+        "(which is rounded); best_share_count prefers the exact filing figure and "
+        "xbrl_rounded flags when the XBRL-derived figure differs."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
+)
+def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: lookups_market.holding(symbol, as_of=as_of))
+# --- end lookups: market ---
+
+
 @server.tool(
     name="search_docs",
     description=(

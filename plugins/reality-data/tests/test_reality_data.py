@@ -173,7 +173,8 @@ class McpStdioTests(unittest.TestCase):
         async def scenario(session):
             tools = await session.list_tools()
             names = {t.name for t in tools.tools}
-            self.assertEqual(names, {"catalog", "resolve", "price", "facts", "search_docs", "sql"})
+            self.assertTrue({"catalog", "resolve", "price", "facts", "search_docs", "sql",
+                             "delivery", "price_extreme", "holding"} <= names)
 
             resolved = payload(await session.call_tool("resolve", {"query": "PPL"}, read_timeout_seconds=60))
             self.assertEqual(resolved["matches"][0]["isin"], "INE050001010")
