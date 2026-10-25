@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-25T10:50:35+05:30 · git HEAD: `e34d65a` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-26T01:04:51+05:30 · git HEAD: `ab9ab1b` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -14,19 +14,20 @@ reality_engine/
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
   pipeline/ (19 py) — Pipeline runners.
-  processing/ (41 py) — Document and image processing components.
+  processing/ (43 py) — Document and image processing components.
   query/ (2 py) — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company at time t.
   reporting/ (3 py) — Reporting module for Reality Engine.
-  scripts/ (123 py) — Operational job scripts: one module per data job; most-referenced list below
+  scripts/ (130 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
-  toolbelt/ (10 py) — Ready-made, read-only tools for dsh workers (Task 02).
+  toolbelt/ (12 py) — Ready-made, read-only tools for dsh workers (Task 02).
   ui/ (2 py) — Reality Engine UI Module.
 plugins/
   code-intel/ (3 py) — code-intel: LSP-backed code intelligence over the reality-engine checkout.
+  data-gather/ (3 py) — Feed metadata and read-only probes.
   dsh-worker/ (12 py) — Job manager for the local dsh-worker Codex plugin.
-  reality-data/ (5 py) — Data access core for the reality-data MCP server.
+  reality-data/ (9 py) — Data access core for the reality-data MCP server.
 tasks/
-analysis/ (25 entries) — Annual-report PIT labels from the BSE filename (additive, idempotent). No network.
+analysis/ (27 entries) — Annual-report PIT labels from the BSE filename (additive, idempotent). No network.
 ```
 
 Module one-liners (first docstring line, clipped; `__init__.py` and modules without a docstring skipped):
@@ -35,6 +36,11 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `plugins/code-intel/server/core.py` — code-intel: LSP-backed code intelligence over the reality-engine checkout.
 - `plugins/code-intel/server/lsp.py` — Minimal JSON-RPC/LSP client for one long-lived ``basedpyright-langserver``.
 - `plugins/code-intel/server/server.py` — code-intel MCP server (stdio).
+
+### plugins/data-gather/server/
+- `plugins/data-gather/server/feeds.py` — Feed metadata and read-only probes.
+- `plugins/data-gather/server/gather.py` — Feed orchestration for the data-gather MCP server.
+- `plugins/data-gather/server/server.py` — MCP stdio surface for the data-gather plugin.
 
 ### plugins/dsh-worker/server/
 - `plugins/dsh-worker/server/context_pack.py` — Worker context pack: attach the generated repo/data map to every brief.
@@ -52,13 +58,18 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 ### plugins/reality-data/server/
 - `plugins/reality-data/server/catalog.py` — Catalog of the reality-engine data map.
 - `plugins/reality-data/server/core.py` — Data access core for the reality-data MCP server.
+- `plugins/reality-data/server/dense_free.py` — Free dense retrieval over the stored, already-paid embedding indexes.
+- `plugins/reality-data/server/lookups_docs.py` — One-call document lookups across the five document stores.
+- `plugins/reality-data/server/lookups_market.py` — One-call market lookups: ``delivery``, ``price_extreme``, ``holding``.
 - `plugins/reality-data/server/query_embed.py` — Query-time embeddings for the 4096-d vector indexes.
 - `plugins/reality-data/server/search_docs.py` — Hybrid document search over the Reality Engine data root.
 - `plugins/reality-data/server/server.py` — reality-data MCP server (stdio).
+- `plugins/reality-data/server/universe.py` — Point-in-time theme universes.
 
 ### reality_engine/
 - `reality_engine/cli.py` — Reality Engine CLI Tool
 - `reality_engine/config.py` — Configuration Module for Reality Engine (Phase 1)
+- `reality_engine/raw_store.py` — Content-addressed raw store: identical bytes are stored once (sha256 + hard links).
 
 ### reality_engine/agent/
 - `reality_engine/agent/orchestrator.py` — Agent Orchestrator Module
@@ -212,6 +223,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/processing/business_profiler.py` — Wave A2 (Task A2): Business Model Profiles canonical persistence.
 - `reality_engine/processing/capacity_governor.py` — Capacity governor — evidence-gated explainer-capacity expansion.
 - `reality_engine/processing/causal_engine.py` — SQLite-backed causal knowledge graph operations.
+- `reality_engine/processing/chunker_v2.py` — C1: structure-aware chunking.
 - `reality_engine/processing/composite_screener.py` — Composite Quantitative Screener & Factor Model Module
 - `reality_engine/processing/desk_backtest.py` — Desk backtest — Rs 10cr Oct-2021 lump-sum book + 4x4 excess harness.
 - `reality_engine/processing/distillation_engine.py` — Structured, queryable company-parameter distillation store.
@@ -226,6 +238,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/processing/financial_validator.py` — Task 7: Financial secondary validation ROIC>WACC spread>0.05 only after moat/policy
 - `reality_engine/processing/fundamental_engine.py` — Fundamental Processing Engine Module
 - `reality_engine/processing/instrument_classifier.py` — Instrument Classifier — Dense-substrate denominator filter
+- `reality_engine/processing/layout_gpu.py` — C1b: GPU layout detection for annual reports (GTX 1050 Ti, 4 GB).
 - `reality_engine/processing/macro_simulator.py` — Macro shock propagation over the causal graph.
 - `reality_engine/processing/moat_scorer.py` — Wave A2 (Task A2): Moat rubric Moat=0.25*SC+0.25*NE+0.20*CA+0.20*IA+0.10*ES (0-5).
 - `reality_engine/processing/move_attributor.py` — Slice 1 — Move attribution ledger (tasks/next_wave_attribution.md §2 Slice 1).
@@ -254,7 +267,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/reporting/notifier.py` — Wave B — Telegram alerts + 23:00 nightly digest (stdlib only, no new deps).
 - `reality_engine/reporting/writer.py` — Report Writer Module
 
-- `reality_engine/scripts/` — 123 data-job modules (one per data job); most-referenced ranked below.
+- `reality_engine/scripts/` — 130 data-job modules (one per data job); most-referenced ranked below.
 ### reality_engine/search/
 - `reality_engine/search/chunk_vector_index.py` — Local dense-retrieval index over ``document_chunks.embedding``.
 - `reality_engine/search/hybrid_search.py` — Lexical plus dense search using reciprocal rank fusion.
@@ -267,6 +280,8 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/toolbelt/drive_fetch.py` — Fetch a document from ``gdrive:InfoDiffusion_archive`` by path, sha256 or stale DB path.
 - `reality_engine/toolbelt/find_docs.py` — Find a company's documents across every store and report their real state.
 - `reality_engine/toolbelt/job_peek.py` — Compact view of a dsh job directory without loading whole event files.
+- `reality_engine/toolbelt/lookup_docs.py` — CLI for the one-call document lookups (same functions as the MCP tools).
+- `reality_engine/toolbelt/lookup_market.py` — One-call market lookups from the shell (same functions the MCP tools expose).
 - `reality_engine/toolbelt/mod_test.py` — Run a Claude Code mod's checks the way this sandbox actually allows.
 - `reality_engine/toolbelt/render_pages.py` — Render PDF pages to PNG, or dump the text layer with the pipeline's low-text rule.
 - `reality_engine/toolbelt/sample_rows.py` — Random row samples from a live SQLite store without scanning it.
@@ -429,7 +444,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.agent.orchestrator` | test_agent_and_reporting.py, test_portfolio_ledger.py, test_screener_substrate_routing.py |
 | `reality_engine.agent.schemas` | test_distillation_macro.py |
 | `reality_engine.cli` | test_horizon_excess.py, test_macro_ingest.py, test_macro_pdf_fetcher.py |
-| `reality_engine.config` | test_agent_and_reporting.py, test_bootstrap.py, test_news_retention.py, test_v2_ingestion_adapters.py |
+| `reality_engine.config` | test_agent_and_reporting.py, test_bootstrap.py, test_news_retention.py, test_raw_root.py, test_v2_ingestion_adapters.py |
 | `reality_engine.db.database` | test_action_thesis.py, test_attention_ranker.py, test_backfill_call_rows.py, test_bootstrap.py, test_bse_backfill.py, test_bse_fundamentals_client.py, test_catchup_scheduler.py, test_continuous_loop.py, test_deals_client.py, test_derived_substrate.py, test_desk_backtest.py, test_distillation_macro.py, test_distilled_expansion.py, test_document_industry_tag.py, test_document_pit.py, test_ensemble_ranker.py, test_ensemble_weighted.py, test_eod_corrector.py, test_event_graph.py, test_factor_loaders.py, test_factor_spine.py, test_financial_denominator.py, test_fiscal_extraction.py, test_forecast_capacity.py, test_horizon_excess.py, test_index_backfill.py, test_insider_trades.py, test_intel_search.py, test_lifecycle_pruning.py, test_macro_ingest.py, test_macro_pdf_fetcher.py, test_master_bse_admission.py, test_master_upsert.py, test_moat_backfill.py, test_moe_all_universe.py, test_move_attribution.py, test_news_announcements.py, test_news_explainer.py, test_news_feed_client.py, test_news_retention.py, test_news_vision.py, test_nightly_alpha.py, test_peer_graph_and_hygiene.py, test_perf_guards.py, test_policy_coverage.py, test_policy_eni.py, test_policy_press_client.py, test_portfolio_ledger.py, test_pua_fallback.py, test_repo_identity.py, test_repo_lane.py, test_rumor_backfill.py, test_rumor_scorer.py, test_screener_substrate_routing.py, test_sip_backtest.py, test_sip_signals.py, test_skill_loop.py, test_supply_chain.py, test_telegram_hardening.py, test_v2_ingestion_adapters.py |
 | `reality_engine.db.fixtures` | test_bootstrap.py |
 | `reality_engine.db.readonly` | test_readonly.py |
@@ -475,6 +490,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.business_profiler` | test_derived_substrate.py, test_moat_backfill.py |
 | `reality_engine.processing.capacity_governor` | test_forecast_capacity.py |
 | `reality_engine.processing.causal_engine` | test_supply_chain.py |
+| `reality_engine.processing.chunker_v2` | test_chunker_v2.py |
 | `reality_engine.processing.composite_screener` | test_action_thesis.py, test_ensemble_ranker.py, test_policy_coverage.py, test_quant_hardening.py |
 | `reality_engine.processing.desk_backtest` | test_desk_backtest.py |
 | `reality_engine.processing.distillation_engine` | test_distillation_macro.py, test_distilled_expansion.py |
@@ -501,16 +517,24 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.sip_signals` | test_sip_signals.py |
 | `reality_engine.processing.skill_loop` | test_portfolio_ledger.py, test_skill_loop.py |
 | `reality_engine.processing.substrate_hygiene` | test_desk_backtest.py, test_horizon_excess.py, test_peer_graph_and_hygiene.py, test_portfolio_ledger.py |
+| `reality_engine.raw_store` | test_dedupe_raw.py |
 | `reality_engine.reporting.writer` | test_action_thesis.py, test_agent_and_reporting.py |
 | `reality_engine.scripts.backfill_call_rows` | test_backfill_call_rows.py |
 | `reality_engine.scripts.backfill_fiscal_periods` | test_fiscal_extraction.py |
 | `reality_engine.scripts.backfill_index_ohlc` | test_index_backfill.py |
 | `reality_engine.scripts.backfill_raw_document_symbols` | test_raw_document_symbols.py |
+| `reality_engine.scripts.build_deck_page_text` | test_new_feeds_g2.py |
+| `reality_engine.scripts.build_etf_premium` | test_new_feeds_g2.py |
 | `reality_engine.scripts.build_insider_trades` | test_insider_trades.py |
+| `reality_engine.scripts.build_universe_membership` | test_universe_builder.py |
+| `reality_engine.scripts.dedupe_raw` | test_dedupe_raw.py |
 | `reality_engine.scripts.dsh_heartbeat` | test_dsh_worker_plugin.py |
 | `reality_engine.scripts.embed_prototype_compare` | test_embed_prototype.py |
 | `reality_engine.scripts.extract_deck_figures` | test_extract_deck_figures.py |
+| `reality_engine.scripts.fetch_etf_nav` | test_fetch_etf_nav_timeout.py |
+| `reality_engine.scripts.fetch_results_notes_text` | test_new_feeds_g2.py |
 | `reality_engine.scripts.merge_lane_db` | test_merge_lane_db.py |
+| `reality_engine.scripts.migrate_raw_to_d` | test_raw_root.py |
 | `reality_engine.scripts.resource_watchdog` | test_resource_watchdog.py |
 | `reality_engine.scripts.run_deepseek_harness` | test_deepseek_harness_controls.py, test_dsh_heartbeat.py |
 | `reality_engine.scripts.seed_track_record` | test_portfolio_ledger.py |

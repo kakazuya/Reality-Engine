@@ -491,7 +491,7 @@ rows: ~432 · key columns: isin
 - `scheme_name` TEXT
 
 ## etf_premium
-rows: 267.6k · key columns: isin, symbol, date
+rows: 269.0k · key columns: isin, symbol, date
 
 - `isin` TEXT
 - `symbol` TEXT
@@ -1694,7 +1694,7 @@ rows: ~731 · key columns: post_id, symbol
 - `is_test_post` INTEGER
 
 ## v_document_pit
-rows: 127.2k · key columns: id, isin, symbol, pit_date
+rows: 127.3k · key columns: id, isin, symbol, pit_date
 
 - `id` INTEGER
 - `isin` TEXT
