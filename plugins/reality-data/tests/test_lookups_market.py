@@ -348,13 +348,23 @@ class HoldingFixtureTests(unittest.TestCase):
         self.assertEqual(out["best_share_count_source"]["doc_id"], "stand.xml")
 
     def test_older_ar_count_warns_instead_of_trusting_it(self):
+        # 66.5M vs the XBRL 68.16M is a real gap (a corporate action), not rounding.
+        old = dict(AR_ROW, fiscal_year="2025-03-31", period="As on March 31, 2025",
+                   value=66_500_000.0)
+        with _holding_db(shp=True, ar=[old]):
+            out = lm.holding("LUMAXTECH", "2026-09-30")
+        self.assertEqual(out["best_share_count"], 66_500_000)
+        self.assertEqual(out["warning"],
+                         "AR count older than latest XBRL; possible buyback/split/issue")
+        self.assertFalse(any("trust the AR figure" in note for note in out["notes"]))
+
+    def test_older_ar_count_within_rounding_is_trusted(self):
         old = dict(AR_ROW, fiscal_year="2025-03-31", period="As on March 31, 2025")
         with _holding_db(shp=True, ar=[old]):
             out = lm.holding("LUMAXTECH", "2026-09-30")
         self.assertEqual(out["best_share_count"], 68157705)
-        self.assertEqual(out["warning"],
-                         "AR count older than latest XBRL; possible buyback/split/issue")
-        self.assertFalse(any("trust the AR figure" in note for note in out["notes"]))
+        self.assertIsNone(out["warning"])
+        self.assertTrue(any("trust the AR figure" in note for note in out["notes"]))
 
     def test_ar_not_older_than_xbrl_trusts_the_ar(self):
         with _holding_db(shp=True, ar=[AR_ROW], xbrl_period="2025-12-31"):

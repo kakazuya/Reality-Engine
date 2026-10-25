@@ -546,7 +546,10 @@ def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
     best = exact[0] if exact else (xbrl or (candidates[0] if candidates else None))
 
     xbrl_rounded = bool(xbrl and best and best["kind"] == "exact" and best["value"] != xbrl["value"])
-    ar_older = bool(xbrl and best and best["kind"] == "exact"
+    # Paid-up capital is reported in thousands, so a gap within 0.05 % is
+    # rounding; only a larger gap on a newer XBRL period hints at a corporate action.
+    beyond_rounding = bool(xbrl_rounded and abs(best["value"] - xbrl["value"]) > 0.0005 * xbrl["value"])
+    ar_older = bool(beyond_rounding
                     and _candidate_day(best) and _candidate_day(xbrl)
                     and _candidate_day(best) < _candidate_day(xbrl))
     warning = ("AR count older than latest XBRL; possible buyback/split/issue"
