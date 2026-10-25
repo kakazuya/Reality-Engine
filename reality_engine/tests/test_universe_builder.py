@@ -50,6 +50,7 @@ MU = "INE00MU00001"      # a deck share beats an older AR weight
 NU = "INE00NU00001"      # a deck share that expired; the AR weight applies again
 XI = "INE00XI00001"      # deck guidance / market-share rows are never weights
 OMICRON = "INE00OMICR1"  # a deck pivot: jewellery becomes the largest revenue line
+OMEGA = "INE00OMEGA01"   # a company-name revenue row is a denominator, never a segment
 FILED_AT = "2019-07-30T11:27:07"
 
 
@@ -81,6 +82,7 @@ def _fixture(root: Path) -> None:
         (NU, "NU", "500011", "Nu Jewellers Limited"),
         (XI, "XI", "500012", "Xi Jewellers Limited"),
         (OMICRON, "OMICRON", "500013", "Omicron Jewellers Limited"),
+        (OMEGA, "OMEGA", "500014", "Omega Jewellery Limited"),
     ])
     eq.executemany("INSERT INTO company_industry VALUES (?,?,?,?,?,?,?)", [
         (ACME, "ACME", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
@@ -100,6 +102,8 @@ def _fixture(root: Path) -> None:
          "2026-01-01", "15-Mar-2016"),
         (OMICRON, "OMICRON", "Consumer Durables", "Consumer Durables", "Packaging",
          "2026-01-01", "10-May-1995"),
+        (OMEGA, "OMEGA", "Consumer Durables", "Consumer Durables",
+         "Gems Jewellery And Watches", "2026-01-01", "10-May-1995"),
     ])
     eq.commit()
     eq.close()
@@ -244,6 +248,11 @@ def _fixture(root: Path) -> None:
         ("sha-omicron-2", 6, 2, "Packaging Revenue", "FY25", "400", 400.0, "Rs crore"),
         ("sha-omicron-2", 6, 3, "Other Revenue", "FY25", "100", 100.0, "Rs crore"),
         ("sha-omicron-2", 6, 4, "Total Revenue", "FY25", "2,000", 2000.0, "Rs crore"),
+        # Omega's own total (business name + Standalone) is never a theme numerator;
+        # the slide also carries another business, so this is not a pure play.
+        ("sha-omega", 3, 1, "Omega Jewellery (Standalone) Revenue", "FY25",
+         "1,000", 1000.0, "Rs crore"),
+        ("sha-omega", 3, 2, "Packaging Revenue", "FY25", "500", 500.0, "Rs crore"),
     ]
     dk.executemany(
         "INSERT INTO facts(sha256, page_no, prompt_version, model, line_no, metric, period,"
@@ -259,6 +268,7 @@ def _fixture(root: Path) -> None:
             ("bse", "XI", XI, "2025-03-01T18:00:00", "sha-xi"),
             ("bse", "OMICRON", OMICRON, "2025-02-10T18:00:00", "sha-omicron-1"),
             ("bse", "OMICRON", OMICRON, "2025-05-15T18:00:00", "sha-omicron-2"),
+            ("bse", "OMEGA", OMEGA, "2025-05-20T18:00:00", "sha-omega"),
         ])
     dk.commit()
     dk.close()
@@ -373,6 +383,16 @@ class UniverseBuilderTests(unittest.TestCase):
         self.assertAlmostEqual(rows[0][4], 0.75, places=4)   # 1,500 / 2,000 of the deck
         self.assertEqual(rows[0][7], 1)   # it became the largest line; deck 1 was not
 
+    def test_company_name_revenue_row_is_never_a_numerator(self):
+        # G3c-5: "Omega Jewellery (Standalone) Revenue" is the company total, and the
+        # slide shows another business, so the company is not a pure play.
+        self._run()
+        rows = self._rows(OMEGA)
+        self.assertEqual(len(rows), 1)
+        weight, source, method = rows[0][4], rows[0][5], rows[0][6]
+        self.assertIsNone(weight)
+        self.assertEqual((source, method), ("industry", "industry"))
+
     def test_subsidiary_is_a_candidate_not_a_member(self):
         self._run()
         con = sqlite3.connect(self.out)
@@ -462,8 +482,21 @@ class SegmentLabelTests(unittest.TestCase):
             self.assertTrue(builder._is_unit_suffix(suffix), item)
 
     def test_percent_rows_need_a_revenue_mix_phrase(self):
+        # G3c-4: a "product mix" inside a product line is not the company's revenue mix;
+        # only an explicit total makes it one.
+        self.assertEqual(
+            builder._pct_weight("Milk Product Mix: 63%", "revenue_mix", "%", 63.0), 0.0)
         self.assertAlmostEqual(
-            builder._pct_weight("Milk Product Mix: 63%", "revenue_mix", "%", 63.0), 0.63)
+            builder._pct_weight("Milk product mix of total revenue: 63%",
+                                "revenue_mix", "%", 63.0), 0.63)
+        # G3c-3: a geographic mix is not a segment share.
+        for item in ("Specialty Chemicals revenue mix - India",
+                     "Revenue mix - domestic", "Revenue share - exports",
+                     "Revenue mix - North America"):
+            self.assertEqual(builder._pct_weight(item, "revenue_mix", "%", 59.0), 0.0, item)
+        self.assertAlmostEqual(
+            builder._pct_weight("Specialty Chemicals revenue mix",
+                                "revenue_mix", "%", 59.0), 0.59)
         # The SEBI "Principal Business Activity" disclosure is a revenue mix (HATSUN 93.59%).
         self.assertAlmostEqual(
             builder._pct_weight("Principal Business Activity: Milk and Milk Products",
@@ -483,6 +516,71 @@ class SegmentLabelTests(unittest.TestCase):
             ("Mid income housing contribution", "revenue_mix"),
         ):
             self.assertEqual(builder._pct_weight(item, category, "%", 64.0), 0.0, item)
+
+    def test_business_unit_slide_cannot_supply_the_denominator(self):
+        # G3c-1: EDELWEISS page 8 has one Revenue row per business, same period and unit.
+        rows = [
+            ("sha-e", 8, "Mar 26*", "", "$ Mn", "Revenue", 106.0),
+            ("sha-e", 8, "Mar 26*", "", "$ Mn", "Revenue", 81.0),
+            ("sha-e", 8, "Mar 26*", "", "$ Mn", "Revenue", 68.0),
+            ("sha-e", 8, "Mar 26*", "", "$ Mn", "Housing Finance Revenue", 68.0),
+        ]
+        exact, loose, ambiguous, explicit = builder._totals(rows)
+        self.assertEqual(
+            builder._denominator(exact, loose, "sha-e", 8, "Mar 26*", "", "$ Mn",
+                                 strict=True, ambiguous=ambiguous, explicit=explicit), 0.0)
+        # Only a stated "Total ..." row may be the denominator.
+        exact, loose, ambiguous, explicit = builder._totals(
+            rows + [("sha-e", 8, "Mar 26*", "", "$ Mn", "Total Revenue", 255.0)])
+        self.assertEqual(
+            builder._denominator(exact, loose, "sha-e", 8, "Mar 26*", "", "$ Mn",
+                                 strict=True, ambiguous=ambiguous, explicit=explicit), 255.0)
+
+    def test_repeated_caption_breakup_is_not_a_company_share(self):
+        caption = "Specialty Chemicals & Chlorine Derivatives (% of Revenue share for FY22)"
+        rows = [("sha-g", 19, "FY22", "", "%", caption, 30.0),
+                ("sha-g", 19, "FY22", "", "%", caption, 18.0),
+                ("sha-g", 19, "FY22", "", "%", caption, 52.0)]
+        self.assertTrue(builder._ambiguous_pct(rows, "sha-g", 19, "FY22", caption))
+        self.assertFalse(builder._ambiguous_pct(rows, "sha-g", 19, "FY21", caption))
+        # The TITAN product mix is rejected by its label alone.
+        self.assertEqual(builder._pct_weight(
+            "Product Mix % of Domestic Jewellery (incl. CaratLane) Gold, Coins, Others",
+            "revenue_mix", "%", 72.0), 0.0)
+
+    def test_absolute_denominator_must_match_reported_revenue(self):
+        ref = [(builder.dt.date(2024, 4, 1), builder.dt.date(2025, 3, 31), 1e10)]
+        self.assertEqual(builder._revenue_check(
+            1000, "₹ Cr", "FY25", "2025-05-01", ref)[0], 1)
+        self.assertEqual(builder._revenue_check(
+            1200, "₹ Cr", "FY25", "2025-05-01", ref)[0], -1)
+        # $ Mn converts at the calibration rate; 120 $ Mn is ~1,020 Cr, within 15%.
+        self.assertEqual(builder._revenue_check(
+            120, "$ Mn", "FY25", "2025-05-01", ref)[0], 1)
+        self.assertEqual(builder._revenue_check(
+            1000, "₹ Cr", "FY25", "2025-05-01", [])[0], 0)
+        self.assertEqual(builder._revenue_check(
+            1000, "₹ Cr", "-", "2025-05-01", ref)[0], -1)
+
+    def test_newer_ar_beats_an_older_deck(self):
+        deck = {"theme": "gold_jewellery_finance", "isin": "x", "weight_source": "deck",
+                "valid_from": "2024-07-30", "valid_to": "2025-07-30", "weight": 0.6,
+                "evidence_id": "d", "evidence_quote": "", "pivot": False}
+        ar = {"theme": "gold_jewellery_finance", "isin": "x", "weight_source": "segment",
+              "valid_from": "2024-10-30", "valid_to": "2026-03-31", "weight": 0.55,
+              "evidence_id": "a", "evidence_quote": "", "pivot": False}
+        out = sorted(builder._prefer_deck([deck], [ar]), key=lambda r: r["valid_from"])
+        self.assertEqual(
+            [(r["weight_source"], r["valid_from"], r["valid_to"]) for r in out],
+            [("deck", "2024-07-30", "2024-10-30"),
+             ("segment", "2024-10-30", "2026-03-31")])
+        # Same fiscal quarter: the deck keeps the tie.
+        same = {**ar, "valid_from": "2024-08-05"}
+        out = sorted(builder._prefer_deck([deck], [same]), key=lambda r: r["valid_from"])
+        self.assertEqual(
+            [(r["weight_source"], r["valid_from"], r["valid_to"]) for r in out],
+            [("deck", "2024-07-30", "2025-07-30"),
+             ("segment", "2025-07-30", "2026-03-31")])
 
     def test_pivot_needs_one_reconciling_segment_table(self):
         self.assertTrue(builder._pivot({"petroleum": 60.0, "gas": 30.0, "other": 10.0}, 60.0, 100.0))
