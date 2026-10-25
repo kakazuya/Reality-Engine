@@ -90,7 +90,11 @@ export type WorkerGroup = {
 export type WorkerCounts = {
   running: number
   stalled: number
+  /** Final jobs whose outcome is `failed` (phase failed or a non-zero exit). */
   failed: number
+  /** Final jobs that were cancelled, neither a finish nor a failure. */
+  cancelled: number
+  /** Final jobs whose outcome is `ok`. */
   finished: number
 }
 

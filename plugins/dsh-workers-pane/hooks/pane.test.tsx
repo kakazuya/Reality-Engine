@@ -74,12 +74,17 @@ type FixtureEntry = {
 function wire(
   on: TestOn,
   entries: () => readonly FixtureEntry[],
-  options: { isBroken?: () => boolean; isPlaced?: boolean } = {},
+  options: {
+    isBroken?: () => boolean
+    isPlaced?: boolean
+    files?: Record<string, string>
+  } = {},
 ): { statuses: Array<string | undefined>; opened: string[] } {
   const statuses: Array<string | undefined> = []
   const opened: string[] = []
   const isBroken = options.isBroken ?? (() => false)
   const isPlaced = options.isPlaced ?? true
+  const files = options.files ?? FIXTURE_FILES
 
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('command.register', (_, e) => ({ value: { command: e.name } }))
@@ -98,14 +103,14 @@ function wire(
     return { value: [...entries()] }
   })
   on('fs.read', (_, e) => {
-    const text = FIXTURE_FILES[pathKey(e.path)]
+    const text = files[pathKey(e.path)]
     if (text === undefined) return { deny: 'ENOENT' }
     return e.as === 'bytes'
       ? { value: { base64: encodeBase64(text) } }
       : { value: text }
   })
   on('fs.stat', (_, e) => {
-    const text = FIXTURE_FILES[pathKey(e.path)]
+    const text = files[pathKey(e.path)]
     if (text === undefined) return { deny: 'ENOENT' }
     return {
       value: {
@@ -118,6 +123,134 @@ function wire(
   })
   return { statuses, opened }
 }
+
+// A 7-job set where the bar must add up to the Finished count: 3 clean
+// finishes, 1 finished with exit 1, 1 failed start, 2 cancelled.
+const RECOUNT_ROOT = 'C:/dsh-fixtures/recount'
+const recountAt = (minutes: number): string =>
+  new Date(NOW + minutes * 60_000).toISOString()
+
+function recountJob(
+  id: string,
+  status: Record<string, unknown> | null,
+  jobRecord: Record<string, unknown> = {},
+): Record<string, string> {
+  const files: Record<string, string> = {
+    [`${RECOUNT_ROOT}/${id}/job.json`]: JSON.stringify({
+      schema: 1,
+      job_id: id,
+      kind: 'worker',
+      created_at: recountAt(-4),
+      owner_session: 'recount-1',
+      ...jobRecord,
+    }),
+  }
+  if (status !== null) {
+    files[`${RECOUNT_ROOT}/${id}/status.json`] = JSON.stringify({
+      schema: 1,
+      job_id: id,
+      kind: 'worker',
+      owner_session: 'recount-1',
+      started_at: recountAt(-4),
+      updated_at: recountAt(-2),
+      finished_at: recountAt(-2),
+      ...status,
+    })
+  }
+  return files
+}
+
+const RECOUNT_IDS = [
+  '20261024T115500Z-ccccc001',
+  '20261024T115500Z-ccccc002',
+  '20261024T115500Z-ccccc003',
+  '20261024T115500Z-ccccc004',
+  '20261024T115500Z-ccccc005',
+  '20261024T115500Z-ccccc006',
+  '20261024T115500Z-ccccc007',
+] as const
+
+const RECOUNT_ENTRIES = RECOUNT_IDS.map(name => ({
+  name,
+  kind: 'dir' as const,
+  size: 0,
+  mtimeMs: 0,
+  isLink: false,
+}))
+
+const RECOUNT_OK = { phase: 'finished', outcome: 'ok', exit_code: 0 }
+const RECOUNT_FILES: Record<string, string> = {
+  ...recountJob(RECOUNT_IDS[0], RECOUNT_OK),
+  ...recountJob(RECOUNT_IDS[1], RECOUNT_OK),
+  ...recountJob(RECOUNT_IDS[2], RECOUNT_OK),
+  // finished phase, non-zero exit: a failure under the outcome rule
+  ...recountJob(RECOUNT_IDS[3], { phase: 'finished', exit_code: 1 }),
+  // no status.json at all: a failed start
+  ...recountJob(RECOUNT_IDS[4], null, {
+    start_failed: true,
+    created_at: recountAt(-3),
+  }),
+  ...recountJob(RECOUNT_IDS[5], { phase: 'cancelled', exit_code: 1 }),
+  ...recountJob(RECOUNT_IDS[6], { phase: 'cancelled', exit_code: 1 }),
+}
+const RECOUNT_ONE_ENTRIES = RECOUNT_ENTRIES.slice(0, 1)
+const RECOUNT_ONE_FILES = recountJob(RECOUNT_IDS[0], RECOUNT_OK)
+
+test(
+  'the bar counts ok / failed / cancelled so they add up to Finished',
+  { options: { jobsRoot: RECOUNT_ROOT } },
+  async ($, on) => {
+    const clock = mock.clock(on, { now: APP_START })
+    wire(on, () => RECOUNT_ENTRIES, { files: RECOUNT_FILES })
+
+    await $.session.start({
+      cwd: 'C:/',
+      surface: 'terminal',
+      isInteractive: true,
+    })
+    await clock.set(NOW)
+
+    const ui = await $.ui.mount({
+      ...PANE,
+      surface: 'terminal',
+      viewport: { columns: 100, rows: 50 },
+    })
+    const joined = textsOf(await ui.findAll({ type: 'Text' })).join('\n')
+
+    expect(joined).toContain('✓ 3 finished')
+    expect(joined).toContain('✕ 2 failed')
+    expect(joined).toContain('⊘ 2 cancelled')
+
+    const finishedHeader = await ui.find({ type: 'Button', key: 'finished' })
+    expect(finishedHeader?.text).toBe('Finished 7 ▸')
+  },
+)
+
+test(
+  'the cancelled tile stays hidden when nothing was cancelled',
+  { options: { jobsRoot: RECOUNT_ROOT } },
+  async ($, on) => {
+    const clock = mock.clock(on, { now: APP_START })
+    wire(on, () => RECOUNT_ONE_ENTRIES, { files: RECOUNT_ONE_FILES })
+
+    await $.session.start({
+      cwd: 'C:/',
+      surface: 'terminal',
+      isInteractive: true,
+    })
+    await clock.set(NOW)
+
+    const ui = await $.ui.mount({
+      ...PANE,
+      surface: 'terminal',
+      viewport: { columns: 100, rows: 50 },
+    })
+    const joined = textsOf(await ui.findAll({ type: 'Text' })).join('\n')
+
+    expect(joined).toContain('✓ 1 finished')
+    expect(joined).not.toContain('cancelled')
+  },
+)
 
 test(
   'the rail draws running rows, chips and one expandable detail at a time',
@@ -178,6 +311,7 @@ test(
       expect(joined).toContain('● 2 running')
       expect(joined).toContain('◐ 1 stalled')
       expect(joined).toContain('✕ 3 failed')
+      expect(joined).toContain('⊘ 1 cancelled')
       expect(joined).toContain('✓ 3 finished')
       // The chips carry the v3 phase colours, dark text on the bright fill.
       const runningChip = await ui.find({ type: 'Text', text: '● 2 running' })

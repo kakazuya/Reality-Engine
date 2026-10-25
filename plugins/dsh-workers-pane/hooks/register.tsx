@@ -534,6 +534,12 @@ function mixCells(
       deep: STATUS.error.deep,
     },
     {
+      key: 'cancelled',
+      value: counts.cancelled,
+      light: STATUS.muted.light,
+      deep: STATUS.muted.deep,
+    },
+    {
       key: 'finished',
       value: counts.finished,
       light: STATUS.info.light,
@@ -612,13 +618,20 @@ function HeaderCard(props: PaneProps) {
       tone: STATUS.error,
     },
     {
+      key: 'cancelled',
+      glyph: '⊘',
+      label: 'cancelled',
+      value: counts.cancelled,
+      tone: STATUS.muted,
+    },
+    {
       key: 'finished',
       glyph: '✓',
       label: 'finished',
       value: counts.finished,
       tone: STATUS.info,
     },
-  ]
+  ].filter(chip => chip.key !== 'cancelled' || chip.value > 0)
   const mix = mixCells(counts, Math.max(8, props.width - 2))
 
   return (

@@ -340,10 +340,51 @@ test('the view splits running from finished and counts every job kind', () => {
   expect(view.counts.running).toBe(2)
   expect(view.counts.stalled).toBe(1)
   expect(view.counts.failed).toBe(3)
+  expect(view.counts.cancelled).toBe(1)
   expect(view.counts.finished).toBe(3)
   expect(view.finished.length).toBe(7)
   expect(view.finishedGroups.length).toBe(2)
   expect(view.maxima.tools).toBe(20)
+})
+
+test('counts follow outcome so ok + failed + cancelled cover Finished', () => {
+  const final = (id: string, status: Record<string, unknown>) =>
+    statusMeta(
+      id,
+      {
+        started_at: iso(NOW - 5 * 60_000),
+        finished_at: iso(NOW - 2 * 60_000),
+        updated_at: iso(NOW - 2 * 60_000),
+        ...status,
+      },
+      NOW,
+    )
+  const metas = [
+    final('20261024T115500Z-aaaa0001', { phase: 'finished', outcome: 'ok', exit_code: 0 }),
+    final('20261024T115500Z-aaaa0002', { phase: 'finished', outcome: 'ok', exit_code: 0 }),
+    final('20261024T115500Z-aaaa0003', { phase: 'finished', outcome: 'ok', exit_code: 0 }),
+    // phase finished, but the run exited 1: the ✓ tile must not claim it
+    final('20261024T115500Z-aaaa0004', { phase: 'finished', exit_code: 1 }),
+    // a start that failed before any status.json was written
+    failedStartMeta(statusMeta('20261024T115500Z-aaaa0005', null, NOW), {
+      start_failed: true,
+      created_at: iso(NOW - 3 * 60_000),
+    }),
+    final('20261024T115500Z-aaaa0006', { phase: 'cancelled', exit_code: 1 }),
+    final('20261024T115500Z-aaaa0007', { phase: 'cancelled', exit_code: 1 }),
+  ]
+  const rows = metas.map(meta =>
+    rowOf(meta.id, null, null, null, null, NOW, null, { meta }),
+  )
+  const view = viewOf(rows, metas, NOW, FIXTURE_ROOT, null)
+
+  expect(view.counts.finished).toBe(3)
+  expect(view.counts.failed).toBe(2)
+  expect(view.counts.cancelled).toBe(2)
+  expect(view.finished.length).toBe(7)
+  expect(view.counts.finished + view.counts.failed + view.counts.cancelled).toBe(
+    view.finished.length,
+  )
 })
 
 test('heat ratios clamp and tool bars keep one filled cell', () => {
