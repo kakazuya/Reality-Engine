@@ -1,10 +1,14 @@
+# TEMPLATE ONLY. The live approval file is ~/.dsh/data-gather/approved.yaml (or
+# DSH_DATA_GATHER_APPROVED); it lives outside every checkout so a worker cannot widen
+# it, and run_feed never falls back to this copy.
+#
 # Feeds a data-gather worker may start without a human in the loop.
 #
 # Only add a feed after Shivam has reviewed its cost, locks and blast radius:
 # run_feed treats this file as the approval, so a job that ships
 # `enabled: false` in plugins/dsh-worker/jobs.yaml runs anyway when it is
 # listed here. `max_days` caps one run's {start}..{date} window (a feed with no
-# max_days inherits run_feed's 10-day default when only one date is given).
+# max_days inherits run_feed's 31-day default when only one date is given).
 # `market: false` skips the trading-day gap report for a feed whose writes only
 # look like market tables.
 schema: data-gather-approved/1

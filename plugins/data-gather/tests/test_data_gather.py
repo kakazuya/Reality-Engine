@@ -13,6 +13,7 @@ import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -26,6 +27,7 @@ for _path in (SERVER_DIR, WORKER_SERVER, FIXTURES, REPO):
         sys.path.insert(0, str(_path))
 
 import core  # noqa: E402
+import feeds  # noqa: E402
 import gather  # noqa: E402
 import jobs  # noqa: E402
 import store  # noqa: E402
@@ -35,6 +37,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 # 2026-10-21 is a Wednesday: 03:00 and 16:00 are outside peak, 07:00 is inside.
 OFF_PEAK = datetime(2026, 10, 21, 3, 0, tzinfo=IST)
 PEAK = datetime(2026, 10, 21, 7, 0, tzinfo=IST)
+MARKET_OPEN = datetime(2026, 10, 21, 10, 0, tzinfo=IST)
 POST_CLOSE = datetime(2026, 10, 21, 16, 0, tzinfo=IST)
 SATURDAY = datetime(2026, 10, 17, 12, 0, tzinfo=IST)
 TEST_TMP = REPO / ".tmp" / "data-gather-tests"
@@ -224,9 +227,21 @@ class DataGatherTests(unittest.TestCase):
         self.assertTrue(listed["ok"], listed)
         self.assertEqual(listed["count"], 3)
         by_name = {row["name"]: row for row in listed["feeds"]}
+        # checked_at is second-resolution; cross a boundary so a whole-dict
+        # comparison with the second call's freshness really would differ.
+        time.sleep(1.1)
         from_jobs = {item["name"]: item["freshness"] for item in self.manager.list_jobs()["jobs"]}
+
+        def without_checked_at(value):
+            # checked_at is the live probe's clock; two calls straddle it.
+            return {key: item for key, item in (value or {}).items() if key != "checked_at"}
+
         for name in ("feed_maxdate", "feed_count", "feed_nocheck"):
-            self.assertEqual(by_name[name]["freshness"], from_jobs[name])
+            self.assertEqual(
+                without_checked_at(by_name[name]["freshness"]),
+                without_checked_at(from_jobs[name]),
+                name,
+            )
         self.assertTrue(by_name["feed_maxdate"]["approved"])
         self.assertFalse(by_name["feed_count"]["approved"])
         self.assertEqual(by_name["feed_maxdate"]["max_days"], 5)
@@ -312,6 +327,22 @@ class DataGatherTests(unittest.TestCase):
         self.assertTrue(ctx.exception.details.get("net_heavy"))
         self.assertFalse((self.root / "runtime" / "jobs").exists())
 
+    def test_run_feed_refuses_hours_gates_a_confirm_start_would_bypass(self) -> None:
+        self._write_db([])
+        off_peak = self._entry("feed_off_peak_only", "print('x')")
+        off_peak["off_peak_only"] = True
+        market = self._entry("feed_market_hours", "print('x')")
+        market["market_hours"] = "avoid_market"
+        self._registry([off_peak, market])
+        self._approve({"feed_off_peak_only": None, "feed_market_hours": None})
+        with self.assertRaises(core.PluginError) as ctx:
+            self._service(now=PEAK).run_feed("feed_off_peak_only")
+        self.assertEqual(ctx.exception.code, "off_peak_hours")
+        with self.assertRaises(core.PluginError) as ctx:
+            self._service(now=MARKET_OPEN).run_feed("feed_market_hours")
+        self.assertEqual(ctx.exception.code, "market_hours")
+        self.assertFalse((self.root / "runtime" / "jobs").exists())
+
     def test_run_feed_refuses_window_over_max_days(self) -> None:
         self._write_db([])
         self._registry([self._entry("feed_small", "print('x')")])
@@ -321,6 +352,28 @@ class DataGatherTests(unittest.TestCase):
                 "feed_small", start="2026-10-01", end="2026-10-10"
             )
         self.assertEqual(ctx.exception.code, "window_too_large")
+
+    def test_run_feed_caps_window_when_approval_omits_max_days(self) -> None:
+        self._write_db([])
+        self._registry([self._entry("feed_default_cap", "print('x')")])
+        self._approve({"feed_default_cap": None})
+        with self.assertRaises(core.PluginError) as ctx:
+            self._service().run_feed("feed_default_cap", start="2000-01-01")
+        self.assertEqual(ctx.exception.code, "window_too_large")
+        self.assertEqual(ctx.exception.details.get("max_days"), gather.DEFAULT_WINDOW_DAYS)
+        self.assertEqual(gather.DEFAULT_WINDOW_DAYS, 31)
+        self.assertFalse((self.root / "runtime" / "jobs").exists())
+
+    def test_run_feed_refuses_non_iso_window_dates(self) -> None:
+        self._write_db([])
+        self._registry([self._entry("feed_bad_date", "print('x')")])
+        self._approve({"feed_bad_date": None})
+        service = self._service()
+        for start in ("2026-01-01 --x", "2026-01-01T00:00:00", "2026-02-30"):
+            with self.assertRaises(core.PluginError) as ctx:
+                service.run_feed("feed_bad_date", start=start, end="2026-10-21")
+            self.assertEqual(ctx.exception.code, "window_invalid", start)
+        self.assertFalse((self.root / "runtime" / "jobs").exists())
 
     def test_run_feed_and_verify(self) -> None:
         self._write_db([("2026-10-19", "2026-10-19")])
@@ -417,10 +470,61 @@ class DataGatherTests(unittest.TestCase):
             service.verify_feed("feed_ok", store.new_job_id())
         self.assertEqual(ctx.exception.code, "no_snapshot")
 
+    def test_verify_fails_when_the_table_snapshot_is_truncated(self) -> None:
+        self._write_db([])
+        entry = self._entry("feed_wide", "print('x')")
+        entry["writes"] = [
+            f"feeds.db:{TABLE}_{index}" for index in range(gather.MAX_TABLES + 1)
+        ]
+        self._registry([entry])
+        self._approve({"feed_wide": None})
+        service = self._service()
+        started = self._start(service, "feed_wide")
+        self._wait_final(started["run_id"])
+        verified = service.verify_feed("feed_wide", started["run_id"])
+        self.assertFalse(verified["ok"], verified)
+        self.assertTrue(verified["tables_truncated"])
+        self.assertEqual(verified["tables_total"], gather.MAX_TABLES + 1)
+        self.assertEqual(verified["tables_checked"], gather.MAX_TABLES)
+        complete = next(
+            check
+            for check in verified["checks"]
+            if check["check"] == "table_snapshot_complete"
+        )
+        self.assertFalse(complete["ok"], complete)
+
+    def test_approved_path_defaults_outside_every_checkout(self) -> None:
+        service = gather.GatherService(
+            self.manager, now=OFF_PEAK, raw_root=self.raw_root, runtime_dir=self.runtime
+        )
+        with mock.patch.dict(os.environ, {gather.APPROVED_ENV: ""}, clear=False):
+            default = service.approved_path
+        self.assertEqual(default, Path.home() / ".dsh" / "data-gather" / "approved.yaml")
+        self.assertNotIn(REPO, default.parents)
+        pinned = self.root / "pinned" / "approved.yaml"
+        with mock.patch.dict(os.environ, {gather.APPROVED_ENV: str(pinned)}, clear=False):
+            self.assertEqual(service.approved_path, pinned)
+
+    def test_run_feed_refuses_when_approval_file_is_missing(self) -> None:
+        self._write_db([])
+        self._registry([self._entry("commodity_series", "print('x')")])
+        # The repo copy is a documented template and approves this feed; a missing
+        # real approval file must still refuse rather than fall back to it.
+        self.assertIn("commodity_series", feeds.load_approved(PLUGIN / "approved.yaml"))
+        service = gather.GatherService(
+            self.manager,
+            now=OFF_PEAK,
+            approved_path=self.root / "missing" / "approved.yaml",
+            raw_root=self.raw_root,
+            runtime_dir=self.runtime,
+        )
+        with self.assertRaises(core.PluginError) as ctx:
+            service.run_feed("commodity_series")
+        self.assertEqual(ctx.exception.code, "approval_file_missing")
+        self.assertFalse((self.root / "runtime" / "jobs").exists())
+
     # ----------------------------------------------------- shipped approvals
     def test_shipped_approved_feeds_exist_in_the_live_registry(self) -> None:
-        import feeds
-
         approved = feeds.load_approved(PLUGIN / "approved.yaml")
         self.assertTrue(approved, "plugins/data-gather/approved.yaml approves nothing")
         registry = jobs.load_registry(REPO / "plugins" / "dsh-worker" / "jobs.yaml")

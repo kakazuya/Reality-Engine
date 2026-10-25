@@ -1917,6 +1917,22 @@ class PluginTests(unittest.TestCase):
         with self.assertRaises(jobs.RegistryError):
             jobs.expand_argv(entry, [], self.root, data_root, now, start="yesterday")
 
+    def test_start_job_refuses_impossible_window_date(self):
+        """Regex-shaped but impossible dates are window_invalid, not internal_error."""
+        self._write_jobs_registry(
+            [self._fake_job("fake_window", "print('x')", enabled=False)]
+        )
+        manager = self._manager_instance()
+        for label, value in (
+            ("window_start", "2026-02-30"),
+            ("window_end", "2026-13-01"),
+        ):
+            with self.assertRaises(core.PluginError) as ctx:
+                manager.start_job("fake_window", confirm=True, **{label: value})
+            self.assertEqual(ctx.exception.code, "window_invalid", label)
+        jobs_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs"
+        self.assertFalse(jobs_dir.exists() and any(jobs_dir.iterdir()))
+
     def test_resource_lock_contention(self):
         hold = self._fake_job(
             "hold_db", "import time; time.sleep(20)",

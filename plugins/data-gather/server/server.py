@@ -28,7 +28,7 @@ INSTRUCTIONS = (
     "Data feeds for this repository. list_feeds shows every jobs.yaml feed with "
     "its live freshness (dsh-worker's own max-date/count rule), age versus "
     "cadence, last run and whether a human approved it in "
-    "plugins/data-gather/approved.yaml. gap_report compares expected NSE trading "
+    "the approval file (DSH_DATA_GATHER_APPROVED, default ~/.dsh/data-gather/approved.yaml). gap_report compares expected NSE trading "
     "days against the dates actually stored, per market feed. run_feed starts an "
     "APPROVED feed ONLY, through the same dsh-worker supervisor, controller lease "
     "and db:/net: resource locks as start_job; it refuses unapproved feeds, "
@@ -102,7 +102,7 @@ def gap_report(names: list[str] | None = None) -> dict[str, Any]:
     description=(
         "Start one feed from jobs.yaml through the dsh-worker supervisor (same "
         "lease, status records and db:/net: resource locks as start_job). Refuses "
-        "unless the feed is listed in plugins/data-gather/approved.yaml, refuses a "
+        "unless the feed is listed in the approval file (DSH_DATA_GATHER_APPROVED, default ~/.dsh/data-gather/approved.yaml), refuses a "
         "net-heavy feed during peak hours (Mon-Fri 06:30-09:30 and 11:30-15:30 "
         "IST), and refuses a date window longer than the feed's approved max_days. "
         "start/end (YYYY-MM-DD) replace the job's {start}/{date} tokens; omit both "

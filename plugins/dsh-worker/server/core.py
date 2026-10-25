@@ -17,7 +17,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -3498,11 +3498,16 @@ class Manager:
             raise PluginError("confirm_invalid", "confirm must be true or false")
         progress_interval_seconds = _progress_interval(progress_interval_seconds)
         for label, value in (("window_start", window_start), ("window_end", window_end)):
-            if value is not None and (
-                not isinstance(value, str)
-                or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value)
-            ):
+            if value is None:
+                continue
+            if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
                 raise PluginError("window_invalid", f"{label} must be a YYYY-MM-DD date")
+            try:
+                date.fromisoformat(value)
+            except ValueError as exc:
+                raise PluginError(
+                    "window_invalid", f"{label} must be a real YYYY-MM-DD date"
+                ) from exc
         _registry, entry = self._job_entry(name)
         if not entry["enabled"] and not confirm:
             raise PluginError(

@@ -9,6 +9,7 @@ writes is the per-run before/after snapshot under ``data-gather/runtime``.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -31,8 +32,9 @@ from core import Manager, PluginError, is_peak, load_config  # noqa: E402
 SCHEMA = "data-gather/1"
 SNAPSHOT_SCHEMA = "data-gather-snapshot/1"
 RUNTIME_ENV = "DSH_DATA_GATHER_RUNTIME"
+APPROVED_ENV = "DSH_DATA_GATHER_APPROVED"
 RAW_ROOT_ENV = "REALITY_RAW_ROOT"
-DEFAULT_WINDOW_DAYS = 10  # matches jobs.expand_argv's {start} default
+DEFAULT_WINDOW_DAYS = 31  # cap when an approval omits max_days
 TAIL_LINES = 40
 MAX_TABLES = 12
 GAP_DEADLINE_SECONDS = 20.0
@@ -85,8 +87,9 @@ class GatherService:
 
     @property
     def approved_path(self) -> Path:
-        return self._approved_path or (
-            self.config.plugin_root.parent / "data-gather" / feeds.APPROVED_FILENAME
+        return self._approved_path or Path(
+            os.environ.get(APPROVED_ENV)
+            or Path.home() / ".dsh" / "data-gather" / feeds.APPROVED_FILENAME
         )
 
     @property
@@ -289,6 +292,20 @@ class GatherService:
         }
 
     # --------------------------------------------------------------- run_feed
+    @staticmethod
+    def _day(value: Any, label: str, name: str) -> date:
+        """A caller-supplied window bound: exactly YYYY-MM-DD and a real date."""
+        if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            raise PluginError(
+                "window_invalid", f"{label} must be a YYYY-MM-DD date", name=name
+            )
+        try:
+            return date.fromisoformat(value)
+        except ValueError as exc:
+            raise PluginError(
+                "window_invalid", f"{label} must be a real YYYY-MM-DD date", name=name
+            ) from exc
+
     def _window(
         self,
         name: str,
@@ -296,25 +313,19 @@ class GatherService:
         start: str | None,
         end: str | None,
     ) -> tuple[str | None, str | None]:
-        window_start = feeds.parse_day(start) if start is not None else None
-        window_end = feeds.parse_day(end) if end is not None else None
-        if start is not None and window_start is None:
-            raise PluginError("window_invalid", "start must be a YYYY-MM-DD date", name=name)
-        if end is not None and window_end is None:
-            raise PluginError("window_invalid", "end must be a YYYY-MM-DD date", name=name)
+        window_start = self._day(start, "start", name) if start is not None else None
+        window_end = self._day(end, "end", name) if end is not None else None
         if window_start is None and window_end is None:
             return None, None
+        max_days = approval.get("max_days") or DEFAULT_WINDOW_DAYS
         if window_end is None:
             window_end = self.now().date()
-        max_days = approval.get("max_days")
         if window_start is None:
-            window_start = window_end - timedelta(
-                days=(max_days or DEFAULT_WINDOW_DAYS) - 1
-            )
+            window_start = window_end - timedelta(days=max_days - 1)
         if window_end < window_start:
             raise PluginError("window_invalid", "end is before start", name=name)
         span = (window_end - window_start).days + 1
-        if max_days is not None and span > max_days:
+        if span > max_days:
             raise PluginError(
                 "window_too_large",
                 f"feed {name!r} is approved for at most {max_days} days per run "
@@ -350,19 +361,45 @@ class GatherService:
                 f"no data job named {name!r}",
                 available=sorted(registry["jobs"])[:MAX_NAME_ITEMS],
             )
+        approved_path = self.approved_path
+        if not approved_path.is_file():
+            raise PluginError(
+                "approval_file_missing",
+                f"no approval file at {approved_path}; data-gather runs nothing until "
+                "a human creates it from plugins/data-gather/approved.yaml",
+                name=name,
+                approved_path=str(approved_path),
+            )
         approval = self.approved().get(name)
         if approval is None:
             raise PluginError(
                 "feed_not_approved",
-                f"feed {name!r} is not listed in {self.approved_path}; a human must "
+                f"feed {name!r} is not listed in {approved_path}; a human must "
                 "add it before a worker may run it",
                 name=name,
-                approved_path=str(self.approved_path),
+                approved_path=str(approved_path),
             )
         window_start, window_end = self._window(name, approval, start, end)
         locks = [str(lock) for lock in entry.get("resource_locks") or []]
         net_heavy = self._net_heavy(locks)
         now = self.now()
+        if entry.get("off_peak_only") and is_peak(now):
+            raise PluginError(
+                "off_peak_hours",
+                f"feed {name!r} is off-peak-only (Mon-Fri 06:30-09:30 and "
+                "11:30-15:30 IST); run_feed's confirm override only covers "
+                "enabled:false, not the hours gates",
+                name=name,
+                now=now.astimezone(core.IST).isoformat(timespec="minutes"),
+            )
+        # The same gate start_job applies when confirm is false.
+        if entry.get("market_hours") == "avoid_market" and core._market_session(now):
+            raise PluginError(
+                "market_hours",
+                f"feed {name!r} does not start between 09:15 and 15:30 IST on weekdays",
+                name=name,
+                now=now.astimezone(core.IST).isoformat(timespec="minutes"),
+            )
         if net_heavy and is_peak(now):
             raise PluginError(
                 "peak_hours",
@@ -399,7 +436,7 @@ class GatherService:
             "window": snapshot["window"],
             "resource_locks": locks,
             "net_heavy": net_heavy,
-            "max_days": approval.get("max_days"),
+            "max_days": approval.get("max_days") or DEFAULT_WINDOW_DAYS,
             "argv": started.get("argv"),
             "status_tool": f"feed_status(run_id='{run_id}')",
             "verify_tool": f"verify_feed(name='{name}', run_id='{run_id}')",
@@ -564,6 +601,24 @@ class GatherService:
                 "truncated": misplaced.get("truncated"),
             }
         )
+        captured = [
+            before for before in snapshot.get("tables") or [] if isinstance(before, dict)
+        ]
+        truncated = snapshot.get("tables_truncated")
+        total = snapshot.get("tables_total")
+        checks.append(
+            {
+                "check": "table_snapshot_complete",
+                "ok": None if truncated is None else not truncated,
+                "checked": len(captured),
+                "total": total if isinstance(total, int) else None,
+                "skipped": (
+                    None
+                    if truncated is not None
+                    else "snapshot_has_no_truncation_flag"
+                ),
+            }
+        )
         failed = [check for check in checks if check["ok"] is False]
         verified = [check for check in checks if check["ok"] is not None]
         return {
@@ -579,6 +634,9 @@ class GatherService:
             "checked": len(verified),
             "failed": len(failed),
             "not_applicable": len(checks) - len(verified),
+            "tables_checked": len(captured),
+            "tables_total": total if isinstance(total, int) else None,
+            "tables_truncated": None if truncated is None else bool(truncated),
             "checks": checks,
         }
 
