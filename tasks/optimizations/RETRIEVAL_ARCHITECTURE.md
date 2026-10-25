@@ -24,6 +24,18 @@ A question is answered in about 3–10 tool calls that each return compact, cite
 - `universe(theme, as_of)` turns "gold stocks", "OMCs", "listed HFCs", "dairy companies" or "data-centre players"
   into a member list. Members come from `company_industry` + `business_model_profiles` + a curated
   `universes.yaml`. The tool returns the member list and why each company is in it. Q16, Q17, Q18, Q24 and Q25 need it.
+- **Membership is point-in-time and refreshed automatically, not a fixed list.** Table
+  `universe_membership(theme, isin, valid_from, valid_to, weight, evidence_id, method)`:
+  - `weight` = that theme's share of revenue (XBRL segment facts, then deck/AR segments);
+  - `method` = segment | subsidiary | stated_pivot | curated.
+  - Entry signals, re-checked after every results filing and announcement refresh:
+    - a new or growing segment;
+    - a subsidiary or acquisition announcement in the theme;
+    - a concall or deck statement of entering the theme;
+    - an NSE industry reclassification.
+  - When the theme becomes the largest segment, the company is flagged `pivot`.
+  - Each refresh writes a joins/exits/pivot diff. `universe(theme, as_of)` answers from the rows valid on that date,
+    so old questions still see the old universe.
 
 ### L2 Analytics (new; deterministic numbers the model must not compute by hand)
 | tool | answers | source |
@@ -45,9 +57,13 @@ A question is answered in about 3–10 tool calls that each return compact, cite
   policy_events, concall, deck). It answers "published by PIB or only RBI?" (Q21), "what changed vs the earlier scheme"
   (Q23, Q25) and "PIB before transcripts" (Q16).
 - `first_seen(terms|signal, scope)` returns the earliest PIT date at which evidence existed. Q18 is graded on this date.
-- **Dense search is a second stage only.** It reranks the FTS candidates with the Nemotron index. The query vector is
-  cached on disk by query text, so the same question always gives the same ranking. Query embedding today needs paid
-  DeepInfra calls (`REALITY_DATA_ALLOW_PAID_EMBED=1`), so dense search stays off until Shivam decides.
+- **Dense search runs now on the vectors we already have, at no cost.**
+  - The 340k Nemotron chunk vectors and 1.37M Qwen AR vectors are stored. Only embedding a *new query text* into
+    their space is paid. So the free path is seed-vector expansion: FTS finds the best 3–5 chunks, their stored
+    vectors become the query, and nearest neighbours bring in the paraphrases that FTS missed.
+  - The old bge-small index (1.7M chunks) can embed free-text queries locally (ONNX on the GPU, free).
+  - A paid Nemotron query embed is used only with `REALITY_DATA_ALLOW_PAID_EMBED=1`. Query vectors are cached on
+    disk by text, so rankings are reproducible.
 
 ### L4 Evidence contract (what makes it deterministic and checkable)
 - Every tool row carries `evidence_id` (`db.table:key`, or `doc_id#page`) and `known_at`.
@@ -72,7 +88,19 @@ A question is answered in about 3–10 tool calls that each return compact, cite
 - **Gate:** a new tool, prompt or context change merges only if it does not lower accuracy and it improves tool
   calls or wall time. This is the same rule that turned the context pack off.
 
-## Data jobs (writes; each needs Shivam's OK)
+## Data gathering belongs to DeepSeek workers (Shivam, 2026-10-25)
+- New MCP server `data-gather`, loaded only in the dsh worker profile (not in Claude Code). It wraps the
+  `plugins/dsh-worker/jobs.yaml` registry:
+  - `list_feeds()`: freshness, gaps, last run.
+  - `run_feed(name, start, end)`: runs the job's fixed script under the same supervisor locks.
+  - `feed_status(run_id)`.
+  - `verify_feed(name)`: row counts, max date, and first-rows date check against the filing record.
+  - `gap_report()`.
+- Workers run and verify feeds; the fetch code stays deterministic, and models never write rows by hand.
+- Claude only reviews the verify reports and the code changes.
+- Write permission: only the feeds listed in `data-gather/approved.yaml` can run.
+
+## Data jobs (writes; Shivam approved 2026-10-25)
 | job | unblocks |
 |---|---|
 | Store deck page text in `deck_figures.db` (no Drive fetch per page) | Q9-type questions, doc_find on decks, Q17, Q25 |
