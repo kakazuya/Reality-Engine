@@ -3,14 +3,20 @@
 Dry run by default: prints, per folder, the file count, bytes, how many files the destination
 already holds (same size + sha256) and any conflict. ``--apply`` copies each file to
 ``RAW_ROOT/<folder>/...`` (``pdfs`` reuses the existing ``D:\\RealityEngine\\pdfs`` pile),
-verifies size + sha256, then deletes the C copy, and writes
-``RAW_ROOT/_migration/<YYYY-MM-DD>.json``. Resumable: a destination that already holds the
-same bytes is never copied again, only the C copy is unlinked.
+verifies size + sha256, fsyncs the destination, then deletes the C copy, and writes
+``RAW_ROOT/_migration/<YYYY-MM-DD>.json``. The manifest merges every file ever moved, so a
+kill mid-run or a re-run on the same date keeps the earlier entries. Resumable: a destination
+that still holds the same bytes is never copied again; the destination is re-verified right
+before the C copy is unlinked, and a destination that vanished or changed is copied again.
+
+Refuses to run when the source is missing/empty, or when ``--dest`` / ``--pdfs-dest`` is the
+source itself or nested inside it (that would classify every file as already-on-D and delete it).
 
     python -m reality_engine.scripts.migrate_raw_to_d                 # dry run
     python -m reality_engine.scripts.migrate_raw_to_d --apply
 
 Databases and logs stay on C; they are not in FOLDERS.
+``hotline/`` stays on C too: it holds ops notes, not fetched raw data (Shivam 2026-10-25).
 """
 import argparse
 import hashlib
@@ -26,6 +32,7 @@ from reality_engine import config as cfg
 
 FOLDERS = ("pdfs", "raw_market", "bhavcopy", "tax_sources", "ar_queue",
            "index_constituents", "macro_pdfs", "decks")
+# Excluded on purpose: "hotline" (ops notes, not fetched raw data) stays under DATA_DIR on C.
 CHUNK = 1 << 20
 
 
@@ -108,6 +115,25 @@ def summarise(rows: list) -> dict:
     return out
 
 
+def _fsync_file(path: Path) -> None:
+    with open(path, "rb+") as fh:   # Windows needs write access for FlushFileBuffers
+        os.fsync(fh.fileno())
+
+
+def _fsync_dir(path: Path) -> None:
+    """Best-effort directory fsync so the rename survives a power loss (no-op on Windows)."""
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
 def _copy_verified(src: Path, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     part = dest.with_name(dest.name + ".part")
@@ -115,7 +141,18 @@ def _copy_verified(src: Path, dest: Path) -> None:
     if part.stat().st_size != src.stat().st_size or sha256(part) != sha256(src):
         part.unlink()
         raise OSError(f"verify failed after copy: {src} -> {dest}")
+    _fsync_file(part)          # durable before the C copy is allowed to go
     os.replace(part, dest)
+    _fsync_dir(dest.parent)
+
+
+def _same_bytes(src: Path, dest: Path) -> bool:
+    """True only when ``dest`` currently holds exactly the bytes of ``src``."""
+    try:
+        return (dest.is_file() and dest.stat().st_size == src.stat().st_size
+                and sha256(src) == sha256(dest))
+    except OSError:
+        return False
 
 
 def _link_or_copy(existing: Path, dest: Path) -> None:
@@ -124,7 +161,7 @@ def _link_or_copy(existing: Path, dest: Path) -> None:
     try:
         os.link(existing, dest)
     except OSError:
-        shutil.copy2(existing, dest)
+        _copy_verified(existing, dest)
 
 
 def apply(rows: list, manifest: Path, src_root: Path, dest_root: Path) -> dict:
@@ -133,6 +170,8 @@ def apply(rows: list, manifest: Path, src_root: Path, dest_root: Path) -> dict:
     n = 0
     for r in rows:
         src, dest = Path(r["src"]), Path(r["dest"])
+        if src.resolve() == dest.resolve():
+            raise OSError(f"refusing to delete the source: destination is the source ({src})")
         if r["status"] == "conflict":
             done["conflict"] += 1
             continue
@@ -149,6 +188,15 @@ def apply(rows: list, manifest: Path, src_root: Path, dest_root: Path) -> dict:
             done["already_on_d"] += 1
             if r.get("dup_of") and not dest.exists():  # keep the canonical path readable
                 _link_or_copy(Path(r["dup_of"]), dest)
+            if not _same_bytes(src, dest):
+                # The destination vanished or changed between plan and apply. The C copy is
+                # the only verified source: copy and verify it again before unlinking.
+                _copy_verified(src, dest)
+                r["sha256"] = sha256(dest)
+                r["status"] = "moved"
+                r.pop("dup_of", None)
+                done["already_on_d"] -= 1
+                done["moved"] += 1
         src.unlink()
         done["bytes_freed"] += r["bytes"]
         n += 1
@@ -173,8 +221,21 @@ def _prune_empty(root: Path) -> None:
             pass
 
 
+def _manifest_files(manifest: Path) -> dict:
+    """The manifest's existing rows keyed by ``src``; missing/unreadable means none."""
+    try:
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        return {r["src"]: r for r in payload.get("files") or [] if r.get("src")}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
 def save(manifest: Path, rows: list, src_root: Path, dest_root: Path) -> None:
+    """Write the manifest, merging the current rows into the ones already recorded by ``src``."""
     manifest.parent.mkdir(parents=True, exist_ok=True)
+    files = _manifest_files(manifest)
+    files.update({r["src"]: r for r in rows})   # current plan wins; earlier files stay recorded
+    rows = list(files.values())
     payload = {"date": date.today().isoformat(), "source_root": str(src_root),
                "raw_root": str(dest_root), "folders": summarise(rows), "files": rows}
     tmp = manifest.with_suffix(".json.tmp")
@@ -192,6 +253,19 @@ def report(s: dict) -> None:
           f"{total['to_copy']:>8}{total['conflict']:>10}")
 
 
+def check_paths(src: Path, dest: Path, pdfs_dest: Path) -> str | None:
+    """None when the migration may run, else the reason it must not."""
+    if not src.is_dir():
+        return f"source directory does not exist: {src}"
+    s = src.resolve()
+    for label, d in (("--dest", dest), ("--pdfs-dest", pdfs_dest)):
+        r = d.resolve()
+        if r == s or s in r.parents:
+            return (f"{label} {d} is the source or inside it; every file would classify as "
+                    f"already on D and the C copy would be deleted")
+    return None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Move raw files from the C data dir to RAW_ROOT on D.")
     ap.add_argument("--apply", action="store_true", help="copy + verify + delete (default: dry run)")
@@ -202,8 +276,18 @@ def main(argv=None) -> int:
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args(argv)
 
+    problem = check_paths(a.source, a.dest, a.pdfs_dest)
+    if problem:
+        print(f"refusing: {problem}", file=sys.stderr)
+        return 2
+
     folders = [f.strip() for f in a.folders.split(",") if f.strip()]
     rows = plan(a.source, a.dest, a.pdfs_dest, folders, a.workers)
+    if not rows:
+        print(f"refusing: no raw files under {a.source} for folders {','.join(folders)}; "
+              f"nothing to migrate (already moved, wrong --source, or wrong --folders)",
+              file=sys.stderr)
+        return 2
     s = summarise(rows)
     report(s)
     manifest = a.dest / "_migration" / f"{date.today().isoformat()}.json"

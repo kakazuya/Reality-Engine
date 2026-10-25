@@ -371,6 +371,7 @@ class BSEClient:
                 )
                 return None
             try:
+                local_file.parent.mkdir(parents=True, exist_ok=True)
                 local_file.write_text(text, encoding="utf-8")
             except OSError as e:
                 logger.warning("Could not cache BSE Bhavcopy for %s: %s", date_str, e)

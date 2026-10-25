@@ -24,7 +24,7 @@ jobs:
     argv: ["python", "-m", "reality_engine.scripts.fetch_market_raw", "--sources", "nse_full,nse_cm_isin,nse_index,bse_bhav,bse_deliv,nse_part_oi,nse_part_vol,nse_fii_stats", "--start", "{start}", "--end", "{date}"]
     cwd: "."
     env: {}
-    writes: ["reality_engine/data/raw_market/"]
+    writes: ["D:/RealityEngine/raw/raw_market/"]
     resource_locks: ["net:www.nseindia.com", "net:www.bseindia.com"]
     cadence: daily
     success_check:
@@ -42,7 +42,7 @@ jobs:
     argv: ["python", "-m", "reality_engine.scripts.fetch_nse_api_raw", "--datasets", "nse_bulk,nse_block,nse_short,nse_pit_gg,nse_pit_gg_sme,nse_pit_gg_xml,nse_sast,nse_corpact,nse_corpact_sme", "--start", "{start}", "--end", "{date}"]
     cwd: "."
     env: {}
-    writes: ["reality_engine/data/raw_market/nse_*"]
+    writes: ["D:/RealityEngine/raw/raw_market/nse_*"]
     resource_locks: ["net:www.nseindia.com"]
     cadence: daily
     success_check:
@@ -60,7 +60,7 @@ jobs:
     argv: ["python", "-m", "reality_engine.scripts.fetch_bse_api_raw", "--datasets", "bse_bulk,bse_block,bse_insider,bse_index,bse_corpact", "--start", "{start}", "--end", "{date}"]
     cwd: "."
     env: {}
-    writes: ["reality_engine/data/raw_market/bse_*"]
+    writes: ["D:/RealityEngine/raw/raw_market/bse_*"]
     resource_locks: ["net:www.bseindia.com"]
     cadence: daily
     success_check:
@@ -78,7 +78,7 @@ jobs:
     argv: ["python", "-m", "reality_engine.scripts.fetch_nsdl_raw", "--datasets", "nsdl_fpi_daily", "--start", "{start}", "--end", "{date}"]
     cwd: "."
     env: {}
-    writes: ["reality_engine/data/raw_market/nsdl_fpi_daily/"]
+    writes: ["D:/RealityEngine/raw/raw_market/nsdl_fpi_daily/"]
     resource_locks: ["net:www.fpi.nsdl.co.in"]
     cadence: daily
     success_check:
@@ -96,7 +96,7 @@ jobs:
     argv: ["python", "-m", "reality_engine.scripts.fetch_fiidii_moneycontrol", "--start", "{start}", "--end", "{date}"]
     cwd: "."
     env: {}
-    writes: ["reality_engine/data/raw_market/mc_fiidii/<year>.pb"]
+    writes: ["D:/RealityEngine/raw/raw_market/mc_fiidii/<year>.pb"]
     resource_locks: ["net:www.moneycontrol.com"]
     cadence: daily
     success_check:
@@ -565,7 +565,7 @@ jobs:
     argv: ["python", "-m", "reality_engine.scripts.fetch_macro_docs", "--sources", "union,survey,rbi,states"]
     cwd: "."
     env: {}
-    writes: ["reality_engine/data/macro_pdfs/", "equity_intelligence.db:raw_documents"]
+    writes: ["D:/RealityEngine/raw/macro_pdfs/", "equity_intelligence.db:raw_documents"]
     resource_locks: ["net:www.indiabudget.gov.in", "net:www.rbi.org.in", "db:equity_intelligence.db"]
     cadence: monthly
     success_check:
@@ -637,7 +637,7 @@ jobs:
     argv: ["python", "-m", "reality_engine.scripts.fetch_decks", "bse", "--since", "2021-01-01"]
     cwd: "."
     env: {}
-    writes: ["reality_engine/data/decks/", "deck_figures.db:deck_sources"]
+    writes: ["D:/RealityEngine/raw/decks/", "deck_figures.db:deck_sources"]
     resource_locks: ["net:www.bseindia.com", "net:www.nseindia.com", "db:deck_figures.db"]
     cadence: daily
     success_check:
@@ -990,7 +990,7 @@ jobs:
 
   - name: drive_upload  # audit #56
     description: "PDF/archive upload to Drive via rclone (stopped)."
-    argv: ["rclone", "copy", "reality_engine/data/pdfs", "gdrive:RealityEngine/pdfs", "--bwlimit", "8M"]
+    argv: ["rclone", "copy", "D:/RealityEngine/pdfs", "gdrive:RealityEngine/pdfs", "--bwlimit", "8M"]
     cwd: "."
     env: {}
     writes: ["external:Drive"]

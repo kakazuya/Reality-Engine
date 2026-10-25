@@ -29,7 +29,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from reality_engine.config import raw_dir
+from reality_engine.config import raw_dir, resolve_stored_path
 
 import pymupdf
 import requests
@@ -456,6 +456,7 @@ def inventory(limit=0, symbols=None):
     seen, docs = set(), []
     for i, isin, sym, path, sha, fpe, ddate, filed, fsrc, company in rows:
         key = sha or path
+        path = str(resolve_stored_path(path)) if path else path   # DB stores the old C root
         if key in seen or not Path(path).exists():
             continue
         seen.add(key)

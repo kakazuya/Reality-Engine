@@ -572,9 +572,26 @@ def _clean_page(text: str | None) -> str | None:
     return str(text).strip() or None
 
 
+def _local_pdf(local_path: str | None) -> Path | None:
+    """The stored path opened locally, re-rooted from the old C data dir when needed.
+
+    ``corporate_documents.local_file_path`` / ``deck_sources.local_path`` still carry
+    the pre-migration C paths; ``config.resolve_stored_path`` maps them onto the D raw
+    root without updating the database."""
+    if not local_path:
+        return None
+    try:
+        from reality_engine.config import resolve_stored_path
+    except Exception:
+        return None
+    p = resolve_stored_path(local_path)
+    return p if p.exists() else None
+
+
 def _deck_page(sha: str, page: int, local_path: str | None) -> dict[str, Any]:
-    if local_path and Path(str(local_path)).exists():
-        text, pages = _pdf_page_text(Path(str(local_path)), page)
+    pdf = _local_pdf(local_path)
+    if pdf is not None:
+        text, pages = _pdf_page_text(pdf, page)
         if text:
             return {"text": _clean_page(text), "text_source": "pdf", "page_count": pages,
                     "fetched": False}
@@ -639,8 +656,9 @@ def _chunk_page_text(chunk_doc_id: Any, page: int) -> dict[str, Any]:
 
 
 def _ar_page(doc_id: Any, page: int, local_path: str | None, sha: str | None) -> dict[str, Any]:
-    if local_path and Path(str(local_path)).exists():
-        text, pages = _pdf_page_text(Path(str(local_path)), page)
+    pdf = _local_pdf(local_path)
+    if pdf is not None:
+        text, pages = _pdf_page_text(pdf, page)
         if text:
             return {"text": _clean_page(text), "text_source": "pdf", "page_count": pages,
                     "fetched": False}
@@ -702,8 +720,9 @@ def _page_text(entry: dict[str, Any], page: int) -> dict[str, Any]:
         return result
     if doc_type == "transcript":
         store = stores.get("corporate_documents")
-        if store and store.get("local_path") and Path(str(store["local_path"])).exists():
-            text, pages = _pdf_page_text(Path(str(store["local_path"])), page)
+        pdf = _local_pdf(store.get("local_path")) if store else None
+        if pdf is not None:
+            text, pages = _pdf_page_text(pdf, page)
             if text:
                 return {"text": _clean_page(text), "text_source": "pdf", "page_count": pages,
                         "fetched": False}
@@ -711,8 +730,9 @@ def _page_text(entry: dict[str, Any], page: int) -> dict[str, Any]:
         return _chunk_page_text(chunk_store["keys"].get("chunks_doc_id") if chunk_store else None,
                                 page)
     store = stores.get("corporate_documents")
-    if store and store.get("local_path") and Path(str(store["local_path"])).exists():
-        text, pages = _pdf_page_text(Path(str(store["local_path"])), page)
+    pdf = _local_pdf(store.get("local_path")) if store else None
+    if pdf is not None:
+        text, pages = _pdf_page_text(pdf, page)
         if text:
             return {"text": _clean_page(text), "text_source": "pdf", "page_count": pages,
                     "fetched": False}

@@ -1,4 +1,5 @@
 import sqlite3, json, csv, pathlib, os, zipfile, sys, datetime
+from reality_engine import config as cfg
 
 base = pathlib.Path(r"C:\Users\warri\Downloads\Info_Diffusion_Model")
 pack = base / "data_pack_2026-08-31"
@@ -58,8 +59,8 @@ counts['financial_metrics'] = q_scalar("SELECT COUNT(*) FROM financial_metrics")
 counts['regulatory'] = q_scalar("SELECT COUNT(*) FROM regulatory_political_risks") if table_exists("regulatory_political_risks") else 0
 counts['model_rankings'] = q_scalar("SELECT COUNT(*) FROM model_explainer_rankings") if table_exists("model_explainer_rankings") else 0
 
-# pdfs on disk
-pdf_dir = base / "reality_engine" / "data" / "pdfs"
+# pdfs on disk (post-migration: the D raw root)
+pdf_dir = cfg.PDFS_DIR
 pdf_files = list(pdf_dir.rglob("*.pdf")) if pdf_dir.exists() else []
 pdf_count = len(pdf_files)
 # size GB

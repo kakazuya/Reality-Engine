@@ -33,6 +33,42 @@ PDFS_DIR = Path(os.environ.get(
     "REALITY_ENGINE_PDFS_DIR",
     PDFS_LEGACY_DIR if PDFS_LEGACY_DIR.is_dir() else RAW_ROOT / "pdfs",
 ))
+# Raw subfolders that moved from the C data dir to the D raw root (2026-10-25). Databases
+# still store the old absolute C paths; resolve_stored_path() re-roots them on read.
+_STORED_RAW_FOLDERS = ("pdfs", "decks", "raw_market", "bhavcopy", "macro_pdfs",
+                       "ar_queue", "tax_sources", "index_constituents")
+
+
+def stored_raw_roots() -> dict:
+    """``folder -> current root`` for the raw folders that used to live under DATA_DIR."""
+    roots = {"pdfs": PDFS_DIR, "bhavcopy": BHAVCOPY_DIR, "macro_pdfs": MACRO_PDFS_DIR}
+    for name in _STORED_RAW_FOLDERS:
+        roots.setdefault(name, RAW_ROOT / name)
+    return roots
+
+
+def resolve_stored_path(path) -> Path:
+    """Map a DB-stored raw path onto the folder that now holds the file.
+
+    ``corporate_documents.local_file_path`` / ``deck_sources.local_path`` were written
+    when the raw files lived under ``.../reality_engine/data/<folder>/``. A path whose
+    file still exists is returned unchanged; otherwise the ``data/<folder>`` tail is
+    re-rooted at ``stored_raw_roots()`` (``PDFS_DIR`` / ``RAW_ROOT``). Anything else is
+    returned as-is. Read-only: never updates the database.
+    """
+    if not str(path or "").strip():
+        return Path(path or "")
+    p = Path(path)
+    if p.exists():
+        return p
+    parts = str(path).replace("\\", "/").split("/")
+    roots = stored_raw_roots()
+    for i in range(len(parts) - 1, 0, -1):
+        if parts[i - 1].lower() == "data" and parts[i].lower() in roots:
+            return roots[parts[i].lower()].joinpath(*parts[i + 1:])
+    return p
+
+
 REPORTS_DIR = Path(os.environ.get("REALITY_ENGINE_REPORTS_DIR", DATA_DIR / "reports"))
 INBOX_DIR = Path(os.environ.get("REALITY_ENGINE_INBOX_DIR", DATA_DIR / "inbox"))
 TELEGRAM_IMAGES_DIR = INBOX_DIR / "images"
