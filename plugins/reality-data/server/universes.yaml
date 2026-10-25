@@ -104,6 +104,11 @@ themes:
       - housing
     industries:
       - Housing Finance Company
+    exclude_keywords:
+      # A developer splits "revenue from real estate properties" by housing category
+      # (SIGNATURE: Mid-Income Housing 53% of real-estate revenue); that is a home
+      # builder's product mix, not a housing-finance loan book.
+      - real estate
     exclude_industries:
       - Banks
       - Private Sector Bank
@@ -195,6 +200,11 @@ themes:
       - home textiles
       - spinning
       - cotton textile
+    exclude_keywords:
+      # "Fabric care" is detergent / home care (JYOTHYLAB, PCCOSMA), and an HDPE sack
+      # is packaging (JAICORPLTD): the word "fabric" alone is not a textile exporter.
+      - fabric care
+      - sacks
     industries:
       - Textiles & Apparels
       - TEXTILES - COTTON

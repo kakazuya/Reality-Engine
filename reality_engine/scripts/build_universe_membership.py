@@ -9,43 +9,64 @@ read-only; only the target ``--db`` is written (default:
 ``<data-root>/equity_intelligence.db``).
 
 Signals, strongest first:
-  segment    an AR / deck revenue-mix row: the theme segment's revenue divided by the
+  deck       an investor-presentation revenue-mix row: an explicit "% of revenue /
+             revenue mix / segment share" line, or the theme segment's revenue over
+             the same deck's total revenue for the same period and unit.  Decks are
+             quarterly and show the split directly, so a deck weight is the current
+             mix.  ``weight_source`` = ``deck``.
+  deck_sum   the same deck segment row when the deck states no total of its own: the
+             deck page's own segment sum is the denominator, but only when that sum
+             reconciles within 1% to a revenue figure the deck states elsewhere.
+             ``weight_source`` = ``deck_sum``.
+  segment    an AR revenue-mix row: the theme segment's revenue divided by the
              company's total revenue from operations for the *same document, fiscal
              period and unit*.  A percent row counts only when it is a company
              revenue-mix line: market share, customer concentration, AUM / loan mix,
-             targets and guidance are not weights.
+             targets and guidance are not weights.  ``weight_source`` = ``segment``.
   segment_sum
-             the same row when the document states no total of its own: the segment
+             the same AR row when the document states no total of its own: the segment
              table's own sum is the denominator, but only if that sum reconciles within
              1% to a revenue figure the document states elsewhere.  That reconciliation
              is what rejects a parent segment listed alongside its children.
+             ``weight_source`` = ``segment_sum``.
   industry   NSE industry classification (``company_industry``) - unweighted.
   curated    seed in ``plugins/reality-data/server/universes.yaml`` - unweighted.
+
+Deck evidence beats AR evidence on any date: the AR weight applies only where the deck
+does not.  A deck weight is valid from the deck's filing date (the BSE/NSE filed date,
+never the crawl date) until the next deck, and expires four quarters after its own
+filing date, so a company that stops publishing a deck mix stops being weighted from
+it after a year.
 
 A theme may require an NSE industry family before a revenue row counts as a weight
 (``segment_industry_keywords``), so a lubricant blender is not an OMC.
 
-A member is either weighted (a ``segment`` share) or explicitly unweighted (``industry``
-/ ``curated``); there is no zero weight.  ``subsidiary`` and ``stated_pivot`` hits are
+A member is either weighted (a ``deck`` / ``segment`` revenue share) or explicitly
+unweighted (``industry`` / ``curated``); there is no zero weight.  ``subsidiary`` and ``stated_pivot`` hits are
 evidence of interest, not of revenue, so they land in ``universe_candidates`` with their
 quote and never in ``universe_membership``.
 
-The latest fiscal year's weight applies from that year's filing date until the next
+The latest fiscal year's AR weight applies from that year's filing date until the next
 filed year, and expires two fiscal years after its own (``valid_to``), so a stale
-weight drops out of a point-in-time query instead of silently persisting.  A row with
-no disclosure date is dropped, never dated from the fiscal-year end.  Where a weight
-expires the industry / curated row takes over, so every (theme, ISIN) chain hands over
-exactly: no gap and no overlap (a chain with no unweighted row carries its last weight
-forward to the next filed disclosure only).  The denominator is "revenue from
-operations", then "total revenue", then "total income" - never the largest figure on
-the page.
+weight drops out of a point-in-time query instead of silently persisting.  A deck
+weight runs from its filing date to the next deck or four quarters, whichever is
+first, and beats the AR weight on every date it covers.  A row with no disclosure date
+is dropped, never dated from the fiscal-year end.  Where a weight expires the industry /
+curated row takes over, so every (theme, ISIN) chain hands over exactly: no gap and no
+overlap (a chain with no unweighted row carries its last weight forward to the next
+filed disclosure only).  The denominator is "revenue from operations", then "total
+revenue", then "total income" - never the largest figure on the page.
 
 ``pivot`` is true when the theme segment is the largest of one reconciling segment table
-(>=3 distinct siblings whose sum matches the stated total within 1%).
+(>=3 distinct siblings whose sum matches the stated total within 1%).  For a deck it
+fires on the transition instead: the theme segment is the largest revenue line in this
+deck and was not in the company's previous deck, so the flag marks a mix pivot rather
+than every deck that repeats it.
 """
 from __future__ import annotations
 
 import argparse
+import calendar
 import datetime as dt
 import json
 import os
@@ -64,6 +85,13 @@ DEFAULT_THEMES = ROOT / "plugins" / "reality-data" / "server" / "universes.yaml"
 DEFAULT_MIN_SEGMENT_WEIGHT = 0.5
 #: ``valid_from`` fallback when the listing date is unknown (never the crawl date).
 DEFAULT_VALID_FROM = "2019-01-01"
+
+#: The AR FTS sweep cap.  ``ar_facts_fts`` holds 120,856 theme-keyword rows (2026-10);
+#: reading them all costs ~5m40s and admits lubricant blenders (CASTROLIND, GULFOILLUB,
+#: PANAMAPET) through the BRSR "coke and refined petroleum products" wording, so
+#: ``omc_refining`` precision falls to 7/11.  With deck weights in place the extra rows
+#: still do not earn the cap: the cap stays until a stricter industry + BRSR gate exists.
+AR_ROW_CAP = 20000
 
 METHOD_RANK = {"segment": 3, "industry": 2, "curated": 1}
 ENTRY_WORDS = ("enter", "entering", "foray", "launch", "commission", "new segment",
@@ -102,7 +130,7 @@ BLOCKED = ("asset", "liabilit", "capital employed", "investment", "employee", "d
            "market share", "market growth", "order book", "outstanding", "sanction",
            "disburse", "booking", "pipeline", "borrowing", "net worth", "debt", "pat",
            "ebitda", "margin", "growth", "cagr", "previous year", "prior year", "projected",
-           "forecast", "target", "guidance", "receivable",
+           "forecast", "target", "guidance", "endeavour", "endeavor", "receivable",
            "well being", "wellbeing", "shareholding", "promoter", "pledge", "unit sold",
            "volume", "price realisation", "cost per", "unorganised", "unorganized",
            "organized sector", "distributor", "dealer", "sales to", "marketing companies",
@@ -453,6 +481,50 @@ def _pivot(siblings: dict[str, float], value: float, total: float) -> bool:
     return value >= max(siblings.values())
 
 
+def _deck_pivot(siblings: dict[str, float], value: float, total: float) -> bool:
+    """The G3 pivot guard for a deck: >=3 siblings, sum within 1% of the total if stated."""
+    if len(siblings) < 3 or value < max(siblings.values()):
+        return False
+    return not total or abs(sum(siblings.values()) - total) / total <= 0.01
+
+
+def _deck_labels(item: Any) -> tuple[str, str]:
+    """(segment label, shared table base) for a deck revenue row, else ("", "").
+
+    A deck labels a segment in two shapes: the AR shape (``Revenue from Operations
+    (Refining)``) and the slide shape (``Defence Revenue``), which names the product
+    first.  A total-revenue row is not a segment; neither is a market-share, guidance,
+    AUM or order-book line (``BLOCKED``), the same rejections as the AR path.
+    """
+    text = str(item or "")
+    low = _norm(text)
+    if any(bad in low for bad in BLOCKED):
+        return "", ""
+    base, suffix = _split_item(text)
+    if base in TOTAL_ITEMS:
+        if suffix and not _is_unit_suffix(suffix):
+            return suffix, base
+        return "", ""
+    if not REVENUE_WORD.search(low):
+        return "", ""
+    label = REVENUE_WORD.sub(" ", low).strip()
+    if not label or any(bad in label for bad in NON_SEGMENT_LABELS):
+        return "", ""
+    return label, "segment revenue"
+
+
+def _deck_tables(rows: list[tuple]) -> dict[tuple, list[tuple[str, float]]]:
+    """One deck slide's segment table, keyed by deck / page / period / unit / base."""
+    out: dict[tuple, list[tuple[str, float]]] = {}
+    for doc, piece, period, basis, unit, item, value in rows:
+        label, base = _deck_labels(item)
+        if not label or not value or value <= 0:
+            continue
+        out.setdefault((doc, piece, _norm(period), _norm(basis), _unit_scale(unit), base),
+                       []).append((label, float(value)))
+    return out
+
+
 _LEGAL_WORDS = frozenset(("the", "of", "and", "limited", "ltd", "private", "pvt", "company",
                           "co", "corporation", "corp"))
 
@@ -495,8 +567,8 @@ def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any], symbols:
         "SELECT a.doc_id, a.piece, a.isin, a.symbol, a.fiscal_year, a.filed_at, a.category, "
         "a.item, a.value, a.unit, a.period, a.basis FROM ar_facts_fts f "
         "JOIN ar_facts a ON a.rowid = f.rowid "
-        "WHERE ar_facts_fts MATCH ? AND a.value IS NOT NULL LIMIT 20000",
-        (_fts_query(keywords),),
+        "WHERE ar_facts_fts MATCH ? AND a.value IS NOT NULL LIMIT ?",
+        (_fts_query(keywords), AR_ROW_CAP),
     )
     doc_ids = sorted({int(r[0]) for r in hits if r[0] is not None})
     if not doc_ids:
@@ -575,7 +647,8 @@ def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any], symbols:
         if reconciliation:
             quote = f"{quote}; {reconciliation}"
         out.append({
-            "theme": theme, "isin": str(isin), "method": "segment", "fiscal_year": fy_year,
+            "theme": theme, "isin": str(isin), "method": "segment", "kind": "ar",
+            "fiscal_year": fy_year,
             "valid_from": _date(filed_at), "weight": round(min(weight, 1.0), 6),
             "weight_source": weight_source,
             "evidence_id": f"ar_facts.db:ar_facts:{doc}:{piece}",
@@ -596,6 +669,14 @@ def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any], symbols:
 
 def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
                    symbols: dict[str, str]) -> list[dict[str, Any]]:
+    """Deck revenue-mix weights: an explicit % row, or segment revenue over the deck total.
+
+    Every deck row that matches a theme keyword is read (97,751 rows in 2026-10; the
+    index on ``facts(sha256, page_no)`` makes the per-slide denominator fetch ~5s).
+    A deck has no basis and no document-revenue table, so the denominator is the total
+    the deck states for the same period and unit, or the slide's own segment sum when
+    that sum reconciles to a stated total (``deck_sum``).
+    """
     keywords = _keywords(themes)
     if not keywords:
         return []
@@ -607,44 +688,130 @@ def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
             dk, "SELECT sha256, isin, symbol, known_at FROM deck_sources")
         if sha
     }
-    rows = _query(
+    hits = _query(
         dk,
         "SELECT f.sha256, f.metric, f.raw_number, f.value, f.unit, f.page_no, f.line_no, f.period "
         "FROM facts_metric_fts m JOIN facts f ON f.rowid = m.rowid "
-        "WHERE facts_metric_fts MATCH ? AND f.value IS NOT NULL LIMIT 100000",
+        "WHERE facts_metric_fts MATCH ? AND f.value IS NOT NULL",
         (_fts_query(keywords),),
     )
+    # The numerator is a theme segment row; its denominator may be any row on the same
+    # slide (the total revenue line usually has no theme word in it), so read each
+    # slide that carries a segment row whole.
+    pages = set()
+    for sha, metric, _raw, _value, unit, page, _line, _period in hits:
+        if str(sha) not in sources or not _money_unit(unit):
+            continue
+        if _deck_labels(metric)[0] and _theme_of(metric, themes):
+            pages.add((str(sha), int(page or 0)))
+    page_rows: list[tuple] = []
+    for sha, page in sorted(pages):
+        page_rows += [
+            (sha, page, period, "", unit, metric, value)
+            for period, unit, metric, value in _query(
+                dk, "SELECT period, unit, metric, value FROM facts"
+                    " WHERE sha256 = ? AND page_no = ?", (sha, page))
+        ]
+    exact, loose = _totals(page_rows)
+    tables = _deck_tables(page_rows)
+    stated = _stated(page_rows)
+
     out = []
-    for sha, metric, raw_number, value, unit, page, line, period in rows:
+    for sha, metric, raw_number, value, unit, page, line, period in hits:
         isin, symbol, known_at = sources.get(str(sha), ("", "", ""))
         if not isin:
             continue
         theme = _theme_of(metric, themes)
         if not theme:
             continue
-        # A deck has no denominator row to divide by, so only an explicit share counts.
-        weight = _pct_weight(metric, "", unit, value)
-        if weight <= 0:
-            continue
         known = _date(known_at)
         years = _years(period) or _years(known)
+        unit = str(unit or "")
+        weight_source = "deck"
+        reconciliation = ""
+        if unit.strip() == "%":
+            weight = _pct_weight(metric, "", unit, value)
+            pivot = False
+        else:
+            if not _money_unit(unit):
+                continue
+            label, base = _deck_labels(metric)
+            if not label or not _hit(label, themes[theme].get("keywords") or []) \
+                    or _hit(label, themes[theme].get("exclude_keywords") or []):
+                continue
+            table_key = (sha, int(page or 0), _norm(period), "", _unit_scale(unit), base)
+            siblings = _siblings(tables.get(table_key) or [])
+            total = _denominator(exact, loose, sha, int(page or 0), period, "", unit)
+            if total:
+                if float(value) <= 0 or float(value) > total:
+                    continue
+                weight = float(value) / total
+            else:
+                # No total stated for this period and unit: the slide's own segment sum
+                # is the denominator only when it reconciles to a stated figure.
+                weight, reconciliation = _segment_sum(
+                    siblings, float(value),
+                    stated.get((sha, table_key[2], table_key[3], table_key[4])) or [])
+                if weight <= 0:
+                    continue
+                weight_source = "deck_sum"
+                total = sum(siblings.values())
+            pivot = _deck_pivot(siblings, float(value), total)
+        if weight <= 0:
+            continue
         symbols.setdefault(str(isin), str(symbol or ""))
+        quote = f"{str(metric)[:150]}: {raw_number} {unit}".strip()
+        if reconciliation:
+            quote = f"{quote}; {reconciliation}"
         out.append({
-            "theme": theme, "isin": str(isin), "method": "segment",
+            "theme": theme, "isin": str(isin), "method": "segment", "kind": "deck",
             "fiscal_year": max(years) if years else int(known[:4] or 0),
             "valid_from": known, "weight": round(min(weight, 1.0), 6),
+            "weight_source": weight_source,
             "evidence_id": f"deck_figures.db:facts:{sha}:{page}:{line}",
-            "evidence_quote": f"{str(metric)[:120]}: {raw_number} {unit}".strip(),
-            "pivot": False,
+            "evidence_quote": quote, "pivot": False, "_largest": bool(pivot),
         })
+    # A deck pivot is a transition: the theme segment is this deck's largest revenue
+    # line and was not the previous deck's.  One row per date carries the flag.
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for item in out:
+        grouped.setdefault((item["theme"], item["isin"]), []).append(item)
+    for items in grouped.values():
+        by_date: dict[str, list[dict[str, Any]]] = {}
+        for item in items:
+            if item["valid_from"]:
+                by_date.setdefault(item["valid_from"], []).append(item)
+        previous = False
+        for stamp in sorted(by_date):
+            day = by_date[stamp]
+            largest = any(item["_largest"] for item in day)
+            best = max(day, key=lambda r: (r["weight"], r["_largest"]))
+            if largest and not previous:
+                best["pivot"] = True
+            previous = largest
+    for item in out:
+        item.pop("_largest", None)
     return out
 
 
-def _intervals(evidence: list[dict[str, Any]], themes: dict[str, Any]) -> tuple[list[dict[str, Any]], set[tuple[str, str]]]:
-    """One membership row per fiscal year, each valid until the next filed year.
+def _four_quarters(stamp: str) -> str:
+    """Four calendar quarters after a filing date (a deck weight's expiry)."""
+    try:
+        day = dt.date.fromisoformat(stamp)
+    except ValueError:
+        return ""
+    year, month = day.year, day.month + 12
+    year, month = year + (month - 1) // 12, (month - 1) % 12 + 1
+    return dt.date(year, month, min(day.day, calendar.monthrange(year, month)[1])).isoformat()
 
-    ``valid_to`` is ``min(next filed year, two fiscal years after this one)``, so a
-    weight older than two fiscal years with no newer evidence expires.
+
+def _weighted(evidence: list[dict[str, Any]], themes: dict[str, Any],
+              deck: bool) -> list[dict[str, Any]]:
+    """One weighted interval per disclosure date, each valid until the next one.
+
+    An AR weight expires two fiscal years after its own fiscal year; a deck weight
+    expires four quarters after its own filing date.  Within a fiscal year the
+    stronger share wins and, on equal shares, the later filing (freshness).
     """
     best: dict[tuple[str, str], dict[int, dict[str, Any]]] = {}
     for item in evidence:
@@ -656,7 +823,8 @@ def _intervals(evidence: list[dict[str, Any]], themes: dict[str, Any]) -> tuple[
             continue
         years = best.setdefault((item["theme"], item["isin"]), {})
         current = years.get(item["fiscal_year"])
-        if current is None or float(item["weight"]) > float(current["weight"]):
+        if current is None or (float(item["weight"]), item["valid_from"]) > (
+                float(current["weight"]), current["valid_from"]):
             years[item["fiscal_year"]] = item
 
     rows: list[dict[str, Any]] = []
@@ -676,7 +844,8 @@ def _intervals(evidence: list[dict[str, Any]], themes: dict[str, Any]) -> tuple[
         ordered = sorted(by_date)
         for index, stamp in enumerate(ordered):
             item = by_date[stamp]
-            expiry = f"{item['fiscal_year'] + 2}-03-31"
+            expiry = (_four_quarters(stamp) if deck
+                      else f"{item['fiscal_year'] + 2}-03-31")
             following = ordered[index + 1] if index + 1 < len(ordered) else ""
             valid_to = min(expiry, following) if following and following > stamp else expiry
             if valid_to <= stamp:
@@ -688,7 +857,44 @@ def _intervals(evidence: list[dict[str, Any]], themes: dict[str, Any]) -> tuple[
                 "weight": item["weight"], "evidence_id": item["evidence_id"],
                 "evidence_quote": item["evidence_quote"], "pivot": item["pivot"],
             })
-    return rows, set(best)
+    return rows
+
+
+def _clip(pieces: list[tuple[str, str]], start: str, end: str) -> list[tuple[str, str]]:
+    """Remove the half-open range ``[start, end)`` from a list of half-open pieces."""
+    out = []
+    for low, high in pieces:
+        if end <= low or start >= high:
+            out.append((low, high))
+            continue
+        if start > low:
+            out.append((low, start))
+        if end < high:
+            out.append((end, high))
+    return out
+
+
+def _prefer_deck(deck_rows: list[dict[str, Any]],
+                 ar_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A live deck weight is the weight on every date it covers; the AR fills the rest."""
+    cover: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for row in deck_rows:
+        cover.setdefault((row["theme"], row["isin"]), []).append(
+            (row["valid_from"], row["valid_to"]))
+    out = list(deck_rows)
+    for row in ar_rows:
+        pieces = [(row["valid_from"], row["valid_to"])]
+        for low, high in cover.get((row["theme"], row["isin"]), ()):
+            pieces = _clip(pieces, low, high)
+        out += [{**row, "valid_from": low, "valid_to": high} for low, high in pieces]
+    return out
+
+
+def _intervals(evidence: list[dict[str, Any]], themes: dict[str, Any]) -> list[dict[str, Any]]:
+    """Deck intervals first, then the AR intervals on the dates the deck does not cover."""
+    deck_rows = _weighted([e for e in evidence if e.get("kind") == "deck"], themes, True)
+    ar_rows = _weighted([e for e in evidence if e.get("kind") != "deck"], themes, False)
+    return _prefer_deck(deck_rows, ar_rows)
 
 
 # ---------------------------------------------------------------------------
@@ -911,6 +1117,13 @@ def _chain(rows: list[dict[str, Any]], best: dict[tuple[str, str], dict[str, Any
         if fallback is None:
             for current, following in zip(chain, chain[1:]):
                 if current["valid_to"] and current["valid_to"] < following["valid_from"]:
+                    if current["weight_source"] in ("deck", "deck_sum"):
+                        # A deck weight expires four quarters after its own filing date.
+                        # This company stays a member unweighted until its next deck, so
+                        # a 2021 deck can never rule a 2024 chain (G3b expiry rule).
+                        out.append(_unweighted_row(current, current["valid_to"],
+                                                   following["valid_from"]))
+                        continue
                     current["valid_to"] = following["valid_from"]
             out.extend(chain)
             continue
@@ -953,7 +1166,7 @@ def build(data_root: Path, themes_path: Path) -> dict[str, Any]:
     segment = [s for s in segment if (s["theme"], s["isin"]) not in excluded
                and (not themes[s["theme"]].get("segment_industry_keywords")
                     or (s["theme"], s["isin"]) in gate)]
-    rows, _weighted = _intervals(segment, themes)
+    rows = _intervals(segment, themes)
     # Where a measured weight expires, the unweighted signal takes over: the company is
     # still an OMC by industry classification even when no current revenue share exists.
     best: dict[tuple[str, str], dict[str, Any]] = {}
