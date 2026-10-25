@@ -37,10 +37,11 @@ PROVENANCE_STUB = {"read_only": True, "generated_at": "2026-10-25T00:00:00", "da
 class FakeDB:
     """Routes the module's SQL to canned ``(columns, rows)`` / dict rows."""
 
-    def __init__(self, duck_routes=(), sqlite_routes=(), identity=IDENTITY):
+    def __init__(self, duck_routes=(), sqlite_routes=(), identity=IDENTITY, quarantine=()):
         self.duck_routes = list(duck_routes)
         self.sqlite_routes = list(sqlite_routes)
         self.identity = identity
+        self.quarantine = set(quarantine)
 
     @staticmethod
     def _route(routes, sql, params):
@@ -65,6 +66,7 @@ class FakeDB:
             mock.patch.object(core, "_run_duck", self.run_duck),
             mock.patch.object(core, "_run_sqlite", self.run_sqlite),
             mock.patch.object(core, "resolve_one", self.resolve_one),
+            mock.patch.object(core, "quarantined_doc_ids", lambda: set(self.quarantine)),
             mock.patch.object(core, "provenance", lambda *a, **k: dict(PROVENANCE_STUB)),
         ]
         for patch in self._patches:
@@ -237,14 +239,15 @@ AR_ROW = {
 }
 
 
-def _holding_db(shp=True, ar=(), xbrl=(136315000.0, 2.0)):
+def _holding_db(shp=True, ar=(), xbrl=(136315000.0, 2.0), quarantine=(),
+                xbrl_period="2026-06-30"):
     shp_columns = list(SHP_ROW)
     duck_routes = [("FROM shp_index",
                     (shp_columns, [tuple(SHP_ROW.values())] if shp else []))]
     sqlite_routes = [("FROM ar_facts", list(ar))]
     if xbrl:
         sqlite_routes += [
-            ("FROM filings f", [{"file": "f.xml", "period_end": "2026-06-30",
+            ("FROM filings f", [{"file": "f.xml", "period_end": xbrl_period,
                                  "symbol": "LUMAXTECH", "consolidated": "Standalone"}]),
             ("FROM facts", [{"file": "f.xml", "concept": "PaidUpValueOfEquityShareCapital",
                              "context": "OneD", "value": xbrl[0], "unit": "INR"},
@@ -253,7 +256,8 @@ def _holding_db(shp=True, ar=(), xbrl=(136315000.0, 2.0)):
         ]
     else:
         sqlite_routes.append(("FROM filings f", []))
-    return FakeDB(duck_routes=duck_routes, sqlite_routes=sqlite_routes)
+    return FakeDB(duck_routes=duck_routes, sqlite_routes=sqlite_routes,
+                  quarantine=quarantine)
 
 
 class HoldingFixtureTests(unittest.TestCase):
@@ -278,18 +282,98 @@ class HoldingFixtureTests(unittest.TestCase):
         self.assertFalse(out["xbrl_rounded"])
         self.assertTrue(any("no exact AR share count" in note for note in out["notes"]))
 
-    def test_bucket_rows_are_not_candidates(self):
-        bucket = dict(AR_ROW, item="Shares held by 1,00,001-and-above bucket: 5,81,07,032 "
-                                     "shares (85.25% of total shares)", value=58107032.0)
-        promoter = dict(AR_ROW, item="Total number of shares held by Promoters", value=37924430.0)
-        with _holding_db(shp=True, ar=[bucket, promoter]):
+    def test_bucket_and_promoter_labels_are_not_candidates(self):
+        # Values sit next to the XBRL count so the plausibility guard cannot be
+        # what rejects them; the label filter must.
+        labels = [
+            "Shares held by 1,00,001-and-above bucket: 5,81,07,032 shares (85.25% of total shares)",
+            "Total number of shares held by Promoters",
+            "Total Shares (100001& Above shares)",
+            "President of India total shares",
+            "Total shares in the range 1-5,000",
+            "Total shares held by Other Banks",
+            "Total shares as % of turnover",
+        ]
+        rows = [dict(AR_ROW, item=label, value=68100000.0) for label in labels]
+        with _holding_db(shp=True, ar=rows):
             out = lm.holding("LUMAXTECH")
         self.assertEqual([c["value"] for c in out["share_count_candidates"]
                           if c["source"] == "ar_facts"], [])
 
+    def test_quarantined_doc_cannot_contribute_a_count(self):
+        with _holding_db(shp=True, ar=[AR_ROW], quarantine=[53803]):
+            out = lm.holding("LUMAXTECH")
+        self.assertEqual([c for c in out["share_count_candidates"]
+                          if c["source"] == "ar_facts"], [])
+        self.assertEqual(out["best_share_count"], 68157500)
+
+    def test_number_of_equity_shares_phrasing_is_an_exact_total(self):
+        for item in ("Number of equity shares",
+                     "Paid-up equity share capital (number of shares)"):
+            row = dict(AR_ROW, item=item, doc_id=120077, page=182)
+            with _holding_db(shp=True, ar=[row]):
+                out = lm.holding("GPIL", "2026-09-30")
+            self.assertEqual([c["value"] for c in out["share_count_candidates"]
+                              if c["source"] == "ar_facts"], [68157705], item)
+
+    def test_xbrl_prefers_the_standalone_filing(self):
+        filings = [
+            {"file": "cons.xml", "period_end": "2026-06-30", "symbol": "GPIL",
+             "consolidated": "Consolidated"},
+            {"file": "stand.xml", "period_end": "2026-06-30", "symbol": "GPIL",
+             "consolidated": "Standalone"},
+        ]
+
+        def facts(file_params):
+            out = []
+            for file in file_params:
+                paid = 617_000_000.0 if file == "cons.xml" else 650_600_000.0
+                out += [
+                    {"file": file, "concept": "PaidUpValueOfEquityShareCapital",
+                     "context": "OneD", "value": paid, "unit": "INR"},
+                    {"file": file, "concept": "FaceValueOfEquityShareCapital",
+                     "context": "OneD", "value": 1.0, "unit": "INRPerShare"},
+                ]
+            return out
+
+        db = FakeDB(
+            duck_routes=[("FROM shp_index",
+                          (list(SHP_ROW), [tuple(SHP_ROW.values())]))],
+            sqlite_routes=[("FROM ar_facts", []), ("FROM filings f", filings),
+                           ("FROM facts", facts)],
+        )
+        with db:
+            out = lm.holding("GPIL", "2026-09-30")
+        self.assertEqual(out["best_share_count"], 650_600_000)
+        self.assertEqual(out["best_share_count_source"]["doc_id"], "stand.xml")
+
+    def test_older_ar_count_warns_instead_of_trusting_it(self):
+        old = dict(AR_ROW, fiscal_year="2025-03-31", period="As on March 31, 2025")
+        with _holding_db(shp=True, ar=[old]):
+            out = lm.holding("LUMAXTECH", "2026-09-30")
+        self.assertEqual(out["best_share_count"], 68157705)
+        self.assertEqual(out["warning"],
+                         "AR count older than latest XBRL; possible buyback/split/issue")
+        self.assertFalse(any("trust the AR figure" in note for note in out["notes"]))
+
+    def test_ar_not_older_than_xbrl_trusts_the_ar(self):
+        with _holding_db(shp=True, ar=[AR_ROW], xbrl_period="2025-12-31"):
+            out = lm.holding("LUMAXTECH", "2026-09-30")
+        self.assertIsNone(out["warning"])
+        self.assertTrue(any("trust the AR figure" in note for note in out["notes"]))
+
+    def test_as_of_filters_newer_ar_and_xbrl_candidates(self):
+        old = dict(AR_ROW, doc_id=100, page=10, fiscal_year="2019-03-31",
+                   period="As on March 31, 2019", value=66_000_000.0)
+        with _holding_db(shp=False, ar=[AR_ROW, old]):
+            out = lm.holding("LUMAXTECH", "2020-01-01")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["best_share_count"], 66_000_000)
+        self.assertEqual([c["value"] for c in out["share_count_candidates"]], [66_000_000])
+
     def test_missing_shareholding_still_answers_with_a_gap_note(self):
         with _holding_db(shp=False, ar=[AR_ROW]):
-            out = lm.holding("LUMAXTECH", "2020-01-01")
+            out = lm.holding("LUMAXTECH")
         self.assertTrue(out["found"])
         self.assertIsNone(out["promoter_pct"])
         self.assertEqual(out["best_share_count"], 68157705)
@@ -309,6 +393,13 @@ class LiveChecks(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        try:
+            snapshot = core.snapshot_path().name
+        except core.DataError as exc:
+            raise unittest.SkipTest(str(exc))
+        if snapshot != "truth_2026-10-19.duckdb":
+            raise unittest.SkipTest(
+                f"live answers pinned to truth_2026-10-19.duckdb, snapshot is {snapshot}")
         core.warm()
 
     def test_delivery_ather_energy(self):

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
 
 import core
 
@@ -24,10 +24,12 @@ _MAX_SPAN_DAYS = 120
 # per-document prose, so the name varies; the match is on the normalised item
 # plus a plausibility guard against the XBRL-derived count below.
 _SHARE_TOTAL = re.compile(
-    r"\btotal shares\b|\btotal (number of )?(equity )?shares\b|\bgrand total shares\b")
+    r"\btotal shares\b|\btotal (number of )?(equity )?shares\b|\bgrand total shares\b|"
+    r"\bnumber of (equity )?shares\b|\bpaid[- ]up equity share capital\b")
 _SHARE_TOTAL_BAD = re.compile(
     r"holder|promoter|pledge|demat|traded|distribution|suspense|bonus|weighted average|"
     r"ipo|to be issued|esop|option|buyback|buy-back|sub-division|categor|bucket|of total|"
+    r"above|below|range|president|other banks|turnover|held by|director|"
     r"related part|associate|subsidiar|held \(count\)|complaint|dividend|"
     r"public|retail|mutual fund|insurance|\bfii\b|\bfpi\b|nri|foreign|huf|iepf|"
     r"corporate|clearing"
@@ -395,16 +397,24 @@ def _ar_candidates(identity: dict[str, Any]) -> list[dict[str, Any]]:
     clause, params = core._in_clause(isins)
     if not params:
         return []
+    quarantined = core.quarantined_doc_ids()
+    not_q = ""
+    q_params: list[Any] = []
+    if quarantined:
+        not_q = "AND doc_id NOT IN (" + ",".join("?" for _ in quarantined) + ") "
+        q_params = sorted(quarantined)
     rows = _sqlite(
         "ar_facts",
         "SELECT doc_id, page, item, value, unit, period, fiscal_year, category, "
         "substr(quote, 1, 200) AS quote FROM ar_facts "
-        f"WHERE isin IN {clause} AND unit = 'number' AND value IS NOT NULL "
+        f"WHERE isin IN {clause} AND unit = 'number' AND value IS NOT NULL {not_q}"
         "ORDER BY fiscal_year DESC, doc_id DESC LIMIT 400",
-        params,
+        [*params, *q_params],
     )
     out = []
     for row in rows:
+        if row["doc_id"] in quarantined:
+            continue
         item = str(row["item"] or "")
         low = item.lower()
         if "share" not in low or not _SHARE_TOTAL.search(low) or _SHARE_TOTAL_BAD.search(low):
@@ -420,6 +430,7 @@ def _ar_candidates(identity: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "ar_facts",
             "kind": "exact",
             "date": row["period"] or (f"FY{row['fiscal_year']}" if row["fiscal_year"] else None),
+            "period_end": row["fiscal_year"],
             "fiscal_year": row["fiscal_year"],
             "doc_id": row["doc_id"],
             "page": row["page"],
@@ -439,11 +450,16 @@ def _xbrl_candidate(identity: dict[str, Any]) -> dict[str, Any] | None:
         "results_xbrl",
         "SELECT f.file, f.period_end, f.symbol, f.consolidated FROM filings f "
         "JOIN filings_isin fi ON fi.file = f.file "
-        f"WHERE fi.isin IN {clause} ORDER BY f.period_end DESC LIMIT 4",
+        f"WHERE fi.isin IN {clause} "
+        "ORDER BY f.period_end DESC, "
+        "CASE WHEN f.consolidated = 'Standalone' THEN 0 ELSE 1 END LIMIT 4",
         params,
     )
     if not filings:
         return None
+    # Same period can have both statements: the standalone one is the share count.
+    filings = sorted(filings, key=lambda f: (str(f["period_end"] or ""),
+                                             f["consolidated"] == "Standalone"), reverse=True)
     file_clause, file_params = core._in_clause([f["file"] for f in filings])
     facts = _sqlite(
         "results_xbrl",
@@ -469,6 +485,7 @@ def _xbrl_candidate(identity: dict[str, Any]) -> dict[str, Any] | None:
             "source": "results_xbrl",
             "kind": "derived",
             "date": period.get(filing["file"]),
+            "period_end": period.get(filing["file"]),
             "doc_id": filing["file"],
             "page": None,
             "item": "PaidUpValueOfEquityShareCapital / FaceValueOfEquityShareCapital",
@@ -478,6 +495,20 @@ def _xbrl_candidate(identity: dict[str, Any]) -> dict[str, Any] | None:
             "rounded_upstream": paid % 1000 == 0,
         }
     return None
+
+
+def _candidate_day(candidate: dict[str, Any]) -> str:
+    """ISO day a candidate speaks to: AR fiscal year end / XBRL period end."""
+    value = candidate.get("period_end") or candidate.get("date")
+    if isinstance(value, dt.date):
+        return value.isoformat()
+    text = str(value or "").strip()[:10]
+    return text if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text) else ""
+
+
+def _within(candidate: dict[str, Any], as_of: dt.date) -> bool:
+    day = _candidate_day(candidate)
+    return bool(day) and day <= as_of.isoformat()
 
 
 def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
@@ -498,10 +529,12 @@ def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
         )
 
     shareholding, has_shp = _shareholding(identity, symbol, as_of_d)
-    candidates = _ar_candidates(identity)
+    candidates = [c for c in _ar_candidates(identity) if _within(c, as_of_d)]
     xbrl = _xbrl_candidate(identity)
-    if xbrl:
+    if xbrl and _within(xbrl, as_of_d):
         candidates.append(xbrl)
+    else:
+        xbrl = None
 
     # Plausibility guard: a candidate within 20% of the XBRL-derived count is the
     # real total; this drops prose rows such as "Total Shareholders" or
@@ -513,6 +546,11 @@ def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
     best = exact[0] if exact else (xbrl or (candidates[0] if candidates else None))
 
     xbrl_rounded = bool(xbrl and best and best["kind"] == "exact" and best["value"] != xbrl["value"])
+    ar_older = bool(xbrl and best and best["kind"] == "exact"
+                    and _candidate_day(best) and _candidate_day(xbrl)
+                    and _candidate_day(best) < _candidate_day(xbrl))
+    warning = ("AR count older than latest XBRL; possible buyback/split/issue"
+               if ar_older else None)
 
     if not has_shp and not candidates:
         return _not_found(
@@ -533,7 +571,7 @@ def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
         notes.append("no exact AR share count passed the plausibility guard; total_shares is the "
                      "XBRL paid-up/face division, which is rounded because paid-up capital is "
                      "reported in thousands")
-    if xbrl_rounded:
+    if xbrl_rounded and not ar_older:
         notes.append(f"XBRL-derived {xbrl['value']:,} differs from the exact "
                      f"{best['value']:,}: trust the AR figure")
 
@@ -552,6 +590,7 @@ def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
                                     if best else None),
         "share_count_candidates": candidates,
         "xbrl_rounded": xbrl_rounded,
+        "warning": warning,
         "notes": notes,
         "provenance": _prov({DUCK: ["shp_index"], "ar_facts": ["ar_facts"],
                              "results_xbrl": ["filings", "filings_isin", "facts"]}),

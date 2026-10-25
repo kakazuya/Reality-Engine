@@ -467,6 +467,16 @@ equity_intelligence:
       - symbol
       - date
       notes: Derived view; only rows with both a price and a NAV survive. premium_pct = 100*(close/nav-1); value_inr in rupees.
+    insider_trades_v2:
+      description: 'One row per insider-trading transaction (NSE/BSE/legacy): person, category, buy/sell, mode, quantity, value, before/after holding
+        percent, trade and intimation dates, revision chain and known_at.'
+      key_columns:
+      - source_key
+      - isin
+      - symbol
+      - person_name
+      - intimation_date
+      notes: Point-in-time via known_at; is_superseded/supersedes link revisions, also_on flags duplicate exchange reports.
     shareholding:
       description: 'One row per shareholding filing (record_id): promoter/pledged/encumbered, FII, DII, MF, insurance, retail and FPI-limit percentages
         already multiplied by 100.'
