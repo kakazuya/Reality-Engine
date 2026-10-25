@@ -14,8 +14,16 @@ Signals, strongest first:
              period and unit*.  A percent row counts only when it is a company
              revenue-mix line: market share, customer concentration, AUM / loan mix,
              targets and guidance are not weights.
+  segment_sum
+             the same row when the document states no total of its own: the segment
+             table's own sum is the denominator, but only if that sum reconciles within
+             1% to a revenue figure the document states elsewhere.  That reconciliation
+             is what rejects a parent segment listed alongside its children.
   industry   NSE industry classification (``company_industry``) - unweighted.
   curated    seed in ``plugins/reality-data/server/universes.yaml`` - unweighted.
+
+A theme may require an NSE industry family before a revenue row counts as a weight
+(``segment_industry_keywords``), so a lubricant blender is not an OMC.
 
 A member is either weighted (a ``segment`` share) or explicitly unweighted (``industry``
 / ``curated``); there is no zero weight.  ``subsidiary`` and ``stated_pivot`` hits are
@@ -24,10 +32,16 @@ quote and never in ``universe_membership``.
 
 The latest fiscal year's weight applies from that year's filing date until the next
 filed year, and expires two fiscal years after its own (``valid_to``), so a stale
-weight drops out of a point-in-time query instead of silently persisting.
+weight drops out of a point-in-time query instead of silently persisting.  A row with
+no disclosure date is dropped, never dated from the fiscal-year end.  Where a weight
+expires the industry / curated row takes over, so every (theme, ISIN) chain hands over
+exactly: no gap and no overlap (a chain with no unweighted row carries its last weight
+forward to the next filed disclosure only).  The denominator is "revenue from
+operations", then "total revenue", then "total income" - never the largest figure on
+the page.
 
-``pivot`` is true when the theme segment is the company's largest segment by revenue in
-that fiscal year (and the company reports more than one segment).
+``pivot`` is true when the theme segment is the largest of one reconciling segment table
+(>=3 distinct siblings whose sum matches the stated total within 1%).
 """
 from __future__ import annotations
 
@@ -65,18 +79,39 @@ TOTAL_ITEMS = frozenset({
     "total revenues", "turnover", "net turnover", "total turnover", "total income",
     "external revenue", "total external revenue", "net sales", "total sales",
 })
-#: Rows that look like revenue but are not company revenue mix.
+#: Denominator preference (manager rule N9): revenue from operations, then total revenue,
+#: then total income.  A page that states several bases must not silently take the max.
+TOTAL_RANK: dict[str, int] = {}
+for _rank, _bases in enumerate((
+        ("revenue from operations", "total revenue from operations", "revenue from operations total",
+         "net revenue from operations", "gross revenue from operations", "total operating revenue",
+         "total income from operations", "income from operations"),
+        ("revenue", "total revenue", "total revenues", "turnover", "net turnover", "total turnover",
+         "external revenue", "total external revenue", "net sales", "total sales"),
+        ("total income",))):
+    for _base in _bases:
+        TOTAL_RANK[_base] = _rank
+assert set(TOTAL_ITEMS) == set(TOTAL_RANK)
+#: Ind AS revenue note lines ("Revenue from contract with customers" + "Revenue from other
+#: contracts"): a segment sum may reconcile to their total when the report states no
+#: "Revenue from Operations" line of its own.
+CONTRACT_BASES = ("revenue from contract", "revenue from contracts", "revenue from other contract")
+#: Rows that look like revenue but are not company revenue mix, whatever the wording.
 BLOCKED = ("asset", "liabilit", "capital employed", "investment", "employee", "depreciation",
            "interest cost", "finance cost", "tax expense", "customer", "market size",
            "market share", "market growth", "order book", "outstanding", "sanction",
            "disburse", "booking", "pipeline", "borrowing", "net worth", "debt", "pat",
            "ebitda", "margin", "growth", "cagr", "previous year", "prior year", "projected",
-           "forecast", "target", "guidance", "portfolio", "aum", "advances", "loan", "receivable",
+           "forecast", "target", "guidance", "receivable",
            "well being", "wellbeing", "shareholding", "promoter", "pledge", "unit sold",
            "volume", "price realisation", "cost per", "unorganised", "unorganized",
            "organized sector", "distributor", "dealer", "sales to", "marketing companies",
            "from major", "supplier", "procurement", "purchase", "tender", "proposed transaction",
            "related party", "subsidiary", "annexure", "comprehensive income", "end use")
+#: Portfolio vocabulary: blocked only when the row is not the company's own revenue mix.
+#: "Interest income from housing loans % of revenue" is a weight; "Mortgage contribution
+#: to loan portfolio" is a loan mix and is not.
+SOFT_BLOCKED = ("aum", "loan", "portfolio", "advances")
 #: A percent row is a *company revenue mix* line only when it says so explicitly; a bare
 #: "share of <anything>" is a market, portfolio or end-use statistic.
 MIX_PATTERNS = ("revenue mix", "product mix", "business mix", "sales mix", "revenue contribution",
@@ -84,7 +119,12 @@ MIX_PATTERNS = ("revenue mix", "product mix", "business mix", "sales mix", "reve
                 "share of turnover", "share of revenue", "share of total turnover",
                 "share of total revenue", "share of total income", "turnover share",
                 "revenue share", "% of total", "of turnover", "of revenue", "of total revenue",
-                "of total turnover", "% to total turnover", "% to total revenue")
+                "of total turnover", "% to total turnover", "% to total revenue",
+                "principal business activity")
+#: Segment-table rows that are not a business segment: totals, eliminations and
+#: reconciling items must never join the sibling set.
+NON_SEGMENT_LABELS = ("total", "less", "inter segment", "intersegment", "inter-segment",
+                      "elimination", "adjustment", "unallocated")
 REVENUE_WORD = re.compile(r"\b(revenue|turnover|sales|income)\b")
 _UNIT_WORDS = frozenset(("rs", "inr", "rupees", "crore", "crores", "cr", "lakh", "lakhs", "lac",
                          "lacs", "million", "millions", "mn", "billion", "bn", "usd", "us$",
@@ -211,6 +251,19 @@ def _segment_labels(item: Any, category: Any) -> tuple[str, str]:
     return "", ""
 
 
+def _is_mix_row(item: Any) -> bool:
+    """True when the row says it is the company's own revenue mix.
+
+    Three shapes count: a mix phrase ("revenue contribution", "of turnover"), the
+    SEBI "Principal Business Activity: <products>" disclosure, and a product line
+    that *is* a turnover share ("Milk turnover %").
+    """
+    low = _norm(item)
+    if any(pattern in low for pattern in MIX_PATTERNS):
+        return True
+    return low.endswith(" turnover") or low.endswith(" turnover percent")
+
+
 def _pct_weight(item: Any, category: Any, unit: Any, value: Any) -> float:
     """A percent row is a revenue share only when it is a company revenue-mix line."""
     if str(unit or "").strip() != "%" or value is None:
@@ -220,7 +273,13 @@ def _pct_weight(item: Any, category: Any, unit: Any, value: Any) -> float:
         return 0.0
     # The row itself must say it is a revenue mix; the category alone is not enough,
     # because the extractor files market and end-use statistics under "revenue_mix" too.
-    if not any(pattern in _norm(item) for pattern in MIX_PATTERNS):
+    mix = _is_mix_row(item)
+    if not mix:
+        return 0.0
+    # Portfolio words are fine only for the company's own revenue mix: a lender states
+    # its housing share as "interest income from housing loans % of revenue".
+    if any(bad in _norm(item) for bad in SOFT_BLOCKED) \
+            and not (REVENUE_WORD.search(low) and mix):
         return 0.0
     try:
         share = float(value) / 100.0
@@ -270,49 +329,167 @@ def _fts_query(keywords: list[str]) -> str:
 # ---------------------------------------------------------------------------
 # Segment evidence: a theme segment's revenue over the company's total revenue
 # ---------------------------------------------------------------------------
-def _totals(rows: list[tuple]) -> tuple[dict[tuple, float], dict[tuple, set[float]]]:
-    """Total-revenue denominator per (doc, period, basis, unit) and per unit scale."""
-    exact: dict[tuple, float] = {}
-    loose: dict[tuple, set[float]] = {}
+def _totals(rows: list[tuple]) -> tuple[dict[tuple, tuple[int, float]], dict[tuple, dict[int, set[float]]]]:
+    """Stated total revenue per (doc, period, basis, unit[, piece]) and per unit scale.
+
+    A value carries its base's rank (revenue from operations > total revenue > total
+    income), so a page stating two bases keeps the preferred one instead of the larger.
+    """
+    exact: dict[tuple, tuple[int, float]] = {}
+    loose: dict[tuple, dict[int, set[float]]] = {}
     for doc, piece, period, basis, unit, item, value in rows:
         base, suffix = _split_item(item)
         if base not in TOTAL_ITEMS or not _is_unit_suffix(suffix) or not value or value <= 0:
             continue
+        rank = TOTAL_RANK[base]
         key = (doc, _norm(period), _norm(basis), _norm(unit))
-        exact[key + (piece,)] = max(exact.get(key + (piece,), 0.0), float(value))
-        loose.setdefault(key[:3] + (_unit_scale(unit),), set()).add(float(value))
+        current = exact.get(key + (piece,))
+        if current is None or (rank, -float(value)) < (current[0], -current[1]):
+            exact[key + (piece,)] = (rank, float(value))
+        loose.setdefault(key[:3] + (_unit_scale(unit),), {}).setdefault(rank, set()).add(float(value))
     return exact, loose
 
 
 def _denominator(exact, loose, doc, piece, period, basis, unit) -> float:
     key = (doc, _norm(period), _norm(basis), _norm(unit))
     if exact.get(key + (piece,)):
-        return exact[key + (piece,)]
+        return exact[key + (piece,)][1]
     # The manager's rule is same document + period + unit; the page is only a tie-break,
-    # so fall back to the document-level total when it is unambiguous.
-    candidates = loose.get(key[:3] + (_unit_scale(unit),)) or set()
-    return next(iter(candidates)) if len(candidates) == 1 else 0.0
+    # so fall back to the document-level total when it is unambiguous.  Prefer revenue
+    # from operations, then total revenue, then total income - never the largest.
+    per_rank = loose.get(key[:3] + (_unit_scale(unit),)) or {}
+    for rank in sorted(per_rank):
+        values = per_rank[rank]
+        return next(iter(values)) if len(values) == 1 else 0.0
+    return 0.0
 
 
-def _segments(rows: list[tuple]) -> dict[tuple, list[tuple[str, float]]]:
-    """(doc, period, basis, unit, base) -> [(segment suffix, revenue)] for pivot tests."""
+def _is_revenue_total(base: str) -> bool:
+    return base in TOTAL_ITEMS or base.startswith(CONTRACT_BASES)
+
+
+def _tables(rows: list[tuple]) -> dict[tuple, list[tuple[str, float]]]:
+    """One segment-information table's rows, keyed by doc/piece/period/basis/unit/base."""
     out: dict[tuple, list[tuple[str, float]]] = {}
     for doc, piece, period, basis, unit, item, value in rows:
         base, suffix = _split_item(item)
-        if base not in TOTAL_ITEMS or not suffix or _is_unit_suffix(suffix) or not value or value <= 0:
+        if base not in TOTAL_ITEMS or not suffix or _is_unit_suffix(suffix) \
+                or not value or value <= 0:
             continue
-        out.setdefault((doc, _norm(period), _norm(basis), _norm(unit), base), []).append(
-            (suffix, float(value)))
+        out.setdefault((doc, piece, _norm(period), _norm(basis), _unit_scale(unit), base),
+                       []).append((suffix, float(value)))
     return out
 
 
-def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any],
-                 symbols: dict[str, str]) -> list[dict[str, Any]]:
+def _siblings(rows: list[tuple[str, float]]) -> dict[str, float]:
+    """Distinct business-segment labels only; a repeated label keeps its largest value."""
+    out: dict[str, float] = {}
+    for label, value in rows:
+        if not label or any(bad in label for bad in NON_SEGMENT_LABELS):
+            continue
+        out[label] = max(out.get(label, 0.0), value)
+    return out
+
+
+def _stated(rows: list[tuple]) -> dict[tuple, list[tuple[str, float]]]:
+    """Independently stated revenue figures per (doc, period, basis, unit scale)."""
+    out: dict[tuple, list[tuple[str, float]]] = {}
+    for doc, piece, period, basis, unit, item, value in rows:
+        base, suffix = _split_item(item)
+        if not _is_revenue_total(base) or not _is_unit_suffix(suffix) or not value or value <= 0:
+            continue
+        out.setdefault((doc, _norm(period), _norm(basis), _unit_scale(unit)), []).append(
+            (str(item)[:120], float(value)))
+    return out
+
+
+def _reconciled(summed: float, stated: list[tuple[str, float]]) -> tuple[float, str]:
+    """(closest stated revenue figure within 1% of ``summed``, its label) or (0.0, "").
+
+    Candidates are each stated total plus the sum of the Ind AS "revenue from
+    contract" lines, which are printed apart from each other.  The closest match wins,
+    so a near miss does not beat the figure the report actually states.
+    """
+    candidates = list(stated)
+    contract = [(label, value) for label, value in stated if "contract" in _norm(label)]
+    for index, (label, value) in enumerate(contract):
+        for other_label, other_value in contract[index + 1:]:
+            candidates.append((f"{label} + {other_label}", value + other_value))
+    best = (0.0, "")
+    best_diff = 1.0
+    for label, value in candidates:
+        diff = abs(summed - value) / value
+        if diff <= 0.01 and diff < best_diff:
+            best_value, best_label, best_diff = value, label, diff
+            best = (best_value, best_label)
+    return best
+
+
+def _segment_sum(siblings: dict[str, float], value: float,
+                 stated: list[tuple[str, float]]) -> tuple[float, str]:
+    """Theme segment over the summed siblings; only when the sum reconciles (N-segment_sum).
+
+    Rules: one table, >=2 distinct segments, no total/elimination rows, and the sum must
+    be within 1% of an independently stated revenue figure in the same document.  That
+    reconciliation is also what rejects a parent segment listed alongside its children.
+    """
+    if len(siblings) < 2 or value <= 0:
+        return 0.0, ""
+    summed = sum(siblings.values())
+    if not summed:
+        return 0.0, ""
+    figure, label = _reconciled(summed, stated)
+    if not figure:
+        return 0.0, ""
+    return value / summed, f"segment sum {summed:,.2f} reconciles to {label} ({figure:,.2f})"
+
+
+def _pivot(siblings: dict[str, float], value: float, total: float) -> bool:
+    """N6: one segment table, >=3 distinct siblings, sum within 1% of the stated total."""
+    if len(siblings) < 3 or not total:
+        return False
+    if abs(sum(siblings.values()) - total) / total > 0.01:
+        return False
+    return value >= max(siblings.values())
+
+
+_LEGAL_WORDS = frozenset(("the", "of", "and", "limited", "ltd", "private", "pvt", "company",
+                          "co", "corporation", "corp"))
+
+
+def _doc_named(ar: sqlite3.Connection | None, doc: int, name: str, symbol: str) -> bool:
+    """True when the document's own text names the company (manager rule N1).
+
+    A wrong-file AR is filed under the right company, so ``ar_docs.company`` agrees while
+    nothing inside the document does (LAKESHORE doc 127534: "Inadvertently the incorrect
+    file of Annual Report was uploaded").  The extracted quote/item text is the only
+    in-document text the builder can audit, so the company name or its symbol must appear
+    there.
+    """
+    key = " ".join([word for word in _norm(name).split() if word not in _LEGAL_WORDS][:2])
+    text = "(lower(COALESCE(quote,'')) || ' ' || lower(COALESCE(item,'')))"
+    if key and _query(ar, f"SELECT 1 FROM ar_facts WHERE doc_id = ? AND {text} LIKE ? LIMIT 1",
+                      (doc, f"%{key}%")):
+        return True
+    token = _norm(symbol)
+    if not token:
+        return False
+    rows = _query(ar, f"SELECT {text} FROM ar_facts WHERE doc_id = ? AND {text} LIKE ? LIMIT 50",
+                  (doc, f"%{token}%"))
+    return any(token in _norm(row[0]).split() for row in rows)
+
+
+def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any], symbols: dict[str, str],
+                 names: dict[str, str], blocked_docs: set[int]) -> list[dict[str, Any]]:
     keywords = _keywords(themes)
     if not keywords:
         return []
     # ar_facts has 32M rows: the FTS index picks the keyword rows, then only the matched
-    # documents are read for the total-revenue denominator.
+    # documents are read for the total-revenue denominator.  The cap truncates the hit set
+    # (120,856 rows in 2026-10), so some real rows never reach the build; lifting it needs
+    # a stricter industry gate first, because the BRSR "coke and refined petroleum
+    # products" wording then admits lubricant blenders (CASTROLIND, GULFOILLUB,
+    # PANAMAPET) to `omc_refining` and BRSR reporting-scope lines to `housing_finance`.
     hits = _query(
         ar,
         "SELECT a.doc_id, a.piece, a.isin, a.symbol, a.fiscal_year, a.filed_at, a.category, "
@@ -339,11 +516,12 @@ def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any],
             tuple(chunk),
         )
     exact, loose = _totals(rows)
-    segments = _segments(rows)
+    tables = _tables(rows)
+    stated = _stated(rows)
 
     out: list[dict[str, Any]] = []
     for doc, piece, isin, symbol, fiscal_year, filed_at, category, item, value, unit, period, basis in hits:
-        if not isin:
+        if not isin or int(doc) in blocked_docs:
             continue
         theme = _theme_of(f"{item} {category}", themes)
         if not theme:
@@ -357,6 +535,8 @@ def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any],
         if str(period or "").strip() not in ("", "-") and period_years and fy_year not in period_years:
             continue
         unit = str(unit or "")
+        weight_source = "segment"
+        reconciliation = ""
         if unit.strip() == "%":
             weight = _pct_weight(item, category, unit, value)
             label = _norm(item)
@@ -369,23 +549,49 @@ def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any],
             if not label or not _hit(label, keywords) \
                     or _hit(label, themes[theme].get("exclude_keywords") or []):
                 continue
+            table_key = (doc, piece, _norm(period), _norm(basis), _unit_scale(unit), base)
+            siblings = _siblings(tables.get(table_key) or [])
             total = _denominator(exact, loose, doc, piece, period, basis, unit)
-            if not total or not value or value <= 0 or float(value) > total:
-                continue
-            weight = float(value) / total
-            siblings = segments.get((doc, _norm(period), _norm(basis), _norm(unit), base)) or []
-            pivot = len(siblings) >= 2 and float(value) >= max(v for _s, v in siblings)
+            reconciliation = ""
+            if total:
+                if not value or value <= 0 or float(value) > total:
+                    continue
+                weight = float(value) / total
+            else:
+                # No stated total in this document for the period: the segment table's
+                # own sum is the denominator, but only when it reconciles.
+                weight, reconciliation = _segment_sum(
+                    siblings, float(value),
+                    stated.get((doc, table_key[2], table_key[3], table_key[4])) or [])
+                if weight <= 0:
+                    continue
+                weight_source = "segment_sum"
+                total = sum(siblings.values())
+            pivot = _pivot(siblings, float(value), total)
         if weight <= 0:
             continue
         symbols.setdefault(str(isin), str(symbol or ""))
+        quote = f"{str(item)[:150]}: {value} {unit}".strip()
+        if reconciliation:
+            quote = f"{quote}; {reconciliation}"
         out.append({
             "theme": theme, "isin": str(isin), "method": "segment", "fiscal_year": fy_year,
             "valid_from": _date(filed_at), "weight": round(min(weight, 1.0), 6),
+            "weight_source": weight_source,
             "evidence_id": f"ar_facts.db:ar_facts:{doc}:{piece}",
-            "evidence_quote": f"{str(item)[:150]}: {value} {unit}".strip(),
-            "pivot": bool(pivot),
+            "evidence_quote": quote,
+            "pivot": bool(pivot), "_doc": int(doc),
         })
-    return out
+    named: dict[int, bool] = {}
+    kept = []
+    for item in out:
+        doc = item.pop("_doc")
+        if doc not in named:
+            isin = item["isin"]
+            named[doc] = _doc_named(ar, doc, names.get(isin, ""), symbols.get(isin, ""))
+        if named[doc]:
+            kept.append(item)
+    return kept
 
 
 def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
@@ -457,10 +663,14 @@ def _intervals(evidence: list[dict[str, Any]], themes: dict[str, Any]) -> tuple[
     for (theme, isin), years in best.items():
         # One disclosure can state several fiscal periods (a deck's FY25 + FY26 table),
         # so a date carries at most one observation: the most recent fiscal year in it.
+        # A row with no disclosure date has no interval: never fall back to the fiscal
+        # year end (manager rule N7).
         by_date: dict[str, dict[str, Any]] = {}
         for fy in sorted(years):
             item = years[fy]
-            stamp = item["valid_from"] or f"{fy}-03-31"
+            stamp = item["valid_from"]
+            if not stamp:
+                continue
             if stamp not in by_date or fy > by_date[stamp]["fiscal_year"]:
                 by_date[stamp] = {**item, "fiscal_year": fy}
         ordered = sorted(by_date)
@@ -473,7 +683,8 @@ def _intervals(evidence: list[dict[str, Any]], themes: dict[str, Any]) -> tuple[
                 continue
             rows.append({
                 "theme": theme, "isin": isin, "method": "segment",
-                "weight_source": "segment", "valid_from": stamp, "valid_to": valid_to,
+                "weight_source": item.get("weight_source") or "segment",
+                "valid_from": stamp, "valid_to": valid_to,
                 "weight": item["weight"], "evidence_id": item["evidence_id"],
                 "evidence_quote": item["evidence_quote"], "pivot": item["pivot"],
             })
@@ -591,12 +802,15 @@ def _pivot_evidence(cc: sqlite3.Connection | None, themes: dict[str, Any]) -> li
 # ---------------------------------------------------------------------------
 def _company_maps(eq: sqlite3.Connection | None):
     sym_isin, code_isin, symbols, listing, industry = {}, {}, {}, {}, {}
+    names: dict[str, str] = {}
     for isin, nse, bse, name in _query(
         eq, "SELECT isin, nse_symbol, bse_code, company_name FROM master_companies"
     ):
         isin = str(isin or "")
         if not isin:
             continue
+        if name:
+            names.setdefault(isin, str(name))
         for key in (nse, name):
             if key:
                 sym_isin.setdefault(str(key).upper(), isin)
@@ -616,7 +830,7 @@ def _company_maps(eq: sqlite3.Connection | None):
         if listed and _date(listed):
             listing[str(isin)] = _date(listed)
         industry[str(isin)] = (str(label or ""), str(basic or ""), str(sector or ""))
-    return sym_isin, code_isin, symbols, listing, industry
+    return sym_isin, code_isin, symbols, listing, industry, names
 
 
 def _rank(item: dict[str, Any]) -> tuple:
@@ -636,50 +850,119 @@ def _excluded(themes: dict[str, Any], industry: dict[str, tuple[str, ...]]) -> s
     return out
 
 
+def _industry_gate(themes: dict[str, Any],
+                   industry: dict[str, tuple[str, ...]]) -> set[tuple[str, str]]:
+    """(theme, ISIN) pairs whose NSE industry keeps a segment weight eligible.
+
+    A theme may require an industry family (``segment_industry_keywords``) before a
+    revenue-mix row counts, so a lubricant blender's "Petroleum Products sales turnover"
+    is not an OMC weight just because the words match.
+    """
+    out: set[tuple[str, str]] = set()
+    for theme, cfg in themes.items():
+        family = cfg.get("segment_industry_keywords") or []
+        if not family:
+            continue
+        for isin, labels in industry.items():
+            if any(_hit(label, family) for label in labels):
+                out.add((theme, isin))
+    return out
+
+
+def _quarantined_docs(eq: sqlite3.Connection | None) -> set[int]:
+    """ar_facts document ids keyed in ``substrate_quarantine`` (AGENTS.md rule 13)."""
+    docs: set[int] = set()
+    for row_key, in _query(eq, "SELECT row_key FROM substrate_quarantine"
+                                " WHERE table_name IN ('ar_facts', 'ar_docs')"):
+        head = str(row_key or "").split(":")[0].strip()
+        if head.isdigit():
+            docs.add(int(head))
+    return docs
+
+
+def _unweighted_row(item: dict[str, Any], valid_from: str, valid_to: str | None) -> dict[str, Any]:
+    return {
+        "theme": item["theme"], "isin": item["isin"], "method": item["method"],
+        "weight_source": item["weight_source"], "valid_from": valid_from, "valid_to": valid_to,
+        "weight": None, "evidence_id": item["evidence_id"],
+        "evidence_quote": item["evidence_quote"], "pivot": False,
+    }
+
+
+def _chain(rows: list[dict[str, Any]], best: dict[tuple[str, str], dict[str, Any]]
+           ) -> list[dict[str, Any]]:
+    """Weighted intervals with an unweighted row filling every gap between them.
+
+    While a weight applies the company is a weighted member; before, between and after
+    the weighted intervals the industry / curated signal applies, so the (theme, ISIN)
+    chain has no hole.  ``valid_to`` is half-open, so a handover is exact.
+
+    A chain with no unweighted row (no NSE industry match, no curated seed) cannot be
+    filled; there the last measurement carries forward to the next filed disclosure
+    only, and still expires two fiscal years after its own (N4/N7).
+    """
+    weighted: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in rows:
+        weighted.setdefault((row["theme"], row["isin"]), []).append(row)
+    out: list[dict[str, Any]] = []
+    for key in sorted(set(weighted) | set(best)):
+        chain = sorted(weighted.get(key) or [], key=lambda r: r["valid_from"])
+        fallback = best.get(key)
+        if fallback is None:
+            for current, following in zip(chain, chain[1:]):
+                if current["valid_to"] and current["valid_to"] < following["valid_from"]:
+                    current["valid_to"] = following["valid_from"]
+            out.extend(chain)
+            continue
+        # Coverage starts when the company first appears: its listing date or its first
+        # measured weight, whichever is earlier (an SME's industry row can postdate its
+        # first annual report).
+        cursor = min([fallback["valid_from"]] + [r["valid_from"] for r in chain[:1]])
+        for row in chain:
+            if row["valid_from"] > cursor:
+                out.append(_unweighted_row(fallback, cursor, row["valid_from"]))
+            cursor = max(cursor, row["valid_to"])
+            out.append(row)
+        out.append(_unweighted_row(fallback, cursor, None))
+    return out
+
+
 def build(data_root: Path, themes_path: Path) -> dict[str, Any]:
     themes = load_themes(themes_path)
     eq_source = _open(data_root / "equity_intelligence.db")
-    sym_isin, code_isin, symbols, listing, industry = _company_maps(eq_source)
+    sym_isin, code_isin, symbols, listing, industry, names = _company_maps(eq_source)
 
-    xb = _open(data_root / "results_xbrl.db")
     ar = _open(data_root / "ar_facts.db")
     dk = _open(data_root / "deck_figures.db")
     ann = _open(data_root / "bse_announcements.db")
     cc = _open(data_root / "concall_facts.db")
     try:
-        segment = _ar_evidence(ar, themes, symbols) + _deck_evidence(dk, themes, symbols)
+        segment = (_ar_evidence(ar, themes, symbols, names, _quarantined_docs(eq_source))
+                   + _deck_evidence(dk, themes, symbols))
         curated, unresolved = _curated_evidence(themes, sym_isin, listing)
         evidence = (_industry_evidence(eq_source, themes, symbols, listing) + curated)
         candidates = (_subsidiary_evidence(ann, themes, sym_isin, code_isin)
                       + _pivot_evidence(cc, themes))
     finally:
-        for con in (eq_source, xb, ar, dk, ann, cc):
+        for con in (eq_source, ar, dk, ann, cc):
             if con is not None:
                 con.close()
 
     excluded = _excluded(themes, industry)
-    segment = [s for s in segment if (s["theme"], s["isin"]) not in excluded]
+    gate = _industry_gate(themes, industry)
+    segment = [s for s in segment if (s["theme"], s["isin"]) not in excluded
+               and (not themes[s["theme"]].get("segment_industry_keywords")
+                    or (s["theme"], s["isin"]) in gate)]
     rows, _weighted = _intervals(segment, themes)
     # Where a measured weight expires, the unweighted signal takes over: the company is
     # still an OMC by industry classification even when no current revenue share exists.
-    chain_end: dict[tuple[str, str], str] = {}
-    for row in rows:
-        key = (row["theme"], row["isin"])
-        chain_end[key] = max(chain_end.get(key, ""), row["valid_to"] or "")
     best: dict[tuple[str, str], dict[str, Any]] = {}
     for item in evidence:
         key = (item["theme"], item["isin"])
-        start = max(item["valid_from"], chain_end.get(key, ""))
         current = best.get(key)
         if current is None or _rank(item) > _rank(current):
-            best[key] = {**item, "valid_from": start}
-    for item in best.values():
-        rows.append({
-            "theme": item["theme"], "isin": item["isin"], "method": item["method"],
-            "weight_source": item["weight_source"], "valid_from": item["valid_from"],
-            "valid_to": None, "weight": None, "evidence_id": item["evidence_id"],
-            "evidence_quote": item["evidence_quote"], "pivot": False,
-        })
+            best[key] = item
+    rows = _chain(rows, best)
     for item in rows:
         item["symbol"] = symbols.get(item["isin"], "")
     rows.sort(key=lambda r: (r["theme"], -(float(r["weight"] or 0.0)),

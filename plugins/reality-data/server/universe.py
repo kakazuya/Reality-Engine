@@ -113,6 +113,19 @@ def _last_build(con: sqlite3.Connection) -> dt.date | None:
     return max(dates) if dates else None
 
 
+def _not_built(key: str, as_of: dt.date) -> dict[str, Any]:
+    """A theme the builder knows but has written no rows for is not an empty answer."""
+    return {
+        "theme": key, "found": False, "as_of": as_of.isoformat(),
+        "members": [], "unweighted": [], "count": 0, "closest_themes": [key],
+        "stale_days": None,
+        "error": {"code": "not_built",
+                  "message": f"theme {key!r} is defined but has no membership rows; {_BUILD_HINT}"},
+        "note": _BUILD_HINT,
+        "provenance": core.provenance("equity_intelligence", []),
+    }
+
+
 def universe(theme: str, as_of: str | None = None,
              min_weight: float | None = DEFAULT_MIN_WEIGHT) -> dict[str, Any]:
     """Companies in a theme on a date.
@@ -151,15 +164,7 @@ def universe(theme: str, as_of: str | None = None,
         }
 
     if not _table_exists(con, "universe_membership"):
-        return {
-            "theme": key, "found": False, "as_of": as_of_d.isoformat(),
-            "members": [], "unweighted": [], "count": 0, "closest_themes": [key],
-            "stale_days": None,
-            "error": {"code": "not_built",
-                      "message": f"theme {key!r} is defined but has no membership table; {_BUILD_HINT}"},
-            "note": _BUILD_HINT,
-            "provenance": core.provenance("equity_intelligence", []),
-        }
+        return _not_built(key, as_of_d)
 
     try:
         rows = con.execute(
@@ -169,8 +174,15 @@ def universe(theme: str, as_of: str | None = None,
             "ORDER BY COALESCE(weight, -1) DESC, symbol, isin",
             (key, as_of_d.isoformat(), as_of_d.isoformat()),
         ).fetchall()
+        # Known theme with no rows at all: the build never covered it.  A theme with rows
+        # but none valid on this date is a real empty answer.
+        built = con.execute(
+            "SELECT 1 FROM universe_membership WHERE theme = ? LIMIT 1", (key,)
+        ).fetchone() is not None
     except sqlite3.DatabaseError:
-        rows = []
+        rows, built = [], False
+    if not built:
+        return _not_built(key, as_of_d)
 
     blocked = _quarantined(con)
     rows = [row for row in rows if str(row[1]) not in blocked]

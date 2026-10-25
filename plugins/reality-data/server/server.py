@@ -307,7 +307,7 @@ import universe as _universe  # noqa: E402  (co-located module, same import styl
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
-def universe(theme: str, as_of: str | None = None, min_weight: float = 0.0) -> dict[str, Any]:
+def universe(theme: str, as_of: str | None = None, min_weight: float = 0.01) -> dict[str, Any]:
     return _safe(lambda: _universe.universe(theme, as_of=as_of, min_weight=min_weight))
 # --- end lookups: universe ---
 

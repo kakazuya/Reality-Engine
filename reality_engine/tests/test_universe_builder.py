@@ -29,14 +29,21 @@ if str(ROOT) not in sys.path:
 
 from reality_engine.scripts import build_universe_membership as builder  # noqa: E402
 
-# The harness TMP dir (and any ``tmp*`` directory) is ACL-denied; ``.tmp/`` is ignored.
-_TMP_ROOT = ROOT / ".tmp" / "universe-tests"
+# The harness TMP dir (and any ``tmp*`` directory) is ACL-denied, and
+# ``.tmp/universe-tests`` was left ACL-locked by an earlier run; ``.tmp/`` is ignored,
+# so each run gets its own fresh directory name.
+_TMP_ROOT = ROOT / ".tmp" / f"g3r2-{os.getpid()}"
 _TMP_ROOT.mkdir(parents=True, exist_ok=True)
 
 ACME = "INE00ACME001"    # 90% of revenue is jewellery -> a weighted member
 BETA = "INE00BETA001"    # 20% of revenue is jewellery -> below the floor, no membership
 GAMMA = "INE00GAMMA01"   # NSE industry 'Gems Jewellery And Watches' -> unweighted member
 DELTA = "INE00DELTA01"   # deck says jewellery is 60% of revenue
+ZETA = "INE00ZETA001"    # segment table, no stated total -> segment_sum must reconcile
+ETA = "INE00ETA0001"     # parent segment listed with its children -> must be rejected
+THETA = "INE00THETA01"   # the PDF is someone else's AR -> the document does not name it
+IOTA = "INE00IOTA001"    # a revenue row with no filing date -> no interval
+KAPPA = "INE00KAPPA01"   # two weights with a hole between them -> the industry row fills it
 FILED_AT = "2019-07-30T11:27:07"
 
 
@@ -59,6 +66,11 @@ def _fixture(root: Path) -> None:
         (BETA, "BETA", "500002", "Beta Packaging Limited"),
         (GAMMA, "GAMMA", "500003", "Gamma Jewellers Limited"),
         (DELTA, "DELTA", "500004", "Delta Retail Limited"),
+        (ZETA, "ZETA", "500005", "Zeta Ornaments Limited"),
+        (ETA, "ETA", "500006", "Eta Traders Limited"),
+        (THETA, "THETA", "500007", "Theta Retail Limited"),
+        (IOTA, "IOTA", "500008", "Iota Jewels Limited"),
+        (KAPPA, "KAPPA", "500009", "Kappa Jewellers Limited"),
     ])
     eq.executemany("INSERT INTO company_industry VALUES (?,?,?,?,?,?,?)", [
         (ACME, "ACME", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
@@ -66,6 +78,12 @@ def _fixture(root: Path) -> None:
         (GAMMA, "GAMMA", "Consumer Durables", "Consumer Durables", "Gems Jewellery And Watches",
          "2026-01-01", "15-Mar-2016"),
         (DELTA, "DELTA", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
+        (ZETA, "ZETA", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
+        (ETA, "ETA", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
+        (THETA, "THETA", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
+        (IOTA, "IOTA", "Consumer Durables", "Consumer Durables", "Packaging", "2026-01-01", "10-May-1995"),
+        (KAPPA, "KAPPA", "Consumer Durables", "Consumer Durables", "Gems Jewellery And Watches",
+         "2026-01-01", "01-Jan-2015"),
     ])
     eq.commit()
     eq.close()
@@ -80,31 +98,89 @@ def _fixture(root: Path) -> None:
         "CREATE VIRTUAL TABLE ar_facts_fts USING fts5(item, category,"
         " content='ar_facts', content_rowid='rowid');"
     )
+    n1 = "Acme Jewellery Limited: Revenue from Operations"
     rows = [
-        # (doc, piece, isin, symbol, fy, filed, category, item, value, unit, period, basis)
+        # (doc, piece, isin, symbol, fy, filed, category, item, value, unit, period, basis, quote)
         (1, 11, ACME, "ACME", "2019-03-31", FILED_AT, "financial",
-         "Revenue from Operations", 1000.0, "Rs crore", "FY19", "standalone"),
+         "Revenue from Operations", 1000.0, "Rs crore", "FY19", "standalone", n1),
         (1, 11, ACME, "ACME", "2019-03-31", FILED_AT, "financial",
-         "Revenue from Operations (Gold Jewellery)", 900.0, "Rs crore", "FY19", "standalone"),
+         "Revenue from Operations (Gold Jewellery)", 900.0, "Rs crore", "FY19", "standalone", n1),
         (1, 11, ACME, "ACME", "2019-03-31", FILED_AT, "financial",
-         "Revenue from Operations (Others)", 100.0, "Rs crore", "FY19", "standalone"),
+         "Revenue from Operations (Silver)", 50.0, "Rs crore", "FY19", "standalone", n1),
+        (1, 11, ACME, "ACME", "2019-03-31", FILED_AT, "financial",
+         "Revenue from Operations (Others)", 50.0, "Rs crore", "FY19", "standalone", n1),
         # The prior-year comparative column: 400/500 = 0.8, and wrong for FY19.
         (1, 11, ACME, "ACME", "2019-03-31", FILED_AT, "financial",
-         "Revenue from Operations (Gold Jewellery)", 400.0, "Rs crore", "FY18", "standalone"),
+         "Revenue from Operations (Gold Jewellery)", 400.0, "Rs crore", "FY18", "standalone", n1),
         (1, 11, ACME, "ACME", "2019-03-31", FILED_AT, "financial",
-         "Revenue from Operations", 500.0, "Rs crore", "FY18", "standalone"),
+         "Revenue from Operations", 500.0, "Rs crore", "FY18", "standalone", n1),
         # A market statistic, not a company revenue mix: must never become a weight.
         (1, 12, ACME, "ACME", "2019-03-31", FILED_AT, "market_share",
-         "Gold jewellery market share of revenue", 64.0, "%", "FY19", "standalone"),
+         "Gold jewellery market share of revenue", 64.0, "%", "FY19", "standalone", n1),
         # Below the materiality floor.
         (2, 11, BETA, "BETA", "2019-03-31", FILED_AT, "financial",
-         "Revenue from Operations", 1000.0, "Rs crore", "FY19", "standalone"),
+         "Revenue from Operations", 1000.0, "Rs crore", "FY19", "standalone",
+         "Beta Packaging Limited: Revenue from Operations"),
         (2, 11, BETA, "BETA", "2019-03-31", FILED_AT, "financial",
-         "Revenue from Operations (Gold Jewellery)", 200.0, "Rs crore", "FY19", "standalone"),
+         "Revenue from Operations (Gold Jewellery)", 200.0, "Rs crore", "FY19", "standalone",
+         "Beta Packaging Limited: Revenue from Operations"),
+        # No stated total: the segment sum (600 + 300 + 100) reconciles to the revenue note.
+        (4, 5, ZETA, "ZETA", "2019-03-31", FILED_AT, "segment",
+         "Revenue from Operations - Gold Jewellery", 600.0, "Rs crore", "FY19", "standalone",
+         "Zeta Ornaments Limited: segment information"),
+        (4, 5, ZETA, "ZETA", "2019-03-31", FILED_AT, "segment",
+         "Revenue from Operations - Silver", 300.0, "Rs crore", "FY19", "standalone",
+         "Zeta Ornaments Limited: segment information"),
+        (4, 5, ZETA, "ZETA", "2019-03-31", FILED_AT, "segment",
+         "Revenue from Operations - Others", 100.0, "Rs crore", "FY19", "standalone",
+         "Zeta Ornaments Limited: segment information"),
+        (4, 5, ZETA, "ZETA", "2019-03-31", FILED_AT, "financial",
+         "Revenue from contract with customers", 1000.0, "Rs crore", "FY19", "standalone",
+         "Zeta Ornaments Limited: revenue note"),
+        # A parent segment listed alongside its children sums to twice the stated revenue.
+        (5, 6, ETA, "ETA", "2019-03-31", FILED_AT, "segment",
+         "Revenue from Operations - Gold Jewellery", 100.0, "Rs crore", "FY19", "standalone",
+         "Eta Traders Limited: segment information"),
+        (5, 6, ETA, "ETA", "2019-03-31", FILED_AT, "segment",
+         "Revenue from Operations - Gold Jewellery Retail", 60.0, "Rs crore", "FY19", "standalone",
+         "Eta Traders Limited: segment information"),
+        (5, 6, ETA, "ETA", "2019-03-31", FILED_AT, "segment",
+         "Revenue from Operations - Gold Jewellery Wholesale", 40.0, "Rs crore", "FY19", "standalone",
+         "Eta Traders Limited: segment information"),
+        (5, 6, ETA, "ETA", "2019-03-31", FILED_AT, "financial",
+         "Revenue from contract with customers", 100.0, "Rs crore", "FY19", "standalone",
+         "Eta Traders Limited: revenue note"),
+        # The wrong-file AR: filed as Theta's, but nothing inside it names Theta.
+        (6, 7, THETA, "THETA", "2019-03-31", FILED_AT, "financial",
+         "Revenue from Operations", 1000.0, "Rs crore", "FY19", "standalone",
+         "Inadvertently the incorrect file of Annual Report was uploaded."),
+        (6, 7, THETA, "THETA", "2019-03-31", FILED_AT, "financial",
+         "Revenue from Operations (Gold Jewellery)", 900.0, "Rs crore", "FY19", "standalone",
+         "Manufacturing of Gold Jewellery revenue contribution: 100.0 %"),
+        # Iota's row has no filing date: it must never be dated from the fiscal-year end.
+        (7, 8, IOTA, "IOTA", "2019-03-31", "", "financial",
+         "Revenue from Operations", 1000.0, "Rs crore", "FY19", "standalone",
+         "Iota Jewels Limited: Revenue from Operations"),
+        (7, 8, IOTA, "IOTA", "2019-03-31", "", "financial",
+         "Revenue from Operations (Gold Jewellery)", 900.0, "Rs crore", "FY19", "standalone",
+         "Iota Jewels Limited: Revenue from Operations"),
+        # Two disclosures with a hole between them; the industry row has to fill it.
+        (8, 9, KAPPA, "KAPPA", "2019-03-31", FILED_AT, "financial",
+         "Revenue from Operations", 1000.0, "Rs crore", "FY19", "standalone",
+         "Kappa Jewellers Limited: Revenue from Operations"),
+        (8, 9, KAPPA, "KAPPA", "2019-03-31", FILED_AT, "financial",
+         "Revenue from Operations (Gold Jewellery)", 900.0, "Rs crore", "FY19", "standalone",
+         "Kappa Jewellers Limited: Revenue from Operations"),
+        (9, 9, KAPPA, "KAPPA", "2024-03-31", "2024-07-30T10:00:00", "financial",
+         "Revenue from Operations", 1000.0, "Rs crore", "FY24", "standalone",
+         "Kappa Jewellers Limited: Revenue from Operations"),
+        (9, 9, KAPPA, "KAPPA", "2024-03-31", "2024-07-30T10:00:00", "financial",
+         "Revenue from Operations (Gold Jewellery)", 950.0, "Rs crore", "FY24", "standalone",
+         "Kappa Jewellers Limited: Revenue from Operations"),
     ]
     ar.executemany(
         "INSERT INTO ar_facts(doc_id, piece, isin, symbol, fiscal_year, filed_at, category, item,"
-        " value, unit, period, basis) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+        " value, unit, period, basis, quote) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
     ar.execute("INSERT INTO ar_facts_fts(ar_facts_fts) VALUES('rebuild')")
     ar.commit()
     ar.close()
@@ -216,6 +292,45 @@ class UniverseBuilderTests(unittest.TestCase):
         self.assertIn("subsidiary", candidates[0][3])
         self.assertNotIn("weight", columns)  # candidates never carry a weight
 
+    def test_segment_sum_reconciles_without_a_stated_total(self):
+        self._run()
+        rows = self._rows(ZETA)
+        self.assertEqual(len(rows), 1)
+        _theme, _isin, since, until, weight, source, method, pivot, _ev, quote = rows[0]
+        self.assertAlmostEqual(weight, 0.6, places=4)   # 600 / (600 + 300 + 100)
+        self.assertEqual(source, "segment_sum")
+        self.assertEqual(method, "segment")
+        self.assertEqual(pivot, 1)                      # 3 siblings, sum == stated revenue
+        self.assertEqual((since, until), ("2019-07-30", "2021-03-31"))
+        self.assertIn("reconciles to", quote)           # the figure is in the evidence
+        self.assertIn("1,000.00", quote)
+
+    def test_parent_and_child_double_count_is_rejected(self):
+        self._run()
+        # 100 + 60 + 40 = 200 against a stated 100: the sum does not reconcile, so no weight.
+        self.assertEqual(self._rows(ETA), [])
+
+    def test_document_must_name_the_company(self):
+        self._run()
+        # Right company field, wrong file inside: the weight must not exist (LAKESHORE).
+        self.assertEqual(self._rows(THETA), [])
+
+    def test_weight_without_a_disclosure_date_is_dropped(self):
+        self._run()
+        self.assertEqual(self._rows(IOTA), [])
+
+    def test_gaps_between_weights_are_filled(self):
+        self._run()
+        rows = sorted(self._rows(KAPPA), key=lambda row: row[2])
+        self.assertEqual([row[2] for row in rows],
+                         ["2015-01-01", "2019-07-30", "2021-03-31", "2024-07-30", "2026-03-31"])
+        self.assertEqual([row[4] is not None for row in rows], [False, True, False, True, False])
+        self.assertEqual([row[5] for row in rows],
+                         ["industry", "segment", "industry", "segment", "industry"])
+        for previous, following in zip(rows, rows[1:]):
+            # Half-open intervals: every chain hands over exactly, no hole and no overlap.
+            self.assertEqual(previous[3], following[2])
+
     def test_rebuild_is_idempotent(self):
         first = self._run()
         second = self._run()
@@ -252,13 +367,37 @@ class SegmentLabelTests(unittest.TestCase):
     def test_percent_rows_need_a_revenue_mix_phrase(self):
         self.assertAlmostEqual(
             builder._pct_weight("Milk Product Mix: 63%", "revenue_mix", "%", 63.0), 0.63)
+        # The SEBI "Principal Business Activity" disclosure is a revenue mix (HATSUN 93.59%).
+        self.assertAlmostEqual(
+            builder._pct_weight("Principal Business Activity: Milk and Milk Products",
+                                "business_activity", "%", 93.59), 0.9359)
+        # "<product> turnover %" is a revenue mix (HERITGFOOD "Milk turnover %" 65.47).
+        self.assertAlmostEqual(
+            builder._pct_weight("Milk turnover", "revenue_mix", "%", 65.47), 0.6547)
+        # Portfolio words are allowed in the company's own revenue mix.
+        self.assertAlmostEqual(
+            builder._pct_weight("Interest income from housing loans % of revenue",
+                                "revenue_mix", "%", 90.0), 0.90)
         for item, category in (
-            ("Mortgage share of total loan portfolio", "loan_mix"),
+            ("Mortgage contribution to loan portfolio", "loan_composition"),
             ("Affordable housing segment share in project portfolio", "project_mix"),
             ("Revenue from sales to oil marketing companies percentage", "customer_concentration"),
+            ("Market share of South in Indian Jewellery Market", "industry"),
             ("Mid income housing contribution", "revenue_mix"),
         ):
             self.assertEqual(builder._pct_weight(item, category, "%", 64.0), 0.0, item)
+
+    def test_pivot_needs_one_reconciling_segment_table(self):
+        self.assertTrue(builder._pivot({"petroleum": 60.0, "gas": 30.0, "other": 10.0}, 60.0, 100.0))
+        # Two siblings is not a segment table.
+        self.assertFalse(builder._pivot({"petroleum": 60.0, "gas": 40.0}, 60.0, 100.0))
+        # The siblings must add up to the stated total (parent + children = 140 of 200).
+        self.assertFalse(builder._pivot({"petroleum": 60.0, "gas": 40.0, "other": 40.0}, 60.0, 200.0))
+        # Totals, inter-segment and unallocated rows never join the sibling set.
+        self.assertEqual(
+            builder._siblings([("total", 100.0), ("petroleum", 60.0),
+                               ("less inter segment", 5.0), ("gas", 40.0)]),
+            {"petroleum": 60.0, "gas": 40.0})
 
 
 if __name__ == "__main__":

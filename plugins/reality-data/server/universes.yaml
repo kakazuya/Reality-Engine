@@ -9,6 +9,10 @@
 #                     industry labels.  An industry match is an *unweighted* member.
 # exclude_industries  an NSE industry label that disqualifies a company for this theme
 #                     even when a revenue row matches (a bank is not housing finance).
+# segment_industry_keywords
+#                     a revenue-mix weight for this theme needs a company_industry row
+#                     in this family: a lubricant blender's "Petroleum Products sales
+#                     turnover" is not an OMC weight just because the words match.
 # seeds               curated membership, each with the reason it is known.  A seed is
 #                     an unweighted member and needs a resolvable ISIN; a seed with no
 #                     ISIN is reported in the run diff instead of being dropped.
@@ -62,6 +66,19 @@ themes:
       - trading
       - specialty oils
       - speciality oils
+      - lubricant
+      - lubricants
+      - blended oil
+      - blended oils
+      - biodiesel
+      - oleochemical
+      - oleochemicals
+    segment_industry_keywords:
+      - refiner
+      - refining
+      - refinery
+      - petroleum
+      - crude oil
     industries:
       - Refineries & Marketing
     seeds:

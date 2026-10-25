@@ -18,8 +18,10 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 SERVER_DIR = PLUGIN_ROOT / "server"
 sys.path.insert(0, str(SERVER_DIR))
 
-# The harness TMP dir (and any ``tmp*`` directory) is ACL-denied; ``.tmp/`` is ignored.
-_TMP_ROOT = Path(__file__).resolve().parents[3] / ".tmp" / "universe-tests"
+# The harness TMP dir (and any ``tmp*`` directory) is ACL-denied, and
+# ``.tmp/universe-tests`` was left ACL-locked by an earlier run, so each run gets its
+# own fresh directory name.
+_TMP_ROOT = Path(__file__).resolve().parents[3] / ".tmp" / f"g3r2-{os.getpid()}-tool"
 _TMP_ROOT.mkdir(parents=True, exist_ok=True)
 
 
@@ -31,6 +33,11 @@ def _case_dir() -> Path:
 
 import core  # noqa: E402
 import universe as universe_mod  # noqa: E402
+
+try:  # the registered MCP tool surface (see manager note N2)
+    import server as server_mod  # noqa: E402
+except Exception:  # pragma: no cover - a bare checkout without the mcp runtime
+    server_mod = None
 
 
 class FundResolveTests(unittest.TestCase):
@@ -144,10 +151,29 @@ class UniverseToolTests(unittest.TestCase):
         self.assertEqual(miss["error"]["code"], "unknown_theme")
         self.assertIn("gold_jewellery_finance", miss["closest_themes"])
 
-    def test_known_theme_without_rows(self):
+    def test_known_theme_without_rows_is_not_built(self):
+        # A theme in universes.yaml that the build never wrote is not an empty answer.
         out = universe_mod.universe("dairy", as_of="2024-09-01")
+        self.assertFalse(out["found"])
+        self.assertEqual(out["error"]["code"], "not_built")
+        self.assertIn("build_universe_membership", out["note"])
+
+    def test_built_theme_with_nothing_on_the_date_is_an_empty_answer(self):
+        out = universe_mod.universe("omc_refining", as_of="2020-01-01")
         self.assertTrue(out["found"])
-        self.assertEqual(out["members"], [])
+        self.assertEqual(out["count"], 0)
+        self.assertNotIn("error", out)
+
+    def test_registered_tool_passes_min_weight_through(self):
+        if server_mod is None:
+            self.skipTest("mcp runtime not importable")
+        out = server_mod.universe("omc_refining", as_of="2024-09-01")
+        self.assertTrue(out["found"])
+        # The tool default is the module default (0.01): a 0.4% row is hidden...
+        self.assertNotIn("INFY", [m["symbol"] for m in out["members"]])
+        # ...and an explicit min_weight is passed through.
+        loose = server_mod.universe("omc_refining", as_of="2024-09-01", min_weight=0.0)
+        self.assertIn("INFY", [m["symbol"] for m in loose["members"]])
 
     def test_known_theme_not_yet_built(self):
         empty = self.tmp / "empty.db"
