@@ -120,3 +120,17 @@ security iteration.
    weakening, instead of paying for an extra review.
 5. Design the measurement (A/B, n ≥ 3 per arm, a discovery-heavy task) **before** the work starts, not after.
 6. Verify every path in a brief with one `ls` before launch.
+
+### Lookup tools (2026-10-25 afternoon): same 10 questions, no pack, after the one-call tools merged
+
+| Run | tool calls | wall | correct |
+|---|---|---|---|
+| before (69644a44, e57200d9) | 113, 119 | 9.1, 12.2 min | 9/10, 10/10 (Q5 wrong in one) |
+| after (79b79d14, a20ccaca) | **47, 78** | **4.0, 8.8 min** | 9/10 + Q9 partial in both; Q5 right in both |
+
+Built: `delivery`, `price_extreme`, `holding` (L1, e8ed78d) and `docs`, `doc_page`, `doc_find` (L2, 7438b87), plus a
+question-shape routing guide in the reality-data instructions and CLI twins under `reality_engine/toolbelt/lookup_*`.
+Each tool went build → independent review → fix → (L2) re-review; 19 defects fixed before merge, 75/75 tests unsandboxed.
+Pane counts fixed (12e86fb): tiles now ok / failed / cancelled and sum to the Finished list.
+Q6 stays NOT IN DATA (BSE announcements end 2026-10-19). Q9 misses the deck's 100,000 sq ft R&D facility in both runs:
+"latest" spans AR, deck and concall, and no tool merges them yet.
