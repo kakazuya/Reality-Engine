@@ -24,6 +24,7 @@ import os
 import re
 import sqlite3
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -155,6 +156,10 @@ def download(newsid: str, attachment: str, root: Path, offline: bool) -> Path | 
                     os.replace(part, dest)
                     return dest
                 print(f"  truncated PDF {newsid}: {len(content)} bytes")
+        except urllib.error.HTTPError as exc:
+            print(f"  download failed {newsid} try {attempt + 1}: HTTP {exc.code}")
+            if exc.code in (404, 410):  # the attachment is gone; retrying cannot help
+                break
         except Exception as exc:  # noqa: BLE001 - one filing must not stop the run
             print(f"  download failed {newsid} try {attempt + 1}: {type(exc).__name__}: {exc}")
         if attempt + 1 < DOWNLOAD_ATTEMPTS:
