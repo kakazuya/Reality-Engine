@@ -1801,17 +1801,18 @@ class PluginTests(unittest.TestCase):
             "market_raw_exchange", "nse_api_raw", "bse_api_raw", "nsdl_fpi_raw",
             "fii_dii_moneycontrol", "load_market_raw", "security_master",
             "nse_pr_circuits", "nse_industry", "shareholding", "etf_nav",
+            "etf_premium",
             "index_tri", "board_meetings", "bse_announcements",
             "discover_bse_feed_docs", "bse_annual_report_dates", "commodity_series",
             "nse_sme_bhavcopy", "index_ohlc_breadth",
             "market_breadth_financially_free", "index_membership",
             "price_delivery_backfill", "insider_trades_normalized",
             "nse_pit_monthly_legacy", "results_xbrl_legacy",
-            "integrated_results_xbrl",
+            "integrated_results_xbrl", "results_notes_text",
             # 3.2 document corpus
             "pib_english", "pib_regional", "pib_legacy_ingest", "policy_register",
             "macro_documents", "ar_download", "ar_fact_extraction", "ar_chunking",
-            "deck_discovery", "deck_figure_extraction", "concall_extraction",
+            "deck_discovery", "deck_figure_extraction", "deck_page_text", "concall_extraction",
             "weekly_sebi_ingest", "telegram_ingest", "video_youtube_ingest",
             "news_loop", "inbox_ingest",
             # 3.3 derived / promotion
@@ -1824,7 +1825,7 @@ class PluginTests(unittest.TestCase):
             # worker orientation pack (Task 01)
             "worker_context",
         }
-        self.assertEqual(len(expected), 58)
+        self.assertEqual(len(expected), 61)
         self.assertEqual(set(registry["order"]), expected)
         self.assertEqual(registry["schema"], jobs.REGISTRY_SCHEMA)
         sql_checks = 0
