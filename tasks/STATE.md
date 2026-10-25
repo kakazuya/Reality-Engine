@@ -1,4 +1,6 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
+n> **2026-10-26:** read `tasks/optimizations/HANDOFF_2026-10-26.md` first (overnight workers, pre-flight, research import).
+
 
 - **RETRIEVAL/LEARNING OPTIMISATION (25-Oct, hometown laptop):** read `tasks/optimizations/HANDOFF_2026-10-25.md` first. G0–G5 + G3b/G3c universes + ETF NAV fix merged and pushed (`90b76e9`); etf_premium_daily built live; universes not yet built live. In flight: worker `20261025T174322Z-877e239e` (C1 chunker v2 fixes, real 200-question C2 set, GPU layout pilot on GTX 1050 Ti) — renew its lease every ≤30 min. Embedding stays Nemotron-3-Embed-8B (DeepInfra; batch −20%).
 
