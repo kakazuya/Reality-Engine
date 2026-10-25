@@ -1,6 +1,6 @@
 """Tax-rule table for the backtest harness (PIPELINE_TODO A1, 2026-10-19). Table `tax_rules` in equity_intelligence.db.
 
-Every row carries the enacted source (Gazette PDF kept in data/tax_sources/, URL, page) and a verbatim quote; the
+Every row carries the enacted source (Gazette PDF kept in RAW_ROOT/tax_sources/, URL, page) and a verbatim quote; the
 builder refuses to write a row whose quote is not found in its PDF's text (whitespace / quote marks normalised).
 Effective dates come from the Acts, never from the Budget speech: the speech (policy_events) gives announced_at only.
 
@@ -10,7 +10,7 @@ Rules (listed equity, resident individual; rates are fractions):
                                   gains before 23-Jul-2024 included (Finance (No. 2) Act 2024 s.31)
   ltcg_holding_months             listed equity is long-term when held more than 12 months
   stt_delivery_buy / _sell, stt_intraday_sell
-  cess_rate, surcharge_cap_cg     only years whose Finance Act text is in data/tax_sources (gaps listed in --check)
+  cess_rate, surcharge_cap_cg     only years whose Finance Act text is in RAW_ROOT/tax_sources (gaps listed in --check)
 Not modelled: surcharge slabs by income, F&O STT (long only), buy-back taxation (shareholder side; see policy_events).
 
     python -m reality_engine.scripts.build_tax_rules [--check]
@@ -21,10 +21,11 @@ import re
 import sqlite3
 from functools import lru_cache
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 DB = DATA / "equity_intelligence.db"
-SRC = DATA / "tax_sources"
+SRC = raw_dir("tax_sources")
 FA2024 = ("finance_no2_act_2024_act15_egazette_256436.pdf", "https://egazette.gov.in/WriteReadData/2024/256436.pdf",
           "Finance (No. 2) Act, 2024 (No. 15 of 2024), assent 16-Aug-2024")
 ITA2025 = ("income_tax_act_2025_act30_egazette_265620.pdf", "https://egazette.gov.in/WriteReadData/2025/265620.pdf",

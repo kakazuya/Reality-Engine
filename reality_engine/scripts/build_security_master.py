@@ -25,9 +25,10 @@ import sqlite3
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 ROOT = Path(__file__).resolve().parents[2]
-RAW = ROOT / "reality_engine/data/raw_market"
+RAW = raw_dir("raw_market")
 DB = ROOT / "reality_engine/data/equity_intelligence.db"
 EQ = re.compile(r"INE[0-9A-Z]{4}01[0-9A-Z]{3}")
 DDL = """

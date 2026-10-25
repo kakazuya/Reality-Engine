@@ -2,8 +2,8 @@
 
 Lists every file in both Drive archive folders through the read-only remote 'gdrive_ro' (sees browser uploads and both
 rclone clients' uploads) with Drive's MD5, then MD5-hashes each local candidate and matches it by file name + size + MD5
-(paths differ between upload batches, so the name is the key, never the folder). Candidates: data/pdfs except
-CONCALL_TRANSCRIPT (the readers still need those), data/decks, D:\\RealityEngine\\pdfs. Writes
+(paths differ between upload batches, so the name is the key, never the folder). Candidates: PDFS_DIR
+(D:\\RealityEngine\\pdfs) except CONCALL_TRANSCRIPT (the readers still need those), and the D decks folder. Writes
 data/logs/cleanup_verified.txt (one local path per line, safe to delete) and cleanup_unverified.txt (kept), and prints
 totals. Read-only: deletes nothing.
 
@@ -16,12 +16,13 @@ import subprocess
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from reality_engine.config import PDFS_DIR, raw_dir
 
 from reality_engine.scripts.drive_upload_check import DRIVE_FOLDERS, RCLONE
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 LOGS = DATA / "logs"
-AREAS = [DATA / "pdfs", DATA / "decks", Path(r"D:\RealityEngine\pdfs")]
+AREAS = list(dict.fromkeys([PDFS_DIR, raw_dir("decks")]))
 KEEP_TYPES = {"CONCALL_TRANSCRIPT"}
 
 

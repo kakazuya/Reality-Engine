@@ -25,6 +25,7 @@ import threading
 import time
 from pathlib import Path
 
+from reality_engine.config import resolve_stored_path
 from reality_engine.scripts import ingest_annual_reports as ar
 from reality_engine.scripts.concall_period import parse_period
 from reality_engine.scripts.concall_pilot import LISTS, PILOT, call_go, machine_check, parse_json
@@ -123,7 +124,7 @@ def wait_budget(out_path):
 
 def text_of(path):
     import pymupdf
-    with pymupdf.open(path) as d:
+    with pymupdf.open(resolve_stored_path(path)) as d:   # DB stores the old C root
         return "\n".join(p.get_text() for p in d)
 
 

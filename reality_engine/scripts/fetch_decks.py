@@ -1,6 +1,6 @@
 """
 Download historical investor-presentation PDFs (2021 onwards) from BSE and, for companies listed only on NSE,
-from NSE. Files go to ``reality_engine/data/decks/{bse,nse}/``; every file is recorded in the ``deck_sources``
+from NSE. Files go to ``RAW_ROOT/decks/{bse,nse}/``; every file is recorded in the ``deck_sources``
 table of ``reality_engine/data/deck_figures.db`` with the exchange dissemination time, so the deck extractor
 (``extract_deck_figures.py``) can read them point-in-time. The live DB is only read, never written.
 
@@ -34,6 +34,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 import duckdb
 import requests
@@ -45,8 +46,8 @@ FEED = ROOT / "analysis" / "bse_announcements.db"
 LIVE_DB = DATA / "equity_intelligence.db"
 OUT_DB = DATA / "deck_figures.db"
 SNAPSHOT = DATA / "snapshots" / "truth_2026-10-08.duckdb"
-DECKS = DATA / "decks"
-NSE_RAW = DATA / "raw_market" / "nse_announcements"
+DECKS = raw_dir("decks")
+NSE_RAW = raw_dir("raw_market") / "nse_announcements"
 LOG = DATA / "logs" / "fetch_decks.log"
 
 BSE_PDF = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/{name}"

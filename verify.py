@@ -1,5 +1,6 @@
 import zipfile
 from pathlib import Path
+from reality_engine import config as cfg
 output = Path('data_pack_split')
 zips = sorted(output.glob('*.zip'))
 total=0
@@ -25,11 +26,11 @@ for p in zips:
 print("\nSource vs zipped counts:")
 import pathlib
 sources = {
- "bhavcopy": len(list((Path('reality_engine/data/bhavcopy')).rglob('*'))),
+ "bhavcopy": len(list(cfg.BHAVCOPY_DIR.rglob('*'))),
 }
 print(sources)
 # detailed
-root=Path('reality_engine/data/pdfs')
+root=cfg.PDFS_DIR
 concall=len([x for x in root.rglob('*') if x.is_file() and x.parent.name=='CONCALL_TRANSCRIPT'])
 ppt=len([x for x in root.rglob('*') if x.is_file() and x.parent.name=='INVESTOR_PRESENTATION'])
 print(f"concall src {concall} ppt src {ppt}")

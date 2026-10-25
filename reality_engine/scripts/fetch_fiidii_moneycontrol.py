@@ -22,10 +22,11 @@ import csv
 import time
 from datetime import date, timedelta
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 from curl_cffi import requests as cffi_requests
 
-ROOT = Path(__file__).resolve().parents[1] / "data" / "raw_market" / "mc_fiidii"
+ROOT = raw_dir("raw_market") / "mc_fiidii"
 API = "https://api.moneycontrol.com/swiftapi/v1/fii_dii/cash?section=daily&startDate={a}&endDate={b}"
 # Field numbers of message Cash in FiiDiiPackage.proto
 CASH_FIELDS = {1: "date", 2: "fii_purchase", 3: "fii_sales", 4: "fii_net", 5: "dii_purchase",

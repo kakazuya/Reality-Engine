@@ -7,8 +7,9 @@ results at four times; for each, the latest result revenue vs the raw XBRL file,
 import sys, re, zipfile, io, csv, sqlite3, datetime as dt, random
 sys.stdout.reconfigure(encoding='utf-8')
 from pathlib import Path
+from reality_engine.config import raw_dir
 from reality_engine.query.state import state, _con, latest_snapshot
-RAW = Path('reality_engine/data/raw_market')
+RAW = raw_dir("raw_market")
 con = _con(latest_snapshot())
 rng = random.Random(11)
 isins = [r[0] for r in con.execute("""select distinct trading_isin from results_key where period_end >= '2025-06-30'

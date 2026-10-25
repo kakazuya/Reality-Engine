@@ -2,7 +2,7 @@
 Raw market-data fetcher (download only, no DB writes).
 
 Downloads daily exchange files and commodity series from 2019-01-01 into
-``reality_engine/data/raw_market/<source>/`` so they can be loaded into the DB
+``RAW_ROOT/raw_market/<source>/`` so they can be loaded into the DB
 later under the single-writer queue lock. Raw files are kept as the audit /
 replay copy (AGENTS.md rule 4).
 
@@ -35,10 +35,11 @@ import time
 import zipfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 import requests
 
-ROOT = Path(__file__).resolve().parents[1] / "data" / "raw_market"
+ROOT = raw_dir("raw_market")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 NSE_OLD_FORMAT_END = date(2021, 10, 31)   # DB already holds NSE full bhavcopy from 2021-10-27

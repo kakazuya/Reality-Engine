@@ -2,7 +2,7 @@
 Truth layer: build a dated, read-only research snapshot of clean daily prices.
 
 Reads the live SQLite DB (read-only) and the raw scrip lists / BSE corporate actions in
-``reality_engine/data/raw_market/``, and writes one DuckDB file:
+``RAW_ROOT/raw_market/``, and writes one DuckDB file:
 
     reality_engine/data/snapshots/truth_<YYYY-MM-DD>.duckdb
 
@@ -50,7 +50,7 @@ import pandas as pd
 
 from reality_engine import config as cfg
 
-RAW = cfg.DATA_DIR / "raw_market"
+RAW = cfg.raw_dir("raw_market")
 SNAP_DIR = cfg.DATA_DIR / "snapshots"
 NSE_EQUITY_SERIES = ("EQ", "BE", "BZ", "SM", "ST")
 EQUITY_ISIN_SQL = "regexp_matches(isin, '^INE[A-Z0-9]{4}[0-9]{2}[A-Z0-9]{2}[0-9]$')"

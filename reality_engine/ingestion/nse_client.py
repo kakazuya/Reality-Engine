@@ -154,7 +154,7 @@ class NSEClient:
     def fetch_bhavcopy(self, target_date: datetime) -> Optional[pd.DataFrame]:
         """
         Fetches the full deliverable bhavcopy (sec_bhavdata_full_DDMMYYYY.csv) for a given date.
-        Saves a local backup copy in DATA/bhavcopy.
+        Saves a local backup copy under BHAVCOPY_DIR (D drive raw root).
         """
         date_str = target_date.strftime("%d%m%Y")
         url = NSE_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str)
@@ -206,6 +206,7 @@ class NSEClient:
             # Write cache atomically: temp file then atomic rename.
             tmp_file = local_file.with_name(local_file.name + ".tmp")
             try:
+                local_file.parent.mkdir(parents=True, exist_ok=True)  # raw dirs are created lazily
                 with open(tmp_file, "w", encoding="utf-8") as f:
                     f.write(text)
                 tmp_file.replace(local_file)
@@ -302,6 +303,7 @@ class NSEClient:
                     logger.warning("Index Bhavcopy for %s returned HTTP %d", date_str, res.status_code)
                     return None
 
+                local_file.parent.mkdir(parents=True, exist_ok=True)
                 with open(local_file, "w", encoding="utf-8") as f:
                     f.write(res.text)
 
@@ -398,6 +400,7 @@ class NSEClient:
                         res = self.session.get(url, headers=NSE_HEADERS, timeout=8)
                         if res.status_code == 200 and len(res.text) > 1000:
                             # Save locally
+                            local_file.parent.mkdir(parents=True, exist_ok=True)
                             with open(local_file, "w", encoding="utf-8") as f:
                                 f.write(res.text)
                             found_days.append(current)

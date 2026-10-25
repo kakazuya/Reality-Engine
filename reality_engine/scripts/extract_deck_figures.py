@@ -58,6 +58,7 @@ from pathlib import Path
 
 import pymupdf
 import requests
+from reality_engine.config import resolve_stored_path
 from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
 
 DATA = Path(__file__).resolve().parents[1] / "data"
@@ -1040,6 +1041,7 @@ def load_docs(doc_types, symbols, limit, include_intimations=False):
     rows.sort(key=lambda r: str(r[6] or ""), reverse=True)
     docs, seen = [], set()
     for i, isin, sym, dt, path, sha, known, company in rows:
+        path = str(resolve_stored_path(path)) if path else path   # DB stores the old C root
         if not path or not Path(path).exists():
             continue
         sha = sha or hashlib.sha256(Path(path).read_bytes()).hexdigest()

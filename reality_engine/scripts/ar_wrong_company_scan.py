@@ -34,6 +34,7 @@ import re
 import sqlite3
 import sys
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 from reality_engine.scripts import ar_queue
 
@@ -264,8 +265,8 @@ def main():
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--out-dir", type=Path)
     a = ap.parse_args()
-    ar_queue.VOCAB_F = a.data / "ar_queue" / "en_vocab.txt"
-    out_dir = a.out_dir or a.data / "ar_queue"
+    ar_queue.VOCAB_F = raw_dir("ar_queue") / "en_vocab.txt"
+    out_dir = a.out_dir or raw_dir("ar_queue")
     out_dir.mkdir(parents=True, exist_ok=True)
     ids = [int(x) for x in a.doc_ids.split(",") if x.strip()]
     jobs, names, by_isin = load_docs(a.data, ids)

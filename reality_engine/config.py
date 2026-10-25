@@ -12,8 +12,63 @@ ENGINE_DIR = Path(__file__).resolve().parent
 
 DATA_DIR = Path(os.environ.get("REALITY_ENGINE_DATA_DIR", ENGINE_DIR / "data"))
 DB_PATH = Path(os.environ.get("REALITY_ENGINE_DB_PATH", DATA_DIR / "equity_intelligence.db"))
-BHAVCOPY_DIR = Path(os.environ.get("REALITY_ENGINE_BHAVCOPY_DIR", DATA_DIR / "bhavcopy"))
-PDFS_DIR = Path(os.environ.get("REALITY_ENGINE_PDFS_DIR", DATA_DIR / "pdfs"))
+
+# Raw fetched source files (PDFs, bhavcopies, API dumps) live on D (Shivam 2026-10-25):
+# C keeps code, logs and the processed databases. raw_dir() is the single entry point for
+# both the fetchers that write raw files and the readers that load them.
+RAW_ROOT = Path(os.environ.get("REALITY_RAW_ROOT", r"D:\RealityEngine\raw"))
+# The pre-existing D PDF pile is reused rather than duplicated under RAW_ROOT.
+PDFS_LEGACY_DIR = Path(os.environ.get("REALITY_PDFS_LEGACY_DIR", r"D:\RealityEngine\pdfs"))
+
+
+def raw_dir(source: str) -> Path:
+    """Return (creating it) the raw-data folder ``source`` under RAW_ROOT."""
+    d = RAW_ROOT / source
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+BHAVCOPY_DIR = Path(os.environ.get("REALITY_ENGINE_BHAVCOPY_DIR", RAW_ROOT / "bhavcopy"))
+PDFS_DIR = Path(os.environ.get(
+    "REALITY_ENGINE_PDFS_DIR",
+    PDFS_LEGACY_DIR if PDFS_LEGACY_DIR.is_dir() else RAW_ROOT / "pdfs",
+))
+# Raw subfolders that moved from the C data dir to the D raw root (2026-10-25). Databases
+# still store the old absolute C paths; resolve_stored_path() re-roots them on read.
+_STORED_RAW_FOLDERS = ("pdfs", "decks", "raw_market", "bhavcopy", "macro_pdfs",
+                       "ar_queue", "tax_sources", "index_constituents")
+
+
+def stored_raw_roots() -> dict:
+    """``folder -> current root`` for the raw folders that used to live under DATA_DIR."""
+    roots = {"pdfs": PDFS_DIR, "bhavcopy": BHAVCOPY_DIR, "macro_pdfs": MACRO_PDFS_DIR}
+    for name in _STORED_RAW_FOLDERS:
+        roots.setdefault(name, RAW_ROOT / name)
+    return roots
+
+
+def resolve_stored_path(path) -> Path:
+    """Map a DB-stored raw path onto the folder that now holds the file.
+
+    ``corporate_documents.local_file_path`` / ``deck_sources.local_path`` were written
+    when the raw files lived under ``.../reality_engine/data/<folder>/``. A path whose
+    file still exists is returned unchanged; otherwise the ``data/<folder>`` tail is
+    re-rooted at ``stored_raw_roots()`` (``PDFS_DIR`` / ``RAW_ROOT``). Anything else is
+    returned as-is. Read-only: never updates the database.
+    """
+    if not str(path or "").strip():
+        return Path(path or "")
+    p = Path(path)
+    if p.exists():
+        return p
+    parts = str(path).replace("\\", "/").split("/")
+    roots = stored_raw_roots()
+    for i in range(len(parts) - 1, 0, -1):
+        if parts[i - 1].lower() == "data" and parts[i].lower() in roots:
+            return roots[parts[i].lower()].joinpath(*parts[i + 1:])
+    return p
+
+
 REPORTS_DIR = Path(os.environ.get("REALITY_ENGINE_REPORTS_DIR", DATA_DIR / "reports"))
 INBOX_DIR = Path(os.environ.get("REALITY_ENGINE_INBOX_DIR", DATA_DIR / "inbox"))
 TELEGRAM_IMAGES_DIR = INBOX_DIR / "images"
@@ -42,7 +97,7 @@ LANCEDB_DIR = Path(os.environ.get("REALITY_ENGINE_LANCEDB_DIR", DATA_DIR / "lanc
 
 # Macro PDF ingestion (second-tier peer data below core company data):
 # Central Budget speeches, 8 state budgets, PIB circulars, RBI reports/surveys.
-MACRO_PDFS_DIR = Path(os.environ.get("REALITY_ENGINE_MACRO_PDFS_DIR", DATA_DIR / "macro_pdfs"))
+MACRO_PDFS_DIR = Path(os.environ.get("REALITY_ENGINE_MACRO_PDFS_DIR", RAW_ROOT / "macro_pdfs"))
 
 # Ingestion URLs & Endpoints
 FINANCIALLY_FREE_BASE_URL = "https://www.financiallyfree.in/tools/market-overview"
@@ -294,8 +349,9 @@ def macro_host_requires_browser(url: str) -> bool:
     return any(host == h or host.endswith("." + h) for h in MACRO_BROWSER_REQUIRED_HOSTS)
 
 
-# Ensure runtime directories exist
-for path in [DATA_DIR, BHAVCOPY_DIR, PDFS_DIR, REPORTS_DIR, INBOX_DIR, TELEGRAM_IMAGES_DIR, INBOX_LIKES_DIR, FIXTURES_DIR, LANCEDB_DIR, MACRO_PDFS_DIR]:
+# Ensure runtime directories exist. Raw folders (bhavcopy/pdfs/macro_pdfs) are NOT created
+# here: they live on D and are created lazily by raw_dir() so importing config stays inert.
+for path in [DATA_DIR, REPORTS_DIR, INBOX_DIR, TELEGRAM_IMAGES_DIR, INBOX_LIKES_DIR, FIXTURES_DIR, LANCEDB_DIR]:
     path.mkdir(parents=True, exist_ok=True)
 
 # Database Configuration

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 Reality Engine Data Packer — creates ≤5GB zip splits for GDrive.
-Categories:
-  1. price_volume_data — reality_engine/data/bhavcopy
-  2. concalls — reality_engine/data/pdfs/**/CONCALL_TRANSCRIPT
-  3. ppts — reality_engine/data/pdfs/**/INVESTOR_PRESENTATION
-  4. rbi_and_budgets — reality_engine/data/macro_pdfs
+Categories (all read through reality_engine.config, i.e. the D raw root):
+  1. price_volume_data — BHAVCOPY_DIR
+  2. concalls — PDFS_DIR/**/CONCALL_TRANSCRIPT
+  3. ppts — PDFS_DIR/**/INVESTOR_PRESENTATION
+  4. rbi_and_budgets — MACRO_PDFS_DIR
 
 Each zip ≤5GB by *uncompressed* accumulated size (so compressed will also be ≤5GB for PDFs).
 Uses ZIP_DEFLATED, allowZip64=True, single-writer.
@@ -18,6 +18,8 @@ import os
 import sys
 import time
 from datetime import datetime
+
+from reality_engine import config as cfg
 
 PROJECT_ROOT = pathlib.Path.cwd()
 OUTPUT_DIR = PROJECT_ROOT / "data_pack_split"
@@ -47,19 +49,19 @@ def log(msg):
         f.write(line + "\n")
 
 def collect_files_price_volume():
-    root = PROJECT_ROOT / "reality_engine" / "data" / "bhavcopy"
+    root = cfg.BHAVCOPY_DIR
     files = [p for p in root.rglob("*") if p.is_file() and p.name != ".env" and not p.name.startswith(".env.")]
     files.sort()
     return files, root
 
 def collect_files_macro():
-    root = PROJECT_ROOT / "reality_engine" / "data" / "macro_pdfs"
+    root = cfg.MACRO_PDFS_DIR
     files = [p for p in root.rglob("*") if p.is_file() and p.name != ".env" and not p.name.startswith(".env.")]
     files.sort()
     return files, root
 
 def collect_files_by_parent(parent_name):
-    root = PROJECT_ROOT / "reality_engine" / "data" / "pdfs"
+    root = cfg.PDFS_DIR
     # Walk and pick files where parent directory name == parent_name (e.g., CONCALL_TRANSCRIPT)
     files = []
     for p in root.rglob("*"):
@@ -107,8 +109,7 @@ def split_files_by_size(files, max_bytes):
 def create_zip_chunk(files_chunk, zip_path, base_for_arcname=None):
     """
     Create one zip file from files_chunk.
-    arcname: relative to PROJECT_ROOT to preserve reality_engine/data/... structure
-    base_for_arcname: if provided, make arcname relative to that base (not used now)
+    arcname: relative to the category root (``base_for_arcname``, default PROJECT_ROOT)
     """
     log(f"Creating {zip_path.name} with {len(files_chunk)} files, raw {sum(p.stat().st_size for p in files_chunk)/1024**3:.3f} GB")
     start = time.time()
@@ -121,9 +122,9 @@ def create_zip_chunk(files_chunk, zip_path, base_for_arcname=None):
                 # Exclude .env just in case
                 if fp.name == ".env" or ".env" in fp.parts:
                     continue
-                # Preserve path relative to project root
+                # Preserve the path relative to the category root (files live on D now)
                 try:
-                    arc = fp.relative_to(PROJECT_ROOT).as_posix()
+                    arc = fp.relative_to(base_for_arcname or PROJECT_ROOT).as_posix()
                 except ValueError:
                     arc = fp.name
                 # Also ensure we don't accidentally include .env in arc
@@ -150,7 +151,7 @@ def create_zip_chunk(files_chunk, zip_path, base_for_arcname=None):
         log(traceback.format_exc())
         raise
 
-def process_category(label, files, zip_name_template, split_needed_threshold=MAX_BYTES):
+def process_category(label, files, zip_name_template, split_needed_threshold=MAX_BYTES, base_for_arcname=None):
     """
     files: list of Path
     zip_name_template: e.g., "data_pack_price_volume_2026-08-31.zip" or with {part}
@@ -187,12 +188,12 @@ def process_category(label, files, zip_name_template, split_needed_threshold=MAX
             zpath = OUTPUT_DIR / zname
             # Also handle case where single chunk but we already split? Keep naming.
             # If chunk count ==1, we could keep original name without part, but spec says part1 etc for concalls. Keep part naming.
-            cnt, zbytes = create_zip_chunk(chunk, zpath)
+            cnt, zbytes = create_zip_chunk(chunk, zpath, base_for_arcname)
             results.append((zpath, cnt, zbytes, raw))
     else:
         # Single zip
         zpath = OUTPUT_DIR / zip_name_template
-        cnt, zbytes = create_zip_chunk(files, zpath)
+        cnt, zbytes = create_zip_chunk(files, zpath, base_for_arcname)
         raw = total_bytes
         results.append((zpath, cnt, zbytes, raw))
 
@@ -219,22 +220,22 @@ def main():
 
     # 1. price_volume_data
     files, root = collect_files_price_volume()
-    res = process_category("price_volume_data (reality_engine/data/bhavcopy)", files, f"data_pack_price_volume_{DATE_STR}.zip")
+    res = process_category("price_volume_data (BHAVCOPY_DIR)", files, f"data_pack_price_volume_{DATE_STR}.zip", base_for_arcname=root)
     all_results.extend(res)
 
     # 2. concalls
     files, root = collect_files_by_parent("CONCALL_TRANSCRIPT")
-    res = process_category("concalls (reality_engine/data/pdfs/**/CONCALL_TRANSCRIPT)", files, f"data_pack_concalls_{DATE_STR}_part{{part}}.zip")
+    res = process_category("concalls (PDFS_DIR/**/CONCALL_TRANSCRIPT)", files, f"data_pack_concalls_{DATE_STR}_part{{part}}.zip", base_for_arcname=root)
     all_results.extend(res)
 
     # 3. ppts
     files, root = collect_files_by_parent("INVESTOR_PRESENTATION")
-    res = process_category("ppts (reality_engine/data/pdfs/**/INVESTOR_PRESENTATION)", files, f"data_pack_ppts_{DATE_STR}.zip")
+    res = process_category("ppts (PDFS_DIR/**/INVESTOR_PRESENTATION)", files, f"data_pack_ppts_{DATE_STR}.zip", base_for_arcname=root)
     all_results.extend(res)
 
     # 4. rbi_and_budgets
     files, root = collect_files_macro()
-    res = process_category("rbi_and_budgets (reality_engine/data/macro_pdfs)", files, f"data_pack_macro_rbi_budgets_{DATE_STR}.zip")
+    res = process_category("rbi_and_budgets (MACRO_PDFS_DIR)", files, f"data_pack_macro_rbi_budgets_{DATE_STR}.zip", base_for_arcname=root)
     all_results.extend(res)
 
     # Summary

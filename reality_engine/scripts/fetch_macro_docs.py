@@ -3,7 +3,7 @@
 The August macro set was a sample: 2 years of speeches, wrong dates (state budgets carried the Union Budget's date or
 the fetch date 2026-08-14, the ingestor's fallback) and a mislabelled RBI file. This builds a manifest of documents with
 the date each was made public (point-in-time: a strategy may only see a document from that date), downloads them into
-data/macro_pdfs/<category>/<fy>/, and ingests each through PDFIngestor.ingest_macro_file with the date passed explicitly.
+RAW_ROOT/macro_pdfs/<category>/<fy>/, and ingests each through PDFIngestor.ingest_macro_file with the date passed explicitly.
 
 Sources (one module per source; each yields dicts: category, source_type, fy, date, url, title, creator):
   union   indiabudget.gov.in archive: speech, Budget at a Glance, Finance Bill memorandum, macro framework statement
@@ -20,11 +20,12 @@ import json
 import re
 import time
 from pathlib import Path
+from reality_engine.config import MACRO_PDFS_DIR
 
 from curl_cffi import requests
 
 DATA = Path(__file__).resolve().parents[1] / "data"
-OUT = DATA / "macro_pdfs"
+OUT = MACRO_PDFS_DIR
 MANIFEST = OUT / "manifest.json"
 IB = "https://www.indiabudget.gov.in"
 

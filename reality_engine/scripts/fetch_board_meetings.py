@@ -15,10 +15,11 @@ import re
 import sqlite3
 import time
 from pathlib import Path
+from reality_engine.config import raw_dir
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 DB = DATA / "equity_intelligence.db"
-OUT = DATA / "raw_market" / "nse_board_meetings"
+OUT = raw_dir("raw_market") / "nse_board_meetings"
 DDL = """CREATE TABLE IF NOT EXISTS board_meetings (symbol TEXT, isin TEXT, idx TEXT, meeting_date TEXT, purpose TEXT,
     description TEXT, intimated_at TEXT, industry TEXT, attachment TEXT, fetched_at TEXT,
     PRIMARY KEY (symbol, meeting_date, purpose, intimated_at));

@@ -12,7 +12,7 @@ stored as model '<reader>:rejected'. Built 2026-10-16 for the 111 'garbled' repo
   python -m reality_engine.scripts.ar_ocr_reread --run o01 --doc-ids 80107            # store (answers are cached)
   python -m reality_engine.scripts.ar_ocr_reread --run o02 --doc-ids garbled --workers 16
 
-OCR text and reader answers are cached under reality_engine/data/ar_queue/ocr/ (ocr text per report; answers per run),
+OCR text and reader answers are cached under RAW_ROOT/ar_queue/ocr/ (ocr text per report; answers per run),
 so a re-run only reads what is missing. Facts carry prompt_version '<reader pv>-ocr' and piece numbers from 20000
 (ingest_annual_reports.main resumes by piece number alone; low numbers would hide its own unread pieces).
 """

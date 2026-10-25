@@ -31,6 +31,7 @@ import os
 import sqlite3
 import sys
 from pathlib import Path
+from reality_engine.config import BHAVCOPY_DIR, PDFS_DIR
 from typing import Any, Dict, List, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -363,7 +364,7 @@ def audit_documents(conn: sqlite3.Connection, universe_n: int) -> Dict[str, Any]
     out["visual_evidence_artifacts"] = _scalar(conn, "SELECT COUNT(*) FROM visual_evidence_artifacts") or 0
 
     # Does an on-disk PDF exist for each claimed local path?
-    pdf_dir = DATA_DIR / "pdfs"
+    pdf_dir = PDFS_DIR
     out["pdf_dir_files"] = len(list(pdf_dir.glob("**/*.pdf"))) if pdf_dir.exists() else 0
 
     chunks = out["document_chunks"] or 0
@@ -435,7 +436,7 @@ def audit_causal(conn: sqlite3.Connection) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 def audit_cache() -> Dict[str, Any]:
     out: Dict[str, Any] = {"section": "ON-DISK CACHE"}
-    bhav = DATA_DIR / "bhavcopy"
+    bhav = BHAVCOPY_DIR
     files = sorted(bhav.glob("*.csv")) if bhav.exists() else []
     out["bhavcopy_files"] = len(files)
     if files:
