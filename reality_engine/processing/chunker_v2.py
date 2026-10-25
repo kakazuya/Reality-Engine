@@ -30,6 +30,12 @@ from typing import Iterable, Sequence
 
 MAX_CHARS = 6000
 MIN_CHARS = 300
+# One Q&A pair must fit a single retrieval slot: a management answer can run for
+# many minutes, and a 12k-char "chunk" is invisible to a 512-token embedder and
+# to any caller that budgets characters.  Turn boundaries are the cuts; only an
+# answer that is itself longer is split at sentence boundaries, with the
+# question repeated in the header of every continuation.
+QA_MAX_CHARS = 2200
 
 DOC_LABELS = {
     "concall": "Concall transcript",
@@ -469,7 +475,74 @@ def _hoist_questions(text: str, units: list[_Unit]) -> list[_Unit]:
     return units
 
 
-def chunk_concall(text: str, meta: dict | None = None) -> list[Chunk]:
+def _split_span(text: str, start: int, end: int, limit: int) -> list[tuple[int, int]]:
+    """Cut ``[start, end)`` into pieces of at most ~``limit`` chars."""
+    pieces: list[tuple[int, int]] = []
+    pos = start
+    while end - pos > limit:
+        cut = _best_cut(text, pos, pos + limit, ())
+        cut = min(max(cut, pos + 1), end)
+        pieces.append((pos, cut))
+        pos = cut
+    pieces.append((pos, end))
+    return pieces
+
+
+def _cap_qa(text: str, units: list[_Unit], max_chars: int) -> list[_Unit]:
+    """Split an oversize Q&A unit at speaker turns, then at sentences.
+
+    Every continuation repeats the question in its section header, so a piece
+    that starts mid-answer is still retrievable from the question's wording.
+    Unique groups keep ``_merge_small`` from stitching the pieces back together.
+    """
+    out: list[_Unit] = []
+    for unit in units:
+        if unit.kind != "qa_pair" or unit.end - unit.start <= max_chars:
+            out.append(unit)
+            continue
+        turns = speaker_turns(text[unit.start:unit.end])
+        segments = [(unit.start + start, unit.start + end) for _, start, end in turns]
+        if not segments:
+            segments = [(unit.start, unit.end)]
+        question = text[segments[0][0]:segments[0][1]].strip()
+        if len(segments) == 1:
+            question = question[:160]
+        question = re.sub(r"^[^:]{1,80}:\s*", "", question)
+
+        pieces: list[tuple[int, int]] = []
+        current: tuple[int, int] | None = None
+        for start, end in segments:
+            if end - start > max_chars:
+                if current:
+                    pieces.append(current)
+                    current = None
+                pieces.extend(_split_span(text, start, end, max_chars))
+                continue
+            if current is None:
+                current = (start, end)
+            elif end - current[0] <= max_chars:
+                current = (current[0], end)
+            else:
+                pieces.append(current)
+                current = (start, end)
+        if current:
+            pieces.append(current)
+
+        for index, (start, end) in enumerate(pieces):
+            speaker = next((name for name, s, e in turns
+                            if s <= start - unit.start < e), unit.speaker)
+            if index == 0:
+                out.append(replace(unit, start=start, end=end, speaker=speaker,
+                                   group=f"{unit.group or 'Q&A'}#0"))
+            else:
+                out.append(replace(unit, start=start, end=end, speaker=speaker,
+                                   section=f"Q&A (cont.) · Q: {normalise(question)[:140]}",
+                                   group=f"{unit.group or 'Q&A'}#{index}"))
+    return out
+
+
+def chunk_concall(text: str, meta: dict | None = None,
+                  qa_max_chars: int | None = QA_MAX_CHARS) -> list[Chunk]:
     meta = dict(meta or {})
     meta.setdefault("doc_type", "concall")
     turns = speaker_turns(text)
@@ -509,7 +582,10 @@ def chunk_concall(text: str, meta: dict | None = None) -> list[Chunk]:
         else:
             units.append(_Unit(start, end, "turn", "Discussion", name))
             i += 1
-    return _finalise(text, _hoist_questions(text, units), meta)
+    units = _hoist_questions(text, units)
+    if qa_max_chars:
+        units = _cap_qa(text, units, qa_max_chars)
+    return _finalise(text, units, meta)
 
 
 # ---------------------------------------------------------------------------
@@ -781,7 +857,7 @@ def chunk_document(meta: dict, pages: Sequence[str] | None = None,
     pages = list(pages or [])
     text = join_pages(pages)
     if doc_type == "concall":
-        return chunk_concall(text, meta)
+        return chunk_concall(text, meta, qa_max_chars=meta.get("qa_max_chars", QA_MAX_CHARS))
     if doc_type == "deck":
         return chunk_deck(pages, meta)
     if doc_type == "circular":
