@@ -62,6 +62,15 @@ companies cannot pick their exposure to them: sudden tariffs, wars, unscheduled 
     | bge-small | 51.0% |
 
   - The AR Qwen index is only 4.5% done, so nothing is lost.
+  - The 2026-10-24 annual-report test (48 questions, all on DeepInfra) is in
+    `reality_engine/data/embed_test_ar/results.json` and `rerank_results.json`:
+    - Nemotron-3.5-Embed-8B ties Nemotron-3-Embed-8B at $0.035/M: hit@5 95.8%, MRR 0.773 vs 0.775. 3.5 gives no
+      gain, so the 340k index stays on 3.
+    - The 1B models are both 87.5% at $0.015/M. The 1B NVFP4 is 85.4% at $0.01/M.
+    - Qwen3-8B 83.3%; bge-m3 83.3%.
+    - Re-ranking the 1B NVFP4's top 20 with Nemotron-3.5-Rerank-8B lifts hit@1 from 56% to 81% and MRR from
+      0.70 to 0.88, for about $0.0007 per search. Cheap base + reranker is the main alternative to the 8B for the
+      annual-report backfill.
   - C2 re-runs this test on the new chunks and on all doc types, not only concalls. The finalists are Nemotron-8B,
     Gemini-001 and anything new from C0.
 - **Re-chunk the past corpus, not only new filings.** The old chunks were cut by length. Re-chunking costs $0
