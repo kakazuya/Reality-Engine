@@ -292,6 +292,59 @@ def sql(query: str, db: str = "truth", limit: int = 200,
     return _safe(lambda: core.sql(query, db=db, limit=limit, timeout_seconds=timeout_seconds))
 
 
+# --- lookups: docs ---
+import lookups_docs as _lookups_docs  # noqa: E402  (co-located module, same import style)
+
+
+@server.tool(
+    name="docs",
+    description=(
+        "List one company's documents across every store, newest first: decks, concall "
+        "transcripts, annual reports and announcements. Each entry carries the filing date, "
+        "title, page count, the store keys (sha256 / doc_id / NEWSID) and has_text / "
+        "has_facts per store. Filters: doc_type (deck|transcript|ar|announcement), "
+        "date_from, date_to. Answers 'what is the latest X'."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
+)
+def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
+         date_to: str | None = None, limit: int = 20) -> dict[str, Any]:
+    return _safe(lambda: _lookups_docs.docs(symbol, doc_type=doc_type, date_from=date_from,
+                                            date_to=date_to, limit=limit))
+
+
+@server.tool(
+    name="doc_page",
+    description=(
+        "Pick the document of the requested type nearest a date (±3 days, says which and why) "
+        "and return one page's full text plus the facts extracted on that page and the page "
+        "count ('page 21 of 79'). Text comes from the stored chunks, the local PDF (PyMuPDF) "
+        "or a Drive fetch by sha256 (fetched=true when downloaded); for decks whose PDF is "
+        "gone it falls back to the stored page extraction."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
+)
+def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: _lookups_docs.doc_page(symbol, date, page, doc_type=doc_type))
+
+
+@server.tool(
+    name="doc_find",
+    description=(
+        "Lexical search (LIKE over bounded per-document rows, plus deck PDF text) inside one "
+        "company's documents, optionally restricted to one doc_type and one filing date "
+        "(±3 days). Returns passages with doc type, date, page (when the page is in the text) "
+        "and the exact quote. This is the 'what did they say about X in the Y transcript' tool."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
+)
+def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | None = None,
+             top_k: int = 8) -> dict[str, Any]:
+    return _safe(lambda: _lookups_docs.doc_find(symbol, terms, doc_type=doc_type, date=date,
+                                                top_k=top_k))
+# --- end lookups: docs ---
+
+
 def _warm_data() -> None:
     # 2026-10-24: warming before server.run delayed the initialize reply past the client's version probe (6.5 s
     # cold start); warm in the background so the handshake is answered at once. Tools still lazy-open on first use.
