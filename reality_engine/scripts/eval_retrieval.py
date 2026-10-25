@@ -1,11 +1,15 @@
 """Retrieval quality harness (C2): score a chunking x retriever on recall@k / MRR.
 
-The labelled set is ``tasks/optimizations/learn/quality_set_v3.jsonl`` (40 real
-investor-deck rows plus the 160 v2 rows).  Gold is a character span in the
-document's *normalised* text (whitespace collapsed), never a chunk id, so the
-old chunking, chunker-v2, v2+Q&A-cap and v2+GPU-layout chunks are scored on the
-same passages: a hit is any retrieved chunk whose span overlaps the gold span
-inside the same document.
+The labelled set is a JSONL of hand-written questions (``--set``; default
+``tasks/optimizations/learn/quality_set_v3.jsonl``).  Gold is a character span
+in the document's *normalised* text (whitespace collapsed), never a chunk id, so
+the old chunking, chunker-v2, v2+Q&A-cap, v2+GPU-layout and LLM-fact units are
+scored on the same passages: a hit is any retrieved chunk whose span overlaps
+the gold span inside the same document.
+
+``coverage`` reports how many gold spans the arm covers at all, which is the
+ceiling no ranking can beat — the LLM-facts arm only holds what the readers
+extracted, so its coverage is reported next to its recall.
 
 Besides R@k / MRR, every run reports a character-budget recall (B@5000 and
 B@10000): chunks are taken in rank order and pay their full character cost, so
@@ -13,9 +17,9 @@ a retriever that returns one huge chunk gets no free overlap advantage over one
 that returns several small ones.
 
 Corpus scope: the chunkings are read from one pilot database (``--db``) that
-holds the old chunks and the v2 variants of the same documents.  Retrievers
-therefore search the same document set, which is what makes "old vs v2" a
-like-for-like comparison.
+holds every arm over the same documents.  Retrievers therefore search the same
+document set, which is what makes "old vs v2 vs facts" a like-for-like
+comparison.
 
 Usage::
 
@@ -23,6 +27,9 @@ Usage::
     python -m reality_engine.scripts.eval_retrieval --chunks v2  --retriever fts
     python -m reality_engine.scripts.eval_retrieval --chunks v2cap --retriever fts
     python -m reality_engine.scripts.eval_retrieval --chunks v2layout --retriever fts
+    python -m reality_engine.scripts.eval_retrieval --chunks facts --retriever fts \\
+        --db .tmp/c2w/c2w.db --set .tmp/c2w/quality_set_wide.jsonl \\
+        --group-by sector,mcap_bucket,qtype
     python -m reality_engine.scripts.eval_retrieval --chunks old --retriever seed_dense
     python -m reality_engine.scripts.eval_retrieval --chunks old --retriever local:<index-dir>
 
@@ -61,6 +68,8 @@ TABLES = {
     "v2": ("chunks_v2", "chunks_v2_fts"),
     "v2cap": ("chunks_v2_cap", "chunks_v2_cap_fts"),
     "v2layout": ("chunks_v2_layout", "chunks_v2_layout_fts"),
+    "facts": ("chunks_facts", "chunks_facts_fts"),
+    "facts_exact": ("chunks_facts_exact", "chunks_facts_exact_fts"),
 }
 
 
@@ -304,6 +313,72 @@ def _rate(ranks: list[int | None], k: int) -> float:
     return round(sum(1 for r in ranks if r and r <= k) / len(ranks), 4)
 
 
+def span_coverage(store: Store, rows: list[dict]) -> dict:
+    """How many gold spans have *any* unit of this arm overlapping them.
+
+    This is the ceiling a retriever cannot beat: an arm that never covers a
+    gold passage scores zero on it however good the ranking is.  It matters
+    most for the LLM-facts arm, which only holds what the readers extracted.
+    """
+    by_doc: dict[int, list[tuple[int, int]]] = {}
+    for chunk in store.by_chunk.values():
+        start, end = int(chunk["norm_start"] or 0), int(chunk["norm_end"] or 0)
+        if start < 0:
+            continue
+        by_doc.setdefault(int(chunk["doc_id"]), []).append((start, end))
+    covered = 0
+    doc_covered = 0
+    per_type: dict[str, list[int]] = {}
+    for row in rows:
+        gold_start, gold_end = int(row["span_start"]), int(row["span_end"])
+        bucket = per_type.setdefault((row.get("doc_type") or "?"),
+                                     [0, 0])
+        bucket[1] += 1
+        units = by_doc.get(int(row["doc_id"]), ())
+        if units:
+            doc_covered += 1
+        if any(s < gold_end and gold_start < e for s, e in units):
+            covered += 1
+            bucket[0] += 1
+    return {"rows": len(rows), "covered": covered,
+            "coverage": round(covered / len(rows), 4) if rows else 0.0,
+            "docs_covered": doc_covered,
+            "doc_coverage": round(doc_covered / len(rows), 4) if rows else 0.0,
+            "by_type": {k: {"rows": v[1], "covered": v[0],
+                            "coverage": round(v[0] / v[1], 4) if v[1] else 0.0}
+                        for k, v in sorted(per_type.items())}}
+
+
+def group_scores(rows: list[dict], fields: list[str],
+                 rank_of: dict[str, int | None],
+                 budget_of: dict[int, dict[str, int | None]]) -> dict:
+    """Score every value of every requested label field (sector, qtype, ...)."""
+    out: dict[str, dict] = {}
+    for field in fields:
+        buckets: dict[str, list[dict]] = {}
+        for row in rows:
+            value = row.get(field)
+            if value in (None, ""):
+                continue
+            buckets.setdefault(str(value), []).append(row)
+        out[field] = {value: score(
+            subset, [rank_of[r["qid"]] for r in subset],
+            {b: [budget_of[b][r["qid"]] for r in subset] for b in BUDGETS})
+            for value, subset in sorted(buckets.items())}
+    return out
+
+
+def is_cross_document(row: dict) -> bool:
+    """A question that names the company and the fact, never the document.
+
+    Round-2/3 sets carry the flag in ``why``; the wide set carries a boolean
+    field, so both are read.
+    """
+    if row.get("cross_document"):
+        return True
+    return str(row.get("why", "")).startswith("cross-document")
+
+
 def verify_spans(conn: sqlite3.Connection, rows: list[dict]) -> tuple[int, list[str]]:
     """Check every gold span really holds its ``answer_text``."""
     cache: dict[int, str] = {}
@@ -339,6 +414,9 @@ def main() -> None:
                     help="score only questions whose gold document is in this corpus")
     ap.add_argument("--project-full", action="store_true",
                     help="project pilot tokens to the full corpus (C0 cost input)")
+    ap.add_argument("--group-by", default="",
+                    help="comma-separated quality-set fields to score separately "
+                         "(e.g. sector,mcap_bucket,qtype)")
     args = ap.parse_args()
 
     rows = load_quality_set(Path(args.set_path))
@@ -383,9 +461,8 @@ def main() -> None:
         raise SystemExit(f"unknown --retriever {args.retriever!r}")
 
     good, bad = verify_spans(conn, rows)
-    cross_rows = [row for row in rows if str(row.get("why", "")).startswith("cross-document")]
-    single_rows = [row for row in rows
-                   if not str(row.get("why", "")).startswith("cross-document")]
+    cross_rows = [row for row in rows if is_cross_document(row)]
+    single_rows = [row for row in rows if not is_cross_document(row)]
     rank_of: dict[str, int | None] = {}
     budget_of: dict[int, dict[str, int | None]] = {b: {} for b in BUDGETS}
     details = []
@@ -426,6 +503,11 @@ def main() -> None:
         "per_type": {k: score(v, _ranks(v), _budget_ranks(v))
                      for k, v in sorted(by_type.items())},
         "hard_negatives": score(hard_rows, _ranks(hard_rows), _budget_ranks(hard_rows)),
+        "coverage": span_coverage(store, rows),
+        "by_group": group_scores(
+            rows,
+            [f for f in (f.strip() for f in args.group_by.split(",")) if f],
+            rank_of, budget_of),
         "corpus": {"chunks": len(store.by_chunk), "tokens": round(store.tokens),
                    "header_tokens": round(store.header_tokens),
                    "total_tokens": round(store.tokens + store.header_tokens),
