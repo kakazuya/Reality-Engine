@@ -1075,6 +1075,24 @@ jobs:
     enabled: false
 
   # ------------------------------------------------------------ worker context
+  - name: dedupe_raw  # G5: identical raw files stored once (sha256 + hard links)
+    description: "Hard-link identical files under D:/RealityEngine/{raw,pdfs} to the oldest copy (sha256 groups); writes RAW_ROOT/_dedupe/<date>.json."
+    argv: ["python", "-m", "reality_engine.scripts.dedupe_raw", "--apply"]
+    cwd: "."
+    env: {}
+    writes: ["D:/RealityEngine/raw/", "D:/RealityEngine/pdfs/", "reality_engine/data/logs/dedupe_raw.json"]
+    resource_locks: []
+    cadence: weekly
+    success_check:
+      kind: file
+      path: reality_engine/data/logs/dedupe_raw.json
+      max_age_hours: 192
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
   - name: worker_context  # Task 01: generated orientation pack for new workers
     description: "Generate tasks/worker_context/CONTEXT.md (repo map, data map, query rules, test map, sandbox, decisions)."
     argv: ["python", "-m", "reality_engine.scripts.build_worker_context"]
