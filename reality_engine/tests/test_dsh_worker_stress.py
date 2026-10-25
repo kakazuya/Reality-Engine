@@ -824,7 +824,9 @@ class McpSurfaceTests(StressBase):
             self.assertEqual(both["error"]["code"], "brief_required")
             big = await self._call(session, "start_worker", {"brief": "x" * 262_145})
             self.assertEqual(big["error"]["code"], "brief_too_large")
-            started = await self._call(session, "start_worker", {"brief": "हिंदी ब्रीफ ✓ 价格? क्यों"})
+            started = await self._call(
+                session, "start_worker", {"brief": "हिंदी ब्रीफ ✓ 价格? क्यों", "context_pack": True}
+            )
             self.assertTrue(started["ok"], started)
             loop = asyncio.get_running_loop()
             deadline = loop.time() + 20
