@@ -32,11 +32,11 @@ Signals, strongest first:
   industry   NSE industry classification (``company_industry``) - unweighted.
   curated    seed in ``plugins/reality-data/server/universes.yaml`` - unweighted.
 
-Deck evidence beats AR evidence on any date: the AR weight applies only where the deck
-does not.  A deck weight is valid from the deck's filing date (the BSE/NSE filed date,
-never the crawl date) until the next deck, and expires four quarters after its own
-filing date, so a company that stops publishing a deck mix stops being weighted from
-it after a year.
+Deck evidence beats AR evidence within the same fiscal quarter; across quarters the most
+recent disclosure wins, whatever its source (G3c-6).  A deck weight is valid from the
+deck's filing date (the BSE/NSE filed date, never the crawl date) until the next deck,
+and expires four quarters after its own filing date, so a company that stops publishing
+a deck mix stops being weighted from it after a year.
 
 A theme may require an NSE industry family before a revenue row counts as a weight
 (``segment_industry_keywords``), so a lubricant blender is not an OMC.
@@ -49,13 +49,22 @@ quote and never in ``universe_membership``.
 The latest fiscal year's AR weight applies from that year's filing date until the next
 filed year, and expires two fiscal years after its own (``valid_to``), so a stale
 weight drops out of a point-in-time query instead of silently persisting.  A deck
-weight runs from its filing date to the next deck or four quarters, whichever is
-first, and beats the AR weight on every date it covers.  A row with no disclosure date
-is dropped, never dated from the fiscal-year end.  Where a weight expires the industry /
-curated row takes over, so every (theme, ISIN) chain hands over exactly: no gap and no
-overlap (a chain with no unweighted row carries its last weight forward to the next
-filed disclosure only).  The denominator is "revenue from operations", then "total
-revenue", then "total income" - never the largest figure on the page.
+weight runs from its filing date to the next deck or four quarters, whichever is first.
+On each date the most recent disclosure wins; only within the same fiscal quarter does
+a deck beat an AR row.  A row with no disclosure date is dropped, never dated from the
+fiscal-year end.  Where a weight expires the industry / curated row takes over, so every
+(theme, ISIN) chain hands over exactly: no gap and no overlap (a chain with no unweighted
+row carries its last weight forward to the next filed disclosure only).  The denominator
+is "revenue from operations", then "total revenue", then "total income" - never the
+largest figure on the page.
+
+Two deck guards keep the numerator and denominator honest.  A slide with several
+same-period ``Revenue`` rows is a per-business table: only a stated ``Total ...`` row may
+be the denominator, never a sibling business's revenue (G3c-1).  Every absolute deck
+denominator is cross-checked against the company's reported revenue for the same period
+from ``results_xbrl.db`` / the quarterly financials, within ±15%, or there is no weight
+(G3c-2).  A company-name / standalone / consolidated revenue row is a denominator, never
+a theme numerator (G3c-5).
 
 ``pivot`` is true when the theme segment is the largest of one reconciling segment table
 (>=3 distinct siblings whose sum matches the stated total within 1%).  For a deck it
@@ -149,6 +158,26 @@ MIX_PATTERNS = ("revenue mix", "product mix", "business mix", "sales mix", "reve
                 "revenue share", "% of total", "of turnover", "of revenue", "of total revenue",
                 "of total turnover", "% to total turnover", "% to total revenue",
                 "principal business activity")
+#: Geography words: a revenue share that names one is a geographic mix, not a segment share.
+GEO_WORDS = ("india", "indian", "domestic", "export", "exports", "exported", "overseas",
+             "international", "region", "regional", "geography", "geographic", "country",
+             "countries", "global", "usa", "us", "america", "north america", "europe",
+             "asia", "africa", "middle east", "china", "japan", "germany", "uk", "uae",
+             "saudi", "latin america", "apac", "emea")
+#: A "product mix" / "sales mix" is a mix inside a product line; only a phrase that
+#: explicitly says total revenue/income/turnover makes it a company share (G3c-4).
+WEAK_MIX = ("product mix", "sales mix")
+TOTAL_MIX = ("total revenue", "total income", "total turnover", "of total", "revenue mix",
+             "business mix", "revenue contribution")
+#: Row words that do not distinguish a company total from a segment row.
+ROW_WORDS = frozenset(("revenue", "revenues", "total", "income", "turnover", "sales",
+                       "amount", "standalone", "consolidated", "group"))
+#: A deck may report in dollars ("EDELWEISS: 68 $ Mn"); the cross-check needs an INR
+#: figure.  INR/USD is a calibration knob, not a market quote; ±15% absorbs the drift.
+USD_INR = 85.0
+#: The reported-revenue cross-check tolerance (G3c-2).
+REVENUE_TOLERANCE = 0.15
+
 #: Segment-table rows that are not a business segment: totals, eliminations and
 #: reconciling items must never join the sibling set.
 NON_SEGMENT_LABELS = ("total", "less", "inter segment", "intersegment", "inter-segment",
@@ -299,6 +328,15 @@ def _pct_weight(item: Any, category: Any, unit: Any, value: Any) -> float:
     low = _norm(f"{item} {category}")
     if any(bad in low for bad in BLOCKED):
         return 0.0
+    # G3c-3: a geography is a mix of where revenue comes from, not a segment share.
+    row_low = _norm(item)
+    words = set(row_low.split())
+    if any((word in words) if " " not in word else (word in row_low) for word in GEO_WORDS):
+        return 0.0
+    # G3c-4: a product/sales mix is inside a product line unless it says so at company level.
+    if any(word in row_low for word in WEAK_MIX) \
+            and not any(phrase in row_low for phrase in TOTAL_MIX):
+        return 0.0
     # The row itself must say it is a revenue mix; the category alone is not enough,
     # because the extractor files market and end-use statistics under "revenue_mix" too.
     mix = _is_mix_row(item)
@@ -357,29 +395,51 @@ def _fts_query(keywords: list[str]) -> str:
 # ---------------------------------------------------------------------------
 # Segment evidence: a theme segment's revenue over the company's total revenue
 # ---------------------------------------------------------------------------
-def _totals(rows: list[tuple]) -> tuple[dict[tuple, tuple[int, float]], dict[tuple, dict[int, set[float]]]]:
+def _totals(rows: list[tuple]) -> tuple[dict[tuple, tuple[int, float]],
+                                        dict[tuple, dict[int, set[float]]],
+                                        set[tuple], dict[tuple, tuple[int, float]]]:
     """Stated total revenue per (doc, period, basis, unit[, piece]) and per unit scale.
 
     A value carries its base's rank (revenue from operations > total revenue > total
     income), so a page stating two bases keeps the preferred one instead of the larger.
+    ``ambiguous`` holds the keys where several same-period total rows disagree and none
+    is explicitly a total: a per-business slide (EDELWEISS) must not divide by a sibling.
+    ``explicit`` keeps the best row named "Total ..." as the safe denominator.
     """
     exact: dict[tuple, tuple[int, float]] = {}
     loose: dict[tuple, dict[int, set[float]]] = {}
+    candidates: dict[tuple, dict[int, set[float]]] = {}
+    explicit: dict[tuple, tuple[int, float]] = {}
     for doc, piece, period, basis, unit, item, value in rows:
         base, suffix = _split_item(item)
         if base not in TOTAL_ITEMS or not _is_unit_suffix(suffix) or not value or value <= 0:
             continue
         rank = TOTAL_RANK[base]
-        key = (doc, _norm(period), _norm(basis), _norm(unit))
-        current = exact.get(key + (piece,))
+        key = (doc, _norm(period), _norm(basis), _norm(unit), piece)
+        current = exact.get(key)
         if current is None or (rank, -float(value)) < (current[0], -current[1]):
-            exact[key + (piece,)] = (rank, float(value))
-        loose.setdefault(key[:3] + (_unit_scale(unit),), {}).setdefault(rank, set()).add(float(value))
-    return exact, loose
+            exact[key] = (rank, float(value))
+        candidates.setdefault(key, {}).setdefault(rank, set()).add(float(value))
+        if base.startswith("total ") or base.startswith("gross total "):
+            chosen = explicit.get(key)
+            if chosen is None or (rank, -float(value)) < (chosen[0], -chosen[1]):
+                explicit[key] = (rank, float(value))
+        loose.setdefault((doc, _norm(period), _norm(basis), _unit_scale(unit)), {}) \
+             .setdefault(rank, set()).add(float(value))
+    ambiguous = {key for key, ranks in candidates.items() if len(ranks[min(ranks)]) > 1}
+    return exact, loose, ambiguous, explicit
 
 
-def _denominator(exact, loose, doc, piece, period, basis, unit) -> float:
+def _denominator(exact, loose, doc, piece, period, basis, unit, *,
+                 strict: bool = False, ambiguous: set[tuple] | None = None,
+                 explicit: dict[tuple, tuple[int, float]] | None = None) -> float:
     key = (doc, _norm(period), _norm(basis), _norm(unit))
+    if strict and ambiguous and key + (piece,) in ambiguous:
+        # G3c-1: several same-period revenue rows with different values are businesses,
+        # not the company total.  Only a stated "Total ..." row may be the denominator.
+        if explicit and key + (piece,) in explicit:
+            return explicit[key + (piece,)][1]
+        return 0.0
     if exact.get(key + (piece,)):
         return exact[key + (piece,)][1]
     # The manager's rule is same document + period + unit; the page is only a tie-break,
@@ -525,6 +585,247 @@ def _deck_tables(rows: list[tuple]) -> dict[tuple, list[tuple[str, float]]]:
     return out
 
 
+def _company_row(item: Any, name: str, theme_keywords: list[str]) -> bool:
+    """True when a money row is the company's own revenue, never a theme numerator.
+
+    G3c-5: "Dodla Dairy (Standalone) Revenue" is the company total.  The theme keyword
+    that matched must come from something other than the company's own name.  Non-revenue
+    rows (AUM, area booked, a share price) and segment rows are not company totals.
+    """
+    low = _norm(item)
+    tokens = set(low.split())
+    if not tokens or not REVENUE_WORD.search(low):
+        return False
+    if any(bad in low for bad in BLOCKED):
+        return False
+    name_tokens = {t for t in _norm(name).split() if t not in _LEGAL_WORDS}
+    if name_tokens and name_tokens <= tokens:
+        rest = tokens - name_tokens - ROW_WORDS - set(_UNIT_WORDS) - set(_LEGAL_WORDS)
+        return not _hit(" ".join(sorted(rest)), theme_keywords)
+    stripped = (tokens - {"standalone", "consolidated"} - ROW_WORDS
+                - set(_UNIT_WORDS) - set(_LEGAL_WORDS))
+    return not stripped and bool({"standalone", "consolidated"} & tokens)
+
+
+def _span_start(end: dt.date, months: int) -> dt.date:
+    """First day of the ``months``-month span that ends on ``end``."""
+    index = end.year * 12 + end.month - 1 - months + 1
+    year, month = divmod(index, 12)
+    return dt.date(year, month + 1, 1)
+
+
+def _month_end(year: int, month: int) -> dt.date:
+    return dt.date(year, month, calendar.monthrange(year, month)[1])
+
+
+def _fiscal_quarter(stamp: str) -> tuple[int, int]:
+    """Indian fiscal (year, quarter) of a filing date; Q1 = Apr-Jun, Q4 = Jan-Mar."""
+    try:
+        day = dt.date.fromisoformat(str(stamp or "")[:10])
+    except ValueError:
+        return (0, 0)
+    year = day.year if day.month >= 4 else day.year - 1
+    return (year, (day.month - 4) % 12 // 3)
+
+
+def _period_windows(period: Any, known: str = "") -> list[tuple[dt.date, dt.date]]:
+    """The (start, end) spans a deck's period label names, for the reported-revenue check.
+
+    Handles the shapes the decks actually use: ``Q1FY26``, ``9MFY21``, ``H1 FY25``,
+    ``FY24-25``, ``Mar 22``, ``Quarter ended 31.12.2020`` and ``YTD23``.  An unparseable
+    label has no window and therefore no weight (G3c-2).
+    """
+    raw = str(period or "").strip().lower()
+    if not raw:
+        return []
+    # "quarter / nine months / year ended DD.MM.YYYY"
+    match = re.search(r"(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})", raw)
+    if match:
+        day, month, year = (int(match.group(1)), int(match.group(2)),
+                            int(match.group(3)))
+        if year < 100:
+            year += 2000
+        try:
+            end = dt.date(year, month, day)
+        except ValueError:
+            return []
+        months = 9 if ("nine" in raw or "9m" in raw) else (12 if "year" in raw else 3)
+        return [(_span_start(end, months), end)]
+    # 9M / nine months, with or without a year
+    match = re.search(r"\b9\s*m\s*(?:fy\s*)?'?(\d{2,4})\b", raw) or \
+        re.search(r"\bnine[- ]months?\b", raw)
+    fy_end = 0
+    if match and match.groups():
+        fy_end = int(match.group(1))
+        fy_end = fy_end + 2000 if fy_end < 100 else fy_end
+    elif match and known:
+        day = _safe_date(known)
+        if day:
+            fy_end = (day.year + 1 if day.month >= 4 else day.year)
+    if fy_end:
+        end = _month_end(fy_end - 1, 12)
+        return [(_span_start(end, 9), end)]
+    # H1 / H2
+    match = re.search(r"\bh\s*([12])\s*(?:fy\s*)?'?(\d{2,4})\b", raw)
+    if match:
+        half, fy_end = int(match.group(1)), int(match.group(2))
+        fy_end = fy_end + 2000 if fy_end < 100 else fy_end
+        end = _month_end(fy_end - 1, 9) if half == 1 else _month_end(fy_end, 3)
+        return [(_span_start(end, 6), end)]
+    # Q1..Q4 (optionally "Q1 FY24-25")
+    match = re.search(r"\bq\s*([1-4])\s*(?:fy\s*)?'?(\d{2,4})"
+                      r"(?:\s*[-–/]\s*'?(\d{2,4}))?", raw)
+    if match:
+        quarter, fy_end = int(match.group(1)), int(match.group(2))
+        fy_end = fy_end + 2000 if fy_end < 100 else fy_end
+        if match.group(3):
+            following = int(match.group(3))
+            following = following + 2000 if following < 100 else following
+            if following == fy_end + 1:
+                fy_end = following
+        month = {1: 6, 2: 9, 3: 12, 4: 3}[quarter]
+        end = _month_end(fy_end if quarter == 4 else fy_end - 1, month)
+        return [(_span_start(end, 3), end)]
+    # FY24-25 / FY2025-26 / FY26 / FY'21
+    match = re.search(r"\bfy\s*'?(\d{4}|\d{2})\s*[-–/]\s*'?(\d{2,4})\b", raw)
+    fy_end = 0
+    if match:
+        first, second = int(match.group(1)), int(match.group(2))
+        first = first + 2000 if first < 100 else first
+        second = second + 2000 if second < 100 else second
+        if second == first + 1:
+            fy_end = second
+    if not fy_end:
+        match = re.search(r"\bfy\s*'?(\d{2,4})\b", raw)
+        if match:
+            fy_end = int(match.group(1))
+            fy_end = fy_end + 2000 if fy_end < 100 else fy_end
+    if fy_end:
+        end = _month_end(fy_end, 3)
+        return [(_span_start(end, 12), end)]
+    # YTD<year>: the last completed quarter before the filing date.
+    match = re.search(r"\bytd\s*'?(\d{2,4})\b", raw)
+    if match and known:
+        day = _safe_date(known)
+        if day:
+            if 7 <= day.month <= 9:
+                end, months = _month_end(day.year, 6), 3
+            elif 10 <= day.month <= 12:
+                end, months = _month_end(day.year, 9), 6
+            elif 1 <= day.month <= 3:
+                end, months = _month_end(day.year - 1, 12), 9
+            else:
+                end, months = _month_end(day.year, 3), 12
+            return [(_span_start(end, months), end)]
+    # "Mar 22" (annual) or "Jun-25" (a quarter end)
+    match = re.search(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*"
+                      r"[\s'/-]*(\d{2,4})\b", raw)
+    if match:
+        month = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep",
+                 "oct", "nov", "dec").index(match.group(1)) + 1
+        year = int(match.group(2))
+        year = year + 2000 if year < 100 else year
+        end = _month_end(year, month)
+        return [(_span_start(end, 12 if month == 3 else 3), end)]
+    return []
+
+
+def _safe_date(value: Any) -> dt.date | None:
+    try:
+        return dt.date.fromisoformat(str(value or "")[:10])
+    except ValueError:
+        return None
+
+
+def _inr_factor(unit: Any) -> float:
+    """Multiply a deck figure by this to get INR (₹ Cr / ₹ Mn / lakhs / $ Mn)."""
+    scale = {"crore": 1e7, "lakh": 1e5, "million": 1e6, "billion": 1e9,
+             "thousand": 1e3}.get(_unit_scale(unit), 1.0)
+    if "$" in str(unit or "") or {"usd", "us"} & set(_norm(unit).split()):
+        scale *= USD_INR
+    return scale
+
+
+def _revenue_refs(eq: sqlite3.Connection | None,
+                  xbrl: sqlite3.Connection | None) -> dict[str, list[tuple[dt.date, dt.date, float]]]:
+    """Reported revenue per company and period: XBRL first, then the quarterly financials."""
+    refs: dict[str, list[tuple[dt.date, dt.date, float]]] = {}
+
+    def add(isin: Any, start: Any, end: Any, value: Any) -> None:
+        isin = str(isin or "")
+        first, last = _safe_date(start), _safe_date(end)
+        if not isin or first is None or last is None or not value or value <= 0 or first > last:
+            return
+        refs.setdefault(isin, []).append((first, last, float(value)))
+
+    for isin, start, end, value in _query(
+            xbrl,
+            "SELECT COALESCE(i.isin, f.isin), fa.period_start, fa.period_end, fa.value"
+            " FROM facts fa JOIN filings f ON f.file = fa.file"
+            " LEFT JOIN filings_isin i ON i.file = fa.file"
+            " WHERE fa.concept = 'RevenueFromOperations' AND fa.value > 0"
+            " AND fa.period_start IS NOT NULL AND fa.period_end IS NOT NULL"):
+        add(isin, start, end, value)
+    for isin, fiscal_year, value in _query(
+            eq, "SELECT isin, fiscal_year, revenue_inr_cr FROM annual_financials"
+                " WHERE revenue_inr_cr > 0"):
+        for start, end in _period_windows(fiscal_year):
+            add(isin, start, end, float(value) * 1e7)
+    for isin, quarter_end, value in _query(
+            eq, "SELECT isin, quarter_end_date, revenue_inr_cr FROM quarterly_financials"
+                " WHERE revenue_inr_cr > 0"):
+        end = _safe_date(quarter_end)
+        if end is not None:
+            add(isin, _span_start(end, 3), end, float(value) * 1e7)
+    return refs
+
+
+def _revenue_check(denominator: float, unit: Any, period: Any, known: str,
+                   refs: list[tuple[dt.date, dt.date, float]]) -> tuple[int, str]:
+    """(1 pass / 0 no reference data / -1 fail, note) for an absolute deck denominator."""
+    if not refs:
+        return 0, ""
+    windows = _period_windows(period, known)
+    if not windows:
+        return -1, f"period {str(period)[:30]!r} has no reported-revenue match"
+    amount = denominator * _inr_factor(unit)
+    best: tuple[float, float, dt.date] | None = None
+    for start, end in windows:
+        for ref_start, ref_end, value in refs:
+            if abs((ref_end - end).days) > 10:
+                continue
+            if abs((ref_end - ref_start).days - (end - start).days) > 20:
+                continue
+            ratio = amount / value
+            if abs(ratio - 1.0) <= REVENUE_TOLERANCE:
+                return 1, (f"reported revenue {value / 1e7:,.1f} Cr ({ref_end})"
+                           f" within {abs(ratio - 1.0) * 100:.1f}%")
+            if best is None or abs(ratio - 1.0) < best[0]:
+                best = (abs(ratio - 1.0), value, ref_end)
+    if best is not None:
+        return -1, (f"reported revenue {best[1] / 1e7:,.1f} Cr ({best[2]})"
+                    f" differs {best[0] * 100:.1f}%")
+    return -1, f"no reported revenue for {str(period)[:30]!r}"
+
+
+def _ambiguous_pct(rows: list[tuple], sha: str, page: int, period: Any,
+                   metric: Any) -> bool:
+    """True when a repeated % caption's values sum to ~100: a sub-segment breakup.
+
+    GRASIM's chemicals page repeats one caption for chlor-alkali / chlorine derivatives
+    / specialty chemicals; 52+18+30 = 100 of the *business*, not of the company.
+    """
+    peers = [row for row in rows
+             if row[0] == sha and row[1] == page
+             and _norm(row[2]) == _norm(period)
+             and str(row[4] or "").strip() == "%"
+             and _norm(row[5]) == _norm(metric)]
+    if len(peers) < 2:
+        return False
+    total = sum(float(row[6] or 0) for row in peers)
+    return 95.0 <= total <= 105.0
+
+
 _LEGAL_WORDS = frozenset(("the", "of", "and", "limited", "ltd", "private", "pvt", "company",
                           "co", "corporation", "corp"))
 
@@ -587,7 +888,7 @@ def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any], symbols:
             "OR lower(item) LIKE '%sales%' OR lower(item) LIKE '%income%')",
             tuple(chunk),
         )
-    exact, loose = _totals(rows)
+    exact, loose, _ambiguous, _explicit = _totals(rows)
     tables = _tables(rows)
     stated = _stated(rows)
 
@@ -668,14 +969,18 @@ def _ar_evidence(ar: sqlite3.Connection | None, themes: dict[str, Any], symbols:
 
 
 def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
-                   symbols: dict[str, str]) -> list[dict[str, Any]]:
+                   symbols: dict[str, str], names: dict[str, str] | None = None,
+                   revenue: dict[str, list[tuple]] | None = None,
+                   rejects: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     """Deck revenue-mix weights: an explicit % row, or segment revenue over the deck total.
 
     Every deck row that matches a theme keyword is read (97,751 rows in 2026-10; the
     index on ``facts(sha256, page_no)`` makes the per-slide denominator fetch ~5s).
     A deck has no basis and no document-revenue table, so the denominator is the total
     the deck states for the same period and unit, or the slide's own segment sum when
-    that sum reconciles to a stated total (``deck_sum``).
+    that sum reconciles to a stated total (``deck_sum``).  Every absolute denominator is
+    cross-checked against the company's reported revenue for the same period; ±15% or
+    there is no weight (G3c-2).
     """
     keywords = _keywords(themes)
     if not keywords:
@@ -697,25 +1002,36 @@ def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
     )
     # The numerator is a theme segment row; its denominator may be any row on the same
     # slide (the total revenue line usually has no theme word in it), so read each
-    # slide that carries a segment row whole.
+    # slide that carries a segment row whole.  A candidate % slide is read whole too,
+    # so a repeated-caption sub-segment breakup can be recognised (G3c-4).
     pages = set()
     for sha, metric, _raw, _value, unit, page, _line, _period in hits:
-        if str(sha) not in sources or not _money_unit(unit):
+        if str(sha) not in sources:
+            continue
+        if str(unit or "").strip() == "%":
+            if _theme_of(metric, themes) and _pct_weight(metric, "", unit, _value) > 0:
+                pages.add((str(sha), int(page or 0)))
+            continue
+        if not _money_unit(unit):
             continue
         if _deck_labels(metric)[0] and _theme_of(metric, themes):
             pages.add((str(sha), int(page or 0)))
     page_rows: list[tuple] = []
     for sha, page in sorted(pages):
-        page_rows += [
-            (sha, page, period, "", unit, metric, value)
-            for period, unit, metric, value in _query(
+        isin = sources.get(sha, ("",))[0]
+        name = (names or {}).get(str(isin), "")
+        for period, unit, metric, value in _query(
                 dk, "SELECT period, unit, metric, value FROM facts"
-                    " WHERE sha256 = ? AND page_no = ?", (sha, page))
-        ]
-    exact, loose = _totals(page_rows)
+                    " WHERE sha256 = ? AND page_no = ?", (sha, page)):
+            # G3c-5: a company-name / standalone / consolidated revenue row is a stated
+            # total, so it must never become a theme numerator or a sibling.
+            if str(unit or "").strip() != "%" and _money_unit(unit) \
+                    and _company_row(metric, name, keywords):
+                metric = "Total Revenue"
+            page_rows.append((sha, page, period, "", unit, metric, value))
+    exact, loose, ambiguous, explicit = _totals(page_rows)
     tables = _deck_tables(page_rows)
     stated = _stated(page_rows)
-
     out = []
     for sha, metric, raw_number, value, unit, page, line, period in hits:
         isin, symbol, known_at = sources.get(str(sha), ("", "", ""))
@@ -729,11 +1045,25 @@ def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
         unit = str(unit or "")
         weight_source = "deck"
         reconciliation = ""
+        cross_check = ""
         if unit.strip() == "%":
             weight = _pct_weight(metric, "", unit, value)
+            if weight and _ambiguous_pct(page_rows, str(sha), int(page or 0), period, metric):
+                weight = 0.0
+                cross_check = "rejected: repeated-caption sub-segment mix (G3c-4)"
             pivot = False
         else:
             if not _money_unit(unit):
+                continue
+            if _company_row(metric, (names or {}).get(str(isin), ""), keywords):
+                # G3c-5: the company's own total is a denominator, never the numerator.
+                if rejects is not None:
+                    rejects.append({
+                        "theme": theme, "isin": str(isin), "symbol": str(symbol or ""),
+                        "stage": "company-total", "period": str(period or ""),
+                        "quote": f"{str(metric)[:150]}: {raw_number} {unit}".strip(),
+                        "reason": "company-name revenue row, not a segment",
+                    })
                 continue
             label, base = _deck_labels(metric)
             if not label or not _hit(label, themes[theme].get("keywords") or []) \
@@ -741,7 +1071,8 @@ def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
                 continue
             table_key = (sha, int(page or 0), _norm(period), "", _unit_scale(unit), base)
             siblings = _siblings(tables.get(table_key) or [])
-            total = _denominator(exact, loose, sha, int(page or 0), period, "", unit)
+            total = _denominator(exact, loose, sha, int(page or 0), period, "", unit,
+                                 strict=True, ambiguous=ambiguous, explicit=explicit)
             if total:
                 if float(value) <= 0 or float(value) > total:
                     continue
@@ -756,6 +1087,20 @@ def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
                     continue
                 weight_source = "deck_sum"
                 total = sum(siblings.values())
+            # G3c-2: an absolute deck denominator must be the company's reported revenue
+            # for the same period, within ±15%; otherwise there is no weight.
+            status, cross_check = _revenue_check(
+                float(total), unit, period, known,
+                (revenue or {}).get(str(isin)) or [])
+            if status < 0:
+                if rejects is not None:
+                    rejects.append({
+                        "theme": theme, "isin": str(isin), "symbol": str(symbol or ""),
+                        "stage": "revenue-cross-check", "period": str(period or ""),
+                        "quote": f"{str(metric)[:150]}: {raw_number} {unit}".strip(),
+                        "reason": cross_check,
+                    })
+                continue
             pivot = _deck_pivot(siblings, float(value), total)
         if weight <= 0:
             continue
@@ -763,6 +1108,8 @@ def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
         quote = f"{str(metric)[:150]}: {raw_number} {unit}".strip()
         if reconciliation:
             quote = f"{quote}; {reconciliation}"
+        if cross_check:
+            quote = f"{quote}; {cross_check}"
         out.append({
             "theme": theme, "isin": str(isin), "method": "segment", "kind": "deck",
             "fiscal_year": max(years) if years else int(known[:4] or 0),
@@ -770,6 +1117,7 @@ def _deck_evidence(dk: sqlite3.Connection | None, themes: dict[str, Any],
             "weight_source": weight_source,
             "evidence_id": f"deck_figures.db:facts:{sha}:{page}:{line}",
             "evidence_quote": quote, "pivot": False, "_largest": bool(pivot),
+            "cross_check": cross_check or "n/a",
         })
     # A deck pivot is a transition: the theme segment is this deck's largest revenue
     # line and was not the previous deck's.  One row per date carries the flag.
@@ -856,37 +1204,42 @@ def _weighted(evidence: list[dict[str, Any]], themes: dict[str, Any],
                 "valid_from": stamp, "valid_to": valid_to,
                 "weight": item["weight"], "evidence_id": item["evidence_id"],
                 "evidence_quote": item["evidence_quote"], "pivot": item["pivot"],
+                "cross_check": item.get("cross_check") or "",
             })
     return rows
 
 
-def _clip(pieces: list[tuple[str, str]], start: str, end: str) -> list[tuple[str, str]]:
-    """Remove the half-open range ``[start, end)`` from a list of half-open pieces."""
-    out = []
-    for low, high in pieces:
-        if end <= low or start >= high:
-            out.append((low, high))
-            continue
-        if start > low:
-            out.append((low, start))
-        if end < high:
-            out.append((end, high))
-    return out
-
-
 def _prefer_deck(deck_rows: list[dict[str, Any]],
                  ar_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """A live deck weight is the weight on every date it covers; the AR fills the rest."""
-    cover: dict[tuple[str, str], list[tuple[str, str]]] = {}
-    for row in deck_rows:
-        cover.setdefault((row["theme"], row["isin"]), []).append(
-            (row["valid_from"], row["valid_to"]))
-    out = list(deck_rows)
-    for row in ar_rows:
-        pieces = [(row["valid_from"], row["valid_to"])]
-        for low, high in cover.get((row["theme"], row["isin"]), ()):
-            pieces = _clip(pieces, low, high)
-        out += [{**row, "valid_from": low, "valid_to": high} for low, high in pieces]
+    """The most recent disclosure wins; only within a fiscal quarter does a deck beat an AR.
+
+    G3c-6: a deck filed in Q2 must not shadow an AR filed in Q3.  On each date the row
+    with the latest fiscal quarter wins, and a deck wins a tie inside the same quarter.
+    """
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in deck_rows + ar_rows:
+        groups.setdefault((row["theme"], row["isin"]), []).append(row)
+    out: list[dict[str, Any]] = []
+    for rows in groups.values():
+        points = sorted({row["valid_from"] for row in rows}
+                        | {row["valid_to"] for row in rows})
+        for low, high in zip(points, points[1:]):
+            if not low or not high or low >= high:
+                continue
+            cover = [row for row in rows if row["valid_from"] <= low < row["valid_to"]]
+            if not cover:
+                continue
+            winner = max(cover, key=lambda row: (
+                _fiscal_quarter(row["valid_from"]),
+                1 if row.get("weight_source") in ("deck", "deck_sum") else 0))
+            observation = {**winner, "valid_from": low, "valid_to": high}
+            if out and out[-1]["valid_to"] == low \
+                    and (out[-1]["evidence_id"], out[-1]["weight"], out[-1]["weight_source"]) \
+                    == (observation["evidence_id"], observation["weight"],
+                        observation["weight_source"]):
+                out[-1]["valid_to"] = high
+            else:
+                out.append(observation)
     return out
 
 
@@ -1149,15 +1502,18 @@ def build(data_root: Path, themes_path: Path) -> dict[str, Any]:
     dk = _open(data_root / "deck_figures.db")
     ann = _open(data_root / "bse_announcements.db")
     cc = _open(data_root / "concall_facts.db")
+    xbrl = _open(data_root / "results_xbrl.db")
     try:
+        revenue = _revenue_refs(eq_source, xbrl)
+        rejected: list[dict[str, Any]] = []
         segment = (_ar_evidence(ar, themes, symbols, names, _quarantined_docs(eq_source))
-                   + _deck_evidence(dk, themes, symbols))
+                   + _deck_evidence(dk, themes, symbols, names, revenue, rejected))
         curated, unresolved = _curated_evidence(themes, sym_isin, listing)
         evidence = (_industry_evidence(eq_source, themes, symbols, listing) + curated)
         candidates = (_subsidiary_evidence(ann, themes, sym_isin, code_isin)
                       + _pivot_evidence(cc, themes))
     finally:
-        for con in (eq_source, ar, dk, ann, cc):
+        for con in (eq_source, ar, dk, ann, cc, xbrl):
             if con is not None:
                 con.close()
 
@@ -1182,7 +1538,7 @@ def build(data_root: Path, themes_path: Path) -> dict[str, Any]:
                              -METHOD_RANK.get(r["method"], 0), r["isin"], r["valid_from"]))
     candidates.sort(key=lambda c: (c["theme"], c["isin"], c["valid_from"]))
     return {"rows": rows, "candidates": candidates, "unresolved": unresolved,
-            "themes": themes}
+            "themes": themes, "deck_rejected": rejected}
 
 
 def _existing(con: sqlite3.Connection) -> dict[tuple[str, str], tuple]:
@@ -1270,7 +1626,7 @@ def _public(row: dict[str, Any]) -> dict[str, Any]:
             "weight_source": row.get("weight_source") or row["method"], "method": row["method"],
             "since": row["valid_from"], "until": row.get("valid_to"),
             "evidence_id": row.get("evidence_id"), "evidence_quote": row.get("evidence_quote"),
-            "pivot": bool(row.get("pivot"))}
+            "cross_check": row.get("cross_check") or "", "pivot": bool(row.get("pivot"))}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1292,6 +1648,7 @@ def main(argv: list[str] | None = None) -> int:
     report = {"run_id": None, "built_at": built_at, "members": len(rows), "themes": {},
               "joins": 0, "exits": 0, "pivots": 0, "candidates": len(built["candidates"]),
               "unresolved_seeds": built["unresolved"], "dry_run": bool(args.dry_run),
+              "deck_rejected": len(built.get("deck_rejected") or []),
               "target": str(target), "theme_count": len(built["themes"])}
     for r in rows:
         report["themes"].setdefault(r["theme"], []).append(_public(r))
