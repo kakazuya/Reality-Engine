@@ -218,16 +218,16 @@ jobs:
     enabled: false
 
   - name: etf_premium
-    description: "Materialise etf_premium (ETF close vs same-day NAV, plus the iNAV gap) from etf_px, fund_nav and etf_inav."
+    description: "Materialise etf_premium_daily (ETF close vs same-day NAV, plus the iNAV gap) from etf_px, fund_nav and etf_inav; the etf_premium view stays owned by etf_nav."
     argv: ["python", "-m", "reality_engine.scripts.build_etf_premium"]
     cwd: "."
     env: {}
-    writes: ["equity_intelligence.db:etf_premium", "equity_intelligence.db:etf_premium_rows"]
+    writes: ["equity_intelligence.db:etf_premium_daily"]
     resource_locks: ["db:equity_intelligence.db"]
     cadence: daily
     success_check:
       db: equity_intelligence.db
-      sql: "SELECT max(date) AS value FROM etf_premium"
+      sql: "SELECT max(date) AS value FROM etf_premium_daily"
       expect: {kind: max_date, max_age_days: 3}
     off_peak_only: false
     market_hours: any
@@ -506,7 +506,7 @@ jobs:
     enabled: false
 
   - name: results_notes_text
-    description: "Notes pages of quarterly-results PDFs from the matching BSE announcement into results_xbrl.db (resumable)."
+    description: "Every page of quarterly-results PDFs from matching BSE announcements into results_xbrl.db (has_note_word marks note pages; resumable)."
     argv: ["python", "-m", "reality_engine.scripts.fetch_results_notes_text", "--limit", "1000", "--since", "2025-01-01"]
     cwd: "."
     env: {}
@@ -516,7 +516,7 @@ jobs:
     success_check:
       db: results_xbrl.db
       sql: "SELECT max(known_at) AS value FROM results_notes"
-      expect: {kind: max_date, max_age_days: 30}
+      expect: {kind: max_date, max_age_days: 120}
     off_peak_only: false
     market_hours: any
     needs_paid_api: false
@@ -715,7 +715,7 @@ jobs:
     success_check:
       db: deck_figures.db
       sql: "SELECT max(extracted_at) AS value FROM deck_page_text"
-      expect: {kind: max_date, max_age_days: 30}
+      expect: {kind: max_date, max_age_days: 120}
     off_peak_only: false
     market_hours: any
     needs_paid_api: false

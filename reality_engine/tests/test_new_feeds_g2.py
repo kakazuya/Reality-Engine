@@ -1,7 +1,8 @@
 """Tests for the three G2 feeds: deck page text, results notes, ETF premium.
 
 Everything runs on temporary SQLite files and temporary raw roots; no live
-database is opened and no network call is made (``--offline`` + cached PDFs).
+database is opened and no network call is made (``--offline`` + cached PDFs, or a
+patched ``urlopen`` where the download itself is under test).
 """
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ import unittest
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from unittest import mock
 
 import pymupdf
 import yaml
@@ -77,7 +79,7 @@ class DeckPageTextTest(unittest.TestCase):
             self.assertEqual(con.execute("SELECT COUNT(*) FROM deck_page_text").fetchone()[0], 2)
             con.close()
 
-    def test_since_and_limit(self):
+    def test_since_newest_first_and_limit_progress(self):
         with _tempdir("deck") as tmp:
             db = tmp / "deck_figures.db"
             con = sqlite3.connect(db)
@@ -88,65 +90,188 @@ class DeckPageTextTest(unittest.TestCase):
                             (str(index) * 64, str(tmp / f"{index}.pdf"), f"{day}T00:00:00", "ok"))
             con.commit()
             con.close()
-            build_deck_page_text.main(["--db", str(db), "--raw-root", str(tmp / "raw"),
-                                       "--offline", "--since", "2026-02-01", "--limit", "1"])
+            args = ["--db", str(db), "--raw-root", str(tmp / "raw"), "--offline",
+                    "--since", "2026-02-01", "--limit", "1"]
+
+            build_deck_page_text.main(args)
             con = sqlite3.connect(db)
-            self.assertEqual(con.execute("SELECT COUNT(DISTINCT sha256) FROM deck_page_text").fetchone()[0], 1)
+            self.assertEqual([r[0] for r in con.execute("SELECT DISTINCT sha256 FROM deck_page_text")],
+                             ["2" * 64], "newest eligible deck must be the one processed")
+            con.close()
+
+            # Second run with the same limit moves on to the next deck instead of stalling.
+            build_deck_page_text.main(args)
+            con = sqlite3.connect(db)
+            stored = sorted(r[0] for r in con.execute("SELECT DISTINCT sha256 FROM deck_page_text"))
+            self.assertEqual(stored, sorted(["1" * 64, "2" * 64]))
             con.close()
 
 
 class ResultsNotesTest(unittest.TestCase):
-    def test_matches_announcement_and_keeps_note_pages(self):
-        with _tempdir("deck") as tmp:
-            db = tmp / "results_xbrl.db"
-            ann_db = tmp / "bse_announcements.db"
+    @staticmethod
+    def _databases(tmp: Path) -> tuple[Path, Path]:
+        db = tmp / "results_xbrl.db"
+        con = sqlite3.connect(db)
+        con.execute("""CREATE TABLE filings (file TEXT, isin TEXT, scrip_code TEXT, period_end TEXT,
+                       broadcast_ts TEXT, filing_ts TEXT, status TEXT)""")
+        con.commit()
+        con.close()
+        ann_db = tmp / "bse_announcements.db"
+        con = sqlite3.connect(ann_db)
+        con.execute("CREATE TABLE ann (NEWSID TEXT, SCRIP_CD TEXT, ATTACHMENTNAME TEXT, "
+                    "CATEGORYNAME TEXT, DissemDT TEXT)")
+        con.commit()
+        con.close()
+        return db, ann_db
+
+    @staticmethod
+    def _filing(db: Path, period_end: str = "2026-06-30", broadcast: str = "2026-08-01T17:39:05") -> None:
+        con = sqlite3.connect(db)
+        con.execute("INSERT INTO filings VALUES (?,?,?,?,?,?,?)",
+                    ("f.xml", "INE270I01022", "516072", period_end, broadcast, broadcast, "ok"))
+        con.commit()
+        con.close()
+
+    @staticmethod
+    def _announcement(ann_db: Path, newsid: str, dissem: str = "2026-08-01T17:23:15.117",
+                      category: str = "Result") -> None:
+        con = sqlite3.connect(ann_db)
+        con.execute("INSERT INTO ann VALUES (?,?,?,?,?)", (newsid, "516072", "x.pdf", category, dissem))
+        con.commit()
+        con.close()
+
+    def _run(self, db: Path, ann_db: Path, raw: Path, *extra: str) -> int:
+        return fetch_results_notes_text.main(["--db", str(db), "--ann-db", str(ann_db),
+                                              "--raw-root", str(raw), "--offline", *extra])
+
+    def test_stores_every_page_and_flags_note_pages(self):
+        with _tempdir("notes") as tmp:
+            db, ann_db = self._databases(tmp)
             raw = tmp / "raw"
             newsid = "11111111-1111-1111-1111-111111111111"
             _pdf(raw / "results_notes_text" / f"{newsid}.pdf",
                  ["Balance sheet and cash flow statement without the keyword.",
-                  "Notes to the financial results. Note 5: segment information by geography."])
+                  "Notes to the financial results. Note 5: segment information by geography.",
+                  ""])
+            self._filing(db)
+            self._announcement(ann_db, newsid)
 
+            self.assertEqual(self._run(db, ann_db, raw), 0)
             con = sqlite3.connect(db)
-            con.execute("""CREATE TABLE filings (file TEXT, isin TEXT, scrip_code TEXT, period_end TEXT,
-                           broadcast_ts TEXT, filing_ts TEXT, status TEXT)""")
-            con.execute("INSERT INTO filings VALUES (?,?,?,?,?,?,?)",
-                        ("f.xml", "INE270I01022", "516072", "2026-06-30",
-                         "2026-08-01T17:39:05", "2026-08-01T17:39:06", "ok"))
-            con.commit()
-            con.close()
-
-            con = sqlite3.connect(ann_db)
-            con.execute("CREATE TABLE ann (NEWSID TEXT, SCRIP_CD TEXT, ATTACHMENTNAME TEXT, "
-                        "CATEGORYNAME TEXT, DissemDT TEXT)")
-            con.execute("INSERT INTO ann VALUES (?,?,?,?,?)",
-                        (newsid, "516072", "x.pdf", "Result", "2026-08-01T17:23:15.117"))
-            con.execute("INSERT INTO ann VALUES (?,?,?,?,?)",
-                        ("other", "516072", "y.pdf", "Company Update", "2026-08-01T17:30:00.000"))
-            con.commit()
-            con.close()
-
-            rc = fetch_results_notes_text.main(["--db", str(db), "--ann-db", str(ann_db),
-                                                "--raw-root", str(raw), "--offline"])
-            self.assertEqual(rc, 0)
-            con = sqlite3.connect(db)
-            rows = con.execute("SELECT isin, period_end, source_newsid, page_no, known_at "
-                               "FROM results_notes").fetchall()
-            self.assertEqual(rows, [("INE270I01022", "2026-06-30", newsid, 2, "2026-08-01T17:23:15.117")])
-            hits = con.execute("SELECT COUNT(*) FROM results_notes_fts WHERE results_notes_fts MATCH 'note'").fetchone()[0]
+            rows = con.execute("SELECT page_no, has_note_word, length(text) > 0 "
+                               "FROM results_notes ORDER BY page_no").fetchall()
+            self.assertEqual(rows, [(1, 0, 1), (2, 1, 1), (3, 0, 0)])
+            hits = con.execute("SELECT COUNT(*) FROM results_notes_fts "
+                               "WHERE results_notes_fts MATCH 'note'").fetchone()[0]
             self.assertEqual(hits, 1)
             con.close()
 
-            fetch_results_notes_text.main(["--db", str(db), "--ann-db", str(ann_db),
-                                           "--raw-root", str(raw), "--offline"])
+            # A complete store is a no-op on the next run.
+            self._run(db, ann_db, raw)
             con = sqlite3.connect(db)
-            self.assertEqual(con.execute("SELECT COUNT(*) FROM results_notes").fetchone()[0], 1)
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM results_notes").fetchone()[0], 3)
+            con.close()
+
+    def test_each_matching_announcement_is_kept(self):
+        with _tempdir("notes") as tmp:
+            db, ann_db = self._databases(tmp)
+            raw = tmp / "raw"
+            standalone = "aaaaaaaa-1111-1111-1111-111111111111"
+            consolidated = "bbbbbbbb-2222-2222-2222-222222222222"
+            _pdf(raw / "results_notes_text" / f"{standalone}.pdf", ["Standalone results page."])
+            _pdf(raw / "results_notes_text" / f"{consolidated}.pdf", ["Consolidated results page."])
+            self._filing(db)  # one NSE filing at 17:39:05
+            self._announcement(ann_db, standalone, dissem="2026-08-01T17:23:15.117")
+            self._announcement(ann_db, consolidated, dissem="2026-08-01T17:41:00.000")
+
+            self.assertEqual(self._run(db, ann_db, raw), 0)
+            con = sqlite3.connect(db)
+            stored = con.execute("SELECT source_newsid, COUNT(*) FROM results_notes "
+                                 "GROUP BY source_newsid ORDER BY source_newsid").fetchall()
+            self.assertEqual(stored, [(standalone, 1), (consolidated, 1)],
+                             "both bases must be stored, not only the nearest announcement")
+            con.close()
+
+    def test_limit_progresses_across_runs(self):
+        with _tempdir("notes") as tmp:
+            db, ann_db = self._databases(tmp)
+            raw = tmp / "raw"
+            newest = "aaaaaaaa-1111-1111-1111-111111111111"
+            older = "bbbbbbbb-2222-2222-2222-222222222222"
+            _pdf(raw / "results_notes_text" / f"{newest}.pdf", ["latest quarter page"])
+            _pdf(raw / "results_notes_text" / f"{older}.pdf", ["older quarter page"])
+            self._filing(db, period_end="2026-06-30", broadcast="2026-08-01T17:39:05")
+            self._filing(db, period_end="2026-09-30", broadcast="2026-11-10T17:39:05")
+            self._announcement(ann_db, newest, dissem="2026-11-10T17:23:15.117")
+            self._announcement(ann_db, older, dissem="2026-08-01T17:23:15.117")
+            args = ("--limit", "1")
+
+            self.assertEqual(self._run(db, ann_db, raw, *args), 0)
+            con = sqlite3.connect(db)
+            self.assertEqual([r[0] for r in con.execute("SELECT DISTINCT source_newsid FROM results_notes")],
+                             [newest], "the first run must process the newest announcement")
+            con.close()
+
+            # Old defect: the limit was applied before the done-check, so run two re-picked
+            # the same (now skipped) filing and stored nothing.
+            self.assertEqual(self._run(db, ann_db, raw, *args), 0)
+            con = sqlite3.connect(db)
+            self.assertEqual(sorted(r[0] for r in con.execute("SELECT DISTINCT source_newsid FROM results_notes")),
+                             sorted([newest, older]))
             con.close()
 
 
+class DownloadTest(unittest.TestCase):
+    def test_part_file_validated_and_retried(self):
+        with _tempdir("download") as tmp:
+            root = tmp / "raw"
+            dest = root / "results_notes_text" / "news.pdf"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(b"%PDF-1.7 truncated garbage")  # old code trusted any size > 0
+            good = tmp / "good.pdf"
+            _pdf(good, ["download payload"])
+            payload = good.read_bytes()
+
+            class _Response:
+                def __init__(self, data: bytes):
+                    self.data = data
+
+                def read(self) -> bytes:
+                    return self.data
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *exc):
+                    return False
+
+            calls: list[str] = []
+            sleeps: list[float] = []
+
+            def fake_urlopen(request, timeout=0):
+                calls.append(request.full_url)
+                if len(calls) < 3:
+                    raise OSError("connection reset")
+                return _Response(payload)
+
+            with mock.patch.object(fetch_results_notes_text.urllib.request, "urlopen", fake_urlopen), \
+                    mock.patch.object(fetch_results_notes_text.time, "sleep", sleeps.append):
+                path = fetch_results_notes_text.download("news", "x.pdf", root, offline=False)
+
+            self.assertEqual(path, dest)
+            self.assertEqual(dest.read_bytes(), payload)
+            self.assertEqual(sleeps, [0.5, 1.0], "backoff between the failed attempts")
+            self.assertFalse(dest.with_name(dest.name + ".part").exists(), "no .part left behind")
+
+            # The validated cache is reused without another request.
+            self.assertEqual(fetch_results_notes_text.download("news", "x.pdf", root, offline=False), dest)
+            self.assertEqual(len(calls), 3)
+
+
 class EtfPremiumTest(unittest.TestCase):
-    def test_upsert_and_inav_gap(self):
+    def test_single_owner_leaves_etf_premium_view_untouched(self):
         with _tempdir("etf") as tmp:
-            db = Path(tmp) / "equity_intelligence.db"
+            db = tmp / "equity_intelligence.db"
             con = sqlite3.connect(db)
             con.executescript("""
                 CREATE TABLE etf_px (date TEXT, symbol TEXT, isin TEXT, close REAL, volume REAL,
@@ -166,37 +291,56 @@ class EtfPremiumTest(unittest.TestCase):
             con.execute("INSERT INTO fund_nav VALUES ('INF247L01AU3','2026-09-11',110.0,'1','x')")
             con.execute("INSERT INTO etf_inav VALUES ('INF247L01AU3','2026-09-10','^NXTQ',1,1,1,1,105.0,200.0,100.0,90.0)")
             con.commit()
+            view_sql = con.execute("SELECT sql FROM sqlite_master WHERE name = 'etf_premium'").fetchone()[0]
+            view_rows = con.execute("SELECT COUNT(*) FROM etf_premium").fetchone()[0]
             con.close()
 
             rc = build_etf_premium.main(["--db", str(db)])
             self.assertEqual(rc, 0)
             con = sqlite3.connect(db)
-            kind = con.execute("SELECT type FROM sqlite_master WHERE name='etf_premium'").fetchone()[0]
-            self.assertEqual(kind, "view")
-            rows = con.execute("SELECT date, close, nav, premium_pct, inav, inav_gap_pct "
-                               "FROM etf_premium ORDER BY date").fetchall()
+            self.assertEqual(con.execute("SELECT sql FROM sqlite_master WHERE name = 'etf_premium'").fetchone()[0],
+                             view_sql, "the etf_premium view belongs to fetch_etf_nav")
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM etf_premium").fetchone()[0], view_rows)
+
+            rows = con.execute("SELECT date, isin, symbol, close, nav, premium_pct, inav, inav_gap_pct, built_at "
+                               "FROM etf_premium_daily ORDER BY date").fetchall()
             self.assertEqual(len(rows), 2)
-            self.assertAlmostEqual(rows[0][3], 100.0)
-            self.assertAlmostEqual(rows[0][5], 90.0)
-            self.assertIsNone(rows[1][4])
-            self.assertIsNone(rows[1][5])
+            self.assertEqual(rows[0][:2], ("2026-09-10", "INF247L01AU3"))
+            self.assertEqual(rows[0][2], "MONQ50")
+            self.assertAlmostEqual(rows[0][5], 100.0)
+            self.assertAlmostEqual(rows[0][6], 105.0)
+            self.assertAlmostEqual(rows[0][7], 90.0)
+            self.assertIsNone(rows[1][6])
+            self.assertIsNone(rows[1][7])
+            self.assertTrue(all(row[8] for row in rows), "built_at is stamped")
             con.close()
 
             # Idempotent re-run: still two rows, not four.
             build_etf_premium.main(["--db", str(db)])
             con = sqlite3.connect(db)
-            self.assertEqual(con.execute("SELECT COUNT(*) FROM etf_premium").fetchone()[0], 2)
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM etf_premium_daily").fetchone()[0], 2)
             con.close()
 
 
 class JobsYamlTest(unittest.TestCase):
-    def test_new_entries_are_disabled_and_locked(self):
+    def _jobs(self) -> dict[str, dict]:
         registry = yaml.safe_load((REPO / "plugins/dsh-worker/jobs.yaml").read_text(encoding="utf-8"))
-        jobs = {job["name"]: job for job in registry["jobs"]}
+        return {job["name"]: job for job in registry["jobs"]}
+
+    def test_max_age_tolerates_quiet_quarters(self):
+        jobs = self._jobs()
+        for name in ("results_notes_text", "deck_page_text"):
+            self.assertGreaterEqual(jobs[name]["success_check"]["expect"]["max_age_days"], 120,
+                                    f"{name} must not go stale between quarters / quiet months")
+
+    def test_new_entries_are_disabled_and_locked(self):
+        jobs = self._jobs()
         expected = {
             "deck_page_text": ("reality_engine.scripts.build_deck_page_text", "deck_figures.db:deck_page_text"),
-            "results_notes_text": ("reality_engine.scripts.fetch_results_notes_text", "results_xbrl.db:results_notes"),
-            "etf_premium": ("reality_engine.scripts.build_etf_premium", "equity_intelligence.db:etf_premium"),
+            "results_notes_text": ("reality_engine.scripts.fetch_results_notes_text",
+                                   "results_xbrl.db:results_notes"),
+            "etf_premium": ("reality_engine.scripts.build_etf_premium",
+                            "equity_intelligence.db:etf_premium_daily"),
         }
         for name, (module, write) in expected.items():
             job = jobs[name]
@@ -205,6 +349,9 @@ class JobsYamlTest(unittest.TestCase):
             self.assertIn(write, job["writes"])
             self.assertTrue(all(lock.startswith(("db:", "net:", "gpu")) for lock in job["resource_locks"]))
             self.assertIsInstance(job["success_check"], dict)
+        self.assertNotIn("equity_intelligence.db:etf_premium", jobs["etf_premium"]["writes"],
+                         "etf_premium stays owned by fetch_etf_nav")
+        self.assertIn("etf_premium_daily", jobs["etf_premium"]["success_check"]["sql"])
 
 
 if __name__ == "__main__":
