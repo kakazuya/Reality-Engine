@@ -81,8 +81,8 @@ def gpu_name() -> str:
 # Triage
 # ---------------------------------------------------------------------------
 
-def _line_starts(page) -> list[tuple[float, str]]:
-    out: list[tuple[float, str]] = []
+def _line_starts(page) -> list[tuple[float, float, float, float, str]]:
+    out: list[tuple[float, float, float, float, str]] = []
     try:
         data = page.get_text("dict")
     except Exception:
@@ -91,33 +91,105 @@ def _line_starts(page) -> list[tuple[float, str]]:
         for line in block.get("lines", []):
             text = "".join(span.get("text", "") for span in line.get("spans", [])).strip()
             if len(text) >= 15:
-                out.append((line.get("bbox", (0, 0, 0, 0))[0], text))
+                x0, y0, x1, y1 = line.get("bbox", (0, 0, 0, 0))
+                out.append((x0, x1, y0, y1, text))
     return out
 
 
 def _two_columns(page, text: str) -> bool:
+    """True only when the page really is set in two columns.
+
+    Round 2 counted any line starting left of 40% or right of 50% as a column,
+    so indented bullets, address blocks and centred cover pages routed to the
+    GPU (63% of AR pages).  A real two-column page has two dense columns of
+    long lines that both run down the page, a wide gap between them, and a
+    right column that reaches the right margin.
+    """
     starts = _line_starts(page)
-    if len(starts) < 10:
+    if len(starts) < 12:
         return False
     width = page.rect.width or 1
-    left = sum(1 for x0, _ in starts if x0 < width * 0.4)
-    right = sum(1 for x0, _ in starts if x0 > width * 0.5)
-    return left >= 4 and right >= 4 and right >= len(starts) * 0.15
+    height = page.rect.height or 1
+    left = [(x0, x1, y0, y1) for x0, x1, y0, y1, _ in starts
+            if x0 < width * 0.3 and x1 < width * 0.56 and x1 - x0 > width * 0.22]
+    right = [(x0, x1, y0, y1) for x0, x1, y0, y1, _ in starts
+             if x0 >= width * 0.44 and x1 > width * 0.82 and x1 - x0 > width * 0.22]
+    if len(left) < 6 or len(right) < 6:
+        return False
+    if len(right) < len(starts) * 0.3:
+        return False
+    median = statistics.median
+    if median([x0 for x0, _, _, _ in right]) - median([x0 for x0, _, _, _ in left]) < width * 0.3:
+        return False
+    for column in (left, right):
+        spread = max(y1 for _, _, _, y1 in column) - min(y0 for _, _, _, y0 in column)
+        if spread < height * 0.3:
+            return False
+    return True
+
+
+def _aligned_numeric_columns(page, rect, min_words: int = 2) -> int:
+    """Number of x-aligned numeric columns inside ``rect``."""
+    try:
+        words = page.get_text("words", clip=rect)
+    except Exception:
+        return 0
+    xs: list[float] = []
+    for word in words:
+        token = (word[4] or "").strip().strip("₹$()%.,;: ")
+        if not token or not NUM.fullmatch(token):
+            continue
+        xs.append(float(word[0]))
+    groups: list[list[float]] = []
+    for x in sorted(xs):
+        if groups and x - groups[-1][-1] <= 6:
+            groups[-1].append(x)
+        else:
+            groups.append([x])
+    return sum(1 for group in groups if len(group) >= min_words)
+
+
+def _page_table_reason(page) -> str | None:
+    """Three rows that each carry three numbers, else None.
+
+    Deliberately cheap: PyMuPDF's full ``find_tables`` costs about a second on
+    a dense AR page, so triage only looks at word positions.  Counting numeric
+    words per y-row avoids the page-number/footer columns that a bare x-column
+    check mistakes for a table.  The strict cell-grid test runs later, inside
+    a YOLO table box.
+    """
+    try:
+        words = page.get_text("words")
+    except Exception:
+        return None
+    rows: dict[int, int] = {}
+    total = 0
+    for word in words:
+        token = (word[4] or "").strip().strip("₹$()%.,;: ")
+        if not token or not NUM.fullmatch(token):
+            continue
+        total += 1
+        key = round(float(word[1]) / 6)
+        rows[key] = rows.get(key, 0) + 1
+    wide_rows = sum(1 for count in rows.values() if count >= 4)
+    return "dense" if wide_rows >= 3 and total >= 18 else None
 
 
 def triage(page, text: str, deck: bool = False) -> str | None:
-    """Why this page needs the GPU, or None for clean single-column prose."""
+    """Why this page needs the GPU, or None when the CPU path is enough.
+
+    Two-column prose is no longer routed: the cheap column splitter in
+    ``_font_blocks`` reads left then right with the font-size heading rules, so
+    the GPU is spent on tables and near-empty (image/scan) pages only.
+    """
     if deck:
         return "deck_slide"
     stripped = (text or "").strip()
     if len(stripped) < 40:
         return "near_empty_text"
-    if _two_columns(page, stripped):
-        return "two_columns"
-    dense = sum(1 for line in stripped.splitlines()
-                if len(NUM.findall(line)) >= 3)
-    if dense >= 3:
-        return "table_candidate"
+    grid = _page_table_reason(page)
+    if grid:
+        return f"table_candidate_{grid}"
     return None
 
 
@@ -192,17 +264,41 @@ def _reading_order(boxes: list[dict], width: float) -> list[dict]:
 # Tables + page text
 # ---------------------------------------------------------------------------
 
-def _table_text(page, rect: fitz.Rect, stats: dict) -> str:
-    rows_out: list[str] = []
+def _grid_tables(page) -> list[tuple[fitz.Rect, list]]:
+    """One ``find_tables`` pass per page, cached for every table box."""
     try:
-        found = page.find_tables(clip=rect)
-        tables = list(getattr(found, "tables", []))
+        found = page.find_tables()
     except Exception:
-        tables = []
-    for table in tables:
+        return []
+    out: list[tuple[fitz.Rect, list]] = []
+    for table in getattr(found, "tables", []):
         try:
             data = table.extract()
         except Exception:
+            continue
+        if len(data) < 2 or max((len(row) for row in data), default=0) < 2:
+            continue
+        out.append((fitz.Rect(table.bbox), data))
+    return out
+
+
+def _table_text(page, rect: fitz.Rect, stats: dict,
+                page_tables: list[tuple[fitz.Rect, list]] | None = None
+                ) -> tuple[str, bool]:
+    """Table text plus whether this box really is a table.
+
+    A YOLO ``table`` box is not evidence: round 2 counted 1,190 boxes over
+    1,838 pages.  Keep the box as a table only when PyMuPDF finds a cell grid
+    inside it or at least three x-aligned numeric columns; otherwise the box
+    becomes ordinary text in the reading order.
+    """
+    rows_out: list[str] = []
+    if page_tables is None:
+        page_tables = _grid_tables(page)
+    for table_rect, data in page_tables:
+        cx = (table_rect.x0 + table_rect.x1) / 2
+        cy = (table_rect.y0 + table_rect.y1) / 2
+        if not (rect.x0 - 2 <= cx <= rect.x1 + 2 and rect.y0 - 2 <= cy <= rect.y1 + 2):
             continue
         for row in data:
             cells = [(cell or "").replace("\n", " ").strip() for cell in row]
@@ -210,9 +306,13 @@ def _table_text(page, rect: fitz.Rect, stats: dict) -> str:
                 rows_out.append(" | ".join(cells))
     if rows_out:
         stats["table_cells"] = stats.get("table_cells", 0) + len(rows_out)
-        return "\n".join(rows_out)
-    stats["table_text_fallback"] = stats.get("table_text_fallback", 0) + 1
-    return page.get_textbox(rect) or ""
+        stats["table_grid"] = stats.get("table_grid", 0) + 1
+        return "\n".join(rows_out), True
+    if _aligned_numeric_columns(page, rect, min_words=2) >= 3:
+        stats["table_numeric"] = stats.get("table_numeric", 0) + 1
+        return _clean(page.get_textbox(rect) or ""), True
+    stats["table_rejected"] = stats.get("table_rejected", 0) + 1
+    return _clean(page.get_textbox(rect) or ""), False
 
 
 def _clean(text: str) -> str:
@@ -231,14 +331,18 @@ def _structured_page(page, boxes: list[dict], stats: dict) -> tuple[str, list[tu
     lines: list[str] = []
     blocks: list[tuple[int, int, str]] = []
     pos = 0
+    page_tables: list[tuple[fitz.Rect, list]] | None = None
     for box in boxes:
         rect = box["rect"]
         if rect.is_empty or rect.width < 4 or rect.height < 4:
             continue
         if box["cls"] == TABLE_CLASS:
-            text = _clean(_table_text(page, rect, stats))
-            kind = "table"
-            stats["tables"] = stats.get("tables", 0) + 1
+            if page_tables is None:
+                page_tables = _grid_tables(page)
+            text, real = _table_text(page, rect, stats, page_tables)
+            kind = "table" if real else "text"
+            if real:
+                stats["tables"] = stats.get("tables", 0) + 1
         else:
             text = _clean(page.get_textbox(rect) or "")
             kind = "heading" if box["cls"] == 0 else "text"
@@ -252,22 +356,54 @@ def _structured_page(page, boxes: list[dict], stats: dict) -> tuple[str, list[tu
     return "\n".join(lines), blocks
 
 
-def _font_blocks(page) -> tuple[str, list[tuple[int, int, str]]]:
-    """Text + font-size heading blocks for a clean page (no GPU)."""
-    try:
-        data = page.get_text("dict")
-    except Exception:
-        return "", []
+def _dict_rows(page, clip=None) -> list[tuple[str, float]]:
     rows: list[tuple[str, float]] = []
-    sizes: list[float] = []
+    try:
+        data = page.get_text("dict", clip=clip) if clip is not None else page.get_text("dict")
+    except Exception:
+        return rows
     for block in data.get("blocks", []):
         for line in block.get("lines", []):
             text = "".join(span.get("text", "") for span in line.get("spans", [])).strip()
             if not text:
                 continue
             size = max((span.get("size", 0.0) for span in line.get("spans", [])), default=0.0)
-            sizes.append(size)
             rows.append((text, size))
+    return rows
+
+
+def _columns(page):
+    """Left/right column rects when the page really has two text columns."""
+    starts = _line_starts(page)
+    width = page.rect.width or 1
+    left_x1 = [x1 for x0, x1, _, _, _ in starts
+               if x0 < width * 0.3 and x1 < width * 0.56 and x1 - x0 > width * 0.22]
+    right_x0 = [x0 for x0, x1, _, _, _ in starts
+                if x0 >= width * 0.44 and x1 > width * 0.82 and x1 - x0 > width * 0.22]
+    if len(left_x1) < 6 or len(right_x0) < 6:
+        return None
+    gutter = (statistics.median(left_x1) + statistics.median(right_x0)) / 2
+    if not width * 0.4 <= gutter <= width * 0.6:
+        return None
+    return (fitz.Rect(0, 0, gutter, page.rect.height),
+            fitz.Rect(gutter, 0, width, page.rect.height))
+
+
+def _font_blocks(page) -> tuple[str, list[tuple[int, int, str]]]:
+    """Text + font-size heading blocks for a clean page (no GPU).
+
+    A genuine two-column page is read left column then right column, which is
+    the only ordering fix the GPU used to provide for prose.
+    """
+    rows: list[tuple[str, float]] = []
+    text = page.get_text("text")
+    if _two_columns(page, text):
+        columns = _columns(page)
+        if columns:
+            rows = _dict_rows(page, columns[0]) + _dict_rows(page, columns[1])
+    if not rows:
+        rows = _dict_rows(page)
+    sizes = [size for _, size in rows]
     body = statistics.median(sizes) if sizes else 10.0
     lines: list[str] = []
     blocks: list[tuple[int, int, str]] = []
@@ -318,6 +454,8 @@ def parse_pdf(path, dpi: int = DPI, batch_size: int = BATCH,
             break
         raw = page.get_text("text")
         reason = triage(page, raw, deck)
+        if os.environ.get("LAYOUT_DEBUG"):
+            print(f"  page {index + 1}/{doc.page_count} -> {reason}", flush=True)
         if reason is None:
             structured[index] = _font_blocks(page)
         else:

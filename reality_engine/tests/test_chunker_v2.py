@@ -141,6 +141,56 @@ class ConcallTests(unittest.TestCase):
         self.assertLess(len(chunks), 3)
 
 
+SENTENCE = (
+    "The margin moved because input costs rose sharply in the quarter and we could not "
+    "pass the full increase to customers at once, so the segment absorbed most of the "
+    "impact and the recovery is expected over the next two quarters. "
+)
+
+LONG_QA_CALL = (
+    "ravi shah : welcome to the call.\n"
+    "analyst : What drove the margin this quarter and when does it normalise?\n"
+    "ravi shah : " + SENTENCE * 12 + "\n"
+)
+
+TWO_TURN_ANSWER_CALL = (
+    "ravi shah : welcome to the call.\n"
+    "analyst : What drove the margin this quarter and when does it normalise?\n"
+    "ravi shah : " + SENTENCE * 6 + "\n"
+    "ravi shah : " + SENTENCE * 6 + "\n"
+)
+
+
+class QaCapTests(unittest.TestCase):
+    def test_answer_over_cap_splits_at_sentences_and_repeats_question(self):
+        chunks = cv.chunk_document(META, [LONG_QA_CALL])
+        qa = [c for c in chunks if c.unit_kind == "qa_pair"]
+        self.assertGreaterEqual(len(qa), 2, [c.char_len for c in chunks])
+        for chunk in qa:
+            self.assertLessEqual(chunk.char_len, 2500)
+            self.assertEqual(LONG_QA_CALL[chunk.span_start:chunk.span_end], chunk.body)
+        self.assertEqual(qa[0].section, "Q&A")
+        for chunk in qa[1:]:
+            self.assertIn("Q: What drove the margin", chunk.header)
+            self.assertTrue(chunk.body[:1].isupper(), chunk.body[:40])
+
+    def test_cap_off_keeps_one_oversize_pair(self):
+        chunks = cv.chunk_concall(LONG_QA_CALL, META, qa_max_chars=None)
+        qa = [c for c in chunks if c.unit_kind == "qa_pair"]
+        self.assertEqual(len(qa), 1, [c.char_len for c in chunks])
+        self.assertGreater(qa[0].char_len, cv.QA_MAX_CHARS)
+
+    def test_turn_boundaries_used_before_sentences(self):
+        chunks = cv.chunk_document(META, [TWO_TURN_ANSWER_CALL])
+        qa = [c for c in chunks if c.unit_kind == "qa_pair"]
+        self.assertEqual(len(qa), 2, [c.char_len for c in chunks])
+        self.assertTrue(qa[0].body.startswith("analyst :"), qa[0].body[:40])
+        self.assertTrue(qa[1].body.startswith("ravi shah :"), qa[1].body[:40])
+        self.assertIn("Q: What drove the margin", qa[1].header)
+        for chunk in qa:
+            self.assertLessEqual(chunk.char_len, cv.QA_MAX_CHARS)
+
+
 class DeckTests(unittest.TestCase):
     def test_one_slide_per_chunk(self):
         chunks = cv.chunk_document(dict(META, doc_type="deck", symbol="ZYDUS"), DECK)

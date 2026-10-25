@@ -1,20 +1,28 @@
 """Retrieval quality harness (C2): score a chunking x retriever on recall@k / MRR.
 
-The labelled set is ``tasks/optimizations/learn/quality_set_v1.jsonl``.  Gold is
-a character span in the document's *normalised* text (whitespace collapsed),
-never a chunk id, so the old chunking and chunker-v2 chunks are scored on the
+The labelled set is ``tasks/optimizations/learn/quality_set_v3.jsonl`` (40 real
+investor-deck rows plus the 160 v2 rows).  Gold is a character span in the
+document's *normalised* text (whitespace collapsed), never a chunk id, so the
+old chunking, chunker-v2, v2+Q&A-cap and v2+GPU-layout chunks are scored on the
 same passages: a hit is any retrieved chunk whose span overlaps the gold span
 inside the same document.
 
-Corpus scope: both chunkings are read from one pilot database (``--db``) that
-holds the old chunks of the pilot documents and the v2 chunks of the same
-documents.  Retrievers therefore search the same document set, which is what
-makes "old vs v2" a like-for-like comparison.
+Besides R@k / MRR, every run reports a character-budget recall (B@5000 and
+B@10000): chunks are taken in rank order and pay their full character cost, so
+a retriever that returns one huge chunk gets no free overlap advantage over one
+that returns several small ones.
+
+Corpus scope: the chunkings are read from one pilot database (``--db``) that
+holds the old chunks and the v2 variants of the same documents.  Retrievers
+therefore search the same document set, which is what makes "old vs v2" a
+like-for-like comparison.
 
 Usage::
 
     python -m reality_engine.scripts.eval_retrieval --chunks old --retriever fts
     python -m reality_engine.scripts.eval_retrieval --chunks v2  --retriever fts
+    python -m reality_engine.scripts.eval_retrieval --chunks v2cap --retriever fts
+    python -m reality_engine.scripts.eval_retrieval --chunks v2layout --retriever fts
     python -m reality_engine.scripts.eval_retrieval --chunks old --retriever seed_dense
     python -m reality_engine.scripts.eval_retrieval --chunks old --retriever local:<index-dir>
 
@@ -40,13 +48,20 @@ for extra in (ROOT, ROOT / "plugins" / "reality-data" / "server"):
     if str(extra) not in sys.path:
         sys.path.insert(0, str(extra))
 
-DEFAULT_DB = ROOT / ".tmp" / "c1" / "chunks_v2_pilot.db"
-DEFAULT_SET = ROOT / "tasks" / "optimizations" / "learn" / "quality_set_v2.jsonl"
+DEFAULT_DB = ROOT / ".tmp" / "c1" / "chunks_v3_pilot.db"
+DEFAULT_SET = ROOT / "tasks" / "optimizations" / "learn" / "quality_set_v3.jsonl"
 STOPWORDS = set("""a an and are as at be been but by can could did do does for from had has have how in
 into is it its may might more most no not of on or our over said say said's than that the their them then
 there these they this those to under was were what when where which while who why will with would you your
 me my we us i he she his her""".split())
 TOPK = 10
+BUDGETS = (5000, 10000)
+TABLES = {
+    "old": ("chunks_old", "chunks_old_fts"),
+    "v2": ("chunks_v2", "chunks_v2_fts"),
+    "v2cap": ("chunks_v2_cap", "chunks_v2_cap_fts"),
+    "v2layout": ("chunks_v2_layout", "chunks_v2_layout_fts"),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -88,10 +103,9 @@ class Store:
 
     def __init__(self, conn: sqlite3.Connection, which: str):
         self.which = which
-        if which == "old":
-            self.table, self.fts = "chunks_old", "chunks_old_fts"
-        else:
-            self.table, self.fts = "chunks_v2", "chunks_v2_fts"
+        if which not in TABLES:
+            raise SystemExit(f"unknown chunk store {which!r}; have {sorted(TABLES)}")
+        self.table, self.fts = TABLES[which]
         self.conn = conn
         self.by_chunk: dict[str, dict] = {}
         self.doc_ids: set[int] = set()
@@ -107,6 +121,7 @@ class Store:
             key = str(row["chunk_id"])
             self.by_chunk[key] = {"chunk_id": key, "doc_id": row["doc_id"],
                                   "doc_type": row["doc_type"],
+                                  "char_len": int(row["char_len"] or 0),
                                   "norm_start": row["norm_start"],
                                   "norm_end": row["norm_end"],
                                   "source_chunk_id": row["source_chunk_id"]}
@@ -143,28 +158,25 @@ def retrieve_fts(store: Store, question: str, doc_ids: set[int], k: int = TOPK,
     match = fts_query(question)
     if not match:
         return []
-    table = "chunks_v2_fts"
-    if store.which != "old" and variant == "body":
+    table, chunk_table = store.fts, store.table
+    if store.which == "v2" and variant == "body":
         present = {row[0] for row in store.conn.execute(
             "select name from sqlite_master where type='table'")}
         table = "chunks_v2_body_fts" if "chunks_v2_body_fts" in present else table
     try:
-        if store.which == "old":
-            rows = store.conn.execute(
-                "select cast(f.chunk_id as integer) as chunk_id, c.doc_id, c.norm_start, c.norm_end "
-                "from chunks_old_fts f join chunks_old c "
-                "  on c.chunk_id = cast(f.chunk_id as integer) "
-                "where chunks_old_fts match ? order by bm25(chunks_old_fts) limit ?",
-                (match, k * 5)).fetchall()
-        else:
-            rows = store.conn.execute(
-                f"select cast(f.chunk_id as integer) as chunk_id, c.doc_id, c.norm_start, c.norm_end "
-                f"from {table} f join chunks_v2 c on c.chunk_id = f.chunk_id "
-                f"where {table} match ? order by bm25({table}) limit ?",
-                (match, k * 5)).fetchall()
+        join = ("cast(f.chunk_id as integer)" if store.which == "old" else "f.chunk_id")
+        rows = store.conn.execute(
+            f"select f.chunk_id as chunk_id, c.doc_id, c.norm_start, c.norm_end, "
+            f"       c.char_len "
+            f"from {table} f join {chunk_table} c on c.chunk_id = {join} "
+            f"where {table} match ? order by bm25({table}) limit ?",
+            (match, k * 5)).fetchall()
     except sqlite3.OperationalError:
         return []
-    hits = [dict(row) for row in rows if row["doc_id"] in doc_ids]
+    hits = [{"chunk_id": str(row["chunk_id"]), "doc_id": row["doc_id"],
+             "norm_start": row["norm_start"], "norm_end": row["norm_end"],
+             "char_len": int(row["char_len"] or 0)}
+            for row in rows if row["doc_id"] in doc_ids]
     return hits[:k]
 
 
@@ -193,7 +205,8 @@ def retrieve_seed_dense(store: Store, question: str, k: int = TOPK) -> list[dict
         chunk = by_source.get(int(hit["chunk_id"]))
         if chunk is not None:
             out.append({"chunk_id": chunk["chunk_id"], "doc_id": chunk["doc_id"],
-                        "norm_start": chunk["norm_start"], "norm_end": chunk["norm_end"]})
+                        "norm_start": chunk["norm_start"], "norm_end": chunk["norm_end"],
+                        "char_len": chunk["char_len"]})
     return out[:k]
 
 
@@ -223,7 +236,8 @@ def retrieve_local(store: Store, question: str, index_dir: Path, k: int = TOPK) 
         chunk = by_source.get(int(ids[wanted[int(row)]]))
         if chunk is not None:
             out.append({"chunk_id": chunk["chunk_id"], "doc_id": chunk["doc_id"],
-                        "norm_start": chunk["norm_start"], "norm_end": chunk["norm_end"]})
+                        "norm_start": chunk["norm_start"], "norm_end": chunk["norm_end"],
+                        "char_len": chunk["char_len"]})
     return out
 
 
@@ -243,11 +257,44 @@ def first_hit_rank(hits: list[dict], gold: dict) -> int | None:
     return None
 
 
-def score(rows: list[dict], ranks: list[int | None]) -> dict:
+def budget_rank(hits: list[dict], gold: dict, budget: int) -> int | None:
+    """Rank of the first gold hit when at most ``budget`` chars are consumed.
+
+    Chunks are taken in rank order and their character cost is paid before the
+    hit can be read, so a retriever that returns one huge chunk gets no free
+    overlap advantage over one that returns several small ones.
+    """
+    used = 0
+    for rank, hit in enumerate(hits, start=1):
+        used += int(hit.get("char_len") or 0)
+        if used > budget:
+            return None
+        if rank_of_hit(hit, gold) is not None:
+            return rank
+    return None
+
+
+def rank_of_hit(hit: dict, gold: dict) -> int | None:
+    if int(hit["doc_id"]) != int(gold["doc_id"]):
+        return None
+    start, end = int(hit["norm_start"]), int(hit["norm_end"])
+    if start < 0:
+        return None
+    if start < gold["span_end"] and gold["span_start"] < end:
+        return 1
+    return None
+
+
+def score(rows: list[dict], ranks: list[int | None],
+          budget_ranks: dict[int, list[int | None]] | None = None) -> dict:
     out = {"n": len(rows),
            "recall@1": _rate(ranks, 1), "recall@5": _rate(ranks, 5),
            "recall@10": _rate(ranks, 10),
            "mrr": round(sum(1.0 / r for r in ranks if r) / len(ranks), 4) if ranks else 0.0}
+    for budget in BUDGETS:
+        got = (budget_ranks or {}).get(budget, [])
+        out[f"budget_recall@{budget}"] = (
+            round(sum(1 for r in got if r) / len(got), 4) if got else 0.0)
     return out
 
 
@@ -276,12 +323,14 @@ def verify_spans(conn: sqlite3.Connection, rows: list[dict]) -> tuple[int, list[
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--chunks", choices=("old", "v2"), default="v2")
+    ap.add_argument("--chunks", choices=tuple(TABLES), default="v2")
     ap.add_argument("--retriever", default="fts")
     ap.add_argument("--db", default=str(DEFAULT_DB))
     ap.add_argument("--set", dest="set_path", default=str(DEFAULT_SET))
     ap.add_argument("--out", default="")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--doc-ids", default="",
+                    help="comma-separated doc ids (matched-subset comparisons)")
     ap.add_argument("--price-per-m", type=float, default=0.035,
                     help="USD per million tokens for the v2 cost estimate")
     ap.add_argument("--fts-variant", choices=("header", "body"), default="header",
@@ -303,6 +352,9 @@ def main() -> None:
         kept = [row for row in rows if int(row["doc_id"]) in store.doc_ids]
         skipped = len(rows) - len(kept)
         rows = kept
+    if args.doc_ids:
+        wanted = {int(value) for value in args.doc_ids.split(",") if value}
+        rows = [row for row in rows if int(row["doc_id"]) in wanted]
 
     if args.retriever == "fts":
         retriever = lambda q: retrieve_fts(store, q, store.doc_ids,  # noqa: E731
@@ -335,17 +387,24 @@ def main() -> None:
     single_rows = [row for row in rows
                    if not str(row.get("why", "")).startswith("cross-document")]
     rank_of: dict[str, int | None] = {}
+    budget_of: dict[int, dict[str, int | None]] = {b: {} for b in BUDGETS}
     details = []
     for row in rows:
         hits = retriever(row["question"])
         rank = first_hit_rank(hits, row)
         rank_of[row["qid"]] = rank
+        for budget in BUDGETS:
+            budget_of[budget][row["qid"]] = budget_rank(hits, row, budget)
         details.append({"qid": row["qid"], "rank": rank,
                         "cross": row in cross_rows,
+                        "budget_ranks": {str(b): budget_of[b][row["qid"]] for b in BUDGETS},
                         "top": hits[0]["chunk_id"] if hits else None})
 
     def _ranks(subset: list[dict]) -> list[int | None]:
         return [rank_of[row["qid"]] for row in subset]
+
+    def _budget_ranks(subset: list[dict]) -> dict[int, list[int | None]]:
+        return {b: [budget_of[b][row["qid"]] for row in subset] for b in BUDGETS}
 
     by_type: dict[str, list[dict]] = {}
     for row in single_rows:
@@ -361,11 +420,12 @@ def main() -> None:
         "skipped_not_in_corpus": skipped,
         "span_checks_ok": good,
         "span_checks_bad": bad,
-        "overall": score(rows, _ranks(rows)),
-        "single_document": score(single_rows, _ranks(single_rows)),
-        "cross_document": score(cross_rows, _ranks(cross_rows)),
-        "per_type": {k: score(v, _ranks(v)) for k, v in sorted(by_type.items())},
-        "hard_negatives": score(hard_rows, _ranks(hard_rows)),
+        "overall": score(rows, _ranks(rows), _budget_ranks(rows)),
+        "single_document": score(single_rows, _ranks(single_rows), _budget_ranks(single_rows)),
+        "cross_document": score(cross_rows, _ranks(cross_rows), _budget_ranks(cross_rows)),
+        "per_type": {k: score(v, _ranks(v), _budget_ranks(v))
+                     for k, v in sorted(by_type.items())},
+        "hard_negatives": score(hard_rows, _ranks(hard_rows), _budget_ranks(hard_rows)),
         "corpus": {"chunks": len(store.by_chunk), "tokens": round(store.tokens),
                    "header_tokens": round(store.header_tokens),
                    "total_tokens": round(store.tokens + store.header_tokens),
