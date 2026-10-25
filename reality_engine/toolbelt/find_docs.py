@@ -52,7 +52,8 @@ def _path_exists(local_path: str | None) -> bool:
         return False
     p = Path(str(local_path).replace("\\", "/"))
     if p.is_absolute():
-        return p.exists()
+        from reality_engine.config import resolve_stored_path
+        return Path(resolve_stored_path(str(local_path))).exists()
     return (REPO_ROOT / p).exists() or (Path.cwd() / p).exists()
 
 

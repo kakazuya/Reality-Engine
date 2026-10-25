@@ -1060,10 +1060,11 @@ def _deck_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | No
     for deck in decks:
         sha = deck["sha256"]
         local_hit = False
-        if deck["local_path"] and Path(str(deck["local_path"])).exists():
+        local_pdf = _local_pdf(deck["local_path"])
+        if local_pdf is not None:
             try:
                 import fitz
-                with fitz.open(str(deck["local_path"])) as pdf:
+                with fitz.open(str(local_pdf)) as pdf:
                     for page in range(1, int(pdf.page_count) + 1):
                         text = pdf[page - 1].get_text("text")
                         low = (text or "").lower()

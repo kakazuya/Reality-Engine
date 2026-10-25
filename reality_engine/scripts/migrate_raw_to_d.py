@@ -138,6 +138,7 @@ def _copy_verified(src: Path, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     part = dest.with_name(dest.name + ".part")
     shutil.copy2(src, part)
+    os.chmod(part, 0o666)  # copy2 keeps a read-only bit; fsync needs write access
     if part.stat().st_size != src.stat().st_size or sha256(part) != sha256(src):
         part.unlink()
         raise OSError(f"verify failed after copy: {src} -> {dest}")
@@ -200,7 +201,7 @@ def apply(rows: list, manifest: Path, src_root: Path, dest_root: Path) -> dict:
         src.unlink()
         done["bytes_freed"] += r["bytes"]
         n += 1
-        if n % 100 == 0:  # periodic resume state, not a per-file flush
+        if n % 10 == 0:  # periodic resume state; a crash loses at most 9 audit rows
             save(manifest, rows, src_root, dest_root)
     for folder in {r["folder"] for r in rows}:
         _prune_empty(src_root / folder)
