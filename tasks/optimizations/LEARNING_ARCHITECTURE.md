@@ -12,6 +12,11 @@ move) is stored only when it passes all five tests below. Each test runs with fi
 
 1. **Timing.** X was public (`known_at`) before Y moved. Y is measured as an *abnormal* move: the stock's return
    minus what market, sector and factor exposure predict. A raw return is never used.
+   - The event window opens **4 trading sessions before** `known_at` (Shivam, 2026-10-25): people hear through contacts
+     and take positions early.
+   - Abnormal return and delivery volume over sessions −4…−1 are stored separately as `pre_event_drift`. A link whose
+     move is mostly pre-event is tagged `leaked`. It still counts as cause, but the tradable edge starts later or is gone.
+   - The pre-event drift also becomes its own signal: unusual delivery and abnormal returns with no public news yet.
 2. **Control group.** Exposed companies are compared with matched unexposed ones (same sector and size, no exposure),
    over the same window. This is difference-in-differences: the market-wide part cancels out.
 3. **Dose-response.** The effect must grow with exposure. A company with 60% of revenue in the affected segment must
@@ -54,15 +59,23 @@ companies cannot pick their exposure to them: sudden tariffs, wars, unscheduled 
   model calls and lifts retrieval quality.
 - **Quality test before spending.** 200 labelled query→passage pairs from EVAL25-style questions. Each candidate
   model × chunking setup is scored on recall@10. The money goes to the winner.
+- **Provider choice is open (Shivam, 2026-10-25), not DeepInfra only.** C0 compares every serious embedding
+  provider on the same footing:
+  - Google, Meta-hosted endpoints, OpenCode, CoreWeave, Cerebras, DeepInfra, Nebius, Together, Fireworks, and
+    other OpenAI-compatible hosts;
+  - plus the model owners' own APIs.
+
+  The criteria are model quality on our 200-pair test, price per million tokens, rate limits, batch discounts and
+  data-retention terms. Price matters only among models that pass the quality bar. The provider is swappable
+  because vectors are stored per model, never per provider.
 - **Cost model, measured rather than guessed.** Corpus tokens × the provider's price per million tokens.
   - The one-off backfill is the $300 bucket.
   - The daily flow (new filings, circulars, transcripts) plus query embeddings is the $40 per month bucket.
   - First step: a $0 job counts the tokens in the corpus still to embed and in the average daily new flow, and
     reads the current price. Nothing is spent until Shivam sees that table.
-- **Local GPU option for the daily flow.** The RX 6700 XT has 12 GB, which is not enough for an 8B model in fp16.
-  A 0.6B–4B embedding model in the same family (ONNX/DirectML, quantised) could take the daily flow for free, but
-  only if it lands in the same vector space as the primary or wins on the quality test. Run it with duty cycling,
-  because full GPU load has tripped the UPS twice.
+- **No local embedding model** (Shivam, 2026-10-25). Embeddings come from the chosen provider. Local compute is
+  spent on the database side instead: vector search (NumPy memmap; FAISS or hnswlib if needed), DuckDB, SQLite FTS5,
+  and statsmodels/scikit-learn for the event studies and probes. No model runs locally to answer queries.
 
 ## 3. Making the LLM do less over time
 - **Stage 1 (now): the LLM labels.** DeepSeek Flash answers the question sets (yes/no/unknown + quote) on new
@@ -87,7 +100,7 @@ companies cannot pick their exposure to them: sudden tariffs, wars, unscheduled 
 | work | runs on |
 |---|---|
 | Vector search (memmap, already 0.2–0.7 s), probes, event studies, difference-in-differences, calibration | CPU/NumPy |
-| Local embedding of the daily flow (if it passes the test), OCR | GPU, duty-cycled |
+| OCR of image-only pages | GPU, duty-cycled |
 | Primary embedding backfill | DeepInfra, inside the $300 |
 | Question-set labelling, shock triage | DeepSeek Go plan, $0, off-peak |
 | Review of samples, design | Claude |
@@ -96,10 +109,17 @@ Raw data is stored on D. The working databases and indexes stay on C until C fre
 indexes move to D.
 
 ## Build order (after the current G0–G4 merges)
-1. **C0:** $0 measurement job — tokens still to embed, average daily new tokens, the current price → cost table for
-   Shivam.
+1. **C0:** $0 measurement job — tokens still to embed, average daily new tokens, and prices and limits across all
+   providers listed above → cost table for Shivam.
 2. **C1:** structure-aware chunker + chunk headers, tested on 50 documents of each type.
 3. **C2:** retrieval quality set (200 pairs) + model/chunking bake-off (only paid embeds Shivam approves).
 4. **C3:** `causal_edges`, plus the event-study / difference-in-differences / dose-response / placebo toolkit, and
    its first run on tariffs Mar-2025, OMC Q4-Q1, and gold Jun-Jul 2026.
 5. **C4:** question-set labels + the first 5 linear probes, with a probe-vs-LLM accuracy report.
+
+## Storage: identical files are stored once (Shivam, 2026-10-25)
+- Raw files on D are content-addressed. Files with the same sha256 are hard-linked, so one copy on disk serves every
+  path that refers to it. This covers results PDFs a company files twice (standalone + consolidated, revisions) and
+  decks re-filed under new names.
+- Job `dedupe_raw` scans `D:\RealityEngine` by size, then by sha256, hard-links duplicates on the same volume, and
+  reports the bytes saved. New downloads check the sha index before writing.
