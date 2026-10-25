@@ -41,7 +41,7 @@ for extra in (ROOT, ROOT / "plugins" / "reality-data" / "server"):
         sys.path.insert(0, str(extra))
 
 DEFAULT_DB = ROOT / ".tmp" / "c1" / "chunks_v2_pilot.db"
-DEFAULT_SET = ROOT / "tasks" / "optimizations" / "learn" / "quality_set_v1.jsonl"
+DEFAULT_SET = ROOT / "tasks" / "optimizations" / "learn" / "quality_set_v2.jsonl"
 STOPWORDS = set("""a an and are as at be been but by can could did do does for from had has have how in
 into is it its may might more most no not of on or our over said say said's than that the their them then
 there these they this those to under was were what when where which while who why will with would you your
@@ -95,13 +95,15 @@ class Store:
         self.conn = conn
         self.by_chunk: dict[str, dict] = {}
         self.doc_ids: set[int] = set()
+        self.docs_per_type: dict[str, set[int]] = {}
         self.tokens = 0
+        self.header_tokens = 0
         self.per_type: dict[str, dict] = {}
         columns = {row[1] for row in conn.execute(f"pragma table_info({self.table})")}
         source = "source_chunk_id" if "source_chunk_id" in columns else "-1 as source_chunk_id"
         for row in conn.execute(
                 f"select chunk_id, doc_id, doc_type, char_len, norm_start, norm_end, "
-                f"       {source} from {self.table} c"):
+                f"       length(header) as header_len, {source} from {self.table} c"):
             key = str(row["chunk_id"])
             self.by_chunk[key] = {"chunk_id": key, "doc_id": row["doc_id"],
                                   "doc_type": row["doc_type"],
@@ -109,12 +111,17 @@ class Store:
                                   "norm_end": row["norm_end"],
                                   "source_chunk_id": row["source_chunk_id"]}
             self.doc_ids.add(row["doc_id"])
+            self.docs_per_type.setdefault(row["doc_type"], set()).add(row["doc_id"])
             self.tokens += int(row["char_len"] or 0) / 4.0
-            bucket = self.per_type.setdefault(row["doc_type"], {"chunks": 0, "chars": 0})
+            self.header_tokens += int(row["header_len"] or 0) / 4.0
+            bucket = self.per_type.setdefault(row["doc_type"], {"chunks": 0, "chars": 0,
+                                                                "header_chars": 0})
             bucket["chunks"] += 1
             bucket["chars"] += int(row["char_len"] or 0)
+            bucket["header_chars"] += int(row["header_len"] or 0)
         for bucket in self.per_type.values():
             bucket["tokens"] = bucket["chars"] / 4.0
+            bucket["header_tokens"] = bucket["header_chars"] / 4.0
 
 
 def chunk_ids_for(store: Store) -> set[int]:
@@ -279,6 +286,10 @@ def main() -> None:
                     help="USD per million tokens for the v2 cost estimate")
     ap.add_argument("--fts-variant", choices=("header", "body"), default="header",
                     help="v2 only: index the header with the body, or the body alone")
+    ap.add_argument("--scope", choices=("corpus", "all"), default="corpus",
+                    help="score only questions whose gold document is in this corpus")
+    ap.add_argument("--project-full", action="store_true",
+                    help="project pilot tokens to the full corpus (C0 cost input)")
     args = ap.parse_args()
 
     rows = load_quality_set(Path(args.set_path))
@@ -286,6 +297,12 @@ def main() -> None:
         rows = rows[: args.limit]
     conn = open_db(Path(args.db))
     store = Store(conn, args.chunks)
+
+    skipped = 0
+    if args.scope == "corpus":
+        kept = [row for row in rows if int(row["doc_id"]) in store.doc_ids]
+        skipped = len(rows) - len(kept)
+        rows = kept
 
     if args.retriever == "fts":
         retriever = lambda q: retrieve_fts(store, q, store.doc_ids,  # noqa: E731
@@ -314,19 +331,26 @@ def main() -> None:
         raise SystemExit(f"unknown --retriever {args.retriever!r}")
 
     good, bad = verify_spans(conn, rows)
-    ranks: list[int | None] = []
-    by_type: dict[str, list[int | None]] = {}
-    hard: list[int | None] = []
+    cross_rows = [row for row in rows if str(row.get("why", "")).startswith("cross-document")]
+    single_rows = [row for row in rows
+                   if not str(row.get("why", "")).startswith("cross-document")]
+    rank_of: dict[str, int | None] = {}
     details = []
     for row in rows:
         hits = retriever(row["question"])
         rank = first_hit_rank(hits, row)
-        ranks.append(rank)
-        by_type.setdefault(row["doc_type"], []).append(rank)
-        if row.get("difficulty") == "H":
-            hard.append(rank)
+        rank_of[row["qid"]] = rank
         details.append({"qid": row["qid"], "rank": rank,
+                        "cross": row in cross_rows,
                         "top": hits[0]["chunk_id"] if hits else None})
+
+    def _ranks(subset: list[dict]) -> list[int | None]:
+        return [rank_of[row["qid"]] for row in subset]
+
+    by_type: dict[str, list[dict]] = {}
+    for row in single_rows:
+        by_type.setdefault(row["doc_type"], []).append(row)
+    hard_rows = [row for row in rows if row.get("difficulty") == "H"]
 
     result = {
         "chunks": args.chunks,
@@ -334,17 +358,58 @@ def main() -> None:
         "db": str(args.db),
         "set": str(args.set_path),
         "n": len(rows),
+        "skipped_not_in_corpus": skipped,
         "span_checks_ok": good,
         "span_checks_bad": bad,
-        "overall": score(rows, ranks),
-        "per_type": {k: score([r for r in rows if r["doc_type"] == k], v)
-                     for k, v in sorted(by_type.items())},
-        "hard_negatives": score([r for r in rows if r.get("difficulty") == "H"], hard),
+        "overall": score(rows, _ranks(rows)),
+        "single_document": score(single_rows, _ranks(single_rows)),
+        "cross_document": score(cross_rows, _ranks(cross_rows)),
+        "per_type": {k: score(v, _ranks(v)) for k, v in sorted(by_type.items())},
+        "hard_negatives": score(hard_rows, _ranks(hard_rows)),
         "corpus": {"chunks": len(store.by_chunk), "tokens": round(store.tokens),
-                   "per_type": {k: {"chunks": v["chunks"], "tokens": round(v["tokens"])}
+                   "header_tokens": round(store.header_tokens),
+                   "total_tokens": round(store.tokens + store.header_tokens),
+                   "per_type": {k: {"chunks": v["chunks"], "tokens": round(v["tokens"]),
+                                    "header_tokens": round(v["header_tokens"]),
+                                    "docs": len(store.docs_per_type.get(k, ()))}
                                 for k, v in sorted(store.per_type.items())}},
         "details": details,
     }
+
+    if args.project_full:
+        from reality_engine.db.readonly import connect_ro
+        from reality_engine.toolbelt._common import data_root
+        src = Path(data_root()) / "equity_intelligence.db"
+        src_conn = connect_ro(src)
+        counts = dict(src_conn.execute(
+            "select r.source_type, count(*) from raw_documents r "
+            "where exists (select 1 from document_chunks c where c.doc_id = r.doc_id) "
+            "group by r.source_type").fetchall())
+        type_sources = {
+            "concall": ("CONCALL_TRANSCRIPT",),
+            "deck": ("INVESTOR_PRESENTATION",),
+            "annual_report": ("ANNUAL_REPORT",),
+            "circular": ("PIB_Press_Release", "RBI_Monetary_Policy"),
+        }
+        projected: dict[str, dict] = {}
+        total = 0
+        for doc_type, bucket in sorted(store.per_type.items()):
+            pilot_docs = len(store.docs_per_type.get(doc_type, ()))
+            full_docs = sum(counts.get(source, 0) for source in type_sources.get(doc_type, ()))
+            per_doc = (bucket["tokens"] + bucket["header_tokens"]) / max(1, pilot_docs)
+            estimate = round(per_doc * full_docs)
+            projected[doc_type] = {
+                "pilot_docs": pilot_docs,
+                "pilot_tokens": round(bucket["tokens"] + bucket["header_tokens"]),
+                "full_docs": full_docs, "projected_tokens": estimate}
+            total += estimate
+        result["token_projection"] = {
+            "per_type": projected, "total_tokens": total,
+            "price_per_m": args.price_per_m,
+            "cost_usd": round(total * args.price_per_m / 1e6, 2),
+            "note": "pilot body+header tokens per document, times documents with "
+                    "chunks in the live corpus",
+        }
     if args.out:
         Path(args.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in result.items() if k != "details"}, indent=2))

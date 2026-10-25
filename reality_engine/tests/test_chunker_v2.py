@@ -35,6 +35,28 @@ SHORT_QA = (
     "ravi shah : capex was 82 crore for the year and debt to equity stayed at 0.4 times.\n"
 )
 
+LONG_PARA = (
+    "Revenue from operations for the year was 1,284 crore, up 18 percent, and the operating "
+    "margin improved to 14.6 percent on better realisations and a stable input cost "
+    "environment, with the new line commissioned in the second half contributing for the "
+    "full year for the first time and the order book staying above two years of revenue. "
+)
+
+AR_SMALL = (
+    "Notes to the Financial Statements\n"
+    "Note 1 Borrowings\n" + LONG_PARA + "\n"
+    "Note 2 Cash and bank\nA short note with a single number, 42 crore.\n"
+    "Note 3 Segment information\n" + LONG_PARA + "\n"
+    "Note 4 Subsequent events\n"
+)
+
+DECK_DIVIDED = [
+    "Financials",
+    "Revenue and margins\n" + LONG_PARA * 2,
+    "Thank you.",
+    "Outlook and guidance\n" + LONG_PARA * 2,
+]
+
 DECK = [
     "Investor presentation q2 fy25\n" + "Revenue growth of 18 percent year on year was led by the "
     "packaging division, which added three new customers in the quarter and expanded the existing "
@@ -131,6 +153,20 @@ class DeckTests(unittest.TestCase):
         self.assertTrue(chunks[1].section.startswith("Capital expenditure plan"))
         self.assertIn("Investor deck", chunks[0].header)
 
+    def test_short_slide_merges_and_header_carries_deck_title_and_section(self):
+        chunks = cv.chunk_document(
+            dict(META, doc_type="deck", symbol="ZYDUS",
+                 title="Q2 FY25 investor presentation"),
+            DECK_DIVIDED)
+        self.assertGreaterEqual(len(chunks), 2)
+        for chunk in chunks:
+            self.assertGreaterEqual(chunk.char_len, cv.DECK_MIN_CHARS, chunk.body[:80])
+        self.assertIn("Q2 FY25 investor presentation", chunks[0].header)
+        self.assertIn("Financials", chunks[0].header)
+        self.assertTrue(any("Thank you." in c.body for c in chunks),
+                        [c.body[:60] for c in chunks])
+        self.assertEqual((chunks[0].page_from, chunks[0].page_to), (1, 2))
+
 
 class AnnualReportTests(unittest.TestCase):
     def test_note_table_stays_whole(self):
@@ -163,6 +199,31 @@ class AnnualReportTests(unittest.TestCase):
         for chunk in chunks[1:]:
             self.assertEqual(LONG_NOTE[chunk.span_start - 1], "\n",
                              "split did not land on a paragraph boundary")
+
+    def test_undersized_note_merges_and_heading_alone_is_never_a_chunk(self):
+        chunks = cv.chunk_document(
+            dict(META, doc_type="annual_report", symbol="ACME"), [AR_SMALL])
+        self.assertGreaterEqual(len(chunks), 2, [c.body[:60] for c in chunks])
+        for chunk in chunks:
+            self.assertGreaterEqual(chunk.char_len, cv.MIN_CHARS, chunk.body[:80])
+        self.assertTrue(any("single number" in c.body for c in chunks))
+        for chunk in chunks:
+            self.assertFalse(chunk.body.strip().lower().startswith("note 4")
+                             and len(chunk.body.strip()) < cv.MIN_CHARS)
+
+    def test_oversize_split_has_no_tiny_tail(self):
+        body = "Note 20 Borrowings\n" + "\n".join(
+            "The company repaid 120 crore of borrowings during the year and the weighted "
+            "average cost of debt fell to 8.1 percent, with no covenant breach and adequate "
+            "headroom under the working capital limits, and the maturity profile stayed "
+            "comfortable through the year."
+            for _ in range(40))
+        chunks = cv.chunk_document(
+            dict(META, doc_type="annual_report", symbol="HEXT"), [body])
+        self.assertGreaterEqual(len(chunks), 2)
+        self.assertLessEqual(max(c.char_len for c in chunks), cv.MAX_CHARS)
+        self.assertGreaterEqual(min(c.char_len for c in chunks), 300,
+                                [c.char_len for c in chunks])
 
 
 class CircularTests(unittest.TestCase):

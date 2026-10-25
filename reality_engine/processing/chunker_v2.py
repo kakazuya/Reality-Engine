@@ -23,6 +23,7 @@ the same section.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, replace
 from typing import Iterable, Sequence
@@ -117,12 +118,13 @@ class _Unit:
 
 
 def make_header(symbol: str, doc_type: str, fiscal_period: str, section: str,
-                speaker: str, filed: str) -> str:
-    """``<SYMBOL> · <doc type> · <fiscal period> · <section/speaker> · filed <date>``."""
+                speaker: str, filed: str, title: str = "") -> str:
+    """``<SYMBOL> · <doc type or title> · <fiscal period> · <section/speaker> · filed <date>``."""
     where = section or speaker or "-"
+    label = (title or "").strip()[:90] or DOC_LABELS.get(doc_type, doc_type or "document")
     return " · ".join([
         (symbol or "DOCUMENT").upper(),
-        DOC_LABELS.get(doc_type, doc_type or "document"),
+        label,
         fiscal_period or "-",
         where,
         f"filed {filed}" if filed else "filed date unknown",
@@ -165,22 +167,35 @@ def _best_cut(text: str, pos: int, limit: int, protected: Sequence[tuple[int, in
 
 
 def _split_long(text: str, unit: _Unit, protected: Sequence[tuple[int, int]]) -> list[_Unit]:
-    if unit.end - unit.start <= MAX_CHARS:
+    """Split an oversize unit into near-equal pieces.
+
+    Greedy ``pos + MAX_CHARS`` cuts leave a tiny tail on the last piece (an AR
+    note of 6,100 chars produced a 5,900-char chunk plus a 100-char fragment
+    that no neighbour could absorb).  Dividing the length first keeps every
+    piece near ``length / n``, so the tail is no smaller than the others.
+    """
+    length = unit.end - unit.start
+    if length <= MAX_CHARS:
         return [unit]
+    count = max(2, math.ceil(length / MAX_CHARS))
+    target = length / count
     pieces: list[_Unit] = []
     pos = unit.start
-    first = True
-    while unit.end - pos > MAX_CHARS:
-        cut = _best_cut(text, pos, pos + MAX_CHARS, protected)
-        if cut <= pos:
-            cut = min(unit.end, pos + MAX_CHARS)
+    for index in range(1, count):
+        want = unit.start + int(round(target * index))
+        # Stay under the hard ceiling: the boundary window may claim more than
+        # MAX_CHARS otherwise (a 10.5k-char note split into two 5.3k targets
+        # still produced a 6.8k piece when the window was target + 30%).
+        limit = min(unit.end, want + int(target * 0.2), pos + MAX_CHARS)
+        cut = _best_cut(text, pos, max(pos + 1, limit), protected)
+        if cut <= pos or cut >= unit.end:
+            cut = min(unit.end - 1, max(pos + 1, want))
+        cut = min(cut, pos + MAX_CHARS)
         pieces.append(replace(unit, start=pos, end=cut,
-                              kind=unit.kind if first else f"{unit.kind}_cont"))
-        first = False
+                              kind=unit.kind if not pieces else f"{unit.kind}_cont"))
         pos = cut
-    if pos < unit.end:
-        pieces.append(replace(unit, start=pos, end=unit.end,
-                              kind=unit.kind if first else f"{unit.kind}_cont"))
+    pieces.append(replace(unit, start=pos, end=unit.end,
+                          kind=unit.kind if not pieces else f"{unit.kind}_cont"))
     return pieces
 
 
@@ -196,17 +211,25 @@ def _same_group(unit: _Unit, other: _Unit) -> bool:
     return (unit.group or unit.section or "") == (other.group or other.section or "")
 
 
-def _merge_small(units: list[_Unit]) -> list[_Unit]:
-    """Merge a unit under MIN_CHARS with a neighbour inside the same section.
+def _merge_small(units: list[_Unit], min_chars: int = MIN_CHARS) -> list[_Unit]:
+    """Merge a unit under ``min_chars`` with a neighbour.
 
-    Forward first (a stub heading belongs to what follows), then backwards for
-    whatever is left small.
+    Forward first (a stub heading belongs to what follows), then backwards,
+    then whatever is still small is folded into *any* neighbour that fits.
+    The last pass is what kills page numbers, CIN lines and signature stubs:
+    no chunk under ``min_chars`` survives unless the whole document is that
+    small or its neighbours are already at ``MAX_CHARS``.
     """
     forward: list[_Unit] = []
     i = 0
     while i < len(units):
         unit = units[i]
-        if (unit.end - unit.start) < MIN_CHARS and i + 1 < len(units):
+        if unit.kind == "front_matter" and i + 1 < len(units) \
+                and units[i + 1].end - unit.start <= MAX_CHARS:
+            forward.append(replace(units[i + 1], start=unit.start))
+            i += 2
+            continue
+        if (unit.end - unit.start) < min_chars and i + 1 < len(units):
             nxt = units[i + 1]
             if _same_group(unit, nxt) and nxt.end - unit.start <= MAX_CHARS:
                 forward.append(replace(nxt, start=unit.start))
@@ -217,23 +240,31 @@ def _merge_small(units: list[_Unit]) -> list[_Unit]:
 
     out: list[_Unit] = []
     for unit in forward:
-        if out and (unit.end - unit.start) < MIN_CHARS:
-            prev = out[-1]
-            if _same_group(unit, prev) and unit.end - prev.start <= MAX_CHARS:
-                out[-1] = replace(prev, end=unit.end)
-                continue
+        if out and (unit.end - unit.start) < min_chars \
+                and _same_group(unit, out[-1]) and unit.end - out[-1].start <= MAX_CHARS:
+            out[-1] = replace(out[-1], end=unit.end)
+            continue
         out.append(unit)
 
-    # Hard floor: page furniture (page numbers, signature blocks) is folded into
-    # the previous chunk whatever its section, so no 40-char fragments survive.
+    # Furniture (page numbers, CIN lines, signature stubs, one-line notes) has
+    # no retrieval value alone; semantic units (a Q&A pair, a clause, a speaker
+    # turn) are kept even when short.
+    def _furniture(unit: _Unit) -> bool:
+        return unit.kind.startswith(
+            ("note", "table", "paragraph", "front_matter", "preamble", "slide"))
+
     floor: list[_Unit] = []
     for unit in out:
-        furniture = unit.kind.startswith(("note", "table", "paragraph"))
-        if floor and furniture and (unit.end - unit.start) < 80 \
+        if floor and (unit.end - unit.start) < min_chars and _furniture(unit) \
                 and unit.end - floor[-1].start <= MAX_CHARS:
             floor[-1] = replace(floor[-1], end=unit.end)
             continue
         floor.append(unit)
+
+    if len(floor) > 1 and (floor[0].end - floor[0].start) < min_chars \
+            and _furniture(floor[0]) and floor[1].end - floor[0].start <= MAX_CHARS:
+        floor[1] = replace(floor[1], start=floor[0].start)
+        floor.pop(0)
     return floor
 
 
@@ -248,10 +279,10 @@ def _trim(text: str, unit: _Unit) -> _Unit:
 
 def _finalise(text: str, units: Iterable[_Unit], meta: dict,
               protected: Sequence[tuple[int, int]] = (),
-              page_at=None) -> list[Chunk]:
+              page_at=None, min_chars: int = MIN_CHARS) -> list[Chunk]:
     units = [_trim(text, u) for u in units]
     units = [u for u in units if u.end > u.start]
-    units = _merge_small(_split_oversize(text, units, protected))
+    units = _merge_small(_split_oversize(text, units, protected), min_chars)
     chunks: list[Chunk] = []
     for unit in units:
         body = text[unit.start:unit.end]
@@ -266,7 +297,8 @@ def _finalise(text: str, units: Iterable[_Unit], meta: dict,
             unit_kind=unit.kind,
             header=make_header(meta.get("symbol", ""), meta.get("doc_type", ""),
                                meta.get("fiscal_period", ""), section,
-                               unit.speaker, meta.get("published_date", "")),
+                               unit.speaker, meta.get("published_date", ""),
+                               meta.get("title", "")),
             body=body,
             char_len=len(body),
             published_date=meta.get("published_date") or "",
@@ -511,7 +543,35 @@ def _slide_title(page: str) -> str:
     return ""
 
 
+DECK_MIN_CHARS = 250
+_DECK_DIVIDER_MAX = 180
+_DECK_NOT_A_SECTION = {
+    "thank you", "thank you.", "questions", "q&a", "question & answer",
+    "disclaimer", "safe harbour", "safe harbor", "agenda",
+}
+
+
+def _is_section_divider(page: str) -> bool:
+    """A divider slide: a short label with no table of numbers under it."""
+    body = normalise(page)
+    if not body or len(body) > _DECK_DIVIDER_MAX:
+        return False
+    if body.lower().strip(" .:-") in _DECK_NOT_A_SECTION:
+        return False
+    if len(_NUMERIC.findall(body)) > 1:
+        return False
+    return sum(ch.isalpha() for ch in body) >= 8
+
+
 def chunk_deck(page_texts: Sequence[str], meta: dict | None = None) -> list[Chunk]:
+    """One slide per chunk, titled by its nearest section-divider slide.
+
+    A slide under ``DECK_MIN_CHARS`` of body merges into the next slide in the
+    same section: a one-line "Financials" divider or a "Thank you" slide is not
+    a retrieval unit on its own.  The deck title from metadata heads every
+    slide chunk, so a slide with no company name in its own text is still
+    findable.
+    """
     meta = dict(meta or {})
     meta.setdefault("doc_type", "deck")
     pages = list(page_texts or [])
@@ -519,12 +579,25 @@ def chunk_deck(page_texts: Sequence[str], meta: dict | None = None) -> list[Chun
         return []
     text = join_pages(pages)
     spans = _page_spans(pages)
+    dividers = [_is_section_divider(page) for page in pages]
+    sectioned = any(dividers)
     units: list[_Unit] = []
-    for (start, end, page), page_text in zip(spans, pages):
+    section = ""
+    for (start, end, page), page_text, is_divider in zip(spans, pages, dividers):
         if not page_text.strip():
             continue
-        units.append(_Unit(start, end, "slide", _slide_title(page_text) or f"Slide {page}"))
-    return _finalise(text, units, meta, page_at=_page_lookup(spans))
+        slide = _slide_title(page_text) or f"Slide {page}"
+        if is_divider:
+            section = slide
+        if sectioned:
+            label, group = section or slide, section or slide
+        else:
+            # No divider to group by: every slide is its own section, but a
+            # short one may still merge forward into its neighbour.
+            label, group = slide, ""
+        units.append(_Unit(start, end, "slide", label, group=group))
+    return _finalise(text, units, meta, page_at=_page_lookup(spans),
+                     min_chars=DECK_MIN_CHARS)
 
 
 # ---------------------------------------------------------------------------
