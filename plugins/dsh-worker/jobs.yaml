@@ -217,6 +217,24 @@ jobs:
     needs_gpu: false
     enabled: false
 
+  - name: etf_premium
+    description: "Materialise etf_premium (ETF close vs same-day NAV, plus the iNAV gap) from etf_px, fund_nav and etf_inav."
+    argv: ["python", "-m", "reality_engine.scripts.build_etf_premium"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:etf_premium", "equity_intelligence.db:etf_premium_rows"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: daily
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT max(date) AS value FROM etf_premium"
+      expect: {kind: max_date, max_age_days: 3}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
   - name: index_tri  # audit #12
     description: "Total-return indices used by the benchmark rule."
     argv: ["python", "-m", "reality_engine.scripts.fetch_index_tri", "--start", "{start}", "--end", "{date}"]
@@ -487,6 +505,24 @@ jobs:
     needs_gpu: false
     enabled: false
 
+  - name: results_notes_text
+    description: "Notes pages of quarterly-results PDFs from the matching BSE announcement into results_xbrl.db (resumable)."
+    argv: ["python", "-m", "reality_engine.scripts.fetch_results_notes_text", "--limit", "1000", "--since", "2025-01-01"]
+    cwd: "."
+    env: {}
+    writes: ["results_xbrl.db:results_notes", "results_xbrl.db:results_notes_fts", "external:REALITY_RAW_ROOT/results_notes_text/"]
+    resource_locks: ["net:www.bseindia.com", "db:results_xbrl.db", "db:bse_announcements.db"]
+    cadence: daily
+    success_check:
+      db: results_xbrl.db
+      sql: "SELECT max(known_at) AS value FROM results_notes"
+      expect: {kind: max_date, max_age_days: 30}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
   # --------------------------------------------------------- document corpus
   - name: pib_english  # audit #27
     description: "PIB English daily (last 3 days); historical backfill uses --start 2021-01-01."
@@ -666,6 +702,24 @@ jobs:
     market_hours: any
     needs_paid_api: true
     needs_gpu: true
+    enabled: false
+
+  - name: deck_page_text
+    description: "PyMuPDF text of every deck page into deck_figures.db (newest first, resumable; Drive fetch for missing PDFs)."
+    argv: ["python", "-m", "reality_engine.scripts.build_deck_page_text", "--limit", "2000"]
+    cwd: "."
+    env: {}
+    writes: ["deck_figures.db:deck_page_text", "deck_figures.db:deck_page_text_fts", "external:REALITY_RAW_ROOT/deck_page_text/"]
+    resource_locks: ["net:drive.google.com", "db:deck_figures.db"]
+    cadence: daily
+    success_check:
+      db: deck_figures.db
+      sql: "SELECT max(extracted_at) AS value FROM deck_page_text"
+      expect: {kind: max_date, max_age_days: 30}
+    off_peak_only: false
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
     enabled: false
 
   - name: concall_extraction  # audit #37
