@@ -808,20 +808,28 @@ class Repository:
             return cursor.rowcount
 
     def upsert_bulk_block_deals(self, records: List[Dict[str, Any]]) -> int:
-        """Bulk upserts Bulk and Block deals."""
+        """Bulk upserts Bulk and Block deals.
+
+        ``exchange``/``isin`` are the label columns (added for the 2019-> backfill in
+        scripts/build_bulk_block_deals.py). Records that predate them default to NSE,
+        which is the only exchange this method's live feed (deals_client) reads.
+        """
         if not records:
             return 0
 
         query = """
         INSERT INTO bulk_block_deals (
             id, deal_date, symbol, client_name, deal_type, buy_sell,
-            quantity, trade_price, is_marquee_institution
+            quantity, trade_price, is_marquee_institution, exchange, isin
         ) VALUES (
             :id, :deal_date, :symbol, :client_name, :deal_type, :buy_sell,
-            :quantity, :trade_price, :is_marquee_institution
+            :quantity, :trade_price, :is_marquee_institution, :exchange, :isin
         )
-        ON CONFLICT(id) DO NOTHING;
+        ON CONFLICT(id) DO UPDATE SET
+            exchange = excluded.exchange,
+            isin = excluded.isin;
         """
+        records = [{"exchange": "NSE", "isin": None, **r} for r in records]
         with self.db.session() as conn:
             cursor = conn.executemany(query, records)
             return cursor.rowcount
