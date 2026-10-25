@@ -1,0 +1,151 @@
+{
+ "cost_usd": 0.0,
+ "tokens": 0,
+ "layout_docs": [
+  34918,
+  35134,
+  35137,
+  35935,
+  36065,
+  36224,
+  36331,
+  36340,
+  36408
+ ],
+ "n_questions": 178,
+ "old": {
+  "overall": {
+   "n": 178,
+   "recall@1": 0.764,
+   "recall@5": 0.9663,
+   "recall@10": 0.9831,
+   "mrr": 0.852
+  },
+  "chunks": 2432,
+  "annual_report": {
+   "n": 18,
+   "recall@1": 0.5556,
+   "recall@5": 0.7778,
+   "recall@10": 0.8333,
+   "mrr": 0.6667
+  },
+  "circular": {
+   "n": 30,
+   "recall@1": 0.9333,
+   "recall@5": 1.0,
+   "recall@10": 1.0,
+   "mrr": 0.9667
+  },
+  "concall": {
+   "n": 90,
+   "recall@1": 0.7444,
+   "recall@5": 0.9889,
+   "recall@10": 1.0,
+   "mrr": 0.8424
+  },
+  "deck": {
+   "n": 40,
+   "recall@1": 0.775,
+   "recall@5": 0.975,
+   "recall@10": 1.0,
+   "mrr": 0.8708
+  },
+  "hard": {
+   "n": 16,
+   "recall@1": 0.625,
+   "recall@5": 0.9375,
+   "recall@10": 1.0,
+   "mrr": 0.7333
+  }
+ },
+ "v2": {
+  "overall": {
+   "n": 178,
+   "recall@1": 0.7809,
+   "recall@5": 0.9775,
+   "recall@10": 0.9944,
+   "mrr": 0.8736
+  },
+  "chunks": 3209,
+  "annual_report": {
+   "n": 18,
+   "recall@1": 0.5556,
+   "recall@5": 0.9444,
+   "recall@10": 1.0,
+   "mrr": 0.7338
+  },
+  "circular": {
+   "n": 30,
+   "recall@1": 0.9667,
+   "recall@5": 1.0,
+   "recall@10": 1.0,
+   "mrr": 0.9833
+  },
+  "concall": {
+   "n": 90,
+   "recall@1": 0.7778,
+   "recall@5": 0.9889,
+   "recall@10": 1.0,
+   "mrr": 0.8769
+  },
+  "deck": {
+   "n": 40,
+   "recall@1": 0.75,
+   "recall@5": 0.95,
+   "recall@10": 0.975,
+   "mrr": 0.8469
+  },
+  "hard": {
+   "n": 16,
+   "recall@1": 0.6875,
+   "recall@5": 0.9375,
+   "recall@10": 1.0,
+   "mrr": 0.8203
+  }
+ },
+ "v2_layout": {
+  "overall": {
+   "n": 178,
+   "recall@1": 0.7921,
+   "recall@5": 0.9719,
+   "recall@10": 0.9831,
+   "mrr": 0.8757
+  },
+  "chunks": 4080,
+  "annual_report": {
+   "n": 18,
+   "recall@1": 0.6667,
+   "recall@5": 0.8889,
+   "recall@10": 0.8889,
+   "mrr": 0.7546
+  },
+  "circular": {
+   "n": 30,
+   "recall@1": 0.9667,
+   "recall@5": 1.0,
+   "recall@10": 1.0,
+   "mrr": 0.9833
+  },
+  "concall": {
+   "n": 90,
+   "recall@1": 0.7778,
+   "recall@5": 0.9889,
+   "recall@10": 1.0,
+   "mrr": 0.8769
+  },
+  "deck": {
+   "n": 40,
+   "recall@1": 0.75,
+   "recall@5": 0.95,
+   "recall@10": 0.975,
+   "mrr": 0.8469
+  },
+  "hard": {
+   "n": 16,
+   "recall@1": 0.75,
+   "recall@5": 0.9375,
+   "recall@10": 0.9375,
+   "mrr": 0.8438
+  }
+ }
+}
