@@ -51,9 +51,9 @@ in the Codex MCP environment).
 
 Each `start_worker` call creates `runtime/jobs/<job_id>/` containing:
 
-- `brief.md` — frozen copy of the complete brief (standing context header +
-  `tasks/worker_context/CONTEXT.md` path + the task brief, unless
-  `context_pack=false`)
+- `brief.md` — frozen copy of the complete brief (the task brief only unless
+  the caller passes `context_pack=true` to prepend the standing header +
+  `tasks/worker_context/CONTEXT.md` path)
 - `job.json` — immutable job/settings/launcher record
 - `status.json` — supervisor-owned mutable status (phase, PIDs, activity, outcome)
 - `result.md` — launcher final answer
@@ -189,7 +189,9 @@ conventions (AGENTS.md §3.2/§3.13) and recent decisions (`hotline/decisions.md
 + the last two `tasks/STATE.md` sections). Full column lists go to
 `tasks/worker_context/schemas/<db>.md`.
 
-`start_worker(context_pack=true)` is the default: it prepends a standing header
+`start_worker(context_pack=true)` is opt-in; the default is `false` (three A/B
+tests on 2026-10-24/25 showed no accuracy or speed gain and ~30% more output
+tokens). When enabled it prepends a standing header
 (<= 15 lines: read CONTEXT.md first, budget <= 25 tool calls before the first
 edit, report format) plus the absolute CONTEXT.md path to the brief. If the pack
 is older than 26 h it is regenerated before launch with a 60 s bound; a failure
@@ -198,7 +200,8 @@ While a **mutating repo-root worker** holds the repo-root lock, regeneration is
 skipped (`context_pack.regeneration_skipped = repo_root_writer_active`) and the
 stale pack is attached with a warning: the builder is a file that worker can
 rewrite, and this manager would run it unconfined.
-`context_pack=false` sends the original brief only. Briefs are also linted
+`context_pack=false` (the default) sends the original brief only. Briefs are
+also linted
 against `tasks/worker_context/BRIEF_TEMPLATE.md`: a missing Goal / Acceptance
 checks / Test command(s) section adds a `brief_lint:` warning, never a refusal.
 The worked example is `tasks/worker_context/EXAMPLE_BRIEF.md`.

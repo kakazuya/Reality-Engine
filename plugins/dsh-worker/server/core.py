@@ -1002,7 +1002,7 @@ class Manager:
         followup_wait_seconds: int = 0,
         controller_lease_seconds: int = 1800,
         refresh_context: bool = True,
-        context_pack: bool = True,
+        context_pack: bool = False,
         use_worktree: bool = False,
         base: str | None = None,
         test_cmd: str | None = None,
@@ -1246,9 +1246,10 @@ class Manager:
             if write_scope in ("data", "full"):
                 write_roots += [str(self.config.data_root), D_REALITY_ENGINE]
             # The generated repo/data map (tasks/worker_context/CONTEXT.md) is
-            # attached before the task brief, unless the caller opts out.  A
-            # stale pack is regenerated with a 60 s bound; failure is a warning,
-            # never a refused start.
+            # attached before the task brief only when the caller opts in
+            # (context_pack=true; the default is false).  A stale pack is
+            # regenerated with a 60 s bound; failure is a warning, never a
+            # refused start.
             warnings: list[str] = list(brief_warnings)
             context_info: dict[str, Any] = {
                 "enabled": False,

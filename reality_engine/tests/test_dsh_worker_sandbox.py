@@ -286,6 +286,7 @@ class WriteScopeValidationTests(unittest.TestCase):
             brief="root writer",
             permission="workspace-write",
             confirm_repo_root_write=True,
+            context_pack=True,
         )
         self.addCleanup(
             self.manager.cancel_worker, writer["job_id"], True, "test cleanup"
@@ -305,7 +306,7 @@ class WriteScopeValidationTests(unittest.TestCase):
             time.sleep(0.1)
         self.assertTrue(self.manager._repo_root_writer_active())
         reader = self.manager.start_worker(
-            brief="Goal: read only", permission="read-only"
+            brief="Goal: read only", permission="read-only", context_pack=True
         )
         self.addCleanup(
             self.manager.cancel_worker, reader["job_id"], True, "test cleanup"
