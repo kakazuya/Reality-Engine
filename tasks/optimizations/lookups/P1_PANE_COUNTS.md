@@ -21,15 +21,19 @@ Shivam saw "✕ 2 failed ✓ 74 finished" on the bar but "Finished 83". On disk:
 - Do not touch: anything outside `plugins/dsh-workers-pane/`.
 
 ## Steps
-1. Read `plugins/dsh-workers-pane/README.md` for how tests run.
+1. Tests + typecheck: `python -m reality_engine.toolbelt.mod_test plugins/dsh-workers-pane` (read `--help`).
 2. Change the counts; add the tile.
 3. Add a test: a fixture with 3 ok, 1 finished-with-exit-1, 1 failed start, 2 cancelled → tiles 3 / 2 / 2 and
    Finished section count 7.
 
 ## Acceptance checks
-1. The pane's test command from the README → all pass.
-2. Typecheck from the README (if any) → clean.
+1. `python -m reality_engine.toolbelt.mod_test plugins/dsh-workers-pane` → validate, tsc and all tests pass.
 3. `git diff --stat` only under `plugins/dsh-workers-pane/`.
+
+## Test command(s)
+```bash
+python -m reality_engine.toolbelt.mod_test plugins/dsh-workers-pane
+```
 
 ## Budget
 ≤ 12 tool calls before the first edit; ≤ 45 total; ≤ 30 min; $0 paid.
