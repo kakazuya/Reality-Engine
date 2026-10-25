@@ -32,6 +32,8 @@ from store import (
     LEASE_FILE,
     LEASE_SCHEMA,
     MUTATION_LOCK_NAME,
+    RESOURCE_GUARD_NAME,
+    RESOURCE_LOCK_DIR,
     STEERING_FILE,
     TOKEN_FILE,
     append_jsonl_locked,
@@ -51,6 +53,7 @@ from store import (
     read_text_bounded,
     read_text_bounded_tail,
     resource_lock_path,
+    resource_reservation_path,
     try_lock_file,
     utc_now,
     valid_job_id,
@@ -65,6 +68,15 @@ ACCOUNT = "2"
 KEY_ENV = "OPENCODE_GO_API_KEY_2"
 MODEL_LAUNCHER_MODULE = "reality_engine.scripts.run_deepseek_harness"
 PERMISSIONS = ("read-only", "workspace-write", "danger-full-access")
+# Additional write authority on top of the dsh sandbox mode.  dsh 0.2.1 has one
+# writable root per session (the workspace cwd) and no extra-roots config, so
+# "data" and "full" both run the dsh danger-full-access mode; the difference is
+# that "data" is scoped by instructions + per-DB locks and "full" needs its own
+# confirmation.  Recorded per job so status/list/progress show the real scope.
+WRITE_SCOPES = ("workspace", "data", "full")
+D_REALITY_ENGINE = "D:\\RealityEngine"
+MAX_WRITE_DBS = 20
+MAX_APPROVED_BY_CHARS = 200
 FINAL_PHASES = frozenset({"finished", "failed", "cancelled", "lost"})
 ACTIVE_PHASES = frozenset({"starting", "running", "cancelling"})
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -246,6 +258,43 @@ def _first_line(text: str, limit: int = 200) -> str:
         if stripped:
             return stripped[:limit]
     return "dsh worker"
+
+
+def _normalize_writes(writes: Any) -> list[str]:
+    """Validate the ``writes`` DB list and return basenames without ``db:``.
+
+    Each entry names one SQLite file (with or without the ``db:`` prefix) that
+    the brief is approved to write.  The supervisor takes the matching
+    ``db:<file>`` resource lock for the job's lifetime, so two data writers
+    never share a DB.
+    """
+    if writes is None:
+        return []
+    if not isinstance(writes, list) or len(writes) > MAX_WRITE_DBS:
+        raise PluginError(
+            "writes_invalid", f"writes must be a list of at most {MAX_WRITE_DBS} DB file names"
+        )
+    names: list[str] = []
+    for value in writes:
+        if not isinstance(value, str) or not value.strip() or "\x00" in value:
+            raise PluginError("writes_invalid", "every writes entry must be a non-empty string")
+        name = value.strip()
+        if name.startswith("db:"):
+            name = name[3:]
+        if (
+            not name.endswith(".db")
+            or Path(name).name != name
+            or len(name) > 120
+            or "/" in name
+            or "\\" in name
+        ):
+            raise PluginError(
+                "writes_invalid",
+                f"writes entry {value!r} must be a bare SQLite file name ending in .db",
+            )
+        if name not in names:
+            names.append(name)
+    return names
 
 
 def _progress_interval(value: Any) -> int:
@@ -443,6 +492,24 @@ class Manager:
 
     def _job_lock(self, job_dir: Path) -> Path:
         return job_dir / JOB_LOCK_NAME
+
+    def _status_paths(self, job_id: str, job: dict[str, Any]) -> dict[str, str]:
+        """Job paths with the live progress-notes path inside the workspace.
+
+        The worker writes ``<workspace>/.tmp/PROGRESS_NOTES.md`` because the
+        job directory is outside its sandbox; the legacy job-dir path is still
+        reported (and still read by the digest) for jobs started before that.
+        """
+        paths = self._job_paths(job_id)
+        workspace = job.get("workspace")
+        if isinstance(workspace, str) and workspace:
+            paths["progress_notes"] = str(
+                Path(workspace) / ".tmp" / progress.PROGRESS_NOTES_FILE
+            )
+        paths["progress_notes_legacy"] = str(
+            self._job_dir(job_id) / progress.PROGRESS_NOTES_FILE
+        )
+        return paths
 
     # ------------------------------------------------------------ validation
     def _workspace(self, candidate: str) -> Path:
@@ -688,6 +755,27 @@ class Manager:
         # status is positive proof that this job has stopped owning the tree.
         return status.get("phase") not in FINAL_PHASES
 
+    def _repo_root_writer_active(self) -> bool:
+        """Whether a mutating worker currently holds the repo-root lock.
+
+        Only mutating jobs take a workspace lock, so an active repo-root lock is
+        exactly "a mutating repo-root job may be rewriting code the manager is
+        about to execute".  A missing lock means no writer; a lock that exists
+        but cannot be read or validated (partial write, bad JSON, permissions,
+        a directory) fails closed instead of being treated as absent.
+        """
+        path = self._lock_path(self.config.repo_root)
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            return False
+        except OSError:
+            return True
+        existing, _ = read_json_bounded(path, 65_536)
+        if not isinstance(existing, dict):
+            return True
+        return self._lock_active(existing)
+
     def _acquire_lock(self, workspace: Path, job_id: str) -> Path:
         self.config.locks_dir.mkdir(parents=True, exist_ok=True)
         path = self._lock_path(workspace)
@@ -900,6 +988,12 @@ class Manager:
         task_file: str | None = None,
         workspace: str = ".",
         permission: str = "read-only",
+        write_scope: str = "workspace",
+        confirm_data_write: bool = False,
+        confirm_full_access: bool = False,
+        confirm_repo_root_write: bool = False,
+        writes: list[str] | None = None,
+        approved_by: str | None = None,
         heartbeat_interval_seconds: int = 900,
         missed_replies: int = 2,
         max_output_tokens: int | None = None,
@@ -976,6 +1070,84 @@ class Manager:
         brief_warnings = lint_worker_brief(text)
         if permission not in PERMISSIONS:
             raise PluginError("permission_invalid", f"permission must be one of {PERMISSIONS}")
+        if write_scope not in WRITE_SCOPES:
+            raise PluginError(
+                "write_scope_invalid", f"write_scope must be one of {WRITE_SCOPES}"
+            )
+        if not isinstance(confirm_data_write, bool):
+            raise PluginError("confirm_invalid", "confirm_data_write must be true or false")
+        if not isinstance(confirm_full_access, bool):
+            raise PluginError("confirm_invalid", "confirm_full_access must be true or false")
+        if not isinstance(confirm_repo_root_write, bool):
+            raise PluginError(
+                "confirm_invalid", "confirm_repo_root_write must be true or false"
+            )
+        if approved_by is not None:
+            if (
+                not isinstance(approved_by, str)
+                or not approved_by.strip()
+                or len(approved_by) > MAX_APPROVED_BY_CHARS
+                or "\x00" in approved_by
+            ):
+                raise PluginError(
+                    "approved_by_invalid",
+                    f"approved_by must be 1..{MAX_APPROVED_BY_CHARS} characters naming who approved",
+                )
+            approved_by = approved_by.strip()
+        if write_scope == "data" and not confirm_data_write:
+            raise PluginError(
+                "confirm_data_write_required",
+                "write_scope='data' can write REALITY_DATA_ROOT and D:\\RealityEngine; "
+                "pass confirm_data_write=true only for a brief approved to write there",
+            )
+        if write_scope == "full" and not confirm_full_access:
+            raise PluginError(
+                "confirm_full_access_required",
+                "write_scope='full' removes the file sandbox entirely; ask Shivam first, "
+                "then pass confirm_full_access=true",
+            )
+        write_dbs = _normalize_writes(writes)
+        if write_dbs and write_scope != "data":
+            raise PluginError(
+                "writes_requires_data_scope",
+                "writes=[...] names the DBs a data-scope job may write; pass "
+                "write_scope='data' (with confirm_data_write=true) to use it",
+            )
+        if write_scope == "data" and not write_dbs:
+            # A data job without named DBs holds no db: lock, so nothing stops
+            # it writing any database -- data scope would be full access with a
+            # friendlier name.
+            raise PluginError(
+                "writes_required",
+                "write_scope='data' must name the DBs the brief is approved to write "
+                "via writes=[...]; without them the job would hold no db: lock",
+            )
+        # dsh 0.2.1 has one writable root per session (the workspace cwd) and no
+        # extra-roots config.  Data/full scope therefore runs the dsh
+        # danger-full-access mode; "data" is narrowed by the brief's write
+        # roots, the per-DB locks, and the confirmation, not by the sandbox.
+        effective_permission = (
+            "danger-full-access" if write_scope in ("data", "full") else permission
+        )
+        mutating = effective_permission != "read-only"
+        repo_root_workspace = (
+            not use_worktree
+            and os.path.normcase(str(ws.resolve()))
+            == os.path.normcase(str(self.config.repo_root.resolve()))
+        )
+        if mutating and repo_root_workspace and not confirm_repo_root_write:
+            # A mutating worker in the main checkout root can rewrite code that
+            # later runs unconfined (the context-pack builder, supervisor.py,
+            # .git/config, other jobs' records).  Worktree and read-only jobs
+            # cannot reach those, so only this case needs the explicit flag.
+            raise PluginError(
+                "repo_root_write_requires_confirmation",
+                "this mutating job would write the main checkout root, where code "
+                "that runs unsandboxed lives (the context-pack builder, supervisor.py, "
+                ".git/config and other jobs' records). Pass confirm_repo_root_write="
+                "true only after Shivam approved a worker that may rewrite the repo root.",
+            )
+        data_locks = [f"db:{name}" for name in write_dbs]
         if not isinstance(heartbeat_interval_seconds, int) or not 30 <= heartbeat_interval_seconds <= 86_400:
             raise PluginError("heartbeat_invalid", "heartbeat interval must be 30..86400 seconds")
         progress_interval_seconds = _progress_interval(progress_interval_seconds)
@@ -1044,10 +1216,17 @@ class Manager:
                 help_error=capability.help_error,
             )
         job_id = new_job_id()
+        busy = self._reserve_resource_locks(data_locks, job_id)
+        if busy:
+            raise PluginError(
+                "resource_busy",
+                "the DBs named in writes are already held by another job; two "
+                "writers must never share a SQLite DB",
+                resource_locks=busy,
+            )
         job_dir = self.config.jobs_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=False)
         paths = self._job_paths(job_id)
-        mutating = permission != "read-only"
         lock_path: Path | None = None
         supervisor_spawned = False
         worktree_record: dict[str, Any] | None = None
@@ -1059,6 +1238,13 @@ class Manager:
                     raise PluginError("worktree_failed", str(exc)) from exc
                 ws = Path(worktree_record["path"])
                 text = f"{WORKTREE_PREAMBLE}\n\n{text}"
+            # The git identity is captured HERE, outside the sandbox, before
+            # the worker can rewrite <workspace>/.git.  The supervisor commits
+            # only against these stored paths (never the worker-writable file).
+            git_identity = gitutil.checkout_identity(ws) if mutating else None
+            write_roots = [str(ws)]
+            if write_scope in ("data", "full"):
+                write_roots += [str(self.config.data_root), D_REALITY_ENGINE]
             # The generated repo/data map (tasks/worker_context/CONTEXT.md) is
             # attached before the task brief, unless the caller opts out.  A
             # stale pack is regenerated with a 60 s bound; failure is a warning,
@@ -1069,21 +1255,37 @@ class Manager:
                 "path": None,
                 "regenerated": False,
             }
+            # Take the mutation lock BEFORE attaching the pack: the pack guard
+            # reads this lock, and a starting repo-root writer must never let
+            # the unsandboxed manager run the builder.  The lock's status is
+            # not published yet, so the guard fails closed for this start.
+            if mutating:
+                lock_path = self._acquire_lock(ws, job_id)
             if context_pack:
                 text, pack_warnings, context_info = attach_context_pack(
                     text,
                     repo_root=self.config.repo_root,
                     data_root=self.config.data_root,
                     now=now,
+                    # A mutating repo-root worker can rewrite the builder that
+                    # this unsandboxed manager would execute; never run it
+                    # while such a writer holds the repo-root lock.
+                    allow_regeneration=not self._repo_root_writer_active(),
                 )
                 warnings.extend(pack_warnings)
             # Standing instruction, not a question: the worker must never stop
             # or answer it, only append a progress line.
             text = f"{text.rstrip()}\n\n{PROGRESS_NOTES_INSTRUCTION}\n"
-            if mutating:
-                lock_path = self._acquire_lock(ws, job_id)
             atomic_write_text(job_dir / "brief.md", text)
-            baseline = gitutil.snapshot(ws) if mutating else {"available": False, "reason": "read_only"}
+            baseline = (
+                gitutil.snapshot(
+                    ws,
+                    identity=git_identity,
+                    repo_root=self.config.repo_root,
+                )
+                if mutating
+                else {"available": False, "reason": "read_only"}
+            )
             atomic_write_json(job_dir / "baseline.json", baseline)
 
             heartbeat_args, heartbeat_record = heartbeat.heartbeat_launch_args(
@@ -1106,7 +1308,7 @@ class Manager:
                 "--account",
                 ACCOUNT,
                 "--permission",
-                permission,
+                effective_permission,
                 "--allow-paid",
             ]
             if max_output_tokens is not None:
@@ -1136,6 +1338,32 @@ class Manager:
                     "read-only worker: it does not take the workspace mutation lock, so it "
                     "must not be started alongside a mutating worker in the same checkout"
                 )
+            if write_scope in ("data", "full") and permission != "danger-full-access":
+                warnings.append(
+                    "write_scope_uses_full_access: dsh 0.2.1 has one writable root per "
+                    "session and no extra-roots config, so write_scope="
+                    f"{write_scope!r} runs the dsh danger-full-access mode; the brief's "
+                    "write roots and (for data) the per-DB locks are the real scope"
+                )
+            if write_scope == "data":
+                warnings.append(
+                    "data_scope: write only inside "
+                    + ", ".join(write_roots)
+                    + "; the supervisor holds "
+                    + ", ".join(data_locks)
+                    + " (dsh 0.2.1 runs full access at the OS level; the locks and this "
+                    "brief are the only scope)"
+                )
+            if write_scope == "full":
+                warnings.append(
+                    "full_access: the file sandbox is disabled for this job; Shivam must "
+                    "approve it before Claude passes confirm_full_access=true"
+                )
+            if write_scope in ("data", "full") and not approved_by:
+                warnings.append(
+                    "approval_not_recorded: pass approved_by with who approved this write "
+                    "scope; confirm_* is only the caller's own flag"
+                )
             token_persisted = self._persist_control_token(job_dir, control_token)
             if not token_persisted:
                 warnings.append(
@@ -1150,7 +1378,12 @@ class Manager:
                 "plugin_root": str(self.config.plugin_root),
                 "workspace": str(ws),
                 "task_file": task_relative,
-                "permission": permission,
+                "permission": effective_permission,
+                "permission_requested": permission,
+                "write_scope": write_scope,
+                "writes": write_dbs,
+                "write_roots": write_roots,
+                "resource_locks": data_locks,
                 "model": MODEL,
                 "effort": EFFORT,
                 "account": ACCOUNT,
@@ -1162,6 +1395,9 @@ class Manager:
                 "owner_session": self.config.session_label,
                 "brief_first_line": brief_first_line,
                 "worktree": worktree_record,
+                "git": git_identity,
+                "approved_by": approved_by,
+                "confirm_repo_root_write": confirm_repo_root_write,
                 "data_root": str(self.config.data_root),
                 "context_pack": context_info,
                 "test_cmd": test_cmd,
@@ -1209,6 +1445,18 @@ class Manager:
                 "phase": "starting",
                 "started_at": iso(now),
                 "updated_at": iso(now),
+                "write_scope": write_scope,
+                "writes": write_dbs,
+                "write_roots": write_roots,
+                "approved_by": approved_by,
+                "confirm_repo_root_write": confirm_repo_root_write,
+                "tmp_dir": None,
+                "tool_calls_before_first_edit": None,
+                "first_edit_at": None,
+                "orientation_seconds": None,
+                "worker_commits": [],
+                "detached": [],
+                "resource_locks": data_locks,
                 "supervisor_pid": None,
                 "supervisor_creation_time": None,
                 "worker_pid": None,
@@ -1228,7 +1476,8 @@ class Manager:
             self._steer(
                 job_dir,
                 "start",
-                f"permission={permission} workspace={ws}"
+                f"permission={effective_permission} write_scope={write_scope} "
+                f"workspace={ws}"
                 + (f" base={base or 'HEAD'}" if use_worktree else ""),
             )
 
@@ -1244,12 +1493,25 @@ class Manager:
             if mutating:
                 self._update_lock(ws, job_id, supervisor_pid, ticks)
             status = self._wait_for_start(job_dir, supervisor_pid)
+            # A supervisor that failed before acquiring the named locks leaves
+            # its reservations behind; one that is starting removes them itself
+            # as soon as it holds the real OS lock.  Releasing a live job's
+            # reservations here would reopen the start-window race.
+            if str(status.get("phase") or "") in FINAL_PHASES:
+                self._release_resource_reservations(job_id)
             return {
                 "ok": True,
                 "job_id": job_id,
                 "phase": status.get("phase", "starting"),
                 "workspace": str(ws),
-                "permission": permission,
+                "permission": effective_permission,
+                "permission_requested": permission,
+                "write_scope": write_scope,
+                "writes": write_dbs,
+                "write_roots": write_roots,
+                "approved_by": approved_by,
+                "confirm_repo_root_write": confirm_repo_root_write,
+                "resource_locks": data_locks,
                 "model": MODEL,
                 "effort": EFFORT,
                 "account": ACCOUNT,
@@ -1268,12 +1530,13 @@ class Manager:
                 "progress_interval_seconds": progress_interval_seconds,
                 "progress_path": paths["progress"],
                 "progress_md_path": paths["progress_md"],
-                "progress_notes_path": paths["progress_notes"],
+                "progress_notes_path": str(ws / ".tmp" / progress.PROGRESS_NOTES_FILE),
                 "warnings": warnings + list(status.get("warnings") or []),
                 "survives_server_exit": bool(self._last_breakaway) or os.name != "nt",
                 "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
             }
         except Exception:
+            self._release_resource_reservations(job_id)
             if worktree_record is not None and not supervisor_spawned:
                 # No worker ever ran in this worktree: remove it and its branch
                 # so a refused start does not leave a dangling checkout.
@@ -1671,6 +1934,32 @@ class Manager:
             "error": status.get("error"),
             "workspace": job.get("workspace"),
             "permission": job.get("permission"),
+            "permission_requested": job.get("permission_requested"),
+            # status.json is written by the supervisor; job.json sits in the
+            # same directory and a worker whose workspace is the main checkout
+            # can rewrite it.  The launch-time status record wins for scope.
+            "write_scope": status.get("write_scope") or job.get("write_scope") or "workspace",
+            "writes": status.get("writes") or job.get("writes") or [],
+            "write_roots": status.get("write_roots") or job.get("write_roots") or [],
+            "approved_by": status.get("approved_by") or job.get("approved_by"),
+            "confirm_repo_root_write": bool(
+                status.get(
+                    "confirm_repo_root_write",
+                    job.get("confirm_repo_root_write", False),
+                )
+            ),
+            "resource_locks": status.get("resource_locks") or job.get("resource_locks") or [],
+            "tmp_dir": status.get("tmp_dir"),
+            "tmp_reparse_point": bool(status.get("tmp_reparse_point")),
+            "tool_calls_before_first_edit": (
+                status.get("tool_calls_before_first_edit")
+                if status.get("tool_calls_before_first_edit") is not None
+                else (progress_view.get("events") or {}).get("tool_calls_before_first_edit")
+            ),
+            "orientation_seconds": status.get("orientation_seconds"),
+            "first_edit_at": status.get("first_edit_at"),
+            "worker_commits": status.get("worker_commits") or [],
+            "detached": status.get("detached") or [],
             "model": job.get("model"),
             "effort": job.get("effort"),
             "account": job.get("account"),
@@ -1701,7 +1990,7 @@ class Manager:
             "result_kind": status.get("result_kind") or ("final" if final else "live"),
             "interim": bool(status.get("interim_result")),
             "partial": bool(status.get("partial")),
-            "paths": self._job_paths(job_id),
+            "paths": self._status_paths(job_id, job),
             "limits": job.get("limits"),
             "warnings": warnings,
             "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
@@ -1834,6 +2123,10 @@ class Manager:
             )
         if events.get("available"):
             parts.append(f"{events['tool_calls']} tool calls, {events['model_steps']} model steps")
+            if events.get("tool_calls_before_first_edit") is not None:
+                parts.append(
+                    f"first edit after {events['tool_calls_before_first_edit']} calls"
+                )
             if events.get("last_tool"):
                 target = events.get("last_tool_target")
                 parts.append(f"last tool {events['last_tool']}" + (f" on {target}" if target else ""))
@@ -1851,6 +2144,9 @@ class Manager:
             "last_activity_kind": last_kind,
             "activity_count": (heartbeat_live or {}).get("activity_count"),
             "events": events,
+            "tool_calls_before_first_edit": (
+                events.get("tool_calls_before_first_edit") if events.get("available") else None
+            ),
             "controller_lease_remaining_seconds": (
                 round(lease_remaining, 1) if lease_remaining is not None else None
             ),
@@ -2533,6 +2829,22 @@ class Manager:
                     "stale": job["stale"],
                     "workspace": job["workspace"],
                     "permission": job["permission"],
+                    "write_scope": job.get("write_scope") or "workspace",
+                    "writes": job.get("writes") or [],
+                    "confirm_repo_root_write": bool(
+                        job.get("confirm_repo_root_write")
+                    ),
+                    "resource_locks": job.get("resource_locks") or [],
+                    "tool_calls_before_first_edit": (
+                        job.get("tool_calls_before_first_edit")
+                        if job.get("tool_calls_before_first_edit") is not None
+                        else (latest_digest or {}).get("tool_calls_before_first_edit")
+                    ),
+                    "orientation_seconds": (
+                        job.get("orientation_seconds")
+                        if job.get("orientation_seconds") is not None
+                        else (latest_digest or {}).get("orientation_seconds")
+                    ),
                     "owner_session": job.get("owner_session"),
                     "last_steerer": job.get("last_steerer"),
                     "worktree_branch": (job.get("worktree") or {}).get("branch"),
@@ -2982,15 +3294,85 @@ class Manager:
             )
         return registry, registry["jobs"][name]
 
-    def _resource_lock_busy(self, names: list[str]) -> list[str]:
+    def _reservation_stale(self, reservation: dict[str, Any]) -> bool:
+        """A reservation whose job already reached a final phase is replaceable.
+
+        The supervisor drops its own reservation right after acquiring the real
+        lock; one left by a job that failed before that point (or was cancelled)
+        must not block the resource for this manager's lifetime.
+        """
+        job_id = reservation.get("job_id")
+        if not isinstance(job_id, str) or not valid_job_id(job_id):
+            return False
+        try:
+            status = self._read_status(self._job_dir(job_id))
+        except PluginError:
+            return False
+        return str(status.get("phase") or "") in FINAL_PHASES
+
+    def _reserve_resource_locks(self, names: list[str], job_id: str) -> list[str]:
+        """Reserve ``names`` for ``job_id`` and return the ones already busy.
+
+        The old pre-check took and instantly released each OS lock, so two
+        simultaneous starts both passed and the loser only failed after its
+        supervisor launched.  A reservation record closes that window: it is
+        written before the supervisor is spawned and removed by the supervisor
+        after it holds the real kernel lock.  A stale reservation (dead owner or
+        a job that already finished) is replaced; an unverifiable one fails
+        closed.
+        """
+        if not names:
+            return []
+        self.config.locks_dir.mkdir(parents=True, exist_ok=True)
+        owner = {
+            "job_id": job_id,
+            "pid": os.getpid(),
+            "creation_time": procutil.process_creation_time(os.getpid()),
+            "created_at": iso(),
+        }
         busy: list[str] = []
-        for name in names:
-            handle = try_lock_file(resource_lock_path(self.config.locks_dir, name))
-            if handle is None:
-                busy.append(name)
-            else:
+        with exclusive_lock(self.config.locks_dir / RESOURCE_GUARD_NAME):
+            for name in names:
+                reservation = resource_reservation_path(self.config.locks_dir, name)
+                existing, _error = read_json_bounded(reservation, 65_536)
+                if isinstance(existing, dict):
+                    pid = _as_pid(existing.get("pid"))
+                    ticks = _as_pid(existing.get("creation_time"))
+                    alive = pid is not None and (
+                        ticks is None or procutil.process_alive(pid, ticks)
+                    )
+                    if alive and not self._reservation_stale(existing):
+                        busy.append(name)
+                        continue
+                handle = try_lock_file(resource_lock_path(self.config.locks_dir, name))
+                if handle is None:
+                    busy.append(name)
+                    continue
                 handle.release()
+                try:
+                    atomic_write_json(reservation, {**owner, "name": name})
+                except OSError:
+                    # No reservation written: treat the name as busy instead of
+                    # leaving a start that nobody reserved.
+                    busy.append(name)
+        if busy:
+            self._release_resource_reservations(job_id)
         return busy
+
+    def _release_resource_reservations(self, job_id: str) -> None:
+        """Drop every start-window reservation this job still owns."""
+        directory = self.config.locks_dir / RESOURCE_LOCK_DIR
+        try:
+            with exclusive_lock(self.config.locks_dir / RESOURCE_GUARD_NAME):
+                for path in directory.glob("*.reserve"):
+                    value, _error = read_json_bounded(path, 65_536)
+                    if isinstance(value, dict) and value.get("job_id") == job_id:
+                        try:
+                            path.unlink()
+                        except OSError:
+                            pass
+        except OSError:
+            pass
 
     def _data_job_cwd(self, cwd: str, name: str) -> Path:
         path = Path(cwd).expanduser()
@@ -3139,7 +3521,8 @@ class Manager:
         cwd = self._data_job_cwd(entry["cwd"], name)
         argv = self._resolve_job_argv(entry, extra, now)
         locks = list(entry.get("resource_locks") or [])
-        busy = self._resource_lock_busy(locks)
+        job_id = new_job_id()
+        busy = self._reserve_resource_locks(locks, job_id)
         if busy:
             raise PluginError(
                 "resource_busy",
@@ -3147,7 +3530,6 @@ class Manager:
                 name=name,
                 resource_locks=busy,
             )
-        job_id = new_job_id()
         job_dir = self.config.jobs_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=False)
         paths = self._job_paths(job_id)
@@ -3246,6 +3628,8 @@ class Manager:
             )
             supervisor_pid = self._spawn_supervisor(job_dir, None)
             status = self._wait_for_start(job_dir, supervisor_pid)
+            if str(status.get("phase") or "") in FINAL_PHASES:
+                self._release_resource_reservations(job_id)
             return {
                 "ok": True,
                 "job_id": job_id,
@@ -3268,6 +3652,7 @@ class Manager:
                 "warnings": list(status.get("warnings") or []),
             }
         except Exception:
+            self._release_resource_reservations(job_id)
             self._lease_owners.pop(job_id, None)
             if not (job_dir / "job.json").exists():
                 try:

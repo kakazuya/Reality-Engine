@@ -65,7 +65,7 @@ class _State:
         "output_tokens", "last_input_tokens", "turns", "text_events", "thinking_events",
         "errors", "last_error", "last_tool", "last_tool_hint", "recent_files",
         "file_writes", "text_tail", "final_seen", "lines", "unparsed_lines",
-        "session_id",
+        "session_id", "first_edit_calls",
     )
 
     def __init__(self) -> None:
@@ -91,6 +91,10 @@ class _State:
         self.lines = 0
         self.unparsed_lines = 0
         self.session_id: str | None = None
+        # Tool calls completed before the first edit/write call (orientation
+        # cost); None until the worker mutates a file.  The count is the
+        # 0-based index of that first write call in the tool-call sequence.
+        self.first_edit_calls: int | None = None
 
 
 def _int(value: Any) -> int:
@@ -204,6 +208,8 @@ class EventScanner:
             state.last_tool = tool
             state.last_tool_hint = _hint(tool, args)
             if tool.lower() in WRITE_TOOLS:
+                if state.first_edit_calls is None:
+                    state.first_edit_calls = state.tool_calls - 1
                 target = args.get("file_path") or args.get("path") or args.get("notebook_path")
                 if isinstance(target, str) and target:
                     target = target[:300]
@@ -276,6 +282,7 @@ class EventScanner:
             "last_tool_target": state.last_tool_hint,
             "recent_file_writes": list(reversed(state.recent_files)),
             "file_writes": state.file_writes,
+            "tool_calls_before_first_edit": state.first_edit_calls,
             "text_events": state.text_events,
             "thinking_events": state.thinking_events,
             "errors": state.errors,
@@ -304,13 +311,23 @@ def _clip(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: max(0, limit - 1)] + "…"
 
 
-def latest_note(job_dir: Path) -> str | None:
-    """Latest line of the worker's cooperative PROGRESS_NOTES.md, if any."""
-    text = read_text_bounded_tail(Path(job_dir) / PROGRESS_NOTES_FILE, NOTES_READ_BYTES)
-    for line in reversed(text.splitlines()):
-        clean = " ".join(line.split())
-        if clean:
-            return clean[:300]
+def latest_note(job_dir: Path, notes_path: Path | None = None) -> str | None:
+    """Latest line of the worker's cooperative PROGRESS_NOTES.md, if any.
+
+    The live path is inside the workspace (``<workspace>/.tmp/``) so the worker
+    can actually write it; the old job-dir path is still read for jobs started
+    before that change.
+    """
+    candidates = []
+    if notes_path is not None:
+        candidates.append(Path(notes_path))
+    candidates.append(Path(job_dir) / PROGRESS_NOTES_FILE)
+    for candidate in candidates:
+        text = read_text_bounded_tail(candidate, NOTES_READ_BYTES)
+        for line in reversed(text.splitlines()):
+            clean = " ".join(line.split())
+            if clean:
+                return clean[:300]
     return None
 
 
@@ -337,6 +354,16 @@ def digest_line(record: dict[str, Any] | None) -> str | None:
     written = int(record.get("files_written_count") or 0)
     if written:
         parts.append(f"{written} file write{'s' if written != 1 else ''}")
+    before = record.get("tool_calls_before_first_edit")
+    if before is not None:
+        orientation = record.get("orientation_seconds")
+        parts.append(
+            f"first edit after {before} calls"
+            + (f" ({fmt_duration(orientation)})" if orientation is not None else "")
+        )
+    scope = record.get("write_scope")
+    if scope and scope != "workspace":
+        parts.append(f"scope {scope}")
     idle = record.get("idle_seconds")
     if idle is not None:
         parts.append(f"idle {fmt_duration(idle)}")
@@ -402,6 +429,13 @@ def _digest_section(record: dict[str, Any]) -> list[str]:
                 f"- files written since last digest ({count}): {listed}"
                 + (f" (+{extra} more)" if extra else "")
             )
+        before = record.get("tool_calls_before_first_edit")
+        if before is not None:
+            orientation = record.get("orientation_seconds")
+            lines.append(
+                f"- orientation: first edit after {before} tool calls"
+                + (f" ({fmt_duration(orientation)})" if orientation is not None else "")
+            )
     else:
         lines.append("- event stream: not available (data job or no dsh --json stream yet)")
     note = record.get("note")
@@ -449,6 +483,8 @@ class DigestWriter:
         started_at: Any,
         interval_seconds: int,
         *,
+        write_scope: str = "workspace",
+        notes_path: Path | None = None,
         clock: Callable[[], datetime] = utc_now,
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
@@ -456,12 +492,18 @@ class DigestWriter:
         self.job_id = job_id
         self.started_at = parse_iso(started_at)
         self.interval_seconds = int(interval_seconds)
+        self.write_scope = str(write_scope or "workspace")
+        self.notes_path = Path(notes_path) if notes_path is not None else None
         self._clock = clock
         self._monotonic = monotonic
         self._scanner = EventScanner()
         self._next_due: float | None = None
         self._previous: dict[str, Any] = {}
         self._history: list[dict[str, Any]] = []
+        # Wall clock when this writer first saw the worker's first edit.  The
+        # event stream carries no timestamps, so orientation is measured from
+        # the first digest/poll that observes the write, not the write itself.
+        self._first_edit_at: datetime | None = None
 
     def tick(
         self,
@@ -470,6 +512,7 @@ class DigestWriter:
         last_activity: datetime | None = None,
         lease_remaining: float | None = None,
         final: bool = False,
+        first_edit: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Emit a digest when one is due (or unconditionally on ``final``)."""
         if not final:
@@ -485,6 +528,7 @@ class DigestWriter:
             last_activity=last_activity,
             lease_remaining=lease_remaining,
             final=final,
+            first_edit=first_edit,
         )
 
     def emit(
@@ -494,6 +538,7 @@ class DigestWriter:
         last_activity: datetime | None = None,
         lease_remaining: float | None = None,
         final: bool = False,
+        first_edit: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         now = self._clock()
         events = self._scanner.scan(
@@ -528,9 +573,27 @@ class DigestWriter:
             else None
         )
         display_phase = str(phase or "unknown")
+        first_edit_calls = events.get("tool_calls_before_first_edit") if available else None
+        if first_edit_calls is not None and self._first_edit_at is None:
+            self._first_edit_at = now
+        orientation = (
+            max(0.0, (self._first_edit_at - self.started_at).total_seconds())
+            if self._first_edit_at is not None and self.started_at is not None
+            else None
+        )
+        # The supervisor's 2 s orientation poll is fresher than this writer's
+        # interval; use its numbers when it has them.
+        if isinstance(first_edit, dict):
+            observed_calls = first_edit.get("tool_calls_before_first_edit")
+            observed_orientation = first_edit.get("orientation_seconds")
+            if observed_calls is not None:
+                first_edit_calls = int(observed_calls)
+            if observed_orientation is not None:
+                orientation = float(observed_orientation)
         record: dict[str, Any] = {
             "schema": PROGRESS_SCHEMA,
             "job_id": self.job_id,
+            "write_scope": self.write_scope,
             "digest": int(previous.get("digest") or 0) + 1,
             "at": iso(now),
             "final": bool(final),
@@ -538,6 +601,8 @@ class DigestWriter:
             "elapsed_seconds": round(elapsed, 1) if elapsed is not None else None,
             "events_available": available,
             "tool_calls": tools,
+            "tool_calls_before_first_edit": first_edit_calls,
+            "orientation_seconds": round(orientation, 1) if orientation is not None else None,
             "tool_calls_delta": max(0, tools - int(previous.get("tools") or 0)),
             "tool_calls_by_tool": by_tool,
             "tool_calls_by_tool_delta": {
@@ -563,7 +628,7 @@ class DigestWriter:
             "worker_text_tail": (
                 list(events.get("worker_text_tail") or []) if available else []
             ),
-            "note": latest_note(self.job_dir),
+            "note": latest_note(self.job_dir, self.notes_path),
         }
         append_jsonl_locked(
             self.job_dir / PROGRESS_FILE, record, self.job_dir / JOB_LOCK_NAME

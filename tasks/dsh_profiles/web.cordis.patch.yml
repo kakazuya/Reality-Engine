@@ -59,3 +59,11 @@
   config:
     timeoutMs: 600000
     maxTimeoutMs: 600000
+
+# A command that reaches the 10-minute cap is killed, not handed to a
+# background job (a promoted process keeps running after the call returns).
+# dsh-tool-pwsh defaults to promoteOnTimeout: true; Task 03 pins it false.
+- id: tool-pwsh
+  name: "@deepseek-ai/dsh-tool-pwsh"
+  config:
+    promoteOnTimeout: false

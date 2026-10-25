@@ -27,10 +27,21 @@ defaults. The staged row pins the requested 10-minute cap explicitly:
 Residual gap: `dsh-tool-pwsh` defaults to `promoteOnTimeout: true`, so a command
 that reaches the 10-minute deadline is handed to a background job and the tool
 call returns, but the process keeps running; a `run_in_background` call never
-has a timeout. Setting `promoteOnTimeout: false` on `tool-pwsh` would kill the
-command at the deadline instead. That changes a default and is left for review.
+has a timeout. Task 03 stages `promoteOnTimeout: false` so the deadline is a real
+kill instead of a hand-off:
+
+```yaml
+- id: tool-pwsh
+  name: "@deepseek-ai/dsh-tool-pwsh"
+  config:
+    promoteOnTimeout: false
+```
+
 The staged row also raises the default foreground budget from 2 to 10 minutes;
 if that is too long, drop `timeoutMs` and keep only `maxTimeoutMs: 600000`.
+A worker that genuinely needs a process to outlive its shell uses the
+supervisor's `.tmp/launch.request.json` WMI path (`write_scope` data/full), not
+timeout promotion.
 
 ## Per-child wall-clock cap (no setting exists)
 
@@ -67,4 +78,25 @@ dsh --profile web --dump-config        # exit 0, no warnings
 ```
 
 Both dumps show the `pwsh-sandbox` row with `timeoutMs: 600000` and
-`maxTimeoutMs: 600000`.
+`maxTimeoutMs: 600000`, and the `tool-pwsh` row with `promoteOnTimeout: false`.
+
+## Install these profiles + pip/uv config (Claude runs this; the worker cannot)
+
+The worker sandbox cannot write `~/.dsh` or `%APPDATA%`; Claude installs the
+staged files after review. Back up the live files first, then copy and validate:
+
+```powershell
+$stamp = Get-Date -Format yyyyMMddHHmmss
+$dsh = Join-Path $env:USERPROFILE ".dsh\profiles"
+foreach ($profile in "headless", "web") {
+    Copy-Item "$dsh\$profile\cordis.patch.yml" "$dsh\$profile\cordis.patch.yml.$stamp.bak"
+    Copy-Item "tasks\dsh_profiles\$profile.cordis.patch.yml" "$dsh\$profile\cordis.patch.yml" -Force
+}
+New-Item -ItemType Directory -Force "$env:APPDATA\pip", "$env:APPDATA\uv" | Out-Null
+Copy-Item "tasks\worker_context\pip.ini" "$env:APPDATA\pip\pip.ini" -Force
+Copy-Item "tasks\worker_context\uv.toml" "$env:APPDATA\uv\uv.toml" -Force
+dsh --profile headless --dump-config | Select-String "pwsh-sandbox|tool-pwsh|timeoutMs|promoteOnTimeout"
+dsh --profile web --dump-config      | Select-String "pwsh-sandbox|tool-pwsh|timeoutMs|promoteOnTimeout"
+```
+
+Roll back by copying each `cordis.patch.yml.<stamp>.bak` back over the profile.

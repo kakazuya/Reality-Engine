@@ -66,7 +66,10 @@ Each `start_worker` call creates `runtime/jobs/<job_id>/` containing:
 - `progress.jsonl` — model-free supervisor progress digests (one JSON line per
   `progress_interval_seconds`; the last is always written on finish)
 - `progress.md` — readable view of the latest digest plus the previous six
-- `PROGRESS_NOTES.md` — optional worker self-notes (one line per milestone)
+- `<workspace>/.tmp/PROGRESS_NOTES.md` — optional worker self-notes (one line per
+  milestone; the legacy `<job_dir>/PROGRESS_NOTES.md` is still read)
+- `.tmp/` under the workspace (created by the supervisor) — `TMP`/`TEMP`, pip/
+  npm/uv caches, worker commit/launch request files; gitignored
 - `controller_lease.json` — controller-owned absolute lease (removed on final)
 - `control_token.bin` — per-job control token, DPAPI-encrypted for the current
   Windows user (never plaintext, never returned/logged)
@@ -101,8 +104,16 @@ Monday-Friday 06:30-09:30 / 11:30-15:30 IST. Exactly one of `brief` or
 `task_file` is required. Workspaces must be the repository root or a registered
 git worktree of it (arbitrary subdirectories are refused). The default
 permission is `read-only` (least privilege); pass `workspace-write` explicitly
-for an implementation worker. Exactly one mutating worker per **workspace** is
-allowed: the main checkout keeps one lock and every worktree has its own, so
+for an implementation worker. A **mutating worker in the main checkout root**
+additionally needs `confirm_repo_root_write=true` (refused as
+`repo_root_write_requires_confirmation` otherwise): that workspace contains code
+which later runs outside the sandbox — the context-pack builder,
+`plugins/dsh-worker/server/supervisor.py`, `.git/config` and other jobs'
+records — so a worker that can rewrite it can get its code executed by the next
+manager/supervisor start. Read-only and worktree workers are unaffected. The
+flag is recorded as `confirm_repo_root_write` in `job.json`, `status.json`,
+`worker_status` and `list_workers`. Exactly one mutating worker per **workspace**
+is allowed: the main checkout keeps one lock and every worktree has its own, so
 worktree writers can run in parallel while two writers in one checkout still
 exclude each other (read-only workers do not take the lock).
 
@@ -119,6 +130,47 @@ after the worker finishes. `hard_timeout_seconds` defaults to `None` and no
 automatic duration fallback: if the launcher lacks the required heartbeat or
 `--control-token-env` capability, `start_worker` refuses with an actionable
 `heartbeat_unavailable` / `control_token_unavailable` error.
+
+## Write scope, temp dir, detached processes
+
+`write_scope` (default `"workspace"`) extends or replaces the dsh sandbox mode;
+`permission` still names the dsh mode for the workspace case (dsh 0.2.1 has one
+writable root per session, the `--cwd` workspace, and no extra-roots config).
+
+| `write_scope` | dsh mode | confirmation | extra |
+|---|---|---|---|
+| `workspace` | `permission` as given | — | workspace + `<workspace>/.tmp` |
+| `data` | forced `danger-full-access` | `confirm_data_write=true`, non-empty `writes=[...]`, `approved_by` text | `REALITY_DATA_ROOT`, `D:\RealityEngine`; holds `db:<file>` locks for `writes=[...]` |
+| `full` | forced `danger-full-access` | `confirm_full_access=true` (Shivam approves first), `approved_by` text | none |
+
+A `data` job must name its DBs: `writes=[]` is refused with `writes_required`
+(otherwise it would hold no lock and could write any database). A second `data`
+job naming a held DB is refused with `resource_busy` before launch (the manager
+writes a start-window reservation and the supervisor holds the OS lock files for
+its lifetime, so they cannot go stale). A mutating `data`/`full` job on the main
+checkout root also needs `confirm_repo_root_write=true` (they run with the full
+file sandbox removed and can rewrite repo code). **dsh 0.2.1 makes `data` and
+`full` the same access at the OS level** — both run `danger-full-access`; the
+named locks and the brief are the real scope, not the sandbox. `write_scope`,
+`writes`, `approved_by`, `confirm_repo_root_write` and `resource_locks` are
+recorded in `job.json`, `status.json`, progress digests, `worker_status` and
+`list_workers` (`worker_status` prefers `status.json`, so a hand-edited
+`job.json` cannot spoof the reported scope).
+
+For every job the supervisor creates `<workspace>/.tmp` and points `TMP`,
+`TEMP`, `TMPDIR`, `npm_config_cache`, `PIP_CACHE_DIR`, `UV_CACHE_DIR`,
+`PYTHONPYCACHEPREFIX` at it (plus `PIP_DEFAULT_TIMEOUT=120`, `PIP_RETRIES=5`,
+`UV_HTTP_TIMEOUT=120`); `.tmp/` is gitignored. Workers install with
+`python reality_engine/scripts/setup_worker_env.py` (idempotent, user site;
+`--dry-run` reports wheel availability) and may create a per-task
+`.venv-<task>` (gitignored).
+
+Long-lived processes are supported only for `write_scope` `data`/`full`: the
+worker writes `.tmp/launch.request.json` (`cmd`, optional `log`, `cwd`, `env`)
+and the supervisor creates the process via WMI `Win32_Process.Create` (outside
+its `KILL_ON_JOB_CLOSE` job), recording `pid`/`log` in `status.detached` and
+`.tmp/launch.result.json`. With `workspace` scope the request is refused.
+Full details: `tasks/worker_context/SANDBOX.md`.
 
 ## Worker context pack
 
@@ -142,6 +194,10 @@ conventions (AGENTS.md §3.2/§3.13) and recent decisions (`hotline/decisions.md
 edit, report format) plus the absolute CONTEXT.md path to the brief. If the pack
 is older than 26 h it is regenerated before launch with a 60 s bound; a failure
 is a `context_pack:` warning in the job record and the worker still starts.
+While a **mutating repo-root worker** holds the repo-root lock, regeneration is
+skipped (`context_pack.regeneration_skipped = repo_root_writer_active`) and the
+stale pack is attached with a warning: the builder is a file that worker can
+rewrite, and this manager would run it unconfined.
 `context_pack=false` sends the original brief only. Briefs are also linted
 against `tasks/worker_context/BRIEF_TEMPLATE.md`: a missing Goal / Acceptance
 checks / Test command(s) section adds a `brief_lint:` warning, never a refusal.
@@ -226,10 +282,28 @@ cannot write `.git/worktrees/<name>` (it is outside the worker sandbox), so the
 the worktree, author/committer from the repository's git config, subject =
 first line of the brief + ` [dsh <job_id>]`, body trailer `DSH-Job: <job_id>`.
 An empty diff creates no commit. Failed/cancelled jobs leave their changes
-uncommitted for review. `worker_status`/`worker_result` report
-`worktree.branch`, `base`, `base_commit`, `head`, `commits`, `files_changed`
-(and the paths), `committed`, `commit_message` and any commit error. Main's
-`HEAD` is never moved by the plugin.
+uncommitted for review. A worker that wants its own commit writes
+`<workspace>/.tmp/commit.request.json` (`{"message": "..."}`); the supervisor,
+which runs unconfined, commits on the next poll, appends the outcome to
+`status.worker_commits` (last 50 only) and writes `.tmp/commit.result.json`. This
+works for a job-created worktree and for a workspace pointed at an existing
+worktree (the linked git dir lives under the main checkout's
+`.git/worktrees/<id>` either way); the main checkout itself is refused, and
+direct `git commit` inside the job is always blocked by the sandbox. The commit
+uses only the `git_dir`/`common_dir`/`toplevel`/`head_ref`/`branch` the manager
+captured at job start (`job.json` → `git`), with hooks, fsmonitor, ssh/external
+diff, filters, signing, editors and the pager disabled and `--no-verify`, so a
+worker that rewrites `.git`, points it at another repository, or ships a fake
+gitdir with a `pre-commit` hook cannot redirect the commit or run code; only a
+`dsh/...` branch is accepted. `git add -A` refuses a workspace path that is a
+symlink or junction (`reparse_point_in_workspace`) so outside data cannot be
+staged. The post-run `artifacts` snapshot runs through the same stored identity
+and hardened runner, never `git -C <workspace>`: a tampered `.git` means no git
+process runs and the snapshot is reported unavailable (`git_dir_tampered`);
+jobs with no stored identity get no snapshot. `worker_status`/`worker_result`
+report `worktree.branch`, `base`, `base_commit`, `head`, `commits`,
+`files_changed` (and the paths), `committed`, `commit_message` and any commit
+error. Main's `HEAD` is never moved by the plugin.
 
 Gitignored data (DBs, indexes) exists only in the main checkout, not in a
 worktree. The worker environment gets `REALITY_DATA_ROOT`
@@ -435,8 +509,11 @@ Every worker brief ends with a standing instruction — never a question to
 answer: *"Every ~20 minutes of work, or at each milestone, append one line to
 PROGRESS_NOTES.md in your job directory … what's done, what's next, blockers.
 Do not stop or wait after writing it."* The absolute path is in the
-`DSH_WORKER_PROGRESS_NOTES` environment variable (the job dir is also
-`DSH_WORKER_JOB_DIR`). The newest note is folded into each digest as
+`DSH_WORKER_PROGRESS_NOTES` environment variable and points at
+`<workspace>/.tmp/PROGRESS_NOTES.md` — inside the worker's writable sandbox and
+gitignored. The supervisor's digests read the newest line from there and still
+fall back to the legacy `<job_dir>/PROGRESS_NOTES.md` (outside the sandbox) for
+jobs started before that path moved. The newest note is folded into each digest as
 `note`/`worker note`. A worker that ignores it costs nothing: the digests still
 come from the event stream.
 

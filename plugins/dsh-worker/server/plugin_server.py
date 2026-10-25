@@ -110,11 +110,26 @@ def _safe(call) -> dict[str, Any]:
         "same-conversation follow-ups. progress_interval_seconds (default 1200, "
         "0=off) is the supervisor's model-free progress-digest cadence; every "
         "brief gets a standing instruction to append one line to PROGRESS_NOTES.md. "
+        "write_scope='workspace' (default) writes only the workspace + its .tmp; "
+        "'data' additionally approves REALITY_DATA_ROOT and D:\\RealityEngine for "
+        "an approved data job and needs confirm_data_write=true plus a non-empty "
+        "writes=[db files] (refused as writes_required otherwise; the supervisor "
+        "holds db:<file> locks so two writers never share a DB); 'full' disables "
+        "the dsh file sandbox and needs confirm_full_access=true after Shivam's "
+        "approval. dsh 0.2.1 runs both data and full as danger-full-access, so the "
+        "OS sandbox does not separate them: the named DB locks and the brief are "
+        "the real scope. approved_by records who approved a data/full job. The "
+        "supervisor creates <workspace>/.tmp and points TMP/TEMP/caches at it. "
         "context_pack (default true) prepends the generated "
         "tasks/worker_context/CONTEXT.md path + standing header to the brief and "
         "regenerates the pack when it is older than 26 h (bounded 60 s; failure is "
         "a warning). Briefs missing Goal / Acceptance checks / Test command(s) get "
-        "brief_lint warnings, never a refusal."
+        "brief_lint warnings, never a refusal. A mutating worker whose workspace is "
+        "the main checkout root needs confirm_repo_root_write=true (refused as "
+        "repo_root_write_requires_confirmation otherwise): such a worker can "
+        "rewrite code that later runs unsandboxed (the context-pack builder, "
+        "supervisor.py, .git/config, other jobs' records). Read-only and worktree "
+        "workers are unaffected."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -125,6 +140,12 @@ def start_worker(
     task_file: str | None = None,
     workspace: str = ".",
     permission: str = "read-only",
+    write_scope: str = "workspace",
+    confirm_data_write: bool = False,
+    confirm_full_access: bool = False,
+    confirm_repo_root_write: bool = False,
+    writes: list[str] | None = None,
+    approved_by: str | None = None,
     heartbeat_interval_seconds: int = 900,
     missed_replies: int = 2,
     max_output_tokens: int | None = None,
@@ -145,6 +166,12 @@ def start_worker(
             task_file=task_file,
             workspace=workspace,
             permission=permission,
+            write_scope=write_scope,
+            confirm_data_write=confirm_data_write,
+            confirm_full_access=confirm_full_access,
+            confirm_repo_root_write=confirm_repo_root_write,
+            writes=writes,
+            approved_by=approved_by,
             heartbeat_interval_seconds=heartbeat_interval_seconds,
             missed_replies=missed_replies,
             max_output_tokens=max_output_tokens,

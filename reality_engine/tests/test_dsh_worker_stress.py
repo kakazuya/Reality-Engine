@@ -526,7 +526,13 @@ class StartGuardTests(StressBase):
         def go(manager):
             barrier.wait()
             try:
-                outcomes.append(manager.start_worker(brief="w", permission="workspace-write"))
+                outcomes.append(
+                    manager.start_worker(
+                        brief="w",
+                        permission="workspace-write",
+                        confirm_repo_root_write=True,
+                    )
+                )
             except core.PluginError as exc:
                 outcomes.append(exc.code)
 
@@ -544,7 +550,9 @@ class StartGuardTests(StressBase):
         winner = next(m for m in managers if started[0]["job_id"] in m._control_tokens)
         self.wait(winner, started[0]["job_id"], lambda s: s["final"])
         # Lock is released after the writer finishes: a new writer starts.
-        again = managers[2].start_worker(brief="w2", permission="workspace-write")
+        again = managers[2].start_worker(
+            brief="w2", permission="workspace-write", confirm_repo_root_write=True
+        )
         self.wait(managers[2], again["job_id"], lambda s: s["final"])
 
 
@@ -645,7 +653,9 @@ class LifecycleTests(StressBase):
 
     def test_supervisor_killed_alone_takes_worker_and_lock_needs_cancel(self):
         manager = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="60")
-        job_id = manager.start_worker(brief="kill sup", permission="workspace-write")["job_id"]
+        job_id = manager.start_worker(
+            brief="kill sup", permission="workspace-write", confirm_repo_root_write=True
+        )["job_id"]
         status = self.wait(manager, job_id, lambda s: s["process"]["worker_alive"])
         worker_pid = int(status["process"]["worker_pid"])
         worker_ticks = int(status["process"]["worker_creation_time"])
@@ -658,11 +668,15 @@ class LifecycleTests(StressBase):
         self.assertFalse(procutil.process_alive(worker_pid, worker_ticks), "job object must kill the worker")
         self.assertTrue(lost["final"])
         with self.assertRaises(core.PluginError) as caught:
-            manager.start_worker(brief="second", permission="workspace-write")
+            manager.start_worker(
+                brief="second", permission="workspace-write", confirm_repo_root_write=True
+            )
         self.assertEqual(caught.exception.code, "workspace_busy")
         self.assertTrue(manager.cancel_worker(job_id, confirm=True)["lock_released"])
         fast = self.manager()
-        follow = fast.start_worker(brief="second", permission="workspace-write")
+        follow = fast.start_worker(
+            brief="second", permission="workspace-write", confirm_repo_root_write=True
+        )
         self.wait(fast, follow["job_id"], lambda s: s["final"])
 
     def test_pid_reuse_is_not_reported_alive(self):

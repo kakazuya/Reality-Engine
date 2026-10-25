@@ -1,0 +1,183 @@
+{
+  "schema": "dsh-worker-orientation-baseline/1",
+  "date": "2026-10-24",
+  "generated_at": "2026-10-25",
+  "note": "Before baseline from the 2026-10-24 worker run's dsh event streams. tool_calls_before_first_edit is the 0-based index of the first write/edit tool call. The four 19:27 jobs were regenerated after they finished (2026-10-25); every count is the final event-stream total for a finished job.",
+  "jobs": [
+    {
+      "job": "20261024T080304Z-3fc60999",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 18,
+      "total_tool_calls": 159,
+      "wall_seconds": 2489.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T092518Z-59f0be52",
+      "task": "# Task: get every FY26 annual report chunked into the search layer",
+      "tool_calls_before_first_edit": 51,
+      "total_tool_calls": 269,
+      "wall_seconds": 15650.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T132140Z-d16588e0",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 37,
+      "total_tool_calls": 75,
+      "wall_seconds": 604.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T132956Z-99625306",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 32,
+      "total_tool_calls": 93,
+      "wall_seconds": 1058.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T133203Z-0eb45906",
+      "task": "Test of the subagent tool (Shivam asked for a small read-only fan-out test; Claude reviews). READ-ONLY: do not edit files or write any database.",
+      "tool_calls_before_first_edit": null,
+      "total_tool_calls": 35,
+      "wall_seconds": 949.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T133314Z-c3d8c398",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 45,
+      "total_tool_calls": 147,
+      "wall_seconds": 1520.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T135121Z-81c27dbf",
+      "task": "# Task: safe read-only SQL, a subagent time cap, and two data fixes",
+      "tool_calls_before_first_edit": 72,
+      "total_tool_calls": 244,
+      "wall_seconds": 3070.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T140312Z-e4caa4da",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 86,
+      "total_tool_calls": 247,
+      "wall_seconds": 2925.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T154434Z-b952dbc2",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 63,
+      "total_tool_calls": 153,
+      "wall_seconds": 2196.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T154931Z-53e4ddd3",
+      "task": "# Task: document-coverage audit + slide-style HTML report (parallel fan-out)",
+      "tool_calls_before_first_edit": 7,
+      "total_tool_calls": 137,
+      "wall_seconds": 2202.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T170739Z-f811f6ae",
+      "task": "# Task: can we restart concall fact extraction on free readers? (readiness check, no bulk run)",
+      "tool_calls_before_first_edit": 31,
+      "total_tool_calls": 148,
+      "wall_seconds": 2803.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T171951Z-9545562f",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 116,
+      "total_tool_calls": 148,
+      "wall_seconds": 922.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T172743Z-a480564b",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 45,
+      "total_tool_calls": 175,
+      "wall_seconds": 2205.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T173154Z-a7513688",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 61,
+      "total_tool_calls": 187,
+      "wall_seconds": 2681.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T180419Z-6912a7a8",
+      "task": "# Task: patch the concall reader + 25-doc pilot (no full run yet)",
+      "tool_calls_before_first_edit": 49,
+      "total_tool_calls": 201,
+      "wall_seconds": 3809.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T180421Z-eed294f4",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 91,
+      "total_tool_calls": 256,
+      "wall_seconds": 3612.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T181301Z-e5311613",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 56,
+      "total_tool_calls": 136,
+      "wall_seconds": 3089.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T192703Z-4b9de800",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 34,
+      "total_tool_calls": 138,
+      "wall_seconds": 2695.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T192707Z-46114a74",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 15,
+      "total_tool_calls": 105,
+      "wall_seconds": 1524.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T192711Z-cecb3619",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 32,
+      "total_tool_calls": 221,
+      "wall_seconds": 3945.0,
+      "phase": "finished"
+    },
+    {
+      "job": "20261024T192715Z-b16ead85",
+      "task": "Note: gitignored data (databases, indexes) is read from REALITY_DATA_ROOT by absolute path and must be treated as read-only.",
+      "tool_calls_before_first_edit": 13,
+      "total_tool_calls": 189,
+      "wall_seconds": 3789.0,
+      "phase": "finished"
+    }
+  ],
+  "summary": {
+    "jobs_with_events": 21,
+    "jobs_with_a_first_edit": 20,
+    "median_tool_calls_before_first_edit": 45.0,
+    "mean_tool_calls_before_first_edit": 47.7,
+    "median_wall_seconds": 2681.0
+  }
+}
