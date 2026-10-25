@@ -18,8 +18,9 @@ from __future__ import annotations
 import datetime as dt
 import posixpath
 import re
+import time
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 import core
 from core import (
@@ -28,6 +29,7 @@ from core import (
     _identity_symbols,
     _in_clause,
     _parse_date,
+    _run_duck,
     _run_sqlite,
     provenance,
     quarantined_doc_ids,
@@ -36,6 +38,7 @@ from core import (
 MAX_LIMIT = 100
 DEFAULT_SLACK_DAYS = 3
 _FETCH_TIMEOUT = 90.0
+STORE_BUDGET_S = 2.0
 
 _TYPE_ALIASES = {
     "deck": "deck", "decks": "deck", "presentation": "deck", "ppt": "deck",
@@ -106,33 +109,73 @@ def _window(date: dt.date, slack: int = DEFAULT_SLACK_DAYS) -> tuple[str, str]:
 
 def _owner_clause(isins: Sequence[str], symbols: Sequence[str],
                   isin_col: str, symbol_col: str) -> tuple[str, list[str]]:
-    clauses: list[str] = []
-    params: list[str] = []
+    """Index-friendly owner filter: ISIN when known, symbol only as fallback.
+
+    An ``isin IN (...) OR upper(symbol) IN (...)`` disjunction defeats both
+    indexes (the symbol side is an expression); every caller has an ISIN for a
+    resolved company, so query the ISIN column alone.
+    """
     if isins:
         clause, values = _in_clause(isins)
-        clauses.append(f"{isin_col} IN {clause}")
-        params.extend(values)
+        return f"{isin_col} IN {clause}", values
     if symbols:
         clause, values = _in_clause([s.upper() for s in symbols])
-        clauses.append(f"upper({symbol_col}) IN {clause}")
-        params.extend(values)
-    if not clauses:
-        return "0", []
-    return "(" + " OR ".join(clauses) + ")", params
+        return f"upper({symbol_col}) IN {clause}", values
+    return "0", []
 
 
 def _query(store: str, sql: str, params: Sequence[Any], checked: list[str],
-           label: str) -> list[Any]:
+           label: str, warnings: list[str] | None = None) -> list[Any]:
     """Run one store query; a missing/broken store is reported, never fatal."""
     try:
         checked.append(label)
         return _run_sqlite(store, sql, params, timeout=12.0)
     except DataError as exc:
-        checked.append(f"{label}: {exc.code}")
+        note = f"{label}: {exc.code}"
+        checked.append(note)
+        if warnings is not None:
+            warnings.append(note)
         return []
     except Exception as exc:  # a broken satellite DB must not take the tool down
-        checked.append(f"{label}: {type(exc).__name__}")
+        note = f"{label}: {type(exc).__name__}"
+        checked.append(note)
+        if warnings is not None:
+            warnings.append(note)
         return []
+
+
+def _duck(label: str, sql: str, params: Sequence[Any], checked: list[str],
+          warnings: list[str]) -> list[dict[str, Any]]:
+    """DuckDB counterpart of :func:`_query` for the document-list tables."""
+    try:
+        checked.append(label)
+        columns, rows = _run_duck(sql, params, timeout=4.0)
+        return [dict(zip(columns, row)) for row in rows]
+    except DataError as exc:
+        note = f"{label}: {exc.code}"
+    except Exception as exc:
+        note = f"{label}: {type(exc).__name__}"
+    checked.append(note)
+    warnings.append(note)
+    return []
+
+
+def _budget(name: str, column: str, label: str, collect: Callable[[], list[Any]],
+            warnings: list[str]) -> list[Any]:
+    """Run one store collector, dropping it when it misses the 2 s budget."""
+    started = time.perf_counter()
+    try:
+        rows = collect()
+    except DataError as exc:
+        warnings.append(f"{label}: {exc.code}")
+        return []
+    except Exception as exc:  # a broken satellite DB must not take the tool down
+        warnings.append(f"{label}: {type(exc).__name__}")
+        return []
+    if time.perf_counter() - started > STORE_BUDGET_S:
+        warnings.append(f"{name} skipped: no index on {column}")
+        return []
+    return rows
 
 
 def _entry(doc_type: str, date: str | None, known_at: str | None, title: str | None,
@@ -157,10 +200,22 @@ def _entry(doc_type: str, date: str | None, known_at: str | None, title: str | N
 
 
 def _merge_key(entry: dict[str, Any]) -> tuple:
-    if entry["doc_type"] == "announcement":
-        keys = entry["keys"]
-        return ("announcement", entry["date"], keys.get("newsid") or entry.get("title") or "")
-    return (entry["doc_type"], entry["date"])
+    """Identity of ONE filing: same type/date are not enough (4 decks a day)."""
+    keys = entry["keys"]
+    store = entry["stores"][0]["store"]
+    if keys.get("sha256"):
+        identity: tuple = ("sha256", keys["sha256"])
+    elif keys.get("newsid"):
+        identity = ("newsid", keys["newsid"])
+    elif keys.get("doc_id") is not None:
+        # doc ids are per-store sequences: corporate_documents.id and ar doc_id
+        # collide on value while naming different filings.
+        identity = (store, "doc_id", keys["doc_id"])
+    elif keys.get("chunks_doc_id") is not None:
+        identity = ("chunks", keys["chunks_doc_id"])
+    else:
+        identity = ("title", entry.get("title") or "")
+    return (entry["doc_type"], entry["date"], identity)
 
 
 def _merge(entries: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -194,7 +249,7 @@ def _merge(entries: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
 # Per-store collectors
 # ---------------------------------------------------------------------------
 def _deck_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
-               checked: list[str]) -> list[dict[str, Any]]:
+               checked: list[str], warnings: list[str]) -> list[dict[str, Any]]:
     isins = _identity_isins(identity)
     symbols = _identity_symbols(identity)
     where, params = _owner_clause(isins, symbols, "isin", "symbol")
@@ -204,6 +259,7 @@ def _deck_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
         f"FROM deck_sources WHERE {where} AND known_at >= ? AND known_at <= ? "
         "ORDER BY known_at DESC LIMIT ?",
         [*params, lo, hi, limit], checked, "deck_figures.deck_sources",
+        warnings=warnings,
     )
     shas = [r["sha256"] for r in rows if r["sha256"]]
     pages: dict[str, int] = {}
@@ -212,15 +268,16 @@ def _deck_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
     if shas:
         clause, values = _in_clause(shas)
         for r in _query("deck_figures", f"SELECT sha256, n_pages FROM doc_pages WHERE sha256 IN {clause}",
-                        values, checked, "deck_figures.doc_pages"):
+                        values, checked, "deck_figures.doc_pages", warnings=warnings):
             pages[r["sha256"]] = r["n_pages"]
         for r in _query("deck_figures",
                         "SELECT sha256, sum(text_chars) AS chars FROM pages "
-                        f"WHERE sha256 IN {clause} GROUP BY sha256", values, checked, "deck_figures.pages"):
+                        f"WHERE sha256 IN {clause} GROUP BY sha256", values, checked, "deck_figures.pages",
+                        warnings=warnings):
             text_chars[r["sha256"]] = int(r["chars"] or 0)
         for r in _query("deck_figures",
                         f"SELECT sha256, count(*) AS n FROM facts WHERE sha256 IN {clause} GROUP BY sha256",
-                        values, checked, "deck_figures.facts"):
+                        values, checked, "deck_figures.facts", warnings=warnings):
             fact_counts[r["sha256"]] = int(r["n"] or 0)
     out = []
     for row in rows:
@@ -239,15 +296,17 @@ def _deck_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
 
 
 def _cc_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
-             checked: list[str]) -> list[dict[str, Any]]:
+             checked: list[str], warnings: list[str]) -> list[dict[str, Any]]:
+    # cc_docs has no index on isin/filed_at in SQLite: list from the DuckDB
+    # snapshot instead, and touch SQLite only for cc_items (indexed by isin).
     isins = _identity_isins(identity)
     symbols = _identity_symbols(identity)
     where, params = _owner_clause(isins, symbols, "isin", "symbol")
-    rows = _query(
-        "concall_facts",
+    rows = _duck(
+        "truth_duckdb.cc_docs",
         "SELECT doc_id, symbol, isin, filed_at, chars, period_discussed, status FROM cc_docs "
         f"WHERE {where} AND filed_at >= ? AND filed_at <= ? ORDER BY filed_at DESC LIMIT ?",
-        [*params, lo, hi, limit], checked, "concall_facts.cc_docs",
+        [*params, lo, hi, limit], checked, warnings,
     )
     counts: dict[int, int] = {}
     if rows and isins:
@@ -255,7 +314,7 @@ def _cc_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
         for r in _query("concall_facts",
                         "SELECT doc_id, count(*) AS n FROM cc_items "
                         f"WHERE isin IN {clause} AND filed_at >= ? AND filed_at <= ? GROUP BY doc_id",
-                        [*values, lo, hi], checked, "concall_facts.cc_items"):
+                        [*values, lo, hi], checked, "concall_facts.cc_items", warnings=warnings):
             counts[int(r["doc_id"])] = int(r["n"] or 0)
     out = []
     for row in rows:
@@ -270,7 +329,7 @@ def _cc_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
 
 
 def _chunk_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
-                checked: list[str]) -> list[dict[str, Any]]:
+                checked: list[str], warnings: list[str]) -> list[dict[str, Any]]:
     symbols = _identity_symbols(identity)
     if not symbols:
         return []
@@ -282,6 +341,7 @@ def _chunk_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
         "AND published_date >= ? AND published_date <= ? "
         "GROUP BY doc_id, published_date ORDER BY published_date DESC LIMIT ?",
         [*values, lo, hi, limit], checked, "equity_intelligence.document_chunks",
+        warnings=warnings,
     )
     out = []
     for row in rows:
@@ -299,57 +359,72 @@ def _chunk_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
 
 
 def _ar_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
-             checked: list[str], quarantine: set[int]) -> list[dict[str, Any]]:
+             checked: list[str], quarantine: set[int],
+             warnings: list[str]) -> list[dict[str, Any]]:
     isins = _identity_isins(identity)
     symbols = _identity_symbols(identity)
     where, params = _owner_clause(isins, symbols, "isin", "symbol")
-    rows = _query(
-        "ar_facts",
-        "SELECT doc_id, symbol, isin, fiscal_year, filed_at, sha256, path, n_pages, "
-        "n_text_pages, status FROM ar_docs "
-        f"WHERE {where} AND filed_at >= ? AND filed_at <= ? ORDER BY filed_at DESC LIMIT ?",
-        [*params, lo, hi, limit], checked, "ar_facts.ar_docs",
+    rows = _duck(
+        "truth_duckdb.ar_docs",
+        "SELECT doc_id, symbol, isin, fiscal_year, filed_at, sha256, n_pages, n_text_pages, status "
+        f"FROM ar_docs WHERE {where} AND filed_at >= ? AND filed_at <= ? "
+        "ORDER BY filed_at DESC LIMIT ?",
+        [*params, lo, hi, limit], checked, warnings,
     )
-    counts: dict[int, int] = {}
     ids = [int(r["doc_id"]) for r in rows if r["doc_id"] is not None
            and int(r["doc_id"]) not in quarantine]
+    paths: dict[int, str | None] = {}
+    if ids:
+        # The DuckDB snapshot has no local path; open SQLite by primary key only.
+        clause, values = _in_clause([str(i) for i in ids])
+        for r in _query("ar_facts", f"SELECT doc_id, path FROM ar_docs WHERE doc_id IN {clause}",
+                        values, checked, "ar_facts.ar_docs", warnings=warnings):
+            paths[int(r["doc_id"])] = r["path"]
+    counts: dict[int, int] = {}
     if ids:
         clause, values = _in_clause([str(i) for i in ids])
         for r in _query("ar_facts", f"SELECT doc_id, count(*) AS n FROM ar_facts "
                                     f"WHERE doc_id IN {clause} GROUP BY doc_id",
-                        values, checked, "ar_facts.ar_facts"):
+                        values, checked, "ar_facts.ar_facts", warnings=warnings):
             counts[int(r["doc_id"])] = int(r["n"] or 0)
     out = []
     for row in rows:
         if int(row["doc_id"] or 0) in quarantine:
             continue
         title = f"{row['symbol'] or ''} annual report {row['fiscal_year'] or ''}".strip()
+        doc_id = int(row["doc_id"])
         out.append(_entry(
             "ar", _iso(row["filed_at"]), row["filed_at"], title, row["n_pages"],
-            "ar_facts", {"doc_id": row["doc_id"], "sha256": row["sha256"]},
-            has_text=bool(row["n_text_pages"]), has_facts=counts.get(int(row["doc_id"]), 0) > 0,
-            local_path=row["path"], fiscal_year=row["fiscal_year"], status=row["status"],
+            "ar_facts", {"doc_id": doc_id, "sha256": row["sha256"]},
+            has_text=bool(row["n_text_pages"]), has_facts=counts.get(doc_id, 0) > 0,
+            local_path=paths.get(doc_id), fiscal_year=row["fiscal_year"], status=row["status"],
         ))
     return out
 
 
 def _corporate_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
-                    checked: list[str], quarantine: set[int]) -> list[dict[str, Any]]:
+                    checked: list[str], warnings: list[str]) -> list[dict[str, Any]]:
+    # Filter on the real indexed column (idx_docs_sym_date); the COALESCE stamp
+    # is only applied to rows the symbol index already reduced.
     symbols = _identity_symbols(identity)
-    isins = _identity_isins(identity)
-    where, params = _owner_clause(isins, symbols, "isin", "symbol")
+    if not symbols:
+        return []
+    clause, values = _in_clause(symbols)
     date_expr = "COALESCE(bse_dissem_ts, publication_date, call_date, doc_date)"
     rows = _query(
         "equity_intelligence",
         "SELECT id, symbol, isin, doc_type, title, doc_date, bse_dissem_ts, publication_date, "
         "call_date, source_url, local_file_path, sha256_hash, bse_newsid FROM corporate_documents "
-        f"WHERE {where} AND {date_expr} >= ? AND {date_expr} <= ? "
+        f"WHERE symbol IN {clause} AND {date_expr} >= ? AND {date_expr} <= ? "
         f"ORDER BY {date_expr} DESC LIMIT ?",
-        [*params, lo, hi, limit], checked, "equity_intelligence.corporate_documents",
+        [*values, lo, hi, limit], checked, "equity_intelligence.corporate_documents",
+        warnings=warnings,
     )
     out = []
     for row in rows:
-        if row["id"] is None or int(row["id"]) in quarantine:
+        # quarantined_doc_ids() is the ar_facts key set; corporate_documents.id
+        # is a different sequence and must not be filtered by it.
+        if row["id"] is None:
             continue
         doc_type = _CD_TYPE.get(str(row["doc_type"] or "").upper(), "announcement")
         stamp = row["bse_dissem_ts"] or row["publication_date"] or row["call_date"] or row["doc_date"]
@@ -364,13 +439,15 @@ def _corporate_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
 
 
 def _bse_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
-              checked: list[str]) -> list[dict[str, Any]]:
+              checked: list[str], warnings: list[str]) -> list[dict[str, Any]]:
+    # bse_announcements.db has no index on symbol/SCRIP_CD/date (1.95M rows):
+    # list announcements from the columnar DuckDB snapshot instead.
     symbols = _identity_symbols(identity)
     scrip = str(identity.get("bse_code") or "").strip()
     clauses: list[str] = []
     params: list[Any] = []
     if scrip:
-        clauses.append("cast(SCRIP_CD as text) = ?")
+        clauses.append("SCRIP_CD = ?")
         params.append(scrip)
     if symbols:
         clause, values = _in_clause(symbols)
@@ -379,12 +456,12 @@ def _bse_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
     if not clauses:
         return []
     date_expr = "COALESCE(DissemDT, NEWS_DT)"
-    rows = _query(
-        "bse_announcements",
+    rows = _duck(
+        "truth_duckdb.bse_ann",
         "SELECT NEWSID, SCRIP_CD, symbol, NEWS_DT, DissemDT, NEWSSUB, HEADLINE, ATTACHMENTNAME "
-        f"FROM ann WHERE ({' OR '.join(clauses)}) AND {date_expr} >= ? AND {date_expr} <= ? "
+        f"FROM bse_ann WHERE ({' OR '.join(clauses)}) AND {date_expr} >= ? AND {date_expr} <= ? "
         f"ORDER BY {date_expr} DESC LIMIT ?",
-        [*params, lo, hi, limit], checked, "bse_announcements.ann",
+        [*params, lo, hi, limit], checked, warnings,
     )
     out = []
     for row in rows:
@@ -404,27 +481,43 @@ def _bse_docs(identity: dict[str, Any], lo: str, hi: str, limit: int,
 
 def _collect(identity: dict[str, Any], doc_type: str | None = None,
              date_from: str | None = None, date_to: str | None = None,
-             limit: int = 20) -> tuple[list[dict[str, Any]], list[str]]:
+             limit: int = 20) -> tuple[list[dict[str, Any]], list[str], list[str]]:
     lo, hi = _bounds(date_from, date_to)
     checked: list[str] = []
+    warnings: list[str] = []
     quarantine = quarantined_doc_ids()
     wanted = {doc_type} if doc_type else {"deck", "transcript", "ar", "announcement"}
     per_store = max(limit, 20)
     entries: list[dict[str, Any]] = []
     if "deck" in wanted:
-        entries += _deck_docs(identity, lo, hi, per_store, checked)
-    chunk_entries = _chunk_docs(identity, lo, hi, per_store, checked)
+        entries += _budget(
+            "deck_figures", "isin", "deck_figures",
+            lambda: _deck_docs(identity, lo, hi, per_store, checked, warnings), warnings)
+    chunk_entries = _budget(
+        "document_chunks", "symbol", "document_chunks",
+        lambda: _chunk_docs(identity, lo, hi, per_store, checked, warnings), warnings)
     if "transcript" in wanted:
-        entries += _cc_docs(identity, lo, hi, per_store, checked)
+        entries += _budget(
+            "concall_facts", "isin", "concall_facts",
+            lambda: _cc_docs(identity, lo, hi, per_store, checked, warnings), warnings)
     for chunk_entry in chunk_entries:
         if chunk_entry["doc_type"] in wanted:
             entries.append(chunk_entry)
     if "ar" in wanted:
-        entries += _ar_docs(identity, lo, hi, per_store, checked, quarantine)
+        entries += _budget(
+            "ar_facts", "isin", "ar_facts",
+            lambda: _ar_docs(identity, lo, hi, per_store, checked, quarantine, warnings), warnings)
+    # corporate_documents holds decks/transcripts/ARs too, so collect it for
+    # every type and filter the merged rows below.
+    entries += _budget(
+        "corporate_documents", "symbol", "corporate_documents",
+        lambda: _corporate_docs(identity, lo, hi, per_store, checked, warnings), warnings)
     if "announcement" in wanted:
-        entries += _corporate_docs(identity, lo, hi, per_store, checked, quarantine)
-        entries += _bse_docs(identity, lo, hi, per_store, checked)
-    return _merge(entries), checked
+        entries += _budget(
+            "bse_announcements", "SCRIP_CD", "bse_announcements",
+            lambda: _bse_docs(identity, lo, hi, per_store, checked, warnings), warnings)
+    entries = [entry for entry in entries if entry["doc_type"] in wanted]
+    return _merge(entries), checked, warnings
 
 
 # ---------------------------------------------------------------------------
@@ -511,7 +604,7 @@ def _deck_page(sha: str, page: int, local_path: str | None) -> dict[str, Any]:
     text = "\n".join(lines) if lines else None
     return {"text": text, "text_source": "stored_extraction" if text else None,
             "page_count": None, "fetched": fetched,
-            "fetch_note": note if not text else None}
+            "fetch_note": note or None}
 
 
 def _chunk_page_text(chunk_doc_id: Any, page: int) -> dict[str, Any]:
@@ -565,7 +658,7 @@ def _ar_page(doc_id: Any, page: int, local_path: str | None, sha: str | None) ->
     )
     text = "\n\n".join(str(r["quote"]).strip() for r in rows if r["quote"])
     return {"text": _clean_page(text), "text_source": "stored_facts" if text else None,
-            "page_count": None, "fetched": fetched, "fetch_note": note if not text else None}
+            "page_count": None, "fetched": fetched, "fetch_note": note or None}
 
 
 def _page_facts(entry: dict[str, Any], page: int) -> list[dict[str, Any]]:
@@ -661,9 +754,12 @@ def _distance(entry: dict[str, Any], requested: dt.date) -> int:
 
 def _not_found(kind: str, identity: dict[str, Any], doc_type: str | None,
                checked: list[str], now: dt.date | None, hint: str,
-               extra: dict[str, Any] | None = None) -> dict[str, Any]:
-    recent, extra_checked = _collect(identity, doc_type, None, None, limit=60)
+               extra: dict[str, Any] | None = None,
+               warnings: Sequence[str] | None = None) -> dict[str, Any]:
+    recent, extra_checked, extra_warnings = _collect(identity, doc_type, None, None, limit=60)
     checked = checked + [c for c in extra_checked if c not in checked]
+    warnings = list(warnings or [])
+    warnings += [w for w in extra_warnings if w not in warnings]
     if now is not None:
         recent = sorted(recent, key=lambda e: _distance(e, now))
     nearest = []
@@ -679,6 +775,8 @@ def _not_found(kind: str, identity: dict[str, Any], doc_type: str | None,
         "checked": checked,
         "nearest": nearest,
         "hint": hint,
+        "warnings": warnings,
+        "partial": bool(warnings),
         **_identity_head(identity),
         "provenance": provenance("truth_duckdb", ["security_master", "symbol_isin_history"],
                                  note="identity only; no document text returned"),
@@ -704,16 +802,20 @@ def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
         limit = max(1, min(int(limit), MAX_LIMIT))
     except (TypeError, ValueError):
         raise DataError("bad_limit", f"limit must be an integer between 1 and {MAX_LIMIT}")
-    entries, checked = _collect(identity, canonical, start, end, limit)
+    entries, checked, warnings = _collect(identity, canonical, start, end, limit)
+    entries = entries[:limit]
     if not entries:
         return _not_found("documents", identity, canonical, checked,
                           _day(end or start), "no document of that type in the requested window; "
-                          "nearest is listed above (dates are the filing/known_at date)")
+                          "nearest is listed above (dates are the filing/known_at date)",
+                          warnings=warnings)
     return {
         "found": True,
         "count": len(entries),
         "documents": entries,
         "checked": checked,
+        "warnings": warnings,
+        "partial": bool(warnings),
         **_identity_head(identity),
         "filters": {"doc_type": canonical, "date_from": start, "date_to": end, "limit": limit},
         "provenance": provenance("truth_duckdb", ["security_master", "symbol_isin_history"],
@@ -739,20 +841,44 @@ def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None) -> 
         raise DataError("bad_doc_type",
                         f"unknown doc_type {doc_type!r}; use deck, transcript, ar or announcement")
     lo, hi = _window(requested)
-    entries, checked = _collect(identity, canonical, lo, hi, limit=60)
+    entries, checked, warnings = _collect(identity, canonical, lo, hi, limit=60)
     if not entries:
         return _not_found(
             "document", identity, canonical, checked, requested,
             f"no {canonical or 'document'} within ±{DEFAULT_SLACK_DAYS} days of "
             f"{requested.isoformat()}; nearest is listed above", {"page": page_no},
+            warnings=warnings,
         )
-    chosen = sorted(entries, key=lambda e: (
+    ordered = sorted(entries, key=lambda e: (
         _distance(e, requested),
         0 if e.get("date") == requested.isoformat() else 1,
         0 if e.get("has_text") else 1,
         0 if e.get("has_facts") else 1,
-    ))[0]
-    text_info = _page_text(chosen, page_no)
+    ))
+    chosen = ordered[0]
+    text_info: dict[str, Any] = {"text": None, "text_source": None, "page_count": None,
+                                 "fetched": False}
+    for candidate in ordered:
+        # Same filing seen by several stores (cc_docs text marker, chunk text,
+        # corporate_documents PDF) stays separate in the list but shares a page.
+        if candidate is not chosen and not (
+                candidate["doc_type"] == chosen["doc_type"]
+                and candidate.get("date") == chosen.get("date")):
+            continue
+        try:
+            info = _page_text(candidate, page_no)
+        except DataError as exc:
+            warnings.append(f"page_text: {exc.code}")
+            continue
+        if info.get("text") or candidate is chosen:
+            chosen, text_info = candidate, info
+        if text_info.get("text"):
+            break
+    try:
+        facts = _page_facts(chosen, page_no)
+    except DataError as exc:
+        warnings.append(f"page_facts: {exc.code}")
+        facts = []
     page_count = text_info.get("page_count") or chosen.get("pages")
     days = abs((_day(chosen.get("date")) - requested).days) if _day(chosen.get("date")) else None
     why = (f"nearest {chosen['doc_type']} to {requested.isoformat()}: filed "
@@ -771,9 +897,11 @@ def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None) -> 
         "text_source": text_info.get("text_source"),
         "full_page_text": text_info.get("text_source") == "pdf",
         "fetched": bool(text_info.get("fetched")),
-        "facts": _page_facts(chosen, page_no),
+        "facts": facts,
         "document": chosen,
         "checked": checked,
+        "warnings": warnings,
+        "partial": bool(warnings),
         **_identity_head(identity),
         "provenance": provenance("truth_duckdb", ["security_master", "symbol_isin_history"],
                                  document_stores=", ".join(s["store"] for s in chosen["stores"])),
@@ -817,12 +945,12 @@ def _quote(text: str, tokens: Sequence[str], width: int = 420) -> str:
 
 def _chunk_passages(identity: dict[str, Any], tokens: Sequence[str], doc_type: str | None,
                     lo: str | None, hi: str | None, limit: int,
-                    checked: list[str]) -> list[dict[str, Any]]:
+                    checked: list[str], warnings: list[str]) -> list[dict[str, Any]]:
     symbols = _identity_symbols(identity)
     if not symbols:
         return []
     clause, values = _in_clause(symbols)
-    sql = ("SELECT chunk_id, doc_id, published_date, content FROM document_chunks "
+    sql = ("SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks "
            f"WHERE symbol IN {clause}")
     params: list[Any] = list(values)
     if lo and hi:
@@ -833,7 +961,8 @@ def _chunk_passages(identity: dict[str, Any], tokens: Sequence[str], doc_type: s
         params.append(f"%{token}%")
     sql += " ORDER BY published_date DESC LIMIT ?"
     params.append(max(limit * 4, 40))
-    rows = _query("equity_intelligence", sql, params, checked, "equity_intelligence.document_chunks")
+    rows = _query("equity_intelligence", sql, params, checked,
+                  "equity_intelligence.document_chunks", warnings=warnings)
     out = []
     for row in rows:
         content = row["content"] or ""
@@ -851,7 +980,7 @@ def _chunk_passages(identity: dict[str, Any], tokens: Sequence[str], doc_type: s
             "doc_id": row["doc_id"],
             "page": int(page_match.group(1)) if page_match else None,
             "page_count": int(page_match.group(2)) if page_match else None,
-            "chunk_index": None,
+            "chunk_index": row["chunk_index"],
             "quote": _quote(content, tokens),
             "score": 3 if " ".join(tokens) in content.lower() else 1,
         })
@@ -860,10 +989,9 @@ def _chunk_passages(identity: dict[str, Any], tokens: Sequence[str], doc_type: s
 
 def _ar_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | None,
                  hi: str | None, limit: int, checked: list[str],
-                 quarantine: set[int]) -> list[dict[str, Any]]:
+                 quarantine: set[int], warnings: list[str]) -> list[dict[str, Any]]:
     isins = _identity_isins(identity)
-    symbols = _identity_symbols(identity)
-    where, params = _owner_clause(isins, symbols, "isin", "symbol")
+    where, params = _owner_clause(isins, _identity_symbols(identity), "isin", "symbol")
     sql = ("SELECT doc_id, page, filed_at, symbol, category, item, quote FROM ar_facts "
            f"WHERE {where}")
     args: list[Any] = list(params)
@@ -875,7 +1003,7 @@ def _ar_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | None
         args += [f"%{token}%", f"%{token}%"]
     sql += " ORDER BY filed_at DESC LIMIT ?"
     args.append(max(limit * 4, 40))
-    rows = _query("ar_facts", sql, args, checked, "ar_facts.ar_facts")
+    rows = _query("ar_facts", sql, args, checked, "ar_facts.ar_facts", warnings=warnings)
     out = []
     for row in rows:
         if row["doc_id"] is not None and int(row["doc_id"]) in quarantine:
@@ -894,10 +1022,10 @@ def _ar_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | None
 
 
 def _deck_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | None,
-                   hi: str | None, limit: int, checked: list[str]) -> list[dict[str, Any]]:
+                   hi: str | None, limit: int, checked: list[str],
+                   warnings: list[str]) -> list[dict[str, Any]]:
     isins = _identity_isins(identity)
-    symbols = _identity_symbols(identity)
-    where, params = _owner_clause(isins, symbols, "isin", "symbol")
+    where, params = _owner_clause(isins, _identity_symbols(identity), "isin", "symbol")
     sql = ("SELECT sha256, symbol, known_at, title, local_path FROM deck_sources "
            f"WHERE {where}")
     args: list[Any] = list(params)
@@ -906,11 +1034,13 @@ def _deck_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | No
         args += [lo, hi]
     sql += " ORDER BY known_at DESC LIMIT ?"
     args.append(max(limit, 10))
-    decks = _query("deck_figures", sql, args, checked, "deck_figures.deck_sources")
+    decks = _query("deck_figures", sql, args, checked, "deck_figures.deck_sources",
+                   warnings=warnings)
     out = []
     for deck in decks:
         sha = deck["sha256"]
-        if deck.get("local_path") and Path(str(deck["local_path"])).exists():
+        local_hit = False
+        if deck["local_path"] and Path(str(deck["local_path"])).exists():
             try:
                 import fitz
                 with fitz.open(str(deck["local_path"])) as pdf:
@@ -918,20 +1048,22 @@ def _deck_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | No
                         text = pdf[page - 1].get_text("text")
                         low = (text or "").lower()
                         if all(t in low for t in tokens):
+                            local_hit = True
                             out.append({"store": "deck_figures", "doc_type": "deck",
                                         "date": _iso(deck["known_at"]), "doc_id": sha,
                                         "page": page, "page_count": int(pdf.page_count),
                                         "quote": _quote(text, tokens), "score": 3})
             except Exception:
                 pass
-            if out:
-                continue
+        if local_hit:
+            continue
         rows = _query(
             "deck_figures",
             "SELECT page_no, raw_output FROM outputs WHERE sha256=? AND "
             + " AND ".join("lower(raw_output) LIKE ?" for _ in tokens)
             + " ORDER BY page_no LIMIT ?",
             [sha, *[f"%{t}%" for t in tokens], limit], checked, "deck_figures.outputs",
+            warnings=warnings,
         )
         for row in rows:
             out.append({"store": "deck_figures", "doc_type": "deck",
@@ -943,13 +1075,13 @@ def _deck_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | No
 
 def _announcement_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | None,
                            hi: str | None, limit: int,
-                           checked: list[str]) -> list[dict[str, Any]]:
+                           checked: list[str], warnings: list[str]) -> list[dict[str, Any]]:
     symbols = _identity_symbols(identity)
     scrip = str(identity.get("bse_code") or "").strip()
     clauses: list[str] = []
     params: list[Any] = []
     if scrip:
-        clauses.append("cast(SCRIP_CD as text) = ?")
+        clauses.append("SCRIP_CD = ?")
         params.append(scrip)
     if symbols:
         clause, values = _in_clause(symbols)
@@ -958,7 +1090,7 @@ def _announcement_passages(identity: dict[str, Any], tokens: Sequence[str], lo: 
     if not clauses:
         return []
     date_expr = "COALESCE(DissemDT, NEWS_DT)"
-    sql = ("SELECT NEWSID, NEWS_DT, DissemDT, NEWSSUB, HEADLINE, ATTACHMENTNAME FROM ann "
+    sql = ("SELECT NEWSID, NEWS_DT, DissemDT, NEWSSUB, HEADLINE, ATTACHMENTNAME FROM bse_ann "
            f"WHERE ({' OR '.join(clauses)})")
     args: list[Any] = list(params)
     if lo and hi:
@@ -969,7 +1101,7 @@ def _announcement_passages(identity: dict[str, Any], tokens: Sequence[str], lo: 
         args += [f"%{token}%", f"%{token}%"]
     sql += f" ORDER BY {date_expr} DESC LIMIT ?"
     args.append(max(limit, 10))
-    rows = _query("bse_announcements", sql, args, checked, "bse_announcements.ann")
+    rows = _duck("truth_duckdb.bse_ann", sql, args, checked, warnings)
     return [{
         "store": "bse_announcements", "doc_type": "announcement",
         "date": _iso(row["DissemDT"] or row["NEWS_DT"]), "doc_id": row["NEWSID"],
@@ -1001,16 +1133,28 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
         lo, hi = _window(requested)
         hi += "T23:59:59"
     checked: list[str] = []
+    warnings: list[str] = []
     quarantine = quarantined_doc_ids()
     passages: list[dict[str, Any]] = []
     if canonical in (None, "transcript", "ar", "announcement", "deck"):
-        passages += _chunk_passages(identity, tokens, canonical, lo, hi, top_k, checked)
+        passages += _budget(
+            "document_chunks", "symbol", "document_chunks",
+            lambda: _chunk_passages(identity, tokens, canonical, lo, hi, top_k, checked, warnings),
+            warnings)
     if canonical in (None, "ar"):
-        passages += _ar_passages(identity, tokens, lo, hi, top_k, checked, quarantine)
+        passages += _budget(
+            "ar_facts", "isin", "ar_facts",
+            lambda: _ar_passages(identity, tokens, lo, hi, top_k, checked, quarantine, warnings),
+            warnings)
     if canonical in (None, "deck"):
-        passages += _deck_passages(identity, tokens, lo, hi, top_k, checked)
+        passages += _budget(
+            "deck_figures", "isin", "deck_figures",
+            lambda: _deck_passages(identity, tokens, lo, hi, top_k, checked, warnings), warnings)
     if canonical in (None, "announcement"):
-        passages += _announcement_passages(identity, tokens, lo, hi, top_k, checked)
+        passages += _budget(
+            "bse_announcements", "SCRIP_CD", "bse_announcements",
+            lambda: _announcement_passages(identity, tokens, lo, hi, top_k, checked, warnings),
+            warnings)
 
     def _key(p: dict[str, Any]) -> tuple:
         return (p.get("doc_id"), p.get("date"), p.get("page"), str(p.get("quote"))[:80])
@@ -1024,6 +1168,7 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
             "passages", identity, canonical, checked, requested,
             f"no passage matching {text!r} in the {canonical or 'available'} documents; "
             "try fewer or more general words, or drop the date filter", {"terms": text},
+            warnings=warnings,
         )
     return {
         "found": True,
@@ -1033,6 +1178,8 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
         "count": len(ranked),
         "passages": ranked,
         "checked": checked,
+        "warnings": warnings,
+        "partial": bool(warnings),
         **_identity_head(identity),
         "provenance": provenance("truth_duckdb", ["security_master", "symbol_isin_history"],
                                  searched=", ".join(dict.fromkeys(p["store"] for p in ranked))),
