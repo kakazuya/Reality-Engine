@@ -467,6 +467,13 @@ equity_intelligence:
       - symbol
       - date
       notes: Derived view; only rows with both a price and a NAV survive. premium_pct = 100*(close/nav-1); value_inr in rupees.
+    etf_premium_daily:
+      description: 'One row per ETF per trading day: close, AMFI NAV, premium_pct over NAV, model iNAV and the close-vs-iNAV gap.'
+      key_columns:
+      - date
+      - isin
+      - symbol
+      notes: Built by reality_engine.scripts.build_etf_premium (sole owner; the etf_premium view is separate). premium_pct = 100*(close/nav-1); inav only for ETFs whose underlying has a mapped Yahoo index series, else null; built_at is the build time, not a disclosure date.
     insider_trades_v2:
       description: 'One row per insider-trading transaction (NSE/BSE/legacy): person, category, buy/sell, mode, quantity, value, before/after holding
         percent, trade and intimation dates, revision chain and known_at.'
