@@ -235,6 +235,24 @@ jobs:
     needs_gpu: false
     enabled: false
 
+  - name: universe_membership
+    description: "Rebuild point-in-time theme universes (universe_membership + universe_candidates) from ar_facts, deck figures, NSE industry and curated seeds in universes.yaml. Weekly, so pivots and new segments show up."
+    argv: ["python", "-m", "reality_engine.scripts.build_universe_membership"]
+    cwd: "."
+    env: {}
+    writes: ["equity_intelligence.db:universe_membership", "equity_intelligence.db:universe_candidates", "equity_intelligence.db:universe_membership_runs"]
+    resource_locks: ["db:equity_intelligence.db"]
+    cadence: weekly
+    success_check:
+      db: equity_intelligence.db
+      sql: "SELECT substr(max(built_at), 1, 10) AS value FROM universe_membership_runs"
+      expect: {kind: max_date, max_age_days: 8}
+    off_peak_only: true
+    market_hours: any
+    needs_paid_api: false
+    needs_gpu: false
+    enabled: false
+
   - name: index_tri  # audit #12
     description: "Total-return indices used by the benchmark rule."
     argv: ["python", "-m", "reality_engine.scripts.fetch_index_tri", "--start", "{start}", "--end", "{date}"]
