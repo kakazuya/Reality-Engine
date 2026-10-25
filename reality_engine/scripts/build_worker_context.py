@@ -35,10 +35,8 @@ DATA_ROOT = Path(
 ).resolve()
 CACHE_RELATIVE = Path("plugins") / "reality-data" / "server" / "catalog_cache.json"
 DESCRIPTIONS_RELATIVE = Path("plugins") / "reality-data" / "catalog_descriptions.yaml"
-SHARED_CONTEXT_RELATIVE = Path("tasks") / "optimizations" / "00_SHARED_CONTEXT.md"
 STATE_RELATIVE = Path("tasks") / "STATE.md"
-SANDBOX_RELATIVE = Path("tasks") / "worker_context" / "SANDBOX.md"
-MAX_TOKENS = 25_000
+MAX_TOKENS = 20_000
 
 DB_ORDER = [
     "truth_duckdb",
@@ -187,26 +185,44 @@ def _repo_map(root: Path, data_root: Path, out_dir: Path) -> str:
                 continue
             if child.resolve() == skip_out:
                 continue
+            purpose = _dir_purpose(child) if family != "tasks" else ""
+            if not purpose:
+                continue  # leaf dirs with no module docstring
             count = _count_files(child, "*.py") if family != "tasks" else len(
                 list(child.glob("*.md"))
             )
-            purpose = _dir_purpose(child) if family != "tasks" else ""
-            suffix = f" — {purpose}" if purpose else ""
             unit = "md" if family == "tasks" else "py"
-            lines.append(f"  {child.name}/ ({count} {unit}){suffix}")
+            lines.append(f"  {child.name}/ ({count} {unit}) — {purpose}")
     for child in sorted(root.iterdir()):
         if child.is_dir() and child.name not in SKIP_DIRS and not child.name.startswith(".") \
                 and child.name not in {"reality_engine", "plugins", "tasks", "skills"}:
-            lines.append(f"{child.name}/ ({len(list(child.rglob('*')))} entries)")
-    lines += ["```", "", "Module one-liners (first docstring line):", ""]
+            purpose = _dir_purpose(child)
+            if purpose:
+                lines.append(f"{child.name}/ ({len(list(child.iterdir()))} entries) — {purpose}")
+    lines += ["```", "",
+              "Module one-liners (first docstring line, clipped; `__init__.py` and modules "
+              "without a docstring skipped):", ""]
 
     grouped: dict[str, list[tuple[str, str]]] = {}
     for relative, path in _module_paths(root):
+        if path.name == "__init__.py":
+            continue
+        purpose = _first_doc_line(path)
+        if not purpose:
+            continue
         parent = str(Path(relative).parent.as_posix())
-        grouped.setdefault(parent, []).append((relative, _first_doc_line(path) or "(no docstring)"))
+        grouped.setdefault(parent, []).append((relative, _clip(purpose, 100)))
     for parent in sorted(grouped):
+        entries = grouped[parent]
+        if parent == "reality_engine/scripts":
+            # 120+ one-file jobs; the ranked few below are the useful orientation.
+            lines.append(
+                f"- `{parent}/` — {len(entries)} data-job modules (one per data job); "
+                "most-referenced ranked below."
+            )
+            continue
         lines.append(f"### {parent}/")
-        for relative, purpose in grouped[parent]:
+        for relative, purpose in entries:
             lines.append(f"- `{relative}` — {purpose}")
         lines.append("")
 
@@ -218,10 +234,21 @@ def _repo_map(root: Path, data_root: Path, out_dir: Path) -> str:
         for stem, count, purpose in scripts:
             lines.append(f"- `reality_engine/scripts/{stem}.py` ({count} refs) — {purpose}")
         lines.append("")
+    lines += [
+        "### Tools",
+        "",
+        "- Toolbelt (`reality_engine/toolbelt/README.md`; `python -m reality_engine.toolbelt.<tool>`, "
+        "read-only): `coverage_peek --symbol X`, `find_docs --symbol X`, "
+        "`sample_rows --db <db> --table <t> --n 5`, `job_peek <job>`, "
+        "`render_pages --pdf <f> --pages 3,5-7`, `drive_fetch`, `cost_ledger`, `mod_test`.",
+        "- Code-intel MCP (`mcp__code-intel__*`) — use before grep: `module_map(package)`, "
+        "`symbols(file= | query=)`, `definition(symbol)`, `references(symbol)`, "
+        "`callers(fn)`, `hover(file,line)`, `diagnostics(files= | changed=True)`.",
+    ]
     return "\n".join(lines).rstrip()
 
 
-def _top_scripts(root: Path, data_root: Path, limit: int = 40) -> list[tuple[str, int, str]]:
+def _top_scripts(root: Path, data_root: Path, limit: int = 12) -> list[tuple[str, int, str]]:
     texts: list[str] = []
     for path in (root / STATE_RELATIVE, root / "plugins" / "dsh-worker" / "jobs.yaml"):
         try:
@@ -596,23 +623,22 @@ def _tests_section(root: Path) -> str:
 
 
 def _sandbox_section(root: Path) -> str:
-    sandbox = root / SANDBOX_RELATIVE
-    if sandbox.is_file():
-        return "## 5. Sandbox limits + workarounds\n\n" + sandbox.read_text(
-            encoding="utf-8", errors="replace"
-        ).strip()
-    shared = root / SHARED_CONTEXT_RELATIVE
-    if shared.is_file():
-        text = shared.read_text(encoding="utf-8", errors="replace")
-        match = re.search(r"(?ms)^## Known sandbox limits.*?(?=^## |\Z)", text)
-        if match:
-            block = re.sub(r"(?m)^## ", "### ", match.group(0).strip())
-            return (
-                "## 5. Sandbox limits + workarounds\n\n"
-                "Source: `tasks/optimizations/00_SHARED_CONTEXT.md` (`SANDBOX.md` is owned by "
-                "Task 03 and was absent when this pack was built).\n\n" + block
-            )
-    return "## 5. Sandbox limits + workarounds\n\n`sandbox/` notes unavailable."
+    return """## 5. Sandbox limits + workarounds
+
+Digest only; full rules in `tasks/worker_context/SANDBOX.md` (read it before installing, writing outside the workspace, committing or launching).
+
+| `permission` | dsh mode / approval | effect |
+|---|---|---|
+| `read-only` | `read-only`, `ask` | no writes; confined pwsh gets no temp dir, so `tempfile.mkdtemp()` fails |
+| `workspace-write` | `workspace-write`, `ask` | writes under the session cwd plus a private per-session temp |
+| `danger-full-access` | `danger-full-access`, `never` | unconfined |
+
+- Writable root = session cwd only; there is no extra-writable-roots setting, and a junction to `REALITY_DATA_ROOT` does not help (the resolved target is checked).
+- Temp/caches: `.tmp/` (`TMP`/`TEMP`, pip/uv/npm caches). Never `%LOCALAPPDATA%\\Temp`. `pip install --target .tmp/x ...`; optional `.venv-<task>`.
+- `write_scope='data'`: needs `confirm_data_write=true` + `writes=[...]` + `approved_by`; runs `danger-full-access` exactly like `full` (`confirm_full_access=true`) — policy, not enforcement. A mutating main-checkout worker needs `confirm_repo_root_write=true`.
+- Commit: write `.tmp/commit.request.json` `{"message": ...}` -> `.tmp/commit.result.json`; direct `git commit` is denied.
+- Detached launch (data/full only): write `.tmp/launch.request.json` (`cmd`, `log`, `cwd`, `env`) -> `.tmp/launch.result.json`.
+- Nested-sandbox demos cannot run from a confined token; see `tasks/worker_context/sandbox_probe.py`."""
 
 
 def _conventions_section() -> str:

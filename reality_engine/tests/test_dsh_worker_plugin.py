@@ -2254,7 +2254,7 @@ class WorkerContextBuilderTests(unittest.TestCase):
         text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
         headings = [line for line in text.splitlines() if line.startswith("## ")]
         self.assertEqual(len(headings), 7, headings)
-        self.assertLessEqual(stats["tokens_estimate"], 25000)
+        self.assertLessEqual(stats["tokens_estimate"], 20_000)
         self.assertLess(stats["seconds"], 60)
         self.assertEqual(stats["databases"], 2)
         self.assertIn("security_master", text)
@@ -2306,6 +2306,40 @@ class WorkerContextBuilderTests(unittest.TestCase):
         text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
         # plugins/fake has server/core.py plus an ignored runtime/ fixture.
         self.assertIn("fake/ (1 py)", text)
+
+    def test_repo_map_trimmed_and_tools_listed(self):
+        self._build()
+        text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
+        self.assertIn("### Tools", text)
+        self.assertIn("mcp__code-intel__", text)
+        self.assertIn("reality_engine/toolbelt/README.md", text)
+        # Script modules collapse to one summary line; only the ranked few remain.
+        self.assertIn("1 data-job modules", text)
+        self.assertNotIn("reality_engine/scripts/run_thing.py` —", text)
+        # Leaf dirs without a docstring (tasks/ subdirs) are dropped from the tree.
+        self.assertNotIn("  worker_context/", text)
+
+    def test_sandbox_section_is_a_short_digest(self):
+        sandbox = self.out / "SANDBOX.md"
+        sandbox.parent.mkdir(parents=True, exist_ok=True)
+        sandbox.write_text(
+            "# Worker sandbox\n\n" + "\n".join(f"detail {n}" for n in range(400)),
+            encoding="utf-8",
+        )
+        self._build()
+        text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
+        section = text.split("## 5. Sandbox limits + workarounds", 1)[1].split("## 6.", 1)[0]
+        self.assertLessEqual(len(section.strip().splitlines()), 25)
+        for needle in (
+            "workspace-write",
+            "confirm_repo_root_write",
+            "commit.request.json",
+            "launch.request.json",
+            "tasks/worker_context/SANDBOX.md",
+        ):
+            self.assertIn(needle, section)
+        # The 400-line file is replaced by the digest, not included verbatim.
+        self.assertNotIn("detail 399", text)
 
     def test_is_stale_uses_injected_clock(self):
         pack = self.root / "pack.md"
