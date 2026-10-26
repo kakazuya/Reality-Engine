@@ -20,7 +20,8 @@ SESSION = ROOT / "reality_engine/data/telegram_session"
 CHANNEL = -1002413883243
 SCOPE = {13: "Daily Bytes", 7: "Big Orders", 683: "PEAD", 2397: "Concall Highlights", 4: "#BuyBacks",
          10: "Interesting Announcement", 11: "Interesting - Interviews", 3: "#Demerger", 165: "Shipping Data",
-         1625: "Open Offers/ Take Overs"}
+         1625: "Open Offers/ Take Overs", 1: "General", 6: "Request to Shubham", 9: "Tod Phod Growth",
+         5314: "Business Updates", 16: "FAQ & New Tools", 202: "Contact Us", 360: "Guidelines."}
 
 
 async def main(topics):
