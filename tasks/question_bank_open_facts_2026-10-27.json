@@ -1,0 +1,2853 @@
+[
+ {
+  "id": "xbrl.RELIANCE.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1695741_17072026075004_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-07-17T19:50:03",
+   "vals": {
+    "RevenueFromOperations": 3118500000000.0,
+    "Income": 3184000000000.0,
+    "ProfitLossForPeriod": 231960000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 230010000000.0,
+    "ProfitBeforeTax": 306300000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='RELIANCE' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.TCS.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1690004_09072026063620_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-07-09T18:36:12",
+   "vals": {
+    "RevenueFromOperations": 722750000000.0,
+    "Income": 738430000000.0,
+    "ProfitLossForPeriod": 134200000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 134200000000.0,
+    "ProfitBeforeTax": 179440000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='TCS' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.TATASTEEL.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1705622_30072026075610_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-30T19:56:08",
+   "vals": {
+    "RevenueFromOperations": 607942900000.0,
+    "Income": 610269700000.0,
+    "ProfitLossForPeriod": 23852400000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 22890900000.0,
+    "ProfitBeforeTax": 37413800000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='TATASTEEL' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.JSWSTEEL.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1695414_17072026051852_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-17T17:18:15",
+   "vals": {
+    "RevenueFromOperations": 473640000000.0,
+    "Income": 480880000000.0,
+    "ProfitLossForPeriod": 46960000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 47940000000.0,
+    "ProfitBeforeTax": 62580000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='JSWSTEEL' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.TITAGARH.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1713065_12082026075605_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-12T19:56:01",
+   "vals": {
+    "RevenueFromOperations": 7650700000.0,
+    "Income": 7717100000.0,
+    "ProfitLossForPeriod": 525800000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 531800000.0,
+    "ProfitBeforeTax": 714600000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='TITAGARH' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.RVNL.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1711789_11082026052009_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-11T17:19:08",
+   "vals": {
+    "RevenueFromOperations": 43212300000.0,
+    "Income": 44622900000.0,
+    "ProfitLossForPeriod": 1595200000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 1533600000.0,
+    "ProfitBeforeTax": 2173800000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='RVNL' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.HAL.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1712384_12082026021942_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-08-12T14:19:46",
+   "vals": {
+    "RevenueFromOperations": 55151700000.0,
+    "Income": 64154100000.0,
+    "ProfitLossForPeriod": 15896600000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 15780500000.0,
+    "ProfitBeforeTax": 21227200000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='HAL' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.BEL.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1702069_27072026043840_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-27T16:38:40",
+   "vals": {
+    "RevenueFromOperations": 55469800000.0,
+    "Income": 57165400000.0,
+    "ProfitLossForPeriod": 10545300000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 10439000000.0,
+    "ProfitBeforeTax": 13962500000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='BEL' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.POLYCAB.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1694176_16072026035916_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-07-16T15:59:10",
+   "vals": {
+    "RevenueFromOperations": 82097320000.0,
+    "Income": 83146470000.0,
+    "ProfitLossForPeriod": 7966540000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 7966540000.0,
+    "ProfitBeforeTax": 10582230000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='POLYCAB' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.KEI.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1707270_03082026085212_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-03T20:52:12",
+   "vals": {
+    "RevenueFromOperations": 31853420000.0,
+    "Income": 32049150000.0,
+    "ProfitLossForPeriod": 2741400000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 2741400000.0,
+    "ProfitBeforeTax": 3691640000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='KEI' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.DIXON.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1706200_31072026061259_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-31T18:12:59",
+   "vals": {
+    "RevenueFromOperations": 155476600000.0,
+    "Income": 160759500000.0,
+    "ProfitLossForPeriod": 7178300000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 7091900000.0,
+    "ProfitBeforeTax": 8603400000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='DIXON' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.AMBER.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1714198_14082026014913_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-14T01:49:05",
+   "vals": {
+    "RevenueFromOperations": 38877245000.0,
+    "Income": 39352450000.0,
+    "ProfitLossForPeriod": 30856000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 36313000.0,
+    "ProfitBeforeTax": 439958000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='AMBER' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.TRENT.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1709071_06082026050711_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-06T17:07:06",
+   "vals": {
+    "RevenueFromOperations": 57547100000.0,
+    "Income": 57845400000.0,
+    "ProfitLossForPeriod": 5180700000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 5278100000.0,
+    "ProfitBeforeTax": 7015800000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='TRENT' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.MUTHOOTFIN.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_NBFC_INDAS_1706649_01082026060144_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-01T18:01:10",
+   "vals": {
+    "RevenueFromOperations": 86716020000.0,
+    "Income": 86948160000.0,
+    "ProfitLossForPeriod": 28248400000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 28248400000.0,
+    "ProfitBeforeTax": 37971290000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='MUTHOOTFIN' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.CHOLAFIN.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_NBFC_INDAS_1703240_28072026060526_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-28T18:00:21",
+   "vals": {
+    "RevenueFromOperations": 88562900000.0,
+    "Income": 89566800000.0,
+    "ProfitLossForPeriod": 16562200000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 16547300000.0,
+    "ProfitBeforeTax": 22220700000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='CHOLAFIN' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.ASIANPAINT.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1704404_29072026065419_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-29T18:54:04",
+   "vals": {
+    "RevenueFromOperations": 105419400000.0,
+    "Income": 107827900000.0,
+    "ProfitLossForPeriod": 15594500000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 15212900000.0,
+    "ProfitBeforeTax": 20575900000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='ASIANPAINT' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.ULTRACEMCO.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1697527_20072026075845_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-20T19:58:45",
+   "vals": {
+    "RevenueFromOperations": 246482000000.0,
+    "Income": 247784700000.0,
+    "ProfitLossForPeriod": 26037200000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 26023200000.0,
+    "ProfitBeforeTax": 34790300000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='ULTRACEMCO' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.NTPC.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1701291_24072026084853_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-24T20:48:10",
+   "vals": {
+    "RevenueFromOperations": 507409600000.0,
+    "Income": 511415100000.0,
+    "ProfitLossForPeriod": 68964400000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 62682100000.0,
+    "ProfitBeforeTax": 80114000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='NTPC' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.COALINDIA.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1702215_27072026055027_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-07-27T17:49:08",
+   "vals": {
+    "RevenueFromOperations": 462548000000.0,
+    "Income": 482952700000.0,
+    "ProfitLossForPeriod": 88498100000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 86094900000.0,
+    "ProfitBeforeTax": 114790400000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='COALINDIA' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.SAIL.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1701137_24072026065209_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-24T18:51:10",
+   "vals": {
+    "RevenueFromOperations": 262456700000.0,
+    "Income": 264512100000.0,
+    "ProfitLossForPeriod": 16440500000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 16182500000.0,
+    "ProfitBeforeTax": 21608800000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='SAIL' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.HINDALCO.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1709879_07082026052455_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-08-07T17:24:55",
+   "vals": {
+    "RevenueFromOperations": 848250000000.0,
+    "Income": 858820000000.0,
+    "ProfitLossForPeriod": 70130000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 70070000000.0,
+    "ProfitBeforeTax": 93870000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='HINDALCO' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.MARUTI.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1706229_31072026062708_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-31T18:27:07",
+   "vals": {
+    "RevenueFromOperations": 524698000000.0,
+    "Income": 543438000000.0,
+    "ProfitLossForPeriod": 34469000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 33492000000.0,
+    "ProfitBeforeTax": 43435000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='MARUTI' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.M&M.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1705129_30072026041119_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-07-30T16:11:11",
+   "vals": {
+    "RevenueFromOperations": 581875700000.0,
+    "Income": 592036000000.0,
+    "ProfitLossForPeriod": 59975600000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 56300700000.0,
+    "ProfitBeforeTax": 72606000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='M&M' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.SUNPHARMA.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1706221_31072026062408_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-31T18:24:07",
+   "vals": {
+    "RevenueFromOperations": 152998800000.0,
+    "Income": 160235000000.0,
+    "ProfitLossForPeriod": 29012300000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 29108000000.0,
+    "ProfitBeforeTax": 40988100000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='SUNPHARMA' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.DIVISLAB.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1706514_01082026010514_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-01T13:05:14",
+   "vals": {
+    "RevenueFromOperations": 30800000000.0,
+    "Income": 31440000000.0,
+    "ProfitLossForPeriod": 9020000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 9020000000.0,
+    "ProfitBeforeTax": 11800000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='DIVISLAB' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.BHARTIARTL.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1707993_04082026082135_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-04T20:21:35",
+   "vals": {
+    "RevenueFromOperations": 585391000000.0,
+    "Income": 594457000000.0,
+    "ProfitLossForPeriod": 100116000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 99034000000.0,
+    "ProfitBeforeTax": 136646000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='BHARTIARTL' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.ADANIPORTS.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1704541_29072026082418_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-29T20:24:18",
+   "vals": {
+    "RevenueFromOperations": 108208000000.0,
+    "Income": 116737100000.0,
+    "ProfitLossForPeriod": 36495000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 39372600000.0,
+    "ProfitBeforeTax": 45950700000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='ADANIPORTS' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.IRCTC.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1713130_12082026084321_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-12T20:43:14",
+   "vals": {
+    "RevenueFromOperations": 13695293000.0,
+    "Income": 14412424000.0,
+    "ProfitLossForPeriod": 3301588000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 3301588000.0,
+    "ProfitBeforeTax": 4416841000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='IRCTC' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.INDIGO.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1700112_23072026054230_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-07-23T17:42:30",
+   "vals": {
+    "RevenueFromOperations": 245841000000.0,
+    "Income": 256141000000.0,
+    "ProfitLossForPeriod": -2380000000.0,
+    "ProfitLossForPeriodFromContinuingOperations": -2380000000.0,
+    "ProfitBeforeTax": -2384000000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='INDIGO' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.KFINTECH.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1701259_24072026080618_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-24T20:06:16",
+   "vals": {
+    "RevenueFromOperations": 3565360000.0,
+    "Income": 3668920000.0,
+    "ProfitLossForPeriod": 752140000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 754590000.0,
+    "ProfitBeforeTax": 1036590000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='KFINTECH' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.CDSL.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1706520_01082026011858_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Audited",
+   "opinion": "Declaration of unmodified opinion",
+   "dissem": "2026-08-01T13:18:58",
+   "vals": {
+    "RevenueFromOperations": 2927600000.0,
+    "Income": 3405000000.0,
+    "ProfitLossForPeriod": 1176700000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 1174200000.0,
+    "ProfitBeforeTax": 1664200000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='CDSL' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.ANGELONE.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_NBFC_INDAS_1693486_15072026060820_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-15T18:08:13",
+   "vals": {
+    "RevenueFromOperations": 14296910000.0,
+    "Income": 14337180000.0,
+    "ProfitLossForPeriod": 2313980000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 2313990000.0,
+    "ProfitBeforeTax": 3246720000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='ANGELONE' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.POLICYBZR.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1708594_05082026071952_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-05T19:19:52",
+   "vals": {
+    "RevenueFromOperations": 18882800000.0,
+    "Income": 19813200000.0,
+    "ProfitLossForPeriod": 1629100000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 1653900000.0,
+    "ProfitBeforeTax": 1810600000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='POLICYBZR' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.JUBLFOOD.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1713499_13082026043458_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-08-13T16:30:22",
+   "vals": {
+    "RevenueFromOperations": 25696540000.0,
+    "Income": 25883440000.0,
+    "ProfitLossForPeriod": 1000280000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 991230000.0,
+    "ProfitBeforeTax": 1472470000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='JUBLFOOD' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "xbrl.DEVYANI.2026-06-30",
+  "value": {
+   "file": "INTEGRATED_FILING_INDAS_1703810_29072026024149_WEB.xml",
+   "quarter": "First quarter",
+   "basis": "Consolidated",
+   "audited": "Un-Audited",
+   "opinion": "Not applicable",
+   "dissem": "2026-07-29T14:37:26",
+   "vals": {
+    "RevenueFromOperations": 15805160000.0,
+    "Income": 15997070000.0,
+    "ProfitLossForPeriod": 171040000.0,
+    "ProfitLossForPeriodFromContinuingOperations": 170410000.0,
+    "ProfitBeforeTax": 228590000.0
+   }
+  },
+  "sql": "SELECT file,reporting_quarter,consolidated,audit_opinion,dissem_ts FROM results_xbrl.filings WHERE symbol='DEVYANI' AND period_end='2026-06-30'; then SELECT concept,value,context FROM results_xbrl.facts WHERE file=<that file> AND concept IN ('RevenueFromOperations','ProfitLossForPeriod')",
+  "note": ""
+ },
+ {
+  "id": "px.RELIANCE.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 2794.55,
+   "prev_close": 3020.65,
+   "change_pct": -7.49,
+   "volume": 18354549,
+   "delivery_pct": 54.39,
+   "turnover_lacs": 521418.56
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='RELIANCE' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.HDFCBANK.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 1483.15,
+   "prev_close": 1572.2,
+   "change_pct": -5.66,
+   "volume": 44765620,
+   "delivery_pct": 34.27,
+   "turnover_lacs": 673684.18
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='HDFCBANK' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.SBIN.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 775.2,
+   "prev_close": 905.65,
+   "change_pct": -14.4,
+   "volume": 122381193,
+   "delivery_pct": 41.6,
+   "turnover_lacs": 983757.61
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='SBIN' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.TATASTEEL.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 158.95,
+   "prev_close": 174.25,
+   "change_pct": -8.78,
+   "volume": 125042158,
+   "delivery_pct": 42.61,
+   "turnover_lacs": 200989.94
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='TATASTEEL' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.POLYCAB.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 6456.2,
+   "prev_close": 6929.15,
+   "change_pct": -6.83,
+   "volume": 1324429,
+   "delivery_pct": 40.25,
+   "turnover_lacs": 88117.02
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='POLYCAB' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.KEI.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 4068.9,
+   "prev_close": 4207.55,
+   "change_pct": -3.3,
+   "volume": 401664,
+   "delivery_pct": 42.88,
+   "turnover_lacs": 16210.1
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='KEI' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.TITAGARH.2026-05-14",
+  "value": {
+   "date": "2026-05-14",
+   "close": 771.9,
+   "prev_close": 773.85,
+   "change_pct": -0.25,
+   "volume": 696544,
+   "delivery_pct": 23.84,
+   "turnover_lacs": 5396.56
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='TITAGARH' AND date='2026-05-14'",
+  "note": ""
+ },
+ {
+  "id": "px.TITAGARH.2026-08-13",
+  "value": {
+   "date": "2026-08-13",
+   "close": 850.75,
+   "prev_close": 833.55,
+   "change_pct": 2.06,
+   "volume": 971093,
+   "delivery_pct": 30.36,
+   "turnover_lacs": 8295.05
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='TITAGARH' AND date='2026-08-13'",
+  "note": ""
+ },
+ {
+  "id": "px.DIXON.2026-07-31",
+  "value": {
+   "date": "2026-07-31",
+   "close": 14049.0,
+   "prev_close": 14338.0,
+   "change_pct": -2.02,
+   "volume": 634727,
+   "delivery_pct": 39.38,
+   "turnover_lacs": 90418.62
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='DIXON' AND date='2026-07-31'",
+  "note": ""
+ },
+ {
+  "id": "px.MANKIND.2026-09-29",
+  "value": {
+   "date": "2026-09-29",
+   "close": 2545.0,
+   "prev_close": 2435.6,
+   "change_pct": 4.49,
+   "volume": 1973968,
+   "delivery_pct": 35.35,
+   "turnover_lacs": 49810.11
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='MANKIND' AND date='2026-09-29'",
+  "note": ""
+ },
+ {
+  "id": "px.SUZLON.2026-09-24",
+  "value": {
+   "date": "2026-09-24",
+   "close": 40.74,
+   "prev_close": 42.39,
+   "change_pct": -3.89,
+   "volume": 131241030,
+   "delivery_pct": 46.53,
+   "turnover_lacs": 53891.19
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='SUZLON' AND date='2026-09-24'",
+  "note": ""
+ },
+ {
+  "id": "px.IRFC.2024-07-23",
+  "value": {
+   "date": "2024-07-23",
+   "close": 194.14,
+   "prev_close": 204.58,
+   "change_pct": -5.1,
+   "volume": 167582146,
+   "delivery_pct": 25.03,
+   "turnover_lacs": 327453.55
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='IRFC' AND date='2024-07-23'",
+  "note": ""
+ },
+ {
+  "id": "px.RVNL.2024-07-23",
+  "value": {
+   "date": "2024-07-23",
+   "close": 590.3,
+   "prev_close": 624.1,
+   "change_pct": -5.42,
+   "volume": 57366312,
+   "delivery_pct": 20.62,
+   "turnover_lacs": 345264.37
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='RVNL' AND date='2024-07-23'",
+  "note": ""
+ },
+ {
+  "id": "px.HAL.2024-07-23",
+  "value": {
+   "date": "2024-07-23",
+   "close": 4856.1,
+   "prev_close": 4997.25,
+   "change_pct": -2.82,
+   "volume": 7108160,
+   "delivery_pct": 20.63,
+   "turnover_lacs": 346908.0
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='HAL' AND date='2024-07-23'",
+  "note": ""
+ },
+ {
+  "id": "px.BHEL.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 246.55,
+   "prev_close": 311.45,
+   "change_pct": -20.84,
+   "volume": 122751545,
+   "delivery_pct": 34.78,
+   "turnover_lacs": 319047.13
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='BHEL' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.ADANIPORTS.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 1248.95,
+   "prev_close": 1583.95,
+   "change_pct": -21.15,
+   "volume": 52109624,
+   "delivery_pct": 37.17,
+   "turnover_lacs": 696925.66
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='ADANIPORTS' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.HINDALCO.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 649.05,
+   "prev_close": 695.95,
+   "change_pct": -6.74,
+   "volume": 24250212,
+   "delivery_pct": 52.85,
+   "turnover_lacs": 157323.55
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='HINDALCO' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.COALINDIA.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 441.9,
+   "prev_close": 512.35,
+   "change_pct": -13.75,
+   "volume": 48046493,
+   "delivery_pct": 45.16,
+   "turnover_lacs": 217381.12
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='COALINDIA' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.NTPC.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 331.25,
+   "prev_close": 391.8,
+   "change_pct": -15.45,
+   "volume": 84042244,
+   "delivery_pct": 55.65,
+   "turnover_lacs": 288491.27
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='NTPC' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.ONGC.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 236.3,
+   "prev_close": 284.1,
+   "change_pct": -16.83,
+   "volume": 72779900,
+   "delivery_pct": 47.69,
+   "turnover_lacs": 179661.64
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='ONGC' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.TITAGARH.2026-09-24",
+  "value": {
+   "date": "2026-09-24",
+   "close": 819.25,
+   "prev_close": 842.05,
+   "change_pct": -2.71,
+   "volume": 326786,
+   "delivery_pct": 50.58,
+   "turnover_lacs": 2697.46
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='TITAGARH' AND date='2026-09-24'",
+  "note": ""
+ },
+ {
+  "id": "px.KEI.2026-09-24",
+  "value": {
+   "date": "2026-09-24",
+   "close": 4636.5,
+   "prev_close": 4722.5,
+   "change_pct": -1.82,
+   "volume": 224864,
+   "delivery_pct": 42.36,
+   "turnover_lacs": 10497.56
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='KEI' AND date='2026-09-24'",
+  "note": ""
+ },
+ {
+  "id": "px.POLYCAB.2026-09-24",
+  "value": {
+   "date": "2026-09-24",
+   "close": 8366.5,
+   "prev_close": 8417.0,
+   "change_pct": -0.6,
+   "volume": 237772,
+   "delivery_pct": 48.02,
+   "turnover_lacs": 19915.02
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='POLYCAB' AND date='2026-09-24'",
+  "note": ""
+ },
+ {
+  "id": "px.DIXON.2026-09-24",
+  "value": {
+   "date": "2026-09-24",
+   "close": 13299.0,
+   "prev_close": 13200.0,
+   "change_pct": 0.75,
+   "volume": 185172,
+   "delivery_pct": 36.22,
+   "turnover_lacs": 24498.29
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='DIXON' AND date='2026-09-24'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty 50",
+   "close": 21884.5,
+   "pct": -5.93
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty PSE.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty PSE",
+   "close": 9475.1,
+   "pct": -16.38
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty PSE' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty PSU Bank.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty PSU Bank",
+   "close": 6794.25,
+   "pct": -15.14
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty PSU Bank' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty Energy.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty Energy",
+   "close": 37624.1,
+   "pct": -12.47
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty Energy' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty FMCG.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty FMCG",
+   "close": 55172.5,
+   "pct": 0.95
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty FMCG' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty Midcap 150.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty Midcap 150",
+   "close": 18476.25,
+   "pct": -7.11
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty Midcap 150' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty Smallcap 250.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty Smallcap 250",
+   "close": 14761.1,
+   "pct": -7.45
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty Smallcap 250' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2020-03-23",
+  "value": {
+   "date": "2020-03-23",
+   "index": "Nifty 50",
+   "close": 7610.25,
+   "pct": -12.98
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2020-03-23'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2021-02-01",
+  "value": {
+   "date": "2021-02-01",
+   "index": "Nifty 50",
+   "close": 14281.2,
+   "pct": 4.74
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2021-02-01'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2022-02-24",
+  "value": {
+   "date": "2022-02-24",
+   "index": "Nifty 50",
+   "close": 16247.95,
+   "pct": -4.78
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2022-02-24'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty Bank.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty Bank",
+   "close": 46928.6,
+   "pct": -7.95
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty Bank' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty Metal.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty Metal",
+   "close": 8980.15,
+   "pct": -10.63
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty Metal' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty Realty.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty Realty",
+   "close": 976.1,
+   "pct": -9.62
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty Realty' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty IT.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty IT",
+   "close": 32315.55,
+   "pct": -0.6
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty IT' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty Auto.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty Auto",
+   "close": 23193.3,
+   "pct": -3.33
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty Auto' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty Pharma.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "index": "Nifty Pharma",
+   "close": 18603.15,
+   "pct": -1.38
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty Pharma' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty FMCG.2020-03-23",
+  "value": {
+   "date": "2020-03-23",
+   "index": "Nifty FMCG",
+   "close": 23184.05,
+   "pct": -10.6
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty FMCG' AND date='2020-03-23'",
+  "note": ""
+ },
+ {
+  "id": "cmd.copper.2024-05-20",
+  "value": {
+   "date": "2024-05-20",
+   "commodity": "copper",
+   "close": 5.087500095367432
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='copper' AND date='2024-05-20'",
+  "note": ""
+ },
+ {
+  "id": "cmd.copper.2026-09-30",
+  "value": {
+   "date": "2026-09-30",
+   "commodity": "copper",
+   "close": 6.559000015258789
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='copper' AND date='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "cmd.crude_brent.2022-02-24",
+  "value": {
+   "date": "2022-02-24",
+   "commodity": "crude_brent",
+   "close": 99.08000183105467
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='crude_brent' AND date='2022-02-24'",
+  "note": ""
+ },
+ {
+  "id": "cmd.crude_brent.2026-06-30",
+  "value": {
+   "date": "2026-06-30",
+   "commodity": "crude_brent",
+   "close": 72.91999816894531
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='crude_brent' AND date='2026-06-30'",
+  "note": ""
+ },
+ {
+  "id": "cmd.gold.2020-08-07",
+  "value": {
+   "date": "2020-08-07",
+   "commodity": "gold",
+   "close": 2028.0
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='gold' AND date='2020-08-07'",
+  "note": ""
+ },
+ {
+  "id": "cmd.gold.2026-09-30",
+  "value": {
+   "date": "2026-09-30",
+   "commodity": "gold",
+   "close": 4186.7001953125
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='gold' AND date='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "cmd.aluminium.2026-09-30",
+  "value": {
+   "date": "2026-09-30",
+   "commodity": "aluminium",
+   "close": 3285.0
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='aluminium' AND date='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "cmd.usdinr.2026-09-30",
+  "value": {
+   "date": "2026-09-30",
+   "commodity": "usdinr",
+   "close": 96.05069732666016
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='usdinr' AND date='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "cmd.usdinr.2022-09-30",
+  "value": {
+   "date": "2022-09-30",
+   "commodity": "usdinr",
+   "close": 81.48059844970703
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='usdinr' AND date='2022-09-30'",
+  "note": ""
+ },
+ {
+  "id": "cmd.steel_hrc_us.2026-09-30",
+  "value": {
+   "date": "2026-09-30",
+   "commodity": "steel_hrc_us",
+   "close": 1275.0
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='steel_hrc_us' AND date='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "cmd.coal_newcastle.2025-12-24",
+  "value": {
+   "date": "2025-12-24",
+   "commodity": "coal_newcastle",
+   "close": 96.5500030517578
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='coal_newcastle' AND date='2025-12-24'",
+  "note": ""
+ },
+ {
+  "id": "cmd.natural_gas.2026-09-30",
+  "value": {
+   "date": "2026-09-30",
+   "commodity": "natural_gas",
+   "close": 3.026000022888184
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='natural_gas' AND date='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "cmd.copper.2019-01-02",
+  "value": {
+   "date": "2019-01-02",
+   "commodity": "copper",
+   "close": 2.625
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='copper' AND date='2019-01-02'",
+  "note": ""
+ },
+ {
+  "id": "cmd.crude_brent.2026-09-30",
+  "value": {
+   "date": "2026-09-30",
+   "commodity": "crude_brent",
+   "close": 103.52999877929688
+  },
+  "sql": "SELECT date,commodity,close FROM equity_intelligence.mkt_commodity_daily WHERE commodity='crude_brent' AND date='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "cc.TITAGARH.capacity_and_projects",
+  "value": {
+   "symbol": "TITAGARH",
+   "metric": "Titagarh Rail Systems freight wagon production capacity",
+   "period": "Conditional on demand",
+   "value": "",
+   "unit": null,
+   "quote": "it is also ready to ramp up and get to 1,200 wagons per month, but we shall be only doing that once we see sustainable business demand",
+   "list": "capacity_and_projects",
+   "doc_id": 88704
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='TITAGARH' AND list_name='capacity_and_projects' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.RVNL.order_book",
+  "value": {
+   "symbol": "RVNL",
+   "metric": null,
+   "period": "Q1 FY2026-27",
+   "value": "5,417",
+   "unit": "INR crore",
+   "quote": "During the quarter ended April to June 2026, the order inflow stood at INR 5,417 crore.",
+   "list": "order_book",
+   "doc_id": 74624
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='RVNL' AND list_name='order_book' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.KEI.capacity_and_projects",
+  "value": {
+   "symbol": "KEI",
+   "metric": "Sanand plant, first phase",
+   "period": "December '25",
+   "value": "",
+   "unit": null,
+   "quote": "You are aware that our Sanand plant was commissioning of first phase was delayed by around 6 months. So we commissioned the first phase in the December '25.",
+   "list": "capacity_and_projects",
+   "doc_id": 49364
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='KEI' AND list_name='capacity_and_projects' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.POLYCAB.capex",
+  "value": {
+   "symbol": "POLYCAB",
+   "metric": null,
+   "period": "Q1 FY27",
+   "value": "3.2",
+   "unit": "INR billion",
+   "quote": "Capital expenditure during the quarter amounted to INR 3.2 billion, reflecting our continued commitment to building capacity and strengthening future growth drivers.",
+   "list": "capex",
+   "doc_id": 67846
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='POLYCAB' AND list_name='capex' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.DIXON.margin_and_cost_commentary",
+  "value": {
+   "symbol": "DIXON",
+   "metric": "Operating margin",
+   "period": null,
+   "value": "",
+   "unit": null,
+   "quote": "Operating margin for the quarter reflected temporary compression on account of expiry of Mobile PLI 1 in March '26 and from increased selling prices driven by elevated input costs",
+   "list": "margin_and_cost_commentary",
+   "doc_id": 26205
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='DIXON' AND list_name='margin_and_cost_commentary' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.HAL.order_book",
+  "value": {
+   "symbol": "HAL",
+   "metric": null,
+   "period": "FY '26 year-end",
+   "value": "2,54,538",
+   "unit": "INR crores",
+   "quote": "The order book of the company further improved to INR2,54,538 crores against the previous year order book position of INR1,89,302 crores as on 1st April 2025",
+   "list": "order_book",
+   "doc_id": 37224
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='HAL' AND list_name='order_book' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.BEL.guidance",
+  "value": {
+   "symbol": "BEL",
+   "metric": "revenue growth",
+   "period": "FY27",
+   "value": "15%",
+   "unit": "%",
+   "quote": "our balanced plan is 15% and I am confident we will reach 15%.",
+   "list": "guidance",
+   "doc_id": 15397
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='BEL' AND list_name='guidance' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.SUZLON.guidance",
+  "value": {
+   "symbol": "SUZLON",
+   "metric": "EBITDA margin",
+   "period": "FY27",
+   "value": "17% to 18%, plus minus 1% to 2%",
+   "unit": "%",
+   "quote": "My sense is that this year also, plus minus 1% to 2% from there, we should be able to maintain",
+   "list": "guidance",
+   "doc_id": 84848
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='SUZLON' AND list_name='guidance' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.TEXRAIL.order_book",
+  "value": {
+   "symbol": "TEXRAIL",
+   "metric": null,
+   "period": "June 30, 2026",
+   "value": "9,923",
+   "unit": "INR crores",
+   "quote": "As of June 30, 2026, company's order book is standing at INR9,923 crores",
+   "list": "order_book",
+   "doc_id": 87580
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='TEXRAIL' AND list_name='order_book' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.MANKIND.auditor",
+  "value": {
+   "symbol": "MANKIND",
+   "dt": "2026-09-28T15:49:15.627",
+   "headline": "Please find attached intimation regarding resignation of Statutory Auditors of the Bharat Serums and Vaccines Limited, a matterial wholly owned subsidiary company."
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='MANKIND' AND UPPER(HEADLINE) LIKE '%RESIGNATION OF STATUTORY AUDITORS%' ORDER BY NEWS_DT DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.MILEFUR.auditor",
+  "value": {
+   "symbol": "MILEFUR",
+   "dt": "2026-09-29T14:23:59.567",
+   "headline": "Resignation of Statutory Auditor"
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='MILEFUR' AND UPPER(HEADLINE) LIKE '%RESIGNATION OF STATUTORY AUDITOR%' ORDER BY NEWS_DT DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.TRUALT.pledge",
+  "value": {
+   "symbol": "TRUALT",
+   "dt": "2026-09-28T19:26:25.913",
+   "headline": "TruAlt Bioenergy Limited has informed the exchange regarding creation of Pledge of shares by Mrs. Kamala Murugesh Nirani"
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='TRUALT' AND UPPER(HEADLINE) LIKE '%PLEDGE%' ORDER BY NEWS_DT DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.WELCORP.rating",
+  "value": {
+   "symbol": "WELCORP",
+   "dt": "2026-10-16T19:43:24.61",
+   "headline": "Press Release issued by CARE Ratings for the Company''s Credit Ratings"
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='WELCORP' AND UPPER(HEADLINE) LIKE '%CREDIT RATING%' ORDER BY NEWS_DT DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2025-02-03",
+  "value": {
+   "date": "2025-02-03",
+   "close": 23361.05,
+   "pct": -0.52
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2025-02-03'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2026-02-02",
+  "value": {
+   "date": "2026-02-02",
+   "close": 25088.4,
+   "pct": 1.06
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2026-02-02'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2026-09-24",
+  "value": {
+   "date": "2026-09-24",
+   "close": 23063.1,
+   "pct": -1.64
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2026-09-24'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2024-07-23",
+  "value": {
+   "date": "2024-07-23",
+   "close": 24479.05,
+   "pct": -0.12
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2024-07-23'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2025-04-07",
+  "value": {
+   "date": "2025-04-07",
+   "close": 22161.6,
+   "pct": -3.24
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2025-04-07'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2026-04-01",
+  "value": {
+   "date": "2026-04-01",
+   "close": 22679.4,
+   "pct": 1.56
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2026-04-01'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2026-10-23",
+  "value": {
+   "date": "2026-10-23",
+   "close": 22600.0,
+   "pct": -0.39
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2026-10-23'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2026-05-14",
+  "value": {
+   "date": "2026-05-14",
+   "close": 23689.6,
+   "pct": 1.18
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2026-05-14'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2024-05-31",
+  "value": {
+   "date": "2024-05-31",
+   "close": 22530.7,
+   "pct": 0.19
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2024-05-31'",
+  "note": ""
+ },
+ {
+  "id": "idx.Nifty 50.2024-06-07",
+  "value": {
+   "date": "2024-06-07",
+   "close": 23290.15,
+   "pct": 2.05
+  },
+  "sql": "SELECT date,index_name,close,pct_change FROM equity_intelligence.mkt_nse_index_daily WHERE index_name='Nifty 50' AND date='2024-06-07'",
+  "note": ""
+ },
+ {
+  "id": "px.RECLTD.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 452.2,
+   "prev_close": 604.5,
+   "change_pct": -25.19,
+   "turnover_lacs": 521177.31,
+   "delivery_pct": 32.81
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='RECLTD' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.PFC.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 426.75,
+   "prev_close": 554.8,
+   "change_pct": -23.08,
+   "turnover_lacs": 500085.84,
+   "delivery_pct": 31.66
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='PFC' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.SAIL.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 133.05,
+   "prev_close": 166.35,
+   "change_pct": -20.02,
+   "turnover_lacs": 163723.58,
+   "delivery_pct": 35.25
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='SAIL' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.HINDUNILVR.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 2496.3,
+   "prev_close": 2355.9,
+   "change_pct": 5.96,
+   "turnover_lacs": 192005.24,
+   "delivery_pct": 51.84
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='HINDUNILVR' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.DABUR.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 578.2,
+   "prev_close": 544.8,
+   "change_pct": 6.13,
+   "turnover_lacs": 98921.33,
+   "delivery_pct": 41.97
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='DABUR' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.HERITGFOOD.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 455.45,
+   "prev_close": 426.6,
+   "change_pct": 6.76,
+   "turnover_lacs": 58818.41,
+   "delivery_pct": 25.17
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='HERITGFOOD' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.DMART.2024-06-04",
+  "value": {
+   "date": "2024-06-04",
+   "close": 4548.75,
+   "prev_close": 4349.35,
+   "change_pct": 4.58,
+   "turnover_lacs": 49020.88,
+   "delivery_pct": 42.15
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='DMART' AND date='2024-06-04'",
+  "note": ""
+ },
+ {
+  "id": "px.SIEMENS.2025-04-07",
+  "value": {
+   "date": "2025-04-07",
+   "close": 2812.45,
+   "prev_close": 4928.15,
+   "change_pct": -42.93,
+   "turnover_lacs": 77707.64,
+   "delivery_pct": 29.46
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='SIEMENS' AND date='2025-04-07'",
+  "note": ""
+ },
+ {
+  "id": "px.POLICYBZR.2026-09-24",
+  "value": {
+   "date": "2026-09-24",
+   "close": 1207.2,
+   "prev_close": 1886.3,
+   "change_pct": -36.0,
+   "turnover_lacs": 350973.76,
+   "delivery_pct": 59.32
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='POLICYBZR' AND date='2026-09-24'",
+  "note": ""
+ },
+ {
+  "id": "px.KAYNES.2026-05-14",
+  "value": {
+   "date": "2026-05-14",
+   "close": 3336.5,
+   "prev_close": 4178.4,
+   "change_pct": -20.15,
+   "turnover_lacs": 367099.51,
+   "delivery_pct": 26.27
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='KAYNES' AND date='2026-05-14'",
+  "note": ""
+ },
+ {
+  "id": "px.TRENT.2025-04-07",
+  "value": {
+   "date": "2025-04-07",
+   "close": 4740.95,
+   "prev_close": 5562.85,
+   "change_pct": -14.77,
+   "turnover_lacs": 357663.42,
+   "delivery_pct": 33.07
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='TRENT' AND date='2025-04-07'",
+  "note": ""
+ },
+ {
+  "id": "px.RECLTD.2024-06-03",
+  "value": {
+   "date": "2024-06-03",
+   "close": 604.5,
+   "prev_close": 537.75,
+   "change_pct": 12.41,
+   "turnover_lacs": 252252.24,
+   "delivery_pct": 29.0
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='RECLTD' AND date='2024-06-03'",
+  "note": ""
+ },
+ {
+  "id": "px.BONFIG.2026-10-23",
+  "value": {
+   "date": "2026-10-23",
+   "close": 574.5,
+   "prev_close": 586.0,
+   "change_pct": -1.96,
+   "turnover_lacs": 192581.4,
+   "delivery_pct": 54.16
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='BONFIG' AND date='2026-10-23'",
+  "note": ""
+ },
+ {
+  "id": "px.CYIENT.2026-10-23",
+  "value": {
+   "date": "2026-10-23",
+   "close": 1233.0,
+   "prev_close": 1143.7,
+   "change_pct": 7.81,
+   "turnover_lacs": 245594.57,
+   "delivery_pct": 10.48
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='CYIENT' AND date='2026-10-23'",
+  "note": ""
+ },
+ {
+  "id": "px.KAYNES.2026-05-13",
+  "value": {
+   "date": "2026-05-13",
+   "close": 4178.4,
+   "prev_close": 4049.3,
+   "change_pct": 3.19,
+   "turnover_lacs": 79365.36,
+   "delivery_pct": 16.61
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='KAYNES' AND date='2026-05-13'",
+  "note": ""
+ },
+ {
+  "id": "px.POLICYBZR.2026-09-25",
+  "value": {
+   "date": "2026-09-25",
+   "close": 1166.0,
+   "prev_close": 1207.2,
+   "change_pct": -3.41,
+   "turnover_lacs": 489527.88,
+   "delivery_pct": 33.5
+  },
+  "sql": "SELECT date,close,change_pct,delivery_pct FROM equity_intelligence.daily_price_delivery WHERE symbol='POLICYBZR' AND date='2026-09-25'",
+  "note": ""
+ },
+ {
+  "id": "ca.SIEMENS.demerger",
+  "value": {
+   "symbol": "SIEMENS",
+   "type": "MERGER",
+   "subject": "Demerger",
+   "ex_date": "2025-04-07"
+  },
+  "sql": "SELECT symbol,action_type,subject,ex_date FROM equity_intelligence.corporate_actions WHERE symbol='SIEMENS' AND action_type='MERGER' ORDER BY ex_date DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ca.TRENT.bonus",
+  "value": {
+   "symbol": "TRENT",
+   "type": "BONUS",
+   "subject": "Bonus 1:2",
+   "ex_date": "2026-06-04"
+  },
+  "sql": "SELECT symbol,action_type,subject,ex_date FROM equity_intelligence.corporate_actions WHERE symbol='TRENT' AND action_type='BONUS' ORDER BY ex_date DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "flow.2026-10-23",
+  "value": {
+   "date": "2026-10-23",
+   "fii_net_cr": 887.65,
+   "dii_net_cr": 3235.36,
+   "nifty_close": 22600.0,
+   "nifty_pct": -0.39
+  },
+  "sql": "SELECT date,fii_net_cr,dii_net_cr,nifty_close,nifty_change_pct FROM equity_intelligence.mkt_fii_dii_cash WHERE date='2026-10-23'",
+  "note": ""
+ },
+ {
+  "id": "flow.2026-09",
+  "value": {
+   "month": "2026-09",
+   "fii_net_cr": -44012.82,
+   "dii_net_cr": 76030.29,
+   "sessions": 21
+  },
+  "sql": "SELECT ROUND(SUM(fii_net_cr),2),ROUND(SUM(dii_net_cr),2),COUNT(*) FROM equity_intelligence.mkt_fii_dii_cash WHERE date LIKE '2026-09%'",
+  "note": ""
+ },
+ {
+  "id": "ann.POLICYBZR.clarify",
+  "value": {
+   "symbol": "POLICYBZR",
+   "dt": "2026-09-27T14:57:04.25",
+   "headline": "Please find enclosed the clarification on Price Movement."
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='POLICYBZR' AND UPPER(HEADLINE) LIKE '%CLARIFICATION%' ORDER BY NEWS_DT DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.POLICYBZR.call",
+  "value": {
+   "symbol": "POLICYBZR",
+   "dt": "2026-09-24T09:39:22.193",
+   "headline": "Please find enclosed the intimation of analyst call"
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='POLICYBZR' AND UPPER(HEADLINE) LIKE '%ANALYST CALL%' AND NEWS_DT LIKE '2026-09-24%' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.KAYNES.mgmt",
+  "value": {
+   "symbol": "KAYNES",
+   "dt": "2026-05-13T18:05:03.23",
+   "headline": "Change in Management"
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='KAYNES' AND UPPER(HEADLINE) LIKE '%CHANGE IN MANAGEMENT%' ORDER BY NEWS_DT DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.TRENT.update",
+  "value": {
+   "symbol": "TRENT",
+   "dt": "2026-04-06T08:21:54.253",
+   "headline": "Update for Q4FY26 and FY26"
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='TRENT' AND UPPER(HEADLINE) LIKE '%UPDATE FOR Q4%' ORDER BY NEWS_DT DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.PICTUREHS.secaud",
+  "value": {
+   "symbol": "PICTUREHS",
+   "dt": "2026-09-29T16:18:04.81",
+   "headline": "M/s. D. Hanumanta Raju & Co. Company Secretaries, Hyderabad ( Peer review No 6326/2024), Secretarial Auditors of the Company, have tendered their resignation from the office of Secretarial ...."
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM ann WHERE symbol='PICTUREHS' AND UPPER(HEADLINE) LIKE '%RESIGN%' ORDER BY NEWS_DT DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "deal.BONFIG.2026-10-23",
+  "value": {
+   "symbol": "BONFIG",
+   "client": "EQUISM CAPITAL PRIVATE  LIMITED",
+   "type": "BULK",
+   "side": "BUY",
+   "qty": 955000,
+   "price": 585.07,
+   "date": "2026-10-23"
+  },
+  "sql": "SELECT symbol,client_name,deal_type,buy_sell,quantity,trade_price,deal_date FROM equity_intelligence.bulk_block_deals WHERE symbol='BONFIG' AND deal_date='2026-10-23' ORDER BY trade_price DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "deal.CYIENT.2026-10-23",
+  "value": {
+   "symbol": "CYIENT",
+   "client": "MICROCURVES TRADING PRIVATE LIMITED",
+   "type": "BULK",
+   "side": "SELL",
+   "qty": 636799,
+   "price": 1234.25,
+   "date": "2026-10-23"
+  },
+  "sql": "SELECT symbol,client_name,deal_type,buy_sell,quantity,trade_price,deal_date FROM equity_intelligence.bulk_block_deals WHERE symbol='CYIENT' AND deal_date='2026-10-23' ORDER BY trade_price DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ext.2026.BEL",
+  "value": {
+   "symbol": "BEL",
+   "high": 473.45,
+   "low": 354.55
+  },
+  "sql": "SELECT MAX(high),MIN(low) FROM equity_intelligence.daily_price_delivery WHERE symbol='BEL' AND date>='2026-01-01'",
+  "note": ""
+ },
+ {
+  "id": "ext.2026.KEI",
+  "value": {
+   "symbol": "KEI",
+   "high": 5899.0,
+   "low": 3666.1
+  },
+  "sql": "SELECT MAX(high),MIN(low) FROM equity_intelligence.daily_price_delivery WHERE symbol='KEI' AND date>='2026-01-01'",
+  "note": ""
+ },
+ {
+  "id": "ext.2026.POLYCAB",
+  "value": {
+   "symbol": "POLYCAB",
+   "high": 10126.0,
+   "low": 6663.0
+  },
+  "sql": "SELECT MAX(high),MIN(low) FROM equity_intelligence.daily_price_delivery WHERE symbol='POLYCAB' AND date>='2026-01-01'",
+  "note": ""
+ },
+ {
+  "id": "ext.2026.TITAGARH",
+  "value": {
+   "symbol": "TITAGARH",
+   "high": 971.0,
+   "low": 568.7
+  },
+  "sql": "SELECT MAX(high),MIN(low) FROM equity_intelligence.daily_price_delivery WHERE symbol='TITAGARH' AND date>='2026-01-01'",
+  "note": ""
+ },
+ {
+  "id": "ext.2026.TRENT",
+  "value": {
+   "symbol": "TRENT",
+   "high": 4498.0,
+   "low": 2545.8
+  },
+  "sql": "SELECT MAX(high),MIN(low) FROM equity_intelligence.daily_price_delivery WHERE symbol='TRENT' AND date>='2026-01-01'",
+  "note": ""
+ },
+ {
+  "id": "ext.2026.DIXON",
+  "value": {
+   "symbol": "DIXON",
+   "high": 15000.0,
+   "low": 9600.0
+  },
+  "sql": "SELECT MAX(high),MIN(low) FROM equity_intelligence.daily_price_delivery WHERE symbol='DIXON' AND date>='2026-01-01'",
+  "note": ""
+ },
+ {
+  "id": "cc.DIXON.capacity_and_projects",
+  "value": {
+   "metric": "Vivo JV",
+   "period": "revenues from Q3 FY27",
+   "value": "",
+   "unit": null,
+   "quote": "We expect the JV to commence operations and start reflecting in our revenues from Q3 of the current fiscal.",
+   "doc_id": 26205,
+   "filed_at": "2026-08-05T18:36:56.327"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='DIXON' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.AMBER.capacity_and_projects",
+  "value": {
+   "metric": "Manufacturing collaboration covering Oppo, OnePlus and Realme",
+   "period": "Long-term relationship",
+   "value": "",
+   "unit": null,
+   "quote": "Amber Group has entered into a manufacturing collaboration agreement with Oppo Mobiles India Private Limited, executed on June 18.",
+   "doc_id": 8396,
+   "filed_at": "2026-06-25T18:57:47.923"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='AMBER' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.POLYCAB.capacity_and_projects",
+  "value": {
+   "metric": "Bharat Net project",
+   "period": "3 years",
+   "value": "",
+   "unit": null,
+   "quote": "We have started the execution sometime in last quarter in March.",
+   "doc_id": 67846,
+   "filed_at": "2026-07-20T12:08:04.277"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='POLYCAB' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.ADANIGREEN.capacity_and_projects",
+  "value": {
+   "metric": "Renewable capacity milestone",
+   "period": "Q1 FY27",
+   "value": "",
+   "unit": null,
+   "quote": "We surpassed 20 GW milestone, making it India's largest and fastest greenfield renewable capacity addition.",
+   "doc_id": 5917,
+   "filed_at": "2026-07-27T15:05:55.85"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='ADANIGREEN' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.SUZLON.capacity_and_projects",
+  "value": {
+   "metric": "Manufacturing capacity",
+   "period": "current",
+   "value": "",
+   "unit": null,
+   "quote": "4.5 gigawatt manufacturing capacity fully operational expanding footprint with 3 AI-enabled smart factories to drive efficiency and scale.",
+   "doc_id": 84848,
+   "filed_at": "2026-08-04T14:22:41.36"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='SUZLON' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.TATAPOWER.capacity_and_projects",
+  "value": {
+   "metric": "Renewable capacity",
+   "period": "Q2 FY27",
+   "value": "",
+   "unit": null,
+   "quote": "Already 200 was commissioned and another 500 will get commissioned in the next few weeks.",
+   "doc_id": 86284,
+   "filed_at": "2026-07-31T20:12:16.38"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='TATAPOWER' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.NTPC.capacity_and_projects",
+  "value": {
+   "metric": "NTPC capacity under construction",
+   "period": "Near- to medium-term growth",
+   "value": "",
+   "unit": null,
+   "quote": "We have over 33 GW of capacity under construction comprising 16.5 GW of coal-based capacity, about 1.9 GW of hydro and around 15 GW of renewable energy, and this is providing a solid foundation for near- to medium-term g",
+   "doc_id": 63016,
+   "filed_at": "2026-02-04T19:10:13.917"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='NTPC' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.ULTRACEMCO.capacity_and_projects",
+  "value": {
+   "metric": "UltraTech Cement India capacity expansion",
+   "period": "ongoing",
+   "value": "",
+   "unit": null,
+   "quote": "which will take us from the current capacity of 184 million tons, 184 million includes India Cements and Kesoram capacities also from 184 million to take us to close to 212 million tons of capacity in India.",
+   "doc_id": 90804,
+   "filed_at": "2025-05-02T16:32:19.71"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='ULTRACEMCO' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.SAIL.capacity_and_projects",
+  "value": {
+   "metric": "Capital repairs",
+   "period": "Q1 FY27",
+   "value": "",
+   "unit": null,
+   "quote": "SAIL decided actually to advance some of its major capital repairs during quarter 1, so that it will be free after that and will start producing better in the next quarters.",
+   "doc_id": 75018,
+   "filed_at": "2026-08-01T15:55:10.04"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='SAIL' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.HINDALCO.capacity_and_projects",
+  "value": {
+   "metric": "renewable energy capacity",
+   "period": "as of end Q1 FY27",
+   "value": "",
+   "unit": null,
+   "quote": "we have 470 megawatts of renewable energy capacity across solar, wind, hydro resources along with 35 megawatts of pump storage tie-ups",
+   "doc_id": 39278,
+   "filed_at": "2026-08-13T11:22:31.19"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='HINDALCO' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.BEL.capacity_and_projects",
+  "value": {
+   "metric": "QRSAM order approval",
+   "period": "maximum by September",
+   "value": "",
+   "unit": null,
+   "quote": "we are just waiting for the CCS approval",
+   "doc_id": 15397,
+   "filed_at": "2026-07-28T14:01:42.15"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='BEL' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.COCHINSHIP.capacity_and_projects",
+  "value": {
+   "metric": "ISRF JV with Drydocks World, Dubai",
+   "period": "targeted before end of current financial year subject to approvals",
+   "value": "",
+   "unit": null,
+   "quote": "The Board has approved the proposal to form a joint venture with Drydocks World, Dubai, a DP World company, for owning, operating, and managing CSL's International Ship Repair Facility, ISRF",
+   "doc_id": 116633,
+   "filed_at": "2026-09-18T11:14:19.457"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='COCHINSHIP' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.SRF.capacity_and_projects",
+  "value": {
+   "metric": "Second pharma intermediate plant at Dahej",
+   "period": "commissioned in next 8 months",
+   "value": "",
+   "unit": null,
+   "quote": "we are adding a second pharma intermediate plant at an investment of INR180 crore to come up at our Dahej site, which is expected to be commissioned in the next 8 months.",
+   "doc_id": 82238,
+   "filed_at": "2026-01-28T17:20:29.733"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='SRF' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.IRCTC.capacity_and_projects",
+  "value": {
+   "metric": "Payment aggregator licensing",
+   "period": "August 2026",
+   "value": "",
+   "unit": null,
+   "quote": "So our document submission date has been extended by RBI till August this year. And we have already engaged our technology service provider. So most likely we'll be submitting the documents at the earliest.",
+   "doc_id": 44936,
+   "filed_at": "2026-02-18T10:47:47.353"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='IRCTC' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.APLAPOLLO.capacity_and_projects",
+  "value": {
+   "metric": "APL Apollo Tubes total capacity expansion",
+   "period": "8 million tons by FY '28",
+   "value": "",
+   "unit": null,
+   "quote": "And our long-term plan of 8-million-ton capacity by FY '28 remains totally on-track.",
+   "doc_id": 9548,
+   "filed_at": "2026-05-06T18:03:18.513"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='APLAPOLLO' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.RVNL.capacity_and_projects",
+  "value": {
+   "metric": "BharatNet",
+   "period": "Infrastructure implementation timeline is three years, with another six to eight months needed for duct and fibre work; the project then enters a 10-year maintenance phase.",
+   "value": "",
+   "unit": null,
+   "quote": "For BharatNet, initially, there were some challenges. We faced some problems in execution also. But now the situation is quite better. It has improved. Work is going on in full swing in UP West and UP East also.",
+   "doc_id": 74624,
+   "filed_at": "2026-08-18T14:24:13.29"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='RVNL' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.TEXRAIL.capacity_and_projects",
+  "value": {
+   "metric": "additional leasing rakes",
+   "period": "near term",
+   "value": "",
+   "unit": null,
+   "quote": "And on a near term, we are absolutely ready to invest around to start with around 100 rakes further.",
+   "doc_id": 87580,
+   "filed_at": "2026-08-10T14:35:53.49"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='TEXRAIL' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.AFCONS.capacity_and_projects",
+  "value": {
+   "metric": "Mumbai-Ahmedabad High Speed Rail C2 TBMs",
+   "period": "main tunneling drives expected to start in coming months",
+   "value": "",
+   "unit": null,
+   "quote": "both tunnel boring machines for our Mumbai-Ahmedabad High Speed Rail C2 package successfully commenced their initial tunneling drives as per schedule.",
+   "doc_id": 6765,
+   "filed_at": "2026-08-13T12:23:59.26"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='AFCONS' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.IRCON.capacity_and_projects",
+  "value": {
+   "metric": "Dedicated freight corridor new project (Dhankuni-Surat and 100 PM Gati Shakthi Cargo Terminals)",
+   "period": "once tenders floated; timing not stated",
+   "value": "",
+   "unit": null,
+   "quote": "it has just been announced and since this is a mega project spanning from the eastern part of the country to the western side, the initial processing for calling the tenders takes some time and the process is on",
+   "doc_id": 44881,
+   "filed_at": "2026-05-26T18:21:21.683"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='IRCON' AND list_name='capacity_and_projects' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.KEI.margin_and_cost_commentary",
+  "value": {
+   "metric": "FY26 operating margin",
+   "period": null,
+   "value": "",
+   "unit": null,
+   "quote": "During FY25-'26, operating margin has improved to 10.46% against 10.18%.",
+   "doc_id": 49364,
+   "filed_at": "2026-05-12T17:44:22.82"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='KEI' AND list_name='margin_and_cost_commentary' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.TITAGARH.demand_commentary",
+  "value": {
+   "metric": "Freight rail systems",
+   "period": null,
+   "value": "",
+   "unit": null,
+   "quote": "Although it was the target of the company to stabilize at about 950 to 1,000 wagons per month, but unfortunately, due to the shortage of wheelsets in the last 2 quarters, the last 2 quarters were impacted.",
+   "doc_id": 88704,
+   "filed_at": "2025-06-06T11:46:16.773"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='TITAGARH' AND list_name='demand_commentary' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.ULTRACEMCO.demand_commentary",
+  "value": {
+   "metric": "India cement market",
+   "period": null,
+   "value": "",
+   "unit": null,
+   "quote": "We believe that this quarter, cement demand overall for the country would have grown around 4%. And in that backdrop, UltraTech has done close to 10% volume growth.",
+   "doc_id": 90804,
+   "filed_at": "2025-05-02T16:32:19.71"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='ULTRACEMCO' AND list_name='demand_commentary' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.INDIGO.demand_commentary",
+  "value": {
+   "metric": "Indian domestic market",
+   "period": null,
+   "value": "",
+   "unit": null,
+   "quote": "In terms of topline, the quarter was marked by revenue performance exceeding our earlier expectations due to stronger than anticipated performance in August and September, especially in the domestic markets.",
+   "doc_id": 42944,
+   "filed_at": "2025-11-10T15:01:13.973"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='INDIGO' AND list_name='demand_commentary' AND quote IS NOT NULL ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "pol.ism2",
+  "value": {
+   "policy": "India Semiconductor Mission 2.0 (new allocation)",
+   "instrument": "scheme",
+   "stage": "announced",
+   "direction": "positive",
+   "sectors": "[\"semiconductors\"]",
+   "amount_cr": 1000.0,
+   "published_at": "2026-02-01"
+  },
+  "sql": "SELECT policy_name,instrument,stage,direction_for_industry,sectors,amount_inr_crore,published_at FROM equity_intelligence.policy_events WHERE policy_name='India Semiconductor Mission 2.0 (new allocation)' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "pol.usdrug100",
+  "value": {
+   "policy": "US 100% tariff on generic drug imports from 2028",
+   "instrument": "tariff_trade",
+   "stage": "announced",
+   "direction": "negative",
+   "sectors": "[\"pharmaceuticals\", \"generic drug exports\"]",
+   "amount_cr": null,
+   "published_at": "2026-08-19"
+  },
+  "sql": "SELECT policy_name,instrument,stage,direction_for_industry,sectors,amount_inr_crore,published_at FROM equity_intelligence.policy_events WHERE policy_name='US 100% tariff on generic drug imports from 2028' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "pol.usdrug200",
+  "value": {
+   "policy": "US 200% tariff on generic drug imports from 2029",
+   "instrument": "tariff_trade",
+   "stage": "announced",
+   "direction": "negative",
+   "sectors": "[\"pharmaceuticals\", \"generic drug exports\"]",
+   "amount_cr": null,
+   "published_at": "2026-08-19"
+  },
+  "sql": "SELECT policy_name,instrument,stage,direction_for_industry,sectors,amount_inr_crore,published_at FROM equity_intelligence.policy_events WHERE policy_name='US 200% tariff on generic drug imports from 2029' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "pol.us10",
+  "value": {
+   "policy": "US additional 10% tariff on Indian exports on forced-labour grounds",
+   "instrument": "tariff_trade",
+   "stage": "announced",
+   "direction": "negative",
+   "sectors": "[\"labour-intensive exports\", \"textiles and garments\", \"export-oriented manufacturing\"]",
+   "amount_cr": null,
+   "published_at": "2026-08-19"
+  },
+  "sql": "SELECT policy_name,instrument,stage,direction_for_industry,sectors,amount_inr_crore,published_at FROM equity_intelligence.policy_events WHERE policy_name='US additional 10% tariff on Indian exports on forced-labour grounds' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "pol.samudra",
+  "value": {
+   "policy": "Samudra Manthan Scheme (National Offshore Exploration Scheme)",
+   "instrument": "scheme",
+   "stage": "approved",
+   "direction": "positive",
+   "sectors": "[\"Oil & Gas\", \"Energy\", \"Offshore Exploration\", \"Oilfield Services\", \"Manufacturing\"]",
+   "amount_cr": 84084.0,
+   "published_at": "2026-10-16T20:09"
+  },
+  "sql": "SELECT policy_name,instrument,stage,direction_for_industry,sectors,amount_inr_crore,published_at FROM equity_intelligence.policy_events WHERE policy_name='Samudra Manthan Scheme (National Offshore Exploration Scheme)' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "pol.missionsamudra",
+  "value": {
+   "policy": "Mission Samudra Initiative",
+   "instrument": "scheme",
+   "stage": "announced",
+   "direction": "positive",
+   "sectors": "[\"infrastructure\", \"transport\", \"manufacturing\", \"real estate\", \"ports\"]",
+   "amount_cr": 400.0,
+   "published_at": "2026-06-19"
+  },
+  "sql": "SELECT policy_name,instrument,stage,direction_for_industry,sectors,amount_inr_crore,published_at FROM equity_intelligence.policy_events WHERE policy_name='Mission Samudra Initiative' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "pol.caQM98",
+  "value": {
+   "policy": "CAQM Mandates PTZ Camera-based Remote Monitoring for All Industries under Direction No. 98 in NCR",
+   "instrument": "regulation",
+   "stage": "approved",
+   "direction": "negative",
+   "sectors": "[\"17 categories of highly polluting industries identified by CPCB\", \"Red Category (Medium and Large) air-polluting industries\", \"Food & food processing industries with boilers/thermic fluid heaters\", \"Textile industries with boilers/thermic fluid heaters\", \"Metal industries with furnaces\"]",
+   "amount_cr": null,
+   "published_at": "2026-10-16T20:31"
+  },
+  "sql": "SELECT policy_name,instrument,stage,direction_for_industry,sectors,amount_inr_crore,published_at FROM equity_intelligence.policy_events WHERE policy_name='CAQM Mandates PTZ Camera-based Remote Monitoring for All Industries under Direction No. 98 in NCR' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "pol.pmay",
+  "value": {
+   "policy": "PMAY-U 2.0: 1.93 lakh additional houses approved at 10th CSMC meeting",
+   "instrument": "capex_sanction",
+   "stage": "approved",
+   "direction": "positive",
+   "sectors": "[\"real estate\", \"construction\", \"cement\", \"steel\", \"housing finance\"]",
+   "amount_cr": null,
+   "published_at": "2026-10-16T21:39"
+  },
+  "sql": "SELECT policy_name,instrument,stage,direction_for_industry,sectors,amount_inr_crore,published_at FROM equity_intelligence.policy_events WHERE policy_name='PMAY-U 2.0: 1.93 lakh additional houses approved at 10th CSMC meeting' LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "mev.STEEL_SAFEGUARD_DUTY",
+  "value": {
+   "event_id": "STEEL_SAFEGUARD_DUTY",
+   "name": "Steel Safeguard Duty (12% safeguard duty on steel imports)",
+   "category": "Trade",
+   "date": "2025-04-21",
+   "summary": "Steel Safeguard Duty (12% safeguard duty on steel imports) — 1 primary effect(s) | relief 12% | effective 2025-04-21 | exceptions: stainless_steel_specialty_grades"
+  },
+  "sql": "SELECT event_id,event_name,category,event_date,summary FROM equity_intelligence.macro_events WHERE event_id='STEEL_SAFEGUARD_DUTY'",
+  "note": ""
+ },
+ {
+  "id": "mev.US_TARIFF_TEXTILE_RELIEF",
+  "value": {
+   "event_id": "US_TARIFF_TEXTILE_RELIEF",
+   "name": "US Tariff Textile Relief (30% tariff reduction)",
+   "category": "Trade",
+   "date": "2026-04-01",
+   "summary": "US Tariff Textile Relief (30% tariff reduction) — 1 primary effect(s) | relief 30% | effective 2026-04-01 | exceptions: dyes, yarn | conditional: relief conditional on setting up a US manufacturing plant"
+  },
+  "sql": "SELECT event_id,event_name,category,event_date,summary FROM equity_intelligence.macro_events WHERE event_id='US_TARIFF_TEXTILE_RELIEF'",
+  "note": ""
+ },
+ {
+  "id": "mev.RAIL_CAPEX_PUSH",
+  "value": {
+   "event_id": "RAIL_CAPEX_PUSH",
+   "name": "Rail Capex Push (9% YoY outlay growth, post-Union Budget)",
+   "category": "Policy",
+   "date": "2026-02-01",
+   "summary": "Rail Capex Push (9% YoY outlay growth, post-Union Budget) — 1 primary effect(s) | relief 9% | effective 2026-02-01"
+  },
+  "sql": "SELECT event_id,event_name,category,event_date,summary FROM equity_intelligence.macro_events WHERE event_id='RAIL_CAPEX_PUSH'",
+  "note": ""
+ },
+ {
+  "id": "mev.NUCLEAR_MISSION",
+  "value": {
+   "event_id": "NUCLEAR_MISSION",
+   "name": "Nuclear Energy Mission (100 GW by 2047, conditional incentives)",
+   "category": "Policy",
+   "date": "2026-04-01",
+   "summary": "Nuclear Energy Mission (100 GW by 2047, conditional incentives) — 1 primary effect(s) | relief 1% | effective 2026-04-01 | conditional: Nuclear Energy Mission targets 100 GW by 2047; incentives conditional on private participation"
+  },
+  "sql": "SELECT event_id,event_name,category,event_date,summary FROM equity_intelligence.macro_events WHERE event_id='NUCLEAR_MISSION'",
+  "note": ""
+ },
+ {
+  "id": "ripple.steel",
+  "value": [
+   {
+    "event_id": "STEEL_SAFEGUARD_DUTY",
+    "target_type": "Company",
+    "order_level": 1,
+    "channel": "target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
+    "probability": 0.85,
+    "lag_months": 0
+   },
+   {
+    "event_id": "STEEL_SAFEGUARD_DUTY",
+    "target_type": "Company",
+    "order_level": 1,
+    "channel": "target=TATASTEEL | company_resolved:DomesticSteelProducers | target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
+    "probability": 0.85,
+    "lag_months": 0
+   },
+   {
+    "event_id": "STEEL_SAFEGUARD_DUTY",
+    "target_type": "Company",
+    "order_level": 1,
+    "channel": "target=JSWSTEEL | company_resolved:DomesticSteelProducers | target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
+    "probability": 0.85,
+    "lag_months": 0
+   },
+   {
+    "event_id": "STEEL_SAFEGUARD_DUTY",
+    "target_type": "Company",
+    "order_level": 1,
+    "channel": "target=SAIL | company_resolved:DomesticSteelProducers | target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
+    "probability": 0.85,
+    "lag_months": 0
+   },
+   {
+    "event_id": "STEEL_SAFEGUARD_DUTY",
+    "target_type": "Company",
+    "order_level": 1,
+    "channel": "target=JINDALSTEL | company_resolved:DomesticSteelProducers | target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
+    "probability": 0.85,
+    "lag_months": 0
+   },
+   {
+    "event_id": "STEEL_SAFEGUARD_DUTY",
+    "target_type": "Industry",
+    "order_level": 2,
+    "channel": "target=WagonMakers | wagon_demand_pull | downstream | forward",
+    "probability": 0.8,
+    "lag_months": 3
+   }
+  ],
+  "sql": "SELECT event_id,target_type,order_level,transmission_channel,probability,lag_time_months FROM equity_intelligence.ripple_effects WHERE event_id='STEEL_SAFEGUARD_DUTY' ORDER BY order_level LIMIT 6",
+  "note": ""
+ },
+ {
+  "id": "xbrl.q2fy27",
+  "value": {
+   "companies": 131,
+   "filings": 230
+  },
+  "sql": "SELECT COUNT(DISTINCT symbol),COUNT(*) FROM results_xbrl.filings WHERE period_end='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "insider.count",
+  "value": {
+   "rows": 0
+  },
+  "sql": "SELECT COUNT(*) FROM equity_intelligence.insider_trades",
+  "note": ""
+ },
+ {
+  "id": "shp.count",
+  "value": {
+   "rows": 40
+  },
+  "sql": "SELECT COUNT(*) FROM equity_intelligence.shareholding",
+  "note": ""
+ },
+ {
+  "id": "bands.span",
+  "value": {
+   "first": "2022-01-03",
+   "last": "2026-09-22"
+  },
+  "sql": "SELECT MIN(date),MAX(date) FROM equity_intelligence.price_bands WHERE date>='2022-01-01' AND date<='2026-09-30'",
+  "note": ""
+ },
+ {
+  "id": "coal.after2025",
+  "value": {
+   "rows_after_2025_12_26": 0
+  },
+  "sql": "SELECT COUNT(*) FROM equity_intelligence.mkt_commodity_daily WHERE commodity='coal_newcastle' AND date>'2025-12-26'",
+  "note": ""
+ },
+ {
+  "id": "px.KEI.2026-08-04",
+  "value": {
+   "date": "2026-08-04",
+   "close": 5500.0,
+   "prev_close": 5023.3,
+   "change_pct": 9.49,
+   "volume": 3728753,
+   "delivery_pct": 18.38,
+   "turnover_lacs": 200245.12
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='KEI' AND date='2026-08-04'",
+  "note": ""
+ },
+ {
+  "id": "px.HAL.2026-08-12",
+  "value": {
+   "date": "2026-08-12",
+   "close": 4995.0,
+   "prev_close": 4909.0,
+   "change_pct": 1.75,
+   "volume": 2901166,
+   "delivery_pct": 33.08,
+   "turnover_lacs": 143893.05
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='HAL' AND date='2026-08-12'",
+  "note": ""
+ },
+ {
+  "id": "px.RVNL.2026-08-12",
+  "value": {
+   "date": "2026-08-12",
+   "close": 230.0,
+   "prev_close": 230.0,
+   "change_pct": 0.0,
+   "volume": 5612306,
+   "delivery_pct": 18.5,
+   "turnover_lacs": 12919.19
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='RVNL' AND date='2026-08-12'",
+  "note": ""
+ },
+ {
+  "id": "px.TATASTEEL.2026-07-31",
+  "value": {
+   "date": "2026-07-31",
+   "close": 189.69,
+   "prev_close": 186.92,
+   "change_pct": 1.48,
+   "volume": 34249584,
+   "delivery_pct": 49.87,
+   "turnover_lacs": 64822.76
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='TATASTEEL' AND date='2026-07-31'",
+  "note": ""
+ },
+ {
+  "id": "px.IRCTC.2026-08-13",
+  "value": {
+   "date": "2026-08-13",
+   "close": 504.45,
+   "prev_close": 513.55,
+   "change_pct": -1.77,
+   "volume": 1284171,
+   "delivery_pct": 46.25,
+   "turnover_lacs": 6502.31
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='IRCTC' AND date='2026-08-13'",
+  "note": ""
+ },
+ {
+  "id": "px.JUBLFOOD.2026-08-14",
+  "value": {
+   "date": "2026-08-14",
+   "close": 504.1,
+   "prev_close": 491.55,
+   "change_pct": 2.55,
+   "volume": 12894239,
+   "delivery_pct": 22.74,
+   "turnover_lacs": 65737.6
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='JUBLFOOD' AND date='2026-08-14'",
+  "note": ""
+ },
+ {
+  "id": "px.SUZLON.2026-07-28",
+  "value": {
+   "date": "2026-07-28",
+   "close": 48.02,
+   "prev_close": 53.15,
+   "change_pct": -9.65,
+   "volume": 224762106,
+   "delivery_pct": 34.88,
+   "turnover_lacs": 111674.0
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='SUZLON' AND date='2026-07-28'",
+  "note": ""
+ },
+ {
+  "id": "px.BEL.2026-07-28",
+  "value": {
+   "date": "2026-07-28",
+   "close": 389.0,
+   "prev_close": 407.15,
+   "change_pct": -4.46,
+   "volume": 35317783,
+   "delivery_pct": 53.21,
+   "turnover_lacs": 138778.15
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='BEL' AND date='2026-07-28'",
+  "note": ""
+ },
+ {
+  "id": "px.MANKIND.2026-07-31",
+  "value": {
+   "date": "2026-07-31",
+   "close": 2469.6,
+   "prev_close": 2575.9,
+   "change_pct": -4.13,
+   "volume": 2362283,
+   "delivery_pct": 46.35,
+   "turnover_lacs": 58074.03
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='MANKIND' AND date='2026-07-31'",
+  "note": ""
+ },
+ {
+  "id": "px.POLYCAB.2026-07-17",
+  "value": {
+   "date": "2026-07-17",
+   "close": 8862.0,
+   "prev_close": 9215.0,
+   "change_pct": -3.83,
+   "volume": 727314,
+   "delivery_pct": 34.78,
+   "turnover_lacs": 64830.66
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='POLYCAB' AND date='2026-07-17'",
+  "note": ""
+ },
+ {
+  "id": "px.DIXON.2026-08-03",
+  "value": {
+   "date": "2026-08-03",
+   "close": 13892.0,
+   "prev_close": 14049.0,
+   "change_pct": -1.12,
+   "volume": 728101,
+   "delivery_pct": 25.68,
+   "turnover_lacs": 100965.19
+  },
+  "sql": "SELECT date,close,prev_close,change_pct,total_volume,delivery_pct,turnover_lacs FROM equity_intelligence.daily_price_delivery WHERE symbol='DIXON' AND date='2026-08-03'",
+  "note": ""
+ },
+ {
+  "id": "opin.RELIANCE",
+  "value": {
+   "symbol": "RELIANCE",
+   "quarter": "First quarter",
+   "period_end": "2026-06-30",
+   "opinion": "Declaration of unmodified opinion",
+   "audited": "Un-Audited",
+   "dissem": "2026-07-17T19:49:04"
+  },
+  "sql": "SELECT symbol,reporting_quarter,period_end,audit_opinion,audited,dissem_ts FROM results_xbrl.filings WHERE symbol='RELIANCE' ORDER BY period_end DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "opin.TATASTEEL",
+  "value": {
+   "symbol": "TATASTEEL",
+   "quarter": "First quarter",
+   "period_end": "2026-06-30",
+   "opinion": "Not applicable",
+   "audited": "Audited",
+   "dissem": "2026-07-30T19:54:09"
+  },
+  "sql": "SELECT symbol,reporting_quarter,period_end,audit_opinion,audited,dissem_ts FROM results_xbrl.filings WHERE symbol='TATASTEEL' ORDER BY period_end DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "opin.YESBANK",
+  "value": {
+   "symbol": "YESBANK",
+   "quarter": "Second quarter",
+   "period_end": "2026-09-30",
+   "opinion": "Not applicable",
+   "audited": "Un-Audited",
+   "dissem": "2026-10-17T21:17:15"
+  },
+  "sql": "SELECT symbol,reporting_quarter,period_end,audit_opinion,audited,dissem_ts FROM results_xbrl.filings WHERE symbol='YESBANK' ORDER BY period_end DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "opin.SUZLON",
+  "value": {
+   "symbol": "SUZLON",
+   "quarter": "First quarter",
+   "period_end": "2026-06-30",
+   "opinion": "Not applicable",
+   "audited": "Un-Audited",
+   "dissem": "2026-07-28T15:11:06"
+  },
+  "sql": "SELECT symbol,reporting_quarter,period_end,audit_opinion,audited,dissem_ts FROM results_xbrl.filings WHERE symbol='SUZLON' ORDER BY period_end DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "opin.TITAGARH",
+  "value": {
+   "symbol": "TITAGARH",
+   "quarter": "First quarter",
+   "period_end": "2026-06-30",
+   "opinion": "Not applicable",
+   "audited": "Un-Audited",
+   "dissem": "2026-08-12T19:55:05"
+  },
+  "sql": "SELECT symbol,reporting_quarter,period_end,audit_opinion,audited,dissem_ts FROM results_xbrl.filings WHERE symbol='TITAGARH' ORDER BY period_end DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "cc.MUTHOOTFIN.capacity_and_projects",
+  "value": {
+   "metric": "Group branch network",
+   "period": "FY26",
+   "value": "",
+   "unit": null,
+   "quote": "During the year, we opened 177 new branches by the group",
+   "doc_id": 59768,
+   "filed_at": "2026-05-20T16:29:09.75"
+  },
+  "sql": "SELECT metric,period,value,unit,quote FROM concall_facts.cc_items JOIN cc_docs USING(doc_id) WHERE symbol='MUTHOOTFIN' AND list_name='capacity_and_projects' ORDER BY filed_at DESC LIMIT 1",
+  "note": ""
+ },
+ {
+  "id": "ann.TRENT.update2025",
+  "value": {
+   "symbol": "TRENT",
+   "dt": "2025-04-05T09:59:09.257",
+   "headline": "Update for Q4 and Financial Year 2024-25"
+  },
+  "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM bse_announcements.ann WHERE symbol='TRENT' AND UPPER(HEADLINE) LIKE '%UPDATE FOR Q4%' AND NEWS_DT BETWEEN '2025-04-01' AND '2025-04-08T23:59:59' ORDER BY NEWS_DT LIMIT 1",
+  "note": "2025 filing"
+ }
+]
