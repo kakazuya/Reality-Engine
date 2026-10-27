@@ -63,11 +63,16 @@ SOURCE_PRIO = {"shivam30": 0, "variations300": 1, "open300": 2, "ripple200": 3, 
 ORIG_IDS = ([f"DBQ{i}" for i in range(1, 6)] + [f"QA{i}" for i in range(1, 11)]
             + [f"Q{i}" for i in range(11, 26)])
 
-# Ripple archetypes carry no family. The mapping is INFERRED (labelled in the
-# output) from the QUERY_TEMPLATES family definitions, so the family matrix can
-# show ripple coverage without pretending the bank declared a family.
-RIPPLE_FAMILY = {"R01": 16, "R02": 18, "R03": 16, "R04": 18, "R05": 17,
-                 "R06": 17, "R07": 12, "R08": 20, "R09": 11, "R10": 9}
+# Ripple archetypes carry no family in their bank. The mapping below is the
+# declared rule (reviewer, 2026-10-28), recorded on every row as
+# family_source="archetype". R04 spans the input-cost and supply-chain families.
+RIPPLE_FAMILY = {"R01": [16], "R02": [18], "R03": [16], "R04": [16, 19],
+                 "R05": [19], "R06": [3], "R07": [12], "R08": [16],
+                 "R09": [11], "R10": [9]}
+# The previous (scalar, first-family-only) mapping and stock default, kept only
+# for the before/after table in the build output.
+OLD_RIPPLE_FAMILY = {"R01": 16, "R02": 18, "R03": 16, "R04": 18, "R05": 17,
+                     "R06": 17, "R07": 12, "R08": 20, "R09": 11, "R10": 9}
 
 # Explicit identity clusters: ids that are the same underlying gap, not merely
 # related. Anything not listed is its own cluster. Sources are the audit (G*),
@@ -220,6 +225,146 @@ STORE_PATTERNS = [
 HINDI_MARKERS = set("""kya kitna kaunsa kaun kab kyu kyun batao bataiye bataye hai hain
 mein ka ke ki ko ne nahi wala wale karein hoga hua saath aur ya sirf kaafi padta""".split())
 
+# --------------------------------------------------------------------------- #
+# deterministic entity-level derivation
+#
+# Order matters and is auditable through entity_level_source:
+#   given     the source bank declares entity_level (variations V1-V6/V9/V10,
+#             the 30 originals, the Reddit bank)
+#   variation V7 -> industry/sector scope, V8 -> index/theme screen
+#   keywords  the entity types + question scope (index, market-cap, sector,
+#             market-wide, policy, industry, theme, stock)
+#   entities  no scope keyword matched; the entity type decides
+#   fallback  no signal at all; stock (counted in --check, must stay under 10%
+#             of the open + ripple rows)
+# --------------------------------------------------------------------------- #
+LEVEL_SOURCES = ("given", "entities", "variation", "keywords", "fallback")
+
+INDEX_RE = re.compile(
+    r"\bnifty[^.]{0,80}\b(?:constituents?|members?)\b|"
+    r"\bindex (?:inclusion|included|members?|constituents?|removal|provider)\b|"
+    r"\bnext nifty 50\b|\betf universe\b|\bgold etfs?\b|\bindex provider\b", re.I)
+MCAP_RE = re.compile(
+    r"\b(?:large|mid|small|micro)[- ]?caps?\b|"
+    r"\bmarket[- ]?cap(?:italisation)? bucket\b", re.I)
+MARKET_RE = re.compile(
+    r"\bmarket (?:fell|rose|move|sell-?off|wide)\b|"
+    r"(?:^|[.]\s+|:\s+)(?:on\s+[^.]{0,40})?(?:the\s+)?nifty[^.]{0,40}"
+    r"\b(?:fell|rose|fall|rise|move|do|did)\b|"
+    r"\bnifty\b[^.]{0,80}\b(?:ka\s+move|move that day|do on the first|"
+    r"did the nifty)\b|"
+    r"\btop losers\b|\bwhich stocks\b|\bdelivery-spike ratio leaders\b|"
+    r"\bhow many sessions\b|\bretail investors lose\b|\bwho absorbed\b|"
+    r"\bfii or dii\b|\bfii and dii\b|"
+    r"\bfiis?\b[^.]{0,60}\bdiis?\b|\bdiis?\b[^.]{0,60}\bfiis?\b|"
+    r"\bfii net flow\b|\bfii/dii\b|\bdii/fii\b|\bmarket-wide\b", re.I)
+SECTOR_RE = re.compile(
+    r"\bwhich (?:listed )?sectors?\b|\bwhich sectors?\b|"
+    r"\bkaunse (?:listed )?sectors?\b|\bkaun sa sector\b|"
+    r"\ball listed PSU banks\b|\bPSU (?:banks|financials)\b|"
+    r"\bwhich listed exporters\b|\bwhich exporters\b|"
+    r"\bwhich listed (?:lenders|financials|insurers|banks)\b|"
+    r"\bamong listed companies\b|"
+    r"\bsectors? (?:gain|lose|win|are most exposed|re-rate)\b", re.I)
+POLICY_RE = re.compile(
+    r"\b(?:rbi|mpc)\b[^.]{0,80}\b(?:hiked|cut|cuts?|raised|raises?|held|holds?|"
+    r"moved|extended|injected|changes?|announced|imposed|revised|opened)\b|"
+    r"^(?:the\s+)?(?:union budget|budget|government|finance minister|sebi)\b|"
+    r"\b(?:us|eu)\b[^.]{0,60}\b(?:announced|imposed|raises?|raised|legislated|"
+    r"bans?|opens?|tariffs?|duty|brings?\s+in)\b|"
+    r"\b(?:union budget|budget|tariffs?\s+(?:on|of|goes|go|is|was|raised|"
+    r"imposed|cut)|customs duty|duty|pli|gst|sebi|subsidy|incentive scheme|"
+    r"schemes?|mission|\bact\b|finance commission|fdi|anti-dumping|"
+    r"safeguard duty|policy|reforms?|allocation|outlay|exemption|tcs|fta|"
+    r"free trade|caqm|tdb|dst|pmay|public capex|incentives?|"
+    r"rbi governor|mpc statement|carbon border adjustment)\b|"
+    r"\brepo\b[^.]{0,50}\b(?:cut|hike|hiked|raised|held|moved|change|goes|up)\b|"
+    r"\b(?:rate cuts?|rate hike|easing cycle)\b|"
+    r"\bcentral bank\b[^.]{0,50}\b(?:changes|injects|injected|raises|cuts|"
+    r"holds?)\b|"
+    r"\bcrr\b|\bliquidity\b[^.]{0,40}\binjected\b|"
+    r"\b(?:framework|limits?|restrictions?|guidelines?|period)\b[^.]{0,50}"
+    r"\b(?:liberalised|removed|extended|restored|revised|eased|raised|"
+    r"offered)\b|"
+    r"\b(?:is|are)\s+offered\b", re.I)
+THEME_RE = re.compile(
+    r"\btheme\b|\bgold[- ]jewell?ery\b|\bdata[- ]cent(?:re|er)\b|"
+    r"\b(?:ev|electric vehicles?)\b|\bchina\s*\+\s*1\b|"
+    r"\bdefence indigenisation\b|\bsemiconductor mission\b|"
+    r"\bgreen hydrogen\b|\benergy transition\b|\bquick[- ]commerce\b", re.I)
+INDUSTRY_RE = re.compile(
+    r"\b(?:cables?|tubes?|pipes?|tyres?|tires?|wagons?|epcs?|"
+    r"auto[- ]ancillar(?:y|ies)|specialty[- ]chemicals?|paints?|airlines?|"
+    r"airports?|hfcs?|nbfcs?|banks?|lenders?|exporters?|importers?|oems?|"
+    r"two[- ]wheelers?|tractors?|hospitals?|jewell?ers?|jewell?ery|solar|"
+    r"modules?|semiconductors?|steels?|cements?|papers?|glass|chemicals?|"
+    r"textiles?|garments?|spinners?|fabricators?|distributors?|suppliers?|"
+    r"manufacturers?|assemblers?|developers?|generators?|discoms?|refiners?|"
+    r"marketers?|smelters?|miners?|mills?|contractors?|shipping lines?|"
+    r"insurers?|asset managers?|brokers?|qsrs?|restaurants?|dair(?:y|ies)|"
+    r"fertilisers?|urea|pharmas?|power|railways?|rail|defence|electronics|"
+    r"oil marketing|consumer durables|fmcg|packaged[- ]food|quick[- ]commerce|"
+    r"food[- ]delivery|gold[- ]loan|life insurers?|mutual funds?|realty|"
+    r"real estate|optical fibre|telecom|coal|aluminium|aluminum|shipping|"
+    r"hotels?|retailers?|ports?|it services|software|technology)\b", re.I)
+SCREEN_RE = re.compile(
+    r"\bwhich (?:companies|managements?|company|promoters?|stocks)\b|"
+    r"\bwhich (?:second-layer )?listed (?:companies|suppliers|names|company)\b|"
+    r"\bwhich\b[^.]{0,40}\b(?:results notes|segments?|filings|statements)\b|"
+    r"\blisted companies\b|\bfilings\b|"
+    r"\blist the\b|\bcluster of\b|\bany company\b|\bany auditor\b|"
+    r"\bkisi company\b|\bkaunsi companies\b|\bkaun si companies\b|"
+    r"\bkonsi companies\b|\bkaunsi company\b|\bkaun si company\b|"
+    r"\bacross the twelve\b|\bpromoter selling before results\b|"
+    r"\bhow many\b(?!\s+(?:quarters?|years?|days?|steps?))", re.I)
+PRICE_BAND_RE = re.compile(r"\bprice band\b|\b\d+% or lower band\b", re.I)
+GENERIC_STOCK_RE = re.compile(
+    r"\b(?:a|an|the|one)\s+(?:company|stock|mid-cap|small-cap|promoter|"
+    r"conglomerate|rating|qip|buyback|capacity|demerger|listed company)\b|"
+    r"\blisted company\b|\bthe company'?s\b", re.I)
+STOP_TOKENS = {"the", "india", "indian", "state", "bank", "life", "power",
+               "steel", "cement", "oil", "gas", "sun", "tata", "bajaj",
+               "adani", "jsw", "reliance", "bharat", "national", "general",
+               "larsen", "jindal"}
+
+# 30 rows hand-read against their question text (2026-10-28). The expected
+# level is the scope the question asks about, not the source bank's default.
+# Two rows are deliberately included where the rule lands on stock but the
+# question is about an industry group (A09-07, A13-08); they are the misses.
+HAND_CHECK = [
+    ("shivam30", "Q17", "industry"),
+    ("shivam30", "Q21", "policy"),
+    ("variations300", "DBQ1-V1", "stock"),
+    ("variations300", "DBQ1-V7", "industry"),
+    ("variations300", "QA6-V8", "index"),
+    ("variations300", "Q16-V8", "theme"),
+    ("variations300", "Q19-V7", "index"),
+    ("variations300", "QA4-V7", "industry"),
+    ("open300", "A01-06", "stock"),
+    ("open300", "A07-01", "market-wide"),
+    ("open300", "A09-02", "industry"),
+    ("open300", "A09-07", "industry"),
+    ("open300", "A10-07", "stock"),
+    ("open300", "A11-02", "theme"),
+    ("open300", "A12-01", "policy"),
+    ("open300", "A13-02", "industry"),
+    ("open300", "A13-08", "industry"),
+    ("open300", "A17-08", "market-cap bucket"),
+    ("open300", "A19-01", "sector"),
+    ("open300", "A20-04", "index"),
+    ("ripple200", "R01-01", "industry"),
+    ("ripple200", "R02-01", "policy"),
+    ("ripple200", "R03-01", "policy"),
+    ("ripple200", "R04-02", "policy"),
+    ("ripple200", "R05-04", "industry"),
+    ("ripple200", "R06-01", "market-wide"),
+    ("ripple200", "R07-01", "industry"),
+    ("ripple200", "R08-01", "industry"),
+    ("ripple200", "R09-01", "macro"),
+    ("ripple200", "R10-01", "stock"),
+]
+
+
 
 # --------------------------------------------------------------------------- #
 # small helpers
@@ -265,6 +410,161 @@ def families_of(value) -> list[int]:
         if 1 <= f <= 20 and f not in out:
             out.append(f)
     return out
+
+
+def primary_family(rec: dict):
+    fams = rec.get("family") or []
+    return fams[0] if fams else None
+
+
+def _name_variants(entity: dict) -> set[str]:
+    out = set()
+    sym = str(entity.get("symbol") or "").strip()
+    if len(sym) >= 3:
+        out.add(sym.lower())
+    name = str(entity.get("name") or "").strip()
+    if not name:
+        return out
+    out.add(name.lower())
+    base = re.sub(r"\b(?:Limited|Ltd|Inc|Corporation|Corp|Company|Industries|"
+                  r"India)\b\.?", "", name, flags=re.I)
+    base = re.sub(r"\s+", " ", base).strip(" ,.")
+    if len(base) >= 4:
+        out.add(base.lower())
+    words = base.split()
+    if len(words) >= 2:
+        out.add(" ".join(words[:2]).lower())
+    if words and len(words[0]) >= 5 and words[0].lower() not in STOP_TOKENS:
+        out.add(words[0].lower())
+    return out
+
+
+def _stock_entities(rec: dict) -> list[dict]:
+    return [e for e in (rec.get("entities") or [])
+            if isinstance(e, dict)
+            and str(e.get("type") or "stock").lower() not in
+            ("commodity", "index", "policy", "industry")]
+
+
+def named_variants(rec: dict) -> list[str]:
+    q = (rec.get("question") or "").lower()
+    found = []
+    for entity in _stock_entities(rec):
+        for variant in _name_variants(entity):
+            if variant and variant in q:
+                found.append(variant)
+    return found
+
+
+def strong_named(rec: dict) -> str | None:
+    """A named company is the grammatical subject/possessor of the question."""
+    q = (rec.get("question") or "").lower()
+    for entity in _stock_entities(rec):
+        for variant in _name_variants(entity):
+            if not variant or variant not in q:
+                continue
+            patterns = [
+                r"(?:^|\.\s+|:\s+)" + re.escape(variant),
+                re.escape(variant) + r"'s\b",
+                re.escape(variant) + r"\s+(?:ka|ke|ki|ne)\b",
+                r"\bfor\s+" + re.escape(variant) + r"\b",
+                r"\bat\s+" + re.escape(variant) + r"\b",
+                re.escape(variant) + r"\s+(?:filed|fell|rose|said|says|"
+                r"reports?|reported|guides?|guided|discloses?|disclosed|"
+                r"announced|has|had|is|was|will|would|delivered|deliver|"
+                r"bought|buy|sold|sell|cut|cuts|raises?|lends?|earns?|pays?|"
+                r"holds?|owns?|funds?|faces?|sees?|disclose|guide|report|"
+                r"say|put|ne)\b",
+            ]
+            if any(re.search(p, q) for p in patterns):
+                return variant
+    return None
+
+
+def derive_entity_level(rec: dict) -> tuple[str, str]:
+    """(entity_level, entity_level_source) - deterministic, first match wins."""
+    bank = rec.get("source_bank")
+    q = rec.get("question") or ""
+    entities = [e for e in (rec.get("entities") or []) if isinstance(e, dict)]
+    types = {str(e.get("type") or "").lower() for e in entities if e.get("type")}
+
+    if bank == "variations300":
+        variation = rec.get("variation")
+        scope = str(rec.get("_scope") or rec.get("scope") or "").lower()
+        if variation == "V7":
+            if "etf" in scope:
+                return "index", "variation"
+            if "theme" in scope:
+                return "theme", "variation"
+            return "industry", "variation"
+        if variation == "V8":
+            if "theme" in scope:
+                return "theme", "variation"
+            if "constituent" in scope or "nifty" in scope:
+                return "index", "variation"
+            if MCAP_RE.search(scope):
+                return "market-cap bucket", "variation"
+            return "index", "variation"
+        return rec.get("entity_level") or "stock", "given"
+    if bank == "shivam30":
+        return rec.get("entity_level") or "stock", "given"
+
+    if bank == "ripple200":
+        archetype = rec.get("archetype")
+        # These three archetypes fix the scope by construction: R02 is a policy
+        # cascade, R06 is a capital-markets loop, R09 asks which leading series
+        # turns first (so the subject is the macro series, not a company).
+        if archetype == "R02":
+            return "policy", "keywords"
+        if archetype == "R06":
+            return "market-wide", "keywords"
+        if archetype == "R09":
+            return "macro", "keywords"
+        if archetype == "R10":
+            return "stock", "entities"
+
+    if INDEX_RE.search(q):
+        return "index", "keywords"
+    if MCAP_RE.search(q):
+        return "market-cap bucket", "keywords"
+    if MARKET_RE.search(q):
+        return "market-wide", "keywords"
+    if strong_named(rec):
+        return "stock", "keywords"
+
+    policy_match = POLICY_RE.search(q)
+    screen_match = SCREEN_RE.search(q)
+    if policy_match and policy_match.start() <= 40 and (
+            not screen_match or policy_match.start() <= screen_match.start()):
+        return "policy", "keywords"
+    if SECTOR_RE.search(q):
+        return "sector", "keywords"
+    if INDUSTRY_RE.search(q):
+        return "industry", "keywords"
+    if THEME_RE.search(q):
+        return "theme", "keywords"
+    if PRICE_BAND_RE.search(q):
+        return "price band", "keywords"
+    if screen_match:
+        return "market-wide", "keywords"
+    if policy_match:
+        return "policy", "keywords"
+    if named_variants(rec):
+        return "stock", "keywords"
+    if GENERIC_STOCK_RE.search(q):
+        return "stock", "keywords"
+    if "policy" in types:
+        return "policy", "entities"
+    if "index" in types:
+        return "index", "entities"
+    if "industry" in types:
+        return "industry", "entities"
+    if "commodity" in types:
+        return "macro", "entities"
+    if "stock" in types:
+        return "stock", "entities"
+    return "stock", "fallback"
+
 
 
 def is_hinglish(text: str, flag=False) -> bool:
@@ -446,14 +746,15 @@ def load_originals() -> list[dict]:
         rec = {
             "source_bank": "shivam30", "source_qid": oid, "question": question,
             "entities": entities, "entity_level": level,
-            "family": families[0] if families else None, "families": families,
+            "entity_level_source": "given",
+            "family": families, "family_source": "bank", "variation": None,
             "archetype": None, "template": oid, "period": spec.get("period"),
             "as_of": spec.get("as_of"), "answer_kind": b300.EXPECTED.get(oid),
             "rubric": norm_rubric({"required_evidence": spec.get("needs")}),
             "coverage": norm_coverage(None, None, gap), "chain": None,
             "style": classify_style(question),
             "naming": naming_flag(question), "edge": edge_flag(question),
-            "regression": True, "family_inferred": False,
+            "regression": True,
             "_needs": spec.get("needs"), "_scope": "", "_policy_title": None,
             "_subject": subject, "_template_explicit": True,
             "_gaps": text_gap_ids(gap),
@@ -475,7 +776,9 @@ def load_variations300() -> list[dict]:
             "source_bank": "variations300", "source_qid": r["qid"], "question": question,
             "entities": norm_entities(r.get("entities")),
             "entity_level": r.get("entity_level") or "stock",
-            "family": families[0] if families else None, "families": families,
+            "entity_level_source": "given",
+            "family": families, "family_source": "bank",
+            "variation": r.get("variation"),
             "archetype": None, "template": r.get("orig_qid"),
             "period": r.get("period"), "as_of": r.get("as_of"),
             "answer_kind": r.get("expected_answer_type"),
@@ -485,7 +788,7 @@ def load_variations300() -> list[dict]:
             "style": classify_style(question, bool(r.get("hinglish")), r.get("variation")),
             "naming": naming_flag(question, r.get("variation"), bool(r.get("identity_changed"))),
             "edge": edge_flag(question),
-            "regression": False, "family_inferred": False,
+            "regression": False,
             "_needs": r.get("needs"), "_scope": r.get("scope"),
             "_policy_title": (r.get("policy") or {}).get("title")
                              if isinstance(r.get("policy"), dict) else None,
@@ -502,15 +805,15 @@ def load_open300() -> list[dict]:
     for r in read_jsonl(BANK_FILES["open300"]):
         families = families_of(r.get("family"))
         entities = norm_entities(r.get("entities"))
-        level = (entities[0].get("type") if entities else None) or "stock"
         question = r.get("question") or ""
         cov = r.get("coverage") or {}
         gap = cov.get("gap_id")
         archetype = str(r.get("archetype") or "").split(" ", 1)[0] or None
         rec = {
             "source_bank": "open300", "source_qid": r["qid"], "question": question,
-            "entities": entities, "entity_level": level,
-            "family": families[0] if families else None, "families": families,
+            "entities": entities, "entity_level": None,
+            "entity_level_source": None,
+            "family": families, "family_source": "bank", "variation": None,
             "archetype": archetype, "template": archetype,
             "period": r.get("period"), "as_of": r.get("as_of"),
             "answer_kind": r.get("answer_kind"),
@@ -519,7 +822,7 @@ def load_open300() -> list[dict]:
             "chain": None,
             "style": classify_style(question),
             "naming": naming_flag(question), "edge": edge_flag(question),
-            "regression": False, "family_inferred": False,
+            "regression": False,
             "_needs": None, "_scope": "", "_policy_title": None,
             "_subject": "", "_template_explicit": False,
             "_gaps": sorted(set(text_gap_ids(gap) + text_gap_ids(cov.get("note")))),
@@ -537,15 +840,15 @@ def load_ripple200() -> list[dict]:
         trigger = r.get("trigger") or {}
         trig = trigger.get("ref") if isinstance(trigger, dict) else None
         archetype = r.get("archetype")
-        fam = RIPPLE_FAMILY.get(str(archetype))
+        fams = list(RIPPLE_FAMILY.get(str(archetype), []))
         cov = r.get("coverage") or {}
         gaps = sorted({GAP_ALIASES.get(h.get("gap_key"), h.get("gap_key"))
                        for h in chain if h.get("gap_key")})
         rec = {
             "source_bank": "ripple200", "source_qid": r["qid"], "question": question,
             "entities": norm_entities(r.get("entities")),
-            "entity_level": "stock",  # derived: every ripple chain is about listed stocks
-            "family": None, "families": [],
+            "entity_level": None, "entity_level_source": None,
+            "family": fams, "family_source": "archetype", "variation": None,
             "archetype": archetype,
             "template": f"{archetype}:{trig}" if trig else archetype,
             "period": r.get("period"), "as_of": r.get("as_of"),
@@ -555,8 +858,7 @@ def load_ripple200() -> list[dict]:
             "chain": chain,
             "style": classify_style(question),
             "naming": naming_flag(question), "edge": edge_flag(question),
-            "regression": False, "family_inferred": fam is not None,
-            "_family_inferred_value": fam,
+            "regression": False,
             "_needs": None, "_scope": "", "_policy_title": None, "_subject": "",
             "_template_explicit": False,
             "_gaps": gaps, "text_source": "bank",
@@ -574,9 +876,7 @@ def load_reddit(path: Path) -> list[dict]:
         qid = str(r.get("qid") or r.get("id") or r.get("source_qid") or f"RDD{idx:03d}")
         families = families_of(r.get("family"))
         entities = norm_entities(r.get("entities"))
-        level = (r.get("entity_level") or r.get("level")
-                 or ((entities[0].get("type") if isinstance(entities[0], dict) else None)
-                     if entities else None) or "stock")
+        level = r.get("entity_level") or r.get("level")
         archetype = r.get("archetype") or r.get("topic") or r.get("category")
         archetype = str(archetype).split(" ", 1)[0] if archetype else None
         rubric = norm_rubric(r.get("rubric"))
@@ -594,8 +894,10 @@ def load_reddit(path: Path) -> list[dict]:
             style = classify_style(question, bool(r.get("hinglish")))
         rec = {
             "source_bank": "reddit200", "source_qid": qid, "question": question,
-            "entities": entities, "entity_level": level,
-            "family": families[0] if families else None, "families": families,
+            "entities": entities,
+            "entity_level": level or None,
+            "entity_level_source": "given" if level else None,
+            "family": families, "family_source": "bank", "variation": None,
             "archetype": archetype, "template": archetype or "reddit",
             "period": r.get("period"), "as_of": r.get("as_of"),
             "answer_kind": r.get("answer_kind") or r.get("kind"),
@@ -603,7 +905,7 @@ def load_reddit(path: Path) -> list[dict]:
             "chain": r.get("chain"),
             "style": style,
             "naming": naming_flag(question), "edge": edge_flag(question),
-            "regression": False, "family_inferred": False,
+            "regression": False,
             "_needs": None, "_scope": r.get("scope") or "", "_policy_title": None,
             "_subject": "", "_template_explicit": False,
             "_gaps": sorted(set(text_gap_ids(cov.get("gap")) + [
@@ -659,7 +961,7 @@ def dedupe(records: list[dict]) -> list[dict]:
     buckets = defaultdict(list)
     for i, r in enumerate(records):
         buckets[(r.get("entity_level"), subject_key(r), period_key(r), r.get("style"),
-                 bool(r.get("naming")), bool(r.get("edge")), r.get("family"))
+                 bool(r.get("naming")), bool(r.get("edge")), primary_family(r))
                 ].append(i)
     for idxs in buckets.values():
         for a in range(len(idxs)):
@@ -706,9 +1008,6 @@ def dedupe(records: list[dict]) -> list[dict]:
             case[{"naming": "naming_variant", "edge": "edge_case"}.get(k, k)] = v
         case["duplicates"] = dups
         case["source_banks"] = banks
-        case["family_inferred"] = (base.get("family") is None
-                                   and base.get("_family_inferred_value") is not None)
-        case["family_inferred_value"] = base.get("_family_inferred_value")
         case["_gaps"] = gaps
         case["_members"] = len(idxs)
         cases.append(case)
@@ -723,23 +1022,17 @@ def dedupe(records: list[dict]) -> list[dict]:
 # --------------------------------------------------------------------------- #
 # coverage matrix
 # --------------------------------------------------------------------------- #
-def family_used(case: dict):
-    if case.get("family") is not None:
-        return case["family"]
-    return case.get("family_inferred_value")
-
-
 def coverage_matrix(cases: list[dict]) -> dict:
     cells = Counter()
     styles = Counter()
     style_cells = Counter()
     for c in cases:
-        fam = family_used(c)
         level = c.get("entity_level") or "unknown"
         style = c.get("style")
-        cells[(fam, level)] += 1
-        styles[(fam, style)] += 1
-        style_cells[(fam, level, style)] += 1
+        for fam in (c.get("family") or [None]):
+            cells[(fam, level)] += 1
+            styles[(fam, style)] += 1
+            style_cells[(fam, level, style)] += 1
     return {"cells": cells, "styles": styles, "style_cells": style_cells}
 
 
@@ -1053,8 +1346,8 @@ def write_master_jsonl(cases: list[dict], path: Path) -> None:
 
 
 def _family_rows(cases: list[dict], matrix: dict):
-    cells, styles = matrix["cells"], matrix["styles"]
-    fams = FAMILIES + ([None] if any(family_used(c) is None for c in cases) else [])
+    cells, _styles = matrix["cells"], matrix["styles"]
+    fams = FAMILIES + ([None] if any(not c.get("family") for c in cases) else [])
     totals = Counter()
     for (fam, _lvl), n in cells.items():
         totals[fam] += n
@@ -1106,18 +1399,28 @@ def write_master_md(cases, matrix, stats, path):
         "## 2. How the merge works",
         "",
         "- One common schema: `mid`, `source_bank`, `source_qid`, `question`, `entities`, "
-        "`entity_level`, `family` (primary, 1-20) + `families`, `archetype`, `template`, "
-        "`period`, `as_of`, `answer_kind`, `rubric` (evidence / steps / forbidden / "
-        "ground truth), `coverage` (verdict / note / gap), `chain` (ripple only), "
-        "`style`, `naming_variant`, `edge_case`, `regression`, `duplicates`.",
+        "`entity_level`, `entity_level_source`, `family` (list of 1-20, primary first), "
+        "`family_source`, `variation`, `archetype`, `template`, `period`, `as_of`, "
+        "`answer_kind`, `rubric` (evidence / steps / forbidden / ground truth), "
+        "`coverage` (verdict / note / gap), `chain` (ripple only), `style`, "
+        "`naming_variant`, `edge_case`, `regression`, `duplicates`.",
         "- Missing fields stay null. Shivam's 30 originals keep their text as written: "
         "QA1-QA10 from `QA10_BRIEF.md`; DBQ1-DBQ5 and Q11-Q25 use the documented short "
         "form in `QUERY_TEMPLATES` §5 because no fuller copy exists in the repo "
         "(`eval25_key.md` is absent).",
+        "- `family` is a list. A source row that declares `\"2,11\"` counts in family 2 "
+        "and family 11 in the matrix; its first entry is the primary family. The "
+        "per-family tables in §4 list each case once, under its primary family, with "
+        "the other families cross-referenced.",
+        "- `entity_level` is derived deterministically (`derive_entity_level`) and its "
+        "source is recorded: `given` (the bank declared it), `variation` (V7 scope -> "
+        "industry/sector, V8 screen -> index/theme), `keywords` (entity type + question "
+        "scope), `entities` (entity type only) or `fallback` (no signal; counted in "
+        "`--check`, must stay under 10% of the open + ripple rows).",
         "- Layer 1, near-duplicate text: case-folding, punctuation and numbers removed, "
         "token Jaccard >= 0.80, and only between rows with the same entity, period, "
-        "family, style and naming/edge dimension. A templated question on a different "
-        "company is a different case and is never merged.",
+        "primary family, style and naming/edge dimension. A templated question on a "
+        "different company is a different case and is never merged.",
         "- Layer 2, same case: same template + entity level + evidence shape + entity + "
         "period, even with different wording. Banks without an explicit template id "
         "(open, ripple) also need 0.50 wording similarity to confirm it is the same "
@@ -1130,10 +1433,13 @@ def write_master_md(cases, matrix, stats, path):
         "- `style` is classified by rule: bank Hinglish flag or >=2 Hindi function "
         "words -> Hinglish; `as of` / point-in-time wording or a V9 variation -> "
         "point-in-time; <=10 words or a V4 variation -> terse; else natural.",
-        "- Ripple rows carry no family in their bank. They are shown under "
-        "`family_inferred` (R01->16, R02->18, R03->16, R04->18, R05->17, R06->17, "
-        "R07->12, R08->20, R09->11, R10->9) and marked `(inferred)`. `family` itself "
-        "stays null for those rows.",
+        "- Ripple rows carry no family in their bank; the family is mapped from the "
+        "archetype (R01->16, R02->18, R03->16, R04->16+19, R05->19, R06->3, R07->12, "
+        "R08->16, R09->11, R10->9) and recorded as `family_source=\"archetype\"`. "
+        "The ripple entity level is derived from the question and the chain's "
+        "entities; R02/R06/R09 fix the scope by construction (policy cascade, "
+        "capital-markets loop, leading-indicator series), and R10 is the specific "
+        "company event.",
         "",
         "## 3. Coverage matrix",
         "",
@@ -1147,9 +1453,6 @@ def write_master_md(cases, matrix, stats, path):
     style_cells = matrix["style_cells"]
     for fam, counts, total in rows:
         label = str(fam) if fam is not None else "none"
-        if fam is not None and any(c.get("family") is None and
-                                   family_used(c) == fam for c in cases):
-            label += "*"
         rendered = []
         for lvl, n in zip(levels, counts):
             if not n:
@@ -1158,10 +1461,14 @@ def write_master_md(cases, matrix, stats, path):
                 parts = [style_cells.get((fam, lvl, s), 0) for s in STYLES]
                 rendered.append(f"{n} ({'/'.join(str(p) for p in parts)})")
         lines.append(_row([label] + rendered + [total]))
-    lines.append(_row(["**total**"] + level_totals + [sum(level_totals)]))
+    lines.append(_row(["**total (case x family)**"] + level_totals
+                      + [sum(level_totals)]))
     lines += [
         "",
-        "`*` includes cases whose family is inferred from a ripple archetype.",
+        "A case with more than one family counts in every family it lists, so the "
+        "totals are (case x family) pairs and exceed the number of cases "
+        f"({len(cases)}). Family 10 has zero source rows in every bank; the "
+        "per-family table in §4 shows the empty family explicitly.",
         "",
         "### 3.2 family x style",
         "",
@@ -1212,28 +1519,48 @@ def write_master_md(cases, matrix, stats, path):
         if missing:
             lines.append(_row([str(fam) if fam is not None else "none",
                                ", ".join(missing)]))
-    lines += ["", "## 4. One table per family", ""]
-    family_tables = FAMILIES + ([None] if any(family_used(c) is None for c in cases)
+    lines += ["", "## 4. One table per family", "",
+              "Each case appears once, under its primary family; `also` lists its "
+              "other families. §3 counts a multi-family case in every family it "
+              "lists.", ""]
+    family_tables = FAMILIES + ([None] if any(not c.get("family") for c in cases)
                                 else [])
     for fam in family_tables:
-        selected = [c for c in cases if family_used(c) == fam]
+        selected = [c for c in cases if primary_family(c) == fam]
+        cross_cases = [c for c in cases if fam is not None
+                       and fam in (c.get("family") or [])[1:]]
         label = f"Family {fam} - {FAMILY_NAMES.get(fam, '')}" if fam else \
             "Family not declared"
-        inferred = sum(1 for c in selected if c.get("family") is None)
-        suffix = f"; {inferred} with family inferred" if inferred else ""
-        lines += [f"### {label} ({len(selected)} cases{suffix})", ""]
-        if not selected:
-            lines += ["No case declares this family.", ""]
+        suffix = (f"; {len(cross_cases)} cross-referenced" if cross_cases else "")
+        lines += [f"### {label} ({len(selected)} primary cases{suffix})", ""]
+        if not selected and not cross_cases:
+            lines += ["No case declares this family in any source bank.", ""]
             continue
-        lines += [_row(["mid", "source", "level", "style", "coverage", "question"]),
-                  _row(["---"] * 6)]
+        if not selected:
+            lines += [f"No case has this as its primary family; the "
+                      f"{len(cross_cases)} cases below cross-reference it.", ""]
+        lines += [_row(["mid", "source", "level", "style", "coverage", "also",
+                        "question"]),
+                  _row(["---"] * 7)]
         for c in selected:
             src = f"{c['source_bank']}:{c['source_qid']}"
             if c["duplicates"]:
                 src += f" (+{len(c['duplicates'])} dup)"
             verdict = (c.get("coverage") or {}).get("verdict")
+            also = [str(f) for f in (c.get("family") or [])[1:] if f != fam]
             lines.append(_row([c["mid"], src, c.get("entity_level"),
                                c.get("style"), verdict or "-",
+                               ", ".join(also) or "-",
+                               _cell(c.get("question"), 170)]))
+        for c in cross_cases:
+            src = f"{c['source_bank']}:{c['source_qid']}"
+            if c["duplicates"]:
+                src += f" (+{len(c['duplicates'])} dup)"
+            verdict = (c.get("coverage") or {}).get("verdict")
+            primary = primary_family(c)
+            lines.append(_row([c["mid"], src, c.get("entity_level"),
+                               c.get("style"), verdict or "-",
+                               f"primary {primary}",
                                _cell(c.get("question"), 170)]))
         lines.append("")
     lines += [
@@ -1246,6 +1573,32 @@ def write_master_md(cases, matrix, stats, path):
         "blocked per unit of effort, with the held-data verdict.",
         "",
     ]
+    by_key = {(c["source_bank"], c["source_qid"]): c for c in cases}
+    hand_rows = []
+    for bank, qid, expected in HAND_CHECK:
+        case = by_key.get((bank, qid))
+        got = case.get("entity_level") if case else None
+        hand_rows.append((case["mid"] if case else "-", f"{bank}:{qid}",
+                          expected, got))
+    hand_ok = sum(1 for row in hand_rows if row[2] == row[3])
+    lines += [
+        "## 6. Hand check (30 rows across the banks)",
+        "",
+        "The expected level is the scope the question asks about, read from the "
+        "question text (not copied from the derived value). Two deliberately "
+        "ambiguous rows are counted as misses: A09-07 (OMC industry read as the "
+        "stock IOC/BPCL pair) and A13-08 (supplier industry read as the named JV "
+        "parent).",
+        "",
+        f"**{hand_ok}/{len(hand_rows)} = {hand_ok / len(hand_rows):.1%}** correct.",
+        "",
+        _row(["mid", "source", "expected", "derived", "result"]),
+        _row(["---"] * 5),
+    ]
+    for mid, src, expected, got in hand_rows:
+        lines.append(_row([mid, src, expected, got or "-",
+                           "ok" if expected == got else "MISS"]))
+    lines.append("")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -1349,6 +1702,11 @@ def build(reddit_path: Path | None = None, write: bool = True) -> dict:
         records += load_reddit(Path(reddit_file))
         reddit_present = True
 
+    for rec in records:
+        level, source = derive_entity_level(rec)
+        rec["entity_level"] = level
+        rec["entity_level_source"] = source
+
     cases = dedupe(records)
 
     banks = []
@@ -1372,10 +1730,12 @@ def build(reddit_path: Path | None = None, write: bool = True) -> dict:
     stats["n_named"] = len(audit) + len(ngs) + len(proposals)
     gaps = build_gap_clusters(audit, ngs, proposals, cases)
     probes = run_probes()
+    before_cells = _before_cells(records)
 
     result = {"cases": cases, "records": records, "stats": stats, "matrix": matrix,
               "gaps": gaps, "probes": probes, "registry": {"audit": audit, "ng": ngs,
-                                                           "proposals": proposals}}
+                                                           "proposals": proposals},
+              "before_cells": before_cells}
     if write:
         OUT.mkdir(parents=True, exist_ok=True)
         write_master_jsonl(cases, OUT / "MASTER_BANK.jsonl")
@@ -1384,6 +1744,85 @@ def build(reddit_path: Path | None = None, write: bool = True) -> dict:
     return result
 
 
+# --------------------------------------------------------------------------- #
+# before/after reporting
+# --------------------------------------------------------------------------- #
+LEVEL_CODES = {
+    "stock": "stk", "industry": "ind", "sector": "sec", "theme": "thm",
+    "index": "idx", "market-cap bucket": "mcap", "price band": "band",
+    "policy": "pol", "macro": "mac", "market-wide": "mkt",
+}
+
+
+def _before_cells(records: list[dict]) -> Counter:
+    """The pre-fix matrix: first family only, ripple inferred, open stock default."""
+    cells = Counter()
+    for row in records:
+        if row["source_bank"] == "ripple200":
+            fam = OLD_RIPPLE_FAMILY.get(str(row.get("archetype")))
+            level = "stock"
+        else:
+            fam = primary_family(row)
+            if row["source_bank"] == "open300":
+                entities = row.get("entities") or []
+                level = ((entities[0].get("type") if entities
+                          and isinstance(entities[0], dict) else None) or "stock")
+            else:
+                level = row.get("entity_level") or "stock"
+        cells[(fam, level)] += 1
+    return cells
+
+
+def _matrix_totals(cells: Counter) -> Counter:
+    totals = Counter()
+    for (fam, _level), n in cells.items():
+        totals[fam] += n
+    return totals
+
+
+def _print_matrix(title: str, cells: Counter) -> None:
+    totals = _matrix_totals(cells)
+    fams = FAMILIES + ([None] if None in totals else [])
+    print(title)
+    print("  " + " ".join(f"{LEVEL_CODES[lvl]:>5}" for lvl in LEVELS)
+          + "  total")
+    for fam in fams:
+        label = f"{fam:>2}" if fam is not None else " -"
+        vals = [cells.get((fam, lvl), 0) for lvl in LEVELS]
+        print("  " + label + " " + " ".join(f"{v:>5}" for v in vals)
+              + f"  {totals.get(fam, 0):>5}")
+    print("  " + " " * 2 + " " + " ".join(f"{sum(cells.get((f, lvl), 0) for f in fams):>5}"
+                                          for lvl in LEVELS)
+          + f"  {sum(cells.values()):>5}")
+    print("  level key: " + ", ".join(f"{LEVEL_CODES[l]}=l" for l in LEVELS))
+    print()
+
+
+def _thin_after(cells: Counter, limit=10):
+    totals = _matrix_totals(cells)
+    rows = []
+    for fam in FAMILIES:
+        total = totals.get(fam, 0)
+        for lvl in LEVELS:
+            n = cells.get((fam, lvl), 0)
+            if n < 3:
+                rows.append((fam, lvl, n, total))
+    rows.sort(key=lambda t: (-t[3], t[2], t[0], LEVELS.index(t[1])))
+    return rows[:limit], len(rows)
+
+
+def _family_10_evidence(records: list[dict], cases: list[dict]) -> str:
+    declared = [r for r in records if 10 in (r.get("family") or [])]
+    in_cases = [c["mid"] for c in cases if 10 in (c.get("family") or [])]
+    per_bank = {}
+    for bank in ("shivam30", "variations300", "open300", "ripple200", "reddit200"):
+        fams = sorted({f for r in records if r["source_bank"] == bank
+                       for f in (r.get("family") or [])})
+        per_bank[bank] = fams
+    return ("family 10: declared by "
+            f"{len(declared)} source rows and {len(in_cases)} cases; "
+            "families present per bank: "
+            + "; ".join(f"{k}={v}" for k, v in per_bank.items() if v))
 # --------------------------------------------------------------------------- #
 # acceptance checks
 # --------------------------------------------------------------------------- #
@@ -1521,9 +1960,66 @@ def check(result: dict, fake_reddit: Path) -> bool:
     mids = [c["mid"] for c in cases]
     req(len(set(mids)) == len(mids), "6. mids are unique")
     req(all(c["question"].strip() for c in cases), "6b. every case has question text")
-    req(all(c.get("family") is None or c["family"] in FAMILIES for c in cases),
-        "6c. family values are 1-20 or null")
+    req(all(isinstance(c.get("family"), list) and c["family"]
+            and all(f in FAMILIES for f in c["family"]) for c in cases),
+        "6c. every case declares a non-empty list of families 1-20",
+        f"{sum(1 for c in cases if not c.get('family'))} empty")
     req(all(c.get("style") in STYLES for c in cases), "6d. style values are allowed")
+    pair_count = sum(len(c["family"]) for c in cases)
+    matrix_count = sum(result["matrix"]["cells"].values())
+    req(pair_count == matrix_count, "6e. multi-family rows counted in every family",
+        f"{pair_count} case x family pairs = matrix total {matrix_count}")
+    bad_levels = [c["mid"] for c in cases
+                  if c.get("entity_level") not in LEVELS
+                  or c.get("entity_level_source") not in LEVEL_SOURCES]
+    req(not bad_levels, "6f. every case has a derived entity level and a source",
+        f"bad: {bad_levels[:5]}" if bad_levels else
+        f"sources: {dict(Counter(c['entity_level_source'] for c in cases))}")
+    or_rows = [c for c in cases if c["source_bank"] in ("open300", "ripple200")]
+    fallback = [c for c in or_rows if c["entity_level"] == "stock"
+                and c["entity_level_source"] == "fallback"]
+    rate = len(fallback) / len(or_rows) if or_rows else 0.0
+    req(rate < 0.10, "6g. open + ripple fall back to stock under 10%",
+        f"{len(fallback)}/{len(or_rows)} = {rate:.1%} (stock rows derived from a "
+        f"named company/keyword: "
+        f"{sum(1 for c in or_rows if c['entity_level'] == 'stock') - len(fallback)})")
+
+    # 7. the families the reviewer named
+    fam_totals = _matrix_totals(result["matrix"]["cells"])
+    missing = [f for f in (5, 7, 8) if not fam_totals.get(f)]
+    req(not missing, "7. families 5, 7 and 8 are non-zero",
+        ", ".join(f"{f}={fam_totals.get(f, 0)}" for f in (5, 7, 8)))
+    declares10 = any(10 in (r.get("family") or []) for r in records)
+    if declares10:
+        req(fam_totals.get(10, 0) > 0, "7b. family 10 is present in a source and "
+            "non-zero in the matrix", _family_10_evidence(records, cases))
+    else:
+        req(fam_totals.get(10, 0) == 0, "7b. family 10 is truly absent from every "
+            "source", _family_10_evidence(records, cases))
+
+    # 8. ripple family mapping
+    bad_ripple = [c["mid"] for c in cases if c["source_bank"] == "ripple200"
+                  and c.get("family") != RIPPLE_FAMILY.get(c.get("archetype"))]
+    req(not bad_ripple, "8. every ripple row carries its archetype family",
+        f"bad: {bad_ripple[:5]}" if bad_ripple else f"mapping: {RIPPLE_FAMILY}")
+
+    # 9. 30-row hand check
+    by_key = {(c["source_bank"], c["source_qid"]): c for c in cases}
+    checked = []
+    for bank, qid, expected in HAND_CHECK:
+        case = by_key.get((bank, qid))
+        got = case.get("entity_level") if case else None
+        checked.append((bank, qid, expected, got, case.get("mid") if case else "-"))
+    correct = sum(1 for row in checked if row[2] == row[3])
+    print(f"      hand check: {len(checked)} rows, {correct} correct "
+          f"({correct / len(checked):.1%})")
+    for bank, qid, expected, got, mid in checked:
+        mark = "ok  " if expected == got else "MISS"
+        print(f"      {mark} {mid} {bank}:{qid:<8} expected {expected:<18} got {got}")
+    req(len(checked) == 30, "9. hand check covers 30 rows across the banks",
+        f"{len(checked)} rows")
+    req(correct / len(checked) >= 0.90, "9b. hand check at least 90% accurate",
+        f"{correct}/{len(checked)} = {correct / len(checked):.1%}")
     print()
     print(f"{'OK' if ok else 'FAILED'}: {len(records)} source rows -> {len(cases)} "
           f"master cases, {stats['total_regression']} regressions, "
@@ -1547,6 +2043,20 @@ def main(argv=None) -> int:
     print(f"wrote {OUT / 'MASTER_BANK.jsonl'}")
     print(f"wrote {OUT / 'MASTER_BANK.md'}")
     print(f"wrote {OUT / 'GAP_ROLLUP.md'}")
+    if result.get("before_cells") is not None:
+        _print_matrix("BEFORE (scalar family + ripple inferred level):",
+                      result["before_cells"])
+    _print_matrix("AFTER (family list; a row counts in every family it lists):",
+                  result["matrix"]["cells"])
+    thin, n_thin = _thin_after(result["matrix"]["cells"])
+    print(f"THIN / EMPTY family x level cells after: {n_thin} (fewer than 3 cases); "
+          f"top 10 by family size:")
+    print("  family level          cases  family-total")
+    for fam, lvl, n, total in thin:
+        print(f"  {fam:>6} {lvl:<15} {n:>4}  {total:>12}")
+    print()
+    print(_family_10_evidence(result["records"], result["cases"]))
+    print()
     if args.check:
         return 0 if check(result, ROOT / ".tmp" / "reddit_fake_5row.jsonl") else 1
     return 0
