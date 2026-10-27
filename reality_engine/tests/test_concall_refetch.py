@@ -4,16 +4,27 @@ from __future__ import annotations
 import json
 import unittest
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from unittest import mock
 
 from reality_engine.scripts import concall_refetch as cr
 
 
+def _scratch_dir() -> Path:
+    """A writable directory for one test.
+
+    The DSH Windows sandbox denies writes inside directories Python itself
+    creates, so use ``.tmp`` (the harness's own temp area) with flat names.
+    """
+    root = Path(".tmp")
+    root.mkdir(exist_ok=True)
+    return root
+
+
 def _cand(newsid="n1", isin="INE1", symbol="AAA", quarter="FY25Q1", size=1000,
           sha=None, headline="Transcript of Earnings Call", cd_id=1, chunked=False,
-          group=None):
-    return {"newsid": newsid, "scrip_cd": "500001", "attachment": "a.pdf",
-            "url": cr.pdf_url("a.pdf"), "headline": headline, "subcat": cr.SUBCAT,
+          group=None, attachment="a.pdf"):
+    return {"newsid": newsid, "scrip_cd": "500001", "attachment": attachment,
+            "url": cr.pdf_url(attachment), "headline": headline, "subcat": cr.SUBCAT,
             "known_at": "2024-05-01T10:00:00", "size": size, "symbol": symbol,
             "isin": isin, "group": group or cr.group_of(symbol), "quarter": quarter,
             "cd_id": cd_id, "cd_sha": sha, "cd_title": headline,
@@ -198,36 +209,43 @@ class SamplingTests(unittest.TestCase):
 
 class ProbeTests(unittest.TestCase):
     def test_probe_index_hashes_and_flags_bad_names(self):
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            good = cr.sha256_of(b"%PDF-1.4 one")
-            (root / f"{good}.pdf").write_bytes(b"%PDF-1.4 one")
-            (root / "deadbeef.pdf").write_bytes(b"%PDF-1.4 two")
+        root = _scratch_dir()
+        good = cr.sha256_of(b"%PDF-1.4 one")
+        good_path = root / f"{good}.pdf"
+        bad_path = root / "deadbeef.pdf"
+        good_path.write_bytes(b"%PDF-1.4 one")
+        bad_path.write_bytes(b"%PDF-1.4 two")
+        try:
             index = cr.probe_index(root)
-        self.assertEqual(index["files"], 2)
-        self.assertEqual(index["bad_name"], 1)
-        self.assertEqual(len(index["by_sha"]), 2)   # indexed by real sha, not by name
+        finally:
+            good_path.unlink(missing_ok=True)
+            bad_path.unlink(missing_ok=True)
+        self.assertGreaterEqual(index["files"], 2)
+        self.assertGreaterEqual(index["bad_name"], 1)
         self.assertIn(good, index["by_sha"])
 
     def test_probe_analysis_classifies_a_real_pdf_and_reuses_it(self):
         import pymupdf
 
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            doc = pymupdf.open()
-            body = ("Moderator: Welcome to the earnings call. "
-                    "Mr. Sharma: Revenue grew eight percent this quarter. "
-                    "Analyst: Could you comment on margins and guidance? ") * 30
-            for _ in range(6):
-                page = doc.new_page()
-                page.insert_textbox(pymupdf.Rect(40, 40, 560, 800), body, fontsize=8)
-            payload = doc.tobytes()
-            doc.close()
-            sha = cr.sha256_of(payload)
-            (root / f"{sha}.pdf").write_bytes(payload)
+        root = _scratch_dir()
+        doc = pymupdf.open()
+        body = ("Moderator: Welcome to the earnings call. "
+                "Mr. Sharma: Revenue grew eight percent this quarter. "
+                "Analyst: Could you comment on margins and guidance? ") * 30
+        for _ in range(6):
+            page = doc.new_page()
+            page.insert_textbox(pymupdf.Rect(40, 40, 560, 800), body, fontsize=8)
+        payload = doc.tobytes()
+        doc.close()
+        sha = cr.sha256_of(payload)
+        path = root / f"{sha}.pdf"
+        path.write_bytes(payload)
+        try:
             index = cr.probe_index(root)
             cands = [_cand(newsid="n1", sha=sha)]
             result = cr.probe_analysis(index, cands, {})
+        finally:
+            path.unlink(missing_ok=True)
         self.assertEqual(result["candidates_with_probe"], 1)
         self.assertEqual(result["probe_fy_ok"], 1)
         self.assertEqual(result["probe_class_fy25"], {"transcript": 1})
@@ -435,9 +453,13 @@ class ReportTests(unittest.TestCase):
         self.assertIn("FY25Q1", text)
 
     def test_manifest_roundtrip(self):
-        with TemporaryDirectory() as tmp:
-            path = cr.write_manifest(Path(tmp), [_entry("n1"), _entry("n2")])
+        root = _scratch_dir()
+        path = cr.write_manifest(root, [_entry("n1"), _entry("n2")],
+                                 name="_test_manifest.jsonl")
+        try:
             lines = path.read_text(encoding="utf-8").splitlines()
+        finally:
+            path.unlink(missing_ok=True)
         self.assertEqual(len(lines), 2)
         self.assertEqual(json.loads(lines[0])["newsid"], "n1")
 
@@ -452,6 +474,227 @@ class RunTests(unittest.TestCase):
         self.assertEqual(pilot["failed"], 0)
         self.assertEqual(pilot["skipped"], 5)
         self.assertEqual(pilot["transcripts"], 0)
+
+
+class WidenFilterTests(unittest.TestCase):
+    def test_transcript_headlines_are_kept(self):
+        for headline in (
+                "Earnings Call Transcript",
+                "Earning Call Transcript",
+                "Transcript of Earnings Call held on 15th October 2026",
+                "Transcript is attached",
+                "Submission of transcripts of Earning Conference Call",
+                "Q2 and H1 FY25 Earning concall transcript",
+                "Transcript of the Post Results Conference Call",
+                "Investor Meet Transcript",
+                "Transcript of Analysts/Investors Call",
+                "Disclosure under Regulation 30 and Regulation 46(2)(oa) of SEBI LODR",
+                "Audio / video recording and transcript of the presentation to analysts",
+                "Transcript of Post Earnings Concall / Meet",
+                "Investor Call"):
+            self.assertTrue(cr.is_widened_transcript(headline), headline)
+
+    def test_schedule_and_link_notices_are_dropped(self):
+        for headline in (
+                "Schedule of Analyst/Investor Meet",
+                "Intimation of Schedule of Investor Meeting",
+                "Intimation of Earnings Conference Call",
+                "Audio Recording of Conference Call held on 22nd October 2026",
+                "Link of Recording",
+                "Investor Presentation -Nov 2024",
+                "Press Release",
+                "Clarification on Price Movement",
+                "Announcement attached",
+                ""):
+            self.assertFalse(cr.is_widened_transcript(headline), headline)
+
+    def test_attachment_name_can_signal_a_transcript(self):
+        # BSE attachment names are UUIDs today; a real filename still counts.
+        self.assertTrue(cr.is_widened_transcript(
+            "Announcement attached", "Q2FY26_concall_transcript.pdf"))
+        self.assertFalse(cr.is_widened_transcript("Announcement attached", "abc.pdf"))
+
+    def test_widen_rows_keeps_only_signal_rows(self):
+        rows = [
+            ("n1", 1, "a.pdf", "Transcript of Earnings Call", "General",
+             "2024-05-01", 10, "AAA"),
+            ("n2", 1, "b.pdf", "Investor Presentation", "Investor Presentation",
+             "2024-05-01", 10, "AAA"),
+            ("n3", 1, "c.pdf", "Audio recording of the call", "General",
+             "2024-05-01", 10, "AAA"),
+        ]
+        kept = cr.widen_rows(rows)
+        self.assertEqual([row[0] for row in kept], ["n1"])
+
+
+class WidenOverlapTests(unittest.TestCase):
+    def test_dedupe_by_isin_quarter_and_attachment(self):
+        widened = [
+            _cand("w1", isin="I1", quarter="FY25Q1", attachment="a.pdf"),
+            _cand("w2", isin="I2", quarter="FY25Q2", attachment="b.pdf"),
+            _cand("w3", isin="I3", quarter="FY25Q3", attachment="c.pdf"),
+        ]
+        earnings = [
+            _cand("e1", isin="I1", quarter="FY25Q1", attachment="x.pdf"),
+            _cand("e2", isin="I9", quarter="FY26Q1", attachment="b.pdf"),
+        ]
+        got = cr.overlap_analysis(widened, earnings)
+        self.assertEqual(got["by_call"], 1)
+        self.assertEqual(got["by_attachment"], 1)
+        self.assertEqual(got["either"], 2)
+        self.assertEqual(got["fresh"], 1)
+        self.assertEqual(got["covered_newsids"], {"w1", "w2"})
+        self.assertEqual(got["earnings_without_isin"], 0)
+
+    def test_internal_duplicates_are_counted(self):
+        widened = [
+            _cand("w1", isin="I1", quarter="FY25Q1", attachment="a.pdf"),
+            _cand("w2", isin="I1", quarter="FY25Q1", attachment="b.pdf"),
+        ]
+        got = cr.overlap_analysis(widened, [])
+        self.assertEqual(got["internal_call_dupes"], 1)
+        self.assertEqual(got["fresh"], 2)
+
+
+class WidenRecallTests(unittest.TestCase):
+    def _meta(self):
+        return {
+            "n1": {"subcat": "General", "headline": "Transcript of Earnings Call"},
+            "n2": {"subcat": "Analyst / Investor Meet", "headline": "Transcript is attached"},
+            "m1": {"subcat": "General", "headline": "Schedule of Analyst Meet"},
+            "m2": {"subcat": "General", "headline": "Audio recording of the call"},
+            "m3": {"subcat": "AGM", "headline": "Transcript of the 38th AGM"},
+        }
+
+    def _old_rows(self):
+        return [
+            {"id": 1, "newsid": "n1", "title": "t", "isin": "I1",
+             "known_dt": "2024-05-01"},
+            {"id": 2, "newsid": "n2", "title": "t", "isin": "I2",
+             "known_dt": "2024-06-01"},
+            {"id": 3, "newsid": "m1", "title": "x", "isin": "I3",
+             "known_dt": "2025-02-01"},
+            {"id": 4, "newsid": "m2", "title": "y", "isin": "I4",
+             "known_dt": "2025-02-01"},
+            {"id": 5, "newsid": "m3", "title": "z", "isin": "I5",
+             "known_dt": "2025-02-01"},
+            {"id": 6, "newsid": "e1", "title": "ec", "isin": "I6",
+             "known_dt": "2025-02-01"},
+            {"id": 7, "newsid": "old", "title": "pre-window", "isin": "I7",
+             "known_dt": "2023-01-01"},
+        ]
+
+    def test_recall_buckets_and_ordering(self):
+        widened = [_cand("n1"), _cand("n2")]
+        meta = self._meta()
+        got = cr.recall_analysis(widened, self._old_rows(), {"e1"},
+                                 lambda ids: {k: meta[k] for k in ids if k in meta})
+        self.assertEqual(got["others"], 5)          # n1, n2, m1, m2, m3
+        self.assertEqual(got["in_scope"], 4)        # m3 is an AGM row
+        self.assertEqual(got["caught"], 2)
+        self.assertEqual(got["missed"], 3)
+        self.assertAlmostEqual(got["recall"], 2 / 5)
+        self.assertAlmostEqual(got["recall_in_scope"], 2 / 4)
+        self.assertEqual(got["miss_buckets"], {
+            "schedule / intimation only": 1, "audio/video or recording link": 1,
+            "other subcategory": 1})
+        # in-scope misses are listed first
+        self.assertEqual([line.split(" | ")[0] for line in got["miss_lines"]],
+                         ["m1", "m2", "m3"])
+
+    def test_rows_missing_from_the_feed_are_their_own_bucket(self):
+        widened = []
+        rows = [{"id": 1, "newsid": "gone", "title": "not in ann", "isin": "I1",
+                 "known_dt": "2025-02-01"}]
+        got = cr.recall_analysis(widened, rows, set(), lambda ids: {})
+        self.assertEqual(got["miss_buckets"], {"not in the BSE announcement feed": 1})
+
+
+class WidenPrecisionTests(unittest.TestCase):
+    def test_precision_counts_real_transcripts(self):
+        import pymupdf
+
+        root = _scratch_dir()
+        doc = pymupdf.open()
+        body = ("Moderator: Welcome to the earnings call. "
+                "Mr. Sharma: Revenue grew eight percent this quarter. "
+                "Analyst: Could you comment on margins and guidance? ") * 30
+        for _ in range(6):
+            page = doc.new_page()
+            page.insert_textbox(pymupdf.Rect(40, 40, 560, 800), body, fontsize=8)
+        payload = doc.tobytes()
+        doc.close()
+        path = root / "one.pdf"
+        path.write_bytes(payload)
+        cands = [_cand("w1", headline="Transcript of Earnings Call")]
+        try:
+            with mock.patch.object(
+                    cr, "staged_path",
+                    lambda cand, dirs: path if cand["newsid"] == "w1" else None):
+                got = cr.precision_sample(cands, [root], n=1)
+        finally:
+            path.unlink(missing_ok=True)
+        self.assertEqual(got["available"], 1)
+        self.assertEqual(got["sampled"], 1)
+        self.assertEqual(got["ok"], 1)
+        self.assertEqual(got["transcripts"], 1)
+        self.assertEqual(got["precision"], 1.0)
+        self.assertFalse(got["headline_only"])
+
+    def test_fewer_pdfs_than_requested_falls_back_to_headlines(self):
+        with mock.patch.object(cr, "staged_path", lambda cand, dirs: None):
+            got = cr.precision_sample([_cand("w1")], [Path(".")], n=40)
+        self.assertTrue(got["headline_only"])
+        self.assertEqual(got["available"], 0)
+        self.assertIsNone(got["precision"])
+        self.assertEqual(got["classes"], {"transcript?": 1})
+
+
+class WidenReportTests(unittest.TestCase):
+    def _widen(self):
+        return {
+            "window_start": "2024-04-01",
+            "subcats": list(cr.WIDEN_SUBCATS),
+            "raw_rows": 204685, "total": 100, "attachment_only": 0,
+            "by_subcat": {"Analyst / Investor Meet": 70, "General": 30},
+            "by_quarter": {"FY25Q1": 60, "FY25Q2": 40},
+            "by_cell": {("Analyst / Investor Meet", "FY25Q1"): 40,
+                        ("General", "FY25Q2"): 40},
+            "overlap": {"widened": 100, "earnings": 9390, "by_call": 25,
+                        "by_attachment": 0, "either": 25, "fresh": 75,
+                        "internal_call_dupes": 2, "earnings_without_isin": 0,
+                        "covered_newsids": set(), "examples": ["w1 | AAA | FY25Q1 | t"]},
+            "recall": {"others": 1771, "in_scope": 1686, "caught": 1589,
+                       "missed": 182, "recall": 0.897, "recall_in_scope": 0.942,
+                       "miss_buckets": {"no transcript signal in the headline": 63},
+                       "miss_lines": ["m1 | General | Attached"]},
+            "precision": {"available": 101, "sampled": 40, "ok": 40,
+                          "headline_only": False, "classes": {"transcript": 34},
+                          "transcripts": 34, "precision": 0.85,
+                          "precision_ok": 0.85, "records": []},
+            "dirs": ["probe", "store"],
+        }
+
+    def test_report_has_every_acceptance_section(self):
+        widen = self._widen()
+        projection = cr.project_widen(widen, interval=2.5)
+        text = cr.format_widen_report(widen, projection)
+        for section in ("## 1. Widened candidates by subcategory",
+                        "## 2. Overlap with the 9,390",
+                        "## 3. Recall against the pilot's 1,771",
+                        "## 4. Classifier precision",
+                        "## 5. Fetch time"):
+            self.assertIn(section, text)
+        self.assertIn("**75**", text)               # fresh rows
+        self.assertIn("--widen --fetch", text)
+        self.assertIn("85.0%", text)
+
+    def test_projection_uses_the_pacing_floor(self):
+        got = cr.project_widen(self._widen(), interval=2.5)
+        self.assertEqual(got["fresh"], 75)
+        self.assertEqual(got["rate_per_min"], 24.0)
+        self.assertAlmostEqual(got["fetch_minutes"], 75 * 2.5 / 60.0)
+        self.assertEqual(got["est_transcripts"], round(75 * 0.85))
 
 
 if __name__ == "__main__":
