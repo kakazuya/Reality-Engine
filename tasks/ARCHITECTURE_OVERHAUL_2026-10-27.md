@@ -54,7 +54,7 @@ corpus (same file, wide test: facts R@1 .353 vs v2 .908); no paid spend without 
      | source | FY25+ volume | where the original is | fetch need |
      |---|---:|---|---|
      | Concall transcripts | **9,390** BSE "Earnings Call Transcript" filings; 11,166 `corporate_documents` rows (+1,736 undated) | none on disk; Drive has 2,289 (all years, A–P) | fetch ~9.4k from BSE, keyed by the BSE subcategory, which excludes intimations |
-     | Investor decks | 12,954 of 23,321 in `chunks_v2.db`; BSE lists 13,028 FY25+ | `D:\RealityEngineaw\decks_full` | none (re-chunk with v2 only) |
+     | Investor decks | 12,954 of 23,321 in `chunks_v2.db`; BSE lists 13,028 FY25+ | `D:\RealityEngine\raw\decks_full` | none (re-chunk with v2 only) |
      | Annual reports | 14,377 `corporate_documents` rows | 5,364 PDFs on D (years to check) | fetch the rest, ~9k (to verify) |
      | Results PDFs (notes) | 41,614 BSE "Result" filings | none | largest fetch; dedupe to one PDF per company-quarter first |
      | Material announcements | order wins 5,652 · press releases 21,961 · acquisitions 6,416 · credit ratings 6,196 · management changes 19,871 · clarifications 4,487 ≈ **65k** | none | fetch; skip routine subcategories (newspaper ads, Reg 74(5), ESOP, compliance certificates) |
