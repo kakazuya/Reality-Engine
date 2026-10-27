@@ -10,6 +10,16 @@ Compare against:
 - the open bank: `IDM-worktrees/20261027T173433Z-6b857b5a/tasks/QUESTION_BANK_OPEN_2026-10-27.md` (20 archetypes);
 - the ripple bank, if it exists by the time you run: `IDM-worktrees/20261027T193025Z-39b30996/tasks/QUESTION_BANK_RIPPLE_2026-10-28.md`.
 
+**There are three groups of subreddits** (see `fetch.log` and `fetch_intl.log` in that folder). Empty subreddits print `+0`; skip them.
+- **Indian**, since 2024-04-01: IndianStockMarket, IndiaInvestments, DalalStreetTalks, StockMarketIndia, IndianStreetBets, NSEbets, mutualfunds, IndianEconomy, personalfinanceindia, FIREIndia, IndiaBusiness, indianstocks, ShareMarketIndia, IndiaTax, IPOIndia.
+- **International value and fundamentals**, the last year: ValueInvesting, SecurityAnalysis, investing, stocks, StockMarket, dividends, Economics, economy, Bogleheads, UKInvesting, CanadianInvestor, ausstocks, EuropeanStocks, smallcapstocks, FluentInFinance.
+  - These show how serious investors interrogate a business: valuation, moats, capital allocation, accounting red flags, management credibility, unit economics, cycles, and second-order macro effects.
+  - Translate each pattern into the Indian-market equivalent and test it against our data.
+- **Technical**, the last year: technicalanalysis, swingtrading, Daytrading, trading, algotrading, options, StockMarketChat, Trading_India, IndianOptionTraders, chartpatterns.
+  - Shivam: entry timing after fundamental research is decided heavily by technicals.
+  - Patterns to look for: support and resistance, breakouts with volume or delivery, moving-average and RSI setups, relative strength vs index or sector, gaps, 52-week highs, F&O OI build-up, PCR, max pain, and circuit behaviour.
+  - For each, name the price, volume, delivery, OI or band data it needs, and whether we hold it point-in-time.
+
 ## Do
 1. **Pick the question posts.**
    - Keep posts that ask something about a stock, sector, index, IPO, policy, macro event, results or a market move: a "?" in the title, or why/what/when/should/which/kaun/kyun/kya.
@@ -35,7 +45,7 @@ Compare against:
    - 3 example titles, each paraphrased in under 15 words. Don't copy posts verbatim;
    - whether our data could answer it;
    - the missing table or field, if any, written as a schema proposal.
-4. **Write 100 new test questions** in our format, modelled on the most common real patterns and phrasing styles we lack. Each is a real question about real entities in our data, resolved via `master_companies` with `connect_ro`. Each row has the same fields as the open bank: rubric, coverage and `why`. Add one more field, `reddit_pattern`, naming the pattern it was modelled on.
+4. **Write 200 new test questions.** Split them about 75 Indian, 75 international patterns translated to Indian stocks, and **50 technical (a quarter of the bank)**. Write them in our format, modelled on the most common real patterns and phrasing styles we lack. Each is a real question about real entities in our data, resolved via `master_companies` with `connect_ro`. Each row has the same fields as the open bank: rubric, coverage and `why`. Add one more field, `reddit_pattern`, naming the pattern it was modelled on.
 
 ## Output (this worktree)
 - `tasks/reddit_mining/REPORT.md`, containing:
@@ -45,7 +55,7 @@ Compare against:
   - the alias list;
   - the time-phrase dictionary.
 - `tasks/reddit_mining/patterns.csv`: one row per pattern, with counts. **No verbatim post text and no usernames.**
-- `tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl` (100 rows) and a readable `.md`.
+- `tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl` (200 rows) and a readable `.md`.
 - `tasks/reddit_mining/aliases.csv`: alias, symbol, ISIN, frequency, and whether it resolves today via `reality-data` resolve.
 
 ## Rules
@@ -57,12 +67,12 @@ Compare against:
 ## Acceptance checks
 1. The question-post filter is described, with counts.
 2. At least 30 missing patterns are given with frequency and a schema proposal.
-3. 100 new questions, all with unique qids and resolved entities.
+3. 200 new questions (about 75 Indian, 75 international translated, 50 technical), all with unique qids and resolved entities, and each tagged `group` (indian/international/technical).
 4. No verbatim post text or usernames appear in repo files.
 
 ## Test command(s)
 ```bash
-python -c "import json;r=[json.loads(l) for l in open('tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl',encoding='utf-8')];assert len(r)==100 and len({x['qid'] for x in r})==100 and all(x.get('reddit_pattern') for x in r);print('ok')"
+python -c "import json;r=[json.loads(l) for l in open('tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl',encoding='utf-8')];assert len(r)==200 and len({x["qid"] for x in r})==200 and all(x.get("reddit_pattern") and x.get("group") for x in r) and sum(x["group"]=="technical" for x in r)>=50;print('ok')"
 ```
 
 ## Report
