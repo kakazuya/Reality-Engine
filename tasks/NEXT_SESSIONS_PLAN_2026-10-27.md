@@ -51,17 +51,17 @@ Known small items:
    - A filing **at or after 15:30** has day 0 = the next session (T+1). That is the one-day gap.
    - Information is treated as gradually reaching the public over a **4-session window** tied to day 0.
    - The document's text still becomes usable only at its `known_at`; the window is for attributing price moves, never for using text early.
-   - (Claude's reading; confirm the exact direction of the window with Shivam if the build needs it.)
+   - **Confirmed: the window is the 4 sessions BEFORE day 0.** Better-informed people act early, so delivery spikes or positions built in that window are flagged as leakage and attributed to the filing.
 2. **Storage:** as suggested. Daily rows for close and price band; valid_from/valid_to ranges for shares outstanding and the market-cap bucket.
 3. **Partly-paid, DVR and ETF lines:** as suggested. Their own state rows, linked to the parent, excluded from market-cap ranks and buckets.
 4. **The 1,665 missing ISINs:** rebuild the master from `security_master`, flagging delisted names. Nothing is dropped out of scope.
-5. **Price bands:** OPEN. Shivam asked what price bands are; they were explained as the exchange's daily circuit limits. Awaiting his call.
+5. **Price bands (daily circuit limits; upper and lower circuit hits per stock per day):** back to 2019-01-01 if the fetch is quick, judged by the same under-3-hours test as index history; otherwise from FY2024-25.
 6. **Index history:** fetch back to 2019 if the fetch takes under 3 hours; otherwise from FY2024-25 only. Time a pilot first.
 7. **Opinion dates:**
    - Pull the video links from Telegram posts and read each video's publish date from its metadata (yt-dlp, no download).
    - Use those dates to back-date where a document first appeared, where that's possible.
    - Elsewhere, folder dates at confidence ≤ 0.5; claims below 0.6 are shown but not graded.
-8. **Sector classification:** OPEN. First, a pilot on about 200 small caps comparing the NSE and BSE industry labels against what each company actually does (AR business description and segments). The decision follows the pilot.
+8. **Sector classification:** OPEN until the pilot reports (worker brief `tasks/dsh_tasks/SECTOR_LABEL_PILOT_2026-10-28.md`). First, a pilot on about 200 small caps comparing the NSE and BSE industry labels against what each company actually does (AR business description and segments). The decision follows the pilot.
 
 ## Decisions waiting on Shivam (from audit §11; Claude's suggested answers, superseded by the rulings above)
 1. When a filing counts: it counts for the **next** session, so a filing at 19:50 doesn't change that day's market cap.
