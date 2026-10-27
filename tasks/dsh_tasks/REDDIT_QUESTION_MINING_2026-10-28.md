@@ -72,7 +72,7 @@ Compare against:
 
 ## Test command(s)
 ```bash
-python -c "import json;r=[json.loads(l) for l in open('tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl',encoding='utf-8')];assert len(r)==200 and len({x["qid"] for x in r})==200 and all(x.get("reddit_pattern") and x.get("group") for x in r) and sum(x["group"]=="technical" for x in r)>=50;print('ok')"
+python -c "import json;r=[json.loads(l) for l in open('tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl',encoding='utf-8')];assert len(r)==200 and len({x['qid'] for x in r})==200 and all(x.get('reddit_pattern') and x.get('group') for x in r) and sum(x['group']=='technical' for x in r)>=50;print('ok')"
 ```
 
 ## Report
