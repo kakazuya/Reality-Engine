@@ -1,6 +1,6 @@
 {
   "name": "dsh-workers",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Read-only DeepSeek worker rail: sunset/mango/lime phase colours, idle-hiding status line, an above-prompt band for mobile and desktop, and /dsh-workers with a Markdown fallback where no pane can be placed.",
   "author": {
     "name": "Shivam"

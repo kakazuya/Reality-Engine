@@ -298,10 +298,16 @@ export function sparkFromEvents(
   return seen ? spark : null
 }
 
+// A live supervisor kills its job and writes a final status when the controller
+// lease runs out, so an active phase with no activity since well past the
+// deadline means the supervisor died without finalising.
+export const LEASE_DEAD_GRACE_MS = 5 * 60 * 1000
+
 function phaseOf(
   rawPhase: string,
   lastActivityAt: number | null,
   now: number,
+  leaseDeadline: number | null = null,
 ): WorkerPhase {
   if (rawPhase === '' || rawPhase === 'unknown') return 'unreadable'
   if (rawPhase === 'cancelled') return 'cancelled'
@@ -309,6 +315,13 @@ function phaseOf(
     return 'failed'
   }
   if (FINAL_PHASES.has(rawPhase)) return 'finished'
+  if (
+    leaseDeadline !== null &&
+    now - leaseDeadline > LEASE_DEAD_GRACE_MS &&
+    (lastActivityAt === null || lastActivityAt < leaseDeadline)
+  ) {
+    return 'failed'
+  }
   if (lastActivityAt !== null && now - lastActivityAt > STALL_MS) {
     return 'stalled'
   }
@@ -355,7 +368,8 @@ export function statusMeta(
   const lastActivityAt = liveActivity ?? fallbackActivity
   const final = FINAL_PHASES.has(rawPhase)
   const finishedAt = isoMs(record?.['finished_at']) ?? (final ? updatedAt : null)
-  const phase = phaseOf(rawPhase, lastActivityAt, now)
+  const leaseDeadline = isoMs(obj(record?.['controller_lease'])?.['deadline'])
+  const phase = phaseOf(rawPhase, lastActivityAt, now, leaseDeadline)
   const exitCode = num(record?.['exit_code'])
 
   return {

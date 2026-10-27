@@ -1304,6 +1304,10 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(lost["phase"], "lost")
         self.assertTrue(lost["final"])
         self.assertFalse(lost["running"])
+        # The derived 'lost' is persisted so file readers (the band) stop showing a live job.
+        on_disk = json.loads((job_dir / "status.json").read_text(encoding="utf-8"))
+        self.assertEqual((on_disk["phase"], on_disk["outcome"]), ("lost", "lost"))
+        self.assertEqual(on_disk["finished_at"], old)
 
     # ------------------------------------------------------ shared control
     def test_control_token_persisted_encrypted_and_shared_across_sessions(self):

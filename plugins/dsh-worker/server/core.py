@@ -1758,6 +1758,30 @@ class Manager:
                 candidates.append(parsed)
         return max(candidates) if candidates else None
 
+    def _persist_lost(self, job_dir: Path, status: dict[str, Any]) -> dict[str, Any]:
+        """Write the derived 'lost' phase to disk so file readers stop seeing a live job.
+
+        Only called once both the supervisor and the worker are verified gone, so no
+        other writer can race this one. Idempotent: a final phase on disk is kept.
+        """
+        current = self._read_status(job_dir)
+        if current.get("phase") in FINAL_PHASES:
+            return current
+        lost = {
+            **current,
+            "phase": "lost",
+            "outcome": "lost",
+            "error": current.get("error")
+            or "supervisor and worker are both gone and no final status was written",
+            "finished_at": current.get("updated_at") or iso(),
+            "updated_at": iso(),
+        }
+        try:
+            atomic_write_json_locked(job_dir / "status.json", lost, self._job_lock(job_dir))
+        except OSError:
+            return status
+        return lost
+
     def get_status(self, job_id: str) -> dict[str, Any]:
         job, job_dir = self._load_job(job_id)
         status = self._read_status(job_dir)
@@ -1856,6 +1880,8 @@ class Manager:
             phase = "lost"
             final = True
             running = False
+        if phase == "lost" and status.get("phase") not in FINAL_PHASES:
+            status = self._persist_lost(job_dir, status)
         result_path = job_dir / "result.md"
         try:
             result_bytes = result_path.stat().st_size

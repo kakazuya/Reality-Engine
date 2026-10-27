@@ -110,6 +110,27 @@ test('a running row carries its title, live metrics, lease, session and activity
   expect(row.activity.at(-1)?.text).toContain('npm test')
 })
 
+test('an active phase long past its lease deadline with no later activity is failed, not stalled', () => {
+  const metaWith = (deadlineMinutesAgo: number, idleMinutes: number) =>
+    statusMeta(
+      '20261027T002613Z-lost0001',
+      {
+        phase: 'running',
+        started_at: iso(NOW - 120 * 60_000),
+        worker_activity_at: iso(NOW - idleMinutes * 60_000),
+        controller_lease: { deadline: iso(NOW - deadlineMinutesAgo * 60_000) },
+      },
+      NOW,
+    )
+
+  expect(metaWith(30, 60).phase).toBe('failed')
+  expect(metaWith(30, 60).outcome).toBe('failed')
+  // Within the grace window it is still only stalled.
+  expect(metaWith(3, 60).phase).toBe('stalled')
+  // Activity after the recorded deadline means the lease was renewed elsewhere.
+  expect(metaWith(30, 25).phase).toBe('stalled')
+})
+
 test('stalled is running with no activity for more than 20 minutes', () => {
   const metaAt = (idleMinutes: number) =>
     statusMeta(
