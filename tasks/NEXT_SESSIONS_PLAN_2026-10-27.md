@@ -62,6 +62,13 @@ This is also written at the top of `AGENTS.md`.
    - No paid spend (DeepInfra, paid models) without his OK.
    - Telegram and Drive research content stays out of GitHub.
 
+## Latest hand-off: 2026-10-28 02:30 IST
+Read the last entry of `D:\RealityEngine\plans\DECISION_LOG.md` (also in `gdrive:InfoDiffusion_archive/plans/`).
+- No DeepSeek workers are running.
+- The open bank, ripple bank and sector pilot v2 are merged.
+- The results-notes and Reddit fetches may need resuming; the commands are in the log.
+- Next step: the Reddit mining worker, then the overlap and gap analysis, then the schema.
+
 ## State at hand-off (2026-10-27 ~19:30 IST)
 
 | Item | State | Where |
