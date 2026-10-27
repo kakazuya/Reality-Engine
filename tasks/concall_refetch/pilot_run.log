@@ -1,0 +1,410 @@
+candidates=9390 distinct_isin=1374
+classifying 773 staged probe PDFs (no network)…
+  probe classified 200/773
+  probe classified 400/773
+  probe classified 600/773
+candidates=9390 sampled=200 probe_reusable=12
+[  1/200] DWARKESH     FY25Q1 ok      bse   cover_letter    1352c 
+[  2/200] GREENPANEL   FY25Q1 ok      bse   audio_link      1229c 
+[  3/200] CENTRALBK    FY25Q1 ok      bse   transcript     37675c 
+[  4/200] ARVIND       FY25Q1 ok      bse   cover_letter    1097c 
+[  5/200] KANSAINER    FY25Q1 ok      probe transcript     94170c 
+[  6/200] DBL          FY25Q1 ok      bse   transcript     36158c 
+[  7/200] MOL          FY25Q1 ok      bse   transcript     45900c 
+[  8/200] DELHIVERY    FY25Q1 ok      bse   transcript     63744c 
+[  9/200] ESTER        FY25Q1 ok      bse   transcript     45586c 
+[ 10/200] DOLLAR       FY25Q1 ok      bse   transcript     46841c 
+[ 11/200] PRAVEG       FY25Q1 ok      bse   transcript     39306c 
+[ 12/200] CUMMINSIND   FY25Q1 ok      bse   transcript     54777c 
+[ 13/200] HPL          FY25Q1 ok      bse   transcript     48870c 
+[ 14/200] USHAMART     FY25Q1 ok      bse   cover_letter    1066c 
+[ 15/200] SPANDANA     FY25Q1 ok      bse   transcript     52160c 
+[ 16/200] RVNL         FY25Q1 ok      bse   transcript     34588c 
+[ 17/200] TORNTPHARM   FY25Q1 ok      bse   cover_letter    2001c 
+[ 18/200] SNOWMAN      FY25Q1 ok      bse   transcript     48897c 
+[ 19/200] MAHABANK     FY25Q2 ok      bse   transcript     51364c 
+[ 20/200] HUHTAMAKI    FY25Q2 ok      bse   transcript     46004c 
+[ 21/200] PETRONET     FY25Q2 ok      bse   transcript     48996c 
+[ 22/200] MAHLIFE      FY25Q2 ok      bse   transcript     60065c 
+[ 23/200] AGI          FY25Q2 ok      bse   transcript     49728c 
+[ 24/200] AVL          FY25Q2 ok      bse   transcript     48946c 
+[ 25/200] AVALON       FY25Q2 ok      bse   cover_letter    1225c 
+[ 26/200] AIAENG       FY25Q2 ok      bse   transcript     46671c 
+[ 27/200] DOLLAR       FY25Q2 ok      bse   transcript     33498c 
+[ 28/200] METROPOLIS   FY25Q2 ok      bse   transcript     54736c 
+[ 29/200] ASHOKA       FY25Q2 ok      bse   transcript     38518c 
+[ 30/200] NLCINDIA     FY25Q2 ok      probe cover_letter    2183c 
+[ 31/200] SPORTKING    FY25Q2 ok      bse   transcript     37260c 
+[ 32/200] VENUSPIPES   FY25Q2 ok      bse   transcript     48514c 
+[ 33/200] RUSHIL       FY25Q2 ok      bse   transcript     35661c 
+[ 34/200] SANJIVIN     FY25Q2 ok      bse   transcript     29825c 
+[ 35/200] VSTL         FY25Q2 ok      bse   transcript     15370c 
+[ 36/200] JSL          FY25Q3 ok      bse   transcript     43525c 
+[ 37/200] AWL          FY25Q3 ok      bse   transcript     35942c 
+[ 38/200] PAYTM        FY25Q3 ok      bse   transcript     61386c 
+[ 39/200] INDUSINDBK   FY25Q3 ok      bse   intimation       916c 
+[ 40/200] DEEPINDS     FY25Q3 ok      bse   transcript     47983c 
+[ 41/200] MANYAVAR     FY25Q3 ok      bse   transcript     48801c 
+[ 42/200] KALAMANDIR   FY25Q3 ok      probe transcript     56853c 
+[ 43/200] ETHOSLTD     FY25Q3 ok      probe audio_link      2683c 
+[ 44/200] CHEMPLASTS   FY25Q3 ok      bse   transcript     44305c 
+[ 45/200] ENDURANCE    FY25Q3 ok      bse   transcript     50480c 
+[ 46/200] KSCL         FY25Q3 ok      bse   transcript     29372c 
+[ 47/200] HIKAL        FY25Q3 ok      bse   transcript     39801c 
+[ 48/200] LICI         FY25Q3 ok      bse   transcript     59215c 
+[ 49/200] STYLEBAAZA   FY25Q3 ok      bse   transcript     51635c 
+[ 50/200] TIPSMUSIC    FY25Q3 ok      bse   transcript     49455c 
+[ 51/200] SPMLINFRA    FY25Q3 ok      bse   transcript     40008c 
+[ 52/200] SKCIL        FY25Q3 ok      bse   transcript     46416c 
+[ 53/200] UFBL         FY25Q3 ok      bse   transcript     37804c 
+[ 54/200] SIRCA        FY25Q3 ok      bse   transcript     50026c 
+[ 55/200] HCLTECH      FY25Q4 ok      bse   transcript     48778c 
+[ 56/200] NEWGEN       FY25Q4 ok      bse   transcript     49934c 
+[ 57/200] ETERNAL      FY25Q4 ok      bse   transcript     41756c 
+[ 58/200] LTF          FY25Q4 ok      bse   transcript     87275c 
+[ 59/200] AURIONPRO    FY25Q4 ok      bse   transcript     59799c 
+[ 60/200] EPACK        FY25Q4 ok      bse   transcript     56704c 
+[ 61/200] NUVAMA       FY25Q4 ok      bse   transcript     64898c 
+[ 62/200] BECTORFOOD   FY25Q4 ok      bse   transcript     51644c 
+[ 63/200] DATAPATTNS   FY25Q4 ok      bse   transcript     56614c 
+[ 64/200] CARBORUNIV   FY25Q4 ok      bse   transcript     55947c 
+[ 65/200] LUPIN        FY25Q4 ok      probe transcript     50270c 
+[ 66/200] KHAZANCHI    FY25Q4 ok      bse   transcript     34561c 
+[ 67/200] SBILIFE      FY25Q4 ok      bse   transcript     62871c 
+[ 68/200] SIYSIL       FY25Q4 ok      bse   transcript     32085c 
+[ 69/200] SAMHI        FY25Q4 ok      bse   transcript     61265c 
+[ 70/200] YASHO        FY25Q4 ok      bse   transcript     29569c 
+[ 71/200] TRANSPEK     FY25Q4 ok      bse   transcript     36439c 
+[ 72/200] ANGELONE     FY26Q1 ok      bse   transcript     83650c 
+[ 73/200] CAPITALSFB   FY26Q1 ok      bse   transcript     65381c 
+[ 74/200] JSFB         FY26Q1 ok      probe transcript     70661c 
+[ 75/200] AMBUJACEM    FY26Q1 ok      bse   transcript     65032c 
+[ 76/200] CRISIL       FY26Q1 ok      bse   transcript     75824c 
+[ 77/200] INDHOTEL     FY26Q1 ok      bse   transcript     53903c 
+[ 78/200] IDEAFORGE    FY26Q1 ok      bse   transcript     43937c 
+[ 79/200] JYOTHYLAB    FY26Q1 ok      bse   transcript     42708c 
+[ 80/200] KRSNAA       FY26Q1 ok      bse   transcript     61273c 
+[ 81/200] GULPOLY      FY26Q1 ok      bse   transcript     50727c 
+[ 82/200] CNINFOTECH   FY26Q1 ok      bse   transcript     55462c 
+[ 83/200] DHABRIYA     FY26Q1 ok      bse   transcript     45199c 
+[ 84/200] HCG          FY26Q1 ok      bse   transcript     45215c 
+[ 85/200] OAL          FY26Q1 ok      bse   transcript     59459c 
+[ 86/200] TATACONSUM   FY26Q1 ok      bse   transcript     51567c 
+[ 87/200] VSSL         FY26Q1 ok      bse   transcript     44419c 
+[ 88/200] VMM          FY26Q1 ok      bse   transcript     53923c 
+[ 89/200] ZYDUSLIFE    FY26Q1 ok      bse   transcript     50576c 
+[ 90/200] SEAMECLTD    FY26Q1 ok      bse   transcript     36471c 
+[ 91/200] XELPMOC      FY26Q1 ok      bse   transcript     43769c 
+[ 92/200] BORORENEW    FY26Q2 ok      bse   transcript     50274c 
+[ 93/200] JSFB         FY26Q2 ok      bse   transcript     56070c 
+[ 94/200] MAHSEAMLES   FY26Q2 ok      probe transcript     42014c 
+[ 95/200] CEMPRO       FY26Q2 ok      bse   transcript     44911c 
+[ 96/200] GREAVESCOT   FY26Q2 ok      bse   transcript     49514c 
+[ 97/200] JSWENERGY    FY26Q2 ok      bse   transcript     53289c 
+[ 98/200] CHAMBLFERT   FY26Q2 ok      bse   transcript     45813c 
+[ 99/200] MUFTI        FY26Q2 ok      bse   transcript     44930c 
+[100/200] INNOVACAP    FY26Q2 ok      bse   transcript     37747c 
+[101/200] KSCL         FY26Q2 ok      bse   transcript     30362c 
+[102/200] FIEMIND      FY26Q2 ok      bse   transcript     43858c 
+[103/200] ASHIANA      FY26Q2 ok      bse   transcript     20335c 
+[104/200] CPPLUS       FY26Q2 ok      bse   transcript     47162c 
+[105/200] TATACHEM     FY26Q2 ok      bse   transcript     39126c 
+[106/200] RUSTOMJEE    FY26Q2 ok      bse   transcript     37831c 
+[107/200] TRACXN       FY26Q2 ok      bse   transcript     82773c 
+[108/200] QPOWER       FY26Q2 ok      bse   transcript     62016c 
+[109/200] SAKSOFT      FY26Q2 ok      bse   transcript     45326c 
+[110/200] NUVOCO       FY26Q3 ok      bse   transcript     55437c 
+[111/200] JAGSNPHARM   FY26Q3 ok      bse   transcript     40936c 
+[112/200] INDOSTAR     FY26Q3 ok      bse   transcript     43130c 
+[113/200] MOTILALOFS   FY26Q3 ok      bse   transcript     44200c 
+[114/200] IIFL         FY26Q3 ok      bse   transcript     36562c 
+[115/200] CASTROLIND   FY26Q3 ok      bse   transcript     52485c 
+[116/200] BAJAJCON     FY26Q3 ok      bse   transcript     41696c 
+[117/200] ASTERDM      FY26Q3 ok      bse   transcript     64565c 
+[118/200] NPST         FY26Q3 ok      bse   transcript     46677c 
+[119/200] JSL          FY26Q3 ok      bse   transcript     30819c 
+[120/200] DHARMAJ      FY26Q3 ok      bse   transcript     50574c 
+[121/200] NATCOPHARM   FY26Q3 ok      bse   transcript     43774c 
+[122/200] FABCLEAN     FY26Q3 ok      bse   transcript     60464c 
+[123/200] EXIDEIND     FY26Q3 ok      bse   transcript     42603c 
+[124/200] HPL          FY26Q3 ok      bse   transcript     52122c 
+[125/200] ZEEL         FY26Q3 ok      bse   transcript     39216c 
+[126/200] SGMART       FY26Q3 ok      bse   transcript     47376c 
+[127/200] RAILTEL      FY26Q3 ok      bse   other           1577c 
+[128/200] STEELCAS     FY26Q3 ok      bse   transcript     29600c 
+[129/200] TITAN        FY26Q3 ok      bse   transcript     55308c 
+[130/200] TATASTEEL    FY26Q3 ok      probe transcript     79356c 
+[131/200] SEJALLTD     FY26Q3 ok      bse   transcript     40539c 
+[132/200] CORONA       FY26Q4 ok      bse   transcript     41356c 
+[133/200] ICICIPRULI   FY26Q4 ok      bse   transcript     67688c 
+[134/200] ARKADE       FY26Q4 ok      bse   transcript     32729c 
+[135/200] IGIL         FY26Q4 ok      bse   transcript     47748c 
+[136/200] MANAKCOAT    FY26Q4 ok      bse   transcript     27512c 
+[137/200] GPTHEALTH    FY26Q4 ok      bse   transcript     32245c 
+[138/200] NORTHARC     FY26Q4 ok      bse   other           1179c 
+[139/200] BAJAJHFL     FY26Q4 ok      bse   transcript     64351c 
+[140/200] GOKEX        FY26Q4 ok      bse   transcript     97670c 
+[141/200] GREAVESCOT   FY26Q4 ok      bse   transcript     53725c 
+[142/200] NUCLEUS      FY26Q4 ok      probe transcript     32735c 
+[143/200] ECOSMOBLTY   FY26Q4 ok      bse   transcript     56016c 
+[144/200] MMFL         FY26Q4 ok      probe transcript     46278c 
+[145/200] GUFICBIO     FY26Q4 ok      bse   cover_letter    1099c 
+[146/200] LUMAXTECH    FY26Q4 ok      bse   transcript     50408c 
+[147/200] SRF          FY26Q4 ok      bse   transcript     48841c 
+[148/200] SYMPHONY     FY26Q4 ok      bse   transcript     32294c 
+[149/200] SWIGGY       FY26Q4 ok      bse   transcript     58177c 
+[150/200] ROSSTECH     FY26Q4 ok      bse   transcript     57032c 
+[151/200] SETL         FY26Q4 ok      bse   transcript     47443c 
+[152/200] TIMKEN       FY26Q4 ok      bse   transcript     52216c 
+[153/200] NATIONALUM   FY27Q1 ok      bse   transcript     69411c 
+[154/200] MARUTI       FY27Q1 ok      bse   cover_letter     854c 
+[155/200] AWL          FY27Q1 ok      bse   transcript     48697c 
+[156/200] FABCLEAN     FY27Q1 ok      bse   transcript     61126c 
+[157/200] DBCORP       FY27Q1 ok      bse   transcript     30368c 
+[158/200] EMAMILTD     FY27Q1 ok      probe transcript     30265c 
+[159/200] IDEA         FY27Q1 ok      bse   transcript     44916c 
+[160/200] AMAGI        FY27Q1 ok      bse   transcript     63938c 
+[161/200] JUBLFOOD     FY27Q1 ok      bse   transcript     33482c 
+[162/200] GAIL         FY27Q1 ok      bse   intimation      1903c 
+[163/200] IGPL         FY27Q1 ok      bse   cover_letter     987c 
+[164/200] CAMPUS       FY27Q1 ok      bse   transcript     49092c 
+[165/200] ENTERO       FY27Q1 ok      bse   transcript     54924c 
+[166/200] POCL         FY27Q1 ok      bse   transcript     61235c 
+[167/200] PACEDIGITK   FY27Q1 ok      bse   transcript     51549c 
+[168/200] ASHIANA      FY27Q1 ok      bse   transcript     64842c 
+[169/200] OLECTRA      FY27Q1 ok      bse   cover_letter    1577c 
+[170/200] VINCOFE      FY27Q1 ok      bse   transcript     45639c 
+[171/200] SHRINGARMS   FY27Q1 ok      bse   transcript     44896c 
+[172/200] SHREEREF     FY27Q1 ok      bse   transcript     63084c 
+[173/200] SIEMENS      FY27Q1 ok      bse   transcript     74297c 
+[174/200] STEELXIND    FY27Q1 ok      bse   transcript     42190c 
+[175/200] THOMASCOTT   FY27Q1 ok      bse   transcript     61115c 
+[176/200] SUYOG        FY27Q1 ok      bse   transcript     47997c 
+[177/200] DBCORP       FY27Q2 ok      bse   transcript     31483c 
+[178/200] ONWARDTEC    FY27Q2 ok      bse   transcript     39201c 
+[179/200] CYIENTDLM    FY27Q2 ok      bse   transcript     60760c 
+[180/200] MAHLOG       FY27Q2 ok      bse   transcript     60760c 
+[181/200] MHRIL        FY27Q2 ok      bse   transcript     45680c 
+[182/200] IEX          FY27Q2 ok      bse   transcript    144650c 
+[183/200] NAVNETEDUL   FY27Q2 ok      bse   transcript     38987c 
+[184/200] CHALET       FY27Q2 ok      bse   transcript     50075c 
+[185/200] PARADEEP     FY27Q2 ok      bse   cover_letter    1301c 
+[186/200] LINC         FY27Q2 ok      bse   transcript     10130c 
+[187/200] CLSEL        FY27Q2 ok      bse   transcript     37749c 
+[188/200] ECLERX       FY27Q2 ok      bse   transcript     48722c 
+[189/200] MARICO       FY27Q2 ok      bse   transcript     54682c 
+[190/200] MOTHERSON    FY27Q2 ok      bse   transcript     66866c 
+[191/200] CCAVENUE     FY27Q2 ok      bse   transcript     49369c 
+[192/200] FLAIR        FY27Q2 ok      bse   transcript     44550c 
+[193/200] USHAMART     FY27Q2 ok      bse   transcript     52875c 
+[194/200] SYRMA        FY27Q2 ok      bse   transcript     73923c 
+[195/200] THERMAX      FY27Q2 ok      probe cover_letter    1031c 
+[196/200] STEELCAS     FY27Q2 ok      bse   transcript     42961c 
+[197/200] WAAREEENER   FY27Q2 ok      bse   transcript     61244c 
+[198/200] TVSSCS       FY27Q2 ok      bse   transcript     52695c 
+[199/200] CANFINHOME   FY27Q3 ok      bse   transcript     65137c 
+[200/200] UCOBANK      FY27Q3 ok      bse   transcript     44805c 
+# Concall PDF refetch — FY25+ BSE transcripts — 2026-10-27T10:41:37+00:00
+
+- window: BSE dissemination date >= 2024-04-01 (ann.SUBCATNAME = 'Earnings Call Transcript'), known_at = DissemDT, never a crawl date
+- candidates: 9390 announcements, 11 fiscal quarters x A-P/Q-Z
+- rate enforced: one request at a time, >= 2.5 s apart (<= 24.0 requests/min), back-off on 403/429/503
+
+## 1. Candidate set
+
+| quarter | A-P | Q-Z | total |
+|---|---|---|---|
+| FY25Q1 | 606 | 252 | 858 |
+| FY25Q2 | 574 | 233 | 807 |
+| FY25Q3 | 607 | 266 | 873 |
+| FY25Q4 | 590 | 246 | 836 |
+| FY26Q1 | 656 | 280 | 936 |
+| FY26Q2 | 626 | 258 | 884 |
+| FY26Q3 | 724 | 310 | 1034 |
+| FY26Q4 | 703 | 285 | 988 |
+| FY27Q1 | 778 | 342 | 1120 |
+| FY27Q2 | 733 | 301 | 1034 |
+| FY27Q3 | 16 | 4 | 20 |
+
+Attachment sizes: min=29,633 median=665,528 p90=2,268,241 max=22,877,560 bytes; 9390 rows
+
+## 2. Old `corporate_documents` coverage (FY25+)
+
+- old CONCALL_TRANSCRIPT rows with a usable filing date in the window: 12675
+- of them covered by this ann candidate set (bse_newsid): 9385
+- candidates missing from corporate_documents: 5
+- old rows NOT in this candidate set: 1771 filed under another BSE subcategory + 1519 with no bse_newsid (NSE-sourced)
+- of those old rows, same (isin, fiscal quarter) as a candidate (BSE/NSE or refiled duplicate): 930
+- their BSE subcategories: {'Analyst / Investor Meet': 1437, 'General': 236, '(not in ann)': 74, 'Investor Presentation': 12, 'AGM': 9, 'Acquisition': 1, 'Press Release / Media Release': 1, 'Meeting Updates': 1}
+
+Missing from the old side (examples):
+
+```
+16743fab-182f-49f9-8072-995dbacdddd0 | SRF | 2024-10-24T07:34:51.053 | Audio recording of the Earnings call held on 23rd October 20
+ac9b997f-e84b-41a1-ae2e-76b277c4e8a4 | GLASSWALL | 2026-10-13T17:09:32.703 | Transcript of Earnings Call with respect to Financial Result
+b3d0c90d-a6fe-4fe0-952f-ad380f9fbc1a | ARCIL | 2026-10-13T17:40:52.833 | Submission of Transcript of Earnings Conference Call held on
+cd603afb-96b8-45c1-914d-c9d72f2316bf | KANOHAR | 2026-10-14T14:22:57.94 | Transcript of Earnings Call with respect to Financial Result
+a461d052-8d3d-476e-a68c-1a93703d4a66 | TCS | 2026-10-14T15:55:38.44 | Transcript of earnings conference call for quarter and six-m
+```
+
+Missing from the candidate set (examples):
+
+```
+140704 | d7273254-5219-43a7-a20a-4c357791d591 | RBL Bank Limited informs the exchange about Transcript of Ea | 2026-10-16T19:32:57.417
+140710 | 874dc202-8f1a-4a05-a09c-cb6157b26e76 | Enclosed herewith transcript of the Earnings Call held on Fr | 2026-10-19T19:27:05.577
+140711 | 304ef81b-1c22-4182-bdef-248a7511229b | Transcript of Conference Call held on October 16, 2026 | 2026-10-19T17:09:58.57
+140712 | 5c774950-0839-43bc-8fa7-9aa90f7cb026 | Transcript of the Post Results Conference Call on Consolidat | 2026-10-19T16:46:23.53
+140713 | a0dbc78f-d931-4092-a709-0749d8448b81 | The Company has informed the Exchange about Transcript of Ea | 2026-10-19T15:29:19.927
+```
+
+## 3. Probe store (read-only reuse)
+
+- staged PDFs: 773 (bad sha/name: 0)
+- candidates with bytes already on disk: 560 (6.0%) across 560 distinct files
+- classification of those (all 560 readable): {'transcript': 496, 'cover_letter': 39, 'audio_link': 13, 'intimation': 6, 'other': 6}
+- unique real transcripts already held: 496 of 496 transcripts (transcript share 88.6%, duplicate share 0.0%)
+
+## 4. Headlines (all candidates, no fetch)
+
+- distinct headlines: 7967; repeat-headline rows: 1865
+
+| guessed class | rows |
+|---|---|
+| transcript? | 7920 |
+| unknown | 579 |
+| intimation | 553 |
+| audio_link | 338 |
+
+Top headlines:
+
+```
+  297  Earnings Call Transcript
+   92  Earning Call Transcript
+   69  Earnings call transcript
+   44  Transcript of Earnings Call
+   40  Transcript
+   31  Earnings call Transcript
+   19  Enclosed
+   19  Attached
+   19  Earning call transcript
+   18  Transcript of Earning Call
+   17  As enclosed
+   17  As per attachment
+```
+
+## 5. Duplicates from metadata alone (no fetch)
+
+- identical sha256 among rows that carry one: 30 duplicate rows in 30 groups (0.32%)
+- same (isin, quarter, attachment size): 30 duplicate rows in 30 groups (0.3%); size-rule precision where both rows carry a sha256: 30/30 pairs
+- same (isin, quarter) — the same call refiled under another newsid: 427 duplicate rows in 403 groups (4.5%)
+- same (isin, attachment size) ignoring quarter: 30 rows
+- same (headline, size): 26 rows in 26 groups
+
+## 6. Pilot (200 docs)
+
+- sampled 200, ok 200, failed 0, reused 12, skipped 0
+- wall clock 10.4 min, 188 HTTP requests, 19.19 PDFs/min end-to-end
+- classes: {'cover_letter': 12, 'audio_link': 2, 'transcript': 182, 'intimation': 2, 'other': 2}
+- transcript share on fetched docs: 91.0%; duplicates: 0 (0.0% of transcripts)
+
+| source | tried | reused | ok | failed | reasons |
+|---|---|---|---|---|---|
+| bse | 188 | 0 | 188 | 0 | - |
+| probe | 12 | 12 | 12 | 0 | - |
+
+| cell | tried | ok | failed | unique transcripts |
+|---|---|---|---|---|
+| FY25Q1-A-P | 13 | 13 | 0 | 10 |
+| FY25Q1-Q-Z | 5 | 5 | 0 | 3 |
+| FY25Q2-A-P | 12 | 12 | 0 | 10 |
+| FY25Q2-Q-Z | 5 | 5 | 0 | 5 |
+| FY25Q3-A-P | 13 | 13 | 0 | 11 |
+| FY25Q3-Q-Z | 6 | 6 | 0 | 6 |
+| FY25Q4-A-P | 12 | 12 | 0 | 12 |
+| FY25Q4-Q-Z | 5 | 5 | 0 | 5 |
+| FY26Q1-A-P | 14 | 14 | 0 | 14 |
+| FY26Q1-Q-Z | 6 | 6 | 0 | 6 |
+| FY26Q2-A-P | 13 | 13 | 0 | 13 |
+| FY26Q2-Q-Z | 5 | 5 | 0 | 5 |
+| FY26Q3-A-P | 15 | 15 | 0 | 15 |
+| FY26Q3-Q-Z | 7 | 7 | 0 | 6 |
+| FY26Q4-A-P | 15 | 15 | 0 | 13 |
+| FY26Q4-Q-Z | 6 | 6 | 0 | 6 |
+| FY27Q1-A-P | 17 | 17 | 0 | 13 |
+| FY27Q1-Q-Z | 7 | 7 | 0 | 7 |
+| FY27Q2-A-P | 16 | 16 | 0 | 15 |
+| FY27Q2-Q-Z | 6 | 6 | 0 | 5 |
+| FY27Q3-A-P | 1 | 1 | 0 | 1 |
+| FY27Q3-Q-Z | 1 | 1 | 0 | 1 |
+
+- pages: n=200 min=1.0 median=18.0 mean=17.02 p90=23.0 max=42.0
+- text chars: n=200 min=854.0 median=47376.0 mean=45446.405 p90=64351.0 max=144650.0
+- image-only page share: n=200 min=0.0 median=0.0 mean=0.0052 p90=0.0 max=0.9333
+- uppercase letter share: n=200 min=0.0288 median=0.0545 mean=0.0637 p90=0.0748 max=0.2525
+- same-document shingle match: n=160 min=0.0 median=1.0 mean=0.9281 p90=1.0 max=1.0
+- same-document match rate (>= 0.5 shingles): 98.1%
+- lowercased sources (uppercase < 0.5%): 0
+- recorded sha256 matched the fetched bytes: [('yes', 198), ('no', 2)] of 198 rows carrying one
+
+## 7. Projection for the full FY25+ window (unique real transcripts)
+
+| metric | value |
+|---|---|
+| candidates | 9390 |
+| already on disk (reuse, no fetch) | 560 |
+| fetches still needed | 8830 |
+| measured transcript share | 91.0% |
+| measured duplicate share | 0.0% |
+| estimated unique real transcripts | 8545 |
+| already held unique transcripts | 496 |
+| unique transcripts still to fetch | 8049 |
+| fetch wall time at 24.0 req/min | 6.1 h (368 min) |
+| requests incl. retries (success 100%) | 8830 |
+
+## 8. Samples
+
+### DWARKESH FY25Q1 — cover_letter (2024-05-02T17:17:37.917)
+
+- source=bse reused=False bytes=294774 sha256 `e1a0c3d83290746e…` pages=1 chars=1352 upper=0.2108667529107374
+- headline: Earning Call Transcript
+
+```
+REF: DSIL/2024-25/047 May 02, 2024 Corporate Relationship Department BSE Limited Phiroze Jeejeebhoy Towers Dalal Street, Fort, Mumbai - 400 001 Fax: 22723 2082 /3132 National Stock Exchange of India Limited “Exchange Plaza” Bandra – Kurla Complex, Bandra [E], Mumbai - 400 051 Scrip Code - 532610 Scr
+```
+
+### GREENPANEL FY25Q1 — audio_link (2024-05-03T15:16:00.317)
+
+- source=bse reused=False bytes=911826 sha256 `f162155c51dc8def…` pages=1 chars=1229 upper=0.1487603305785124
+- headline: Audio Recording of Concall held on 2nd May 2024
+
+```
+GPIL/2024-2025 May 03, 2024 BSE Limited Phiroze Jeejeebhoy Towers Dalal Street Mumbai – 400001 Scrip Code: 542857 NaƟonal Stock Exchange of India Limited Exchange Plaza, 5th Floor, Plot no. C/1, G Block Bandra – Kurla Complex , Bandra (E), Mumbai – 400051 Symbol: GREENPANEL Dear Sirs, Sub: Audio rec
+```
+
+### CENTRALBK FY25Q1 — transcript (2024-05-08T15:12:50.65)
+
+- source=bse reused=False bytes=1010396 sha256 `a6376a48533ceaf2…` pages=15 chars=37675 upper=0.06952374069523741
+- headline: Disclosure under Regulation 30 and Regulation 46(2)(oa) of SEBI (LODR) Regulations, 2015 Transcript of Bank''s Conference/Earnings call with the Analysts/Investors.
+
+```
+INVESTORS RELATION DIVISION Central Office केंद्रीय कायाालय: चंदर मुखी, नरीमन पॉइंट, मुंबई - 400 021 दूरभाष/Tel.: 022-6638 7575 Central Office: Chander Mukhi, Nariman Point, Mumbai - 400 021 ईमेल/Email ID: smird@centralbank.co.in Follow us on Central Bank of India www.centralbankofindia.co.in CO:IRD
+```
+
+### ARVIND FY25Q1 — cover_letter (2024-05-10T17:04:23.04)
+
+- source=bse reused=False bytes=657832 sha256 `28e21a19a008feb0…` pages=1 chars=1097 upper=0.17693315858453473
+- headline: Concall Transcripts
+
+```
+10th May, 2024 BSE Limited Listing Dept./ Dept. of Corporate Services Phiroze Jeejeebhoy Towers Dalal Street Mumbai - 400001 Security Code : 500101 Security ID : ARVIND National Stock Exchange of India Limited Listing Dept., Exchange Plaza, 5th Floor Plot No. C/1, G. Block Bandra-Kurla Complex Bandr
+```
+
+### KANSAINER FY25Q1 — transcript (2024-05-13T16:54:47.13)
+
+- source=probe reused=True bytes=2594192 sha256 `45f49df62f136db5…` pages=26 chars=94170 upper=0.04447659164078344
+- headline: We are enclosing herewith the transcript of the Investors Meet held on 7th May, 2024, for your information and reference.
+
+```
+13th May, 2024 1. Corporate Relationship Department BSE Limited, PhirozeJeejeebhoy Towers, Dalal Street, Mumbai - 400001. 2. Manager – Listing National Stock Exchange of India Ltd. Exchange Plaza, C-1, Block G, BandraKurla Complex, Bandra (E), Mumbai - 400051. Sub.: Q4 & FY 2023-24 Financial Results
+```
+
