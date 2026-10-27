@@ -11,6 +11,39 @@ corpus (same file, wide test: facts R@1 .353 vs v2 .908); no paid spend without 
 
 ---
 
+## Manager review (2026-10-27): corrections that override the sections below
+
+1. **Casing is broken in the old chunks, so the re-chunk must start from original documents.**
+   - §3.1 says concall chunks keep their case. That was measured on only 60 docs and is wrong.
+   - A random sample of 30,000 `document_chunks` rows gives these all-lowercase shares: concalls **80%**
+     (2,135 docs lowercase / 559 cased), annual reports **67%**, offer documents 53%, PIB **99%**, Economic Survey
+     90%, Union budget **100%**, decks 0%, DailyBytes 4%.
+   - Never derive v3 chunks from `document_chunks` text.
+2. **The originals are mostly not on disk.**
+   - Recorded `local_file_path` exists for 0 of 300 sampled concalls and 146 of 300 sampled ARs.
+   - `D:\RealityEngine\pdfs` holds 5,364 annual-report PDFs and **no concall PDFs**. The 2026-10-25 move to D
+     carried 1,538 files.
+   - Google Drive holds ~2,290 concall PDFs (`tasks/concall_transcripts_on_drive_2026-10-24.txt`). The rest may be
+     on the home PC (unverified) or must be re-fetched from `corporate_documents.source_url`.
+   - **New step B5a, before B6 and B8:** an originals inventory and fetch (night-time, network) for concalls
+     (all 21,778, including the 6,086 never fetched), ARs not on D, PIB and budget bodies. Write raw files to
+     D:\RealityEngine\raw, sha256-addressed. Volume and time are unmeasured; measure them on a 200-doc pilot first.
+3. **ffmpeg is already installed** (Gyan.FFmpeg 9.0.2); §8.2 item 2 is done.
+4. **Owner-blocked Drive files: 171** (from `_native_blocked.txt`), not 159.
+5. **Videos (§3.10), measured on the laptop:**
+   - Local ASR is ruled out: Qwen3-ASR-0.6B runs more than 3.6× slower than real time on the 1050 Ti.
+   - GPU OCR is slower than CPU (0.04 vs 0.18 frames/s).
+   - CPU RapidOCR reads printed screen text well (product names, people, headings). It slips on small characters
+     (AI→Al), loses bullets, mixes sidebar and body, and about a third of lines are app chrome that must be filtered.
+   - Most screens show the analysts' own Google Docs/Sheets, which we already hold. So first link each video to its
+     Drive doc by company and date, and OCR only the other screens (charts, Screener, exchange pages).
+   - Pending Shivam's decision: Gemini free-tier video input (audio + frames in one call). The project holds 37
+     keys, but their tier is unverified, and free-tier data may be used for training.
+   - ASR correction is deterministic glossary matching on the CPU, then a fix-up during claim extraction. There
+     is no separate model pass, because a free-model correction pass was too slow (minutes per 5-min clip).
+
+---
+
 ## 0. Decisions in one page
 
 | # | Decision | Why |
