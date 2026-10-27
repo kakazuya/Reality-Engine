@@ -45,7 +45,25 @@ Known small items:
 - `auditor_report` sections sometimes capture cover-letter text.
 - The band under the CLI prompt shows the 3 lost jobs from 26 Oct as "stalled". That's a dsh-workers plugin display bug; ignore it.
 
-## Decisions waiting on Shivam (from audit §11; Claude's suggested answers, NOT yet approved)
+## Shivam's rulings on the audit §11 decisions (2026-10-27, these replace the suggestions below)
+1. **Timing rule (the 3:30 cutoff plus 4 days).**
+   - A filing disseminated **before 15:30 IST** on session T has day 0 = T.
+   - A filing **at or after 15:30** has day 0 = the next session (T+1). That is the one-day gap.
+   - Information is treated as gradually reaching the public over a **4-session window** tied to day 0.
+   - The document's text still becomes usable only at its `known_at`; the window is for attributing price moves, never for using text early.
+   - (Claude's reading; confirm the exact direction of the window with Shivam if the build needs it.)
+2. **Storage:** as suggested. Daily rows for close and price band; valid_from/valid_to ranges for shares outstanding and the market-cap bucket.
+3. **Partly-paid, DVR and ETF lines:** as suggested. Their own state rows, linked to the parent, excluded from market-cap ranks and buckets.
+4. **The 1,665 missing ISINs:** rebuild the master from `security_master`, flagging delisted names. Nothing is dropped out of scope.
+5. **Price bands:** OPEN. Shivam asked what price bands are; they were explained as the exchange's daily circuit limits. Awaiting his call.
+6. **Index history:** fetch back to 2019 if the fetch takes under 3 hours; otherwise from FY2024-25 only. Time a pilot first.
+7. **Opinion dates:**
+   - Pull the video links from Telegram posts and read each video's publish date from its metadata (yt-dlp, no download).
+   - Use those dates to back-date where a document first appeared, where that's possible.
+   - Elsewhere, folder dates at confidence ≤ 0.5; claims below 0.6 are shown but not graded.
+8. **Sector classification:** OPEN. First, a pilot on about 200 small caps comparing the NSE and BSE industry labels against what each company actually does (AR business description and segments). The decision follows the pilot.
+
+## Decisions waiting on Shivam (from audit §11; Claude's suggested answers, superseded by the rulings above)
 1. When a filing counts: it counts for the **next** session, so a filing at 19:50 doesn't change that day's market cap.
 2. Company-state storage: daily rows for close and band; change-date intervals for shares and market-cap bucket.
 3. Partly-paid, DVR and ETF lines: their own state rows, excluded from market-cap ranks.
