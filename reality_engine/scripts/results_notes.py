@@ -840,8 +840,8 @@ def reparse(quarter: str, workers: int, from_drive: bool = True) -> dict:
         t0 = time.time()
         r = subprocess.run([RCLONE, "copy", f"{DRIVE_ROOT}/{quarter}", src, "--transfers", "8", "--checksum",
                             "--include", "*.pdf", "--log-level", "NOTICE"], capture_output=True, text=True)
-        copied = r.returncode == 0
-        print(f"{quarter} reparse: drive copy {'ok' if copied else 'FAILED'} for {len(missing)} missing in "
+        copied = True  # even on a partial copy (e.g. a file Drive refuses to serve), move what came back
+        print(f"{quarter} reparse: drive copy {'ok' if r.returncode == 0 else 'PARTIAL'} for {len(missing)} missing in "
               f"{(time.time() - t0) / 60:.1f} min {r.stderr[-300:]}", flush=True)
     todo = [d for d in stale if os.path.exists(d["path"])]
     t0 = time.time()
