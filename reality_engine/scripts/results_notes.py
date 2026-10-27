@@ -894,6 +894,7 @@ def main():
     ap.add_argument("--quarter")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--start", help="all: begin at this quarter end (skip newer, already finished quarters)")
     a = ap.parse_args()
     if a.cmd == "quarters":
         c = collections.Counter(quarter_end_before(r[5]) for r in candidates())
@@ -908,6 +909,7 @@ def main():
               f"notes_company={g['notes_company_share']} basis={g['basis']}", flush=True)
     elif a.cmd == "all":
         qs = sorted({quarter_end_before(r[5]) for r in candidates()}, reverse=True)
+        qs = [q for q in qs if not a.start or q <= a.start]
         run_all(qs, a.workers)
     else:
         print(json.dumps(gate(a.quarter), indent=1, ensure_ascii=False))
