@@ -73,6 +73,50 @@ Read the last entry of `D:\RealityEngine\plans\DECISION_LOG.md` (also in `gdrive
 - The results-notes and Reddit fetches may need resuming; the commands are in the log.
 - Next step: the Reddit mining worker, then the overlap and gap analysis, then the schema.
 
+### Paused jobs: resume these in the CLI (paused 2026-10-28 02:35 IST on Shivam's instruction)
+**1. Results-notes fetch** (`reality_engine/data/results_notes.db`, log `D:\RealityEngine\raw\results_notes_run.log`)
+- **Done and gated:** Q2FY27 (162 filings so far), Q1FY27, Q4FY26, Q3FY26, Q2FY26, Q1FY26, Q4FY25, Q3FY25, Q2FY25. Every gate passed.
+- **Stopped mid-quarter on Q1FY25 (2024-06-30):** about 2,948 of 3,933 filings stored. That quarter has no gate yet and its 2,839 PDFs are still on D.
+- **Not started:** Q4FY24 (2024-03-31).
+- **Resume command** (skips filings already done; gates Q1FY25 and moves its PDFs to Drive; then does Q4FY24):
+  `python -m reality_engine.scripts.results_notes all --workers 8 --start 2024-06-30 >> D:\RealityEngine\raw\results_notes_run.log 2>&1`
+  Keep BSE at ≤76 requests/min in total.
+- **Small items still open:**
+  - Q2FY27's 158 PDFs are still on D. Move them to Drive.
+  - Re-fetch from BSE the one Q2FY27 PDF and the one Q3FY26 PDF that Drive blocked as "abusive". Never bypass the Drive flag.
+
+**2. Reddit download** (`reality_engine/scripts/fetch_reddit_questions.py`, raw files in `D:\RealityEngine\raw\reddit\`)
+- **Complete through 2026-10-27:** IndianStockMarket (108,520 posts), StockMarketIndia (63,507), IndiaInvestments (30,699), DalalStreetTalks (5,388).
+- **Stopped mid-way:** IndianStreetBets (4,088 posts, reached 2024-05-27).
+- **Not started:**
+  - Indian: NSEbets, mutualfunds, IndianEconomy, personalfinanceindia, FIREIndia, IndiaBusiness, indianstocks, ShareMarketIndia, IndiaTax, IPOIndia.
+  - All 25 international and technical subreddits.
+- **Resume:** the fetcher continues each subreddit from the last post stored.
+  1. `python -m reality_engine.scripts.fetch_reddit_questions --since 2024-04-01 --min-score 0`
+  2. `python -m reality_engine.scripts.fetch_reddit_questions --since 2025-10-28 --min-score 0 --subs ValueInvesting,SecurityAnalysis,investing,stocks,StockMarket,dividends,Economics,economy,Bogleheads,UKInvesting,CanadianInvestor,ausstocks,EuropeanStocks,smallcapstocks,FluentInFinance,technicalanalysis,swingtrading,Daytrading,trading,algotrading,options,StockMarketChat,Trading_India,IndianOptionTraders,chartpatterns`
+- **Then:** start the DeepSeek worker on `tasks/dsh_tasks/REDDIT_QUESTION_MINING_2026-10-28.md` and review its output. After that comes the merged master bank (step A).
+
+**3. Concall fetch (Shivam, 2026-10-28: fetch all of it, but plan it and run it in the CLI)**
+- **3a. BSE "Earnings Call Transcript" candidates:** 9,390 announcements, about 8,545 unique transcripts, about 6 h at ≤25 requests/min.
+  - The code is in worktree `IDM-worktrees/20261027T002757Z-52ef59af` (`concall_refetch.py`, pilot report `tasks/concall_refetch/report_pilot.md`); merge it to main first.
+  - Run: `python -m reality_engine.scripts.concall_refetch --n 9390 --report tasks/concall_refetch/report_full.md`. PDFs go to `D:\RealityEngine\raw\concall_pdfs\`.
+- **3b. BSE transcripts filed under other subcategories:** 1,771 old-corpus rows, mostly "Analyst / Investor Meet" (1,437), then General (236) and others.
+  - Widen the candidate query to those subcategories.
+  - Keep only attachments whose text is a transcript, using the same real-transcript test as the pilot.
+  - Drop duplicates of 3a by (ISIN, fiscal quarter); 930 of the old rows overlap.
+- **3c. NSE-only transcripts (1,519 old rows with no BSE news id):** build an **NSE corporate-announcements source** first. It is reusable for all NSE-only companies (322 have no BSE listing).
+  1. A pilot fetcher for NSE corporate announcements (the subject filter covers "Analysts/Institutional Investor Meet/Con. Call Updates" and transcripts):
+     - polite pacing, with a cookie/session warm-up as the NSE site requires;
+     - no logins or credentials;
+     - raw files to `D:\RealityEngine\raw\nse_announcements\`.
+  2. Map each announcement to its ISIN with `known_at` = the NSE dissemination time.
+  3. Pilot on 50 companies, then check against the old 1,519 rows.
+  4. Then the full run for FY25+ (dissemination ≥ 2024-04-01).
+- **Rules:**
+  - These are raw fetches only, which the golden rule allows.
+  - No chunking, tagging or embedding of the transcripts until step 5 of the golden rule passes.
+  - Total BSE load ≤76 requests/min, shared with the results-notes job.
+
 ## State at hand-off (2026-10-27 ~19:30 IST)
 
 | Item | State | Where |
