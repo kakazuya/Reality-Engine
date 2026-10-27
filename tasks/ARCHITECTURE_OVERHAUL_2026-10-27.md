@@ -42,6 +42,11 @@ corpus (same file, wide test: facts R@1 .353 vs v2 .908); no paid spend without 
    - ASR correction is deterministic glossary matching on the CPU, then a fix-up during claim extraction. There
      is no separate model pass, because a free-model correction pass was too slow (minutes per 5-min clip).
 
+6. **Time window (Shivam, 2026-10-27).** Every dataset uses the price/volume window, **2019-01-01 → today**.
+   - Fetch, chunk, tag, embed and count coverage only for documents with `known_at` ≥ 2019-01-01.
+   - Older documents may be read as context, but are never fetch targets.
+   - The volumes in §3 that include pre-2019 rows (ARs since 2012, concalls since 2016) must be re-cut to this window.
+
 ---
 
 ## 0. Decisions in one page
