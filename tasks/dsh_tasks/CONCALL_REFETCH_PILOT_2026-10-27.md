@@ -25,6 +25,22 @@ them, run a 200-doc pilot that measures rate, success, file validity and text ca
 5. Compare each against our existing chunks for that doc (first 500 chars, case-folded) to confirm it is the
    same transcript.
 
+## Real transcripts only, no duplicates (Shivam, 2026-10-27, hard rule)
+- **Before any fetch, classify every candidate row.** Many `CONCALL_TRANSCRIPT` rows are not transcripts:
+  - intimations of a call schedule;
+  - "audio recording link" letters;
+  - cover letters (the readiness doc counted 2,297 cover letters and 2,366 docs under 2k chars).
+  - Use the title, BSE subcategory (`bse_subcat`), page count and text once fetched.
+  - A real transcript has speaker turns ("Moderator:", management names, "Thank you"), Q&A, usually > 4 pages and
+    > 8,000 chars.
+  - Label each file `transcript | audio_link | intimation | cover_letter | other`. Only `transcript` counts as
+    fetched; keep the others in the manifest but say they are not transcripts.
+- **Duplicates:** the same call is often filed on BSE and NSE, refiled, or attached twice.
+  - Dedupe by sha256 first.
+  - Then by (isin, call date or quarter), keeping the fullest transcript and recording the others as `dup_of`.
+  - Report how many of the 200 were duplicates, and estimate the share for the full set.
+- Projections for the full run must count only unique real transcripts.
+
 ## Write scope (full access — this is the fence)
 - Network: Google Drive via `drive_fetch`, and the BSE/NSE URLs in `corporate_documents.source_url`. Nothing else.
 - Writes: `D:\RealityEngine\raw\concall_pdfs\` and this worktree only. No DB writes at all (manifest only). No
@@ -34,6 +50,7 @@ them, run a 200-doc pilot that measures rate, success, file validity and text ca
 
 ## Acceptance checks
 1. Table: tried / ok / failed by source and by reason (404, 403, not a PDF, sha mismatch), and by year and A–P vs Q–Z.
+   Plus the class table (transcript / audio_link / intimation / cover_letter / other) and the duplicate count.
 2. Rate: PDFs/min per source; projected wall time for all 21,778 at the measured rate.
 3. Validity: page and char stats, image-only share, casing distribution, same-doc match rate.
 4. 5 sample rows printed with the first 300 chars of text.
