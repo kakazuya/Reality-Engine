@@ -1,4 +1,5 @@
 # STATE — overwritten each session (authority: `tasks/FRAMEWORK.md`)
+> **2026-10-27 evening:** read `tasks/NEXT_SESSIONS_PLAN_2026-10-27.md` first: state, pending decisions, and sessions S1–S11 in dependency order. Core rule: checklist before any full run.
 > **2026-10-26:** read `tasks/optimizations/HANDOFF_2026-10-26.md` first (overnight workers, pre-flight, research import).
 
 
