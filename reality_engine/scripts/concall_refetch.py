@@ -15,12 +15,22 @@ Two passes:
   per minute (one at a time, >= 2.4 s apart, back-off on 403/429/503), then
   validating, classifying and deduping each file.
 
+``--widen`` adds the other BSE subcategories the old crawl filed real transcripts
+under ("Analyst / Investor Meet", "General", "Investor Presentation",
+"Press Release / Media Release"), keeps the rows whose headline signals a
+transcript, dedupes them against the earnings-call set by (ISIN, fiscal quarter)
+and by attachment name, measures recall against the pilot's 1,771 old rows and
+classifies a precision sample of PDFs already on disk.  It is report-only until
+``--fetch`` is passed, and the widened fetch must wait for the earnings-call
+fetch (both together stay <= 76 requests/min).
+
 Writes go only to ``RAW_ROOT/concall_pdfs/`` (content-addressed PDFs, manifest,
 probe classification) and the worktree.  Every database and the probe store is
 opened read-only.
 
     python -m reality_engine.scripts.concall_refetch --analyze-only
     python -m reality_engine.scripts.concall_refetch --n 200 --report tasks/concall_refetch/report.md
+    python -m reality_engine.scripts.concall_refetch --widen --dry-run
 """
 from __future__ import annotations
 
@@ -40,6 +50,9 @@ from reality_engine.config import BSE_HEADERS, DEFAULT_HEADERS, NSE_HEADERS, RAW
 from reality_engine.db.readonly import connect_ro
 
 SUBCAT = "Earnings Call Transcript"
+#: Other BSE subcategories the old crawl filed real transcripts under (pilot §1).
+WIDEN_SUBCATS = ("Analyst / Investor Meet", "General",
+                 "Investor Presentation", "Press Release / Media Release")
 WINDOW_START = "2024-04-01"
 PDF_URL = "https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname={name}"
 MIN_INTERVAL = 2.4                    # hard floor: 25 requests/min
@@ -47,12 +60,21 @@ CLASSES = ("transcript", "audio_link", "intimation", "cover_letter", "other")
 TRANSCRIPT_MIN_CHARS = 8000
 TRANSCRIPT_MIN_PAGES = 3
 IMAGE_ONLY_PAGE_CHARS = 200
+PRECISION_SAMPLE = 40                 # widened docs with bytes on disk to classify
 
 ANN_SQL = """
 select NEWSID, SCRIP_CD, ATTACHMENTNAME, HEADLINE, SUBCATNAME, DissemDT,
        Fld_Attachsize, symbol
 from ann
 where SUBCATNAME = ? and DissemDT >= ?
+order by DissemDT, NEWSID
+"""
+
+WIDEN_ANN_SQL = """
+select NEWSID, SCRIP_CD, ATTACHMENTNAME, HEADLINE, SUBCATNAME, DissemDT,
+       Fld_Attachsize, symbol
+from ann
+where SUBCATNAME in (?,?,?,?) and DissemDT >= ?
 order by DissemDT, NEWSID
 """
 
@@ -80,6 +102,18 @@ _INTIMATION = re.compile(
     r"intimation|prior intimation|advance intimation|notice of|invite|invitation|reminder"
     r"|schedule of|conference call on|to be held on|will be held", re.I)
 _TRANSCRIPT_HINT = re.compile(r"transcript|concall|earnings call|analyst call|q\s*&\s*a", re.I)
+# Widen mode: what a headline (or attachment name) must say to be worth fetching.
+_WIDEN_TRANSCRIPT = re.compile(r"transcript", re.I)
+_WIDEN_CALL = re.compile(
+    r"\bcon[\s-]*call\b|\bearnings?\s+call\b|\bconference\s+call\b|\binvestor'?s?\s+call\b",
+    re.I)
+_WIDEN_REG46OA = re.compile(r"46\s*\(\s*2\s*\)\s*\(\s*o\s*a\s*\)", re.I)
+_WIDEN_AUDIO = re.compile(
+    r"audio|video|recording|webcast|dial[\s-]?in|youtube|\blink\b|\blink of\b|transcript\s+link",
+    re.I)
+_WIDEN_SCHEDULE = re.compile(
+    r"schedule|intimat|to be held|will be held|proposed|prior\s+notice|advance\s+notice",
+    re.I)
 _CLOSING = re.compile(
     r"thank(?:ing)? you|yours (?:faithfully|sincerely)|please find enclosed|kindly find"
     r"|for your (?:kind )?(?:information|reference)|enclosed herewith", re.I)
@@ -534,6 +568,348 @@ def dedupe(entries: Sequence[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# widen mode: the other BSE subcategories real transcripts hide in (no network)
+
+
+def is_widened_transcript(headline: Any, attachment: Any = None) -> bool:
+    """Does this headline (or attachment name) signal a conference-call transcript?
+
+    A plain "schedule of analyst meet" intimation or an audio/video/recording
+    link is rejected unless the same text also says *transcript*.  Otherwise a
+    transcript needs the word itself, a call synonym (concall / earnings call /
+    conference call / investor call) or the Reg. 46(2)(oa) disclosure clause.
+    """
+    text = f"{headline or ''} {attachment or ''}"
+    transcript = bool(_WIDEN_TRANSCRIPT.search(text))
+    if not transcript and (_WIDEN_AUDIO.search(text) or _WIDEN_SCHEDULE.search(text)):
+        return False
+    return transcript or bool(_WIDEN_CALL.search(text) or _WIDEN_REG46OA.search(text))
+
+
+def widen_rows(ann_rows: Sequence[Sequence[Any]]) -> list[Sequence[Any]]:
+    """``WIDEN_ANN_SQL`` rows whose headline or attachment name signals a transcript."""
+    return [row for row in ann_rows if is_widened_transcript(row[3], row[2])]
+
+
+def overlap_analysis(widened: Sequence[dict[str, Any]],
+                     earnings: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Widened candidates the 9,390 Earnings Call set already covers."""
+    ec_keys = {(c["isin"], c["quarter"]) for c in earnings
+               if c.get("isin") and c.get("quarter")}
+    ec_attach = {c["attachment"] for c in earnings if c.get("attachment")}
+    by_call = [c for c in widened if (c.get("isin"), c.get("quarter")) in ec_keys]
+    by_attach = [c for c in widened if c.get("attachment") and c["attachment"] in ec_attach]
+    seen = {c["newsid"] for c in by_call} | {c["newsid"] for c in by_attach}
+    keys = [(c["isin"], c["quarter"]) for c in widened
+            if c.get("isin") and c.get("quarter")]
+    examples = [" | ".join(str(c.get(f) or "")[:70]
+                           for f in ("newsid", "symbol", "quarter", "headline"))
+                for c in (by_call or by_attach)[:5]]
+    return {"widened": len(widened), "earnings": len(earnings),
+            "by_call": len(by_call), "by_attachment": len(by_attach),
+            "either": len(seen), "fresh": len(widened) - len(seen),
+            "internal_call_dupes": len(keys) - len(set(keys)),
+            "earnings_without_isin": sum(1 for c in earnings if not c.get("isin")),
+            "covered_newsids": seen, "examples": examples}
+
+
+def _miss_bucket(meta: dict[str, Any] | None) -> str:
+    if meta is None:
+        return "not in the BSE announcement feed"
+    subcat = meta.get("subcat")
+    headline = meta.get("headline") or ""
+    if subcat not in WIDEN_SUBCATS:
+        return "other subcategory"
+    if _WIDEN_AUDIO.search(headline):
+        return "audio/video or recording link"
+    if _WIDEN_SCHEDULE.search(headline):
+        return "schedule / intimation only"
+    return "no transcript signal in the headline"
+
+
+def recall_analysis(widened: Sequence[dict[str, Any]],
+                    old_rows: Sequence[dict[str, Any]],
+                    earnings_newsids: set[str], ann_meta, limit: int = 20) -> dict[str, Any]:
+    """How much of the pilot's 1,771 other-subcategory old rows the filter catches."""
+    old_fy = [d for d in old_rows if str(d.get("known_dt") or "") >= WINDOW_START]
+    others = [d for d in old_fy if d["newsid"] and str(d["newsid"]) not in earnings_newsids]
+    meta = ann_meta([str(d["newsid"]) for d in others]) if others else {}
+    in_scope = [d for d in others
+                if (meta.get(str(d["newsid"])) or {}).get("subcat") in WIDEN_SUBCATS]
+    caught_ids = {c["newsid"] for c in widened}
+    caught = [d for d in in_scope if str(d["newsid"]) in caught_ids]
+    misses = [d for d in others if str(d["newsid"]) not in caught_ids]
+    buckets = Counter(_miss_bucket(meta.get(str(d["newsid"]))) for d in misses)
+    # list the misses this mode could have caught first; the rest are out of scope
+    ordered = ([d for d in misses
+                if (meta.get(str(d["newsid"])) or {}).get("subcat") in WIDEN_SUBCATS]
+               + [d for d in misses if str(d["newsid"]) not in caught_ids
+                  and (meta.get(str(d["newsid"])) or {}).get("subcat")
+                  not in WIDEN_SUBCATS])
+    lines = []
+    for row in ordered[:limit]:
+        info = meta.get(str(row["newsid"])) or {}
+        fields = (row["newsid"], info.get("subcat") or "(not in ann)",
+                  info.get("headline") or row.get("title"))
+        lines.append(" | ".join(" ".join(str(x or "").split())[:75] for x in fields))
+    return {"others": len(others), "in_scope": len(in_scope), "caught": len(caught),
+            "missed": len(misses), "recall": len(caught) / len(others) if others else None,
+            "recall_in_scope": len(caught) / len(in_scope) if in_scope else None,
+            "miss_buckets": dict(buckets.most_common()),
+            "miss_lines": lines}
+
+
+def staged_path(cand: dict[str, Any], dirs: Sequence[Path]) -> Path | None:
+    """Content-addressed PDF for this candidate if either store already holds it."""
+    sha = str(cand.get("cd_sha") or "").lower()
+    if not sha:
+        return None
+    for directory in dirs:
+        path = pdf_path(sha, Path(directory))
+        if path.is_file():
+            return path
+    return None
+
+
+def precision_sample(widened: Sequence[dict[str, Any]], dirs: Sequence[Path],
+                     n: int = PRECISION_SAMPLE, seed: int = 20261028) -> dict[str, Any]:
+    """Classify up to ``n`` widened docs whose PDFs are already on disk."""
+    dirs = [Path(d) for d in dirs]
+    staged = [(c, staged_path(c, dirs)) for c in widened]
+    staged = [(c, path) for c, path in staged if path is not None]
+    paths = {c["newsid"]: path for c, path in staged}
+    picks = stratified_sample([c for c, _ in staged], n, seed)
+    records: list[dict[str, Any]] = []
+    for cand in picks:
+        record = {"newsid": cand["newsid"], "symbol": cand.get("symbol"),
+                  "subcat": cand.get("subcat"), "quarter": cand.get("quarter"),
+                  "headline": cand.get("headline"), "status": "invalid"}
+        try:
+            meta = pdf_meta(paths[cand["newsid"]])
+        except Exception as exc:                            # noqa: BLE001 - broken PDF
+            record["reason"] = f"pymupdf: {type(exc).__name__}"
+        else:
+            record.update(
+                status="ok", pages=meta["pages"], chars=meta["chars"],
+                doc_class=classify_document(
+                    title=cand.get("headline") or "", subcat=cand.get("subcat"),
+                    pages=meta["pages"], chars=meta["chars"], text=meta["text"]))
+        records.append(record)
+    ok = [r for r in records if r.get("status") == "ok"]
+    transcripts = [r for r in ok if r.get("doc_class") == "transcript"]
+    headline_only = len(staged) < n
+    if headline_only:                   # fewer than n PDFs: fall back to the headline
+        classes = Counter(title_only_class(c.get("headline") or "", c.get("subcat"))
+                          for c in stratified_sample(widened, n, seed))
+    else:
+        classes = Counter(r.get("doc_class") or "invalid" for r in records)
+    return {"available": len(staged), "sampled": len(records), "ok": len(ok),
+            "headline_only": headline_only, "classes": dict(classes),
+            "transcripts": len(transcripts),
+            "precision": len(transcripts) / len(records) if records else None,
+            "precision_ok": len(transcripts) / len(ok) if ok else None,
+            "records": records}
+
+
+def analyze_widen(*, db_ann: Path | None = None, db_eq: Path | None = None,
+                  probe: Path | None = None, root: Path | None = None,
+                  n_precision: int = PRECISION_SAMPLE,
+                  log=print) -> dict[str, Any]:
+    """Widen-mode analysis: candidate set, overlap, recall and classifier precision."""
+    data = Path(os.environ["REALITY_DATA_ROOT"])
+    db_ann = Path(db_ann or data / "bse_announcements.db")
+    db_eq = Path(db_eq or data / "equity_intelligence.db")
+    con_ann = connect_ro(db_ann, timeout_s=120)
+    con_eq = connect_ro(db_eq, timeout_s=240)
+    try:
+        ec_rows = con_ann.execute(ANN_SQL, (SUBCAT, WINDOW_START)).fetchall()
+        wide_raw = con_ann.execute(WIDEN_ANN_SQL,
+                                   WIDEN_SUBCATS + (WINDOW_START,)).fetchall()
+        kept = widen_rows(wide_raw)
+        log(f"widen: {len(wide_raw)} announcements in the four subcategories, "
+            f"{len(kept)} whose headline/attachment signals a transcript")
+        identity = load_identity(con_eq, [row[1] for row in ec_rows]
+                                 + [row[1] for row in kept])
+        old_by_news, old_rows = load_old_docs(con_eq)
+        chunked = load_chunked(con_eq)
+        earnings = build_candidates(ec_rows, identity, old_by_news, chunked)
+        widened = build_candidates(kept, identity, old_by_news, chunked)
+
+        def ann_meta(newsids: Sequence[str]) -> dict[str, dict[str, Any]]:
+            out: dict[str, dict[str, Any]] = {}
+            for part in _chunks(list(newsids), 900):
+                sql = ("select NEWSID, SUBCATNAME, CATEGORYNAME, HEADLINE, DissemDT from ann "
+                       "where NEWSID in (%s)" % ",".join("?" * len(part)))
+                for newsid, subcat, category, headline, dissem in con_ann.execute(sql, part):
+                    out[str(newsid)] = {"subcat": subcat, "category": category,
+                                        "headline": headline, "known_at": dissem}
+            return out
+
+        overlap = overlap_analysis(widened, earnings)
+        recall = recall_analysis(widened, old_rows,
+                                 {c["newsid"] for c in earnings}, ann_meta)
+        fresh = [c for c in widened if c["newsid"] not in overlap["covered_newsids"]]
+        dirs = [Path(probe or probe_dir()), Path(root or out_dir())]
+        precision = precision_sample(widened, dirs, n_precision)
+        return {"window_start": WINDOW_START, "subcats": list(WIDEN_SUBCATS),
+                "raw_rows": len(wide_raw), "total": len(widened),
+                "attachment_only": sum(1 for row in kept
+                                       if not is_widened_transcript(row[3])),
+                "earnings_total": len(earnings),
+                "by_subcat": dict(Counter(c["subcat"] for c in widened)),
+                "by_quarter": dict(Counter(c["quarter"] for c in widened)),
+                "by_cell": dict(Counter((c["subcat"], c["quarter"]) for c in widened)),
+                "overlap": overlap, "recall": recall, "precision": precision,
+                "dirs": [str(d) for d in dirs],
+                "candidates": widened, "fresh_candidates": fresh}
+    finally:
+        con_ann.close()
+        con_eq.close()
+
+
+def project_widen(widen: dict[str, Any], interval: float,
+                  measured_per_min: float = 18.2) -> dict[str, Any]:
+    """Fetch time for the fresh part of the widened set at the enforced rate."""
+    fresh = widen["overlap"]["fresh"]
+    interval = max(interval, MIN_INTERVAL)
+    rate = 60.0 / interval
+    precision = widen["precision"].get("precision")
+    return {"total": widen["total"], "fresh": fresh,
+            "covered": widen["total"] - fresh, "interval": interval,
+            "rate_per_min": rate, "requests": fresh,
+            "fetch_minutes": fresh * interval / 60.0,
+            "fetch_hours": fresh * interval / 3600.0,
+            "measured_per_min": measured_per_min,
+            "measured_hours": fresh / measured_per_min / 60.0
+            if measured_per_min else None,
+            "est_transcripts": round(fresh * (precision or 0.0))}
+
+
+def format_widen_report(widen: dict[str, Any], projection: dict[str, Any]) -> str:
+    """Markdown report for every widen acceptance check."""
+    lines: list[str] = []
+    add = lines.append
+    add(f"# Widened BSE concall candidates — FY25+ — {now_iso()}")
+    add("")
+    add(f"- window: BSE dissemination date >= {widen['window_start']}; known_at = DissemDT")
+    add(f"- subcategories: {', '.join(widen['subcats'])}")
+    add(f"- announcements read: {widen['raw_rows']:,}; they yield "
+        f"**{widen['total']:,}** transcript-signalling candidates")
+    add(f"- attachment names are BSE UUIDs, so they add "
+        f"{widen['attachment_only']} candidates; the headline does the work")
+    add(f"- no network: this is the `--widen --dry-run` report")
+    add("")
+
+    add("## 1. Widened candidates by subcategory")
+    add("")
+    add("| subcategory | rows |")
+    add("|---|---|")
+    for subcat, count in sorted(widen["by_subcat"].items(), key=lambda kv: -kv[1]):
+        add(f"| {subcat} | {count} |")
+    add(f"| **total** | **{widen['total']}** |")
+    add("")
+    add("By fiscal quarter:")
+    add("")
+    add("| quarter | rows |")
+    add("|---|---|")
+    for quarter, count in sorted(widen["by_quarter"].items()):
+        add(f"| {quarter} | {count} |")
+    add("")
+    add("Subcategory x quarter:")
+    add("")
+    add("| subcategory | quarter | rows |")
+    add("|---|---|---|")
+    for (subcat, quarter), count in sorted(widen["by_cell"].items(),
+                                           key=lambda kv: (str(kv[0][1]), str(kv[0][0]))):
+        add(f"| {subcat} | {quarter} | {count} |")
+    add("")
+
+    add("## 2. Overlap with the 9,390 Earnings Call candidates")
+    add("")
+    ov = widen["overlap"]
+    add(f"- same (ISIN, fiscal quarter): **{ov['by_call']}**")
+    add(f"- same attachment name: **{ov['by_attachment']}**")
+    add(f"- either key: **{ov['either']}** ({ov['either'] / max(1, ov['widened']):.1%} "
+        f"of the widened set already covered)")
+    add(f"- fresh rows to fetch: **{ov['fresh']}**")
+    add(f"- duplicates inside the widened set by (ISIN, quarter): "
+        f"{ov['internal_call_dupes']}; earnings-call rows without an ISIN: "
+        f"{ov['earnings_without_isin']}")
+    add("")
+    add("(ISIN, quarter) is a proxy, not proof of the same document: every covered row has "
+        "a different attachment name, so some are different events in a quarter that also "
+        "had an Earnings Call transcript. The dedupe drops them anyway, as specified.")
+    add("")
+    if ov["examples"]:
+        add("```")
+        lines.extend(ov["examples"])
+        add("```")
+        add("")
+
+    add("## 3. Recall against the pilot's 1,771 other-subcategory old rows")
+    add("")
+    rec = widen["recall"]
+    add(f"- old rows outside the Earnings Call set: {rec['others']:,}")
+    add(f"- of those inside the four subcategories (the widest this mode can reach): "
+        f"{rec['in_scope']:,}")
+    add(f"- caught by the widened filter: **{rec['caught']:,}** "
+        f"({_pct(rec['recall'])} of all {rec['others']:,}, "
+        f"{_pct(rec['recall_in_scope'])} of the in-scope {rec['in_scope']:,})")
+    add(f"- missed: {rec['missed']:,}")
+    add(f"- why the misses missed: {rec['miss_buckets']}")
+    add("")
+    add("20 misses (newsid | subcategory | headline):")
+    add("")
+    add("```")
+    lines.extend(rec["miss_lines"] or ["(none)"])
+    add("```")
+    add("")
+
+    add("## 4. Classifier precision on widened docs already on disk")
+    add("")
+    pr = widen["precision"]
+    add(f"- stores checked: {', '.join(widen['dirs'])}")
+    add(f"- widened candidates with bytes on disk: {pr['available']}")
+    add(f"- sampled and classified: {pr['sampled']} (ok {pr['ok']})")
+    if pr["headline_only"]:
+        add(f"- fewer than the requested {PRECISION_SAMPLE} PDFs exist, so the sample "
+            f"is headline-only (pilot real-transcript test cannot run)")
+    else:
+        add(f"- precision (real transcripts / sampled): **{_pct(pr['precision'])}** "
+            f"({pr['transcripts']}/{pr['sampled']}); over readable PDFs: "
+            f"{_pct(pr['precision_ok'])}")
+    add(f"- classes: {pr['classes']}")
+    add("")
+    transcript_share = pr.get("precision")
+    if pr["headline_only"]:
+        transcript_share = None
+
+    add("## 5. Fetch time for the fresh rows")
+    add("")
+    add("| metric | value |")
+    add("|---|---|")
+    add(f"| widened candidates | {projection['total']} |")
+    add(f"| already in the Earnings Call set (no fetch) | {projection['covered']} |")
+    add(f"| fresh fetches | {projection['fresh']} |")
+    add(f"| pacing floor | 1 request / {projection['interval']:.1f} s "
+        f"(<= {projection['rate_per_min']:.1f}/min) |")
+    add(f"| wall time at the pacing floor | {projection['fetch_hours']:.1f} h "
+        f"({projection['fetch_minutes']:.0f} min) |")
+    add(f"| wall time at the measured {projection['measured_per_min']:.1f}/min | "
+        f"{projection['measured_hours']:.1f} h |")
+    add(f"| expected real transcripts (precision {_pct(transcript_share)}) | "
+        f"{projection['est_transcripts'] if transcript_share is not None else 'n/a'} |")
+    add("")
+    add("Run it later, only after the 9,390 fetch has finished:")
+    add("")
+    add("```bash")
+    add("python -m reality_engine.scripts.concall_refetch --widen --fetch --interval 2.5")
+    add("```")
+    add("")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # analysis (no network)
 
 
@@ -756,6 +1132,7 @@ def run_pilot(*, n: int = 200, seed: int = 20261027, interval: float = 2.5,
               db_ann: Path | None = None, db_eq: Path | None = None,
               root: Path | None = None, probe: Path | None = None,
               limit: int | None = None, analysis: dict[str, Any] | None = None,
+              candidates: Sequence[dict[str, Any]] | None = None,
               log=print) -> dict[str, Any]:
     """Sample, reuse, fetch, validate, classify, dedupe and write the manifest."""
     data = Path(os.environ["REALITY_DATA_ROOT"])
@@ -767,11 +1144,14 @@ def run_pilot(*, n: int = 200, seed: int = 20261027, interval: float = 2.5,
     con_ann = connect_ro(db_ann, timeout_s=120)
     con_eq = connect_ro(db_eq, timeout_s=240)
     try:
-        ann_rows = con_ann.execute(ANN_SQL, (SUBCAT, WINDOW_START)).fetchall()
-        identity = load_identity(con_eq, [row[1] for row in ann_rows])
-        old_by_news, old_rows = load_old_docs(con_eq)
-        chunked = load_chunked(con_eq)
-        cands = build_candidates(ann_rows, identity, old_by_news, chunked)
+        if candidates is None:
+            ann_rows = con_ann.execute(ANN_SQL, (SUBCAT, WINDOW_START)).fetchall()
+            identity = load_identity(con_eq, [row[1] for row in ann_rows])
+            old_by_news, _ = load_old_docs(con_eq)
+            chunked = load_chunked(con_eq)
+            cands = build_candidates(ann_rows, identity, old_by_news, chunked)
+        else:
+            cands = list(candidates)
         index = (analysis or {}).get("_probe_index") or probe_index(probe)
         by_sha = index["by_sha"]
         picks = stratified_sample(cands, n, seed)
@@ -834,16 +1214,19 @@ def run_pilot(*, n: int = 200, seed: int = 20261027, interval: float = 2.5,
     report = summarize(entries, elapsed=elapsed, pacer_requests=pacer.requests,
                        interval=interval, dry_run=dry_run)
     if not dry_run:
-        write_manifest(root, entries)
+        write_manifest(root, entries,
+                       "_manifest_widen.jsonl" if candidates is not None
+                       else "_manifest.jsonl")
     report["entries"] = entries
     return report
 
 
-def write_manifest(root: Path, entries: Sequence[dict[str, Any]]) -> Path:
+def write_manifest(root: Path, entries: Sequence[dict[str, Any]],
+                   name: str = "_manifest.jsonl") -> Path:
     """One JSON line per row, rewritten whole."""
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
-    path = root / "_manifest.jsonl"
+    path = root / name
     with path.open("w", encoding="utf-8") as handle:
         for entry in entries:
             handle.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
@@ -1214,7 +1597,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="python -m reality_engine.scripts.concall_refetch",
         description="FY25+ BSE concall PDF refetch: analysis + 200-doc pilot.")
-    ap.add_argument("--n", type=int, default=200, help="pilot sample size (default 200)")
+    ap.add_argument("--n", type=int, default=None,
+                    help="sample size (default 200; --widen --fetch defaults to all)")
     ap.add_argument("--seed", type=int, default=20261027, help="sampling seed")
     ap.add_argument("--interval", type=float, default=2.5,
                     help=f"seconds between requests (hard floor {MIN_INTERVAL})")
@@ -1224,6 +1608,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-probe-classify", action="store_true",
                     help="skip classifying the staged probe PDFs (faster)")
     ap.add_argument("--dry-run", action="store_true", help="sample + analysis, no network/writes")
+    ap.add_argument("--widen", action="store_true",
+                    help="widen mode: the other four BSE subcategories "
+                         "(report only unless --fetch)")
+    ap.add_argument("--fetch", action="store_true",
+                    help="with --widen: download the widened set")
     ap.add_argument("--root", help=f"PDF store (default {out_dir()})")
     ap.add_argument("--probe-dir", help=f"staged probe PDFs (default {probe_dir()})")
     ap.add_argument("--db-ann", help="bse_announcements.db (default REALITY_DATA_ROOT)")
@@ -1233,6 +1622,29 @@ def main(argv: list[str] | None = None) -> int:
     if args.interval < MIN_INTERVAL:
         ap.error(f"--interval must be >= {MIN_INTERVAL}s (25 requests/min)")
 
+    if args.widen:
+        widen = analyze_widen(db_ann=Path(args.db_ann) if args.db_ann else None,
+                              db_eq=Path(args.db_eq) if args.db_eq else None,
+                              probe=Path(args.probe_dir) if args.probe_dir else None,
+                              root=Path(args.root) if args.root else None)
+        projection = project_widen(widen, args.interval)
+        text = format_widen_report(widen, projection)
+        print(text)
+        if args.report:
+            Path(args.report).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.report).write_text(text, encoding="utf-8")
+        if args.dry_run or not args.fetch:
+            return 0
+        pilot = run_pilot(n=args.n if args.n is not None else len(widen["fresh_candidates"]),
+                          seed=args.seed, interval=args.interval,
+                          backoff=args.backoff, limit=args.limit,
+                          root=Path(args.root) if args.root else None,
+                          probe=Path(args.probe_dir) if args.probe_dir else None,
+                          candidates=widen["fresh_candidates"])
+        print(json.dumps({k: v for k, v in pilot.items() if k != "entries"},
+                         indent=2, default=str))
+        return 0
+
     analysis = analyze(db_ann=Path(args.db_ann) if args.db_ann else None,
                        db_eq=Path(args.db_eq) if args.db_eq else None,
                        probe=Path(args.probe_dir) if args.probe_dir else None,
@@ -1241,7 +1653,8 @@ def main(argv: list[str] | None = None) -> int:
                        if not args.analyze_only and not args.dry_run else None)
     pilot = None
     if not args.analyze_only and not args.dry_run:
-        pilot = run_pilot(n=args.n, seed=args.seed, interval=args.interval,
+        pilot = run_pilot(n=args.n if args.n is not None else 200,
+                          seed=args.seed, interval=args.interval,
                           backoff=args.backoff, limit=args.limit,
                           db_ann=Path(args.db_ann) if args.db_ann else None,
                           db_eq=Path(args.db_eq) if args.db_eq else None,
