@@ -3,6 +3,42 @@
 Read this first in every new session. Then read `tasks/FRAMEWORK.md` (the authority), `AGENTS.md` and the memory index.
 Each block below is **one session**: give a fresh CLI session the block's title plus "read tasks/NEXT_SESSIONS_PLAN_2026-10-27.md, do session S<n>".
 
+## GOLDEN RULE (Shivam, 2026-10-28; it overrides the session order below)
+The order of work is fixed:
+1. raw data gathered;
+2. question banks finalised, plus the overlap and gap analysis;
+3. schema designed so that every question is answerable;
+4. pilot;
+5. re-run all the questions on the pilot: at least 95% answered, plus the checklist;
+6. only then the full chunking run, then re-embedding.
+
+This is also written at the top of `AGENTS.md`.
+
+### The big job before chunking: schema design (comes after the Reddit bank)
+- **Banks so far**, merged in `tasks/` unless noted:
+  - Shivam's 30 questions;
+  - `QUESTION_BANK_300` (variations);
+  - `QUESTION_BANK_OPEN_2026-10-27` (300; awaiting approval);
+  - `QUESTION_BANK_RIPPLE_2026-10-28` (200), with `RIPPLE_SCHEMA_REQUIREMENTS_2026-10-28.md` (41 proposals, ranked);
+  - Reddit bank: 200 questions, a quarter of them technical. Brief `tasks/dsh_tasks/REDDIT_QUESTION_MINING_2026-10-28.md`. It starts when the Reddit download in `D:\RealityEngine\raw\reddit` finishes.
+- **Next, step A: overlap and gap analysis across every bank.**
+  - Deduplicate questions by template and family.
+  - Build a coverage matrix: family × entity level × question style.
+  - List every gap, mapped to:
+    - a table or field;
+    - a source we already hold (and which store);
+    - or NOT IN DATA, with the reason.
+- **Then step B: the unified schema.**
+  - One design for layer 1 (chunk tags), layer 2 (`company_state_daily`, company series), layer 3 (macro and policy links), and the event, leakage and opinions stores.
+  - Each table gets:
+    - columns, keys, `known_at` / `valid_from`;
+    - source and filler (deterministic or reader);
+    - effort;
+    - the qids it unblocks.
+  - Target: every question is answerable, or marked NOT IN DATA with a reason, on paper before the pilot is built.
+  - Inputs: the audit's G0–G12, the open bank's NG01–NG29, the ripple requirements, the Reddit patterns, and Shivam's rulings below.
+- **Then:** the pilot, the ≥95% question re-run, and only then the full run.
+
 ## Standing rules (apply to every session)
 1. **CORE RULE: checklist before full runs.**
    - No full chunking, tagging, embedding or loading of any dataset until the DB schema is ready **and** the dataset's pilot passes the shared checklist script.

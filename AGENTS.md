@@ -1,5 +1,21 @@
 # Reality Engine — Agent & Developer Guide
 
+> **GOLDEN RULE (Shivam, 2026-10-28). Nobody breaks it, nobody forgets it.**
+> The order of work is fixed:
+> 1. **Raw data gathered.** This is mostly done. Fetches of originals may continue.
+> 2. **Question banks finalised.** They must cover every way an investor asks:
+>    - Shivam's 30 questions, as fixed regressions;
+>    - the 300 variations, the 300 open questions and the 200 ripple questions;
+>    - the Reddit-mined bank, including a technical quarter.
+>
+>    Then run the overlap and gap analysis across all of them.
+> 3. **Schema designed so that every question can be answered from the data we hold.** Every gap gets closed by a table or field, or is marked NOT IN DATA with a reason.
+> 4. **Pilot** on a sample for each doc type, built to that schema.
+> 5. **Re-run every question on the pilot.** At least **95% must be answered** (NOT IN DATA counts only where the data truly doesn't exist), and the pilot must pass the checklist (tags, point in time, search speed, precision).
+> 6. **Only then the full run: chunking, then re-embedding.**
+>
+> No full chunking, tagging, embedding or loading of any dataset before step 5 passes. Details are in `tasks/NEXT_SESSIONS_PLAN_2026-10-27.md` and `tasks/QUERY_TEMPLATES_2026-10-27.md`.
+
 > **Read `tasks/FRAMEWORK.md` first.** It is the authority file (set by Shivam, 2026-10-08) and overrides this guide wherever they disagree: cash-only long book, risk limits, benchmark, proof rules, and the order of work. Live status and next steps are in `tasks/STATE.md`. Moat / ENI / ripple seeds are set aside until a tested strategy beats them. Note: rule 1 below ("ISINs remain immutable") is wrong in practice. ISINs change on splits and face-value changes, so price history needs an ISIN-history map.
 
 Reality Engine — Fundamental Reality Engine is a **dense-substrate, all-peers ensemble** Indian-equity intelligence platform with **continuous self-correction**. It ingests a lot of data (price, financials, concalls/PPT/Vahan/MF/RBI/Budget/PIB/YouTube) but does NOT reason over raw inside the limited LLM context window — raw is kept only as audit trail / replay source. Every signal is **quantized into a dense feature substrate**, then reasoned over by a competing ensemble of peer lenses (FF5 is one peer among many, not the trunk). Decisions are revisable continuously: the market-closed window is used to densely process/reason whatever data exists, even if incomplete — that is the stock-prediction ballgame. Multimodal ingestion (Budget/RBI/Concall audio/YouTube via yt-dlp+Whisper) and hybrid dense + FTS5 search (NumPy vector indexes) feed the substrate, not the decision context directly.
