@@ -8,7 +8,8 @@
 >    - the 300 variations, the 300 open questions and the 200 ripple questions;
 >    - the Reddit-mined bank, including a technical quarter.
 >
->    Then run the overlap and gap analysis across all of them.
+>    Then run the overlap and gap analysis across all of them, and merge them into ONE deduplicated master bank. Shivam approves only that master bank, never a single bank on its own.
+>    Sector labels follow decision 8 (adopted 2026-10-28): our own label from segment revenue first, BSE as separate coarse columns, resolve by ISIN never symbol. The full list is in the plan doc.
 > 3. **Schema designed so that every question can be answered from the data we hold.** Every gap gets closed by a table or field, or is marked NOT IN DATA with a reason.
 > 4. **Pilot** on a sample for each doc type, built to that schema.
 > 5. **Re-run every question on the pilot.** At least **95% must be answered** (NOT IN DATA counts only where the data truly doesn't exist), and the pilot must pass the checklist (tags, point in time, search speed, precision).

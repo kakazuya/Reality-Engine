@@ -21,7 +21,11 @@ This is also written at the top of `AGENTS.md`.
   - `QUESTION_BANK_OPEN_2026-10-27` (300; awaiting approval);
   - `QUESTION_BANK_RIPPLE_2026-10-28` (200), with `RIPPLE_SCHEMA_REQUIREMENTS_2026-10-28.md` (41 proposals, ranked);
   - Reddit bank: 200 questions, a quarter of them technical. Brief `tasks/dsh_tasks/REDDIT_QUESTION_MINING_2026-10-28.md`. It starts when the Reddit download in `D:\RealityEngine\raw\reddit` finishes.
-- **Next, step A: overlap and gap analysis across every bank.**
+- **Bank approval process (Shivam, 2026-10-28):** no bank is approved on its own; the open bank is NOT pending approval by itself.
+  - First, every bank is merged into ONE master bank: Shivam's 30, the 300 variations, the 300 open, the 200 ripple and the 200 Reddit.
+  - Overlapping questions are removed and only unique cases are kept.
+  - Shivam then reviews that single merged bank in the CLI, and only that approved master bank becomes the pass/fail threshold.
+- **Next, step A: overlap and gap analysis across every bank.** This produces the merged, deduplicated master bank above.
   - Deduplicate questions by template and family.
   - Build a coverage matrix: family × entity level × question style.
   - List every gap, mapped to:
@@ -104,7 +108,17 @@ Known small items:
    - Pull the video links from Telegram posts and read each video's publish date from its metadata (yt-dlp, no download).
    - Use those dates to back-date where a document first appeared, where that's possible.
    - Elsewhere, folder dates at confidence ≤ 0.5; claims below 0.6 are shown but not graded.
-8. **Sector classification:** OPEN until the pilot reports (worker brief `tasks/dsh_tasks/SECTOR_LABEL_PILOT_2026-10-28.md`). First, a pilot on about 200 small caps comparing the NSE and BSE industry labels against what each company actually does (AR business description and segments). The decision follows the pilot.
+8. **Sector classification: DECIDED (Shivam, 2026-10-28). All six pilot recommendations are adopted, in this order** (`tasks/sector_pilot/REPORT.md` §8):
+   1. Derive our own label from segment revenue wherever the AR has a usable segment table. Store `label_source='segment_revenue'`, the top segment, its share, and the doc/chunk reference.
+   2. Keep BSE `sector` and `industry_new` as separate, coarse columns with their provenance (`bse_header_fetched_at`). Never overwrite `master_companies.industry` with them. Treat "Other X", `Industrial Products`, `Trading & Distributors` and `Diversified` as **no label**.
+   3. Never use BSE `industry` as the fill value (78.6% accurate overall, 61.4% on the unlabelled tail), except inside a human approval queue.
+   4. Resolve by ISIN or BSE scrip code, **never by symbol**. In the pilot, the symbol CONTAINER pointed to Containerway International, not CONCOR.
+   5. Build the BSE→NSE crosswalk only on unambiguous pairs measured where both labels exist. Auto-fill a coarse sector only when the crosswalk row is unique, it agrees with the segment evidence, and the label is not generic. That should cover about 4 in 5 of the 2,177.
+   6. Send the rest to a review queue.
+
+   Pilot accuracy: NSE sector 97.2%, NSE industry 87.4%, BSE sector 93.0%, BSE industry_new 92.5%, BSE industry 78.6%.
+
+   (Original note before the pilot:) OPEN until the pilot reports (worker brief `tasks/dsh_tasks/SECTOR_LABEL_PILOT_2026-10-28.md`). First, a pilot on about 200 small caps comparing the NSE and BSE industry labels against what each company actually does (AR business description and segments). The decision follows the pilot.
 
 ## Decisions waiting on Shivam (from audit §11; Claude's suggested answers, superseded by the rulings above)
 1. When a filing counts: it counts for the **next** session, so a filing at 19:50 doesn't change that day's market cap.
@@ -117,7 +131,7 @@ Known small items:
 8. BSE industry classification: stored as a separate classification, never mixed into NSE's sectors.
 
 Also waiting:
-- **Approval of the 300-question bank.** It becomes the pass/fail threshold only once approved.
+- **Bank approval:** superseded on 2026-10-28. Only the merged, deduplicated master bank is approved (see "Bank approval process" above).
 - **Concall candidate list:** BSE "Earnings Call Transcript" only, or widened to about 1,800 "Analyst / Investor Meet" calls plus about 1,500 NSE-only companies.
 - **Push approval:** many local commits since `35c40ff`.
 
