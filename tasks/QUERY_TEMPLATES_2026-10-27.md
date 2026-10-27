@@ -61,3 +61,46 @@ Each family has to work at every entity level where it makes sense. A level mark
   - latency against a limit per family.
 - **Pass rule.** A dataset passes only when every family that applies to it passes at every entity level and on every variation. Each failure is reported with the instance that broke it.
 - **Scorecard:** family × entity level × doc type, showing pass rate and latency, with failing instances listed.
+
+## 5. Shivam's 30 test questions as templates (required set)
+These are the 30 questions Shivam set to test database quality:
+- 5 in `tasks/DB_QUALITY_TEST_2026-10-24.md`;
+- 10 in `tasks/optimizations/measure/QA10_BRIEF.md`;
+- 15 in `tasks/optimizations/measure/EVAL25.md` (Q11–Q25).
+
+Each one is kept as written, as a fixed regression case, **and** generalised into a template that the checklist re-draws across stocks, industries, sectors and policies (§4). The gaps these questions exposed are listed so the checklist confirms each one is closed.
+
+| Set # | Question (short) | Family | Template (generalised) | Gap it exposed |
+|---|---|---|---|---|
+| DBQ1 | AEROFLEX products + close on a date | 1, 2 | What does `{stock}` make, and its close on `{date}`? | — |
+| DBQ2 | 532627 latest AR: control change | 1, 9 | What did `{stock}`'s latest `{doc_type}` disclose about `{topic: ownership/control}`? | — |
+| DBQ3 | 544161 business + segments | 1 | Business and segments of `{stock}` (resolved by BSE code / ISIN) | — |
+| DBQ4 | P/B now vs stored | 2, 11 | `{metric}` of `{stock}` as of `{date}`, computed from price and book at matching dates | stored ratios mix price dates; no quarterly net worth |
+| DBQ5 | DEEDEV Aug-2026 concall remark | 1 | What did `{speaker}` of `{stock}` say about `{topic}` on the `{date}` call? | transcripts marked processed but never chunked |
+| QA1 | Ather delivery NSE+BSE on 2 dates | 2 | Delivered quantity of `{stock}` on `{dates}`, NSE + BSE + total | — |
+| QA2 | BLACKBUCK promoter % Sep 2026 | 2, 11 | `{holding metric}` of `{stock}` as of `{period}` | — |
+| QA3 | Ganesha facilities per a dated deck | 1 | `{fact}` per `{stock}`'s `{doc_type}` of `{date}` | — |
+| QA4 | Chemcon products + acquisition per deck | 1 | Products and `{topic: M&A}` per `{stock}`'s deck of `{date}` | — |
+| QA5 | Lumax shares + promoter %, latest | 2 | Share count and promoter % of `{stock}`, latest, from filings | XBRL share capital is rounded |
+| QA6 | 540879 deck page 21 (licence) | 1 | What does page `{n}` of `{stock}`'s deck of `{date}` say about `{topic}`? | — |
+| QA7 | INE864I01014 fuel-cell capacity, transcript | 1, 3 | What did `{stock}` (by ISIN) say about `{topic: capacity}` timelines on the `{date}` call? | — |
+| QA8 | 532810 YTD high 2026 | 2 | YTD / range high or low of `{stock}` in `{period}`, value and date | — |
+| QA9 | SAILIFE new facilities, latest | 1, 5 | Latest statement on `{topic}` for `{stock}` across all doc types | no cross-source "latest" |
+| QA10 | COCHINSHIP MOU + margin path, transcript | 1, 3 | `{stock}` on `{partner/MOU}` and `{metric}` trajectory per the `{date}` call | — |
+| Q11 | KRISHNADEF segment revenue, latest quarter | 2, 8 | Segment `{metric}` of `{stock}` for `{period}` (works for any industry) | segment contexts in XBRL |
+| Q12 | Bank of Maharashtra net NPA % | 2 | `{bank/NBFC metric}` of `{stock}` for `{period}` | banking taxonomy differs from Ind AS |
+| Q13 | ZENTEC 3-yr price CAGR | 2 | `{n}`-year adjusted price CAGR of `{stock / index / sector basket}` | must use adjusted prices |
+| Q14 | VISHNU Note 5 of latest results + geo split | 1, 2 | Note `{n}` of `{stock}`'s results for `{period}` + `{segment/geo}` split | **results notes not stored**; this is what `results_notes.db` fixes |
+| Q15 | VINCOFE public shareholding Sep 2026 | 2, 11 | `{holder class}` % of `{stock}` as of `{period}` | — |
+| Q16 | Why gold stocks fell Jun–Jul 2026 | 6, 4 | Why did `{theme / sector}` move in `{period}`? Macro, PIB and company evidence | no "gold stocks" universe → **theme map** |
+| Q17 | HFC securitisation leader, QoQ/YoY with NPA guard | 4, 8 | Leader in `{metric}` within `{industry}` with `{condition}` for `{period}` | no HFC universe / peer table |
+| Q18 | OMCs: record Q4 then loss Q1; earliest PIT signal | 6, 9, 11 | For `{industry}`, when was `{trend}` first visible point-in-time, and from which data? | commodity series end dates |
+| Q19 | MONQ50 ETF jump/fall + tracking error | 2, 9 | `{ETF}` move in `{window}`, explained by its index + FX; NAV tracking error | **ETFs not resolved**; etf_premium empty |
+| Q20 | Garware: tariff hit, then negative correlation | 6, 9 | Sensitivity of `{stock}` to `{policy/event series}` over `{periods}` (rolling) | no rolling-correlation tool; no dated tariff series |
+| Q21 | RBI repo hike causes; PIB or RBI only | 6, 7 | Causes of `{policy action}`, and which source published it first | provenance across sources |
+| Q22 | Second-hand electronics boom CY2026: who benefits | 6, 7 | Why did `{theme/demand}` rise in `{period}`, who benefits, structural or cyclical? | thin sources; "NOT IN DATA" parts must be stated |
+| Q23 | Coal gasification drafts vs the earlier scheme | 6, 3 | How does `{policy}` draft differ from `{earlier policy}`, and which industries does it hit? | coal price series ends 2025-12 |
+| Q24 | PARAGMILK on El Niño; dairy peers | 6, 8 | What did `{stock}` and its `{industry}` peers say about `{macro event}`, and how are they handling it? | no dairy universe → **industry peers** |
+| Q25 | Data-centre tax holiday outcome so far | 6, 7 | How has `{policy}` played out so far for `{industry}` players? | — |
+
+**Required in the checklist:** all 30 originals as fixed regressions, and each template re-drawn on 5 stocks, 3 industries, 3 sectors and 2 policies, with the §3 variations. A gap in the right-hand column counts as closed only when its question passes.
