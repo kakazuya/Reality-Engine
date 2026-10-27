@@ -3109,7 +3109,19 @@ class Repository:
                 keys = list(present.keys())
                 col_sql = ", ".join(keys)
                 ph_sql = ", ".join(f":{k}" for k in keys)
-                upd_sql = ", ".join(f"{k}=excluded.{k}" for k in keys if k != "event_id")
+                # A row corrected against verified sources (macro_event_sources holds its prior values)
+                # keeps its verified fields; a re-spawn may only refresh the graph payload.
+                locked = set()
+                try:
+                    if conn.execute(
+                        "SELECT 1 FROM macro_event_sources WHERE event_id = ? "
+                        "AND source_url LIKE 'internal:macro_events_prior_value/%' LIMIT 1",
+                        (present.get("event_id"),),
+                    ).fetchone():
+                        locked = {"event_name", "category", "event_date", "summary", "doc_id", "raw_document_path"}
+                except Exception:
+                    pass
+                upd_sql = ", ".join(f"{k}=excluded.{k}" for k in keys if k != "event_id" and k not in locked)
                 conflict_sql = f"ON CONFLICT(event_id) DO UPDATE SET {upd_sql}" if upd_sql else ""
                 conn.execute(
                     f"INSERT INTO macro_events ({col_sql}) VALUES ({ph_sql}) {conflict_sql}",

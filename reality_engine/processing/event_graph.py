@@ -87,6 +87,10 @@ class EventGraphSpawner:
 
     # Event nuance fixtures — quantized parse of the policy text (%, date, exceptions,
     # conditional US-plant flag). Extend this map for future transient events.
+    # These are ILLUSTRATIVE test values, not sourced facts. US_TARIFF_TEXTILE_RELIEF and the
+    # NUCLEAR_MISSION date are contradicted by the sources (verified 2026-10-28, see
+    # macro_event_sources); the live macro_events rows hold the sourced values and
+    # repository.upsert_event_graph will not overwrite them.
     _NUANCE_FIXTURES = {
         "US_TARIFF_TEXTILE_RELIEF": {
             "pct_reduction": 30.0,

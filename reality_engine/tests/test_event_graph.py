@@ -85,6 +85,29 @@ class TestSpawnUsTariff(TempDBMixin, TestCase):
         # 6 second-order + 1 primary + 1 third-order = 8
         self.assertEqual(len(ripples), 8)
 
+    def test_respawn_keeps_source_verified_fields(self):
+        self.spawner.spawn_us_tariff_textile_relief()
+        with self.manager.session() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS macro_event_sources (event_id TEXT, claim TEXT, verdict TEXT, "
+                "verified_facts TEXT, discrepancies TEXT, source_url TEXT, source_title TEXT, publisher TEXT, "
+                "source_class TEXT, robustness TEXT, internal_doc_id INTEGER, internal_policy_event_id INTEGER, "
+                "checked_at TEXT, checked_by TEXT, PRIMARY KEY (event_id, source_url))")
+            conn.execute(
+                "INSERT INTO macro_event_sources (event_id, claim, verdict, source_url, checked_at, checked_by) "
+                "VALUES ('US_TARIFF_TEXTILE_RELIEF', 'prior', 'contradicted', "
+                "'internal:macro_events_prior_value/2026-10-28', '2026-10-28', 'test')")
+            conn.execute("UPDATE macro_events SET event_name='verified name', event_date='2026-02-03', "
+                         "summary='verified summary' WHERE event_id='US_TARIFF_TEXTILE_RELIEF'")
+
+        res = self.spawner.spawn_us_tariff_textile_relief()
+
+        self.assertEqual(res["status"], "spawned")
+        with self.manager.session() as conn:
+            row = conn.execute("SELECT event_name, event_date, summary FROM macro_events "
+                               "WHERE event_id='US_TARIFF_TEXTILE_RELIEF'").fetchone()
+        self.assertEqual(tuple(row), ("verified name", "2026-02-03", "verified summary"))
+
     def test_primary_is_not_biggest_beneficiary(self):
         self.spawner.spawn_us_tariff_textile_relief()
         chain = self.spawner.trace_transient_chain("US_TARIFF_TEXTILE_RELIEF", max_hops=3)
