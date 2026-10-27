@@ -25,7 +25,7 @@ import sqlite3
 import sys
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 import pymupdf as fitz
 import requests
@@ -41,6 +41,7 @@ PDF_ROOT = r"D:\RealityEngine\raw\results_pdfs"
 URL = "https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname={}"
 WINDOW_START = "2024-04-01"  # company data scope: FY2024-25 onward (Shivam, 2026-10-27)
 RATE_PER_MIN = 76  # measured sustainable on BSE, 2026-10-27 probe (0 blocks)
+PARSER_VERSION = "notes-v2"  # bump when parsing changes; `reparse` redoes older rows from the stored PDFs
 
 MONTHS = {m: i for i, m in enumerate(
     ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
@@ -143,30 +144,181 @@ STATEMENT = re.compile(r"^\s*(?:part\s*[-–]?\s*i+\s*[:\-–]?\s*)?statement\s+
                        re.I | re.M)
 NOTES_HEAD = re.compile(r"^\s*(?:notes?\s*[:\-–]?\s*$|notes?\s+(?:to|forming(?:\s+part\s+of)?|on)\s+(?:the\s+)?"
                         r"(?:statement|standalone|consolidated|financial|unaudited|audited|results)[^\n]*$)", re.I)
+NOTES_HEAD_M = re.compile(NOTES_HEAD.pattern, re.I | re.M)
+CONTD = re.compile(r"contd|continued", re.I)
 NOTES_INLINE = re.compile(r"^\s*notes?\s*[:\-–]\s*(\S.*)$", re.I)
 # notes end where the auditor's report begins (signature lines are removed, not used as a stop: in two-column
-# layouts the extracted text puts the signature block before the notes)
-STOP = re.compile(r"independent\s+auditor|limited\s+review\s+report|review\s+report\s+to", re.I)
+# layouts the extracted text puts the signature block before the notes). A stop counts only as a heading line, so
+# "... along with the Limited Review Report" inside a sentence does not cut the note.
+STOP = re.compile(r"independent\s+auditor|limited\s+review\s+report|review\s+report\s+to|report\s+on\s+the\s+audit|"
+                  r"basis\s+for\s+(?:qualified\s+)?opinion|auditor'?s?\s+report", re.I)
+# auditor, press-release and cover-letter text: these end a notes block wherever they appear
+STOP_ANY = re.compile(r"we\s+have\s+(?:reviewed|audited)\s+the\s+accompanying|we\s+conducted\s+our\s+review|"
+                      r"forward[\s-]+looking\s+statements?|for\s+further\s+(?:details|information),?\s+please\s+contact|"
+                      r"^\s*(?:dear\s+sir|yours\s+(?:faithfully|truly|sincerely)|thanking\s+you)", re.I | re.M)
 # other material that follows the notes in a board-outcome PDF: annexures, disclosures, next page header
 AFTER_NOTES = re.compile(r"^\s*(?:annexure\b|part\s*[-–]?\s*i+\b|regd\.?\s*office|registered\s+office|cin\s*[:\-]|"
                          r"brief\s+profile|details\s+(?:of|with\s+respect)|disclosure\s+(?:of|under|pursuant)|"
                          r"reason\s+for\s+change|name\s+of\s+the\s+|statement\s+of\s+(?:assets|cash|deviation)|"
                          r"segment\s*(?:wise|information|reporting|revenue)|sr\.?\s*no\b)", re.I | re.M)
-SIGLINE = re.compile(r"^\s*(?:place|date|din|cin)\s*[:\-.]|by\s+order\s+of\s+the\s+board|for\s+and\s+on\s+behalf|"
-                     r"^\s*of\s+the\s+board|^\s*for\s+[A-Z][^\n]{2,70}(limited|ltd)\.?\s*,?\s*$|"
-                     r"^\s*(?:managing|whole[\s-]*time|executive|independent)?\s*director\s*$|^\s*chairman|"
-                     r"^\s*\(?formerly\s+known", re.I)
 AUDITOR = re.compile(r"independent\s+auditor'?s?\s+(?:review\s+)?report|limited\s+review\s+report|"
                      r"review\s+report\s+to\s+the\s+board", re.I)
 NOTE_NO = re.compile(r"^\s*(?:note\s*(?:no\.?)?\s*)?\(?(\d{1,2})(?:[\.\):]\s*|\s+(?=[A-Z(])|\s*$)(?=\S|$)", re.I)
+NOTE_BARE = re.compile(r"^\s*\(?\d{1,2}[\.\):]?\s*$")
 ROMAN = {r: i for i, r in enumerate(
     "i ii iii iv v vi vii viii ix x xi xii xiii xiv xv xvi xvii xviii xix xx".split(), 1)}
 NOTE_ROMAN = re.compile(r"^\s*\(?([ivx]{1,5})[\.\)]\s+(?=\S)", re.I)
+LIST_MARK = re.compile(r"^\s*(?:\(?[a-z]\)|[a-z]\.|\(?[ivx]{1,5}\)|[ivx]{1,5}\.|[•\-–])\s*$", re.I)
 # a notes list with no "Notes" heading above it: "Note 1:" or "1. The above results ..."
 NOTE_ONE = re.compile(r"^\s*(?:note\s*(?:no\.?)?\s*1\s*[:.\-–]|1[\.\)]\s+the\s+(?:above|financial|standalone|"
                       r"consolidated|un-?audited|audited|results|statement))", re.I)
 REFERS = re.compile(r"refer(?:\s+to)?\s+note\s*(?:no\.?\s*)?(\d{1,2})", re.I)
 NUM = re.compile(r"\d[\d,]*\.?\d*")
+WORD = re.compile(r"[A-Za-z]{3,}")
+FUNC = re.compile(r"\b(?:the|of|and|to|in|for|has|have|been|is|are|was|were|by|with|on|as|which|that|from|at)\b",
+                  re.I)
+
+# ------------------------------------------------ line cleaning (signatures, letterheads, table cells, OCR noise)
+SIG_STRONG = re.compile(r"digitally\s+signed|\+0?5'?\s?30'?|\bdin\s*(?:no\.?)?\s*[:\-–.]?\s*\d{6,}|"
+                        r"chartered\s+accountants|firm\s+reg(?:istration|n)?\.?\s*(?:no|number)|membership\s+no|"
+                        r"for\s+and\s+on\s+(?:the\s+)?behalf|on\s+behalf\s+of\s+the\s+board|"
+                        r"by\s+(?:the\s+)?order\s+of\s+the\s+board|^\s*of\s+the\s+board|for\s+identification|"
+                        r"as\s+per\s+our\s+(?:attached\s+)?report|&\s*co\.?\s*(?:llp)?\.?\s*$|\(retd\.?\)|"
+                        r"^\s*for\s+[^\n]{2,60}"
+                        r"(?:limited|ltd\.?|llp)\s*[,.]?\s*$|^\s*\(?formerly\s+know", re.I)
+SIG_WEAK = re.compile(r"^\s*(?:place|date|dated|din|cin|pan|gstin|tel|phone|fax|e-?mail|website|web|regd|"
+                      r"registered\s+office|corporate\s+office|m\.?\s*no)\b\s*[:.\-–]?|"
+                      r"\b(?:cin|pan|gstin)\s*(?:no\.?)?\s*[:\-–]?\s*[A-Z0-9]{8,}|www\.|https?://|@[\w-]+\.(?:com|in|co)|"
+                      r"^\s*page\s+\d+(?:\s+of\s+\d+)?\s*$|[-–]\s*\d{3}\s?\d{3}\b|^\s*\+\d|"
+                      r"^\s*\(?(?:managing\s+director|joint\s+managing|"
+                      r"whole[\s-]*time\s+director|executive\s+director|non[\s-]*executive|independent\s+director|"
+                      r"director|chairman|chairperson|chief\s+executive|chief\s+financial|ceo|cfo|company\s+secretary|"
+                      r"compliance\s+officer|partner|proprietor|vice\s+chair|md\s*(?:&|and)\s*ceo)\b|"
+                      r"(?:director|chairman|chairperson|ceo|cfo|secretary|officer|partner)\s*\)?\s*$", re.I)
+# signature openers are never note text, however many words they have
+SIG_LEAD = re.compile(r"^\s*(?:for\s+and\s+on|on\s+behalf|by\s+(?:the\s+)?order|for\s+[A-Z][^\n]{2,60}"
+                      r"(?:limited|ltd\.?|llp)\b)", re.I)
+CONTACT = re.compile(r"[\w.\-]+@[\w\-]+\.\w|regd\.?\s*off|registered\s+office|corporate\s+office|"
+                     r"\bcin\s*(?:no\.?)?\s*[:\-–]?\s*[lu]\s?\d{5}|\b(?:tel|ph|phone|fax)\s*[.:]?\s*[+\d(]", re.I)
+COMPANY_LINE = re.compile(r"(?:limited|ltd\.?|llp|corporation|industries)\s*[,.]?\s*\)?\s*$", re.I)
+DATE_LINE = re.compile(r"^\s*(?:[A-Za-z .]{0,25}[:,]\s*)?(?:\d{1,2}(?:st|nd|rd|th)?[\s./-]*(?:[A-Za-z]{3,9}|\d{1,2})"
+                       r"[\s.,/-]*\d{2,4}|[A-Za-z]{3,9}\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})\s*$")
+CELL = re.compile(r"^[\s\d,.()\[\]{}%₹$*#@'\"\-–—/:|+=~]*$")
+SENT_END = re.compile(r"[.;!?][\"'”)]*\s*$")
+
+
+def _numeric(s: str) -> bool:
+    s = s.strip()
+    return bool(s) and (bool(CELL.match(s)) and bool(re.search(r"\d", s)) or s.lower() in {"-", "–", "—", "nil"})
+
+
+def _wordy(s: str) -> float:
+    toks = s.split()
+    if not toks:
+        return 0.0
+    good = sum(1 for t in toks if re.fullmatch(r"[(\"'“‘]?[A-Za-z][A-Za-z'’\-&]*[A-Za-z]?[)\"'”’.,:;]*", t)
+               and re.search(r"[aeiouyAEIOUY]", t))
+    return good / len(toks)
+
+
+def _name_like(s: str) -> bool:
+    toks = s.strip().strip("()").split()
+    return 1 <= len(toks) <= 5 and all(re.fullmatch(r"[A-Z][A-Za-z.\-']*,?", t) for t in toks)
+
+
+def _continues(lines: list[str], i: int) -> bool:
+    """Line i finishes a sentence the previous line left open ('... visit our website and' / 'www.bseindia.com')."""
+    j = next((k for k in range(i - 1, -1, -1) if lines[k].strip()), None)
+    if j is None:
+        return False
+    prev = lines[j]
+    return (not SENT_END.search(prev) and not prev.rstrip().endswith(":") and len(FUNC.findall(prev)) >= 2
+            and len(prev.split()) >= 6)
+
+
+def clean_block(block: str) -> str:
+    """Drop signature/letterhead lines, table regions, column headers and OCR noise; keep the note prose."""
+    lines = [ln.rstrip() for ln in block.splitlines()]
+    n = len(lines)
+    nw = [len(ln.split()) for ln in lines]
+    drop = [False] * n
+    strong = [False] * n
+    nxt = lambda i: next((j for j in range(i + 1, n) if lines[j].strip()), None)  # noqa: E731
+    for i, ln in enumerate(lines):
+        s = ln.strip()
+        if not s:
+            continue
+        marker = bool(NOTE_BARE.match(s) or LIST_MARK.match(s))
+        if CONTACT.search(s) and len(FUNC.findall(s)) <= 2:
+            drop[i] = strong[i] = True  # letterhead / address / contact line, however long
+            continue
+        if nw[i] >= 8 and len(FUNC.findall(s)) >= 3 and not SIG_LEAD.match(s):
+            continue  # a sentence that names the auditors or a website is note text
+        if SIG_STRONG.search(s) and nw[i] <= 14:
+            drop[i] = strong[i] = True
+        elif SIG_WEAK.search(s) and nw[i] <= 8 and not (i and _continues(lines, i)):
+            drop[i] = strong[i] = True
+        elif marker:
+            continue
+        elif nw[i] <= 10 and _wordy(s) < 0.5 and not _numeric(s) and not (i and _continues(lines, i)):
+            drop[i] = True  # OCR noise, stamps
+    # names, cities, dates and company lines next to a signature marker
+    for i, ln in enumerate(lines):
+        s = ln.strip()
+        if drop[i] or not s:
+            continue
+        near = any(strong[j] for j in range(max(0, i - 3), min(n, i + 4)))
+        pk = next((j for j in range(i - 1, -1, -1) if lines[j].strip() and not drop[j]), None)
+        if (pk is not None and not SENT_END.search(lines[pk]) and not lines[pk].rstrip().endswith(":")
+                and len(FUNC.findall(lines[pk])) >= 2):
+            continue  # "... meeting held on" / "February 04, 2026." is the end of a sentence
+        prev_list = i > 0 and bool(LIST_MARK.match(lines[i - 1].strip()))
+        if nw[i] <= 7 and COMPANY_LINE.search(s) and not prev_list and len(FUNC.findall(s)) <= 1:
+            drop[i] = True
+        elif near and nw[i] <= 5 and (_name_like(s) or DATE_LINE.match(s)):
+            drop[i] = True
+    # table regions: >=3 numeric cell lines with gaps of at most 3 short lines; bare note numbers followed by prose
+    # are markers, not cells
+    def cell(i):
+        s = lines[i].strip()
+        if not _numeric(s) or drop[i]:
+            return False
+        if NOTE_BARE.match(s):
+            j = nxt(i)
+            return not (j is not None and nw[j] >= 5 and not _numeric(lines[j]))
+        return True
+    cells = [i for i in range(n) if cell(i)]
+    k = 0
+    while k < len(cells):
+        j = k
+        while j + 1 < len(cells) and cells[j + 1] - cells[j] <= 4 and all(
+                nw[t] <= 10 or _numeric(lines[t]) for t in range(cells[j] + 1, cells[j + 1])):
+            j += 1
+        if j - k + 1 >= 3:
+            a, b = cells[k], cells[j]
+            while a > 0 and lines[a - 1].strip() and nw[a - 1] <= 8 and not SENT_END.search(lines[a - 1]) \
+                    and not lines[a - 1].rstrip().endswith(":") and not NOTE_NO.match(lines[a - 1]) \
+                    and a > cells[k] - 6:
+                a -= 1  # column headers above the table
+            for t in range(a, b + 1):
+                drop[t] = True
+        k = j + 1
+    # short title / column-header lines after a finished sentence
+    kept_prev = None
+    for i, ln in enumerate(lines):
+        s = ln.strip()
+        if drop[i] or not s:
+            continue
+        if (kept_prev is not None and nw[i] <= 4 and not SENT_END.search(s) and not s.endswith(":")
+                and not NOTE_NO.match(s) and not LIST_MARK.match(s) and SENT_END.search(lines[kept_prev])
+                and nw[kept_prev] >= 4):
+            j = nxt(i)
+            if j is None or not lines[j].strip()[:1].islower():
+                drop[i] = True
+                continue
+        kept_prev = i
+    out = [ln for i, ln in enumerate(lines) if not drop[i]]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
 
 
 def _basis_near(text_before: str) -> str:
@@ -177,22 +329,70 @@ def _basis_near(text_before: str) -> str:
     return "standalone" if s > c else "consolidated"
 
 
-WORD = re.compile(r"[A-Za-z]{3,}")
+COVER = re.compile(r"enclos(?:ed|ing)\s+herewith|we\s+are\s+enclosing|please\s+find\s+(?:enclosed|attached)|"
+                   r"kindly\s+take\s+(?:the\s+)?(?:same\s+)?on\s+(?:your\s+)?record|request(?:ed)?\s+you\s+to\s+take", re.I)
+AUD_TEXT = re.compile(r"we\s+conducted\s+our\s+review|we\s+have\s+reviewed\s+the\s+accompanying|"
+                      r"standard\s+on\s+review\s+engagements|nothing\s+has\s+come\s+to\s+our\s+attention|"
+                      r"we\s+do\s+not\s+express\s+an\s+audit\s+opinion", re.I)
 
 
 def is_prose(body: str) -> bool:
-    """A note is sentences: at least 8 real words, and letters outweigh digits."""
+    """A note is sentences: at least 8 real words, function words, letters outweigh digits, mostly full lines."""
     words = WORD.findall(body)
     letters = sum(len(w) for w in words)
     digits = sum(ch.isdigit() for ch in body)
-    return len(words) >= 8 and letters >= 1.5 * digits
+    if len(words) < 8 or letters < 1.5 * digits or len(FUNC.findall(body)) < 2:
+        return False
+    # narrow columns wrap a sentence over many short lines, so judge the words, not the line lengths: prose has
+    # function words; table row labels ("Purchase of investments measured under amortised cost") have few
+    nwords = len(re.findall(r"[A-Za-z]{2,}", body))
+    if len(FUNC.findall(body)) >= 0.10 * nwords:
+        return True
+    # a list of entities or ratios still counts when it carries one real sentence
+    flat = re.sub(r"\s+", " ", body)
+    return any(len(s.split()) >= 10 and len(FUNC.findall(s)) >= 3 for s in re.findall(r"[^.;]+[.;]", flat))
+
+
+def trim_tail(body: str) -> str:
+    """Drop short non-sentence lines after the last finished sentence (names, stamps, 'Indore', '1.:.')."""
+    lines = body.splitlines()
+    last = max((i for i, ln in enumerate(lines) if SENT_END.search(ln) and re.search(r"[A-Za-z0-9]{3}", ln)),
+               default=None)
+    if last is None or last == len(lines) - 1:
+        return body
+    tail = [ln for ln in lines[last + 1:] if ln.strip()]
+    if all(len(ln.split()) <= 6 for ln in tail) and sum(len(ln) for ln in tail) < 120:
+        return "\n".join(lines[:last + 1]).strip()
+    return body
+
+
+def is_note(body: str) -> bool:
+    """Prose that is a results note, not the auditor's review text or the cover letter."""
+    return is_prose(body) and not AUD_TEXT.search(body) and not COVER.search(body)
+
+
+def _seq_from(nums: list[int], s: int) -> int:
+    n, e = 0, s
+    for a in nums:
+        if a == e:
+            n, e = n + 1, e + 1
+    return n
 
 
 def split_notes(block: str) -> list[tuple[int | None, str]]:
-    """Split a notes block on an increasing 1., 2., 3. numbering at line start. Unnumbered -> one note."""
+    """Split a notes block on an increasing 1., 2., 3. numbering at line start. Unnumbered -> one note.
+    A block that continues on a later page may start at 7., 8., ...: numbering starts at the value that gives the
+    longest increasing run."""
     lines = block.splitlines()
-    out, cur_no, cur, expect = [], None, [], 1
-    roman = sum(1 for ln in lines if NOTE_ROMAN.match(ln)) >= 2 and not any(NOTE_NO.match(ln) for ln in lines[:3])
+    arabic = [int(m.group(1)) for m in (NOTE_NO.match(ln) for ln in lines) if m]
+    first = 1
+    if arabic and _seq_from(arabic, 1) < 2:
+        cands = list(dict.fromkeys(arabic))[:5]
+        best = max(cands, key=lambda s: (_seq_from(arabic, s), -s))
+        if _seq_from(arabic, best) >= 2:
+            first = best
+    roman = sum(1 for ln in lines if NOTE_ROMAN.match(ln)) >= 2 and _seq_from(arabic, first) < 2
+    out, cur_no, cur, expect = [], None, [], first
     for ln in lines:
         if roman:
             mr = NOTE_ROMAN.match(ln)
@@ -200,15 +400,77 @@ def split_notes(block: str) -> list[tuple[int | None, str]]:
         else:
             m = NOTE_NO.match(ln)
             num = int(m.group(1)) if m else None
+            if num is None and expect == 1 and ln.strip() in ("I", "l", "I.", "l.", "I)"):
+                num = 1  # OCR reads a lone "1" as I or l
         if num == expect:
+            carry = []
+            # a number printed beside the middle of its paragraph: the note began after the last finished sentence
+            if (NOTE_BARE.match(ln) and cur and (len(cur) > 1 or cur_no is None) and not SENT_END.search(cur[-1])
+                    and not cur[-1].rstrip().endswith(":") and len(cur[-1].split()) >= 8):
+                k = len(cur) - 1
+                while k > 1 and not SENT_END.search(cur[k - 1]):
+                    k -= 1
+                if SENT_END.search(cur[k - 1]):
+                    carry, cur = cur[k:], cur[:k]
+                elif cur_no is None:
+                    carry, cur = cur, []  # the opening paragraph belongs to the first number
             if cur and "".join(cur).strip():
                 out.append((cur_no, "\n".join(cur).strip()))
-            cur_no, cur, expect = expect, [ln], expect + 1
+            cur_no, cur, expect = expect, [ln] + carry, expect + 1
         else:
             cur.append(ln)
     if cur and "\n".join(cur).strip():
         out.append((cur_no, "\n".join(cur).strip()))
     return out
+
+
+def _caps_title(body: str, start: int) -> int:
+    """Position of the next all-capitals statement title ('UNAUDITED CONSOLIDATED FINANCIAL RESULTS FOR ...')."""
+    pos = 0
+    for ln in body.splitlines(keepends=True):
+        s = ln.strip()
+        if pos >= start and 3 <= len(s.split()) <= 25 and re.search(r"financial\s+results|statement\s+of", s, re.I):
+            letters = [ch for ch in s if ch.isalpha()]
+            if letters and sum(ch.isupper() for ch in letters) / len(letters) >= 0.7:
+                return pos
+        pos += len(ln)
+    return len(body)
+
+
+def _heading_stop(rx, body: str, start: int = 0, allow_after_colon: bool = True) -> int:
+    """First match of rx that is a heading line (line starts with it, short, after a finished line)."""
+    for m in rx.finditer(body, start):
+        ls = body.rfind("\n", 0, m.start()) + 1
+        le = body.find("\n", m.start())
+        line = body[ls: len(body) if le < 0 else le].strip()
+        if m.start() - ls > 6 or len(line.split()) > 20:
+            continue
+        prev = body[:ls].rstrip().rsplit("\n", 1)[-1].strip()
+        if prev.endswith(":") and not allow_after_colon:
+            continue
+        pl = [ch for ch in prev if ch.isalpha()]
+        if (not prev or re.search(r"[.;:)]$", prev) or len(prev.split()) <= 3 or NOTE_BARE.match(prev)
+                or _wordy(prev) < 0.5 or (pl and sum(ch.isupper() for ch in pl) / len(pl) > 0.7)):
+            return m.start()
+    return len(body)
+
+
+def block_basis(head: str, block: str, before: str, res: dict) -> str:
+    head = head.lower()
+    if "standalone" in head or "consolidated" in head:
+        return "standalone" if "standalone" in head else "consolidated"
+    basis = _basis_near(before)
+    if basis != "unknown":
+        return basis
+    if not res["has_consolidated"]:
+        return "standalone"  # a company with no subsidiaries files standalone results only
+    if res["has_standalone"] != res["has_consolidated"]:
+        return "standalone" if res["has_standalone"] else "consolidated"
+    low = block[:3000].lower()
+    s, c = "standalone" in low, "consolidated" in low
+    if s != c:
+        return "standalone" if s else "consolidated"
+    return _basis_near(before[:-6000] if len(before) > 6000 else "")
 
 
 def parse_pdf(path: str) -> dict:
@@ -244,20 +506,20 @@ def parse_pdf(path: str) -> dict:
         tail = full[st:]
         head_end = tail.find("\n") + 1 if NOTES_HEAD.match(tail.split("\n", 1)[0]) else 0
         body = tail[head_end:]
-        m = STOP.search(body)
-        nxt = STATEMENT.search(body, 200)
-        aft = AFTER_NOTES.search(body, 200)
-        end = min(x.start() if x else len(body) for x in (m, nxt, aft))
-        end = min(end, 15000)
-        block = "\n".join(ln for ln in body[:end].splitlines() if not SIGLINE.search(ln)).strip()
+        ends = [_heading_stop(STOP, body), _heading_stop(AFTER_NOTES, body, 200, allow_after_colon=False),
+                _caps_title(body, 200)]
+        for rx in (STOP_ANY, STATEMENT):
+            m = rx.search(body, 200 if rx is STATEMENT else 0)
+            ends.append(m.start() if m else len(body))
+        # the next basis' notes start a new block (a "(continued)" page header does not)
+        m = next((x for x in NOTES_HEAD_M.finditer(body, 200) if not CONTD.search(x.group(0))), None)
+        ends.append(m.start() if m else len(body))
+        end = min(min(ends), 15000)
+        block = clean_block(body[:end])
         last_end = st + head_end + end
         if len(block) < 40:
             continue
-        head = tail.split("\n", 1)[0].lower()
-        basis = ("standalone" if "standalone" in head else "consolidated" if "consolidated" in head
-                 else _basis_near(full[:st]))
-        if basis == "unknown" and res["has_standalone"] != res["has_consolidated"]:
-            basis = "standalone" if res["has_standalone"] else "consolidated"
+        basis = block_basis(tail.split("\n", 1)[0], block, full[:st], res)
         res["sections"].append({"section": "notes", "basis": basis, "page_from": page_of(st),
                                 "page_to": page_of(st + head_end + end), "text": block})
     am = AUDITOR.search(full)
@@ -285,6 +547,8 @@ def store() -> sqlite3.Connection:
     con = sqlite3.connect(STORE, timeout=120, check_same_thread=False)  # writes are serialised by a lock
     con.execute("PRAGMA journal_mode=WAL")
     con.executescript(SCHEMA)
+    if "parser_version" not in {r[1] for r in con.execute("pragma table_info(docs)")}:
+        con.execute("alter table docs add column parser_version TEXT")
     return con
 
 
@@ -378,7 +642,9 @@ def chunk_rows(news_id, meta, parsed, xfiles):
     for si, s in enumerate(parsed["sections"]):
         parts = split_notes(s["text"]) if s["section"] == "notes" else [(None, s["text"])]
         for k, (no, body) in enumerate(parts):
-            if not is_prose(body):  # table cells caught under a "Notes" column header
+            if s["section"] == "notes":
+                body = trim_tail(body)
+            if not (is_note(body) if s["section"] == "notes" else is_prose(body)):  # table cells, auditor text
                 continue
             label = "Results notes" if s["section"] == "notes" else "Auditor's review report"
             note = f" · note {no}" if no else ""
@@ -439,8 +705,8 @@ def run(quarter: str, limit: int | None, workers: int):
             con.execute("""insert or replace into docs (news_id, scrip_cd, isin, symbol, company, known_at,
                 quarter_end, fy_q, quarter_source, filed_quarter_end, headline, attachment, url, http_status, sha256,
                 bytes, pages, text_chars, upper_share, low_text_pages, doc_class, has_standalone, has_consolidated,
-                notes_found, auditor_report, needs_ocr, xbrl_files, local_path, status, error, fetched_at, processed_at)
-                values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                notes_found, auditor_report, needs_ocr, xbrl_files, local_path, status, error, fetched_at, processed_at,
+                parser_version) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (news_id, scrip, meta["isin"], meta["symbol"], meta["company"], dissem, meta["quarter_end"],
                          meta["fy_q"], meta["quarter_source"], filed_q, headline, att, meta["url"],
                          meta.get("http_status"), meta.get("sha256"), meta.get("bytes"), p.get("pages"),
@@ -449,14 +715,14 @@ def run(quarter: str, limit: int | None, workers: int):
                          int(any(s["section"] == "auditor_report" for s in p.get("sections", []))),
                          p.get("needs_ocr"), meta.get("xbrl_files"), meta.get("local_path"), meta["status"],
                          meta.get("error"), dt.datetime.now().isoformat(timespec="seconds"),
-                         dt.datetime.now().isoformat(timespec="seconds")))
+                         dt.datetime.now().isoformat(timespec="seconds"), PARSER_VERSION if parsed else None))
             con.execute("delete from notes where news_id=?", (news_id,))
             con.executemany("insert into notes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", notes)
+            con.commit()  # per document, so a concurrent `reparse` can take the write lock between documents
             stats[meta["status"]] += 1
             stats["notes"] += len(notes)
             n = sum(v for k, v in stats.items() if k != "notes")
             if n % 100 == 0:
-                con.commit()
                 rate = n / max(1e-9, (time.time() - t0) / 60)
                 print(f"{quarter} {n}/{len(rows)} {dict(stats)} {rate:.1f}/min", flush=True)
 
@@ -536,9 +802,83 @@ def to_drive(quarter: str) -> bool:
     return ok
 
 
+def _reparse_one(d: dict):
+    """Parse one stored PDF with the current parser; runs in a worker process."""
+    parsed = parse_pdf(d["path"])
+    pq = detect_quarter(parsed["full_text"], d["filed_quarter_end"])
+    d["quarter_end"], d["quarter_source"] = (pq, "pdf_text") if pq else (d["filed_quarter_end"], "filing_date")
+    d["fy_q"] = fy_q(d["quarter_end"])
+    xf = xbrl_files(d["isin"], d["scrip_cd"], d["quarter_end"])
+    d["xbrl_files"] = ",".join(xf)
+    rows = chunk_rows(d["news_id"], d, parsed, xf)
+    parsed["auditor_report"] = int(any(s["section"] == "auditor_report" for s in parsed["sections"]))
+    parsed.pop("full_text")
+    parsed.pop("sections")
+    return d, parsed, rows
+
+
+def reparse(quarter: str, workers: int, from_drive: bool = True) -> dict:
+    """Re-parse a filed quarter's processed docs still on an older parser version, from the stored PDFs (no BSE
+    refetch). Copies the quarter back from Drive first when files are missing locally, swaps docs+notes rows in one
+    transaction, and moves the PDFs back to Drive afterwards."""
+    import subprocess
+    con = store()
+    cols = ["news_id", "scrip_cd", "isin", "symbol", "company", "known_at", "filed_quarter_end", "sha256"]
+    stale = [dict(zip(cols, r)) for r in con.execute(
+        f"select {', '.join(cols)} from docs where filed_quarter_end=? and status='processed' "
+        "and coalesce(parser_version,'')<>?", (quarter, PARSER_VERSION))]
+    if not stale:
+        print(f"{quarter} reparse: nothing stale", flush=True)
+        return {"stale": 0}
+    src = os.path.join(PDF_ROOT, quarter)
+    for d in stale:
+        d["path"] = os.path.join(src, f"{d['sha256']}.pdf")
+        d["scrip_cd"] = int(d["scrip_cd"])
+    missing = [d for d in stale if not os.path.exists(d["path"])]
+    copied = False
+    if missing and from_drive:
+        t0 = time.time()
+        r = subprocess.run([RCLONE, "copy", f"{DRIVE_ROOT}/{quarter}", src, "--transfers", "8", "--checksum",
+                            "--include", "*.pdf", "--log-level", "NOTICE"], capture_output=True, text=True)
+        copied = r.returncode == 0
+        print(f"{quarter} reparse: drive copy {'ok' if copied else 'FAILED'} for {len(missing)} missing in "
+              f"{(time.time() - t0) / 60:.1f} min {r.stderr[-300:]}", flush=True)
+    todo = [d for d in stale if os.path.exists(d["path"])]
+    t0 = time.time()
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        out = list(ex.map(_reparse_one, todo, chunksize=8))
+    now = dt.datetime.now().isoformat(timespec="seconds")
+    n_notes = 0
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        for d, p, rows in out:
+            con.execute("""update docs set quarter_end=?, fy_q=?, quarter_source=?, pages=?, text_chars=?,
+                upper_share=?, low_text_pages=?, doc_class=?, has_standalone=?, has_consolidated=?, notes_found=?,
+                auditor_report=?, needs_ocr=?, xbrl_files=?, processed_at=?, parser_version=? where news_id=?""",
+                        (d["quarter_end"], d["fy_q"], d["quarter_source"], p["pages"], p["text_chars"],
+                         p["upper_share"], p["low_text_pages"], p["doc_class"], p["has_standalone"],
+                         p["has_consolidated"], p["notes_found"], p["auditor_report"],
+                         p["needs_ocr"], d["xbrl_files"], now, PARSER_VERSION, d["news_id"]))
+            con.execute("delete from notes where news_id=?", (d["news_id"],))
+            con.executemany("insert into notes values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+            n_notes += len(rows)
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    con.execute("insert into notes_fts(notes_fts) values('rebuild')")
+    con.commit()
+    res = {"stale": len(stale), "reparsed": len(out), "unreadable": len(stale) - len(todo), "notes": n_notes}
+    print(f"{quarter} reparse {res} in {(time.time() - t0) / 60:.1f} min", flush=True)
+    if copied:
+        to_drive(quarter)
+    return res
+
+
 def run_all(quarters: list[str], workers: int):
     for qe in quarters:
         run(qe, None, workers)
+        reparse(qe, workers, from_drive=False)  # docs parsed by an older version before a restart
         g = gate(qe)
         print(f"GATE {qe} {fy_q(qe)} passed={g['passed']} checks={g['checks']} "
               f"notes_company={g['notes_company_share']} results_companies={g['results_companies']}", flush=True)
@@ -550,7 +890,7 @@ def run_all(quarters: list[str], workers: int):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "gate", "quarters", "all"])
+    ap.add_argument("cmd", choices=["run", "gate", "quarters", "all", "reparse"])
     ap.add_argument("--quarter")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
@@ -561,6 +901,11 @@ def main():
             print(qe, fy_q(qe), c[qe])
     elif a.cmd == "run":
         run(a.quarter, a.limit, a.workers)
+    elif a.cmd == "reparse":
+        reparse(a.quarter, a.workers)
+        g = gate(a.quarter)
+        print(f"GATE {a.quarter} {fy_q(a.quarter)} passed={g['passed']} checks={g['checks']} "
+              f"notes_company={g['notes_company_share']} basis={g['basis']}", flush=True)
     elif a.cmd == "all":
         qs = sorted({quarter_end_before(r[5]) for r in candidates()}, reverse=True)
         run_all(qs, a.workers)
