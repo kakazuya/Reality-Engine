@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-26T03:52:55+05:30 · git HEAD: `fd02671` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-27T05:17:24+05:30 · git HEAD: `22fe2f9` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -17,7 +17,7 @@ reality_engine/
   processing/ (43 py) — Document and image processing components.
   query/ (2 py) — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company at time t.
   reporting/ (3 py) — Reporting module for Reality Engine.
-  scripts/ (130 py) — Operational job scripts: one module per data job; most-referenced list below
+  scripts/ (134 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
   toolbelt/ (12 py) — Ready-made, read-only tools for dsh workers (Task 02).
   ui/ (2 py) — Reality Engine UI Module.
@@ -267,7 +267,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/reporting/notifier.py` — Wave B — Telegram alerts + 23:00 nightly digest (stdlib only, no new deps).
 - `reality_engine/reporting/writer.py` — Report Writer Module
 
-- `reality_engine/scripts/` — 130 data-job modules (one per data job); most-referenced ranked below.
+- `reality_engine/scripts/` — 134 data-job modules (one per data job); most-referenced ranked below.
 ### reality_engine/search/
 - `reality_engine/search/chunk_vector_index.py` — Local dense-retrieval index over ``document_chunks.embedding``.
 - `reality_engine/search/hybrid_search.py` — Lexical plus dense search using reciprocal rank fusion.
@@ -304,7 +304,7 @@ Ranked by mentions in `tasks/STATE.md`, `plugins/dsh-worker/jobs.yaml` and the 2
 - `reality_engine/scripts/pib_regional.py` (6 refs) — PIB phase 2 (PIPELINE_TODO A2, 2026-10-19): Hindi / Urdu releases of PIB Delhi and every regional PIB office in every
 - `reality_engine/scripts/claude_page_queue.py` (5 refs) — Hand-off between the deck-figure database and Claude Code helper agents (Claude Haiku 5.5), which cannot be called
 - `reality_engine/scripts/concall_pilot.py` (5 refs) — Concall semantic-extraction pilot (2026-10-18): the same prompt (data/concall_pilot/prompt.md) on 25 transcripts,
-- `reality_engine/scripts/fetch_nse_api_raw.py` (5 refs) — Raw NSE disclosure fetcher (download only, no DB writes).
+- `reality_engine/scripts/coverage_report.py` (5 refs) — Coverage report: for every company that traded on BSE or NSE in a year (2019 onwards), which datasets we hold.
 
 ### Tools
 
@@ -318,7 +318,7 @@ Data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data` (
 | DB | file | size | tables | use |
 |---|---|---|---|---|
 | truth_duckdb | `truth_2026-10-19.duckdb` | 8.5 GB | 63 | Dated, read-only research snapshot (2026-10-19) built from the live SQLite DBs: clean entity-level prices with split/bonus/dividend adjustment and point-in-time known_at timestamps (date-only sources stamped 23:59:59 IST), plus consolidated results/AR/deck/concall/ownership/policy tables. Prefer this for historical/as-of research; SQLite is the live source with newer rows and full text. |
-| equity_intelligence | `equity_intelligence.db` | 50.1 GB | 123 | Live primary equity database: company master, normalized daily prices, financials, corporate actions/documents, ownership/market flows, policy/macro/ripple layers, substrate analytics, Telegram signals and quarantine. Use it for latest/live data and full text; use truth_duckdb for adjusted price history and PIT-stamped research tables. Mixed raw and derived; check per-table notes. |
+| equity_intelligence | `equity_intelligence.db` | 50.3 GB | 123 | Live primary equity database: company master, normalized daily prices, financials, corporate actions/documents, ownership/market flows, policy/macro/ripple layers, substrate analytics, Telegram signals and quarantine. Use it for latest/live data and full text; use truth_duckdb for adjusted price history and PIT-stamped research tables. Mixed raw and derived; check per-table notes. |
 | ar_facts | `ar_facts.db` | 19.1 GB | 8 | Annual-report extraction store: document registry, ~33M extracted facts with quotes/units, processing provenance and FTS. Managed by the AR pipeline and hand-review overlays in equity_intelligence. |
 | deck_figures | `deck_figures.db` | 9.9 GB | 14 | Investor-presentation/deck reader store: per-page vision-model calls, extracted printed numeric facts, chart trend labels and spend/queue ledgers, with symbol/ISIN/known_at resolvable via pages. |
 | concall_facts | `concall_facts.db` | 741 MB | 4 | Concall transcript extraction store: one row per processed concall document, extracted guidance/analyst items as text, QA checks and FTS. |
@@ -445,10 +445,10 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.agent.schemas` | test_distillation_macro.py |
 | `reality_engine.cli` | test_horizon_excess.py, test_macro_ingest.py, test_macro_pdf_fetcher.py |
 | `reality_engine.config` | test_agent_and_reporting.py, test_bootstrap.py, test_news_retention.py, test_raw_root.py, test_v2_ingestion_adapters.py |
-| `reality_engine.db.database` | test_action_thesis.py, test_attention_ranker.py, test_backfill_call_rows.py, test_bootstrap.py, test_bse_backfill.py, test_bse_fundamentals_client.py, test_catchup_scheduler.py, test_continuous_loop.py, test_deals_client.py, test_derived_substrate.py, test_desk_backtest.py, test_distillation_macro.py, test_distilled_expansion.py, test_document_industry_tag.py, test_document_pit.py, test_ensemble_ranker.py, test_ensemble_weighted.py, test_eod_corrector.py, test_event_graph.py, test_factor_loaders.py, test_factor_spine.py, test_financial_denominator.py, test_fiscal_extraction.py, test_forecast_capacity.py, test_horizon_excess.py, test_index_backfill.py, test_insider_trades.py, test_intel_search.py, test_lifecycle_pruning.py, test_macro_ingest.py, test_macro_pdf_fetcher.py, test_master_bse_admission.py, test_master_upsert.py, test_moat_backfill.py, test_moe_all_universe.py, test_move_attribution.py, test_news_announcements.py, test_news_explainer.py, test_news_feed_client.py, test_news_retention.py, test_news_vision.py, test_nightly_alpha.py, test_peer_graph_and_hygiene.py, test_perf_guards.py, test_policy_coverage.py, test_policy_eni.py, test_policy_press_client.py, test_portfolio_ledger.py, test_pua_fallback.py, test_repo_identity.py, test_repo_lane.py, test_rumor_backfill.py, test_rumor_scorer.py, test_screener_substrate_routing.py, test_sip_backtest.py, test_sip_signals.py, test_skill_loop.py, test_supply_chain.py, test_telegram_hardening.py, test_v2_ingestion_adapters.py |
+| `reality_engine.db.database` | test_action_thesis.py, test_attention_ranker.py, test_backfill_call_rows.py, test_bootstrap.py, test_bse_backfill.py, test_bse_fundamentals_client.py, test_catchup_scheduler.py, test_continuous_loop.py, test_deals_client.py, test_derived_substrate.py, test_desk_backtest.py, test_distillation_macro.py, test_distilled_expansion.py, test_document_industry_tag.py, test_document_pit.py, test_ensemble_ranker.py, test_ensemble_weighted.py, test_eod_corrector.py, test_event_graph.py, test_factor_loaders.py, test_factor_spine.py, test_financial_denominator.py, test_fiscal_extraction.py, test_forecast_capacity.py, test_horizon_excess.py, test_index_backfill.py, test_insider_trades.py, test_intel_search.py, test_lifecycle_pruning.py, test_macro_ingest.py, test_macro_pdf_fetcher.py, test_market_gap_backfill.py, test_master_bse_admission.py, test_master_upsert.py, test_moat_backfill.py, test_moe_all_universe.py, test_move_attribution.py, test_news_announcements.py, test_news_explainer.py, test_news_feed_client.py, test_news_retention.py, test_news_vision.py, test_nightly_alpha.py, test_peer_graph_and_hygiene.py, test_perf_guards.py, test_policy_coverage.py, test_policy_eni.py, test_policy_press_client.py, test_portfolio_ledger.py, test_pua_fallback.py, test_repo_identity.py, test_repo_lane.py, test_rumor_backfill.py, test_rumor_scorer.py, test_screener_substrate_routing.py, test_sip_backtest.py, test_sip_signals.py, test_skill_loop.py, test_supply_chain.py, test_telegram_hardening.py, test_v2_ingestion_adapters.py |
 | `reality_engine.db.fixtures` | test_bootstrap.py |
 | `reality_engine.db.readonly` | test_readonly.py |
-| `reality_engine.db.repository` | test_action_thesis.py, test_attention_ranker.py, test_backfill_call_rows.py, test_bootstrap.py, test_deals_client.py, test_derived_substrate.py, test_distillation_macro.py, test_distilled_expansion.py, test_document_industry_tag.py, test_document_pit.py, test_ensemble_ranker.py, test_ensemble_weighted.py, test_eod_corrector.py, test_factor_spine.py, test_financial_denominator.py, test_forecast_capacity.py, test_index_backfill.py, test_insider_trades.py, test_intel_search.py, test_macro_ingest.py, test_macro_pdf_fetcher.py, test_master_bse_admission.py, test_master_upsert.py, test_moat_backfill.py, test_moe_all_universe.py, test_move_attribution.py, test_news_announcements.py, test_news_explainer.py, test_news_feed_client.py, test_news_vision.py, test_peer_graph_and_hygiene.py, test_policy_coverage.py, test_policy_eni.py, test_policy_press_client.py, test_portfolio_ledger.py, test_quant_hardening.py, test_repo_identity.py, test_repo_lane.py, test_rumor_scorer.py, test_screener_substrate_routing.py, test_sip_signals.py, test_supply_chain.py, test_telegram_hardening.py, test_v2_ingestion_adapters.py |
+| `reality_engine.db.repository` | test_action_thesis.py, test_attention_ranker.py, test_backfill_call_rows.py, test_bootstrap.py, test_deals_client.py, test_derived_substrate.py, test_distillation_macro.py, test_distilled_expansion.py, test_document_industry_tag.py, test_document_pit.py, test_ensemble_ranker.py, test_ensemble_weighted.py, test_eod_corrector.py, test_factor_spine.py, test_financial_denominator.py, test_forecast_capacity.py, test_index_backfill.py, test_insider_trades.py, test_intel_search.py, test_macro_ingest.py, test_macro_pdf_fetcher.py, test_market_gap_backfill.py, test_master_bse_admission.py, test_master_upsert.py, test_moat_backfill.py, test_moe_all_universe.py, test_move_attribution.py, test_news_announcements.py, test_news_explainer.py, test_news_feed_client.py, test_news_vision.py, test_peer_graph_and_hygiene.py, test_policy_coverage.py, test_policy_eni.py, test_policy_press_client.py, test_portfolio_ledger.py, test_quant_hardening.py, test_repo_identity.py, test_repo_lane.py, test_rumor_scorer.py, test_screener_substrate_routing.py, test_sip_signals.py, test_supply_chain.py, test_telegram_hardening.py, test_v2_ingestion_adapters.py |
 | `reality_engine.db.vector_store` | test_perf_guards.py |
 | `reality_engine.harness.adapter` | test_harness_h01.py |
 | `reality_engine.harness.benchmark` | test_harness_h01.py, test_harness_h01_wall.py |
@@ -463,7 +463,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.harness.stats` | test_harness_h01.py, test_harness_h02.py |
 | `reality_engine.harness.universe` | test_harness_h01.py |
 | `reality_engine.ingestion.bse_fundamentals_client` | test_bse_fundamentals_client.py |
-| `reality_engine.ingestion.deals_client` | test_deals_client.py |
+| `reality_engine.ingestion.deals_client` | test_deals_client.py, test_market_gap_backfill.py |
 | `reality_engine.ingestion.headless_fetcher` | test_filing_ingestion.py |
 | `reality_engine.ingestion.llm_lens_client` | test_llm_lens_client.py |
 | `reality_engine.ingestion.macro_pdf_fetcher` | test_macro_pdf_fetcher.py |
@@ -523,17 +523,23 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.backfill_fiscal_periods` | test_fiscal_extraction.py |
 | `reality_engine.scripts.backfill_index_ohlc` | test_index_backfill.py |
 | `reality_engine.scripts.backfill_raw_document_symbols` | test_raw_document_symbols.py |
+| `reality_engine.scripts.build_bulk_block_deals` | test_market_gap_backfill.py |
 | `reality_engine.scripts.build_deck_page_text` | test_new_feeds_g2.py |
 | `reality_engine.scripts.build_etf_premium` | test_new_feeds_g2.py |
 | `reality_engine.scripts.build_insider_trades` | test_insider_trades.py |
 | `reality_engine.scripts.build_universe_membership` | test_universe_builder.py |
+| `reality_engine.scripts.clean_insider_dates` | test_market_gap_backfill.py |
 | `reality_engine.scripts.dedupe_raw` | test_dedupe_raw.py |
 | `reality_engine.scripts.dsh_heartbeat` | test_dsh_worker_plugin.py |
 | `reality_engine.scripts.embed_prototype_compare` | test_embed_prototype.py |
-| `reality_engine.scripts.eval_retrieval` | test_eval_budget.py |
 | `reality_engine.scripts.extract_deck_figures` | test_extract_deck_figures.py |
 | `reality_engine.scripts.fetch_etf_nav` | test_fetch_etf_nav_timeout.py |
+| `reality_engine.scripts.fetch_market_raw` | test_market_gap_backfill.py |
+| `reality_engine.scripts.fetch_nse_api_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_results_notes_text` | test_new_feeds_g2.py |
+| `reality_engine.scripts.load_deck_chunks` | test_deck_chunk_load.py |
+| `reality_engine.scripts.load_market_raw` | test_market_gap_backfill.py |
+| `reality_engine.scripts.market_session_coverage` | test_market_gap_backfill.py |
 | `reality_engine.scripts.merge_lane_db` | test_merge_lane_db.py |
 | `reality_engine.scripts.migrate_raw_to_d` | test_raw_root.py |
 | `reality_engine.scripts.resource_watchdog` | test_resource_watchdog.py |
@@ -542,7 +548,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.search.intel_search` | test_intel_search.py, test_rumor_backfill.py |
 | `reality_engine.toolbelt.cost_ledger` | test_toolbelt.py |
 | `reality_engine.toolbelt.coverage_peek` | test_coverage_peek.py |
-| `reality_engine.toolbelt.drive_fetch` | test_toolbelt.py |
+| `reality_engine.toolbelt.drive_fetch` | test_deck_chunk_load.py, test_toolbelt.py |
 | `reality_engine.toolbelt.find_docs` | test_toolbelt.py |
 | `reality_engine.toolbelt.job_peek` | test_toolbelt.py |
 | `reality_engine.toolbelt.mod_test` | test_toolbelt.py |

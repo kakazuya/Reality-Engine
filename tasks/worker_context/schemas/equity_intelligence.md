@@ -1,6 +1,6 @@
 # equity_intelligence schema
 
-File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\equity_intelligence.db` (50.1 GB)
+File: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\equity_intelligence.db` (50.3 GB)
 
 Live primary equity database: company master, normalized daily prices, financials, corporate actions/documents, ownership/market flows, policy/macro/ripple layers, substrate analytics, Telegram signals and quarantine. Use it for latest/live data and full text; use truth_duckdb for adjusted price history and PIT-stamped research tables. Mixed raw and derived; check per-table notes.
 
