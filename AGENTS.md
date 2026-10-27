@@ -14,7 +14,7 @@
 > 5. **Re-run every question on the pilot.** At least **95% must be answered** (NOT IN DATA counts only where the data truly doesn't exist), and the pilot must pass the checklist (tags, point in time, search speed, precision).
 > 6. **Only then the full run: chunking, then re-embedding.**
 >
-> No full chunking, tagging, embedding or loading of any dataset before step 5 passes. Every decision and every deviation is appended, dated, to `D:RealityEngineplansDECISION_LOG.md` (also on `gdrive:InfoDiffusion_archive/plans`). Read it at the start of every session. Details are in `tasks/NEXT_SESSIONS_PLAN_2026-10-27.md` and `tasks/QUERY_TEMPLATES_2026-10-27.md`.
+> No full chunking, tagging, embedding or loading of any dataset before step 5 passes. Every decision and every deviation is appended, dated, to `D:\RealityEngine\plans\DECISION_LOG.md` (also on `gdrive:InfoDiffusion_archive/plans`). Read it at the start of every session. Details are in `tasks/NEXT_SESSIONS_PLAN_2026-10-27.md` and `tasks/QUERY_TEMPLATES_2026-10-27.md`.
 
 > **Read `tasks/FRAMEWORK.md` first.** It is the authority file (set by Shivam, 2026-10-08) and overrides this guide wherever they disagree: cash-only long book, risk limits, benchmark, proof rules, and the order of work. Live status and next steps are in `tasks/STATE.md`. Moat / ENI / ripple seeds are set aside until a tested strategy beats them. Note: rule 1 below ("ISINs remain immutable") is wrong in practice. ISINs change on splits and face-value changes, so price history needs an ISIN-history map.
 
