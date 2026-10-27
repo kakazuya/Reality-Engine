@@ -1208,3 +1208,18 @@ Two things the run proves that reading could not: (a) the FTS5 table really inde
 triggers (the smoke insert matched), and (b) every query resolves its columns against the proposed schema, with
 the index we intended. Q1 and Q3 currently drive from `ix_chunk_type_known`; with `ANALYZE` statistics they are
 expected to flip to `chunk_tag` first (§6 note) — the plan stays correct either way.
+
+## Addendum (2026-10-27, Shivam)
+- **Deck coverage, FY25+.** BSE "Investor Presentation": 13,028 filings from 1,696 companies. We hold at least one
+  deck for 1,647 (97%). 49 companies are missing (Symphony 20, PRECAM 11, BCPL/GOKEX/GRAPHITE/GUJALKALI 10 each;
+  HDFCBANK/OBEROIRLTY are likely a symbol mismatch). About 1,413 filings are short at covered companies. 346 of our
+  deck companies are not in BSE's list (NSE-only or a different subcategory). NSE completeness cannot be checked
+  without an NSE announcement feed. Action: fetch the ~1.4k missing decks and fix the symbol mapping.
+- **Results PDFs: fetch quarter by quarter, newest first.**
+  1. Fetch one quarter (start with Q2 FY27, then Q1 FY27, Q4 FY26, … back to Q1 FY25).
+  2. Gate before the next quarter:
+     - one results PDF per company-quarter (standalone and consolidated identified);
+     - no cover letters, outcome notices or duplicates;
+     - company and quarter match the XBRL filing;
+     - notes pages located.
+  3. Report the gate numbers per quarter. Stop and fix if the gate fails.
