@@ -42,11 +42,26 @@ corpus (same file, wide test: facts R@1 .353 vs v2 .908); no paid spend without 
    - ASR correction is deterministic glossary matching on the CPU, then a fix-up during claim extraction. There
      is no separate model pass, because a free-model correction pass was too slow (minutes per 5-min clip).
 
-6. **Time window (Shivam, 2026-10-27): FY2024-25 onward.**
-   - All raw data is fetched, chunked, tagged, embedded and counted only for `known_at` ≥ **2024-04-01**.
-   - Price/volume/flows data stays 2019+ (already loaded).
-   - Older documents may be read as context, but are never fetch targets.
-   - All volumes in §3 and §7 must be re-cut to this window.
+6. **Scope (Shivam, 2026-10-27, redrawn).**
+   - **Company data: FY2024-25 onward** (`known_at` ≥ 2024-04-01). This covers concalls, decks, ARs, results notes,
+     announcements and analyst opinions.
+   - **Macro and government data: everything we hold**, no date cut. This covers RBI, PIB, Union and state
+     budgets, the Economic Survey and other government data.
+   - Prices, flows, insider and bulk/block deals stay 2019+ (already loaded).
+   - FY25+ company volumes, measured read-only on 2026-10-27. Dates are `bse_dissem_ts` / BSE `DissemDT`, never
+     the crawl date.
+
+     | source | FY25+ volume | where the original is | fetch need |
+     |---|---:|---|---|
+     | Concall transcripts | **9,390** BSE "Earnings Call Transcript" filings; 11,166 `corporate_documents` rows (+1,736 undated) | none on disk; Drive has 2,289 (all years, A–P) | fetch ~9.4k from BSE, keyed by the BSE subcategory, which excludes intimations |
+     | Investor decks | 12,954 of 23,321 in `chunks_v2.db`; BSE lists 13,028 FY25+ | `D:\RealityEngineaw\decks_full` | none (re-chunk with v2 only) |
+     | Annual reports | 14,377 `corporate_documents` rows | 5,364 PDFs on D (years to check) | fetch the rest, ~9k (to verify) |
+     | Results PDFs (notes) | 41,614 BSE "Result" filings | none | largest fetch; dedupe to one PDF per company-quarter first |
+     | Material announcements | order wins 5,652 · press releases 21,961 · acquisitions 6,416 · credit ratings 6,196 · management changes 19,871 · clarifications 4,487 ≈ **65k** | none | fetch; skip routine subcategories (newspaper ads, Reg 74(5), ESOP, compliance certificates) |
+     | Macro (PIB, RBI, budgets, Survey) | all held | text in `document_chunks` is lowercased (PIB 99%) | re-fetch originals for casing (PIB pages, RBI and budget PDFs) |
+
+   - Fetch time scales with the BSE pace. The 06:13–06:29 probe measures it. These are plain HTTP fetches with no
+     DeepSeek tokens, so they are not bound by the DeepSeek peak windows.
 
 ---
 
