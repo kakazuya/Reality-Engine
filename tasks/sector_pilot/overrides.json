@@ -1,0 +1,20 @@
+{
+ "INE552U01010": {
+  "primary": "HEALTHCARE",
+  "note": "manual: single reportable segment is the manufacture of finished pharmaceutical formulations (ar_facts single-segment statement)"
+ },
+ "INE388A01029": {
+  "grades": {
+   "nse_sector": ["partly", "chemicals 46% + liquid storage terminals 54%; the Oil label names only the storage half"],
+   "nse_industry": ["partly", "chemicals 46% vs oil storage/transportation 54% - label covers one of two major lines"],
+   "bse_industry": ["partly", "Oil Storage & Transportation covers the terminal half only; chemicals is 46% of segment revenue"]
+  }
+ },
+ "INE097E01028": {
+  "grades": {
+   "nse_sector": ["partly", "single segment is the manufacture and trading of gems and jewellery; the Services sector names only the trading channel"],
+   "nse_industry": ["partly", "Trading & Distributors names the channel, not the jewellery manufacturing business"],
+   "bse_industry": ["partly", "Trading & Distributors names the channel, not the jewellery manufacturing business"]
+  }
+ }
+}
