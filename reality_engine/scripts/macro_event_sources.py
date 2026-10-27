@@ -123,6 +123,52 @@ RIPPLE_DIFF = ("Assigned by hand in the processing/event_graph.py example fixtur
                "The event's existence is a separate question (see the other rows for this event_id).")
 
 
+# Corrections approved by Shivam on 2026-10-28. The prior values of each row are kept in macro_event_sources
+# under source_url 'internal:macro_events_prior_value/2026-10-28' before macro_events is updated.
+PRIOR_URL = "internal:macro_events_prior_value/2026-10-28"
+CORRECTIONS = {
+    TEX[0]: dict(
+        event_name="India-US interim trade deal: US tariff on Indian goods cut from 50% to 18% (textiles included)",
+        category="Trade",
+        event_date="2026-02-03",
+        summary=("India-US interim trade framework, publicly reported by 3 Feb 2026: US tariff on Indian goods cut from 50% "
+                 "(25% reciprocal + 25% Russia-oil penalty, in force since Aug 2025) to an 18% reciprocal rate; the "
+                 "Russia-linked 25% removed effective 7 Feb 2026; applies across textile products, some silk lines at 0%. "
+                 "Sources: macro_event_sources. Downstream ripple_effects rows are unverified fixture values."),
+        doc_id=None,
+    ),
+    NUC[0]: dict(
+        event_name="Nuclear Energy Mission (Rs 20,000 cr for SMRs; 100 GW by 2047)",
+        category="Policy",
+        event_date="2025-02-01",
+        summary=("Union Budget 2025-26 speech, 1 Feb 2025: Nuclear Energy Mission for R&D of Small Modular Reactors with a "
+                 "Rs 20,000 crore outlay; at least 5 indigenous SMRs operational by 2033; at least 100 GW nuclear by 2047; "
+                 "Atomic Energy Act and CLND Act to be amended for private participation. Downstream ripple_effects rows "
+                 "are unverified fixture values."),
+        doc_id=64,
+    ),
+}
+
+
+def apply_corrections(conn):
+    """Keep each row's prior values in macro_event_sources, then rewrite the row. Idempotent."""
+    for event_id, new in CORRECTIONS.items():
+        if conn.execute("SELECT 1 FROM macro_event_sources WHERE event_id=? AND source_url=?",
+                        (event_id, PRIOR_URL)).fetchone() is None:
+            old = conn.execute("SELECT event_name, category, event_date, summary, doc_id, affected_nodes_json "
+                               "FROM macro_events WHERE event_id=?", (event_id,)).fetchone()
+            prior = (f"PRIOR VALUES before the 2026-10-28 correction | event_name={old[0]} | category={old[1]} | "
+                     f"event_date={old[2]} | doc_id={old[4]} | summary={old[3]} | affected_nodes_json={old[5]}")
+            verdict = "contradicted" if event_id == TEX[0] else "partly_confirmed"
+            conn.execute("INSERT INTO macro_event_sources VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                         (event_id, prior, verdict, new["summary"],
+                          "Row rewritten to the sourced facts on Shivam's instruction (2026-10-28).",
+                          PRIOR_URL, "macro_events row before correction", "Reality Engine", "none", "none",
+                          None, None, CHECKED_AT, BY))
+        conn.execute("UPDATE macro_events SET event_name=?, category=?, event_date=?, summary=?, doc_id=? WHERE event_id=?",
+                     (new["event_name"], new["category"], new["event_date"], new["summary"], new["doc_id"], event_id))
+
+
 def main():
     conn = sqlite3.connect(config.DB_PATH, timeout=60)
     conn.execute("PRAGMA busy_timeout=60000")
@@ -137,6 +183,7 @@ def main():
             conn.execute("INSERT OR REPLACE INTO macro_event_sources VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                          (event_id, f"{RIPPLE_CLAIM} ({n} rows)", "unverified", None, RIPPLE_DIFF,
                           f"internal:ripple_effects/{event_id}", None, None, "none", "none", None, None, CHECKED_AT, BY))
+        apply_corrections(conn)
     for row in conn.execute("SELECT event_id, verdict, COUNT(*), GROUP_CONCAT(robustness) FROM macro_event_sources GROUP BY 1, 2"):
         print(row)
 
