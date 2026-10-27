@@ -47,6 +47,10 @@ ARCH = {
 
 FACTS = {f["id"]: f for f in json.loads(FACTS_FILE.read_text(encoding="utf-8"))}
 
+# macro_events rows split by provenance: MEV_* rows carry a doc_id; hand-seeded
+# event ids (including PHASE5_* fixtures) do not and must never become evidence.
+EVENTS: dict[str, set[str]] = {"sourced": set(), "unsourced": set()}
+
 QUESTIONS: list[dict] = []
 
 
@@ -726,12 +730,12 @@ Q("A07", "On 7 April 2025 the Nifty 50 fell 3.24%. Which stored policy event is 
   "matching a tariff headline from a different month; asserting a cause from proximity alone",
   gt="idx.Nifty 50.2025-04-07", cov="partial", note="the index move is exact; the tariff-event store has no 7 April 2025 entry.",
   gap="G12", why="tests event-date matching discipline on a tariff-driven selloff")
-Q("A07", "USTariff relief for textiles is dated 1 April 2026 in the macro store. Did the index or a textile-heavy sector index react on that date?", "event:US_TARIFF_TEXTILE_RELIEF, index:Nifty 50", "2026-04-01", "2026-04-02", "fact",
-  "macro_events (event_date, summary); mkt_nse_index_daily for 2026-04-01; sector indices; textile stock returns",
-  "read the event date -> read the same-day index and sector moves -> say whether the move is distinguishable from noise -> report both",
-  "assuming a policy event must show up in the index; using a stock that is not textile-exposed",
-  gt="idx.Nifty 50.2026-04-01", cov="partial", note="the event and the index move are exact; there is no ready textile sector index in the store.",
-  gap="G5", why="tests event-study honesty when the expected sector basket is missing")
+Q("A07", "The RBI hiked the repo rate 25 bps to 5.50% on 7 October 2026. Did the Nifty 50 or the rate-sensitive indices move that day, and can the day's move be separated from the hike?", "policy:pol.rbi_hike, index:Nifty 50, index:Nifty Bank, index:Nifty Auto", "2026-10-07", "2026-10-08", "fact",
+  "policy_events (id 21732: policy_name, direction_for_industry, sectors, published_at; quote_ok=1, source_kind=doc, source_id=12803); mkt_nse_index_daily for 2026-10-07 (Nifty 50, Nifty Bank, Nifty Auto, Nifty Metal); the prior session 2026-10-06 as the base",
+  "read the policy row and its document date -> read the same-day index moves -> compare the rate-sensitive indices with the broad index -> state that one session is weak evidence for a single cause",
+  "assuming a policy event must show up in the index; calling a rate-sensitive sector's move proof of the hike",
+  gt="pol.rbi_hike", cov="partial", note="the policy row and the index moves are exact; the store has no attribution model, so cause and effect cannot be measured.",
+  gap="NEW GAP: no event-study harness to separate a policy day from the tape", why="tests event-day attribution discipline when the policy itself is dated")
 Q("A07", "On 23 October 2026 FIIs bought and DIIs bought much more. Who absorbed the supply, and did the index fall anyway?", "index:Nifty 50", "2026-10-23", "2026-10-24", "fact",
   "mkt_fii_dii_cash (fii_net_cr, dii_net_cr, nifty_change_pct); mkt_nse_index_daily",
   "read both flows -> read the index move -> state that DII buying dominated -> avoid inferring causality from one session",
@@ -1202,29 +1206,30 @@ Q("A12", "CAQM Direction 98 requires PTZ-camera monitoring for red-category indu
   gt="pol.caQM98", cov="partial", note="the policy scope is exact; plant locations are AR text and the capex is not quantified.",
   gap="NEW GAP: no plant-location register linked to policy scope",
   why="tests a compliance-cost policy question with a location join")
-Q("A12", "A 12% steel safeguard duty was announced on 21 April 2025. Who gains and who loses among listed companies, and in what order?", "SAIL, TATASTEEL, TITAGARH, event:STEEL_SAFEGUARD_DUTY", "2025-04-21", "2025-04-30", "explanation",
-  "macro_events (event_date, summary); ripple_effects (order_level, target_type, channel); results_xbrl margins; concall steel-cost commentary",
-  "read the event -> read the ripple chain -> producers gain on price, wagon/auto users lose on input -> order by transmission level",
-  "treating a safeguard duty as a subsidy; ignoring the downstream user",
-  gt="mev.STEEL_SAFEGUARD_DUTY", cov="partial", note="the event and a stored ripple chain exist; company magnitudes are not quantified.",
-  gap="G10", why="tests a policy with an explicit second-order chain in the store")
-Q("A12", "The rail capex push grew the outlay 9% year on year. Which listed railway names does it reach first, and which later?", "RVNL, IRCON, TEXRAIL, TITAGARH, event:RAIL_CAPEX_PUSH", "FY27", "2026-10-07", "ranking",
-  "macro_events (event_date, summary); policy_events for the budget line; results_xbrl order book proxies; concall order commentary",
-  "read the capex line -> map to construction vs rolling stock vs signalling -> rank by award timing -> state the lag",
-  "assuming the whole outlay is orderable in one year",
-  gt="mev.RAIL_CAPEX_PUSH", cov="partial", note="the event is exact; award timing per company is commentary.",
-  gap="G10", why="tests timing-aware policy ranking")
-Q("A12", "US tariff relief for textiles was dated 1 April 2026. Which listed exporters gain, and what did the market do on the day?", "KPRMILL, WELSPUNLIV, GOKEX, event:US_TARIFF_TEXTILE_RELIEF", "2026-04-01", "2026-04-02", "explanation",
-  "macro_events (event_date, summary); daily_price_delivery for textile names; mkt_nse_index_daily",
-  "read the event -> read the stock moves -> state that a same-day move is weak evidence -> separate announcement from earnings effect",
-  "calling a one-day move proof of a policy benefit",
-  gt="mev.US_TARIFF_TEXTILE_RELIEF", cov="partial", note="the event is exact; there is no textile sector index or tariff-exposure field.",
-  gap="G5", why="tests event-to-stock attribution without a sector basket")
-Q("A12", "The Nuclear Energy Mission targets 100 GW by 2047 with conditional incentives. Which listed companies can actually bid for that, and where is the gap?", "NTPC, BHEL, event:NUCLEAR_MISSION", "FY27-2047", "2026-10-07", "NOT IN DATA",
-  "macro_events; results_xbrl segment revenue; ar_facts nuclear capability; policy_events",
-  "read the mission -> check which listed firms have nuclear credentials -> state that the nuclear supply chain is mostly unlisted/PSU -> NOT IN DATA for order pipelines",
-  "calling an EPC firm a nuclear beneficiary without a credential",
-  gt="mev.NUCLEAR_MISSION", cov="no", note="the mission exists; no nuclear order pipeline or credential store, and the prime contractors are public-sector/unlisted.",
+Q("A12", "The FY26 Budget cut customs duty on flat-rolled steel products to 15%, effective 1 May 2025. Who gains and who loses among listed companies, and in what order?", "SAIL, TATASTEEL, TITAGARH, policy:pol.steel_flat_cut", "2025-05-01", "2025-05-31", "explanation",
+  "policy_events (id 9074: old_value, new_value, direction_for_industry='mixed', effective_date, published_at; quote_ok=1, source_kind=doc, source_id=12402); results_xbrl margins; concall steel-cost commentary; daily_price_delivery for 2025-05-02 only as a reaction check",
+  "read the duty row and its effective date -> separate mills (import competition) from steel users (input cost) -> order by transmission: mills on price first, users as contracts reprice -> state that the store quantifies neither",
+  "treating a duty cut as a subsidy; inventing a rupee impact; using the announcement date as the effective date",
+  gt="pol.steel_flat_cut", cov="partial", note="the duty change and the effective date are exact; company-level price and cost pass-through are not fields.",
+  gap="G10", why="tests sign reversal on a duty cut and the announcement-versus-effective date split")
+Q("A12", "Union Budget 2026-27 set the railway rolling-stock capex at Rs 52,109 crore. Which listed railway names does it reach first, and which only after the award cycle?", "RVNL, IRCON, TEXRAIL, TITAGARH, policy:pol.rail_rollingstock", "FY27", "2026-10-07", "ranking",
+  "policy_events (id 11174: amount_inr_crore, old_value, new_value, stage; quote_ok=1, source_kind=doc, source_id=12405); concall order-book commentary; results_xbrl revenue; bse_announcements for awards",
+  "read the rolling-stock line and the prior-year figure -> map rolling stock to wagon/coach makers first and EPC/civil later -> rank by award timing -> state the lag assumption",
+  "assuming the whole outlay is orderable in one year; treating PSU EPC names as rolling-stock beneficiaries",
+  gt="pol.rail_rollingstock", cov="partial", note="the budget line is exact (BE 52,109 vs RE 50,008 crore); award timing per company is commentary.",
+  gap="G10", why="tests a budget-line-to-supplier ranking with an explicit timing lag")
+Q("A12", "India signed the EU FTA on 27 January 2026, due in force at end-2026. Which listed textile exporters gain, and what did they do on the day?", "KPRMILL, WELSPUNLIV, GOKEX, policy:pol.eufta_textile", "2026-01-27", "2026-01-28", "explanation",
+  "policy_events (id 21779: policy_name, sectors, effective_date; quote_ok=1, source_kind=doc, source_id=12800) plus id 21770 which dates the signing; daily_price_delivery for 2026-01-27 (KPRMILL, WELSPUNLIV, GOKEX); mkt_nse_index_daily for the same day; ar_facts geography",
+  "read the FTA row and the dated signing -> read each exporter's move on 27 January -> compare with the index -> state that a one-day move is weak evidence and that duty-free access starts only when the FTA is in force",
+  "calling a one-day move proof of an FTA benefit; treating the signing date as the in-force date",
+  gt="pol.eufta_textile", cov="partial", note="the signing date and the day's moves are exact; EU revenue shares are AR prose and the FTA is not in force yet.",
+  gap="NEW GAP: no structured geographic revenue split for exporters",
+  why="tests dated trade-policy attribution and the signing-versus-in-force distinction")
+Q("A12", "The FY26 Budget set up a Rs 20,000 crore Nuclear Energy Mission for SMR R&D, and the SHANTI Act opened plant operations to private firms. Which listed companies can actually bid, and where is the gap?", "NTPC, BHEL, policy:pol.nuclear_smr", "FY27-2047", "2026-10-07", "NOT IN DATA",
+  "policy_events (id 4026: amount_inr_crore, end_date; id 13603: SHANTI stage=notified; both quote_ok=1, source_kind=doc, source ids 78 and 12423); results_xbrl segment revenue; ar_facts nuclear capability; no nuclear order-pipeline table",
+  "read the mission amount and the SHANTI stage -> check which listed firms disclose nuclear credentials -> state that the reactor supply chain is largely PSU/unlisted -> say NOT IN DATA for the order pipeline",
+  "calling an EPC firm a nuclear beneficiary without a credential; summing a mission outlay into revenue",
+  gt="pol.nuclear_smr", cov="no", note="the mission and the Act are sourced; there is no nuclear capability register or order pipeline, so the bid list cannot be built.",
   gap="NEW GAP: no nuclear-sector capability or order pipeline data",
   why="tests a forward policy where the honest answer is a capability gap")
 Q("A12", "GST process reforms were notified in October 2026. Which listed sectors gain most from simpler compliance, and does the store let you size it?", "DIXON, TRENT, JUBLFOOD", "Oct 2026", "2026-10-23", "explanation",
@@ -1246,12 +1251,12 @@ Q("A12", "TDB-DST signed a Rs 130 crore RDI support agreement with BigEndian Sem
   cov="no", note="the beneficiary is a private company; the release does not name listed suppliers.",
   gap="NEW GAP: no private-company-to-listed-supplier map",
   why="tests a policy release whose direct beneficiary is not investable")
-Q("A12", "Which single policy in the store touches both steel producers and railway-wagon makers, and in opposite directions? Prove it with the ripple chain.", "SAIL, TITAGARH, event:STEEL_SAFEGUARD_DUTY", "2025-04-21", "2025-04-30", "explanation",
-  "macro_events; ripple_effects (event_id, order_level, target_type, channel, probability, lag); results_xbrl",
-  "find the event -> read the ripple rows -> show producer benefit and downstream cost -> state the sign and level for each",
-  "reading a level-1 row as a level-2 effect; ignoring the lag",
-  gt="ripple.steel", cov="partial", note="the stored chain covers the sign and channels; magnitudes are not quantified.",
-  gap="G10", why="tests use of the causal store rather than prose reasoning")
+Q("A12", "One Budget customs line cut duty on iron and steel articles from 25% to 15%. Which listed names sit on each side of that line, and why is the sign opposite?", "SAIL, TITAGARH, policy:pol.steel_articles_cut", "2025-05-01", "2025-05-31", "explanation",
+  "policy_events (id 9075: old_value 25%, new_value 15%, direction_for_industry='mixed', sectors=['Steel','Engineering'], effective_date; quote_ok=1, source_kind=doc, source_id=12402); ar_facts product lists; results_xbrl segments",
+  "read the row's direction and sectors -> identify the protected side (domestic article fabricators) and the consuming side (wagon/engineering) -> state the sign for each -> note that the store records 'mixed' without magnitudes",
+  "reading 'mixed' as 'no effect'; adding a rupee impact the row does not carry",
+  gt="pol.steel_articles_cut", cov="partial", note="the duty change, both sectors and the 'mixed' direction are exact; the rupee split is not stored.",
+  gap="G10", why="tests sign reasoning from a policy row that names both sides")
 # ---------------------------------------------------------------- A13 (15)
 Q("A13", "Who makes the wagons Indian Railways buys, and who supplies those wagon makers with steel? Name both layers.", "TITAGARH, TEXRAIL, SAIL, JSWSTEEL", "FY27", "2026-10-07", "list",
   "ar_facts (products/customers and raw material for each layer); concall order commentary; results_xbrl segment revenue",
@@ -1265,12 +1270,12 @@ Q("A13", "Defence indigenisation gave BEL and HAL large orders. Which second-lay
   "assuming a supplier to defence is a supplier to BEL; inventing a contract",
   cov="partial", note="supplier links are AR prose; no contract graph exists.",
   gap="G6", why="tests second-layer identification with evidence, not ticker similarity")
-Q("A13", "The 12% steel safeguard duty helps producers. Who gains second-hand, and who is hurt second-hand? Use the stored ripple chain.", "SAIL, TITAGARH, TEXRAIL, event:STEEL_SAFEGUARD_DUTY", "2025-04-21", "2025-04-30", "explanation",
-  "ripple_effects (event_id, order_level, target_type, channel, probability, lag_time_months); macro_events; results_xbrl",
-  "read level-1 and level-2 rows -> state the sign per layer -> state the lag -> do not add magnitudes that are absent",
-  "treating a probability as a magnitude; ignoring the downstream sign",
-  gt="ripple.steel", cov="partial", note="the chain carries sign, channel and lag; it has no rupee magnitude.",
-  gap="G10", why="tests second-order reasoning from the causal store")
+Q("A13", "The TCS on coal and iron-ore sales doubles to 2% from 1 April 2026. Who is hit first, who second, and does any listed layer gain?", "COALINDIA, NMDC, SAIL, TITAGARH, policy:pol.tcs_minerals", "FY27", "2026-10-07", "explanation",
+  "policy_events (id 9247: old_value 1%, new_value 2%, sectors, effective_date; quote_ok=1, source_kind=doc, source_id=12406); results_xbrl cost lines; concall input-cost commentary",
+  "read the rate change -> order the layers: mineral sellers at the point of sale, steel at input, wagon makers at steel price -> state the sign per layer -> say plainly that no listed layer gains and only the exchequer does",
+  "treating a tax as a benefit to producers; assuming downstream pass-through is immediate",
+  gt="pol.tcs_minerals", cov="partial", note="the rate and effective date are exact; per-company cost exposure is not quantified.",
+  gap="G10", why="tests a cost-shock chain where the honest answer has no listed winner")
 Q("A13", "Copper goes into cables, which go into EPC projects. Who bears the copper risk in that three-layer chain, and what contract feature decides it?", "POLYCAB, KEC, commodity:copper", "FY27", "2026-10-07", "explanation",
   "concall material-cost commentary; AR price-variation clause; mkt_commodity_daily; results_xbrl margins",
   "map layers -> find the escalation clause -> show who is exposed at each layer -> state the deciding contract term",
@@ -1328,24 +1333,24 @@ Q("A13", "Hospital capex needs imported medical equipment. Which listed supplier
   cov="no", note="no listed medical-equipment supplier of scale is in the master; the spend is an assumption.",
   gap="NEW GAP: no medical-equipment listed-universe map",
   why="tests a capex-chain question that ends in a data gap")
-Q("A13", "US tariff relief for textiles should help dye and chemical suppliers second-hand. Which listed names, and what is the evidence bar?", "ATUL, AARTIIND, KPRMILL", "FY27", "2026-10-07", "list",
-  "concall textile-chemical commentary; ar_facts product/customer; results_xbrl segment revenue",
-  "read the relief -> identify textile chemicals -> find disclosed textile exposure -> rank with the evidence bar stated",
-  "calling a diversified chemical company a textile play",
-  gt="mev.US_TARIFF_TEXTILE_RELIEF", cov="partial", note="the event is exact; textile-chemical exposure is prose.",
-  gap="G6", why="tests a second-hand policy-beneficiary list")
-Q("A13", "Rail capex is up 9%. Beyond the wagon makers, who else in the listed universe gains second-hand, and in what order?", "RVNL, IRCON, RAILTEL, KEC", "FY27", "2026-10-07", "ranking",
-  "macro_events (RAIL_CAPEX_PUSH); results_xbrl order proxies; concall commentary; bse_announcements",
-  "layer the rail value chain (civil, signalling, rolling stock, electrification) -> rank by award timing -> cite each company's rail exposure",
-  "putting every infrastructure name in the rail basket",
-  gt="mev.RAIL_CAPEX_PUSH", cov="partial", note="the capex event is exact; per-company rail revenue share is not a field.",
-  gap="G6", why="tests a layered ranking from a macro event")
-Q("A13", "Railway wagon banane wale ko steel kaun deta hai, aur duty lagne se kaun phasta hai? (Hinglish)", "TITAGARH, TEXRAIL, SAIL, event:STEEL_SAFEGUARD_DUTY", "2025-04-21", "2025-04-30", "explanation",
-  "ripple_effects; ar_facts raw-material note for wagon makers; macro_events; results_xbrl",
-  "name the steel layer -> name the wagon layer -> read the duty -> state the sign for each -> cite the ripple row",
-  "assuming wagon makers pass the cost on immediately",
-  gt="ripple.steel", cov="partial", note="the chain and sign are stored; the rupee impact is not.",
-  gap="G10", why="tests a Hinglish second-order chain with a policy shock")
+Q("A13", "US tariffs on Indian textiles have been 50% since August 2025. Which listed dye and chemical suppliers are exposed second-hand, and what is the evidence bar?", "ATUL, AARTIIND, KPRMILL, policy:pol.us50_textile", "FY27", "2026-10-07", "list",
+  "policy_events (id 21769: direction_for_industry='negative', sectors, effective_date; quote_ok=1, source_kind=doc, source_id=12789); ar_facts product/customer; results_xbrl segment revenue; concall textile-chemical commentary",
+  "read the tariff row and the sectors it names -> for each chemical name, find a disclosed textile-dye or textile-chemical exposure -> rank by the disclosure -> state that the link is prose, not a structured customer map",
+  "calling a diversified chemical company a textile play without a disclosed exposure; assuming the 50% tariff is new in FY27",
+  gt="pol.us50_textile", cov="partial", note="the tariff row is exact; textile-chemical exposure is AR/concall prose.",
+  gap="G6", why="tests a second-hand negative chain with an explicit evidence bar")
+Q("A13", "Budget 2026-27 put Rs 7,500 crore into railway signalling and telecom. Beyond the wagon makers, who in the listed universe gains second-hand, and in what order?", "RVNL, IRCON, RAILTEL, KEC, policy:pol.rail_signalling", "FY27", "2026-10-07", "ranking",
+  "policy_events (id 11178: amount_inr_crore, old_value, new_value, sectors; quote_ok=1, source_kind=doc, source_id=12405); results_xbrl order proxies; concall commentary; bse_announcements for Kavach awards",
+  "read the signalling line -> layer the chain: signalling OEMs and cables first, EPC and civils next, wagon makers later -> rank by award timing -> cite each company's rail exposure",
+  "putting every infrastructure name in the rail basket; treating the rolling-stock outlay as signalling",
+  gt="pol.rail_signalling", cov="partial", note="the budget line is exact (BE 7,500 vs RE 6,500 crore); per-company rail revenue share is not a field.",
+  gap="G6", why="tests a layered ranking from a sourced budget line, not a macro event")
+Q("A13", "Railway wagon banane wale ko steel kaun deta hai, aur scrap/CRGO pe exemption extend hone se chain mein kaun jeetta hai, kaun peeche reh jaata hai? (Hinglish)", "TITAGARH, TEXRAIL, SAIL, policy:pol.scrap_crgo_exempt", "FY27", "2026-10-07", "explanation",
+  "policy_events (id 9618: old_value, new_value, effective_date, end_date; quote_ok=1, source_kind=doc, source_id=12406); ar_facts raw-material note for wagon makers; results_xbrl; concall steel-cost commentary",
+  "name the steel layer -> name the wagon layer -> read the exemption extension -> state who gains (scrap-based steel and CRGO users) -> state that wagon makers see nothing directly and what would have to happen",
+  "assuming wagon makers get the duty benefit directly; treating an extended exemption as a new subsidy",
+  gt="pol.scrap_crgo_exempt", cov="partial", note="the exemption and its new end date are exact; the pass-through to wagon costs is not stored.",
+  gap="G10", why="tests a Hinglish second-order chain on a sourced customs exemption")
 
 # ---------------------------------------------------------------- A14 (15)
 Q("A14", "BEL guided 15% revenue growth for FY27. What did Q1 FY27 actually deliver, and is the guidance still credible?", "BEL", "FY27", "2026-10-07", "explanation",
@@ -1868,12 +1873,12 @@ Q("A19", "coal scarcity FY27 — which sectors, answerable?", "NTPC, TATAPOWER, 
   "extrapolating a coal price; using a stale series",
   gt="coal.after2025", cov="no", note="coal_newcastle has 0 rows after 2025-12-26.",
   gap="G12", why="tests a what-if blocked by a stale series")
-Q("A19", "If steel safeguard duties stay, who gains and who loses among listed companies? Use the stored second-order chain.", "SAIL, TATASTEEL, TITAGARH, event:STEEL_SAFEGUARD_DUTY", "FY27", "2026-10-07", "explanation",
-  "macro_events; ripple_effects; results_xbrl margins; concall input-cost commentary",
-  "read the chain -> name producer gain and downstream cost -> rank by transmission level -> state that magnitudes are absent",
-  "claiming a rupee benefit that the chain does not carry",
-  gt="ripple.steel", cov="partial", note="sign and channels are stored; no magnitudes.",
-  gap="G10", why="tests a sustained-policy what-if from the causal store")
+Q("A19", "If the FY27 public capex of Rs 12.2 lakh crore is spent as budgeted, which listed sectors see it first, which later, and who loses?", "SAIL, TATASTEEL, TITAGARH, policy:pol.public_capex", "FY27", "2026-10-07", "explanation",
+  "policy_events (id 9329: amount_inr_crore, old_value, new_value, sectors; quote_ok=1, source_kind=doc, source_id=12404); results_xbrl revenue; concall order commentary",
+  "read the capex line and its base -> order sectors by spend transmission: EPC/construction, then cement/steel, then capital goods -> state that the row names no listed loser -> state that fiscal financing cost is outside the row",
+  "adding the capex to a company's revenue; naming a listed loser the policy row does not support",
+  gt="pol.public_capex", cov="partial", note="the outlay and the named sectors are exact; the per-sector split and the financing cost are not in the row.",
+  gap="G10", why="tests a cross-sector what-if with an explicit 'no listed loser' guard")
 Q("A19", "If the semiconductor incentive doubles, which listed companies benefit first and which only in the second round?", "DIXON, KAYNES, SYRMA, SRF, policy:pol.ism2", "FY27", "2026-10-07", "ranking",
   "policy_events (ISM 2.0); results_xbrl capex; concall semiconductor commentary",
   "first round: fabs/ATMP (mostly unlisted) -> second round: EMS, materials, equipment -> rank by disclosed exposure",
@@ -2048,6 +2053,32 @@ def load_universe():
     return ents
 
 
+def load_macro_event_guard():
+    """Split macro_events ids: sourced (doc_id set, not PHASE5_) vs unsourced."""
+    from reality_engine.db.readonly import connect_ro
+    con = connect_ro(DATA / "equity_intelligence.db", timeout_s=30)
+    for eid, doc_id in con.execute("SELECT event_id, doc_id FROM macro_events"):
+        (EVENTS["sourced"] if doc_id is not None and not eid.startswith("PHASE5_")
+         else EVENTS["unsourced"]).add(eid)
+
+
+def assert_sourced_fact(fid):
+    """Reject a ground-truth fact that rests on an unsourced macro_events row or a PHASE5_* id."""
+    if "PHASE5_" in fid.upper():
+        raise SystemExit(f"{fid}: PHASE5_* fixture facts are rejected")
+    if fid not in FACTS:
+        raise SystemExit(f"missing ground-truth fact {fid!r}")
+    f = FACTS[fid]
+    blob = fid + " " + f["sql"] + " " + json.dumps(f["value"], ensure_ascii=False, default=str)
+    if "PHASE5_" in blob.upper():
+        raise SystemExit(f"{fid}: PHASE5_* fixture reference in fact")
+    for eid in EVENTS["unsourced"]:
+        if eid in blob:
+            raise SystemExit(f"{fid}: drawn from unsourced macro_events row {eid!r} (doc_id is null)")
+    if "macro_events" in f["sql"].lower() and not any(eid in blob for eid in EVENTS["sourced"]):
+        raise SystemExit(f"{fid}: a macro_events fact must name a sourced MEV_* row")
+
+
 def resolve(ents_str, universe, qid):
     out = []
     for raw in [e.strip() for e in ents_str.split(",") if e.strip()]:
@@ -2058,6 +2089,8 @@ def resolve(ents_str, universe, qid):
             out.append({"type": "policy", "id": fid, "name": FACTS[fid]["value"].get("policy") if fid in FACTS else None})
         elif raw.lower().startswith("event:"):
             eid = raw.split(":", 1)[1].strip()
+            if eid not in EVENTS["sourced"]:
+                raise SystemExit(f"{qid}: event {eid!r} is not a sourced macro_event (doc_id is null)")
             out.append({"type": "event", "id": eid, "name": FACTS.get("mev." + eid, {}).get("value", {}).get("name")})
         elif raw.lower().startswith("industry:"):
             out.append({"type": "industry", "name": raw.split(":", 1)[1].strip()})
@@ -2109,7 +2142,12 @@ def gt_text(fid):
         return f"{v['symbol']} {v.get('quarter')} ({v.get('period_end')}): audit_opinion = '{v['opinion']}', {v.get('audited')}, filed {str(v.get('dissem'))[:19]}"
     if "policy" in v:
         amt = f", Rs {_num(v['amount_cr'])} crore" if v.get("amount_cr") else ""
-        return f"{v['policy']} ({v.get('stage')}, {v.get('direction')}){amt}"
+        when = v.get("effective_date") or v.get("published_at")
+        when = f" [{when}]" if when else ""
+        chg = (f", {v['old_value']} -> {v['new_value']}"
+               if v.get("old_value") and v.get("new_value") else "")
+        extra = f"; {v['market']}" if v.get("market") else ""
+        return f"{v['policy']}{when} ({v.get('stage')}, {v.get('direction')}){amt}{chg}{extra}"
     if "headline" in v:
         return f"{v.get('symbol') or 'filing'}: \u201c{str(v['headline'])[:180]}\u201d filed {v.get('dt')}"
     if "client" in v:
@@ -2196,6 +2234,9 @@ def canon_gap(g):
 
 def build_rows():
     universe = load_universe()
+    load_macro_event_guard()
+    for fid in FACTS:
+        assert_sourced_fact(fid)
     rows = []
     counter = Counter()
     for q in QUESTIONS:
@@ -2239,6 +2280,10 @@ def validate(rows):
         assert r["coverage"]["verdict"] in {"yes", "partial", "no"}, r["qid"]
         assert r["answer_kind"] in ALLOWED_KINDS, r["qid"]
         assert r["as_of"] is None or r["as_of"] <= "2026-10-27", r["qid"]
+    blob = json.dumps(rows, ensure_ascii=False)
+    for eid in sorted(EVENTS["unsourced"]):
+        assert eid not in blob, f"unsourced macro_event {eid!r} leaked into the bank"
+    assert "PHASE5_" not in blob, "PHASE5_* fixture id leaked into the bank"
     n_asof = sum(1 for r in rows if r["as_of"])
     n_hing = sum(1 for r in rows if "(Hinglish)" in r["question"])
     n_terse = sum(1 for r in rows if "terse:" in r["question"].lower() or len(r["question"].split()) <= 9)
@@ -2297,6 +2342,11 @@ def write_md(rows, stats):
     L.append("## New gaps found\n")
     L.append("A gap is a question that cannot be answered well today. Each row is blocked by the gap named here; "
              "the full reason is in that row's `coverage.note`.\n")
+    L.append("NG-SEED: 4 unsourced seeded macro_events (NUCLEAR_MISSION, RAIL_CAPEX_PUSH, "
+             "STEEL_SAFEGUARD_DUTY, US_TARIFF_TEXTILE_RELIEF) plus 3 PHASE5_EVT_* are not "
+             "quarantined in substrate_quarantine; any consumer could present them as real. "
+             "(Checked: the 3 PHASE5_EVT_* are listed in substrate_quarantine under rule "
+             "demo_macro_events; the 4 unsourced rows are not.)\n")
     L.append("| Gap | What is missing | Questions blocked |")
     L.append("|---|---|---|")
     for g, qids in sorted(gaps.items(), key=lambda kv: -len(kv[1])):
@@ -2337,7 +2387,14 @@ def write_md(rows, stats):
         sql = f["sql"].replace("|", "\\|")
         val = json.dumps(f["value"], ensure_ascii=False, default=str).replace("|", "\\|")[:400]
         m = __import__("re").search(r"\b(equity_intelligence|results_xbrl|concall_facts|bse_announcements|results_notes)\.[a-z_]+", sql)
-        store = m.group(0) if m else "local fact"
+        if m:
+            store = m.group(0)
+        else:
+            bare = {"policy_events": "equity_intelligence.policy_events",
+                    "mkt_nse_index_daily": "equity_intelligence.mkt_nse_index_daily",
+                    "daily_price_delivery": "equity_intelligence.daily_price_delivery",
+                    "pib_releases": "equity_intelligence.pib_releases"}
+            store = next((v for k, v in bare.items() if k in sql), "local fact")
         L.append(f"| {fid} (first used {qid}) | {store} | `{sql}` → `{val}` |")
     L.append("")
     OUT_MD.write_text("\n".join(L), encoding="utf-8")

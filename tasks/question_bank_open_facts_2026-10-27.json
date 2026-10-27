@@ -2463,109 +2463,6 @@
   "note": ""
  },
  {
-  "id": "mev.STEEL_SAFEGUARD_DUTY",
-  "value": {
-   "event_id": "STEEL_SAFEGUARD_DUTY",
-   "name": "Steel Safeguard Duty (12% safeguard duty on steel imports)",
-   "category": "Trade",
-   "date": "2025-04-21",
-   "summary": "Steel Safeguard Duty (12% safeguard duty on steel imports) — 1 primary effect(s) | relief 12% | effective 2025-04-21 | exceptions: stainless_steel_specialty_grades"
-  },
-  "sql": "SELECT event_id,event_name,category,event_date,summary FROM equity_intelligence.macro_events WHERE event_id='STEEL_SAFEGUARD_DUTY'",
-  "note": ""
- },
- {
-  "id": "mev.US_TARIFF_TEXTILE_RELIEF",
-  "value": {
-   "event_id": "US_TARIFF_TEXTILE_RELIEF",
-   "name": "US Tariff Textile Relief (30% tariff reduction)",
-   "category": "Trade",
-   "date": "2026-04-01",
-   "summary": "US Tariff Textile Relief (30% tariff reduction) — 1 primary effect(s) | relief 30% | effective 2026-04-01 | exceptions: dyes, yarn | conditional: relief conditional on setting up a US manufacturing plant"
-  },
-  "sql": "SELECT event_id,event_name,category,event_date,summary FROM equity_intelligence.macro_events WHERE event_id='US_TARIFF_TEXTILE_RELIEF'",
-  "note": ""
- },
- {
-  "id": "mev.RAIL_CAPEX_PUSH",
-  "value": {
-   "event_id": "RAIL_CAPEX_PUSH",
-   "name": "Rail Capex Push (9% YoY outlay growth, post-Union Budget)",
-   "category": "Policy",
-   "date": "2026-02-01",
-   "summary": "Rail Capex Push (9% YoY outlay growth, post-Union Budget) — 1 primary effect(s) | relief 9% | effective 2026-02-01"
-  },
-  "sql": "SELECT event_id,event_name,category,event_date,summary FROM equity_intelligence.macro_events WHERE event_id='RAIL_CAPEX_PUSH'",
-  "note": ""
- },
- {
-  "id": "mev.NUCLEAR_MISSION",
-  "value": {
-   "event_id": "NUCLEAR_MISSION",
-   "name": "Nuclear Energy Mission (100 GW by 2047, conditional incentives)",
-   "category": "Policy",
-   "date": "2026-04-01",
-   "summary": "Nuclear Energy Mission (100 GW by 2047, conditional incentives) — 1 primary effect(s) | relief 1% | effective 2026-04-01 | conditional: Nuclear Energy Mission targets 100 GW by 2047; incentives conditional on private participation"
-  },
-  "sql": "SELECT event_id,event_name,category,event_date,summary FROM equity_intelligence.macro_events WHERE event_id='NUCLEAR_MISSION'",
-  "note": ""
- },
- {
-  "id": "ripple.steel",
-  "value": [
-   {
-    "event_id": "STEEL_SAFEGUARD_DUTY",
-    "target_type": "Company",
-    "order_level": 1,
-    "channel": "target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
-    "probability": 0.85,
-    "lag_months": 0
-   },
-   {
-    "event_id": "STEEL_SAFEGUARD_DUTY",
-    "target_type": "Company",
-    "order_level": 1,
-    "channel": "target=TATASTEEL | company_resolved:DomesticSteelProducers | target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
-    "probability": 0.85,
-    "lag_months": 0
-   },
-   {
-    "event_id": "STEEL_SAFEGUARD_DUTY",
-    "target_type": "Company",
-    "order_level": 1,
-    "channel": "target=JSWSTEEL | company_resolved:DomesticSteelProducers | target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
-    "probability": 0.85,
-    "lag_months": 0
-   },
-   {
-    "event_id": "STEEL_SAFEGUARD_DUTY",
-    "target_type": "Company",
-    "order_level": 1,
-    "channel": "target=SAIL | company_resolved:DomesticSteelProducers | target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
-    "probability": 0.85,
-    "lag_months": 0
-   },
-   {
-    "event_id": "STEEL_SAFEGUARD_DUTY",
-    "target_type": "Company",
-    "order_level": 1,
-    "channel": "target=JINDALSTEL | company_resolved:DomesticSteelProducers | target=DomesticSteelProducers | safeguard_duty_protection | import_surge_persist",
-    "probability": 0.85,
-    "lag_months": 0
-   },
-   {
-    "event_id": "STEEL_SAFEGUARD_DUTY",
-    "target_type": "Industry",
-    "order_level": 2,
-    "channel": "target=WagonMakers | wagon_demand_pull | downstream | forward",
-    "probability": 0.8,
-    "lag_months": 3
-   }
-  ],
-  "sql": "SELECT event_id,target_type,order_level,transmission_channel,probability,lag_time_months FROM equity_intelligence.ripple_effects WHERE event_id='STEEL_SAFEGUARD_DUTY' ORDER BY order_level LIMIT 6",
-  "note": ""
- },
- {
   "id": "xbrl.q2fy27",
   "value": {
    "companies": 131,
@@ -2849,5 +2746,232 @@
   },
   "sql": "SELECT symbol,NEWS_DT,HEADLINE FROM bse_announcements.ann WHERE symbol='TRENT' AND UPPER(HEADLINE) LIKE '%UPDATE FOR Q4%' AND NEWS_DT BETWEEN '2025-04-01' AND '2025-04-08T23:59:59' ORDER BY NEWS_DT LIMIT 1",
   "note": "2025 filing"
+ },
+ {
+  "id": "pol.rbi_hike",
+  "value": {
+   "policy": "Repo rate hiked 25 bps to 5.50%",
+   "instrument": "monetary",
+   "stage": "effective",
+   "direction": "negative",
+   "sectors": "[\"banking\", \"NBFCs\", \"housing finance\", \"real estate\", \"automobile\", \"infrastructure\", \"capital goods\"]",
+   "amount_cr": null,
+   "published_at": "2026-10-07",
+   "effective_date": "2026-10-07",
+   "id": 21732,
+   "source_kind": "doc",
+   "source_id": "12803",
+   "market": "2026-10-07: Nifty 50 22,603.05 (-0.76%); Nifty Bank 55,055.55 (-0.13%); Nifty Auto 25,138.90 (-1.58%); Nifty Metal 12,306.70 (-2.33%)"
+  },
+  "sql": "SELECT 'policy' AS part, policy_name AS label, direction_for_industry || ' | ' || sectors || ' | ' || quote AS detail, published_at AS dt, source_kind || ':' || source_id AS src FROM policy_events WHERE id=21732 AND quote_ok=1 UNION ALL SELECT 'index', index_name, printf('close %.2f, %+.2f%%', close, pct_change), date, '' FROM mkt_nse_index_daily WHERE date='2026-10-07' AND index_name IN ('Nifty 50','Nifty Bank','Nifty Auto','Nifty Metal') ORDER BY part, label",
+  "note": "policy_events id=21732, quote_ok=1, source_kind=doc, source_id=12803 (RBI Governor's Statement, 2026-10-07); index rows from mkt_nse_index_daily for the same date."
+ },
+ {
+  "id": "pol.steel_flat_cut",
+  "value": {
+   "policy": "Customs duty cut on steel flat-rolled products and grain-oriented silicon steel",
+   "instrument": "customs_duty",
+   "stage": "announced",
+   "direction": "mixed",
+   "sectors": "[\"Steel\"]",
+   "amount_cr": null,
+   "old_value": "27.5 % (flat-rolled <0.5 mm); 22.5 % (stainless); 20 % (grain-oriented silicon steel)",
+   "new_value": "15 %",
+   "unit": "%",
+   "effective_date": "2025-05-01",
+   "published_at": "2025-02-01",
+   "id": 9074,
+   "source_kind": "doc",
+   "source_id": "12402"
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, old_value, new_value, unit, effective_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id=9074 AND quote_ok=1",
+  "note": "policy_events id=9074, quote_ok=1, source_kind=doc, source_id=12402 (Union Budget FY2025-26 Finance Bill memorandum)."
+ },
+ {
+  "id": "pol.rail_rollingstock",
+  "value": {
+   "policy": "Railways Rolling Stock capex",
+   "instrument": "capex_sanction",
+   "stage": "announced",
+   "direction": "positive",
+   "sectors": "[\"railways\", \"rolling stock\"]",
+   "amount_cr": 52109.0,
+   "old_value": "RE 2025-26: 50008",
+   "new_value": "BE 2026-27: 52109",
+   "unit": "INR crore",
+   "effective_date": "BE 2026-27",
+   "published_at": "2026-02-01",
+   "id": 11174,
+   "source_kind": "doc",
+   "source_id": "12405"
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, amount_inr_crore, old_value, new_value, unit, effective_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id=11174 AND quote_ok=1",
+  "note": "policy_events id=11174, quote_ok=1, source_kind=doc, source_id=12405 (Union Budget FY2026-27 Budget at a Glance)."
+ },
+ {
+  "id": "pol.eufta_textile",
+  "value": {
+   "policy": "India-EU FTA signed; expected into force end-2026",
+   "instrument": "tariff_trade",
+   "stage": "announced",
+   "direction": "positive",
+   "sectors": "[\"labour-intensive exports\", \"textiles and garments\", \"export-oriented manufacturing\"]",
+   "amount_cr": null,
+   "published_at": "2026-08-19",
+   "effective_date": "end of 2026",
+   "id": 21779,
+   "source_kind": "doc",
+   "source_id": "12800",
+   "market": "2026-01-27: Nifty 50 25,175.40 (+0.51%); Nifty Metal 11,829.65 (+3.07%); KPRMILL 900.40 (+6.07%); WELSPUNLIV 125.97 (+4.30%); GOKEX 542.70 (-2.65%)"
+  },
+  "sql": "SELECT 'policy' AS part, policy_name AS label, direction_for_industry || ' | ' || sectors || ' | ' || quote AS detail, effective_date AS dt, source_kind || ':' || source_id AS src FROM policy_events WHERE id=21779 AND quote_ok=1 UNION ALL SELECT 'index', index_name, printf('close %.2f, %+.2f%%', close, pct_change), date, '' FROM mkt_nse_index_daily WHERE date='2026-01-27' AND index_name IN ('Nifty 50','Nifty Metal') UNION ALL SELECT 'stock', symbol, printf('close %.2f, %+.2f%%', close, change_pct), date, '' FROM daily_price_delivery WHERE date='2026-01-27' AND symbol IN ('KPRMILL','WELSPUNLIV','GOKEX') ORDER BY part, label",
+  "note": "policy_events id=21779, quote_ok=1, source_kind=doc, source_id=12800 (RBI MPC minutes, August 2026), which dates the signing to 27 January 2026; 2026-01-27 index and stock rows from mkt_nse_index_daily / daily_price_delivery."
+ },
+ {
+  "id": "pol.nuclear_smr",
+  "value": {
+   "policy": "Nuclear Energy Mission - ₹20,000 crore for SMR development",
+   "instrument": "scheme",
+   "stage": "announced",
+   "direction": "positive",
+   "sectors": "[\"nuclear energy\", \"heavy engineering\", \"equipment manufacturing\", \"research & development\"]",
+   "amount_cr": 20000.0,
+   "new_value": "at least five indigenously designed and operational SMRs by 2033; 100 GWe nuclear capacity by 2047",
+   "unit": "INR crore",
+   "end_date": "2033-12-31",
+   "published_at": "2026-01-29",
+   "id": 13604,
+   "source_kind": "doc",
+   "source_id": "12423",
+   "companion": "SHANTI Act 2025 (id 13603): stage=notified, effective 2025-12, private sector enabled in plant operations, power generation and equipment manufacturing; same source doc 12423."
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, amount_inr_crore, old_value, new_value, unit, effective_date, end_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id IN (13603,13604) AND quote_ok=1 ORDER BY id",
+  "note": "policy_events ids 13603 and 13604, both quote_ok=1, source_kind=doc, source_id=12423 (Economic Survey 2025-26 chapters)."
+ },
+ {
+  "id": "pol.steel_articles_cut",
+  "value": {
+   "policy": "Customs duty cut on iron and steel articles (fittings, structures, tanks, fasteners, springs, cast/forged articles)",
+   "instrument": "customs_duty",
+   "stage": "announced",
+   "direction": "mixed",
+   "sectors": "[\"Steel\", \"Engineering\"]",
+   "amount_cr": null,
+   "old_value": "25 %",
+   "new_value": "15 %",
+   "unit": "%",
+   "effective_date": "2025-05-01",
+   "published_at": "2025-02-01",
+   "id": 9075,
+   "source_kind": "doc",
+   "source_id": "12402"
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, old_value, new_value, unit, effective_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id=9075 AND quote_ok=1",
+  "note": "policy_events id=9075, quote_ok=1, source_kind=doc, source_id=12402 (Union Budget FY2025-26 Finance Bill memorandum); direction_for_industry='mixed' with sectors Steel and Engineering."
+ },
+ {
+  "id": "pol.tcs_minerals",
+  "value": {
+   "policy": "TCS rate increase on sale of minerals (coal, lignite, iron ore)",
+   "instrument": "tax",
+   "stage": "announced",
+   "direction": "negative",
+   "sectors": "[\"Mining\", \"Coal\", \"Iron Ore\", \"Steel\"]",
+   "amount_cr": null,
+   "old_value": "1%",
+   "new_value": "2%",
+   "unit": "%",
+   "effective_date": "2026-04-01",
+   "published_at": "2026-02-01",
+   "id": 9247,
+   "source_kind": "doc",
+   "source_id": "12406"
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, old_value, new_value, unit, effective_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id=9247 AND quote_ok=1",
+  "note": "policy_events id=9247, quote_ok=1, source_kind=doc, source_id=12406 (Union Budget FY2026-27 Finance Bill memorandum)."
+ },
+ {
+  "id": "pol.us50_textile",
+  "value": {
+   "policy": "US 50% tariffs on India's exports since August 2025 hitting labour-intensive goods",
+   "instrument": "tariff_trade",
+   "stage": "effective",
+   "direction": "negative",
+   "sectors": "[\"Textiles & Apparel\", \"Leather & Footwear\", \"Gems & Jewellery\", \"Seafood (Shrimp)\"]",
+   "amount_cr": null,
+   "new_value": "50% tariff",
+   "unit": "%",
+   "effective_date": "2025-08",
+   "published_at": "2026-02-20",
+   "id": 21769,
+   "source_kind": "doc",
+   "source_id": "12789"
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, old_value, new_value, unit, effective_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id=21769 AND quote_ok=1",
+  "note": "policy_events id=21769, quote_ok=1, source_kind=doc, source_id=12789 (RBI MPC minutes, February 2026)."
+ },
+ {
+  "id": "pol.rail_signalling",
+  "value": {
+   "policy": "Railways Signalling and Telecom",
+   "instrument": "capex_sanction",
+   "stage": "announced",
+   "direction": "positive",
+   "sectors": "[\"railways\", \"telecom\"]",
+   "amount_cr": 7500.0,
+   "old_value": "RE 2025-26: 6500",
+   "new_value": "BE 2026-27: 7500",
+   "unit": "INR crore",
+   "effective_date": "BE 2026-27",
+   "published_at": "2026-02-01",
+   "id": 11178,
+   "source_kind": "doc",
+   "source_id": "12405"
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, amount_inr_crore, old_value, new_value, unit, effective_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id=11178 AND quote_ok=1",
+  "note": "policy_events id=11178, quote_ok=1, source_kind=doc, source_id=12405 (Union Budget FY2026-27 Budget at a Glance)."
+ },
+ {
+  "id": "pol.scrap_crgo_exempt",
+  "value": {
+   "policy": "Extended customs exemption for ferrous scrap and CRGO steel inputs",
+   "instrument": "customs_duty",
+   "stage": "approved",
+   "direction": "positive",
+   "sectors": "[\"Steel\"]",
+   "amount_cr": null,
+   "old_value": "Validity expiring on 31.03.2026",
+   "new_value": "Extended to 31.03.2028",
+   "unit": null,
+   "effective_date": "2026-04-01",
+   "end_date": "2028-03-31",
+   "published_at": "2026-02-01",
+   "id": 9618,
+   "source_kind": "doc",
+   "source_id": "12406"
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, old_value, new_value, unit, effective_date, end_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id=9618 AND quote_ok=1",
+  "note": "policy_events id=9618, quote_ok=1, source_kind=doc, source_id=12406 (Union Budget FY2026-27 Finance Bill memorandum)."
+ },
+ {
+  "id": "pol.public_capex",
+  "value": {
+   "policy": "Public capex raised to ₹12.2 lakh crore in FY2026-27",
+   "instrument": "capex_sanction",
+   "stage": "announced",
+   "direction": "positive",
+   "sectors": "[\"infrastructure\", \"construction\", \"cement\", \"steel\", \"capital goods\"]",
+   "amount_cr": 1220000.0,
+   "old_value": "₹11. 2 lakh crore in be 2025 - 26",
+   "new_value": "₹12. 2 lakh crore in fy2026 - 27",
+   "unit": "INR crore",
+   "effective_date": "FY2026-27",
+   "published_at": "2026-02-01",
+   "id": 9329,
+   "source_kind": "doc",
+   "source_id": "12404"
+  },
+  "sql": "SELECT id, policy_name, instrument, stage, direction_for_industry, sectors, amount_inr_crore, old_value, new_value, unit, effective_date, published_at, quote_ok, quote, source_kind || ':' || source_id AS source FROM policy_events WHERE id=9329 AND quote_ok=1",
+  "note": "policy_events id=9329, quote_ok=1, source_kind=doc, source_id=12404 (Union Budget FY2026-27 Budget Speech)."
  }
 ]
