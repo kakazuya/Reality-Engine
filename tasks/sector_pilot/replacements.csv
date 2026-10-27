@@ -1,0 +1,7 @@
+position,bucket,old_isin,old_symbol,new_isin,new_symbol,new_sector,reason,new_evidence_kinds
+89,A_nse_labelled,INE103001017,ANNU,INE350H01032,BLKASHYAP,Construction,no_locally_held_FY2024-25_evidence,ar+xbrl+deck
+109,A_nse_labelled,INE414A01015,MADRASFERT,INE201A01024,MANALIPETC,Chemicals,no_locally_held_FY2024-25_evidence,ar+xbrl
+122,A_nse_labelled,INE968D01022,,INE764L01010,SADBHIN,Services,no_locally_held_FY2024-25_evidence,ar+xbrl
+139,A_nse_labelled,INE0XNF01022,ARDEE,INE760Y01011,ASHOKAMET,Metals & Mining,no_locally_held_FY2024-25_evidence,ar+xbrl
+156,B_unlabelled,INE748T01016,,INE565V01010,VALIANTORG,,no_locally_held_FY2024-25_evidence,ar+xbrl+deck
+161,B_unlabelled,INE965H01011,,INE929D01016,RCCL,,no_locally_held_FY2024-25_evidence,ar
