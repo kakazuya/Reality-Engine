@@ -36,6 +36,34 @@ Each family has to work at every entity level where it makes sense. A level mark
 11. **Point in time.** Answer any family above as of `<date>`.
     - Only text with `known_at` ≤ that date, and company state as of that date.
 
+**Added 2026-10-27 (Shivam):** families 1–11 only ask "what did `{entity}` say". The database's end goal is to answer the questions an investor actually asks, including inverse, timing, governance and reasoning questions. Families 12–20 cover those.
+
+12. **When / timeline.** When does `{entity}`'s plant, capacity, product, order execution or demand go live or scale? How did the stated date move across calls (slippage)?
+    - The answer is a date plus every dated statement of it, in `known_at` order.
+13. **Inverse screen (topic → companies).** Which companies said `{topic claim}` in `{period}`? For example: demand revival in H2, a capacity going live this quarter, a price hike, a margin bottom.
+    - The answer is a list, each with a quote and `known_at`.
+14. **Governance and audit.** For `{entity}`:
+    - the auditor's opinion type (unmodified, qualified, adverse, disclaimer, emphasis of matter) and what was said;
+    - whether there is going-concern doubt;
+    - whether the auditor resigned, when and why;
+    - key audit matters, CARO remarks, related-party flags, CFO/KMP churn, pledge changes, SEBI or tax orders.
+15. **Market move → why.** Why did `{index / sector / stock}` move on `{date / window}`? Examples: 4 Jun 2024 election results, Budget day, a tariff announcement, an RBI surprise.
+    - The answer joins the price move to dated evidence published before or on that day. Later explanations are labelled as hindsight.
+16. **Input-cost / commodity transmission.** How does `{commodity, FX or rate move}` hit `{industry / stock}`? Examples: copper on cables, crude on paints, rubber on tyres.
+    - Needed: the commodity series, the input's share of costs (AR/notes), pass-through history (margins in past moves) and what management said.
+17. **Business economics.** How does `{driver}` change `{business model}`'s profitability? Example: delivery fees on quick-commerce margins.
+    - Needed: segment unit economics from filings and calls, peer disclosures, and the evidence each reasoning step rests on. Gaps are stated, never filled by guesswork.
+18. **Forward policy impact.** A new `{policy}` is announced. Which companies does it affect, in which direction, through which channel, and how material is it relative to their revenue or costs?
+    - Ranks by exposure; families 6–7 only list links.
+19. **Second-order and supply chain.** Who supplies or buys from `{entity / industry}`, and who benefits second-hand from `{event}`?
+20. **Out-of-scope and bizarre.** Questions the data cannot fully answer.
+    - The answer must split what the data supports, what is reasoned inference (labelled as such), and what is NOT IN DATA.
+
+For families 15–20 there is no single right number. They are graded by a rubric:
+- **Required evidence:** the stores, documents and series a good answer must cite.
+- **Required reasoning steps.**
+- **Forbidden moves:** hindsight leaks, invented numbers, opinion mixed into fact.
+
 ## 3. Variations every template must survive
 - **Naming:** symbol, old symbol after a rename, company name, abbreviation, ISIN, BSE code, a common misspelling.
 - **Wording:** a paraphrase, a terse keyword query, a long natural question, Hinglish phrasing.
