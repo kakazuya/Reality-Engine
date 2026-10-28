@@ -22,7 +22,14 @@ transcript, dedupes them against the earnings-call set by (ISIN, fiscal quarter)
 and by attachment name, measures recall against the pilot's 1,771 old rows and
 classifies a precision sample of PDFs already on disk.  It is report-only until
 ``--fetch`` is passed, and the widened fetch must wait for the earnings-call
-fetch (both together stay <= 76 requests/min).
+fetch (both together stay <= 76 requests/min).  ``--widen --transcript-word``
+fetches only the fresh rows whose headline or attachment name carries the word
+*transcript* (invites, outcomes and schedules are left out; Shivam, 2026-10-28).
+
+The dedupe-rescue list is its own run: ``--rescue-file`` takes the JSON array
+of rows (e.g. ``dedupe_rescue_214.json``) and fetches exactly those newsids
+through the same validate / classify / dedupe path.  ``--dry-run`` prints the
+counts and fetches nothing.
 
 Writes go only to ``RAW_ROOT/concall_pdfs/`` (content-addressed PDFs, manifest,
 probe classification) and the worktree.  Every database and the probe store is
@@ -259,6 +266,60 @@ def build_candidates(ann_rows: Sequence[Sequence[Any]],
             "cd_sha": sha, "cd_title": old.get("title"),
             "chunked": bool(sha and sha in chunked),
             "chunk_doc_id": chunked.get(sha) if sha else None,
+        })
+    return out
+
+
+def _as_int(value: Any) -> int | None:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def load_rescue(path: Path) -> list[dict[str, Any]]:
+    """Rescue list (JSON array, e.g. ``dedupe_rescue_214.json``) -> pilot candidates.
+
+    The dedupe-rescue list already carries the fields the pilot path needs;
+    missing ones are derived from the attachment name / dissemination time.
+    Rows without a newsid, a URL or a duplicate newsid are dropped, so a fetch
+    is exactly the listed set (and never the same row twice).
+    """
+    rows = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(rows, list):
+        raise ValueError(f"{path}: expected a JSON array of rows")
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        newsid = str(row.get("newsid") or "").strip()
+        url = row.get("url") or pdf_url(row.get("attachment"))
+        if not newsid or newsid in seen or not url:
+            continue
+        seen.add(newsid)
+        symbol = str(row.get("symbol") or "").strip().upper()
+        known_at = row.get("known_at")
+        chunked = row.get("chunked")
+        out.append({
+            "newsid": newsid,
+            "scrip_cd": str(row.get("scrip_cd") or ""),
+            "attachment": row.get("attachment"),
+            "url": str(url),
+            "headline": row.get("headline") or "",
+            "subcat": row.get("subcat") or "",
+            "known_at": known_at,
+            "size": row.get("size"),
+            "symbol": symbol,
+            "isin": row.get("isin"),
+            "group": row.get("group") or group_of(symbol),
+            "quarter": row.get("quarter") or fiscal_quarter(known_at),
+            "cd_id": _as_int(row.get("cd_id")),
+            "cd_sha": str(row.get("cd_sha") or "").lower() or None,
+            "cd_title": row.get("cd_title"),
+            "chunked": chunked if isinstance(chunked, bool)
+            else str(chunked or "").lower() in ("1", "true", "yes"),
+            "chunk_doc_id": _as_int(row.get("chunk_doc_id")),
         })
     return out
 
@@ -591,6 +652,22 @@ def widen_rows(ann_rows: Sequence[Sequence[Any]]) -> list[Sequence[Any]]:
     return [row for row in ann_rows if is_widened_transcript(row[3], row[2])]
 
 
+def has_transcript_word(headline: Any, attachment: Any = None) -> bool:
+    """Does the headline or attachment name carry the word *transcript*?
+
+    Shivam (2026-10-28): of the fresh widened rows, fetch only those that do.
+    The rest are invites, outcomes and schedules; an audio link is still not a
+    transcript however the wider widen filter reads it.
+    """
+    return bool(_WIDEN_TRANSCRIPT.search(f"{headline or ''} {attachment or ''}"))
+
+
+def transcript_word_rows(candidates: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Candidates whose headline or attachment name carries the word transcript."""
+    return [c for c in candidates
+            if has_transcript_word(c.get("headline"), c.get("attachment"))]
+
+
 def overlap_analysis(widened: Sequence[dict[str, Any]],
                      earnings: Sequence[dict[str, Any]]) -> dict[str, Any]:
     """Widened candidates the 9,390 Earnings Call set already covers."""
@@ -713,7 +790,7 @@ def precision_sample(widened: Sequence[dict[str, Any]], dirs: Sequence[Path],
 
 def analyze_widen(*, db_ann: Path | None = None, db_eq: Path | None = None,
                   probe: Path | None = None, root: Path | None = None,
-                  n_precision: int = PRECISION_SAMPLE,
+                  n_precision: int = PRECISION_SAMPLE, transcript_word: bool = False,
                   log=print) -> dict[str, Any]:
     """Widen-mode analysis: candidate set, overlap, recall and classifier precision."""
     data = Path(os.environ["REALITY_DATA_ROOT"])
@@ -748,7 +825,9 @@ def analyze_widen(*, db_ann: Path | None = None, db_eq: Path | None = None,
         overlap = overlap_analysis(widened, earnings)
         recall = recall_analysis(widened, old_rows,
                                  {c["newsid"] for c in earnings}, ann_meta)
-        fresh = [c for c in widened if c["newsid"] not in overlap["covered_newsids"]]
+        fresh_all = [c for c in widened if c["newsid"] not in overlap["covered_newsids"]]
+        worded = transcript_word_rows(fresh_all)
+        fresh = worded if transcript_word else fresh_all
         dirs = [Path(probe or probe_dir()), Path(root or out_dir())]
         precision = precision_sample(widened, dirs, n_precision)
         return {"window_start": WINDOW_START, "subcats": list(WIDEN_SUBCATS),
@@ -756,6 +835,8 @@ def analyze_widen(*, db_ann: Path | None = None, db_eq: Path | None = None,
                 "attachment_only": sum(1 for row in kept
                                        if not is_widened_transcript(row[3])),
                 "earnings_total": len(earnings),
+                "transcript_word": {"applied": transcript_word,
+                                    "fresh": len(fresh_all), "kept": len(worded)},
                 "by_subcat": dict(Counter(c["subcat"] for c in widened)),
                 "by_quarter": dict(Counter(c["quarter"] for c in widened)),
                 "by_cell": dict(Counter((c["subcat"], c["quarter"]) for c in widened)),
@@ -832,6 +913,10 @@ def format_widen_report(widen: dict[str, Any], projection: dict[str, Any]) -> st
     add(f"- either key: **{ov['either']}** ({ov['either'] / max(1, ov['widened']):.1%} "
         f"of the widened set already covered)")
     add(f"- fresh rows to fetch: **{ov['fresh']}**")
+    tw = widen.get("transcript_word") or {}
+    if tw.get("applied"):
+        add(f"- fresh rows carrying a transcript word (headline or attachment name): "
+            f"**{tw['kept']}** of {tw['fresh']} — only these are fetched")
     add(f"- duplicates inside the widened set by (ISIN, quarter): "
         f"{ov['internal_call_dupes']}; earnings-call rows without an ISIN: "
         f"{ov['earnings_without_isin']}")
@@ -1133,7 +1218,7 @@ def run_pilot(*, n: int = 200, seed: int = 20261027, interval: float = 2.5,
               root: Path | None = None, probe: Path | None = None,
               limit: int | None = None, analysis: dict[str, Any] | None = None,
               candidates: Sequence[dict[str, Any]] | None = None,
-              log=print) -> dict[str, Any]:
+              manifest: str | None = None, log=print) -> dict[str, Any]:
     """Sample, reuse, fetch, validate, classify, dedupe and write the manifest."""
     data = Path(os.environ["REALITY_DATA_ROOT"])
     db_ann = Path(db_ann or data / "bse_announcements.db")
@@ -1215,8 +1300,8 @@ def run_pilot(*, n: int = 200, seed: int = 20261027, interval: float = 2.5,
                        interval=interval, dry_run=dry_run)
     if not dry_run:
         write_manifest(root, entries,
-                       "_manifest_widen.jsonl" if candidates is not None
-                       else "_manifest.jsonl")
+                       manifest or ("_manifest_widen.jsonl" if candidates is not None
+                                    else "_manifest.jsonl"))
     report["entries"] = entries
     return report
 
@@ -1611,6 +1696,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--widen", action="store_true",
                     help="widen mode: the other four BSE subcategories "
                          "(report only unless --fetch)")
+    ap.add_argument("--transcript-word", action="store_true",
+                    help="with --widen: keep only rows whose headline or attachment "
+                         "name carries the word transcript")
+    ap.add_argument("--rescue-file", metavar="PATH",
+                    help="fetch exactly the newsids in this JSON list "
+                         "(the dedupe-rescue mode)")
     ap.add_argument("--fetch", action="store_true",
                     help="with --widen: download the widened set")
     ap.add_argument("--root", help=f"PDF store (default {out_dir()})")
@@ -1621,12 +1712,38 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.interval < MIN_INTERVAL:
         ap.error(f"--interval must be >= {MIN_INTERVAL}s (25 requests/min)")
+    if args.transcript_word and not args.widen:
+        ap.error("--transcript-word needs --widen")
+    if args.rescue_file and args.widen:
+        ap.error("--rescue-file and --widen are separate runs; pick one")
+
+    if args.rescue_file:
+        path = Path(args.rescue_file)
+        if not path.is_file():
+            ap.error(f"--rescue-file not found: {path}")
+        try:
+            rescue = load_rescue(path)
+        except (OSError, ValueError) as exc:
+            ap.error(str(exc))
+        if not rescue:
+            ap.error(f"no usable newsid rows in {path}")
+        pilot = run_pilot(n=len(rescue), seed=args.seed, interval=args.interval,
+                          backoff=args.backoff, limit=args.limit, dry_run=args.dry_run,
+                          db_ann=Path(args.db_ann) if args.db_ann else None,
+                          db_eq=Path(args.db_eq) if args.db_eq else None,
+                          root=Path(args.root) if args.root else None,
+                          probe=Path(args.probe_dir) if args.probe_dir else None,
+                          candidates=rescue, manifest="_manifest_rescue.jsonl")
+        print(json.dumps({k: v for k, v in pilot.items() if k != "entries"},
+                         indent=2, default=str))
+        return 0
 
     if args.widen:
         widen = analyze_widen(db_ann=Path(args.db_ann) if args.db_ann else None,
                               db_eq=Path(args.db_eq) if args.db_eq else None,
                               probe=Path(args.probe_dir) if args.probe_dir else None,
-                              root=Path(args.root) if args.root else None)
+                              root=Path(args.root) if args.root else None,
+                              transcript_word=args.transcript_word)
         projection = project_widen(widen, args.interval)
         text = format_widen_report(widen, projection)
         print(text)

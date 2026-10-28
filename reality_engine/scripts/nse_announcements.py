@@ -19,12 +19,29 @@ same clock rounded to the minute). ``sm_isin`` is used when the row carries it,
 otherwise the ISIN is resolved from ``master_companies`` (read-only).
 
 Per announcement the JSONL keeps the raw row plus symbol, isin, subject, desc,
-known_at and attachment_url. Nothing but raw bytes is downloaded.
+known_at, attachment_url and the download ``bucket``. Nothing but raw bytes is
+downloaded.
+
+Every row is metadata-bucketed before any download (Shivam, 2026-10-28):
+``transcript`` (transcript/meet filings), ``material`` (orders, management/
+auditor changes, acquisitions, results, presentations, press releases, ratings,
+capex, fund raises, litigation, insolvency, ...), ``procedural`` (newspaper ads,
+share-certificate paperwork, trading window, record date, AGM/scrutinizer
+paperwork, ESOP mechanics, RTA/compliance certificates) and ``unclear``.
+Only the buckets in ``--download-buckets`` (default ``transcript,material``)
+are fetched; the JSONL row is always kept.
 
 Usage::
 
     python -m reality_engine.scripts.nse_announcements --symbols RELIANCE,TCS \\
         --from 2024-04-01 --to 2026-10-28 --out .tmp/nse_ann --download
+
+    # the two raw runs the rulings are for (default buckets: transcript,material)
+    python -m reality_engine.scripts.nse_announcements --nse-only 114 \\
+        --from 2024-04-01 --download --out D:/RealityEngine/raw/nse_announcements/run_2026-10-28
+    python -m reality_engine.scripts.nse_announcements --transcript-gap 273 \\
+        --from 2024-04-01 --download --download-buckets transcript \\
+        --out D:/RealityEngine/raw/nse_announcements/transcript_gap_2026-10-28
 
     # recall against the old corpus (read-only)
     python -m reality_engine.scripts.nse_announcements --recall .tmp/nse_ann
@@ -70,6 +87,105 @@ DOWNLOAD_PATTERN = re.compile(
 # The tight signal: the document itself says transcript. The broader meet
 # family also carries intimations, audio links and cancellations.
 TRANSCRIPT_PATTERN = re.compile(r"transcript|con[\s.\-]?call|earnings\s*call", re.I)
+
+# Download buckets (Shivam, 2026-10-28): the attachment is judged from the
+# metadata alone, before any byte is fetched.
+BUCKETS = ("transcript", "material", "procedural", "unclear")
+DEFAULT_DOWNLOAD_BUCKETS = ("transcript", "material")
+
+TRANSCRIPT_BUCKET = re.compile(
+    r"transcri|con\.?\s*call|conference\s+call|earnings?\s*call|analyst|"
+    r"investor\s+meet|institutional\s+investor|audio\s+(recording|link)|"
+    r"recording of (the )?(call|meet)",
+    re.I,
+)
+# NSE's own filing vocabulary: routine paperwork whatever the attachment says.
+PROCEDURAL_FILING = re.compile(
+    r"^(copy of newspaper|loss of share certificates?|issue of duplicate share|"
+    r"trading window|record date|revised record date|book closure|"
+    r"shareholders meeting|committee meeting updates|esop/esos/esps|"
+    r"monitoring agency report|corrigendum|integrated filing- governance|"
+    r"structural digital database|address change|"
+    r"change in company secretary|disclosure under sebi takeover|"
+    r"certificate under sebi \(depositories|quarterly compliance report|"
+    r"declaration for audit reports|statement of deviation)",
+    re.I,
+)
+# Routine wording that outranks a material-looking word (newspaper publication
+# of results is still an ad, an ESOP allotment is still an exercise, an
+# exchange clarification is still a query response).
+PROCEDURAL_EARLY = re.compile(
+    r"newspaper|copy of newspaper|"
+    r"loss of share cert|duplicate share cert|share certificate[s]?\b|"
+    r"trading window|depositor(y|ies) (and|&) participants|"
+    r"esop|esos|esps|employee stock option|sweat equity|"
+    r"structural digital database|monitoring agency|"
+    r"deviation[\(\s]|utilisation of (the )?(proceeds|issue)|"
+    r"takeover regulation|\bsast\b|substantial acquisition|"
+    r"registered office|registrar|\brta\b|contact detail|functional website|"
+    r"compliance (report|audit|certificate)|corporate governance|"
+    r"unmodified opinion|clarification|news verification|spurt in volume|"
+    r"price movement|investor grievance|74\s*\(5\)",
+    re.I,
+)
+# Filing types that are material even when the text also carries takeover
+# boilerplate (an open offer is the event, not the disclosure paperwork).
+MATERIAL_FILING = re.compile(
+    r"^(public announcement|open offer|offers? for sale|rights issue|"
+    r"qualified institutional placement|preferential issue|buy ?back|bonus|"
+    r"dividend|acquisition|amalgamation|merger|scheme of arrangement|demerger)",
+    re.I,
+)
+# Business / ownership / financial / regulatory events worth a download.
+MATERIAL_EVENT = re.compile(
+    r"bagging|receiv\w* of orders?|receipt of orders?|orders? received|"
+    r"award\w* of orders?|orders?/contracts?|orders? passed|"
+    r"action\(s\) (taken|initiated)|penalt|fines? levied|"
+    r"appoint\w*|re-?appoint\w*|resign\w*|cessation|retire\w*|"
+    r"change in designation|change[s]? in (senior )?(management|director|auditor)|"
+    r"senior management|"
+    r"\bsmps?\b|senior managerial|promoter group|authori[sz]ed capital|forfeiture|"
+    r"product registration|repeat order|rescission|termination|revocation|"
+    r"\bkmp\b|demise|ultimate holding|holding company|"
+    r"acqui(re|sition)|amalgamat|merger|demerg|scheme of arrangement|"
+    r"financial results?|financial statements|integrated filing- financial|"
+    r"outcome of board meeting|"
+    r"investor presentation|presentation|press release|"
+    r"credit rating|\brating\b|capacity (addition|expansion)|\bplant\b|"
+    r"commissioning|product launch|stock split|share split|"
+    r"commercial production|manufacturing (facility|plant)|securing order|"
+    r"work order|media release|dissolution of a promoter|promoter group entity|"
+    r"memorandum of understanding|\bagreements?\b|joint venture|"
+    r"litigation|dispute|insolvency|\bcirp\b|committee of creditors|"
+    r"fund ?rais|debenture|issuance of (securities|shares)|letter of offer|\bqip\b|"
+    r"rights? issue|qualified institutional|preferential|"
+    r"allotment|issue of securities|bonus|dividend|buy ?back|open offer|"
+    r"offer for sale|diversif|disinvest|stake|subsidiar|restructur|"
+    r"fraud|default|fire|shutdown|resumption|strike|suspension of trading|"
+    r"assessment order|demand notice|tax appellate|notice of hearing|"
+    r"highest ever|turnover of|operational highlights|\bcci\b|\blaunch(ed|es)?\b|"
+    r"\bleas(e|ed|ing)\b|"
+    r"monthly business|business update|guidance|reclassif|"
+    r"material issue|material event",
+    re.I,
+)
+# Routine wording that only wins when nothing material was said.
+PROCEDURAL_LATE = re.compile(
+    r"record date|book closure|scrutini[sz]er|postal ballot|voting result|"
+    r"notice of (the )?[\w\s]*general meeting|annual general meeting|"
+    r"extra(ordinary)? general meeting|shareholders? meeting|committee meeting|"
+    r"corrigendum|integrated filing.? governance|re-lodgement|transfer request|"
+    r"physical shareholder|letters? to shareholders|dispatch of (a )?letter|"
+    r"utilisation of funds",
+    re.I,
+)
+# "Outcome of Board Meeting" is material unless the outcome is AGM/holding
+# paperwork or a trading-window closure (Shivam, 2026-10-28).
+OUTCOME_IS_PROCEDURAL = re.compile(
+    r"trading window|(annual|extra(ordinary)?) general meeting|scrutini[sz]er|"
+    r"postal ballot|voting result",
+    re.I,
+)
 
 _KNOWN_AT_FORMATS = (
     "%Y-%m-%d %H:%M:%S",
@@ -140,7 +256,7 @@ def normalize(row: Dict[str, Any], symbol: str, isin_map: Dict[str, str]) -> Dic
     else:
         isin, isin_source = isin_map.get(sym), "master_companies"
     desc = str(row.get("desc") or "").strip()
-    return {
+    rec = {
         "symbol": sym,
         "isin": isin,
         "isin_source": isin_source if isin else None,
@@ -153,6 +269,8 @@ def normalize(row: Dict[str, Any], symbol: str, isin_map: Dict[str, str]) -> Dic
         "file_size": row.get("attFileSize") or row.get("fileSize"),
         "raw": row,
     }
+    rec["bucket"] = bucket(rec)
+    return rec
 
 
 def row_size_bytes(row: Dict[str, Any]) -> Optional[int]:
@@ -226,6 +344,46 @@ def record_kind(row: Dict[str, Any]) -> str:
     if TRANSCRIPT_PATTERN.search(text):
         return "transcript"
     return "meet" if DOWNLOAD_PATTERN.search(text) else "other"
+
+
+def bucket(record: Dict[str, Any]) -> str:
+    """'transcript' | 'material' | 'procedural' | 'unclear', from metadata only.
+
+    The judgement uses ``desc`` plus ``raw.attchmntText`` -- never the
+    attachment -- so the download happens only for rows that are already worth
+    having. A row earns ``transcript`` when it is a transcript or a meet filing,
+    ``procedural`` for routine paperwork, ``material`` for a business /
+    ownership / financial / regulatory event, and ``unclear`` otherwise.
+    """
+    desc = str(record.get("desc") or record.get("subject") or "").strip()
+    raw = record.get("raw")
+    raw = raw if isinstance(raw, dict) else record
+    text = f"{desc} {raw.get('attchmntText') or ''}"
+    if TRANSCRIPT_BUCKET.search(desc):
+        return "transcript"
+    if PROCEDURAL_FILING.search(desc):
+        return "procedural"
+    if MATERIAL_FILING.search(desc):
+        return "material"
+    if desc.lower() in ("investor presentation", "press release", "press release (revised)"):
+        return "material"                       # a deck or a press note, not a call
+    if desc.lower() == "outcome of board meeting" and OUTCOME_IS_PROCEDURAL.search(text):
+        return "procedural"
+    if PROCEDURAL_EARLY.search(text):
+        return "procedural"
+    if TRANSCRIPT_BUCKET.search(text):
+        return "transcript"                     # e.g. Updates: "transcript of analyst call"
+    if MATERIAL_EVENT.search(text):
+        return "material"
+    if PROCEDURAL_LATE.search(text):
+        return "procedural"
+    return "unclear"
+
+
+def record_bucket(record: Dict[str, Any]) -> str:
+    """Bucket of a stored JSONL record; rows written before the field existed are re-judged."""
+    stored = record.get("bucket")
+    return str(stored) if stored in BUCKETS else bucket(record)
 
 
 # --------------------------------------------------------------------- fetch
@@ -381,6 +539,7 @@ class AnnouncementFetcher:
         subject_filter: Optional[List[str]] = None,
         download: bool = False,
         index_by_symbol: Optional[Dict[str, str]] = None,
+        download_buckets: Optional[Iterable[str]] = None,
     ) -> Dict[str, int]:
         self.out.mkdir(parents=True, exist_ok=True)
         manifest = self.out / "_manifest.csv"
@@ -412,10 +571,14 @@ class AnnouncementFetcher:
             stats["symbols"] += 1
             stats["announcements"] += len(rows)
             stats["new"] += new
+            for row in rows:
+                bkey = "bucket_" + bucket(row)
+                stats[bkey] = stats.get(bkey, 0) + 1
             if download:
+                wanted = set(download_buckets or DEFAULT_DOWNLOAD_BUCKETS)
                 folder = self.out / "attachments"
                 for record in self.read_symbol(symbol):
-                    if not is_transcript_like(record):
+                    if record_bucket(record) not in wanted:
                         continue
                     self.sleep(self.interval)
                     got = self.download(record, folder)
@@ -546,8 +709,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--interval", type=float, default=MIN_INTERVAL,
                     help=f"seconds between requests (floor {MIN_INTERVAL})")
     ap.add_argument("--download", action="store_true",
-                    help="also download attachments that look like a transcript / investor meet")
+                    help="also download attachments in --download-buckets")
+    ap.add_argument("--download-buckets", default=",".join(DEFAULT_DOWNLOAD_BUCKETS),
+                    help="buckets to download (default transcript,material; "
+                         f"any of {','.join(BUCKETS)})")
     ap.add_argument("--pilot", action="store_true", help="use the 25+25 pilot company lists")
+    ap.add_argument("--nse-only", type=int, metavar="N",
+                    help="run the N companies without a BSE listing (the pilot's first list)")
+    ap.add_argument("--transcript-gap", type=int, metavar="N",
+                    help="run the N companies whose old transcripts have no BSE news id")
     ap.add_argument("--recall", metavar="OUT_DIR", default=None,
                     help="print the recall table for an existing fetch directory")
     ap.add_argument("--log-level", default="INFO")
@@ -564,6 +734,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         symbols = groups["nse_only"] + groups["transcript_gap"]
         logger.info("pilot: %d nse-only + %d transcript-gap = %d symbols",
                     len(groups["nse_only"]), len(groups["transcript_gap"]), len(symbols))
+    elif args.nse_only or args.transcript_gap:
+        groups = pilot_lists(nse_only=args.nse_only or 0,
+                             transcript=args.transcript_gap or 0)
+        symbols = list(dict.fromkeys(groups["nse_only"] + groups["transcript_gap"]))
+        logger.info("%d nse-only + %d transcript-gap = %d symbols",
+                    len(groups["nse_only"]), len(groups["transcript_gap"]), len(symbols))
     elif args.symbols:
         p = Path(args.symbols)
         if p.exists():
@@ -571,12 +747,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     else:
-        ap.error("give --symbols or --pilot")
+        ap.error("give --symbols, --pilot, --nse-only or --transcript-gap")
 
     filters = [s for s in (args.subject_filter or "").split(",") if s]
+    download_buckets = [b.strip().lower() for b in args.download_buckets.split(",") if b.strip()]
+    unknown = [b for b in download_buckets if b not in BUCKETS]
+    if unknown:
+        ap.error(f"unknown --download-buckets: {', '.join(unknown)} (choose from {', '.join(BUCKETS)})")
     fetcher = AnnouncementFetcher(Path(args.out), interval=args.interval)
     t0 = time.time()
-    stats = fetcher.run(symbols, args.frm, args.to, filters, args.download)
+    stats = fetcher.run(symbols, args.frm, args.to, filters, args.download,
+                        download_buckets=download_buckets)
     stats["seconds"] = round(time.time() - t0, 1)
     stats["blocks"] = fetcher.blocks
     stats["requests"] = fetcher.requests_made

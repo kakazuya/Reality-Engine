@@ -11,12 +11,15 @@ from pathlib import Path
 
 from reality_engine.scripts.nse_announcements import (
     AnnouncementFetcher,
+    DEFAULT_DOWNLOAD_BUCKETS,
     attachment_url,
+    bucket,
     is_transcript_like,
     known_at_of,
     matches_subject,
     needs_download,
     normalize,
+    record_bucket,
     record_kind,
     parse_known_at,
     row_size_bytes,
@@ -162,6 +165,112 @@ class NormalizeTests(unittest.TestCase):
                                         ["analyst"]))
         self.assertFalse(matches_subject("Dividend", ["analyst"]))
         self.assertTrue(matches_subject("Dividend", []))  # no filter keeps everything
+
+
+class BucketTests(unittest.TestCase):
+    """Shivam 2026-10-28: download only transcript/meet and material rows."""
+
+    @staticmethod
+    def rec(desc, text=""):
+        return {"desc": desc, "raw": {"attchmntText": text}}
+
+    def test_transcript_bucket(self):
+        self.assertEqual(bucket(normalize(ROW, "RELIANCE", {})), "transcript")
+        self.assertEqual(bucket(self.rec(
+            "Updates", "Transcript of the Earnings Call")), "transcript")
+        self.assertEqual(bucket(self.rec(
+            "Updates", "Audio Recording Q4FY24 Earnings Call")), "transcript")
+
+    def test_material_bucket(self):
+        for desc, text in (
+            ("Bagging/Receiving of orders/contracts", ""),
+            ("Updates", "Intimation of changes in senior management"),
+            ("Outcome of Board Meeting",
+             "financial results for the period ended Jun 30, 2026"),
+            ("Outcome of Board Meeting", "Board meeting held on February 11, 2025"),
+            ("Investor Presentation", ""),
+            ("Credit Rating", ""),
+            ("Public Announcement-Open Offer", "Substantial Acquisition of Shares"),
+            ("General Updates", "Receipt of Order from Indian Railways"),
+        ):
+            self.assertEqual(bucket(self.rec(desc, text)), "material", (desc, text))
+
+    def test_procedural_bucket(self):
+        for desc, text in (
+            ("Copy of Newspaper Publication",
+             "newspaper publication of unaudited financial results"),
+            ("Outcome of Board Meeting", "trading window closure pursuant to SEBI PIT"),
+            ("Outcome of Board Meeting", "Notice of Annual General Meeting"),
+            ("Shareholders meeting", "Srutinizers report of Annual General Meeting"),
+            ("ESOP/ESOS/ESPS", "Grant of 2000 Options"),
+            ("Allotment of Securities",
+             "allotment of 43333 securities pursuant to ESOP/ESPS"),
+            ("Loss of Share Certificates", ""),
+            ("Trading Window", ""),
+            ("Record Date", ""),
+            ("Book Closure", ""),
+            ("Clarification - Financial Results", "Exchange has sought clarification"),
+        ):
+            self.assertEqual(bucket(self.rec(desc, text)), "procedural", (desc, text))
+
+    def test_unclear_bucket(self):
+        self.assertEqual(bucket(self.rec(
+            "Updates", "Disclosure under Regulation 30 of SEBI (LODR) Regulations, 2015")),
+            "unclear")
+        self.assertEqual(bucket(self.rec("General Updates")), "unclear")
+        self.assertEqual(bucket(self.rec("Updates", "")), "unclear")
+
+    def test_bucket_is_stored_and_old_rows_are_rejudged(self):
+        rec = normalize(ROW, "RELIANCE", {})
+        self.assertEqual(rec["bucket"], "transcript")
+        self.assertEqual(record_bucket(rec), "transcript")
+        old = {"desc": "Trading Window", "raw": {"attchmntText": "Trading Window closure"}}
+        self.assertEqual(record_bucket(old), "procedural")     # written before the field
+        self.assertEqual(record_bucket({"bucket": "material"}), "material")
+
+    def test_default_download_buckets(self):
+        self.assertEqual(DEFAULT_DOWNLOAD_BUCKETS, ("transcript", "material"))
+
+
+class DownloadBucketTests(unittest.TestCase):
+    def _row(self, **kw):
+        return dict(ROW, **kw)
+
+    def test_run_downloads_only_transcript_and_material(self):
+        out = tmpdir(self)
+        transcript_row = self._row()
+        procedural_row = self._row(
+            desc="Trading Window", seq_id="7654321",
+            attchmntText="Trading Window closure pursuant to SEBI PIT Regulations",
+            attchmntFile="https://archives.nseindia.com/corporate/TW.pdf")
+        script = [FakeResponse(200, {"data": [transcript_row, procedural_row]}),
+                  FakeResponse(200, content=b"%PDF-1.4 transcript")]
+        f = AnnouncementFetcher(out, interval=3, client=FakeClient(script),
+                                isin_map={}, sleep=lambda seconds: None)
+        stats = f.run(["RELIANCE"], "2024-04-01", "2024-04-30", download=True)
+        self.assertEqual(stats["downloaded"], 1)
+        self.assertEqual(stats["bucket_transcript"], 1)
+        self.assertEqual(stats["bucket_procedural"], 1)
+        pdfs = [p for p in (out / "attachments").rglob("*") if p.is_file()]
+        self.assertEqual(len(pdfs), 1)
+        self.assertIn("RELIANCE_30042024210423.pdf", pdfs[0].name)
+        rows = [json.loads(line) for line in
+                (out / "RELIANCE.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual({r["bucket"] for r in rows}, {"transcript", "procedural"})
+
+    def test_download_buckets_can_be_overridden(self):
+        out = tmpdir(self)
+        procedural_row = self._row(
+            desc="Trading Window", seq_id="7654321",
+            attchmntText="Trading Window closure pursuant to SEBI PIT Regulations",
+            attchmntFile="https://archives.nseindia.com/corporate/TW.pdf")
+        script = [FakeResponse(200, {"data": [procedural_row]}),
+                  FakeResponse(200, content=b"%PDF-1.4 window")]
+        f = AnnouncementFetcher(out, interval=3, client=FakeClient(script),
+                                isin_map={}, sleep=lambda seconds: None)
+        stats = f.run(["RELIANCE"], "2024-04-01", "2024-04-30", download=True,
+                      download_buckets=["procedural"])
+        self.assertEqual(stats["downloaded"], 1)
 
 
 class ResumeTests(unittest.TestCase):
