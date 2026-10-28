@@ -6,7 +6,8 @@ Sources (step 2 of the golden rule):
   - tasks/QUESTION_BANK_300_2026-10-27.jsonl   (10 variations x 30 originals);
   - tasks/QUESTION_BANK_OPEN_2026-10-27.jsonl  (300 open questions, A01-A20);
   - tasks/QUESTION_BANK_RIPPLE_2026-10-28.jsonl (200 ripple questions, R01-R10);
-  - tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl (200 mined rows).
+  - tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl (243 mined rows:
+    the original 200 plus 43 pattern-gap rows, added 2026-10-28).
 
 Read-only over REALITY_DATA_ROOT; writes only under tasks/master_bank/ and .tmp/.
 No network, no commits.
@@ -1542,13 +1543,14 @@ def write_master_md(cases, matrix, stats, path):
         "entities; R02/R06/R09 fix the scope by construction (policy cascade, "
         "capital-markets loop, leading-indicator series), and R10 is the specific "
         "company event.",
-        "- Reddit rows declare a template family for 115 rows; the other 85 carry a "
-        "`NEW:*` family because no template family fits (the bank's own report says "
-        "so). Each `NEW:*` row is mapped from its archetype - the same rule the "
-        "ripple map uses - and recorded as `family_source=\"pattern\"`: technical "
-        "price state -> 3 (change over time), a breakout / gap / OI build-up / "
-        "delivery spike -> 9 (event window), `group_basket` -> 8 (peers), "
-        "`ipo_grey_listing` -> 9, `sebi_rule` -> 6 (policy -> companies), "
+        "- Reddit rows declare a template family directly for 158 rows (the 115 "
+        "originals plus the 43 pattern-gap rows added on 2026-10-28); the other 85 "
+        "carry a `NEW:*` family because no template family fits (the bank's own "
+        "report says so). Each `NEW:*` row is mapped from its archetype - the same "
+        "rule the ripple map uses - and recorded as `family_source=\"pattern\"`: "
+        "technical price state -> 3 (change over time), a breakout / gap / OI "
+        "build-up / delivery spike -> 9 (event window), `group_basket` -> 8 "
+        "(peers), `ipo_grey_listing` -> 9, `sebi_rule` -> 6 (policy -> companies), "
         "`corporate_action_aftermath` / `circuit_band` -> 12 (when / timeline), "
         "`entry_timing` / `hold_sell` -> 10 (opinion vs truth). An unknown "
         f"`NEW:*` archetype falls back to family {REDDIT_FAMILY_DEFAULT} "

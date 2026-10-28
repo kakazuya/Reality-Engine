@@ -1,8 +1,14 @@
-"""Build the 200-row Reddit-mined question bank from the three content modules.
+"""Build the Reddit-mined question bank from the four content modules.
 
-Validates: 200 rows, unique qids, exact group split (75/75/50), every symbol
-resolves to an active ISIN in master_companies, no forbidden seeded event name.
-Writes the .jsonl and the readable .md.
+Validates: row count and per-group split declared in SPECS, unique qids, every
+company symbol resolves to an active ISIN in master_companies, no forbidden
+seeded event name. Writes the .jsonl and the readable .md.
+
+bank_gap.py (RD-G, group "gap") holds the 43 rows that fill the 11 mined
+patterns which had no question in the 2026-10-28 review. Rows there may carry
+a non-company entity as a dict (index, sector, theme, commodity, policy,
+market, market-cap bucket); it is kept as given, because those questions are
+not about a single listed company.
 """
 from __future__ import annotations
 
@@ -19,6 +25,7 @@ SPECS = [
     ("bank_indian.py", "indian", "RD-I", 75),
     ("bank_intl.py", "international", "RD-N", 75),
     ("bank_tech.py", "technical", "RD-T", 50),
+    ("bank_gap.py", "gap", "RD-G", 43),
 ]
 BANNED = re.compile(
     r"\b(NUCLEAR_MISSION|RAIL_CAPEX_PUSH|STEEL_SAFEGUARD_DUTY|"
@@ -46,13 +53,16 @@ def main() -> int:
         for i, r in enumerate(modrows, 1):
             qid = f"{prefix}-{i:03d}"
             entities = []
-            for sym in r["syms"]:
-                c = companies.get(sym)
+            for spec in r["syms"]:
+                if isinstance(spec, dict):
+                    entities.append(dict(spec))
+                    continue
+                c = companies.get(spec)
                 if c is None:
-                    problems.append(f"{qid}: symbol {sym} not in master_companies")
+                    problems.append(f"{qid}: symbol {spec} not in master_companies")
                     continue
                 entities.append({
-                    "type": "stock", "symbol": sym, "isin": c["isin"],
+                    "type": "stock", "symbol": spec, "isin": c["isin"],
                     "bse_code": c["bse_code"], "name": c["name"],
                     "sector": c["sector"], "basic_industry": c["industry"],
                     "market_cap_tier": c["tier"], "fno_eligible": bool(c["fno"]),
@@ -90,10 +100,10 @@ def main() -> int:
     qids = [r["qid"] for r in rows]
     if len(qids) != len(set(qids)):
         problems.append("duplicate qids")
-    counts = {g: sum(1 for r in rows if r["group"] == g) for g in
-              ("indian", "international", "technical")}
-    if counts != {"indian": 75, "international": 75, "technical": 50}:
-        problems.append(f"group split {counts}")
+    expected = {group: n for _f, group, _p, n in SPECS}
+    counts = {g: sum(1 for r in rows if r["group"] == g) for g in expected}
+    if counts != expected:
+        problems.append(f"group split {counts}, expected {expected}")
     if problems:
         print("VALIDATION FAILED")
         for p in problems:
@@ -108,16 +118,17 @@ def main() -> int:
     for r in rows:
         verdicts[r["coverage"]["verdict"]] = verdicts.get(r["coverage"]["verdict"], 0) + 1
     lines = [
-        "# Reddit-mined question bank — 200 questions (2026-10-28)",
+        f"# Reddit-mined question bank — {len(rows)} questions (2026-10-28)",
         "",
         "Mined from 15 Indian-market subreddits (since 2024-04-01), 15 international",
         "value/fundamentals subreddits and 10 trading subreddits (last year).",
         "Every question is original wording modelled on a pattern, not a copied post.",
-        "Every entity resolves to an active ISIN in `master_companies`.",
+        "Every company entity resolves to an active ISIN in `master_companies`; the",
+        "pattern-gap rows may name an index, sector, theme, commodity or policy instead.",
         "",
         "## Summary",
         "",
-        f"- 200 rows: Indian {counts['indian']}, international-pattern {counts['international']}, technical {counts['technical']}.",
+        "- Rows by group: " + ", ".join(f"{g} {counts[g]}" for g in expected) + ".",
         f"- Coverage: " + ", ".join(f"{k} {v}" for k, v in sorted(verdicts.items())) + ".",
         "- Each row carries `reddit_pattern`, the pattern it was modelled on.",
         "- No `ground_truth` is asserted here; `ground_truth_query` names the first table to compute from.",
@@ -125,19 +136,22 @@ def main() -> int:
         "| qid range | group | rows | patterns |",
         "|---|---|---|---|",
     ]
-    for prefix, group in (("RD-I", "indian"), ("RD-N", "international"), ("RD-T", "technical")):
+    for _filename, group, prefix, _n in SPECS:
         n = sum(1 for r in rows if r["qid"].startswith(prefix))
         pats = len({r["reddit_pattern"] for r in rows if r["qid"].startswith(prefix)})
         lines.append(f"| {prefix}-001…{prefix}-{n:03d} | {group} | {n} | {pats} |")
     lines += ["", "---", ""]
     for prefix, title in (("RD-I", "Indian-market patterns"),
                           ("RD-N", "International value patterns, translated"),
-                          ("RD-T", "Technical / entry-timing patterns")):
+                          ("RD-T", "Technical / entry-timing patterns"),
+                          ("RD-G", "Pattern-gap questions (11 mined patterns with no rows)")):
         lines += [f"## {title}", ""]
         for r in rows:
             if not r["qid"].startswith(prefix):
                 continue
-            ents = ", ".join(f"{e['symbol']} ({e['isin']})" for e in r["entities"])
+            ents = ", ".join(
+                f"{e['symbol']} ({e['isin']})" if e.get("isin")
+                else f"{e.get('type', 'entity')}:{e['symbol']}" for e in r["entities"])
             lines += [
                 f"### {r['qid']} · {r['archetype']} · family {r['family']} · `{r['reddit_pattern']}`",
                 "",
