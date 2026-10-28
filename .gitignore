@@ -185,3 +185,6 @@ tasks/research/decision_pilot/cache/
 .tmp/
 # per-task virtualenvs (setup_worker_env.py documents them; never commit)
 .venv-*/PROGRESS_NOTES.md
+
+# pilot stores on the SSD (29 Oct 2026)
+reality_engine/data/pilot/

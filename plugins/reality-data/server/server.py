@@ -81,7 +81,9 @@ def _warm_search() -> None:
     # 2026-10-28: every dsh worker starts its own server, and warming the vector index costs ~1 GB each, which
     # capped parallel workers at 3-4 on 16 GB. Inside a worker (or with REALITY_DATA_NO_WARM=1) the index loads
     # lazily on the first search instead.
-    if os.environ.get("DSH_WORKER_CONTROL_TOKEN") or os.environ.get("REALITY_DATA_NO_WARM") == "1":
+    # 2026-10-29: the worker check did not hold (every server sat at 1.2 GB private), so preloading is now
+    # opt-in everywhere: set REALITY_DATA_WARM_SEARCH=1 to warm at start.
+    if os.environ.get("REALITY_DATA_WARM_SEARCH") != "1":
         return
 
     def run() -> None:

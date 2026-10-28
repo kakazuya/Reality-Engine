@@ -332,12 +332,14 @@ def _arrays(index: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
 
 def _build_compact(name: str, full: np.ndarray) -> np.ndarray:
+    # 2026-10-29: loaded mmap read-only, so every reality-data server (one per dsh worker) shares one
+    # page-cache copy instead of each holding ~1.2 GB private.
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path = CACHE_DIR / f"{name}_compact{COMPACT_DIM}_f32.npy"
     rows = int(full.shape[0])
     if path.exists():
         try:
-            cached = np.load(path)
+            cached = np.load(path, mmap_mode="r")
             if cached.shape == (rows, COMPACT_DIM) and cached.dtype == np.float32:
                 return cached
         except (OSError, ValueError):
@@ -351,7 +353,7 @@ def _build_compact(name: str, full: np.ndarray) -> np.ndarray:
     out.flush()
     del out
     os.replace(tmp, path)
-    return np.load(path)
+    return np.load(path, mmap_mode="r")
 
 
 def _build_done_compact(name: str, full: np.ndarray, done_rows: np.ndarray) -> np.ndarray:
@@ -359,7 +361,7 @@ def _build_done_compact(name: str, full: np.ndarray, done_rows: np.ndarray) -> n
     path = CACHE_DIR / f"{name}_done{len(done_rows)}_compact{COMPACT_DIM}_f32.npy"
     if path.exists():
         try:
-            cached = np.load(path)
+            cached = np.load(path, mmap_mode="r")
             if cached.shape == (len(done_rows), COMPACT_DIM) and cached.dtype == np.float32:
                 return cached
         except (OSError, ValueError):
@@ -373,7 +375,7 @@ def _build_done_compact(name: str, full: np.ndarray, done_rows: np.ndarray) -> n
     out.flush()
     del out
     os.replace(tmp, path)
-    return np.load(path)
+    return np.load(path, mmap_mode="r")
 
 
 def _search_data(name: str) -> dict[str, Any]:
