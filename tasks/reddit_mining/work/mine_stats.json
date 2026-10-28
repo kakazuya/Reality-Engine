@@ -1,0 +1,922 @@
+{
+ "total_posts": 778501,
+ "kept_posts": 116822,
+ "files": {
+  "Bogleheads": 14592,
+  "CanadianInvestor": 6295,
+  "DalalStreetTalks": 5389,
+  "Daytrading": 55496,
+  "Economics": 11980,
+  "EuropeanStocks": 145,
+  "FIREIndia": 1949,
+  "FluentInFinance": 3521,
+  "IndiaBusiness": 35453,
+  "IndiaInvestments": 30704,
+  "IndiaTax": 37879,
+  "IndianEconomy": 2409,
+  "IndianOptionTraders": 3,
+  "IndianStockMarket": 108599,
+  "IndianStreetBets": 54481,
+  "NSEbets": 48686,
+  "SecurityAnalysis": 385,
+  "StockMarket": 7075,
+  "StockMarketChat": 847,
+  "StockMarketIndia": 63550,
+  "UKInvesting": 1028,
+  "ValueInvesting": 19563,
+  "algotrading": 5846,
+  "ausstocks": 529,
+  "dividends": 10391,
+  "economy": 28750,
+  "indianstocks": 15872,
+  "investing": 22046,
+  "mutualfunds": 39669,
+  "options": 9358,
+  "personalfinanceindia": 55491,
+  "smallcapstocks": 8139,
+  "stocks": 34639,
+  "swingtrading": 7580,
+  "technicalanalysis": 4275,
+  "trading": 25887
+ },
+ "kept_by_subreddit": {
+  "Bogleheads": 3411,
+  "CanadianInvestor": 1007,
+  "DalalStreetTalks": 1000,
+  "Daytrading": 4573,
+  "Economics": 219,
+  "EuropeanStocks": 27,
+  "FIREIndia": 182,
+  "FluentInFinance": 120,
+  "IndiaBusiness": 2657,
+  "IndiaInvestments": 3480,
+  "IndiaTax": 2682,
+  "IndianEconomy": 223,
+  "IndianOptionTraders": 0,
+  "IndianStockMarket": 23475,
+  "IndianStreetBets": 8693,
+  "NSEbets": 7173,
+  "SecurityAnalysis": 20,
+  "StockMarket": 736,
+  "StockMarketChat": 120,
+  "StockMarketIndia": 12228,
+  "UKInvesting": 134,
+  "ValueInvesting": 4418,
+  "algotrading": 547,
+  "ausstocks": 125,
+  "dividends": 2489,
+  "economy": 1193,
+  "indianstocks": 3752,
+  "investing": 4750,
+  "mutualfunds": 8268,
+  "options": 789,
+  "personalfinanceindia": 7557,
+  "smallcapstocks": 379,
+  "stocks": 6661,
+  "swingtrading": 753,
+  "technicalanalysis": 449,
+  "trading": 2532
+ },
+ "subreddit_group": {
+  "Bogleheads": "international",
+  "CanadianInvestor": "international",
+  "DalalStreetTalks": "indian",
+  "Daytrading": "technical",
+  "Economics": "international",
+  "EuropeanStocks": "international",
+  "FIREIndia": "indian",
+  "FluentInFinance": "international",
+  "IndiaBusiness": "indian",
+  "IndiaInvestments": "indian",
+  "IndiaTax": "indian",
+  "IndianEconomy": "indian",
+  "IndianOptionTraders": "technical",
+  "IndianStockMarket": "indian",
+  "IndianStreetBets": "indian",
+  "NSEbets": "indian",
+  "SecurityAnalysis": "international",
+  "StockMarket": "international",
+  "StockMarketChat": "technical",
+  "StockMarketIndia": "indian",
+  "UKInvesting": "international",
+  "ValueInvesting": "international",
+  "algotrading": "technical",
+  "ausstocks": "international",
+  "dividends": "international",
+  "economy": "international",
+  "indianstocks": "indian",
+  "investing": "international",
+  "mutualfunds": "indian",
+  "options": "technical",
+  "personalfinanceindia": "indian",
+  "smallcapstocks": "international",
+  "stocks": "international",
+  "swingtrading": "technical",
+  "technicalanalysis": "technical",
+  "trading": "technical"
+ },
+ "kept_by_month": {
+  "2024-04": 1808,
+  "2024-05": 2006,
+  "2024-06": 2888,
+  "2024-07": 3520,
+  "2024-08": 3691,
+  "2024-09": 3554,
+  "2024-10": 3242,
+  "2024-11": 2768,
+  "2024-12": 2659,
+  "2025-01": 2988,
+  "2025-02": 2436,
+  "2025-03": 2233,
+  "2025-04": 2367,
+  "2025-05": 2291,
+  "2025-06": 2596,
+  "2025-07": 2626,
+  "2025-08": 2349,
+  "2025-09": 2362,
+  "2025-10": 3124,
+  "2025-11": 5816,
+  "2025-12": 5790,
+  "2026-01": 7203,
+  "2026-02": 5990,
+  "2026-03": 6659,
+  "2026-04": 5734,
+  "2026-05": 5828,
+  "2026-06": 5615,
+  "2026-07": 4585,
+  "2026-08": 4366,
+  "2026-09": 4072,
+  "2026-10": 3656
+ },
+ "drop_reasons": {
+  "no_market_subject": 152099,
+  "no_question_marker": 486253,
+  "meme_or_portfolio_rating": 12176,
+  "personal_finance_or_broker": 11151
+ },
+ "families": {
+  "NEW:uncategorised": 54269,
+  "3": 9667,
+  "NEW:position_decision": 7389,
+  "NEW:technical_setup": 5789,
+  "15": 4155,
+  "10": 3906,
+  "16": 3714,
+  "8": 3676,
+  "1": 3182,
+  "NEW:ipo_grey_market": 2902,
+  "NEW:macro_event": 2811,
+  "2": 2523,
+  "NEW:entry_timing": 2342,
+  "NEW:group_basket": 1704,
+  "4": 1489,
+  "NEW:corporate_action": 1434,
+  "12": 969,
+  "13": 917,
+  "11": 810,
+  "NEW:sebi_rule": 609,
+  "14": 558,
+  "18": 515,
+  "9": 415,
+  "17": 341,
+  "NEW:flows": 296,
+  "19": 181,
+  "6": 173,
+  "5": 86
+ },
+ "levels": {
+  "market-wide": 37162,
+  "sector": 29354,
+  "stock": 15506,
+  "index": 10526,
+  "policy": 8283,
+  "theme": 6216,
+  "ipo": 4969,
+  "macro": 4806
+ },
+ "styles": {
+  "ticker": 22604,
+  "index": 4626,
+  "abbreviation": 1904,
+  "old_name": 1347,
+  "nickname": 1283,
+  "hinglish": 856,
+  "broker": 853,
+  "misspelling": 633,
+  "group": 335
+ },
+ "hops": {
+  "1": 88426,
+  "2": 25504,
+  "3": 2892
+ },
+ "time_phrases": {
+  "long term": 10512,
+  "today": 8016,
+  "tomorrow": 1822,
+  "this year": 1416,
+  "last year": 1371,
+  "yesterday": 1087,
+  "expiry": 849,
+  "this week": 622,
+  "last week": 460,
+  "this month": 451,
+  "52-week": 320,
+  "next week": 298,
+  "YTD": 200,
+  "QnFYxx": 188,
+  "after results": 165,
+  "after budget": 125,
+  "at open": 105,
+  "this quarter": 101,
+  "after election": 78,
+  "before budget": 77,
+  "since listing": 59,
+  "since 2024": 32,
+  "next quarter": 27,
+  "after rate cut": 15
+ },
+ "datapoints": {
+  "price": 22370,
+  "index": 11387,
+  "results": 7077,
+  "technical": 6735,
+  "policy": 6125,
+  "valuation": 5587,
+  "dividend": 5358,
+  "macro": 5330,
+  "ipo": 4947,
+  "holding": 3989,
+  "guidance": 2350,
+  "flows": 2341,
+  "volume": 1969,
+  "oi": 1521,
+  "delivery": 728
+ },
+ "pairs": [
+  {
+   "a": "index",
+   "b": "price",
+   "n": 2717
+  },
+  {
+   "a": "price",
+   "b": "technical",
+   "n": 2457
+  },
+  {
+   "a": "price",
+   "b": "results",
+   "n": 2143
+  },
+  {
+   "a": "price",
+   "b": "valuation",
+   "n": 2024
+  },
+  {
+   "a": "macro",
+   "b": "price",
+   "n": 1744
+  },
+  {
+   "a": "dividend",
+   "b": "price",
+   "n": 1221
+  },
+  {
+   "a": "results",
+   "b": "valuation",
+   "n": 1167
+  },
+  {
+   "a": "index",
+   "b": "technical",
+   "n": 1165
+  },
+  {
+   "a": "holding",
+   "b": "price",
+   "n": 1163
+  },
+  {
+   "a": "policy",
+   "b": "price",
+   "n": 1020
+  },
+  {
+   "a": "price",
+   "b": "volume",
+   "n": 963
+  },
+  {
+   "a": "ipo",
+   "b": "price",
+   "n": 888
+  },
+  {
+   "a": "dividend",
+   "b": "macro",
+   "n": 666
+  },
+  {
+   "a": "flows",
+   "b": "price",
+   "n": 651
+  },
+  {
+   "a": "guidance",
+   "b": "price",
+   "n": 570
+  },
+  {
+   "a": "oi",
+   "b": "price",
+   "n": 527
+  },
+  {
+   "a": "index",
+   "b": "macro",
+   "n": 510
+  },
+  {
+   "a": "technical",
+   "b": "volume",
+   "n": 489
+  },
+  {
+   "a": "macro",
+   "b": "policy",
+   "n": 441
+  },
+  {
+   "a": "results",
+   "b": "technical",
+   "n": 440
+  },
+  {
+   "a": "macro",
+   "b": "results",
+   "n": 428
+  },
+  {
+   "a": "index",
+   "b": "valuation",
+   "n": 423
+  },
+  {
+   "a": "macro",
+   "b": "valuation",
+   "n": 378
+  },
+  {
+   "a": "guidance",
+   "b": "results",
+   "n": 374
+  },
+  {
+   "a": "technical",
+   "b": "valuation",
+   "n": 358
+  },
+  {
+   "a": "ipo",
+   "b": "valuation",
+   "n": 358
+  },
+  {
+   "a": "index",
+   "b": "policy",
+   "n": 338
+  },
+  {
+   "a": "policy",
+   "b": "results",
+   "n": 336
+  },
+  {
+   "a": "holding",
+   "b": "results",
+   "n": 326
+  },
+  {
+   "a": "holding",
+   "b": "valuation",
+   "n": 321
+  }
+ ],
+ "patterns": [
+  {
+   "name": "mf_etf_vs_stock",
+   "n": 14945
+  },
+  {
+   "name": "fundamental_health_check",
+   "n": 13276
+  },
+  {
+   "name": "hold_or_sell_position",
+   "n": 12649
+  },
+  {
+   "name": "broker_platform_process",
+   "n": 8445
+  },
+  {
+   "name": "fno_vs_cash_flow",
+   "n": 6711
+  },
+  {
+   "name": "index_inclusion_rebalance",
+   "n": 6014
+  },
+  {
+   "name": "ipo_grey_listing_day",
+   "n": 4574
+  },
+  {
+   "name": "ta_support_resistance",
+   "n": 4451
+  },
+  {
+   "name": "group_basket_entity",
+   "n": 4297
+  },
+  {
+   "name": "entry_timing_good_time",
+   "n": 4080
+  },
+  {
+   "name": "valuation_vs_peers",
+   "n": 4013
+  },
+  {
+   "name": "global_cue_overnight",
+   "n": 3538
+  },
+  {
+   "name": "dividend_record_date",
+   "n": 3186
+  },
+  {
+   "name": "penny_low_price_stock",
+   "n": 2946
+  },
+  {
+   "name": "corporate_action_aftermath",
+   "n": 2846
+  },
+  {
+   "name": "ta_breakout_volume",
+   "n": 2169
+  },
+  {
+   "name": "ta_rsi_momentum",
+   "n": 1917
+  },
+  {
+   "name": "guidance_vs_delivery",
+   "n": 1830
+  },
+  {
+   "name": "sebi_rule_question",
+   "n": 1457
+  },
+  {
+   "name": "macro_event_what_if",
+   "n": 1121
+  },
+  {
+   "name": "cycle_peak_trough",
+   "n": 1098
+  },
+  {
+   "name": "ta_52week_extreme",
+   "n": 914
+  },
+  {
+   "name": "ta_gap_event",
+   "n": 886
+  },
+  {
+   "name": "why_stock_moved",
+   "n": 869
+  },
+  {
+   "name": "fii_dii_flow_link",
+   "n": 740
+  },
+  {
+   "name": "ta_delivery_spike",
+   "n": 728
+  },
+  {
+   "name": "promoter_pledge_sale",
+   "n": 600
+  },
+  {
+   "name": "circuit_band_behaviour",
+   "n": 535
+  },
+  {
+   "name": "ta_oi_pcr_maxpain",
+   "n": 533
+  },
+  {
+   "name": "moat_competitive_advantage",
+   "n": 532
+  },
+  {
+   "name": "dividend_sustainability",
+   "n": 482
+  },
+  {
+   "name": "ta_moving_average",
+   "n": 421
+  },
+  {
+   "name": "accounting_red_flags",
+   "n": 412
+  },
+  {
+   "name": "ta_relative_strength",
+   "n": 387
+  },
+  {
+   "name": "capital_allocation",
+   "n": 373
+  },
+  {
+   "name": "thesis_break_sell",
+   "n": 342
+  },
+  {
+   "name": "ta_chart_pattern",
+   "n": 340
+  },
+  {
+   "name": "theme_proxy_play",
+   "n": 288
+  },
+  {
+   "name": "unit_economics",
+   "n": 259
+  },
+  {
+   "name": "merger_arbitrage",
+   "n": 159
+  },
+  {
+   "name": "ipo_vs_listed_peer",
+   "n": 156
+  },
+  {
+   "name": "sum_of_parts_holdco",
+   "n": 154
+  },
+  {
+   "name": "second_order_beneficiary",
+   "n": 146
+  },
+  {
+   "name": "policy_impact_by_company",
+   "n": 137
+  },
+  {
+   "name": "earnings_reaction_drift",
+   "n": 111
+  },
+  {
+   "name": "second_order_macro",
+   "n": 56
+  },
+  {
+   "name": "results_calendar",
+   "n": 44
+  },
+  {
+   "name": "customer_supplier_concentration",
+   "n": 6
+  }
+ ],
+ "aliases": [
+  {
+   "alias": "Nifty",
+   "symbol": "NIFTY50_INDEX",
+   "kind": "index",
+   "n": 6120
+  },
+  {
+   "alias": "HDFC",
+   "symbol": "HDFCBANK",
+   "kind": "old_name",
+   "n": 2383
+  },
+  {
+   "alias": "Nifty 50",
+   "symbol": "NIFTY50_INDEX",
+   "kind": "index",
+   "n": 2171
+  },
+  {
+   "alias": "ICICI",
+   "symbol": "ICICIBANK",
+   "kind": "abbreviation",
+   "n": 1677
+  },
+  {
+   "alias": "SBI",
+   "symbol": "SBIN",
+   "kind": "abbreviation",
+   "n": 1473
+  },
+  {
+   "alias": "Groww",
+   "symbol": "GROWW",
+   "kind": "broker",
+   "n": 1445
+  },
+  {
+   "alias": "Zerodha",
+   "symbol": "ZERODHA",
+   "kind": "broker",
+   "n": 1352
+  },
+  {
+   "alias": "Sensex",
+   "symbol": "SENSEX_INDEX",
+   "kind": "index",
+   "n": 834
+  },
+  {
+   "alias": "Reliance",
+   "symbol": "RELIANCE",
+   "kind": "nickname",
+   "n": 802
+  },
+  {
+   "alias": "Kotak",
+   "symbol": "KOTAKBANK",
+   "kind": "abbreviation",
+   "n": 676
+  },
+  {
+   "alias": "Axis",
+   "symbol": "AXISBANK",
+   "kind": "abbreviation",
+   "n": 608
+  },
+  {
+   "alias": "Tata Motors",
+   "symbol": "TATAMOTORS",
+   "kind": "current",
+   "n": 570
+  },
+  {
+   "alias": "Zomato",
+   "symbol": "ETERNAL",
+   "kind": "old_name",
+   "n": 556
+  },
+  {
+   "alias": "TCS",
+   "symbol": "TCS",
+   "kind": "ticker",
+   "n": 433
+  },
+  {
+   "alias": "HDFC Bank",
+   "symbol": "HDFCBANK",
+   "kind": "current",
+   "n": 420
+  },
+  {
+   "alias": "Suzlon",
+   "symbol": "SUZLON",
+   "kind": "nickname",
+   "n": 406
+  },
+  {
+   "alias": "IRFC",
+   "symbol": "IRFC",
+   "kind": "ticker",
+   "n": 349
+  },
+  {
+   "alias": "HAL",
+   "symbol": "HAL",
+   "kind": "ticker",
+   "n": 343
+  },
+  {
+   "alias": "Swiggy",
+   "symbol": "SWIGGY",
+   "kind": "current",
+   "n": 340
+  },
+  {
+   "alias": "Paytm",
+   "symbol": "PAYTM",
+   "kind": "nickname",
+   "n": 326
+  },
+  {
+   "alias": "Bank Nifty",
+   "symbol": "BANKNIFTY_INDEX",
+   "kind": "index",
+   "n": 305
+  },
+  {
+   "alias": "BEL",
+   "symbol": "BEL",
+   "kind": "ticker",
+   "n": 299
+  },
+  {
+   "alias": "IREDA",
+   "symbol": "IREDA",
+   "kind": "ticker",
+   "n": 265
+  },
+  {
+   "alias": "Vedanta",
+   "symbol": "VEDL",
+   "kind": "nickname",
+   "n": 199
+  },
+  {
+   "alias": "Tata Steel",
+   "symbol": "TATASTEEL",
+   "kind": "current",
+   "n": 189
+  },
+  {
+   "alias": "Ola Electric",
+   "symbol": "OLAELEC",
+   "kind": "current",
+   "n": 177
+  },
+  {
+   "alias": "RVNL",
+   "symbol": "RVNL",
+   "kind": "ticker",
+   "n": 166
+  },
+  {
+   "alias": "Coal India",
+   "symbol": "COALINDIA",
+   "kind": "current",
+   "n": 166
+  },
+  {
+   "alias": "Eternal",
+   "symbol": "ETERNAL",
+   "kind": "current",
+   "n": 163
+  },
+  {
+   "alias": "Yes Bank",
+   "symbol": "YESBANK",
+   "kind": "current",
+   "n": 153
+  },
+  {
+   "alias": "defence stocks",
+   "symbol": "DEFENCE_THEME",
+   "kind": "group",
+   "n": 148
+  },
+  {
+   "alias": "Adani stocks",
+   "symbol": "ADANI_GROUP",
+   "kind": "group",
+   "n": 115
+  },
+  {
+   "alias": "IndusInd",
+   "symbol": "INDUSINDBK",
+   "kind": "abbreviation",
+   "n": 108
+  },
+  {
+   "alias": "L&T",
+   "symbol": "LT",
+   "kind": "abbreviation",
+   "n": 107
+  },
+  {
+   "alias": "RIL",
+   "symbol": "RELIANCE",
+   "kind": "abbreviation",
+   "n": 99
+  },
+  {
+   "alias": "Infy",
+   "symbol": "INFY",
+   "kind": "nickname",
+   "n": 85
+  },
+  {
+   "alias": "DMart",
+   "symbol": "DMART",
+   "kind": "nickname",
+   "n": 83
+  },
+  {
+   "alias": "BHEL",
+   "symbol": "BHEL",
+   "kind": "ticker",
+   "n": 81
+  },
+  {
+   "alias": "railway stocks",
+   "symbol": "RAILWAY_THEME",
+   "kind": "group",
+   "n": 79
+  },
+  {
+   "alias": "PSU stocks",
+   "symbol": "PSU_BASKET",
+   "kind": "group",
+   "n": 76
+  },
+  {
+   "alias": "M&M",
+   "symbol": "M&M",
+   "kind": "abbreviation",
+   "n": 61
+  },
+  {
+   "alias": "Hindalco",
+   "symbol": "HINDALCO",
+   "kind": "current",
+   "n": 58
+  },
+  {
+   "alias": "Delhivery",
+   "symbol": "DELHIVERY",
+   "kind": "current",
+   "n": 56
+  },
+  {
+   "alias": "Policybazaar",
+   "symbol": "POLICYBZR",
+   "kind": "nickname",
+   "n": 55
+  },
+  {
+   "alias": "PSU banks",
+   "symbol": "PSU_BANKS",
+   "kind": "group",
+   "n": 47
+  },
+  {
+   "alias": "Adani group",
+   "symbol": "ADANI_GROUP",
+   "kind": "group",
+   "n": 43
+  },
+  {
+   "alias": "Nykaa",
+   "symbol": "NYKAA",
+   "kind": "nickname",
+   "n": 34
+  },
+  {
+   "alias": "JSW Steel",
+   "symbol": "JSWSTEEL",
+   "kind": "current",
+   "n": 27
+  },
+  {
+   "alias": "Tata stocks",
+   "symbol": "TATA_GROUP",
+   "kind": "group",
+   "n": 15
+  },
+  {
+   "alias": "Tata group",
+   "symbol": "TATA_GROUP",
+   "kind": "group",
+   "n": 14
+  },
+  {
+   "alias": "Mamaearth",
+   "symbol": "HONASA",
+   "kind": "nickname",
+   "n": 8
+  },
+  {
+   "alias": "Avenue Supermarts",
+   "symbol": "DMART",
+   "kind": "current",
+   "n": 6
+  },
+  {
+   "alias": "One97",
+   "symbol": "PAYTM",
+   "kind": "old_name",
+   "n": 1
+  }
+ ]
+}
