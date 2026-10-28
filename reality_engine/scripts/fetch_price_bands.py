@@ -154,7 +154,18 @@ class Fetcher:
         body = r.content
         head = body[:200].decode("utf-8-sig", "replace").lower()
         if not head.startswith("symbol") or "series" not in head:
-            raise SystemExit(f"unexpected content (not sec_list) for {day}: {head[:80]!r}")
+            # An empty or odd file for one day is a gap, not a block; 5 in a row stops.
+            self.bad_streak = getattr(self, "bad_streak", 0) + 1
+            if self.bad_streak >= 5:
+                raise SystemExit(f"unexpected content x5 in a row, last {day}: {head[:80]!r}")
+            print(f"unexpected content (not sec_list) for {day}, logged as missing: {head[:60]!r}",
+                  flush=True)
+            with self.missing.open("a", encoding="utf-8") as f:
+                f.write(day.isoformat() + "\n")
+            self.counts["absent"] += 1
+            self.record(day.isoformat(), "not_sec_list", 0, len(body), self.latencies[-1])
+            return None, "absent"
+        self.bad_streak = 0
         path.write_bytes(body)
         self.counts["ok"] += 1
         self.record(day.isoformat(), "ok", len(parse_band_csv(body.decode("utf-8-sig", "replace"),
