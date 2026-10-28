@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-28T21:45:50+05:30 · git HEAD: `2ddcbf7` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-28T22:26:12+05:30 · git HEAD: `9a5d54e` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -13,6 +13,7 @@ reality_engine/
   db/ (9 py) — Database services.
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
+  pilot/ (3 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
   pipeline/ (19 py) — Pipeline runners.
   processing/ (45 py) — Document and image processing components.
   query/ (16 py) — Query layer v0 — router + planners + arithmetic + answer assembly.
@@ -195,6 +196,10 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/ingestion/sebi_offer_client.py` — SEBI offer-document client: DRHP / Prospectus discovery + PDF resolution.
 - `reality_engine/ingestion/telegram_client.py` — Telegram MTProto Ingestion Client Module (Layer 3)
 - `reality_engine/ingestion/youtube_transcriber.py` — YouTube / MP4 transcription wrapper for Fundamental Reality Engine.
+
+### reality_engine/pilot/
+- `reality_engine/pilot/build_t1.py` — T1 (deterministic) pilot build — PILOT_SPEC §3 deterministic tier, SCHEMA_V3 §B/§C.
+- `reality_engine/pilot/checks_t1.py` — Checks for the T1 pilot build — the numbers behind tasks/pilot_t1/CHECKS.md.
 
 ### reality_engine/pipeline/
 - `reality_engine/pipeline/backfill.py` — Historical Backfill Pipeline Module
@@ -491,6 +496,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.ingestion.pdf_ingestor` | test_document_industry_tag.py, test_fiscal_extraction.py, test_macro_ingest.py, test_pua_fallback.py, test_repo_identity.py |
 | `reality_engine.ingestion.policy_press_client` | test_policy_press_client.py |
 | `reality_engine.ingestion.telegram_client` | test_telegram_hardening.py |
+| `reality_engine.pilot.build_t1` | test_pilot_t1.py |
 | `reality_engine.pipeline.bootstrap` | test_bootstrap.py |
 | `reality_engine.pipeline.bse_backfill` | test_bse_backfill.py |
 | `reality_engine.pipeline.capacity_loop` | test_forecast_capacity.py |
@@ -561,6 +567,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.fetch_market_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_nse_api_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_originals` | test_fetch_originals.py |
+| `reality_engine.scripts.fetch_price_bands` | test_pilot_t1.py |
 | `reality_engine.scripts.fetch_results_notes_text` | test_new_feeds_g2.py |
 | `reality_engine.scripts.load_deck_chunks` | test_deck_chunk_load.py |
 | `reality_engine.scripts.load_market_raw` | test_market_gap_backfill.py |
