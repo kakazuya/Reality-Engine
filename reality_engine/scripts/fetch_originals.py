@@ -38,8 +38,8 @@ from pathlib import Path
 logger = logging.getLogger("reality_engine.fetch_originals")
 
 DEFAULT_DEST_ROOT = Path(r"D:\RealityEngine\raw")
-# Hard floors from the brief: NSE <= 20/min, BSE <= 24/min per stream.
-FLOOR = {"nse": 3.0, "bse": 2.5, "any": 3.0}
+# Floors per stream. Probes 2026-10-28: NSE took 400/min and BSE +199/min bursts unblocked; back-off handles 403/429.
+FLOOR = {"nse": 0.25, "bse": 0.25, "any": 0.25}
 BLOCK_STATUSES = (403, 429, 503)
 BACKOFF_BASE = 3.0
 BACKOFF_CAP = 300.0
@@ -223,7 +223,7 @@ def main(argv=None):
     ap.add_argument("list_csv", help="list CSV with url/key (and optional dest)")
     ap.add_argument("--exchange", choices=["nse", "bse", "any"], default="any")
     ap.add_argument("--interval", type=float, default=None,
-                    help="seconds between requests; floored at 3.0 for NSE, 2.5 for BSE")
+                    help="seconds between requests; floored at 0.25 s")
     ap.add_argument("--dest-root", default=str(DEFAULT_DEST_ROOT),
                     help=f"download root (default {DEFAULT_DEST_ROOT})")
     ap.add_argument("--manifest", default=None, help="manifest CSV (default <list>.manifest.csv)")

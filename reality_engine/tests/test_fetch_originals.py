@@ -101,7 +101,7 @@ class TestListAndPacing(Case):
     def test_interval_floors(self):
         f = self.fetcher([], exchange="nse", interval=0.1, sleep=lambda s: None)
         self.assertEqual(f.interval, FLOOR["nse"])
-        f = self.fetcher([], exchange="bse", interval=1.0, sleep=lambda s: None)
+        f = self.fetcher([], exchange="bse", interval=0.1, sleep=lambda s: None)
         self.assertEqual(f.interval, FLOOR["bse"])
         f = self.fetcher([], exchange="any", interval=9.0, sleep=lambda s: None)
         self.assertEqual(f.interval, 9.0)
