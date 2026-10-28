@@ -12,13 +12,16 @@ from three deterministic maps only — no reader, no model, no network:
     substring (a substring match turns "Air India" into Tenneco Clean Air India).
 
 Tables are created from ``tasks/arch_v3/SCHEMA_V3.sql`` itself (via
-``build_t1.create_schema``) so the pilot cannot drift from the design DDL.  Two
-pilot-only columns are added to ``macro_claim`` because the brief asks for them
-and SCHEMA_V3 §macro_claim does not carry them yet: ``paraphrase`` (<= 30 words)
-and ``known_at`` (copied from ``macro_doc``; the planner still joins the doc).
+``build_t1.create_schema``) so the pilot cannot drift from the design DDL.  Pilot-only
+columns are added to ``macro_claim`` because the brief asks for them and SCHEMA_V3 does
+not carry them yet: ``paraphrase`` (<= 30 words), ``known_at`` (copied from
+``macro_doc``; the planner still joins the doc), ``stratum``, ``conditions``,
+``quote_ok`` (the source row's own flag; 0 rows are kept, flagged and down-weighted)
+and ``effective_pit_conf`` (how precisely the prose effective date was parsed).
 
     python -m reality_engine.pilot.macro_claims --out .tmp/pilot
     python -m reality_engine.pilot.macro_claims --out .tmp/pilot --quota 60
+    python -m reality_engine.pilot.macro_claims --all   # every row -> .tmp/pilot_all/macro_all.db
 
 Output: ``<out>/macro_pilot.db`` and ``<out>/macro_pilot_meta.json``.
 """
@@ -30,7 +33,9 @@ import os
 import re
 import sqlite3
 import sys
+import time
 from pathlib import Path
+from typing import Any
 
 from reality_engine.db.readonly import connect_ro
 from reality_engine.pilot.build_t1 import create_schema
@@ -65,7 +70,10 @@ SECTOR_TERMS: dict[str, tuple[tuple[str, str], ...]] = {
     "banking": (("basic_industry", "Private Sector Bank"),
                 ("basic_industry", "Public Sector Bank"),
                 ("basic_industry", "Other Bank")),
-    "banking and financial services": (("sector", "Financial Services"),),
+    "banking and financial services": (("basic_industry", "Private Sector Bank"),
+                                       ("basic_industry", "Public Sector Bank"),
+                                       ("basic_industry", "Other Bank"),
+                                       ("sector", "Financial Services")),
     "banks": (("basic_industry", "Private Sector Bank"),
               ("basic_industry", "Public Sector Bank")),
     "bank credit and lending rates": (("basic_industry", "Private Sector Bank"),
@@ -228,6 +236,25 @@ SECTOR_TERMS: dict[str, tuple[tuple[str, str], ...]] = {
     "affordable housing": (("sector", "Realty"),
                            ("basic_industry", "Residential Commercial Projects")),
     "rural housing": (("basic_industry", "Residential Commercial Projects"),),
+    # recall fixes from the independent 80-claim check (tasks/macro_pilot/REPORT_ALL.md):
+    # terms the corpus really uses, each unambiguous inside its own definition.
+    "auto": (("sector", "Automobile and Auto Components"),),
+    "ai": (("sector", "Information Technology"),),
+    "fisheries": (("basic_industry", "Seafood"),),
+    "fishing": (("basic_industry", "Seafood"),),
+    "aquaculture": (("basic_industry", "Seafood"),),
+    "drone": (("basic_industry", "Aerospace & Defense"),),
+    "drones": (("basic_industry", "Aerospace & Defense"),),
+    "jewellery": (("basic_industry", "Gems Jewellery And Watches"),),
+    "jewelry": (("basic_industry", "Gems Jewellery And Watches"),),
+    "transport": (("basic_industry", "Logistics Solution Provider"),),
+    "transportation": (("basic_industry", "Logistics Solution Provider"),),
+    "co-operative banking": (("basic_industry", "Other Bank"),),
+    "cooperative banking": (("basic_industry", "Other Bank"),),
+    "co-operative banks": (("basic_industry", "Other Bank"),),
+    "cooperative banks": (("basic_industry", "Other Bank"),),
+    "regional rural banks": (("basic_industry", "Other Bank"),),
+    "small finance banks": (("basic_industry", "Private Sector Bank"),),
 }
 
 # --- tariff / HS code -> industry ----------------------------------------------------
@@ -390,25 +417,77 @@ def claim_direction(row: dict) -> str:
     return TARGET_DIRECTION.get(_clean(row.get("direction_for_industry")), "neutral")
 
 
-def iso_effective(raw: object) -> str | None:
-    """Effective date as ISO (fiscal-year text -> the FY start, e.g. 2024-25 -> 2024-04-01)."""
-    text = str(raw or "").strip()
-    if not text or text.lower() in {"none", "null"}:
-        return None
+_DATE_ANNOTATION_RE = re.compile(
+    r"\s*\((?:as written|be|revised|actuals?|budget estimates?|interim|provisional)\)\s*$",
+    re.I)
+_DATE_PREFIX_RE = re.compile(
+    r"^(?:fy|financial year|tax year|assessment year|be|budget estimates?)\s*", re.I)
+_MONTHS = {"january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
+           "july": 7, "august": 8, "september": 9, "october": 10, "november": 11,
+           "december": 12, "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7,
+           "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12}
+
+
+def effective_date(raw: object, known_at: object = None) -> tuple[str | None, float]:
+    """Effective date as (ISO, pit_conf); prose is parsed, never guessed blindly.
+
+    Confidences: exact ISO/dotted date 1.0, YYYY-MM 0.95, Indian fiscal year or its range
+    start 0.9, month + year 0.85, "end of YYYY" 0.6, a lone year/month or "next FY" 0.55.
+    A low confidence is a signal to the planner: prefer the publication date (the event
+    day) over an effective date that is only known to the year.
+    """
+    text = " ".join(str(raw or "").strip().lower().split())
+    if not text or text in {"none", "null", "n/a"}:
+        return None, 0.0
+    text = _DATE_ANNOTATION_RE.sub("", text)
+    text = _DATE_PREFIX_RE.sub("", text).strip()
+    if not text:
+        return None, 0.0
     m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", text)
     if m:
-        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-    m = re.match(r"^(\d{4})-(\d{2})$", text)
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}", 1.0
+    m = re.match(r"^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})$", text)
+    if m:
+        return f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}", 0.95
+    m = re.match(r"^(\d{4})\s*[-–]\s*(\d{2})$", text)
     if m and int(m.group(2)) <= 12:
-        return f"{m.group(1)}-{m.group(2)}-01"
+        return f"{m.group(1)}-{m.group(2)}-01", 0.95
     m = re.match(r"^(\d{4})\s*[-–]\s*(\d{2,4})$", text)
     if m:
-        start, end = int(m.group(1)), m.group(2)
-        end_num = int(end) % 100
-        if (start % 100) + 1 == end_num:
-            return f"{start}-04-01"  # Indian fiscal year -> its start
-        return None
-    return None
+        start, end = int(m.group(1)), int(m.group(2)) % 100
+        if 1 <= end - (start % 100) <= 9:  # a fiscal-year span -> its start
+            return f"{start}-04-01", 0.9
+        return None, 0.0
+    m = re.search(r"\b(end|close|by)\s*(?:of\s*)?[- ]?(\d{4})\b", text)
+    if m and m.group(1) != "by":
+        return f"{m.group(2)}-12-31", 0.6
+    m = re.match(r"^(?:from\s+|in\s+|during\s+)?([a-z]{3,9})\s*[-,]?\s*(\d{4})$", text)
+    if m and m.group(1) in _MONTHS:
+        return f"{m.group(2)}-{_MONTHS[m.group(1)]:02d}-01", 0.85
+    m = re.match(r"^(?:from\s+|in\s+|during\s+)?([a-z]{3,9})$", text)
+    if m and m.group(1) in _MONTHS:
+        year = _year_of(known_at)
+        if year:
+            return f"{year}-{_MONTHS[m.group(1)]:02d}-01", 0.55
+        return None, 0.0
+    if "next financial year" in text or "next fiscal" in text:
+        year = _year_of(known_at)
+        if year:
+            return f"{year + 1}-04-01", 0.55
+    m = re.match(r"^(\d{4})$", text)
+    if m:
+        return f"{m.group(1)}-04-01", 0.55  # Indian fiscal convention, low confidence
+    return None, 0.0
+
+
+def _year_of(value: object) -> int | None:
+    m = re.match(r"^(\d{4})", str(value or "").strip())
+    return int(m.group(1)) if m else None
+
+
+def iso_effective(raw: object, known_at: object = None) -> str | None:
+    """Effective date as ISO (fiscal-year text -> the FY start, e.g. 2024-25 -> 2024-04-01)."""
+    return effective_date(raw, known_at)[0]
 
 
 def magnitude(row: dict) -> tuple[float | None, str | None, str | None]:
@@ -554,6 +633,8 @@ def _term_targets(term: str) -> tuple[tuple[tuple[str, str], ...], str | None]:
         parts = [paren.group(1).strip(), *re.split(r"[,;/]", paren.group(2))]
     elif " and " in key:
         parts = key.split(" and ")
+    elif "/" in key:
+        parts = [part for part in key.split("/") if part.strip()]
     if parts:
         merged: list[tuple[str, str]] = []
         theme = None
@@ -654,7 +735,7 @@ def _stratum(source_type: str, source_kind: str, instrument: str) -> str:
     return "other"
 
 
-def read_source(ei_path: Path) -> dict[str, list[dict]]:
+def read_source(ei_path: Path) -> dict[str, Any]:
     con = connect_ro(ei_path, timeout_s=120)
     con.row_factory = sqlite3.Row
     try:
@@ -670,8 +751,8 @@ def read_source(ei_path: Path) -> dict[str, list[dict]]:
         claims = [dict(r) for r in con.execute(
             "SELECT id, source_kind, source_id, section, published_at, title, policy_name, "
             "instrument, direction_for_industry, sectors, companies, products, "
-            "amount_inr_crore, unit, new_value, old_value, effective_date, end_date, quote "
-            "FROM policy_events WHERE quote_ok=1 ORDER BY id")]
+            "amount_inr_crore, unit, new_value, old_value, effective_date, end_date, quote, "
+            "quote_ok FROM policy_events ORDER BY id")]
         companies = [dict(r) for r in con.execute(
             "SELECT isin, nse_symbol, company_name FROM master_companies "
             "WHERE isin IS NOT NULL AND isin <> ''")]
@@ -766,15 +847,32 @@ def anchor_ids() -> set[int]:
 def select_claims(claims: list[dict], docs: dict[int, dict],
                   quota: dict[str, int] | None = None,
                   ministries: dict[int, str] | None = None,
-                  anchors: set[int] | None = None) -> tuple[list[dict], dict]:
+                  anchors: set[int] | None = None,
+                  all_claims: bool = False) -> tuple[list[dict], dict]:
     """Deterministic stratified pick; returns rows plus the per-stratum count map.
 
     ``anchors`` are claim ids the ripple bank itself names: they are always kept
     (the pilot exists to unblock those cases) and the quotas fill the rest.
+    ``all_claims`` skips sampling and returns every row (flagged ``quote_ok=0`` rows
+    included; the flag travels with the row so a consumer can prefer the clean ones).
     """
     quota = dict(quota or QUOTA)
     ministries = ministries if ministries is not None else _MINISTRIES
     anchors = set(anchors or ())
+    if all_claims:
+        picked = []
+        counts: dict[str, int] = {}
+        for row in claims:
+            source = docs.get(int(row.get("source_id") or 0), {}) \
+                if row.get("source_kind") == "doc" else {}
+            row = dict(row)
+            row["_source_type"] = str(source.get("source_type") or "")
+            row["_stratum"] = _stratum(row["_source_type"], str(row.get("source_kind") or ""),
+                                       str(row.get("instrument") or ""))
+            picked.append(row)
+            counts[row["_stratum"]] = counts.get(row["_stratum"], 0) + 1
+        return sorted(picked, key=lambda r: int(r.get("id") or 0)), counts
+    claims = [row for row in claims if row.get("quote_ok")]
     claims = [row for row in claims
               if str(row.get("published_at") or "")[:4] >= "2024"]
     buckets: dict[str, list[dict]] = {}
@@ -879,7 +977,8 @@ _MINISTRIES: dict[int, str] = {}
 
 
 def build(out: Path, ei_path: Path | None = None, quota: dict[str, int] | None = None,
-          anchors: set[int] | None = None, write: bool = True) -> dict:
+          anchors: set[int] | None = None, write: bool = True,
+          all_claims: bool = False, db_name: str = DB_NAME) -> dict:
     """Build the pilot from held data. Returns the build summary (also written as JSON)."""
     global _MINISTRIES
     ei_path = Path(ei_path or EI)
@@ -887,10 +986,11 @@ def build(out: Path, ei_path: Path | None = None, quota: dict[str, int] | None =
     _MINISTRIES = source["ministries"]
     companies = CompanyIndex(source["companies"])
     docs = source["docs"]
-    picked, counts = select_claims(source["claims"], docs, quota, source["ministries"], anchors)
+    picked, counts = select_claims(source["claims"], docs, quota, source["ministries"],
+                                   anchors, all_claims=all_claims)
 
     out = Path(out)
-    path = out / DB_NAME
+    path = out / db_name
     if path.exists():
         resolved = path.resolve()
         if REPO not in resolved.parents and resolved.parent != REPO:
@@ -920,15 +1020,18 @@ def build(out: Path, ei_path: Path | None = None, quota: dict[str, int] | None =
         sectors = parse_list(row.get("sectors"))
         value, unit, raw = magnitude(row)
         targets = claim_targets(row, companies, source_type)
+        quote_ok = 1 if row.get("quote_ok") else 0
+        eff_date, eff_conf = effective_date(row.get("effective_date"), known_at)
+        end_date, _ = effective_date(row.get("end_date"), known_at)
         claim_rows.append((
             int(row["id"]), doc_id, str(row.get("section") or "") or None,
             policy_type(row), str(row.get("instrument") or "") or None, claim_direction(row),
-            value, unit, raw, iso_effective(row.get("effective_date")),
-            iso_effective(row.get("end_date")), str(row.get("quote") or "")
+            value, unit, raw, eff_date, end_date, str(row.get("quote") or "")
             or str(row.get("policy_name") or ""), None, None,
-            "deterministic_kw_v1", 1.0 if targets else 0.3, 0,
+            "deterministic_kw_v1",
+            (1.0 if targets else 0.3) if quote_ok else (0.7 if targets else 0.2), 0,
             paraphrase(row, sectors), known_at[:19],
-            str(row.get("_stratum") or "other"), conditions(row)))
+            str(row.get("_stratum") or "other"), conditions(row), quote_ok, eff_conf))
         for kind, ident, direction, evidence in targets:
             target_rows.append((int(row["id"]), kind, ident, direction, 1.0, evidence))
             target_kinds[kind] = target_kinds.get(kind, 0) + 1
@@ -942,6 +1045,8 @@ def build(out: Path, ei_path: Path | None = None, quota: dict[str, int] | None =
             con.execute("ALTER TABLE macro_claim ADD COLUMN known_at TEXT")
             con.execute("ALTER TABLE macro_claim ADD COLUMN stratum TEXT")
             con.execute("ALTER TABLE macro_claim ADD COLUMN conditions TEXT")
+            con.execute("ALTER TABLE macro_claim ADD COLUMN quote_ok INTEGER")
+            con.execute("ALTER TABLE macro_claim ADD COLUMN effective_pit_conf REAL")
             con.executemany(
                 "INSERT INTO macro_doc (doc_id, source, doc_type, issuer, title, event_date, "
                 "known_at, pit_conf, language) VALUES (?,?,?,?,?,?,?,?,?)", doc_rows.values())
@@ -949,7 +1054,8 @@ def build(out: Path, ei_path: Path | None = None, quota: dict[str, int] | None =
                 "INSERT INTO macro_claim (claim_id, doc_id, clause_no, policy_type, instrument, "
                 "direction, magnitude_value, magnitude_unit, magnitude_raw, effective_date, "
                 "end_date, quote, char_start, char_end, model, confidence, verified, "
-                "paraphrase, known_at, stratum, conditions) VALUES (" + ",".join("?" * 21) + ")",
+                "paraphrase, known_at, stratum, conditions, quote_ok, effective_pit_conf) "
+                "VALUES (" + ",".join("?" * 23) + ")",
                 claim_rows)
             con.executemany(
                 "INSERT INTO macro_claim_target (claim_id, target_kind, target_id, direction, "
@@ -958,15 +1064,26 @@ def build(out: Path, ei_path: Path | None = None, quota: dict[str, int] | None =
         finally:
             con.close()
 
+    targeted = {row[0] for row in target_rows}
     summary = {
         "db": str(path), "claims": len(claim_rows), "docs": len(doc_rows),
         "targets": len(target_rows), "target_kinds": target_kinds,
+        "targets_per_claim": round(len(target_rows) / len(claim_rows), 2) if claim_rows else 0,
+        "claims_with_target": len(targeted),
+        "claims_without_target": len(claim_rows) - len(targeted),
+        "quote_ok": {"1": sum(1 for r in claim_rows if r[21] == 1),
+                     "0": sum(1 for r in claim_rows if r[21] == 0)},
+        "effective_date": {
+            "parsed": sum(1 for r in claim_rows if r[9]),
+            "exact_or_fy": sum(1 for r in claim_rows if (r[22] or 0) >= 0.9),
+            "prose_low_conf": sum(1 for r in claim_rows if 0 < (r[22] or 0) < 0.9),
+            "missing": sum(1 for r in claim_rows if not r[9]),
+        },
         "by_stratum": counts,
         "by_source": _count_sources(picked, docs),
-        "claims_without_target": sum(1 for r in claim_rows if r[15] == 0.3),
     }
     if write:
-        (out / "macro_pilot_meta.json").write_text(
+        (out / f"{path.stem}_meta.json").write_text(
             json.dumps(summary, indent=1, sort_keys=True), encoding="utf-8")
     return summary
 
@@ -984,18 +1101,27 @@ def _count_sources(picked: list[dict], docs: dict[int, dict]) -> dict[str, int]:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", default=str(REPO / ".tmp" / "pilot"))
+    ap.add_argument("--out", default=None,
+                    help="output dir (default .tmp/pilot, or .tmp/pilot_all with --all)")
     ap.add_argument("--quota", type=int, default=300,
                     help="total claims (default 300; strata keep their proportions)")
+    ap.add_argument("--all", action="store_true",
+                    help="run every policy_events row (quote_ok=0 rows kept and flagged)")
     ap.add_argument("--ei", default=str(EI), help="live equity_intelligence.db (read-only)")
     a = ap.parse_args(argv)
     quota = None
     if a.quota != 300:
         scale = a.quota / sum(QUOTA.values())
         quota = {key: max(1, round(value * scale)) for key, value in QUOTA.items()}
-    anchors = anchor_ids() if a.quota == 300 else set()
-    summary = build(Path(a.out), Path(a.ei), quota, anchors)
+    anchors = set() if a.all else (anchor_ids() if a.quota == 300 else set())
+    out = Path(a.out) if a.out else (REPO / ".tmp" / ("pilot_all" if a.all else "pilot"))
+    started = time.monotonic()
+    summary = build(out, Path(a.ei), quota, anchors, all_claims=a.all,
+                    db_name="macro_all.db" if a.all else DB_NAME)
+    summary["runtime_s"] = round(time.monotonic() - started, 2)
     summary["anchors"] = len(anchors)
+    (out / f"{Path(summary['db']).stem}_meta.json").write_text(
+        json.dumps(summary, indent=1, sort_keys=True), encoding="utf-8")
     print(json.dumps(summary, indent=1, sort_keys=True))
     return 0
 

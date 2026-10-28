@@ -1,0 +1,3806 @@
+{
+ "seed": 20261029,
+ "n": 80,
+ "quota": {
+  "reused_sheet": 80
+ },
+ "claims": [
+  {
+   "claim_id": 682,
+   "doc_id": "doc:64",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance (GoI)",
+   "doc_title": "Union Budget 2025-26 Speech",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "neutral",
+   "magnitude": [
+    20.0,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "I propose to increase the BCD on Interactive Flat Panel Display (IFPD) from 10% to 20% and reduce the BCD to 5% on Open Cell and other components.",
+   "inputs": {
+    "sectors": "[\"Electronics\", \"Electronics Manufacturing\"]",
+    "companies": "[]",
+    "products": "Interactive Flat Panel Display (IFPD)",
+    "new_value": "20%",
+    "old_value": "10%",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 682,
+     "target_kind": "basic_industry",
+     "target_id": "Consumer Electronics",
+     "direction": "neutral",
+     "evidence": "sector term 'Electronics'"
+    },
+    {
+     "claim_id": 682,
+     "target_kind": "basic_industry",
+     "target_id": "Other Electrical Equipment",
+     "direction": "neutral",
+     "evidence": "sector term 'Electronics'"
+    }
+   ]
+  },
+  {
+   "claim_id": 1700,
+   "doc_id": "doc:66",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance (GoI)",
+   "doc_title": "Economic Survey 2025-26",
+   "known_at": "2025-01-31",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "Ease of Doing Business (EoDB) 2.0 should be a state government-led initiative focused on fixing the root causes behind the unease of doing business.",
+   "inputs": {
+    "sectors": "[\"multi-sector\", \"land\", \"labour\", \"utilities\", \"transport\", \"logistics\", \"agriculture\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "state-led initiative fixing root causes behind the unease of doing business, including deregulating List II and List III subjects",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 1700,
+     "target_kind": "basic_industry",
+     "target_id": "Logistics Solution Provider",
+     "direction": "positive",
+     "evidence": "sector term 'transport'"
+    },
+    {
+     "claim_id": 1700,
+     "target_kind": "basic_industry",
+     "target_id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'agriculture'"
+    }
+   ]
+  },
+  {
+   "claim_id": 1767,
+   "doc_id": "doc:60",
+   "source_type": "State_Budget_UP",
+   "doc_type": "state_budget",
+   "issuer": "Uttar Pradesh Finance Dept",
+   "doc_title": "Uttar Pradesh Budget 2024-25",
+   "known_at": "2024-02-05",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    498.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2024-04-01",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 0,
+   "quote": "foRrh; o\"kZ 2023&2024 esa 300 djksM :Ik;s ls xzke iapk;r ,oa okWMZ Lrj ij fMftVy ykbczsjh dh LFkkiuk djk;h tk jgh gSA ftlds fy;s foRrh; o\"kZ 2024&2025 esa 498 djksM+ :i;s dh ctV O;oLFkk izLrkfor gSA",
+   "inputs": {
+    "sectors": "[\"Solar Energy\"]",
+    "companies": "[]",
+    "products": "Solar panels",
+    "new_value": "498",
+    "old_value": null,
+    "amount_inr_crore": 498.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 1767,
+     "target_kind": "sector",
+     "target_id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'Solar Energy'"
+    },
+    {
+     "claim_id": 1767,
+     "target_kind": "state",
+     "target_id": "Uttar Pradesh",
+     "direction": "neutral",
+     "evidence": "state budget Uttar Pradesh"
+    }
+   ]
+  },
+  {
+   "claim_id": 2459,
+   "doc_id": "doc:67",
+   "source_type": "RBI_Annual_Report",
+   "doc_type": "rbi_report",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Annual Report 2024-25",
+   "known_at": "2024-07-23",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "neutral",
+   "magnitude": [
+    44861.7,
+    "PERCENT"
+   ],
+   "effective_date": "2025-03-31",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "an amount of ₹44,861.70 crore was also provided towards CF to maintain the Available Realised Equity at the level of 7.50 per cent of the size of the balance sheet",
+   "inputs": {
+    "sectors": "[\"Banking\", \"Government finances\", \"Bond markets\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "Available Realised Equity at the level of 7.50 per cent of the size of the balance sheet",
+    "old_value": "ARE as a per cent of balance sheet: 6.50 (March 31, 2024)",
+    "amount_inr_crore": 44861.7,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 2459,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "claim_id": 2459,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "claim_id": 2459,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    }
+   ]
+  },
+  {
+   "claim_id": 2567,
+   "doc_id": "doc:67",
+   "source_type": "RBI_Annual_Report",
+   "doc_type": "rbi_report",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Annual Report 2024-25",
+   "known_at": "2024-07-23",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "negative",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": "2023-02-10",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "The ‘Alert List’ of entities which are neither authorised to deal in forex under the FEMA, 1999 nor authorised to operate electronic trading platforms for forex transactions was issued.",
+   "inputs": {
+    "sectors": "[\"forex\", \"banking\"]",
+    "companies": "[]",
+    "products": "forex trading",
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 2567,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 2567,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 2567,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    }
+   ]
+  },
+  {
+   "claim_id": 3129,
+   "doc_id": "doc:67",
+   "source_type": "RBI_Annual_Report",
+   "doc_type": "rbi_report",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Annual Report 2024-25",
+   "known_at": "2024-07-23",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": "2024-11-06",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "Certain provisions of the Master Direction have been amended.",
+   "inputs": {
+    "sectors": "[\"banking\", \"NBFC\", \"fintech\"]",
+    "companies": "[]",
+    "products": "KYC Direction",
+    "new_value": "certain provisions amended",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 3129,
+     "target_kind": "basic_industry",
+     "target_id": "Financial Technology (Fintech)",
+     "direction": "neutral",
+     "evidence": "sector term 'fintech'"
+    },
+    {
+     "claim_id": 3129,
+     "target_kind": "basic_industry",
+     "target_id": "Non Banking Financial Company (NBFC)",
+     "direction": "neutral",
+     "evidence": "sector term 'NBFC'"
+    },
+    {
+     "claim_id": 3129,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 3129,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 3129,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    }
+   ]
+  },
+  {
+   "claim_id": 3291,
+   "doc_id": "doc:67",
+   "source_type": "RBI_Annual_Report",
+   "doc_type": "rbi_report",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Annual Report 2024-25",
+   "known_at": "2024-07-23",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": "2024-12-30",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "The Reserve Bank issued a circular on introduction of beneficiary bank account name look-up facility for RTGS and NEFT systems",
+   "inputs": {
+    "sectors": "[\"banking\", \"payments\"]",
+    "companies": "[]",
+    "products": "RTGS, NEFT",
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 3291,
+     "target_kind": "basic_industry",
+     "target_id": "Financial Technology (Fintech)",
+     "direction": "positive",
+     "evidence": "sector term 'payments'"
+    },
+    {
+     "claim_id": 3291,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 3291,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 3291,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    }
+   ]
+  },
+  {
+   "claim_id": 3508,
+   "doc_id": "doc:75",
+   "source_type": "State_Budget_Haryana",
+   "doc_type": "state_budget",
+   "issuer": "Haryana Finance Dept",
+   "doc_title": "Haryana Budget 2025-26",
+   "known_at": "2025-03-17",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": "2025-04-01",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "lHkh vkS|ksfxd lainkvksa esa Incubation Centre cuk, tk,xsa rkfd LVkVZvil dks lLrh njksa ij dk;Z djus dh lqfo/kk fey lds",
+   "inputs": {
+    "sectors": "[\"MSME\", \"startups\", \"manufacturing\", \"industrial\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "Incubation Centre in all industrial estates",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 3508,
+     "target_kind": "state",
+     "target_id": "Haryana",
+     "direction": "neutral",
+     "evidence": "state budget Haryana"
+    }
+   ]
+  },
+  {
+   "claim_id": 3766,
+   "doc_id": "doc:78",
+   "source_type": "PIB_Circular",
+   "doc_type": "pib",
+   "issuer": "Press Information Bureau (GoI)",
+   "doc_title": "PIB Circular (static direct sample)",
+   "known_at": "2025-02-01",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "TDS ON RENT INCREASED FROM ₹ 2.4 LAKH TO ₹ 6 LAKH",
+   "inputs": {
+    "sectors": "[\"real estate\", \"all sectors\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "₹6 lakh",
+    "old_value": "₹2.4 lakh",
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 3766,
+     "target_kind": "sector",
+     "target_id": "Realty",
+     "direction": "positive",
+     "evidence": "sector term 'real estate'"
+    }
+   ]
+  },
+  {
+   "claim_id": 3782,
+   "doc_id": "doc:78",
+   "source_type": "PIB_Circular",
+   "doc_type": "pib",
+   "issuer": "Press Information Bureau (GoI)",
+   "doc_title": "PIB Circular (static direct sample)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "'BharatTradeNet' (BTN) for international trade was proposed as a unified platform for trade documentation and financing solutions",
+   "inputs": {
+    "sectors": "[\"trade\", \"fintech\", \"logistics\", \"exports\"]",
+    "companies": "[]",
+    "products": "Trade documentation and financing solutions",
+    "new_value": "Unified platform for trade documentation and financing",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 3782,
+     "target_kind": "basic_industry",
+     "target_id": "Financial Technology (Fintech)",
+     "direction": "positive",
+     "evidence": "sector term 'fintech'"
+    },
+    {
+     "claim_id": 3782,
+     "target_kind": "basic_industry",
+     "target_id": "Logistics Solution Provider",
+     "direction": "positive",
+     "evidence": "sector term 'logistics'"
+    }
+   ]
+  },
+  {
+   "claim_id": 3854,
+   "doc_id": "doc:78",
+   "source_type": "PIB_Circular",
+   "doc_type": "pib",
+   "issuer": "Press Information Bureau (GoI)",
+   "doc_title": "PIB Circular (static direct sample)",
+   "known_at": "2025-02-01",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "The new Income-Tax Bill to be clear and direct in text so as to make it simple to understand for taxpayers",
+   "inputs": {
+    "sectors": "[\"All sectors (taxpayers)\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "clear and direct text to simplify understanding for taxpayers",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 3923,
+   "doc_id": "doc:78",
+   "source_type": "PIB_Circular",
+   "doc_type": "pib",
+   "issuer": "Press Information Bureau (GoI)",
+   "doc_title": "PIB Circular (static direct sample)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    25000.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "set up a Maritime Development Fund with a corpus of Rs 25,000 crore.",
+   "inputs": {
+    "sectors": "[\"Shipping\", \"Ports\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "corpus of Rs 25,000 crore",
+    "old_value": null,
+    "amount_inr_crore": 25000.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 3923,
+     "target_kind": "basic_industry",
+     "target_id": "Port & Port services",
+     "direction": "positive",
+     "evidence": "sector term 'Ports'"
+    },
+    {
+     "claim_id": 3923,
+     "target_kind": "basic_industry",
+     "target_id": "Shipping",
+     "direction": "positive",
+     "evidence": "sector term 'Shipping'"
+    }
+   ]
+  },
+  {
+   "claim_id": 3974,
+   "doc_id": "doc:79",
+   "source_type": "State_Budget_Tamil_Nadu",
+   "doc_type": "state_budget",
+   "issuer": "Tamil Nadu Finance Dept",
+   "doc_title": "Tamil Nadu Budget 2024-25",
+   "known_at": "2024-02-19",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "neutral",
+   "magnitude": [
+    27922.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2024-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "In the Budget Estimates, a sum of Rs.27,922 crore has been allocated for the Rural Development and Panchayat Raj Department",
+   "inputs": {
+    "sectors": "[\"rural_development\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": 27922.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 3974,
+     "target_kind": "state",
+     "target_id": "Tamil Nadu",
+     "direction": "neutral",
+     "evidence": "state budget Tamil Nadu"
+    }
+   ]
+  },
+  {
+   "claim_id": 3981,
+   "doc_id": "doc:78",
+   "source_type": "PIB_Circular",
+   "doc_type": "pib",
+   "issuer": "Press Information Bureau (GoI)",
+   "doc_title": "PIB Circular (static direct sample)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "other",
+   "direction": "positive",
+   "magnitude": [
+    1.0,
+    "PERCENT"
+   ],
+   "effective_date": "2026-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "keep fiscal deficit in each year (from FY 2026-27 till FY 2030-31) such that the Central Government debt is on declining path to attain a debt to GDP level of about 50±1 per cent by 31st March 2031.",
+   "inputs": {
+    "sectors": "[\"banking\", \"financial services\", \"government securities\", \"infrastructure\"]",
+    "companies": "[]",
+    "products": "Government securities and bonds",
+    "new_value": "about 50±1 per cent by 31st March 2031",
+    "old_value": "Central Government Debt 57.1 in FY 2024-25",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 3981,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 3981,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 3981,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 3981,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'infrastructure'"
+    },
+    {
+     "claim_id": 3981,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'financial services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 4093,
+   "doc_id": "doc:75",
+   "source_type": "State_Budget_Haryana",
+   "doc_type": "state_budget",
+   "issuer": "Haryana Finance Dept",
+   "doc_title": "Haryana Budget 2025-26",
+   "known_at": "2025-03-17",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    1000.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "2025&26 ls gj ftys esa 24 m|ferk izfr;ksfxrk,a vk;ksftr djus vkSj p;fur Vheksa dks muds fopkj dks O;olkf;d ekWMy esa ifjofrZr djus ds fy, 1 yk[k #Ik;s dh jkf'k fn;s tkus dk Hkh esjk izLrko gSA",
+   "inputs": {
+    "sectors": "[\"IT / AI\", \"MSME\"]",
+    "companies": "[]",
+    "products": "AI/IT centres and MSME digital transformation",
+    "new_value": "24 centres in all districts; Rs 1000 crore provision",
+    "old_value": null,
+    "amount_inr_crore": 1000.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 4093,
+     "target_kind": "sector",
+     "target_id": "Information Technology",
+     "direction": "positive",
+     "evidence": "sector term 'IT / AI'"
+    },
+    {
+     "claim_id": 4093,
+     "target_kind": "state",
+     "target_id": "Haryana",
+     "direction": "neutral",
+     "evidence": "state budget Haryana"
+    }
+   ]
+  },
+  {
+   "claim_id": 4815,
+   "doc_id": "doc:83",
+   "source_type": "State_Budget_Karnataka",
+   "doc_type": "state_budget",
+   "issuer": "Karnataka Finance Dept",
+   "doc_title": "Karnataka Budget 2025-26",
+   "known_at": "2025-03-07",
+   "policy_type": "subsidy",
+   "instrument": "subsidy",
+   "direction": "positive",
+   "magnitude": [
+    50.0,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "financial assistance of 50% or up to Rs. 1 lakh will be provided.",
+   "inputs": {
+    "sectors": "[\"fisheries\"]",
+    "companies": "[]",
+    "products": "engines",
+    "new_value": "50% or up to Rs. 1 lakh",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "INR"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 4815,
+     "target_kind": "basic_industry",
+     "target_id": "Seafood",
+     "direction": "positive",
+     "evidence": "sector term 'fisheries'"
+    },
+    {
+     "claim_id": 4815,
+     "target_kind": "state",
+     "target_id": "Karnataka",
+     "direction": "neutral",
+     "evidence": "state budget Karnataka"
+    }
+   ]
+  },
+  {
+   "claim_id": 5175,
+   "doc_id": "doc:12376",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2019-20 - Budget Speech",
+   "known_at": "2019-07-05",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "and to increase the threshold of tax payable from rs. 3, 000 to rs. 10, 000, for proceeding against a person",
+   "inputs": {
+    "sectors": "[\"Individual taxpayers\", \"All taxpayers\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "rs. 10, 000",
+    "old_value": "rs. 3, 000",
+    "amount_inr_crore": null,
+    "unit": "INR"
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 5510,
+   "doc_id": "doc:12376",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2019-20 - Budget Speech",
+   "known_at": "2019-07-05",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "negative",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "( vi ) any cash transaction of rs. 2, 00, 000 or more was prohibited.",
+   "inputs": {
+    "sectors": "[\"cash-intensive sectors\", \"real estate\", \"jewellery\"]",
+    "companies": "[]",
+    "products": "cash transactions",
+    "new_value": "cash transaction of rs. 2, 00, 000 or more prohibited",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "INR"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 5510,
+     "target_kind": "basic_industry",
+     "target_id": "Gems Jewellery And Watches",
+     "direction": "negative",
+     "evidence": "sector term 'jewellery'"
+    },
+    {
+     "claim_id": 5510,
+     "target_kind": "sector",
+     "target_id": "Realty",
+     "direction": "negative",
+     "evidence": "sector term 'real estate'"
+    }
+   ]
+  },
+  {
+   "claim_id": 5890,
+   "doc_id": "doc:12376",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2019-20 - Budget Speech",
+   "known_at": "2019-07-05",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "negative",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "2710 high speed diesel oil re 1 per litre rs 2 per litre",
+   "inputs": {
+    "sectors": "[\"Oil & Gas\", \"Transportation\"]",
+    "companies": "[]",
+    "products": "high speed diesel oil",
+    "new_value": "rs 2 per litre",
+    "old_value": "re 1 per litre",
+    "amount_inr_crore": null,
+    "unit": "INR per litre"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 5890,
+     "target_kind": "basic_industry",
+     "target_id": "Logistics Solution Provider",
+     "direction": "negative",
+     "evidence": "sector term 'Transportation'"
+    },
+    {
+     "claim_id": 5890,
+     "target_kind": "sector",
+     "target_id": "Oil Gas & Consumable Fuels",
+     "direction": "negative",
+     "evidence": "sector term 'Oil & Gas'"
+    }
+   ]
+  },
+  {
+   "claim_id": 6874,
+   "doc_id": "doc:12386",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2021-22 - Memorandum explaining the Finance Bill",
+   "known_at": "2021-02-01",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "neutral",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": "2021-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "in the case of every co - operative society or firm, being a non - resident, calculated at the rate of twelve per cent. of such tax",
+   "inputs": {
+    "sectors": "[\"Co-operative sector\", \"Firms\"]",
+    "companies": "[]",
+    "products": "TDS on payments to non-resident co-operative societies and firms",
+    "new_value": "surcharge at the rate of twelve per cent. of such tax where income subject to deduction exceeds one crore",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 7044,
+   "doc_id": "doc:12386",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2021-22 - Memorandum explaining the Finance Bill",
+   "known_at": "2021-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "neutral",
+   "magnitude": [
+    2.5,
+    "PERCENT"
+   ],
+   "effective_date": "2021-04-01",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "40. any chapter inputs or parts for manufacture of connectors of cellular mobile phone ( w. e. f. 1.4.2021 ) nil 2.5%",
+   "inputs": {
+    "sectors": "[\"Electronics\", \"Mobile Phones\"]",
+    "companies": "[]",
+    "products": "Inputs or parts for manufacture of connectors of cellular mobile phone",
+    "new_value": "2.5%",
+    "old_value": "nil",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 7044,
+     "target_kind": "basic_industry",
+     "target_id": "Consumer Electronics",
+     "direction": "neutral",
+     "evidence": "sector term 'Electronics'"
+    },
+    {
+     "claim_id": 7044,
+     "target_kind": "basic_industry",
+     "target_id": "Other Electrical Equipment",
+     "direction": "neutral",
+     "evidence": "sector term 'Electronics'"
+    }
+   ]
+  },
+  {
+   "claim_id": 7218,
+   "doc_id": "doc:12388",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2022-23 - Budget Speech",
+   "known_at": "2022-02-01",
+   "policy_type": "pli",
+   "instrument": "pli_incentive",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "a scheme for design - led manufacturing will be launched to build a strong ecosystem for 5g as part of the production linked incentive scheme",
+   "inputs": {
+    "sectors": "[\"telecom\", \"manufacturing\"]",
+    "companies": "[]",
+    "products": "5G equipment",
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 7218,
+     "target_kind": "sector",
+     "target_id": "Telecommunication",
+     "direction": "positive",
+     "evidence": "sector term 'telecom'"
+    }
+   ]
+  },
+  {
+   "claim_id": 7587,
+   "doc_id": "doc:12392",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2023-24 - Budget Speech",
+   "known_at": "2023-02-01",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude": [
+    20.0,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the tds rate on withdrawal of taxable component from employees ' provident fund scheme in non - pan cases is 30 per cent. it is proposed to reduce it to 20 per cent, as in other non - pan cases",
+   "inputs": {
+    "sectors": "[\"financial services\", \"provident fund\"]",
+    "companies": "[]",
+    "products": "employees provident fund withdrawal",
+    "new_value": "20 per cent",
+    "old_value": "30 per cent",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 7587,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'financial services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 8018,
+   "doc_id": "doc:12394",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2023-24 - Memorandum explaining the Finance Bill",
+   "known_at": "2023-02-01",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "negative",
+   "magnitude": [
+    10.0,
+    "PERCENT"
+   ],
+   "effective_date": "2023-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "exceeding two crore rupees, at the rate of 25 % of such “ advance - tax ”",
+   "inputs": {
+    "sectors": "[\"Economy-wide\"]",
+    "companies": "[]",
+    "products": "Income tax",
+    "new_value": "surcharge 10% for income Rs 50 lakh-1 crore; 15% for Rs 1-2 crore; 25% above Rs 2 crore (excluding dividend/capital gains income)",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 8147,
+   "doc_id": "doc:12395",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2023-24 - Macro-Economic Framework Statement",
+   "known_at": "2023-02-01",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "reduces interest rate risk by keeping floating rate debt low, and manages foreign currency risk by issuing debt in the domestic currency",
+   "inputs": {
+    "sectors": "[\"government debt\", \"bond markets\", \"banking\"]",
+    "companies": "[]",
+    "products": "government securities, bonds",
+    "new_value": "lengthening maturities, switching/buying back securities, low floating rate debt, domestic currency issuance",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 8147,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 8147,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 8147,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    }
+   ]
+  },
+  {
+   "claim_id": 8174,
+   "doc_id": "doc:12397",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2024-25 interim - Macro-Economic Framework Statement",
+   "known_at": "2024-02-01",
+   "policy_type": "other",
+   "instrument": "other",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the central government debt does not exceed forty percent of gdp by the end of fy 2024 - 25",
+   "inputs": {
+    "sectors": "[\"Government Securities\", \"Banking & Financial Services\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "central government debt does not exceed forty percent of gdp by the end of fy 2024 - 25",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 8174,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking & Financial Services'"
+    },
+    {
+     "claim_id": 8174,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking & Financial Services'"
+    },
+    {
+     "claim_id": 8174,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking & Financial Services'"
+    },
+    {
+     "claim_id": 8174,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Banking & Financial Services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 8395,
+   "doc_id": "doc:12399",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2024-25 - Memorandum explaining the Finance Bill",
+   "known_at": "2024-07-23",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude": [
+    2.0,
+    "PERCENT"
+   ],
+   "effective_date": "2024-08-01",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "it is proposed that this equalisation levy at the rate of 2 % shall not be applicable to consideration received or receivable for e - commerce supply or services, on or after the 1st day of august, 2024",
+   "inputs": {
+    "sectors": "[\"e-commerce\", \"digital services\", \"foreign digital service providers\"]",
+    "companies": "[]",
+    "products": "e-commerce supply or services",
+    "new_value": "2% levy not applicable on or after 1 August 2024; income from e-commerce supply/services from 1 April 2020 to 1 August 2024 exempt under clause (50) of section 10",
+    "old_value": "2% equalisation levy on consideration received/receivable for e-commerce supply or services",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 8395,
+     "target_kind": "basic_industry",
+     "target_id": "E-Retail/ E-Commerce",
+     "direction": "positive",
+     "evidence": "sector term 'e-commerce'"
+    },
+    {
+     "claim_id": 8395,
+     "target_kind": "basic_industry",
+     "target_id": "Internet & Catalogue Retail",
+     "direction": "positive",
+     "evidence": "sector term 'e-commerce'"
+    }
+   ]
+  },
+  {
+   "claim_id": 8794,
+   "doc_id": "doc:12403",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2025-26 - Macro-Economic Framework Statement",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "tariff_trade",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the time period for export of goods of foreign origin - ships and aircrafts, imported for repairs has been extended from 6 months to one year",
+   "inputs": {
+    "sectors": "[\"aviation\", \"shipbuilding\", \"MRO\"]",
+    "companies": "[]",
+    "products": "ships and aircraft imported for repairs",
+    "new_value": "one year",
+    "old_value": "6 months",
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 8794,
+     "target_kind": "basic_industry",
+     "target_id": "Aerospace & Defense",
+     "direction": "positive",
+     "evidence": "product term 'aircraft'"
+    },
+    {
+     "claim_id": 8794,
+     "target_kind": "basic_industry",
+     "target_id": "Airline",
+     "direction": "positive",
+     "evidence": "sector term 'aviation'"
+    },
+    {
+     "claim_id": 8794,
+     "target_kind": "basic_industry",
+     "target_id": "Ship Building & Allied Services",
+     "direction": "positive",
+     "evidence": "sector term 'shipbuilding'"
+    }
+   ]
+  },
+  {
+   "claim_id": 8988,
+   "doc_id": "doc:12401",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2025-26 - Budget at a Glance",
+   "known_at": "2025-02-01",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    24391.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2025-04-01",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "81 बडा 81 naval fleet... 23800 25605 24391",
+   "inputs": {
+    "sectors": "[\"Defence\", \"Shipbuilding\"]",
+    "companies": "[\"Mazagon Dock\", \"Garden Reach Shipbuilders\", \"Cochin Shipyard\"]",
+    "products": "Naval vessels",
+    "new_value": "24391",
+    "old_value": "23800",
+    "amount_inr_crore": 24391.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 8988,
+     "target_kind": "basic_industry",
+     "target_id": "Aerospace & Defense",
+     "direction": "positive",
+     "evidence": "sector term 'Defence'"
+    },
+    {
+     "claim_id": 8988,
+     "target_kind": "basic_industry",
+     "target_id": "Ship Building & Allied Services",
+     "direction": "positive",
+     "evidence": "sector term 'Shipbuilding'"
+    },
+    {
+     "claim_id": 8988,
+     "target_kind": "isin",
+     "target_id": "INE249Z01020",
+     "direction": "positive",
+     "evidence": "named company 'Mazagon Dock'"
+    },
+    {
+     "claim_id": 8988,
+     "target_kind": "isin",
+     "target_id": "INE382Z01011",
+     "direction": "positive",
+     "evidence": "named company 'Garden Reach Shipbuilders'"
+    },
+    {
+     "claim_id": 8988,
+     "target_kind": "isin",
+     "target_id": "INE704P01025",
+     "direction": "positive",
+     "evidence": "named company 'Cochin Shipyard'"
+    },
+    {
+     "claim_id": 8988,
+     "target_kind": "theme",
+     "target_id": "defence",
+     "direction": "positive",
+     "evidence": "theme term 'Defence'"
+    }
+   ]
+  },
+  {
+   "claim_id": 9475,
+   "doc_id": "doc:12406",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2026-27 - Memorandum explaining the Finance Bill",
+   "known_at": "2026-02-01",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "neutral",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": "2026-04-01",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "it is proposed to amend the note1 ( g ) to said schedule so as to align the definition of \" specified fund \" with the definition provided under section 10 ( 4d ) of the income - tax act, 1961",
+   "inputs": {
+    "sectors": "[\"Financial Services\", \"Investment Funds\"]",
+    "companies": "[]",
+    "products": "Specified funds",
+    "new_value": "Definition aligned with section 10(4D) of Income-tax Act 1961",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 9475,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "neutral",
+     "evidence": "sector term 'Financial Services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 9498,
+   "doc_id": "doc:12406",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2026-27 - Memorandum explaining the Finance Bill",
+   "known_at": "2026-02-01",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": "2026-02-02",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "deferred duty payment is being made monthly from the existing 15 days and a new class of ' eligible importers ' is being created",
+   "inputs": {
+    "sectors": "[\"Import Trade\", \"Manufacturing\"]",
+    "companies": "[]",
+    "products": "Imported goods",
+    "new_value": "Monthly",
+    "old_value": "15 days",
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 9837,
+   "doc_id": "doc:12393",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2023-24 - Budget at a Glance",
+   "known_at": "2023-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    60000.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "40 परधानमती पकसान सममान पनपध ( िीएम - पकसान ) 40 pradhan mantri kisan samman nidhi ( pm - kisan ) 66825 68000 60000 60000",
+   "inputs": {
+    "sectors": "[\"agriculture\", \"rural economy\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "60000",
+    "old_value": "66825",
+    "amount_inr_crore": 60000.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 9837,
+     "target_kind": "basic_industry",
+     "target_id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'agriculture'"
+    }
+   ]
+  },
+  {
+   "claim_id": 9868,
+   "doc_id": "doc:12406",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2026-27 - Memorandum explaining the Finance Bill",
+   "known_at": "2026-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "all items of machinery, and auxiliary equipment required for initial setting up of a project for generation of power or generation of compressed bio - gas ( bio - cng ) using non - conventional materials 31. 03. 2028",
+   "inputs": {
+    "sectors": "[\"Renewable Energy\", \"Clean Energy\"]",
+    "companies": "[]",
+    "products": "Machinery for power generation, compressed bio-gas (bio-CNG), fuel cell systems",
+    "new_value": "31.03.2028",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 9868,
+     "target_kind": "sector",
+     "target_id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'Renewable Energy'"
+    }
+   ]
+  },
+  {
+   "claim_id": 9879,
+   "doc_id": "doc:12406",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2026-27 - Memorandum explaining the Finance Bill",
+   "known_at": "2026-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "negative",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "parts of video games for the manufacture of video games 31. 03. 2026",
+   "inputs": {
+    "sectors": "[\"Gaming\", \"Electronics\"]",
+    "companies": "[]",
+    "products": "Parts of video games, raw materials/parts for e-readers",
+    "new_value": "Lapsing 31.03.2026",
+    "old_value": "Exempt",
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 9879,
+     "target_kind": "basic_industry",
+     "target_id": "Consumer Electronics",
+     "direction": "negative",
+     "evidence": "sector term 'Electronics'"
+    },
+    {
+     "claim_id": 9879,
+     "target_kind": "basic_industry",
+     "target_id": "Other Electrical Equipment",
+     "direction": "negative",
+     "evidence": "sector term 'Electronics'"
+    }
+   ]
+  },
+  {
+   "claim_id": 9949,
+   "doc_id": "doc:12398",
+   "source_type": "Union_Budget",
+   "doc_type": "union_budget",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Union Budget FY2024-25 - Budget at a Glance",
+   "known_at": "2024-07-23",
+   "policy_type": "other",
+   "instrument": "other",
+   "direction": "negative",
+   "magnitude": [
+    24483.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2024-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "8. post devolution revenue deficit grants 86201 51673 24483",
+   "inputs": {
+    "sectors": "[]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "24483",
+    "old_value": "51673",
+    "amount_inr_crore": 24483.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 9993,
+   "doc_id": "doc:12408",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2018-19 - chapters",
+   "known_at": "2019-07-04",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "removing demographic information from job applications can also help",
+   "inputs": {
+    "sectors": "[\"employment\", \"recruitment\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 10156,
+   "doc_id": "doc:12411",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2019-20 - chapters",
+   "known_at": "2020-01-31",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "which have outlived their use and need to be repealed by one ' stroke - of - the - pen ' as was done post - 1990s or amended to enable functioning of competitive markets",
+   "inputs": {
+    "sectors": "[\"Cross-sector\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 10619,
+   "doc_id": "doc:12412",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2019-20 - volume 2",
+   "known_at": "2020-01-31",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    10200000.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2020-03-31",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "on 31st december 2019, the government released the report of the task force on national infrastructure pipeline ( nip ) for each of the years from 2019 - 20 to 2024 - 25. the report has submitted proposals for projects whose aggregate value is estimated at ` 102 lakh crore.",
+   "inputs": {
+    "sectors": "[\"Infrastructure\", \"Construction\", \"Capital Goods\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "102 lakh crore",
+    "old_value": null,
+    "amount_inr_crore": 10200000.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 10619,
+     "target_kind": "sector",
+     "target_id": "Capital Goods",
+     "direction": "positive",
+     "evidence": "sector term 'Capital Goods'"
+    },
+    {
+     "claim_id": 10619,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'Infrastructure'"
+    }
+   ]
+  },
+  {
+   "claim_id": 10984,
+   "doc_id": "doc:12414",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2020-21 - chapters",
+   "known_at": "2021-01-29",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "information utilities that help mitigate the information asymmetry can be very useful in enhancing overall welfare",
+   "inputs": {
+    "sectors": "[\"Healthcare\", \"Health Insurance\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 10984,
+     "target_kind": "basic_industry",
+     "target_id": "General Insurance",
+     "direction": "neutral",
+     "evidence": "sector term 'Health Insurance'"
+    },
+    {
+     "claim_id": 10984,
+     "target_kind": "sector",
+     "target_id": "Healthcare",
+     "direction": "neutral",
+     "evidence": "sector term 'Healthcare'"
+    }
+   ]
+  },
+  {
+   "claim_id": 11029,
+   "doc_id": "doc:12415",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2020-21 - volume 2",
+   "known_at": "2021-01-29",
+   "policy_type": "subsidy",
+   "instrument": "subsidy",
+   "direction": "positive",
+   "magnitude": [
+    0.5,
+    "PERCENT"
+   ],
+   "effective_date": "2020-10-23",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "it will bear the margin between g - secs and average of state development loan yields, of up to 50 bps, through a subsidy",
+   "inputs": {
+    "sectors": "[\"Financial Services\", \"Public Debt\"]",
+    "companies": "[]",
+    "products": "Interest cost margin on state development loan yields",
+    "new_value": "Centre will bear the margin between G-secs and average of state development loan yields of up to 50 bps through a subsidy",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 11029,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Financial Services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 11270,
+   "doc_id": "doc:12415",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2020-21 - volume 2",
+   "known_at": "2021-01-29",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "industrial infrastructure, industrial incentives and domestic defence equipment",
+   "inputs": {
+    "sectors": "[\"defence\", \"infrastructure\"]",
+    "companies": "[]",
+    "products": "defence equipment",
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 11270,
+     "target_kind": "basic_industry",
+     "target_id": "Aerospace & Defense",
+     "direction": "positive",
+     "evidence": "sector term 'defence'"
+    },
+    {
+     "claim_id": 11270,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'infrastructure'"
+    },
+    {
+     "claim_id": 11270,
+     "target_kind": "theme",
+     "target_id": "defence",
+     "direction": "positive",
+     "evidence": "theme term 'defence'"
+    }
+   ]
+  },
+  {
+   "claim_id": 11323,
+   "doc_id": "doc:12415",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2020-21 - volume 2",
+   "known_at": "2021-01-29",
+   "policy_type": "other",
+   "instrument": "other",
+   "direction": "positive",
+   "magnitude": [
+    6750.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "reduction in epf rates 6750 0. 03",
+   "inputs": {
+    "sectors": "[\"All sectors\", \"Labour-intensive industries\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "reduction in epf rates",
+    "old_value": null,
+    "amount_inr_crore": 6750.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": []
+  },
+  {
+   "claim_id": 11439,
+   "doc_id": "doc:12415",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2020-21 - volume 2",
+   "known_at": "2021-01-29",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude": [
+    51.0,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the statutory restriction on grant of director - related loans / advances has been widened and common directorship across banks shall be prohibited as per the provisions of the amended act",
+   "inputs": {
+    "sectors": "[\"Co-operative Banking\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "board to have not less than 51 per cent members with special knowledge / practical experience; rbi approval for appointment / removal of statutory auditors; common directorship across banks prohibited",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 11439,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Co-operative Banking'"
+    }
+   ]
+  },
+  {
+   "claim_id": 11539,
+   "doc_id": "doc:12415",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2020-21 - volume 2",
+   "known_at": "2021-01-29",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "negative",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "had suspended all commercial international flights in march 2020. the ban has been extended till january 2021.",
+   "inputs": {
+    "sectors": "[\"aviation\", \"tourism\", \"travel\"]",
+    "companies": "[]",
+    "products": "international commercial passenger flights",
+    "new_value": "ban extended till January 2021",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 11539,
+     "target_kind": "basic_industry",
+     "target_id": "Airline",
+     "direction": "negative",
+     "evidence": "sector term 'aviation'"
+    },
+    {
+     "claim_id": 11539,
+     "target_kind": "basic_industry",
+     "target_id": "Hotels & Resorts",
+     "direction": "negative",
+     "evidence": "sector term 'tourism'"
+    },
+    {
+     "claim_id": 11539,
+     "target_kind": "basic_industry",
+     "target_id": "Tour Travel Related Services",
+     "direction": "negative",
+     "evidence": "sector term 'tourism'"
+    }
+   ]
+  },
+  {
+   "claim_id": 12075,
+   "doc_id": "doc:12417",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2021-22 - chapters",
+   "known_at": "2022-01-31",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "interest rates rationalized and penalties from delayed payments of license fee or spectrum usage charge ( suc ) removed",
+   "inputs": {
+    "sectors": "[\"telecom\"]",
+    "companies": "[]",
+    "products": "telecom services",
+    "new_value": "penalties removed; interest rates rationalized",
+    "old_value": "penalties on delayed payments",
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 12075,
+     "target_kind": "sector",
+     "target_id": "Telecommunication",
+     "direction": "positive",
+     "evidence": "sector term 'telecom'"
+    }
+   ]
+  },
+  {
+   "claim_id": 12687,
+   "doc_id": "doc:12419",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2022-23 - chapters",
+   "known_at": "2023-01-31",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "introduction of prompt corrective action ( pca ) framework",
+   "inputs": {
+    "sectors": "[\"Banking (especially weak PSBs)\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 12687,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking (especially weak PSBs)'"
+    },
+    {
+     "claim_id": 12687,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking (especially weak PSBs)'"
+    },
+    {
+     "claim_id": 12687,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking (especially weak PSBs)'"
+    }
+   ]
+  },
+  {
+   "claim_id": 12691,
+   "doc_id": "doc:12419",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2022-23 - chapters",
+   "known_at": "2023-01-31",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "75 projects of existing state government / central government medical colleges to increase the number of mbbs and pg seats",
+   "inputs": {
+    "sectors": "[\"healthcare\", \"medical education\", \"construction\"]",
+    "companies": "[]",
+    "products": "medical education infrastructure (MBBS and PG seats)",
+    "new_value": "75 projects of existing state government / central government medical colleges",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 12691,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'construction'"
+    },
+    {
+     "claim_id": 12691,
+     "target_kind": "sector",
+     "target_id": "Healthcare",
+     "direction": "positive",
+     "evidence": "sector term 'healthcare'"
+    }
+   ]
+  },
+  {
+   "claim_id": 12844,
+   "doc_id": "doc:12419",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2022-23 - chapters",
+   "known_at": "2023-01-31",
+   "policy_type": "subsidy",
+   "instrument": "subsidy",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the farmers have been incentivised to transfer electricity generated through solar to the local grid",
+   "inputs": {
+    "sectors": "[\"solar energy\", \"agriculture\"]",
+    "companies": "[]",
+    "products": "electricity",
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 12844,
+     "target_kind": "basic_industry",
+     "target_id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'agriculture'"
+    },
+    {
+     "claim_id": 12844,
+     "target_kind": "sector",
+     "target_id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'solar energy'"
+    }
+   ]
+  },
+  {
+   "claim_id": 12972,
+   "doc_id": "doc:12419",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2022-23 - chapters",
+   "known_at": "2023-01-31",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "after a two - year hiatus, india also resumed all regular international flights at full capacity as 2021 - 22 came to a close.",
+   "inputs": {
+    "sectors": "[\"airlines\", \"airports\", \"hotels\", \"tourism\"]",
+    "companies": "[]",
+    "products": "international passenger air travel",
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 12972,
+     "target_kind": "basic_industry",
+     "target_id": "Airline",
+     "direction": "positive",
+     "evidence": "sector term 'airlines'"
+    },
+    {
+     "claim_id": 12972,
+     "target_kind": "basic_industry",
+     "target_id": "Airport & Airport services",
+     "direction": "positive",
+     "evidence": "sector term 'airports'"
+    },
+    {
+     "claim_id": 12972,
+     "target_kind": "basic_industry",
+     "target_id": "Hotels & Resorts",
+     "direction": "positive",
+     "evidence": "sector term 'hotels'"
+    },
+    {
+     "claim_id": 12972,
+     "target_kind": "basic_industry",
+     "target_id": "Tour Travel Related Services",
+     "direction": "positive",
+     "evidence": "sector term 'tourism'"
+    }
+   ]
+  },
+  {
+   "claim_id": 12986,
+   "doc_id": "doc:12419",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2022-23 - chapters",
+   "known_at": "2023-01-31",
+   "policy_type": "subsidy",
+   "instrument": "subsidy",
+   "direction": "positive",
+   "magnitude": [
+    53548.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the government has released a subsidy amounting to ₹ 53, 548 crore benefitting approximately 22. 87 lakh households",
+   "inputs": {
+    "sectors": "[\"affordable housing\", \"real estate\", \"housing finance\"]",
+    "companies": "[]",
+    "products": "home loans under PMAY-CLSS (Urban)",
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": 53548.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 12986,
+     "target_kind": "basic_industry",
+     "target_id": "Housing Finance Company",
+     "direction": "positive",
+     "evidence": "sector term 'housing finance'"
+    },
+    {
+     "claim_id": 12986,
+     "target_kind": "basic_industry",
+     "target_id": "Residential Commercial Projects",
+     "direction": "positive",
+     "evidence": "sector term 'affordable housing'"
+    },
+    {
+     "claim_id": 12986,
+     "target_kind": "sector",
+     "target_id": "Realty",
+     "direction": "positive",
+     "evidence": "sector term 'affordable housing'"
+    },
+    {
+     "claim_id": 12986,
+     "target_kind": "theme",
+     "target_id": "housing_finance",
+     "direction": "positive",
+     "evidence": "theme term 'housing finance'"
+    }
+   ]
+  },
+  {
+   "claim_id": 13319,
+   "doc_id": "doc:12423",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2025-26 - chapters",
+   "known_at": "2026-01-29",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "it preserves financial and staffing independence and codifies institutional safeguards - eligibility standards, fixed tenures, removal protections, and post - employment cooling periods",
+   "inputs": {
+    "sectors": "[\"securities markets\", \"capital markets\", \"financial services\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "SEBI autonomy over rulemaking, inspections, and enforcement preserved; financial and staffing independence; fixed tenures, removal protections, post-employment cooling periods",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 13319,
+     "target_kind": "basic_industry",
+     "target_id": "Asset Management Company",
+     "direction": "positive",
+     "evidence": "sector term 'capital markets'"
+    },
+    {
+     "claim_id": 13319,
+     "target_kind": "basic_industry",
+     "target_id": "Exchange and Data Platform",
+     "direction": "positive",
+     "evidence": "sector term 'capital markets'"
+    },
+    {
+     "claim_id": 13319,
+     "target_kind": "basic_industry",
+     "target_id": "Stockbroking & Allied",
+     "direction": "positive",
+     "evidence": "sector term 'capital markets'"
+    },
+    {
+     "claim_id": 13319,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'financial services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 13588,
+   "doc_id": "doc:12423",
+   "source_type": "Economic_Survey",
+   "doc_type": "economic_survey",
+   "issuer": "Ministry of Finance",
+   "doc_title": "Economic Survey 2025-26 - chapters",
+   "known_at": "2026-01-29",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "khanij bidesh india ltd. ( kabil ) , has acquired 15, 703 hectares in argentina for lithium mining, alongside partnerships in australia and chile",
+   "inputs": {
+    "sectors": "[\"mining\", \"lithium\", \"critical minerals\"]",
+    "companies": "[\"Khanij Bidesh India Ltd (KABIL)\"]",
+    "products": "lithium",
+    "new_value": "acquired 15,703 hectares in argentina for lithium mining",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 13588,
+     "target_kind": "sector",
+     "target_id": "Metals & Mining",
+     "direction": "positive",
+     "evidence": "sector term 'mining'"
+    }
+   ]
+  },
+  {
+   "claim_id": 14350,
+   "doc_id": "doc:12432",
+   "source_type": "State_Budget_Andhra_Pradesh",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Andhra Pradesh Budget Analysis FY2026-27 (PRS)",
+   "known_at": "2026-02-14",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "neutral",
+   "magnitude": [
+    3036.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "samagra shiksha abhiyan has been allocated rs 3, 036 crore.",
+   "inputs": {
+    "sectors": "[\"Education\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "Rs 3,036 crore allocated",
+    "old_value": null,
+    "amount_inr_crore": 3036.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 14350,
+     "target_kind": "basic_industry",
+     "target_id": "Education",
+     "direction": "neutral",
+     "evidence": "sector term 'Education'"
+    },
+    {
+     "claim_id": 14350,
+     "target_kind": "state",
+     "target_id": "Andhra Pradesh",
+     "direction": "neutral",
+     "evidence": "state budget Andhra Pradesh"
+    }
+   ]
+  },
+  {
+   "claim_id": 14480,
+   "doc_id": "doc:12439",
+   "source_type": "State_Budget_Assam",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Assam Budget Analysis FY2021-22 (PRS)",
+   "known_at": "2021-07-16",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    2279.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2021-07-16",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "rs 2, 279 crore has been allocated towards district police forces",
+   "inputs": {
+    "sectors": "[\"Public Safety\", \"Police\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "rs 2, 279 crore",
+    "old_value": null,
+    "amount_inr_crore": 2279.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 14480,
+     "target_kind": "state",
+     "target_id": "Assam",
+     "direction": "neutral",
+     "evidence": "state budget Assam"
+    }
+   ]
+  },
+  {
+   "claim_id": 15257,
+   "doc_id": "doc:12473",
+   "source_type": "State_Budget_Goa",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Goa Budget Analysis FY2026-27 (PRS)",
+   "known_at": "2026-03-06",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    598.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "rs 598 crore has been allocated for urban water supply, and rs 170 crore for rural water supply.",
+   "inputs": {
+    "sectors": "[\"water supply\", \"utilities\", \"infrastructure\"]",
+    "companies": "[]",
+    "products": "urban water supply infrastructure",
+    "new_value": "rs 598 crore has been allocated for urban water supply",
+    "old_value": null,
+    "amount_inr_crore": 598.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 15257,
+     "target_kind": "basic_industry",
+     "target_id": "Water Supply & Management",
+     "direction": "positive",
+     "evidence": "sector term 'water supply'"
+    },
+    {
+     "claim_id": 15257,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'infrastructure'"
+    },
+    {
+     "claim_id": 15257,
+     "target_kind": "state",
+     "target_id": "Goa",
+     "direction": "neutral",
+     "evidence": "state budget Goa"
+    }
+   ]
+  },
+  {
+   "claim_id": 15383,
+   "doc_id": "doc:12468",
+   "source_type": "State_Budget_Delhi",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Delhi Budget Analysis FY2026-27 (PRS)",
+   "known_at": "2026-03-24",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    1146.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2026-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "rs 1, 146 crore has been allocated towards samagra shiksha scheme.",
+   "inputs": {
+    "sectors": "[\"Education\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "rs 1,146 crore allocated",
+    "old_value": null,
+    "amount_inr_crore": 1146.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 15383,
+     "target_kind": "basic_industry",
+     "target_id": "Education",
+     "direction": "positive",
+     "evidence": "sector term 'Education'"
+    },
+    {
+     "claim_id": 15383,
+     "target_kind": "state",
+     "target_id": "Delhi",
+     "direction": "neutral",
+     "evidence": "state budget Delhi"
+    }
+   ]
+  },
+  {
+   "claim_id": 15417,
+   "doc_id": "doc:12463",
+   "source_type": "State_Budget_Delhi",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Delhi Budget Analysis FY2021-22 (PRS)",
+   "known_at": "2021-03-09",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "neutral",
+   "magnitude": [
+    318.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2021-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "rs 318 crore has been allocated for unemployment allowance for disabled persons.",
+   "inputs": {
+    "sectors": "[\"social welfare\", \"employment\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "rs 318 crore",
+    "old_value": null,
+    "amount_inr_crore": 318.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 15417,
+     "target_kind": "state",
+     "target_id": "Delhi",
+     "direction": "neutral",
+     "evidence": "state budget Delhi"
+    }
+   ]
+  },
+  {
+   "claim_id": 15434,
+   "doc_id": "doc:12479",
+   "source_type": "State_Budget_Gujarat",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Gujarat Budget Analysis FY2025-26 (PRS)",
+   "known_at": "2025-02-20",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    2914.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "rs 2, 914 crore has been allocated towards schools of excellence",
+   "inputs": {
+    "sectors": "[\"Education\", \"Construction\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "Rs 2,914 crore allocated",
+    "old_value": null,
+    "amount_inr_crore": 2914.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 15434,
+     "target_kind": "basic_industry",
+     "target_id": "Education",
+     "direction": "positive",
+     "evidence": "sector term 'Education'"
+    },
+    {
+     "claim_id": 15434,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'Construction'"
+    },
+    {
+     "claim_id": 15434,
+     "target_kind": "state",
+     "target_id": "Gujarat",
+     "direction": "neutral",
+     "evidence": "state budget Gujarat"
+    }
+   ]
+  },
+  {
+   "claim_id": 15635,
+   "doc_id": "doc:12488",
+   "source_type": "State_Budget_Haryana",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Haryana Budget Analysis FY2026-27 (PRS)",
+   "known_at": "2026-03-02",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    817.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2026-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "rs 817 crore has been allocated for grants under national rural health mission.",
+   "inputs": {
+    "sectors": "[\"healthcare\"]",
+    "companies": "[]",
+    "products": "rural health services",
+    "new_value": "rs 817 crore allocated",
+    "old_value": null,
+    "amount_inr_crore": 817.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 15635,
+     "target_kind": "sector",
+     "target_id": "Healthcare",
+     "direction": "positive",
+     "evidence": "sector term 'healthcare'"
+    },
+    {
+     "claim_id": 15635,
+     "target_kind": "state",
+     "target_id": "Haryana",
+     "direction": "neutral",
+     "evidence": "state budget Haryana"
+    }
+   ]
+  },
+  {
+   "claim_id": 15844,
+   "doc_id": "doc:12492",
+   "source_type": "State_Budget_Himachal_Pradesh",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Himachal Pradesh Budget Analysis FY2022-23 (PRS)",
+   "known_at": "2022-03-04",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the governance and reforms using drones ( garud ) scheme will be launched to promote drones and drone flying schools. under the scheme, four flying schools will be set up in 2022 - 23 for drone training.",
+   "inputs": {
+    "sectors": "[\"Drones\", \"Aviation\"]",
+    "companies": "[]",
+    "products": "Drone training / drone flying schools",
+    "new_value": "Four flying schools to be set up in 2022-23 for drone training",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 15844,
+     "target_kind": "basic_industry",
+     "target_id": "Aerospace & Defense",
+     "direction": "positive",
+     "evidence": "sector term 'Drones'"
+    },
+    {
+     "claim_id": 15844,
+     "target_kind": "basic_industry",
+     "target_id": "Airline",
+     "direction": "positive",
+     "evidence": "sector term 'Aviation'"
+    },
+    {
+     "claim_id": 15844,
+     "target_kind": "state",
+     "target_id": "Himachal Pradesh",
+     "direction": "neutral",
+     "evidence": "state budget Himachal Pradesh"
+    }
+   ]
+  },
+  {
+   "claim_id": 15948,
+   "doc_id": "doc:12494",
+   "source_type": "State_Budget_Himachal_Pradesh",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Himachal Pradesh Budget Analysis FY2024-25 (PRS)",
+   "known_at": "2024-02-17",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the state will bear the educational expenses of children of widows with an annual income of less than one lakh rupees under the mukhya mantri sukh shiksha yojana.",
+   "inputs": {
+    "sectors": "[\"education\", \"social welfare\"]",
+    "companies": "[]",
+    "products": "educational expenses support",
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 15948,
+     "target_kind": "basic_industry",
+     "target_id": "Education",
+     "direction": "positive",
+     "evidence": "sector term 'education'"
+    },
+    {
+     "claim_id": 15948,
+     "target_kind": "state",
+     "target_id": "Himachal Pradesh",
+     "direction": "neutral",
+     "evidence": "state budget Himachal Pradesh"
+    }
+   ]
+  },
+  {
+   "claim_id": 15960,
+   "doc_id": "doc:12493",
+   "source_type": "State_Budget_Himachal_Pradesh",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Himachal Pradesh Budget Analysis FY2023-24 (PRS)",
+   "known_at": "2023-03-17",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    1691.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "rs 1, 691 crore has been allocated for capital outlay on roads and bridges.",
+   "inputs": {
+    "sectors": "[\"construction\", \"roads\", \"infrastructure\"]",
+    "companies": "[]",
+    "products": "roads and bridges",
+    "new_value": "1,691 crore capital outlay; 3,548 crore sector allocation (2023-24 budgeted, -14%)",
+    "old_value": "4,149 crore sector allocation (2022-23 revised)",
+    "amount_inr_crore": 1691.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 15960,
+     "target_kind": "basic_industry",
+     "target_id": "Civil Construction",
+     "direction": "positive",
+     "evidence": "sector term 'roads'"
+    },
+    {
+     "claim_id": 15960,
+     "target_kind": "basic_industry",
+     "target_id": "Road Assets - Toll Annuity Hybrid-Annuity",
+     "direction": "positive",
+     "evidence": "sector term 'roads'"
+    },
+    {
+     "claim_id": 15960,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'construction'"
+    },
+    {
+     "claim_id": 15960,
+     "target_kind": "state",
+     "target_id": "Himachal Pradesh",
+     "direction": "neutral",
+     "evidence": "state budget Himachal Pradesh"
+    }
+   ]
+  },
+  {
+   "claim_id": 16391,
+   "doc_id": "doc:12503",
+   "source_type": "State_Budget_Jharkhand",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Jharkhand Budget Analysis FY2026-27 (PRS)",
+   "known_at": "2026-02-24",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "negative",
+   "magnitude": [
+    4162.0,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "health and family welfare 7, 232 4, 162 - 42 %",
+   "inputs": {
+    "sectors": "[\"healthcare\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "4,162",
+    "old_value": "7,232",
+    "amount_inr_crore": 4162.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 16391,
+     "target_kind": "sector",
+     "target_id": "Healthcare",
+     "direction": "negative",
+     "evidence": "sector term 'healthcare'"
+    },
+    {
+     "claim_id": 16391,
+     "target_kind": "state",
+     "target_id": "Jharkhand",
+     "direction": "neutral",
+     "evidence": "state budget Jharkhand"
+    }
+   ]
+  },
+  {
+   "claim_id": 16893,
+   "doc_id": "doc:12531",
+   "source_type": "State_Budget_Maharashtra",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Maharashtra Budget Analysis FY2023-24 (PRS)",
+   "known_at": "2023-03-09",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude": [
+    18.0,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "in 2023 - 24, the government has proposed to reduce vat on aviation turbine fuel from 25 % to 18 %.",
+   "inputs": {
+    "sectors": "[\"aviation\", \"airlines\"]",
+    "companies": "[]",
+    "products": "aviation turbine fuel",
+    "new_value": "18%",
+    "old_value": "25%",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 16893,
+     "target_kind": "basic_industry",
+     "target_id": "Airline",
+     "direction": "positive",
+     "evidence": "sector term 'aviation'"
+    },
+    {
+     "claim_id": 16893,
+     "target_kind": "state",
+     "target_id": "Maharashtra",
+     "direction": "neutral",
+     "evidence": "state budget Maharashtra"
+    }
+   ]
+  },
+  {
+   "claim_id": 17048,
+   "doc_id": "doc:12533",
+   "source_type": "State_Budget_Maharashtra",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Maharashtra Budget Analysis FY2025-26 (PRS)",
+   "known_at": "2025-03-10",
+   "policy_type": "other",
+   "instrument": "other",
+   "direction": "positive",
+   "magnitude": [
+    0.5,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "additional borrowing space up to 0. 5 % of gsdp will also be available for undertaking certain power sector reforms",
+   "inputs": {
+    "sectors": "[\"power\", \"power distribution\", \"renewable energy\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "0. 5 % of gsdp",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 17048,
+     "target_kind": "basic_industry",
+     "target_id": "Power Distribution",
+     "direction": "positive",
+     "evidence": "sector term 'power distribution'"
+    },
+    {
+     "claim_id": 17048,
+     "target_kind": "sector",
+     "target_id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'power'"
+    },
+    {
+     "claim_id": 17048,
+     "target_kind": "state",
+     "target_id": "Maharashtra",
+     "direction": "neutral",
+     "evidence": "state budget Maharashtra"
+    }
+   ]
+  },
+  {
+   "claim_id": 17310,
+   "doc_id": "doc:12548",
+   "source_type": "State_Budget_Nagaland",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Nagaland Budget Analysis FY2025-26 (PRS)",
+   "known_at": "2025-03-06",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude": [
+    2.5,
+    "INR_CRORE"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "rs 2. 5 crore has also been allocated to the drone training and logistics programme, to skill young persons in drone operations.",
+   "inputs": {
+    "sectors": "[\"drone\", \"logistics\", \"skill development\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "rs 2.5 crore allocated",
+    "old_value": null,
+    "amount_inr_crore": 2.5,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 17310,
+     "target_kind": "basic_industry",
+     "target_id": "Aerospace & Defense",
+     "direction": "positive",
+     "evidence": "sector term 'drone'"
+    },
+    {
+     "claim_id": 17310,
+     "target_kind": "basic_industry",
+     "target_id": "Education",
+     "direction": "positive",
+     "evidence": "sector term 'skill development'"
+    },
+    {
+     "claim_id": 17310,
+     "target_kind": "basic_industry",
+     "target_id": "Logistics Solution Provider",
+     "direction": "positive",
+     "evidence": "sector term 'logistics'"
+    },
+    {
+     "claim_id": 17310,
+     "target_kind": "state",
+     "target_id": "Nagaland",
+     "direction": "neutral",
+     "evidence": "state budget Nagaland"
+    }
+   ]
+  },
+  {
+   "claim_id": 18136,
+   "doc_id": "doc:12567",
+   "source_type": "State_Budget_Rajasthan",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Rajasthan Budget Analysis FY2020-21 (PRS)",
+   "known_at": "2020-02-20",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude": [
+    100.0,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "an amnesty scheme will be launched to provide 100 % waiver from interest and penalty on stamp duty for depositing stamp duty by june 30, 2020.",
+   "inputs": {
+    "sectors": "[\"MSME\", \"Real Estate\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "100% waiver from interest and penalty on stamp duty for depositing stamp duty by June 30, 2020",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 18136,
+     "target_kind": "sector",
+     "target_id": "Realty",
+     "direction": "positive",
+     "evidence": "sector term 'Real Estate'"
+    },
+    {
+     "claim_id": 18136,
+     "target_kind": "state",
+     "target_id": "Rajasthan",
+     "direction": "neutral",
+     "evidence": "state budget Rajasthan"
+    }
+   ]
+  },
+  {
+   "claim_id": 18433,
+   "doc_id": "doc:12583",
+   "source_type": "State_Budget_Tamil_Nadu",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Tamil Nadu Budget Analysis FY2024-25 (PRS)",
+   "known_at": "2024-02-19",
+   "policy_type": "subsidy",
+   "instrument": "subsidy",
+   "direction": "positive",
+   "magnitude": [
+    7216.0,
+    "INR_CRORE"
+   ],
+   "effective_date": "2024-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "rs 7, 216 crore has been allocated for payment to tamil nadu electricity board for usage of farm pump sets.",
+   "inputs": {
+    "sectors": "[\"Agriculture\", \"Power\"]",
+    "companies": "[\"Tamil Nadu Electricity Board\"]",
+    "products": "Electricity for agricultural pump sets",
+    "new_value": "Rs 7,216 crore allocated for 2024-25",
+    "old_value": null,
+    "amount_inr_crore": 7216.0,
+    "unit": "INR crore"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 18433,
+     "target_kind": "basic_industry",
+     "target_id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'Agriculture'"
+    },
+    {
+     "claim_id": 18433,
+     "target_kind": "sector",
+     "target_id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'Power'"
+    },
+    {
+     "claim_id": 18433,
+     "target_kind": "state",
+     "target_id": "Tamil Nadu",
+     "direction": "neutral",
+     "evidence": "state budget Tamil Nadu"
+    }
+   ]
+  },
+  {
+   "claim_id": 18893,
+   "doc_id": "doc:12597",
+   "source_type": "State_Budget_Tripura",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Tripura Budget Analysis FY2026-27 (PRS)",
+   "known_at": "2026-03-16",
+   "policy_type": "other",
+   "instrument": "other",
+   "direction": "neutral",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": "2026-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "tripura 0. 64 0. 71 0. 64",
+   "inputs": {
+    "sectors": "[\"public finance\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "0.64 (16th FC, 2026-31)",
+    "old_value": "0.71 (15th FC, 2021-26)",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 18893,
+     "target_kind": "state",
+     "target_id": "Tripura",
+     "direction": "neutral",
+     "evidence": "state budget Tripura"
+    }
+   ]
+  },
+  {
+   "claim_id": 19150,
+   "doc_id": "doc:12612",
+   "source_type": "State_Budget_Uttarakhand",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Uttarakhand Budget Analysis FY2025-26 (PRS)",
+   "known_at": "2025-02-20",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "an automated demand response system to control over consumption of power from the grid will be setup",
+   "inputs": {
+    "sectors": "[\"power\", \"energy\", \"electricity\"]",
+    "companies": "[]",
+    "products": "electricity",
+    "new_value": "automated demand response system to control over consumption of power from the grid will be setup",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 19150,
+     "target_kind": "sector",
+     "target_id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'power'"
+    },
+    {
+     "claim_id": 19150,
+     "target_kind": "state",
+     "target_id": "Uttarakhand",
+     "direction": "neutral",
+     "evidence": "state budget Uttarakhand"
+    }
+   ]
+  },
+  {
+   "claim_id": 19264,
+   "doc_id": "doc:12598",
+   "source_type": "State_Budget_Uttar_Pradesh",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Uttar Pradesh Budget Analysis FY2019-20 (PRS)",
+   "known_at": "2019-02-07",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude": [
+    5.7,
+    "PERCENT"
+   ],
+   "effective_date": "2019-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "the state has allocated 5. 7 % of its budget for expenditure on roads and bridges in 2019 - 20.",
+   "inputs": {
+    "sectors": "[\"construction\", \"infrastructure\", \"cement\"]",
+    "companies": "[]",
+    "products": "roads and bridges construction",
+    "new_value": "2019-20 BE: 5.7% of total expenditure",
+    "old_value": "2018-19 RE: 6.0% of total expenditure",
+    "amount_inr_crore": null,
+    "unit": "% of total expenditure"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 19264,
+     "target_kind": "basic_industry",
+     "target_id": "Cement & Cement Products",
+     "direction": "positive",
+     "evidence": "sector term 'cement'"
+    },
+    {
+     "claim_id": 19264,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'construction'"
+    },
+    {
+     "claim_id": 19264,
+     "target_kind": "state",
+     "target_id": "Uttar Pradesh",
+     "direction": "neutral",
+     "evidence": "state budget Uttar Pradesh"
+    }
+   ]
+  },
+  {
+   "claim_id": 19341,
+   "doc_id": "doc:12588",
+   "source_type": "State_Budget_Telangana",
+   "doc_type": "state_budget",
+   "issuer": "PRS Legislative Research",
+   "doc_title": "Telangana Budget Analysis FY2021-22 (PRS)",
+   "known_at": "2021-03-18",
+   "policy_type": "other",
+   "instrument": "other",
+   "direction": "positive",
+   "magnitude": [
+    0.5,
+    "PERCENT"
+   ],
+   "effective_date": "2021-04-01",
+   "effective_pit_conf": 0.9,
+   "quote_ok": 1,
+   "quote": "an additional borrowing worth 0. 5 % of gsdp will be allowed each year for the first four years ( 2021 - 25 ) upon undertaking certain power sector reforms",
+   "inputs": {
+    "sectors": "[\"Power\", \"Electricity Distribution\"]",
+    "companies": "[]",
+    "products": "electricity",
+    "new_value": "Additional borrowing of 0.5% of GSDP per year for first four years (2021-25) conditional on power sector reforms (operational loss reduction, revenue gap reduction, DBT for cash subsidy, lower tariff subsidy)",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 19341,
+     "target_kind": "basic_industry",
+     "target_id": "Power Distribution",
+     "direction": "positive",
+     "evidence": "sector term 'Electricity Distribution'"
+    },
+    {
+     "claim_id": 19341,
+     "target_kind": "sector",
+     "target_id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'Power'"
+    },
+    {
+     "claim_id": 19341,
+     "target_kind": "state",
+     "target_id": "Telangana",
+     "direction": "neutral",
+     "evidence": "state budget Telangana"
+    }
+   ]
+  },
+  {
+   "claim_id": 19511,
+   "doc_id": "doc:12622",
+   "source_type": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Full Document (2019-02-07)",
+   "known_at": "2019-02-07",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude": [
+    0.25,
+    "PERCENT"
+   ],
+   "effective_date": "2019-02-07",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "the mpc decided to change the stance of monetary policy from calibrated tightening to neutral and to reduce the policy repo rate by 25 basis points",
+   "inputs": {
+    "sectors": "[\"banking\", \"financial services\", \"interest-rate sensitive sectors\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "neutral",
+    "old_value": "calibrated tightening",
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 19511,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 19511,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 19511,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 19511,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'financial services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 19524,
+   "doc_id": "doc:12626",
+   "source_type": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Full Document (2019-04-04)",
+   "known_at": "2019-04-04",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "it has been decided to extend the same regulation to the regional rural banks and small finance banks. this is aimed to bring these banks at a level - playing field with other scheduled commercial banks.",
+   "inputs": {
+    "sectors": "[\"Banking\", \"Regional Rural Banks\", \"Small Finance Banks\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "regional rural banks and small finance banks",
+    "old_value": "scheduled commercial banks (excluding regional rural banks and small finance banks)",
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 19524,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "claim_id": 19524,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "claim_id": 19524,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    }
+   ]
+  },
+  {
+   "claim_id": 19942,
+   "doc_id": "doc:12642",
+   "source_type": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Minutes of the Monetary Policy Committee Meeting February 4 to 6, 2020 (2020-02-20)",
+   "known_at": "2020-02-20",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the rationalisation of personal income tax rates in the union budget 2020 - 21 should support domestic demand along with measures to boost rural and infrastructure spending",
+   "inputs": {
+    "sectors": "[\"Consumer Demand\", \"Rural\", \"Infrastructure\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": null,
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 19942,
+     "target_kind": "sector",
+     "target_id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'Infrastructure'"
+    }
+   ]
+  },
+  {
+   "claim_id": 20454,
+   "doc_id": "doc:12691",
+   "source_type": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Minutes of the Monetary Policy Committee Meeting, February 8 to 10, 2022 (2022-02-24)",
+   "known_at": "2022-02-24",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "neutral",
+   "magnitude": [
+    5.3,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "on balance, the inflation projection for 2021 - 22 is retained at 5. 3 per cent, with q4 at 5. 7 per cent. on the assumption of a normal monsoon in 2022, cpi inflation for 2022 - 23 is projected at 4. 5 per cent",
+   "inputs": {
+    "sectors": "[\"banking\", \"financial services\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "2021-22 retained at 5.3 per cent; 2022-23 projected at 4.5 per cent",
+    "old_value": "2021-22 CPI inflation 5.3 per cent",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 20454,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 20454,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 20454,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 20454,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "neutral",
+     "evidence": "sector term 'financial services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 20633,
+   "doc_id": "doc:12698",
+   "source_type": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Minutes of the Monetary Policy Committee Meeting, May 2 and 4, 2022 (2022-05-18)",
+   "known_at": "2022-05-18",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "negative",
+   "magnitude": [
+    4.15,
+    "PERCENT"
+   ],
+   "effective_date": "2022-05-04",
+   "effective_pit_conf": 1.0,
+   "quote_ok": 1,
+   "quote": "the standing deposit facility ( sdf ) rate stands adjusted to 4. 15 per cent",
+   "inputs": {
+    "sectors": "[\"Banking\", \"Financial Services\"]",
+    "companies": "[]",
+    "products": "Deposit Rates, Liquidity Management",
+    "new_value": "4.15%",
+    "old_value": "3.75%",
+    "amount_inr_crore": null,
+    "unit": "%"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 20633,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "negative",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "claim_id": 20633,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "claim_id": 20633,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "claim_id": 20633,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "negative",
+     "evidence": "sector term 'Financial Services'"
+    }
+   ]
+  },
+  {
+   "claim_id": 20904,
+   "doc_id": "doc:12725",
+   "source_type": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Full Document (2023-06-08)",
+   "known_at": "2023-06-08",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "the process flow of transactions and membership criteria for onboarding operating units in bbps will be streamlined",
+   "inputs": {
+    "sectors": "[\"Payments\", \"Fintech\"]",
+    "companies": "[]",
+    "products": "bill payments platform",
+    "new_value": "process flow and membership criteria for onboarding operating units to be streamlined; revised guidelines shortly",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 20904,
+     "target_kind": "basic_industry",
+     "target_id": "Financial Technology (Fintech)",
+     "direction": "positive",
+     "evidence": "sector term 'Payments'"
+    }
+   ]
+  },
+  {
+   "claim_id": 20974,
+   "doc_id": "doc:12732",
+   "source_type": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Governor’s Statement: October 6, 2023 (2023-10-06)",
+   "known_at": "2023-10-06",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "negative",
+   "magnitude": [
+    null,
+    null
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "we may have to consider omo - sales ( open market operation sales ) to manage liquidity, consistent with the stance of monetary policy.",
+   "inputs": {
+    "sectors": "[\"banking\", \"financial markets\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "OMO sales to manage liquidity",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": null
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 20974,
+     "target_kind": "basic_industry",
+     "target_id": "Exchange and Data Platform",
+     "direction": "negative",
+     "evidence": "sector term 'financial markets'"
+    },
+    {
+     "claim_id": 20974,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 20974,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 20974,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 20974,
+     "target_kind": "basic_industry",
+     "target_id": "Stockbroking & Allied",
+     "direction": "negative",
+     "evidence": "sector term 'financial markets'"
+    }
+   ]
+  },
+  {
+   "claim_id": 21494,
+   "doc_id": "doc:12785",
+   "source_type": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "issuer": "Reserve Bank of India",
+   "doc_title": "RBI Minutes of the Monetary Policy Committee Meeting, December 3 to 5, 2025 (2025-12-19)",
+   "known_at": "2025-12-19",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude": [
+    0.25,
+    "PERCENT"
+   ],
+   "effective_date": null,
+   "effective_pit_conf": 0.0,
+   "quote_ok": 1,
+   "quote": "considering the benign inflation outlook – headline as well as core - real interest rates need to be lower. therefore, i vote for a 25 - bps rate cut.",
+   "inputs": {
+    "sectors": "[\"banking\", \"financial services\", \"rate-sensitive sectors (real estate, auto, capital goods)\"]",
+    "companies": "[]",
+    "products": null,
+    "new_value": "rate cut of 25 bps; cumulative rate cut of 125 bps",
+    "old_value": null,
+    "amount_inr_crore": null,
+    "unit": "bps"
+   },
+   "doc_body_excerpt": null,
+   "emitted": [
+    {
+     "claim_id": 21494,
+     "target_kind": "basic_industry",
+     "target_id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 21494,
+     "target_kind": "basic_industry",
+     "target_id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 21494,
+     "target_kind": "basic_industry",
+     "target_id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "claim_id": 21494,
+     "target_kind": "sector",
+     "target_id": "Automobile and Auto Components",
+     "direction": "positive",
+     "evidence": "sector term 'rate-sensitive sectors (real estate, auto, capital goods)'"
+    },
+    {
+     "claim_id": 21494,
+     "target_kind": "sector",
+     "target_id": "Capital Goods",
+     "direction": "positive",
+     "evidence": "sector term 'rate-sensitive sectors (real estate, auto, capital goods)'"
+    },
+    {
+     "claim_id": 21494,
+     "target_kind": "sector",
+     "target_id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'financial services'"
+    },
+    {
+     "claim_id": 21494,
+     "target_kind": "sector",
+     "target_id": "Realty",
+     "direction": "positive",
+     "evidence": "sector term 'rate-sensitive sectors (real estate, auto, capital goods)'"
+    }
+   ]
+  }
+ ]
+}
