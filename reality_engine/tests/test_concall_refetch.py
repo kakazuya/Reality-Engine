@@ -1,7 +1,12 @@
 """Tests for the FY25+ concall PDF refetch pilot (no network, no live database)."""
 from __future__ import annotations
 
+import contextlib
 import json
+import os
+import shutil
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -18,6 +23,57 @@ def _scratch_dir() -> Path:
     root = Path(".tmp")
     root.mkdir(exist_ok=True)
     return root
+
+
+def _workdir(name: str) -> Path:
+    """A private scratch directory for one run (it writes PDFs and a journal)."""
+    path = _scratch_dir() / f"cr_{name}"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+class _StubCon:
+    """Read-only stand-in for the two databases: no query, no live file."""
+
+    def execute(self, *args, **kwargs):
+        return []
+
+    def close(self):
+        pass
+
+
+@contextlib.contextmanager
+def _offline_db():
+    """``run_pilot`` with no database behind it (no REALITY_DATA_ROOT file)."""
+    with mock.patch.dict(os.environ, {"REALITY_DATA_ROOT": str(_scratch_dir())}):
+        with mock.patch.object(cr, "connect_ro", lambda *a, **kw: _StubCon()):
+            yield
+
+
+def _fake_fetch(responses, calls=None, on_call=None):
+    """A ``fetch_url`` stand-in: newsid-less URLs looked up in ``responses``."""
+    calls = calls if calls is not None else []
+
+    def fetch(url, *, pacer=None, session=None, backoff=30.0, cooldown=None):
+        calls.append(url)
+        if on_call is not None:
+            on_call(url)
+        got = responses(url)
+        record = {"status": got[0], "http_status": got[1], "content_type": "application/pdf",
+                  "reason": got[2], "attempts": 1, "content": got[3]}
+        return record
+
+    return fetch
+
+
+def _ok_bytes(url: str) -> bytes:
+    """Distinct fake PDF bytes per URL, so the shas never collide."""
+    return b"%PDF-1.4 " + url.encode()
+
+
+def _stub_inspect(entry, path, cand, con_eq, log=print):
+    entry.update(status="ok", doc_class="transcript", chars=12000, pages=9,
+                 uppercase_ratio=0.05, image_only_share=0.0)
 
 
 def _cand(newsid="n1", isin="INE1", symbol="AAA", quarter="FY25Q1", size=1000,
@@ -398,10 +454,333 @@ class PacerTests(unittest.TestCase):
         self.assertAlmostEqual(slept[0], 1.5)
         self.assertEqual(pacer.requests, 2)
 
-    def test_floor_is_25_per_minute(self):
-        pacer = cr.Pacer(interval=0.1)
-        self.assertGreaterEqual(pacer.interval, 0.1)   # caller enforces MIN_INTERVAL
-        self.assertGreaterEqual(cr.MIN_INTERVAL, 2.4)
+    def test_floor_allows_the_probed_rate(self):
+        # 2026-10-28 probes: no block at ~400/min on NSE, ~200/min on BSE.
+        self.assertLessEqual(cr.MIN_INTERVAL, 0.25)
+        self.assertGreaterEqual(60 / cr.MIN_INTERVAL, 400 - 1e-9)
+        self.assertGreaterEqual(cr.Pacer(0.1).interval, 0.1)
+
+
+class PacerParallelTests(unittest.TestCase):
+    """One pacer, many workers: the *total* rate stays at 60/interval per minute."""
+
+    def test_shared_pacer_caps_the_total_rate(self):
+        interval = 0.01
+        pacer = cr.Pacer(interval=interval)
+        stamps: list[float] = []
+        lock = threading.Lock()
+
+        def worker():
+            for _ in range(5):
+                pacer.wait()
+                with lock:
+                    stamps.append(time.monotonic())
+
+        threads = [threading.Thread(target=worker) for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        stamps.sort()
+        self.assertEqual(pacer.requests, 20)
+        # 20 slots, each `interval` after the previous one: >= 19 intervals.
+        self.assertGreaterEqual(stamps[-1] - stamps[0], 19 * interval * 0.95)
+
+    def test_block_pauses_every_thread(self):
+        cooldown = cr.Cooldown()
+        started = time.monotonic()
+        resumed: list[float] = []
+        lock = threading.Lock()
+
+        def waiter():
+            cooldown.wait()
+            with lock:
+                resumed.append(time.monotonic() - started)
+
+        cooldown.pause(0.25)
+        threads = [threading.Thread(target=waiter) for _ in range(3)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(len(resumed), 3)
+        self.assertEqual(cooldown.hits, 1)
+        self.assertTrue(all(at >= 0.2 for at in resumed), resumed)
+
+    def test_pause_never_shortens_and_wait_reports_the_sleep(self):
+        now = {"t": 0.0}
+
+        def sleep(seconds):
+            now["t"] += seconds
+
+        cooldown = cr.Cooldown(clock=lambda: now["t"], sleep=sleep)
+        cooldown.pause(5.0)
+        self.assertEqual(cooldown.until, 5.0)
+        cooldown.pause(1.0)                     # a later, shorter block
+        self.assertEqual(cooldown.until, 5.0)   # keeps the longer one
+        cooldown.pause(10.0)                    # extends from now
+        self.assertEqual(cooldown.until, 10.0)
+        self.assertEqual(cooldown.wait(), 10.0)
+        self.assertEqual(cooldown.hits, 3)
+
+    def test_429_pauses_the_shared_cooldown(self):
+        pacer = cr.Pacer(interval=0.0)
+        cooldown = cr.Cooldown()
+        slept: list[float] = []
+        url = "https://www.bseindia.com/x.pdf"
+        session = _FakeSession([_FakeResponse(429), _FakeResponse(200, b"%PDF-1.7 ok")])
+        started = time.monotonic()
+        got = cr.fetch_url(url, pacer=pacer, session=session, cooldown=cooldown,
+                           backoff=0.05, sleep=slept.append)
+        self.assertEqual(got["status"], "ok")
+        self.assertEqual(got["attempts"], 2)
+        self.assertEqual(cooldown.hits, 1)
+        self.assertEqual(slept, [])             # the cooldown owns the wait
+        self.assertGreaterEqual(time.monotonic() - started, 0.045)
+
+
+class ParallelRunTests(unittest.TestCase):
+    def test_workers_run_concurrently_behind_the_pacer(self):
+        calls: list[str] = []
+        lock = threading.Lock()
+        state = {"active": 0, "peak": 0}
+
+        def on_call(url):
+            with lock:
+                state["active"] += 1
+                state["peak"] = max(state["peak"], state["active"])
+            time.sleep(0.05)
+            with lock:
+                state["active"] -= 1
+
+        fetch = _fake_fetch(lambda url: ("ok", 200, "", _ok_bytes(url)),
+                            calls=calls, on_call=on_call)
+        root = _workdir("parallel")
+        cands = [_cand(f"n{i}", isin=f"I{i}") for i in range(1, 7)]
+        try:
+            with _offline_db(), mock.patch.object(cr, "inspect_pdf", _stub_inspect):
+                report = cr.run_pilot(candidates=cands, n=10, root=root,
+                                      probe=root / "probe", fetch=fetch,
+                                      workers=3, log=lambda *a: None)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+        self.assertEqual(len(calls), 6)
+        self.assertEqual(report["sampled"], 6)
+        self.assertEqual(report["workers"], 3)
+        self.assertEqual(report["ok"], 6)
+        self.assertGreaterEqual(state["peak"], 2)
+
+
+class JournalTests(unittest.TestCase):
+    def test_roundtrip_flushes_each_line_and_ignores_junk(self):
+        path = _scratch_dir() / "_journal_roundtrip.jsonl"
+        path.unlink(missing_ok=True)
+        try:
+            with cr.JournalWriter(path) as writer:
+                writer.append({"newsid": "n1", "status": "ok"})
+                self.assertIn('"n1"', path.read_text(encoding="utf-8"))  # flushed, open
+                writer.append({"newsid": "n2", "status": "failed", "permanent": True})
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write('{"newsid": "truncated"')                  # killed mid-write
+            journal = cr.load_journal(path)
+        finally:
+            path.unlink(missing_ok=True)
+        self.assertEqual(sorted(journal), ["n1", "n2"])
+        self.assertEqual(writer.lines, 2)
+
+    def test_last_line_for_a_newsid_wins(self):
+        path = _scratch_dir() / "_journal_last.jsonl"
+        try:
+            path.write_text("\n".join([
+                json.dumps({"newsid": "n1", "status": "failed", "reason": "network: Timeout"}),
+                json.dumps({"newsid": "n1", "status": "ok"}),
+            ]) + "\n", encoding="utf-8")
+            journal = cr.load_journal(path)
+        finally:
+            path.unlink(missing_ok=True)
+        self.assertEqual(journal["n1"]["status"], "ok")
+
+    def test_missing_journal_is_empty(self):
+        self.assertEqual(cr.load_journal(_scratch_dir() / "_journal_none.jsonl"), {})
+
+    def test_journal_done_skips_ok_and_permanent_only(self):
+        self.assertTrue(cr.journal_done({"status": "ok"}))
+        self.assertTrue(cr.journal_done({"status": "failed", "permanent": True}))
+        self.assertFalse(cr.journal_done({"status": "failed",
+                                          "reason": "network: Timeout"}))
+        self.assertFalse(cr.journal_done({"status": "skipped"}))
+
+    def test_permanent_failures(self):
+        self.assertTrue(cr.is_permanent_failure({"status": "failed", "reason": "http 404",
+                                                 "http_status": 404}))
+        self.assertTrue(cr.is_permanent_failure({"status": "failed",
+                                                 "reason": "not a PDF"}))
+        self.assertTrue(cr.is_permanent_failure({"status": "invalid",
+                                                 "reason": "pymupdf: FileDataError"}))
+        self.assertFalse(cr.is_permanent_failure({"status": "failed", "reason": "http 429",
+                                                  "http_status": 429}))
+        self.assertFalse(cr.is_permanent_failure({"status": "failed", "reason": "http 503",
+                                                  "http_status": 503}))
+        self.assertFalse(cr.is_permanent_failure({"status": "failed", "reason": "no bytes",
+                                                  "http_status": None}))
+
+
+class JournalResumeTests(unittest.TestCase):
+    """A restart skips ok/permanent rows, retries transient ones, keeps the manifest."""
+
+    def _journal(self, root: Path, lines) -> Path:
+        path = cr.journal_path(root, "full")
+        path.write_text("".join(json.dumps(line) + "\n" for line in lines),
+                        encoding="utf-8")
+        return path
+
+    def test_resume_skips_done_and_retries_transient(self):
+        root = _workdir("resume")
+        try:
+            journal = self._journal(root, [
+                {"newsid": "n1", "status": "ok", "chars": 4000,
+                 "doc_class": "transcript", "sha256": "a" * 64},
+                {"newsid": "n2", "status": "failed", "reason": "network: Timeout"},
+                {"newsid": "n3", "status": "failed", "permanent": True,
+                 "reason": "http 404", "http_status": 404},
+            ])
+            calls: list[str] = []
+            fetch = _fake_fetch(lambda url: ("ok", 200, "", _ok_bytes(url)), calls=calls)
+            cands = [_cand(f"n{i}", isin=f"I{i}") for i in range(1, 5)]
+            with _offline_db(), mock.patch.object(cr, "inspect_pdf", _stub_inspect):
+                report = cr.run_pilot(candidates=cands, n=10, root=root,
+                                      probe=root / "probe", fetch=fetch,
+                                      log=lambda *a: None)
+            entries = {entry["newsid"]: entry for entry in report["entries"]}
+            self.assertEqual(report["skipped_journal"], 2)      # n1 ok, n3 permanent
+            self.assertEqual(report["sampled"], 4)
+            self.assertEqual(len(calls), 2)                     # n2 retried, n4 new
+            self.assertEqual(set(entries), {"n1", "n2", "n3", "n4"})
+            self.assertEqual(entries["n1"]["chars"], 4000)      # journal row kept
+            self.assertEqual(entries["n3"]["status"], "failed")
+            self.assertEqual(entries["n2"]["status"], "ok")
+            journal_now = cr.load_journal(journal)
+            self.assertEqual(journal_now["n2"]["status"], "ok")
+            self.assertEqual(journal_now["n4"]["status"], "ok")
+            manifest = [json.loads(line) for line in
+                        (root / "_manifest.jsonl").read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([row["newsid"] for row in manifest], ["n1", "n2", "n3", "n4"])
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_dry_run_reports_the_journal_skips_and_writes_nothing(self):
+        root = _workdir("dryresume")
+        try:
+            journal = self._journal(root, [
+                {"newsid": "n1", "status": "ok", "chars": 4000, "doc_class": "transcript"},
+                {"newsid": "n3", "status": "failed", "permanent": True},
+            ])
+            before = journal.read_text(encoding="utf-8")
+            calls: list[str] = []
+            fetch = _fake_fetch(lambda url: ("ok", 200, "", _ok_bytes(url)), calls=calls)
+            cands = [_cand(f"n{i}", isin=f"I{i}") for i in range(1, 5)]
+            with _offline_db(), mock.patch.object(cr, "inspect_pdf", _stub_inspect):
+                report = cr.run_pilot(candidates=cands, n=10, root=root,
+                                      probe=root / "probe", fetch=fetch, dry_run=True,
+                                      log=lambda *a: None)
+            self.assertEqual(report["skipped_journal"], 2)
+            self.assertEqual(report["skipped"], 2)          # the two not journalled
+            self.assertEqual(calls, [])                     # no network
+            self.assertEqual(journal.read_text(encoding="utf-8"), before)
+            self.assertFalse((root / "_manifest.jsonl").exists())
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+
+class SeedLogTests(unittest.TestCase):
+    def test_parse_log_rows(self):
+        text = ("Traceback (most recent call last):\n"
+                "[  1/9390] AAA          FY25Q4 ok      bse   transcript     29381c \n"
+                "[3245/9390] TITAN        FY25Q4 ok      bse   transcript     56806c \n"
+                "[   7/9390] ?            None    failed  bse   -                  0c http 404\n")
+        rows = cr.parse_log_rows(text)
+        self.assertEqual([row["index"] for row in rows], [1, 3245, 7])
+        self.assertEqual(rows[0]["symbol"], "AAA")
+        self.assertEqual(rows[0]["quarter"], "FY25Q4")
+        self.assertEqual(rows[0]["doc_class"], "transcript")
+        self.assertEqual(rows[0]["source"], "bse")
+        self.assertEqual(rows[0]["chars"], 29381)
+        self.assertEqual(rows[2]["symbol"], "")
+        self.assertIsNone(rows[2]["doc_class"])
+        self.assertEqual(rows[2]["reason"], "http 404")
+
+    def _row(self, index, symbol, quarter="FY25Q1", status="ok", source="bse",
+             doc_class="transcript", chars=5000, total=3, reason=""):
+        return {"index": index, "total": total, "symbol": symbol, "quarter": quarter,
+                "status": status, "source": None if source == "-" else source,
+                "doc_class": None if doc_class == "-" else doc_class,
+                "chars": chars, "reason": reason}
+
+    def test_seed_keeps_only_ok_rows_with_a_pdf_on_disk(self):
+        root = _workdir("seed")
+        try:
+            picks = [_cand("n1", sha="a" * 64), _cand("n2", sha="b" * 64, symbol="ZZZ"),
+                     _cand("n3", sha=None, symbol="QQQ")]
+            target = cr.pdf_path("a" * 64, root)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"%PDF-1.4 seeded")
+            rows = [self._row(1, "AAA"), self._row(2, "ZZZ"),
+                    self._row(3, "QQQ"), self._row(4, "QQQ", status="failed",
+                                                   doc_class="-", reason="http 404")]
+            entries, counts = cr.seed_entries(rows, picks, root)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+        self.assertEqual([entry["newsid"] for entry in entries], ["n1"])
+        self.assertEqual(counts["ok_rows"], 3)
+        self.assertEqual(counts["seeded"], 1)
+        self.assertEqual(counts["unmapped"], 2)      # no pdf on disk / no recorded sha
+        self.assertEqual(entries[0]["sha256"], "a" * 64)
+        self.assertEqual(entries[0]["bytes"], 15)
+        self.assertEqual(entries[0]["chars"], 5000)
+        self.assertTrue(entries[0]["seeded_from_log"])
+        self.assertTrue(cr.journal_done(entries[0]))
+
+    def test_seed_realigns_when_a_new_announcement_shifted_the_index(self):
+        root = _workdir("seedshift")
+        try:
+            picks = [_cand("n1", sha="a" * 64, symbol="AAA"),
+                     _cand("n2", sha="b" * 64, symbol="ZZZ")]
+            target = cr.pdf_path("b" * 64, root)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"%PDF-1.4 shifted")
+            # The live run's row 1 was ZZZ; today's pick at index 1 is AAA.
+            entries, counts = cr.seed_entries([self._row(1, "ZZZ")], picks, root)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+        self.assertEqual([entry["newsid"] for entry in entries], ["n2"])
+        self.assertEqual(counts["realigned"], 1)
+
+    def test_seed_journal_from_log_writes_the_journal(self):
+        root = _workdir("seedjournal")
+        try:
+            cands = [_cand("n1", sha="a" * 64, symbol="AAA"),
+                     _cand("n2", sha="b" * 64, symbol="ZZZ")]
+            for sha in ("a" * 64, "b" * 64):
+                target = cr.pdf_path(sha, root)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b"%PDF-1.4 " + sha[:1].encode())
+            picks = cr.stratified_sample(cands, 2, seed=1)
+            log_path = root / "run.log"
+            log_path.write_text(
+                "".join(f"[{i:>3}/{len(picks)}] {cand['symbol']:<12} {cand['quarter']} "
+                        f"ok      bse   transcript     5000c \n"
+                        for i, cand in enumerate(picks, 1)), encoding="utf-8")
+            with _offline_db():
+                got = cr.seed_journal_from_log(log_path, candidates=cands, seed=1,
+                                               root=root, log=lambda *a: None)
+            journal = cr.load_journal(cr.journal_path(root, "full"))
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+        self.assertEqual(got["seeded"], 2)
+        self.assertEqual(got["unmapped"], 0)
+        self.assertEqual(sorted(journal), ["n1", "n2"])
+        self.assertEqual(journal["n2"]["status"], "ok")
+        self.assertEqual(journal["n2"]["doc_class"], "transcript")
 
 
 class ReportTests(unittest.TestCase):
