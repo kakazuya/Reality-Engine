@@ -83,6 +83,16 @@ class ConcallTest(unittest.TestCase):
         self.assertEqual(opening[0].speaker_role, "management")
         self.assertIn("section:qa", qa[0].tags)
 
+    def test_unknown_opener_is_management_not_analyst(self):
+        text = ("Richa Chhabra: Thank you all for joining. I would like to request that "
+                "participants limit themselves to two questions.\n"
+                "Analyst 1: Could you comment on the order book?\n"
+                "Anil Kumar: The order book stands at Rs 5,600 crore.\n")
+        chunks = v3.chunk_concall_v3(text, CONCALL_DOC)
+        opening = [c for c in chunks if c.section == "Opening remarks"]
+        self.assertTrue(opening)
+        self.assertEqual(opening[0].speaker_role, "management")
+
     def test_deterministic_tags(self):
         chunks = v3.chunk_concall_v3(concall_text(), CONCALL_DOC)
         tags = set().union(*(c.tags for c in chunks))
@@ -196,6 +206,155 @@ class AnnouncementTest(unittest.TestCase):
         pages = ["AWARD OF ORDER\n" + body + "\nDIVIDEND\n" + body + "\n"]
         chunks = v3.chunk_announcement_v3(pages, dict(CONCALL_DOC, doc_type="announcement"))
         self.assertGreater(len(chunks), 1)
+        for chunk in chunks:
+            self.assertIn(chunk.unit_kind, ("announcement", "announcement_cont"))
+
+
+class SplitLongTest(unittest.TestCase):
+    def test_oversize_note_extends_to_sentence_end(self):
+        # One paragraph longer than MAX_CHARS with no sentence end before the
+        # hard limit: the split must reach the next sentence end within +15%.
+        body = ("word " * 1400)[:6000] + " Sentence ends here. " + ("tail text follows. " * 60)
+        pages = ["Note 5 Segment Information\n" + body + "\n"]
+        chunks = v3.chunk_annual_report_v3(pages, dict(CONCALL_DOC, doc_type="annual_report"))
+        self.assertGreater(len(chunks), 1)
+        first = chunks[0]
+        self.assertTrue(first.body.rstrip().endswith("."), first.body[-80:])
+        self.assertLessEqual(first.char_len, int(v3.MAX_CHARS * 1.15) + 2)
+        rest = chunks[1:]
+        self.assertTrue(rest[0].unit_kind.endswith("_cont"), rest[0].unit_kind)
+        self.assertIn("(cont.)", rest[0].section)
+        self.assertIn("(cont.)", rest[0].header)
+
+
+class ForwardLookingTest(unittest.TestCase):
+    def test_needs_verb_and_anchor(self):
+        self.assertTrue(v3.is_forward_looking(
+            "We expect margins to improve in the next quarter."))
+        self.assertTrue(v3.is_forward_looking("We target a 12 percent margin."))
+        self.assertTrue(v3.is_forward_looking(
+            "The company expects execution to accelerate in the second half."))
+        self.assertFalse(v3.is_forward_looking("We will now take the next question."))
+        self.assertFalse(v3.is_forward_looking("The transcript will also be available."))
+        self.assertFalse(v3.is_forward_looking("We will deliver growth in FY24."))
+        self.assertFalse(v3.is_forward_looking(
+            "Thank you for your guidance over the years; this will be my last call."))
+        self.assertFalse(v3.is_forward_looking(
+            "Revenue for the quarter was Rs 1,234 crore."))
+
+    def test_table_row_is_not_forward_looking(self):
+        row = " ".join(f"{i} {i * 2} {i * 3}" for i in range(8)) + " will next year"
+        self.assertFalse(v3.is_forward_looking(row))
+
+    def test_ordinary_concall_turns_are_not_forward_looking(self):
+        neutral = (
+            "Moderator: Good morning. This call is being recorded.\n"
+            "Analyst 1: Can you comment on the quarter please?\n"
+            "Anil Kumar: Revenue for the quarter was Rs 1,234 crore, up 18 percent. "
+            "Demand in India remains strong across every region.\n"
+        )
+        chunks = v3.chunk_concall_v3(neutral, CONCALL_DOC)
+        self.assertTrue(chunks)
+        for c in chunks:
+            self.assertNotIn("forward_looking", c.tags)
+
+
+class BoundaryRuleTest(unittest.TestCase):
+    def test_bare_date_and_table_cell_are_not_headings(self):
+        from reality_engine.processing import chunker_v2 as v2
+        self.assertFalse(v2._is_heading("31 March 2025"))
+        self.assertFalse(v2._is_heading("31 December 2033"))
+        self.assertFalse(v2._is_heading("ESOPs)"))
+        self.assertTrue(v2._is_heading("MANAGEMENT DISCUSSION AND ANALYSIS"))
+
+    def test_wrapped_line_is_not_a_sentence_end(self):
+        from reality_engine.processing import chunker_v2 as v2
+        self.assertFalse(v2._is_clean_end("abc\ndef", 4, 7))
+        self.assertTrue(v2._is_clean_end("abc.def", 4, 7))
+        self.assertTrue(v2._is_clean_end("ab\n\ncd", 4, 6))
+
+
+class TagPrecisionRulesTest(unittest.TestCase):
+    def tags(self, text, section="", doc_type="annual_report"):
+        return set(v3.deterministic_tags(text, doc_type, section))
+
+    def test_lodr_boilerplate_is_not_regulatory(self):
+        text = ("In terms of the SEBI (Listing Obligations and Disclosure Requirements) "
+                "Regulations, 2015, the company has submitted the disclosure to the exchanges.")
+        self.assertNotIn("regulatory", self.tags(text))
+
+    def test_retirement_benefits_are_not_management_change(self):
+        text = ("The company contributed Rs 12 crore towards retirement benefits and "
+                "gratuity for employees during the year under review.")
+        self.assertNotIn("management_change", self.tags(text))
+        self.assertIn("management_change", self.tags(
+            "The Board appointed a new managing director with effect from 1 October."))
+
+    def test_land_acquired_is_not_ma(self):
+        self.assertNotIn("m_and_a", self.tags(
+            "The company acquired land at Pune for a new plant during the year."))
+        self.assertNotIn("m_and_a", self.tags(
+            "There are some delays on the land acquisition front this year."))
+        self.assertIn("m_and_a", self.tags(
+            "The acquisition of a controlling stake in the subsidiary was completed."))
+
+    def test_pricing_power_is_not_pricing(self):
+        self.assertNotIn("pricing", self.tags(
+            "The business has demonstrated pricing power across cycles."))
+        self.assertIn("pricing", self.tags("The company took a price hike of 5 percent."))
+
+    def test_exchange_rate_is_not_a_usd_amount(self):
+        self.assertNotIn("unit:usd", self.tags("INR to USD 86.61 and EUR/USD 1.16"))
+        self.assertNotIn("unit:usd", self.tags("Argentine Peso / USD 1,073 (all figures in crore)"))
+        self.assertIn("unit:usd", self.tags("The order is worth US$ 100 million."))
+        self.assertIn("unit:usd", self.tags("Revenue was USD 5 billion."))
+
+    def test_award_ceremony_is_not_an_order(self):
+        self.assertNotIn("order_book", self.tags(
+            "Awarded the Safety King of the Year 2025 for excellence in safety."))
+        self.assertIn("order_book", self.tags(
+            "The company has been awarded a contract worth Rs 1,250 crore."))
+
+    def test_contract_resignation_clause_is_not_a_management_change(self):
+        self.assertNotIn("management_change", self.tags(
+            "In case of resignation with good reason, the notice period is one month."))
+        self.assertNotIn("management_change", self.tags(
+            "As per the scheme, the Appointed Date is April 1, 2022."))
+        self.assertIn("management_change", self.tags(
+            "The Chief Financial Officer resigned from the company on 30 September."))
+        self.assertIn("management_change", self.tags(
+            "Diane Enberg Jurgens has been appointed as an Additional Director."))
+
+    def test_note_cross_reference_is_not_an_accounting_note(self):
+        self.assertNotIn("accounting_note", self.tags(
+            "Total income as per Segment (Refer note 19) was 80,489.74."))
+        self.assertIn("accounting_note", self.tags(
+            "Note 4\nProperty, plant and equipment\nParticulars\nLand"))
+
+    def test_ocr_address_is_not_a_percent(self):
+        self.assertNotIn("unit:percent", self.tags(
+            "Corporate Office : 1%t Floor Srivari Shrimat, Coimbatore - 641018"))
+        self.assertIn("unit:percent", self.tags("The EBITDA margin was 18.5%."))
+
+    def test_risk_management_is_not_a_stated_risk(self):
+        self.assertNotIn("risk", self.tags(
+            "ESG, risk management and cybersecurity and other domains."))
+        self.assertIn("risk", self.tags("Contingent liabilities and litigation are disclosed."))
+
+    def test_safe_harbour_is_not_a_stated_risk(self):
+        self.assertNotIn("risk", self.tags(
+            "These statements are subject to risks and uncertainties, and actual "
+            "results may differ materially."))
+        self.assertIn("risk", self.tags("Key risks relating to the business are set out below."))
+
+    def test_mda_prose_mentioning_notes_is_not_a_note(self):
+        text = ("The management notes that demand was strong across every region this year.")
+        self.assertNotIn("section:notes", self.tags(text, "MD&A > Demand"))
+
+    def test_notes_cross_reference_late_in_body_is_not_a_note(self):
+        body = ("The Board is responsible for the assurance of the report. " * 6
+                + "See notes to the consolidated financial statements.")
+        self.assertNotIn("section:notes", self.tags(body, "ASSURE"))
 
 
 class DocumentEntrypointTest(unittest.TestCase):

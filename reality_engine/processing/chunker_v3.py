@@ -89,51 +89,73 @@ TAG_VOCAB: dict[str, tuple[str, str, str, str]] = {
 assert all(len(v) == 4 for v in TAG_VOCAB.values())
 
 _TAG_RULES: tuple[tuple[str, re.Pattern], ...] = (
-    ("order_book", re.compile(r"\b(order book|order inflow|order intake|order backlog|order win|backlog|contract win|won (?:an? )?order|bagged|awarded|letter of award|l1 bidder)\b", re.I)),
+    ("order_book", re.compile(r"\b(order book|order inflow|order intake|order backlog|order win|backlog|contract win|won (?:an? )?order|bagged (?:an? )?(?:order|contract|project)|awarded (?:an? )?(?:order|contract|project|loa)|letter of award|l1 bidder)\b", re.I)),
     ("capacity", re.compile(r"\b(capacity (?:addition|expansion|enhancement|build-?out|creation|utilisation|utilization)|debottleneck\w*|de-bottleneck\w*|new (?:plant|line|facility)|commissioned (?:a|its|the|new|our))\b", re.I)),
     ("capex", re.compile(r"\b(capex|capital expenditure|capital outlay)\b", re.I)),
     ("margin", re.compile(r"\bmargins?\b", re.I)),
-    ("pricing", re.compile(r"\b(price (?:hike|increase|rise|cut|reduction|revision)|realisation|realization|pricing)\b", re.I)),
+    ("pricing", re.compile(r"\b(price (?:hike|increase|rise|cut|reduction|revision)|realisation|realization|pricing(?! power))\b", re.I)),
     ("demand", re.compile(r"\b(demand (?:growth|momentum|outlook|environment|scenario|side|for|in)|consumer demand|export demand|offtake|volume growth)\b", re.I)),
     ("debt", re.compile(r"\b(borrowings?|net debt|debt (?:programme|program|control|reduction|repayment|securities|servicing)|refinanc\w*|interest cost|credit rating|rating action|leverage (?:ratio|profile)|financial leverage)\b", re.I)),
     ("working_capital", re.compile(r"\b(working capital|receivable days|payable days|inventory days|cash conversion|trade receivables)\b", re.I)),
-    ("m_and_a", re.compile(r"\b(acquisition|acquire[sd]?|merger|demerger|stake sale|joint venture|\bJV\b|amalgamation)\b", re.I)),
+    ("m_and_a", re.compile(r"\b(acquisition (?:of|by)|acquired (?:an? )?(?:stake|company|business|majority|control|interest|equity|shares)|merger|demerger|stake sale|joint venture|\bJV\b|amalgamation)\b", re.I)),
     ("regulatory", re.compile(r"\b(licen[cs]e[sd]?|tariff order|show[- ]cause notice|penalty|regulatory action|SEBI (?:notice|order|action|direction|show|bar)|RBI (?:notice|order|bar|penalty|direction|framework)|GST (?:notice|demand|order)|customs (?:duty|notice|order))\b", re.I)),
-    ("management_change", re.compile(r"\b(appointed|appointment of|resign(?:ed|ation)|succession|stepped down|change in (?:management|board|directorship)|retirement of|new (?:CEO|CFO|MD))\b", re.I)),
+    ("management_change", re.compile(r"\b(appointed (?:as|an?|to)|appointment of|resign(?:ed (?:as|from)|ation of)|succession|stepped down|change in (?:management|board|directorship)|retirement of (?:the )?(?:managing director|md|ceo|cfo|director|chairman|company secretary|chief)|new (?:CEO|CFO|MD))\b", re.I)),
     ("dividend_buyback", re.compile(r"\b(dividend|buy-?back|bonus issue|stock split|record date)\b", re.I)),
-    ("risk", re.compile(r"\b(risk (?:factor|management|assessment|exposure)|risks\b|contingent liabilit\w*|litigation|going concern|impairment (?:loss|charge|allowance)|cyber-?security (?:risk|exposure)|loan losses?)\b", re.I)),
-    ("accounting_note", re.compile(r"\b(note \d{1,3}|accounting polic\w*|restat\w*|auditor'?s? qualification)\b", re.I)),
+    ("risk", re.compile(r"\b(risk (?:factor|assessment|exposure)|risks\b|contingent liabilit\w*|litigation|going concern|impairment (?:loss|charge|allowance)|cyber-?security (?:risk|exposure)|loan losses?)\b", re.I)),
+    ("accounting_note", re.compile(r"(?:(?:^|\n)\s*notes? (?:to |\d)|^note \d|accounting polic\w*|restat\w*|auditor'?s? qualification)", re.I|re.M)),
 )
 
 _GUIDANCE_VERB = re.compile(r"\b(guidance|guided|guide to|we expect|expects? to|target(?:ing|s|ed)?|aim(?:s|ing)? to|outlook|we are confident|maintain(?:ing)? (?:our|the))\b", re.I)
 _GUIDANCE_METRIC = re.compile(r"\b(revenue|sales|margin|ebitda|pat|profit|volume|capex|order book|growth|turnover)\b", re.I)
 
-#: Spec §4.4 forward-looking rule, tightened: bare period tokens ("FY25" in a
-#: title) and politeness ("would like to inform") are not forward statements.
+#: Spec §4.4 forward-looking rule, tightened twice.  A bare forward verb fires
+#: on 85% of concall chunks (ordinary "will / expect / should" prose), so the
+#: tag also needs a second, independent signal: a future time anchor or an
+#: explicit target/guidance noun.
 FORWARD_LOOKING = re.compile(
-    r"\b(will|would|expect|expects|expected|guidance|guide|aim|target|plan to|intend|should|likely|"
-    r"next (?:quarter|half|year))\b", re.I)
+    r"\b(will|would|expect|expects|expected|guidance|guide|guided|aim|aims|aiming|target|targets|"
+    r"targeting|plan to|plans to|intend|intends|should|likely|anticipate|anticipates|forecast|"
+    r"outlook|going forward|committed to)\b", re.I)
+FUTURE_ANCHOR = re.compile(
+    r"\b(next (?:quarter|half|year|fiscal|financial year|few quarters|few years|two|three|twelve)|"
+    r"second half|first half|coming (?:quarter|half|year|months|years)|"
+    r"by (?:20\d{2}|FY\d{2,4})|over the next|"
+    r"medium term|long term|guidance|targets?|outlook|"
+    r"(?:full|whole)[ -]year|annual(?:ly)? (?:run[- ]rate|basis))\b", re.I)
 _FORWARD_FALSE_FRIENDS = re.compile(
     r"would like to (?:inform|submit)|will (?:also )?be (?:hosted|available)|should not be used|"
     r"we should look", re.I)
 _NUMERIC = re.compile(r"\d[\d,]*(?:\.\d+)?")
 _UNIT_CROWE = re.compile(r"(?:₹|rs\.?|inr)\s?\d[\d,]*(?:\.\d+)?\s*(?:crore|cr\b)|(?:\d[\d,]*(?:\.\d+)?\s*(?:crore|cr\b))", re.I)
 _UNIT_LAKH = re.compile(r"(?:₹|rs\.?|inr)?\s?\d[\d,]*(?:\.\d+)?\s*lakh", re.I)
-_UNIT_PERCENT = re.compile(r"\d[\d,]*(?:\.\d+)?\s?(?:%|per ?cent|percent)", re.I)
+_UNIT_PERCENT = re.compile(r"\d[\d,]*(?:\.\d+)?\s?(?:%(?!\w)|per ?cent|percent)", re.I)
 _UNIT_BPS = re.compile(r"\d[\d,]*(?:\.\d+)?\s?bps\b", re.I)
-_UNIT_USD = re.compile(r"(?:US\$|USD|\$)\s?[\d,]+", re.I)
+#: An exchange-rate line ("INR to USD 86.61", "Rs./USD 85.47") states no USD
+#: amount; a USD amount carries a magnitude word.
+_UNIT_USD = re.compile(
+    r"(?:US\$|\$)\s?[\d,]+|"
+    r"\bUSD\s?[\d,]+\s?(?:million|billion|mn|bn|crore|lakh|trillion|thousand)\b", re.I)
 
 _MODERATOR = re.compile(r"\b(moderator|host|operator|coordinator)\b", re.I)
 
 _SECTION_TAGS: tuple[tuple[str, re.Pattern], ...] = (
     ("section:mda", re.compile(r"management discussion|md&a|directors' report", re.I)),
     ("section:related_party", re.compile(r"related part", re.I)),
-    ("section:segment", re.compile(r"\bsegment", re.I)),
-    ("section:notes", re.compile(r"notes? to (?:the )?(?:consolidated |standalone )?financial|^note \d|\bnotes?\b", re.I)),
+    ("section:segment", re.compile(r"\bsegment(?:s|al|ary)?\b", re.I)),
+    ("section:notes", re.compile(r"^(?:notes?\b|note \d)", re.I)),
 )
+#: The notes tag is structural: the section must be a note, or the body must
+#: name the notes section.  A passing "notes" in MD&A prose is not a note chunk.
+_NOTES_BODY = re.compile(
+    r"notes? to (?:the )?(?:consolidated |standalone )?(?:financial )?"
+    r"(?:statements|results|accounts)", re.I)
 
 _NOTES_START = re.compile(
     r"notes? to (?:the )?(?:consolidated |standalone )?(?:financial )?(?:results|statements|accounts)", re.I)
+#: Safe-harbour boilerplate ("subject to risks and uncertainties") is explicitly
+#: excluded from the risk tag; strip it before the risk rule reads the body.
+_SAFE_HARBOUR = re.compile(
+    r"subject to (?:various |certain )?risks and uncertainties[^.]*\.?", re.I)
 
 
 # ---------------------------------------------------------------------------
@@ -227,9 +249,26 @@ def unit_tags(text: str) -> list[str]:
 
 
 def is_forward_looking(text: str) -> bool:
-    """Spec §4.4: a forward-looking match, unless it is a pure table row."""
+    """Spec §4.4: a forward verb AND a future/target anchor, unless a table row.
+
+    A bare period token ("FY25" in a title, "we will now take the next
+    question") is not a forward statement.  The target nouns (guidance /
+    target / outlook) are only an anchor when a metric word sits next to them,
+    so "thank you for your guidance over the years" does not fire.
+    """
     text = _FORWARD_FALSE_FRIENDS.sub(" ", text or "")
     if not FORWARD_LOOKING.search(text):
+        return False
+    anchored = False
+    for anchor in FUTURE_ANCHOR.finditer(text):
+        if anchor.group(0).lower() not in ("guidance", "target", "targets", "outlook"):
+            anchored = True
+            break
+        lo, hi = max(0, anchor.start() - 120), min(len(text), anchor.end() + 120)
+        if _GUIDANCE_METRIC.search(text, lo, hi):
+            anchored = True
+            break
+    if not anchored:
         return False
     words = len(text.split())
     return not (n_numbers(text) > 8 and words < 30)
@@ -249,14 +288,17 @@ def deterministic_tags(body: str, doc_type: str, section: str = "", speaker_role
     """Tags the chunk text itself proves. No model, no inference from doc type alone."""
     tags: list[str] = []
     for tag, pattern in _TAG_RULES:
-        if pattern.search(body):
+        haystack = _SAFE_HARBOUR.sub(" ", body) if tag == "risk" else body
+        if pattern.search(haystack):
             tags.append(tag)
     if "guidance" not in tags and has_guidance(body):
         tags.append("guidance")
     if doc_type in ("annual_report", "results_notes"):
         for tag, pattern in _SECTION_TAGS:
-            if pattern.search(section or body[:200]):
+            if pattern.search(section or ""):
                 tags.append(tag)
+        if "section:notes" not in tags and _NOTES_BODY.search(body[:160]):
+            tags.append("section:notes")
     if doc_type == "concall":
         if section == "Opening remarks":
             tags.append("section:opening_remarks")
@@ -430,16 +472,25 @@ def _dominant_role(chunk: v2.Chunk, turns: Sequence[tuple[str, int, int]],
 
     A Q&A pair is one chunk for the question *and* the answer; the answer
     usually holds most of the text, so the pair is management evidence.
+    A name the parser cannot classify defaults to analyst; in the opening
+    remarks that is wrong (the company opens its own call), so it is called
+    management there unless the name itself says analyst.
     """
+    def refine(role: str, name: str) -> str:
+        if role == "analyst" and not _ANALYST_NAME.search(name or "") \
+                and chunk.section == "Opening remarks":
+            return "management"
+        return role
+
     weight: dict[str, int] = {}
     for name, start, end in turns:
         overlap = max(0, min(chunk.span_end, end) - max(chunk.span_start, start))
         if overlap:
             weight[name] = weight.get(name, 0) + overlap
     if not weight:
-        return roles.get(chunk.speaker, "")
+        return refine(roles.get(chunk.speaker, ""), chunk.speaker)
     name = max(weight, key=lambda n: (weight[n], roles.get(n) == "management"))
-    return roles.get(name, "")
+    return refine(roles.get(name, ""), name)
 
 
 def _enrich(chunks: Iterable[v2.Chunk], meta: dict, roles: dict[str, str],
@@ -453,15 +504,21 @@ def _enrich(chunks: Iterable[v2.Chunk], meta: dict, roles: dict[str, str],
         if page_at is not None:
             page = page_at(c.span_start)
         role = _dominant_role(c, turns, roles) if (doc_type == "concall" and turns) else ""
-        tags = deterministic_tags(body, doc_type, c.section, role)
+        # A piece produced by _split_long is a continuation: the section says so
+        # and the header repeats it, so a filter on section never mistakes it
+        # for the start of the note.
+        section = c.section
+        if c.unit_kind.endswith("_cont"):
+            section = f"{section} (cont.)" if section else "Continuation"
+        tags = deterministic_tags(body, doc_type, section, role)
         ents = resolver.resolve(body, exclude_isin=meta.get("isin") or "") if resolver else ()
         out.append(ChunkV3(
             doc_id=c.doc_id, doc_type=doc_type,
             isin=meta.get("isin") or "", symbol_at_time=(meta.get("symbol_at_time") or meta.get("symbol") or "").upper(),
             fiscal_period=meta.get("fiscal_period") or "", known_at=meta.get("known_at") or "",
-            section=c.section, speaker=c.speaker, speaker_role=role,
+            section=section, speaker=c.speaker, speaker_role=role,
             unit_kind=c.unit_kind,
-            header=make_header(meta, c.section, c.speaker, page),
+            header=make_header(meta, section, c.speaker, page),
             body=body, char_len=len(body), page_from=page, page_to=c.page_to or page,
             span_start=c.span_start, span_end=c.span_end,
             n_numbers=n_numbers(body), forward_looking=int(is_forward_looking(body)),
@@ -587,6 +644,10 @@ def chunk_announcement_v3(pages: Sequence[str], doc: dict,
         chunks = v2._finalise(text, [v2._Unit(0, len(text), "announcement", "Announcement")], meta, min_chars=1)
     else:
         chunks = v2.chunk_annual_report(page_list, dict(meta, doc_type="annual_report"))
+        # the annual-report splitter names its units "note"; in an announcement
+        # they are announcement pieces, not notes to accounts
+        chunks = [replace(c, unit_kind=("announcement_cont" if c.unit_kind.endswith("_cont")
+                                        else "announcement")) for c in chunks]
     out = _enrich(chunks, meta, {}, resolver, page_at)
     # a category string is a deterministic tag source too (order win, dividend, ...)
     category = (doc.get("category") or "").lower()

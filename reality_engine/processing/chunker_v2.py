@@ -172,6 +172,15 @@ def _best_cut(text: str, pos: int, limit: int, protected: Sequence[tuple[int, in
     return limit
 
 
+def _is_clean_end(text: str, cut: int, end: int) -> bool:
+    """True when ``cut`` ends a sentence or a paragraph (not a wrapped line)."""
+    if cut >= end:
+        return True
+    if text[cut - 1] in ".!?\"'\u2019)]":
+        return True
+    return text[cut - 1] == "\n" and cut >= 2 and text[cut - 2] == "\n"
+
+
 def _split_long(text: str, unit: _Unit, protected: Sequence[tuple[int, int]]) -> list[_Unit]:
     """Split an oversize unit into near-equal pieces.
 
@@ -179,12 +188,17 @@ def _split_long(text: str, unit: _Unit, protected: Sequence[tuple[int, int]]) ->
     note of 6,100 chars produced a 5,900-char chunk plus a 100-char fragment
     that no neighbour could absorb).  Dividing the length first keeps every
     piece near ``length / n``, so the tail is no smaller than the others.
+
+    When the only boundary inside the window is the hard limit (PyMuPDF text
+    has few line breaks inside a note), the cut extends forward to the next
+    sentence end within +15% of ``MAX_CHARS`` instead of cutting a sentence.
     """
     length = unit.end - unit.start
     if length <= MAX_CHARS:
         return [unit]
     count = max(2, math.ceil(length / MAX_CHARS))
     target = length / count
+    ceiling = int(MAX_CHARS * 1.15)
     pieces: list[_Unit] = []
     pos = unit.start
     for index in range(1, count):
@@ -196,12 +210,21 @@ def _split_long(text: str, unit: _Unit, protected: Sequence[tuple[int, int]]) ->
         cut = _best_cut(text, pos, max(pos + 1, limit), protected)
         if cut <= pos or cut >= unit.end:
             cut = min(unit.end - 1, max(pos + 1, want))
-        cut = min(cut, pos + MAX_CHARS)
+        if not _is_clean_end(text, cut, unit.end) and cut <= pos + MAX_CHARS:
+            # The window found no sentence/line end: take the next sentence end
+            # up to MAX_CHARS + 15% rather than cutting mid-sentence.
+            match = _SENT_BOUNDARY.search(text, cut, min(unit.end, pos + ceiling))
+            if match and not _inside(match.end(), protected):
+                cut = match.end()
+        cut = min(cut, pos + ceiling, unit.end)
         pieces.append(replace(unit, start=pos, end=cut,
                               kind=unit.kind if not pieces else f"{unit.kind}_cont"))
         pos = cut
-    pieces.append(replace(unit, start=pos, end=unit.end,
-                          kind=unit.kind if not pieces else f"{unit.kind}_cont"))
+        if pos >= unit.end:
+            break
+    if pos < unit.end:
+        pieces.append(replace(unit, start=pos, end=unit.end,
+                              kind=unit.kind if not pieces else f"{unit.kind}_cont"))
     return pieces
 
 
@@ -686,6 +709,12 @@ _NOTE_HEADING = re.compile(
     r"notes?\s+to\s+(?:the\s+)?(?:consolidated\s+|standalone\s+)?financial\s+statements"
     r"[^.]{0,40})$", re.I)
 _NUMBERED_HEADING = re.compile(r"^\d{1,2}(?:\.\d{1,2}){0,2}\s+[A-Z][^.]{3,80}$")
+#: A bare date line ("31 March 2025") is a table column header, not a heading;
+#: treating it as one split borrowings notes mid-table in the hand check.
+_DATE_HEADING = re.compile(
+    r"^\d{1,2}(?:st|nd|rd|th)?\s+"
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|"
+    r"aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4}$", re.I)
 _NUMERIC = re.compile(r"\b\d[\d,]*(?:\.\d+)?\b")
 
 
@@ -706,12 +735,14 @@ def _is_heading(line: str) -> bool:
     s = line.strip()
     if not s or len(s) > 90:
         return False
+    if _DATE_HEADING.match(s):
+        return False
     if _NOTE_HEADING.match(s) or _NUMBERED_HEADING.match(s):
         return True
     if s.endswith((".", ",", ";", ":")):
         return False
     letters = sum(ch.isalpha() for ch in s)
-    if letters < 5:
+    if letters < 5 or len(s.split()) < 2:
         return False
     return sum(ch.isupper() for ch in s) / letters >= 0.75
 
