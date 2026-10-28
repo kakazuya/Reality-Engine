@@ -6,7 +6,7 @@ Sources (step 2 of the golden rule):
   - tasks/QUESTION_BANK_300_2026-10-27.jsonl   (10 variations x 30 originals);
   - tasks/QUESTION_BANK_OPEN_2026-10-27.jsonl  (300 open questions, A01-A20);
   - tasks/QUESTION_BANK_RIPPLE_2026-10-28.jsonl (200 ripple questions, R01-R10);
-  - tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl (when it exists).
+  - tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl (200 mined rows).
 
 Read-only over REALITY_DATA_ROOT; writes only under tasks/master_bank/ and .tmp/.
 No network, no commits.
@@ -23,6 +23,7 @@ import os
 import re
 import sys
 from collections import Counter, defaultdict
+from itertools import combinations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,6 +70,34 @@ ORIG_IDS = ([f"DBQ{i}" for i in range(1, 6)] + [f"QA{i}" for i in range(1, 11)]
 RIPPLE_FAMILY = {"R01": [16], "R02": [18], "R03": [16], "R04": [16, 19],
                  "R05": [19], "R06": [3], "R07": [12], "R08": [16],
                  "R09": [11], "R10": [9]}
+# The Reddit bank declares a template family ("3", "14") for most rows, but 85
+# rows carry a NEW:* family because no template family fits (their own report:
+# "NEW:* means no template family fits; the name is the gap we would have to
+# add"). Map each NEW:* archetype to the closest template family, the same way
+# RIPPLE_FAMILY maps R01-R10; every mapped row records
+# family_source="pattern". entry_timing and hold_sell are retail *opinion*
+# questions ("is this a good level", "should I hold or sell") -> family 10,
+# opinion vs truth. The technical quarter is split between price history
+# (family 3, change over time) and a dated event window (family 9): a breakout,
+# gap, OI build-up or delivery spike is asked around one session, support /
+# moving average / RSI / 52-week / relative strength / PCR are asked across
+# sessions.
+REDDIT_FAMILY = {
+    "ta_support_resistance": [3], "ta_breakout_volume": [9], "ta_ma_cross": [3],
+    "ta_rsi_setup": [3], "ta_52week": [3], "ta_gap": [9],
+    "ta_relative_strength": [3], "ta_oi_buildup": [9], "ta_pcr_maxpain": [3],
+    "ta_delivery_spike": [9],
+    "entry_timing": [10], "hold_sell": [10],
+    "group_basket": [8], "ipo_grey_listing": [9],
+    "corporate_action_aftermath": [12], "sebi_rule": [6], "circuit_band": [12],
+}
+# A NEW:* family whose archetype is not in the table has no template family at
+# all by definition -> family 20 (out-of-scope and bizarre), never empty.
+REDDIT_FAMILY_DEFAULT = 20
+# A declared V3/V4/V5/V9 row is a deliberate naming (old symbol / ISIN) or
+# style (terse / long-Hinglish / as-of) variant: the brief keeps those as
+# separate cases, because they are the robustness tests, not duplicates.
+VARIANT_DIMS = {"V3", "V4", "V5", "V9"}
 # The previous (scalar, first-family-only) mapping and stock default, kept only
 # for the before/after table in the build output.
 OLD_RIPPLE_FAMILY = {"R01": 16, "R02": 18, "R03": 16, "R04": 18, "R05": 17,
@@ -868,17 +897,22 @@ def load_ripple200() -> list[dict]:
 
 
 def load_reddit(path: Path) -> list[dict]:
-    """Tolerant loader: the Reddit bank does not exist yet, so accept the common aliases."""
+    """Load the mined Reddit bank; `family` may be a number or a NEW:* name."""
     recs = []
     for idx, r in enumerate(read_jsonl(path), 1):
         question = (r.get("question") or r.get("prompt") or r.get("text")
                     or r.get("query") or "")
         qid = str(r.get("qid") or r.get("id") or r.get("source_qid") or f"RDD{idx:03d}")
-        families = families_of(r.get("family"))
+        declared = r.get("family")
+        families = families_of(declared)
         entities = norm_entities(r.get("entities"))
         level = r.get("entity_level") or r.get("level")
         archetype = r.get("archetype") or r.get("topic") or r.get("category")
         archetype = str(archetype).split(" ", 1)[0] if archetype else None
+        family_source = "bank"
+        if not families:
+            families = list(REDDIT_FAMILY.get(str(archetype), [REDDIT_FAMILY_DEFAULT]))
+            family_source = "pattern"
         rubric = norm_rubric(r.get("rubric"))
         if rubric is None and isinstance(r.get("rubric"), str):
             rubric = norm_rubric({"required_evidence": r["rubric"]})
@@ -897,7 +931,7 @@ def load_reddit(path: Path) -> list[dict]:
             "entities": entities,
             "entity_level": level or None,
             "entity_level_source": "given" if level else None,
-            "family": families, "family_source": "bank", "variation": None,
+            "family": families, "family_source": family_source, "variation": None,
             "archetype": archetype, "template": archetype or "reddit",
             "period": r.get("period"), "as_of": r.get("as_of"),
             "answer_kind": r.get("answer_kind") or r.get("kind"),
@@ -908,6 +942,7 @@ def load_reddit(path: Path) -> list[dict]:
             "regression": False,
             "_needs": None, "_scope": r.get("scope") or "", "_policy_title": None,
             "_subject": "", "_template_explicit": False,
+            "_family_declared": declared,
             "_gaps": sorted(set(text_gap_ids(cov.get("gap")) + [
                 GAP_ALIASES.get(h.get("gap_key"), h.get("gap_key"))
                 for h in (r.get("chain") or [])
@@ -943,6 +978,35 @@ def case_key(rec: dict) -> tuple:
             bool(rec.get("naming")), bool(rec.get("edge")), evidence_shape(rec))
 
 
+def cross_bank_case_key(rec: dict) -> tuple:
+    """Case identity minus the subject label, which banks fill from different fields."""
+    return (rec.get("template") or "", rec.get("entity_level"), period_key(rec),
+            rec.get("style"), bool(rec.get("naming")), bool(rec.get("edge")),
+            evidence_shape(rec))
+
+
+def _subject_tokens(rec: dict) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", subject_key(rec).split(":", 1)[-1].lower()))
+
+
+def subjects_compatible(a: dict, b: dict) -> bool:
+    """The same subject written at different lengths; unknown labels never block."""
+    ta, tb = _subject_tokens(a), _subject_tokens(b)
+    return not ta or not tb or ta <= tb or tb <= ta
+
+
+def cross_bank_same_case(a: dict, b: dict) -> bool:
+    if cross_bank_case_key(a) != cross_bank_case_key(b):
+        return False
+    if a.get("entity_level") == "stock":
+        return subject_key(a) == subject_key(b)
+    return subjects_compatible(a, b)
+
+
+def is_wording_variant(rec: dict) -> bool:
+    return rec.get("variation") in VARIANT_DIMS
+
+
 def rubric_score(rec: dict) -> tuple:
     rub = rec.get("rubric") or {}
     filled = sum(1 for k in ("required_evidence", "required_steps", "forbidden",
@@ -966,6 +1030,32 @@ def dedupe(records: list[dict]) -> list[dict]:
     for idxs in buckets.values():
         for a in range(len(idxs)):
             for b in range(a + 1, len(idxs)):
+                if jaccard(toks[idxs[a]], toks[idxs[b]]) >= 0.80:
+                    dsu.union(idxs[a], idxs[b])
+
+    # layer 1b: the same near-duplicate layer across banks. Layer 1 includes the
+    # subject in its bucket, so it can never merge the same case written with a
+    # different subject label: the originals take the theme label, the
+    # variations take the policy title, and the Reddit/open banks carry no
+    # scope at all. Compare only pairs from different banks, with the same
+    # template, level, period label, style, naming/edge dimension and evidence
+    # shape; a stock-level pair must still share the entity key, and a
+    # non-stock pair must name the same subject. A declared naming/style variant
+    # stays separate (the brief's robustness exemption), and inside one bank
+    # such a pair is a deliberate variation, not a duplicate.
+    cross = defaultdict(list)
+    for i, r in enumerate(records):
+        cross[cross_bank_case_key(r)].append(i)
+    for idxs in cross.values():
+        for a in range(len(idxs)):
+            for b in range(a + 1, len(idxs)):
+                ra, rb = records[idxs[a]], records[idxs[b]]
+                if ra["source_bank"] == rb["source_bank"]:
+                    continue
+                if is_wording_variant(ra) or is_wording_variant(rb):
+                    continue
+                if not cross_bank_same_case(ra, rb):
+                    continue
                 if jaccard(toks[idxs[a]], toks[idxs[b]]) >= 0.80:
                     dsu.union(idxs[a], idxs[b])
 
@@ -1023,13 +1113,14 @@ def dedupe(records: list[dict]) -> list[dict]:
 # coverage matrix
 # --------------------------------------------------------------------------- #
 def coverage_matrix(cases: list[dict]) -> dict:
+    """Each (case, family) pair is counted exactly once; 6c proves no case is empty."""
     cells = Counter()
     styles = Counter()
     style_cells = Counter()
     for c in cases:
         level = c.get("entity_level") or "unknown"
         style = c.get("style")
-        for fam in (c.get("family") or [None]):
+        for fam in (c.get("family") or []):
             cells[(fam, level)] += 1
             styles[(fam, style)] += 1
             style_cells[(fam, level, style)] += 1
@@ -1389,11 +1480,11 @@ def write_master_md(cases, matrix, stats, path):
         f"Unique cases: **{len(cases)}**. Originals kept: "
         f"**{stats['total_regression']}**. Duplicate rows merged: "
         f"**{stats['total_rows'] - len(cases)}**."
-        + (" No two rows are the same case once the naming / style / edge / period-label "
-           "separations are applied: no two source banks share an entity+period at all, "
-           "and inside a bank the ten variations deliberately change the entity, the "
-           "wording dimension or the period label. The dedupe still runs on every build; "
-           "the fake Reddit check proves it merges when a real duplicate appears."
+        + (" No two rows merge in the current banks: every case below is distinct "
+           "once the naming / style / edge / period-label separations are applied. "
+           "The near-duplicate layers still run on every build (`--check` §10 prints "
+           "the closest cross-bank pairs and the exemption decisions); the fake "
+           "Reddit check proves they merge when a real duplicate appears."
            if stats["total_rows"] == len(cases) else ""),
         "",
         "## 2. How the merge works",
@@ -1421,6 +1512,17 @@ def write_master_md(cases, matrix, stats, path):
         "token Jaccard >= 0.80, and only between rows with the same entity, period, "
         "primary family, style and naming/edge dimension. A templated question on a "
         "different company is a different case and is never merged.",
+        "- Layer 1b, the same near-duplicate text across banks: each bank fills the "
+        "free-text subject from a different field (the originals use the theme label, "
+        "the variations the policy title, the Reddit/open banks nothing), so the same "
+        "case can carry two subject strings. Pairs from different banks merge at "
+        "Jaccard >= 0.80 when the template, level, period label, style, naming/edge "
+        "dimension and evidence shape agree; a stock-level pair must still share the "
+        "entity key, and a non-stock pair must name the same subject (one bank's label "
+        "may just be a longer form of the other's). A row that declares a V3/V4/V5/V9 "
+        "naming or style variant stays its own case even then (the brief's robustness "
+        "exemption); inside one bank such a pair is a deliberate variation, not a "
+        "duplicate.",
         "- Layer 2, same case: same template + entity level + evidence shape + entity + "
         "period, even with different wording. Banks without an explicit template id "
         "(open, ripple) also need 0.50 wording similarity to confirm it is the same "
@@ -1440,6 +1542,17 @@ def write_master_md(cases, matrix, stats, path):
         "entities; R02/R06/R09 fix the scope by construction (policy cascade, "
         "capital-markets loop, leading-indicator series), and R10 is the specific "
         "company event.",
+        "- Reddit rows declare a template family for 115 rows; the other 85 carry a "
+        "`NEW:*` family because no template family fits (the bank's own report says "
+        "so). Each `NEW:*` row is mapped from its archetype - the same rule the "
+        "ripple map uses - and recorded as `family_source=\"pattern\"`: technical "
+        "price state -> 3 (change over time), a breakout / gap / OI build-up / "
+        "delivery spike -> 9 (event window), `group_basket` -> 8 (peers), "
+        "`ipo_grey_listing` -> 9, `sebi_rule` -> 6 (policy -> companies), "
+        "`corporate_action_aftermath` / `circuit_band` -> 12 (when / timeline), "
+        "`entry_timing` / `hold_sell` -> 10 (opinion vs truth). An unknown "
+        f"`NEW:*` archetype falls back to family {REDDIT_FAMILY_DEFAULT} "
+        "(out-of-scope); no case is left without a family.",
         "",
         "## 3. Coverage matrix",
         "",
@@ -1467,8 +1580,11 @@ def write_master_md(cases, matrix, stats, path):
         "",
         "A case with more than one family counts in every family it lists, so the "
         "totals are (case x family) pairs and exceed the number of cases "
-        f"({len(cases)}). Family 10 has zero source rows in every bank; the "
-        "per-family table in §4 shows the empty family explicitly.",
+        f"({len(cases)}). Family 10 (opinion vs truth) is "
+        + (f"non-empty: {totals.get(10, 0)} case x family pairs, mapped from the "
+           "Reddit `entry_timing` and `hold_sell` archetypes." if totals.get(10)
+           else "empty in every source bank, so the per-family table in §4 shows "
+                "the empty family explicitly."),
         "",
         "### 3.2 family x style",
         "",
@@ -1905,8 +2021,11 @@ def check(result: dict, fake_reddit: Path) -> bool:
     reg = sorted(c["source_qid"] for c in cases if c.get("regression"))
     req(reg == sorted(ORIG_IDS), "2. all 30 originals present as regressions",
         f"{len(reg)}/30" if reg == sorted(ORIG_IDS) else f"got {len(reg)}: {reg[:6]}")
-    req(all(not c["duplicates"] for c in cases if c.get("regression")),
-        "2b. originals are representatives, never merged away")
+    merged_away = [d["source_qid"] for c in cases for d in c["duplicates"]
+                   if d["source_bank"] == "shivam30"]
+    req(not merged_away, "2b. originals are representatives, never merged away",
+        f"merged away: {merged_away}" if merged_away
+        else "all 30 originals are representatives (none listed as a duplicate)")
 
     # 3. outputs
     for name, marker in (("MASTER_BANK.jsonl", '"mid"'),
@@ -1937,8 +2056,14 @@ def check(result: dict, fake_reddit: Path) -> bool:
     req(len(fake_rows) == 5 and all(
         fake_map.get((r["source_bank"], r["source_qid"])) for r in fake_rows),
         "4b. every fake Reddit row is mapped", f"{len(fake_rows)} rows")
-    req(not any(c["source_bank"] == "reddit200" for c in cases),
-        "4c. the real build does not contain the fake rows")
+    fake_qids = {r["source_qid"] for r in fake_rows}
+    real_qids = {r["source_qid"] for r in records if r["source_bank"] == "reddit200"}
+    leaked = sorted(fake_qids & real_qids)
+    under_tmp = ".tmp" in fake_reddit.parts
+    req(under_tmp and stats["reddit_present"] and bool(real_qids) and not leaked,
+        "4c. the real build loads the real Reddit file, never the fake rows",
+        f"fake bank under .tmp={under_tmp}; real Reddit rows {len(real_qids)}; "
+        f"fake qids {sorted(fake_qids)}; leaked {leaked or 0}")
 
     # 5. registries
     req(stats["n_g"] == 13, "5. G0-G12 parsed", f"{stats['n_g']} gaps")
@@ -2003,6 +2128,15 @@ def check(result: dict, fake_reddit: Path) -> bool:
     req(not bad_ripple, "8. every ripple row carries its archetype family",
         f"bad: {bad_ripple[:5]}" if bad_ripple else f"mapping: {RIPPLE_FAMILY}")
 
+    # 8b. Reddit NEW:* families (no template family in the source bank)
+    new_rows = [r for r in records if r["source_bank"] == "reddit200"
+                and str(r.get("_family_declared") or "").upper().startswith("NEW:")]
+    req(new_rows and all(r.get("family") and r.get("family_source") == "pattern"
+                         for r in new_rows),
+        "8b. every Reddit NEW:* family maps to a template family",
+        f"{len(new_rows)} rows; mapping: {REDDIT_FAMILY} "
+        f"(default {REDDIT_FAMILY_DEFAULT})")
+
     # 9. 30-row hand check
     by_key = {(c["source_bank"], c["source_qid"]): c for c in cases}
     checked = []
@@ -2020,6 +2154,56 @@ def check(result: dict, fake_reddit: Path) -> bool:
         f"{len(checked)} rows")
     req(correct / len(checked) >= 0.90, "9b. hand check at least 90% accurate",
         f"{correct}/{len(checked)} = {correct / len(checked):.1%}")
+
+    # 10. the near-duplicate and same-case layers run across banks
+    toks = [norm_words(r["question"]) for r in records]
+    pairs = sorted(((jaccard(toks[i], toks[j]), i, j)
+                    for i, j in combinations(range(len(records)), 2)
+                    if records[i]["source_bank"] != records[j]["source_bank"]),
+                   reverse=True)
+    mid_of = {key: c["mid"] for c in cases
+              for key in [(c["source_bank"], c["source_qid"])]
+              + [(d["source_bank"], d["source_qid"]) for d in c["duplicates"]]}
+    near = [(s, a, b) for s, a, b in pairs
+            if s >= 0.80 and cross_bank_same_case(records[a], records[b])]
+    exempt = [(s, a, b) for s, a, b in near
+              if is_wording_variant(records[a]) or is_wording_variant(records[b])]
+    exempt_ids = {(a, b) for _s, a, b in exempt}
+    unmerged = [(s, a, b) for s, a, b in near if (a, b) not in exempt_ids
+                and mid_of[(records[a]["source_bank"], records[a]["source_qid"])]
+                != mid_of[(records[b]["source_bank"], records[b]["source_qid"])]]
+    merged = [c for c in cases if len(c["source_banks"]) > 1]
+    req(not unmerged,
+        "10. near-duplicate layer merges every genuine cross-bank duplicate",
+        f"{len(pairs)} cross-bank pairs; {len(near)} same-case at Jaccard >= 0.80; "
+        f"{len(exempt)} exempt as a declared naming/style variant; "
+        f"{len(merged)} merged case(s)")
+    for score, a, b in exempt:
+        print(f"      exempt naming/style variant: {score:.3f}  "
+              f"{records[a]['source_bank']}:{records[a]['source_qid']} "
+              f"({records[a]['variation']}) vs {records[b]['source_bank']}:"
+              f"{records[b]['source_qid']}")
+    print("      top 10 closest cross-bank pairs (token Jaccard):")
+    for score, i, j in pairs[:10]:
+        a, b = records[i], records[j]
+        print(f"      {score:.3f}  {a['source_bank']}:{a['source_qid']} vs "
+              f"{b['source_bank']}:{b['source_qid']}")
+    grp = defaultdict(list)
+    for i, r in enumerate(records):
+        grp[case_key(r)].append(i)
+    cross_case = [v for v in grp.values()
+                  if len({records[i]["source_bank"] for i in v}) > 1]
+    reddit_pairs = [(s, a, b) for s, a, b in pairs
+                    if "reddit200" in (records[a]["source_bank"],
+                                       records[b]["source_bank"])]
+    print(f"      same-case groups spanning more than one bank (layer 2): "
+          f"{len(cross_case)}")
+    if reddit_pairs:
+        score, a, b = reddit_pairs[0]
+        print(f"      closest Reddit vs another bank: {score:.3f}  "
+              f"{records[a]['source_bank']}:{records[a]['source_qid']} vs "
+              f"{records[b]['source_bank']}:{records[b]['source_qid']}")
+
     print()
     print(f"{'OK' if ok else 'FAILED'}: {len(records)} source rows -> {len(cases)} "
           f"master cases, {stats['total_regression']} regressions, "
@@ -2044,8 +2228,8 @@ def main(argv=None) -> int:
     print(f"wrote {OUT / 'MASTER_BANK.md'}")
     print(f"wrote {OUT / 'GAP_ROLLUP.md'}")
     if result.get("before_cells") is not None:
-        _print_matrix("BEFORE (scalar family + ripple inferred level):",
-                      result["before_cells"])
+        _print_matrix("BEFORE (primary family only; Reddit NEW:* already mapped; "
+                      "ripple inferred level):", result["before_cells"])
     _print_matrix("AFTER (family list; a row counts in every family it lists):",
                   result["matrix"]["cells"])
     thin, n_thin = _thin_after(result["matrix"]["cells"])
