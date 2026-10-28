@@ -1,0 +1,15 @@
+{
+ "docs": 141,
+ "docs_no_file": 18,
+ "docs_scanned": 0,
+ "chunks": 10860,
+ "by_type": {
+  "annual_report": 24,
+  "concall": 45,
+  "deck": 50,
+  "announcement": 22
+ },
+ "elapsed_s": 374.8,
+ "db_bytes": 58073088,
+ "known_at_mismatches": 0
+}

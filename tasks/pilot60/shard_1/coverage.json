@@ -1,0 +1,3758 @@
+{
+ "generated_at": "2026-10-29T00:42:11",
+ "cutoff": "2024-04-01",
+ "by_isin": {
+  "INE009A01021": {
+   "annual_report": {
+    "expected": 5,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "43773",
+      "date": "2026-05-29",
+      "title": "INFY AR 2026-03-31"
+     },
+     {
+      "ref": "43774",
+      "date": "2025-06-02",
+      "title": "INFY AR 2025-03-31"
+     },
+     {
+      "ref": "43775",
+      "date": "2024-06-03",
+      "title": "INFY AR 2024-03-31"
+     },
+     {
+      "ref": "121629",
+      "date": "2026-05-30",
+      "title": "INFY AR 2026-03-31"
+     }
+    ],
+    "missing_count": 4
+   },
+   "concall": {
+    "expected": 11,
+    "found": 3,
+    "missing": [
+     {
+      "ref": "43789",
+      "date": "2026-02-24",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "43791",
+      "date": "2026-01-19",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "43792",
+      "date": "2025-10-21",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "43793",
+      "date": "2025-07-28",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "43795",
+      "date": "2025-04-22",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "43796",
+      "date": "2025-01-21",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "43797",
+      "date": "2024-10-22",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "43798",
+      "date": "2024-07-23",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "43799",
+      "date": "2024-04-23",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 9
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE019A01038": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "47614",
+      "date": "2025-07-03",
+      "title": "JSWSTEEL AR 2025-03-31"
+     },
+     {
+      "ref": "47615",
+      "date": "2024-07-04",
+      "title": "JSWSTEEL AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "116384",
+      "date": "2024-10-31",
+      "title": "Transcripts of the Q2FY25 Earnings Conference Call conducted after the meeting of Board of Directors - Disclosure under Regulation 30(6) read with Schedule III of the Securities Exchange ...."
+     },
+     {
+      "ref": "116385",
+      "date": "2024-07-25",
+      "title": "Transcripts of the Q1FY2025 Earnings Conference Call conducted after the Board Meeting"
+     },
+     {
+      "ref": "116386",
+      "date": "2024-05-23",
+      "title": "Transcripts of the Q4 FY24 Earnings Conference Call conducted after the meeting of Board of Directors ."
+     },
+     {
+      "ref": "116392",
+      "date": "2025-10-27",
+      "title": "Transcripts of the Q2FY26 Earnings Conference Call conducted after the meeting of Board of Directors"
+     },
+     {
+      "ref": "116393",
+      "date": "2025-07-25",
+      "title": "Transcripts of the Q1FY26 Earnings Conference Call conducted after the meeting of Board of Directors."
+     },
+     {
+      "ref": "116394",
+      "date": "2025-05-29",
+      "title": "Transcripts of the Q4FY25 Earnings Conference Call conducted after the meeting of Board of Directors - Disclosure under Regulation 30(6) read with Schedule III of the Securities Exchange ...."
+     },
+     {
+      "ref": "116395",
+      "date": "2025-01-30",
+      "title": "Transcripts of the Q3FY25 Earnings Conference Call conducted after the meeting of Board of Directors ."
+     },
+     {
+      "ref": "116402",
+      "date": "2026-05-20",
+      "title": "Transcripts of the Q4FY26 Earnings Conference Call conducted after the meeting of Board of Directors."
+     },
+     {
+      "ref": "116403",
+      "date": "2026-01-30",
+      "title": "Transcripts of the Q3FY26 Earnings Conference Call conducted after the meeting of Board of Directors ."
+     }
+    ],
+    "missing_count": 9
+   },
+   "deck": {
+    "expected": 18,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "82a2acb5-c4bc-41fd-9664-207e312ebde3",
+      "date": "2024-05-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "91505dcb-8b46-4760-9bfc-d4184e3909dd",
+      "date": "2024-07-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3bae019a-7741-46b7-bb39-cf7f116f25cc",
+      "date": "2024-08-21",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "27be31fc-819a-4ba0-8787-55cba5b29482",
+      "date": "2024-10-25",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "0f957fbf-42bb-45fa-8feb-7e7d314fcbfa",
+      "date": "2024-11-18",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "6959d1be-a471-4ea0-a915-2556e4bbd1af",
+      "date": "2025-01-24",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "cd2a67b1-3ba2-4012-a1a3-5a8145ae7c69",
+      "date": "2025-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "1141fe7f-1f24-43b4-9ccf-a5452780d6b5",
+      "date": "2025-05-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "b55b2c6e-dd98-47ae-8d9a-1a02a1cd1e00",
+      "date": "2025-07-18",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "14fadf65-e7cb-4823-8f8c-16f9dafea42d",
+      "date": "2025-08-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "908c1f53-6fcf-4de9-8354-de7a49b6c196",
+      "date": "2025-10-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "f0f96fc2-7570-436a-923d-cef8d06b9eae",
+      "date": "2026-01-23",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     },
+     {
+      "ref": "6cd1f26f-709a-44e0-b0e1-97a087da519e",
+      "date": "2026-02-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "4aae55f4-36a6-450d-9b78-a92d8eb7bdcf",
+      "date": "2026-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "0f3b6144-4995-43e4-a10e-53b8c4bd1fe6",
+      "date": "2026-06-04",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "27256011-ff21-4b8d-bdde-940e46f68915",
+      "date": "2026-07-17",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     }
+    ],
+    "missing_count": 16
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE030A01027": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "39621",
+      "date": "2025-05-29",
+      "title": "HINDUNILVR AR 2025-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "39636",
+      "date": "2026-02-19",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39638",
+      "date": "2025-10-29",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39640",
+      "date": "2025-08-07",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39642",
+      "date": "2025-04-30",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39644",
+      "date": "2025-01-29",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39647",
+      "date": "2024-10-29",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39649",
+      "date": "2024-07-29",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39651",
+      "date": "2024-04-30",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 12,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "bab46568-7881-4af5-bf67-0899b1ecab0c",
+      "date": "2024-04-24",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "6e50da11-eeae-45b4-81b6-12f8d52209d7",
+      "date": "2024-07-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "9d7604f1-cf23-4664-88a3-313764fd90ad",
+      "date": "2024-10-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "2e0ef1df-d4c0-4e6f-8687-56f734471996",
+      "date": "2024-11-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "afa4fc98-8800-4909-b397-d77551d9a67e",
+      "date": "2025-01-22",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "71fc493c-0d79-493a-983e-4d65277952ca",
+      "date": "2025-04-24",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e4261b58-6404-44a6-9d28-f3cf3005abcd",
+      "date": "2025-07-31",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "cb65e094-0adf-4a09-a711-72c15fb8e9d5",
+      "date": "2025-10-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "577db170-0d2f-4aa2-ba54-4c2cc52bc1eb",
+      "date": "2026-02-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "197586a5-37ca-4aee-9d14-eb362d07c6b4",
+      "date": "2026-07-28",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 10
+   },
+   "results_notes": {
+    "expected": 2,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "2692",
+      "date": "2026-07-28",
+      "title": "Results For The Quarter Ended 30Th June, 2026 Is Enclosed"
+     },
+     {
+      "ref": "39618",
+      "date": "2026-07-31",
+      "title": "FINANCIAL_RESULT"
+     }
+    ],
+    "missing_count": 2
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE040H01021": {
+   "annual_report": {
+    "expected": 4,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "84833",
+      "date": "2026-08-20",
+      "title": "SUZLON AR 2026-03-31"
+     },
+     {
+      "ref": "84835",
+      "date": "2026-08-15",
+      "title": "SUZLON AR 2026-03-31"
+     },
+     {
+      "ref": "84836",
+      "date": "2024-08-14",
+      "title": "SUZLON AR 2024-03-31"
+     }
+    ],
+    "missing_count": 3
+   },
+   "concall": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "84851",
+      "date": "2026-02-12",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "84853",
+      "date": "2025-11-11",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "84854",
+      "date": "2025-08-20",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "84855",
+      "date": "2025-06-05",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "84856",
+      "date": "2025-02-03",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "84857",
+      "date": "2024-11-01",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "84858",
+      "date": "2024-07-30",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "84860",
+      "date": "2024-06-11",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "84861",
+      "date": "2024-05-31",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 9
+   },
+   "deck": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE053A01029": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "42534",
+      "date": "2025-06-13",
+      "title": "INDHOTEL AR 2025-03-31"
+     },
+     {
+      "ref": "42535",
+      "date": "2024-05-23",
+      "title": "INDHOTEL AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "42552",
+      "date": "2026-02-19",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "42558",
+      "date": "2025-08-18",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "42561",
+      "date": "2025-07-23",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "42564",
+      "date": "2025-05-12",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "42567",
+      "date": "2025-01-23",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "42571",
+      "date": "2024-11-13",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "42575",
+      "date": "2024-07-23",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "42578",
+      "date": "2024-04-30",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "116363",
+      "date": "2025-11-10",
+      "title": "Pursuant to Regulation 30 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, please find enclosed the transcript of the IHCL Earnings Call for the quarter/half ...."
+     }
+    ],
+    "missing_count": 9
+   },
+   "deck": {
+    "expected": 25,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "3fe47f08-ebcd-48e4-b179-1dbe17d2ed84",
+      "date": "2024-04-24",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "7513cbd5-55ee-43ed-a8d6-a48e2b27101d",
+      "date": "2024-06-13",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d03aa592-3788-46f7-9ae0-ea18a95cf9be",
+      "date": "2024-07-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "37086c9b-a6df-44c3-8ad4-f3416c7012ad",
+      "date": "2024-09-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ce2d3d9b-da52-4191-8d67-2343bb726e76",
+      "date": "2024-11-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "9210108e-b25b-42e0-898e-e3187b43f8d8",
+      "date": "2024-11-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "28024b98-37e1-42fd-811a-dab5cb470dfe",
+      "date": "2024-12-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "1d578f66-60cc-4d72-90ae-d3b30e187c2b",
+      "date": "2025-01-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "2859a0e4-f7d2-4d15-a8ca-9aa0ca118ef4",
+      "date": "2025-02-18",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "872e7e36-9758-4bc4-8923-ea26e22d0eaa",
+      "date": "2025-05-05",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "55c19988-1d63-4816-8016-46b7434df1b0",
+      "date": "2025-06-03",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3ea2c90c-3399-4561-8761-96dee3a42417",
+      "date": "2025-07-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c62b97ff-5c70-46f9-97fe-567f1cbd3b98",
+      "date": "2025-08-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ee74cb2a-7793-48e3-97d3-f02eca90f790",
+      "date": "2025-08-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "49c5852b-687e-4f00-bd6b-fea763896b2a",
+      "date": "2025-09-02",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "8bcb6097-1055-476d-9824-64e99c6ae018",
+      "date": "2025-09-16",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "518c0512-c2ba-49b7-a9ad-a16b0ebd7ac7",
+      "date": "2025-11-04",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c16860de-864d-4a9d-80a6-44b83ea513e8",
+      "date": "2025-11-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d75c4db6-fd9d-4c55-ad61-477d2cf226a2",
+      "date": "2026-01-15",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "a3ebb978-cf58-4eab-8f68-186021d95619",
+      "date": "2026-02-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "b76590fe-e7eb-4d18-b6a2-f74f6adb61db",
+      "date": "2026-05-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "13ee5889-67b7-47d0-b8a5-2198fa2b2219",
+      "date": "2026-07-21",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c186f4d4-6abc-4a29-8f37-28f5049de8a9",
+      "date": "2026-08-24",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 23
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "2856",
+      "date": "2026-07-21",
+      "title": "Board Meeting Outcome for Board Meeting Outcome For Financial Results For The Quarter Ended June 30,2026."
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE070C01037": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "22034",
+      "date": "2025-02-14",
+      "title": "COMPINFO AR 2024-03-31"
+     },
+     {
+      "ref": "22035",
+      "date": "2025-02-14",
+      "title": "COMPINFO AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE094A01015": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "39593",
+      "date": "2025-07-28",
+      "title": "HINDPETRO AR 2025-03-31"
+     },
+     {
+      "ref": "39594",
+      "date": "2024-07-27",
+      "title": "HINDPETRO AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "116708",
+      "date": "2024-10-30",
+      "title": "Transcript - Conference Call"
+     },
+     {
+      "ref": "116709",
+      "date": "2024-08-05",
+      "title": "Transcript- Conference Call"
+     },
+     {
+      "ref": "116710",
+      "date": "2024-05-17",
+      "title": "Transcript- Conference Call"
+     },
+     {
+      "ref": "116712",
+      "date": "2025-11-05",
+      "title": "Transcript- Conference Call"
+     },
+     {
+      "ref": "116713",
+      "date": "2025-08-12",
+      "title": "Transcript- Conference Call"
+     },
+     {
+      "ref": "116714",
+      "date": "2025-05-09",
+      "title": "Transcript- Conference Call"
+     },
+     {
+      "ref": "116715",
+      "date": "2025-01-28",
+      "title": "Transcript - Conference Call"
+     },
+     {
+      "ref": "116718",
+      "date": "2026-01-28",
+      "title": "Transcript- Conference Call"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "7592cdbb-fe23-4391-bca9-a4cad486a24a",
+      "date": "2024-07-30",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     },
+     {
+      "ref": "37b41a69-2964-4894-ac23-70e1525ff56e",
+      "date": "2024-10-25",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     },
+     {
+      "ref": "a302a7e0-d382-437d-be0f-9cda618020e9",
+      "date": "2025-01-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d4758b43-07d7-4a9f-9624-30325b3f38c2",
+      "date": "2025-05-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "489bf354-af00-4c8c-b22a-87b01b96124d",
+      "date": "2025-05-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "7a474a38-12fc-4990-bfd7-44b43f0a8680",
+      "date": "2025-08-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "8bf13127-e572-40f5-8b45-988d92e58f55",
+      "date": "2025-10-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "dea17a00-cbe8-4037-a1d6-6ce8889de08a",
+      "date": "2026-01-21",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "41d86947-4523-4d0d-b45f-7d1dbd636064",
+      "date": "2026-05-13",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 9
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "39587",
+      "date": "2026-08-27",
+      "title": "FINANCIAL_RESULT"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE0MWH01014": {
+   "annual_report": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "89820",
+      "date": "2026-08-06",
+      "title": "TRUALT AR 2026-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 4,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "89825",
+      "date": "2026-02-13",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "89827",
+      "date": "2025-11-19",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 2
+   },
+   "deck": {
+    "expected": 6,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "6b2671e9-ff26-45fc-8e42-fd42d3314ac4",
+      "date": "2025-10-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "a1017baa-dae2-4982-b6d7-a49836aef0a8",
+      "date": "2025-11-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d91cdddb-599b-4f59-a300-83640b0523e4",
+      "date": "2026-02-03",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3d6b66be-e74a-486a-ab4c-deb505ae4ecf",
+      "date": "2026-05-22",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 4
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE192B01031": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "94959",
+      "date": "2025-08-14",
+      "title": "WELSPUNLIV AR 2025-03-31"
+     },
+     {
+      "ref": "94960",
+      "date": "2024-09-04",
+      "title": "WELSPUNLIV AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 17,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "117657",
+      "date": "2024-11-04",
+      "title": "Attaching herewith disclosure with link to the Conference Call Transcript of Q2 FY 2024-25 Results."
+     },
+     {
+      "ref": "117658",
+      "date": "2024-10-28",
+      "title": "Please be informed that the Conference Call Recording of Q2 FY25 results is available on the Company's website at www.welspunliving.com --> Investors --> Transcripts --> Year 2025. The ...."
+     },
+     {
+      "ref": "117659",
+      "date": "2024-07-31",
+      "title": "Attaching herewith disclosure with link to the Conference Call Transcript of Q1 FY2024-25 Results."
+     },
+     {
+      "ref": "117660",
+      "date": "2024-07-25",
+      "title": "Please be informed that the Conference Call Recording of Q1 FY25 results is available on the Company's website at www.welspunliving.com --> Investors -->Transcripts -->Year 2025. The recording ...."
+     },
+     {
+      "ref": "117661",
+      "date": "2024-05-02",
+      "title": "Conference Call Transcript of Q4FY24 results is available on the Company''s website and same can also be accessed through link provided in attached disclosure.\r\n\r\nPlease take the same on records."
+     },
+     {
+      "ref": "117662",
+      "date": "2024-04-25",
+      "title": "Please be informed that the Conference Call Recording of Q4 FY24 results is available on the Company's website at www.welspunliving.com --> Investors --> Transcripts -->  Year 2024. The ...."
+     },
+     {
+      "ref": "117665",
+      "date": "2025-11-17",
+      "title": "Please find attached herewith Transcript of Q2 FY26 Conference call held on November 12, 2025."
+     },
+     {
+      "ref": "117666",
+      "date": "2025-11-12",
+      "title": "Please be informed that the Conference Call Recording of Q2 FY26 results is available on the Company's website at www.welspunliving.com --> Investors --> Transcripts --> Year 2026. The ...."
+     },
+     {
+      "ref": "117667",
+      "date": "2025-08-05",
+      "title": "Sharing herewith link to the conference call transcript of Q1 FY 2025-26 Results. Please take the same on records."
+     },
+     {
+      "ref": "117668",
+      "date": "2025-07-30",
+      "title": "Please be informed that the Conference Call Recording of Q1 FY26 results is available on the Company''s website at www.welspunliving.com --> Investors --> Transcripts -->Year 2026. The ...."
+     },
+     {
+      "ref": "117669",
+      "date": "2025-06-04",
+      "title": "Sharing herewith the link to the Conference Call Transcript of Q4 FY 2024-25 Results. Please take the same on records."
+     },
+     {
+      "ref": "117670",
+      "date": "2025-05-29",
+      "title": "Please be informed that the Conference Call Recording of Q4 FY25 results is available on the Company's website at www.welspunliving.com --> Investors --> Transcripts -->Year\r\n2025. The ...."
+     },
+     {
+      "ref": "117671",
+      "date": "2025-02-04",
+      "title": "Sharing herewith the link to the Conference Call Transcript of Q3 FY 2024-25 Results. Please take the same on records."
+     },
+     {
+      "ref": "117672",
+      "date": "2025-01-30",
+      "title": "Please be informed that the Conference Call Recording of Q3 FY25 results is available on the Company''s website at www.welspunliving.com --> Investors --> Transcripts --> Year 2025. The ...."
+     },
+     {
+      "ref": "117677",
+      "date": "2026-02-17",
+      "title": "Please find attached herewith intimation regarding the Conference call Transcript of Q3 FY26 results is available on Company''s website."
+     }
+    ],
+    "missing_count": 15
+   },
+   "deck": {
+    "expected": 14,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "c82ec2d2-394f-44ce-aab8-4076d59c009e",
+      "date": "2024-04-25",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ea2d2ef2-7532-4fc7-9abb-00830c7946ca",
+      "date": "2024-07-24",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "2c06b1d4-5ef4-4e3d-982a-5732fa4df498",
+      "date": "2024-10-28",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "8e15e71f-d714-4001-a990-c87b724be4b2",
+      "date": "2024-11-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "224314a3-8cad-4703-8189-2e72b7afd3c9",
+      "date": "2024-11-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "6a58afec-fb5c-427f-b144-96572e4c9b4b",
+      "date": "2025-01-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "11381a32-e97e-40e6-8a9a-07203a08f53a",
+      "date": "2025-05-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d6dd5a70-c568-42a8-8452-08dc9d29bdc2",
+      "date": "2025-07-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "85edc288-164a-4319-9d74-fc5c8df6f77b",
+      "date": "2025-11-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "a440d023-90cd-4d76-b90f-684e0cdcfe82",
+      "date": "2025-11-13",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "54a731f7-d585-4f36-930a-ca64d93ff557",
+      "date": "2025-11-13",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "0a890eae-cdc7-4c45-ac48-9579631728bd",
+      "date": "2026-02-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 12
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "114451",
+      "date": "2026-08-13",
+      "title": "Unaudited Financial Results Of The Company For The Quarter Ended June 30, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE247M01014": {
+   "annual_report": {
+    "expected": 5,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "81829",
+      "date": "2026-08-18",
+      "title": "SPECIALITY AR 2026-03-31"
+     },
+     {
+      "ref": "81831",
+      "date": "2026-08-18",
+      "title": "SPECIALITY AR 2026-03-31"
+     },
+     {
+      "ref": "81832",
+      "date": "2025-08-09",
+      "title": "SPECIALITY AR 2025-03-31"
+     },
+     {
+      "ref": "81833",
+      "date": "2024-08-28",
+      "title": "SPECIALITY AR 2024-03-31"
+     }
+    ],
+    "missing_count": 4
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "81849",
+      "date": "2026-02-16",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "81851",
+      "date": "2025-11-20",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "81855",
+      "date": "2025-08-09",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "81857",
+      "date": "2025-05-15",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "81859",
+      "date": "2025-02-05",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "81861",
+      "date": "2024-11-20",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "81863",
+      "date": "2024-08-12",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "81865",
+      "date": "2024-05-22",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 12,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "b69e1128-f3ba-422e-aac2-606a74c0d91b",
+      "date": "2024-05-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ddf0c0ce-86d7-4f7d-a4d1-d8d00fdb44cd",
+      "date": "2024-08-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "fc35f3f3-f114-4524-99a6-143d6e0c20e0",
+      "date": "2024-11-16",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "b4905990-265d-40f7-be99-dcfda3aff4de",
+      "date": "2025-02-02",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "a2eb6552-95c2-468a-a387-418c2fd0e604",
+      "date": "2025-05-13",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d044aa5c-16a7-4917-865f-1cc67f75e7b3",
+      "date": "2025-08-05",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "90399e19-a938-49bc-adfe-c4e1e0a305e8",
+      "date": "2025-11-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "cb03223d-e8b6-4bf5-9afd-96987f4a7838",
+      "date": "2025-11-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "db297195-ab51-4f08-ba35-a9f8303be471",
+      "date": "2025-11-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e44efb50-2fe4-4c1c-870e-ade0d1d15162",
+      "date": "2026-02-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 10
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE278R01034": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "25694",
+      "date": "2025-12-05",
+      "title": "DHARAN AR 2025-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE318A01026": {
+   "annual_report": {
+    "expected": 4,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "66737",
+      "date": "2026-08-20",
+      "title": "PIDILITIND AR 2026-03-31"
+     },
+     {
+      "ref": "66739",
+      "date": "2026-07-06",
+      "title": "PIDILITIND AR 2026-03-31"
+     },
+     {
+      "ref": "66740",
+      "date": "2025-07-11",
+      "title": "PIDILITIND AR 2025-03-31"
+     },
+     {
+      "ref": "66741",
+      "date": "2024-07-12",
+      "title": "PIDILITIND AR 2024-03-31"
+     }
+    ],
+    "missing_count": 4
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "66757",
+      "date": "2026-02-11",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "66760",
+      "date": "2025-11-06",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "66762",
+      "date": "2025-08-14",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "66764",
+      "date": "2025-05-16",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "66768",
+      "date": "2025-01-29",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "66771",
+      "date": "2024-10-30",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "66773",
+      "date": "2024-08-14",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "66775",
+      "date": "2024-05-15",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 15,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "4d82f128-082c-4c9c-9710-4de07a0a0bc7",
+      "date": "2024-05-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d30061e9-a7c2-42c8-aa9a-21463226b2bf",
+      "date": "2024-05-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ce8e5847-3977-4102-a712-805a31bf7f83",
+      "date": "2024-08-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "dde8792b-18d3-4034-a388-bd6e7b2b94ee",
+      "date": "2024-10-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d7f96969-5b7a-42a1-a6bd-976a30a3bf55",
+      "date": "2025-01-22",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "12459a00-1efb-4a68-8650-4cb190c6ffb1",
+      "date": "2025-02-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "52e6925a-6551-4dd6-af24-ccf617ade7ca",
+      "date": "2025-03-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "0720bf1e-480a-466e-84df-00394ccb1504",
+      "date": "2025-05-08",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3b08cdde-ac14-4b2c-82f1-80e45b74e2d3",
+      "date": "2025-08-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "a6c75f97-fa92-4c39-b58d-4bce6018edb8",
+      "date": "2025-10-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "bfb560cd-4021-447b-9ed1-52547edda6d6",
+      "date": "2026-02-03",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "72a6ca1b-34d0-4d98-be47-edb19f03fdcf",
+      "date": "2026-02-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "83a034e0-aec8-4b53-8bb6-b413d88db5c8",
+      "date": "2026-05-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 13
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "3564",
+      "date": "2026-08-04",
+      "title": "Board Meeting Outcome for Unaudited Financial Results (Standalone And Consolidated) For The Quarter Ended 30Th June, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE323A01026": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "17608",
+      "date": "2025-07-08",
+      "title": "BOSCHLTD AR 2025-03-31"
+     },
+     {
+      "ref": "17609",
+      "date": "2024-07-10",
+      "title": "BOSCHLTD AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "17624",
+      "date": "2026-04-17",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "17626",
+      "date": "2026-02-11",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "17628",
+      "date": "2025-11-13",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "17631",
+      "date": "2025-08-07",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "17633",
+      "date": "2025-06-02",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "17635",
+      "date": "2025-01-31",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "17638",
+      "date": "2024-11-20",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "17641",
+      "date": "2024-08-12",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "17644",
+      "date": "2024-05-31",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 9
+   },
+   "deck": {
+    "expected": 18,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "6b6d711d-21e7-4619-85bb-5e50747f21bd",
+      "date": "2024-05-27",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ec915440-6e61-4758-9671-8af181d99b8d",
+      "date": "2024-08-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "97373374-4d3e-4f4e-92d2-09568c8a78cb",
+      "date": "2024-08-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "77bbe305-8300-45fd-88a9-e64661b01226",
+      "date": "2024-09-05",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "99610726-a03a-483e-93f9-110410369f93",
+      "date": "2024-11-12",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     },
+     {
+      "ref": "a98cb933-8283-415f-8758-b57ff7303175",
+      "date": "2024-11-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "fd09bf66-6820-4b4d-93ce-0b1f24e1a4ff",
+      "date": "2025-01-28",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ab2894e2-ba16-4068-a3ed-a1e7ed83ff30",
+      "date": "2025-02-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "0f130761-747b-4f56-af8d-7704df34e524",
+      "date": "2025-05-28",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "33ccebc2-0822-4a9e-9055-c2ec3cc81b01",
+      "date": "2025-08-04",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "5b08377d-b1a9-4ebf-a9d7-ac04e6d7781d",
+      "date": "2025-11-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "629c1de6-141a-40e4-8177-4f11093081d9",
+      "date": "2025-11-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "23233266-1d7d-4a5f-8f99-090d521cb072",
+      "date": "2026-02-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "92908810-ee0c-4514-9218-4b0c8f1e90a3",
+      "date": "2026-04-08",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "4a2b1345-26cc-4912-a253-71d40286b506",
+      "date": "2026-05-20",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "36d7668f-c994-42da-8635-f7bbe8e00363",
+      "date": "2026-05-26",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 16
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "2305",
+      "date": "2026-08-10",
+      "title": "Unaudited Financial Results For The Quarter Ending June 30, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE345A01011": {
+   "annual_report": {
+    "expected": 4,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "39496",
+      "date": "2025-08-22",
+      "title": "HINDOILEXP AR 2025-03-31"
+     },
+     {
+      "ref": "39497",
+      "date": "2024-09-04",
+      "title": "HINDOILEXP AR 2024-03-31"
+     },
+     {
+      "ref": "120182",
+      "date": "2026-09-02",
+      "title": "HINDOILEXP AR 2026-03-31"
+     }
+    ],
+    "missing_count": 3
+   },
+   "concall": {
+    "expected": 16,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "39512",
+      "date": "2026-06-19",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39514",
+      "date": "2026-02-25",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39515",
+      "date": "2026-02-25",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39517",
+      "date": "2025-11-28",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39518",
+      "date": "2025-11-28",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39520",
+      "date": "2025-08-22",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39522",
+      "date": "2025-06-05",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39524",
+      "date": "2025-02-10",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39526",
+      "date": "2024-11-25",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39528",
+      "date": "2024-08-20",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "39530",
+      "date": "2024-06-06",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "118336",
+      "date": "2025-08-22",
+      "title": "The transcript of Earnings Call held on August 18, 2025 is attached herewith."
+     },
+     {
+      "ref": "118337",
+      "date": "2025-06-05",
+      "title": "The transcript of the Earnings Call held on May 29, 2025 is attached herewith."
+     },
+     {
+      "ref": "118338",
+      "date": "2025-02-10",
+      "title": "Earnings Call Transcript of Q3 FY2024-25 held on February 05, 2025 is attached."
+     }
+    ],
+    "missing_count": 14
+   },
+   "deck": {
+    "expected": 13,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "3d1de2cc-45fa-4160-ab6a-13f0b620e737",
+      "date": "2024-05-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "7796ddff-902d-4d1b-b945-a95a08575f0c",
+      "date": "2024-08-09",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "5f0a5f6c-8924-4ced-8ad0-e01a9dd3149f",
+      "date": "2024-08-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d6121408-713d-4c1d-b1fe-2bc0e7bf3733",
+      "date": "2024-11-15",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e8dafcbb-6dcb-41c6-a088-491cc7f5c65c",
+      "date": "2025-02-04",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "4bf71512-a6f7-4836-8975-3bc662ae8322",
+      "date": "2025-02-05",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "5bf0f74c-27ed-4c05-bde8-b46154713b57",
+      "date": "2025-05-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "cb624c2d-2cde-4f98-9176-09baf74f9880",
+      "date": "2025-05-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "4e8f1cf4-05e4-40ba-b64c-60024878b6bc",
+      "date": "2025-08-17",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "0f7e20bc-e60d-4156-97b2-75de85b5eed1",
+      "date": "2025-11-20",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     },
+     {
+      "ref": "2c3678f3-264f-46b4-a966-118977b80106",
+      "date": "2026-02-16",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     }
+    ],
+    "missing_count": 11
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "103497",
+      "date": "2026-08-12",
+      "title": "Board Meeting Outcome for Outcome Of The Board Meeting Held On August 12, 2026 And Unaudited Financial Results For The Quarter Ended June 30, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE382M01027": {
+   "annual_report": {
+    "expected": 4,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "90382",
+      "date": "2026-08-21",
+      "title": "UFBL AR 2026-03-31"
+     },
+     {
+      "ref": "90385",
+      "date": "2026-08-19",
+      "title": "UFBL AR 2026-03-31"
+     },
+     {
+      "ref": "90386",
+      "date": "2026-08-19",
+      "title": "UFBL AR 2026-03-31"
+     },
+     {
+      "ref": "90387",
+      "date": "2025-08-13",
+      "title": "UFBL AR 2025-03-31"
+     }
+    ],
+    "missing_count": 4
+   },
+   "concall": {
+    "expected": 11,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "90391",
+      "date": "2026-08-11",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90393",
+      "date": "2026-05-27",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90395",
+      "date": "2026-02-05",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90397",
+      "date": "2025-11-17",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90399",
+      "date": "2025-08-07",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90401",
+      "date": "2025-05-29",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90403",
+      "date": "2025-02-10",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90405",
+      "date": "2024-11-19",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90407",
+      "date": "2024-08-07",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "90409",
+      "date": "2024-05-29",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 10
+   },
+   "deck": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "b1cbb4d2-1598-411d-8072-9728d197322f",
+      "date": "2024-05-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "9814be81-b98d-495b-843a-bc451c11253e",
+      "date": "2024-07-31",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c8186d6f-c4ac-468b-91c7-87e3eb46805c",
+      "date": "2024-11-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "63f9e6d4-2696-48bf-9e07-9a3862fbc67a",
+      "date": "2025-02-03",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "135f7681-16dd-40a9-ad34-31b32ed1870a",
+      "date": "2025-05-22",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "aa9fabef-5978-40b9-a16d-c7b45332b47b",
+      "date": "2025-05-27",
+      "title": "Corporate Presentation-FY2025"
+     },
+     {
+      "ref": "9ed74924-acbf-49a1-89f7-d891748b5460",
+      "date": "2025-07-31",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "02d4fb1a-fc21-4217-b810-74b5ecb5b1bc",
+      "date": "2025-11-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "42182a88-d413-4b93-ae39-0184aa0cf8e1",
+      "date": "2026-01-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 9
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE412U01025": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "16194",
+      "date": "2025-09-05",
+      "title": "BIGBLOC AR 2025-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "16208",
+      "date": "2026-01-29",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "16211",
+      "date": "2025-11-13",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "16213",
+      "date": "2025-08-18",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "16217",
+      "date": "2025-02-19",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "16220",
+      "date": "2024-11-18",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "16223",
+      "date": "2024-08-17",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "16226",
+      "date": "2024-05-09",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "117909",
+      "date": "2025-06-03",
+      "title": "Transcript attached"
+     },
+     {
+      "ref": "117910",
+      "date": "2026-01-21",
+      "title": "Recording of Concall available at the website of the Company, disclosure attached."
+     }
+    ],
+    "missing_count": 9
+   },
+   "deck": {
+    "expected": 20,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "7a61d687-3e48-4498-9f31-fe2b089be1da",
+      "date": "2024-05-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "086633c1-3710-4d97-a41c-7d72843a2904",
+      "date": "2024-05-22",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "49f4a26b-400b-46e1-8bc9-1b9801f798ea",
+      "date": "2024-08-13",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3aae3620-5c91-4d60-8502-145dd59995a2",
+      "date": "2024-08-14",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     },
+     {
+      "ref": "371dc241-7f68-42a6-a02b-caf8616ead4e",
+      "date": "2024-08-24",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "94716fad-d042-4e54-af6d-8324cea3947b",
+      "date": "2024-09-09",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "34a89714-d1ad-43af-9125-4a3fd2a3e41a",
+      "date": "2024-11-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "77da69e2-7d4f-4ad9-8a7d-40022af34b3a",
+      "date": "2024-11-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "15a373bf-db7b-4626-bb06-a2edf0506155",
+      "date": "2025-02-15",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "fe8bf753-7650-4ea1-b418-c96d6741a42e",
+      "date": "2025-03-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "35a936da-e269-4614-95fb-b7cda17d6938",
+      "date": "2025-05-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ac57bb98-86fd-4571-b8f1-6ca9ddbf77e7",
+      "date": "2025-07-03",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ba913e85-cdec-4845-8016-58d6101a8181",
+      "date": "2025-08-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "04be2b75-bbe2-4905-89f6-6e50ce49963c",
+      "date": "2025-11-08",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c96adeae-3dd7-48a8-b0f1-b81801b5fd6d",
+      "date": "2025-12-18",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d3178567-de3d-4890-b502-e35c9e94db75",
+      "date": "2026-01-21",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e4a7e951-a4aa-479f-8d8d-ecf351d20a76",
+      "date": "2026-05-28",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "f361fdfa-2f37-4cdb-a004-385f2c7bb0c5",
+      "date": "2026-06-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 18
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "99170",
+      "date": "2026-08-07",
+      "title": "Outcome Of The Board Meeting Held On Friday, August 7, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE442H01029": {
+   "annual_report": {
+    "expected": 4,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "11155",
+      "date": "2025-09-05",
+      "title": "ASHOKA AR 2025-03-31"
+     },
+     {
+      "ref": "119506",
+      "date": "2026-09-02",
+      "title": "ASHOKA AR 2026-03-31"
+     },
+     {
+      "ref": "119509",
+      "date": "2024-09-28",
+      "title": "ASHOKA AR 2024-03-31"
+     }
+    ],
+    "missing_count": 3
+   },
+   "concall": {
+    "expected": 18,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "11171",
+      "date": "2026-02-06",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "11173",
+      "date": "2025-11-21",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "11175",
+      "date": "2025-08-16",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "11177",
+      "date": "2025-05-30",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "11179",
+      "date": "2025-05-30",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "11181",
+      "date": "2025-02-17",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "11183",
+      "date": "2024-11-21",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "11186",
+      "date": "2024-08-21",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "11188",
+      "date": "2024-05-28",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "117812",
+      "date": "2024-11-13",
+      "title": "Please find attached Call Transcript - Audio Recording of the Result Update / Earnings Call held on November 13, 2024."
+     },
+     {
+      "ref": "117813",
+      "date": "2024-08-16",
+      "title": "We have uploaded the Audio recording of the Result Update / Earnings Call held on August 16, 2024 in respect of Unaudited Standalone and Consolidated Financial Results for the quarter ended ...."
+     },
+     {
+      "ref": "117814",
+      "date": "2024-05-23",
+      "title": "We have uploaded the Audio recording of the Result Update / Earnings Call held on May 23, 2024 in respect of Audited Standalone and Consolidated Financial Results for the quarter and year ...."
+     },
+     {
+      "ref": "117816",
+      "date": "2025-11-17",
+      "title": "The link of the website where audio call of the Result update call is uploaded has been mentioned in file attached."
+     },
+     {
+      "ref": "117817",
+      "date": "2025-08-12",
+      "title": "The recording of the Result update call held on 120825 has been uploaded on the website of the company."
+     },
+     {
+      "ref": "117818",
+      "date": "2025-05-26",
+      "title": "We have uploaded the Audio recording of the Result Update / Earnings Call held on May 26, 2025 in respect of audited Standalone and Consolidated Financial Results for the quarter and year ...."
+     },
+     {
+      "ref": "117819",
+      "date": "2025-02-11",
+      "title": "We have uploaded the Audio recording of the Result Update / Earnings Call held on February 11, 2025 in respect of Unaudited Standalone and Consolidated Financial Results for the quarter ...."
+     }
+    ],
+    "missing_count": 16
+   },
+   "deck": {
+    "expected": 12,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "87303c42-ff6c-469f-801b-1c76d91a6678",
+      "date": "2024-05-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "185bb44a-74cb-4e11-b9fe-d158b942d5e3",
+      "date": "2024-08-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "81b51c22-bf27-4051-99a0-b69e74b60acf",
+      "date": "2024-09-27",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "79283f61-6844-42e9-8e33-10df6985e0f4",
+      "date": "2025-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "5d7b77a8-e1ee-4c60-a152-d21560c0c4ee",
+      "date": "2025-05-24",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "aafb1e61-c687-4e91-94b0-49cb53ecf5a7",
+      "date": "2025-06-05",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "58599699-5143-4db0-b334-df0ff66f3c4a",
+      "date": "2025-08-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "90d8c04b-c38e-42bc-a5ed-f7fcca1a4aa8",
+      "date": "2025-11-15",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "aba25c3b-81bb-4e51-8b86-7ea88240d187",
+      "date": "2026-01-31",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "5a39bdc1-83f5-4549-8ad1-f6a295297af9",
+      "date": "2026-05-22",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 10
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "98194",
+      "date": "2026-08-11",
+      "title": "Submission Of Financial Results - Quarter Ended June 30, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE467B01029": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "86988",
+      "date": "2025-05-27",
+      "title": "TCS AR 2025-03-31"
+     },
+     {
+      "ref": "86989",
+      "date": "2024-05-09",
+      "title": "TCS AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 12,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "87003",
+      "date": "2026-01-16",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87004",
+      "date": "2025-12-23",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87006",
+      "date": "2025-11-04",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87007",
+      "date": "2025-10-15",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87008",
+      "date": "2025-07-14",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87009",
+      "date": "2025-04-12",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87010",
+      "date": "2025-01-13",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87011",
+      "date": "2024-10-14",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87012",
+      "date": "2024-07-16",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "87014",
+      "date": "2024-04-17",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 10
+   },
+   "deck": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE532F01054": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "27394",
+      "date": "2025-09-02",
+      "title": "EDELWEISS AR 2025-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 9,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "118098",
+      "date": "2024-11-04",
+      "title": "Transcript of Earning Call"
+     },
+     {
+      "ref": "118099",
+      "date": "2024-08-08",
+      "title": "Transcript of Earning Call"
+     },
+     {
+      "ref": "118100",
+      "date": "2024-05-21",
+      "title": "Transcript of Earning Call"
+     },
+     {
+      "ref": "118101",
+      "date": "2025-11-14",
+      "title": "Transcript of the Earnings Call on the second quarter and half year ended September 30, 2025"
+     },
+     {
+      "ref": "118102",
+      "date": "2025-08-11",
+      "title": "Transcript of Earnings Call"
+     },
+     {
+      "ref": "118103",
+      "date": "2025-05-16",
+      "title": "Transcript of Earnings Call"
+     },
+     {
+      "ref": "118105",
+      "date": "2026-02-12",
+      "title": "Transcript of Earnings Call"
+     }
+    ],
+    "missing_count": 7
+   },
+   "deck": {
+    "expected": 35,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "bd8c30bc-7e9b-4472-8e6f-67fb6274b9d8",
+      "date": "2024-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c93cbf0a-9a57-4b76-a384-67144e02156f",
+      "date": "2024-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "b73ab27b-9930-457a-8eb0-b26d36223856",
+      "date": "2024-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ad7a839c-b461-490d-b9a1-bd069b63d3a8",
+      "date": "2024-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "77ed2fe3-9d97-4dd0-b926-03d24d362e17",
+      "date": "2024-08-02",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3c8c155c-7f85-4a1f-9386-119b1e9f5d3c",
+      "date": "2024-08-02",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "cf1e7a24-ef4c-4299-940b-2b07f2ee3d11",
+      "date": "2024-09-27",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d8194c9c-f51e-45be-acbe-5bce8f83c0db",
+      "date": "2024-10-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "75013e48-629b-476b-816e-d5a53762355a",
+      "date": "2024-10-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c3e640e5-0657-4dce-8062-dfe5f9c99205",
+      "date": "2024-10-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "cd8f6925-142f-4611-807d-eea8058abe7d",
+      "date": "2024-10-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "8678c4a4-a3b2-4e56-992b-eda6216bf5cc",
+      "date": "2025-02-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e6298ef4-3d37-48c5-a36c-b0163a92186e",
+      "date": "2025-02-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "40a4e5f2-5cc2-46b3-8ba5-817d84a01a75",
+      "date": "2025-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e7bfb101-c90b-4250-8a50-a10482a8a705",
+      "date": "2025-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "cf158dae-8240-4090-a47e-78fbed1d7ffe",
+      "date": "2025-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ac4cce90-9272-4d83-957a-d21750ebf6fc",
+      "date": "2025-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "dee7731c-957a-4018-bcea-b4cbf9555dbd",
+      "date": "2025-08-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "897a8826-c7b4-4021-82a3-c49969cfb7f4",
+      "date": "2025-08-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ed89ded1-be53-4a24-ad71-e34e0a18e806",
+      "date": "2025-09-26",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "672706b5-b071-44d8-b316-33ec76c49841",
+      "date": "2025-11-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "a6a15e64-86bc-437c-ad47-5124da864cad",
+      "date": "2025-11-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "623b2223-154e-4770-a11c-2747bb75aed6",
+      "date": "2026-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3220a59c-431a-43f1-a793-e4293a5d03c4",
+      "date": "2026-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "0835944c-e23a-47c3-9986-0a4a045d0580",
+      "date": "2026-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "fea19104-186a-4eed-b190-a496dd2a660f",
+      "date": "2026-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "7fac72d4-dca5-4082-aec9-f313f8aead2b",
+      "date": "2026-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "6be1b779-e1a2-4cb0-8e0a-11e79855516a",
+      "date": "2026-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "09a7748e-90d2-4e70-b4fa-694c44af02a3",
+      "date": "2026-04-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "faadd041-66c8-44e2-afae-569cf06e2ae4",
+      "date": "2026-04-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "dbe83714-dc4c-4233-b1c1-3f0de306c484",
+      "date": "2026-08-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "7db30332-038e-4a87-b8af-83d0dff189bf",
+      "date": "2026-08-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "da062e74-b52f-4d4d-b2b9-3557ba21d607",
+      "date": "2026-08-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 33
+   },
+   "results_notes": {
+    "expected": 2,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "101271",
+      "date": "2026-08-06",
+      "title": "Board Meeting Outcome for Approval Of The Unaudited Financial Results Of The Company (Both Consolidated And Standalone) For The First Quarter Ended June 30, 2026 And Raising Of Funds By Way Of Public "
+     },
+     {
+      "ref": "101272",
+      "date": "2026-08-06",
+      "title": "Approval Of The Unaudited Financial Results Of The Company (Both Consolidated And Standalone) For The First Quarter Ended June 30, 2026 And Raising Of Funds By Way Of Public Issue Of Non-Convertible D"
+     }
+    ],
+    "missing_count": 2
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE562X01013": {
+   "annual_report": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "106453144",
+      "date": "2025-11-24",
+      "title": "Univastu India Limited has informed the Exchange about Earnings Presentation on Q2 FY2025-2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE615H01020": {
+   "annual_report": {
+    "expected": 4,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "88686",
+      "date": "2025-08-24",
+      "title": "TITAGARH AR 2025-03-31"
+     },
+     {
+      "ref": "88687",
+      "date": "2024-08-03",
+      "title": "TITAGARH AR 2024-03-31"
+     },
+     {
+      "ref": "121860",
+      "date": "2025-09-04",
+      "title": "TITAGARH AR 2025-03-31"
+     }
+    ],
+    "missing_count": 3
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "88704",
+      "date": "2025-06-06",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "88710",
+      "date": "2024-05-20",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "117570",
+      "date": "2024-11-04",
+      "title": "Please find enclosed the transcript of the Q2 & H1FY25 Earnings Conference call of Titagarh Rail Systems Limited on Tuesday, 29th October, 2024."
+     },
+     {
+      "ref": "117571",
+      "date": "2024-08-05",
+      "title": "Please find enclosed the transcript of the Q1 FY25 Earnings Conference Call of Titagarh Rail Systems Limited on 31st July, 2024"
+     },
+     {
+      "ref": "117572",
+      "date": "2025-11-24",
+      "title": "We enclose transcript of Q2&H1FY26 Earnings call held on 18th November, 2025"
+     },
+     {
+      "ref": "117573",
+      "date": "2025-08-19",
+      "title": "We enclose Transcript of Q1FY26 Earnings Call held on 12th August 2025"
+     },
+     {
+      "ref": "117574",
+      "date": "2025-02-19",
+      "title": "Please find enclosed the transcript of the Q3 & 9MFY25 Earnings Conference call of Titagarh Rail Systems Limited on Friday 14th February, 2025."
+     },
+     {
+      "ref": "117579",
+      "date": "2026-02-20",
+      "title": "We enclose transcript of Q3 & 9MFY26 Earnings call held on Monday, 16th February, 2026"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 12,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "0822be7e-b961-4b6f-84a7-4607962d3c1e",
+      "date": "2024-05-16",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "f789d522-9aba-4d3a-8ae7-72eb4e2dfe87",
+      "date": "2024-05-16",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "01e39a32-3d2e-40b5-8eb3-a203d1193f15",
+      "date": "2024-07-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "f0a558c8-acf4-4228-aec6-90ffade9a7cc",
+      "date": "2024-10-26",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "261e788d-b964-437e-80aa-47641c1514d6",
+      "date": "2024-10-28",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "f72d2def-93fc-4053-991a-d23ace580e46",
+      "date": "2025-02-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "9ff0b914-31eb-4577-a381-1766a3e2891f",
+      "date": "2025-05-31",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3d1aad02-f82f-4f48-b620-90eda7970eb2",
+      "date": "2025-08-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "6b9dcb5f-53e5-4e3f-984a-f3979653ccae",
+      "date": "2025-11-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "8eaed6e7-6701-4604-a4ae-f6850e2c474d",
+      "date": "2026-02-16",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 10
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE669E01016": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "41430",
+      "date": "2025-08-01",
+      "title": "IDEA AR 2025-03-31"
+     },
+     {
+      "ref": "41431",
+      "date": "2024-08-05",
+      "title": "IDEA AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "41446",
+      "date": "2025-11-17",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "41447",
+      "date": "2025-08-25",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "41449",
+      "date": "2025-06-05",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "41453",
+      "date": "2025-02-19",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "41454",
+      "date": "2024-11-21",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "41456",
+      "date": "2024-09-30",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "41458",
+      "date": "2024-08-21",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "41460",
+      "date": "2024-05-24",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "ef603fb0-991f-4f78-b1da-cca33ef023d7",
+      "date": "2024-05-03",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ce1046f3-1591-483e-bb52-b63122cae028",
+      "date": "2024-06-27",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "924364bf-f76a-48f3-9441-586ed897eeb6",
+      "date": "2024-09-09",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e4286bad-83ae-4532-873d-30485c7e7e3d",
+      "date": "2024-12-13",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e35b8759-71dd-4d6e-bf57-79d3fcfd239b",
+      "date": "2025-04-09",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "1f27aae7-707d-442e-88ff-2d6026874f11",
+      "date": "2025-04-09",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "992c57b2-a58b-493e-a8ad-d0507295ef26",
+      "date": "2025-06-20",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "511b843e-04b1-4ad3-9011-0421fa005468",
+      "date": "2025-09-10",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "92aeec23-d06b-49e4-bbbb-ea6d8e587478",
+      "date": "2026-01-28",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 9
+   },
+   "results_notes": {
+    "expected": 2,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "2764",
+      "date": "2026-08-10",
+      "title": "Unaudited Financial Results For The First Quarter Ended 30 June 2026"
+     },
+     {
+      "ref": "2765",
+      "date": "2026-08-10",
+      "title": "Board Meeting Outcome for Board Meeting Outcome For Unaudited Financial Results For The First Quarter Ended 30 June 2026"
+     }
+    ],
+    "missing_count": 2
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE691G01015": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "42431",
+      "date": "2025-05-16",
+      "title": "IMPEXFERRO AR 2025-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE733E01010": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "62999",
+      "date": "2026-08-04",
+      "title": "NTPC AR 2026-03-31"
+     },
+     {
+      "ref": "63000",
+      "date": "2024-08-06",
+      "title": "NTPC AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "63016",
+      "date": "2026-02-04",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "63017",
+      "date": "2025-11-06",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "63018",
+      "date": "2025-08-25",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "63020",
+      "date": "2025-01-30",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "63021",
+      "date": "2024-11-01",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "63022",
+      "date": "2024-08-02",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "63024",
+      "date": "2024-05-28",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "116464",
+      "date": "2025-05-29",
+      "title": "Transcript of Conference Call held with Analysts and Investors on 24 May 2025"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "0268299e-745c-4798-9dd3-98857efefb58",
+      "date": "2024-07-29",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     }
+    ],
+    "missing_count": 1
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE765D01022": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "95548",
+      "date": "2025-07-15",
+      "title": "WPIL AR 2025-03-31"
+     },
+     {
+      "ref": "95549",
+      "date": "2024-07-16",
+      "title": "WPIL AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "95565",
+      "date": "2026-02-05",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "95568",
+      "date": "2025-11-11",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "95570",
+      "date": "2025-08-08",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "95572",
+      "date": "2025-05-26",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "95574",
+      "date": "2025-02-18",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "95576",
+      "date": "2024-11-02",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "95578",
+      "date": "2024-08-13",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "95580",
+      "date": "2024-05-31",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 21,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "170fdae9-92fe-4ebc-96c1-4bbfc1d12ae6",
+      "date": "2024-05-27",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "a83c9758-ac79-4de7-b5b9-a1043f36489d",
+      "date": "2024-05-28",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "05f6c44c-4eec-4369-a68e-ac9c042da0cf",
+      "date": "2024-08-08",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "6906e4c6-4776-4a82-8adf-19a424e9d002",
+      "date": "2024-08-08",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "dad90dcb-8907-42e7-af88-cfd506ae660b",
+      "date": "2024-10-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "2404bcca-2ade-42c1-b80b-16c8cfe54197",
+      "date": "2024-10-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c009fd30-fc3f-4fb3-8d94-0e23a3f52e78",
+      "date": "2025-02-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "b462d055-adab-481a-a967-358bbf19f948",
+      "date": "2025-02-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "4768a301-496b-485b-909e-ab89febf4db6",
+      "date": "2025-05-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "81f848ef-0417-43a7-9f12-a087859e3b80",
+      "date": "2025-05-23",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "4ddae116-5a03-4943-8891-5e06114ac2fa",
+      "date": "2025-08-05",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "437f8951-477d-4a35-b25f-96537cebafe5",
+      "date": "2025-08-05",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "479cbe28-cbc3-41e1-b51e-cc8dafe2631b",
+      "date": "2025-11-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "61143ecb-98c2-4d28-842b-5f7b4e04614f",
+      "date": "2025-11-08",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "0c590bc5-8613-4ffb-a7ac-2ebbb7299f64",
+      "date": "2026-02-02",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e4892843-7041-4c83-984c-7d2be21f0029",
+      "date": "2026-02-02",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d6614d1e-dede-4470-bd89-dea45e7c402c",
+      "date": "2026-02-24",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "58b67e69-2052-4fa7-a5ef-14d0911fbfd2",
+      "date": "2026-05-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "ca1e07fd-1d10-495e-bd83-b67515ebd4ed",
+      "date": "2026-05-19",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 19
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "114558",
+      "date": "2026-07-24",
+      "title": "Board Meeting Outcome for Unaudited Financial Results For The Quarter Ended 30Th June,2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE811K01011": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "68998",
+      "date": "2025-08-19",
+      "title": "PRESTIGE AR 2025-03-31"
+     },
+     {
+      "ref": "68999",
+      "date": "2024-09-07",
+      "title": "PRESTIGE AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "116804",
+      "date": "2024-11-04",
+      "title": "Transcript of Investor/Analyst Call held on October 30, 2024"
+     },
+     {
+      "ref": "116805",
+      "date": "2024-08-08",
+      "title": "Transcript of Investor/Analyst call held on August 1, 2024"
+     },
+     {
+      "ref": "116806",
+      "date": "2024-06-04",
+      "title": "Transcript of Investor/Analyst call held on May 29, 2024"
+     },
+     {
+      "ref": "116813",
+      "date": "2025-11-19",
+      "title": "Transcript of Investor/Analyst Call conducted on November 13, 2025"
+     },
+     {
+      "ref": "116814",
+      "date": "2025-08-11",
+      "title": "Transcript of Investor/ Analyst Call conducted on August 06, 2025"
+     },
+     {
+      "ref": "116815",
+      "date": "2025-06-04",
+      "title": "Transcript of investor/analyst call conducted on May 30, 2025."
+     },
+     {
+      "ref": "116816",
+      "date": "2025-02-05",
+      "title": "Transcript of Investor/ Analyst call held on January 31, 2025"
+     },
+     {
+      "ref": "116819",
+      "date": "2026-02-02",
+      "title": "Transcript of Investors/Analyst Call conducted on January 30, 2026"
+     }
+    ],
+    "missing_count": 8
+   },
+   "deck": {
+    "expected": 12,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "9870f93a-0dc4-4793-b869-806703e49af4",
+      "date": "2024-05-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "1b22dcd0-7ba2-4c5d-abfe-acf2beedfe95",
+      "date": "2024-07-31",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "e0fa3adf-27c8-48a1-96f5-79effbaf7a0d",
+      "date": "2024-08-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "58cf64da-799f-4443-b9c2-05e9dd982b35",
+      "date": "2024-08-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "1d4c5e05-6434-4671-b966-8c228daedfdb",
+      "date": "2024-10-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "dc8e87f9-eb43-4045-abbd-51a700a75cda",
+      "date": "2025-01-31",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "c69e3b98-6f03-4b2b-adcc-a836d36e8f1f",
+      "date": "2025-05-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "f9c3482f-4909-4ad8-99de-a5072265cae2",
+      "date": "2025-08-05",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "5532fc0d-c36c-4f74-a2a0-15084d9c0842",
+      "date": "2025-11-12",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "6cdf3b09-df2d-4698-a7df-678b2b14d98a",
+      "date": "2026-01-30",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 10
+   },
+   "results_notes": {
+    "expected": 2,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "3465",
+      "date": "2026-07-29",
+      "title": "Financial Results For The Quarter Ended June 30, 2026"
+     },
+     {
+      "ref": "68993",
+      "date": "2026-08-21",
+      "title": "FINANCIAL_RESULT"
+     }
+    ],
+    "missing_count": 2
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE849A01020": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "89450",
+      "date": "2024-05-18",
+      "title": "TRENT AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 10,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "c3dbabba-09bf-4300-ade3-6348abce1f86",
+      "date": "2024-08-09",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "2b10585b-820e-43de-a443-39f61c8c8ae9",
+      "date": "2024-11-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "a628ddaf-0128-4f4d-9424-1130a742b3a2",
+      "date": "2025-02-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "74de1ef5-3692-4d57-840d-68652ff57808",
+      "date": "2025-04-29",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "3f5678b6-15df-498c-a4eb-bdbb1fb7f3ce",
+      "date": "2025-06-18",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "2ede1aa3-cfce-422e-a3f6-406405cbb7e6",
+      "date": "2025-08-06",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "7450b2bd-a16e-4c2b-a57a-5f8a8a6fa72e",
+      "date": "2025-11-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "40954085-355d-4998-9bd4-ce3f602c011e",
+      "date": "2026-02-04",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 8
+   },
+   "results_notes": {
+    "expected": 3,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "3951",
+      "date": "2026-08-06",
+      "title": "Outcome Of Board Meeting Held Today I.E. 6Th August 2026"
+     },
+     {
+      "ref": "89444",
+      "date": "2026-08-10",
+      "title": "FINANCIAL_RESULT"
+     },
+     {
+      "ref": "89448",
+      "date": "2026-08-06",
+      "title": "FINANCIAL_RESULT"
+     }
+    ],
+    "missing_count": 3
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE895W01019": {
+   "annual_report": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 4,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "106161197",
+      "date": "2025-02-26",
+      "title": "Panache Digilife Limited has informed the Exchange about Investor Presentation"
+     },
+     {
+      "ref": "106232448",
+      "date": "2025-05-14",
+      "title": "Panache Digilife Limited has informed the Exchange about Investor Presentation"
+     }
+    ],
+    "missing_count": 2
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE930H01031": {
+   "annual_report": {
+    "expected": 3,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "51027",
+      "date": "2025-07-01",
+      "title": "KPRMILL AR 2025-03-31"
+     },
+     {
+      "ref": "51028",
+      "date": "2024-06-14",
+      "title": "KPRMILL AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 11,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "ef1d7a4a-e76e-41cf-b0a3-e98c5acf56b7",
+      "date": "2024-05-04",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "9ae53210-e05d-4335-81b8-f7a03695023b",
+      "date": "2024-08-02",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "d31e729c-d209-4293-8e1f-e9f95366d574",
+      "date": "2024-11-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "4820c385-77fc-4843-b9ff-3db49f743d35",
+      "date": "2025-02-04",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "5b010428-00e7-423a-99a9-42637345a702",
+      "date": "2025-05-13",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "736fca99-5534-455e-9605-0e742436a824",
+      "date": "2025-08-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "14abc474-bb8b-46b7-9c09-9acc0b8b3e0c",
+      "date": "2025-11-07",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "1eeb0bfb-9382-4f93-a448-91927fb22c1d",
+      "date": "2026-02-11",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     },
+     {
+      "ref": "edcd824b-4edc-4d58-af08-baa5fbfcaf34",
+      "date": "2026-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 9
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "105695",
+      "date": "2026-08-10",
+      "title": "Results-Financial Results 30-06-2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   }
+  }
+ },
+ "totals": {
+  "annual_report": {
+   "expected": 83,
+   "found": 24
+  },
+  "concall": {
+   "expected": 244,
+   "found": 45
+  },
+  "deck": {
+   "expected": 313,
+   "found": 50
+  },
+  "results_notes": {
+   "expected": 21,
+   "found": 0
+  },
+  "announcement": {
+   "expected": 22,
+   "found": 22
+  }
+ }
+}

@@ -1,0 +1,69 @@
+{
+ "run_id": "20261028T235125-all",
+ "universe": "all",
+ "isins": null,
+ "started_at": "2026-10-28T23:51:25+05:30",
+ "company_state_daily": {
+  "rows": 7258000,
+  "band_hit": 3541035,
+  "band_missing": 9881,
+  "band_bse": 3707084,
+  "band_dates": 1683,
+  "seconds": 1471.2
+ },
+ "index_membership": {
+  "rows": 10914,
+  "indices": 133,
+  "snapshot_indices": 9,
+  "changes": 17681,
+  "unresolved": 37,
+  "anomalies": 116,
+  "unbounded": 3174,
+  "missing_pdfs": 2,
+  "seconds": 31.2
+ },
+ "events": {
+  "error": "IntegrityError: NOT NULL constraint failed: event_day0.isin"
+ },
+ "ownership_sector": {
+  "ownership": 49199,
+  "sector": 2055
+ },
+ "metrics": {
+  "map": 110,
+  "series": 1056589,
+  "result": 60023,
+  "wc": 9144,
+  "ic": 12762,
+  "concepts": 22,
+  "concepts_missing": [],
+  "seconds": 470.2
+ },
+ "segments": {
+  "rows": 38682,
+  "facts": 191784,
+  "dropped": {
+   "item shape": 144668,
+   "unit": 3277,
+   "period": 4320,
+   "basis": 837
+  },
+  "seconds": 158.0
+ },
+ "ended_at": "2026-10-29T00:41:20+05:30",
+ "counts": {
+  "company_state_daily": 7258000,
+  "company_membership_pit": 10895,
+  "company_ownership_pit": 49126,
+  "company_sector_pit": 2055,
+  "event_day0": 3010610,
+  "event_leakage_window": 0,
+  "index_list": 133,
+  "xbrl_concept_map": 110,
+  "company_metric_series": 1056589,
+  "company_result_pit": 60023,
+  "company_segment_pnl": 34451,
+  "company_working_capital": 9144,
+  "company_interest_cover": 12762
+ }
+}
