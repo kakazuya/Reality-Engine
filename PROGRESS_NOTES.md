@@ -1,8 +1,0 @@
-# Progress — download filters (NSE buckets + concall widen/rescue), 2026-10-28
-
-- 2026-10-28: read pack + target files; drafted bucket classifier from `tasks/dsh_tasks/nse_buckets_draft.py`.
-- 2026-10-28: `bucket()`/`record_bucket()` + `--download-buckets` in nse_announcements.py; bucket stored in every JSONL row; fixed a shadowed `key` in `run()` that broke the resume manifest. Classifier tuned on the 9,632-row pilot (1,398 transcript / 3,436 material / 4,078 procedural / 720 unclear).
-- 2026-10-28: hand-checked 40 random rows per bucket: transcript 40/40, material 40/40, procedural 40/40 (0 material leaks), unclear 2/40 material leaks (business-update wording, SEBI order).
-- 2026-10-28: concall_refetch.py `--transcript-word` (widen: 1,594 of 2,301 fresh) and `--rescue-file` (214 rows; dry-run 214 sampled, 14 probe-reused, 13 transcripts). Offline tests added; next: final test run + report.
-- 2026-10-28T18:23:05 read build_master_bank.py + real Reddit bank: the 85 empty families are all 'NEW:*' pseudo-families (85 rows); 4c check is stale now the real bank loads; 6e is the same 85 None cells; 1 true cross-bank duplicate missed (shivam30 Q22 = variations300 Q22-V4, Jaccard 1.000). Next: family map + dedupe layer 1b + check fixes.
-- 2026-10-28T18:33:30 done: 30/30 checks PASS (0 FAIL); 1030 cases, 0 empty family, 85 NEW:* rows mapped (family_source=pattern), 6e 1356=1356, family 10 = 10 stock cases; cross-bank scan 400,000 pairs, top pair 1.000 shivam30 Q22 vs variations300 Q22-V4 kept separate as the V4 style variant (robustness exemption), closest Reddit-vs-other 0.385; outputs regenerated. Next: report.
