@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-28T19:58:29+05:30 · git HEAD: `3628cd1` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-28T21:21:10+05:30 · git HEAD: `8059a9f` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -15,7 +15,7 @@ reality_engine/
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
   pipeline/ (19 py) — Pipeline runners.
   processing/ (45 py) — Document and image processing components.
-  query/ (2 py) — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company at time t.
+  query/ (16 py) — Query layer v0 — router + planners + arithmetic + answer assembly.
   reporting/ (3 py) — Reporting module for Reality Engine.
   scripts/ (142 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
@@ -263,7 +263,22 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/processing/vision_engine.py` — Multimodal Vision Alpha Pipeline - keyframe extraction + VisualArtifact schema.
 
 ### reality_engine/query/
+- `reality_engine/query/answer.py` — Assemble the hops into one structured answer, or the NOT-IN-DATA wording.
+- `reality_engine/query/compute.py` — Pure arithmetic for the query layer: no I/O, no globals.
+- `reality_engine/query/ctx.py` — Query context: read-only connections and the tool handles the planners use.
+- `reality_engine/query/router.py` — Deterministic router: a master-bank case -> planner chain + slots.
 - `reality_engine/query/state.py` — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company …
+
+### reality_engine/query/planners/
+- `reality_engine/query/planners/compare.py` — COMPARE: the same metric or window return over a peer set, ranked.
+- `reality_engine/query/planners/event.py` — EVENT: what was known at T and how the session(s) around it moved.
+- `reality_engine/query/planners/evidence.py` — EVIDENCE: passages from the company's own documents, PIT-filtered in SQL.
+- `reality_engine/query/planners/expectations.py` — EXPECTATIONS gate: judgement asks have no held store, and must say so.
+- `reality_engine/query/planners/facts.py` — FACTS: one metric (+period) from every stamped fact store, PIT-filtered in SQL.
+- `reality_engine/query/planners/resolve.py` — RESOLVE: canonical identity at ``as_of`` (never today's symbol).
+- `reality_engine/query/planners/ripple.py` — RIPPLE: trigger -> exposure -> transmission -> market, stopping at the gap.
+- `reality_engine/query/planners/screen.py` — SCREEN: rank a held universe on one dated metric (or name the missing table).
+- `reality_engine/query/planners/series.py` — SERIES: dated price/index/commodity rows plus the arithmetic the ask names.
 
 ### reality_engine/reporting/
 - `reality_engine/reporting/notifier.py` — Wave B — Telegram alerts + 23:00 nightly digest (stdlib only, no new deps).
@@ -303,8 +318,8 @@ Ranked by mentions in `tasks/STATE.md`, `plugins/dsh-worker/jobs.yaml` and the 2
 - `reality_engine/scripts/concall_deepseek.py` (8 refs) — 2026 concall transcripts -> DeepSeek V4.1 Flash on OpenCode Go (Shivam, 2026-10-18: 2026 transcripts are read by
 - `reality_engine/scripts/extract_deck_figures.py` (8 refs) — Extract the figures printed on investor-presentation slides with OpenCode Go vision models.
 - `reality_engine/scripts/new_reader_check.py` (8 refs) — Daily check for new free readers (STATE to-do 1, 2026-10-13). Run once a day by the resource watchdog; safe to run
+- `reality_engine/scripts/nse_announcements.py` (7 refs) — NSE corporate-announcements raw fetcher (one symbol at a time, resumable).
 - `reality_engine/scripts/deepseek_heartbeat.py` (6 refs) — DeepSeek heartbeat (Shivam, 2026-10-20): wakes DeepSeek, never Claude. Run hourly by the Windows task
-- `reality_engine/scripts/nse_announcements.py` (6 refs) — NSE corporate-announcements raw fetcher (one symbol at a time, resumable).
 - `reality_engine/scripts/pib_regional.py` (6 refs) — PIB phase 2 (PIPELINE_TODO A2, 2026-10-19): Hindi / Urdu releases of PIB Delhi and every regional PIB office in every
 - `reality_engine/scripts/claude_page_queue.py` (5 refs) — Hand-off between the deck-figure database and Claude Code helper agents (Claude Haiku 5.5), which cannot be called
 
@@ -521,6 +536,10 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.skill_loop` | test_portfolio_ledger.py, test_skill_loop.py |
 | `reality_engine.processing.substrate_hygiene` | test_desk_backtest.py, test_horizon_excess.py, test_peer_graph_and_hygiene.py, test_portfolio_ledger.py |
 | `reality_engine.processing.video_screen_ocr` | test_video_ocr_pilot.py |
+| `reality_engine.query.answer` | test_query_planners.py |
+| `reality_engine.query.compute` | test_query_compute.py |
+| `reality_engine.query.ctx` | test_query_planners.py |
+| `reality_engine.query.router` | test_query_router.py |
 | `reality_engine.raw_store` | test_dedupe_raw.py |
 | `reality_engine.reporting.writer` | test_action_thesis.py, test_agent_and_reporting.py |
 | `reality_engine.scripts.backfill_call_rows` | test_backfill_call_rows.py |
