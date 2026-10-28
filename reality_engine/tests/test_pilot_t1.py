@@ -1,7 +1,10 @@
 """Offline checks for the pilot T1 build (reality_engine.pilot.build_t1). No live DB, no network."""
+import csv
 import datetime as dt
 import sqlite3
+import tempfile
 import unittest
+from pathlib import Path
 
 from reality_engine.pilot import build_t1 as b
 
@@ -95,6 +98,24 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(out, [("INEB", "nifty50", "2019-01-01", "2021-03-31",
                                 "snapshot_backcast", 0.8)])
 
+    def test_snapshot_member_excluded_by_an_unpaired_notice_stays_current(self):
+        # the media page can miss a re-inclusion: a notice excludes a name the held
+        # snapshot still lists, so the current stint restarts at the exclusion date
+        out, anomalies = b.rebuild_membership(
+            {("nifty100", "INEX")},
+            [("nifty100", "INEX", "2021-03-31", "exclusion")])
+        self.assertEqual(anomalies, 0)
+        self.assertEqual(sorted(out), [
+            ("INEX", "nifty100", "2019-01-01", "2021-03-31", "snapshot_backcast", 0.8),
+            ("INEX", "nifty100", "2021-03-31", None, "snapshot_backcast", 0.8)])
+
+    def test_two_exclusions_never_create_current_membership(self):
+        out, _ = b.rebuild_membership(set(), [
+            ("nifty100", "INEZ", "2021-03-31", "exclusion"),
+            ("nifty100", "INEZ", "2023-03-31", "exclusion")])
+        self.assertEqual(set(out), {
+            ("INEZ", "nifty100", "2019-01-01", "2021-03-31", "snapshot_backcast", 0.8)})
+
     def test_inclusion_of_a_snapshot_member_starts_one_interval(self):
         snapshot = {("nifty50", "INEC")}
         notices = [("nifty50", "INEC", "2022-03-31", "inclusion")]
@@ -105,6 +126,157 @@ class MembershipTest(unittest.TestCase):
         out2, anomalies2 = b.rebuild_membership(
             set(), [("nifty50", "INED", "2022-03-31", "inclusion")])
         self.assertEqual((out2, anomalies2), ([], 1))
+
+
+class MultiIndexNoticeTest(unittest.TestCase):
+    NOTICE = """Changes in indices
+
+NIFTY 50
+The following 1 company is being excluded from the index effective from September 30, 2026
+
+1
+Company A Ltd
+SYMA
+
+NIFTY BANK
+The following 1 company is being included in the index effective from September 30, 2026
+
+1
+Company B Ltd
+SYMB
+"""
+
+    def test_two_indices_in_one_notice(self):
+        from reality_engine.scripts.fetch_index_history import parse_notice
+        rows = parse_notice(self.NOTICE, "2026-08-10")
+        self.assertEqual(
+            [(r["index_name"], r["symbol"], r["change_type"], r["effective_date"])
+             for r in rows],
+            [("NIFTY 50", "SYMA", "exclusion", "2026-09-30"),
+             ("NIFTY BANK", "SYMB", "inclusion", "2026-09-30")])
+
+    def test_clean_index_name_drops_sentence_tails(self):
+        cases = {
+            "NIFTY 50": "NIFTY 50",
+            "NIFTY50": "NIFTY 50",
+            "NIFTY MIDCAP 150": "NIFTY MIDCAP 150",
+            "NIFTY HIGH BETA 50 INDEX ON ACCOUNT OF QUARTERLY REVIEW": "NIFTY HIGH BETA 50",
+            "NIFTY SME EMERGE INDEX. THE CHANGE SHALL BECOME EFFECTIVE": "NIFTY SME EMERGE",
+            "NIFTY INDIA CORPORATE GROUP INDEX - TATA GROUP":
+                "NIFTY INDIA CORPORATE GROUP INDEX - TATA GROUP",
+            "NIFTY PSU BOND PLUS SDL APR 2027 50": None,
+            "": None,
+        }
+        for raw, want in cases.items():
+            self.assertEqual(b.clean_index_name(raw), want, raw)
+
+    def test_index_meta_sizes(self):
+        self.assertEqual(b.index_meta("NIFTY 500"), ("broad", 500))
+        self.assertEqual(b.index_meta("NIFTY MIDCAP 100"), ("broad", 100))
+        self.assertEqual(b.index_meta("NIFTY BANK"), ("sector", 12))
+        self.assertEqual(b.index_meta("NIFTY ALPHA 50"), ("thematic", 50))
+        self.assertEqual(b.index_meta("NIFTY 500 SHARIAH"), ("thematic", None))
+        self.assertEqual(b.index_meta("NIFTY IPO"), ("thematic", None))
+
+    def test_changes_only_never_claims_an_unknown_start(self):
+        out, unbounded = b.rebuild_changes_only("niftybank", [
+            ("niftybank", "INE1", "2021-03-31", "inclusion"),
+            ("niftybank", "INE1", "2023-03-31", "exclusion"),
+            ("niftybank", "INE2", "2024-03-31", "inclusion"),
+            ("niftybank", "INE3", "2022-03-31", "exclusion"),
+        ])
+        self.assertEqual(sorted(out), [
+            ("INE1", "niftybank", "2021-03-31", "2023-03-31", "nse_notice_partial", 0.6),
+            ("INE2", "niftybank", "2024-03-31", None, "nse_notice_partial", 0.6),
+        ])
+        self.assertEqual(unbounded, 1)
+
+
+class DerivedSnapshotTest(unittest.TestCase):
+    FILES = {
+        "nifty50": [("A", "INE000000001"), ("B", "INE000000002")],
+        "nifty100": [("A", "INE000000001"), ("B", "INE000000002"),
+                     ("C", "INE000000003"), ("D", "INE000000004"), ("E", "INE000000005")],
+        "niftymidcap150": [("C", "INE000000003"), ("D", "INE000000004"),
+                           ("E", "INE000000005")],
+        "niftysmallcap250": [("F", "INE000000006"), ("G", "INE000000007")],
+    }
+
+    def test_csv_snapshots_and_exact_derivations(self):
+        old_root, old_csv = b.RAW_ROOT, b.CSV_SNAPSHOTS
+        # tempfile.mkdtemp sets a 0700 DACL the sandbox token cannot write through; a
+        # plain mkdir under the workspace-owned .tmp/ is the repo's standard fixture root
+        tmp = Path(__file__).resolve().parents[2] / ".tmp" / "tests" / "pilot_index"
+        import shutil
+        shutil.rmtree(tmp, ignore_errors=True)
+        tmp.mkdir(parents=True)
+        raw, root = tmp / "raw", tmp / "raw" / "index_history"
+        root.mkdir(parents=True)
+        try:
+            for slug, rows in self.FILES.items():
+                with (root / f"current_{slug}.csv").open("w", encoding="utf-8",
+                                                          newline="") as f:
+                    w = csv.writer(f)
+                    w.writerow(["Company Name", "Industry", "Symbol", "Series", "ISIN Code"])
+                    for sym, isin in rows:
+                        w.writerow([f"{sym} Ltd", "x", sym, "EQ", isin])
+                    if slug in ("nifty50", "niftysmallcap250"):   # exchange placeholder row
+                        w.writerow(["Dummy HEG Ltd.", "x", "DUMMYHEG", "EQ",
+                                    "DUM545A01024"])
+            try:
+                b.RAW_ROOT = raw
+                b.CSV_SNAPSHOTS = {
+                    slug: (f"NIFTY {slug.upper()}", f"current_{slug}.csv")
+                    for slug in self.FILES}
+                snapshots, meta, symbols = b.load_snapshots(lambda _: None)
+            finally:
+                b.RAW_ROOT, b.CSV_SNAPSHOTS = old_root, old_csv
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        self.assertEqual(len(snapshots["nifty50"]), 2)           # placeholder dropped
+        self.assertEqual(snapshots["niftynext50"], {"INE000000003", "INE000000004",
+                                                    "INE000000005"})
+        self.assertEqual(snapshots["niftylargemidcap250"], snapshots["nifty100"])
+        self.assertEqual(len(snapshots["niftymidsmallcap400"]), 5)
+        self.assertEqual(meta["niftynext50"][1], "derived")
+        self.assertEqual(symbols["nifty50"]["A"], "INE000000001")
+
+
+class ShareCountTest(unittest.TestCase):
+    def test_action_ratio(self):
+        cases = [
+            ("BONUS", "Bonus 1:1", None, 2.0),
+            ("BONUS", "Bonus 2:5", None, 1.4),
+            ("BONUS", "Bonus 13:10", None, 2.3),
+            ("SPLIT", "Face Value Split (Sub-Division) - From Rs 10/- Per Share "
+                      "To Re 1/- Per Share", 1.0, 10.0),
+            (None, "Stock Split From Rs 5 To Rs 2", None, 2.5),
+            ("BONUS", "Scheme Of Arrangement - Bonus Ncrps 4:1", None, None),
+            ("DIVIDEND", "Dividend - Rs 5 Per Share", None, None),
+            ("SPLIT", "Face Value Split - From Rs 2 To Rs 2", 2.0, None),
+        ]
+        for typ, subject, fv, want in cases:
+            self.assertEqual(b.action_ratio(typ, subject, fv), want, subject)
+
+    def test_share_steps_pit_and_backcast(self):
+        anchors = [("2019-03-31", "2019-07-01", 1000, "ar_shareholding")]
+        actions = [("2019-05-01", 2.0), ("2019-09-19", 2.0)]
+        steps = b.share_steps(anchors, actions, "2020-12-31")
+        self.assertEqual(steps, [
+            # before the first known count: backcast, low confidence
+            ("2019-01-01", 1000, "action_adjusted", 0.6),
+            ("2019-03-31", 1000, "action_adjusted", 0.6),
+            # the balance date precedes the filing date, and the split is applied
+            ("2019-05-01", 2000, "action_adjusted", 0.6),
+            ("2019-07-01", 2000, "action_adjusted", 0.9),
+            ("2019-09-19", 4000, "action_adjusted", 0.9),
+        ])
+
+    def test_share_steps_direct_fact_needs_no_adjustment(self):
+        steps = b.share_steps([("2020-03-31", "2020-07-01", 5000, "xbrl_paidup")], [],
+                              "2021-03-31")
+        self.assertIn(("2020-07-01", 5000, "xbrl_paidup", 1.0), steps)
+        self.assertIn(("2020-03-31", 5000, "action_adjusted", 0.6), steps)
 
 
 class TextRulesTest(unittest.TestCase):

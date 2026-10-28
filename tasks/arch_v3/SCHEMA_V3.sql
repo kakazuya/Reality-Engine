@@ -254,8 +254,13 @@ CREATE TABLE IF NOT EXISTS company_state_daily (
         --         cross-checked against shp_index (50,838 rows, 100% promoter fill)
     shares_out      INTEGER,
         -- SOURCE: results_xbrl.facts concept PaidUpValueOfEquityShareCapital /
-        --         FaceValueOfEquityShareCapital (554 distinct concepts, 13.9M facts)
-    shares_source   TEXT,                   -- xbrl_paidup|shp|action_adjusted
+        --         FaceValueOfEquityShareCapital (554 distinct concepts, 13.9M facts),
+        --         annual-report shareholding totals (ar_facts, category='shareholding'),
+        --         or a split/bonus-adjusted backcast (corporate_actions) before FY23.
+    shares_source   TEXT,                   -- xbrl_paidup|ar_shareholding|action_adjusted
+    pit_conf        REAL,
+        -- 1.0 = filed fact known by the session; 0.9 = filed fact + split/bonus
+        -- adjustment; 0.6 = backcast from a later fact (fills pre-FY23 only).
     mcap_bucket     TEXT CHECK (mcap_bucket IN ('LARGE','MID','SMALL','MICRO')),
         -- SOURCE: computed (SEBI size rule) from mcap_cr; intervals are a view below
     price_band      INTEGER,                -- 2|5|10|20|40; NULL = no band
@@ -318,12 +323,23 @@ CREATE TABLE IF NOT EXISTS isin_rekey_map (
 CREATE INDEX IF NOT EXISTS ix_irm_effective ON isin_rekey_map(effective_on);
     -- serves: the resolver's "was this ISIN valid on D" check at every resolve hop
 
+-- One row per Nifty index named in the 446 dated constituent-change notices.
+-- coverage='snapshot'  : full constituent list held (index_membership / current_*.csv);
+-- coverage='derived'   : snapshot derived from held lists (Next 50, LargeMidcap 250,
+--                        MidSmallcap 400) -- exact by index definition;
+-- coverage='changes_only': no snapshot anywhere, only the dated changes are known, so
+--                        the intervals are partial and pit_conf < 1.
 CREATE TABLE IF NOT EXISTS index_list (
     index_code      TEXT PRIMARY KEY,
     display_name    TEXT NOT NULL,
     broad_or_sector TEXT NOT NULL CHECK (broad_or_sector IN ('broad','sector','thematic')),
     size            INTEGER,
-    history_from    TEXT
+    history_from    TEXT,
+    coverage        TEXT,
+    snapshot_date   TEXT,
+    members_at_snapshot INTEGER,
+    changes_parsed  INTEGER,
+    pit_conf        REAL
 );
 
 -- Interval table: piecewise constant. One seek answers "was X in Midcap 150 on D".
