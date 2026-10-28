@@ -527,6 +527,104 @@ class WidenFilterTests(unittest.TestCase):
         self.assertEqual([row[0] for row in kept], ["n1"])
 
 
+class WidenTranscriptWordTests(unittest.TestCase):
+    """Shivam 2026-10-28: of the fresh widened rows, only a transcript word is fetched."""
+
+    def test_word_in_headline_or_attachment(self):
+        self.assertTrue(cr.has_transcript_word("Transcript of the Earnings Call"))
+        self.assertTrue(cr.has_transcript_word("Announcement attached",
+                                               "Q2FY26_concall_Transcript.pdf"))
+        self.assertFalse(cr.has_transcript_word("Conference Call with Analysts", "abc.pdf"))
+        self.assertFalse(cr.has_transcript_word("Audio recording of the call"))
+        self.assertFalse(cr.has_transcript_word(None, None))
+
+    def test_filter_keeps_only_the_worded_rows(self):
+        rows = [
+            _cand("n1", headline="Earnings Call Transcript"),
+            _cand("n2", headline="Intimation of Earnings Conference Call", attachment="b.pdf"),
+            _cand("n3", headline="Announcement attached", attachment="Transcript_Q1FY26.pdf"),
+            _cand("n4", headline="Investor Presentation", attachment="d.pdf"),
+        ]
+        kept = cr.transcript_word_rows(rows)
+        self.assertEqual([c["newsid"] for c in kept], ["n1", "n3"])
+
+    def test_widen_filter_is_wider_than_the_transcript_word(self):
+        # The widen filter keeps a call synonym too; --transcript-word does not.
+        row = ("n1", 1, "a.pdf", "Conference Call with Analysts", "General",
+               "2024-05-01", 10, "AAA")
+        self.assertEqual(len(cr.widen_rows([row])), 1)
+        cand = _cand("n1", headline=row[3])
+        self.assertEqual(cr.transcript_word_rows([cand]), [])
+
+
+class RescueTests(unittest.TestCase):
+    """--rescue-file: fetch exactly the newsids in the dedupe-rescue JSON."""
+
+    def _write(self, payload) -> Path:
+        path = _scratch_dir() / f"rescue_test_{id(payload)}.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return path
+
+    def test_rescue_rows_become_pilot_candidates(self):
+        path = self._write([{
+            "newsid": "7e4954f2", "scrip_cd": "543398",
+            "attachment": "f475.pdf",
+            "url": cr.pdf_url("f475.pdf"),
+            "headline": "Pursuant to Regulation 30 ... transcript of the Analyst call",
+            "subcat": "General", "known_at": "2024-04-04T15:07:25.35",
+            "size": "542359", "symbol": "latentview", "isin": "INE0I7C01011",
+            "group": "A-P", "quarter": "FY25Q1", "cd_id": "52268",
+            "cd_sha": "ABCDEF", "cd_title": "CONCALL_TRANSCRIPT",
+            "chunked": "True", "chunk_doc_id": "17052",
+        }])
+        try:
+            rows = cr.load_rescue(path)
+        finally:
+            path.unlink(missing_ok=True)
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["symbol"], "LATENTVIEW")
+        self.assertEqual(row["cd_id"], 52268)          # strings -> ints
+        self.assertEqual(row["chunk_doc_id"], 17052)
+        self.assertTrue(row["chunked"])                # "True" string -> bool
+        self.assertEqual(row["cd_sha"], "abcdef")      # case-folded
+        self.assertEqual(row["url"], cr.pdf_url("f475.pdf"))
+        self.assertEqual(row["quarter"], "FY25Q1")
+
+    def test_missing_fields_are_derived_and_junk_rows_dropped(self):
+        path = self._write([
+            {"newsid": "n1", "attachment": "a.pdf", "symbol": "quess",
+             "known_at": "2024-07-05", "url": None},          # url from attachment
+            {"newsid": "n1", "url": "https://x/y.pdf"},       # duplicate newsid
+            {"newsid": "", "url": "https://x/z.pdf"},         # no newsid
+            {"attachment": "q.pdf"},                          # no newsid, no url
+            "not a dict",
+        ])
+        try:
+            rows = cr.load_rescue(path)
+        finally:
+            path.unlink(missing_ok=True)
+        self.assertEqual([r["newsid"] for r in rows], ["n1"])
+        self.assertEqual(rows[0]["group"], "Q-Z")          # derived from QUESS
+        self.assertEqual(rows[0]["quarter"], "FY25Q2")     # derived from Jul 2024
+        self.assertFalse(rows[0]["chunked"])
+
+    def test_rescue_file_must_be_a_json_array(self):
+        path = self._write({"rows": [{"newsid": "n1"}]})
+        try:
+            with self.assertRaises(ValueError):
+                cr.load_rescue(path)
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_rescue_flag_writes_its_own_manifest(self):
+        # The CLI wires --rescue-file to its own manifest name.
+        import inspect
+        source = inspect.getsource(cr.main)
+        self.assertIn("--rescue-file", source)
+        self.assertIn("_manifest_rescue.jsonl", source)
+
+
 class WidenOverlapTests(unittest.TestCase):
     def test_dedupe_by_isin_quarter_and_attachment(self):
         widened = [
