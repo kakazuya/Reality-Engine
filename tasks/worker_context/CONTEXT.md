@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-28T18:37:38+05:30 · git HEAD: `c37bfc5` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-28T19:58:29+05:30 · git HEAD: `3628cd1` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -14,7 +14,7 @@ reality_engine/
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
   pipeline/ (19 py) — Pipeline runners.
-  processing/ (44 py) — Document and image processing components.
+  processing/ (45 py) — Document and image processing components.
   query/ (2 py) — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company at time t.
   reporting/ (3 py) — Reporting module for Reality Engine.
   scripts/ (142 py) — Operational job scripts: one module per data job; most-referenced list below
@@ -224,6 +224,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/processing/capacity_governor.py` — Capacity governor — evidence-gated explainer-capacity expansion.
 - `reality_engine/processing/causal_engine.py` — SQLite-backed causal knowledge graph operations.
 - `reality_engine/processing/chunker_v2.py` — C1: structure-aware chunking.
+- `reality_engine/processing/chunker_v3.py` — chunker_v3 — documents to searchable chunks (spec: tasks/ARCHITECTURE_OVERHAUL_2026-10-27 §2.2/§3/§4 …
 - `reality_engine/processing/composite_screener.py` — Composite Quantitative Screener & Factor Model Module
 - `reality_engine/processing/desk_backtest.py` — Desk backtest — Rs 10cr Oct-2021 lump-sum book + 4x4 excess harness.
 - `reality_engine/processing/distillation_engine.py` — Structured, queryable company-parameter distillation store.
@@ -492,6 +493,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.capacity_governor` | test_forecast_capacity.py |
 | `reality_engine.processing.causal_engine` | test_supply_chain.py |
 | `reality_engine.processing.chunker_v2` | test_chunker_v2.py |
+| `reality_engine.processing.chunker_v3` | test_chunker_v3.py |
 | `reality_engine.processing.composite_screener` | test_action_thesis.py, test_ensemble_ranker.py, test_policy_coverage.py, test_quant_hardening.py |
 | `reality_engine.processing.desk_backtest` | test_desk_backtest.py |
 | `reality_engine.processing.distillation_engine` | test_distillation_macro.py, test_distilled_expansion.py |
