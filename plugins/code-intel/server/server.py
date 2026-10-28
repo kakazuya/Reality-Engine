@@ -7,6 +7,7 @@ after the handshake is answered, so ``initialize`` never waits for the index.
 """
 from __future__ import annotations
 
+import os
 import sys
 import threading
 from pathlib import Path
@@ -144,6 +145,10 @@ def module_map(package: str = "reality_engine", limit: int = 300) -> dict[str, A
 def _warm() -> None:
     # 2026-10-24 reality-data lesson: warming before server.run() delays the initialize
     # reply past the client's version probe, so the language server starts in the background.
+    # 2026-10-28: inside a dsh worker the ~590 MB basedpyright child is started lazily on the first
+    # tool call instead (most workers never call code-intel); this was the main RAM drain with 5 workers.
+    if os.environ.get("DSH_WORKER_CONTROL_TOKEN") or os.environ.get("CODE_INTEL_NO_WARM") == "1":
+        return
     threading.Thread(target=core.warm, name="code-intel-warm", daemon=True).start()
 
 
