@@ -11,7 +11,7 @@ from typing import Any
 
 from reality_engine.query import compute
 
-from . import envelope, fmt_num, identity_symbols, isin_of, terms_clause
+from . import envelope, fmt_num, isin_of, terms_clause
 
 CHECKED = ["results_xbrl.filings", "results_xbrl.facts", "ar_facts.ar_facts",
            "deck_figures.pages", "deck_figures.facts", "concall_facts.cc_items"]
@@ -60,6 +60,28 @@ def _period_bounds(slots: dict[str, Any]) -> tuple[str | None, str | None]:
     if basis in ("quarter end", "fiscal year end", "month"):
         return slots.get("date_from"), slots.get("date_to")
     return None, None
+
+
+DOC_WINDOW_DAYS = 3
+
+
+def named_of(slots: dict[str, Any]) -> dict[str, Any] | None:
+    """The document the question names (date/type), or None -> newest as of."""
+    from ..router import named_document
+    named = named_document({"question": slots.get("question") or ""})
+    if named:
+        return named
+    if slots.get("doc_type") and str(slots.get("period_basis") or "") in ("named date",
+                                                                           "named dates"):
+        return {"doc_type": slots["doc_type"], "date": slots.get("date_from")}
+    return None
+
+
+def _window(day: str) -> tuple[str, str]:
+    from datetime import date, timedelta
+    anchor = date.fromisoformat(day[:10])
+    return ((anchor - timedelta(days=DOC_WINDOW_DAYS)).isoformat(),
+            (anchor + timedelta(days=DOC_WINDOW_DAYS)).isoformat())
 
 
 def _deck_period_terms(slots: dict[str, Any]) -> tuple[list[str], str | None]:
@@ -146,9 +168,13 @@ def _results(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | No
 
 
 def _ar(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | None],
-        metric: str | None) -> tuple[list[dict[str, Any]], int]:
+        metric: str | None, named: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], int]:
     where = ["isin = ?", "COALESCE(filed_at,'') <> ''", "substr(filed_at,1,10) <= ?"]
     params: list[Any] = [isin, as_of]
+    if named:
+        low, high = _window(str(named["date"]))
+        where.append("substr(filed_at,1,10) BETWEEN ? AND ?")
+        params.extend([low, high])
     if period[0]:
         params.append(f"%{str(period[0])[:4]}%")
         where.append("COALESCE(fiscal_year,'') LIKE ?")
@@ -172,9 +198,14 @@ def _ar(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | None],
 
 
 def _deck(ctx: Any, isin: str, as_of: str, metric: str | None,
-          period_terms: tuple[list[str], str | None] | None = None) -> tuple[list[dict[str, Any]], int]:
+          period_terms: tuple[list[str], str | None] | None = None,
+          named: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], int]:
     where = ["p.isin = ?", "COALESCE(p.known_at,'') <> ''", "substr(p.known_at,1,10) <= ?"]
     params: list[Any] = [isin, as_of]
+    if named:
+        low, high = _window(str(named["date"]))
+        where.append("substr(p.known_at,1,10) BETWEEN ? AND ?")
+        params.extend([low, high])
     clause, clause_params = _term_likes(metric, ["f.metric"])
     if clause:
         where.append(clause)
@@ -202,9 +233,14 @@ def _deck(ctx: Any, isin: str, as_of: str, metric: str | None,
         return [], 0
 
 
-def _concall(ctx: Any, isin: str, as_of: str, metric: str | None) -> tuple[list[dict[str, Any]], int]:
+def _concall(ctx: Any, isin: str, as_of: str, metric: str | None,
+             named: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], int]:
     where = ["i.isin = ?", "COALESCE(d.filed_at,'') <> ''", "substr(d.filed_at,1,10) <= ?"]
     params: list[Any] = [isin, as_of]
+    if named:
+        low, high = _window(str(named["date"]))
+        where.append("substr(d.filed_at,1,10) BETWEEN ? AND ?")
+        params.extend([low, high])
     clause, clause_params = _term_likes(metric, ["i.metric", "i.statement", "i.quote"])
     if clause:
         where.append(clause)
@@ -268,11 +304,13 @@ def _promoter_facts(ctx: Any, isin: str, as_of: str,
     except Exception:
         return []
     out = []
+    want_public = bool(re.search(r"\bpublic\b", question, re.I))
+    want_promoter = bool(re.search(r"\bpromoter\b", question, re.I)) and not want_public
     for row in rows:
-        if row["promoter_pct"] is not None:
+        if row["promoter_pct"] is not None and not want_public:
             out.append(_row("shp_index", "Promoter holding %", row["promoter_pct"], "%",
                             row["quarter_end"], row["broadcast_at"], row["quarter_end"]))
-        if row["public_pct"] is not None:
+        if row["public_pct"] is not None and not want_promoter:
             out.append(_row("shp_index", "Public holding %", row["public_pct"], "%",
                             row["quarter_end"], row["broadcast_at"], row["quarter_end"]))
     if len(rows) >= 2 and re.search(r"raise|increase|fall|decline|change|dilut|stake",
@@ -331,19 +369,43 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         return envelope("FACTS", ok=True, na=True, checked=CHECKED,
                         detail="no company ISIN at as_of; FACTS not applicable")
     period = _period_bounds(slots)
+    named = named_of(slots)
     rows: list[dict[str, Any]] = []
     candidates = 0
-    for got, n in (_results(ctx, isin, as_of, period, metric),
-                   _ar(ctx, isin, as_of, period, metric)
-                   if slots.get("period_basis") != "quarter end" else ([], 0),
-                   _deck(ctx, isin, as_of, metric, _deck_period_terms(slots)),
-                   _concall(ctx, isin, as_of, metric)):
-        rows += got
-        candidates += n
-    if metric == "promoter":
-        promoter = _promoter_facts(ctx, isin, as_of, question)
-        rows = promoter + rows
-        candidates += len(promoter)
+    if named:
+        # Named document preference: only that document's store, only the
+        # filing date within ±3 days.  A miss is not a licence to answer from an
+        # older document the question did not name.
+        store = {"deck": _deck, "ar": _ar, "transcript": _concall}.get(str(named["doc_type"]))
+        doc_note = f"{named['doc_type']} of {named['date']} (±{DOC_WINDOW_DAYS}d filing date)"
+        if store is not None:
+            if store is _deck:
+                got, candidates = _deck(ctx, isin, as_of, metric, _deck_period_terms(slots), named)
+            elif store is _ar:
+                got, candidates = _ar(ctx, isin, as_of, period, metric, named)
+            else:
+                got, candidates = _concall(ctx, isin, as_of, metric, named)
+            rows = got
+        else:
+            return envelope("FACTS", ok=True, na=True, checked=CHECKED,
+                            detail=f"{named['doc_type']} text is EVIDENCE, not a fact store")
+        if not rows:
+            detail = (f"the {doc_note} carries no extracted {metric} fact; "
+                      f"the passage is EVIDENCE, not a FACTS row")
+            return envelope("FACTS", ok=True, na=True, checked=CHECKED, detail=detail,
+                            degraded=[f"named-document preference: {doc_note}; no older document used"])
+    else:
+        for got, n in (_results(ctx, isin, as_of, period, metric),
+                       _ar(ctx, isin, as_of, period, metric)
+                       if slots.get("period_basis") != "quarter end" else ([], 0),
+                       _deck(ctx, isin, as_of, metric, _deck_period_terms(slots)),
+                       _concall(ctx, isin, as_of, metric)):
+            rows += got
+            candidates += n
+        if metric == "promoter":
+            promoter = _promoter_facts(ctx, isin, as_of, question)
+            rows = promoter + rows
+            candidates += len(promoter)
     # Only numeric facts count as facts; a concall passage with a text payload
     # is evidence, not a figure.
     rows = [r for r in rows
@@ -355,16 +417,16 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                    "segment profit before tax", "segment profitloss before tax",
                    "segment assets", "segment liabilities", "net segment assets",
                    "net segment liabilities", "segment pbt before finance costs"}
-        named = [r for r in rows
-                 if r.get("store") != "results_xbrl"
-                 and str(r.get("item") or "").strip().lower() not in generic
-                 and re.search(r"segment", str(r.get("item") or ""), re.I)]
-        if not named:
+        named_rows = [r for r in rows
+                      if r.get("store") != "results_xbrl"
+                      and str(r.get("item") or "").strip().lower() not in generic
+                      and re.search(r"segment", str(r.get("item") or ""), re.I)]
+        if not named_rows:
             detail = ("segment facts exist but the segment member names are not mapped; "
                       "a segment P&L by name needs company_segment_pnl / xbrl_concept_map")
             return envelope("FACTS", ok=False, why="schema", checked=CHECKED,
                             gap="company_segment_pnl", detail=detail, nid_reason=detail)
-        rows = named
+        rows = named_rows
     if metric == "net_npa":
         # Gross and net NPA share a concept family; the qualifier decides.
         if re.search(r"\bnet\b", question, re.I):
@@ -375,8 +437,11 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     if computed:
         rows.insert(0, computed)
     degraded = []
-    if not period[0]:
+    if not period[0] and not named:
         degraded.append("no period in the ask; newest facts shown")
+    if named:
+        degraded.append(f"named-document preference: only the {named['doc_type']} of "
+                        f"{named['date']} (±{DOC_WINDOW_DAYS}d filing date) was read")
     if not rows:
         why = "schema" if candidates else "no_doc"
         detail = (f"facts exist for {slots.get('symbol') or isin} but none carries the asked "
@@ -386,13 +451,25 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                   f"{slots.get('symbol') or isin}")
         return envelope("FACTS", ok=False, why=why, checked=CHECKED, degraded=degraded,
                         detail=detail, nid_reason=detail)
-    ranked = sorted(rows, key=lambda r: (0 if r.get("store") == "computed" else 1,
-                                         str(r.get("period") or ""), str(r.get("known_at") or "")),
-                    reverse=False)
+    # Newest document first: the question asked "latest" unless it named a
+    # period or a document (the named window already narrowed the rows).  Within
+    # one document the row that names the asked words leads ("Manufacturing
+    # Facilities" before "Warangal facilities operationalized").
+    terms = [str(t).lower() for t in (slots.get("terms") or [])]
+
+    def hits(row: dict[str, Any]) -> int:
+        text = f"{row.get('item') or ''} {row.get('period') or ''}".lower()
+        return sum(1 for term in terms if term in text)
+
+    ranked = sorted(rows, key=lambda r: (
+        1 if r.get("store") == "computed" else 0,
+        str(r.get("known_at") or ""), hits(r), str(r.get("period") or "")), reverse=True)
     top = ranked[:6]
     detail = "; ".join(
         f"{r['item']} {r['period'] or ''} = {fmt_num(r['value'], r['unit'])} "
         f"({r['store']}, known {str(r.get('known_at'))[:10]})" for r in top[:3])
+    if named:
+        detail = f"named {named['doc_type']} {named['date']}: " + detail
     return envelope(
         "FACTS", ok=True, rows=top,
         provenance=[{"ref": r["ref"], "known_at": r.get("known_at")} for r in top],
