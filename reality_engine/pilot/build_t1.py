@@ -13,11 +13,19 @@ Builds two NEW SQLite files from held data only (no network, no live-DB writes):
     python -m reality_engine.pilot.build_t1 --universe pilot --out .tmp/pilot
     python -m reality_engine.pilot.build_t1 --universe all
     python -m reality_engine.pilot.build_t1 --checks --out .tmp/pilot
+    python -m reality_engine.pilot.build_t1 --index-coverage --out .tmp/pilot
 
 Inputs are read-only: the dated DuckDB truth snapshot, equity_intelligence.db,
 results_xbrl.db, ar_facts.db and the raw stores D:/RealityEngine/raw/{price_bands,index_history}.
 DDL is loaded from tasks/arch_v3/SCHEMA_V3.sql (this file does not restate it), so the pilot
 tables cannot drift from the design. Idempotent: each builder deletes its table and reinserts.
+
+Index membership covers every Nifty index named in the 446 dated notices: six indices have a
+held constituent list (current_*.csv), three more follow from those lists by definition
+(Next 50, LargeMidcap 250, MidSmallcap 400), and every other index is recorded as
+`changes_only` (partial notice-bounded intervals, pit_conf < 1). Share counts before FY23
+come from annual-report shareholding totals plus a split/bonus backcast from the first
+XBRL count, so `mcap_cr` fills 2019-2022 instead of starting at the XBRL era.
 """
 from __future__ import annotations
 
@@ -115,6 +123,19 @@ def create_schema(target, keep: set[str], sql_text: str | None = None) -> list[s
     if own:
         con.close()
     return made
+
+
+def ensure_columns(con: sqlite3.Connection, table: str, columns) -> None:
+    """Additive migration: CREATE TABLE IF NOT EXISTS leaves an older pilot file behind.
+
+    SCHEMA_V3 is additive by rule, so a rebuild over a file from an earlier build only
+    needs the new columns appended; nothing is dropped or rewritten.
+    """
+    have = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+    for name, decl in columns:
+        if name not in have:
+            con.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+    con.commit()
 
 
 def compatibility_views(con: sqlite3.Connection) -> None:
@@ -278,7 +299,8 @@ def rebuild_membership(snapshot, notices, history_from=BACKCAST_START):
     out, anomalies = [], 0
     for index_code, isin in sorted(set(snapshot) | set(by_node)):
         events = sorted(by_node.get((index_code, isin), []))
-        cur = Interval() if (index_code, isin) in snapshot else None
+        held = (index_code, isin) in snapshot
+        cur = Interval() if held else None
         emitted = []
 
         def emit(iv: Interval):
@@ -293,6 +315,15 @@ def rebuild_membership(snapshot, notices, history_from=BACKCAST_START):
         for eff, kind in reversed(events):
             if kind == "exclusion":
                 if cur is not None:
+                    if held and not emitted and cur.added_on is None:
+                        # the latest notice excludes a company the held snapshot still
+                        # lists: it was re-included by a notice the media page never
+                        # published. The earliest possible re-inclusion is the exclusion
+                        # date, so the current stint starts there (the snapshot wins).
+                        emitted.append((isin, index_code, eff, None, "snapshot_backcast",
+                                        0.8))
+                        cur = Interval(None, eff)
+                        continue
                     cur.removed_on = eff
                     emit(cur)
                 cur = Interval(None, eff)
@@ -385,55 +416,35 @@ def build_company_state(mcon: sqlite3.Connection, universe, log) -> dict:
     import pandas as pd
     t0 = time.monotonic()
     dcon = duckdb_snapshot()
-    # paid-up value / face value = shares. The facts are stored with period_end (not instant)
-    # on the balance-sheet date, so the as-of date is coalesce(instant, period_end).
-    shr = dcon.execute("""
-        SELECT f.trading_isin AS isin, fa.concept, fa.context,
-               CAST(coalesce(fa.instant, fa.period_end) AS VARCHAR) AS as_of,
-               fa.value, f.known_at_utc
-        FROM results_facts fa JOIN results_filings f USING (file)
-        WHERE fa.concept IN ('PaidUpValueOfEquityShareCapital',
-                             'FaceValueOfEquityShareCapital')
-          AND fa.value IS NOT NULL
-          AND coalesce(fa.instant, fa.period_end) IS NOT NULL
-          AND f.trading_isin IS NOT NULL
-    """).df()
-    paid = shr[shr.concept == "PaidUpValueOfEquityShareCapital"]
-    face = shr[shr.concept == "FaceValueOfEquityShareCapital"]
-    m = paid.merge(face, on=["isin", "context", "as_of"], suffixes=("_paid", "_face"))
-    m["shares"] = (m.value_paid / m.value_face.where(m.value_face != 0)).round()
-    m = m[(m.shares > 1e4) & (m.shares < 1e12)]
-    m["known_date"] = (pd.to_datetime(m.known_at_utc_paid, errors="coerce")
-                       + pd.Timedelta(hours=5, minutes=30)).dt.date
-    shares = m.dropna(subset=["known_date"]).groupby(
-        ["isin", "known_date"], as_index=False)["shares"].max()
-    shares["shares"] = shares["shares"].astype("int64")
-    log(f"shares_pit: {len(shares):,} (isin, session) steps for "
-        f"{shares['isin'].nunique():,} ISINs")
+    shares = build_shares_pit(universe, log)
     dcon.register("shares_pit", shares)
 
     where = _isin_clause(universe)
     state = dcon.execute(f"""
         WITH p AS (
-            SELECT isin, date, symbol, segment, exch, adj_close AS close, value_inr,
+            SELECT isin, date, symbol, segment, exch, close AS raw_close,
+                   adj_close AS close, value_inr,
                    sum(value_inr) OVER (PARTITION BY isin ORDER BY date
                                         ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) AS tv20
             FROM px_daily
         ), j AS (
-            SELECT p.*, s.shares
-            FROM p ASOF LEFT JOIN shares_pit s ON p.isin = s.isin AND p.date >= s.known_date
+            SELECT p.*, s.shares, s.shares_source, s.pit_conf
+            FROM p ASOF LEFT JOIN shares_pit s
+              ON p.isin = s.isin AND p.date >= CAST(s.step_date AS DATE)
         ), r AS (
             SELECT j.*,
-                   CASE WHEN shares IS NULL OR shares = 0 THEN NULL
-                        ELSE close * shares / 1e7 END AS mcap_cr,
+                   -- mcap needs the raw (unadjusted) close: shares_out is the count that
+                   -- actually traded that day, so a split-adjusted price would double-count it
+                   CASE WHEN shares IS NULL OR shares = 0 OR raw_close IS NULL THEN NULL
+                        ELSE raw_close * shares / 1e7 END AS mcap_cr,
                    row_number() OVER (PARTITION BY date
                                       ORDER BY (CASE WHEN shares IS NULL OR shares = 0
                                                      THEN 1 ELSE 0 END),
-                                               close * shares DESC) AS rk
+                                               raw_close * shares DESC) AS rk
             FROM j
         )
         SELECT isin, CAST(date AS VARCHAR) AS date, symbol, segment, exch, close, tv20,
-               shares, mcap_cr, rk
+               shares, shares_source, pit_conf, mcap_cr, rk
         FROM r {where}
     """).df()
     dcon.close()
@@ -473,7 +484,9 @@ def build_company_state(mcon: sqlite3.Connection, universe, log) -> dict:
         rows.append((
             r.isin, r.date, None if pd.isna(r.close) else float(r.close),
             None if pd.isna(r.mcap_cr) else float(r.mcap_cr),
-            None if pd.isna(r.shares) else int(r.shares), "xbrl_paidup" if not pd.isna(r.shares) else None,
+            None if pd.isna(r.shares) else int(r.shares),
+            None if pd.isna(r.shares) else r.shares_source,
+            None if pd.isna(r.pit_conf) else float(r.pit_conf),
             bucket, band, fno.get(r.isin, 0),
             None if pd.isna(r.tv20) else round(float(r.tv20) / 1e7, 4),
             f"{r.date}T15:30:00",
@@ -481,7 +494,8 @@ def build_company_state(mcon: sqlite3.Connection, universe, log) -> dict:
     clear(mcon, "company_state_daily")
     n = insert_rows(mcon, "company_state_daily",
                     ["isin", "date", "close", "mcap_cr", "shares_out", "shares_source",
-                     "mcap_bucket", "price_band", "is_fno", "traded_value_20d_cr", "known_at"],
+                     "pit_conf", "mcap_bucket", "price_band", "is_fno",
+                     "traded_value_20d_cr", "known_at"],
                     rows)
     log(f"company_state_daily: {n:,} rows, band resolved {band_hit:,}/{len(rows):,} "
         f"({band_missing:,} NSE rows absent from the file, {band_bse:,} BSE-only rows), "
@@ -522,25 +536,159 @@ def parse_band_store(symbols: set | None, log):
 
 
 # ---------------------------------------------------------------------------------------
-# 2. index membership (backcast from the 2026-09-30 snapshot + 446 dated notices)
+# 2. index membership (backcast from the latest constituent snapshots + 446 dated notices)
 # ---------------------------------------------------------------------------------------
-INDEX_CODES = {"NIFTY 50": "nifty50", "NIFTY 100": "nifty100",
-               "NIFTY MIDCAP 150": "niftymidcap150"}
-INDEX_LISTS = {"nifty50": ("NIFTY 50", 50), "nifty100": ("NIFTY 100", 100),
-               "niftymidcap150": ("NIFTY MIDCAP 150", 150)}
+SNAPSHOT_DATE = "2026-09-30"     # held snapshots; current_*.csv agrees with index_membership
+
+# Official size of the Nifty indices the notices name. A Nifty index whose name ends in a
+# number is built to that many constituents (Alpha 50, Momentum 30, ...), except the
+# Shariah/Ahimsa/ESG screens, which are filters and have no fixed count.
+BROAD_SIZES = {
+    "NIFTY 50": 50, "NIFTY 100": 100, "NIFTY 200": 200, "NIFTY 500": 500,
+    "NIFTY NEXT 50": 50, "NIFTY NEXT 100": 100,
+    "NIFTY MIDCAP 50": 50, "NIFTY MIDCAP 100": 100, "NIFTY MIDCAP 150": 150,
+    "NIFTY SMALLCAP 50": 50, "NIFTY SMALLCAP 100": 100, "NIFTY SMALLCAP 250": 250,
+    "NIFTY MICROCAP 250": 250, "NIFTY LARGEMIDCAP 250": 250,
+    "NIFTY MIDSMALLCAP 400": 400, "NIFTY TOTAL MARKET": 750,
+}
+SECTOR_SIZES = {
+    "NIFTY BANK": 12, "NIFTY PSU BANK": 12, "NIFTY PRIVATE BANK": 10, "NIFTY IT": 10,
+    "NIFTY AUTO": 15, "NIFTY PHARMA": 20, "NIFTY FMCG": 15, "NIFTY METAL": 15,
+    "NIFTY REALTY": 10, "NIFTY ENERGY": 10, "NIFTY MEDIA": 10, "NIFTY HEALTHCARE": 20,
+    "NIFTY INFRASTRUCTURE": 30, "NIFTY FINANCIAL SERVICES": 20,
+    "NIFTY FINANCIAL SERVICES EX-BANK": 20, "NIFTY PSE": 20, "NIFTY CPSE": 20,
+    "NIFTY MNC": 30, "NIFTY COMMODITIES": 30, "NIFTY CONSUMPTION": 30,
+    "NIFTY SERVICES SECTOR": 30,
+}
+# constituent lists held as current_<slug>.csv / ind_<slug>list.csv in the raw store
+CSV_SNAPSHOTS = {
+    "nifty50": ("NIFTY 50", "current_nifty50.csv"),
+    "nifty100": ("NIFTY 100", "current_nifty100.csv"),
+    "nifty200": ("NIFTY 200", "current_nifty200.csv"),
+    "nifty500": ("NIFTY 500", "current_nifty500.csv"),
+    "niftymidcap150": ("NIFTY MIDCAP 150", "current_niftymidcap150.csv"),
+    "niftysmallcap250": ("NIFTY SMALLCAP 250", "current_niftysmallcap250.csv"),
+}
+# fixed-income / non-equity releases that slipped past the fetch filter
+_NOT_EQUITY = re.compile(r"\b(BOND|SDL|G-?SEC|T-?BILL|MONEY MARKET|BENCHMARK|PRC|AIF|"
+                         r"SOVEREIGN)\b", re.I)
+_JUNK_TAIL = re.compile(r"\s+INDEX[.\s]+(?:ON ACCOUNT OF|THE CHANGE SHALL|W\.E\.F\.).*$"
+                        r"|\s+ON ACCOUNT OF.*$", re.I)
+_SCREENED = re.compile(r"SHARIAH|AHIMSA|\bESG\b", re.I)
+
+
+def clean_index_name(name: str | None) -> str | None:
+    """'NIFTY MIDCAP 150 INDEX ON ACCOUNT OF QUARTERLY REVIEW' -> 'NIFTY MIDCAP 150'."""
+    s = " ".join(str(name or "").upper().split())
+    s = _JUNK_TAIL.sub("", s).strip(" .:-")
+    s = re.sub(r"^NIFTY(?=\d)", "NIFTY ", s)
+    if not s.startswith("NIFTY") or _NOT_EQUITY.search(s):
+        return None
+    return s
+
+
+def index_code(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", name.lower())
+
+
+def index_meta(name: str) -> tuple[str, int | None]:
+    """(broad|sector|thematic, official size). Unknown families keep size NULL."""
+    if name in BROAD_SIZES:
+        return "broad", BROAD_SIZES[name]
+    if name in SECTOR_SIZES:
+        return "sector", SECTOR_SIZES[name]
+    m = re.search(r"(\d+)$", name)
+    if m and not _SCREENED.search(name):
+        return "thematic", int(m.group(1))
+    return "thematic", None
+
+
+def load_snapshots(log) -> tuple[dict[str, set[str]], dict[str, tuple]]:
+    """Held constituent lists -> ({code: {isin}}, {code: (display_name, source)}).
+
+    Sources: the current_<slug>.csv files in the raw store (the ind_<slug>list.csv
+    anchors), plus three indices derived exactly from them: Next 50 = Nifty 100 - 50,
+    LargeMidcap 250 = Nifty 100 + Midcap 150, MidSmallcap 400 = Midcap 150 + Smallcap 250.
+    """
+    import csv
+    root = RAW_ROOT / "index_history"
+    snapshots, meta, symbols = {}, {}, {}
+    for code, (name, fname) in CSV_SNAPSHOTS.items():
+        path = root / fname
+        if not path.exists():
+            log(f"snapshot csv missing: {fname}")
+            continue
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.DictReader(f))
+        isins = {r["ISIN Code"].strip() for r in rows
+                 if (r.get("ISIN Code") or "").strip().startswith("INE")}
+        snapshots[code] = isins
+        symbols[code] = {r["Symbol"].strip(): r["ISIN Code"].strip() for r in rows
+                         if (r.get("ISIN Code") or "").strip() in isins}
+        meta[code] = (name, "csv_current")
+        log(f"snapshot {code}: {len(isins)} members from {fname} "
+            f"({len(rows) - len(isins)} placeholder rows dropped)")
+    # exact derivations (the NSE definitions are set operations on the held lists)
+    for code, name, parents in (
+            ("niftynext50", "NIFTY NEXT 50", ("nifty100", "nifty50")),
+            ("niftylargemidcap250", "NIFTY LARGEMIDCAP 250",
+             ("nifty100", "niftymidcap150")),
+            ("niftymidsmallcap400", "NIFTY MIDSMALLCAP 400",
+             ("niftymidcap150", "niftysmallcap250"))):
+        try:
+            left, right = (snapshots[p] for p in parents)
+        except KeyError as exc:
+            log(f"derived snapshot {code} skipped: missing {exc}")
+            continue
+        isins = (left - right) if code == "niftynext50" else (left | right)
+        want = BROAD_SIZES[name]
+        if len(isins) != want:
+            log(f"derived snapshot {code}: {len(isins)} members, official size {want} "
+                f"(union/difference is not clean; recorded but flagged)")
+        snapshots[code] = isins
+        # the parents' symbol map makes a split re-key resolve to the held ISIN, exactly
+        # as the snapshot guard does for the six CSV-backed indices
+        symbols[code] = {sym: isin for p in parents
+                         for sym, isin in symbols.get(p, {}).items() if isin in isins}
+        meta[code] = (name, "derived")
+    return snapshots, meta, symbols
+
+
+def rebuild_changes_only(idx_code: str, notices, history_from=BACKCAST_START):
+    """Partial intervals for an index with no held constituent list.
+
+    Only windows whose start a notice dates are emitted: an inclusion ends when the next
+    exclusion for that node is seen (or stays open), so membership is never claimed before
+    the first observed inclusion. An exclusion whose inclusion predates 2019 cannot be
+    bounded and is counted, not guessed.
+    -> ([(isin, idx_code, added_on, removed_on, source, pit_conf)], unbounded)
+    """
+    by_node = defaultdict(list)
+    for idx, isin, eff, kind in notices:
+        if idx == idx_code and eff:
+            by_node[isin].append((str(eff), kind))
+    out, unbounded = [], 0
+    for isin, events in sorted(by_node.items()):
+        added = None
+        for eff, kind in sorted(events):
+            if kind == "inclusion":
+                if added is None:
+                    added = eff
+            elif added is not None:
+                if eff > added:
+                    out.append((isin, idx_code, added, eff, "nse_notice_partial", 0.6))
+                added = None
+            else:
+                unbounded += 1
+        if added is not None:
+            out.append((isin, idx_code, added, None, "nse_notice_partial", 0.6))
+    return out, unbounded
 
 
 def build_membership(mcon: sqlite3.Connection, out: Path, universe, log) -> dict:
     t0 = time.monotonic()
     from reality_engine.scripts.fetch_index_history import parse_notice, pdf_text
     ei = ro(EI)
-    snap_date = ei.execute("SELECT MAX(as_of) FROM index_membership").fetchone()[0]
-    snapshot = {(r[0], r[1]) for r in ei.execute(
-        "SELECT index_name, isin FROM index_membership WHERE as_of = ?", (snap_date,))}
-    # a notice names a SYMBOL; when that symbol is a current member it must resolve to the
-    # snapshot ISIN, so a split re-key cannot mint a second member (G0's false-change trap)
-    snap_sym = {(idx, sym): isin for idx, sym, isin in ei.execute(
-        "SELECT index_name, symbol, isin FROM index_membership WHERE as_of = ?", (snap_date,))}
     hist = defaultdict(list)
     for sym, isin, first, last in ei.execute(
             "SELECT symbol, isin, first_date, last_date FROM symbol_isin_history "
@@ -555,9 +703,18 @@ def build_membership(mcon: sqlite3.Connection, out: Path, universe, log) -> dict
                 return isin
         return windows[-1][2] if windows else None
 
+    snapshots, snap_meta, snap_symbols = load_snapshots(log)
+    # a notice names a SYMBOL; when that symbol is a member of the index on the snapshot
+    # date it must resolve to the snapshot ISIN, so a split re-key cannot mint a new member
+    snap_sym = {(code, sym): isin for code, by_sym in snap_symbols.items()
+                for sym, isin in by_sym.items()}
+
     root = RAW_ROOT / "index_history"
     notices_json = json.loads((root / "_notices.json").read_text(encoding="utf-8"))
-    notices, parsed_pdfs, missing_pdfs, unmatched = [], 0, 0, defaultdict(int)
+    parsed_pdfs = missing_pdfs = 0
+    by_index = defaultdict(list)
+    unresolved = defaultdict(int)
+    names = {}
     for n in notices_json:
         path = root / n["url"].rsplit("/", 1)[-1]
         if not path.exists():
@@ -570,38 +727,339 @@ def build_membership(mcon: sqlite3.Connection, out: Path, universe, log) -> dict
             continue
         parsed_pdfs += 1
         for r in rows:
-            code = INDEX_CODES.get(r["index_name"])
-            if not code or not r["effective_date"]:
+            name = clean_index_name(r["index_name"])
+            if not name or not r["effective_date"]:
                 continue
+            code = index_code(name)
+            names[code] = name
             isin = snap_sym.get((code, r["symbol"])) or resolve(r["symbol"], r["effective_date"])
             if not isin:
-                unmatched[r["symbol"]] += 1
+                unresolved[code] += 1
                 continue
-            notices.append((code, isin, r["effective_date"], r["change_type"]))
+            by_index[code].append((code, isin, r["effective_date"], r["change_type"]))
     log(f"index notices: {len(notices_json)} listed, {parsed_pdfs} PDFs parsed, "
-        f"{missing_pdfs} missing, {len(notices)} in-scope changes, "
-        f"{len(unmatched)} symbols unresolved")
+        f"{missing_pdfs} missing, {len(by_index)} indices, "
+        f"{sum(len(v) for v in by_index.values())} dated changes, "
+        f"{sum(unresolved.values())} unresolved symbols across {len(unresolved)} indices")
 
-    intervals, anomalies = rebuild_membership(snapshot, notices)
-    # audit trail: the in-scope notice rows the intervals were rebuilt from
+    intervals, anomalies, unbounded = [], 0, 0
+    for code, snap in snapshots.items():
+        # a notice effective after the snapshot date is not reflected in the held list
+        known = [r for r in by_index.get(code, []) if r[2] <= SNAPSHOT_DATE]
+        ivs, anom = rebuild_membership({(code, isin) for isin in snap}, known)
+        intervals.extend(ivs)
+        anomalies += anom
+    for code, rows in by_index.items():
+        if code in snapshots:
+            continue
+        ivs, unb = rebuild_changes_only(code, rows)
+        intervals.extend(ivs)
+        unbounded += unb
+
+    names.update({code: name for code, (name, _) in snap_meta.items()})
+    # audit trail: every dated change the intervals were rebuilt from
     with (out / "index_changes.jsonl").open("w", encoding="utf-8") as f:
-        for code, isin, eff, kind in sorted(notices, key=lambda r: (r[2], r[0], r[1])):
-            f.write(json.dumps({"index_code": code, "isin": isin,
-                                "effective_date": eff, "change_type": kind}) + "\n")
+        for code, isin, eff, kind in sorted(sum(by_index.values(), []),
+                                            key=lambda r: (r[2], r[0], r[1])):
+            f.write(json.dumps({"index_code": code, "display_name": names.get(code),
+                                "isin": isin, "effective_date": eff,
+                                "change_type": kind}) + "\n")
     clear(mcon, "index_list")
-    insert_rows(mcon, "index_list", ["index_code", "display_name", "broad_or_sector",
-                                     "size", "history_from"],
-                [(code, name, "broad", size, BACKCAST_START)
-                 for code, (name, size) in INDEX_LISTS.items()])
+    list_rows = []
+    for code in sorted(names):
+        name = names[code]
+        broad, size = index_meta(name)
+        snap = snapshots.get(code)
+        if snap is not None:
+            derived = snap_meta.get(code, ("", ""))[1] == "derived"
+            coverage = "derived" if derived else "snapshot"
+            snap_date, n_snap = SNAPSHOT_DATE, len(snap)
+            pit_conf = 0.9 if derived else 1.0
+        else:
+            coverage, snap_date, n_snap, pit_conf = "changes_only", None, None, 0.6
+        list_rows.append((code, name, broad, size, BACKCAST_START, coverage, snap_date,
+                          n_snap, len(by_index.get(code, [])), pit_conf))
+    insert_rows(mcon, "index_list",
+                ["index_code", "display_name", "broad_or_sector", "size", "history_from",
+                 "coverage", "snapshot_date", "members_at_snapshot", "changes_parsed",
+                 "pit_conf"], list_rows)
     clear(mcon, "company_membership_pit")
     n = insert_rows(mcon, "company_membership_pit",
                     ["isin", "index_code", "added_on", "removed_on", "source", "pit_conf"],
                     intervals)
-    log(f"company_membership_pit: {n:,} intervals from {len(snapshot)} snapshot rows "
-        f"({anomalies} order anomalies, {round(time.monotonic() - t0, 1)}s)")
-    return {"rows": n, "notices": len(notices), "unmatched": len(unmatched),
-            "anomalies": anomalies, "missing_pdfs": missing_pdfs,
+    log(f"company_membership_pit: {n:,} intervals over {len(names)} indices "
+        f"({len(snapshots)} with a snapshot, {len(names) - len(snapshots)} changes-only; "
+        f"{anomalies} order anomalies, {unbounded} unbounded exclusions, "
+        f"{round(time.monotonic() - t0, 1)}s)")
+    return {"rows": n, "indices": len(names), "snapshot_indices": len(snapshots),
+            "changes": sum(len(v) for v in by_index.values()),
+            "unresolved": sum(unresolved.values()), "anomalies": anomalies,
+            "unbounded": unbounded, "missing_pdfs": missing_pdfs,
             "seconds": round(time.monotonic() - t0, 1)}
+
+
+# ---------------------------------------------------------------------------------------
+# 2b. pre-FY23 share counts (annual-report totals + split/bonus backcast)
+# ---------------------------------------------------------------------------------------
+SHARE_TOTAL = re.compile(r"\bshares\b", re.I)
+SHARE_TOTAL_COUNT = re.compile(r"\b(total|grand total)\b", re.I)
+SHARE_TOTAL_BAD = re.compile(
+    r"holder|promoter|pledge|demat|traded|distribution|suspense|bonus|weighted|"
+    r"\bipo\b|issued|esop|option|buyback|buy-back|sub-division|categor|bucket|of total|"
+    r"above|below|range|president|other banks|turnover|held|director|mutual|institution|"
+    r"insurance|foreign|government|public|non-promoter|employee|beginning|start", re.I)
+
+
+def _iso_day(value) -> str | None:
+    s = str(value or "")[:10]
+    try:
+        return dt.date.fromisoformat(s).isoformat()
+    except ValueError:
+        return fy_end(str(value))
+
+
+def _ratio_between(actions, lo: str, hi: str) -> float:
+    """Product of split/bonus ratios with lo < ex_date <= hi (shares multiply then)."""
+    f = 1.0
+    for ex, ratio in actions:
+        if lo < ex <= hi:
+            f *= ratio
+    return f
+
+
+def action_ratio(action_type: str | None, subject: str | None, face_value) -> float | None:
+    """Split/bonus -> new shares per old share (2 for a 1:1 bonus, 5 for FV 10 -> 2)."""
+    s = subject or ""
+    if re.search(r"\bNCRPS\b|\bCCPS\b|preference", s, re.I):
+        return None
+    t = (action_type or "").upper()
+    if t == "SPLIT" or re.search(r"split|sub-division", s, re.I):
+        m = re.search(r"from\s+r[se]s?\.?\s*([\d.]+)", s, re.I)
+        old = float(m.group(1)) if m else None
+        m = re.search(r"to\s+r[se]s?\.?\s*([\d.]+)", s, re.I)
+        new = float(m.group(1)) if m else (float(face_value) if face_value else None)
+        if old and new and old > new:
+            return old / new
+        return None
+    if t == "BONUS" or re.search(r"bonus", s, re.I):
+        m = re.search(r"bonus[^\d]{0,16}([\d.]+)\s*:\s*([\d.]+)", s, re.I)
+        if not m:
+            return None
+        a, b = float(m.group(1)), float(m.group(2))
+        if a <= 0 or b <= 0:
+            return None
+        ratio = (a + b) / b
+        return ratio if 1.0 < ratio <= 25 else None
+    return None
+
+
+def load_actions(universe, log) -> dict[str, list[tuple[str, float]]]:
+    """{isin: [(ex_date, ratio)]} for splits/bonus, mapped through the symbol history.
+
+    corporate_actions keys a split on the ISIN it retires (INE040A01018 for HDFCBANK), so
+    the symbol is the bridge to the current ISIN the pilot holds.
+    """
+    ei = ro(EI)
+    sym2isin = defaultdict(set)
+    for sym, isin in ei.execute(
+            "SELECT nse_symbol, isin FROM master_companies WHERE nse_symbol IS NOT NULL"):
+        sym2isin[sym].add(isin)
+    for sym, isin in ei.execute(
+            "SELECT DISTINCT symbol, isin FROM symbol_isin_history "
+            "WHERE exchange = 'NSE' AND symbol IS NOT NULL"):
+        sym2isin[sym].add(isin)
+    rows = ei.execute(
+        "SELECT isin, symbol, action_type, subject, ex_date, face_value FROM corporate_actions "
+        "WHERE ex_date >= ? AND (action_type IN ('SPLIT','BONUS') "
+        "OR lower(subject) LIKE '%split%' OR lower(subject) LIKE '%sub-division%' "
+        "OR lower(subject) LIKE '%bonus%')", (BACKCAST_START,)).fetchall()
+    ei.close()
+    have = set(universe) if universe else None
+    actions, dropped = defaultdict(list), defaultdict(int)
+    for isin, symbol, typ, subject, ex_date, fv in rows:
+        ratio = action_ratio(typ, subject, fv)
+        if not ratio:
+            dropped["ratio"] += 1
+            continue
+        cands = set()
+        if isin and have is None:
+            cands.add(isin)                        # the row's own ISIN is authoritative
+        elif isin and isin in have:
+            cands.add(isin)
+        if have is not None:
+            for i in sym2isin.get(symbol or "", ()):
+                if i in have:
+                    cands.add(i)
+        if len(cands) != 1:
+            dropped["mapping"] += 1
+            continue
+        actions[cands.pop()].append((str(ex_date)[:10], ratio))
+    log(f"split/bonus actions: {sum(len(v) for v in actions.values())} mapped for "
+        f"{len(actions)} ISINs (dropped {dict(dropped) or '{}'})")
+    return actions
+
+
+def share_steps(anchors, actions, horizon_end):
+    """Piecewise-constant share count from dated anchors, split/bonus corrected.
+
+    anchors: [(ref_date, known_date, shares, source)] where ref_date is the balance date
+    the count speaks to and known_date the day it became public. PIT rule: a count is used
+    only from known_date; before the first such count the earliest anchor is backcast
+    across splits/bonus (pit_conf 0.6), which is exactly the pre-FY23 fill.
+    -> [(step_date, shares, source, pit_conf)]
+    """
+    anchors = sorted(anchors, key=lambda a: (a[0], a[1]))
+    dates = {BACKCAST_START} | {a[0] for a in anchors} | {a[1] for a in anchors}
+    dates |= {ex for ex, _ in actions}
+    steps = []
+    for d in sorted(x for x in dates if x and x <= horizon_end):
+        pit = [a for a in anchors if a[0] <= d and a[1] <= d]
+        if pit:
+            a = max(pit, key=lambda x: (x[0], x[1]))
+            f = _ratio_between(actions, a[0], d)
+            adjusted = abs(f - 1.0) > 1e-9
+            steps.append((d, int(round(a[2] * f)),
+                          "action_adjusted" if adjusted else a[3],
+                          0.9 if adjusted else 1.0))
+        else:
+            a = anchors[0]
+            f = (1.0 / _ratio_between(actions, d, a[0]) if d < a[0]
+                 else _ratio_between(actions, a[0], d))
+            steps.append((d, int(round(a[2] * f)), "action_adjusted", 0.6))
+    return steps
+
+
+def build_shares_pit(universe, log):
+    """XBRL paid-up/face counts + annual-report totals + split/bonus backcast -> step table.
+
+    The XBRL paid-up/face pair starts in FY23 for most names. The annual-report
+    shareholding total states the exact count at the fiscal year end (known_at = the
+    report's filing date), which covers FY19-FY22; corporate actions extend either anchor
+    backwards/forwards across splits and bonus issues.
+    """
+    import pandas as pd
+    t0 = time.monotonic()
+    dcon = duckdb_snapshot()
+    shr = dcon.execute("""
+        SELECT f.trading_isin AS isin, fa.concept, fa.context,
+               CAST(coalesce(fa.instant, fa.period_end) AS VARCHAR) AS as_of,
+               fa.value, f.known_at_utc
+        FROM results_facts fa JOIN results_filings f USING (file)
+        WHERE fa.concept IN ('PaidUpValueOfEquityShareCapital',
+                             'FaceValueOfEquityShareCapital')
+          AND fa.value IS NOT NULL
+          AND coalesce(fa.instant, fa.period_end) IS NOT NULL
+          AND f.trading_isin IS NOT NULL
+    """).df()
+    dcon.close()
+    paid = shr[shr.concept == "PaidUpValueOfEquityShareCapital"]
+    face = shr[shr.concept == "FaceValueOfEquityShareCapital"]
+    m = paid.merge(face, on=["isin", "context", "as_of"], suffixes=("_paid", "_face"))
+    m["shares"] = (m.value_paid / m.value_face.where(m.value_face != 0)).round()
+    m = m[(m.shares > 1e4) & (m.shares < 1e12)]
+    m["known_date"] = (pd.to_datetime(m.known_at_utc_paid, errors="coerce")
+                       + pd.Timedelta(hours=5, minutes=30)).dt.date
+    m = m.dropna(subset=["known_date"])
+    # one anchor per (isin, balance date): the count is the max seen, known at its filing
+    xbrl = m.groupby(["isin", "as_of"], as_index=False).agg(
+        shares=("shares", "max"), known_date=("known_date", "max"))
+    xbrl["known_date"] = xbrl.known_date.astype(str)
+    anchors = defaultdict(list)
+    for r in xbrl.itertuples(index=False):
+        anchors[r.isin].append((str(r.as_of)[:10], r.known_date, int(r.shares),
+                                "xbrl_paidup"))
+    log(f"shares xbrl anchors: {sum(len(v) for v in anchors.values()):,} "
+        f"({len(anchors):,} ISINs)")
+
+    ar = ar_share_counts(universe, log)
+    actions = load_actions(universe, log)
+    kept = 0
+    for isin, candidates in ar.items():
+        have_refs = {a[0] for a in anchors.get(isin, [])}
+        xs = anchors.get(isin) or []
+        acts = actions.get(isin, [])
+        for ref, shares, known in candidates:
+            if ref in have_refs:
+                continue
+            if xs:
+                # sanity: an AR total must agree with the nearest XBRL count once the
+                # split/bonus between the two balance dates is applied (>= 33% band)
+                near = min(xs, key=lambda a: _days(a[0], ref))
+                adj = (shares * _ratio_between(acts, ref, near[0]) if near[0] >= ref
+                       else shares / _ratio_between(acts, near[0], ref))
+                if not (0.67 <= adj / near[2] <= 1.5):
+                    continue
+            anchors[isin].append((ref, known, shares, "ar_shareholding"))
+            kept += 1
+    log(f"shares ar anchors: {kept:,} kept for {len(ar):,} ISINs with a candidate")
+
+    steps, source_counts = [], defaultdict(int)
+    for isin, isin_anchors in anchors.items():
+        for step in share_steps(isin_anchors, actions.get(isin, []), "2026-10-31"):
+            steps.append((isin, step[0], step[1], step[2], step[3]))
+            source_counts[step[2]] += 1
+    df = pd.DataFrame(steps, columns=["isin", "step_date", "shares", "shares_source",
+                                      "pit_conf"]).sort_values(["isin", "step_date"])
+    log(f"shares_pit: {len(df):,} steps for {df['isin'].nunique():,} ISINs "
+        f"({dict(source_counts)}, {round(time.monotonic() - t0, 1)}s)")
+    return df
+
+
+def _days(a: str, b: str) -> int:
+    try:
+        return abs((dt.date.fromisoformat(a) - dt.date.fromisoformat(b)).days)
+    except ValueError:
+        return 10 ** 6
+
+
+def ar_share_counts(universe, log) -> dict[str, list[tuple[str, int, str]]]:
+    """{isin: [(ref_date, shares, known_date)]} from the annual-report shareholding total.
+
+    Only rows whose item is the company's total (not a holder bucket) are kept; when a
+    report states several values, the most frequent one wins and a tie is dropped.
+    """
+    con = ro(AR)
+    where, params = "", []
+    if universe:
+        # query_only=ON blocks a temp table; a bound IN list is the read-only way in
+        where = "AND a.isin IN (%s)" % ",".join("?" * len(universe))
+        params = list(universe)
+    sql = f"""SELECT a.isin, a.fiscal_year, a.filed_at, a.item, a.value
+              FROM ar_facts a
+              WHERE a.unit = 'number' AND a.value > 10000 AND a.value < 1e12
+                AND a.category = 'shareholding'
+                AND a.fiscal_year >= '2017-01-01' AND a.fiscal_year < '2024-01-01'
+                {where}"""
+    rows = con.execute(sql, params).fetchall()
+    con.close()
+    groups = defaultdict(list)
+    for isin, fy, filed, item, value in rows:
+        item = str(item or "")
+        if not SHARE_TOTAL.search(item) or not SHARE_TOTAL_COUNT.search(item) \
+                or SHARE_TOTAL_BAD.search(item):
+            continue
+        ref = _iso_day(fy)
+        if ref:
+            groups[(isin, ref)].append((int(round(float(value))), _iso_day(filed)))
+    out, ambiguous = defaultdict(list), 0
+    for (isin, ref), values in groups.items():
+        counts = defaultdict(int)
+        known = {}
+        for value, filed in values:
+            counts[value] += 1
+            if filed and (value not in known or filed < known[value]):
+                known[value] = filed
+        ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
+            ambiguous += 1
+            continue
+        value = ranked[0][0]
+        if not known.get(value):
+            continue
+        out[isin].append((ref, value, known[value]))
+    log(f"shares ar candidates: {sum(len(v) for v in out.values()):,} (isin, FY) totals "
+        f"for {len(out):,} ISINs; {ambiguous} ambiguous skipped")
+    return out
 
 
 # ---------------------------------------------------------------------------------------
@@ -1047,6 +1505,10 @@ def build(out: Path, universe_mode: str, log=print) -> dict:
     log(f"schema: {len(created_m)} market objects, {len(created_f)} facts objects")
     market = sqlite3.connect(market_path)
     market.execute("PRAGMA journal_mode=WAL")
+    ensure_columns(market, "company_state_daily", [("pit_conf", "REAL")])
+    ensure_columns(market, "index_list", [
+        ("coverage", "TEXT"), ("snapshot_date", "TEXT"), ("members_at_snapshot", "INTEGER"),
+        ("changes_parsed", "INTEGER"), ("pit_conf", "REAL")])
     facts = sqlite3.connect(facts_path)
     facts.execute("PRAGMA journal_mode=WAL")
     run_id = dt.datetime.now(IST).strftime("%Y%m%dT%H%M%S") + f"-{universe_mode}"
@@ -1105,11 +1567,21 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=str(REPO / ".tmp" / "pilot"))
     ap.add_argument("--checks", action="store_true",
                     help="do not build: print the CHECKS.md measurement blocks for --out")
+    ap.add_argument("--index-coverage", action="store_true",
+                    help="do not build: write tasks/pilot_t1/INDEX_COVERAGE.md for --out")
     a = ap.parse_args(argv)
     out = Path(a.out)
     if a.checks:
         from reality_engine.pilot.checks_t1 import main as checks_main
         return checks_main(out)
+    if a.index_coverage:
+        from reality_engine.pilot.checks_t1 import index_coverage_md
+        text = index_coverage_md(out)
+        target = REPO / "tasks" / "pilot_t1" / "INDEX_COVERAGE.md"
+        target.write_text(text, encoding="utf-8")
+        print(text)
+        print(f"(written to {target})", file=sys.stderr)
+        return 0
     result = build(out, a.universe)
     failed = [k for k, v in result.items() if isinstance(v, dict) and "error" in v]
     return 1 if failed else 0

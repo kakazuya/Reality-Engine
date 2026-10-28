@@ -16,6 +16,7 @@ from pathlib import Path
 
 from reality_engine.pilot.build_t1 import (
     AR, EI, FACTS_DB, MARKET_DB, RAW_ROOT, XBRL, CONCEPT_MAP, fy_end,
+    SHARE_TOTAL, SHARE_TOTAL_COUNT, SHARE_TOTAL_BAD, _iso_day,
     parse_segment_item, unit_to_crore)
 
 
@@ -89,14 +90,18 @@ def counts_and_fill(out: Path) -> str:
 COVERAGE_NOTES = """
 How to read the fills (all three are the honest number, not a build defect):
 
-- `mcap_cr` / `shares_out` / `mcap_bucket` fill starts at a company's FIRST `results_xbrl`
-  filing, because that is the only held share-count source (paid-up / face value). The XBRL
-  era begins in FY23 for most names, so 2019-2022 sessions carry no shares and no market cap
-  rather than a back-filled guess. `shares_source` says `xbrl_paidup` on every filled row.
+- `mcap_cr` / `shares_out` / `mcap_bucket` fill from three held share-count sources:
+  `xbrl_paidup` (paid-up / face value, the XBRL era starting FY23 for most names),
+  `ar_shareholding` (the exact total in the annual report's shareholding pattern, FY19-FY22,
+  known at the report's filing date) and `action_adjusted` (the nearest count carried back
+  or forward across splits/bonus from `corporate_actions`, used only where no direct count
+  is known by the session). `pit_conf` is 1.0 for a filed fact, 0.9 when a split/bonus is
+  applied, 0.6 for the backcast. `mcap_cr` uses the raw close x `shares_out`, so an adjusted
+  price cannot double-count a split.
 - `price_band` NULL is two different things: the exchange published "No Band" (F&O names --
   208 of 3,324 rows in one 2026 sec_list file, and most of this bank universe), and rows whose
-  date/symbol is not in the raw file. The build resolves 633,203 of 738,113 rows to a raw-file
-  key (85.8%); 104,483 of the rest are BSE-only lines, where an NSE band does not exist.
+  date/symbol is not in the raw file. The build resolves 636,557 of 741,967 rows to a raw-file
+  key (85.8%); 104,983 of the rest are BSE-only lines, where an NSE band does not exist.
 - `company_working_capital` is annual by construction: it joins a fiscal-year income statement
   to the balance sheet dated the same day. `cogs` (CostOfMaterialsConsumed) only exists for
   manufacturers, so `dio`/`dpo`/`ccc` are null for service and bank names while `dso` still fills.
@@ -141,9 +146,11 @@ def check_state(out: Path):
     con = ro(out / MARKET_DB)
     n = con.execute("SELECT COUNT(*) FROM company_state_daily").fetchone()[0]
     con.close()
-    return ("`close` re-read from `truth.px_daily.adj_close`; `mcap_cr` = close x shares_out / 1e7, "
-            "`shares_out` from XBRL paid-up/face value, band from the raw sec_list file, bucket by "
-            "daily SEBI rank over every ISIN with a known share count.\n\n"
+    return ("`close` re-read from `truth.px_daily.adj_close`; `mcap_cr` = raw (unadjusted) "
+            "close x shares_out / 1e7 -- raw close, because shares_out is the count that "
+            "traded that day; `shares_out` from XBRL paid-up/face value, the annual-report "
+            "shareholding total, or a split/bonus backcast; band from the raw sec_list file; "
+            "bucket by daily SEBI rank over every ISIN with a known share count.\n\n"
             + md(["isin", "date", "pilot close", "source close", "verdict", "mcap_cr",
                   "shares", "band", "bucket"], table)
             + f"\n\n**{ok}/{len(rows)}** sampled rows agree. Table rows: {n:,}."), ok, len(rows)
@@ -618,6 +625,157 @@ def check_timings(out: Path):
             + "\n\n### Query plans\n\n" + md(["shape", "plan"], plans)), 0, 0
 
 
+def check_pre_fy23_shares(out: Path):
+    """mcap fill before FY23 + 10 share-count hand checks re-read from the held sources."""
+    con = ro(out / MARKET_DB)
+    periods = [("pre-FY23", "2019-01-01", "2022-12-31"), ("FY23 on", "2023-04-01", "2026-10-31")]
+    fill = []
+    for label, lo, hi in periods:
+        n, f = con.execute(
+            "SELECT COUNT(*), SUM(mcap_cr IS NOT NULL) FROM company_state_daily "
+            "WHERE date BETWEEN ? AND ?", (lo, hi)).fetchone()
+        isins = con.execute(
+            "SELECT COUNT(DISTINCT isin), COUNT(DISTINCT CASE WHEN mcap_cr IS NOT NULL "
+            "THEN isin END) FROM company_state_daily WHERE date BETWEEN ? AND ?",
+            (lo, hi)).fetchone()
+        fill.append((label, f"{f:,}/{n:,}", f"{100.0 * f / n:.1f}%",
+                     f"{isins[1]:,}/{isins[0]:,}"))
+    sources = con.execute(
+        "SELECT shares_source, COUNT(*), MIN(date), MAX(date) FROM company_state_daily "
+        "WHERE shares_source IS NOT NULL GROUP BY 1 ORDER BY 2 DESC").fetchall()
+    picks, back = [], []
+    for label, bucket, n_pick in (("pit", "pit_conf = 1.0", 6),
+                                  ("back", "shares_source = 'action_adjusted'", 4)):
+        total = con.execute("SELECT COUNT(*) FROM company_state_daily "
+                            "WHERE date < '2023-04-01' AND shares_out IS NOT NULL "
+                            f"AND {bucket}").fetchone()[0]
+        for k in range(n_pick):
+            row = con.execute("""
+                SELECT isin, date, shares_out, shares_source, pit_conf, mcap_cr, close
+                FROM company_state_daily
+                WHERE date < '2023-04-01' AND shares_out IS NOT NULL AND """ + bucket +
+                " ORDER BY date, isin LIMIT 1 OFFSET ?",
+                (total * k // n_pick,)).fetchone()
+            if row:
+                (picks if label == "pit" else back).append(row)
+    con.close()
+    samples = picks + back
+    ark = ro(AR)
+    dcon = duckdb()
+    table, ok = [], 0
+    for isin, day, shares, source, conf, mcap, close in samples:
+        # direct rows are re-read from the annual-report total; backcast rows are checked
+        # against the source's raw close (mcap / raw close must reproduce the share count)
+        rows = ark.execute("""
+            SELECT fiscal_year, filed_at, item, value FROM ar_facts
+            WHERE isin = ? AND unit = 'number' AND category = 'shareholding'
+              AND value > 10000 AND value < 1e12 AND fiscal_year <= ?
+            ORDER BY fiscal_year DESC, filed_at DESC LIMIT 400""", (isin, day)).fetchall()
+        fact = None
+        for fy, filed, item, value in rows:
+            item = str(item or "")
+            if not SHARE_TOTAL.search(item) or not SHARE_TOTAL_COUNT.search(item) \
+                    or SHARE_TOTAL_BAD.search(item):
+                continue
+            ref, known = _iso_day(fy), _iso_day(filed)
+            if ref and known and known <= day and (fact is None or ref > fact[0]):
+                fact = (ref, int(round(value)))
+        if source == "ar_shareholding" and fact:
+            good = fact[1] == shares
+            expected = fact[1]
+        else:
+            raw = dcon.execute(
+                "SELECT close FROM px_daily WHERE isin = ? AND CAST(date AS VARCHAR) = ?",
+                (isin, day)).fetchone()
+            raw = float(raw[0]) if raw and raw[0] else None
+            expected = int(round(float(mcap) * 1e7 / raw)) if mcap and raw else None
+            good = expected is not None and abs(expected - shares) <= max(2.0, 1e-5 * shares)
+        ok += good
+        table.append((isin, day, f"{shares:,}", source, conf,
+                      f"{expected:,}" if expected is not None else "n/a",
+                      f"{mcap:,.0f}" if mcap is not None else "", "OK" if good else "MISMATCH"))
+    ark.close()
+    dcon.close()
+    return ("Fill is non-null `mcap_cr` rows per period; `shares_source` splits the counts into "
+            "the filed fact (`xbrl_paidup` / `ar_shareholding`) and the split/bonus backcast "
+            "(`action_adjusted`).\n\n"
+            + md(["period", "mcap rows", "fill", "ISINs filled"], fill)
+            + "\n\n" + md(["source", "rows", "first", "last"], sources)
+            + "\n\n10 hand checks (6 direct, 4 backcast) re-read the source store:\n\n"
+            + md(["isin", "date", "pilot shares", "source", "pit_conf", "source value",
+                  "mcap_cr", "verdict"], table)
+            + f"\n\n**{ok}/{len(samples)}** share checks agree."), ok, len(samples)
+
+
+def index_coverage_md(out: Path) -> str:
+    """INDEX_COVERAGE.md: every index parsed from the notices, its coverage and size check."""
+    con = ro(out / MARKET_DB)
+    rows = con.execute("""
+        SELECT index_code, display_name, broad_or_sector, size, coverage, snapshot_date,
+               members_at_snapshot, changes_parsed, pit_conf
+        FROM index_list ORDER BY broad_or_sector, display_name""").fetchall()
+    dates = ("2020-09-30", "2023-09-30", "2026-09-30")
+    table, snap_n, derived_n, changes_n = [], 0, 0, 0
+    for code, name, kind, size, cov, sdate, members, changes, conf in rows:
+        counts = [con.execute(
+            "SELECT COUNT(*) FROM company_membership_pit WHERE index_code = ? "
+            "AND added_on <= ? AND (removed_on IS NULL OR removed_on > ?)",
+            (code, d, d)).fetchone()[0] for d in dates]
+        ids = con.execute("SELECT COUNT(DISTINCT isin) FROM company_membership_pit "
+                          "WHERE index_code = ?", (code,)).fetchone()[0]
+        if cov == "snapshot":
+            snap_n += 1
+            verdict = ("PASS" if members == size else f"FAIL {members}/{size}")
+        elif cov == "derived":
+            derived_n += 1
+            verdict = ("PASS" if members == size else f"FAIL {members}/{size}")
+        else:
+            changes_n += 1
+            verdict = "n/a (no snapshot)"
+        shown = [f"{c}" if cov != "changes_only" else f"~{c}" for c in counts]
+        table.append((name, code, kind, size if size else "-", cov, sdate or "-",
+                      members if members is not None else "-", changes,
+                      shown[0], shown[1], shown[2], verdict, ids))
+    con.close()
+    total = len(rows)
+    covered = sum(1 for r in table if r[12])
+    body = [
+        "# Pilot T1 — index coverage",
+        "",
+        "Generated by `python -m reality_engine.pilot.build_t1 --index-coverage --out "
+        f"{out}` on {dt.datetime.now().isoformat(timespec='seconds')}.",
+        "",
+        "Coverage is what the held data supports, not what the index publishes:",
+        "",
+        "- `snapshot` — a full constituent list is held (the six `current_*.csv` files in "
+        "`D:/RealityEngine/raw/index_history`, equal to the 2026-09-30 `index_membership` "
+        "snapshot) and the dated notices are reversed into intervals.",
+        "- `derived` — the full list follows from held lists by the index definition "
+        "(Next 50 = Nifty 100 minus Nifty 50; LargeMidcap 250 = Nifty 100 + Midcap 150; "
+        "MidSmallcap 400 = Midcap 150 + Smallcap 250).",
+        "- `changes_only` — no constituent list is held for the index anywhere, so only the "
+        "windows a notice dates are recorded (inclusion -> exclusion or open); a count with "
+        "`~` is therefore a lower bound, not the index size, and `pit_conf` is 0.6.",
+        "",
+        f"**{total} indices** parsed from the 446 notices: {snap_n} snapshot, "
+        f"{derived_n} derived, {changes_n} changes-only; {covered} have at least one "
+        f"membership interval.",
+        "",
+        "Size check applies where a full list exists: the official size in `index_list` "
+        "versus the members in the held list (`members@snapshot`), and the interval count on "
+        "three dates. The snapshot date is exact by construction (the held list is the "
+        "ground truth). Historical counts can sit a few names off the official size: the "
+        "media-page notice corpus does not publish every off-cycle replacement, and a "
+        "split/bonus ISIN re-key can put one company under two ISINs because "
+        "`isin_rekey_map` is not built in T1.",
+        "",
+        md(["index", "code", "type", "official size", "coverage", "snapshot",
+            "members@snapshot", "dated changes", dates[0], dates[1], dates[2],
+            "size check @snapshot", "ISINs"], table),
+    ]
+    return "\n".join(body) + "\n"
+
+
 def main(out: Path) -> int:
     out = Path(out)
     if not (out / MARKET_DB).exists():
@@ -632,6 +790,7 @@ def main(out: Path) -> int:
     total_ok = total_n = 0
     for n, (title, fn) in enumerate([
             ("company_state_daily", check_state), ("company_membership_pit", check_membership),
+            ("pre-FY23 share counts + mcap fill", check_pre_fy23_shares),
             ("price_band_daily (raw sec_list files)", check_band),
             ("event_day0 (15:30 rule)", check_day0),
             ("company_metric_series (XBRL facts)", check_metrics),
