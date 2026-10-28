@@ -359,7 +359,8 @@ _SPEAKER_ROLE = re.compile(
     r"management|investor relations|chief financial officer|managing director)$")
 _NAME_TOKEN = r"(?:(?:mr|mrs|ms|dr|prof|shri|smt)\.|[A-Za-z][A-Za-z'\-]*)"
 _SPEAKER_RE = re.compile(
-    r"(?<![A-Za-z0-9])(" + _NAME_TOKEN + r"(?:[ \t]+" + _NAME_TOKEN + r"){0,3})"
+    r"(?<![A-Za-z0-9])(" + _NAME_TOKEN + r"(?:[ \t]+" + _NAME_TOKEN + r"){0,3}"
+    r"(?:[ \t]+\d{1,2})?)"          # "Analyst 1:", "Participant 2:" (role + number)
     r"[ \t]*:[ \t]+", re.I)
 
 
