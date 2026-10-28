@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-28T23:23:25+05:30 · git HEAD: `43045ba` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-28T23:46:42+05:30 · git HEAD: `8f8d875` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -513,7 +513,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.business_profiler` | test_derived_substrate.py, test_moat_backfill.py |
 | `reality_engine.processing.capacity_governor` | test_forecast_capacity.py |
 | `reality_engine.processing.causal_engine` | test_supply_chain.py |
-| `reality_engine.processing.chunker_v2` | test_chunker_v2.py |
+| `reality_engine.processing.chunker_v2` | test_chunker_v2.py, test_chunker_v3.py |
 | `reality_engine.processing.chunker_v3` | test_chunker_v3.py |
 | `reality_engine.processing.composite_screener` | test_action_thesis.py, test_ensemble_ranker.py, test_policy_coverage.py, test_quant_hardening.py |
 | `reality_engine.processing.desk_backtest` | test_desk_backtest.py |
@@ -564,6 +564,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.embed_prototype_compare` | test_embed_prototype.py |
 | `reality_engine.scripts.extract_deck_figures` | test_extract_deck_figures.py |
 | `reality_engine.scripts.fetch_etf_nav` | test_fetch_etf_nav_timeout.py |
+| `reality_engine.scripts.fetch_index_history` | test_pilot_t1.py |
 | `reality_engine.scripts.fetch_market_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_nse_api_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_originals` | test_fetch_originals.py |
