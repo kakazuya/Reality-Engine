@@ -1,0 +1,56 @@
+{
+ "seed": 20261029,
+ "sample_size": 80,
+ "pilot_excluded": 300,
+ "standard": "A mapping is TP when the claim's own quote or its declared sectors/products/companies supports demand, cost or regulation moving for that held sector/basic-industry/ISIN/theme; a second-order input demand the declaration implies counts. A generic term (all sectors, exports, MSME, trade, public finance) is not a miss. FP = the quote narrows the affected segment or the declaration does not support the target at all. FN = a held target the claim's own text/declaration names but the extractor did not emit.",
+ "claims": {
+  "11439": {
+   "misses": ["basic_industry:Other Bank"],
+   "notes": "Co-operative banking amendment; 'Other Bank' is the held basic industry. No alias for co-operative banking."
+  },
+  "21494": {
+   "misses": ["sector:Automobile and Auto Components"],
+   "notes": "Sector string 'rate-sensitive sectors (real estate, auto, capital goods)': 'auto' is not a key, only 'automobile'/'automotive'/'ev'."
+  },
+  "4093": {
+   "misses": ["sector:Information Technology"],
+   "notes": "Sector 'IT / AI': slash compounds are only split inside parentheses, so the IT/AI centre claim keeps just the state target."
+  },
+  "4815": {
+   "misses": ["basic_industry:Seafood"],
+   "notes": "Sector 'fisheries' has no alias; Seafood is the held basic industry."
+  },
+  "15844": {
+   "misses": ["basic_industry:Aerospace & Defense"],
+   "notes": "Sector 'Drones' has no alias; the drone flying schools / drone ecosystem is Aerospace & Defense."
+  },
+  "17310": {
+   "misses": ["basic_industry:Aerospace & Defense"],
+   "notes": "Sector 'drone' (singular) has no alias; same class as 15844."
+  },
+  "5510": {
+   "misses": ["basic_industry:Gems Jewellery And Watches"],
+   "notes": "Sector 'jewellery' has no alias on the regulation path (only PRODUCT_TERMS 'jewellery', which fires on tariff/tax claims only)."
+  },
+  "5890": {
+   "misses": ["basic_industry:Logistics Solution Provider"],
+   "notes": "Sector 'Transportation' has no alias; 'transport'/'transportation' -> Logistics Solution Provider."
+  },
+  "8174": {
+   "misses": ["basic_industry:Other Bank", "basic_industry:Private Sector Bank",
+              "basic_industry:Public Sector Bank"],
+   "notes": "Sector 'Banking & Financial Services' resolves through the whole-string key to Financial Services only; the banking half is dropped."
+  },
+  "19524": {
+   "fps": ["basic_industry:Public Sector Bank"],
+   "notes": "The quote extends a regulation TO regional rural banks and small finance banks (Other Bank / Private Sector Bank); the generic 'Banking' term also emits Public Sector Bank, which the quote excludes."
+  }
+ },
+ "results": {
+  "claims": 80,
+  "emitted": 167,
+  "tp": 166,
+  "fp": 1,
+  "fn": 11
+ }
+}

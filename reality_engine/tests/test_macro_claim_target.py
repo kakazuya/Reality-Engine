@@ -134,6 +134,10 @@ CLAIMS = [
      "Lending push for financial services", "regulation", "positive",
      "financial services", "[]", "[]", None, None, None, None, "2026-06-01", None,
      "lending push across financial services", 1),
+    # A flagged row: kept by the full run, excluded from the stratified pilot.
+    (113, "doc", "1", 4, "2026-01-15", "Union_Budget: Union Budget 2026-27 Speech",
+     "Water supply package", "capex_sanction", "positive", '["water supply"]', "[]",
+     "[]", None, None, None, None, None, None, "water supply package", 0),
 ]
 
 
@@ -396,6 +400,133 @@ class TestBuild(PilotFixture):
         meta = json.loads((self.tmp / "pilot" / "macro_pilot_meta.json").read_text())
         self.assertEqual(meta["claims"], 11)
         self.assertGreater(meta["targets"], 0)
+
+
+class TestEffectiveDateProse(unittest.TestCase):
+    """Prose effective dates get a date and a pit_conf, so the market window can run."""
+
+    def test_end_of_year(self):
+        self.assertEqual(macro_claims.effective_date("end of 2026"), ("2026-12-31", 0.6))
+        self.assertEqual(macro_claims.effective_date("by end-2027"), ("2027-12-31", 0.6))
+
+    def test_month_without_a_year_uses_known_at(self):
+        self.assertEqual(macro_claims.effective_date("from April", "2025-03-15"),
+                         ("2025-04-01", 0.55))
+        self.assertEqual(macro_claims.effective_date("April", "2025-06-01"),
+                         ("2025-04-01", 0.55))
+        self.assertEqual(macro_claims.effective_date("from April", None), (None, 0.0))
+
+    def test_month_year_and_dotted_date(self):
+        self.assertEqual(macro_claims.effective_date("June 2021"), ("2021-06-01", 0.85))
+        self.assertEqual(macro_claims.effective_date("1. 10. 2024"), ("2024-10-01", 0.95))
+
+    def test_fiscal_span_annotation_and_prefix(self):
+        self.assertEqual(macro_claims.effective_date("2026-31"), ("2026-04-01", 0.9))
+        self.assertEqual(macro_claims.effective_date("BE 2026-27"), ("2026-04-01", 0.9))
+        self.assertEqual(macro_claims.effective_date("2022-23 (as written)"),
+                         ("2022-04-01", 0.9))
+
+    def test_next_financial_year_and_bare_year(self):
+        self.assertEqual(macro_claims.effective_date("next financial year", "2025-02-01"),
+                         ("2026-04-01", 0.55))
+        self.assertEqual(macro_claims.effective_date("2021"), ("2021-04-01", 0.55))
+
+    def test_iso_effective_keeps_its_string_contract(self):
+        self.assertEqual(macro_claims.iso_effective("2024 - 25"), "2024-04-01")
+        self.assertEqual(macro_claims.iso_effective("not a date"), None)
+
+
+class TestAliasRecallFixes(PilotFixture):
+    """Sector terms the independent 80-claim check found unmapped."""
+
+    def kinds(self, term: str) -> set[tuple[str, str]]:
+        targets = macro_claims.claim_targets(
+            {"instrument": "scheme", "sectors": json.dumps([term]), "companies": "[]",
+             "products": "[]", "quote": "", "direction_for_industry": "positive"},
+            macro_claims.CompanyIndex([]))
+        return {(kind, ident) for kind, ident, _, _ in targets}
+
+    def test_new_sector_aliases(self):
+        self.assertIn(("basic_industry", "Seafood"), self.kinds("fisheries"))
+        self.assertIn(("sector", "Automobile and Auto Components"), self.kinds("auto"))
+        self.assertIn(("sector", "Information Technology"), self.kinds("IT / AI"))
+        self.assertIn(("basic_industry", "Aerospace & Defense"), self.kinds("Drones"))
+        self.assertIn(("basic_industry", "Gems Jewellery And Watches"),
+                      self.kinds("jewellery"))
+        self.assertIn(("basic_industry", "Logistics Solution Provider"),
+                      self.kinds("Transportation"))
+        self.assertIn(("basic_industry", "Other Bank"), self.kinds("Co-operative Banking"))
+
+    def test_banking_and_financial_services_keeps_the_banking_half(self):
+        kinds = self.kinds("Banking & Financial Services")
+        self.assertIn(("sector", "Financial Services"), kinds)
+        self.assertIn(("basic_industry", "Public Sector Bank"), kinds)
+        self.assertIn(("basic_industry", "Other Bank"), kinds)
+
+
+class TestAllClaimsBuild(PilotFixture):
+    def test_all_mode_keeps_and_flags_quote_ok_zero(self):
+        summary = macro_claims.build(self.tmp / "all", self.tmp / "equity_intelligence.db",
+                                     QUOTA, all_claims=True, db_name="macro_all.db")
+        self.assertEqual(summary["claims"], len(CLAIMS))
+        self.assertEqual(summary["quote_ok"], {"1": len(CLAIMS) - 1, "0": 1})
+        con = sqlite3.connect(self.tmp / "all" / "macro_all.db")
+        try:
+            flags = dict(con.execute("SELECT claim_id, quote_ok FROM macro_claim"))
+            effective = con.execute(
+                "SELECT effective_date, effective_pit_conf FROM macro_claim "
+                "WHERE claim_id=101").fetchone()
+        finally:
+            con.close()
+        self.assertEqual(flags[113], 0)
+        self.assertEqual(flags[101], 1)
+        self.assertEqual(effective, ("2026-04-01", 1.0))
+
+
+class TestTriggerMatch(PilotFixture):
+    """Issuer + date window + topic overlap are gates; one generic word is not a trigger."""
+
+    def slots(self, question: str, terms: list[str], basis: str = "none",
+              date_from: str | None = None, date_to: str | None = None,
+              template: str | None = None) -> dict:
+        return {"question": question, "terms": terms, "period_basis": basis,
+                "date_from": date_from, "date_to": date_to, "template": template}
+
+    def ctx(self) -> Ctx:
+        ctx = Ctx(root=self.tmp)
+        self.addCleanup(ctx.close)
+        return ctx
+
+    def test_issuer_gate_refuses_another_issuers_claim(self):
+        # The only fixture claim whose policy_name carries "repo" is a Union Budget line:
+        # an RBI ask must not take it.
+        slots = self.slots("The RBI raised the repo rate", ["repo", "rate"])
+        self.assertEqual(ripple._policy(self.ctx(), slots, "2026-06-30"), [])
+        # A claim of the named issuer is kept.
+        slots = self.slots("The RBI issued a circular on risk weights",
+                           ["circular", "risk", "weights"])
+        found = ripple._policy(self.ctx(), slots, "2026-06-30")
+        self.assertEqual([row["id"] for row in found], [103])
+
+    def test_topic_overlap_is_required(self):
+        slots = self.slots("quantum computing partnership", ["quantum", "computing"])
+        self.assertEqual(ripple._policy(self.ctx(), slots, "2026-06-30"), [])
+
+    def test_one_generic_word_is_not_a_trigger(self):
+        slots = self.slots("shares scheme budget order", ["shares", "scheme", "budget"])
+        self.assertEqual(ripple._policy(self.ctx(), slots, "2026-06-30"), [])
+
+    def test_date_window_excludes_an_old_policy(self):
+        # Claim 110 (the only textiles claim) is 2024-06-01; a 2026-09 decision may not
+        # use it as the trigger.
+        slots = self.slots("textiles park allocation", ["textiles"], basis="as_of",
+                           date_from="2026-09-30", date_to="2026-09-30")
+        self.assertEqual(ripple._policy(self.ctx(), slots, "2026-09-30"), [])
+
+    def test_declared_evidence_id_wins(self):
+        slots = self.slots("anything at all", ["anything"], template="R02:policy_events.id=110")
+        found = ripple._policy(self.ctx(), slots, "2026-09-30")
+        self.assertEqual([row["id"] for row in found], [110])
 
 
 class TestRipplePlanner(PilotFixture):

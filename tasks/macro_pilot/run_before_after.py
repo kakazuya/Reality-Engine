@@ -107,6 +107,7 @@ def by_mode(rows: list[dict]) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=str(REPO / ".tmp" / "pilot" / "macro_pilot.db"))
+    ap.add_argument("--out", default=str(HERE / "ripple_before_after.json"))
     args = ap.parse_args(argv)
     cases = policy_roots()
     saved = os.environ.pop(ENV, None)
@@ -140,7 +141,7 @@ def main(argv=None) -> int:
         },
         "rows": {"before": before, "after": after},
     }
-    out = HERE / "ripple_before_after.json"
+    out = Path(args.out)
     out.write_text(json.dumps(payload, indent=1), encoding="utf-8")
 
     print(f"policy-rooted ripple200 cases: {len(cases)}")
