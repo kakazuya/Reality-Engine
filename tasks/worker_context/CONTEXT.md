@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T00:25:37+05:30 · git HEAD: `321cb2c` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T00:27:40+05:30 · git HEAD: `cfccd08` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -326,7 +326,7 @@ Ranked by mentions in `tasks/STATE.md`, `plugins/dsh-worker/jobs.yaml` and the 2
 - `reality_engine/scripts/concall_deepseek.py` (8 refs) — 2026 concall transcripts -> DeepSeek V4.1 Flash on OpenCode Go (Shivam, 2026-10-18: 2026 transcripts are read by
 - `reality_engine/scripts/extract_deck_figures.py` (8 refs) — Extract the figures printed on investor-presentation slides with OpenCode Go vision models.
 - `reality_engine/scripts/new_reader_check.py` (8 refs) — Daily check for new free readers (STATE to-do 1, 2026-10-13). Run once a day by the resource watchdog; safe to run
-- `reality_engine/scripts/nse_announcements.py` (8 refs) — NSE corporate-announcements raw fetcher (one symbol at a time, resumable).
+- `reality_engine/scripts/nse_announcements.py` (7 refs) — NSE corporate-announcements raw fetcher (one symbol at a time, resumable).
 - `reality_engine/scripts/deepseek_heartbeat.py` (6 refs) — DeepSeek heartbeat (Shivam, 2026-10-20): wakes DeepSeek, never Claude. Run hourly by the Windows task
 - `reality_engine/scripts/pib_regional.py` (6 refs) — PIB phase 2 (PIPELINE_TODO A2, 2026-10-19): Hindi / Urdu releases of PIB Delhi and every regional PIB office in every
 - `reality_engine/scripts/claude_page_queue.py` (5 refs) — Hand-off between the deck-figure database and Claude Code helper agents (Claude Haiku 5.5), which cannot be called
