@@ -1,0 +1,1870 @@
+{
+ "cases": 150,
+ "wall_seconds": 58.2,
+ "warm_seconds": 4.5,
+ "hop_totals": {
+  "EVIDENCE": {
+   "n": 109,
+   "total": 31.439,
+   "max": 3.071
+  },
+  "SCREEN": {
+   "n": 153,
+   "total": 23.268,
+   "max": 1.931
+  },
+  "FACTS": {
+   "n": 154,
+   "total": 14.672,
+   "max": 0.829
+  },
+  "resolve": {
+   "n": 301,
+   "total": 12.138,
+   "max": 0.136
+  },
+  "RIPPLE": {
+   "n": 100,
+   "total": 10.63,
+   "max": 0.673
+  },
+  "SERIES": {
+   "n": 133,
+   "total": 4.871,
+   "max": 0.836
+  },
+  "COMPARE": {
+   "n": 32,
+   "total": 0.625,
+   "max": 0.122
+  },
+  "EVENT": {
+   "n": 43,
+   "total": 0.147,
+   "max": 0.039
+  },
+  "EXPECTATIONS": {
+   "n": 20,
+   "total": 0.0,
+   "max": 0.0
+  }
+ },
+ "tool_totals": {
+  "doc_page": {
+   "n": 1,
+   "total": 1.143,
+   "max": 1.143
+  }
+ },
+ "top_statements": [
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT f.symbol, f.source_type, f.document_date, d.doc_id, d.chunk_index, d.published_date, d.content FROM intelligence_fts f JOIN document_chunks d ON d.chunk_id = f.chunk_id WHERE f.intelligence_fts MATCH ? AND d.published_date <= ? AND d.published_date >= ? AND d.published_date <= ? LIMIT ?",
+   "params": [
+    "isin:\"INE522F01014\" AND (\"gasification\" OR \"promotion\" OR \"earlier\" OR \"lignite\" OR \"differ\" OR \"scheme\")",
+    "2026-10-19",
+    "2026-01-29",
+    "2026-02-04",
+    30
+   ],
+   "seconds": 2.3507,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 5, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT rowid FROM intelligence_fts WHERE intelligence_fts MATCH ? ORDER BY bm25(intelligence_fts) LIMIT 1",
+   "params": [
+    "\"revenue\""
+   ],
+   "seconds": 2.0654,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 1, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 AND m.is_nifty500 = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2022-09-20",
+    "2026-09-30"
+   ],
+   "seconds": 1.8686,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2022-03-21",
+    "2022-04-10"
+   ],
+   "seconds": 1.677,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "D:\\RealityEngine\\pilot\\chunks_v3_pilot.db",
+   "sql": "WITH hits AS MATERIALIZED (SELECT rowid AS chunk_id, bm25(chunk_fts, 0.2, 1.0) AS score FROM chunk_fts WHERE chunk_fts MATCH ?) SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, c.speaker_role, c.body, c.header FROM hits JOIN chunk c ON c.chunk_id = hits.chunk_id WHERE c.known_at <= ? AND c.isin = ? ORDER BY hits.score LIMIT ?",
+   "params": [
+    "\"electronics\" OR \"electronic\" OR \"demand\" OR \"policy\" OR \"record\"",
+    "2026-10-19",
+    "INE935N01020",
+    5
+   ],
+   "seconds": 1.3999,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 4, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "D:\\RealityEngine\\pilot\\chunks_v3_pilot.db",
+   "sql": "WITH hits AS MATERIALIZED (SELECT rowid AS chunk_id, bm25(chunk_fts, 0.2, 1.0) AS score FROM chunk_fts WHERE chunk_fts MATCH ?) SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, c.speaker_role, c.body, c.header FROM hits JOIN chunk c ON c.chunk_id = hits.chunk_id WHERE c.known_at <= ? AND c.isin = ? ORDER BY hits.score LIMIT ?",
+   "params": [
+    "\"range\" OR \"mark\"",
+    "2026-10-19",
+    "INE002A01018",
+    5
+   ],
+   "seconds": 1.3489,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 4, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "D:\\RealityEngine\\pilot\\chunks_v3_pilot.db",
+   "sql": "WITH hits AS MATERIALIZED (SELECT rowid AS chunk_id, bm25(chunk_fts, 0.2, 1.0) AS score FROM chunk_fts WHERE chunk_fts MATCH ?) SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, c.speaker_role, c.body, c.header FROM hits JOIN chunk c ON c.chunk_id = hits.chunk_id WHERE c.known_at <= ? AND c.isin = ? ORDER BY hits.score LIMIT ?",
+   "params": [
+    "\"reliance\" OR \"segment\" OR \"drove\"",
+    "2026-10-19",
+    "INE002A01018",
+    5
+   ],
+   "seconds": 1.2966,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 4, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2026-10-09",
+    "2026-10-19"
+   ],
+   "seconds": 1.2914,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 AND m.is_nifty500 = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2026-06-28",
+    "2026-10-07"
+   ],
+   "seconds": 1.2424,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "D:\\RealityEngine\\pilot\\chunks_v3_pilot.db",
+   "sql": "WITH hits AS MATERIALIZED (SELECT rowid AS chunk_id, bm25(chunk_fts, 0.2, 1.0) AS score FROM chunk_fts WHERE chunk_fts MATCH ?) SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, c.speaker_role, c.body, c.header FROM hits JOIN chunk c ON c.chunk_id = hits.chunk_id WHERE c.known_at <= ? AND c.isin = ? ORDER BY hits.score LIMIT ?",
+   "params": [
+    "\"underperformed\" OR \"relative\" OR \"strength\" OR \"turning\" OR \"nifty\"",
+    "2026-09-24",
+    "INE040A01034",
+    5
+   ],
+   "seconds": 1.1918,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 4, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2026-03-21",
+    "2026-04-10"
+   ],
+   "seconds": 1.1767,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2024-05-25",
+    "2024-06-04"
+   ],
+   "seconds": 1.1515,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 AND m.is_nifty500 = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2026-06-28",
+    "2026-10-07"
+   ],
+   "seconds": 1.1292,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 AND m.is_nifty500 = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2026-06-28",
+    "2026-10-07"
+   ],
+   "seconds": 1.1211,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "D:\\RealityEngine\\pilot\\chunks_v3_pilot.db",
+   "sql": "WITH hits AS MATERIALIZED (SELECT rowid AS chunk_id, bm25(chunk_fts, 0.2, 1.0) AS score FROM chunk_fts WHERE chunk_fts MATCH ?) SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, c.speaker_role, c.body, c.header FROM hits JOIN chunk c ON c.chunk_id = hits.chunk_id WHERE c.known_at <= ? AND c.isin = ? ORDER BY hits.score LIMIT ?",
+   "params": [
+    "\"index\" OR \"moves\"",
+    "2026-09-25",
+    "INE417T01026",
+    5
+   ],
+   "seconds": 1.1071,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 4, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT f.symbol, f.source_type, f.document_date, d.doc_id, d.chunk_index, d.published_date, d.content FROM intelligence_fts f JOIN document_chunks d ON d.chunk_id = f.chunk_id WHERE f.intelligence_fts MATCH ? AND d.published_date <= ? AND d.published_date >= ? AND d.published_date <= ? LIMIT ?",
+   "params": [
+    "isin:\"INE094A01015\" AND (\"already\" OR \"profit\" OR \"swing\")",
+    "2026-06-30",
+    "2026-06-27",
+    "2026-06-30",
+    30
+   ],
+   "seconds": 1.0104,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 5, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "D:\\RealityEngine\\pilot\\chunks_v3_pilot.db",
+   "sql": "WITH hits AS MATERIALIZED (SELECT rowid AS chunk_id, bm25(chunk_fts, 0.2, 1.0) AS score FROM chunk_fts WHERE chunk_fts MATCH ?) SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, c.speaker_role, c.body, c.header FROM hits JOIN chunk c ON c.chunk_id = hits.chunk_id WHERE c.known_at <= ? AND c.isin = ? ORDER BY hits.score LIMIT ?",
+   "params": [
+    "\"indicators\" OR \"indicator\" OR \"leading\" OR \"three\"",
+    "2026-10-19",
+    "INE455K01017",
+    5
+   ],
+   "seconds": 1.0021,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 4, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "D:\\RealityEngine\\pilot\\chunks_v3_pilot.db",
+   "sql": "WITH hits AS MATERIALIZED (SELECT rowid AS chunk_id, bm25(chunk_fts, 0.2, 1.0) AS score FROM chunk_fts WHERE chunk_fts MATCH ?) SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, c.speaker_role, c.body, c.header FROM hits JOIN chunk c ON c.chunk_id = hits.chunk_id WHERE c.known_at <= ? AND c.isin = ? ORDER BY hits.score LIMIT ?",
+   "params": [
+    "\"disclosed\" OR \"execution\" OR \"timelines\" OR \"timeline\"",
+    "2026-10-19",
+    "INE066F01020",
+    5
+   ],
+   "seconds": 0.8727,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 4, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "params": [
+    "2026-06-20",
+    "2026-06-30"
+   ],
+   "seconds": 0.8171,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\deck_figures.db",
+   "sql": "SELECT f.sha256, f.page_no, f.metric, f.period, f.value, f.unit, p.known_at, p.doc_type FROM pages p JOIN facts f ON f.sha256=p.sha256 AND f.page_no=p.page_no WHERE p.isin = ? AND COALESCE(p.known_at,'') <> '' AND substr(p.known_at,1,10) <= ? AND ((lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?)) AND (lower(COALESCE(f.period,'')) LIKE ? OR lower(COALESCE(f.period,'')) LIKE ?) AND lower(COALESCE(f.period,'')) LIKE ? ORDER BY p.known_at DESC, f.page_no LIMIT 160",
+   "params": [
+    "INE949L01017",
+    "2026-10-19",
+    "%npa%",
+    "%non performing%",
+    "%non-performing%",
+    "%q2%",
+    "%sep%",
+    "%2026%"
+   ],
+   "seconds": 0.8089,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 8, and there are 0 supplied."
+   ]
+  }
+ ],
+ "all_statements": [
+  {
+   "db": "D:\\RealityEngine\\pilot\\chunks_v3_pilot.db",
+   "sql": "WITH hits AS MATERIALIZED (SELECT rowid AS chunk_id, bm25(chunk_fts, 0.2, 1.0) AS score FROM chunk_fts WHERE chunk_fts MATCH ?) SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, c.speaker_role, c.body, c.header FROM hits JOIN chunk c ON c.chunk_id = hits.chunk_id WHERE c.known_at <= ? AND c.isin = ? ORDER BY hits.score LIMIT ?",
+   "n": 23,
+   "total": 17.116,
+   "max": 1.4,
+   "params": [
+    "\"range\" OR \"mark\"",
+    "2026-10-19",
+    "INE002A01018",
+    5
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 AND m.is_nifty500 = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "n": 114,
+   "total": 14.006,
+   "max": 1.869,
+   "params": [
+    "2026-03-21",
+    "2026-04-10"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT d.isin, m.nse_symbol, m.company_name, d.date, d.close, d.delivery_pct, d.turnover_lacs FROM daily_price_delivery d JOIN master_companies m ON m.isin = d.isin WHERE d.date BETWEEN ? AND ? AND m.is_active = 1 ORDER BY d.isin, d.date LIMIT 30000",
+   "n": 6,
+   "total": 6.414,
+   "max": 1.677,
+   "params": [
+    "2022-03-21",
+    "2022-04-10"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT f.symbol, f.source_type, f.document_date, d.doc_id, d.chunk_index, d.published_date, d.content FROM intelligence_fts f JOIN document_chunks d ON d.chunk_id = f.chunk_id WHERE f.intelligence_fts MATCH ? AND d.published_date <= ? AND d.published_date >= ? AND d.published_date <= ? LIMIT ?",
+   "n": 14,
+   "total": 6.075,
+   "max": 2.351,
+   "params": [
+    "isin:\"INE024001021\" AND (\"products\" OR \"product\")",
+    "2026-10-19",
+    "2026-10-13",
+    "2026-10-19",
+    30
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT exchange, symbol, isin, first_date, last_date FROM symbol_isin_history WHERE (upper(COALESCE(symbol,''))=upper(?) OR isin=?) AND first_date<=? ORDER BY first_date DESC LIMIT 20",
+   "n": 235,
+   "total": 4.242,
+   "max": 0.051,
+   "params": [
+    "AEROFLEX",
+    "INE024001021",
+    "2026-10-19"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT first_date, last_date FROM symbol_isin_history WHERE (upper(COALESCE(symbol,''))=upper(?) OR isin=?) LIMIT 20",
+   "n": 235,
+   "total": 4.168,
+   "max": 0.047,
+   "params": [
+    "AEROFLEX",
+    "INE024001021"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\deck_figures.db",
+   "sql": "SELECT f.sha256, f.page_no, f.metric, f.period, f.value, f.unit, p.known_at, p.doc_type FROM pages p JOIN facts f ON f.sha256=p.sha256 AND f.page_no=p.page_no WHERE p.isin = ? AND COALESCE(p.known_at,'') <> '' AND substr(p.known_at,1,10) <= ? AND ((lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?)) AND (lower(COALESCE(f.period,'')) LIKE ? OR lower(COALESCE(f.period,'')) LIKE ?) AND lower(COALESCE(f.period,'')) LIKE ? ORDER BY p.known_at DESC, f.page_no LIMIT 160",
+   "n": 11,
+   "total": 3.917,
+   "max": 0.809,
+   "params": [
+    "INE266Y01019",
+    "2026-10-19",
+    "%segment%",
+    "%business mix%",
+    "%vertical%",
+    "%q1%",
+    "%jun%",
+    "%2026%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT id, title, policy_name, sectors, companies, direction_for_industry, effective_date, published_at, quote FROM policy_events WHERE COALESCE(published_at,'') <> '' AND substr(published_at,1,10) <= ? AND ((lower(COALESCE(title,'')) LIKE ? OR lower(COALESCE(policy_name,'')) LIKE ? OR lower(COALESCE(sectors,'')) LIKE ? OR lower(COALESCE(companies,'')) LIKE ? OR lower(COALESCE(products,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(title,'')) LIKE ? OR lower(COALESCE(policy_name,'')) LIKE ? OR lower(COALESCE(sectors,'')) LIKE ? OR lower(COALESCE(companies,'')) LIKE ? OR lo",
+   "n": 90,
+   "total": 3.898,
+   "max": 0.651,
+   "params": [
+    "2026-10-19",
+    "%krishnadef%",
+    "%krishnadef%",
+    "%krishnadef%",
+    "%krishnadef%",
+    "%krishnadef%",
+    "%krishnadef%",
+    "%segment%",
+    "%segment%",
+    "%segment%",
+    "%segment%",
+    "%segment%",
+    "%segment%",
+    "%revenue%",
+    "%revenue%",
+    "%revenue%",
+    "%revenue%",
+    "%revenue%",
+    "%revenue%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT isin, nse_symbol, bse_code, name, bse_status, first_trade, last_trade FROM security_master WHERE isin=? OR upper(COALESCE(nse_symbol,''))=upper(?) OR upper(COALESCE(bse_code,''))=upper(?) LIMIT 1",
+   "n": 235,
+   "total": 2.83,
+   "max": 0.06,
+   "params": [
+    "AEROFLEX",
+    "AEROFLEX",
+    "AEROFLEX"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT rowid FROM intelligence_fts WHERE intelligence_fts MATCH ? ORDER BY bm25(intelligence_fts) LIMIT 1",
+   "n": 3,
+   "total": 2.619,
+   "max": 2.065,
+   "params": [
+    "\"revenue\""
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT isin, nse_symbol, company_name FROM master_companies WHERE lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? OR lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? OR lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? AND is_active=1 LIMIT 25",
+   "n": 32,
+   "total": 1.915,
+   "max": 0.163,
+   "params": [
+    "%[\"consumer goods\"%",
+    "%\"retail\"%",
+    "%\"rural economy\"]%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT isin, nse_symbol, company_name FROM master_companies WHERE lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? OR lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? OR lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? OR lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? AND is_active=1 LIMIT 25",
+   "n": 18,
+   "total": 1.617,
+   "max": 0.16,
+   "params": [
+    "%[\"oil & gas (omcs)\"%",
+    "%\"refining & marketing\"%",
+    "%\"transport & logistics\"%",
+    "%\"aviation\"%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT isin, nse_symbol, company_name FROM master_companies WHERE lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? OR lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? AND is_active=1 LIMIT 25",
+   "n": 29,
+   "total": 1.443,
+   "max": 0.113,
+   "params": [
+    "%[\"pharmaceuticals\"%",
+    "%\"generic drug exports\"]%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, fiscal_year, filed_at, category, item, value, unit, period, quote FROM ar_facts WHERE isin = ? AND COALESCE(filed_at,'') <> '' AND substr(filed_at,1,10) <= ? AND ((lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?)) ORDER BY fiscal_year DESC, page LIMIT 160",
+   "n": 7,
+   "total": 1.434,
+   "max": 0.351,
+   "params": [
+    "INE935N01020",
+    "2026-10-27",
+    "%guidance%",
+    "%guidance%",
+    "%guidance%",
+    "%outlook%",
+    "%outlook%",
+    "%outlook%",
+    "%guided%",
+    "%guided%",
+    "%guided%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT id, title, policy_name, sectors, companies, direction_for_industry, effective_date, published_at, quote FROM policy_events WHERE COALESCE(published_at,'') <> '' AND substr(published_at,1,10) <= ? AND ((lower(COALESCE(title,'')) LIKE ? OR lower(COALESCE(policy_name,'')) LIKE ? OR lower(COALESCE(sectors,'')) LIKE ? OR lower(COALESCE(companies,'')) LIKE ? OR lower(COALESCE(products,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?)) ORDER BY published_at DESC LIMIT 5",
+   "n": 9,
+   "total": 1.284,
+   "max": 0.485,
+   "params": [
+    "2026-10-19",
+    "%gold%",
+    "%gold%",
+    "%gold%",
+    "%gold%",
+    "%gold%",
+    "%gold%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT f.symbol, f.source_type, f.document_date, d.doc_id, d.chunk_index, d.published_date, d.content FROM intelligence_fts f JOIN document_chunks d ON d.chunk_id = f.chunk_id WHERE f.intelligence_fts MATCH ? AND d.published_date <= ? LIMIT ?",
+   "n": 31,
+   "total": 1.185,
+   "max": 0.084,
+   "params": [
+    "isin:\"INE351F01018\" AND (\"control\")",
+    "2026-10-19",
+    30
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\deck_figures.db",
+   "sql": "SELECT f.sha256, f.page_no, f.metric, f.period, f.value, f.unit, p.known_at, p.doc_type FROM pages p JOIN facts f ON f.sha256=p.sha256 AND f.page_no=p.page_no WHERE p.isin = ? AND COALESCE(p.known_at,'') <> '' AND substr(p.known_at,1,10) <= ? AND ((lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?)) ORDER BY p.known_at DESC, f.page_no LIMIT 160",
+   "n": 6,
+   "total": 1.076,
+   "max": 0.39,
+   "params": [
+    "INE498Q01014",
+    "2026-10-19",
+    "%promoter%",
+    "%shareholding%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, fiscal_year, filed_at, category, item, value, unit, period, quote FROM ar_facts WHERE isin = ? AND COALESCE(filed_at,'') <> '' AND substr(filed_at,1,10) <= ? AND ((lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?)) ORDER BY fiscal_year DESC, page LIMIT 160",
+   "n": 5,
+   "total": 1.007,
+   "max": 0.488,
+   "params": [
+    "INE039O01029",
+    "2026-10-19",
+    "%margin%",
+    "%margin%",
+    "%margin%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\deck_figures.db",
+   "sql": "SELECT f.sha256, f.page_no, f.metric, f.period, f.value, f.unit, p.known_at, p.doc_type FROM pages p JOIN facts f ON f.sha256=p.sha256 AND f.page_no=p.page_no WHERE p.isin = ? AND COALESCE(p.known_at,'') <> '' AND substr(p.known_at,1,10) <= ? AND ((lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?)) ORDER BY p.known_at DESC, f.page_no LIMIT 160",
+   "n": 7,
+   "total": 0.992,
+   "max": 0.252,
+   "params": [
+    "INE935N01020",
+    "2026-10-27",
+    "%guidance%",
+    "%outlook%",
+    "%guided%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT f.symbol, f.source_type, f.document_date, d.doc_id, d.chunk_index, d.published_date, d.content FROM intelligence_fts f JOIN document_chunks d ON d.chunk_id = f.chunk_id WHERE f.intelligence_fts MATCH ? AND d.published_date <= ? AND d.published_date >= ? AND d.published_date <= ? AND f.source_type IN (?) LIMIT ?",
+   "n": 9,
+   "total": 0.945,
+   "max": 0.373,
+   "params": [
+    "isin:\"INE845D01014\" AND (\"manufacturing\" OR \"presentation\" OR \"facilities\" OR \"ecosphere\" OR \"facilitie\" OR \"investor\" O",
+    "2026-10-19",
+    "2026-08-02",
+    "2026-08-08",
+    "INVESTOR_PRESENTATION",
+    30
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT date, close, close AS adj_close, high, high AS adj_high, low, low AS adj_low, total_volume AS volume, delivery_pct FROM daily_price_delivery WHERE upper(symbol) = upper(?) AND date >= ? AND date <= ? ORDER BY date",
+   "n": 3,
+   "total": 0.883,
+   "max": 0.578,
+   "params": [
+    "JPPOWER",
+    "2026-03-31",
+    "2026-03-31"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT isin, nse_symbol, bse_code, company_name, industry, sector, market_cap_tier, is_active, is_nifty500 FROM master_companies WHERE upper(nse_symbol)=upper(?) OR isin=? OR upper(COALESCE(bse_code,''))=upper(?) LIMIT 1",
+   "n": 235,
+   "total": 0.839,
+   "max": 0.047,
+   "params": [
+    "AEROFLEX",
+    "AEROFLEX",
+    "AEROFLEX"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, filed_at, item, quote FROM ar_facts WHERE isin=? AND filed_at<=? AND (lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ?) ORDER BY filed_at DESC LIMIT ?",
+   "n": 3,
+   "total": 0.773,
+   "max": 0.719,
+   "params": [
+    "INE1RDG01013",
+    "2026-10-19",
+    "%pngs%",
+    "%pngs%",
+    "%reva%",
+    "%reva%",
+    "%diamond%",
+    "%diamond%",
+    "%jewellery%",
+    "%jewellery%",
+    "%move%",
+    "%move%",
+    "%macro%",
+    "%macro%",
+    40
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT isin, scheme_code, scheme_name FROM fund_nav WHERE upper(COALESCE(scheme_name, '')) LIKE ? OR upper(isin) = ? LIMIT 20",
+   "n": 1,
+   "total": 0.742,
+   "max": 0.742,
+   "params": [
+    "%APOLLO%",
+    "APOLLO"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, fiscal_year, filed_at, category, item, value, unit, period, quote FROM ar_facts WHERE isin = ? AND COALESCE(filed_at,'') <> '' AND substr(filed_at,1,10) <= ? AND ((lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?)) ORDER BY fiscal_year DESC, page LIMIT 160",
+   "n": 6,
+   "total": 0.633,
+   "max": 0.187,
+   "params": [
+    "INE498Q01014",
+    "2026-10-19",
+    "%promoter%",
+    "%promoter%",
+    "%promoter%",
+    "%shareholding%",
+    "%shareholding%",
+    "%shareholding%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT f.symbol, f.source_type, d.doc_id, d.published_date, d.content FROM intelligence_fts f JOIN document_chunks d ON d.chunk_id = f.chunk_id WHERE f.intelligence_fts MATCH ? AND d.published_date <= ? LIMIT ?",
+   "n": 7,
+   "total": 0.586,
+   "max": 0.244,
+   "params": [
+    "\"electronics\" OR \"electronic\" OR \"benefits\" OR \"benefit\"",
+    "2026-10-19",
+    30
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, filed_at, item, quote FROM ar_facts WHERE isin=? AND filed_at<=? AND (lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ?) ORDER BY filed_at DESC LIMIT ?",
+   "n": 2,
+   "total": 0.55,
+   "max": 0.378,
+   "params": [
+    "INE0J1Y01017",
+    "2026-10-19",
+    "%life%",
+    "%life%",
+    "%insurance%",
+    "%insurance%",
+    "%corporation%",
+    "%corporation%",
+    "%india%",
+    "%india%",
+    40
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, filed_at, item, quote FROM ar_facts WHERE isin=? AND filed_at<=? AND (lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ? OR lower(item) LIKE ? OR lower(quote) LIKE ?) ORDER BY filed_at DESC LIMIT ?",
+   "n": 2,
+   "total": 0.528,
+   "max": 0.463,
+   "params": [
+    "INE0J1Y01017",
+    "2026-10-19",
+    "%october%",
+    "%october%",
+    "%either%",
+    "%either%",
+    "%answer%",
+    "%answer%",
+    40
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\deck_figures.db",
+   "sql": "SELECT f.sha256, f.page_no, f.metric, f.period, f.value, f.unit, p.known_at, p.doc_type FROM pages p JOIN facts f ON f.sha256=p.sha256 AND f.page_no=p.page_no WHERE p.isin = ? AND COALESCE(p.known_at,'') <> '' AND substr(p.known_at,1,10) <= ? AND ((lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?)) AND (lower(COALESCE(f.period,'')) LIKE ? OR lower(COALESCE(f.period,'')) LIKE ?) AND lower(COALESCE(f.period,'')) LIKE ? ORDER BY p.known_at DESC, f.page_no LIMIT 160",
+   "n": 1,
+   "total": 0.528,
+   "max": 0.528,
+   "params": [
+    "INE081A01020",
+    "2026-10-07",
+    "%ebitda%",
+    "%operating profit%",
+    "%q1%",
+    "%jun%",
+    "%2026%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, fiscal_year, filed_at, category, item, value, unit, period, quote FROM ar_facts WHERE isin = ? AND COALESCE(filed_at,'') <> '' AND substr(filed_at,1,10) <= ? AND ((lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower",
+   "n": 4,
+   "total": 0.483,
+   "max": 0.222,
+   "params": [
+    "INE399L01023",
+    "2026-10-19",
+    "%revenue%",
+    "%revenue%",
+    "%revenue%",
+    "%turnover%",
+    "%turnover%",
+    "%turnover%",
+    "%sales%",
+    "%sales%",
+    "%sales%",
+    "%income%",
+    "%income%",
+    "%income%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\concall_facts.db",
+   "sql": "SELECT i.doc_id, i.metric, i.value, i.unit, i.period, i.quote, d.filed_at FROM cc_items i JOIN cc_docs d ON d.doc_id = i.doc_id WHERE i.isin = ? AND COALESCE(d.filed_at,'') <> '' AND substr(d.filed_at,1,10) <= ? AND ((lower(COALESCE(i.metric,'')) LIKE ? OR lower(COALESCE(i.statement,'')) LIKE ? OR lower(COALESCE(i.quote,'')) LIKE ?) OR (lower(COALESCE(i.metric,'')) LIKE ? OR lower(COALESCE(i.statement,'')) LIKE ? OR lower(COALESCE(i.quote,'')) LIKE ?) OR (lower(COALESCE(i.metric,'')) LIKE ? OR lower(COALESCE(i.statement,'')) LIKE ? OR lower(COALESCE(i.quote,'')) LIKE ?)) ORDER BY d.filed_at DE",
+   "n": 24,
+   "total": 0.471,
+   "max": 0.084,
+   "params": [
+    "INE266Y01019",
+    "2026-10-19",
+    "%segment%",
+    "%segment%",
+    "%segment%",
+    "%business mix%",
+    "%business mix%",
+    "%business mix%",
+    "%vertical%",
+    "%vertical%",
+    "%vertical%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, filed_at, item, quote FROM ar_facts WHERE isin=? AND filed_at<=? AND (lower(item) LIKE ? OR lower(quote) LIKE ?) ORDER BY filed_at DESC LIMIT ?",
+   "n": 4,
+   "total": 0.462,
+   "max": 0.173,
+   "params": [
+    "INE024001021",
+    "2026-10-19",
+    "%products%",
+    "%products%",
+    40
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\deck_figures.db",
+   "sql": "SELECT f.sha256, f.page_no, f.metric, f.period, f.value, f.unit, p.known_at, p.doc_type FROM pages p JOIN facts f ON f.sha256=p.sha256 AND f.page_no=p.page_no WHERE p.isin = ? AND COALESCE(p.known_at,'') <> '' AND substr(p.known_at,1,10) <= ? AND ((lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?)) AND (lower(COALESCE(f.period,'')) LIKE ?) AND lower(COALESCE(f.period,'')) LIKE ? ORDER BY p.known_at DESC, f.page_no LIMIT 160",
+   "n": 6,
+   "total": 0.461,
+   "max": 0.237,
+   "params": [
+    "INE423A01024",
+    "2026-10-19",
+    "%revenue%",
+    "%turnover%",
+    "%sales%",
+    "%income%",
+    "%fy22%",
+    "%2022%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, fiscal_year, filed_at, category, item, value, unit, period, quote FROM ar_facts WHERE isin = ? AND COALESCE(filed_at,'') <> '' AND substr(filed_at,1,10) <= ? AND COALESCE(fiscal_year,'') LIKE ? AND ((lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?)) ORDER BY fiscal_year DESC, page LIMIT 160",
+   "n": 6,
+   "total": 0.427,
+   "max": 0.11,
+   "params": [
+    "INE066F01020",
+    "2026-10-19",
+    "%2026%",
+    "%order book%",
+    "%order book%",
+    "%order book%",
+    "%orderbook%",
+    "%orderbook%",
+    "%orderbook%",
+    "%orders%",
+    "%orders%",
+    "%orders%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\deck_figures.db",
+   "sql": "SELECT f.sha256, f.page_no, f.metric, f.period, f.value, f.unit, p.known_at, p.doc_type FROM pages p JOIN facts f ON f.sha256=p.sha256 AND f.page_no=p.page_no WHERE p.isin = ? AND COALESCE(p.known_at,'') <> '' AND substr(p.known_at,1,10) <= ? AND ((lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?) OR (lower(COALESCE(f.metric,'')) LIKE ?)) AND (lower(COALESCE(f.period,'')) LIKE ?) AND lower(COALESCE(f.period,'')) LIKE ? ORDER BY p.known_at DESC, f.page_no LIMIT 160",
+   "n": 6,
+   "total": 0.426,
+   "max": 0.166,
+   "params": [
+    "INE066F01020",
+    "2026-10-19",
+    "%order book%",
+    "%orderbook%",
+    "%orders%",
+    "%fy26%",
+    "%2026%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\ar_facts.db",
+   "sql": "SELECT doc_id, page, fiscal_year, filed_at, category, item, value, unit, period, quote FROM ar_facts WHERE isin = ? AND COALESCE(filed_at,'') <> '' AND substr(filed_at,1,10) <= ? AND COALESCE(fiscal_year,'') LIKE ? AND ((lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(COALESCE(category,'')) LIKE ? OR lower(COALESCE(quote,'')) LIKE ?) OR (lower(COALESCE(item,'')) LIKE ? OR lower(CO",
+   "n": 8,
+   "total": 0.422,
+   "max": 0.123,
+   "params": [
+    "INE570L01029",
+    "2026-10-19",
+    "%2026%",
+    "%facilities%",
+    "%facilities%",
+    "%facilities%",
+    "%plants%",
+    "%plants%",
+    "%plants%",
+    "%manufacturing units%",
+    "%manufacturing units%",
+    "%manufacturing units%",
+    "%factories%",
+    "%factories%",
+    "%factories%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT isin, nse_symbol, company_name FROM master_companies WHERE lower(COALESCE(sector,'') || ' ' || COALESCE(industry,'')) LIKE ? AND is_active=1 LIMIT 25",
+   "n": 16,
+   "total": 0.402,
+   "max": 0.055,
+   "params": [
+    "%[\"state finances\"]%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\deck_figures.db",
+   "sql": "SELECT f.sha256, f.page_no, f.metric, f.period, f.value, f.unit, p.known_at, p.doc_type FROM pages p JOIN facts f ON f.sha256=p.sha256 AND f.page_no=p.page_no WHERE p.isin = ? AND COALESCE(p.known_at,'') <> '' AND substr(p.known_at,1,10) <= ? AND ((lower(COALESCE(f.metric,'')) LIKE ?)) ORDER BY p.known_at DESC, f.page_no LIMIT 160",
+   "n": 5,
+   "total": 0.368,
+   "max": 0.224,
+   "params": [
+    "INE039O01029",
+    "2026-10-19",
+    "%margin%"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT s.isin, s.symbol, s.quarter_end, s.promoter_pct, s.broadcast_at, m.market_cap_tier FROM shp_index s JOIN master_companies m ON m.isin = s.isin WHERE COALESCE(s.broadcast_at,'') <> '' AND substr(s.broadcast_at,1,10) <= ? AND s.quarter_end >= ? AND m.market_cap_tier = ? ORDER BY s.isin, s.quarter_end",
+   "n": 1,
+   "total": 0.355,
+   "max": 0.355,
+   "params": [
+    "2026-10-19",
+    "2025-09-14",
+    "LARGE"
+   ]
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\results_xbrl.db",
+   "sql": "SELECT f.file, f.period_end, f.xbrl_url, COALESCE(f.dissem_ts, f.broadcast_ts, f.filing_ts) AS known_at FROM filings f JOIN filings_isin fi ON fi.file = f.file WHERE fi.isin = ? AND COALESCE(f.dissem_ts, f.broadcast_ts, f.filing_ts) <> '' AND substr(COALESCE(f.dissem_ts, f.broadcast_ts, f.filing_ts),1,10) <= ? AND f.period_end >= ? AND f.period_end <= ? ORDER BY f.period_end DESC LIMIT 12",
+   "n": 29,
+   "total": 0.351,
+   "max": 0.027,
+   "params": [
+    "INE266Y01019",
+    "2026-10-19",
+    "2026-06-30",
+    "2026-06-30"
+   ]
+  }
+ ],
+ "top_hops": [
+  {
+   "mid": "MB0201",
+   "hop": "EVIDENCE",
+   "seconds": 3.0708,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0466",
+   "hop": "SCREEN",
+   "seconds": 1.9305,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "EVENT",
+    "RIPPLE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0973",
+   "hop": "SCREEN",
+   "seconds": 1.729,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "FACTS",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0197",
+   "hop": "EVIDENCE",
+   "seconds": 1.4004,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0159",
+   "hop": "EVIDENCE",
+   "seconds": 1.3893,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "EVENT",
+    "RIPPLE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0197",
+   "hop": "SCREEN",
+   "seconds": 1.3681,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN"
+   ]
+  },
+  {
+   "mid": "MB0831",
+   "hop": "EVIDENCE",
+   "seconds": 1.3493,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0389",
+   "hop": "SCREEN",
+   "seconds": 1.3117,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "SERIES"
+   ]
+  },
+  {
+   "mid": "MB0890",
+   "hop": "EVIDENCE",
+   "seconds": 1.3054,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EVENT",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0151",
+   "hop": "SCREEN",
+   "seconds": 1.2473,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "EVENT",
+    "RIPPLE",
+    "FACTS",
+    "SERIES"
+   ]
+  },
+  {
+   "mid": "MB0389",
+   "hop": "SCREEN",
+   "seconds": 1.2101,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "FACTS",
+    "SERIES"
+   ]
+  },
+  {
+   "mid": "MB1011",
+   "hop": "EVIDENCE",
+   "seconds": 1.2064,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0424",
+   "hop": "SCREEN",
+   "seconds": 1.2042,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "EVENT",
+    "FACTS",
+    "SERIES"
+   ]
+  },
+  {
+   "mid": "MB0389",
+   "hop": "SCREEN",
+   "seconds": 1.194,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "SERIES"
+   ]
+  },
+  {
+   "mid": "MB0026",
+   "hop": "EVIDENCE",
+   "seconds": 1.1431,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0430",
+   "hop": "EVIDENCE",
+   "seconds": 1.1075,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "EVENT",
+    "COMPARE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0001",
+   "hop": "EVIDENCE",
+   "seconds": 1.0497,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0979",
+   "hop": "EVIDENCE",
+   "seconds": 1.0222,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "SCREEN",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0199",
+   "hop": "SCREEN",
+   "seconds": 0.8806,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN"
+   ]
+  },
+  {
+   "mid": "MB0839",
+   "hop": "EVIDENCE",
+   "seconds": 0.8729,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0001",
+   "hop": "SERIES",
+   "seconds": 0.8363,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0100",
+   "hop": "FACTS",
+   "seconds": 0.8289,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0472",
+   "hop": "EVIDENCE",
+   "seconds": 0.793,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0789",
+   "hop": "FACTS",
+   "seconds": 0.773,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "FACTS",
+    "SERIES"
+   ]
+  },
+  {
+   "mid": "MB0007",
+   "hop": "FACTS",
+   "seconds": 0.743,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "SERIES"
+   ]
+  }
+ ],
+ "cases_seconds": [
+  {
+   "mid": "MB0001",
+   "seconds": 1.064
+  },
+  {
+   "mid": "MB0002",
+   "seconds": 0.592
+  },
+  {
+   "mid": "MB0003",
+   "seconds": 0.236
+  },
+  {
+   "mid": "MB0004",
+   "seconds": 0.138
+  },
+  {
+   "mid": "MB0005",
+   "seconds": 0.049
+  },
+  {
+   "mid": "MB0006",
+   "seconds": 0.177
+  },
+  {
+   "mid": "MB0007",
+   "seconds": 0.76
+  },
+  {
+   "mid": "MB0008",
+   "seconds": 0.092
+  },
+  {
+   "mid": "MB0009",
+   "seconds": 0.085
+  },
+  {
+   "mid": "MB0010",
+   "seconds": 0.163
+  },
+  {
+   "mid": "MB0011",
+   "seconds": 0.056
+  },
+  {
+   "mid": "MB0012",
+   "seconds": 0.187
+  },
+  {
+   "mid": "MB0013",
+   "seconds": 0.42
+  },
+  {
+   "mid": "MB0014",
+   "seconds": 0.024
+  },
+  {
+   "mid": "MB0015",
+   "seconds": 0.055
+  },
+  {
+   "mid": "MB0016",
+   "seconds": 0.438
+  },
+  {
+   "mid": "MB0017",
+   "seconds": 0.059
+  },
+  {
+   "mid": "MB0018",
+   "seconds": 0.067
+  },
+  {
+   "mid": "MB0019",
+   "seconds": 0.487
+  },
+  {
+   "mid": "MB0020",
+   "seconds": 0.066
+  },
+  {
+   "mid": "MB0021",
+   "seconds": 0.256
+  },
+  {
+   "mid": "MB0022",
+   "seconds": 0.161
+  },
+  {
+   "mid": "MB0023",
+   "seconds": 0.123
+  },
+  {
+   "mid": "MB0024",
+   "seconds": 0.072
+  },
+  {
+   "mid": "MB0025",
+   "seconds": 0.663
+  },
+  {
+   "mid": "MB0026",
+   "seconds": 1.145
+  },
+  {
+   "mid": "MB0027",
+   "seconds": 0.384
+  },
+  {
+   "mid": "MB0028",
+   "seconds": 0.04
+  },
+  {
+   "mid": "MB0029",
+   "seconds": 0.126
+  },
+  {
+   "mid": "MB0030",
+   "seconds": 0.139
+  },
+  {
+   "mid": "MB0831",
+   "seconds": 1.355
+  },
+  {
+   "mid": "MB0832",
+   "seconds": 0.646
+  },
+  {
+   "mid": "MB0839",
+   "seconds": 0.915
+  },
+  {
+   "mid": "MB0840",
+   "seconds": 0.097
+  },
+  {
+   "mid": "MB0842",
+   "seconds": 0.031
+  },
+  {
+   "mid": "MB0867",
+   "seconds": 0.041
+  },
+  {
+   "mid": "MB0883",
+   "seconds": 0.3
+  },
+  {
+   "mid": "MB0885",
+   "seconds": 0.403
+  },
+  {
+   "mid": "MB0886",
+   "seconds": 0.028
+  },
+  {
+   "mid": "MB0890",
+   "seconds": 1.307
+  },
+  {
+   "mid": "MB0898",
+   "seconds": 0.119
+  },
+  {
+   "mid": "MB0921",
+   "seconds": 0.39
+  },
+  {
+   "mid": "MB0935",
+   "seconds": 0.382
+  },
+  {
+   "mid": "MB0948",
+   "seconds": 0.742
+  },
+  {
+   "mid": "MB0958",
+   "seconds": 0.332
+  },
+  {
+   "mid": "MB0969",
+   "seconds": 0.049
+  },
+  {
+   "mid": "MB0973",
+   "seconds": 1.731
+  },
+  {
+   "mid": "MB0979",
+   "seconds": 1.024
+  },
+  {
+   "mid": "MB0980",
+   "seconds": 0.072
+  },
+  {
+   "mid": "MB0983",
+   "seconds": 0.056
+  },
+  {
+   "mid": "MB0989",
+   "seconds": 0.104
+  },
+  {
+   "mid": "MB0999",
+   "seconds": 0.069
+  },
+  {
+   "mid": "MB1006",
+   "seconds": 0.273
+  },
+  {
+   "mid": "MB1007",
+   "seconds": 0.499
+  },
+  {
+   "mid": "MB1010",
+   "seconds": 0.049
+  },
+  {
+   "mid": "MB1011",
+   "seconds": 1.208
+  },
+  {
+   "mid": "MB1015",
+   "seconds": 0.157
+  },
+  {
+   "mid": "MB1016",
+   "seconds": 0.191
+  },
+  {
+   "mid": "MB1022",
+   "seconds": 0.071
+  },
+  {
+   "mid": "MB1026",
+   "seconds": 0.577
+  },
+  {
+   "mid": "MB0332",
+   "seconds": 0.736
+  },
+  {
+   "mid": "MB0365",
+   "seconds": 0.149
+  },
+  {
+   "mid": "MB0368",
+   "seconds": 0.07
+  },
+  {
+   "mid": "MB0373",
+   "seconds": 0.051
+  },
+  {
+   "mid": "MB0375",
+   "seconds": 0.094
+  },
+  {
+   "mid": "MB0378",
+   "seconds": 0.175
+  },
+  {
+   "mid": "MB0389",
+   "seconds": 1.355
+  },
+  {
+   "mid": "MB0411",
+   "seconds": 0.568
+  },
+  {
+   "mid": "MB0416",
+   "seconds": 0.017
+  },
+  {
+   "mid": "MB0417",
+   "seconds": 0.111
+  },
+  {
+   "mid": "MB0421",
+   "seconds": 0.242
+  },
+  {
+   "mid": "MB0424",
+   "seconds": 1.207
+  },
+  {
+   "mid": "MB0430",
+   "seconds": 1.123
+  },
+  {
+   "mid": "MB0435",
+   "seconds": 0.248
+  },
+  {
+   "mid": "MB0436",
+   "seconds": 0.359
+  },
+  {
+   "mid": "MB0449",
+   "seconds": 0.605
+  },
+  {
+   "mid": "MB0464",
+   "seconds": 0.196
+  },
+  {
+   "mid": "MB0466",
+   "seconds": 1.934
+  },
+  {
+   "mid": "MB0472",
+   "seconds": 0.798
+  },
+  {
+   "mid": "MB0477",
+   "seconds": 0.067
+  },
+  {
+   "mid": "MB0482",
+   "seconds": 0.17
+  },
+  {
+   "mid": "MB0490",
+   "seconds": 0.183
+  },
+  {
+   "mid": "MB0491",
+   "seconds": 0.05
+  },
+  {
+   "mid": "MB0494",
+   "seconds": 0.131
+  },
+  {
+   "mid": "MB0496",
+   "seconds": 0.199
+  },
+  {
+   "mid": "MB0506",
+   "seconds": 0.134
+  },
+  {
+   "mid": "MB0527",
+   "seconds": 0.118
+  },
+  {
+   "mid": "MB0531",
+   "seconds": 0.075
+  },
+  {
+   "mid": "MB0540",
+   "seconds": 0.696
+  },
+  {
+   "mid": "MB0579",
+   "seconds": 0.096
+  },
+  {
+   "mid": "MB0584",
+   "seconds": 0.414
+  },
+  {
+   "mid": "MB0601",
+   "seconds": 0.269
+  },
+  {
+   "mid": "MB0602",
+   "seconds": 0.196
+  },
+  {
+   "mid": "MB0604",
+   "seconds": 0.117
+  },
+  {
+   "mid": "MB0609",
+   "seconds": 0.169
+  },
+  {
+   "mid": "MB0617",
+   "seconds": 0.1
+  },
+  {
+   "mid": "MB0619",
+   "seconds": 0.09
+  },
+  {
+   "mid": "MB0627",
+   "seconds": 0.238
+  },
+  {
+   "mid": "MB0040",
+   "seconds": 0.63
+  },
+  {
+   "mid": "MB0044",
+   "seconds": 0.075
+  },
+  {
+   "mid": "MB0071",
+   "seconds": 0.283
+  },
+  {
+   "mid": "MB0094",
+   "seconds": 0.575
+  },
+  {
+   "mid": "MB0100",
+   "seconds": 0.84
+  },
+  {
+   "mid": "MB0113",
+   "seconds": 0.472
+  },
+  {
+   "mid": "MB0138",
+   "seconds": 0.241
+  },
+  {
+   "mid": "MB0140",
+   "seconds": 0.095
+  },
+  {
+   "mid": "MB0144",
+   "seconds": 0.389
+  },
+  {
+   "mid": "MB0148",
+   "seconds": 0.001
+  },
+  {
+   "mid": "MB0151",
+   "seconds": 1.249
+  },
+  {
+   "mid": "MB0152",
+   "seconds": 0.395
+  },
+  {
+   "mid": "MB0154",
+   "seconds": 0.128
+  },
+  {
+   "mid": "MB0159",
+   "seconds": 1.452
+  },
+  {
+   "mid": "MB0164",
+   "seconds": 0.027
+  },
+  {
+   "mid": "MB0197",
+   "seconds": 1.402
+  },
+  {
+   "mid": "MB0199",
+   "seconds": 0.928
+  },
+  {
+   "mid": "MB0201",
+   "seconds": 3.073
+  },
+  {
+   "mid": "MB0218",
+   "seconds": 0.341
+  },
+  {
+   "mid": "MB0224",
+   "seconds": 0.055
+  },
+  {
+   "mid": "MB0228",
+   "seconds": 0.333
+  },
+  {
+   "mid": "MB0245",
+   "seconds": 0.503
+  },
+  {
+   "mid": "MB0264",
+   "seconds": 0.032
+  },
+  {
+   "mid": "MB0270",
+   "seconds": 0.04
+  },
+  {
+   "mid": "MB0310",
+   "seconds": 0.077
+  },
+  {
+   "mid": "MB0311",
+   "seconds": 0.399
+  },
+  {
+   "mid": "MB0314",
+   "seconds": 0.318
+  },
+  {
+   "mid": "MB0320",
+   "seconds": 0.103
+  },
+  {
+   "mid": "MB0328",
+   "seconds": 0.57
+  },
+  {
+   "mid": "MB0637",
+   "seconds": 0.149
+  },
+  {
+   "mid": "MB0640",
+   "seconds": 0.076
+  },
+  {
+   "mid": "MB0655",
+   "seconds": 0.228
+  },
+  {
+   "mid": "MB0676",
+   "seconds": 0.15
+  },
+  {
+   "mid": "MB0697",
+   "seconds": 0.517
+  },
+  {
+   "mid": "MB0702",
+   "seconds": 0.234
+  },
+  {
+   "mid": "MB0704",
+   "seconds": 0.809
+  },
+  {
+   "mid": "MB0710",
+   "seconds": 0.495
+  },
+  {
+   "mid": "MB0715",
+   "seconds": 0.093
+  },
+  {
+   "mid": "MB0719",
+   "seconds": 0.114
+  },
+  {
+   "mid": "MB0728",
+   "seconds": 0.219
+  },
+  {
+   "mid": "MB0752",
+   "seconds": 0.741
+  },
+  {
+   "mid": "MB0764",
+   "seconds": 0.778
+  },
+  {
+   "mid": "MB0767",
+   "seconds": 0.187
+  },
+  {
+   "mid": "MB0786",
+   "seconds": 0.658
+  },
+  {
+   "mid": "MB0789",
+   "seconds": 0.779
+  },
+  {
+   "mid": "MB0793",
+   "seconds": 0.098
+  },
+  {
+   "mid": "MB0799",
+   "seconds": 0.34
+  },
+  {
+   "mid": "MB0801",
+   "seconds": 0.158
+  },
+  {
+   "mid": "MB0802",
+   "seconds": 0.095
+  },
+  {
+   "mid": "MB0806",
+   "seconds": 0.24
+  },
+  {
+   "mid": "MB0808",
+   "seconds": 0.091
+  },
+  {
+   "mid": "MB0829",
+   "seconds": 0.582
+  }
+ ]
+}
