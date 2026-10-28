@@ -26,15 +26,15 @@ FIELDS = "id,title,selftext,created_utc,score,num_comments,link_flair_text,subre
 def get(params):
     url = API + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"User-Agent": "reality-engine-research/0.1"})
-    for attempt in range(4):
+    for attempt in range(8):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 return json.load(r).get("data") or []
         except Exception as e:  # noqa: BLE001 - retry transient API errors
-            if attempt == 3:
+            if attempt == 7:
                 print("  give up:", e)
                 return None
-            time.sleep(5 * (attempt + 1))
+            time.sleep(min(90, 10 * (attempt + 1)))
 
 
 def fetch_sub(sub, since, min_score):

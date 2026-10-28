@@ -191,7 +191,7 @@ def main():
     for n, day in enumerate(todo, 1):
         path, status = f.fetch_day(day)
         if path is not None and status != "skipped":
-            rows = parse_band_csv(path.read_text(encoding="utf-8-sig"), day.isoformat())
+            rows = parse_band_csv(path.read_bytes().decode("utf-8-sig", "replace"), day.isoformat())
             parsed += len(rows)
             examples.extend(rows[:1])
         if n % 10 == 0 or n == len(todo):
