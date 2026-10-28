@@ -11,9 +11,11 @@ Two passes:
   both ways, headline classes, duplicate proxies, and the classification of
   every PDF the earlier probe already staged;
 * **pilot**: 200 rows stratified by fiscal quarter x symbol initial (A-P / Q-Z),
-  reusing staged probe PDFs by sha256 and fetching the rest at <= 25 requests
-  per minute (one at a time, >= 2.4 s apart, back-off on 403/429/503), then
-  validating, classifying and deduping each file.
+  reusing staged probe PDFs by sha256 and fetching the rest behind one shared
+  pacer (>= ``--interval`` s between requests across all workers, back-off on
+  403/429/503, which pauses every worker), then validating, classifying and
+  deduping each file.  ``--workers N`` fetches through a thread pool with one
+  ``requests`` session per thread; the PDF inspection stays in the main thread.
 
 ``--widen`` adds the other BSE subcategories the old crawl filed real transcripts
 under ("Analyst / Investor Meet", "General", "Investor Presentation",
@@ -21,8 +23,7 @@ under ("Analyst / Investor Meet", "General", "Investor Presentation",
 transcript, dedupes them against the earnings-call set by (ISIN, fiscal quarter)
 and by attachment name, measures recall against the pilot's 1,771 old rows and
 classifies a precision sample of PDFs already on disk.  It is report-only until
-``--fetch`` is passed, and the widened fetch must wait for the earnings-call
-fetch (both together stay <= 76 requests/min).  ``--widen --transcript-word``
+``--fetch`` is passed.  ``--widen --transcript-word``
 fetches only the fresh rows whose headline or attachment name carries the word
 *transcript* (invites, outcomes and schedules are left out; Shivam, 2026-10-28).
 
@@ -30,6 +31,21 @@ The dedupe-rescue list is its own run: ``--rescue-file`` takes the JSON array
 of rows (e.g. ``dedupe_rescue_214.json``) and fetches exactly those newsids
 through the same validate / classify / dedupe path.  ``--dry-run`` prints the
 counts and fetches nothing.
+
+Every run is **resumable**: one JSON line per finished candidate goes to
+``<root>/_journal_<mode>.jsonl`` (mode = full | widen | rescue, flushed per
+line).  A restart skips every newsid the journal holds as ``ok`` or as a
+permanent failure, retries the transient ones, and writes the manifest from
+journal + new rows before the existing dedupe.  ``--seed-journal-from-log``
+parses the ``[i/9390] SYMBOL quarter status source class chars`` lines of a
+previous run's stdout log, maps ``i`` back to the same seeded sample and
+journals the ok rows whose PDF is already in the store, so the live full run
+can be killed and restarted wide without redoing what it finished.
+
+Rate: probes on 2026-10-28 saw no block at ~200 extra requests/min on BSE or
+~400/min on NSE, so the old 76/min cap is stale.  ``--interval`` floors at
+0.15 s (400/min) and defaults to 2.5 s (24/min, the cautious setting); the
+pacer keeps the *total* across workers at ``60/interval`` per minute.
 
 Writes go only to ``RAW_ROOT/concall_pdfs/`` (content-addressed PDFs, manifest,
 probe classification) and the worktree.  Every database and the probe store is
@@ -45,10 +61,13 @@ import argparse
 import hashlib
 import json
 import os
+import queue
 import random
 import re
+import threading
 import time
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -62,7 +81,9 @@ WIDEN_SUBCATS = ("Analyst / Investor Meet", "General",
                  "Investor Presentation", "Press Release / Media Release")
 WINDOW_START = "2024-04-01"
 PDF_URL = "https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname={name}"
-MIN_INTERVAL = 2.4                    # hard floor: 25 requests/min
+#: Hard floor on ``--interval``: 400 requests/min.  Probes on 2026-10-28 saw no
+#: block at ~400/min on NSE or ~200/min on BSE, so the old 76/min cap is stale.
+MIN_INTERVAL = 0.15                   # hard floor: 400 requests/min
 CLASSES = ("transcript", "audio_link", "intimation", "cover_letter", "other")
 TRANSCRIPT_MIN_CHARS = 8000
 TRANSCRIPT_MIN_PAGES = 3
@@ -160,6 +181,81 @@ def sha256_of(data: bytes) -> str:
 def _chunks(items: Sequence[Any], size: int) -> Iterable[Sequence[Any]]:
     for start in range(0, len(items), size):
         yield items[start:start + size]
+
+
+# ---------------------------------------------------------------------------
+# journal: one JSON line per finished candidate, so a restart resumes
+
+
+def journal_path(root: Path | None = None, mode: str = "full") -> Path:
+    """The run's journal: ``<root>/_journal_<mode>.jsonl``."""
+    return (Path(root) if root else out_dir()) / f"_journal_{mode}.jsonl"
+
+
+def load_journal(path: str | Path) -> dict[str, dict[str, Any]]:
+    """``{newsid: entry}`` from the journal; a later line for a newsid wins.
+
+    A truncated last line (killed mid-write) is skipped, never fatal.
+    """
+    out: dict[str, dict[str, Any]] = {}
+    path = Path(path)
+    if not path.is_file():
+        return out
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(record, dict) and record.get("newsid"):
+            out[str(record["newsid"])] = record
+    return out
+
+
+def is_permanent_failure(entry: dict[str, Any]) -> bool:
+    """Will a retry of this URL plausibly give a different answer?
+
+    Permanent: an unreadable PDF, a body that is not a PDF, and a 4xx that is
+    not a block (403/429 are the server asking us to slow down, so transient).
+    """
+    if entry.get("status") == "invalid":
+        return True
+    reason = str(entry.get("reason") or "")
+    if reason.startswith("pymupdf") or reason in ("not a PDF", "stored file is not a PDF"):
+        return True
+    code = entry.get("http_status")
+    return isinstance(code, int) and 400 <= code < 500 and code not in (403, 429)
+
+
+def journal_done(entry: dict[str, Any]) -> bool:
+    """Skip this newsid on a restart: finished ok, or failed for good."""
+    return entry.get("status") == "ok" or bool(entry.get("permanent"))
+
+
+class JournalWriter:
+    """Append-only JSONL journal, flushed after every line."""
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._handle = self.path.open("a", encoding="utf-8")
+        self.lines = 0
+
+    def append(self, entry: dict[str, Any]) -> None:
+        self._handle.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
+        self._handle.flush()
+        self.lines += 1
+
+    def close(self) -> None:
+        self._handle.close()
+
+    def __enter__(self) -> "JournalWriter":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
 
 
 # ---------------------------------------------------------------------------
@@ -403,22 +499,66 @@ def stratified_sample(rows: Sequence[dict[str, Any]], n: int,
 
 
 class Pacer:
-    """One request at a time, at least ``interval`` seconds apart."""
+    """Shared rate limiter: one request every ``interval`` seconds, all threads.
+
+    Each caller reserves the next free slot under a lock (so N workers cannot
+    exceed ``60/interval`` requests/min together) and then sleeps until its
+    slot outside the lock.
+    """
 
     def __init__(self, interval: float = MIN_INTERVAL, clock=time.monotonic, sleep=time.sleep):
         self.interval = max(0.0, float(interval))
         self.clock = clock
         self.sleep = sleep
-        self._last: float | None = None
+        self._lock = threading.Lock()
+        self._next: float | None = None
         self.requests = 0
 
     def wait(self) -> None:
-        if self._last is not None and self.interval > 0:
-            gap = self.clock() - self._last
-            if gap < self.interval:
-                self.sleep(self.interval - gap)
-        self._last = self.clock()
-        self.requests += 1
+        with self._lock:
+            now = self.clock()
+            slot = now if self._next is None else max(now, self._next)
+            self._next = slot + self.interval
+            self.requests += 1
+        delay = slot - now
+        if delay > 0:
+            self.sleep(delay)
+
+
+class Cooldown:
+    """A shared block: one worker's 403/429 stops every worker.
+
+    ``pause()`` extends the block (never shortens it); ``wait()`` holds each
+    caller until it expires.  Mirrors ``fetch_decks.BseDownloader``.
+    """
+
+    def __init__(self, clock=time.monotonic, sleep=time.sleep):
+        self.clock = clock
+        self.sleep = sleep
+        self._lock = threading.Lock()
+        self._until = 0.0
+        self.hits = 0
+
+    @property
+    def until(self) -> float:
+        return self._until
+
+    def pause(self, seconds: float) -> float:
+        """Hold every worker for ``seconds`` from now (or longer, if already held)."""
+        with self._lock:
+            self._until = max(self._until, self.clock() + max(0.0, float(seconds)))
+            self.hits += 1
+            return self._until
+
+    def wait(self) -> float:
+        """Block until the current pause ends; returns the seconds slept."""
+        slept = 0.0
+        while True:
+            gap = self._until - self.clock()
+            if gap <= 0:
+                return slept
+            self.sleep(gap)
+            slept += gap
 
 
 def headers_for(url: str) -> dict[str, str]:
@@ -442,8 +582,13 @@ def sha_match_status(recorded: str | None, actual: str | None) -> str | None:
 
 
 def fetch_url(url: str, *, pacer: Pacer, session=None, attempts: int = 3,
-              backoff: float = 30.0, timeout: float = 120.0, sleep=time.sleep) -> dict[str, Any]:
-    """One URL, politely; retries 403/429/5xx with exponential back-off."""
+              backoff: float = 30.0, timeout: float = 120.0, sleep=time.sleep,
+              cooldown: "Cooldown | None" = None) -> dict[str, Any]:
+    """One URL, politely; retries 403/429/5xx with exponential back-off.
+
+    With a ``cooldown`` (the parallel runs), a 403/429/503 from any worker
+    pauses every worker for the back-off before the next request.
+    """
     import requests
 
     own = session is None
@@ -453,6 +598,8 @@ def fetch_url(url: str, *, pacer: Pacer, session=None, attempts: int = 3,
                               "content": None}
     try:
         for attempt in range(1, attempts + 1):
+            if cooldown is not None:
+                cooldown.wait()                            # held by another worker
             pacer.wait()
             record["attempts"] = attempt
             try:
@@ -470,7 +617,11 @@ def fetch_url(url: str, *, pacer: Pacer, session=None, attempts: int = 3,
                 record["reason"] = f"http {got.status_code}"
                 if attempt == attempts:
                     break
-                sleep(backoff * (2 ** (attempt - 1)))
+                wait = backoff * (2 ** (attempt - 1))
+                if cooldown is not None and got.status_code in (403, 429, 503):
+                    cooldown.pause(wait)                   # a block pauses everyone
+                else:
+                    sleep(wait)
                 continue
             if got.status_code != 200:
                 record["reason"] = f"http {got.status_code}"
@@ -1183,7 +1334,7 @@ def _entry_for(cand: dict[str, Any]) -> dict[str, Any]:
         "recorded_sha256": cand["cd_sha"], "chunked": cand["chunked"],
         "source": None, "http_status": None, "content_type": None,
         "status": "skipped", "reason": "", "bytes": 0, "sha256": None,
-        "recorded_sha256_match": None, "reused": False,
+        "recorded_sha256_match": None, "reused": False, "permanent": False,
         "fetched_at": None, "pages": None, "chars": None,
         "uppercase_ratio": None, "image_only_share": None, "doc_class": None,
         "same_doc": None, "sample_text": "",
@@ -1212,22 +1363,62 @@ def inspect_pdf(entry: dict[str, Any], path: Path, cand: dict[str, Any],
                                           chunk_text_for(con_eq, cand.get("chunk_doc_id")))
 
 
+def _finish(entry: dict[str, Any], cand: dict[str, Any], data_bytes: bytes | None,
+            root: Path, con_eq, dry_run: bool = False) -> None:
+    """Store the bytes, validate/classify the PDF, settle the journal status."""
+    if data_bytes and is_pdf(data_bytes):
+        sha = sha256_of(data_bytes)
+        entry.update(bytes=len(data_bytes), sha256=sha)
+        entry["recorded_sha256_match"] = sha_match_status(cand.get("cd_sha"), sha)
+        target = pdf_path(sha, root)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists():
+            target.write_bytes(data_bytes)
+        entry["path"] = str(target)
+        if not entry["reused"]:
+            entry["fetched_at"] = now_iso()
+        inspect_pdf(entry, target, cand, con_eq)
+    elif not dry_run:
+        entry.update(status="failed", reason=entry.get("reason") or (
+            "stored file is not a PDF" if entry.get("reused") else "no bytes"))
+    entry["permanent"] = (entry["status"] in ("failed", "invalid")
+                          and is_permanent_failure(entry))
+
+
+def _new_session():
+    """One ``requests`` session per worker thread (connection reuse per thread)."""
+    import requests
+    return requests.Session()
+
+
 def run_pilot(*, n: int = 200, seed: int = 20261027, interval: float = 2.5,
               backoff: float = 30.0, dry_run: bool = False,
               db_ann: Path | None = None, db_eq: Path | None = None,
               root: Path | None = None, probe: Path | None = None,
               limit: int | None = None, analysis: dict[str, Any] | None = None,
               candidates: Sequence[dict[str, Any]] | None = None,
-              manifest: str | None = None, log=print) -> dict[str, Any]:
-    """Sample, reuse, fetch, validate, classify, dedupe and write the manifest."""
+              manifest: str | None = None, mode: str = "full",
+              workers: int = 1, journal: Path | None = None,
+              fetch=None, log=print) -> dict[str, Any]:
+    """Sample, resume, fetch (optionally in parallel), journal, dedupe, write.
+
+    The journal at ``<root>/_journal_<mode>.jsonl`` is loaded first: newsids
+    it holds as ok or permanently failed are skipped, transient failures are
+    retried, and every finished candidate is appended (and flushed) at once.
+    The manifest is the journal's rows for this sample plus the new ones.
+    """
     data = Path(os.environ["REALITY_DATA_ROOT"])
     db_ann = Path(db_ann or data / "bse_announcements.db")
     db_eq = Path(db_eq or data / "equity_intelligence.db")
     root = Path(root or out_dir())
     started = time.monotonic()
+    journal = Path(journal or journal_path(root, mode))
+    workers = max(1, int(workers))
+    fetch_one = fetch or fetch_url
 
     con_ann = connect_ro(db_ann, timeout_s=120)
     con_eq = connect_ro(db_eq, timeout_s=240)
+    writer: JournalWriter | None = None
     try:
         if candidates is None:
             ann_rows = con_ann.execute(ANN_SQL, (SUBCAT, WINDOW_START)).fetchall()
@@ -1243,67 +1434,245 @@ def run_pilot(*, n: int = 200, seed: int = 20261027, interval: float = 2.5,
         if limit:
             picks = picks[:limit]
         reused_n = sum(1 for p in picks if p.get("cd_sha") in by_sha)
-        log(f"candidates={len(cands)} sampled={len(picks)} probe_reusable={reused_n}")
+        prior = {newsid: entry for newsid, entry in load_journal(journal).items()
+                 if journal_done(entry)}
+        entries: dict[str, dict[str, Any]] = {
+            c["newsid"]: prior[c["newsid"]] for c in picks if c["newsid"] in prior}
+        skipped_journal = sum(1 for c in picks if c["newsid"] in entries)
+        log(f"candidates={len(cands)} sampled={len(picks)} probe_reusable={reused_n} "
+            f"resumed={skipped_journal} journal={journal}")
 
         pacer = Pacer(interval)
-        session = None
-        entries: list[dict[str, Any]] = []
-        for i, cand in enumerate(picks, 1):
-            entry = _entry_for(cand)
-            data_bytes: bytes | None = None
-            probe_path = by_sha.get(cand.get("cd_sha") or "")
-            if probe_path is not None:
-                data_bytes = probe_path.read_bytes()
-                entry.update(source="probe", reused=True)
-            elif dry_run:
-                entry.update(status="skipped", reason="dry_run")
-            else:
-                if session is None:
-                    import requests
-                    session = requests.Session()
-                got = fetch_url(cand["url"], pacer=pacer, session=session, backoff=backoff)
-                entry.update(source="bse", http_status=got.get("http_status"),
-                             content_type=got.get("content_type"),
-                             reason=got.get("reason") or "")
-                data_bytes = got.get("content")
-            if data_bytes and is_pdf(data_bytes):
-                sha = sha256_of(data_bytes)
-                entry.update(bytes=len(data_bytes), sha256=sha)
-                entry["recorded_sha256_match"] = sha_match_status(cand.get("cd_sha"), sha)
-                target = pdf_path(sha, root)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                if not target.exists():
-                    target.write_bytes(data_bytes)
-                entry["path"] = str(target)
-                if not entry["reused"]:
-                    entry["fetched_at"] = now_iso()
-                inspect_pdf(entry, target, cand, con_eq)
-            elif entry["status"] != "skipped":
-                entry.update(status="failed", reason=entry.get("reason") or (
-                    "stored file is not a PDF" if entry.get("reused") else "no bytes"))
-            entries.append(entry)
+        cooldown = Cooldown() if workers > 1 else None
+        if not dry_run:
+            writer = JournalWriter(journal)
+
+        def finish(i: int, cand: dict[str, Any], entry: dict[str, Any],
+                   data_bytes: bytes | None) -> None:
+            _finish(entry, cand, data_bytes, root, con_eq, dry_run)
+            entries[cand["newsid"]] = entry
+            if writer is not None:
+                writer.append(entry)
             log(f"[{i:>3}/{len(picks)}] {cand['symbol'] or '?':<12} {entry['quarter']} "
                 f"{entry['status']:<7} {entry['source'] or '-':<5} "
-                f"{entry['doc_class'] or '-':<12} {entry.get('chars') or 0:>7}c {entry['reason'][:40]}")
-        if session:
-            session.close()
+                f"{entry['doc_class'] or '-':<12} {entry.get('chars') or 0:>7}c "
+                f"{entry['reason'][:40]}")
+
+        remote: list[tuple[int, dict[str, Any], dict[str, Any]]] = []
+        for i, cand in enumerate(picks, 1):
+            if cand["newsid"] in entries:
+                continue
+            entry = _entry_for(cand)
+            probe_path = by_sha.get(cand.get("cd_sha") or "")
+            if probe_path is not None:
+                entry.update(source="probe", reused=True)
+                try:
+                    data_bytes = probe_path.read_bytes()
+                except OSError:
+                    data_bytes = None
+                finish(i, cand, entry, data_bytes)
+            elif dry_run:
+                entry.update(status="skipped", reason="dry_run")
+                finish(i, cand, entry, None)
+            else:
+                remote.append((i, cand, entry))
+
+        if remote and workers > 1:
+            sessions: queue.Queue = queue.Queue()
+            for _ in range(workers):
+                sessions.put(_new_session())
+
+            def one(cand: dict[str, Any]) -> dict[str, Any]:
+                session = sessions.get()
+                try:
+                    return fetch_one(cand["url"], pacer=pacer, session=session,
+                                     backoff=backoff, cooldown=cooldown)
+                finally:
+                    sessions.put(session)
+
+            try:
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    futures = {pool.submit(one, cand): (i, cand, entry)
+                               for i, cand, entry in remote}
+                    for future in as_completed(futures):
+                        i, cand, entry = futures[future]
+                        try:
+                            got = future.result()
+                        except Exception as exc:            # noqa: BLE001 - worker died
+                            entry.update(reason=f"worker: {type(exc).__name__}: {exc}"[:300])
+                            finish(i, cand, entry, None)
+                            continue
+                        entry.update(source="bse", http_status=got.get("http_status"),
+                                     content_type=got.get("content_type"),
+                                     reason=got.get("reason") or "")
+                        finish(i, cand, entry, got.get("content"))
+            finally:
+                while not sessions.empty():
+                    sessions.get().close()
+        else:
+            session = _new_session() if remote else None
+            try:
+                for i, cand, entry in remote:
+                    got = fetch_one(cand["url"], pacer=pacer, session=session,
+                                    backoff=backoff, cooldown=cooldown)
+                    entry.update(source="bse", http_status=got.get("http_status"),
+                                 content_type=got.get("content_type"),
+                                 reason=got.get("reason") or "")
+                    finish(i, cand, entry, got.get("content"))
+            finally:
+                if session is not None:
+                    session.close()
+        ordered = [entries[c["newsid"]] for c in picks if c["newsid"] in entries]
     finally:
+        if writer is not None:
+            writer.close()
         con_ann.close()
         con_eq.close()
 
-    marks = dedupe(entries)
-    for entry in entries:
+    marks = dedupe(ordered)
+    for entry in ordered:
         if entry["newsid"] in marks:
             entry.update(marks[entry["newsid"]])
     elapsed = time.monotonic() - started
-    report = summarize(entries, elapsed=elapsed, pacer_requests=pacer.requests,
+    report = summarize(ordered, elapsed=elapsed, pacer_requests=pacer.requests,
                        interval=interval, dry_run=dry_run)
+    report["skipped_journal"] = skipped_journal
+    report["workers"] = workers
+    report["journal"] = str(journal)
     if not dry_run:
-        write_manifest(root, entries,
-                       manifest or ("_manifest_widen.jsonl" if candidates is not None
+        write_manifest(root, ordered,
+                       manifest or ("_manifest_widen.jsonl" if mode == "widen"
                                     else "_manifest.jsonl"))
-    report["entries"] = entries
+    report["entries"] = ordered
     return report
+
+
+# ---------------------------------------------------------------------------
+# seeding the journal from a previous run's stdout log
+
+LOG_ROW = re.compile(
+    r"^\[\s*(\d+)/(\d+)\][ \t]+(\S+)[ \t]+(\S+)[ \t]+(\S+)[ \t]+(\S+)[ \t]+(\S+)"
+    r"[ \t]+(\d+)c(.*)$")
+
+
+def parse_log_rows(text: str) -> list[dict[str, Any]]:
+    """The ``[i/9390] SYMBOL quarter status source class chars reason`` log lines."""
+    rows: list[dict[str, Any]] = []
+    for line in (text or "").splitlines():
+        match = LOG_ROW.match(line)
+        if not match:
+            continue
+        index, total, symbol, quarter, status, source, doc_class, chars, reason = match.groups()
+        rows.append({"index": int(index), "total": int(total),
+                     "symbol": "" if symbol == "?" else symbol,
+                     "quarter": quarter, "status": status,
+                     "source": None if source == "-" else source,
+                     "doc_class": None if doc_class == "-" else doc_class,
+                     "chars": int(chars), "reason": reason.strip()})
+    return rows
+
+
+def _log_candidate(row: dict[str, Any], picks: Sequence[dict[str, Any]],
+                   by_cell: dict[tuple, list[dict[str, Any]]],
+                   claimed: set[str]) -> tuple[dict[str, Any] | None, bool]:
+    """Which sampled candidate a log row fetched: by position, else by cell.
+
+    The position is exact while the announcement feed is unchanged; a new
+    announcement shifts every later ``i``, so a row whose symbol/quarter
+    disagree with the pick at its index is matched to the first unclaimed
+    candidate of its (symbol, quarter) cell instead.
+    """
+    i = row["index"]
+    cand = picks[i - 1] if 0 < i <= len(picks) else None
+    if cand is not None and str(cand.get("quarter")) == row["quarter"] \
+            and (cand.get("symbol") or "") == row["symbol"]:
+        return cand, False
+    for other in by_cell.get((row["symbol"], row["quarter"]), ()):
+        if other["newsid"] not in claimed:
+            return other, True
+    return None, False
+
+
+def seed_entries(rows: Sequence[dict[str, Any]], picks: Sequence[dict[str, Any]],
+                 root: Path | str) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Journal entries for the ok log rows whose PDF is already in ``root``."""
+    by_cell: dict[tuple, list[dict[str, Any]]] = defaultdict(list)
+    for cand in picks:
+        by_cell[(cand.get("symbol") or "", str(cand.get("quarter")))].append(cand)
+    claimed: set[str] = set()
+    entries: list[dict[str, Any]] = []
+    counts = {"log_rows": len(rows), "ok_rows": 0, "seeded": 0, "realigned": 0,
+              "unmapped": 0}
+    for row in rows:
+        if row["status"] != "ok":
+            continue
+        counts["ok_rows"] += 1
+        cand, realigned = _log_candidate(row, picks, by_cell, claimed)
+        sha = str((cand or {}).get("cd_sha") or "").lower()
+        path = pdf_path(sha, Path(root)) if sha else None
+        if cand is None or path is None or not path.is_file():
+            counts["unmapped"] += 1
+            continue
+        claimed.add(cand["newsid"])
+        counts["seeded"] += 1
+        counts["realigned"] += int(realigned)
+        entries.append(_seeded_entry(cand, row, path))
+    return entries, counts
+
+
+def _seeded_entry(cand: dict[str, Any], row: dict[str, Any], path: Path) -> dict[str, Any]:
+    """A journal entry for a candidate whose PDF the log says was fetched."""
+    entry = _entry_for(cand)
+    entry.update(status="ok", source=row.get("source") or "bse",
+                 reused=row.get("source") == "probe", bytes=path.stat().st_size,
+                 sha256=path.stem.lower(), chars=row.get("chars"),
+                 doc_class=row.get("doc_class"), path=str(path),
+                 reason="", seeded_from_log=True)
+    return entry
+
+
+def seed_journal_from_log(log_path: str | Path, *, candidates=None, seed: int = 20261027,
+                          root: Path | None = None, db_ann: Path | None = None,
+                          db_eq: Path | None = None, mode: str = "full",
+                          log=print) -> dict[str, Any]:
+    """Rebuild a run's journal from its stdout log (no network, no re-fetch).
+
+    ``i`` in the log is the position in the run's ``stratified_sample``, so the
+    same candidate set and seed reproduce it; the sample size is the log's own
+    ``/9390``.  Only ok rows whose PDF (the candidate's recorded sha256) is in
+    the store are journalled; the rest are left to re-fetch.
+    """
+    data = Path(os.environ["REALITY_DATA_ROOT"])
+    db_ann = Path(db_ann or data / "bse_announcements.db")
+    db_eq = Path(db_eq or data / "equity_intelligence.db")
+    root = Path(root or out_dir())
+    rows = parse_log_rows(Path(log_path).read_text(encoding="utf-8", errors="replace"))
+    con_ann = connect_ro(db_ann, timeout_s=120)
+    con_eq = connect_ro(db_eq, timeout_s=240)
+    try:
+        if candidates is None:
+            ann_rows = con_ann.execute(ANN_SQL, (SUBCAT, WINDOW_START)).fetchall()
+            identity = load_identity(con_eq, [row[1] for row in ann_rows])
+            old_by_news, _ = load_old_docs(con_eq)
+            chunked = load_chunked(con_eq)
+            cands = build_candidates(ann_rows, identity, old_by_news, chunked)
+        else:
+            cands = list(candidates)
+    finally:
+        con_ann.close()
+        con_eq.close()
+    picks = stratified_sample(cands, rows[0]["total"] if rows else len(cands), seed)
+    entries, counts = seed_entries(rows, picks, root)
+    journal = journal_path(root, mode)
+    if entries:
+        with JournalWriter(journal) as writer:
+            for entry in entries:
+                writer.append(entry)
+    log(f"seed: {len(cands)} candidates, {counts['ok_rows']} ok log rows -> "
+        f"{counts['seeded']} journalled ({counts['realigned']} matched by "
+        f"symbol+quarter), {counts['unmapped']} to re-fetch, journal={journal}")
+    return {"journal": str(journal), "mode": mode, "sample": len(picks),
+            "candidates": len(cands), "root": str(root), **counts}
 
 
 def write_manifest(root: Path, entries: Sequence[dict[str, Any]],
@@ -1433,9 +1802,10 @@ def format_report(analysis: dict[str, Any], pilot: dict[str, Any] | None,
         f"'{SUBCAT}'), known_at = DissemDT, never a crawl date")
     add(f"- candidates: {analysis['total']} announcements, "
         f"{len(analysis['by_quarter'])} fiscal quarters x A-P/Q-Z")
-    add("- rate enforced: one request at a time, >= "
-        f"{max(pilot['interval'] if pilot else MIN_INTERVAL, MIN_INTERVAL):.1f} s apart "
-        f"(<= {projection['rate_per_min']:.1f} requests/min), back-off on 403/429/503")
+    add(f"- rate enforced: >= "
+        f"{max(pilot['interval'] if pilot else MIN_INTERVAL, MIN_INTERVAL):.2f} s between "
+        f"requests across {(pilot or {}).get('workers') or 1} worker(s) "
+        f"(<= {projection['rate_per_min']:.1f} requests/min); a 403/429/503 pauses every worker")
     add("")
 
     add("## 1. Candidate set")
@@ -1534,6 +1904,9 @@ def format_report(analysis: dict[str, Any], pilot: dict[str, Any] | None,
         add("")
         add(f"- sampled {pilot['sampled']}, ok {pilot['ok']}, failed {pilot['failed']}, "
             f"reused {pilot['reused']}, skipped {pilot['skipped']}")
+        if pilot.get("skipped_journal"):
+            add(f"- resumed from the journal (not fetched again): "
+                f"{pilot['skipped_journal']}")
         add(f"- wall clock {pilot['elapsed_min']:.1f} min, {pilot['pacer_requests']} HTTP "
             f"requests, {pilot['pdf_per_min'] or 0:.2f} PDFs/min end-to-end")
         add(f"- classes: {pilot['classes']}")
@@ -1686,13 +2059,21 @@ def main(argv: list[str] | None = None) -> int:
                     help="sample size (default 200; --widen --fetch defaults to all)")
     ap.add_argument("--seed", type=int, default=20261027, help="sampling seed")
     ap.add_argument("--interval", type=float, default=2.5,
-                    help=f"seconds between requests (hard floor {MIN_INTERVAL})")
+                    help=f"seconds between requests across all workers "
+                         f"(hard floor {MIN_INTERVAL} = {60 / MIN_INTERVAL:.0f}/min)")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="concurrent fetchers (default 1); one session per worker and "
+                         "one shared pacer keep the total at 60/interval per minute")
     ap.add_argument("--backoff", type=float, default=30.0, help="first 403/429/503 back-off (s)")
     ap.add_argument("--limit", type=int, help="only process the first N sampled rows")
     ap.add_argument("--analyze-only", action="store_true", help="no network, no pilot")
     ap.add_argument("--no-probe-classify", action="store_true",
                     help="skip classifying the staged probe PDFs (faster)")
-    ap.add_argument("--dry-run", action="store_true", help="sample + analysis, no network/writes")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="no network/writes; reports what the journal already covers")
+    ap.add_argument("--seed-journal-from-log", metavar="PATH",
+                    help="journal the ok rows of a previous full run from its stdout "
+                         "log (its [i/9390] lines) and exit; no network")
     ap.add_argument("--widen", action="store_true",
                     help="widen mode: the other four BSE subcategories "
                          "(report only unless --fetch)")
@@ -1711,11 +2092,29 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--report", help="write the markdown report here")
     args = ap.parse_args(argv)
     if args.interval < MIN_INTERVAL:
-        ap.error(f"--interval must be >= {MIN_INTERVAL}s (25 requests/min)")
+        ap.error(f"--interval must be >= {MIN_INTERVAL}s "
+                 f"({60 / MIN_INTERVAL:.0f} requests/min)")
+    if args.workers < 1:
+        ap.error("--workers must be >= 1")
     if args.transcript_word and not args.widen:
         ap.error("--transcript-word needs --widen")
     if args.rescue_file and args.widen:
         ap.error("--rescue-file and --widen are separate runs; pick one")
+    if args.seed_journal_from_log and (args.widen or args.rescue_file):
+        ap.error("--seed-journal-from-log seeds the full run's journal; "
+                 "widen and rescue build other candidate sets")
+
+    if args.seed_journal_from_log:
+        path = Path(args.seed_journal_from_log)
+        if not path.is_file():
+            ap.error(f"--seed-journal-from-log not found: {path}")
+        seeded = seed_journal_from_log(
+            path, seed=args.seed,
+            root=Path(args.root) if args.root else None,
+            db_ann=Path(args.db_ann) if args.db_ann else None,
+            db_eq=Path(args.db_eq) if args.db_eq else None)
+        print(json.dumps(seeded, indent=2, default=str))
+        return 0
 
     if args.rescue_file:
         path = Path(args.rescue_file)
@@ -1733,7 +2132,8 @@ def main(argv: list[str] | None = None) -> int:
                           db_eq=Path(args.db_eq) if args.db_eq else None,
                           root=Path(args.root) if args.root else None,
                           probe=Path(args.probe_dir) if args.probe_dir else None,
-                          candidates=rescue, manifest="_manifest_rescue.jsonl")
+                          candidates=rescue, manifest="_manifest_rescue.jsonl",
+                          mode="rescue", workers=args.workers)
         print(json.dumps({k: v for k, v in pilot.items() if k != "entries"},
                          indent=2, default=str))
         return 0
@@ -1757,7 +2157,8 @@ def main(argv: list[str] | None = None) -> int:
                           backoff=args.backoff, limit=args.limit,
                           root=Path(args.root) if args.root else None,
                           probe=Path(args.probe_dir) if args.probe_dir else None,
-                          candidates=widen["fresh_candidates"])
+                          candidates=widen["fresh_candidates"], mode="widen",
+                          workers=args.workers)
         print(json.dumps({k: v for k, v in pilot.items() if k != "entries"},
                          indent=2, default=str))
         return 0
@@ -1769,7 +2170,7 @@ def main(argv: list[str] | None = None) -> int:
                        probe_json=(out_dir() / "_probe_classes.jsonl")
                        if not args.analyze_only and not args.dry_run else None)
     pilot = None
-    if not args.analyze_only and not args.dry_run:
+    if not args.analyze_only:
         pilot = run_pilot(n=args.n if args.n is not None else 200,
                           seed=args.seed, interval=args.interval,
                           backoff=args.backoff, limit=args.limit,
@@ -1777,7 +2178,10 @@ def main(argv: list[str] | None = None) -> int:
                           db_eq=Path(args.db_eq) if args.db_eq else None,
                           root=Path(args.root) if args.root else None,
                           probe=Path(args.probe_dir) if args.probe_dir else None,
-                          analysis=analysis)
+                          analysis=analysis, dry_run=args.dry_run,
+                          workers=args.workers)
+        print(json.dumps({k: v for k, v in pilot.items() if k != "entries"},
+                         indent=2, default=str))
     projection = project(analysis, pilot, args.interval)
     text = format_report(analysis, pilot, projection)
     print(text)
