@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-28T23:46:42+05:30 · git HEAD: `8f8d875` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T00:25:37+05:30 · git HEAD: `321cb2c` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -13,12 +13,12 @@ reality_engine/
   db/ (9 py) — Database services.
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
-  pilot/ (3 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
+  pilot/ (4 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
   pipeline/ (19 py) — Pipeline runners.
   processing/ (45 py) — Document and image processing components.
-  query/ (16 py) — Query layer v0 — router + planners + arithmetic + answer assembly.
+  query/ (18 py) — Query layer v1 — sub-question decomposition + router + planners + answer assembly.
   reporting/ (3 py) — Reporting module for Reality Engine.
-  scripts/ (142 py) — Operational job scripts: one module per data job; most-referenced list below
+  scripts/ (145 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
   toolbelt/ (12 py) — Ready-made, read-only tools for dsh workers (Task 02).
   ui/ (2 py) — Reality Engine UI Module.
@@ -200,6 +200,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 ### reality_engine/pilot/
 - `reality_engine/pilot/build_t1.py` — T1 (deterministic) pilot build — PILOT_SPEC §3 deterministic tier, SCHEMA_V3 §B/§C.
 - `reality_engine/pilot/checks_t1.py` — Checks for the T1 pilot build — the numbers behind tasks/pilot_t1/CHECKS.md.
+- `reality_engine/pilot/macro_claims.py` — macro_claim_target pilot (G10 / policy_target) — deterministic claim -> target map.
 
 ### reality_engine/pipeline/
 - `reality_engine/pipeline/backfill.py` — Historical Backfill Pipeline Module
@@ -271,6 +272,8 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/query/answer.py` — Assemble the hops into one structured answer, or the NOT-IN-DATA wording.
 - `reality_engine/query/compute.py` — Pure arithmetic for the query layer: no I/O, no globals.
 - `reality_engine/query/ctx.py` — Query context: read-only connections and the tool handles the planners use.
+- `reality_engine/query/decompose.py` — Split one master-bank case into sub-questions, deterministically.
+- `reality_engine/query/rerank.py` — Cheap local reranker for EVIDENCE passages (no embeddings, no network).
 - `reality_engine/query/router.py` — Deterministic router: a master-bank case -> planner chain + slots.
 - `reality_engine/query/state.py` — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company …
 
@@ -289,7 +292,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/reporting/notifier.py` — Wave B — Telegram alerts + 23:00 nightly digest (stdlib only, no new deps).
 - `reality_engine/reporting/writer.py` — Report Writer Module
 
-- `reality_engine/scripts/` — 142 data-job modules (one per data job); most-referenced ranked below.
+- `reality_engine/scripts/` — 145 data-job modules (one per data job); most-referenced ranked below.
 ### reality_engine/search/
 - `reality_engine/search/chunk_vector_index.py` — Local dense-retrieval index over ``document_chunks.embedding``.
 - `reality_engine/search/hybrid_search.py` — Lexical plus dense search using reciprocal rank fusion.
@@ -469,7 +472,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.config` | test_agent_and_reporting.py, test_bootstrap.py, test_news_retention.py, test_raw_root.py, test_v2_ingestion_adapters.py |
 | `reality_engine.db.database` | test_action_thesis.py, test_attention_ranker.py, test_backfill_call_rows.py, test_bootstrap.py, test_bse_backfill.py, test_bse_fundamentals_client.py, test_catchup_scheduler.py, test_continuous_loop.py, test_deals_client.py, test_derived_substrate.py, test_desk_backtest.py, test_distillation_macro.py, test_distilled_expansion.py, test_document_industry_tag.py, test_document_pit.py, test_ensemble_ranker.py, test_ensemble_weighted.py, test_eod_corrector.py, test_event_graph.py, test_factor_loaders.py, test_factor_spine.py, test_financial_denominator.py, test_fiscal_extraction.py, test_forecast_capacity.py, test_horizon_excess.py, test_index_backfill.py, test_insider_trades.py, test_intel_search.py, test_lifecycle_pruning.py, test_macro_ingest.py, test_macro_pdf_fetcher.py, test_market_gap_backfill.py, test_master_bse_admission.py, test_master_upsert.py, test_moat_backfill.py, test_moe_all_universe.py, test_move_attribution.py, test_news_announcements.py, test_news_explainer.py, test_news_feed_client.py, test_news_retention.py, test_news_vision.py, test_nightly_alpha.py, test_peer_graph_and_hygiene.py, test_perf_guards.py, test_policy_coverage.py, test_policy_eni.py, test_policy_press_client.py, test_portfolio_ledger.py, test_pua_fallback.py, test_repo_identity.py, test_repo_lane.py, test_rumor_backfill.py, test_rumor_scorer.py, test_screener_substrate_routing.py, test_sip_backtest.py, test_sip_signals.py, test_skill_loop.py, test_supply_chain.py, test_telegram_hardening.py, test_v2_ingestion_adapters.py |
 | `reality_engine.db.fixtures` | test_bootstrap.py |
-| `reality_engine.db.readonly` | test_readonly.py |
+| `reality_engine.db.readonly` | test_missing_series_fetchers.py, test_readonly.py |
 | `reality_engine.db.repository` | test_action_thesis.py, test_attention_ranker.py, test_backfill_call_rows.py, test_bootstrap.py, test_deals_client.py, test_derived_substrate.py, test_distillation_macro.py, test_distilled_expansion.py, test_document_industry_tag.py, test_document_pit.py, test_ensemble_ranker.py, test_ensemble_weighted.py, test_eod_corrector.py, test_factor_spine.py, test_financial_denominator.py, test_forecast_capacity.py, test_index_backfill.py, test_insider_trades.py, test_intel_search.py, test_macro_ingest.py, test_macro_pdf_fetcher.py, test_market_gap_backfill.py, test_master_bse_admission.py, test_master_upsert.py, test_moat_backfill.py, test_moe_all_universe.py, test_move_attribution.py, test_news_announcements.py, test_news_explainer.py, test_news_feed_client.py, test_news_vision.py, test_peer_graph_and_hygiene.py, test_policy_coverage.py, test_policy_eni.py, test_policy_press_client.py, test_portfolio_ledger.py, test_quant_hardening.py, test_repo_identity.py, test_repo_lane.py, test_rumor_scorer.py, test_screener_substrate_routing.py, test_sip_signals.py, test_supply_chain.py, test_telegram_hardening.py, test_v2_ingestion_adapters.py |
 | `reality_engine.db.vector_store` | test_perf_guards.py |
 | `reality_engine.harness.adapter` | test_harness_h01.py |
@@ -497,6 +500,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.ingestion.policy_press_client` | test_policy_press_client.py |
 | `reality_engine.ingestion.telegram_client` | test_telegram_hardening.py |
 | `reality_engine.pilot.build_t1` | test_pilot_t1.py |
+| `reality_engine.pilot.macro_claims` | test_macro_claim_target.py |
 | `reality_engine.pipeline.bootstrap` | test_bootstrap.py |
 | `reality_engine.pipeline.bse_backfill` | test_bse_backfill.py |
 | `reality_engine.pipeline.capacity_loop` | test_forecast_capacity.py |
@@ -521,7 +525,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.ensemble_ranker` | test_action_thesis.py, test_eod_corrector.py, test_move_attribution.py |
 | `reality_engine.processing.eod_corrector` | test_eod_corrector.py, test_move_attribution.py |
 | `reality_engine.processing.event_graph` | test_eod_corrector.py, test_event_graph.py |
-| `reality_engine.processing.factor_loaders` | test_factor_loaders.py |
+| `reality_engine.processing.factor_loaders` | test_factor_loaders.py, test_missing_series_fetchers.py |
 | `reality_engine.processing.factor_spine` | test_factor_spine.py |
 | `reality_engine.processing.financial_validator` | test_financial_denominator.py |
 | `reality_engine.processing.fundamental_engine` | test_quant_hardening.py |
@@ -542,10 +546,13 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.skill_loop` | test_portfolio_ledger.py, test_skill_loop.py |
 | `reality_engine.processing.substrate_hygiene` | test_desk_backtest.py, test_horizon_excess.py, test_peer_graph_and_hygiene.py, test_portfolio_ledger.py |
 | `reality_engine.processing.video_screen_ocr` | test_video_ocr_pilot.py |
-| `reality_engine.query.answer` | test_query_planners.py |
+| `reality_engine.query.answer` | test_query_planners.py, test_query_v1.py |
 | `reality_engine.query.compute` | test_query_compute.py |
-| `reality_engine.query.ctx` | test_query_planners.py |
-| `reality_engine.query.router` | test_query_router.py |
+| `reality_engine.query.ctx` | test_macro_claim_target.py, test_query_planners.py, test_query_v1.py |
+| `reality_engine.query.decompose` | test_query_v1.py |
+| `reality_engine.query.planners.ripple` | test_macro_claim_target.py |
+| `reality_engine.query.rerank` | test_query_v1.py |
+| `reality_engine.query.router` | test_query_router.py, test_query_v1.py |
 | `reality_engine.raw_store` | test_dedupe_raw.py |
 | `reality_engine.reporting.writer` | test_action_thesis.py, test_agent_and_reporting.py |
 | `reality_engine.scripts.backfill_call_rows` | test_backfill_call_rows.py |
@@ -563,7 +570,10 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.dsh_heartbeat` | test_dsh_worker_plugin.py |
 | `reality_engine.scripts.embed_prototype_compare` | test_embed_prototype.py |
 | `reality_engine.scripts.extract_deck_figures` | test_extract_deck_figures.py |
+| `reality_engine.scripts.fetch_commodity_series` | test_missing_series_fetchers.py |
+| `reality_engine.scripts.fetch_eq_bhavcopy_gaps` | test_missing_series_fetchers.py |
 | `reality_engine.scripts.fetch_etf_nav` | test_fetch_etf_nav_timeout.py |
+| `reality_engine.scripts.fetch_fo_bhavcopy` | test_missing_series_fetchers.py |
 | `reality_engine.scripts.fetch_index_history` | test_pilot_t1.py |
 | `reality_engine.scripts.fetch_market_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_nse_api_raw` | test_market_gap_backfill.py |
