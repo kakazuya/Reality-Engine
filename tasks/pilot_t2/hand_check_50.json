@@ -1,0 +1,1371 @@
+{
+ "chunks": [
+  {
+   "id": "boundary:1",
+   "chunk_id": 24206,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:2",
+   "chunk_id": 24844,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:3",
+   "chunk_id": 25482,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:4",
+   "chunk_id": 26120,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:5",
+   "chunk_id": 26758,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:6",
+   "chunk_id": 27396,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:7",
+   "chunk_id": 28034,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:8",
+   "chunk_id": 28672,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:9",
+   "chunk_id": 29310,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:10",
+   "chunk_id": 29948,
+   "doc_type": "concall",
+   "auto": false,
+   "reason": "ends mid-sentence: dd more colour to \nthat and the other comments I made. \n \n\n8"
+  },
+  {
+   "id": "boundary:11",
+   "chunk_id": 30586,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:12",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:13",
+   "chunk_id": 31862,
+   "doc_type": "concall",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:14",
+   "chunk_id": 32501,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:15",
+   "chunk_id": 32891,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:16",
+   "chunk_id": 33281,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:17",
+   "chunk_id": 33671,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:18",
+   "chunk_id": 34061,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:19",
+   "chunk_id": 34451,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:20",
+   "chunk_id": 34841,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:21",
+   "chunk_id": 35231,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:22",
+   "chunk_id": 35621,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:23",
+   "chunk_id": 36011,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:24",
+   "chunk_id": 36401,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:25",
+   "chunk_id": 36791,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:26",
+   "chunk_id": 37181,
+   "doc_type": "deck",
+   "auto": true,
+   "reason": "slide"
+  },
+  {
+   "id": "boundary:27",
+   "chunk_id": 1,
+   "doc_type": "annual_report",
+   "auto": false,
+   "reason": "ends mid-sentence:  Report 2025-26\n3\nFrom possibilities to enterprise AI impact"
+  },
+  {
+   "id": "boundary:28",
+   "chunk_id": 2018,
+   "doc_type": "annual_report",
+   "auto": false,
+   "reason": "ends mid-sentence: pto 31 March 2021 \nfor remaining 50% of the options \ngranted"
+  },
+  {
+   "id": "boundary:29",
+   "chunk_id": 4035,
+   "doc_type": "annual_report",
+   "auto": false,
+   "reason": "ends mid-sentence: 316)\n14\nTotal revenue from \noperations\n2,18,543\n2,29,171\n(5)"
+  },
+  {
+   "id": "boundary:30",
+   "chunk_id": 6052,
+   "doc_type": "annual_report",
+   "auto": false,
+   "reason": "ends mid-sentence: nd \nenvironmental practices\nCorporate Overview\nHuman Capital"
+  },
+  {
+   "id": "boundary:31",
+   "chunk_id": 8069,
+   "doc_type": "annual_report",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:32",
+   "chunk_id": 10086,
+   "doc_type": "annual_report",
+   "auto": false,
+   "reason": "ends mid-sentence: . 05.12.2023)\n\u2013\n \u2013 \n\u2013\n \u2013 \n\u2013\n \u2013 \n\u2013\n \u2013 \n\u2013\n \u2013 \n\u2013\n \u2013 \n\u2013\n \u2013 \n\u2013\n \u2013"
+  },
+  {
+   "id": "boundary:33",
+   "chunk_id": 12103,
+   "doc_type": "annual_report",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:34",
+   "chunk_id": 14120,
+   "doc_type": "annual_report",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:35",
+   "chunk_id": 16137,
+   "doc_type": "annual_report",
+   "auto": false,
+   "reason": "ends mid-sentence: 2\n\u2013\n\u2013\n0*\n22\n0*\n6\n0*\n20\n\u2013\n\u2013\n0*\n20\nannual report (&(+#(&(,\n,+'"
+  },
+  {
+   "id": "boundary:36",
+   "chunk_id": 18154,
+   "doc_type": "annual_report",
+   "auto": false,
+   "reason": "ends mid-sentence: ent Limited\nIntegrated and Sustainability Report 2025-26\n167"
+  },
+  {
+   "id": "boundary:37",
+   "chunk_id": 20171,
+   "doc_type": "annual_report",
+   "auto": false,
+   "reason": "ends mid-sentence: Bijlee Company \nLtd. (BRBCL) \n India \n 74.00 \n 74.00 \n 26.00"
+  },
+  {
+   "id": "boundary:38",
+   "chunk_id": 22188,
+   "doc_type": "annual_report",
+   "auto": true,
+   "reason": "structural"
+  },
+  {
+   "id": "boundary:39",
+   "chunk_id": 37581,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:40",
+   "chunk_id": 37679,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:41",
+   "chunk_id": 37777,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:42",
+   "chunk_id": 37875,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement_cont"
+  },
+  {
+   "id": "boundary:43",
+   "chunk_id": 37973,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:44",
+   "chunk_id": 38071,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:45",
+   "chunk_id": 38169,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:46",
+   "chunk_id": 38267,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement_cont"
+  },
+  {
+   "id": "boundary:47",
+   "chunk_id": 38365,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:48",
+   "chunk_id": 38463,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:49",
+   "chunk_id": 38561,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  },
+  {
+   "id": "boundary:50",
+   "chunk_id": 38659,
+   "doc_type": "announcement",
+   "auto": true,
+   "reason": "announcement"
+  }
+ ],
+ "tag_instances": [
+  {
+   "id": "tag:24206:1",
+   "chunk_id": 24206,
+   "doc_type": "concall",
+   "tag": "section:opening_remarks",
+   "context": "section='Opening remarks'"
+  },
+  {
+   "id": "tag:24206:2",
+   "chunk_id": 24206,
+   "doc_type": "concall",
+   "tag": "speaker_role:moderator",
+   "context": "speaker='moderator' role='moderator'"
+  },
+  {
+   "id": "tag:24206:3",
+   "chunk_id": 24206,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "9"
+  },
+  {
+   "id": "tag:24844:1",
+   "chunk_id": 24844,
+   "doc_type": "concall",
+   "tag": "capacity",
+   "context": "ould progressively come in the first half of this year, so the total capacity addition which we target for this year is about 3 GW, the next financial year"
+  },
+  {
+   "id": "tag:24844:2",
+   "chunk_id": 24844,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A'"
+  },
+  {
+   "id": "tag:24844:3",
+   "chunk_id": 24844,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='sumit kishore' role='management'"
+  },
+  {
+   "id": "tag:24844:4",
+   "chunk_id": 24844,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "24,"
+  },
+  {
+   "id": "tag:24844:5",
+   "chunk_id": 24844,
+   "doc_type": "concall",
+   "tag": "forward_looking",
+   "context": "verb='expected' anchor='first half'"
+  },
+  {
+   "id": "tag:25482:1",
+   "chunk_id": 25482,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A'"
+  },
+  {
+   "id": "tag:25482:2",
+   "chunk_id": 25482,
+   "doc_type": "concall",
+   "tag": "speaker_role:analyst",
+   "context": "speaker='arpit shah' role='analyst'"
+  },
+  {
+   "id": "tag:25482:3",
+   "chunk_id": 25482,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "25"
+  },
+  {
+   "id": "tag:26120:1",
+   "chunk_id": 26120,
+   "doc_type": "concall",
+   "tag": "capex",
+   "context": "Ravi Swaminathan: And next question is with respect to capex. This year, FY25 and 26, what kind of capex that we are building in?"
+  },
+  {
+   "id": "tag:26120:2",
+   "chunk_id": 26120,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A'"
+  },
+  {
+   "id": "tag:26120:3",
+   "chunk_id": 26120,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='ravi swaminathan' role='management'"
+  },
+  {
+   "id": "tag:26120:4",
+   "chunk_id": 26120,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "25"
+  },
+  {
+   "id": "tag:26120:5",
+   "chunk_id": 26120,
+   "doc_type": "concall",
+   "tag": "forward_looking",
+   "context": "verb='will' anchor='next year'"
+  },
+  {
+   "id": "tag:26120:6",
+   "chunk_id": 26120,
+   "doc_type": "concall",
+   "tag": "unit:inr_crore",
+   "context": "ect to the optic fiber business that you had talked about in the TV, \u20b950,000 crores of orders that we are bidding. Is it something completely new or al"
+  },
+  {
+   "id": "tag:26758:1",
+   "chunk_id": 26758,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A'"
+  },
+  {
+   "id": "tag:26758:2",
+   "chunk_id": 26758,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='moderator' role='management'"
+  },
+  {
+   "id": "tag:26758:3",
+   "chunk_id": 26758,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "0.8"
+  },
+  {
+   "id": "tag:26758:4",
+   "chunk_id": 26758,
+   "doc_type": "concall",
+   "tag": "unit:percent",
+   "context": "e products of light structures and apologizes? Sanjay Gupta: Almost 30% we require for the thinner gauges. Gargi: And sir, entirely we are"
+  },
+  {
+   "id": "tag:27396:1",
+   "chunk_id": 27396,
+   "doc_type": "concall",
+   "tag": "regulatory",
+   "context": "f 20 2024. 99% DISCOMs already filed their tariff petition and the tariff order would be issued by the concern state Electricity Regulatory Commissi"
+  },
+  {
+   "id": "tag:27396:2",
+   "chunk_id": 27396,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A (cont.) \u00b7 Q: Understood, sir. And the second question is, sir, in terms of on the signing of PPAs in renewable, a few of the news articles and all are me'"
+  },
+  {
+   "id": "tag:27396:3",
+   "chunk_id": 27396,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='suraj das' role='management'"
+  },
+  {
+   "id": "tag:27396:4",
+   "chunk_id": 27396,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "30"
+  },
+  {
+   "id": "tag:27396:5",
+   "chunk_id": 27396,
+   "doc_type": "concall",
+   "tag": "forward_looking",
+   "context": "verb='expect' anchor='next financial year'"
+  },
+  {
+   "id": "tag:27396:6",
+   "chunk_id": 27396,
+   "doc_type": "concall",
+   "tag": "unit:percent",
+   "context": "er REC Limited February 10, 2025 Page 16 of 20 2024. 99% DISCOMs already filed their tariff petition and the tariff order woul"
+  },
+  {
+   "id": "tag:28034:1",
+   "chunk_id": 28034,
+   "doc_type": "concall",
+   "tag": "guidance",
+   "context": "verb='we expect' metric='volume'"
+  },
+  {
+   "id": "tag:28034:2",
+   "chunk_id": 28034,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A'"
+  },
+  {
+   "id": "tag:28034:3",
+   "chunk_id": 28034,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='atul lall' role='management'"
+  },
+  {
+   "id": "tag:28034:4",
+   "chunk_id": 28034,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "6"
+  },
+  {
+   "id": "tag:28034:5",
+   "chunk_id": 28034,
+   "doc_type": "concall",
+   "tag": "unit:inr_crore",
+   "context": "e opportunity. Sir, in terms of the mobile landscape, you spoke about 13.5 crore Android phones market and about 9 crores is something which is outsou"
+  },
+  {
+   "id": "tag:28672:1",
+   "chunk_id": 28672,
+   "doc_type": "concall",
+   "tag": "guidance",
+   "context": "verb='guidance' metric='volume'"
+  },
+  {
+   "id": "tag:28672:2",
+   "chunk_id": 28672,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A'"
+  },
+  {
+   "id": "tag:28672:3",
+   "chunk_id": 28672,
+   "doc_type": "concall",
+   "tag": "speaker_role:moderator",
+   "context": "speaker='moderator' role='moderator'"
+  },
+  {
+   "id": "tag:28672:4",
+   "chunk_id": 28672,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "17.5"
+  },
+  {
+   "id": "tag:28672:5",
+   "chunk_id": 28672,
+   "doc_type": "concall",
+   "tag": "forward_looking",
+   "context": "verb='guidance' anchor='guidance'"
+  },
+  {
+   "id": "tag:29310:1",
+   "chunk_id": 29310,
+   "doc_type": "concall",
+   "tag": "margin",
+   "context": "is now going to be on execution of our display project because it is margin accretive, and it gives us more tenacity in business and also our ca"
+  },
+  {
+   "id": "tag:29310:2",
+   "chunk_id": 29310,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A'"
+  },
+  {
+   "id": "tag:29310:3",
+   "chunk_id": 29310,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='indrajit agarwal' role='management'"
+  },
+  {
+   "id": "tag:29310:4",
+   "chunk_id": 29310,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "60"
+  },
+  {
+   "id": "tag:29310:5",
+   "chunk_id": 29310,
+   "doc_type": "concall",
+   "tag": "unit:inr_crore",
+   "context": "thing, if you could highlight, just clarify the number what you gave INR 150 crore for 2Q and INR 290 crore for one-off. Is that gross?"
+  },
+  {
+   "id": "tag:29310:6",
+   "chunk_id": 29310,
+   "doc_type": "concall",
+   "tag": "unit:percent",
+   "context": "tly medium-term view, at 60-odd million units, you would be probably 55%, 60% of the outsourced smartphone market in India. So, post that, whe"
+  },
+  {
+   "id": "tag:29948:1",
+   "chunk_id": 29948,
+   "doc_type": "concall",
+   "tag": "capacity",
+   "context": "up next year, so that's another 0.8 million tons. We are looking at debottlenecking some volumes in the Gamharia plant, which is the Usha Martin plant, t"
+  },
+  {
+   "id": "tag:29948:2",
+   "chunk_id": 29948,
+   "doc_type": "concall",
+   "tag": "capex",
+   "context": "ze all the discussions with the government. So, FY28 is the year when Capex actually starts and any Capex intensity you can share there? T. V"
+  },
+  {
+   "id": "tag:29948:3",
+   "chunk_id": 29948,
+   "doc_type": "concall",
+   "tag": "demand",
+   "context": "All this will lead to a much richer product mix. So, there will be a volume growth opportunity, as I mentioned. There is also an upside potential on ge"
+  },
+  {
+   "id": "tag:29948:4",
+   "chunk_id": 29948,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='koushik chatterjee' role='management'"
+  },
+  {
+   "id": "tag:29948:5",
+   "chunk_id": 29948,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "3"
+  },
+  {
+   "id": "tag:29948:6",
+   "chunk_id": 29948,
+   "doc_type": "concall",
+   "tag": "forward_looking",
+   "context": "verb='will' anchor='next year'"
+  },
+  {
+   "id": "tag:30586:1",
+   "chunk_id": 30586,
+   "doc_type": "concall",
+   "tag": "section:opening_remarks",
+   "context": "section='Opening remarks'"
+  },
+  {
+   "id": "tag:30586:2",
+   "chunk_id": 30586,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='abhishek agarwal' role='management'"
+  },
+  {
+   "id": "tag:30586:3",
+   "chunk_id": 30586,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "9"
+  },
+  {
+   "id": "tag:31224:1",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "tag": "capacity",
+   "context": "t to understand a little bit on the volume side, what is your current capacity utilization? Ashok Panda: Volume side? As I told you actually, our capacity is"
+  },
+  {
+   "id": "tag:31224:2",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "tag": "capex",
+   "context": "l and May. Raashi: Okay. And just one last question for me. On the capex, you mentioned IISCO, Bokaro and Bhilai, what is the capex for each"
+  },
+  {
+   "id": "tag:31224:3",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "tag": "guidance",
+   "context": "verb='target' metric='Volume'"
+  },
+  {
+   "id": "tag:31224:4",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "tag": "section:qa",
+   "context": "section='Q&A'"
+  },
+  {
+   "id": "tag:31224:5",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='moderator' role='management'"
+  },
+  {
+   "id": "tag:31224:6",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "tag": "has_number",
+   "context": "21"
+  },
+  {
+   "id": "tag:31224:7",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "tag": "forward_looking",
+   "context": "verb='target' anchor='target'"
+  },
+  {
+   "id": "tag:31224:8",
+   "chunk_id": 31224,
+   "doc_type": "concall",
+   "tag": "unit:inr_crore",
+   "context": "IISCO, Bokaro, and Bhilai? Ashok Panda: capex of IISCO is around INR36,000 crores -- maybe INR35,000 crores. And Bhilai, which is yet to be announced"
+  },
+  {
+   "id": "tag:31862:1",
+   "chunk_id": 31862,
+   "doc_type": "concall",
+   "tag": "section:opening_remarks",
+   "context": "section='Opening remarks'"
+  },
+  {
+   "id": "tag:31862:2",
+   "chunk_id": 31862,
+   "doc_type": "concall",
+   "tag": "speaker_role:management",
+   "context": "speaker='moderator' role='management'"
+  },
+  {
+   "id": "tag:32501:1",
+   "chunk_id": 32501,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "3"
+  },
+  {
+   "id": "tag:32891:1",
+   "chunk_id": 32891,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "8"
+  },
+  {
+   "id": "tag:33281:1",
+   "chunk_id": 33281,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "46"
+  },
+  {
+   "id": "tag:33281:2",
+   "chunk_id": 33281,
+   "doc_type": "deck",
+   "tag": "forward_looking",
+   "context": "verb='expect' anchor='next year'"
+  },
+  {
+   "id": "tag:33671:1",
+   "chunk_id": 33671,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "22"
+  },
+  {
+   "id": "tag:34061:1",
+   "chunk_id": 34061,
+   "doc_type": "deck",
+   "tag": "order_book",
+   "context": "ed revenue stood at 8.3% for the quarter and 6.6% for 9M FY25. Robust order book to sustain momentum in Q4 FY25 \u25aa Margins rose by ~120 bps QoQ to st"
+  },
+  {
+   "id": "tag:34061:2",
+   "chunk_id": 34061,
+   "doc_type": "deck",
+   "tag": "margin",
+   "context": "ngs Presentation Slowdown in Wires Business Moderates Segment Growth; Margins Improve \u25aa Demand for cables remained healthy during the quarter. Howe"
+  },
+  {
+   "id": "tag:34061:3",
+   "chunk_id": 34061,
+   "doc_type": "deck",
+   "tag": "demand",
+   "context": "lowdown in Wires Business Moderates Segment Growth; Margins Improve \u25aa Demand for cables remained healthy during the quarter. However, downward trend i"
+  },
+  {
+   "id": "tag:34061:4",
+   "chunk_id": 34061,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "5"
+  },
+  {
+   "id": "tag:34061:5",
+   "chunk_id": 34061,
+   "doc_type": "deck",
+   "tag": "unit:percent",
+   "context": "o-mid term demand \u25aa The international business registered a growth of 62% YoY and 29% QoQ. Contribution from the international business to the"
+  },
+  {
+   "id": "tag:34061:6",
+   "chunk_id": 34061,
+   "doc_type": "deck",
+   "tag": "unit:bps",
+   "context": "Robust order book to sustain momentum in Q4 FY25 \u25aa Margins rose by ~120 bps QoQ to stand at 13.5%. Normalization of margins in the wires business"
+  },
+  {
+   "id": "tag:34451:1",
+   "chunk_id": 34451,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "2024"
+  },
+  {
+   "id": "tag:34451:2",
+   "chunk_id": 34451,
+   "doc_type": "deck",
+   "tag": "unit:percent",
+   "context": "irlines Operational efficiency \u00a9 2025 | IndiGo | All rights reserved 79.9% 84.4% 82.7% 77.6% 65.9% 64.6% 74.7% 80.3% 78.6% 81.3% 97.5% 98.1% 97."
+  },
+  {
+   "id": "tag:34841:1",
+   "chunk_id": 34841,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "400"
+  },
+  {
+   "id": "tag:35231:1",
+   "chunk_id": 35231,
+   "doc_type": "deck",
+   "tag": "debt",
+   "context": "Consistent Annual financial performance 7 Gross Block (\u20b9 Mn) Net Debt/Equity (x) Asset Turnover ratio (x) Networth (\u20b9 Mn) 3,880 7,695 Q1F"
+  },
+  {
+   "id": "tag:35231:2",
+   "chunk_id": 35231,
+   "doc_type": "deck",
+   "tag": "working_capital",
+   "context": "028 Q1FY25 Q1FY26 Consistent quarterly financial performance 8 Net Working Capital Days Receivable Days Inventory Days Payable Days Net working capital"
+  },
+  {
+   "id": "tag:35231:3",
+   "chunk_id": 35231,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "7"
+  },
+  {
+   "id": "tag:35621:1",
+   "chunk_id": 35621,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "2"
+  },
+  {
+   "id": "tag:36011:1",
+   "chunk_id": 36011,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "6"
+  },
+  {
+   "id": "tag:36401:1",
+   "chunk_id": 36401,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "16"
+  },
+  {
+   "id": "tag:36791:1",
+   "chunk_id": 36791,
+   "doc_type": "deck",
+   "tag": "debt",
+   "context": "Consolidated Debt Status, Reference Rates, and Notes. A. Net Debt including Lease liabilities. All numbers are on Consolidated basis as"
+  },
+  {
+   "id": "tag:36791:2",
+   "chunk_id": 36791,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "24"
+  },
+  {
+   "id": "tag:36791:3",
+   "chunk_id": 36791,
+   "doc_type": "deck",
+   "tag": "unit:inr_crore",
+   "context": "s) * Cash & Bank balance is higher in June-25 due to NCD amounting to INR 2,025 crores raised during the quarter 31"
+  },
+  {
+   "id": "tag:37181:1",
+   "chunk_id": 37181,
+   "doc_type": "deck",
+   "tag": "has_number",
+   "context": "2047,"
+  },
+  {
+   "id": "tag:1:1",
+   "chunk_id": 1,
+   "doc_type": "annual_report",
+   "tag": "dividend_buyback",
+   "context": "7 Webcast and transcripts https://www.infosys.com/investors.html Record date for the purpose of final dividend Wednesday, June 10, 2026 Dividend"
+  },
+  {
+   "id": "tag:1:2",
+   "chunk_id": 1,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "29,"
+  },
+  {
+   "id": "tag:1:3",
+   "chunk_id": 1,
+   "doc_type": "annual_report",
+   "tag": "unit:percent",
+   "context": "d we are on this road again with them. Infosys is collaborating with 90 percent of its top 200 clients on their AI journeys, with more than 4,600 AI"
+  },
+  {
+   "id": "tag:2018:1",
+   "chunk_id": 2018,
+   "doc_type": "annual_report",
+   "tag": "accounting_note",
+   "context": "NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS As at and for the year ended 31"
+  },
+  {
+   "id": "tag:2018:2",
+   "chunk_id": 2018,
+   "doc_type": "annual_report",
+   "tag": "section:notes",
+   "context": "section='NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS'"
+  },
+  {
+   "id": "tag:2018:3",
+   "chunk_id": 2018,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "31"
+  },
+  {
+   "id": "tag:2018:4",
+   "chunk_id": 2018,
+   "doc_type": "annual_report",
+   "tag": "unit:percent",
+   "context": "grant \u0007- supplementary grant 17 May 2016 till 31 March 2019 (for 50% of the grant) and 17 May 2016 to 31 March 2020 (for remaining 50% o"
+  },
+  {
+   "id": "tag:4035:1",
+   "chunk_id": 4035,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "30"
+  },
+  {
+   "id": "tag:4035:2",
+   "chunk_id": 4035,
+   "doc_type": "annual_report",
+   "tag": "unit:inr_crore",
+   "context": "ality penalties. \u0007During the FY 2024-25, the turnover increased by H92 crore (7%) over previous year owing to higher volumes partly offset by dec"
+  },
+  {
+   "id": "tag:4035:3",
+   "chunk_id": 4035,
+   "doc_type": "annual_report",
+   "tag": "unit:percent",
+   "context": "its beneficiation plant are produced with a minimum iron content of 64% Fe while the DSO (Direct Shipping Ore) facilities crush, screen and"
+  },
+  {
+   "id": "tag:4035:4",
+   "chunk_id": 4035,
+   "doc_type": "annual_report",
+   "tag": "unit:usd",
+   "context": "s dropping from a peak of U$ 120.70 per ton in May 2024 to a low of U$ 89.35 per ton by September 2024. This decline was largely attributed t"
+  },
+  {
+   "id": "tag:6052:1",
+   "chunk_id": 6052,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "42"
+  },
+  {
+   "id": "tag:6052:2",
+   "chunk_id": 6052,
+   "doc_type": "annual_report",
+   "tag": "unit:percent",
+   "context": "s are not only motivated but also proud to be part of KEI\u2019s journey. 13% YoY Participants (Staff + Workers) covered under different training"
+  },
+  {
+   "id": "tag:8069:1",
+   "chunk_id": 8069,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "19,"
+  },
+  {
+   "id": "tag:10086:1",
+   "chunk_id": 10086,
+   "doc_type": "annual_report",
+   "tag": "accounting_note",
+   "context": "NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS (All amounts are in ` Million, u"
+  },
+  {
+   "id": "tag:10086:2",
+   "chunk_id": 10086,
+   "doc_type": "annual_report",
+   "tag": "section:notes",
+   "context": "section='NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS'"
+  },
+  {
+   "id": "tag:10086:3",
+   "chunk_id": 10086,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "2024"
+  },
+  {
+   "id": "tag:12103:1",
+   "chunk_id": 12103,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "2024"
+  },
+  {
+   "id": "tag:12103:2",
+   "chunk_id": 12103,
+   "doc_type": "annual_report",
+   "tag": "unit:percent",
+   "context": "his overall remuneration is subject to a maximum annual increment of 12% on a year-to-year basis. Any increase in remuneration beyond the sai"
+  },
+  {
+   "id": "tag:14120:1",
+   "chunk_id": 14120,
+   "doc_type": "annual_report",
+   "tag": "m_and_a",
+   "context": "163.98 486.47 386.86 21.10 74.35 0.61 1,317.51 Addition due to acquisition of subsidiary - 123.33 - 37.05 20.72 0.06 7.19 0.27 188.62 Ef"
+  },
+  {
+   "id": "tag:14120:2",
+   "chunk_id": 14120,
+   "doc_type": "annual_report",
+   "tag": "accounting_note",
+   "context": "Note 4 Property, plant and equipment ` In Crore Particulars Land Improvemen"
+  },
+  {
+   "id": "tag:14120:3",
+   "chunk_id": 14120,
+   "doc_type": "annual_report",
+   "tag": "section:notes",
+   "context": "section='Note 4'"
+  },
+  {
+   "id": "tag:14120:4",
+   "chunk_id": 14120,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "4"
+  },
+  {
+   "id": "tag:14120:5",
+   "chunk_id": 14120,
+   "doc_type": "annual_report",
+   "tag": "unit:inr_crore",
+   "context": "97 72.60 113.81 1.75 3,365.74 (1) Buildings include Net block of `3.59 Crore (Previous year `37.51 Crore) which have been given under operating le"
+  },
+  {
+   "id": "tag:16137:1",
+   "chunk_id": 16137,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "0"
+  },
+  {
+   "id": "tag:18154:1",
+   "chunk_id": 18154,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "2010,"
+  },
+  {
+   "id": "tag:18154:2",
+   "chunk_id": 18154,
+   "doc_type": "annual_report",
+   "tag": "forward_looking",
+   "context": "verb='committed to' anchor='by 2050'"
+  },
+  {
+   "id": "tag:20171:1",
+   "chunk_id": 20171,
+   "doc_type": "annual_report",
+   "tag": "capex",
+   "context": ".87 33,513.87 24,965.10 24,965.10 Trade payables & payable for capital expenditure 2 1.28 1.28 77.02 77.02 3 35,048.84 35,046.80 34,290."
+  },
+  {
+   "id": "tag:20171:2",
+   "chunk_id": 20171,
+   "doc_type": "annual_report",
+   "tag": "debt",
+   "context": "34 Lease Obligations 3 3,746.38 3,746.38 2,521.03 2,521.03 Borrowings - current 1 33,513.87 33,513.87 24,965.10 24,965.10 Trade"
+  },
+  {
+   "id": "tag:20171:3",
+   "chunk_id": 20171,
+   "doc_type": "annual_report",
+   "tag": "working_capital",
+   "context": "908.18 2,95,221.94 2,99,019.98 The carrying amounts of current trade receivables, current trade payables, payable for capital expenditure, cash and ca"
+  },
+  {
+   "id": "tag:20171:4",
+   "chunk_id": 20171,
+   "doc_type": "annual_report",
+   "tag": "dividend_buyback",
+   "context": "itors the level of dividends to equity shareholders in line with the dividend distribution policy of the Company. Under the terms of major"
+  },
+  {
+   "id": "tag:20171:5",
+   "chunk_id": 20171,
+   "doc_type": "annual_report",
+   "tag": "risk",
+   "context": "ng capital are to: - \u0007safeguard its ability to continue as a going concern, so that it can continue to provide returns for shareholders and bene"
+  },
+  {
+   "id": "tag:20171:6",
+   "chunk_id": 20171,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "489"
+  },
+  {
+   "id": "tag:22188:1",
+   "chunk_id": 22188,
+   "doc_type": "annual_report",
+   "tag": "working_capital",
+   "context": "s and contract liabilities from contracts with customers receivables. Trade receivables 6506.74 7609.94 Contract liabilities* 1703.59 1526.47 *Contract"
+  },
+  {
+   "id": "tag:22188:2",
+   "chunk_id": 22188,
+   "doc_type": "annual_report",
+   "tag": "has_number",
+   "context": "35"
+  },
+  {
+   "id": "tag:22188:3",
+   "chunk_id": 22188,
+   "doc_type": "annual_report",
+   "tag": "unit:inr_crore",
+   "context": "l ( a+b+c ) 110810.84 102479.06 ** includes sale of traded goods of \u20b9 5685.47 crores (previous year \u20b9 1819.07 crores) There is no single custome"
+  },
+  {
+   "id": "tag:22188:4",
+   "chunk_id": 22188,
+   "doc_type": "annual_report",
+   "tag": "unit:percent",
+   "context": "7 crores) There is no single customer contributing more than 10% of revenue. The credit period on sale of goods ranges from 0"
+  },
+  {
+   "id": "tag:37581:1",
+   "chunk_id": 37581,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "015"
+  },
+  {
+   "id": "tag:37679:1",
+   "chunk_id": 37679,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "4"
+  },
+  {
+   "id": "tag:37777:1",
+   "chunk_id": 37777,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "30"
+  },
+  {
+   "id": "tag:37875:1",
+   "chunk_id": 37875,
+   "doc_type": "announcement",
+   "tag": "risk",
+   "context": "ed out and may have reputational, regulatory and financial downside risks. Providing an outstanding customer experience is a key part of our"
+  },
+  {
+   "id": "tag:37875:2",
+   "chunk_id": 37875,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "7"
+  },
+  {
+   "id": "tag:37973:1",
+   "chunk_id": 37973,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "3"
+  },
+  {
+   "id": "tag:37973:2",
+   "chunk_id": 37973,
+   "doc_type": "announcement",
+   "tag": "unit:percent",
+   "context": "s: FY 2025-26 FY 2024-25 Directly sourced from MSMEs/ small producers 64.42% 44.83% Directly from within India 100% 100% 5. Job creation in small"
+  },
+  {
+   "id": "tag:38071:1",
+   "chunk_id": 38071,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "31"
+  },
+  {
+   "id": "tag:38169:1",
+   "chunk_id": 38169,
+   "doc_type": "announcement",
+   "tag": "accounting_note",
+   "context": "09 / FINANCIAL STATEMENTS / STANDALONE NOTES TO THE STANDALONE FINANCIAL STATEMENTS As at and for the year ended 31"
+  },
+  {
+   "id": "tag:38169:2",
+   "chunk_id": 38169,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "09"
+  },
+  {
+   "id": "tag:38267:1",
+   "chunk_id": 38267,
+   "doc_type": "announcement",
+   "tag": "regulatory",
+   "context": "6. 6. Securities and Exchange Board of India (\u201cSEBI\u201d) Sajjan Jindal Show cause notice dated March 18, 2024 SEBI Regulatory NA A show cause notice dated"
+  },
+  {
+   "id": "tag:38267:2",
+   "chunk_id": 38267,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "381"
+  },
+  {
+   "id": "tag:38365:1",
+   "chunk_id": 38365,
+   "doc_type": "announcement",
+   "tag": "risk",
+   "context": "ls of any corrective actions taken or underway to address significant risks /concerns arising from the assessments at Question 10 above. Not A"
+  },
+  {
+   "id": "tag:38365:2",
+   "chunk_id": 38365,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "2025"
+  },
+  {
+   "id": "tag:38463:1",
+   "chunk_id": 38463,
+   "doc_type": "announcement",
+   "tag": "regulatory",
+   "context": "t (in INR) Brief of the Case Has an appeal been preferred? (Yes/No) Penalty / Fine Principle- 1: Ethics and Transparency Joint Commissioner of"
+  },
+  {
+   "id": "tag:38463:2",
+   "chunk_id": 38463,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "18"
+  },
+  {
+   "id": "tag:38561:1",
+   "chunk_id": 38561,
+   "doc_type": "announcement",
+   "tag": "m_and_a",
+   "context": "Directors meeting held on April 26, 2022, has approved the Scheme of Amalgamation (\"the Scheme\") for the amalgamation ofMakesense Technologies Limited"
+  },
+  {
+   "id": "tag:38561:2",
+   "chunk_id": 38561,
+   "doc_type": "announcement",
+   "tag": "accounting_note",
+   "context": "119, SECTOR 44, GURUGRAM, HARYANA- 122001 CIN: L51909HR2008PLC037998 NOTES TO CONSOLIDATED UNAUDITED FINANCIAL RESULTS FOR THE QUARTER ENDED JUNE 3"
+  },
+  {
+   "id": "tag:38561:3",
+   "chunk_id": 38561,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "119,"
+  },
+  {
+   "id": "tag:38659:1",
+   "chunk_id": 38659,
+   "doc_type": "announcement",
+   "tag": "management_change",
+   "context": "with Limited Review Report of the Auditors thereon. 2. Approved re-appointment of Shri. Jagdish Prasad Chowdhary (DIN: 00313685), Executive Chairman o"
+  },
+  {
+   "id": "tag:38659:2",
+   "chunk_id": 38659,
+   "doc_type": "announcement",
+   "tag": "has_number",
+   "context": "12"
+  },
+  {
+   "id": "tag:38659:3",
+   "chunk_id": 38659,
+   "doc_type": "announcement",
+   "tag": "unit:percent",
+   "context": "e Board of Directors of the Company at its meeting held today i.e., 12% August, 2026 , infer dlia, considered, noted and: 1. Approved the Un"
+  }
+ ]
+}

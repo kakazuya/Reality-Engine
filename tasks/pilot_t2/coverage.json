@@ -1,0 +1,1302 @@
+{
+ "generated_at": "2026-10-28T22:56:47",
+ "cutoff": "2024-04-01",
+ "by_isin": {
+  "INE040A01034": {
+   "annual_report": {
+    "expected": 3,
+    "found": 3,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 12,
+    "found": 11,
+    "missing": [
+     {
+      "ref": "140756",
+      "date": "2026-10-23",
+      "title": "Transcript of Earnings Call in relation to the unaudited standalone and consolidated financial results of the HDFC Bank Limited for the quarter and half-year ended September 30, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "deck": {
+    "expected": 8,
+    "found": 5,
+    "missing": [
+     {
+      "ref": "599ea215-96f9-45a0-9f44-9c91ecf46480",
+      "date": "2024-04-21",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     },
+     {
+      "ref": "81de666e-1b0a-494b-8fe9-e3dbf3904d0e",
+      "date": "2026-04-18",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     },
+     {
+      "ref": "74a4410e-c368-4058-bce8-bf2318c2599f",
+      "date": "2026-07-18",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     }
+    ],
+    "missing_count": 3
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE455K01017": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "67840",
+      "date": "2024-06-22",
+      "title": "POLYCAB AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 5,
+    "found": 5,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE878B01027": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "49350",
+      "date": "2024-08-17",
+      "title": "KEI AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 20,
+    "found": 20,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE935N01020": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "26198",
+      "date": "2024-09-03",
+      "title": "DIXON AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 5,
+    "found": 5,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE263A01024": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 12,
+    "found": 12,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 5,
+    "found": 5,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE930H01031": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 1,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 11,
+    "found": 10,
+    "missing": [
+     {
+      "ref": "75ce9ca1-7bd7-41c3-abf6-c7f1a16a3351",
+      "date": "2026-05-14",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 1
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "105695",
+      "date": "2026-08-10",
+      "title": "Results-Financial Results 30-06-2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 63,
+    "found": 37,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE002A01018": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "72350",
+      "date": "2024-08-07",
+      "title": "RELIANCE AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 12,
+    "found": 10,
+    "missing": [
+     {
+      "ref": "72373",
+      "date": "2025-04-26",
+      "title": "CONCALL_TRANSCRIPT"
+     },
+     {
+      "ref": "72376",
+      "date": "2025-01-17",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 2
+   },
+   "deck": {
+    "expected": 12,
+    "found": 10,
+    "missing": [
+     {
+      "ref": "48937776-f439-4388-8b77-4f5957068927",
+      "date": "2025-01-17",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     },
+     {
+      "ref": "ff6f5b34-4915-4b3e-b103-691655361af6",
+      "date": "2025-10-17",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 2
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE415G01027": {
+   "annual_report": {
+    "expected": 6,
+    "found": 4,
+    "missing": [
+     {
+      "ref": "74619",
+      "date": "2024-09-06",
+      "title": "RVNL AR 2024-03-31"
+     },
+     {
+      "ref": "121683",
+      "date": "2024-09-19",
+      "title": "RVNL AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 9,
+    "found": 9,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 3,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "3499",
+      "date": "2026-08-11",
+      "title": "Unaudited Financial Results (Standalone & Consolidated) For The Quarter Ended 30.06.2026"
+     },
+     {
+      "ref": "3500",
+      "date": "2026-08-11",
+      "title": "Board Meeting Outcome for Unaudited Financial Results (Standalone & Consolidated) For The Quarter Ended 30.06.2026."
+     },
+     {
+      "ref": "3502",
+      "date": "2026-08-03",
+      "title": "Board Meeting Intimation for Consideration And Approval Of The Unaudited Financial Results (Standalone & Consolidated) Of The Company For The Quarter Ended 30Th June, 2026."
+     }
+    ],
+    "missing_count": 3
+   },
+   "announcement": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE021A01026": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "11386",
+      "date": "2024-05-31",
+      "title": "ASIANPAINT AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 7,
+    "found": 7,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 3,
+    "found": 3,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE040H01021": {
+   "annual_report": {
+    "expected": 4,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "84833",
+      "date": "2026-08-20",
+      "title": "SUZLON AR 2026-03-31"
+     },
+     {
+      "ref": "84835",
+      "date": "2026-08-15",
+      "title": "SUZLON AR 2026-03-31"
+     },
+     {
+      "ref": "84836",
+      "date": "2024-08-14",
+      "title": "SUZLON AR 2024-03-31"
+     }
+    ],
+    "missing_count": 3
+   },
+   "concall": {
+    "expected": 11,
+    "found": 11,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE615H01020": {
+   "annual_report": {
+    "expected": 4,
+    "found": 3,
+    "missing": [
+     {
+      "ref": "88687",
+      "date": "2024-08-03",
+      "title": "TITAGARH AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 12,
+    "found": 12,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 5,
+    "found": 5,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE009A01021": {
+   "annual_report": {
+    "expected": 5,
+    "found": 3,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 11,
+    "found": 15,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 8,
+    "found": 8,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE702C01027": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "9533",
+      "date": "2024-08-31",
+      "title": "APLAPOLLO AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 11,
+    "found": 26,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "2043",
+      "date": "2026-08-01",
+      "title": "Financial Results For The Quarter Ended June 30, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 9,
+    "found": 7,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE733E01010": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "63000",
+      "date": "2024-08-06",
+      "title": "NTPC AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 9,
+    "missing": [
+     {
+      "ref": "63018",
+      "date": "2025-08-25",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 1
+   },
+   "deck": {
+    "expected": 3,
+    "found": 3,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 4,
+    "found": 4,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE849A01020": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [
+     {
+      "ref": "89450",
+      "date": "2024-05-18",
+      "title": "TRENT AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 3,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "3951",
+      "date": "2026-08-06",
+      "title": "Outcome Of Board Meeting Held Today I.E. 6Th August 2026"
+     },
+     {
+      "ref": "89444",
+      "date": "2026-08-10",
+      "title": "FINANCIAL_RESULT"
+     },
+     {
+      "ref": "89448",
+      "date": "2026-08-06",
+      "title": "FINANCIAL_RESULT"
+     }
+    ],
+    "missing_count": 3
+   },
+   "announcement": {
+    "expected": 3,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE019A01038": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 11,
+    "found": 10,
+    "missing": [
+     {
+      "ref": "116401",
+      "date": "2026-05-20",
+      "title": "Transcripts of the Q4FY26 Earnings Conference Call conducted after the meeting of Board of Directors."
+     }
+    ],
+    "missing_count": 1
+   },
+   "deck": {
+    "expected": 18,
+    "found": 17,
+    "missing": [
+     {
+      "ref": "cd2a67b1-3ba2-4012-a1a3-5a8145ae7c69",
+      "date": "2025-02-10",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     }
+    ],
+    "missing_count": 1
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 5,
+    "found": 5,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE066F01020": {
+   "annual_report": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 3,
+    "found": 3,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 2,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "2732",
+      "date": "2026-07-31",
+      "title": "Board Meeting Intimation for Considering Audited Financial Results For The Quarter Ended 30Th June, 2026"
+     },
+     {
+      "ref": "37216",
+      "date": "2026-08-12",
+      "title": "FINANCIAL_RESULT"
+     }
+    ],
+    "missing_count": 2
+   },
+   "announcement": {
+    "expected": 5,
+    "found": 5,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE067A01029": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 9,
+    "found": 11,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "f9170284-354a-4151-a2b4-4c3ae047ffd7",
+      "date": "2025-02-04",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation"
+     }
+    ],
+    "missing_count": 1
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 80,
+    "found": 64,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE775A01035": {
+   "annual_report": {
+    "expected": 4,
+    "found": 3,
+    "missing": [
+     {
+      "ref": "58851",
+      "date": "2024-08-06",
+      "title": "MOTHERSON AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 11,
+    "found": 11,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 14,
+    "found": 14,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 5,
+    "found": 5,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE114A01011": {
+   "annual_report": {
+    "expected": 3,
+    "found": 3,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 10,
+    "found": 9,
+    "missing": [
+     {
+      "ref": "32f077ee-fc17-4cd0-aa5c-38868a21700e",
+      "date": "2025-02-12",
+      "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"
+     }
+    ],
+    "missing_count": 1
+   },
+   "results_notes": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "3514",
+      "date": "2026-07-24",
+      "title": "Board Meeting Outcome for Unaudited Financial Results For The Quarter Ended 30Th June, 2026"
+     }
+    ],
+    "missing_count": 1
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE192R01011": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "121590",
+      "date": "2024-07-26",
+      "title": "DMART AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 3,
+    "found": 3,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 6,
+    "found": 6,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE918Z01012": {
+   "annual_report": {
+    "expected": 2,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 12,
+    "found": 12,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 2,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE481G01011": {
+   "annual_report": {
+    "expected": 4,
+    "found": 3,
+    "missing": [
+     {
+      "ref": "121713",
+      "date": "2024-07-22",
+      "title": "ULTRACEMCO AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 11,
+    "found": 10,
+    "missing": [
+     {
+      "ref": "90795",
+      "date": "2026-05-01",
+      "title": "CONCALL_TRANSCRIPT"
+     }
+    ],
+    "missing_count": 1
+   },
+   "deck": {
+    "expected": 13,
+    "found": 13,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 7,
+    "found": 7,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE646L01027": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 12,
+    "found": 12,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE081A01020": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "121703",
+      "date": "2024-06-22",
+      "title": "TATASTEEL AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 16,
+    "found": 16,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 3,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE467B01029": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "86989",
+      "date": "2024-05-09",
+      "title": "TCS AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 12,
+    "found": 12,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 2,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 5,
+    "found": 5,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE0MWH01014": {
+   "annual_report": {
+    "expected": 1,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "89820",
+      "date": "2026-08-06",
+      "title": "TRUALT AR 2026-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 4,
+    "found": 4,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 6,
+    "found": 6,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 3,
+    "found": 3,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE417T01026": {
+   "annual_report": {
+    "expected": 4,
+    "found": 3,
+    "missing": [
+     {
+      "ref": "67799",
+      "date": "2024-09-05",
+      "title": "POLICYBZR AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 10,
+    "found": 10,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 4,
+    "found": 0,
+    "missing": [
+     {
+      "ref": "3433",
+      "date": "2026-08-05",
+      "title": "Financial Results For The Quarter Ended June 30, 2026"
+     },
+     {
+      "ref": "3436",
+      "date": "2026-07-31",
+      "title": "Board Meeting Intimation for Approval Of Unaudited Standalone And Consolidated Financial Results Of The Company For The Quarter Ended June 30, 2026"
+     },
+     {
+      "ref": "67796",
+      "date": "2026-08-07",
+      "title": "FINANCIAL_RESULT"
+     },
+     {
+      "ref": "67797",
+      "date": "2026-08-05",
+      "title": "FINANCIAL_RESULT"
+     }
+    ],
+    "missing_count": 4
+   },
+   "announcement": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE634S01028": {
+   "annual_report": {
+    "expected": 3,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "55535",
+      "date": "2024-07-18",
+      "title": "MANKIND AR 2024-03-31"
+     }
+    ],
+    "missing_count": 1
+   },
+   "concall": {
+    "expected": 11,
+    "found": 11,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 14,
+    "found": 13,
+    "missing": [
+     {
+      "ref": "6a04c5c7-4c19-4c2a-8d03-d88fa717aea2",
+      "date": "2024-08-20",
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation"
+     }
+    ],
+    "missing_count": 1
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 4,
+    "found": 2,
+    "missing": [],
+    "missing_count": 0
+   }
+  },
+  "INE020B01018": {
+   "annual_report": {
+    "expected": 4,
+    "found": 2,
+    "missing": [
+     {
+      "ref": "71959",
+      "date": "2026-07-30",
+      "title": "RECLTD AR 2026-03-31"
+     },
+     {
+      "ref": "71961",
+      "date": "2024-07-30",
+      "title": "RECLTD AR 2024-03-31"
+     }
+    ],
+    "missing_count": 2
+   },
+   "concall": {
+    "expected": 7,
+    "found": 7,
+    "missing": [],
+    "missing_count": 0
+   },
+   "deck": {
+    "expected": 1,
+    "found": 1,
+    "missing": [],
+    "missing_count": 0
+   },
+   "results_notes": {
+    "expected": 0,
+    "found": 0,
+    "missing": [],
+    "missing_count": 0
+   },
+   "announcement": {
+    "expected": 25,
+    "found": 25,
+    "missing": [],
+    "missing_count": 0
+   }
+  }
+ },
+ "totals": {
+  "annual_report": {
+   "expected": 90,
+   "found": 58
+  },
+  "concall": {
+   "expected": 273,
+   "found": 289
+  },
+  "deck": {
+   "expected": 230,
+   "found": 220
+  },
+  "results_notes": {
+   "expected": 15,
+   "found": 0
+  },
+  "announcement": {
+   "expected": 267,
+   "found": 217
+  }
+ }
+}
