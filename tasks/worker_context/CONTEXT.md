@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T01:05:52+05:30 · git HEAD: `dac2ff0` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T01:21:03+05:30 · git HEAD: `82a2ae5` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -13,7 +13,7 @@ reality_engine/
   db/ (9 py) — Database services.
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
-  pilot/ (4 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
+  pilot/ (5 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
   pipeline/ (19 py) — Pipeline runners.
   processing/ (45 py) — Document and image processing components.
   query/ (18 py) — Query layer v1 — sub-question decomposition + router + planners + answer assembly.
@@ -201,6 +201,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/pilot/build_t1.py` — T1 (deterministic) pilot build — PILOT_SPEC §3 deterministic tier, SCHEMA_V3 §B/§C.
 - `reality_engine/pilot/checks_t1.py` — Checks for the T1 pilot build — the numbers behind tasks/pilot_t1/CHECKS.md.
 - `reality_engine/pilot/macro_claims.py` — macro_claim_target pilot (G10 / policy_target) — deterministic claim -> target map.
+- `reality_engine/pilot/universe60.py` — Stratified 60-company pilot universe (golden-rule step 4, tasks/pilot60).
 
 ### reality_engine/pipeline/
 - `reality_engine/pipeline/backfill.py` — Historical Backfill Pipeline Module
