@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T01:21:03+05:30 · git HEAD: `82a2ae5` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T01:40:01+05:30 · git HEAD: `3a88461` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -18,7 +18,7 @@ reality_engine/
   processing/ (45 py) — Document and image processing components.
   query/ (18 py) — Query layer v1 — sub-question decomposition + router + planners + answer assembly.
   reporting/ (3 py) — Reporting module for Reality Engine.
-  scripts/ (145 py) — Operational job scripts: one module per data job; most-referenced list below
+  scripts/ (149 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
   toolbelt/ (12 py) — Ready-made, read-only tools for dsh workers (Task 02).
   ui/ (2 py) — Reality Engine UI Module.
@@ -293,7 +293,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/reporting/notifier.py` — Wave B — Telegram alerts + 23:00 nightly digest (stdlib only, no new deps).
 - `reality_engine/reporting/writer.py` — Report Writer Module
 
-- `reality_engine/scripts/` — 145 data-job modules (one per data job); most-referenced ranked below.
+- `reality_engine/scripts/` — 149 data-job modules (one per data job); most-referenced ranked below.
 ### reality_engine/search/
 - `reality_engine/search/chunk_vector_index.py` — Local dense-retrieval index over ``document_chunks.embedding``.
 - `reality_engine/search/hybrid_search.py` — Lexical plus dense search using reciprocal rank fusion.
@@ -571,16 +571,19 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.dsh_heartbeat` | test_dsh_worker_plugin.py |
 | `reality_engine.scripts.embed_prototype_compare` | test_embed_prototype.py |
 | `reality_engine.scripts.extract_deck_figures` | test_extract_deck_figures.py |
+| `reality_engine.scripts.extract_news_prices` | test_extra_series.py |
 | `reality_engine.scripts.fetch_commodity_series` | test_missing_series_fetchers.py |
 | `reality_engine.scripts.fetch_eq_bhavcopy_gaps` | test_missing_series_fetchers.py |
 | `reality_engine.scripts.fetch_etf_nav` | test_fetch_etf_nav_timeout.py |
 | `reality_engine.scripts.fetch_fo_bhavcopy` | test_missing_series_fetchers.py |
+| `reality_engine.scripts.fetch_imd_rainfall` | test_extra_series.py |
 | `reality_engine.scripts.fetch_index_history` | test_pilot_t1.py |
 | `reality_engine.scripts.fetch_market_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_nse_api_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_originals` | test_fetch_originals.py |
 | `reality_engine.scripts.fetch_price_bands` | test_pilot_t1.py |
 | `reality_engine.scripts.fetch_results_notes_text` | test_new_feeds_g2.py |
+| `reality_engine.scripts.fetch_wpi_items` | test_extra_series.py |
 | `reality_engine.scripts.load_deck_chunks` | test_deck_chunk_load.py |
 | `reality_engine.scripts.load_market_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.market_session_coverage` | test_market_gap_backfill.py |
@@ -589,6 +592,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.resource_watchdog` | test_resource_watchdog.py |
 | `reality_engine.scripts.run_deepseek_harness` | test_deepseek_harness_controls.py, test_dsh_heartbeat.py |
 | `reality_engine.scripts.seed_track_record` | test_portfolio_ledger.py |
+| `reality_engine.scripts.series_common` | test_extra_series.py |
 | `reality_engine.search.intel_search` | test_intel_search.py, test_rumor_backfill.py |
 | `reality_engine.toolbelt.cost_ledger` | test_toolbelt.py |
 | `reality_engine.toolbelt.coverage_peek` | test_coverage_peek.py |
