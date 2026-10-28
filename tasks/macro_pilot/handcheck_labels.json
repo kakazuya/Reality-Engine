@@ -1,0 +1,737 @@
+{
+ "standard": "A target is correct when the claim plausibly changes demand, cost or regulation for companies in that held sector/basic industry/ISIN/theme \u2014 including the second-order input demand the equal-weight alias implies. A generic term (exports, all sectors, manufacturing, MSME, trade) is not a miss.",
+ "claims": {
+  "269": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Cement & Cement Products",
+    "basic_industry:Iron & Steel Products",
+    "basic_industry:Pig Iron",
+    "basic_industry:Sponge Iron",
+    "sector:Construction",
+    "sector:Realty"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [
+    "basic_industry:Pig Iron",
+    "basic_industry:Sponge Iron"
+   ],
+   "note": "housing scheme: cement/steel/construction/realty direct; pig & sponge iron are the upstream steel inputs (second-order, same demand chain)"
+  },
+  "486": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Other Agricultural Products"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "agri-district programme -> agri produce; 'agri-infrastructure'/'rural economy' are not held industries"
+  },
+  "599": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Aluminium Copper & Zinc Products",
+    "basic_industry:Copper",
+    "sector:Metals & Mining"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "blister-copper duty cut: copper products and mining direct; note the direction differs for producers vs users (one inherited direction)"
+  },
+  "804": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Asset Management Company",
+    "basic_industry:Exchange and Data Platform",
+    "basic_industry:Stockbroking & Allied"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "capital-gains exemption: capital-market intermediaries direct"
+  },
+  "1161": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Granites & Marbles",
+    "sector:Metals & Mining"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "marble/granite duty cut: granite processors and mining direct; HS chapter 25 is deliberately not mapped to cement (it covers stone too)"
+  },
+  "8226": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Power Distribution",
+    "sector:Power"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "power distribution reform -> discoms and power"
+  },
+  "8358": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "fiscal deficit -> banks; 'bond markets' is not a held industry"
+  },
+  "8668": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Exchange and Data Platform",
+    "basic_industry:Stockbroking & Allied"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "IFSC FPI derivative tax -> exchanges and brokers"
+  },
+  "8755": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Cement & Cement Products",
+    "basic_industry:Iron & Steel Products",
+    "basic_industry:Pig Iron",
+    "basic_industry:Sponge Iron",
+    "sector:Capital Goods",
+    "sector:Construction"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [
+    "basic_industry:Pig Iron",
+    "basic_industry:Sponge Iron"
+   ],
+   "note": "capex -> construction/capital goods/cement/steel demand"
+  },
+  "8918": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Logistics Solution Provider"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "AEO cargo accreditation -> logistics"
+  },
+  "8990": {
+   "stratum": "budget",
+   "tp": [
+    "sector:Construction"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "NE infrastructure scheme -> construction"
+  },
+  "9098": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Hotels & Resorts",
+    "basic_industry:Tour Travel Related Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "tourism scheme -> hotels and travel"
+  },
+  "9304": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Furniture Home Furnishing"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "AIDC on seats/parts -> furniture (the claim's own sector)"
+  },
+  "9467": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Financial Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "tax-definition change: banks/financial services named by the claim; thin direct link"
+  },
+  "9579": {
+   "stratum": "budget",
+   "tp": [
+    "basic_industry:Other Agricultural Products",
+    "sector:Construction"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "rural development -> construction and agri-allied"
+  },
+  "21001": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Asset Management Company",
+    "basic_industry:Exchange and Data Platform",
+    "basic_industry:Stockbroking & Allied"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "ETP framework: exchanges/brokers direct; AMC trades on those platforms (indirect)"
+  },
+  "21102": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "small-finance-bank derivatives: bank basics"
+  },
+  "21147": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Non Banking Financial Company (NBFC)",
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Consumer Durables",
+    "sector:Financial Services",
+    "sector:Realty"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "unchanged repo: all rate-sensitive sectors the claim names"
+  },
+  "21201": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Automobile and Auto Components",
+    "sector:Construction",
+    "sector:Realty"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "no-cut signal: rate-sensitive sectors named"
+  },
+  "21243": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Financial Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "VRR liquidity: banks and financial services"
+  },
+  "21312": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Non Banking Financial Company (NBFC)",
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "basic_industry:Residential Commercial Projects",
+    "sector:Automobile and Auto Components",
+    "sector:Construction",
+    "sector:Financial Services",
+    "sector:Realty"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "50 bps cut: banks/NBFC/FS plus the rate-sensitive sectors named"
+  },
+  "21360": {
+   "stratum": "rbi",
+   "tp": [
+    "sector:Financial Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "liquidity measures: the compound 'Banking & Financial Services' target is the FS sector, whose membership includes the banks"
+  },
+  "21411": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Financial Technology (Fintech)"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "UPI Lite limits -> fintech"
+  },
+  "21460": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Financial Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "MSF/bank-rate change -> banks and FS"
+  },
+  "21516": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Financial Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "CRR cut guidance -> banks and FS"
+  },
+  "21579": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "co-operative bank licensing -> bank basics"
+  },
+  "21633": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Automobile and Auto Components",
+    "sector:Capital Goods",
+    "sector:Construction",
+    "sector:Consumer Durables",
+    "sector:Financial Services",
+    "sector:Realty"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "repo hike: all seven sectors the claim names, including consumer durables"
+  },
+  "21694": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Asset Management Company",
+    "basic_industry:Depositories Clearing Houses and Other Intermediaries",
+    "basic_industry:Exchange and Data Platform",
+    "basic_industry:Stockbroking & Allied",
+    "sector:Financial Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "CAS deposit info: depositories, exchanges, brokers, AMC"
+  },
+  "21732": {
+   "stratum": "rbi",
+   "tp": [
+    "basic_industry:Housing Finance Company",
+    "basic_industry:Non Banking Financial Company (NBFC)",
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Automobile and Auto Components",
+    "sector:Capital Goods",
+    "sector:Construction",
+    "sector:Realty",
+    "theme:housing_finance"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "repo hike: all sectors the claim names; housing-finance theme from 'housing finance'"
+  },
+  "21743": {
+   "stratum": "rbi",
+   "tp": [
+    "sector:Capital Goods",
+    "sector:Construction"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "fiscal stimulus -> capital goods and construction"
+  },
+  "196": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Cement & Cement Products",
+    "basic_industry:Housing Finance Company",
+    "basic_industry:Iron & Steel Products",
+    "basic_industry:Pig Iron",
+    "basic_industry:Sponge Iron",
+    "sector:Construction",
+    "sector:Realty",
+    "theme:housing_finance"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [
+    "basic_industry:Pig Iron",
+    "basic_industry:Sponge Iron"
+   ],
+   "note": "PMAY-U houses: housing chain direct; pig/sponge iron second-order"
+  },
+  "198": {
+   "stratum": "pib",
+   "tp": [
+    "sector:Construction",
+    "sector:Realty"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "implementation directive -> construction and realty"
+  },
+  "209": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Education",
+    "isin:INE894V01022"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "ITI clusters: education/skilling; Belrise is the only named company held as an ISIN (BVG/Eagle/Inderdeep are not in the master)"
+  },
+  "211": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Education"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "Pune ITI with BVG India: education; BVG is not a held ISIN"
+  },
+  "213": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Education"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "Jammu ITI with Eagle Infra: education; Eagle is not a held ISIN"
+  },
+  "215": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Education"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "ISO/skills directive -> education"
+  },
+  "217": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Logistics Solution Provider",
+    "basic_industry:Other Agricultural Products"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "onion buffer movement: agri produce and logistics; 'food retail' is not a held industry"
+  },
+  "3687": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Other Agricultural Products",
+    "basic_industry:Other Food Products",
+    "basic_industry:Packaged Foods"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "makhana board: agri produce + food processing"
+  },
+  "3689": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Other Agricultural Products"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "gene bank -> agri produce"
+  },
+  "3691": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Non Banking Financial Company (NBFC)",
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "KCC interest subvention -> banks and NBFC"
+  },
+  "3694": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Other Agricultural Products"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "agri-district scheme -> agri produce"
+  },
+  "3696": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Other Agricultural Products"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "pulses mission -> agri produce"
+  },
+  "3698": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Other Agricultural Products",
+    "basic_industry:Other Food Products",
+    "basic_industry:Packaged Foods"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "fruit/vegetable programme -> agri produce and food processing"
+  },
+  "3700": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:General Insurance",
+    "basic_industry:Life Insurance",
+    "sector:Financial Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "insurance FDI: life and general insurance plus FS"
+  },
+  "3702": {
+   "stratum": "pib",
+   "tp": [
+    "basic_industry:Asset Management Company",
+    "basic_industry:General Insurance",
+    "basic_industry:Life Insurance",
+    "basic_industry:Non Banking Financial Company (NBFC)",
+    "basic_industry:Other Bank",
+    "basic_industry:Private Sector Bank",
+    "basic_industry:Public Sector Bank",
+    "sector:Financial Services"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "central KYC: every regulated financial industry the claim names"
+  },
+  "3726": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Pharmaceuticals",
+    "sector:Healthcare"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "lifesaving-drug BCD exemption -> pharma"
+  },
+  "3767": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Pharmaceuticals",
+    "sector:Healthcare"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "36 lifesaving drugs -> pharma"
+  },
+  "3769": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Consumer Electronics",
+    "basic_industry:Other Electrical Equipment",
+    "sector:Power"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "open-cell BCD: solar/module manufacturing; 'Power' comes from the claim's own 'solar' sector"
+  },
+  "3771": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Aerospace & Defense",
+    "basic_industry:Ship Building & Allied Services",
+    "sector:Capital Goods",
+    "theme:defence"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "shipbuilding raw materials: shipbuilders, defence shipyards, heavy engineering"
+  },
+  "3895": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Pharmaceuticals",
+    "sector:Healthcare"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "lifesaving drugs -> pharma"
+  },
+  "3897": {
+   "stratum": "tariff",
+   "tp": [
+    "sector:Textiles"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "textile machinery exemption -> textiles"
+  },
+  "3899": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Consumer Electronics",
+    "basic_industry:E-Learning",
+    "basic_industry:Other Electrical Equipment"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "IFPD duty: electronics/display manufacturing and education technology"
+  },
+  "3901": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Auto Components & Equipments",
+    "basic_industry:Consumer Electronics",
+    "basic_industry:Other Electrical Equipment",
+    "sector:Automobile and Auto Components"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "lithium-ion battery capital goods: battery makers, EV, mobile phones"
+  },
+  "3905": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Leather And Leather Products"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "leather duty relief -> leather"
+  },
+  "3907": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Railway Wagons"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "railway MRO relief -> railway rolling stock; the quote's aircraft comparison is deliberately not a product target"
+  },
+  "3946": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Pharmaceuticals"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "lifesaving drugs -> pharma"
+  },
+  "4037": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Pharmaceuticals"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "medicines/PAP exemption -> pharma"
+  },
+  "4039": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Auto Components & Equipments",
+    "basic_industry:Consumer Electronics",
+    "basic_industry:Other Electrical Equipment",
+    "sector:Metals & Mining"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "critical-mineral exemption: battery/electronics industries and mining"
+  },
+  "4041": {
+   "stratum": "tariff",
+   "tp": [
+    "sector:Textiles"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "knitted-fabric BCD -> textiles"
+  },
+  "4043": {
+   "stratum": "tariff",
+   "tp": [
+    "basic_industry:Ship Building & Allied Services",
+    "basic_industry:Shipping"
+   ],
+   "fp": [],
+   "fn": [],
+   "strict_fp": [],
+   "note": "shipbuilding exemption -> shipbuilding and shipping"
+  }
+ }
+}

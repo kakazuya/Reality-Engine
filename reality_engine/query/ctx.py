@@ -24,7 +24,11 @@ DB_FILES = {
     "concall_facts": "concall_facts.db",
     "results_xbrl": "results_xbrl.db",
     "bse_announcements": "bse_announcements.db",
+    # Built by reality_engine/pilot/macro_claims.py; absent in a plain data root.
+    "macro_pilot": "macro_pilot.db",
 }
+#: The pilot DB lives in the worktree, not the read-only data root.
+PILOT_DB_ENV = "REALITY_MACRO_PILOT_DB"
 
 
 class QueryUnavailable(RuntimeError):
@@ -52,6 +56,10 @@ class Ctx:
         """Connection for one database alias (``equity_intelligence`` ...)."""
         if name not in self._sql:
             path = Path(self.root) / DB_FILES[name]
+            if name == "macro_pilot":
+                override = os.environ.get(PILOT_DB_ENV)
+                if override:
+                    path = Path(override)
             if not path.exists():
                 raise QueryUnavailable(f"{name} database missing: {path}")
             from reality_engine.db.readonly import connect_ro

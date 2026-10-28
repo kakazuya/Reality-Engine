@@ -1,0 +1,2489 @@
+{
+ "db": "C:\\Users\\warri\\Downloads\\IDM-worktrees\\20261028T175541Z-42ce9e60\\.tmp\\pilot\\macro_pilot.db",
+ "claims_sampled": 60,
+ "rows_covered": 183,
+ "instructions": "For every claim key in handcheck_labels.json list the emitted targets that are correct under 'tp', the ones that are wrong under 'fp' (target = 'kind:id'), and the industries the claim clearly names that were missed under 'fn' (target = 'kind:id', why = the claim words that name it). A generic term (exports, all sectors, manufacturing, MSME) is not a miss.",
+ "claims": {
+  "269": {
+   "claim_id": 269,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget 2024-25 Speech (Part I)",
+   "issuer": "Ministry of Finance (GoI)",
+   "known_at": "2024-07-23",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "Two crore more houses will be taken up in the next five years to meet the requirement arising from increase in the number of families.",
+   "paraphrase": "PM Awas Yojana (Grameen) expansion (scheme; positive) hits construction, real estate, cement, steel",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Cement & Cement Products",
+     "kind": "basic_industry",
+     "id": "Cement & Cement Products",
+     "direction": "positive",
+     "evidence": "sector term 'cement'"
+    },
+    {
+     "target": "basic_industry:Iron & Steel Products",
+     "kind": "basic_industry",
+     "id": "Iron & Steel Products",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "basic_industry:Pig Iron",
+     "kind": "basic_industry",
+     "id": "Pig Iron",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "basic_industry:Sponge Iron",
+     "kind": "basic_industry",
+     "id": "Sponge Iron",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'construction'"
+    },
+    {
+     "target": "sector:Realty",
+     "kind": "sector",
+     "id": "Realty",
+     "direction": "positive",
+     "evidence": "sector term 'real estate'"
+    }
+   ]
+  },
+  "486": {
+   "claim_id": 486,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget 2025-26 Speech",
+   "issuer": "Ministry of Finance (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "our Government will undertake a \u2018Prime Minister Dhan-Dhaanya Krishi Yojana\u2019 in partnership with states",
+   "paraphrase": "Prime Minister Dhan-Dhaanya Krishi Yojana \u2013 Developing Agri Districts Programme (scheme; positive) hits Agriculture, Agri-infrastructure, Rural Economy",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Agricultural Products",
+     "kind": "basic_industry",
+     "id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'Agriculture'"
+    }
+   ]
+  },
+  "599": {
+   "claim_id": 599,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget 2024-25 Speech (Part II)",
+   "issuer": "Ministry of Finance (GoI)",
+   "known_at": "2024-07-23",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2024-07-24",
+   "quote": "Blister Copper 5 Nil",
+   "paraphrase": "Customs duty reduction: Blister Copper from 5% to Nil (customs duty; positive) hits Copper, Mining",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Aluminium Copper & Zinc Products",
+     "kind": "basic_industry",
+     "id": "Aluminium Copper & Zinc Products",
+     "direction": "positive",
+     "evidence": "sector term 'Copper'"
+    },
+    {
+     "target": "basic_industry:Copper",
+     "kind": "basic_industry",
+     "id": "Copper",
+     "direction": "positive",
+     "evidence": "sector term 'Copper'"
+    },
+    {
+     "target": "sector:Metals & Mining",
+     "kind": "sector",
+     "id": "Metals & Mining",
+     "direction": "positive",
+     "evidence": "sector term 'Mining'"
+    }
+   ]
+  },
+  "804": {
+   "claim_id": 804,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget 2024-25 Speech (Part II)",
+   "issuer": "Ministry of Finance (GoI)",
+   "known_at": "2024-07-23",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2024-07-23",
+   "quote": "it is proposed to increase the limit of exemption of capital gains on certain listed financial assets from \u20b9 1 lakh to \u20b9 1.25 lakh per year.",
+   "paraphrase": "Increase in Capital Gains Exemption Limit (tax; positive) hits Capital Markets",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Asset Management Company",
+     "kind": "basic_industry",
+     "id": "Asset Management Company",
+     "direction": "positive",
+     "evidence": "sector term 'Capital Markets'"
+    },
+    {
+     "target": "basic_industry:Exchange and Data Platform",
+     "kind": "basic_industry",
+     "id": "Exchange and Data Platform",
+     "direction": "positive",
+     "evidence": "sector term 'Capital Markets'"
+    },
+    {
+     "target": "basic_industry:Stockbroking & Allied",
+     "kind": "basic_industry",
+     "id": "Stockbroking & Allied",
+     "direction": "positive",
+     "evidence": "sector term 'Capital Markets'"
+    }
+   ]
+  },
+  "1161": {
+   "claim_id": 1161,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget 2025-26 Speech",
+   "issuer": "Ministry of Finance (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "neutral",
+   "magnitude_value": 20.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": "2025-02-02",
+   "quote": "Marble and travertine, granite, crude or roughly trimmed, merely cut into blocks, slabs and other (tariff sub heading 2515 12 and tariff items, 2525 11 00, 2516 11 00, 2516 12 00) 40 20 (+20 AIDC)",
+   "paraphrase": "Tariff rate cut on marble/travertine/granite blocks (no effective change) (customs duty; neutral) hits Mining, Construction materials at Rs 20 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Granites & Marbles",
+     "kind": "basic_industry",
+     "id": "Granites & Marbles",
+     "direction": "neutral",
+     "evidence": "product term 'granite'"
+    },
+    {
+     "target": "sector:Metals & Mining",
+     "kind": "sector",
+     "id": "Metals & Mining",
+     "direction": "neutral",
+     "evidence": "sector term 'Mining'"
+    }
+   ]
+  },
+  "8226": {
+   "claim_id": 8226,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2024-25 interim - Budget at a Glance",
+   "issuer": "Ministry of Finance",
+   "known_at": "2024-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": 14500.0,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": null,
+   "quote": "reform linked distribution scheme 2738 12072 10400 14500",
+   "paraphrase": "Reform Linked Distribution Scheme (power sector reforms) expanded (scheme; positive) hits Power Distribution, Electricity at Rs 14,500 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Power Distribution",
+     "kind": "basic_industry",
+     "id": "Power Distribution",
+     "direction": "positive",
+     "evidence": "sector term 'Power Distribution'"
+    },
+    {
+     "target": "sector:Power",
+     "kind": "sector",
+     "id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'Electricity'"
+    }
+   ]
+  },
+  "8358": {
+   "claim_id": 8358,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2024-25 - Budget at a Glance",
+   "issuer": "Ministry of Finance",
+   "known_at": "2024-07-23",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude_value": 1613312.0,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": "2024-04-01",
+   "quote": "fiscal deficit [ 9 - ( 1 + 5 + 6 ) ] 1737755 ( 6. 4 ) 1786816 ( 5. 9 ) 1734773 ( 5. 8 ) 1653670 ( 5. 6 ) 1613312 ( 4. 9 )",
+   "paraphrase": "Fiscal deficit target cut to 4.9% of GDP (monetary; positive) hits bond markets, banking, government finances at Rs 1,613,312 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    }
+   ]
+  },
+  "8668": {
+   "claim_id": 8668,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2025-26 - Memorandum explaining the Finance Bill",
+   "issuer": "Ministry of Finance",
+   "known_at": "2025-02-01",
+   "policy_type": "tax",
+   "instrument": "tax",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2026-04-01",
+   "quote": "the income of a non - resident on account of transfer of non - deliverable forward contracts or offshore derivative instruments or over - the - counter derivatives, or distribution of income on offshore derivative instruments, entered into with foreign portfolio investors being an ifsc unit shall also not be included in the total income subject to certain conditions as may be prescribed.",
+   "paraphrase": "Exempt non-resident income from derivatives with IFSC FPIs (tax; positive) hits Financial markets, Offshore derivatives, Foreign portfolio investment, IFSC",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Exchange and Data Platform",
+     "kind": "basic_industry",
+     "id": "Exchange and Data Platform",
+     "direction": "positive",
+     "evidence": "sector term 'Financial markets'"
+    },
+    {
+     "target": "basic_industry:Stockbroking & Allied",
+     "kind": "basic_industry",
+     "id": "Stockbroking & Allied",
+     "direction": "positive",
+     "evidence": "sector term 'Financial markets'"
+    }
+   ]
+  },
+  "8755": {
+   "claim_id": 8755,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2025-26 - Macro-Economic Framework Statement",
+   "issuer": "Ministry of Finance",
+   "known_at": "2025-02-01",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude_value": 1018000.0,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": null,
+   "quote": "the revenue expenditure and capital expenditure are estimated at ` 36. 98 lakh crore and ` 10. 18 lakh crore, respectively, in re 2024 - 25",
+   "paraphrase": "Capital expenditure in RE 2024-25 at \u20b910.18 lakh crore (capex sanction; positive) hits infrastructure, construction, capital goods, cement at Rs 1,018,000 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Cement & Cement Products",
+     "kind": "basic_industry",
+     "id": "Cement & Cement Products",
+     "direction": "positive",
+     "evidence": "sector term 'cement'"
+    },
+    {
+     "target": "basic_industry:Iron & Steel Products",
+     "kind": "basic_industry",
+     "id": "Iron & Steel Products",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "basic_industry:Pig Iron",
+     "kind": "basic_industry",
+     "id": "Pig Iron",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "basic_industry:Sponge Iron",
+     "kind": "basic_industry",
+     "id": "Sponge Iron",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "sector:Capital Goods",
+     "kind": "sector",
+     "id": "Capital Goods",
+     "direction": "positive",
+     "evidence": "sector term 'capital goods'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'infrastructure'"
+    }
+   ]
+  },
+  "8918": {
+   "claim_id": 8918,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2026-27 - Budget Speech",
+   "issuer": "Ministry of Finance",
+   "known_at": "2026-02-01",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "government agencies will be encouraged to leverage aeo accreditation for preferential treatment in clearing their cargo",
+   "paraphrase": "AEO accreditation to be leveraged by government agencies for preferential cargo treatment (regulation; positive) hits trade, logistics, government procurement",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Logistics Solution Provider",
+     "kind": "basic_industry",
+     "id": "Logistics Solution Provider",
+     "direction": "positive",
+     "evidence": "sector term 'logistics'"
+    }
+   ]
+  },
+  "8990": {
+   "claim_id": 8990,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2025-26 - Budget at a Glance",
+   "issuer": "Ministry of Finance",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": 2481.0,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": "2025-04-01",
+   "quote": "85 \u0909\u0924\u0924\u0930 \u092a \u0935\u0940 \u0935\u0935\u0936\u0937 \u0905\u0935\u0938\u0930\u091a\u0928\u093e \u0935\u0935\u0915\u093e\u0938 \u092f\u094b\u091c\u0928\u093e ( ) 85 north east special infrastructure development scheme ( nesids ) 715 2491 1500 2481",
+   "paraphrase": "NESIDS Increase (scheme; positive) hits Infrastructure, North East at Rs 2,481 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'Infrastructure'"
+    }
+   ]
+  },
+  "9098": {
+   "claim_id": 9098,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2024-25 - Budget at a Glance",
+   "issuer": "Ministry of Finance",
+   "known_at": "2024-07-23",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": 1750.0,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": null,
+   "quote": "integrated development of tourist circuits around specific themes ( swadesh darshan ) 184 1412 818 1750",
+   "paraphrase": "Swadesh Darshan (scheme; positive) hits tourism, hospitality at Rs 1,750 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Hotels & Resorts",
+     "kind": "basic_industry",
+     "id": "Hotels & Resorts",
+     "direction": "positive",
+     "evidence": "sector term 'tourism'"
+    },
+    {
+     "target": "basic_industry:Tour Travel Related Services",
+     "kind": "basic_industry",
+     "id": "Tour Travel Related Services",
+     "direction": "positive",
+     "evidence": "sector term 'tourism'"
+    }
+   ]
+  },
+  "9304": {
+   "claim_id": 9304,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2025-26 - Memorandum explaining the Finance Bill",
+   "issuer": "Ministry of Finance",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "neutral",
+   "magnitude_value": 5.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": "2025-02-02",
+   "quote": "9401 seats ( other than those of headings 9402 ), whether or not convertible into beds, and parts thereof nil 5 %",
+   "paraphrase": "AIDC levy of 5% on seats and parts (customs duty; mixed) hits furniture at Rs 5 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Furniture Home Furnishing",
+     "kind": "basic_industry",
+     "id": "Furniture Home Furnishing",
+     "direction": "neutral",
+     "evidence": "HS chapter 94"
+    }
+   ]
+  },
+  "9467": {
+   "claim_id": 9467,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2026-27 - Memorandum explaining the Finance Bill",
+   "issuer": "Ministry of Finance",
+   "known_at": "2026-02-01",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2026-04-01",
+   "quote": "it is proposed to provide definition of \" authorized person \" as has been provided in the said act",
+   "paraphrase": "Definition of 'authorised person' in Income-tax Act 2025 (regulation; neutral) hits Financial Services, Banking",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "neutral",
+     "evidence": "sector term 'Financial Services'"
+    }
+   ]
+  },
+  "9579": {
+   "claim_id": 9579,
+   "stratum": "budget",
+   "doc_source": "Union_Budget",
+   "doc_type": "union_budget",
+   "title": "Union Budget FY2026-27 - Budget at a Glance",
+   "issuer": "Ministry of Finance",
+   "known_at": "2026-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": 273108.0,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": null,
+   "quote": "rural development4 206010 265817 212750 273108",
+   "paraphrase": "Rural Development Expenditure Increase (scheme; positive) hits Rural, Agri-Allied, Construction at Rs 273,108 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Agricultural Products",
+     "kind": "basic_industry",
+     "id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'Agri-Allied'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'Construction'"
+    }
+   ]
+  },
+  "21001": {
+   "claim_id": 21001,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Governor\u2019s Statement: February 8, 2024 (2024-02-08)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2024-02-08",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "a revised regulatory framework for etps will be issued for stakeholders \u2019 feedback",
+   "paraphrase": "Review of regulatory framework for Electronic Trading Platforms (ETPs) (regulation; mixed) hits financial markets, stock exchanges, capital markets",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Asset Management Company",
+     "kind": "basic_industry",
+     "id": "Asset Management Company",
+     "direction": "neutral",
+     "evidence": "sector term 'capital markets'"
+    },
+    {
+     "target": "basic_industry:Exchange and Data Platform",
+     "kind": "basic_industry",
+     "id": "Exchange and Data Platform",
+     "direction": "neutral",
+     "evidence": "sector term 'financial markets'"
+    },
+    {
+     "target": "basic_industry:Stockbroking & Allied",
+     "kind": "basic_industry",
+     "id": "Stockbroking & Allied",
+     "direction": "neutral",
+     "evidence": "sector term 'financial markets'"
+    }
+   ]
+  },
+  "21102": {
+   "claim_id": 21102,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Governor\u2019s Statement: April 5, 2024 (2024-04-05)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2024-04-05",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "at present, small finance banks (sfbs) are permitted to use only interest rate futures (irfs) for proprietary hedging. it has now been decided to allow sfbs to use permissible rupee interest derivative products.",
+   "paraphrase": "Small finance banks allowed rupee interest rate derivatives (regulation; positive) hits banking, small finance banks",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    }
+   ]
+  },
+  "21147": {
+   "claim_id": 21147,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Full Document (2024-08-08)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2024-08-08",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "neutral",
+   "magnitude_value": 6.5,
+   "magnitude_unit": "PERCENT",
+   "effective_date": "2024-08-08",
+   "quote": "keep the policy repo rate under the liquidity adjustment facility ( laf ) unchanged at 6. 50 per cent. consequently, the standing deposit facility ( sdf ) rate remains unchanged at 6. 25 per cent and the marginal standing facility ( msf ) rate and the bank rate at 6. 75 per cent.",
+   "paraphrase": "Repo rate unchanged at 6.50% (monetary; neutral) hits banking, financial services, NBFC, real estate at Rs 6.5 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Non Banking Financial Company (NBFC)",
+     "kind": "basic_industry",
+     "id": "Non Banking Financial Company (NBFC)",
+     "direction": "neutral",
+     "evidence": "sector term 'NBFC'"
+    },
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "neutral",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "sector:Consumer Durables",
+     "kind": "sector",
+     "id": "Consumer Durables",
+     "direction": "neutral",
+     "evidence": "sector term 'consumer durables'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "neutral",
+     "evidence": "sector term 'financial services'"
+    },
+    {
+     "target": "sector:Realty",
+     "kind": "sector",
+     "id": "Realty",
+     "direction": "neutral",
+     "evidence": "sector term 'real estate'"
+    }
+   ]
+  },
+  "21201": {
+   "claim_id": 21201,
+   "stratum": "rbi",
+   "doc_source": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "title": "RBI Minutes of the Monetary Policy Committee Meeting, August 6 to 8, 2024 (2024-08-22)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2024-08-22",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "negative",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "any justification for policy easing based on so called high real rates can be misleading",
+   "paraphrase": "RBI MPC signals no imminent rate cuts, rejects high real rates argument for policy easing (monetary; negative) hits banking, real estate, automobile, infrastructure",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "sector:Automobile and Auto Components",
+     "kind": "sector",
+     "id": "Automobile and Auto Components",
+     "direction": "negative",
+     "evidence": "sector term 'automobile'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "negative",
+     "evidence": "sector term 'infrastructure'"
+    },
+    {
+     "target": "sector:Realty",
+     "kind": "sector",
+     "id": "Realty",
+     "direction": "negative",
+     "evidence": "sector term 'real estate'"
+    }
+   ]
+  },
+  "21243": {
+   "claim_id": 21243,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Governor\u2019s Statement: April 5, 2024 (2024-04-05)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2024-04-05",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2024-03-31",
+   "quote": "anticipating the seasonal tightening of liquidity at end - march, the reserve bank injected liquidity through variable rate repo ( vrr ) operations \u2013 both main and fine - tuning operations",
+   "paraphrase": "RBI VRR operations to inject liquidity at end-March (monetary; positive) hits Banking, Financial services",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Financial services'"
+    }
+   ]
+  },
+  "21312": {
+   "claim_id": 21312,
+   "stratum": "rbi",
+   "doc_source": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "title": "RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2025-06-20",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude_value": 0.5,
+   "magnitude_unit": "PERCENT",
+   "effective_date": "2025-06-06",
+   "quote": "the mpc voted to reduce the policy repo rate by 50 basis points ( bps ) to 5. 50 per cent with immediate effect",
+   "paraphrase": "Policy repo rate cut by 50 bps to 5.50% (monetary; positive) hits Banking, Financial Services, NBFC, Housing at Rs 0.5 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Non Banking Financial Company (NBFC)",
+     "kind": "basic_industry",
+     "id": "Non Banking Financial Company (NBFC)",
+     "direction": "positive",
+     "evidence": "sector term 'NBFC'"
+    },
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Residential Commercial Projects",
+     "kind": "basic_industry",
+     "id": "Residential Commercial Projects",
+     "direction": "positive",
+     "evidence": "sector term 'Housing'"
+    },
+    {
+     "target": "sector:Automobile and Auto Components",
+     "kind": "sector",
+     "id": "Automobile and Auto Components",
+     "direction": "positive",
+     "evidence": "sector term 'Automobile'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'Infrastructure'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Financial Services'"
+    },
+    {
+     "target": "sector:Realty",
+     "kind": "sector",
+     "id": "Realty",
+     "direction": "positive",
+     "evidence": "sector term 'Housing'"
+    }
+   ]
+  },
+  "21360": {
+   "claim_id": 21360,
+   "stratum": "rbi",
+   "doc_source": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "title": "RBI Minutes of the Monetary Policy Committee Meeting, February 5 to 7, 2025 (2025-02-21)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2025-02-21",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "the liquidity measures \u2013 crr reduction in december 2024 as well as a slew of other measures taken in january 2025 to meet the durable liquidity requirements of the banking system",
+   "paraphrase": "Liquidity measures referenced as already taken: CRR reduction in December 2024 and measures in January 2025 (monetary; positive) hits Banking & Financial Services",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Banking & Financial Services'"
+    }
+   ]
+  },
+  "21411": {
+   "claim_id": 21411,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Full Document (2024-10-09)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2024-10-09",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "it has now been decided to increase the upi lite wallet limit to \u20b95, 000 and per - transaction limit to \u20b91, 000.",
+   "paraphrase": "UPI Lite wallet limit raised to \u20b95,000 and per-transaction limit to \u20b91,000 (regulation; positive) hits Payments, Fintech",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Financial Technology (Fintech)",
+     "kind": "basic_industry",
+     "id": "Financial Technology (Fintech)",
+     "direction": "positive",
+     "evidence": "sector term 'Payments'"
+    }
+   ]
+  },
+  "21460": {
+   "claim_id": 21460,
+   "stratum": "rbi",
+   "doc_source": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "title": "RBI Minutes of the Monetary Policy Committee Meeting, December 3 to 5, 2025 (2025-12-19)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2025-12-19",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude_value": 5.5,
+   "magnitude_unit": "PERCENT",
+   "effective_date": "2025-12-05",
+   "quote": "the marginal standing facility ( msf ) rate and the bank rate to 5. 50 per cent",
+   "paraphrase": "Marginal Standing Facility and Bank Rate adjusted to 5.50% (monetary; positive) hits banking, financial services at Rs 5.5 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'financial services'"
+    }
+   ]
+  },
+  "21516": {
+   "claim_id": 21516,
+   "stratum": "rbi",
+   "doc_source": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "title": "RBI Minutes of the Monetary Policy Committee Meeting, August 4 to 6, 2025 (2025-08-20)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2025-08-20",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude_value": 1.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": null,
+   "quote": "the pre - emptive guidance of a 100 basis points cut in the crr starting september is expected to keep liquidity in surplus",
+   "paraphrase": "Pre-emptive guidance of 100 bps CRR cut starting September (monetary; positive) hits Banking, Financial Services at Rs 1 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Financial Services'"
+    }
+   ]
+  },
+  "21579": {
+   "claim_id": 21579,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Full Document (2026-08-05)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2026-08-05",
+   "policy_type": "regulation",
+   "instrument": "licensing",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "it has been decided to resume licensing of ucbs on ' on tap ' basis. the draft guidelines will be issued shortly for stakeholder consultation.",
+   "paraphrase": "Resumption of Urban Co-operative Bank Licensing on On-Tap Basis (licensing; positive) hits Banking, Co-operative Banks",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    }
+   ]
+  },
+  "21633": {
+   "claim_id": 21633,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Full Document (2026-10-07)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2026-10-07",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "negative",
+   "magnitude_value": 0.25,
+   "magnitude_unit": "PERCENT",
+   "effective_date": "2026-10-07",
+   "quote": "the mpc voted unanimously to increase the policy repo rate under the liquidity adjustment facility ( laf ) by 25 bps to 5. 50 per cent",
+   "paraphrase": "Repo Rate Hike by 25 bps to 5.50% (monetary; negative) hits banking, financial services, real estate, automobile at Rs 0.25 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "sector:Automobile and Auto Components",
+     "kind": "sector",
+     "id": "Automobile and Auto Components",
+     "direction": "negative",
+     "evidence": "sector term 'automobile'"
+    },
+    {
+     "target": "sector:Capital Goods",
+     "kind": "sector",
+     "id": "Capital Goods",
+     "direction": "negative",
+     "evidence": "sector term 'capital goods'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "negative",
+     "evidence": "sector term 'infrastructure'"
+    },
+    {
+     "target": "sector:Consumer Durables",
+     "kind": "sector",
+     "id": "Consumer Durables",
+     "direction": "negative",
+     "evidence": "sector term 'consumer durables'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "negative",
+     "evidence": "sector term 'financial services'"
+    },
+    {
+     "target": "sector:Realty",
+     "kind": "sector",
+     "id": "Realty",
+     "direction": "negative",
+     "evidence": "sector term 'real estate'"
+    }
+   ]
+  },
+  "21694": {
+   "claim_id": 21694,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2026-10-07",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2026-12-31",
+   "quote": "we are also facilitating sebi regulated depositories to include information related to deposit accounts in their consolidated account statement ( cas )",
+   "paraphrase": "Deposit account information in consolidated account statements (CAS) (regulation; positive) hits Capital Markets, Depositories, Financial Services",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Asset Management Company",
+     "kind": "basic_industry",
+     "id": "Asset Management Company",
+     "direction": "positive",
+     "evidence": "sector term 'Capital Markets'"
+    },
+    {
+     "target": "basic_industry:Depositories Clearing Houses and Other Intermediaries",
+     "kind": "basic_industry",
+     "id": "Depositories Clearing Houses and Other Intermediaries",
+     "direction": "positive",
+     "evidence": "sector term 'Depositories'"
+    },
+    {
+     "target": "basic_industry:Exchange and Data Platform",
+     "kind": "basic_industry",
+     "id": "Exchange and Data Platform",
+     "direction": "positive",
+     "evidence": "sector term 'Capital Markets'"
+    },
+    {
+     "target": "basic_industry:Stockbroking & Allied",
+     "kind": "basic_industry",
+     "id": "Stockbroking & Allied",
+     "direction": "positive",
+     "evidence": "sector term 'Capital Markets'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Financial Services'"
+    }
+   ]
+  },
+  "21732": {
+   "claim_id": 21732,
+   "stratum": "rbi",
+   "doc_source": "RBI_Monetary_Policy",
+   "doc_type": "rbi_policy",
+   "title": "RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2026-10-07",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "negative",
+   "magnitude_value": 0.25,
+   "magnitude_unit": "PERCENT",
+   "effective_date": "2026-10-07",
+   "quote": "the mpc voted unanimously to increase the policy repo rate under the liquidity adjustment facility ( laf ) by 25 bps to 5. 50 per cent",
+   "paraphrase": "Repo rate hiked 25 bps to 5.50% (monetary; negative) hits banking, NBFCs, housing finance, real estate at Rs 0.25 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Housing Finance Company",
+     "kind": "basic_industry",
+     "id": "Housing Finance Company",
+     "direction": "negative",
+     "evidence": "sector term 'housing finance'"
+    },
+    {
+     "target": "basic_industry:Non Banking Financial Company (NBFC)",
+     "kind": "basic_industry",
+     "id": "Non Banking Financial Company (NBFC)",
+     "direction": "negative",
+     "evidence": "sector term 'NBFCs'"
+    },
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "negative",
+     "evidence": "sector term 'banking'"
+    },
+    {
+     "target": "sector:Automobile and Auto Components",
+     "kind": "sector",
+     "id": "Automobile and Auto Components",
+     "direction": "negative",
+     "evidence": "sector term 'automobile'"
+    },
+    {
+     "target": "sector:Capital Goods",
+     "kind": "sector",
+     "id": "Capital Goods",
+     "direction": "negative",
+     "evidence": "sector term 'capital goods'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "negative",
+     "evidence": "sector term 'infrastructure'"
+    },
+    {
+     "target": "sector:Realty",
+     "kind": "sector",
+     "id": "Realty",
+     "direction": "negative",
+     "evidence": "sector term 'real estate'"
+    },
+    {
+     "target": "theme:housing_finance",
+     "kind": "theme",
+     "id": "housing_finance",
+     "direction": "negative",
+     "evidence": "theme term 'housing finance'"
+    }
+   ]
+  },
+  "21743": {
+   "claim_id": 21743,
+   "stratum": "rbi",
+   "doc_source": "RBI_MPC_Minutes",
+   "doc_type": "rbi_policy",
+   "title": "RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20)",
+   "issuer": "Reserve Bank of India",
+   "known_at": "2025-06-20",
+   "policy_type": "other",
+   "instrument": "other",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "provides some potential for a fiscal stimulus to support growth if needed, including by front - loading the substantial magnitude of public investment provided in the budget 2025 - 26.",
+   "paraphrase": "Potential fiscal stimulus incl. front-loading of public investment from Budget 2025-26 (other; positive) hits infrastructure, construction, capital goods, industrials",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "sector:Capital Goods",
+     "kind": "sector",
+     "id": "Capital Goods",
+     "direction": "positive",
+     "evidence": "sector term 'capital goods'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'infrastructure'"
+    }
+   ]
+  },
+  "196": {
+   "claim_id": 196,
+   "stratum": "pib",
+   "doc_source": "PIB_Press_Release",
+   "doc_type": "pib",
+   "title": "Secretary, Department of Urban Development, MoHUA chairs 10th meeting of CSMC under PMAY-U 2.0",
+   "issuer": "Ministry of Housing & Urban Affairs",
+   "known_at": "2026-10-16T21:39",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2026-10-16",
+   "quote": "Over 1.93 lakh additional houses were approved under Pradhan Mantri Awas Yojana - Urban 2.0 (PMAY-U 2.0) during the 10th meeting of the Central Sanctioning and Monitoring Committee (CSMC)",
+   "paraphrase": "PMAY-U 2.0: 1.93 lakh additional houses approved at 10th CSMC meeting (capex sanction; positive) hits real estate, construction, cement, steel",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Cement & Cement Products",
+     "kind": "basic_industry",
+     "id": "Cement & Cement Products",
+     "direction": "positive",
+     "evidence": "sector term 'cement'"
+    },
+    {
+     "target": "basic_industry:Housing Finance Company",
+     "kind": "basic_industry",
+     "id": "Housing Finance Company",
+     "direction": "positive",
+     "evidence": "sector term 'housing finance'"
+    },
+    {
+     "target": "basic_industry:Iron & Steel Products",
+     "kind": "basic_industry",
+     "id": "Iron & Steel Products",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "basic_industry:Pig Iron",
+     "kind": "basic_industry",
+     "id": "Pig Iron",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "basic_industry:Sponge Iron",
+     "kind": "basic_industry",
+     "id": "Sponge Iron",
+     "direction": "positive",
+     "evidence": "sector term 'steel'"
+    },
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'construction'"
+    },
+    {
+     "target": "sector:Realty",
+     "kind": "sector",
+     "id": "Realty",
+     "direction": "positive",
+     "evidence": "sector term 'real estate'"
+    },
+    {
+     "target": "theme:housing_finance",
+     "kind": "theme",
+     "id": "housing_finance",
+     "direction": "positive",
+     "evidence": "theme term 'housing finance'"
+    }
+   ]
+  },
+  "198": {
+   "claim_id": 198,
+   "stratum": "pib",
+   "doc_source": "PIB_Press_Release",
+   "doc_type": "pib",
+   "title": "Secretary, Department of Urban Development, MoHUA chairs 10th meeting of CSMC under PMAY-U 2.0",
+   "issuer": "Ministry of Housing & Urban Affairs",
+   "known_at": "2026-10-16T21:39",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "States/UTs were encouraged to address implementation bottlenecks, strengthen project monitoring, identify eligible beneficiaries and expedite the completion and occupancy of houses",
+   "paraphrase": "Directive to States/UTs to accelerate PMAY-U 2.0 implementation through timely approvals and monitoring (regulation; positive) hits real estate, construction",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "sector:Construction",
+     "kind": "sector",
+     "id": "Construction",
+     "direction": "positive",
+     "evidence": "sector term 'construction'"
+    },
+    {
+     "target": "sector:Realty",
+     "kind": "sector",
+     "id": "Realty",
+     "direction": "positive",
+     "evidence": "sector term 'real estate'"
+    }
+   ]
+  },
+  "209": {
+   "claim_id": 209,
+   "stratum": "pib",
+   "doc_source": "PIB_Press_Release",
+   "doc_type": "pib",
+   "title": "National Steering Committee Approves \u20b91,194.92 Crore Investment Under PM-SETU for Five ITI Clusters Across Maharashtra, Odisha and Jammu & Kashmir",
+   "issuer": "Ministry of Skill Development and Entrepreneurship",
+   "known_at": "2026-10-16T15:25",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude_value": 1194.92,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": "2026-10-16",
+   "quote": "The Committee reviewed the progress of the scheme and approved five Strategic Investment Plans (SIPs) worth \u20b91,194.92 crore for ITI clusters across Maharashtra, Odisha and Jammu & Kashmir.",
+   "paraphrase": "PM-SETU: Five ITI Cluster Strategic Investment Plans Approved (\u20b91,194.92 crore) (capex sanction; positive) hits skill development, education, infrastructure construction at Rs 1,194.92 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Education",
+     "kind": "basic_industry",
+     "id": "Education",
+     "direction": "positive",
+     "evidence": "sector term 'skill development'"
+    },
+    {
+     "target": "isin:INE894V01022",
+     "kind": "isin",
+     "id": "INE894V01022",
+     "direction": "positive",
+     "evidence": "named company 'Belrise Industries Limited'"
+    }
+   ]
+  },
+  "211": {
+   "claim_id": 211,
+   "stratum": "pib",
+   "doc_source": "PIB_Press_Release",
+   "doc_type": "pib",
+   "title": "National Steering Committee Approves \u20b91,194.92 Crore Investment Under PM-SETU for Five ITI Clusters Across Maharashtra, Odisha and Jammu & Kashmir",
+   "issuer": "Ministry of Skill Development and Entrepreneurship",
+   "known_at": "2026-10-16T15:25",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude_value": 241.0,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": "2026-10-16",
+   "quote": "The National Steering Committee approved a Strategic Investment Plan worth \u20b9241 crore for the Pune ITI Cluster in Maharashtra to be implemented by BVG India Limited, in consortium with BVG Foundation.",
+   "paraphrase": "Pune ITI Cluster (Maharashtra) Upgradation with BVG India (capex sanction; positive) hits skill development, infrastructure construction at Rs 241 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Education",
+     "kind": "basic_industry",
+     "id": "Education",
+     "direction": "positive",
+     "evidence": "sector term 'skill development'"
+    }
+   ]
+  },
+  "213": {
+   "claim_id": 213,
+   "stratum": "pib",
+   "doc_source": "PIB_Press_Release",
+   "doc_type": "pib",
+   "title": "National Steering Committee Approves \u20b91,194.92 Crore Investment Under PM-SETU for Five ITI Clusters Across Maharashtra, Odisha and Jammu & Kashmir",
+   "issuer": "Ministry of Skill Development and Entrepreneurship",
+   "known_at": "2026-10-16T15:25",
+   "policy_type": "capex",
+   "instrument": "capex_sanction",
+   "direction": "positive",
+   "magnitude_value": 240.0,
+   "magnitude_unit": "INR_CRORE",
+   "effective_date": "2026-10-16",
+   "quote": "The Committee approved a Strategic Investment Plan worth \u20b9240 crore for the Jammu ITI Cluster in the Union Territory of Jammu & Kashmir in partnership with Eagle Infra India Limited.",
+   "paraphrase": "Jammu ITI Cluster (J&K) Upgradation with Eagle Infra India (capex sanction; positive) hits skill development, infrastructure construction at Rs 240 crore",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Education",
+     "kind": "basic_industry",
+     "id": "Education",
+     "direction": "positive",
+     "evidence": "sector term 'skill development'"
+    }
+   ]
+  },
+  "215": {
+   "claim_id": 215,
+   "stratum": "pib",
+   "doc_source": "PIB_Press_Release",
+   "doc_type": "pib",
+   "title": "National Steering Committee Approves \u20b91,194.92 Crore Investment Under PM-SETU for Five ITI Clusters Across Maharashtra, Odisha and Jammu & Kashmir",
+   "issuer": "Ministry of Skill Development and Entrepreneurship",
+   "known_at": "2026-10-16T15:25",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "neutral",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "We encourage clusters to work towards ISO certification and include at least one WorldSkills-aligned trade or competency area in their Approved Implementation Plans.",
+   "paraphrase": "PM-SETU Clusters Encouraged to Pursue ISO Certification and WorldSkills-Aligned Trades (regulation; neutral) hits skill development, education",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Education",
+     "kind": "basic_industry",
+     "id": "Education",
+     "direction": "neutral",
+     "evidence": "sector term 'skill development'"
+    }
+   ]
+  },
+  "217": {
+   "claim_id": 217,
+   "stratum": "pib",
+   "doc_source": "PIB_Press_Release",
+   "doc_type": "pib",
+   "title": "First-Ever Kanda Express to Reach Agartala to Strengthen Onion Availability in the North-East",
+   "issuer": "Ministry of Consumer Affairs, Food & Public Distribution",
+   "known_at": "2026-10-16T13:23",
+   "policy_type": "regulation",
+   "instrument": "price_control",
+   "direction": "neutral",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2026-10-18",
+   "quote": "the Department of Consumer Affairs is expanding the distribution of buffer onions under the Price Stabilization Fund (PSF), with the first-ever Kanda Express movement to Agartala, Tripura",
+   "paraphrase": "First Kanda Express movement of PSF buffer onions to Agartala, Tripura (price control; mixed) hits agriculture, food retail, logistics",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Logistics Solution Provider",
+     "kind": "basic_industry",
+     "id": "Logistics Solution Provider",
+     "direction": "neutral",
+     "evidence": "sector term 'logistics'"
+    },
+    {
+     "target": "basic_industry:Other Agricultural Products",
+     "kind": "basic_industry",
+     "id": "Other Agricultural Products",
+     "direction": "neutral",
+     "evidence": "sector term 'agriculture'"
+    }
+   ]
+  },
+  "3687": {
+   "claim_id": 3687,
+   "stratum": "pib",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "The Board will provide handholding and training support to makhana farmers and also work to ensure they receive the benefits of all relevant Government schemes.",
+   "paraphrase": "Makhana Board for processing, value addition and marketing (scheme; positive) hits Agriculture, Food Processing, Makhana (fox nut)",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Agricultural Products",
+     "kind": "basic_industry",
+     "id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'Agriculture'"
+    },
+    {
+     "target": "basic_industry:Other Food Products",
+     "kind": "basic_industry",
+     "id": "Other Food Products",
+     "direction": "positive",
+     "evidence": "sector term 'Food Processing'"
+    },
+    {
+     "target": "basic_industry:Packaged Foods",
+     "kind": "basic_industry",
+     "id": "Packaged Foods",
+     "direction": "positive",
+     "evidence": "sector term 'Food Processing'"
+    }
+   ]
+  },
+  "3689": {
+   "claim_id": 3689,
+   "stratum": "pib",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "the second Gene Bank with 10 lakh germplasm lines will be set up",
+   "paraphrase": "Second Gene Bank with 10 lakh germplasm lines (scheme; positive) hits Agriculture, Agri-biotech, Genetic resources",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Agricultural Products",
+     "kind": "basic_industry",
+     "id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'Agriculture'"
+    }
+   ]
+  },
+  "3691": {
+   "claim_id": 3691,
+   "stratum": "pib",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "rate",
+   "instrument": "monetary",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "the Minister announced the enhancement of loan limit under the Modified Interest Subvention Scheme from Rs. 3 lakh to Rs. 5 lakh for loans taken through the KCC.",
+   "paraphrase": "Modified Interest Subvention Scheme loan limit enhanced via KCC (monetary; positive) hits Banking, NBFC, Agriculture finance",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Non Banking Financial Company (NBFC)",
+     "kind": "basic_industry",
+     "id": "Non Banking Financial Company (NBFC)",
+     "direction": "positive",
+     "evidence": "sector term 'NBFC'"
+    },
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    }
+   ]
+  },
+  "3694": {
+   "claim_id": 3694,
+   "stratum": "pib",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "the Government will undertake a 'Prime Minister Dhan-Dhaanya Krishi Yojana' in partnership with states. Through the convergence of existing schemes and specialized measures, the programme will cover 100 districts with low productivity, moderate crop intensity and below-average credit parameters.",
+   "paraphrase": "Prime Minister Dhan-Dhaanya Krishi Yojana (100 agri districts) (scheme; positive) hits Agriculture, Irrigation, Post-harvest storage, Agri-credit",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Agricultural Products",
+     "kind": "basic_industry",
+     "id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'Agriculture'"
+    }
+   ]
+  },
+  "3696": {
+   "claim_id": 3696,
+   "stratum": "pib",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "the Government will launch a 6-year \"Mission for Aatmanirbharta in Pulses\" with a special focus on Tur, Urad and Masoor. The Mission will place emphasis on development and commercial availability of climate resilient seeds; enhancing protein content; increasing productivity; improving post-harvest storage and management and assuring remunerative prices to the farmers.",
+   "paraphrase": "6-Year Mission for Aatmanirbharta in Pulses (Tur, Urad, Masoor) (scheme; positive) hits Agriculture, Pulses, Food procurement",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Agricultural Products",
+     "kind": "basic_industry",
+     "id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'Agriculture'"
+    }
+   ]
+  },
+  "3698": {
+   "claim_id": 3698,
+   "stratum": "pib",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "other",
+   "instrument": "scheme",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "A comprehensive programme to promote production, efficient supplies, processing, and remunerative prices for farmers will be launched in partnership with states.",
+   "paraphrase": "Comprehensive Programme for Vegetables and Fruits (scheme; positive) hits Agriculture, Horticulture, Food processing, FPOs",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Other Agricultural Products",
+     "kind": "basic_industry",
+     "id": "Other Agricultural Products",
+     "direction": "positive",
+     "evidence": "sector term 'Agriculture'"
+    },
+    {
+     "target": "basic_industry:Other Food Products",
+     "kind": "basic_industry",
+     "id": "Other Food Products",
+     "direction": "positive",
+     "evidence": "sector term 'Food processing'"
+    },
+    {
+     "target": "basic_industry:Packaged Foods",
+     "kind": "basic_industry",
+     "id": "Packaged Foods",
+     "direction": "positive",
+     "evidence": "sector term 'Food processing'"
+    }
+   ]
+  },
+  "3700": {
+   "claim_id": 3700,
+   "stratum": "pib",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude_value": 100.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": null,
+   "quote": "the FDI limit for the insurance sector will be raised from 74 to 100 per cent. This enhanced limit will be available for those companies which invest the entire premium in India.",
+   "paraphrase": "FDI limit for insurance sector raised from 74% to 100% (regulation; positive) hits Insurance, Financial services at Rs 100 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:General Insurance",
+     "kind": "basic_industry",
+     "id": "General Insurance",
+     "direction": "positive",
+     "evidence": "sector term 'Insurance'"
+    },
+    {
+     "target": "basic_industry:Life Insurance",
+     "kind": "basic_industry",
+     "id": "Life Insurance",
+     "direction": "positive",
+     "evidence": "sector term 'Insurance'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Financial services'"
+    }
+   ]
+  },
+  "3702": {
+   "claim_id": 3702,
+   "stratum": "pib",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "regulation",
+   "instrument": "regulation",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": "2025-01-01",
+   "quote": "the revamped Central KYC Registry will be rolled out in 2025, Smt. Nirmala Sitharaman said. A streamlined system for periodic updating will also be implemented.",
+   "paraphrase": "Revamped Central KYC Registry rollout (regulation; positive) hits Banking, Financial services, NBFC, Insurance",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Asset Management Company",
+     "kind": "basic_industry",
+     "id": "Asset Management Company",
+     "direction": "positive",
+     "evidence": "sector term 'Mutual funds'"
+    },
+    {
+     "target": "basic_industry:General Insurance",
+     "kind": "basic_industry",
+     "id": "General Insurance",
+     "direction": "positive",
+     "evidence": "sector term 'Insurance'"
+    },
+    {
+     "target": "basic_industry:Life Insurance",
+     "kind": "basic_industry",
+     "id": "Life Insurance",
+     "direction": "positive",
+     "evidence": "sector term 'Insurance'"
+    },
+    {
+     "target": "basic_industry:Non Banking Financial Company (NBFC)",
+     "kind": "basic_industry",
+     "id": "Non Banking Financial Company (NBFC)",
+     "direction": "positive",
+     "evidence": "sector term 'NBFC'"
+    },
+    {
+     "target": "basic_industry:Other Bank",
+     "kind": "basic_industry",
+     "id": "Other Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Private Sector Bank",
+     "kind": "basic_industry",
+     "id": "Private Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "basic_industry:Public Sector Bank",
+     "kind": "basic_industry",
+     "id": "Public Sector Bank",
+     "direction": "positive",
+     "evidence": "sector term 'Banking'"
+    },
+    {
+     "target": "sector:Financial Services",
+     "kind": "sector",
+     "id": "Financial Services",
+     "direction": "positive",
+     "evidence": "sector term 'Financial services'"
+    }
+   ]
+  },
+  "3726": {
+   "claim_id": 3726,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": 5.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": null,
+   "quote": "the Union Finance Minister has proposed to add 36 lifesaving drugs and medicines to the list of medicines fully exempted from Basic Customs Duty (BCD). The Finance Minister also proposed to add 6 lifesaving medicines to the list attracting concessional customs duty of 5%.",
+   "paraphrase": "Customs duty exemption on lifesaving drugs and medicines (customs duty; positive) hits Pharmaceuticals, Healthcare at Rs 5 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Pharmaceuticals",
+     "kind": "basic_industry",
+     "id": "Pharmaceuticals",
+     "direction": "positive",
+     "evidence": "sector term 'Pharmaceuticals'"
+    },
+    {
+     "target": "sector:Healthcare",
+     "kind": "sector",
+     "id": "Healthcare",
+     "direction": "positive",
+     "evidence": "sector term 'Healthcare'"
+    }
+   ]
+  },
+  "3767": {
+   "claim_id": 3767,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "BCD EXEMPTED ON 36 LIFESAVING DRUGS AND MEDICINES FOR TREATING CANCER, RARE AND CHRONIC DISEASES",
+   "paraphrase": "BCD exempted on 36 lifesaving drugs (customs duty; positive) hits pharmaceuticals, healthcare",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Pharmaceuticals",
+     "kind": "basic_industry",
+     "id": "Pharmaceuticals",
+     "direction": "positive",
+     "evidence": "sector term 'pharmaceuticals'"
+    },
+    {
+     "target": "sector:Healthcare",
+     "kind": "sector",
+     "id": "Healthcare",
+     "direction": "positive",
+     "evidence": "sector term 'healthcare'"
+    }
+   ]
+  },
+  "3769": {
+   "claim_id": 3769,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "BCD ON PARTS OF OPEN CELLS EXEMPTED TO PROMOTE DOMESTIC MANUFACTURING",
+   "paraphrase": "BCD exempted on parts of open cells for domestic manufacturing (customs duty; positive) hits solar, electronics manufacturing",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Consumer Electronics",
+     "kind": "basic_industry",
+     "id": "Consumer Electronics",
+     "direction": "positive",
+     "evidence": "sector term 'electronics manufacturing'"
+    },
+    {
+     "target": "basic_industry:Other Electrical Equipment",
+     "kind": "basic_industry",
+     "id": "Other Electrical Equipment",
+     "direction": "positive",
+     "evidence": "sector term 'electronics manufacturing'"
+    },
+    {
+     "target": "sector:Power",
+     "kind": "sector",
+     "id": "Power",
+     "direction": "positive",
+     "evidence": "sector term 'solar'"
+    }
+   ]
+  },
+  "3771": {
+   "claim_id": 3771,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "BCD EXEMPTED FOR 10 YEARS ON RAW MATERIALS & COMPONENTS USED FOR SHIP BUILDING",
+   "paraphrase": "BCD exempted for 10 years on ship building raw materials (customs duty; positive) hits shipbuilding, defence, heavy engineering",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Aerospace & Defense",
+     "kind": "basic_industry",
+     "id": "Aerospace & Defense",
+     "direction": "positive",
+     "evidence": "sector term 'defence'"
+    },
+    {
+     "target": "basic_industry:Ship Building & Allied Services",
+     "kind": "basic_industry",
+     "id": "Ship Building & Allied Services",
+     "direction": "positive",
+     "evidence": "sector term 'shipbuilding'"
+    },
+    {
+     "target": "sector:Capital Goods",
+     "kind": "sector",
+     "id": "Capital Goods",
+     "direction": "positive",
+     "evidence": "sector term 'heavy engineering'"
+    },
+    {
+     "target": "theme:defence",
+     "kind": "theme",
+     "id": "defence",
+     "direction": "positive",
+     "evidence": "theme term 'defence'"
+    }
+   ]
+  },
+  "3895": {
+   "claim_id": 3895,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": 5.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": null,
+   "quote": "36 lifesaving drugs and medicines fully exempted from Basic Customs Duty (BCD).",
+   "paraphrase": "Customs relief on lifesaving drugs and patient assistance medicines (customs duty; positive) hits pharmaceuticals, healthcare at Rs 5 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Pharmaceuticals",
+     "kind": "basic_industry",
+     "id": "Pharmaceuticals",
+     "direction": "positive",
+     "evidence": "sector term 'pharmaceuticals'"
+    },
+    {
+     "target": "sector:Healthcare",
+     "kind": "sector",
+     "id": "Healthcare",
+     "direction": "positive",
+     "evidence": "sector term 'healthcare'"
+    }
+   ]
+  },
+  "3897": {
+   "claim_id": 3897,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "Two more types of shuttle-less looms fully exempted textile machinery.",
+   "paraphrase": "Textile machinery exemption expanded (customs duty; positive) hits textiles, textile machinery",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "sector:Textiles",
+     "kind": "sector",
+     "id": "Textiles",
+     "direction": "positive",
+     "evidence": "sector term 'textiles'"
+    }
+   ]
+  },
+  "3899": {
+   "claim_id": 3899,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "neutral",
+   "magnitude_value": 20.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": null,
+   "quote": "BCD on Interactive Flat Panel Display (IFPD) increased from 10% to 20% .",
+   "paraphrase": "IFPD basic customs duty increased (customs duty; mixed) hits electronics, display manufacturing, education technology at Rs 20 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Consumer Electronics",
+     "kind": "basic_industry",
+     "id": "Consumer Electronics",
+     "direction": "neutral",
+     "evidence": "sector term 'electronics'"
+    },
+    {
+     "target": "basic_industry:E-Learning",
+     "kind": "basic_industry",
+     "id": "E-Learning",
+     "direction": "neutral",
+     "evidence": "sector term 'education technology'"
+    },
+    {
+     "target": "basic_industry:Other Electrical Equipment",
+     "kind": "basic_industry",
+     "id": "Other Electrical Equipment",
+     "direction": "neutral",
+     "evidence": "sector term 'electronics'"
+    }
+   ]
+  },
+  "3901": {
+   "claim_id": 3901,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "35 additional capital goods for EV battery manufacturing, and 28 additional capital goods for mobile phone battery manufacturing exempted.",
+   "paraphrase": "Lithium-ion battery capital goods exemptions (customs duty; positive) hits lithium-ion batteries, EV, mobile phones",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Auto Components & Equipments",
+     "kind": "basic_industry",
+     "id": "Auto Components & Equipments",
+     "direction": "positive",
+     "evidence": "product term 'battery'"
+    },
+    {
+     "target": "basic_industry:Consumer Electronics",
+     "kind": "basic_industry",
+     "id": "Consumer Electronics",
+     "direction": "positive",
+     "evidence": "product term 'mobile phone'"
+    },
+    {
+     "target": "basic_industry:Other Electrical Equipment",
+     "kind": "basic_industry",
+     "id": "Other Electrical Equipment",
+     "direction": "positive",
+     "evidence": "product term 'lithium'"
+    },
+    {
+     "target": "sector:Automobile and Auto Components",
+     "kind": "sector",
+     "id": "Automobile and Auto Components",
+     "direction": "positive",
+     "evidence": "sector term 'EV'"
+    }
+   ]
+  },
+  "3905": {
+   "claim_id": 3905,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": 20.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": null,
+   "quote": "BCD on Wet Blue leather fully exempted.",
+   "paraphrase": "Leather customs and export duty relief (customs duty; positive) hits leather, exports at Rs 20 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Leather And Leather Products",
+     "kind": "basic_industry",
+     "id": "Leather And Leather Products",
+     "direction": "positive",
+     "evidence": "sector term 'leather'"
+    }
+   ]
+  },
+  "3907": {
+   "claim_id": 3907,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "Railways MROs to benefit similar to the aircraft and ships MROs in terms of import of repair items.",
+   "paraphrase": "Railway MRO import and export relief (customs duty; positive) hits railways, MRO",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Railway Wagons",
+     "kind": "basic_industry",
+     "id": "Railway Wagons",
+     "direction": "positive",
+     "evidence": "sector term 'railways'"
+    }
+   ]
+  },
+  "3946": {
+   "claim_id": 3946,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "36 LIFESAVING DRUGS AND MEDICINES FULLY EXEMPTED FROM BASIC CUSTOMS DUTY",
+   "paraphrase": "Basic Customs Duty Exemption on Lifesaving Drugs (customs duty; positive) hits Pharmaceuticals",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Pharmaceuticals",
+     "kind": "basic_industry",
+     "id": "Pharmaceuticals",
+     "direction": "positive",
+     "evidence": "sector term 'Pharmaceuticals'"
+    }
+   ]
+  },
+  "4037": {
+   "claim_id": 4037,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "The Budget proposes to add 37 more medicines along with 13 new patient assistance programmes to the list",
+   "paraphrase": "37 more medicines and 13 new Patient Assistance Programmes exempt from BCD (customs duty; positive) hits pharmaceuticals",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Pharmaceuticals",
+     "kind": "basic_industry",
+     "id": "Pharmaceuticals",
+     "direction": "positive",
+     "evidence": "sector term 'pharmaceuticals'"
+    }
+   ]
+  },
+  "4039": {
+   "claim_id": 4039,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "The Budget also proposes to fully exempt Basic Customs Duty on cobalt powder and waste, the scrap of lithium-ion battery, Lead, Zinc and 12 more critical minerals",
+   "paraphrase": "BCD exemption on cobalt, lithium-ion battery scrap, lead, zinc and 12 more critical minerals (customs duty; positive) hits mining, batteries, electronics, manufacturing",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Auto Components & Equipments",
+     "kind": "basic_industry",
+     "id": "Auto Components & Equipments",
+     "direction": "positive",
+     "evidence": "sector term 'batteries'"
+    },
+    {
+     "target": "basic_industry:Consumer Electronics",
+     "kind": "basic_industry",
+     "id": "Consumer Electronics",
+     "direction": "positive",
+     "evidence": "sector term 'electronics'"
+    },
+    {
+     "target": "basic_industry:Other Electrical Equipment",
+     "kind": "basic_industry",
+     "id": "Other Electrical Equipment",
+     "direction": "positive",
+     "evidence": "sector term 'batteries'"
+    },
+    {
+     "target": "sector:Metals & Mining",
+     "kind": "sector",
+     "id": "Metals & Mining",
+     "direction": "positive",
+     "evidence": "sector term 'mining'"
+    }
+   ]
+  },
+  "4041": {
+   "claim_id": 4041,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "neutral",
+   "magnitude_value": 20.0,
+   "magnitude_unit": "PERCENT",
+   "effective_date": null,
+   "quote": "I also propose to revise the BCD rate on knitted fabrics covered by nine tariff lines from \u201c10% or 20%\u201d to \u201c20% or Rs.115 per kg, whichever is higher\u201d",
+   "paraphrase": "BCD on knitted fabrics revised upward (customs duty; mixed) hits textiles, knitwear at Rs 20 %",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "sector:Textiles",
+     "kind": "sector",
+     "id": "Textiles",
+     "direction": "neutral",
+     "evidence": "sector term 'textiles'"
+    }
+   ]
+  },
+  "4043": {
+   "claim_id": 4043,
+   "stratum": "tariff",
+   "doc_source": "PIB_Circular",
+   "doc_type": "pib",
+   "title": "PIB Circular (static direct sample)",
+   "issuer": "Press Information Bureau (GoI)",
+   "known_at": "2025-02-01",
+   "policy_type": "tariff",
+   "instrument": "customs_duty",
+   "direction": "positive",
+   "magnitude_value": null,
+   "magnitude_unit": null,
+   "effective_date": null,
+   "quote": "the Budget proposes to continue the exemption of BCD on raw materials, components, consumables or parts for the manufacture of ships for another ten years",
+   "paraphrase": "Shipbuilding BCD exemption continued for another ten years (customs duty; positive) hits shipbuilding, shipping",
+   "confidence": 1.0,
+   "targets": [
+    {
+     "target": "basic_industry:Ship Building & Allied Services",
+     "kind": "basic_industry",
+     "id": "Ship Building & Allied Services",
+     "direction": "positive",
+     "evidence": "sector term 'shipbuilding'"
+    },
+    {
+     "target": "basic_industry:Shipping",
+     "kind": "basic_industry",
+     "id": "Shipping",
+     "direction": "positive",
+     "evidence": "sector term 'shipping'"
+    }
+   ]
+  }
+ }
+}
