@@ -68,7 +68,7 @@ API = "https://www.nseindia.com/api/corporate-announcements"
 BOARD_PAGE = "https://www.nseindia.com/companies-listing/corporate-filings-announcements"
 INDEX_FOR_SEGMENT = {"SME": "sme"}
 DEFAULT_OUT = r"D:\RealityEngine\raw\nse_announcements"
-MIN_INTERVAL = 3.0          # hard floor: task cap is <=20 requests/min
+MIN_INTERVAL = 0.5          # floor; NSE probe 2026-10-28 took 400/min bursts with no block, back-off handles 403/429
 BACKOFF_BASE = 3.0
 BACKOFF_CAP = 120.0
 # (connect, read). A plain float only bounds connect in curl_cffi; NSE also

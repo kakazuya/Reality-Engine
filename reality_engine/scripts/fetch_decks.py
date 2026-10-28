@@ -46,7 +46,7 @@ DATA = ROOT / "reality_engine" / "data"
 FEED = ROOT / "analysis" / "bse_announcements.db"
 LIVE_DB = DATA / "equity_intelligence.db"
 OUT_DB = DATA / "deck_figures.db"
-SNAPSHOT = DATA / "snapshots" / "truth_2026-10-08.duckdb"
+SNAPSHOT = max((DATA / "snapshots").glob("truth_*.duckdb"))  # newest dated snapshot
 DECKS = raw_dir("decks")
 NSE_RAW = raw_dir("raw_market") / "nse_announcements"
 LOG = DATA / "logs" / "fetch_decks.log"
@@ -58,6 +58,7 @@ NSE_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 NSE_API = "https://www.nseindia.com/api/corporate-announcements?index={idx}&symbol={sym}&from_date={a}&to_date={b}"
 NSE_PACE = 1.5
 PENALTY_SEC = 600
+PAUSE = 0.15  # seconds between BSE downloads per worker; --pause overrides
 
 # NSE filings that are decks: the attachment text or file name says presentation / investor update.
 NSE_DECK = re.compile(r"presentation|investor[s]?\s*update|earnings\s*update|quarterly\s*update|investor[_\s]*deck", re.I)
@@ -210,7 +211,7 @@ def run_bse(since, workers, limit):
                     content = path.read_bytes(); sha, size = hashlib.sha256(content).hexdigest(), len(content)
                 else:
                     sha, size = save_pdf(dl.get(url), path)
-                    time.sleep(0.15)
+                    time.sleep(PAUSE)
             w.put(("bse", newsid, sym, bse_isin.get(code), code, dissem, title, url, str(path), sha, size, "ok", None, now))
             with slock:
                 stats["ok"] += 1; stats["bytes"] += size
@@ -349,7 +350,10 @@ def main():
     ap.add_argument("--since", default="2021-01-01")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--pause", type=float, default=0.15, help="seconds between BSE downloads per worker (share the 76/min BSE budget)")
     a = ap.parse_args()
+    global PAUSE
+    PAUSE = a.pause
     LOG.parent.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         handlers=[logging.FileHandler(LOG, encoding="utf-8"), logging.StreamHandler()])
