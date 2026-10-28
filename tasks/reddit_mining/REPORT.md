@@ -444,6 +444,13 @@ Frequency is the number of kept posts whose title/opening mentions the pattern (
 - e.g. “Would a new entrant take share in five years?”
 - Schema: `moat_evaluations(substrate) exists; no served per-company moat table with evidence. Needed: moat_score(isin, asof, width, trajectory, sc, ne, ca, ia, es, evidence_ids)`
 
+### Out of scope: the two patterns we are not adding questions for
+
+The 2026-10-28 review found 13 of the 48 patterns with no row in the bank. Eleven are in scope and now carry 43 rows (`RD-G-001`…`RD-G-043` in `bank_gap.py`). Two are outside a market-data bank and are closed here rather than padded with questions that could only ever answer NOT IN DATA:
+
+- `mf_etf_vs_stock` — 14,945 posts (12.8% of kept). Fund advice: the ask is which fund or ETF to hold instead of direct equity. Answering it needs an AMFI fund master, fund NAV history, fund holdings and expense ratios; none of those stores is held (only `etf_master`/`etf_px` for listed ETFs). The pattern belongs to a fund-advice lane, not this question bank.
+- `broker_platform_process` — 8,445 posts (7.2% of kept). Broker and app process: order rejection, brokerage and DP charges, demat transfers and account help. It is operational help-desk content with no held market data behind it, so a help/FAQ corpus is the right store, not this bank.
+
 ## 5. Technical patterns: data needed and point-in-time status
 
 | pattern | price / volume / delivery / OI / band needed | held PIT? |

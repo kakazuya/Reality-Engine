@@ -1,14 +1,15 @@
-# Reddit-mined question bank — 200 questions (2026-10-28)
+# Reddit-mined question bank — 243 questions (2026-10-28)
 
 Mined from 15 Indian-market subreddits (since 2024-04-01), 15 international
 value/fundamentals subreddits and 10 trading subreddits (last year).
 Every question is original wording modelled on a pattern, not a copied post.
-Every entity resolves to an active ISIN in `master_companies`.
+Every company entity resolves to an active ISIN in `master_companies`; the
+pattern-gap rows may name an index, sector, theme, commodity or policy instead.
 
 ## Summary
 
-- 200 rows: Indian 75, international-pattern 75, technical 50.
-- Coverage: no 10, partial 154, yes 36.
+- Rows by group: indian 75, international 75, technical 50, gap 43.
+- Coverage: no 10, partial 191, yes 42.
 - Each row carries `reddit_pattern`, the pattern it was modelled on.
 - No `ground_truth` is asserted here; `ground_truth_query` names the first table to compute from.
 
@@ -17,6 +18,7 @@ Every entity resolves to an active ISIN in `master_companies`.
 | RD-I-001…RD-I-075 | indian | 75 | 14 |
 | RD-N-001…RD-N-075 | international | 75 | 12 |
 | RD-T-001…RD-T-050 | technical | 50 | 9 |
+| RD-G-001…RD-G-043 | gap | 43 | 11 |
 
 ---
 
@@ -2425,3 +2427,521 @@ Every entity resolves to an active ISIN in `master_companies`.
 - Forbidden: calling distribution without the seller side
 - Coverage: **partial** — PIT yes; no participant-level flow
 - Why: distribution-vs-absorption is a real swing-trading question
+
+## Pattern-gap questions (11 mined patterns with no rows)
+
+### RD-G-001 · fno_vs_cash_flow · family 9 · `fno_vs_cash_flow`
+
+**Q.** BHEL: did delivery strengthen in expiry week?
+
+- Entities: BHEL (INE257A01026)
+- Period: 2026-10 expiry · as-of: 2026-10-23 · answer: fact
+- Evidence: px_nse close/volume for the expiry week and the four weeks before; daily_price_delivery deliverable_volume, delivery_pct and delivery_spike_ratio; bulk_block_deals for the same sessions
+- Steps: fix the expiry week -> compare delivery % with its own four-week base -> check block and bulk prints -> state what the cash tape can and cannot show
+- Forbidden: reading a delivery uptick as proof of futures unwinding; quoting OI that no held store carries
+- Coverage: **partial** — cash tape is held and dated; futures OI, rollover and IV are not in any held table
+- Why: expiry-week delivery is the cash-market stand-in retail uses for positioning
+
+### RD-G-002 · fno_vs_cash_flow · family 15 · `fno_vs_cash_flow`
+
+**Q.** Market-wide, does cash volume really pick up in expiry week or is that a story retail keeps repeating?
+
+- Entities: index:NIFTY50
+- Period: 2024-2026 · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse turnover by session; daily_price_delivery total_volume; nse_index_breadth for the same dates
+- Steps: split sessions into expiry and non-expiry -> compare median turnover -> give the ratio and the sample size
+- Forbidden: using one expiry week as the answer; implying a derivatives comparison the store cannot support
+- Coverage: **partial** — cash volume is held point-in-time; there is no derivatives volume to compare against
+- Why: the expiry-week volume claim is repeated as fact but never tested on our tape
+
+### RD-G-003 · fno_vs_cash_flow · family 9 · `fno_vs_cash_flow`
+
+**Q.** Which Nifty 50 constituents kept their cash-market delivery above average through the September expiry?
+
+- Entities: index:NIFTY50
+- Period: 2026-09 expiry · as-of: 2026-10-23 · answer: list
+- Evidence: daily_price_delivery delivery_pct per constituent; index_membership as_of 2026-09-30; px_nse
+- Steps: take the index list for the expiry month -> compute each name's delivery against its own base -> rank the names that held
+- Forbidden: using today's constituent list for a past expiry
+- Coverage: **partial** — membership is a dated snapshot; only the cash leg can be scored without an F&O store
+- Why: index-level positioning is asked, but only the cash side is answerable
+
+### RD-G-004 · fno_vs_cash_flow · family 10 · `fno_vs_cash_flow`
+
+**Q.** Idea ka futures premium dekh kar cash mein lena theek hai kya, ya rollover cost kha jayega?
+
+- Entities: IDEA (INE669E01016)
+- Period: 2026-10 expiry · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse close and daily_price_delivery for the last two expiries; announcement text on the capital raise
+- Steps: say the futures premium is not in the store -> answer from cash price and delivery -> name the cost the asker is guessing at
+- Forbidden: giving a yes/no entry call; inventing a rollover percentage
+- Coverage: **partial** — cash price and delivery are held; premium, rollover and cost of carry are not
+- Why: the 'premium means buy the cash stock' shortcut is a frequent retail leap
+
+### RD-G-005 · fno_vs_cash_flow · family 11,9 · `fno_vs_cash_flow`
+
+**Q.** As of 23 Oct 2026, was Reliance's delivery percentage higher on expiry sessions than on ordinary ones this month?
+
+- Entities: RELIANCE (INE002A01018)
+- Period: 2026-10 · as-of: 2026-10-23 · answer: fact
+- Evidence: daily_price_delivery delivery_pct and delivery_spike_ratio; px_nse volume; session calendar
+- Steps: mark the expiry sessions -> compare delivery % with the month's other sessions -> report the difference, not a verdict
+- Forbidden: mixing this month's sessions with a longer window
+- Coverage: **partial** — the cash leg is dated; no F&O store can explain why delivery moved
+- Why: point-in-time expiry questions test the tape and our refusal to guess the derivative side
+
+### RD-G-006 · global_cue_overnight · family 15,9 · `global_cue_overnight`
+
+**Q.** Market-wide, which sessions opened with the widest gap after a US sell-off, and how much of it survived to the close?
+
+- Entities: index:NIFTY50
+- Period: 2024-2026 · as-of: 2026-10-23 · answer: ranking
+- Evidence: px_nse open/prev_close per session; mkt_nse_index_daily open/close; nse_index_breadth
+- Steps: define the overnight proxy (no US series is held) -> rank the domestic open gaps -> measure how much closed
+- Forbidden: claiming a US link without a held US series; picking the gap threshold after the result
+- Coverage: **partial** — domestic gaps are computable; the overseas cue series behind them is not held
+- Why: the overnight-gap question is the most common macro framing retail uses
+
+### RD-G-007 · global_cue_overnight · family 11,9 · `global_cue_overnight`
+
+**Q.** As of 30 Sep 2026, which index constituents had gapped more than 2% after a positive US close, and did delivery confirm the gap?
+
+- Entities: index:NIFTY50
+- Period: 2026-09 · as-of: 2026-09-30 · answer: list
+- Evidence: px_nse open/prev_close; daily_price_delivery delivery_pct; index_membership 2026-09-30
+- Steps: state the gap rule -> find the gap-up sessions -> check delivery on the same rows -> name what cannot be attributed
+- Forbidden: attributing every gap to the US session; using an intraday print
+- Coverage: **partial** — gap and delivery are dated; no US close series, so the cause stays unproven
+- Why: tests whether the gap-and-delivery story can be told without inventing the overseas cause
+
+### RD-G-008 · global_cue_overnight · family 15 · `global_cue_overnight`
+
+**Q.** TCS ka ADR raat ko gir gaya, to cash market mein kal gap-down kitna hoga — iska koi pattern hai kya?
+
+- Entities: TCS (INE467B01029)
+- Period: 2024-2026 · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse open/prev_close for two years; daily_price_delivery; no ADR series in any store
+- Steps: say the ADR series is not held -> measure TCS's own historical gap distribution -> answer what the tape supports
+- Forbidden: promising a gap size from an overseas move that is not stored
+- Coverage: **partial** — ADR/GDR quotes are not held; only the domestic gap history is
+- Why: retail asks the overnight-ADR question as if a stored link exists
+
+### RD-G-009 · global_cue_overnight · family 16,19 · `global_cue_overnight`
+
+**Q.** Brent rose 6% on Friday. How much of that reached the Nifty open on Monday, and which input-cost lines felt it first?
+
+- Entities: commodity:BRENT
+- Period: 2026-10 · as-of: 2026-10-23 · answer: explanation
+- Evidence: mkt_commodity_daily Brent (ends 2026-10-06, no known_at); mkt_nse_index_daily open; policy_events for duty changes
+- Steps: state the commodity series' end date -> show the index open around it -> list who bears the input cost before claiming transmission
+- Forbidden: using a commodity series that stops before the date asked; assuming pass-through
+- Coverage: **partial** — commodity series are held without a point-in-time stamp and stop at 2026-10-06
+- Why: crude-to-market transmission is the second-order question retail actually asks
+
+### RD-G-010 · global_cue_overnight · family 19,15 · `global_cue_overnight`
+
+**Q.** Which listed sectors usually follow the US tech tape the next morning, and does the link still hold in 2026?
+
+- Entities: sector:NIFTY_IT
+- Period: 2024-2026 · as-of: 2026-10-23 · answer: ranking
+- Evidence: mkt_nse_index_daily sector indices; px_nse; no US index series held
+- Steps: state the proxy for the overseas tape -> compare next-session sector moves by year -> report the sample and what is missing
+- Forbidden: claiming a stable link from a few sessions; naming a US series we do not hold
+- Coverage: **partial** — sector indices are dated; the overseas cue series is absent
+- Why: the 'IT follows Nasdaq' belief is repeated constantly and can only be half-tested
+
+### RD-G-011 · dividend_record_date · family 12,9 · `dividend_record_date`
+
+**Q.** IRFC declared a Re 1.15 interim dividend with an ex-date of 23 Oct 2026 — who was on the register, and how did the stock trade into it?
+
+- Entities: IRFC (INE053F01010)
+- Period: 2026-10 · as-of: 2026-10-23 · answer: date
+- Evidence: corporate_actions ex_date/rec_date/subject; px_nse close around the date; daily_price_delivery
+- Steps: read the ex and record dates -> state the register rule -> show the price path into the ex-date
+- Forbidden: confusing the announcement date with the record date
+- Coverage: **yes** — both dates are stored; the payout sits in the action subject text
+- Why: ex-date versus record-date confusion dominates the dividend threads
+
+### RD-G-012 · dividend_record_date · family 4 · `dividend_record_date`
+
+**Q.** List the listed companies that went ex-dividend in the week of 19 Oct 2026, with the amount each declared.
+
+- Entities: market:NSE_EQ
+- Period: 2026-10-19/2026-10-23 · as-of: 2026-10-18 · answer: list
+- Evidence: corporate_actions action_type and ex_date; the subject text carries amount per share
+- Steps: filter the week's ex-dates -> read the amount from the subject -> flag any row where the text has no amount
+- Forbidden: assuming every corporate action is a dividend
+- Coverage: **yes** — dates are structured; amount per share is only in the subject text
+- Why: the weekly ex-dividend list is a repeated community post
+
+### RD-G-013 · dividend_record_date · family 12,10 · `dividend_record_date`
+
+**Q.** Oberoi Realty ka dividend kal ex ho raha hai — record date aur ex-date mein difference kyu hai, aur mujhe kya dekhna chahiye?
+
+- Entities: OBEROIRLTY (INE093I01010)
+- Period: 2026-10 · as-of: 2026-10-21 · answer: explanation
+- Evidence: corporate_actions ex_date/rec_date; px_nse close; announcement text
+- Steps: list both dates -> explain the settlement gap -> show what the price did on the previous ex-dates
+- Forbidden: turning a date question into a buy call
+- Coverage: **partial** — dates and prices are held; the settlement rule is market practice, not a stored field
+- Why: Hinglish date questions are common and often hide a settlement or tax worry
+
+### RD-G-014 · dividend_record_date · family 11,12 · `dividend_record_date`
+
+**Q.** As of 20 Oct 2026, what had 360 ONE announced about its interim payout, and when did it go ex?
+
+- Entities: 360ONE (INE466L01038)
+- Period: FY27 · as-of: 2026-10-20 · answer: fact
+- Evidence: corporate_actions subject/ex_date/rec_date; bse_announcements for the declaration; px_nse
+- Steps: order the declaration before the answer date -> read the payout -> give the ex-date
+- Forbidden: using a declaration filed after the as-of date
+- Coverage: **yes** — declaration, amount and ex-date are all dated
+- Why: tests point-in-time discipline on an event asked about the same week
+
+### RD-G-015 · dividend_record_date · family 2,4 · `dividend_record_date`
+
+**Q.** Among listed PSU banks, which paid an interim dividend in the September quarter, and how much per share?
+
+- Entities: sector:PSU_BANKS
+- Period: Q2FY27 · as-of: 2026-10-23 · answer: list
+- Evidence: corporate_actions dividend rows; master_companies sector/industry for the PSU set
+- Steps: fix the PSU bank list -> pull the quarter's dividend actions -> show amount per share from the subject
+- Forbidden: treating a special dividend as ordinary; guessing the PSU tag
+- Coverage: **partial** — the payout text is held; there is no amount_per_share column
+- Why: dividend screening inside a sector is a repeated ask
+
+### RD-G-016 · penny_low_price_stock · family 4,9 · `penny_low_price_stock`
+
+**Q.** On 23 Oct 2026, which names were still stuck in a 5% or lower price band on heavy volume?
+
+- Entities: market:NSE_EQ
+- Period: 2026-10 · as-of: 2026-10-23 · answer: list
+- Evidence: price_bands band/date; daily_price_delivery total_volume and delivery_pct; master_companies market_cap_tier
+- Steps: filter bands to 5% or lower on the date -> keep names with above-median volume -> report band and turnover
+- Forbidden: calling a band stock cheap; ignoring that a band caps the move
+- Coverage: **yes** — band and turnover are dated rows
+- Why: band-stuck names are the raw material of penny threads
+
+### RD-G-017 · penny_low_price_stock · family 10 · `penny_low_price_stock`
+
+**Q.** Penny stocks: is a 5% or lower band a trap?
+
+- Entities: market:NSE_EQ
+- Period: 2024-2026 · as-of: 2026-10-23 · answer: explanation
+- Evidence: price_bands band history; px_nse one-year path; annual_financials for survival
+- Steps: measure how often band names stayed there -> show the one-year return distribution -> answer with a base rate, not a view
+- Forbidden: a one-line yes or no; quoting a single name as the case
+- Coverage: **partial** — band history and prices are held; 'trap' needs a rule the answer must state
+- Why: the opinion question that precedes most penny-stock buying
+
+### RD-G-018 · penny_low_price_stock · family 10,13 · `penny_low_price_stock`
+
+**Q.** Micro-cap names under Rs 20 look cheap — is that value, or just a float too small to trust?
+
+- Entities: market-cap bucket:MICRO
+- Period: 2024-2026 · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse close; daily_price_delivery turnover_lacs; master_companies market_cap_tier; annual_financials
+- Steps: define the micro-cap set by tier -> split by turnover -> compare returns and survival -> state the rule used
+- Forbidden: equating a low price with a cheap valuation
+- Coverage: **partial** — price and turnover are held; free float is not a stored column
+- Why: price-per-share confusion is the core penny-stock misunderstanding
+
+### RD-G-019 · penny_low_price_stock · family 11,3 · `penny_low_price_stock`
+
+**Q.** As of 23 Oct 2026, GTL Infra had closed at its upper price band on how many of the last 20 sessions?
+
+- Entities: GTLINFRA (INE221H01019)
+- Period: 2026-09/2026-10 · as-of: 2026-10-23 · answer: fact
+- Evidence: price_bands band per session; daily_price_delivery close and volume
+- Steps: take the 20 sessions before the as-of date -> count upper-band closes -> show the path
+- Forbidden: reading a band cap as demand without volume
+- Coverage: **yes** — per-session bands are stored and dated
+- Why: counts of band hits are asked as a proxy for stuck demand
+
+### RD-G-020 · penny_low_price_stock · family 10 · `penny_low_price_stock`
+
+**Q.** Yes Bank 15 rupaye par hai — sasta lag raha hai ya bas sasta dikh raha hai, aur delivery se kya samajhna?
+
+- Entities: YESBANK (INE528G01035)
+- Period: FY26/FY27 · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse close history; daily_price_delivery delivery_pct; annual_financials book value and P/B inputs
+- Steps: separate price per share from valuation -> show book value and P/B -> read delivery as participation, not value
+- Forbidden: calling a Rs 15 stock cheap without a valuation basis
+- Coverage: **partial** — price and delivery are held; the valuation percentile history is not
+- Why: the most common penny-stock phrasing, with delivery bolted on
+
+### RD-G-021 · macro_event_what_if · family 18,6 · `macro_event_what_if`
+
+**Q.** If the RBI cuts the repo rate by 25bp in December, which listed lenders reprice deposits first and by how much?
+
+- Entities: policy:RBI_REPO
+- Period: 2026-12 · as-of: 2026-10-28 · answer: explanation
+- Evidence: policy_events for the rate action; results_xbrl NIM and interest income; concall_facts for repricing commentary
+- Steps: state the assumed cut -> trace deposit then lending repricing -> give the lag the filings state, not a guess
+- Forbidden: assuming a cut is immediately margin-positive; inventing a repricing beta
+- Coverage: **partial** — rate actions and filed NIM are held; there is no deposit-repricing schedule
+- Why: forward rate questions are asked as if a rate table exists
+
+### RD-G-022 · macro_event_what_if · family 19,16 · `macro_event_what_if`
+
+**Q.** If crude holds above $90 for a quarter, how does that reach second-round input costs down the listed chain?
+
+- Entities: commodity:BRENT
+- Period: FY27 · as-of: 2026-10-28 · answer: explanation
+- Evidence: mkt_commodity_daily Brent; ar_facts raw-material notes; policy_events for duty; concall_facts cost commentary
+- Steps: anchor the assumption -> separate direct fuel cost from second-round freight and packaging -> say where the chain breaks
+- Forbidden: assuming every manufacturer is equally exposed; using a series without known_at as if it were point-in-time
+- Coverage: **partial** — the commodity series has no known_at and stops at 2026-10-06; no cost-share table
+- Why: the 'if crude stays high' question is the most common what-if in macro threads
+
+### RD-G-023 · macro_event_what_if · family 18,6 · `macro_event_what_if`
+
+**Q.** Which listed sectors re-price fastest if the government raises the PLI outlay again?
+
+- Entities: sector:PLI_SECTORS
+- Period: FY27 · as-of: 2026-10-28 · answer: ranking
+- Evidence: policy_events amount/sectors/effective dates; ripple_effects; master_companies industry
+- Steps: read the last PLI actions and their sectors -> list who actually booked incentives -> separate announcement from accrual
+- Forbidden: naming a sector from the press release alone; ignoring the incentive-to-revenue lag
+- Coverage: **partial** — policy events are held; incentive accrual by company is only in filing text
+- Why: policy-forward questions invite a sector ranking that the data can only partly support
+
+### RD-G-024 · macro_event_what_if · family 11,19 · `macro_event_what_if`
+
+**Q.** As of 28 Oct 2026, what would a 10% copper price rise do to third-round costs of the average listed user?
+
+- Entities: commodity:COPPER
+- Period: FY27 · as-of: 2026-10-28 · answer: explanation
+- Evidence: mkt_commodity_daily copper; ar_facts cost notes; ripple_effects for the chain
+- Steps: state the copper assumption -> map the first layer of users -> name the third layer and say no cost table exists for it
+- Forbidden: inventing an elasticity; mixing a dated assumption with older commodity rows
+- Coverage: **partial** — copper series ends 2026-10-06; the chain beyond the first layer has no held cost map
+- Why: third-order what-ifs are exactly where a bank should refuse to improvise
+
+### RD-G-025 · macro_event_what_if · family 19,18 · `macro_event_what_if`
+
+**Q.** Which listed sectors gain most if the 10-year yield falls 50bp, and which lose on the second round?
+
+- Entities: sector:RATE_SENSITIVES
+- Period: 2024-2026 · as-of: 2026-10-28 · answer: ranking
+- Evidence: mkt_nse_index_daily sector indices; mkt_fii_dii_cash; px_nse for the rate-sensitive set
+- Steps: list the rate-sensitive sectors -> show their response to past rate moves in the tape -> state the second-round loser logic
+- Forbidden: assuming a yield fall is uniformly good for banks; quoting a gilt series we do not hold
+- Coverage: **partial** — index prices and FII/DII flows are held; no gilt yield series exists
+- Why: yield-led sector rotation is asked as if yields were in the store
+
+### RD-G-026 · ta_chart_pattern · family 10,3 · `ta_chart_pattern`
+
+**Q.** Polycab looks like a cup-and-handle on the weekly chart — did the same shape in the last year lead to a breakout or a fade?
+
+- Entities: POLYCAB (INE455K01017)
+- Period: 2025-10/2026-10 · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse weekly resample; daily_price_delivery volume; no pattern_match table
+- Steps: define the shape before looking -> label past windows with the same rule -> report follow-through
+- Forbidden: naming the pattern after the breakout; treating one past case as the base rate
+- Coverage: **partial** — OHLCV is held; no labelled chart-pattern store exists
+- Why: the named-pattern question has no family and cannot be answered from a stored label
+
+### RD-G-027 · ta_chart_pattern · family 3,11 · `ta_chart_pattern`
+
+**Q.** As of 23 Oct 2026, had BHEL built a higher-highs base or a lower-highs distribution over the last 60 sessions?
+
+- Entities: BHEL (INE257A01026)
+- Period: 2026-07/2026-10 · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse highs/lows; daily_price_delivery volume; sma_50 stored on the delivery tape
+- Steps: fix the 60-session window before the as-of date -> compare swing highs -> report the shape and the volume behind it
+- Forbidden: choosing the window after seeing the chart; calling a pullback a distribution
+- Coverage: **partial** — price shape is derivable and dated; pattern labels are not stored
+- Why: asks for structure rather than a pattern name, which the tape can support
+
+### RD-G-028 · ta_chart_pattern · family 3,10 · `ta_chart_pattern`
+
+**Q.** PSU banks ke chart par higher-highs base ban raha hai kya, ya sirf ek bounce hai?
+
+- Entities: sector:PSU_BANKS
+- Period: 2025-10/2026-10 · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse for the PSU bank set; mkt_nse_index_daily; daily_price_delivery
+- Steps: resample monthly -> compare the last two swing highs -> show volume and delivery behind each
+- Forbidden: counting one green month as a base
+- Coverage: **partial** — prices are held; the pattern label and the sector membership history are partial
+- Why: the Hinglish chart read is common and can be answered with a stated rule
+
+### RD-G-029 · theme_proxy_play · family 8,19 · `theme_proxy_play`
+
+**Q.** In the data-centre theme, which listed cooling and cabling names give the cleanest proxy without owning the hyperscaler risk?
+
+- Entities: theme:DATA_CENTRES
+- Period: FY26/FY27 · as-of: 2026-10-28 · answer: ranking
+- Evidence: theme universe members; annual_financials segment revenue; concall_facts order commentary
+- Steps: list the held theme members -> separate direct suppliers from second-order -> rank by disclosed revenue share
+- Forbidden: treating a company mention in a call as theme revenue
+- Coverage: **partial** — nine themes are curated and dated; revenue attribution is still from segment text
+- Why: theme-proxy questions are the most common way retail asks for a basket
+
+### RD-G-030 · theme_proxy_play · family 19,8 · `theme_proxy_play`
+
+**Q.** Green hydrogen theme mein doosre-teesre layer ke listed plays kaun hain, aur unka revenue is theme se kitna aata hai?
+
+- Entities: theme:GREEN_HYDROGEN
+- Period: FY27 · as-of: 2026-10-28 · answer: explanation
+- Evidence: theme universe members; ar_facts segment notes; concall_facts order wins; ripple_effects
+- Steps: name the first layer -> name the second and third layers -> show any disclosed revenue share and flag where none exists
+- Forbidden: calling any engineering company a green-hydrogen play; inventing a revenue share
+- Coverage: **partial** — theme membership is curated; third-layer revenue is rarely disclosed, so the answer must say so
+- Why: Hinglish layered-theme questions are the retail version of supply-chain mapping
+
+### RD-G-031 · theme_proxy_play · family 10,8 · `theme_proxy_play`
+
+**Q.** Gold ETFs or jewellers: which is the better proxy?
+
+- Entities: index:GOLD_ETFS
+- Period: 2024-2026 · as-of: 2026-10-23 · answer: ranking
+- Evidence: etf_master/etf_px/etf_inav; px_nse for jeweller names; annual_financials
+- Steps: compare total return with the metal -> compare drawdowns -> state that 'better' needs a horizon
+- Forbidden: answering without a horizon; treating an ETF NAV as a stock price
+- Coverage: **partial** — ETF NAV and premium are held; a 'better' ranking needs a stated horizon
+- Why: the gold-exposure choice is a repeated retail question phrased as a proxy play
+
+### RD-G-032 · merger_arbitrage · family 12,9 · `merger_arbitrage`
+
+**Q.** The Tata Motors demerger left two listed lines — which approvals were still pending at the record date, and how did the pair trade into it?
+
+- Entities: TMPV (INE155A01022), TMCV (INE1TAE01010)
+- Period: 2025-10/2026-10 · as-of: 2026-10-23 · answer: date
+- Evidence: corporate_documents and announcements for the scheme; px_nse for both lines; symbol_isin_history
+- Steps: date the scheme documents -> list the approvals in order -> show both lines from listing to the record date
+- Forbidden: using pre-demerger prices as if the same security; guessing an approval date
+- Coverage: **partial** — scheme text and prices are held; there is no structured deal or swap table
+- Why: demerger spillover questions mix process and price and no table joins them
+
+### RD-G-033 · merger_arbitrage · family 10,12 · `merger_arbitrage`
+
+**Q.** IDBI Bank stake sale: is the spread worth it?
+
+- Entities: IDBI (INE008A01015)
+- Period: 2026 · as-of: 2026-10-23 · answer: explanation
+- Evidence: px_nse price; announcements for the process stage; the offer price only in filing text
+- Steps: state the reference price -> read the process stage from filings -> say that no structured spread exists
+- Forbidden: quoting a spread from a stale or invented offer price
+- Coverage: **partial** — price tape is held; offer terms are text-only, so the spread must be built by hand
+- Why: the deal-spread question is asked with no deal table behind it
+
+### RD-G-034 · merger_arbitrage · family 4,12 · `merger_arbitrage`
+
+**Q.** Among listed cement makers, which announced schemes still need an NCLT order, and what is the expected completion window?
+
+- Entities: industry:CEMENT
+- Period: 2025-2026 · as-of: 2026-10-28 · answer: list
+- Evidence: bse_announcements text; corporate_documents; px_nse for the named pair
+- Steps: collect the announced schemes -> read each stage -> show the next approval and the stated window
+- Forbidden: assuming a board approval completes a merger; inventing a completion date
+- Coverage: **partial** — schemes sit in announcement text; no deal table and no approval tracker
+- Why: sector merger trackers are asked weekly in cement threads
+
+### RD-G-035 · ipo_vs_listed_peer · family 8,2 · `ipo_vs_listed_peer`
+
+**Q.** Swiggy listed while Eternal was already public — which multiple did the issue ask, and how did that compare with the listed peer that week?
+
+- Entities: SWIGGY (INE00H001014), ETERNAL (INE758T01015)
+- Period: 2024-11 · as-of: 2026-10-23 · answer: ranking
+- Evidence: SEBI offer documents; px_nse for both; annual_financials and quarterly_financials
+- Steps: read the issue price from the offer document -> compute the peer multiple on the issue date -> show both
+- Forbidden: using today's multiple for the issue week; treating grey-market talk as the issue price
+- Coverage: **partial** — offer documents are fetched; there is no structured ipo_issue table
+- Why: the new-listing-versus-peer comparison is the standard anchor retail uses
+
+### RD-G-036 · ipo_vs_listed_peer · family 8,13 · `ipo_vs_listed_peer`
+
+**Q.** Which recently listed specialty-chemical names still trade below their issue valuation against the listed peer set?
+
+- Entities: industry:SPECIALTY_CHEMICALS
+- Period: 2024-2026 · as-of: 2026-10-23 · answer: ranking
+- Evidence: px_nse; quarterly_financials; offer documents; peers from master_companies industry
+- Steps: fix the listing window -> compute the peer multiple at issue and today -> list the names below issue valuation
+- Forbidden: comparing a new listing with a large-cap peer on different accounting
+- Coverage: **partial** — prices and filings are held; issue valuation is text-only and the peer table must be built
+- Why: post-IPO disappointment screens are a recurring specialty-chemical thread
+
+### RD-G-037 · ipo_vs_listed_peer · family 2,8 · `ipo_vs_listed_peer`
+
+**Q.** Hyundai listing ke baad Maruti se valuation comparison kaunse multiple par sahi hai, aur P/E ka gap issue price mein tha kya?
+
+- Entities: HYUNDAI (INE0V6F01027), MARUTI (INE585B01010)
+- Period: 2024-10 · as-of: 2026-10-23 · answer: ranking
+- Evidence: px_nse both names; quarterly_financials EPS; the offer document for the issue price
+- Steps: compute the peer multiple on consistent periods -> compare with the issue multiple -> show the gap
+- Forbidden: mixing standalone and consolidated earnings; using a stale EPS
+- Coverage: **partial** — prices and XBRL earnings are held; the issue multiple is in the offer document text
+- Why: the 'was the IPO expensive versus the incumbent' ask is a Hinglish staple
+
+### RD-G-038 · second_order_beneficiary · family 19,8 · `second_order_beneficiary`
+
+**Q.** If the data-centre build-out doubles, is KEI's cable order book the second-order winner or does the wiring spend land elsewhere first?
+
+- Entities: KEI (INE878B01027)
+- Period: FY26/FY27 · as-of: 2026-10-28 · answer: explanation
+- Evidence: concall_facts order commentary; ar_facts segment revenue; announcements for order wins; ripple_effects
+- Steps: define the assumed build-out -> place KEI on the chain -> show disclosed order wins -> name the layer that takes spend first
+- Forbidden: assuming every cable order is data-centre demand
+- Coverage: **partial** — order wins sit in call and announcement text; no supply_link table exists
+- Why: second-order questions need the chain, not just the beneficiary
+
+### RD-G-039 · second_order_beneficiary · family 19 · `second_order_beneficiary`
+
+**Q.** Which listed cable makers feel a doubling of data-centre capex third, after the cooling and connector layers have taken their share?
+
+- Entities: industry:CABLES
+- Period: FY27 · as-of: 2026-10-28 · answer: ranking
+- Evidence: ar_facts and concall segment text; px_nse; announcements order wins; ripple_effects
+- Steps: draw three layers -> place each listed name -> state which layer has disclosed revenue
+- Forbidden: calling a third-layer name a direct beneficiary; ranking without disclosed revenue
+- Coverage: **partial** — the chain is in text and ripple rows; no share-of-cogs map
+- Why: the third-layer question is where retail over-reaches, and the bank should test it
+
+### RD-G-040 · second_order_beneficiary · family 11,19 · `second_order_beneficiary`
+
+**Q.** As of 23 Oct 2026, which listed names had disclosed order wins inside the green hydrogen theme's second layer?
+
+- Entities: theme:GREEN_HYDROGEN
+- Period: FY27 · as-of: 2026-10-23 · answer: list
+- Evidence: bse_announcements and concall_facts within the as-of date; ar_facts; theme universe members
+- Steps: filter disclosures to the as-of date -> keep order wins -> place them on the theme's second layer
+- Forbidden: using a disclosure filed after the as-of date; counting an MoU as an order
+- Coverage: **partial** — announcement text is dated; the second-layer map is curated, not stored
+- Why: tests point-in-time discipline on second-order evidence
+
+### RD-G-041 · results_calendar · family 12 · `results_calendar`
+
+**Q.** IRFC Q2 results date: when, and was it pre-intimated?
+
+- Entities: IRFC (INE053F01010)
+- Period: Q2FY27 · as-of: 2026-10-28 · answer: date
+- Evidence: board_meetings meeting_date/purpose/intimated_at; results_filings for the actual filing
+- Steps: read the meeting purpose -> compare intimation with the meeting date -> show both dates
+- Forbidden: confusing the intimation date with the results date
+- Coverage: **yes** — board_meetings holds the meeting and the intimation timestamp
+- Why: the results-date-and-notice question is asked every quarter
+
+### RD-G-042 · results_calendar · family 4,12 · `results_calendar`
+
+**Q.** Which listed companies report Q2FY27 results in the first week of November, and how many intimated late?
+
+- Entities: market:NSE_EQ
+- Period: Q2FY27 · as-of: 2026-10-28 · answer: list
+- Evidence: board_meetings meeting_date/purpose/intimated_at; results_filings
+- Steps: filter the week's financial-results meetings -> compute the intimation lag -> list the late ones
+- Forbidden: counting a board meeting with another purpose as a results date
+- Coverage: **partial** — 120k board-meeting rows are held, but small-cap coverage is uneven
+- Why: the quarterly results calendar is a repeated community post
+
+### RD-G-043 · results_calendar · family 11,12 · `results_calendar`
+
+**Q.** As of 20 Oct 2026, how many large-caps had still not intimated a results date for the September quarter?
+
+- Entities: market-cap bucket:LARGE
+- Period: Q2FY27 · as-of: 2026-10-20 · answer: fact
+- Evidence: board_meetings within the as-of date; master_companies market_cap_tier; results_filings
+- Steps: fix the large-cap list -> count those with no results meeting by the as-of date -> say what absence can and cannot prove
+- Forbidden: reading a missing row as 'no results'; using intimations filed after the as-of date
+- Coverage: **partial** — absence inference depends on board-meeting coverage, which is uneven
+- Why: tests the calendar from the negative side, where a bank must be careful
