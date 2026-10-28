@@ -97,6 +97,53 @@ def _universe(ctx: Any, question: str, slots: dict[str, Any]) -> tuple[str, list
     return "m.is_active = 1 AND m.is_nifty500 = 1", []
 
 
+def _pilot_universe(ctx: Any, question: str, as_of: str) -> tuple[set[str] | None, str | None]:
+    """ISIN set from the T1 pilot build (whole-market company_state_daily / membership_pit).
+
+    Only used when the run points at the build (``REALITY_PILOT_T1``); without it every
+    branch below behaves exactly as before.
+    """
+    tier = _tier(question)
+    index = _index(question)
+    if not tier and not index:
+        return None, None
+    try:
+        ctx.sqlite("market_state")
+    except Exception:  # noqa: BLE001 - no pilot build: fall through to the live path
+        return None, None
+    if tier:
+        try:
+            day = ctx.one("market_state", "SELECT MAX(date) AS d FROM company_state_daily "
+                                          "WHERE date <= ?", (as_of,))
+            day = (day or {}).get("d")
+            rows = ctx.rows("market_state", "SELECT isin FROM company_state_daily "
+                                            "WHERE date = ? AND mcap_bucket = ?", (day, tier))
+        except Exception:  # noqa: BLE001
+            return None, None
+        if rows:
+            return ({r["isin"] for r in rows},
+                    f"T1 company_state_daily mcap_bucket={tier} on {day}")
+        return None, None
+    try:
+        matches = ctx.rows("market_state", "SELECT index_code, display_name FROM index_list "
+                                          "WHERE lower(display_name) LIKE ?",
+                           (f"%{index.lower()}%",))
+        if not matches:
+            return None, None
+        codes = [m["index_code"] for m in matches]
+        rows = ctx.rows(
+            "market_state",
+            "SELECT isin FROM company_membership_pit WHERE index_code IN ("
+            + ",".join("?" * len(codes)) + ") AND added_on <= ? "
+            "AND (removed_on IS NULL OR removed_on > ?)", codes + [as_of, as_of])
+    except Exception:  # noqa: BLE001
+        return None, None
+    if rows:
+        return ({r["isin"] for r in rows},
+                f"T1 company_membership_pit {matches[0]['display_name']} at {as_of}")
+    return None, None
+
+
 def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     question = str(slots.get("question") or "")
     if not slots.get("needs", {}).get("screen"):
@@ -116,8 +163,9 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     if slots.get("metric") == "promoter" and re.search(r"which|biggest|largest|most|rank",
                                                        question, re.I):
         return _promoter_screen(slots, as_of, ctx, question)
+    allowed, pilot_note = _pilot_universe(ctx, question, as_of)
     named_index = _index(question)
-    if named_index:
+    if named_index and allowed is None:
         try:
             snapshot = ctx.one("equity_intelligence",
                                "SELECT as_of FROM index_membership LIMIT 1")
@@ -146,7 +194,8 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     pre_from = (_date.fromisoformat(anchor) - timedelta(days=10)).isoformat()
     post_to = min(max(date_to, (_date.fromisoformat(anchor) + timedelta(days=10)).isoformat()),
                   as_of)
-    where, params = _universe(ctx, question, slots)
+    where, params = (("m.is_active = 1", []) if allowed is not None
+                     else _universe(ctx, question, slots))
     try:
         rows = ctx.rows(
             "equity_intelligence",
@@ -157,6 +206,8 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         return envelope("SCREEN", ok=False, why="tool", checked=CHECKED,
                         detail=f"screen store failed: {type(exc).__name__}: {exc}")
+    if allowed is not None:
+        rows = [row for row in rows if row["isin"] in allowed]
     bucket: dict[str, dict[str, Any]] = {}
     for row in rows:
         entry = bucket.setdefault(row["isin"], {"symbol": row["nse_symbol"],
@@ -198,7 +249,9 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     detail = (f"{label}, {len(ranked)} names, {pre_from}..{post_to}: " +
               "; ".join(f"{entry['symbol'] or entry['rows'][0]['isin']} {fmt_num(v)}"
                         for entry, v in top[:5]))
-    degraded = ["membership is the held snapshot, not a point-in-time index history"]
+    degraded = ([pilot_note, f"universe from the T1 pilot build for the whole market at {as_of}"]
+                if pilot_note else
+                ["membership is the held snapshot, not a point-in-time index history"])
     return envelope(
         "SCREEN", ok=True,
         rows=[{"ref": f"daily_price_delivery:{entry['rows'][0]['isin']}", "known_at": post_to,

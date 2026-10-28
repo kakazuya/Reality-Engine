@@ -30,6 +30,24 @@ DB_FILES = {
 #: The pilot DB lives in the worktree, not the read-only data root.
 PILOT_DB_ENV = "REALITY_MACRO_PILOT_DB"
 
+# T1 pilot build (golden-rule step 4): the whole-market deterministic tier.  Off unless
+# the run points at it: REALITY_MARKET_STATE / REALITY_FACTS name the two files, or
+# REALITY_PILOT_T1 names the build directory.  Tests never see it by accident.
+PILOT_T1_ENV = "REALITY_PILOT_T1"
+T1_FILES = {
+    "market_state": ("REALITY_MARKET_STATE", "market_state_pilot.db"),
+    "facts_pilot": ("REALITY_FACTS", "facts_pilot.db"),
+}
+
+
+def t1_path(name: str) -> Path | None:
+    env_file, filename = T1_FILES[name]
+    path = os.environ.get(env_file)
+    if path:
+        return Path(path)
+    root = os.environ.get(PILOT_T1_ENV)
+    return Path(root) / filename if root else None
+
 
 class QueryUnavailable(RuntimeError):
     """A store/table this planner needs is not present in this data root."""
@@ -53,13 +71,19 @@ class Ctx:
 
     # -- SQLite -----------------------------------------------------------
     def sqlite(self, name: str) -> Any:
-        """Connection for one database alias (``equity_intelligence`` ...)."""
+        """Connection for one database alias (``equity_intelligence`` ... or a T1 pilot DB)."""
         if name not in self._sql:
-            path = Path(self.root) / DB_FILES[name]
-            if name == "macro_pilot":
-                override = os.environ.get(PILOT_DB_ENV)
-                if override:
-                    path = Path(override)
+            if name in T1_FILES:
+                path = t1_path(name)
+                if path is None or not path.is_file():
+                    raise QueryUnavailable(f"T1 pilot database {name} not configured "
+                                           f"(set {T1_FILES[name][0]} or {PILOT_T1_ENV})")
+            else:
+                path = Path(self.root) / DB_FILES[name]
+                if name == "macro_pilot":
+                    override = os.environ.get(PILOT_DB_ENV)
+                    if override:
+                        path = Path(override)
             if not path.exists():
                 raise QueryUnavailable(f"{name} database missing: {path}")
             from reality_engine.db.readonly import connect_ro
