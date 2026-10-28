@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-28T18:23:16+05:30 · git HEAD: `c9f99d2` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-28T18:37:38+05:30 · git HEAD: `c37bfc5` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -17,7 +17,7 @@ reality_engine/
   processing/ (44 py) — Document and image processing components.
   query/ (2 py) — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company at time t.
   reporting/ (3 py) — Reporting module for Reality Engine.
-  scripts/ (141 py) — Operational job scripts: one module per data job; most-referenced list below
+  scripts/ (142 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
   toolbelt/ (12 py) — Ready-made, read-only tools for dsh workers (Task 02).
   ui/ (2 py) — Reality Engine UI Module.
@@ -268,7 +268,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/reporting/notifier.py` — Wave B — Telegram alerts + 23:00 nightly digest (stdlib only, no new deps).
 - `reality_engine/reporting/writer.py` — Report Writer Module
 
-- `reality_engine/scripts/` — 141 data-job modules (one per data job); most-referenced ranked below.
+- `reality_engine/scripts/` — 142 data-job modules (one per data job); most-referenced ranked below.
 ### reality_engine/search/
 - `reality_engine/search/chunk_vector_index.py` — Local dense-retrieval index over ``document_chunks.embedding``.
 - `reality_engine/search/hybrid_search.py` — Lexical plus dense search using reciprocal rank fusion.
@@ -539,6 +539,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.fetch_etf_nav` | test_fetch_etf_nav_timeout.py |
 | `reality_engine.scripts.fetch_market_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_nse_api_raw` | test_market_gap_backfill.py |
+| `reality_engine.scripts.fetch_originals` | test_fetch_originals.py |
 | `reality_engine.scripts.fetch_results_notes_text` | test_new_feeds_g2.py |
 | `reality_engine.scripts.load_deck_chunks` | test_deck_chunk_load.py |
 | `reality_engine.scripts.load_market_raw` | test_market_gap_backfill.py |
