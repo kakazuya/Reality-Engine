@@ -94,7 +94,7 @@ use get got put see saw make take keep kept here tell told ask asked look looks 
 over under between within during while company companies stock stocks listed market latest last
 quarter quarters results result report annual held stored level start wait good bad first second
 third next previous year years month months week weeks day days price close high low return returns
-stock today yesterday far long term short term""".split())
+stock today yesterday far long term short term whom whose whether""".split())
 
 GENERIC = set("""close date latest last quarter quarters company companies results result report annual
 hold held stored market stock stocks listed which what does management management's
@@ -116,7 +116,8 @@ COMPARE_WORDS = re.compile(r"\b(versus|vs\.?|compare|peer|better|worse|against|r
                            r"which has|which one)\b", re.I)
 TEXT_WORDS = re.compile(r"\b(say|said|says|comment|commentary|explain|why|kyun|what did|what does|"
                         r"per its|according to|transcript|presentation|annual report|note|"
-                        r"management|discuss|detail)\b", re.I)
+                        r"management|discuss|detail|mention|mentioned|talk about|spoke about)\b",
+                        re.I)
 LIST_ASK = re.compile(r"which (companies|managements|large-caps?|mid-caps?|small-caps?|stocks|"
                       r"names).{0,80}(said|filed|wrote|took|evaluating|reported|declared|"
                       r"announced)", re.I)
@@ -239,9 +240,17 @@ def period_bounds(case: dict) -> tuple[str | None, str | None, str]:
 
 def metric_of(question: str) -> tuple[str | None, list[str]]:
     low = question.lower()
+
+    def hit(key: str) -> bool:
+        # Short keys ("pe", "pat", "eps") must be whole words: "speciality"
+        # contains "pe" and "shareholding pattern" contains "pat".
+        if len(key) <= 3:
+            return re.search(r"(?<![a-z0-9])" + re.escape(key) + r"(?![a-z0-9])", low) is not None
+        return key in low
+
     for name, keys in METRICS:
-        if any(key in low for key in keys):
-            return name, [k for k in keys if k in low] or [name]
+        if any(hit(key) for key in keys):
+            return name, [k for k in keys if hit(k)] or [name]
     return None, []
 
 
@@ -266,9 +275,37 @@ def doc_type_of(question: str) -> str | None:
     return None
 
 
+DOC_PHRASE = re.compile(r"\b(presentation|investor ppt|deck|transcript|concall|annual report|"
+                        r"announcement)\b", re.I)
+
+
 def page_of(question: str) -> int | None:
     match = re.search(r"\bpage\s+(\d{1,4})\b", question, re.I)
     return int(match.group(1)) if match else None
+
+
+def named_document(case: dict) -> dict[str, Any] | None:
+    """(doc_type, date) when the question names a document, else None.
+
+    "per its investor presentation of 5 August 2026" -> deck at 2026-08-05;
+    "the transcript of 18 September 2026" -> transcript at 2026-09-18.  A date
+    with no document phrase is a price/series date, not a document.
+    """
+    question = str(case.get("question") or "")
+    doc_type = doc_type_of(question)
+    if not doc_type:
+        return None
+    dates = [(match.start(), match.group(0)) for match in re.finditer(
+        rf"(?:\d{{4}}-\d{{2}}-\d{{2}}|\b\d{{1,2}}\s+{_MONTH_RE}[a-z]*\s+\d{{4}}\b)", question, re.I)]
+    if not dates:
+        return None
+    phrase = DOC_PHRASE.search(question)
+    anchor = phrase.start() if phrase else 0
+    _, raw = min(dates, key=lambda item: abs(item[0] - anchor))
+    parsed = parse_dates(raw)
+    if not parsed:
+        return None
+    return {"doc_type": doc_type, "date": parsed[0]}
 
 
 def needs_of(case: dict, refs: list[str], metric: str | None) -> dict[str, bool]:

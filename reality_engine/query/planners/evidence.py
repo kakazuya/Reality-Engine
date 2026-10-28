@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from .. import rerank
 from ..router import LIST_ASK
 from . import envelope
+from .facts import DOC_WINDOW_DAYS, TEXT_TERMS, named_of
 
 CHECKED = ["equity_intelligence.document_chunks", "ar_facts.ar_facts",
            "deck_figures.deck_sources", "bse_announcements.ann",
@@ -55,6 +57,10 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             passages = [p for p in (results or [])
                         if (p.get("date") or "")[:10] and (p.get("date") or "")[:10] <= as_of]
             if passages:
+                passages = rerank.rank(passages, terms=terms,
+                                       metric_terms=TEXT_TERMS.get(
+                                           str(slots.get("metric") or ""), ()),
+                                       as_of=as_of)
                 top = passages[:3]
                 if list_ask:
                     detail = (f"found {len(top)} example passage(s); a complete company list "
@@ -85,8 +91,9 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         return envelope("EVIDENCE", ok=False, why="no_doc", checked=CHECKED, detail=detail,
                         nid_reason=detail)
     doc_type = slots.get("doc_type")
-    date = None
-    if slots.get("period_basis") in ("named date", "named dates"):
+    named = named_of(slots)
+    date = named["date"] if named else None
+    if date is None and slots.get("period_basis") in ("named date", "named dates"):
         date = slots.get("date_from")
     try:
         if needs.get("page"):
@@ -117,6 +124,14 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         if terms:
             attempts.append(" ".join(terms[:3]))
             attempts.append(" ".join(meaningful[:2]))
+            # doc_find is AND over its terms; one strong word often retrieves the
+            # page the phrase query misses ("products" alone on a products deck).
+            attempts.append(" ".join(meaningful[:1]))
+            doc_words = {"presentation", "transcript", "investor", "report", "annual",
+                         "results", "announcement", "latest", "dated", "mention"}
+            specific = [t for t in meaningful if t.lower() not in doc_words]
+            if specific:
+                attempts.append(max(specific, key=len))
         res: dict[str, Any] = {}
         found_any = False
         for query in dict.fromkeys(attempts):
@@ -129,13 +144,18 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         # A passage only answers the hop when its own quote carries the ask's
         # meaningful terms (not just the company name).  At least half must hit.
         if meaningful and passages:
-            need = max(1, (len(meaningful) + 1) // 2)
+            # A text ask with no numeric metric has no metric family to fall back
+            # on: the query itself was the relevance test, so one hit is enough.
+            need = 1 if not slots.get("metric") else max(1, (len(meaningful) + 1) // 2)
+            metric_words = [word.lower() for word in
+                            TEXT_TERMS.get(str(slots.get("metric") or ""), ())]
             scored = []
             for passage in passages:
-                quote = str(passage.get("quote") or "").lower()
+                quote = str(passage.get("quote") or passage.get("text") or "").lower()
                 hits = sum(1 for term in meaningful if term.lower() in quote)
-                if hits >= need:
-                    scored.append((hits, passage))
+                metric_hit = any(word in quote for word in metric_words)
+                if hits >= need or metric_hit:
+                    scored.append((hits + (1 if metric_hit else 0), passage))
             scored.sort(key=lambda item: -item[0])
             passages = [passage for _, passage in scored]
             if not passages:
@@ -154,6 +174,32 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                                 nid_reason=f"BLOCKED_SCHEMA: {gate}")
             return envelope("EVIDENCE", ok=False, why="no_doc", checked=checked,
                             detail=detail, nid_reason=detail)
+        # Named-document preference: when the question names a document, its
+        # passages only.  The nearest held document is not a substitute.
+        if named and passages:
+            from datetime import date as _date
+            anchor = _date.fromisoformat(str(named["date"])[:10])
+            inside = []
+            for passage in passages:
+                try:
+                    day = _date.fromisoformat(str(passage.get("date") or "")[:10])
+                except ValueError:
+                    continue
+                if abs((day - anchor).days) <= DOC_WINDOW_DAYS:
+                    inside.append(passage)
+            if not inside:
+                wanted = (f"the {named['doc_type']} of {named['date']} carries no passage for "
+                          f"{', '.join(meaningful[:3]) or 'the ask'}; a different document is "
+                          f"not the one asked for")
+                return envelope("EVIDENCE", ok=False, why="no_doc",
+                                checked=res.get("checked") or CHECKED, detail=wanted,
+                                nid_reason=wanted)
+            passages = inside
+        metric_terms = TEXT_TERMS.get(str(slots.get("metric") or ""), ())
+        passages = rerank.rank(
+            passages, terms=meaningful or terms, metric_terms=metric_terms,
+            entity=str(slots.get("symbol") or slots.get("isin") or ""),
+            named_date=(named or {}).get("date") or date, as_of=as_of)
         top = passages[:3]
         detail = " | ".join(
             f"{p.get('doc_type')} {p.get('date')} p{p.get('page')}: "
@@ -161,12 +207,17 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         return envelope(
             "EVIDENCE", ok=True,
             rows=[{"ref": f"{p.get('store')}:{p.get('doc_id')}#{p.get('page')}",
-                   "known_at": p.get("date")} for p in top],
+                   "known_at": p.get("date"), "date": p.get("date"),
+                   "doc_type": p.get("doc_type"), "page": p.get("page"),
+                   "quote": (p.get("quote") or "")[:300], "score": p.get("score")}
+                  for p in top],
             provenance=[{"ref": f"{p.get('store')}:{p.get('doc_id')}",
                          "known_at": p.get("date")} for p in top],
             pit=f"chunk published_date / document known_at <= {as_of} in the SQL",
             checked=res.get("checked") or CHECKED,
-            degraded=res.get("warnings") or [],
+            degraded=(res.get("warnings") or []) + (
+                [f"named-document preference: {named['doc_type']} of {named['date']} "
+                 f"(±{DOC_WINDOW_DAYS}d)"] if named else []),
             detail=detail)
     except Exception as exc:  # noqa: BLE001 - a tool failure is data, not a crash
         return envelope("EVIDENCE", ok=False, why="tool", checked=CHECKED,
