@@ -430,10 +430,78 @@ def io_snapshot():
     for p in psutil.process_iter(["name", "cmdline"]):
         try:
             c = p.io_counters()
-            snap[p.pid] = (p.info["name"], " ".join(p.info["cmdline"] or [])[:160], c.read_bytes + c.write_bytes)
+            snap[p.pid] = (p.info["name"], " ".join(p.info["cmdline"] or [])[:160], c.read_bytes + c.write_bytes,
+                           c.read_count + c.write_count)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
     return snap
+
+
+# 2026-10-29 (Shivam): watch every device, not just MB/s. The D: HDD sat at 100% busy on ~300 KB/s of random
+# reads (a bench reading pilot DBs from the HDD) and the old MB/s-only check never fired.
+DISK_BUSY_PCT = 80       # a physical disk this busy for 3 checks is an incident (busy = read+write time / wall time)
+GPU_BUSY_PCT = 90
+GPU_HOT_C = 85
+
+
+def disk_labels():
+    """PhysicalDriveN -> 'C: SSD (NVMe)' style labels, read once from Windows."""
+    labels = {}
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-Partition | ? DriveLetter | % { '{0}|{1}|{2}' -f $_.DiskNumber, $_.DriveLetter, "
+             "(Get-PhysicalDisk -DeviceNumber $_.DiskNumber -ErrorAction SilentlyContinue).MediaType }"],
+            capture_output=True, text=True, timeout=30).stdout
+        for line in out.splitlines():
+            num, letter, media = (line.split("|") + ["", "", ""])[:3]
+            if num.strip().isdigit():
+                key = f"PhysicalDrive{num.strip()}"
+                labels[key] = (labels.get(key, "") + f"{letter.strip()}:").strip() + (f" {media.strip()}" if media.strip() else "")
+    except Exception:   # no PowerShell, a timeout, a mocked subprocess: labels are cosmetic
+        pass
+    return labels
+
+
+def disk_busy(prev, cur, dt):
+    """Per physical disk: (busy %, MB/s) between two perdisk psutil snapshots."""
+    out = {}
+    for name, c in cur.items():
+        p = prev.get(name)
+        if p is None:
+            continue
+        busy_ms = (c.read_time - p.read_time) + (c.write_time - p.write_time)
+        mb = ((c.read_bytes - p.read_bytes) + (c.write_bytes - p.write_bytes)) / 1e6
+        out[name] = (min(100.0 * busy_ms / (dt * 1000), 999.0), mb / dt)
+    return out
+
+
+def gpu_status():
+    """[(index, name, util %, mem used MB, mem total MB, temp C)] from nvidia-smi; [] when absent."""
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=index,name,utilization.gpu,memory.used,memory.total,"
+                              "temperature.gpu", "--format=csv,noheader,nounits"],
+                             capture_output=True, text=True, timeout=20).stdout
+    except Exception:   # no nvidia-smi (or a mocked subprocess): no GPU line
+        return []
+    rows = []
+    for line in out.splitlines():
+        f = [x.strip() for x in line.split(",")]
+        if len(f) == 6:
+            try:
+                rows.append((int(f[0]), f[1], float(f[2]), float(f[3]), float(f[4]), float(f[5])))
+            except ValueError:
+                pass
+    return rows
+
+
+def gpu_apps():
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-compute-apps=pid,process_name,used_memory",
+                              "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=20).stdout
+    except Exception:
+        return ""
+    return "; ".join(" ".join(x.strip() for x in line.split(",")) + " MB" for line in out.splitlines() if line.strip())
 
 
 def top_cpu(n=5):
@@ -594,10 +662,12 @@ def run(once=False, dry_run=False):
     inc, st = Incidents(dry_run), load_state()
     st.setdefault("jobs", {})
     disk_prev, io_prev, t_prev = psutil.disk_io_counters(), io_snapshot(), time.time()
+    # a dry run starts no process at all, so the read-only probes (PowerShell labels, nvidia-smi) are skipped too
+    perdisk_prev, labels = psutil.disk_io_counters(perdisk=True), ({} if dry_run else disk_labels())
     psutil.cpu_percent(None); top_cpu()
     if once:   # one check still needs an I/O sampling window (the 3-check streaks cannot fire on one sample)
         time.sleep(3)
-    hog_streak, cpu_streak = {}, 0
+    hog_streak, cpu_streak, busy_streak, gpu_streak = {}, 0, {}, {}
     while True:
         if not once:
             time.sleep(CHECK_SEC)
@@ -610,12 +680,37 @@ def run(once=False, dry_run=False):
         for key, detail in disk_low:
             inc.add("low_disk", key, detail)
         status = [f"profile: {PROFILE}" + ("" if PROFILE == "pc" else " (monitor-only: nothing is started or restarted)"),
-                  f"machine: CPU {cpu:.0f}% | RAM free {ram:.1f} GB | "
+                  f"machine: CPU {cpu:.0f}% | RAM free {ram:.1f} GB ({psutil.virtual_memory().percent:.0f}% used) | "
                   + (f"disk {mbs:.0f} MB/s" if not once else "disk rate needs two checks")] + disk_lines
+
+        # per physical disk: busy % catches random-I/O thrash that MB/s misses
+        perdisk = psutil.disk_io_counters(perdisk=True)
+        busy = disk_busy(perdisk_prev, perdisk, dt)
+        perdisk_prev = perdisk
+        status.append("disks: " + " | ".join(f"{labels.get(n, n)} busy {b:.0f}% {r:.1f} MB/s"
+                                             for n, (b, r) in sorted(busy.items())))
+        ops = {pid: ((v[3] - io_prev[pid][3]) / dt, v[0], v[1]) for pid, v in io.items()
+               if pid in io_prev and len(v) > 3 and len(io_prev[pid]) > 3}
+        for n, (b, r) in busy.items():
+            busy_streak[n] = busy_streak.get(n, 0) + 1 if b >= DISK_BUSY_PCT else 0
+            if busy_streak[n] >= 3:
+                top = sorted(ops.items(), key=lambda kv: kv[1][0], reverse=True)[:3]
+                inc.add("disk_busy", labels.get(n, n),
+                        f"{b:.0f}% busy at only {r:.1f} MB/s for {busy_streak[n]} checks (random I/O?); top I/O ops: "
+                        + "; ".join(f"{nm} pid {pid} {o:.0f} ops/s ({cmd[:100]})" for pid, (o, nm, cmd) in top))
+
+        # GPU: utilisation, memory, temperature
+        for idx, name, util, used, total, temp in ([] if dry_run else gpu_status()):
+            status.append(f"gpu{idx} {name}: {util:.0f}% | mem {used:.0f}/{total:.0f} MB | {temp:.0f} C")
+            gpu_streak[idx] = gpu_streak.get(idx, 0) + 1 if util >= GPU_BUSY_PCT else 0
+            if gpu_streak[idx] >= 3:
+                inc.add("gpu_hog", f"gpu{idx}", f"{util:.0f}% for {gpu_streak[idx]} checks, {temp:.0f} C; apps: {gpu_apps()}")
+            if temp >= GPU_HOT_C:
+                inc.add("gpu_hot", f"gpu{idx}", f"{temp:.0f} C at {util:.0f}% util; apps: {gpu_apps()}")
 
         # per-process disk hogs
         rates = {}
-        for pid, (name, cmd, b) in io.items():
+        for pid, (name, cmd, b, _ops) in io.items():
             if pid in io_prev:
                 rates[pid] = ((b - io_prev[pid][2]) / dt / 1e6, name, cmd)
         for pid in list(hog_streak):
