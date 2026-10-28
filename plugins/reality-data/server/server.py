@@ -138,14 +138,15 @@ def price(symbol: str, start: str, end: str | None = None, adjusted: bool = Fals
         "Structured fundamentals, segments and KPIs for a company from ar_facts, "
         "results_xbrl, deck_figures and concall_facts. kind: segments | financials | "
         "kpis | guidance | results | deck | concall | ar | free text. period: FY25, "
-        "Q4FY26, 2025-03-31, or omitted. Each fact carries source, doc id, page, period, "
-        "basis, quote and URL/local path where available."
+        "Q4FY26, 2025-03-31, or omitted. as_of (YYYY-MM-DD) keeps only facts whose own "
+        "filing timestamp is on or before that day. Each fact carries source, doc id, page, "
+        "period, basis, quote and URL/local path where available."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
 def facts(symbol: str, kind: str | None = None, period: str | None = None,
-          limit: int = 80) -> dict[str, Any]:
-    return _safe(lambda: core.facts(symbol, kind=kind, period=period, limit=limit))
+          limit: int = 80, as_of: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: core.facts(symbol, kind=kind, period=period, limit=limit, as_of=as_of))
 
 
 # --- lookups: market ---
@@ -332,14 +333,16 @@ import lookups_docs as _lookups_docs  # noqa: E402  (co-located module, same imp
         "transcripts, annual reports and announcements. Each entry carries the filing date, "
         "title, page count, the store keys (sha256 / doc_id / NEWSID) and has_text / "
         "has_facts per store. Filters: doc_type (deck|transcript|ar|announcement), "
-        "date_from, date_to. Answers 'what is the latest X'."
+        "date_from, date_to, as_of (never list a document first known after that day). "
+        "Answers 'what is the latest X'."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
 def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
-         date_to: str | None = None, limit: int = 20) -> dict[str, Any]:
+         date_to: str | None = None, limit: int = 20,
+         as_of: str | None = None) -> dict[str, Any]:
     return _safe(lambda: _lookups_docs.docs(symbol, doc_type=doc_type, date_from=date_from,
-                                            date_to=date_to, limit=limit))
+                                            date_to=date_to, limit=limit, as_of=as_of))
 
 
 @server.tool(
@@ -349,12 +352,15 @@ def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
         "and return one page's full text plus the facts extracted on that page and the page "
         "count ('page 21 of 79'). Text comes from the stored chunks, the local PDF (PyMuPDF) "
         "or a Drive fetch by sha256 (fetched=true when downloaded); for decks whose PDF is "
-        "gone it falls back to the stored page extraction."
+        "gone it falls back to the stored page extraction. as_of (YYYY-MM-DD) refuses a "
+        "document first known after that day."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
-def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None) -> dict[str, Any]:
-    return _safe(lambda: _lookups_docs.doc_page(symbol, date, page, doc_type=doc_type))
+def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None,
+             as_of: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: _lookups_docs.doc_page(symbol, date, page, doc_type=doc_type,
+                                                as_of=as_of))
 
 
 @server.tool(
@@ -363,14 +369,15 @@ def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None) -> 
         "Lexical search (LIKE over bounded per-document rows, plus deck PDF text) inside one "
         "company's documents, optionally restricted to one doc_type and one filing date "
         "(±3 days). Returns passages with doc type, date, page (when the page is in the text) "
-        "and the exact quote. This is the 'what did they say about X in the Y transcript' tool."
+        "and the exact quote. This is the 'what did they say about X in the Y transcript' tool. "
+        "as_of (YYYY-MM-DD) is pushed into every store's SQL; later passages never come back."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
 def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | None = None,
-             top_k: int = 8) -> dict[str, Any]:
+             top_k: int = 8, as_of: str | None = None) -> dict[str, Any]:
     return _safe(lambda: _lookups_docs.doc_find(symbol, terms, doc_type=doc_type, date=date,
-                                                top_k=top_k))
+                                                top_k=top_k, as_of=as_of))
 # --- end lookups: docs ---
 
 
