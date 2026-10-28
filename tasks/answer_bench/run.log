@@ -1,0 +1,154 @@
+  1 MB0001 PARTIAL        5c  2.80s  AEROFLEX products + close on a date
+  2 MB0002 BLOCKED_TOOL   4c  0.93s  532627 latest AR: control change
+  3 MB0003 BLOCKED_SCHEMA 6c 16.24s  544161 business + segments
+  4 MB0004 PARTIAL        2c  0.27s  P/B now vs stored
+  5 MB0005 BLOCKED_TOOL   8c  2.04s  DEEDEV Aug-2026 concall remark
+  6 MB0006 PARTIAL        4c  0.75s  KRISHNADEF segment revenue, latest quarter
+  7 MB0007 PARTIAL        3c  0.80s  Bank of Maharashtra net NPA %
+  8 MB0008 ANSWERED       4c  0.47s  ZENTEC 3-yr price CAGR
+  9 MB0009 BLOCKED_TOOL   4c  1.54s  VISHNU Note 5 of latest results + geo split
+ 10 MB0010 ANSWERED       2c  0.56s  VINCOFE public shareholding Sep 2026
+ 11 MB0011 PARTIAL        4c  4.55s  Why gold stocks fell Jun–Jul 2026
+ 12 MB0012 BLOCKED_SCHEMA 7c  5.31s  HFC securitisation leader, QoQ/YoY with NPA guard
+ 13 MB0013 PARTIAL        4c  1.21s  OMCs: record Q4 then loss Q1; earliest PIT signal
+ 14 MB0014 PARTIAL        2c  0.03s  MONQ50 ETF jump/fall + tracking error
+ 15 MB0015 PARTIAL        7c  2.13s  Garware: tariff hit, then negative correlation
+ 16 MB0016 ANSWERED       2c  0.44s  RBI repo hike causes; PIB or RBI only
+ 17 MB0017 BLOCKED_SCHEMA 5c  1.22s  Second-hand electronics boom CY2026: who benefits
+ 18 MB0018 PARTIAL        3c  0.31s  Coal gasification drafts vs the earlier scheme
+ 19 MB0019 ANSWERED       5c  1.79s  PARAGMILK on El Niño; dairy peers
+ 20 MB0020 PARTIAL        2c  0.43s  Data-centre tax holiday outcome so far
+ 21 MB0021 ANSWERED       2c  0.72s  What was the delivery volume (delivered quantity, not total traded qua
+ 22 MB0022 ANSWERED       2c  0.54s  What is the promoter holding of NSE: BLACKBUCK as of September 2026?
+ 23 MB0023 BLOCKED_SCHEMA 2c  0.82s  How many manufacturing facilities does Ganesha Ecosphere have, per its
+ 24 MB0024 BLOCKED_SCHEMA 3c  1.30s  What are the key products of Chemcon Speciality Chemicals per its inve
+ 25 MB0025 ANSWERED       4c 17.01s  How many equity shares does Lumax Auto Technologies have, and what is 
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+ 26 MB0026 PARTIAL        4c  2.78s  What did BSE: 540879 show on page 21 (of 79) of its investor presentat
+ 27 MB0027 BLOCKED_TOOL   5c  2.34s  What did ISIN INE864I01014 say about its fuel-cell capacity expansion 
+ 28 MB0028 ANSWERED       2c  0.95s  What was the YTD high price of BSE: 532810 in 2026 (value and date)?
+ 29 MB0029 BLOCKED_SCHEMA 8c  3.25s  What did NSE: SAILIFE say about its newly commissioned facilities, as 
+ 30 MB0030 BLOCKED_TOOL   5c  3.08s  Per the transcript of 18 September 2026 of 540678 / COCHINSHIP: what d
+ 31 MB0831 PARTIAL        4c  3.44s  Reliance has just reported Q2FY26. Is this a good level to start a pos
+ 32 MB0832 PARTIAL        5c  3.26s  DMart is well below its 52-week high but still expensive on PE. For so
+ 33 MB0839 PARTIAL        3c  0.23s  Defence pack: HAL, BEL, Mazagon Dock and BDL. Which has the order book
+ 34 MB0840 PARTIAL        5c  3.40s  Railway names RVNL, IRFC, IRCON and RITES all move with rail capex. Wh
+ 35 MB0842 PARTIAL        2c  0.74s  Ola Electric's listing pop faded quickly. What was the listing-day ret
+ 36 MB0867 PARTIAL        5c  4.54s  Nykaa has been flat for years. What has actually improved in the busin
+ 37 MB0883 ANSWERED       3c  1.46s  Vodafone Idea: did the promoter group raise its stake through the pref
+ 38 MB0885 PARTIAL        4c  0.32s  Which large-cap had the biggest promoter stake sale in the last year, 
+ 39 MB0886 BLOCKED_SCHEMA 8c  4.89s  Infosys Q2FY26: what should I watch in the print, and which line item 
+ 40 MB0890 PARTIAL        4c  1.04s  Reliance: which segment actually drove the quarter, and did the market
+ 41 MB0898 PARTIAL        7c  5.48s  Eternal (ex-Zomato) on EV/sales: what does the multiple imply about th
+ 42 MB0921 BLOCKED_SCHEMA 4c  6.23s  Adani Enterprises: do receivables and inventory growth run ahead of re
+ 43 MB0935 BLOCKED_SCHEMA 8c  3.63s  Trent: what does a new store earn at maturity, and how long is the pay
+ 44 MB0948 BLOCKED_SCHEMA 6c  2.35s  Dixon: with PLI and new categories, what is the reinvestment need per 
+ 45 MB0958 PARTIAL        8c  4.66s  Mphasis: direct-client mix has risen. Did DSO and CFO/PAT improve with
+ 46 MB0969 NOT_IN_DATA    8c  3.77s  Hindustan Zinc: the payout is very high. Is it sustainable at current 
+ 47 MB0973 BLOCKED_TOOL   4c  1.97s  Syrma: how much revenue depends on the top client, and has that depend
+ 48 MB0979 PARTIAL        4c  3.31s  For Polycab, what would prove the power-capex cycle has peaked: order 
+ 49 MB0980 PARTIAL        3c  3.48s  For Titan, what would break the growth thesis: a gold-price spike, lab
+ 50 MB0983 ANSWERED       2c  0.88s  TCS has been range-bound for two months. What are the range edges, and
+ 51 MB0989 PARTIAL        5c  2.85s  IRFC's breakout came with high delivery %. Does high delivery at a bre
+ 52 MB0999 PARTIAL        2c  1.68s  Vodafone Idea is deeply oversold again. Has an oversold RSI ever marke
+ 53 MB1006 BLOCKED_SCHEMA 0c  0.00s  Tata Motors PV gapped up after its first post-demerger result. Has the
+ 54 MB1007 PARTIAL        3c  1.34s  Infosys gapped down on results and then drifted. Did the gap act as re
+ 55 MB1010 PARTIAL        2c  0.57s  Paytm has had several earnings gaps. Which ones filled within a month,
+ 56 MB1011 PARTIAL        4c  3.95s  HDFC Bank has underperformed the Nifty for a quarter. Is the relative 
+ 57 MB1015 PARTIAL        1c  0.35s  DMart versus Trent: which has the better six-month relative strength a
+ 58 MB1016 PARTIAL        1c  0.10s  Reliance futures added open interest while price rose. Is that long bu
+ 59 MB1022 PARTIAL        1c  0.34s  BANKNIFTY max pain is below spot into expiry. How often does the index
+ 60 MB1026 PARTIAL        5c  2.16s  Suzlon printed a delivery spike at a 52-week high. Was the spike genui
+ 61 MB0332 BLOCKED_TOOL   5c  1.43s  Dixon's Vivo joint venture: from which quarter does management expect 
+ 62 MB0365 PARTIAL        1c  0.68s  Which managements said working capital or receivables from government 
+ 63 MB0368 PARTIAL        1c  0.55s  Which managements said they are evaluating acquisitions or inorganic g
+ 64 MB0373 PARTIAL        2c  4.22s  Which companies said export demand recovered in the last two quarters,
+ 65 MB0375 PARTIAL        2c  0.67s  Which managements said margin has bottomed and expect recovery next qu
+ 66 MB0378 PARTIAL        3c  0.91s  Which companies filed a 'Statement on impact of audit qualification' w
+ 67 MB0389 PARTIAL        1c  0.02s  Which companies have filed a 'Declaration of unmodified opinion' for e
+ 68 MB0411 ANSWERED       1c  0.00s  Which companies wrote down inventory or took an impairment in Q1 FY27,
+ 69 MB0416 PARTIAL        3c  1.12s  Which companies are in a 5% or lower price band on results day, and di
+ 70 MB0417 PARTIAL        1c  0.02s  Q1FY27 audit-qualification statements — how many
+ 71 MB0421 ANSWERED       5c  0.55s  On 4 June 2024 the Nifty 50 fell 5.93%. What was the sector dispersion
+ 72 MB0424 ANSWERED       1c  0.02s  4 Jun 2024 top losers, turnover floor applied
+ 73 MB0430 PARTIAL        3c  1.60s  On 24 September 2026 the Nifty 50 fell 1.64% but PB Fintech fell 36%. 
+ 74 MB0435 PARTIAL        4c  0.06s  On 4 June 2024 the Nifty IT fell only 0.6% while Nifty Energy fell 12.
+ 75 MB0436 PARTIAL        4c  1.42s  Siemens fell 42.93% on 7 April 2025. Was that a real loss of value? Ex
+ 76 MB0449 PARTIAL        5c  3.15s  Titagarh rose 2.06% on 13 August 2026 after results the previous eveni
+ 77 MB0464 PARTIAL        5c  1.52s  Copper is also an input for switchgear and transformers. Does the SIEM
+ 78 MB0466 PARTIAL        8c  4.17s  The rupee went from 81.48 on 30 September 2022 to 96.05 on 30 Septembe
+ 79 MB0472 PARTIAL        3c  0.76s  A rate cut compresses a bank's NIM but lifts loan growth. For HDFC Ban
+ 80 MB0477 PARTIAL        7c  4.56s  Repo up 250bp over two years: how would an auto-finance NBFC's spread 
+ 81 MB0482 PARTIAL        7c  2.48s  EV makers are discounting heavily. Which listed EV maker's margin is m
+ 82 MB0490 PARTIAL        5c  2.42s  BHARTIARTL ARPU vs subscriber split FY26
+ 83 MB0491 BLOCKED_TOOL   8c  6.57s  Gold-loan ticket sizes are rising. What does that do to Muthoot's loan
+ 84 MB0494 BLOCKED_TOOL   6c  2.63s  Data-centre capex is booming. Which listed power-equipment name has th
+ 85 MB0496 PARTIAL        2c  1.99s  India Semiconductor Mission 2.0 was announced with a Rs 1,000 crore al
+ 86 MB0506 NOT_IN_DATA    0c  0.00s  The FY26 Budget set up a Rs 20,000 crore Nuclear Energy Mission for SM
+ 87 MB0527 PARTIAL        3c  0.85s  Suzlon guided a 17-18% EBITDA margin for FY27. What has it actually re
+ 88 MB0531 PARTIAL        3c  0.67s  Polycab ne Q1FY27 mein 3.2 billion capex kiya — annual plan se aage ya
+ 89 MB0540 BLOCKED_TOOL   6c  3.76s  SAIL advanced capital repairs into Q1 FY27 to free up later quarters. 
+ 90 MB0579 NOT_IN_DATA    1c  0.33s  Which sectors did FIIs sell most in September 2026? terse: FII sector 
+ 91 MB0584 PARTIAL        2c  0.62s  Which large caps saw delivery percentage fall the most in the week aft
+ 92 MB0601 BLOCKED_SCHEMA 4c  0.57s  If the monsoon fails, which listed sectors are most exposed, and in wh
+ 93 MB0602 PARTIAL        8c 19.15s  Crude is already at 103.53 on 30 September 2026. If it holds, which li
+ 94 MB0604 BLOCKED_SCHEMA 2c  0.10s  If the rupee goes to 100, who wins and who loses among listed companie
+ 95 MB0609 PARTIAL        2c  1.70s  If the RBI cuts 100bp over a year, which listed sectors re-rate first,
+ 96 MB0617 NOT_IN_DATA    0c  0.00s  How many electric two-wheelers did Ola Electric deliver in September 2
+ 97 MB0619 NOT_IN_DATA    0c  0.00s  Which company will be the next Nifty 50 inclusion, and when?
+ 98 MB0627 NOT_IN_DATA    0c  0.00s  Which mid-cap will double in 2027?
+ 99 MB0040 PARTIAL        3c  1.42s  What does Life Insurance Corporation Of India (NSE: LICI) make, and wh
+100 MB0044 BLOCKED_TOOL   2c  0.14s  570002 latest annual report control change
+101 MB0071 BLOCKED_TOOL   6c  1.90s  What did Jash Engineering (NSE: JASH)'s management say about demand an
+102 MB0094 PARTIAL        3c  0.81s  BANKINDIA net npa Q1FY27
+103 MB0100 NOT_IN_DATA    1c  0.25s  What was AU Small Finance Bank (NSE: AUBANK)'s net NPA % for Q2FY27? I
+104 MB0113 BLOCKED_TOOL   4c  2.91s  Note 5 of NSE: ADANIGAS (now ATGL)'s Q1FY27 results — what does it say
+105 MB0138 PARTIAL        4c  0.60s  For the gold-jewellery theme members, how did the gold price move in J
+106 MB0140 NOT_IN_DATA    1c  0.25s  Why did PNGS Reva Diamond Jewellery (NSE: PNGSREVA) move in 7-19 Oct 2
+107 MB0144 BLOCKED_SCHEMA 7c  2.67s  hfc securitisation leader q1fy27 net npa
+108 MB0148 PARTIAL        8c  2.79s  For the NIFTY HOUSING FINANCE constituents, rank the financial compani
+109 MB0151 ANSWERED       4c  1.11s  Sugar Q4FY26-to-Q1FY27 profit swing — which companies in Sugar swung f
+110 MB0152 ANSWERED       4c  1.15s  Media & Entertainment Q4FY26-to-Q1FY27 profit swing — which companies 
+111 MB0154 PARTIAL        4c  1.17s  omc q4fy26 profit q1fy27 loss earliest pit
+112 MB0159 PARTIAL        3c  0.84s  As of 30 June 2026, what did the data already show about the OMC profi
+113 MB0164 ANSWERED       2c  0.03s  QNIFTY jump tracking error Sep 2026
+114 MB0197 BLOCKED_SCHEMA 1c  0.01s  For all listed companies in electronics, what does the policy record s
+115 MB0199 PARTIAL        3c  0.66s  As of 30 June 2026, what was known about the as of 30 June 2026 electr
+116 MB0201 PARTIAL        5c  4.77s  For the Scheme for promotion of coal/lignite gasification (2026-02-01)
+117 MB0218 NOT_IN_DATA    1c  0.03s  For the NIFTY SMALLCAP 100 constituents, how exposed are the members t
+118 MB0224 PARTIAL        2c  0.65s  data centre tax holiday outcome 2025-2026
+119 MB0228 PARTIAL        3c  0.36s  For the NIFTY SMALLCAP 500 constituents, what has the tax holiday mean
+120 MB0245 ANSWERED       2c  0.58s  Himadri Speciality Chemical (NSE: HSCL) mein promoter ki holding Sep 2
+121 MB0264 NOT_IN_DATA    3c  0.87s  ANDHRAPAP products acquisitions deck 2025-02-08
+122 MB0270 NOT_IN_DATA    1c  0.24s  What are 21st Century Management Services (NSE: 21STCENMGM)'s key prod
+123 MB0310 ANSWERED       2c  0.55s  What was Metropolis Healthcare (NSE: METROPOLIS)'s YTD high for 2026, 
+124 MB0311 BLOCKED_SCHEMA 8c  2.37s  What did Onesource Specialty Pharma (NSE: ONESOURCE) say about its new
+125 MB0314 PARTIAL        8c  3.18s  RAILTEL newly commissioned facilities latest
+126 MB0320 NOT_IN_DATA    0c  0.00s  What has 21st Century Management Services (NSE: 21STCENMGM) said about
+127 MB0328 PARTIAL        5c  2.35s  For the NIFTY MIDCAP 150 constituents, what MOUs or partnerships and m
+128 MB0637 PARTIAL        3c  0.51s  Edible-oil and crude-linked packaging costs rise into a weak rural qua
+129 MB0640 PARTIAL        3c  0.51s  Gold rises 20%. The jeweller's inventory gains in value, the customer 
+130 MB0655 ANSWERED       2c  0.45s  The RBI raised the repo 25 bps to 5.50% on 7 October 2026 and moved th
+131 MB0676 PARTIAL        3c  0.59s  Build the screen: mid-caps with high import content, a long cash cycle
+132 MB0697 BLOCKED_SCHEMA 2c  0.55s  A competitor country's garment industry is disrupted. EU and US buyers
+133 MB0702 PARTIAL        2c  0.29s  Seaborne coal prices spike. The generator's fuel cost rises, the regul
+134 MB0704 BLOCKED_SCHEMA 2c  0.54s  Foreign investors sell. The mid-cap index falls, the planned QIP windo
+135 MB0710 PARTIAL        1c  0.05s  The US raises the tariff on shrimp and the EU opens a quota. The India
+136 MB0715 PARTIAL        2c  0.63s  A large diversified group enters decorative paints. Trace it to the in
+137 MB0719 BLOCKED_TOOL   4c  2.54s  A large bank cuts its home-loan rate to win prime customers. Trace it 
+138 MB0728 BLOCKED_TOOL   3c  0.95s  The competing country's garment capacity comes back on line. Trace the
+139 MB0752 ANSWERED       2c  1.04s  Crude moves 20%. How many quarters pass before the paint makers' margi
+140 MB0764 BLOCKED_TOOL   5c  5.56s  Freight doubles. How many quarters before the importer's cash cycle le
+141 MB0767 BLOCKED_TOOL   2c  1.07s  A price hike is announced. How many quarters before the volume loss sh
+142 MB0786 NOT_IN_DATA    0c  0.00s  Electric vehicles take share. The ancillary's engine-parts revenue fal
+143 MB0789 PARTIAL        1c  0.01s  A tariff on generic drugs raises the cost of the US business and lower
+144 MB0793 BLOCKED_SCHEMA 1c  0.00s  Bank NIM: does the weighted average call rate, the deposit rate, or cr
+145 MB0799 BLOCKED_SCHEMA 1c  0.01s  US generic drug erosion: ANDA approvals, price erosion commentary, or 
+146 MB0801 BLOCKED_SCHEMA 1c  0.01s  Freight: the Baltic index, the container rate, or the charter rate fir
+147 MB0802 BLOCKED_SCHEMA 1c  0.01s  Foreign flow: FPI limit headroom, index membership changes, or the del
+148 MB0806 BLOCKED_SCHEMA 1c  0.01s  Dairy procurement: rainfall, fodder price, or the cooperative's procur
+149 MB0808 BLOCKED_SCHEMA 1c  0.01s  Capital-goods activity: order inflow, GST on capital goods, or the cre
+150 MB0829 PARTIAL        6c  2.97s  A company cuts its guidance on the call and the transcript is publishe
+
+150 rows in 273.4s  {'PARTIAL': 76, 'BLOCKED_TOOL': 17, 'BLOCKED_SCHEMA': 24, 'ANSWERED': 20, 'NOT_IN_DATA': 13}
+total tool calls 514 max/case 8
