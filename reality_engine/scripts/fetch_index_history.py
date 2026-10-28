@@ -236,7 +236,18 @@ class Fetcher:
             return "absent"
         body = r.content
         if magic and not body.lstrip()[:len(magic)] == magic:
-            raise SystemExit(f"unexpected content for {url}: {body[:80]!r}")
+            # A soft-404 HTML page for a missing notice: log it and go on, but stop
+            # if several come in a row (that looks like a block page, not a gap).
+            self.bad_streak = getattr(self, "bad_streak", 0) + 1
+            if self.bad_streak >= 5:
+                raise SystemExit(f"unexpected content x5 in a row, last {url}: {body[:80]!r}")
+            print(f"unexpected content for {url} (logged as missing): {body[:60]!r}", flush=True)
+            with self.missing.open("a", encoding="utf-8") as f:
+                f.write(url + "\n")
+            self.counts["absent"] += 1
+            self.record(url, "not_pdf", len(body), self.latencies[-1])
+            return "absent"
+        self.bad_streak = 0
         path.write_bytes(body)
         self.counts["ok"] += 1
         self.record(url, "ok", len(body), self.latencies[-1])
