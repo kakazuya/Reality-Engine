@@ -1,10 +1,12 @@
 """RIPPLE: trigger -> exposure -> transmission -> market, stopping at the gap.
 
-Stage 1 reads ``policy_events`` (PIT ``published_at``).  Stage 2 maps its
-sectors/companies to held ISINs through ``master_companies``.  Stage 4 measures
-the market from the daily series.  Stage 3 (cost/segment transmission) is not
-held yet, so a chain that needs it says which table is missing instead of
-inventing the link.
+Stage 1 reads ``policy_events`` (PIT ``published_at``).  When the claim-target table
+is held (``macro_claim_target`` in the live DB, or the pilot DB named by
+``REALITY_MACRO_PILOT_DB``), stage 2 takes the claim's own curated targets —
+sector / basic industry / ISIN / theme — instead of re-parsing the free-text
+``policy_events.sectors``; without it the planner falls back to the text parse so
+nothing regresses.  Stage 3 (cost/segment transmission) is not held yet, so a
+chain that needs it says which table is missing instead of inventing the link.
 """
 from __future__ import annotations
 
@@ -17,9 +19,10 @@ from reality_engine.query import compute
 from . import envelope, fmt_num, terms_clause
 
 CHECKED = ["equity_intelligence.policy_events", "equity_intelligence.master_companies",
-           "equity_intelligence.daily_price_delivery"]
+           "equity_intelligence.daily_price_delivery", "macro_claim_target"]
 MISSING_TABLES = ["company_cost_structure", "company_segment_pnl", "company_price_revision",
                   "macro_claim_target", "company_sector_pit"]
+MAX_TARGETS = 40
 
 
 def _policy(ctx: Any, slots: dict[str, Any], as_of: str) -> list[dict[str, Any]]:
@@ -57,6 +60,94 @@ def _targets(ctx: Any, policy: dict[str, Any]) -> list[dict[str, Any]]:
             f"SELECT isin, nse_symbol, company_name FROM master_companies WHERE {clauses} "
             "AND is_active=1 LIMIT 25", [f"%{s}%" for s in sectors])
     return []
+
+
+def _claim_target_rows(ctx: Any, policy_id: Any, as_of: str) -> tuple[list[dict], str | None]:
+    """Target rows for one claim, PIT-filtered on the claim document's known_at."""
+    for db in ("equity_intelligence", "macro_pilot"):
+        try:
+            claim = ctx.one(db, "SELECT doc_id, known_at FROM macro_claim WHERE claim_id=?",
+                            (policy_id,))
+        except Exception:  # noqa: BLE001 - a DDL-built table may not carry the pilot column
+            try:
+                claim = ctx.one(db, "SELECT doc_id FROM macro_claim WHERE claim_id=?",
+                                (policy_id,))
+            except Exception:  # noqa: BLE001 - the table is a pilot, not every root has it
+                continue
+        if not claim:
+            continue
+        known = str(claim.get("known_at") or "")
+        if not known:
+            doc = ctx.one(db, "SELECT known_at FROM macro_doc WHERE doc_id=?",
+                          (claim.get("doc_id"),))
+            known = str((doc or {}).get("known_at") or "")
+        if not known or known[:10] > as_of:
+            continue
+        rows = ctx.rows(
+            db,
+            "SELECT target_kind, target_id, direction, weight FROM macro_claim_target "
+            "WHERE claim_id=? ORDER BY weight DESC, target_kind, target_id LIMIT ?",
+            (policy_id, MAX_TARGETS))
+        if rows:
+            return rows, db
+    return [], None
+
+
+def _company_rows(ctx: Any, sql: str, args: tuple) -> list[dict]:
+    try:
+        return ctx.rows("equity_intelligence", sql, args)
+    except Exception:  # noqa: BLE001 - a fixture root may hold only one industry table
+        return []
+
+
+def _targets_from_claims(ctx: Any, rows: list[dict], as_of: str) -> tuple[list[dict], list[str]]:
+    """macro_claim_target -> held ISINs (sector/basic_industry/isin/theme)."""
+    found: dict[str, dict] = {}
+    notes: list[str] = []
+
+    def add(company: dict, kind: str, ident: str) -> None:
+        isin = str(company.get("isin") or "")
+        if isin and isin not in found and len(found) < MAX_TARGETS:
+            found[isin] = {"isin": isin, "nse_symbol": company.get("nse_symbol"),
+                           "company_name": company.get("company_name"),
+                           "target_kind": kind, "target_id": ident}
+
+    for target in rows:
+        kind, ident = str(target.get("target_kind") or ""), str(target.get("target_id") or "")
+        if kind == "isin":
+            add({"isin": ident}, kind, ident)
+        elif kind == "sector":
+            for row in _company_rows(
+                    ctx, "SELECT isin, symbol AS nse_symbol FROM company_industry "
+                         "WHERE sector=? LIMIT ?", (ident, MAX_TARGETS)):
+                add(row, kind, ident)
+            for row in _company_rows(
+                    ctx, "SELECT isin, nse_symbol, company_name FROM master_companies "
+                         "WHERE is_active=1 AND (sector=? OR industry=?) LIMIT ?",
+                    (ident, ident, MAX_TARGETS)):
+                add(row, kind, ident)
+        elif kind == "basic_industry":
+            for row in _company_rows(
+                    ctx, "SELECT isin, symbol AS nse_symbol FROM company_industry "
+                         "WHERE basic_industry=? LIMIT ?", (ident, MAX_TARGETS)):
+                add(row, kind, ident)
+        elif kind == "theme":
+            try:
+                theme_rows = ctx.rows(
+                    "equity_intelligence",
+                    "SELECT isin FROM universe_membership WHERE theme=? "
+                    "AND (valid_from IS NULL OR valid_from<=?) "
+                    "AND (valid_to IS NULL OR valid_to>=?) LIMIT ?",
+                    (ident, as_of, as_of, MAX_TARGETS))
+            except Exception:  # noqa: BLE001 - theme membership is not built in the live DB
+                theme_rows = []
+            for row in theme_rows:
+                add(row, kind, ident)
+            if not theme_rows:
+                notes.append(f"theme '{ident}' membership table not held")
+        else:
+            notes.append(f"{kind} target '{ident}' has no held ISIN map")
+    return list(found.values()), notes
 
 
 def _market(ctx: Any, isins: list[str], anchor: str, as_of: str) -> dict[str, float]:
@@ -104,18 +195,25 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         return envelope("RIPPLE", ok=False, why="no_doc", checked=CHECKED,
                         detail=detail, nid_reason=detail)
     policy = policies[0]
-    targets = _targets(ctx, policy)
+    claim_rows, claim_db = _claim_target_rows(ctx, policy["id"], as_of)
+    claim_targets, claim_notes = (_targets_from_claims(ctx, claim_rows, as_of)
+                                  if claim_rows else ([], []))
+    targets = claim_targets or _targets(ctx, policy)
+    target_source = (f"macro_claim_target ({claim_db})" if claim_targets
+                     else "policy_events.sectors")
     anchor = str(policy.get("effective_date") or policy.get("published_at") or as_of)[:10]
     moves = _market(ctx, [t["isin"] for t in targets], anchor, as_of)
     if not targets:
-        missing = gate_table or "company_sector_pit"
+        missing = gate_table or ("macro_claim_target" if claim_rows else "company_sector_pit")
         detail = (f"policy {policy.get('title') or policy.get('policy_name')} matched, but its "
                   f"sector/company targets do not map to held ISINs ({missing})")
+        if claim_notes:
+            detail += "; " + "; ".join(claim_notes[:2])
         return envelope("RIPPLE", ok=False, why="schema", checked=CHECKED, gap=missing,
                         detail=detail, nid_reason=detail)
     detail = (f"trigger: {policy.get('policy_name') or policy.get('title')} "
               f"(known {str(policy.get('published_at'))[:10]}, effective {anchor}); "
-              f"{len(targets)} held target(s)")
+              f"{len(targets)} held target(s) via {target_source}")
     ranked = sorted(moves.items(), key=lambda item: item[1], reverse=True)
     if ranked:
         names = {t["isin"]: t["nse_symbol"] for t in targets}
@@ -123,6 +221,8 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                                            for i, v in ranked[:4])
     degraded = ["transmission hop (input share / pass-through) is not held: "
                 "company_cost_structure, company_segment_pnl"]
+    if claim_notes:
+        degraded.append("claim target map: " + "; ".join(claim_notes[:3]))
     ok = True
     return envelope(
         "RIPPLE", ok=ok, gap=None,
