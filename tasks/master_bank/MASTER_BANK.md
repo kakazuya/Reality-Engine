@@ -2,7 +2,7 @@
 
 Built by `tasks/master_bank/build_master_bank.py`. Re-run: `python tasks/master_bank/build_master_bank.py --check`.
 
-Sources: Shivam's 30 fixed regressions (kept as written, `regression: true`), the 300 variations, the 300 open questions, the 200 ripple questions (the Reddit bank is not present yet; the loader is ready for it).
+Sources: Shivam's 30 fixed regressions (kept as written, `regression: true`), the 300 variations, the 300 open questions, the 200 ripple questions, and the Reddit bank.
 
 ## 1. Counts per source bank
 
@@ -12,10 +12,10 @@ Sources: Shivam's 30 fixed regressions (kept as written, `regression: true`), th
 | variations300 | 300 | 300 | 0 | 300 |
 | open300 | 300 | 300 | 0 | 300 |
 | ripple200 | 200 | 200 | 0 | 200 |
-| reddit200 | 0 | 0 | 0 | 0 |
-| **total** | 830 | 830 | 0 | 830 |
+| reddit200 | 200 | 200 | 0 | 200 |
+| **total** | 1030 | 1030 | 0 | 1030 |
 
-Unique cases: **830**. Originals kept: **30**. Duplicate rows merged: **0**. No two rows are the same case once the naming / style / edge / period-label separations are applied: no two source banks share an entity+period at all, and inside a bank the ten variations deliberately change the entity, the wording dimension or the period label. The dedupe still runs on every build; the fake Reddit check proves it merges when a real duplicate appears.
+Unique cases: **1030**. Originals kept: **30**. Duplicate rows merged: **0**. No two rows are the same case once the naming / style / edge / period-label separations are applied: no two source banks share an entity+period at all, and inside a bank the ten variations deliberately change the entity, the wording dimension or the period label. The dedupe still runs on every build; the fake Reddit check proves it merges when a real duplicate appears.
 
 ## 2. How the merge works
 
@@ -38,54 +38,56 @@ Each cell is `cases (terse/natural/Hinglish/point-in-time)`.
 | family | stock | industry | sector | theme | index | market-cap bucket | price band | policy | macro | market-wide | total |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 111 (17/66/12/16) | 11 (0/11/0/0) | . | . | 11 (0/11/0/0) | . | . | . | . | 3 (0/2/1/0) | 136 |
-| 2 | 125 (21/63/13/28) | 12 (0/9/1/2) | 1 (0/1/0/0) | . | 14 (0/11/1/2) | 3 (0/3/0/0) | . | . | . | 7 (1/5/1/0) | 162 |
-| 3 | 45 (4/34/4/3) | 12 (2/8/1/1) | . | . | 3 (0/3/0/0) | . | . | . | . | 23 (0/22/1/0) | 83 |
-| 4 | 3 (0/3/0/0) | 11 (2/7/1/1) | 1 (0/1/0/0) | 10 (2/6/1/1) | 2 (0/1/1/0) | 3 (0/3/0/0) | . | . | . | 7 (1/5/1/0) | 37 |
+| 2 | 145 (21/83/13/28) | 12 (0/9/1/2) | 1 (0/1/0/0) | . | 14 (0/11/1/2) | 3 (0/3/0/0) | . | . | . | 7 (1/5/1/0) | 182 |
+| 3 | 50 (4/39/4/3) | 12 (2/8/1/1) | . | . | 3 (0/3/0/0) | . | . | . | . | 23 (0/22/1/0) | 88 |
+| 4 | 11 (0/11/0/0) | 11 (2/7/1/1) | 1 (0/1/0/0) | 10 (2/6/1/1) | 2 (0/1/1/0) | 3 (0/3/0/0) | . | . | . | 9 (1/7/1/0) | 47 |
 | 5 | 9 (1/1/1/6) | 1 (0/1/0/0) | . | . | 1 (0/1/0/0) | . | . | . | . | . | 11 |
 | 6 | 18 (4/10/2/2) | 26 (4/14/2/6) | . | 19 (4/11/2/2) | 7 (0/6/0/1) | . | . | 18 (4/10/2/2) | . | . | 88 |
 | 7 | . | 3 (0/3/0/0) | . | 9 (2/5/1/1) | 3 (0/3/0/0) | . | . | 18 (4/10/2/2) | . | . | 33 |
-| 8 | 18 (4/10/2/2) | 12 (2/8/1/1) | . | . | 3 (0/3/0/0) | . | . | . | . | . | 33 |
-| 9 | 61 (7/47/4/3) | 12 (2/4/1/5) | . | . | 5 (0/4/0/1) | . | . | . | . | 1 (0/1/0/0) | 79 |
+| 8 | 22 (4/14/2/2) | 13 (2/9/1/1) | . | . | 3 (0/3/0/0) | . | . | . | . | . | 38 |
+| 9 | 66 (7/52/4/3) | 12 (2/4/1/5) | . | . | 5 (0/4/0/1) | . | . | . | . | 1 (0/1/0/0) | 84 |
 | 10 | . | . | . | . | . | . | . | . | . | . | 0 |
 | 11 | 27 (5/5/3/14) | 13 (2/3/1/7) | . | . | 4 (0/1/0/3) | . | . | . | 20 (0/12/0/8) | . | 64 |
 | 12 | 65 (4/55/5/1) | 11 (0/10/1/0) | . | . | . | . | . | 4 (0/4/0/0) | . | . | 80 |
 | 13 | . | 1 (1/0/0/0) | . | . | . | 1 (0/0/1/0) | . | . | . | 13 (0/10/3/0) | 15 |
-| 14 | 17 (1/14/2/0) | . | . | . | . | 2 (0/2/0/0) | 1 (0/1/0/0) | . | . | 25 (3/20/2/0) | 45 |
-| 15 | 14 (1/12/1/0) | 1 (0/1/0/0) | . | . | . | . | . | . | . | 15 (1/12/2/0) | 30 |
-| 16 | 15 (2/12/1/0) | 71 (0/68/3/0) | 8 (1/6/1/0) | 3 (0/3/0/0) | . | 3 (0/3/0/0) | . | 25 (0/24/1/0) | . | . | 125 |
-| 17 | 9 (1/7/1/0) | 5 (0/5/0/0) | . | 1 (0/1/0/0) | . | . | . | . | . | . | 15 |
-| 18 | . | 1 (0/1/0/0) | 7 (1/5/1/0) | 2 (0/2/0/0) | . | . | . | 40 (1/37/2/0) | . | . | 50 |
-| 19 | 2 (0/2/0/0) | 40 (1/38/1/0) | . | 1 (0/0/1/0) | . | 2 (0/2/0/0) | . | 10 (0/10/0/0) | . | . | 55 |
-| 20 | 8 (4/4/0/0) | 1 (0/1/0/0) | . | . | 1 (0/1/0/0) | 1 (1/0/0/0) | . | 2 (0/2/0/0) | . | 2 (1/1/0/0) | 15 |
-| **total (case x family)** | 547 | 244 | 17 | 45 | 54 | 15 | 1 | 117 | 20 | 96 | 1156 |
+| 14 | 31 (1/28/2/0) | . | . | . | . | 3 (0/3/0/0) | 1 (0/1/0/0) | . | . | 25 (3/20/2/0) | 60 |
+| 15 | 18 (1/16/1/0) | 2 (0/2/0/0) | . | . | . | . | . | . | . | 15 (1/12/2/0) | 35 |
+| 16 | 23 (2/20/1/0) | 73 (0/70/3/0) | 8 (1/6/1/0) | 3 (0/3/0/0) | . | 3 (0/3/0/0) | . | 25 (0/24/1/0) | . | . | 135 |
+| 17 | 34 (1/32/1/0) | 5 (0/5/0/0) | . | 1 (0/1/0/0) | . | . | . | . | . | . | 40 |
+| 18 | 4 (0/4/0/0) | 1 (0/1/0/0) | 7 (1/5/1/0) | 2 (0/2/0/0) | . | . | . | 41 (1/38/2/0) | . | . | 55 |
+| 19 | 6 (0/6/0/0) | 40 (1/38/1/0) | . | 2 (0/1/1/0) | . | 2 (0/2/0/0) | . | 10 (0/10/0/0) | . | . | 60 |
+| 20 | 13 (4/9/0/0) | 1 (0/1/0/0) | . | . | 1 (0/1/0/0) | 1 (1/0/0/0) | . | 2 (0/2/0/0) | . | 2 (1/1/0/0) | 20 |
+| none | 77 (0/75/1/1) | 2 (0/2/0/0) | 1 (0/1/0/0) | . | . | 1 (0/1/0/0) | . | 1 (0/1/0/0) | . | 3 (0/3/0/0) | 85 |
+| **total (case x family)** | 730 | 250 | 18 | 46 | 54 | 17 | 1 | 119 | 20 | 101 | 1356 |
 
-A case with more than one family counts in every family it lists, so the totals are (case x family) pairs and exceed the number of cases (830). Family 10 has zero source rows in every bank; the per-family table in §4 shows the empty family explicitly.
+A case with more than one family counts in every family it lists, so the totals are (case x family) pairs and exceed the number of cases (1030). Family 10 has zero source rows in every bank; the per-family table in §4 shows the empty family explicitly.
 
 ### 3.2 family x style
 
 | family | terse | natural | Hinglish | point-in-time | total |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 17 | 90 | 13 | 16 | 136 |
-| 2 | 22 | 92 | 16 | 32 | 162 |
-| 3 | 6 | 67 | 6 | 4 | 83 |
-| 4 | 5 | 26 | 4 | 2 | 37 |
+| 2 | 22 | 112 | 16 | 32 | 182 |
+| 3 | 6 | 72 | 6 | 4 | 88 |
+| 4 | 5 | 36 | 4 | 2 | 47 |
 | 5 | 1 | 3 | 1 | 6 | 11 |
 | 6 | 16 | 51 | 8 | 13 | 88 |
 | 7 | 6 | 21 | 3 | 3 | 33 |
-| 8 | 6 | 21 | 3 | 3 | 33 |
-| 9 | 9 | 56 | 5 | 9 | 79 |
+| 8 | 6 | 26 | 3 | 3 | 38 |
+| 9 | 9 | 61 | 5 | 9 | 84 |
 | 10 | . | . | . | . | 0 |
 | 11 | 7 | 21 | 4 | 32 | 64 |
 | 12 | 4 | 69 | 6 | 1 | 80 |
 | 13 | 1 | 10 | 4 | . | 15 |
-| 14 | 4 | 37 | 4 | . | 45 |
-| 15 | 2 | 25 | 3 | . | 30 |
-| 16 | 3 | 116 | 6 | . | 125 |
-| 17 | 1 | 13 | 1 | . | 15 |
-| 18 | 2 | 45 | 3 | . | 50 |
-| 19 | 1 | 52 | 2 | . | 55 |
-| 20 | 6 | 9 | . | . | 15 |
-| **total** | 119 | 824 | 92 | 121 | 1156 |
+| 14 | 4 | 52 | 4 | . | 60 |
+| 15 | 2 | 30 | 3 | . | 35 |
+| 16 | 3 | 126 | 6 | . | 135 |
+| 17 | 1 | 38 | 1 | . | 40 |
+| 18 | 2 | 50 | 3 | . | 55 |
+| 19 | 1 | 57 | 2 | . | 60 |
+| 20 | 6 | 14 | . | . | 20 |
+| none | . | 83 | 1 | 1 | 85 |
+| **total** | 119 | 1022 | 93 | 122 | 1356 |
 
 ### 3.3 Empty and thin cells (fewer than 3 cases)
 
@@ -106,24 +108,25 @@ A case with more than one family counts in every family it lists, so the totals 
 | 16 | price band | 0 | empty |
 | 16 | macro | 0 | empty |
 | 16 | market-wide | 0 | empty |
-| 6 | sector | 0 | empty |
-| 6 | market-cap bucket | 0 | empty |
-| 6 | price band | 0 | empty |
-| 6 | macro | 0 | empty |
-| 6 | market-wide | 0 | empty |
 | 3 | sector | 0 | empty |
+| 6 | sector | 0 | empty |
 | 3 | theme | 0 | empty |
 | 3 | market-cap bucket | 0 | empty |
+| 6 | market-cap bucket | 0 | empty |
 | 3 | price band | 0 | empty |
+| 6 | price band | 0 | empty |
 | 3 | policy | 0 | empty |
 | 3 | macro | 0 | empty |
-| 12 | sector | 0 | empty |
-| 12 | theme | 0 | empty |
-| 12 | index | 0 | empty |
-| 12 | market-cap bucket | 0 | empty |
-| 12 | price band | 0 | empty |
-| 12 | macro | 0 | empty |
-| 12 | market-wide | 0 | empty |
+| 6 | macro | 0 | empty |
+| 6 | market-wide | 0 | empty |
+| none | theme | 0 | empty |
+| none | index | 0 | empty |
+| none | price band | 0 | empty |
+| none | macro | 0 | empty |
+| none | sector | 1 | thin |
+| none | market-cap bucket | 1 | thin |
+| none | policy | 1 | thin |
+| none | industry | 2 | thin |
 | 9 | sector | 0 | empty |
 | 9 | theme | 0 | empty |
 | 9 | market-cap bucket | 0 | empty |
@@ -131,21 +134,33 @@ A case with more than one family counts in every family it lists, so the totals 
 | 9 | policy | 0 | empty |
 | 9 | macro | 0 | empty |
 | 9 | market-wide | 1 | thin |
+| 12 | sector | 0 | empty |
+| 12 | theme | 0 | empty |
+| 12 | index | 0 | empty |
+| 12 | market-cap bucket | 0 | empty |
+| 12 | price band | 0 | empty |
+| 12 | macro | 0 | empty |
+| 12 | market-wide | 0 | empty |
 | 11 | sector | 0 | empty |
 | 11 | theme | 0 | empty |
 | 11 | market-cap bucket | 0 | empty |
 | 11 | price band | 0 | empty |
 | 11 | policy | 0 | empty |
 | 11 | market-wide | 0 | empty |
+| 14 | industry | 0 | empty |
+| 14 | sector | 0 | empty |
 | 19 | sector | 0 | empty |
+| 14 | theme | 0 | empty |
+| 14 | index | 0 | empty |
 | 19 | index | 0 | empty |
 | 19 | price band | 0 | empty |
+| 14 | policy | 0 | empty |
+| 14 | macro | 0 | empty |
 | 19 | macro | 0 | empty |
 | 19 | market-wide | 0 | empty |
-| 19 | theme | 1 | thin |
-| 19 | stock | 2 | thin |
+| 14 | price band | 1 | thin |
+| 19 | theme | 2 | thin |
 | 19 | market-cap bucket | 2 | thin |
-| 18 | stock | 0 | empty |
 | 18 | index | 0 | empty |
 | 18 | market-cap bucket | 0 | empty |
 | 18 | price band | 0 | empty |
@@ -153,31 +168,25 @@ A case with more than one family counts in every family it lists, so the totals 
 | 18 | market-wide | 0 | empty |
 | 18 | industry | 1 | thin |
 | 18 | theme | 2 | thin |
-| 14 | industry | 0 | empty |
-| 14 | sector | 0 | empty |
-| 14 | theme | 0 | empty |
-| 14 | index | 0 | empty |
-| 14 | policy | 0 | empty |
-| 14 | macro | 0 | empty |
-| 14 | price band | 1 | thin |
-| 14 | market-cap bucket | 2 | thin |
 | 4 | price band | 0 | empty |
 | 4 | policy | 0 | empty |
 | 4 | macro | 0 | empty |
 | 4 | sector | 1 | thin |
 | 4 | index | 2 | thin |
-| 7 | stock | 0 | empty |
-| 7 | sector | 0 | empty |
+| 17 | sector | 0 | empty |
+| 17 | index | 0 | empty |
+| 17 | market-cap bucket | 0 | empty |
+| 17 | price band | 0 | empty |
+| 17 | policy | 0 | empty |
+| 17 | macro | 0 | empty |
+| 17 | market-wide | 0 | empty |
+| 17 | theme | 1 | thin |
 | 8 | sector | 0 | empty |
 | 8 | theme | 0 | empty |
-| 7 | market-cap bucket | 0 | empty |
 | 8 | market-cap bucket | 0 | empty |
-| 7 | price band | 0 | empty |
 | 8 | price band | 0 | empty |
 | 8 | policy | 0 | empty |
-| 7 | macro | 0 | empty |
 | 8 | macro | 0 | empty |
-| 7 | market-wide | 0 | empty |
 | 8 | market-wide | 0 | empty |
 | 15 | sector | 0 | empty |
 | 15 | theme | 0 | empty |
@@ -186,33 +195,31 @@ A case with more than one family counts in every family it lists, so the totals 
 | 15 | price band | 0 | empty |
 | 15 | policy | 0 | empty |
 | 15 | macro | 0 | empty |
-| 15 | industry | 1 | thin |
-| 13 | stock | 0 | empty |
-| 13 | sector | 0 | empty |
-| 17 | sector | 0 | empty |
+| 15 | industry | 2 | thin |
+| 7 | stock | 0 | empty |
+| 7 | sector | 0 | empty |
+| 7 | market-cap bucket | 0 | empty |
+| 7 | price band | 0 | empty |
+| 7 | macro | 0 | empty |
+| 7 | market-wide | 0 | empty |
 | 20 | sector | 0 | empty |
-| 13 | theme | 0 | empty |
 | 20 | theme | 0 | empty |
-| 13 | index | 0 | empty |
-| 17 | index | 0 | empty |
-| 17 | market-cap bucket | 0 | empty |
-| 13 | price band | 0 | empty |
-| 17 | price band | 0 | empty |
 | 20 | price band | 0 | empty |
-| 13 | policy | 0 | empty |
-| 17 | policy | 0 | empty |
-| 13 | macro | 0 | empty |
-| 17 | macro | 0 | empty |
 | 20 | macro | 0 | empty |
-| 17 | market-wide | 0 | empty |
-| 13 | industry | 1 | thin |
 | 20 | industry | 1 | thin |
-| 17 | theme | 1 | thin |
 | 20 | index | 1 | thin |
-| 13 | market-cap bucket | 1 | thin |
 | 20 | market-cap bucket | 1 | thin |
 | 20 | policy | 2 | thin |
 | 20 | market-wide | 2 | thin |
+| 13 | stock | 0 | empty |
+| 13 | sector | 0 | empty |
+| 13 | theme | 0 | empty |
+| 13 | index | 0 | empty |
+| 13 | price band | 0 | empty |
+| 13 | policy | 0 | empty |
+| 13 | macro | 0 | empty |
+| 13 | industry | 1 | thin |
+| 13 | market-cap bucket | 1 | thin |
 | 5 | sector | 0 | empty |
 | 5 | theme | 0 | empty |
 | 5 | market-cap bucket | 0 | empty |
@@ -234,7 +241,7 @@ A case with more than one family counts in every family it lists, so the totals 
 | 10 | market-wide | 0 | empty |
 ### 3.4 The full 3D grid
 
-The full 3D grid has **800** cells (20 families x 10 levels x 4 styles): **618** empty, **93** thin (1-2 cases), **89** with 3 or more cases.
+The full 3D grid has **840** cells (21 families x 10 levels x 4 styles): **648** empty, **98** thin (1-2 cases), **94** with 3 or more cases.
 
 ### 3.5 Style gaps inside a family
 
@@ -248,6 +255,7 @@ The full 3D grid has **800** cells (20 families x 10 levels x 4 styles): **618**
 | 18 | point-in-time |
 | 19 | point-in-time |
 | 20 | Hinglish, point-in-time |
+| none | terse |
 
 ## 4. One table per family
 
@@ -394,7 +402,7 @@ Each case appears once, under its primary family; `also` lists its other familie
 | MB0569 | open300:A16-14 | stock | natural | partial | 3 | A company issues fresh equity to fund capex. How does that change ROCE and EPS, and what should an investor check first? |
 | MB0570 | open300:A16-15 | market-wide | Hinglish | partial | 3 | Which company converted its capex into the best incremental ROCE over three years? Kaun sa company? (Hinglish) |
 
-### Family 2 - Number (140 primary cases; 22 cross-referenced)
+### Family 2 - Number (160 primary cases; 22 cross-referenced)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -538,6 +546,26 @@ Each case appears once, under its primary family; `also` lists its other familie
 | MB0583 | open300:A17-13 | stock | natural | partial | 4 | Delivery percentage around results: does a high-delivery reaction day predict the next week? Test it on KEI and Titagarh. |
 | MB0584 | open300:A17-14 | market-cap bucket | natural | yes | 4 | Which large caps saw delivery percentage fall the most in the week after 4 June 2024, and what does that signal? |
 | MB0585 | open300:A17-15 | market-wide | Hinglish | yes | 4 | September 2026 mein FIIs ne kitna becha aur DIIs ne kitna kharida? (Hinglish) |
+| MB0896 | reddit200:RD-I-066 | stock | natural | partial | - | DMart still trades at a high PE. What growth rate is the market assuming, and what has the company actually delivered? |
+| MB0897 | reddit200:RD-I-067 | stock | natural | partial | - | Trent at this multiple: is the store-add run-rate enough to grow into it, or does the market need margin expansion too? |
+| MB0898 | reddit200:RD-I-068 | stock | natural | partial | - | Eternal (ex-Zomato) on EV/sales: what does the multiple imply about the path to durable profit, and which segment has to carry it? |
+| MB0899 | reddit200:RD-I-069 | stock | natural | partial | - | IRFC trades on P/B rather than PE. What ROE would justify its current multiple, and how does it compare with REC and PFC? |
+| MB0900 | reddit200:RD-I-070 | stock | natural | partial | - | Paytm after the turnaround: is it still a loss-making story, and what metric should the valuation be judged on now? |
+| MB0956 | reddit200:RD-N-051 | stock | natural | yes | - | TCS: does CFO track PAT, and are receivables days creeping as deal terms lengthen? |
+| MB0957 | reddit200:RD-N-052 | stock | natural | partial | - | Infosys: has unbilled revenue grown faster than revenue, and what does that say about revenue recognition? |
+| MB0958 | reddit200:RD-N-053 | stock | natural | partial | - | Mphasis: direct-client mix has risen. Did DSO and CFO/PAT improve with it, or did the mix just move revenue? |
+| MB0959 | reddit200:RD-N-054 | stock | natural | partial | - | Coforge: how much of the growth is acquisition versus organic, and what did the acquisitions do to goodwill and cash conversion? |
+| MB0960 | reddit200:RD-N-055 | stock | natural | partial | - | Persistent: is the margin expansion real, or is it capitalised development cost catching up with revenue? |
+| MB0961 | reddit200:RD-N-056 | stock | natural | partial | - | Bajaj Holdings: what is the holdco discount to the sum of its listed stakes, and has it widened over five years? |
+| MB0962 | reddit200:RD-N-057 | stock | natural | partial | - | Tata Investment: is the market cap above or below the value of its listed portfolio, and how has that gap behaved? |
+| MB0963 | reddit200:RD-N-058 | stock | natural | partial | - | Godrej Industries holds several listed companies. What is the per-share value of the stakes versus the market price? |
+| MB0964 | reddit200:RD-N-059 | stock | natural | partial | - | Bajaj Finserv: what are the insurance and lending pieces worth separately, and how much of the value is the holding company? |
+| MB0965 | reddit200:RD-N-060 | stock | natural | partial | - | Tata Power: do the subsidiaries and the renewables book justify a market cap above the standalone utility? |
+| MB0966 | reddit200:RD-N-061 | stock | natural | yes | - | Coal India: is the dividend covered by free cash flow after the capex plan, or is it borrowing from the future? |
+| MB0967 | reddit200:RD-N-062 | stock | natural | partial | - | Power Grid: the regulated return sets the dividend. What happens to the payout if the capex cycle slows? |
+| MB0968 | reddit200:RD-N-063 | stock | natural | partial | - | ITC: how much of the dividend is covered by the cigarette cash flow once the FMCG reinvestment is funded? |
+| MB0969 | reddit200:RD-N-064 | stock | natural | partial | - | Hindustan Zinc: the payout is very high. Is it sustainable at current metal prices, and what does the capex plan need? |
+| MB0970 | reddit200:RD-N-065 | stock | natural | partial | - | NMDC: at the bottom of the iron-ore cycle, would the dividend be cut, and what did the last downturn show? |
 | MB0001 | shivam30:DBQ1 | stock | terse | - | primary 1 | AEROFLEX products + close on a date |
 | MB0009 | shivam30:Q14 | stock | terse | - | primary 1 | VISHNU Note 5 of latest results + geo split |
 | MB0031 | variations300:DBQ1-V1 | stock | natural | yes | primary 1 | What does Hariom Pipe Industries (NSE: HARIOMPIPE) make, and what was its NSE close on 16 October 2026? |
@@ -561,7 +589,7 @@ Each case appears once, under its primary family; `also` lists its other familie
 | MB0119 | variations300:Q14-V9 | stock | point-in-time | partial | primary 1 | As of 30 June 2026, what did note 5 of Oil Country Tubular (NSE: OILCOUNTUB)'s as of 30 June 2026 results say, and what was its geographic split? |
 | MB0120 | variations300:Q14-V10 | stock | natural | no | primary 1 | What does note 5 of NMDC (NSE: NMDC)'s results for Q2FY25 (July-September 2024) say, and what is the geographic split? If that quarter's results notes are not stored, ans... |
 
-### Family 3 - Change over time (35 primary cases; 48 cross-referenced)
+### Family 3 - Change over time (40 primary cases; 48 cross-referenced)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -600,6 +628,11 @@ Each case appears once, under its primary family; `also` lists its other familie
 | MB0748 | ripple200:R06-18 | market-wide | natural | partial | - | A company issues warrants to promoters at a premium to the market. Trace it to the dilution, then to the promoter's stake, then to the market's read of the price. What is... |
 | MB0749 | ripple200:R06-19 | market-wide | natural | partial | - | A company announces a tender buyback at a premium. Trace it to the acceptance ratio, then to the EPS, then to the promoter's stake. What does the premium tell you? |
 | MB0750 | ripple200:R06-20 | market-wide | natural | partial | - | The discount rate rises and a company's project IRR no longer clears it. Trace it to the capex decision, then to the order book, then to the capacity that is never built.... |
+| MB0926 | reddit200:RD-N-021 | stock | natural | partial | - | Tata Motors: JLR margin guidance has moved every year. What was promised, what was delivered, and what is the current gap? |
+| MB0927 | reddit200:RD-N-022 | stock | natural | partial | - | Dixon: the margin guidance has been repeatedly cut. Which call first lowered it, and what did the market do after? |
+| MB0928 | reddit200:RD-N-023 | stock | natural | partial | - | IREDA: loan-growth guidance versus actual book growth. Has the company consistently beaten its own number? |
+| MB0929 | reddit200:RD-N-024 | stock | natural | partial | - | Vedanta: management has promised deleveraging several times. What was the net-debt target each time, and where is net debt now? |
+| MB0930 | reddit200:RD-N-025 | stock | natural | partial | - | Paytm: management gave a profitability timeline. Did the company hit it, and what did it cost in revenue growth? |
 | MB0018 | shivam30:Q23 | industry | terse | - | primary 6 | Coal gasification drafts vs the earlier scheme |
 | MB0027 | shivam30:QA7 | stock | natural | - | primary 1 | What did ISIN INE864I01014 say about its fuel-cell capacity expansion due to complete by the end of this year, per its transcript of 6 August 2026? |
 | MB0030 | shivam30:QA10 | stock | natural | - | primary 1 | Per the transcript of 18 September 2026 of 540678 / COCHINSHIP: what did it say about the MOU with HD KSOE, and how will EBITDA margins progress from electric tug boats, ... |
@@ -649,7 +682,7 @@ Each case appears once, under its primary family; `also` lists its other familie
 | MB0569 | open300:A16-14 | stock | natural | partial | primary 1 | A company issues fresh equity to fund capex. How does that change ROCE and EPS, and what should an investor check first? |
 | MB0570 | open300:A16-15 | market-wide | Hinglish | partial | primary 1 | Which company converted its capex into the best incremental ROCE over three years? Kaun sa company? (Hinglish) |
 
-### Family 4 - Screen (11 primary cases; 26 cross-referenced)
+### Family 4 - Screen (21 primary cases; 26 cross-referenced)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -664,6 +697,16 @@ Each case appears once, under its primary family; `also` lists its other familie
 | MB0148 | variations300:Q17-V8 | index | natural | partial | 8 | For the NIFTY HOUSING FINANCE constituents, rank the financial companies on securitised disbursement for Q1FY27, with the net-NPA guard. |
 | MB0149 | variations300:Q17-V9 | industry | point-in-time | yes | 8 | As of 30 June 2026, which HFC looked like the securitisation leader for Q1FY27, and on what evidence? |
 | MB0150 | variations300:Q17-V10 | industry | natural | no | 8 | Which listed HFC led securitised disbursement in Q1FY27? If the securitisation figure is not in any structured store for GIC Housing Finance (NSE: GICHSGFIN), answer NOT ... |
+| MB0871 | reddit200:RD-I-041 | market-wide | natural | partial | - | HDFC Bank fell through a month of heavy FII selling. How much of the fall lines up with market-wide FII outflow, and how much is stock-specific? |
+| MB0872 | reddit200:RD-I-042 | market-wide | natural | yes | - | Reliance: did DII buying offset FII selling last quarter, and what did the shareholding pattern show? |
+| MB0873 | reddit200:RD-I-043 | stock | natural | partial | - | SBI: is the recent DII accumulation visible in the shareholding pattern, or only in the daily flow prints? |
+| MB0874 | reddit200:RD-I-044 | stock | natural | partial | - | Larsen & Toubro: did the order inflow announcements or the institutional flows better explain the last two quarters of returns? |
+| MB0875 | reddit200:RD-I-045 | stock | natural | partial | - | ICICI Bank versus HDFC Bank: which one saw the bigger FII ownership change last year, and did the price gap follow it? |
+| MB0901 | reddit200:RD-I-071 | stock | natural | partial | - | When Eternal entered the Nifty 50, how much passive buying did that imply, and did the stock move before or after the effective date? |
+| MB0902 | reddit200:RD-I-072 | stock | natural | partial | - | Jio Financial was added to the Nifty 50 soon after listing. Did the index flow arrive before the stock's first big move? |
+| MB0903 | reddit200:RD-I-073 | stock | natural | partial | - | HAL's weight in the Nifty 50 has changed with the stock. How much of the trading volume on rebalance days is index-driven? |
+| MB0904 | reddit200:RD-I-074 | stock | natural | partial | - | If DMart drops out of the Nifty 50, what would the forced selling be, and how has the stock behaved around past exclusion scares? |
+| MB0905 | reddit200:RD-I-075 | stock | natural | no | - | Trent versus the Nifty consumption index: did the stock's weight increase come from price or from index reconstitution? |
 | MB0011 | shivam30:Q16 | theme | terse | - | primary 6 | Why gold stocks fell Jun–Jul 2026 |
 | MB0131 | variations300:Q16-V1 | theme | natural | partial | primary 6 | Why did gold-jewellery stocks move in June-July 2026? Give the macro move, the PIB or RBI evidence, and what the companies themselves said. |
 | MB0132 | variations300:Q16-V2 | theme | natural | partial | primary 6 | Why did oil and gas stocks move in April-May 2026? Give the macro move, the PIB or RBI evidence, and what the companies themselves said. |
@@ -842,12 +885,15 @@ No case has this as its primary family; the 33 cases below cross-reference it.
 | MB0229 | variations300:Q25-V9 | policy | point-in-time | no | primary 6 | As of 1 February 2026, how had the data-centre tax holiday played out, using only evidence known by that date? |
 | MB0230 | variations300:Q25-V10 | policy | natural | no | primary 6 | How has the data-centre tax holiday played out so far? If no data-centre tax holiday exists in policy_events, or the PIB starts too late, answer NOT IN DATA. |
 
-### Family 8 - Peers (0 primary cases; 33 cross-referenced)
-
-No case has this as its primary family; the 33 cases below cross-reference it.
+### Family 8 - Peers (5 primary cases; 33 cross-referenced)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
+| MB0891 | reddit200:RD-I-061 | stock | natural | partial | - | Tata Motors PV versus Mahindra: which has the better EV mix and margin, and does the market already pay for it? |
+| MB0892 | reddit200:RD-I-062 | stock | natural | partial | - | HDFC Bank versus ICICI Bank on NIM, ROA and credit cost: which is the cleaner compounder from here? |
+| MB0893 | reddit200:RD-I-063 | stock | natural | partial | - | DMart versus Trent: which is growing revenue per store faster, and is the data even comparable? |
+| MB0894 | reddit200:RD-I-064 | stock | natural | partial | - | Polycab versus KEI: which has the better working-capital cycle, and does the margin gap justify the valuation gap? |
+| MB0895 | reddit200:RD-I-065 | industry | natural | partial | - | Sun Pharma versus Cipla: how much of the revenue is US, and which one is more exposed to a price-erosion shock? |
 | MB0006 | shivam30:Q11 | stock | terse | - | primary 2 | KRISHNADEF segment revenue, latest quarter |
 | MB0012 | shivam30:Q17 | industry | terse | - | primary 4 | HFC securitisation leader, QoQ/YoY with NPA guard |
 | MB0019 | shivam30:Q24 | stock | terse | - | primary 6 | PARAGMILK on El Niño; dairy peers |
@@ -882,7 +928,7 @@ No case has this as its primary family; the 33 cases below cross-reference it.
 | MB0219 | variations300:Q24-V9 | stock | point-in-time | no | primary 6 | As of 30 June 2026, what had Milkfood (NSE: MLKFOOD) said about El Nino 2026 and its dairy margins? |
 | MB0220 | variations300:Q24-V10 | stock | natural | no | primary 6 | What did Knack Packaging (NSE: KNACK) say about El Nino 2026 on its calls? If no transcript is held for it, answer NOT IN DATA and name the store checked. |
 
-### Family 9 - Event window (35 primary cases; 44 cross-referenced)
+### Family 9 - Event window (40 primary cases; 44 cross-referenced)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -921,6 +967,11 @@ No case has this as its primary family; the 33 cases below cross-reference it.
 | MB0828 | ripple200:R10-18 | stock | natural | partial | - | Take APARINDS' largest insider sale in insider_trades_v2. The intimation date gives day 0; check the 4 sessions before it and say whether the sale itself was the informat... |
 | MB0829 | ripple200:R10-19 | stock | natural | partial | - | A company cuts its guidance on the call and the transcript is published later. Build day 0 from the publication, then check the 4 sessions before it. Which document carri... |
 | MB0830 | ripple200:R10-20 | stock | natural | partial | - | A buyback is announced after the close, so day 0 is the next session. Check the 4 sessions before it: is the pre-window evidence of a leak, or of price support before a t... |
+| MB0886 | reddit200:RD-I-056 | stock | natural | yes | - | Infosys Q2FY26: what should I watch in the print, and which line item explained the market's reaction? |
+| MB0887 | reddit200:RD-I-057 | stock | natural | yes | - | TCS: did the deal-win total convert into revenue this quarter, or is the book still growing faster than billing? |
+| MB0888 | reddit200:RD-I-058 | stock | natural | partial | - | HDFC Bank Q2FY26: was the NIM expansion real or a one-off treasury gain, and what did management guide? |
+| MB0889 | reddit200:RD-I-059 | stock | natural | partial | - | Maruti: did the quarter's volume growth come from mix or discounts, and what does that say about the margin? |
+| MB0890 | reddit200:RD-I-060 | stock | natural | partial | - | Reliance: which segment actually drove the quarter, and did the market react to the consolidated or the segment story? |
 | MB0002 | shivam30:DBQ2 | stock | terse | - | primary 1 | 532627 latest AR: control change |
 | MB0013 | shivam30:Q18 | industry | terse | - | primary 6 | OMCs: record Q4 then loss Q1; earliest PIT signal |
 | MB0014 | shivam30:Q19 | stock | terse | - | primary 2 | MONQ50 ETF jump/fall + tracking error |
@@ -1144,7 +1195,7 @@ No case declares this family in any source bank.
 | MB0374 | open300:A03-14 | market-wide | natural | partial | - | Which companies claimed capacity-utilisation improvement last quarter, and which gave the utilisation number? |
 | MB0375 | open300:A03-15 | market-wide | Hinglish | partial | - | Which managements said margin has bottomed and expect recovery next quarter? Kaun si companies ne bottom bola? (Hinglish) |
 
-### Family 14 - Governance and audit (45 primary cases)
+### Family 14 - Governance and audit (60 primary cases)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1193,8 +1244,23 @@ No case declares this family in any source bank.
 | MB0418 | open300:A06-13 | market-wide | natural | partial | - | Which companies' results notes mention a related-party loan or advance to a promoter-group entity? |
 | MB0419 | open300:A06-14 | market-wide | natural | partial | - | Which company changed its statutory auditor twice in three years, and is that a red flag here? |
 | MB0420 | open300:A06-15 | market-wide | natural | no | - | Promoter selling before results: which companies show it in the last two quarters? terse: promoter sale before results |
+| MB0881 | reddit200:RD-I-051 | stock | natural | partial | - | Vedanta: how has promoter pledge moved over the last four quarters, and does the dividend policy depend on it? |
+| MB0882 | reddit200:RD-I-052 | stock | natural | partial | - | Jaiprakash Power: is the promoter pledge rising alongside the debt, and what did the auditor say about going concern? |
+| MB0883 | reddit200:RD-I-053 | stock | natural | yes | - | Vodafone Idea: did the promoter group raise its stake through the preferential issue, and what did that do to the free float? |
+| MB0884 | reddit200:RD-I-054 | stock | natural | partial | - | IRB Infrastructure: has promoter pledge fallen with the asset monetisation, and how much of the debt is now at the holdco? |
+| MB0885 | reddit200:RD-I-055 | market-cap bucket | natural | partial | - | Which large-cap had the biggest promoter stake sale in the last year, and did the stock absorb it? |
+| MB0921 | reddit200:RD-N-016 | stock | natural | partial | - | Adani Enterprises: do receivables and inventory growth run ahead of revenue, and what does the cash-conversion ratio say? |
+| MB0922 | reddit200:RD-N-017 | stock | natural | partial | - | Vedanta: the parent pays dividends while carrying debt. Is the cash actually upstreamed from subsidiaries, and what do the related-party notes say? |
+| MB0923 | reddit200:RD-N-018 | stock | natural | partial | - | Vodafone Idea: how are the spectrum liabilities accounted for, and do the interest and amortisation assumptions flatter the loss? |
+| MB0924 | reddit200:RD-N-019 | stock | natural | partial | - | Reliance Power: how much of the balance sheet is CWIP and capitalised interest, and when does it start depreciating? |
+| MB0925 | reddit200:RD-N-020 | stock | natural | partial | - | Yes Bank: are provisions keeping pace with the stressed book, and how much of the recovery is write-back rather than operating profit? |
+| MB0951 | reddit200:RD-N-046 | stock | natural | partial | - | Vedanta: how much debt matures in the next two years, and can dividends plus cash cover it without asset sales? |
+| MB0952 | reddit200:RD-N-047 | stock | natural | partial | - | Vodafone Idea: can operating cash flow cover interest and spectrum instalments, or is another capital raise certain? |
+| MB0953 | reddit200:RD-N-048 | stock | natural | partial | - | Jaiprakash Power: has the debt actually fallen, or has it been moved into CWIP and JVs? |
+| MB0954 | reddit200:RD-N-049 | stock | natural | partial | - | Adani Green: what is net debt to EBITDA, and how is the capex funded if the refinancing window narrows? |
+| MB0955 | reddit200:RD-N-050 | stock | natural | partial | - | IRB Infrastructure: how much of the leverage sits at the holdco, and what did asset monetisation actually repay? |
 
-### Family 15 - Market move -> why (30 primary cases)
+### Family 15 - Market move -> why (35 primary cases)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1228,8 +1294,13 @@ No case declares this family in any source bank.
 | MB0448 | open300:A08-13 | stock | natural | yes | - | Polycab fell 3.83% on 17 July 2026, the day after results filed at 15:59. What was the actual reaction window? |
 | MB0449 | open300:A08-14 | stock | natural | yes | - | Titagarh rose 2.06% on 13 August 2026 after results the previous evening. Was the reaction large relative to its own volatility? |
 | MB0450 | open300:A08-15 | stock | Hinglish | yes | - | Dixon fell 2.02% on 31 July 2026 but the results were filed at 18:12, after the close. Kaun sa din ka move actually the reaction hai? (Hinglish) |
+| MB0861 | reddit200:RD-I-031 | stock | natural | partial | - | Why did Reliance fall on 4 June 2024, and which of that morning's inputs were actually known before the open? |
+| MB0862 | reddit200:RD-I-032 | stock | natural | partial | - | HDFC Bank jumped after its Q2FY26 result. Was the move in the numbers, the guidance, or the pre-result positioning? |
+| MB0863 | reddit200:RD-I-033 | industry | natural | partial | - | Why did Adani Power move 8% on a day when the power index was flat? |
+| MB0864 | reddit200:RD-I-034 | stock | natural | partial | - | Infosys fell despite a revenue beat. Did the market react to margins, guidance, or the dollar-rupee assumption? |
+| MB0865 | reddit200:RD-I-035 | stock | natural | yes | - | Tata Motors moved sharply around the demerger record date. How much of the move was the mechanical price adjustment? |
 
-### Family 16 - Input-cost / commodity transmission (125 primary cases)
+### Family 16 - Input-cost / commodity transmission (135 primary cases)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1358,8 +1429,18 @@ No case declares this family in any source bank.
 | MB0788 | ripple200:R08-18 | policy | natural | partial | - | Coal gets dearer and the regulated tariff is revised at the same time. Net the fuel cost against the tariff order and say which generator gets the pass-through first. |
 | MB0789 | ripple200:R08-19 | policy | natural | partial | - | A tariff on generic drugs raises the cost of the US business and lowers the relative cost of the Indian business. For a company with both, does the India margin rise or d... |
 | MB0790 | ripple200:R08-20 | industry | natural | partial | - | An NBFC grows its AUM fast and its credit cost rises at the same time. Net growth against credit cost and say which listed lender's provisioning cycle is closest to turni... |
+| MB0936 | reddit200:RD-N-031 | stock | natural | no | - | Hindalco: where are we in the aluminium cycle, and what is Novelis's cost position relative to the curve? |
+| MB0937 | reddit200:RD-N-032 | stock | natural | partial | - | JSW Steel: what is capacity utilisation and steel spread now versus the last downcycle, and how fast does margin mean-revert? |
+| MB0938 | reddit200:RD-N-033 | stock | natural | partial | - | Tata Chemicals: the soda ash cycle has turned. How much of the margin is cycle and how much is the company's cost advantage? |
+| MB0939 | reddit200:RD-N-034 | stock | natural | partial | - | Deepak Nitrite: is the destocking over, and what do inventory days and realisation say about the next two quarters? |
+| MB0940 | reddit200:RD-N-035 | stock | natural | partial | - | Ambuja Cements: is the cement cycle in a price war or a volume recovery, and what does cost per tonne say? |
+| MB0941 | reddit200:RD-N-036 | stock | natural | partial | - | If the RBI cuts rates, what happens to HDFC Bank's NIM first and loan growth second, and how long is the lag? |
+| MB0942 | reddit200:RD-N-037 | stock | natural | partial | - | Bajaj Finance: does a rate cut help or hurt the cost of funds before it helps AUM, and what does history say? |
+| MB0943 | reddit200:RD-N-038 | industry | natural | partial | - | Crude fell sharply. How long before Asian Paints' raw-material cost falls, and what did it do last time? |
+| MB0944 | reddit200:RD-N-039 | stock | natural | partial | - | The rupee weakened. How much of Infosys's margin gain is translation versus hedging, and when does it show? |
+| MB0945 | reddit200:RD-N-040 | industry | natural | partial | - | Rubber and crude rose together. Which tyre maker has the fastest price pass-through, and how did the last spike play out? |
 
-### Family 17 - Business economics (15 primary cases)
+### Family 17 - Business economics (40 primary cases)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1378,8 +1459,33 @@ No case declares this family in any source bank.
 | MB0493 | open300:A11-13 | industry | natural | partial | - | Semiconductor content per car is rising. Does that help Motherson more than a car-volume recovery would? |
 | MB0494 | open300:A11-14 | industry | natural | partial | - | Data-centre capex is booming. Which listed power-equipment name has the clearest revenue link, and how would you size it? |
 | MB0495 | open300:A11-15 | stock | natural | partial | - | Hospital ARPOB is the key unit metric. What drives it at Apollo, and how much is price versus occupancy? |
+| MB0906 | reddit200:RD-N-001 | stock | natural | partial | - | Asian Paints: over ten years, has gross margin been stable enough to prove pricing power, or did it just track crude? |
+| MB0907 | reddit200:RD-N-002 | stock | natural | partial | - | Pidilite: is the adhesives moat earning a premium through price, or is volume growth doing all the work? |
+| MB0908 | reddit200:RD-N-003 | stock | natural | partial | - | Nestle India: is the last five years' growth from volume or from price and mix, and does that change the moat case? |
+| MB0909 | reddit200:RD-N-004 | stock | natural | partial | - | Titan: is the jewellery segment's margin a brand premium or a gold-leasing artefact, and how would a gold spike change it? |
+| MB0910 | reddit200:RD-N-005 | stock | natural | partial | - | Hindustan Unilever: has D2C competition actually taken detergent share, and what does the volume trend say? |
+| MB0911 | reddit200:RD-N-006 | stock | natural | partial | - | Hindalco: what has ROIC been through the cycle versus cost of capital, and does the aluminium or the copper business carry it? |
+| MB0912 | reddit200:RD-N-007 | stock | natural | partial | - | JSW Steel: the last capex round was large. What incremental ROIC has it earned so far, and how far is it from the cost of capital? |
+| MB0913 | reddit200:RD-N-008 | stock | natural | partial | - | Polycab: does the ROIC still clear the cost of capital after the working-capital build, and what would a demand slowdown do to it? |
+| MB0914 | reddit200:RD-N-009 | stock | natural | partial | - | ABB India: the margin is at a record. Is the ROIC being earned on new capacity or on a cyclical order book? |
+| MB0915 | reddit200:RD-N-010 | stock | natural | partial | - | Cummins India: after the emission-norm change, did the pricing gain lift ROIC, or did it go into warranty and R&D? |
+| MB0916 | reddit200:RD-N-011 | stock | natural | partial | - | ITC: between dividends and FMCG reinvestment, which one has earned the better return, and what does the last five years say? |
+| MB0917 | reddit200:RD-N-012 | stock | natural | partial | - | Coal India: is the payout policy starving the business of capex, or is the capex not earning its keep? |
+| MB0918 | reddit200:RD-N-013 | stock | natural | partial | - | HDFC Bank has never bought back stock. Is retained capital earning above the cost of equity, and should the payout change? |
+| MB0919 | reddit200:RD-N-014 | stock | natural | partial | - | Bajaj Finance: how much dilution has funded the growth, and is per-share value growing as fast as the loan book? |
+| MB0920 | reddit200:RD-N-015 | stock | natural | partial | - | Tata Motors PV: where exactly is the EV and JLR capex going, and what return has the last cycle produced? |
+| MB0931 | reddit200:RD-N-026 | stock | natural | partial | - | Eternal: what is food-delivery contribution margin per order, and how much of the profit comes from the take rate versus ads? |
+| MB0932 | reddit200:RD-N-027 | stock | natural | partial | - | Swiggy: is Instamart's contribution margin improving because of scale or because of a cut in discounts, and what does that mean for growth? |
+| MB0933 | reddit200:RD-N-028 | stock | natural | partial | - | Nykaa: what does the BPC segment earn per order after fulfilment, and is the fashion segment diluting it? |
+| MB0934 | reddit200:RD-N-029 | stock | natural | partial | - | DMart: what is revenue per square foot and inventory turns, and how have they moved as the store base aged? |
+| MB0935 | reddit200:RD-N-030 | stock | natural | partial | - | Trent: what does a new store earn at maturity, and how long is the payback at the current capex per store? |
+| MB0946 | reddit200:RD-N-041 | stock | natural | partial | - | CG Power: how much can it reinvest in transformer capacity, and what returns has the last expansion earned? |
+| MB0947 | reddit200:RD-N-042 | stock | natural | partial | - | Polycab: the cable demand is strong. How much capex is left, and is the incremental ROIC above the last cycle? |
+| MB0948 | reddit200:RD-N-043 | stock | natural | partial | - | Dixon: with PLI and new categories, what is the reinvestment need per rupee of new revenue, and does the return clear the hurdle? |
+| MB0949 | reddit200:RD-N-044 | stock | natural | partial | - | Kaynes: what is the semiconductor/OSAT runway, and how much of the current order book depends on the new plant? |
+| MB0950 | reddit200:RD-N-045 | stock | natural | partial | - | Astral: does the piping capacity addition still make sense if housing starts slow, and what is the utilisation today? |
 
-### Family 18 - Forward policy impact (35 primary cases; 15 cross-referenced)
+### Family 18 - Forward policy impact (40 primary cases; 15 cross-referenced)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1418,6 +1524,11 @@ No case declares this family in any source bank.
 | MB0668 | ripple200:R02-18 | policy | natural | partial | - | The 16th Finance Commission discontinues revenue-deficit and sector-specific grants to states. Trace it to state capex spending, then to the contractors that depend on st... |
 | MB0669 | ripple200:R02-19 | policy | natural | partial | - | Additional borrowing space is offered to states for power-sector reforms. Trace it to discom dues and payments, then to the generator's receivable days, then to the gener... |
 | MB0670 | ripple200:R02-20 | policy | natural | no | - | A National Mission on High Yielding Seeds is announced. Trace it to seed replacement rates, then to agrochem and fertiliser use per acre, then to farm income, then to two... |
+| MB0876 | reddit200:RD-I-046 | stock | natural | partial | - | If the budget raises tobacco duty again, how much of ITC's revenue and profit is actually exposed, and what did the last duty hike do to volumes? |
+| MB0877 | reddit200:RD-I-047 | stock | natural | partial | - | The defence budget line grew again. Which of HAL, BEL and Mazagon Dock has the revenue visibility that matches its valuation? |
+| MB0878 | reddit200:RD-I-048 | stock | natural | partial | - | Rail capex was front-loaded this year. Does that show up first in RVNL's revenue or in IRFC's loan book, and with what lag? |
+| MB0879 | reddit200:RD-I-049 | policy | natural | partial | - | A higher import duty on solar modules: who benefits between Waaree and Premier Energies, and what happens to the project developers' cost? |
+| MB0880 | reddit200:RD-I-050 | stock | natural | partial | - | Rubber prices and an import-duty change hit tyre makers differently. Which of Apollo, MRF and CEAT has the best pass-through history? |
 | MB0601 | open300:A19-01 | sector | natural | partial | primary 16 | If the monsoon fails, which listed sectors are most exposed, and in what order would the effect show up? |
 | MB0602 | open300:A19-02 | sector | natural | partial | primary 16 | Crude is already at 103.53 on 30 September 2026. If it holds, which listed sectors lose most, and which gain? |
 | MB0603 | open300:A19-03 | policy | natural | partial | primary 16 | If US tariffs rise another 25 points, which listed exporters are most exposed, and what would you check first? |
@@ -1434,7 +1545,7 @@ No case declares this family in any source bank.
 | MB0614 | open300:A19-14 | policy | natural | partial | primary 16 | If GST rates are cut on consumer durables, who gains more: a durables maker or an FMCG company? |
 | MB0615 | open300:A19-15 | sector | Hinglish | partial | primary 16 | Agar crude $100 ho jaye to kaunse listed sectors sabse zyada peedit honge? (Hinglish) |
 
-### Family 19 - Second-order / supply chain (35 primary cases; 20 cross-referenced)
+### Family 19 - Second-order / supply chain (40 primary cases; 20 cross-referenced)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1473,6 +1584,11 @@ No case declares this family in any source bank.
 | MB0728 | ripple200:R05-18 | industry | natural | no | - | The competing country's garment capacity comes back on line. Trace the order hand-back, then the Indian exporter's utilisation, then its yarn purchase, then the spinner's... |
 | MB0729 | ripple200:R05-19 | industry | natural | partial | - | A bank decides to build a small-ticket personal-loan book. Trace it to the NBFC's borrower acquisition cost, then to its ticket size, then to its credit cost. Which liste... |
 | MB0730 | ripple200:R05-20 | industry | natural | partial | - | A pharmacy chain buys a smaller chain. Trace it to store overlap, then to the merged store's footfall, then to the supplier's trade terms, then to the generic substitutio... |
+| MB0971 | reddit200:RD-N-066 | stock | natural | partial | - | Dixon: how concentrated is the customer base, and what would losing the top account do to revenue and margin? |
+| MB0972 | reddit200:RD-N-067 | stock | natural | partial | - | Kaynes: what share of revenue comes from the top five customers, and how does that compare with the order-book claims? |
+| MB0973 | reddit200:RD-N-068 | stock | natural | partial | - | Syrma: how much revenue depends on the top client, and has that dependence fallen since the IPO? |
+| MB0974 | reddit200:RD-N-069 | stock | natural | partial | - | Amber: the air-conditioner business is seasonal and concentrated. What does that do to quarterly revenue and working capital? |
+| MB0975 | reddit200:RD-N-070 | theme | natural | partial | - | Sona Comstar: how much of the order book is EV, and how dependent is it on two customers? |
 | MB0691 | ripple200:R04-01 | industry | natural | no | primary 16 | A shipping route closes. Europe-bound Indian goods spend two extra weeks at sea, the buyer defers the programme, the exporter's finished stock piles up, and its export in... |
 | MB0692 | ripple200:R04-02 | policy | natural | no | primary 16 | The US raises tariffs on steel and aluminium. Indian exporters lose the US premium, divert volume domestically, and the domestic HRC price falls. Trace it to the auto anc... |
 | MB0693 | ripple200:R04-03 | industry | natural | no | primary 16 | Chinese producers dump surplus into India. Specialty-chemical ASPs fall, the domestic producer cuts output, and when the dumping stops the buyer has lost a qualified loca... |
@@ -1494,7 +1610,7 @@ No case declares this family in any source bank.
 | MB0709 | ripple200:R04-19 | industry | natural | no | primary 16 | A monsoon deficit hits fodder and water. Milk procurement falls, the dairy's procurement price rises, and the packaged-food buyer's cost follows. Trace it and say whether... |
 | MB0710 | ripple200:R04-20 | policy | natural | no | primary 16 | The US raises the tariff on shrimp and the EU opens a quota. The Indian exporter's destination margin flips, the hatchery's order book follows, and the farmer decides the... |
 
-### Family 20 - Out-of-scope and bizarre (15 primary cases)
+### Family 20 - Out-of-scope and bizarre (20 primary cases)
 
 | mid | source | level | style | coverage | also | question |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1513,6 +1629,101 @@ No case declares this family in any source bank.
 | MB0628 | open300:A20-13 | stock | terse | partial | - | SRF FY26 patent count by chemistry |
 | MB0629 | open300:A20-14 | market-wide | natural | partial | - | How much money did retail investors lose on 4 June 2024, in rupees? |
 | MB0630 | open300:A20-15 | policy | natural | partial | - | What did the Finance Minister say about capital-gains tax in the 2026 Budget, and is the exact sentence stored? |
+| MB0976 | reddit200:RD-N-071 | stock | natural | partial | - | For Asian Paints, what would actually break the moat thesis: a new entrant's share, a dealer shift, or a gross-margin floor? |
+| MB0977 | reddit200:RD-N-072 | stock | natural | partial | - | For DMart, what evidence would prove quick commerce has permanently damaged the growth runway? |
+| MB0978 | reddit200:RD-N-073 | stock | natural | partial | - | For Eternal, what would prove the profitability path is broken rather than delayed? |
+| MB0979 | reddit200:RD-N-074 | stock | natural | partial | - | For Polycab, what would prove the power-capex cycle has peaked: order growth, utilisation, or receivable days? |
+| MB0980 | reddit200:RD-N-075 | stock | natural | partial | - | For Titan, what would break the growth thesis: a gold-price spike, lab-grown diamonds, or a same-store slowdown? |
+
+### Family not declared (85 primary cases)
+
+| mid | source | level | style | coverage | also | question |
+| --- | --- | --- | --- | --- | --- | --- |
+| MB0831 | reddit200:RD-I-001 | stock | natural | partial | - | Reliance has just reported Q2FY26. Is this a good level to start a position, or should I wait for a retest of the pre-result range? |
+| MB0832 | reddit200:RD-I-002 | stock | natural | partial | - | DMart is well below its 52-week high but still expensive on PE. For someone starting fresh, enter now or wait for a lower level? |
+| MB0833 | reddit200:RD-I-003 | stock | natural | partial | - | Paytm has come off its lows. Is the risk-reward good enough to enter before the next results, or is waiting safer? |
+| MB0834 | reddit200:RD-I-004 | stock | natural | partial | - | IREDA ran up a lot after listing. Is it too late to enter now, or does the loan-book growth still justify a fresh position? |
+| MB0835 | reddit200:RD-I-005 | stock | Hinglish | partial | - | Titagarh Rail had a strong order-book run and then a sharp pullback. Kya abhi entry sahi hai, ya result ke baad dekhna chahiye? |
+| MB0836 | reddit200:RD-I-006 | stock | natural | partial | - | Adani group has several listed arms. Which one carries the least balance-sheet risk relative to its cash generation right now? |
+| MB0837 | reddit200:RD-I-007 | market-wide | natural | partial | - | Within the Tata group, which listed company is the cleanest proxy for the group's own capex plans, and which is mostly a holding-company discount story? |
+| MB0838 | reddit200:RD-I-008 | sector | natural | partial | - | PSU banks: which of the large ones has the best combination of NIM and credit cost this quarter, and which is most exposed to a slippage cycle? |
+| MB0839 | reddit200:RD-I-009 | stock | natural | partial | - | Defence pack: HAL, BEL, Mazagon Dock and BDL. Which has the order book to revenue cover that best protects it if capex slows? |
+| MB0840 | reddit200:RD-I-010 | industry | natural | partial | - | Railway names RVNL, IRFC, IRCON and RITES all move with rail capex. Which one actually earns a spread on the capex, and which just holds the paper? |
+| MB0841 | reddit200:RD-I-011 | stock | natural | no | - | Swiggy listed at a discount to the grey-market talk. What did the grey premium imply before listing, and how did the first-day close compare? |
+| MB0842 | reddit200:RD-I-012 | stock | natural | yes | - | Ola Electric's listing pop faded quickly. What was the listing-day return, and how much of it was gone within a month? |
+| MB0843 | reddit200:RD-I-013 | stock | natural | partial | - | Waaree Energies: was the listing-day move justified by the order book disclosed in the prospectus, or was it mostly scarcity? |
+| MB0844 | reddit200:RD-I-014 | stock | natural | partial | - | Premier Energies versus the older solar names: did the IPO price already capture the order book that peers took years to build? |
+| MB0845 | reddit200:RD-I-015 | stock | natural | partial | - | NTPC Green and the renewable IPP pack: after the listing, which one trades at the biggest premium to book, and what does the market expect from it? |
+| MB0846 | reddit200:RD-I-016 | stock | natural | partial | - | After the Tata Motors demerger into TMPV and TMCV, which entity carries the auto-finance exposure, and how should the cost basis split? |
+| MB0847 | reddit200:RD-I-017 | stock | natural | yes | - | Zomato is now Eternal. Does my old Zomato holding map to the same ISIN, and how does the price history handle the name change? |
+| MB0848 | reddit200:RD-I-018 | stock | natural | partial | - | Vedanta's demerger: which listed entity will hold the aluminium business, and what happens to my shares between the record date and listing? |
+| MB0849 | reddit200:RD-I-019 | stock | natural | yes | - | If a company announces a 1:1 bonus, what price should the stock open at on the ex-date, and does my average cost change? |
+| MB0850 | reddit200:RD-I-020 | policy | natural | partial | - | Government OFS in IREDA: how is the floor price set, and does the stock usually trade at a discount to it before the issue closes? |
+| MB0851 | reddit200:RD-I-021 | industry | natural | partial | - | Which regulator action hit Paytm Payments Bank, when was it disclosed, and how did the listed company's price react on the first trading day after? |
+| MB0852 | reddit200:RD-I-022 | stock | natural | partial | - | Adani Enterprises: what has SEBI actually concluded, what is still open, and which disclosures since 2023 changed the risk? |
+| MB0853 | reddit200:RD-I-023 | stock | natural | partial | - | Yes Bank's reconstruction scheme locked in shareholder shares. What is still subject to lock-in, and when does the restriction end? |
+| MB0854 | reddit200:RD-I-024 | stock | natural | partial | - | Vodafone Idea's preferential allotment: which SEBI pricing rule set the floor, and did the issue dilute more than the announcement implied? |
+| MB0855 | reddit200:RD-I-025 | market-cap bucket | natural | partial | - | For a small-cap like Titagarh, what does SEBI's LODR require to be disclosed within 24 hours, and which recent filings met or missed that clock? |
+| MB0856 | reddit200:RD-I-026 | stock | natural | yes | - | Suzlon has been hitting upper circuits repeatedly. Which band applies now, what was the last base-price reset, and when did it last open normally? |
+| MB0857 | reddit200:RD-I-027 | stock | natural | yes | - | Vodafone Idea trades in a narrow band. Is the 5% limit still on, and how does delivery behave on the days it touches the band? |
+| MB0858 | reddit200:RD-I-028 | stock | natural | yes | - | Jaiprakash Power: did the band change after the last base-price reset, and did the change coincide with the volume spike? |
+| MB0859 | reddit200:RD-I-029 | market-wide | natural | partial | - | Reliance Power has had long lower-circuit streaks. How many sessions did it stay locked, and what finally broke the streak? |
+| MB0860 | reddit200:RD-I-030 | stock | natural | yes | - | Ola Electric after listing: did the price band widen, and how did the delivery percentage change when it did? |
+| MB0866 | reddit200:RD-I-036 | stock | natural | partial | - | I am holding Paytm at a large loss. Is there a fundamental case to average down, or is averaging just doubling a mistake? |
+| MB0867 | reddit200:RD-I-037 | stock | natural | partial | - | Nykaa has been flat for years. What has actually improved in the business, and what would make the wait worth it? |
+| MB0868 | reddit200:RD-I-038 | stock | natural | partial | - | Ola Electric keeps making new lows. At what point does the loss of market share show up in the numbers, and is the cash runway the real risk? |
+| MB0869 | reddit200:RD-I-039 | stock | natural | partial | - | IRFC has run up a lot. Should I book profit, or is the lender's spread still improving? |
+| MB0870 | reddit200:RD-I-040 | stock | natural | partial | - | Swiggy's lock-in expiry is behind us. Did the supply actually hit the price, and what does the delivery business need to show next? |
+| MB0981 | reddit200:RD-T-001 | stock | point-in-time | yes | - | Reliance has retested the same zone three times since August. As of 24 Sep 2026, did the third retest hold on lower volume? |
+| MB0982 | reddit200:RD-T-002 | stock | natural | yes | - | HDFC Bank broke below its 50-day average and then reclaimed it. Which close confirmed the reclaim, and what did delivery do? |
+| MB0983 | reddit200:RD-T-003 | stock | natural | yes | - | TCS has been range-bound for two months. What are the range edges, and how many times has each been tested on above-average volume? |
+| MB0984 | reddit200:RD-T-004 | stock | natural | yes | - | SBI fell to a level that held in March. Is that level still valid after the June bounce, and how much volume sits at it? |
+| MB0985 | reddit200:RD-T-005 | stock | natural | partial | - | Tata Motors PV: the post-demerger base is thin. What is the first real support level, and is there enough history to trust it? |
+| MB0986 | reddit200:RD-T-006 | stock | natural | yes | - | BEL broke to a new high in September. Was the breakout confirmed by volume and delivery, or was it a thin move? |
+| MB0987 | reddit200:RD-T-007 | stock | natural | yes | - | HAL cleared its previous swing high on a delivery spike. Did the delivery stay high for the next five sessions? |
+| MB0988 | reddit200:RD-T-008 | stock | natural | yes | - | RVNL broke out but the volume was below average. How many failed breakouts has it had in the last year on similar volume? |
+| MB0989 | reddit200:RD-T-009 | stock | natural | partial | - | IRFC's breakout came with high delivery %. Does high delivery at a breakout predict a better 20-day hold than low delivery? |
+| MB0990 | reddit200:RD-T-010 | stock | natural | yes | - | Polycab is near its 52-week high but delivery has fallen. Is the move being driven by intraday traders rather than accumulation? |
+| MB0991 | reddit200:RD-T-011 | stock | natural | yes | - | Infosys: did the 50-day cross above the 200-day this year, and how has the stock behaved in the 30 sessions after each cross? |
+| MB0992 | reddit200:RD-T-012 | stock | natural | partial | - | HDFC Bank is above its 200-day but below its 50-day. What has that configuration meant for the next month historically? |
+| MB0993 | reddit200:RD-T-013 | stock | natural | yes | - | TCS has been below its 200-day for months. How far below, and when did it last spend this long under the line? |
+| MB0994 | reddit200:RD-T-014 | stock | natural | partial | - | ITC's 50-day is flattening into the 200-day. What would a death cross actually change for a long-term holder? |
+| MB0995 | reddit200:RD-T-015 | stock | natural | partial | - | Larsen & Toubro is near all three averages at once. Which average has acted as the better entry line over the last three years? |
+| MB0996 | reddit200:RD-T-016 | stock | natural | yes | - | Tata Power's RSI dipped below 30 in an uptrend. How did the stock perform over the next 20 sessions the last three times that happened? |
+| MB0997 | reddit200:RD-T-017 | stock | natural | partial | - | Adani Power is overbought on RSI but still making higher highs. Does overbought in a strong trend mean sell here? |
+| MB0998 | reddit200:RD-T-018 | stock | natural | yes | - | Suzlon's RSI stayed above 70 for weeks during the rally. How long can that persist before a 10% drawdown, historically? |
+| MB0999 | reddit200:RD-T-019 | stock | natural | yes | - | Vodafone Idea is deeply oversold again. Has an oversold RSI ever marked a durable low in this stock? |
+| MB1000 | reddit200:RD-T-020 | stock | natural | partial | - | Ola Electric's RSI made a higher low while price made a lower low. Is that divergence worth acting on, and how often has it worked? |
+| MB1001 | reddit200:RD-T-021 | stock | natural | yes | - | HAL is within 2% of its 52-week high. How many prior sessions this year were this close, and what followed? |
+| MB1002 | reddit200:RD-T-022 | stock | natural | partial | - | Mazagon Dock made a new 52-week high on declining volume. Is that a warning or noise? |
+| MB1003 | reddit200:RD-T-023 | stock | natural | yes | - | Titan is 15% below its 52-week high. How long did the last three drawdowns of that size take to recover? |
+| MB1004 | reddit200:RD-T-024 | stock | natural | yes | - | Trent at a new high: what share of the last year's trading days were within 5% of the then-current 52-week high? |
+| MB1005 | reddit200:RD-T-025 | stock | natural | partial | - | BEL versus HAL: which has spent more of the last two years within 10% of its 52-week high, and does that predict anything? |
+| MB1006 | reddit200:RD-T-026 | market-wide | natural | yes | - | Tata Motors PV gapped up after its first post-demerger result. Has the gap filled, and how many sessions did it take? |
+| MB1007 | reddit200:RD-T-027 | stock | natural | yes | - | Infosys gapped down on results and then drifted. Did the gap act as resistance on the next two rallies? |
+| MB1008 | reddit200:RD-T-028 | stock | natural | partial | - | HDFC Bank opened with a gap after the budget. Was it a breakaway gap or an exhaustion gap, and what did volume say? |
+| MB1009 | reddit200:RD-T-029 | stock | natural | yes | - | Eternal gapped up on a big delivery day. How much of the gap held by the close, and did delivery confirm it? |
+| MB1010 | reddit200:RD-T-030 | stock | natural | partial | - | Paytm has had several earnings gaps. Which ones filled within a month, and did the unfilled ones share a volume signature? |
+| MB1011 | reddit200:RD-T-031 | stock | natural | partial | - | HDFC Bank has underperformed the Nifty for a quarter. Is the relative strength turning, and what would confirm it? |
+| MB1012 | reddit200:RD-T-032 | stock | natural | partial | - | BEL versus the Nifty: how strong is the relative strength, and has it been led by earnings upgrades or by the defence theme? |
+| MB1013 | reddit200:RD-T-033 | stock | natural | partial | - | ITC has been a relative laggard while defensives rallied. What does the RS line say about rotation into or out of the stock? |
+| MB1014 | reddit200:RD-T-034 | stock | natural | partial | - | Tata Power has outperformed the Nifty for six months. Is the RS at an extreme that historically mean-reverts? |
+| MB1015 | reddit200:RD-T-035 | stock | natural | partial | - | DMart versus Trent: which has the better six-month relative strength against the Nifty, and does it match the earnings trend? |
+| MB1016 | reddit200:RD-T-036 | stock | natural | no | - | Reliance futures added open interest while price rose. Is that long build-up or short covering, and what does the rollover say? |
+| MB1017 | reddit200:RD-T-037 | stock | natural | no | - | HDFC Bank futures are at a premium to spot into expiry. Is the basis widening, and what has that meant for the stock after expiry? |
+| MB1018 | reddit200:RD-T-038 | stock | natural | no | - | SBI saw a large OI addition at a strike above spot. Is that a ceiling the market expects, or a hedge? |
+| MB1019 | reddit200:RD-T-039 | stock | natural | no | - | Bajaj Finance: did shorts cover into the recent rally, and how much OI is left going into results? |
+| MB1020 | reddit200:RD-T-040 | stock | natural | no | - | ICICI Bank's rollover was lower than last expiry. Does that mean traders are exiting, or just moving to the next series early? |
+| MB1021 | reddit200:RD-T-041 | stock | natural | no | - | What is the Nifty's put-call ratio today, and is it at a level that has marked short-term bottoms? |
+| MB1022 | reddit200:RD-T-042 | stock | natural | no | - | BANKNIFTY max pain is below spot into expiry. How often does the index actually drift to max pain? |
+| MB1023 | reddit200:RD-T-043 | stock | natural | partial | - | Reliance has huge call OI at a round strike. Is that a real ceiling or just a hedge by institutions? |
+| MB1024 | reddit200:RD-T-044 | stock | natural | yes | - | HDFC Bank expiry-day volume spikes every month. How much of the monthly volume is expiry-driven, and does the cash market see it too? |
+| MB1025 | reddit200:RD-T-045 | stock | natural | partial | - | ICICI Bank's put-call ratio flipped two days before expiry. Did the cash market's delivery and price confirm the same direction? |
+| MB1026 | reddit200:RD-T-046 | stock | natural | partial | - | Suzlon printed a delivery spike at a 52-week high. Was the spike genuine accumulation or a single block transfer? |
+| MB1027 | reddit200:RD-T-047 | stock | natural | yes | - | Yes Bank's delivery % jumped above 60% for two days. What was the volume, and did the price hold the move? |
+| MB1028 | reddit200:RD-T-048 | stock | natural | partial | - | Vodafone Idea's delivery percentage has been falling while volume rises. What does that pattern usually precede? |
+| MB1029 | reddit200:RD-T-049 | stock | natural | yes | - | Jaiprakash Power's delivery spike came on a circuit day. Is delivery data even meaningful when the price is locked? |
+| MB1030 | reddit200:RD-T-050 | stock | natural | partial | - | RVNL had three delivery spikes in a month with no price progress. Is that distribution or absorption? |
 
 ## 5. Files
 
