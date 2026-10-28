@@ -807,15 +807,23 @@ def _not_found(kind: str, identity: dict[str, Any], doc_type: str | None,
 
 
 def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
-         date_to: str | None = None, limit: int = 20) -> dict[str, Any]:
-    """List a company's documents across all stores, newest first."""
+         date_to: str | None = None, limit: int = 20,
+         as_of: str | None = None) -> dict[str, Any]:
+    """List a company's documents across all stores, newest first.
+
+    ``as_of`` (``YYYY-MM-DD``) caps the collection window and every returned
+    entry at that day: a document first known after it is never listed.
+    """
     identity = core.resolve_one(symbol)
     canonical = _norm_type(doc_type)
     if doc_type and canonical is None:
         raise DataError("bad_doc_type",
                         f"unknown doc_type {doc_type!r}; use deck, transcript, ar or announcement")
+    as_of_day = _iso(_parse_date(as_of, "as_of")) if as_of else None
     start = _iso(_parse_date(date_from, "date_from"))
     end = _iso(_parse_date(date_to, "date_to"))
+    if as_of_day and (end is None or end > as_of_day):
+        end = as_of_day
     if start and end and end < start:
         raise DataError("bad_range", f"date_to {end} is before date_from {start}")
     try:
@@ -823,6 +831,10 @@ def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
     except (TypeError, ValueError):
         raise DataError("bad_limit", f"limit must be an integer between 1 and {MAX_LIMIT}")
     entries, checked, warnings = _collect(identity, canonical, start, end, limit)
+    if as_of_day:
+        entries = [entry for entry in entries
+                   if (entry.get("date") or "")[:10] not in ("",)
+                   and (entry.get("date") or "")[:10] <= as_of_day]
     entries = entries[:limit]
     if not entries:
         return _not_found("documents", identity, canonical, checked,
@@ -837,19 +849,26 @@ def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
         "warnings": warnings,
         "partial": bool(warnings),
         **_identity_head(identity),
-        "filters": {"doc_type": canonical, "date_from": start, "date_to": end, "limit": limit},
+        "filters": {"doc_type": canonical, "date_from": start, "date_to": end,
+                    "limit": limit, "as_of": as_of_day},
         "provenance": provenance("truth_duckdb", ["security_master", "symbol_isin_history"],
                                  documents="deck_figures, concall_facts, ar_facts, "
                                            "equity_intelligence, bse_announcements"),
     }
 
 
-def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None) -> dict[str, Any]:
-    """The document nearest ``date`` (within ±3 days) and one page of its text."""
+def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None,
+             as_of: str | None = None) -> dict[str, Any]:
+    """The document nearest ``date`` (within ±3 days) and one page of its text.
+
+    With ``as_of``, a document first known after that day is never chosen: the
+    ±3-day window is clamped to it and every candidate is PIT-checked.
+    """
     identity = core.resolve_one(symbol)
     requested = _parse_date(date, "date")
     if requested is None:
         raise DataError("bad_date", "date is required, YYYY-MM-DD")
+    as_of_day = _iso(_parse_date(as_of, "as_of")) if as_of else None
     try:
         page_no = int(page)
     except (TypeError, ValueError):
@@ -861,12 +880,23 @@ def doc_page(symbol: str, date: str, page: int, doc_type: str | None = None) -> 
         raise DataError("bad_doc_type",
                         f"unknown doc_type {doc_type!r}; use deck, transcript, ar or announcement")
     lo, hi = _window(requested)
+    pit_after = bool(as_of_day and requested.isoformat() > as_of_day)
+    if as_of_day:
+        lo, hi = (as_of_day, as_of_day) if pit_after else (lo, min(hi, as_of_day))
     entries, checked, warnings = _collect(identity, canonical, lo, hi, limit=60)
+    if as_of_day:
+        entries = [entry for entry in entries
+                   if (entry.get("date") or "")[:10] not in ("",)
+                   and (entry.get("date") or "")[:10] <= as_of_day]
     if not entries:
-        return _not_found(
-            "document", identity, canonical, checked, requested,
+        reason = (
+            f"{requested.isoformat()} is after as_of {as_of_day}; a document first known "
+            f"after the as_of day cannot answer a point-in-time question"
+            if pit_after else
             f"no {canonical or 'document'} within ±{DEFAULT_SLACK_DAYS} days of "
-            f"{requested.isoformat()}; nearest is listed above", {"page": page_no},
+            f"{requested.isoformat()}; nearest is listed above")
+        return _not_found(
+            "document", identity, canonical, checked, requested, reason, {"page": page_no},
             warnings=warnings,
         )
     ordered = sorted(entries, key=lambda e: (
@@ -1133,8 +1163,13 @@ def _announcement_passages(identity: dict[str, Any], tokens: Sequence[str], lo: 
 
 
 def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | None = None,
-             top_k: int = 8) -> dict[str, Any]:
-    """Lexical search inside one company's documents; passages with page and quote."""
+             top_k: int = 8, as_of: str | None = None) -> dict[str, Any]:
+    """Lexical search inside one company's documents; passages with page and quote.
+
+    ``as_of`` (``YYYY-MM-DD``) is pushed into every store's SQL as an upper
+    bound on its own filing/known_at column; a passage dated after it is never
+    returned.
+    """
     identity = core.resolve_one(symbol)
     text = " ".join(str(terms or "").split())
     tokens = _tokens(text)
@@ -1149,10 +1184,15 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
     except (TypeError, ValueError):
         raise DataError("bad_limit", "top_k must be an integer between 1 and 30")
     requested = _parse_date(date, "date") if date else None
+    as_of_day = _iso(_parse_date(as_of, "as_of")) if as_of else None
     lo = hi = None
     if requested:
         lo, hi = _window(requested)
         hi += "T23:59:59"
+    if as_of_day:
+        cap = as_of_day + "T23:59:59"
+        hi = min(hi, cap) if hi else cap
+        lo = lo or "0000-01-01"
     checked: list[str] = []
     warnings: list[str] = []
     quarantine = quarantined_doc_ids()
@@ -1184,11 +1224,18 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
                           reverse=True):
         dedup.setdefault(_key(passage), passage)
     ranked = list(dedup.values())[:top_k]
+    if as_of_day:
+        ranked = [p for p in ranked
+                  if (p.get("date") or "")[:10] not in ("",)
+                  and (p.get("date") or "")[:10] <= as_of_day]
     if not ranked:
+        reason = (f"no passage matching {text!r} in the {canonical or 'available'} documents "
+                  f"known by {as_of_day or 'the requested date'}"
+                  if as_of_day else
+                  f"no passage matching {text!r} in the {canonical or 'available'} documents; "
+                  "try fewer or more general words, or drop the date filter")
         return _not_found(
-            "passages", identity, canonical, checked, requested,
-            f"no passage matching {text!r} in the {canonical or 'available'} documents; "
-            "try fewer or more general words, or drop the date filter", {"terms": text},
+            "passages", identity, canonical, checked, requested, reason, {"terms": text},
             warnings=warnings,
         )
     return {
@@ -1196,6 +1243,7 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
         "terms": text,
         "doc_type": canonical,
         "date_requested": requested.isoformat() if requested else None,
+        "as_of": as_of_day,
         "count": len(ranked),
         "passages": ranked,
         "checked": checked,

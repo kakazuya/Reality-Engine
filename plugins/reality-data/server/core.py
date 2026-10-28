@@ -18,6 +18,7 @@ Sources
 from __future__ import annotations
 
 import datetime as dt
+import functools
 import json
 import os
 import re
@@ -133,6 +134,13 @@ def snapshot_path() -> Path:
     override = os.environ.get("REALITY_DATA_SNAPSHOT")
     if override:
         return Path(override)
+    return _cached_snapshot_path()
+
+
+@functools.lru_cache(maxsize=1)
+def _cached_snapshot_path() -> Path:
+    # Glob over the snapshots directory is ~0.12 s; every provenance() call
+    # would otherwise repeat it (doc_find calls provenance up to 3 times).
     candidates = sorted((DATA / "snapshots").glob("truth_*.duckdb"))
     if not candidates:
         raise DataError("snapshot_missing", f"no truth_*.duckdb under {DATA / 'snapshots'}")
@@ -731,10 +739,16 @@ def _period_clause(period: str | None, columns: Sequence[str]) -> tuple[str, lis
 
 
 def _ar_where(identity: dict[str, Any], kind: str | None, period: str | None,
-              quarantine_ids: set[int], by_symbol: bool = False) -> tuple[str, list[Any], str]:
+              quarantine_ids: set[int], by_symbol: bool = False,
+              doc_ids: Sequence[int] | None = None) -> tuple[str, list[Any], str]:
     isins = _identity_isins(identity)
     symbols = _identity_symbols(identity)
-    if by_symbol:
+    if doc_ids is not None:
+        # Indexed by ar_facts_doc(doc_id, piece); the only always-safe owner
+        # path for old rows whose isin column is blank.
+        clause, clause_params = _in_clause([int(i) for i in doc_ids])
+        where = [f"doc_id IN {clause}"]
+    elif by_symbol:
         clause, clause_params = _in_clause(symbols)
         where = [f"upper(symbol) IN {clause}"]
     else:
@@ -829,7 +843,33 @@ def _lookup_doc_urls(doc_ids: Sequence[int]) -> dict[int, str]:
     return {i: _doc_url_cache.get(i) for i in ids if _doc_url_cache.get(i)}
 
 
-def _facts_ar(identity: dict[str, Any], kind: str | None, period: str | None, limit: int) -> list[dict[str, Any]]:
+def _ar_symbol_doc_ids(identity: dict[str, Any], as_of: str | None = None) -> list[int]:
+    """AR doc ids for a symbol, bounded by the PIT cut (ar_docs is 34k rows)."""
+    symbols = _identity_symbols(identity)
+    if not symbols:
+        return []
+    clause, params = _in_clause([s.upper() for s in symbols])
+    sql = f"SELECT doc_id FROM ar_docs WHERE upper(symbol) IN {clause}"
+    args: list[Any] = list(params)
+    if as_of:
+        sql += " AND COALESCE(filed_at,'') <> '' AND substr(filed_at,1,10) <= ?"
+        args.append(str(as_of)[:10])
+    try:
+        return [int(r["doc_id"]) for r in _run_sqlite("ar_facts", sql, args, timeout=10.0)]
+    except (sqlite3.DatabaseError, DataError):
+        return []
+
+
+def _ar_pit(as_of: str | None) -> tuple[str, list[Any]]:
+    """SQL point-in-time guard on the AR row's own filing date."""
+    if not as_of:
+        return "", []
+    return (" AND substr(COALESCE(filed_at,''),1,10) <> ''"
+            " AND substr(filed_at,1,10) <= ?"), [str(as_of)[:10]]
+
+
+def _facts_ar(identity: dict[str, Any], kind: str | None, period: str | None,
+              limit: int, as_of: str | None = None) -> list[dict[str, Any]]:
     if kind in ("results", "deck", "concall"):
         return []
     select = ("SELECT doc_id, page, fiscal_year, filed_at, category, item, value_raw, value, unit, "
@@ -841,12 +881,19 @@ def _facts_ar(identity: dict[str, Any], kind: str | None, period: str | None, li
              "OR lower(item) LIKE '%ebitda%' THEN 1 ELSE 2 END, "
              "fiscal_year DESC, page ASC, doc_id DESC LIMIT ?")
     where, params, _ = _ar_where(identity, kind, period, quarantined_doc_ids())
-    rows = _run_sqlite("ar_facts", select + f"WHERE {where} " + order, [*params, limit])
+    pit, pit_params = _ar_pit(as_of)
+    rows = _run_sqlite("ar_facts", select + f"WHERE {where}{pit} " + order,
+                       [*params, *pit_params, limit])
     if not rows:
-        # Old ISINs / rows whose isin column is blank: symbol fallback only when
-        # the indexed isin path found nothing (never a 32M-row OR scan).
-        where, params, _ = _ar_where(identity, kind, period, quarantined_doc_ids(), by_symbol=True)
-        rows = _run_sqlite("ar_facts", select + f"WHERE {where} " + order, [*params, limit])
+        # Old ISINs / rows whose isin column is blank: go through ar_docs so the
+        # fact fetch stays on ar_facts_doc(doc_id, piece).  Previously this used
+        # `upper(symbol) IN (...)`, a 32M-row scan (15.5 s on a miss).
+        doc_ids = _ar_symbol_doc_ids(identity, as_of)
+        if doc_ids:
+            where, params, _ = _ar_where(identity, kind, period, quarantined_doc_ids(),
+                                         doc_ids=doc_ids)
+            rows = _run_sqlite("ar_facts", select + f"WHERE {where}{pit} " + order,
+                               [*params, *pit_params, limit])
     docs = _lookup_doc_urls([r["doc_id"] for r in rows])
     out = []
     for row in rows:
@@ -864,7 +911,8 @@ def _fy_bounds(period: str) -> tuple[str, str] | None:
     return f"{year - 1}-04-01", f"{year}-03-31"
 
 
-def _facts_results(identity: dict[str, Any], kind: str | None, period: str | None, limit: int) -> list[dict[str, Any]]:
+def _facts_results(identity: dict[str, Any], kind: str | None, period: str | None,
+                   limit: int, as_of: str | None = None) -> list[dict[str, Any]]:
     if kind in ("ar", "deck", "concall"):
         return []
     isins = _identity_isins(identity)
@@ -876,6 +924,10 @@ def _facts_results(identity: dict[str, Any], kind: str | None, period: str | Non
             year = max(years)
             where.append("f.period_end BETWEEN ? AND ?")
             params.extend([f"{year - 1}-04-01", f"{year}-03-31"])
+    if as_of:
+        where.append("COALESCE(f.dissem_ts, f.broadcast_ts, f.filing_ts) <> ''"
+                     " AND substr(COALESCE(f.dissem_ts, f.broadcast_ts, f.filing_ts),1,10) <= ?")
+        params.append(str(as_of)[:10])
     sql = (
         "SELECT f.file, f.symbol, f.period_start, f.period_end, f.fy_start, f.consolidated, "
         "f.audited, f.xbrl_url, COALESCE(f.dissem_ts, f.broadcast_ts, f.filing_ts) AS known_at_src, fi.isin "
@@ -945,12 +997,16 @@ def _facts_results(identity: dict[str, Any], kind: str | None, period: str | Non
     return out
 
 
-def _facts_deck(identity: dict[str, Any], kind: str | None, period: str | None, limit: int) -> list[dict[str, Any]]:
+def _facts_deck(identity: dict[str, Any], kind: str | None, period: str | None,
+                limit: int, as_of: str | None = None) -> list[dict[str, Any]]:
     if kind in ("ar", "results", "concall"):
         return []
     isins = _identity_isins(identity)
     clause, params = _in_clause(isins)
     where = [f"s.isin IN {clause}"]
+    if as_of:
+        where.append("COALESCE(s.known_at,'') <> '' AND substr(s.known_at,1,10) <= ?")
+        params.append(str(as_of)[:10])
     if kind == "segments":
         where.append("(lower(f.metric) LIKE '%share%' OR lower(f.metric) LIKE '%mix%' OR lower(f.metric) LIKE '%segment%')")
     elif kind in ("financials", None):
@@ -997,12 +1053,16 @@ def _facts_deck(identity: dict[str, Any], kind: str | None, period: str | None, 
     return out
 
 
-def _facts_concall(identity: dict[str, Any], kind: str | None, period: str | None, limit: int) -> list[dict[str, Any]]:
+def _facts_concall(identity: dict[str, Any], kind: str | None, period: str | None,
+                   limit: int, as_of: str | None = None) -> list[dict[str, Any]]:
     if kind in ("ar", "results", "deck"):
         return []
     isins = _identity_isins(identity)
     clause, params = _in_clause(isins)
     where = [f"i.isin IN {clause}"]
+    if as_of:
+        where.append("COALESCE(d.filed_at,'') <> '' AND substr(d.filed_at,1,10) <= ?")
+        params.append(str(as_of)[:10])
     if kind == "guidance":
         where.append("(lower(i.list_name) LIKE '%guid%' OR lower(i.list_name) LIKE '%management%' "
                      "OR lower(i.metric) LIKE '%guid%' OR lower(i.metric) LIKE '%outlook%')")
@@ -1050,25 +1110,32 @@ def _fact_rank(fact: dict[str, Any]) -> tuple:
             str(fact.get("date") or ""))
 
 
-def facts(symbol: str, kind: str | None = None, period: str | None = None, limit: int = 80) -> dict[str, Any]:
-    """Structured fundamentals, segments and KPIs from all four fact stores."""
+def facts(symbol: str, kind: str | None = None, period: str | None = None, limit: int = 80,
+          as_of: str | None = None) -> dict[str, Any]:
+    """Structured fundamentals, segments and KPIs from all four fact stores.
+
+    ``as_of`` (``YYYY-MM-DD``) is a point-in-time cut: every source row must
+    carry its own filing timestamp on or before that day.  Rows with no such
+    timestamp are dropped rather than guessed at.
+    """
     identity = resolve_one(symbol)
     canonical = _normalise_kind(kind)
     try:
         limit = max(1, min(int(limit), 500))
     except (TypeError, ValueError):
         raise DataError("bad_limit", "limit must be an integer between 1 and 500")
+    as_of = str(as_of)[:10] if as_of else None
     sources = SOURCE_FOR_KIND.get(canonical, ("ar", "results", "deck", "concall"))
     collected: list[dict[str, Any]] = []
     per_source_limit = max(40, min(200, limit * 2))
     if "ar" in sources:
-        collected += _facts_ar(identity, canonical, period, per_source_limit)
+        collected += _facts_ar(identity, canonical, period, per_source_limit, as_of)
     if "results" in sources:
-        collected += _facts_results(identity, canonical, period, per_source_limit)
+        collected += _facts_results(identity, canonical, period, per_source_limit, as_of)
     if "deck" in sources:
-        collected += _facts_deck(identity, canonical, period, per_source_limit)
+        collected += _facts_deck(identity, canonical, period, per_source_limit, as_of)
     if "concall" in sources:
-        collected += _facts_concall(identity, canonical, period, per_source_limit)
+        collected += _facts_concall(identity, canonical, period, per_source_limit, as_of)
 
     # Free-text kind (not a known alias) is a filter over items/metrics.
     if canonical and canonical not in SOURCE_FOR_KIND:
@@ -1081,6 +1148,13 @@ def facts(symbol: str, kind: str | None = None, period: str | None = None, limit
         collected = [f for f in collected if f.get("kind") == canonical or canonical == "financials"]
 
     # De-duplicate the same figure repeated in consecutive annual reports.
+    if as_of:
+        ranked_guard = []
+        for fact in collected:
+            stamp = str(fact.get("known_at") or fact.get("date") or "")[:10]
+            if stamp and stamp <= as_of:
+                ranked_guard.append(fact)
+        collected = ranked_guard
     dedup: dict[tuple, dict[str, Any]] = {}
     for fact in sorted(collected, key=_fact_rank):
         key = (fact.get("source"), str(fact.get("item") or "").strip().lower(),
@@ -1126,6 +1200,7 @@ def facts(symbol: str, kind: str | None = None, period: str | None = None, limit
         "isin": identity["isin"],
         "kind": canonical,
         "period": period,
+        "as_of": as_of,
         "facts": ranked[:limit],
         "counts": {"by_source": counts, "total_matched": len(ranked), "truncated": len(ranked) > limit},
         "quarantine": {"ar_doc_ids_excluded": len(quarantined_doc_ids())},
