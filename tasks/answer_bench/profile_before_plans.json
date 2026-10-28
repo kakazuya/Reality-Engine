@@ -1,0 +1,114 @@
+[
+ {
+  "n": 1,
+  "seconds": 10.0518,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT intelligence_fts.chunk_id, intelligence_fts.symbol, intelligence_fts.isin, intelligence_fts.source_type, intelligence_fts.document_date, intelligence_fts.document_text, dc.doc_id AS dc_doc_id, dc.published_date AS chunk_date, rd.doc_id AS raw_doc_id, rd",
+  "params": "('\"gold\"', 40)",
+  "plan": [
+   "6 | 0 | 132 | SCAN intelligence_fts VIRTUAL TABLE INDEX 0:M6",
+   "11 | 0 | 46 | SEARCH dc USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+   "16 | 0 | 42 | SEARCH rd USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+   "49 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 2,
+  "seconds": 4.1187,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+  "params": "['INFY', '500209', '100209', '0000-01-01', '2026-09-24T23:59:59', '%mark%', '%zone%', 40]",
+  "plan": [
+   "5 | 0 | 129 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "53 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 3,
+  "seconds": 3.962,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+  "params": "['NTPC', '532555', '2024-06-01', '2024-06-07T23:59:59', '%signal%', 40]",
+  "plan": [
+   "5 | 0 | 123 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "46 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 4,
+  "seconds": 3.6374,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC ",
+  "params": "['COALINDIA', '533278', '2026-01-29', '2026-02-04T23:59:59', '%scheme%', '%promotion%', '%coal%', 40]",
+  "plan": [
+   "5 | 0 | 123 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "54 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 5,
+  "seconds": 3.1712,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LI",
+  "params": "['HDFCBANK', '0000-01-01', '2026-09-24T23:59:59', '%hdfc%', '%bank%', '%underperformed%', 40]",
+  "plan": [
+   "5 | 0 | 113 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "41 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 6,
+  "seconds": 3.0658,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC ",
+  "params": "['MUTHOOTFIN', '533398', '0000-01-01', '2026-10-07T23:59:59', '%gold%', '%loan%', '%ticket%', 40]",
+  "plan": [
+   "5 | 0 | 123 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "54 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 7,
+  "seconds": 3.0629,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+  "params": "['SAIL', '500113', '0000-01-01', '2026-10-07T23:59:59', '%read%', '%promise%', 40]",
+  "plan": [
+   "5 | 0 | 123 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "50 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 8,
+  "seconds": 3.0267,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+  "params": "['IDEA', '0000-01-01', '2026-10-19T23:59:59', '%free%', '%float%', 40]",
+  "plan": [
+   "5 | 0 | 113 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "37 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 9,
+  "seconds": 2.982,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+  "params": "['BHARTIARTL', '532454', '0000-01-01', '2026-10-07T23:59:59', '%arpu%', '%subscribers%', 40]",
+  "plan": [
+   "5 | 0 | 123 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "50 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ },
+ {
+  "n": 10,
+  "seconds": 2.9802,
+  "db": "equity_intelligence.db",
+  "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC ",
+  "params": "['ADANIENT', '512599', '0000-01-01', '2026-10-19T23:59:59', '%cash%', '%conversion%', '%ratio%', 40]",
+  "plan": [
+   "5 | 0 | 123 | SEARCH document_chunks USING INDEX idx_docchunks_symbol_chunk (symbol=?)",
+   "54 | 0 | 0 | USE TEMP B-TREE FOR ORDER BY"
+  ]
+ }
+]

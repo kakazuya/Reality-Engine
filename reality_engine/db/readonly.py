@@ -122,6 +122,7 @@ def connect_ro(
     *,
     check_same_thread: bool = True,
     cache_size_kib: int = -65536,
+    immutable: bool = False,
 ) -> ReadOnlyConnection:
     """Open ``path`` read-only with a per-statement timeout of ``timeout_s``.
 
@@ -129,10 +130,15 @@ def connect_ro(
     ``cache_size`` as KiB (default 64 MiB here).  ``timeout_s`` also bounds a
     lock wait (``busy_timeout``) and can be lowered per call with
     ``con.set_timeout(seconds)``.
+
+    ``immutable=True`` is only for a finished, never-written store whose WAL
+    files are gone (the pilot ``chunks_v3`` build): a live WAL database needs
+    its ``-shm`` and must be opened without it.
     """
     p = Path(path).expanduser().resolve()
+    uri = f"file:{p.as_posix()}?mode=ro" + ("&immutable=1" if immutable else "")
     con = sqlite3.connect(
-        f"file:{p.as_posix()}?mode=ro",
+        uri,
         uri=True,
         timeout=min(max(float(timeout_s), 0.1), 30.0),
         check_same_thread=check_same_thread,

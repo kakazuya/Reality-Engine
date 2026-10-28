@@ -6,6 +6,14 @@ counts as complete when every sub-question has evidence-backed content.  Rows
 whose metric is not the asked metric family are dropped before assembly
 (``METRIC_SYNONYMS``); the strict grader reuses the same table.
 
+v2 (2026-10-29, speed): one question's hops are independent of each other (they
+read the routed slots, not the previous hop's rows) and independent sub-questions
+are independent too, so the whole question's hops go to one fixed thread pool and
+their results are collected back in chain order -- the answer text and hop order
+stay byte-for-byte deterministic.  A per-question cache keyed on
+``(planner, entity, period, ask)`` shares the repeated identity/price/filing work
+between sub-questions.
+
 The wording contract is QUERY_LAYER.md §4: a NID answer must say what was
 checked (with post-PIT row counts), what the nearest held document is, why the
 fact is missing, and which table/fetch would close it.  A partial answer never
@@ -15,12 +23,19 @@ from __future__ import annotations
 
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from .ctx import Ctx
 from .decompose import decompose, sub_case
 from .planners import load_planners
 from .router import period_bounds, route
+
+#: One fixed pool for the whole process: a hop is DB-bound (SQLite releases the
+#: GIL around execute/fetch), and persistent threads keep each thread's warm
+#: read-only connections alive instead of reconnecting per call.
+HOP_WORKERS = 4
+_POOL = ThreadPoolExecutor(max_workers=HOP_WORKERS, thread_name_prefix="qhop")
 
 # canonical metric -> (include phrases, exclude phrases).  Phrases are matched
 # as substrings of the normalised row text; the excludes stop the trap the v0
@@ -208,21 +223,99 @@ def assemble(case: dict, plan: dict[str, Any], hops: list[dict[str, Any]]) -> tu
     return _nid_text(case, plan, hops)[:4000], True
 
 
-def _run_chain(plan: dict[str, Any], ctx: Ctx) -> list[dict[str, Any]]:
+def _cache_key(plan: dict[str, Any], name: str) -> tuple:
+    """One hop's identity: planner + entity + period + the ask the planner reads.
+
+    RESOLVE depends on the identity and as_of only, so the sub-questions of one
+    question share it (the ask's words and metric are not inputs).  Every other
+    planner also reads the ask, so its key keeps the metric/doc/page/terms.
+    """
+    slots = plan["slots"]
+    if name == "resolve":
+        return (name, slots.get("isin"), slots.get("symbol"),
+                tuple(slots.get("symbols") or ()), plan["as_of"])
+    return (name, slots.get("isin") or slots.get("symbol") or "",
+            plan["as_of"], slots.get("date_from"), slots.get("date_to"),
+            slots.get("metric"), slots.get("doc_type"), slots.get("page"),
+            tuple(slots.get("terms") or ()))
+
+
+def _run_hop(plan: dict[str, Any], name: str, ctx: Ctx) -> dict[str, Any]:
+    key = _cache_key(plan, name)
+    cached = ctx.cache_get(key)
+    if cached is not None:
+        cached["seconds"] = 0.0
+        cached["cached"] = True
+        return cached
     planners = load_planners()
-    hops: list[dict[str, Any]] = []
-    for name in plan["chain"]:
-        started = time.perf_counter()
-        try:
-            hop = planners[name](plan["slots"], plan["as_of"], ctx)
-        except Exception as exc:  # noqa: BLE001 - a planner bug is a graded hop
-            hop = {"hop": name, "ok": False, "na": False, "rows": [], "provenance": [],
-                   "evidence": [], "checked": [], "degraded": [], "pit": None,
-                   "detail": f"planner error: {type(exc).__name__}: {exc}",
-                   "why": "tool", "gap": None, "empty": True, "nid_reason": None}
-        hop["seconds"] = round(time.perf_counter() - started, 4)
-        hops.append(hop)
-    return hops
+    started = time.perf_counter()
+    try:
+        hop = planners[name](plan["slots"], plan["as_of"], ctx)
+    except Exception as exc:  # noqa: BLE001 - a planner bug is a graded hop
+        hop = {"hop": name, "ok": False, "na": False, "rows": [], "provenance": [],
+               "evidence": [], "checked": [], "degraded": [], "pit": None,
+               "detail": f"planner error: {type(exc).__name__}: {exc}",
+               "why": "tool", "gap": None, "empty": True, "nid_reason": None}
+    hop["seconds"] = round(time.perf_counter() - started, 4)
+    ctx.cache_put(key, hop)
+    return hop
+
+
+def _run_batch(chains: list[tuple[int, dict[str, Any]]], ctx: Ctx) -> dict[int, list[dict[str, Any]]]:
+    """Run every hop of every chain concurrently, returning hops in chain order.
+
+    The jobs are submitted in ``(sub index, chain position)`` order and read
+    back in the same order, so assembly never depends on completion order.
+    """
+    jobs: list[tuple[int, dict[str, Any], str]] = []
+    for index, plan in chains:
+        for name in plan["chain"]:
+            jobs.append((index, plan, name))
+    if len(jobs) <= 1:
+        done = {(index, name): _run_hop(plan, name, ctx) for index, plan, name in jobs}
+    else:
+        futures = [(_POOL.submit(_run_hop, plan, name, ctx), (index, name))
+                   for index, plan, name in jobs]
+        done = {key: future.result() for future, key in futures}
+    out: dict[int, list[dict[str, Any]]] = {}
+    for index, plan in chains:
+        out[index] = [done[(index, name)] for name in plan["chain"]]
+    return out
+
+
+def _prepare_sub(case: dict, sub: dict[str, Any], picked: dict[str, Any] | None,
+                 parent_from: str | None, parent_to: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+    variant = sub_case(case, sub, picked)
+    plan = route(variant)
+    slots = plan["slots"]
+    if (parent_from and parent_to and not sub.get("named_document")
+            and slots.get("needs", {}).get("price")
+            and slots.get("period_basis") in ("as_of", "none")):
+        # Later sub-questions inherit the parent's window ("last year" lives on
+        # the parent question, not on "did the stock absorb it?").
+        slots["date_from"], slots["date_to"] = parent_from, parent_to
+        slots["period_basis"] = "inherited window"
+    return plan, variant
+
+
+def _run_record(index: int, sub: dict[str, Any], plan: dict[str, Any],
+                variant: dict[str, Any], hops: list[dict[str, Any]]) -> dict[str, Any]:
+    body = [hop for hop in hops if hop["hop"] != "resolve"]
+    answered = [hop for hop in body if hop["ok"] and not hop["na"]]
+    identity_only = bool(body) and all(hop["na"] for hop in body) and any(
+        hop["ok"] for hop in hops if hop["hop"] == "resolve")
+    bad = [hop for hop in body if not hop["ok"] and not hop["na"]]
+    detail = "; ".join(hop["detail"] for hop in (answered or
+                                                 [h for h in hops if h["hop"] == "resolve"])
+                       if hop.get("detail"))
+    if (answered or identity_only) and bad:
+        detail += " | MISSING: " + "; ".join(
+            f"{hop['hop']}: {hop.get('detail')}" for hop in bad)
+    return {"index": index, "text": sub["text"],
+            "chain": plan["chain"], "hops": hops,
+            "answered": bool(answered or identity_only), "detail": detail,
+            "metric": sub.get("metric"), "steps": sub.get("steps") or [],
+            "entities": list(variant.get("entities") or [])}
 
 
 def _pick(hops: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -239,46 +332,37 @@ def answer(case: dict, ctx: Ctx | None = None, close: bool = True) -> dict[str, 
     """Run each sub-question's routed chain for one master-bank case."""
     own = ctx is None
     ctx = ctx or Ctx()
+    ctx.cache_clear()
     subs = decompose(case)
     parent_from, parent_to, _ = period_bounds(case)
-    picks: dict[int, dict[str, Any]] = {}
-    runs: list[dict[str, Any]] = []
     first_plan: dict[str, Any] | None = None
     try:
-        for sub in subs:
-            picked = picks.get(sub["entity_from"]) if sub.get("entity_from") is not None else None
-            variant = sub_case(case, sub, picked)
-            plan = route(variant)
-            if first_plan is None:
-                first_plan = plan
-            slots = plan["slots"]
-            if (parent_from and parent_to and not sub.get("named_document")
-                    and slots.get("needs", {}).get("price")
-                    and slots.get("period_basis") in ("as_of", "none")):
-                # Later sub-questions inherit the parent's window ("last year"
-                # lives on the parent question, not on "did the stock absorb it?").
-                slots["date_from"], slots["date_to"] = parent_from, parent_to
-                slots["period_basis"] = "inherited window"
-            hops = [filter_hop(hop, sub) for hop in _run_chain(plan, ctx)]
-            body = [hop for hop in hops if hop["hop"] != "resolve"]
-            answered = [hop for hop in body if hop["ok"] and not hop["na"]]
-            identity_only = bool(body) and all(hop["na"] for hop in body) and any(
-                hop["ok"] for hop in hops if hop["hop"] == "resolve")
-            bad = [hop for hop in body if not hop["ok"] and not hop["na"]]
-            detail = "; ".join(hop["detail"] for hop in (answered or
-                                                         [h for h in hops if h["hop"] == "resolve"])
-                               if hop.get("detail"))
-            if (answered or identity_only) and bad:
-                detail += " | MISSING: " + "; ".join(
-                    f"{hop['hop']}: {hop.get('detail')}" for hop in bad)
-            runs.append({"index": sub["index"], "text": sub["text"],
-                         "chain": plan["chain"], "hops": hops,
-                         "answered": bool(answered or identity_only), "detail": detail,
-                         "metric": sub.get("metric"), "steps": sub.get("steps") or [],
-                         "entities": list(variant.get("entities") or [])})
-            pick = _pick(hops) if (sub.get("universe") or sub.get("entity_from") is not None) else None
-            if pick:
-                picks[sub["index"]] = pick
+        runs: list[dict[str, Any]] = []
+        if all(sub.get("entity_from") is None for sub in subs):
+            # No sub-question needs a previous sub-question's ranking row: run
+            # every sub-question's whole chain in one batch.
+            prepared = []
+            for sub in subs:
+                plan, variant = _prepare_sub(case, sub, None, parent_from, parent_to)
+                first_plan = first_plan or plan
+                prepared.append((sub, plan, variant))
+            hops_by = _run_batch([(sub["index"], plan) for sub, plan, _ in prepared], ctx)
+            for sub, plan, variant in prepared:
+                hops = [filter_hop(hop, sub) for hop in hops_by[sub["index"]]]
+                runs.append(_run_record(sub["index"], sub, plan, variant, hops))
+        else:
+            picks: dict[int, dict[str, Any]] = {}
+            for sub in subs:
+                picked = picks.get(sub["entity_from"]) if sub.get("entity_from") is not None else None
+                plan, variant = _prepare_sub(case, sub, picked, parent_from, parent_to)
+                if first_plan is None:
+                    first_plan = plan
+                hops = [filter_hop(hop, sub) for hop in
+                        _run_batch([(sub["index"], plan)], ctx)[sub["index"]]]
+                runs.append(_run_record(sub["index"], sub, plan, variant, hops))
+                pick = _pick(hops) if (sub.get("universe") or sub.get("entity_from") is not None) else None
+                if pick:
+                    picks[sub["index"]] = pick
         first_plan = first_plan or route(case)
         flat = [hop for run in runs for hop in run["hops"]]
         complete = bool(runs) and all(run["answered"] for run in runs)

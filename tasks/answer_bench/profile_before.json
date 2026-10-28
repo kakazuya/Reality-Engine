@@ -1,0 +1,1172 @@
+{
+ "cases": 150,
+ "wall_seconds": 230.6,
+ "warm_seconds": 2.7,
+ "hop_totals": {
+  "EVIDENCE": {
+   "n": 109,
+   "total": 198.413,
+   "max": 10.061
+  },
+  "FACTS": {
+   "n": 154,
+   "total": 10.608,
+   "max": 0.843
+  },
+  "SCREEN": {
+   "n": 153,
+   "total": 10.369,
+   "max": 1.328
+  },
+  "RIPPLE": {
+   "n": 100,
+   "total": 3.527,
+   "max": 0.4
+  },
+  "SERIES": {
+   "n": 133,
+   "total": 3.4,
+   "max": 0.951
+  },
+  "resolve": {
+   "n": 301,
+   "total": 3.371,
+   "max": 0.036
+  },
+  "COMPARE": {
+   "n": 32,
+   "total": 0.385,
+   "max": 0.105
+  },
+  "EVENT": {
+   "n": 43,
+   "total": 0.043,
+   "max": 0.005
+  },
+  "EXPECTATIONS": {
+   "n": 20,
+   "total": 0.0,
+   "max": 0.0
+  }
+ },
+ "tool_totals": {
+  "doc_find": {
+   "n": 165,
+   "total": 180.761,
+   "max": 5.114
+  },
+  "search_docs": {
+   "n": 15,
+   "total": 17.199,
+   "max": 10.061
+  },
+  "doc_page": {
+   "n": 1,
+   "total": 0.422,
+   "max": 0.422
+  }
+ },
+ "top_statements": [
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT intelligence_fts.chunk_id, intelligence_fts.symbol, intelligence_fts.isin, intelligence_fts.source_type, intelligence_fts.document_date, intelligence_fts.document_text, dc.doc_id AS dc_doc_id, dc.published_date AS chunk_date, rd.doc_id AS raw_doc_id, rd.source_url, rd.published_date AS raw_date, rd.source_type AS raw_type FROM intelligence_fts LEFT JOIN document_chunks dc ON dc.chunk_id = intelligence_fts.chunk_id LEFT JOIN raw_documents rd ON rd.doc_id = dc.doc_id WHERE intelligence_fts MATCH ? ORDER BY bm25(intelligence_fts) LIMIT ?",
+   "params": "('\"gold\"', 40)",
+   "seconds": 10.0518,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 4.1188,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['INFY', '500209', '100209', '0000-01-01', '2026-09-24T23:59:59', '%mark%', '%zone%', 40]",
+   "seconds": 4.1187,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 8, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 3.9621,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['NTPC', '532555', '2024-06-01', '2024-06-07T23:59:59', '%signal%', 40]",
+   "seconds": 3.962,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 6, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 3.6375,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['COALINDIA', '533278', '2026-01-29', '2026-02-04T23:59:59', '%scheme%', '%promotion%', '%coal%', 40]",
+   "seconds": 3.6374,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 8, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 3.1713,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['HDFCBANK', '0000-01-01', '2026-09-24T23:59:59', '%hdfc%', '%bank%', '%underperformed%', 40]",
+   "seconds": 3.1712,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 7, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 3.0658,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['MUTHOOTFIN', '533398', '0000-01-01', '2026-10-07T23:59:59', '%gold%', '%loan%', '%ticket%', 40]",
+   "seconds": 3.0658,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 8, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 3.0629,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['SAIL', '500113', '0000-01-01', '2026-10-07T23:59:59', '%read%', '%promise%', 40]",
+   "seconds": 3.0629,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 7, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 3.0268,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['IDEA', '0000-01-01', '2026-10-19T23:59:59', '%free%', '%float%', 40]",
+   "seconds": 3.0267,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 6, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 2.9821,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['BHARTIARTL', '532454', '0000-01-01', '2026-10-07T23:59:59', '%arpu%', '%subscribers%', 40]",
+   "seconds": 2.982,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 7, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 2.9802,
+   "plan": []
+  },
+  {
+   "db": "C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\reality_engine\\data\\equity_intelligence.db",
+   "sql": "SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?",
+   "params": "['ADANIENT', '512599', '0000-01-01', '2026-10-19T23:59:59', '%cash%', '%conversion%', '%ratio%', 40]",
+   "seconds": 2.9802,
+   "plan": [
+    "explain failed: ProgrammingError: Incorrect number of bindings supplied. The current statement uses 8, and there are 0 supplied."
+   ]
+  },
+  {
+   "db": "<plugin sqlite>",
+   "sql": "equity_intelligence",
+   "params": "'SELECT chunk_id, doc_id, chunk_index, published_date, content FROM document_chunks WHERE symbol IN (?,?,?) AND published_date >= ? AND published_date <= ? AND lower(content) LIKE ? AND lower(content) LIKE ? AND lower(content) LIKE ? ORDER BY published_date DESC LIMIT ?'",
+   "seconds": 2.8616,
+   "plan": []
+  }
+ ],
+ "top_hops": [
+  {
+   "mid": "MB0011",
+   "hop": "EVIDENCE",
+   "seconds": 10.0614,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "EVENT",
+    "RIPPLE",
+    "COMPARE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0201",
+   "hop": "EVIDENCE",
+   "seconds": 7.2851,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0159",
+   "hop": "EVIDENCE",
+   "seconds": 5.8782,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "EVENT",
+    "RIPPLE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0969",
+   "hop": "EVIDENCE",
+   "seconds": 5.8537,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB1007",
+   "hop": "EVIDENCE",
+   "seconds": 5.5455,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "EVENT",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0584",
+   "hop": "EVIDENCE",
+   "seconds": 4.9312,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0113",
+   "hop": "EVIDENCE",
+   "seconds": 4.8646,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0764",
+   "hop": "EVIDENCE",
+   "seconds": 4.7618,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0490",
+   "hop": "EVIDENCE",
+   "seconds": 4.7177,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0921",
+   "hop": "EVIDENCE",
+   "seconds": 4.6947,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0540",
+   "hop": "EVIDENCE",
+   "seconds": 4.6056,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0883",
+   "hop": "EVIDENCE",
+   "seconds": 4.501,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0328",
+   "hop": "EVIDENCE",
+   "seconds": 4.3184,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "FACTS",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0491",
+   "hop": "EVIDENCE",
+   "seconds": 4.0316,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB1011",
+   "hop": "EVIDENCE",
+   "seconds": 3.9715,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0314",
+   "hop": "EVIDENCE",
+   "seconds": 3.9664,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "FACTS",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0980",
+   "hop": "EVIDENCE",
+   "seconds": 3.5712,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0867",
+   "hop": "EVIDENCE",
+   "seconds": 3.5555,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0831",
+   "hop": "EVIDENCE",
+   "seconds": 3.4209,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0979",
+   "hop": "EVIDENCE",
+   "seconds": 3.3432,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "SCREEN",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0430",
+   "hop": "EVIDENCE",
+   "seconds": 3.3331,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "EVENT",
+    "COMPARE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0494",
+   "hop": "EVIDENCE",
+   "seconds": 3.2975,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "FACTS",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0477",
+   "hop": "EVIDENCE",
+   "seconds": 3.1699,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "EXPECTATIONS",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0140",
+   "hop": "EVIDENCE",
+   "seconds": 3.1576,
+   "ok": false,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "COMPARE",
+    "FACTS",
+    "SERIES",
+    "EVIDENCE"
+   ]
+  },
+  {
+   "mid": "MB0789",
+   "hop": "EVIDENCE",
+   "seconds": 3.0903,
+   "ok": true,
+   "na": false,
+   "chain": [
+    "resolve",
+    "SCREEN",
+    "RIPPLE",
+    "EVIDENCE"
+   ]
+  }
+ ],
+ "cases_seconds": [
+  {
+   "mid": "MB0001",
+   "seconds": 3.331
+  },
+  {
+   "mid": "MB0002",
+   "seconds": 0.793
+  },
+  {
+   "mid": "MB0003",
+   "seconds": 0.81
+  },
+  {
+   "mid": "MB0004",
+   "seconds": 0.134
+  },
+  {
+   "mid": "MB0005",
+   "seconds": 0.933
+  },
+  {
+   "mid": "MB0006",
+   "seconds": 0.17
+  },
+  {
+   "mid": "MB0007",
+   "seconds": 0.746
+  },
+  {
+   "mid": "MB0008",
+   "seconds": 0.09
+  },
+  {
+   "mid": "MB0009",
+   "seconds": 1.514
+  },
+  {
+   "mid": "MB0010",
+   "seconds": 0.217
+  },
+  {
+   "mid": "MB0011",
+   "seconds": 10.096
+  },
+  {
+   "mid": "MB0012",
+   "seconds": 0.186
+  },
+  {
+   "mid": "MB0013",
+   "seconds": 0.33
+  },
+  {
+   "mid": "MB0014",
+   "seconds": 0.042
+  },
+  {
+   "mid": "MB0015",
+   "seconds": 0.107
+  },
+  {
+   "mid": "MB0016",
+   "seconds": 0.53
+  },
+  {
+   "mid": "MB0017",
+   "seconds": 0.212
+  },
+  {
+   "mid": "MB0018",
+   "seconds": 0.738
+  },
+  {
+   "mid": "MB0019",
+   "seconds": 1.334
+  },
+  {
+   "mid": "MB0020",
+   "seconds": 0.126
+  },
+  {
+   "mid": "MB0021",
+   "seconds": 0.094
+  },
+  {
+   "mid": "MB0022",
+   "seconds": 0.204
+  },
+  {
+   "mid": "MB0023",
+   "seconds": 0.329
+  },
+  {
+   "mid": "MB0024",
+   "seconds": 1.786
+  },
+  {
+   "mid": "MB0025",
+   "seconds": 0.724
+  },
+  {
+   "mid": "MB0026",
+   "seconds": 0.432
+  },
+  {
+   "mid": "MB0027",
+   "seconds": 1.354
+  },
+  {
+   "mid": "MB0028",
+   "seconds": 0.035
+  },
+  {
+   "mid": "MB0029",
+   "seconds": 3.09
+  },
+  {
+   "mid": "MB0030",
+   "seconds": 2.331
+  },
+  {
+   "mid": "MB0831",
+   "seconds": 3.514
+  },
+  {
+   "mid": "MB0832",
+   "seconds": 2.722
+  },
+  {
+   "mid": "MB0839",
+   "seconds": 1.255
+  },
+  {
+   "mid": "MB0840",
+   "seconds": 0.557
+  },
+  {
+   "mid": "MB0842",
+   "seconds": 0.018
+  },
+  {
+   "mid": "MB0867",
+   "seconds": 3.581
+  },
+  {
+   "mid": "MB0883",
+   "seconds": 4.606
+  },
+  {
+   "mid": "MB0885",
+   "seconds": 0.114
+  },
+  {
+   "mid": "MB0886",
+   "seconds": 0.026
+  },
+  {
+   "mid": "MB0890",
+   "seconds": 0.691
+  },
+  {
+   "mid": "MB0898",
+   "seconds": 0.765
+  },
+  {
+   "mid": "MB0921",
+   "seconds": 4.799
+  },
+  {
+   "mid": "MB0935",
+   "seconds": 1.835
+  },
+  {
+   "mid": "MB0948",
+   "seconds": 2.097
+  },
+  {
+   "mid": "MB0958",
+   "seconds": 0.163
+  },
+  {
+   "mid": "MB0969",
+   "seconds": 5.878
+  },
+  {
+   "mid": "MB0973",
+   "seconds": 0.654
+  },
+  {
+   "mid": "MB0979",
+   "seconds": 3.412
+  },
+  {
+   "mid": "MB0980",
+   "seconds": 3.627
+  },
+  {
+   "mid": "MB0983",
+   "seconds": 0.051
+  },
+  {
+   "mid": "MB0989",
+   "seconds": 2.656
+  },
+  {
+   "mid": "MB0999",
+   "seconds": 0.729
+  },
+  {
+   "mid": "MB1006",
+   "seconds": 0.129
+  },
+  {
+   "mid": "MB1007",
+   "seconds": 5.594
+  },
+  {
+   "mid": "MB1010",
+   "seconds": 0.045
+  },
+  {
+   "mid": "MB1011",
+   "seconds": 4.004
+  },
+  {
+   "mid": "MB1015",
+   "seconds": 0.103
+  },
+  {
+   "mid": "MB1016",
+   "seconds": 0.449
+  },
+  {
+   "mid": "MB1022",
+   "seconds": 0.095
+  },
+  {
+   "mid": "MB1026",
+   "seconds": 2.784
+  },
+  {
+   "mid": "MB0332",
+   "seconds": 0.775
+  },
+  {
+   "mid": "MB0365",
+   "seconds": 0.202
+  },
+  {
+   "mid": "MB0368",
+   "seconds": 1.544
+  },
+  {
+   "mid": "MB0373",
+   "seconds": 0.994
+  },
+  {
+   "mid": "MB0375",
+   "seconds": 0.079
+  },
+  {
+   "mid": "MB0378",
+   "seconds": 0.746
+  },
+  {
+   "mid": "MB0389",
+   "seconds": 0.844
+  },
+  {
+   "mid": "MB0411",
+   "seconds": 0.702
+  },
+  {
+   "mid": "MB0416",
+   "seconds": 0.016
+  },
+  {
+   "mid": "MB0417",
+   "seconds": 0.128
+  },
+  {
+   "mid": "MB0421",
+   "seconds": 0.603
+  },
+  {
+   "mid": "MB0424",
+   "seconds": 1.044
+  },
+  {
+   "mid": "MB0430",
+   "seconds": 3.495
+  },
+  {
+   "mid": "MB0435",
+   "seconds": 0.813
+  },
+  {
+   "mid": "MB0436",
+   "seconds": 1.896
+  },
+  {
+   "mid": "MB0449",
+   "seconds": 2.947
+  },
+  {
+   "mid": "MB0464",
+   "seconds": 3.316
+  },
+  {
+   "mid": "MB0466",
+   "seconds": 1.965
+  },
+  {
+   "mid": "MB0472",
+   "seconds": 1.886
+  },
+  {
+   "mid": "MB0477",
+   "seconds": 3.811
+  },
+  {
+   "mid": "MB0482",
+   "seconds": 1.901
+  },
+  {
+   "mid": "MB0490",
+   "seconds": 4.854
+  },
+  {
+   "mid": "MB0491",
+   "seconds": 4.057
+  },
+  {
+   "mid": "MB0494",
+   "seconds": 3.534
+  },
+  {
+   "mid": "MB0496",
+   "seconds": 0.237
+  },
+  {
+   "mid": "MB0506",
+   "seconds": 0.199
+  },
+  {
+   "mid": "MB0527",
+   "seconds": 0.083
+  },
+  {
+   "mid": "MB0531",
+   "seconds": 0.058
+  },
+  {
+   "mid": "MB0540",
+   "seconds": 4.66
+  },
+  {
+   "mid": "MB0579",
+   "seconds": 0.104
+  },
+  {
+   "mid": "MB0584",
+   "seconds": 5.04
+  },
+  {
+   "mid": "MB0601",
+   "seconds": 0.355
+  },
+  {
+   "mid": "MB0602",
+   "seconds": 0.209
+  },
+  {
+   "mid": "MB0604",
+   "seconds": 0.109
+  },
+  {
+   "mid": "MB0609",
+   "seconds": 0.224
+  },
+  {
+   "mid": "MB0617",
+   "seconds": 0.143
+  },
+  {
+   "mid": "MB0619",
+   "seconds": 0.991
+  },
+  {
+   "mid": "MB0627",
+   "seconds": 0.28
+  },
+  {
+   "mid": "MB0040",
+   "seconds": 3.793
+  },
+  {
+   "mid": "MB0044",
+   "seconds": 0.13
+  },
+  {
+   "mid": "MB0071",
+   "seconds": 0.984
+  },
+  {
+   "mid": "MB0094",
+   "seconds": 0.651
+  },
+  {
+   "mid": "MB0100",
+   "seconds": 3.78
+  },
+  {
+   "mid": "MB0113",
+   "seconds": 5.02
+  },
+  {
+   "mid": "MB0138",
+   "seconds": 0.4
+  },
+  {
+   "mid": "MB0140",
+   "seconds": 3.258
+  },
+  {
+   "mid": "MB0144",
+   "seconds": 0.539
+  },
+  {
+   "mid": "MB0148",
+   "seconds": 0.001
+  },
+  {
+   "mid": "MB0151",
+   "seconds": 0.542
+  },
+  {
+   "mid": "MB0152",
+   "seconds": 0.33
+  },
+  {
+   "mid": "MB0154",
+   "seconds": 0.207
+  },
+  {
+   "mid": "MB0159",
+   "seconds": 6.219
+  },
+  {
+   "mid": "MB0164",
+   "seconds": 0.022
+  },
+  {
+   "mid": "MB0197",
+   "seconds": 1.299
+  },
+  {
+   "mid": "MB0199",
+   "seconds": 3.44
+  },
+  {
+   "mid": "MB0201",
+   "seconds": 7.538
+  },
+  {
+   "mid": "MB0218",
+   "seconds": 2.933
+  },
+  {
+   "mid": "MB0224",
+   "seconds": 2.199
+  },
+  {
+   "mid": "MB0228",
+   "seconds": 1.98
+  },
+  {
+   "mid": "MB0245",
+   "seconds": 0.544
+  },
+  {
+   "mid": "MB0264",
+   "seconds": 0.779
+  },
+  {
+   "mid": "MB0270",
+   "seconds": 0.924
+  },
+  {
+   "mid": "MB0310",
+   "seconds": 1.133
+  },
+  {
+   "mid": "MB0311",
+   "seconds": 1.068
+  },
+  {
+   "mid": "MB0314",
+   "seconds": 4.259
+  },
+  {
+   "mid": "MB0320",
+   "seconds": 2.701
+  },
+  {
+   "mid": "MB0328",
+   "seconds": 4.565
+  },
+  {
+   "mid": "MB0637",
+   "seconds": 0.069
+  },
+  {
+   "mid": "MB0640",
+   "seconds": 0.043
+  },
+  {
+   "mid": "MB0655",
+   "seconds": 0.174
+  },
+  {
+   "mid": "MB0676",
+   "seconds": 1.414
+  },
+  {
+   "mid": "MB0697",
+   "seconds": 0.602
+  },
+  {
+   "mid": "MB0702",
+   "seconds": 0.126
+  },
+  {
+   "mid": "MB0704",
+   "seconds": 3.17
+  },
+  {
+   "mid": "MB0710",
+   "seconds": 3.346
+  },
+  {
+   "mid": "MB0715",
+   "seconds": 0.093
+  },
+  {
+   "mid": "MB0719",
+   "seconds": 0.093
+  },
+  {
+   "mid": "MB0728",
+   "seconds": 0.132
+  },
+  {
+   "mid": "MB0752",
+   "seconds": 0.899
+  },
+  {
+   "mid": "MB0764",
+   "seconds": 5.066
+  },
+  {
+   "mid": "MB0767",
+   "seconds": 0.124
+  },
+  {
+   "mid": "MB0786",
+   "seconds": 0.963
+  },
+  {
+   "mid": "MB0789",
+   "seconds": 3.885
+  },
+  {
+   "mid": "MB0793",
+   "seconds": 0.095
+  },
+  {
+   "mid": "MB0799",
+   "seconds": 1.073
+  },
+  {
+   "mid": "MB0801",
+   "seconds": 0.211
+  },
+  {
+   "mid": "MB0802",
+   "seconds": 0.078
+  },
+  {
+   "mid": "MB0806",
+   "seconds": 0.223
+  },
+  {
+   "mid": "MB0808",
+   "seconds": 0.072
+  },
+  {
+   "mid": "MB0829",
+   "seconds": 2.722
+  }
+ ]
+}
