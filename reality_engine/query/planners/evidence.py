@@ -53,6 +53,79 @@ _SOURCE_TYPES = {
     "announcement": ("ANNOUNCEMENT", "OTHER_FILING", "PRESS_RELEASE"),
 }
 
+#: Narrative concepts: the words the passage itself must carry, and the document
+#: types the bank's ask expects that concept in (acquisitions -> announcements/AR,
+#: facilities -> AR/deck, auditor -> AR/announcements).  A passage that does not
+#: name the concept is not evidence for that ask, however many title words it shares.
+NARRATIVE: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    "acquisition": (("acquisition", "acquire", "acquired", "acquiring", "stake sale",
+                     "stake purchase", "demerger", "amalgamation", "scheme of arrangement",
+                     "takeover"),
+                    ("announcement", "ar", "results_notes")),
+    "products": (("product", "products", "offering", "offerings", "portfolio of"),
+                 ("ar", "deck", "concall")),
+    "facilities": (("facilit", "plant", "plant", "factory", "factories",
+                    "manufacturing unit", "manufacturing units"),
+                   ("ar", "deck")),
+    "audit": (("auditor", "auditors", "audit", "qualified opinion", "unmodified opinion",
+               "opinion"),
+              ("ar", "announcement", "results_notes")),
+    "listing": (("listing", "listed", "initial public offer", "ipo", "prospectus",
+                 "grey market"),
+                ("announcement", "deck", "concall")),
+    "lag": (("lag", "lagged", "pass-through", "passthrough", "quarters", "months"),
+            ()),
+}
+
+
+def _narratives_of(question: str) -> list[tuple[str, tuple[str, ...], tuple[str, ...]]]:
+    """Every narrative concept the ask names (a two-part ask needs both)."""
+    from ..gate import asked_concepts
+    out = []
+    for concept in asked_concepts(question or ""):
+        spec = NARRATIVE.get(concept)
+        if spec:
+            out.append((concept, spec[0], spec[1]))
+    return out[:2]
+
+
+def _narrative_of(question: str) -> tuple[str, tuple[str, ...], tuple[str, ...]] | None:
+    """The narrative concept the ask names (most specific first), if held."""
+    found = _narratives_of(question)
+    return found[0] if found else None
+
+
+def _narrative_hits(text: str, narratives: list[tuple[str, tuple[str, ...],
+                                                      tuple[str, ...]]]) -> int:
+    """Concept hits across the asked narrative concepts (each term counts once)."""
+    low = str(text or "").lower()
+    hits = 0
+    for _, terms, _ in narratives:
+        hits += sum(1 for term in terms if term in low)
+    return hits
+
+
+def _narrative_types(narratives: list[tuple[str, tuple[str, ...],
+                                            tuple[str, ...]]]) -> tuple[str, ...]:
+    types: list[str] = []
+    for _, _, doc_types in narratives:
+        types += [doc_type for doc_type in doc_types if doc_type not in types]
+    return tuple(types)
+
+
+def _concept_hits(text: str, concept_terms: tuple[str, ...]) -> int:
+    low = str(text or "").lower()
+    return sum(1 for term in concept_terms if term in low)
+
+
+def _prefer_doc_type(passages: list[dict[str, Any]],
+                     doc_types: tuple[str, ...]) -> list[dict[str, Any]]:
+    """Keep the passages filed in a type the concept lives in, when any is."""
+    if not doc_types:
+        return passages
+    preferred = [p for p in passages if str(p.get("doc_type") or "") in doc_types]
+    return preferred or passages
+
 
 def _fts_query(terms: list[str]) -> str:
     """OR of quoted content words, with a de-pluralised form of each."""
@@ -634,6 +707,15 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         terms = [t for t in (slots.get("terms") or []) if len(t) > 3] or slots.get("terms") or []
         symbol_words = {str(symbol).lower(), str(slots.get("symbol") or "").lower()}
         meaningful = [t for t in terms if t.lower() not in symbol_words] or terms
+        narrative = _narrative_of(question)
+        narratives = _narratives_of(question)
+        if not named and doc_type is None and str(slots.get("period_basis") or "") in (
+                "named date", "named dates"):
+            # The date names a price/fact session ("close on 16 Oct 2026"), not a
+            # filing: the narrative evidence may come from any document known by
+            # as_of.  Only a named document bounds the passage dates.
+            slots = dict(slots, date_from=None, date_to=None)
+            date = None
         if meaningful and _v3_covers(ctx, slots.get("isin"), slots.get("symbol")):
             # The chunks_v3 store is the authoritative text index for a pilot
             # ISIN.  Ranked FTS is the relevance signal here: half the ask's
@@ -642,6 +724,17 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 candidates = _chunks_v3_search(ctx, slots, as_of, doc_type)
             except Exception:  # noqa: BLE001 - a broken pilot DB falls to the FTS path
                 candidates = None
+            # Retrieve each concept's own passages as well: the ask's words
+            # ("products", "facilities") are often slide-title words, while the
+            # concept's evidence sits on another page of the same document.
+            for _, concept_terms, _ in narratives:
+                try:
+                    extra = _chunks_v3_search(
+                        ctx, dict(slots, terms=list(dict.fromkeys(
+                            [*concept_terms, *meaningful]))), as_of, doc_type)
+                except Exception:  # noqa: BLE001
+                    extra = []
+                candidates = (candidates or []) + extra
             # Extraction rows (rating actions, price revisions, contracts, cost inputs,
             # supply links) are passages too: quote + page + known_at, PIT-filtered.
             try:
@@ -656,6 +749,64 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 candidates = _period_passages(candidates, slots, as_of, named)
                 need = max(1, (len(meaningful) + 1) // 2)
                 clean, partial = [], []
+                if narrative:
+                    # Rank by the concepts the passage actually carries; a title page
+                    # that shares "Investor Presentation" is not the answer.  A
+                    # two-concept ask needs one carrying passage per concept.
+                    picked: list[dict[str, Any]] = []
+                    for _, concept_terms, concept_types in narratives:
+                        carrying = []
+                        for passage in candidates:
+                            quote = (str(passage.get("quote") or "") + " "
+                                     + str(passage.get("header") or ""))
+                            carried = _concept_hits(quote, concept_terms)
+                            if not carried:
+                                continue
+                            hits = sum(1 for term in meaningful
+                                       if term.lower() in quote.lower())
+                            carrying.append((carried * 2 + hits, passage))
+                        carrying.sort(key=lambda item: -item[0])
+                        ordered = [passage for _, passage in carrying]
+                        ordered = _prefer_doc_type(ordered, concept_types)
+                        if ordered:
+                            picked.append(ordered[0])
+                    for passage in candidates:
+                        if len(picked) >= 3:
+                            break
+                        if passage not in picked:
+                            picked.append(passage)
+                    if picked and any(
+                            _narrative_hits(str(p.get("quote") or "") + " "
+                                            + str(p.get("header") or ""), narratives)
+                            for p in picked):
+                        chosen = picked[:3]
+                        detail = " | ".join(
+                            f"{p.get('doc_type')} {p.get('date')} p{p.get('page')} "
+                            f"{(p.get('section') or '')[:40]}: {(p.get('quote') or '')[:180]}"
+                            for p in chosen[:2])
+                        return envelope(
+                            "EVIDENCE", ok=True,
+                            rows=[{"ref": f"chunks_v3:{p.get('doc_id')}#{p.get('page')}",
+                                   "known_at": p.get("date"), "date": p.get("date"),
+                                   "doc_type": p.get("doc_type"), "page": p.get("page"),
+                                   "quote": (p.get("quote") or "")[:300],
+                                   "section": p.get("section"),
+                                   "isin": slots.get("isin") or p.get("isin"),
+                                   "symbol": slots.get("symbol") or p.get("symbol"),
+                                   "period": p.get("period")}
+                                  for p in chosen],
+                            provenance=[{"ref": f"chunks_v3:{p.get('doc_id')}#{p.get('page')}",
+                                         "known_at": p.get("date")} for p in chosen],
+                            pit=f"chunk known_at <= {as_of} pushed into the FTS + filter SQL",
+                            checked=CHECKED_V3,
+                            degraded=[],
+                            detail=detail)
+                    return envelope(
+                        "EVIDENCE", ok=False, why="no_doc", checked=CHECKED_V3,
+                        detail=f"no chunk of {symbol} carries the asked "
+                               f"{', '.join(n for n, _, _ in narratives)} concept(s) "
+                               f"known by {as_of}",
+                        nid_reason="no passage in chunks_v3")
                 for passage in candidates:
                     quote = str(passage.get("quote") or "").lower()
                     hits = sum(1 for term in meaningful if term.lower() in quote)
@@ -705,6 +856,15 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             res = dict(res, checked=res.get("checked") or CHECKED_FTS)
         else:
             passages = _fts_passages(ctx, slots, meaningful, as_of, doc_type, date, limit=30)
+            for _, concept_terms, _ in narratives:
+                # The deck/AR read must be centred on the concept's own words: a
+                # snippet around "presentation" is not the facilities page.
+                try:
+                    passages += _store_passages(
+                        ctx, dict(slots, terms=list(concept_terms)),
+                        list(concept_terms), as_of, doc_type, date)
+                except Exception:  # noqa: BLE001 - a satellite store miss is not fatal
+                    pass
             if not passages:
                 # Chunk index miss for a deck/AR ask: the vision page text and the AR
                 # fact quotes are separate stores; both reads are index-bounded.
@@ -713,6 +873,12 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 except Exception:  # noqa: BLE001 - a satellite store miss is not fatal
                     passages = []
             passages = _period_passages(passages, slots, as_of, named)
+            if narratives and passages:
+                carrying = [p for p in passages if _narrative_hits(
+                    str(p.get("quote") or p.get("text") or "") + " " + str(p.get("header") or ""),
+                    narratives)]
+                if carrying:
+                    passages = _prefer_doc_type(carrying, _narrative_types(narratives))
             res = {"checked": CHECKED_FTS, "warnings": []}
         found_any = bool(passages)
         if meaningful and passages:
@@ -728,10 +894,13 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 quote = str(passage.get("quote") or passage.get("text") or "").lower()
                 hits = sum(1 for term in meaningful if term.lower() in quote)
                 metric_hit = any(word in quote for word in metric_words)
-                if hits >= need or metric_hit:
-                    scored.append((hits + (1 if metric_hit else 0), passage))
+                carried = _narrative_hits(quote, narratives) if narratives else 0
+                if carried or hits >= need or metric_hit:
+                    scored.append((carried * 3 + hits + (1 if metric_hit else 0), passage))
             scored.sort(key=lambda item: -item[0])
             passages = [passage for _, passage in scored]
+            if narratives:
+                passages = _prefer_doc_type(passages, _narrative_types(narratives))
             if not passages:
                 res["reason"] = (f"documents are held but no passage carries "
                                  f"{', '.join(meaningful[:3])}")
@@ -771,6 +940,22 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             entity=str(slots.get("symbol") or slots.get("isin") or ""),
             named_date=(named or {}).get("date") or date, as_of=as_of)
         top = passages[:3]
+        if narratives:
+            # A two-concept ask needs one carrying passage per concept before the
+            # generic ranking fills the remaining slots.
+            picked: list[dict[str, Any]] = []
+            for _, concept_terms, _ in narratives:
+                for passage in passages:
+                    text = str(passage.get("quote") or passage.get("text") or "")
+                    if passage not in picked and _concept_hits(text, concept_terms):
+                        picked.append(passage)
+                        break
+            for passage in passages:
+                if len(picked) >= 3:
+                    break
+                if passage not in picked:
+                    picked.append(passage)
+            top = picked[:3]
         detail = " | ".join(
             f"{p.get('doc_type')} {p.get('date')} p{p.get('page')}: "
             f"{(p.get('quote') or '')[:180]}" for p in top[:2])

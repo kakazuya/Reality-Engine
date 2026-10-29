@@ -79,13 +79,18 @@ METRICS: list[tuple[str, tuple[str, ...]]] = [
     ("cagr", ("cagr", "annualised", "annualized", "3-year", "three-year", "five-year")),
     ("valuation", ("pe", "p/e", "ev/ebitda", "ev/sales", "valuation", "multiple",
                    "premium", "discount")),
+    # A price band is a circuit limit, not the 52-week range: it routes before
+    # ``range`` and needs the ``price_bands`` field, which SERIES/SCREEN label.
+    ("band", ("price band", "band", "circuit", "base price")),
+    ("volume", ("volume", "volumes", "traded quantity")),
+    ("delivery", ("delivery", "delivered", "short covering", "accumulation")),
     ("promoter", ("promoter", "stake", "shareholding", "holding")),
+    ("pledge", ("pledge",)),
     ("return", ("return", "rose", "fell", "gained", "dropped", "move", "moved",
                 "performance", "outperform", "underperform")),
     ("range", ("range", "support", "resistance", "high", "low", "breakout", "breakdown")),
     ("gap", ("gap", "gapped")),
     ("rsi", ("rsi", "oversold", "overbought")),
-    ("delivery", ("delivery", "delivered", "short covering", "accumulation")),
     ("guidance", ("guidance", "guided", "outlook", "expects", "target")),
     ("audit", ("audit", "auditor", "opinion", "qualified", "qualification")),
 ]
@@ -121,6 +126,10 @@ TEXT_WORDS = re.compile(r"\b(say|said|says|comment|commentary|explain|why|kyun|w
                         r"per its|according to|transcript|presentation|annual report|note|"
                         r"management|discuss|detail|mention|mentioned|talk about|spoke about)\b",
                         re.I)
+#: Concepts answered from a document passage, so the ask needs the EVIDENCE hop
+#: even when it uses none of the "what did it say" words ("list the products",
+#: "compute the repricing lag", "who did it acquire").
+EVIDENCE_CONCEPTS = {"products", "facilities", "acquisition", "audit", "listing", "lag"}
 LIST_ASK = re.compile(r"which (companies|managements|large-caps?|mid-caps?|small-caps?|stocks|"
                       r"names).{0,80}(said|filed|wrote|took|evaluating|reported|declared|"
                       r"announced)", re.I)
@@ -350,6 +359,72 @@ def key_terms(question: str) -> list[str]:
     return out[:8]
 
 
+#: Families whose ask is a price/market question.  A short sub-question that
+#: names no concept ("which one was worst", "earliest PIT signal") inherits the
+#: family's ask, so the concept gate has something the returned rows can carry.
+PRICE_FAMILIES = {2, 9, 11, 12, 15, 16, 20}
+#: Templates whose ask the SERIES studies actually compute.  ``ta_ma_cross`` is
+#: deliberately absent: no moving-average cross study exists, so hinting "price
+#: return" would let a plain close row pass a cross ask it does not answer.
+PRICE_TEMPLATES = {"ta_relative_strength", "ta_support_resistance", "ta_gap",
+                   "ta_breakout_volume"}
+#: Words that say the sub-question is about the move, not a document reading: a
+#: facts case that also carries the price family ("what does note 5 say") must not
+#: be judged as a return row.
+PRICE_WORDS = re.compile(
+    r"\b(move|moved|return|returns|correlat|track|tracking|recover|react|absorb|"
+    r"perform|underperform|outperform|relative|nav|inav|cagr|drawdown|high|low|"
+    r"worst|best|strongest|weakest|trend|visib|lag|lead)\w*", re.I)
+#: The phrase that puts a concept into a sub-question's own wording, so a short
+#: follow-up ("where are they") is searched and judged as the concept it inherits.
+CONCEPT_PHRASE = {
+    "facilities": "manufacturing facilities", "products": "products",
+    "acquisition": "acquisition", "audit": "auditor", "listing": "listing",
+    "valuation": "valuation", "range": "52-week high", "volume": "volume",
+    "delivery": "delivery", "promoter": "promoter holding",
+    "public_holding": "public holding", "pledge": "pledge", "lag": "lag",
+    "band": "price band", "guidance": "guidance", "rating": "credit rating",
+    "dividend": "dividend", "capex": "capex", "capacity": "capacity",
+    "order_book": "order book", "margin": "margin", "revenue": "revenue",
+    "pat": "profit after tax", "segment": "segment", "working_capital": "working capital",
+    "return": "price return", "cagr": "cagr", "rsi": "rsi",
+}
+
+
+#: Concepts a short sub-question may inherit from its parent without changing the
+#: routed financial metric: the market / holding / narrative families this task
+#: owns.  Financial metrics (revenue, PAT, margin, capacity ...) are never appended
+#: -- doing so would re-route a revenue sub to "capacity" and lose the revenue row.
+APPEND_CONCEPTS = {"range", "volume", "delivery", "valuation", "band", "promoter",
+                   "public_holding", "pledge", "acquisition", "products", "facilities",
+                   "audit", "listing", "lag", "return"}
+
+
+def implied_ask(text: str, case: dict) -> str | None:
+    """The ask a short sub-question implies through its family/template/parent.
+
+    Only used when the text itself names no concept: "which one was worst" in a
+    price family is a price return, and "where are they" under a facilities ask
+    is still the facilities concept.  The decomposer appends the phrase so the
+    planner and the gate read the same ask.
+    """
+    from .gate import asked_concepts
+    if asked_concepts(text):
+        return None
+    family = [int(f) for f in (case.get("family") or []) if str(f).isdigit()]
+    if (any(f in PRICE_FAMILIES for f in family) and PRICE_WORDS.search(text)) or \
+            str(case.get("template") or "") in PRICE_TEMPLATES:
+        return "price return"
+    # A follow-up clause inherits the parent question's concept ("where are they"
+    # under "how many manufacturing facilities ...").  The parent is the ask the
+    # gate already checks, so the sub must search and be judged for it too.
+    for concept in asked_concepts(str(case.get("question") or "")):
+        phrase = CONCEPT_PHRASE.get(concept)
+        if phrase:
+            return phrase
+    return None
+
+
 def doc_type_of(question: str) -> str | None:
     low = question.lower()
     for key, doc_type in (("transcript", "transcript"), ("concall", "transcript"),
@@ -400,9 +475,15 @@ def needs_of(case: dict, refs: list[str], metric: str | None) -> dict[str, bool]
     level = str(case.get("entity_level") or "stock")
     answer_kind = str(case.get("answer_kind") or "").lower()
     text_ask = bool(TEXT_WORDS.search(question)) or answer_kind in ("text+quote", "explanation")
+    try:
+        from .gate import asked_concepts
+        narrative_ask = any(concept in EVIDENCE_CONCEPTS
+                            for concept in asked_concepts(question))
+    except Exception:  # noqa: BLE001 - concept detection is optional for routing
+        narrative_ask = False
     price_ask = bool(re.search(r"\b(close|price|return|cagr|high|low|rsi|delivery|range|"
-                               r"gap|volume|turnover|relative strength|listing|tracking error|"
-                               r"max pain|pcr|open interest|inav)\b", question, re.I))
+                               r"band|circuit|gap|volume|turnover|relative strength|listing|"
+                               r"tracking error|max pain|pcr|open interest|inav)\b", question, re.I))
     date_from, date_to, _ = period_bounds(case)
     window = bool(date_from and date_to and date_from != date_to)
     entities = [e for e in (case.get("entities") or []) if isinstance(e, dict)]
@@ -413,10 +494,14 @@ def needs_of(case: dict, refs: list[str], metric: str | None) -> dict[str, bool]
                  or metric in {"return", "cagr", "range", "rsi", "gap", "delivery"},
         "financials": bool(metric) or bool(family & {1, 2, 3, 4, 8, 11, 13, 14, 16, 17}) or
                       any("xbrl" in r or "facts" in r for r in refs),
-        "text": text_ask or list_ask or any("document_chunks" in r or "raw_documents" in r or
-                                            "announcement" in r for r in refs),
+        "text": text_ask or list_ask or narrative_ask or
+                any("document_chunks" in r or "raw_documents" in r or
+                    "announcement" in r for r in refs),
         "event": bool(EVENT_WORDS.search(question)),
-        "screen": (level != "stock" or bool(SCREEN_WORDS.search(question))) and not list_ask,
+        # A single-stock holding or band ask is still a held-field lookup: SCREEN
+        # is the planner that reads shp_index/price_bands for it.
+        "screen": ((level != "stock" or bool(SCREEN_WORDS.search(question))
+                    or metric in {"band", "promoter", "pledge"})) and not list_ask,
         "compare": (bool(family & {8, 13}) and multi) or bool(COMPARE_WORDS.search(question)),
         "ripple": bool(family & {6, 7, 18, 19}) or bool(RIPPLE_WORDS.search(question)) or
                   str(case.get("source_bank")) == "ripple200",

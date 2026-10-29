@@ -38,7 +38,7 @@ METRIC_SYNONYMS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "margin": (("margin", "opm"), ()),
     "eps": (("eps", "earnings per share"), ()),
     "net_npa": (("npa", "non performing", "non-performing"), ("net worth",)),
-    "promoter": (("promoter", "shareholding", "stake", "holding pattern", "pledge",
+    "promoter": (("promoter", "shareholding", "stake", "holding pattern",
                   "promoter holding", "public holding", "holding %"),
                  ("net promoter", "nps", "promoter score", "total shareholding pattern",
                   # The public split is its own ask: a "public holding %" row must not
@@ -60,11 +60,19 @@ METRIC_SYNONYMS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "cagr": (("cagr", "annualised", "annualized"), ()),
     "range": (("high", "low", "range", "support", "resistance", "52-week", "52 week", "ytd"),
               # "has an oversold RSI marked a durable low" is a bottom ask, not a range.
-              ("durable low", "durable bottom")),
+              # A ranking ("highest to lowest"), a comparison ("higher than") and a
+              # view that "supports" a thesis are not 52-week high/low asks.
+              ("durable low", "durable bottom", "higher", "lower", "highest", "lowest",
+               "ranked", "support a", "supports", "supported by", "support the",
+               "support this")),
     # A "gap" ask is a price gap, not the "data gaps" a question asks the answerer to name.
     "gap": (("gap up", "gap down", "gapped", "opening gap", "gap open"), ("data gap",)),
     "rsi": (("rsi", "oversold", "overbought"), ()),
-    "delivery": (("delivery", "delivered"), ()),
+    "delivery": (("delivery", "delivered"),
+                 # A food-delivery platform's fees/take rate is not exchange
+                 # delivery data; the market concept is the demat quantity.
+                 ("food delivery", "delivery platform", "delivery fee", "delivery fees",
+                  "delivery partner", "delivery business", "delivery service")),
     # A valuation ask names a ratio (P/E, P/B, EV/EBITDA, book value, market cap).
     # Bare "premium" / "discount" / "multiple" are about products, spot-vs-futures
     # and "multiple plants": demanding a valuation row for those is a wrong ask.
@@ -78,8 +86,20 @@ METRIC_SYNONYMS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
 #: Concepts the master bank asks for that the router's metric list does not name.
 #: (include phrases, exclude phrases) -- same substring rule as METRIC_SYNONYMS.
 ASK_CONCEPTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
-    "products": (("product", "offerings", "portfolio of"), ("production capacity",)),
-    "volume": (("volume", "volumes", "traded quantity"), ()),
+    "products": (("product", "offerings", "portfolio of"),
+                 # "Petroleum Products" / "Industrial Products" are sector names,
+                 # not a products ask about one company.
+                 ("production capacity", "petroleum products", "industrial products",
+                  "chemical products", "dairy products", "steel products")),
+    # A sales/business volume ("volume growth", "car volume") is not the exchange's
+    # traded quantity: the market concept is the traded volume field.
+    "volume": (("volume", "volumes", "traded quantity"),
+               ("volume growth", "sales volume", "production volume", "car volume",
+                "order volume", "throughput volume", "business volume",
+                "growth from volume", "volume or price", "volume or from price",
+                "volume from price", "volume vs price",
+                "volume versus price", "price and mix", "volume and price",
+                "premium volume", "volumes up", "volume up")),
     "band": (("price band", "band", "circuit", "base price"), ("bandwidth",)),
     "open_interest": (("open interest", "rollover", "short covering", "short-covering",
                        "futures basis", "oi addition", "oi added", "cost of carry"), ()),
