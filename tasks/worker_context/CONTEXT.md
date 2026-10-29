@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T09:31:09+05:30 · git HEAD: `2bfd7a7` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T11:01:11+05:30 · git HEAD: `f7bdff3` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -556,10 +556,11 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.video_screen_ocr` | test_video_ocr_pilot.py |
 | `reality_engine.query.answer` | test_query_planners.py, test_query_v1.py |
 | `reality_engine.query.compute` | test_query_compute.py, test_query_concepts.py |
-| `reality_engine.query.ctx` | test_macro_claim_target.py, test_query_period.py, test_query_planners.py, test_query_v1.py |
+| `reality_engine.query.ctx` | test_macro_claim_target.py, test_query_period.py, test_query_pilot_b.py, test_query_planners.py, test_query_v1.py |
 | `reality_engine.query.decompose` | test_query_v1.py |
 | `reality_engine.query.gate` | test_query_concepts.py, test_query_period.py |
 | `reality_engine.query.metrics` | test_extraction_pilot60.py |
+| `reality_engine.query.planners.event` | test_query_planners.py |
 | `reality_engine.query.planners.facts` | test_query_concepts.py |
 | `reality_engine.query.planners.ripple` | test_macro_claim_target.py |
 | `reality_engine.query.rerank` | test_query_v1.py |
