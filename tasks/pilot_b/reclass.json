@@ -1,0 +1,538 @@
+{
+ "counts": {
+  "a": 694,
+  "b": 370,
+  "c": 9
+ },
+ "moved": 65,
+ "kept_b": 40,
+ "moved_cases": [
+  [
+   "MB0013",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-06-30 for the case window (period end 2026-06-30)"
+  ],
+  [
+   "MB0015",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-19)"
+  ],
+  [
+   "MB0077",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0102",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0104",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0128",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0160",
+   "commodity_price_daily",
+   "wb_coal_aus covers 2000-01-31..2026-06-30 for the case window (period end 2026-06-30)"
+  ],
+  [
+   "MB0162",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0164",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0165",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0166",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0168",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0169",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-09-17"
+  ],
+  [
+   "MB0170",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0218",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0220",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-19)"
+  ],
+  [
+   "MB0235",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0240",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 1/1 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0248",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0258",
+   "company_membership_pit",
+   "NIFTY MIDSMALLCAP 400: 883 dated intervals <= 2026-10-19 (coverage derived)"
+  ],
+  [
+   "MB0277",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0278",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0288",
+   "company_membership_pit",
+   "NIFTY SMALLCAP 250: 752 dated intervals <= 2026-10-19 (coverage snapshot)"
+  ],
+  [
+   "MB0298",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0308",
+   "company_membership_pit",
+   "NIFTY 200: 342 dated intervals <= 2026-10-19 (coverage snapshot)"
+  ],
+  [
+   "MB0327",
+   "mkt_nse_full_daily",
+   "mkt_nse_full_daily has 3/3 entity symbols <= 2026-10-19"
+  ],
+  [
+   "MB0369",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-06-30 for the case window (period end 2026-06-30)"
+  ],
+  [
+   "MB0459",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-09-30)"
+  ],
+  [
+   "MB0632",
+   "commodity_price_daily",
+   "wb_crude_brent covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0633",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0635",
+   "commodity_price_daily",
+   "wb_coal_aus covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0636",
+   "commodity_price_daily",
+   "wb_crude_brent covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0637",
+   "commodity_price_daily",
+   "wb_crude_brent covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0638",
+   "commodity_price_daily",
+   "wb_urea covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0640",
+   "commodity_price_daily",
+   "wb_gold covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0641",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0643",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0644",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0648",
+   "commodity_price_daily",
+   "wb_rubber covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0649",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0650",
+   "commodity_price_daily",
+   "wb_copper covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0687",
+   "commodity_price_daily",
+   "wb_gold covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0696",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0697",
+   "commodity_price_daily",
+   "wb_cotton_a covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0698",
+   "commodity_price_daily",
+   "wb_crude_brent covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0703",
+   "commodity_price_daily",
+   "wb_copper covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0706",
+   "commodity_price_daily",
+   "wb_rubber covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0716",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0788",
+   "commodity_price_daily",
+   "wb_coal_aus covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-29)"
+  ],
+  [
+   "MB0791",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-23)"
+  ],
+  [
+   "MB0794",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-23)"
+  ],
+  [
+   "MB0798",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-23)"
+  ],
+  [
+   "MB0800",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-23)"
+  ],
+  [
+   "MB0806",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-09-30 for the case window (period end 2026-10-23)"
+  ],
+  [
+   "MB0880",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-03-31 for the case window (period end 2026-03-31)"
+  ],
+  [
+   "MB0943",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-03-31 for the case window (period end 2026-03-31)"
+  ],
+  [
+   "MB0945",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2025-12-31 for the case window (period end 2025-12-31)"
+  ],
+  [
+   "MB0980",
+   "commodity_price_daily",
+   "a held series (22 of the 40 asked for) covers 2000-01-31..2026-03-31 for the case window (period end 2026-03-31)"
+  ],
+  [
+   "MB1017",
+   "fno_oi_daily",
+   "fno_oi_daily has rows for AMBER <= 2026-10-19"
+  ],
+  [
+   "MB1018",
+   "fno_oi_daily",
+   "fno_oi_daily has rows for SONACOMS <= 2026-10-19"
+  ],
+  [
+   "MB1019",
+   "fno_oi_daily",
+   "fno_oi_daily has rows for ASIANPAINT <= 2026-10-19"
+  ],
+  [
+   "MB1020",
+   "fno_oi_daily",
+   "fno_oi_daily has rows for DMART <= 2026-10-19"
+  ],
+  [
+   "MB1021",
+   "fno_oi_daily",
+   "fno_oi_daily has rows for ETERNAL <= 2026-10-19"
+  ],
+  [
+   "MB1022",
+   "fno_oi_daily",
+   "fno_oi_daily has rows for POLYCAB <= 2026-10-19"
+  ],
+  [
+   "MB1025",
+   "fno_oi_daily",
+   "fno_oi_daily has rows for HDFCBANK <= 2026-09-24"
+  ]
+ ],
+ "kept_cases": [
+  [
+   "MB0018",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-12-31 as known by 2026-10-19"
+  ],
+  [
+   "MB0038",
+   "company_membership_pit",
+   "NIFTY TOTAL MARKET: only 1020 notice-dated changes held (coverage changes_only); the full constituent list is not held"
+  ],
+  [
+   "MB0098",
+   "company_membership_pit",
+   "NIFTY HOUSING: only 34 notice-dated changes held (coverage changes_only); the full constituent list is not held"
+  ],
+  [
+   "MB0108",
+   "company_membership_pit",
+   "NIFTY INDIA FPI 150: only 32 notice-dated changes held (coverage changes_only); the full constituent list is not held"
+  ],
+  [
+   "MB0140",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-10-19 as known by 2026-10-19"
+  ],
+  [
+   "MB0158",
+   "company_membership_pit",
+   "NIFTY OIL & GAS: only 8 notice-dated changes held (coverage changes_only); the full constituent list is not held"
+  ],
+  [
+   "MB0167",
+   "company_membership_pit",
+   "case names no Nifty index"
+  ],
+  [
+   "MB0188",
+   "company_membership_pit",
+   "NIFTY TOTAL MARKET: only 1020 notice-dated changes held (coverage changes_only); the full constituent list is not held"
+  ],
+  [
+   "MB0202",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-12-31 as known by 2026-10-19"
+  ],
+  [
+   "MB0208",
+   "company_membership_pit",
+   "NIFTY TOTAL MARKET: only 1020 notice-dated changes held (coverage changes_only); the full constituent list is not held"
+  ],
+  [
+   "MB0210",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-12-31 as known by 2026-10-19"
+  ],
+  [
+   "MB0238",
+   "company_membership_pit",
+   "NIFTY SMALLCAP 500: only 237 notice-dated changes held (coverage changes_only); the full constituent list is not held"
+  ],
+  [
+   "MB0359",
+   "commodity_price_daily",
+   "judgement/prediction ask: no held store answers it (EXPECTATIONS gate)"
+  ],
+  [
+   "MB0431",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2025-04-07 as known by 2025-04-07"
+  ],
+  [
+   "MB0457",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2027-03-31 as known by 2026-10-07"
+  ],
+  [
+   "MB0458",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-12-31 as known by 2026-10-07"
+  ],
+  [
+   "MB0580",
+   "company_membership_pit",
+   "case names no Nifty index"
+  ],
+  [
+   "MB0601",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2027-03-31 as known by 2026-10-07"
+  ],
+  [
+   "MB0606",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2027-03-31 as known by 2026-10-07"
+  ],
+  [
+   "MB0613",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2027-03-31 as known by 2026-10-07"
+  ],
+  [
+   "MB0615",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2027-03-31 as known by 2026-10-07"
+  ],
+  [
+   "MB0619",
+   "company_membership_pit",
+   "judgement/prediction ask: no held store answers it (EXPECTATIONS gate)"
+  ],
+  [
+   "MB0634",
+   "commodity_price_daily",
+   "commodity wb_aluminium is not among the 22 held World Bank series"
+  ],
+  [
+   "MB0639",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-08-19 as known by 2026-08-19"
+  ],
+  [
+   "MB0642",
+   "commodity_price_daily",
+   "commodity wb_aluminium is not among the 22 held World Bank series"
+  ],
+  [
+   "MB0645",
+   "commodity_price_daily",
+   "judgement/prediction ask: no held store answers it (EXPECTATIONS gate)"
+  ],
+  [
+   "MB0692",
+   "commodity_price_daily",
+   "commodity wb_aluminium is not among the 22 held World Bank series"
+  ],
+  [
+   "MB0702",
+   "commodity_price_daily",
+   "commodity wb_aluminium is not among the 22 held World Bank series"
+  ],
+  [
+   "MB0707",
+   "commodity_price_daily",
+   "judgement/prediction ask: no held store answers it (EXPECTATIONS gate)"
+  ],
+  [
+   "MB0742",
+   "fno_oi_daily",
+   "no F&O contract for APARINDS, KEI, RRKABEL (not F&O eligible)"
+  ],
+  [
+   "MB0751",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-06-30 as known by 2026-06-30"
+  ],
+  [
+   "MB0752",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-06-30 as known by 2026-06-30"
+  ],
+  [
+   "MB0756",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-06-30 as known by 2026-06-30"
+  ],
+  [
+   "MB0768",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-06-30 as known by 2026-06-30"
+  ],
+  [
+   "MB0774",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-06-30 as known by 2026-06-30"
+  ],
+  [
+   "MB0787",
+   "commodity_price_daily",
+   "no held commodity observation covers period end 2026-06-30 as known by 2026-06-30"
+  ],
+  [
+   "MB0797",
+   "commodity_price_daily",
+   "commodity wb_aluminium is not among the 22 held World Bank series"
+  ],
+  [
+   "MB0903",
+   "company_membership_pit",
+   "case names no Nifty index"
+  ],
+  [
+   "MB0905",
+   "company_membership_pit",
+   "case names no Nifty index"
+  ],
+  [
+   "MB1016",
+   "fno_oi_daily",
+   "no F&O contract for SYRMA (not F&O eligible)"
+  ]
+ ]
+}
