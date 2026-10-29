@@ -76,7 +76,7 @@ EFFORTS = ("low", "medium", "high", "xhigh", "max")
 KEY_ENV = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
 
 
-def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, control=None):
+def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, control=None, workspace=None):
     """YAML overlay with a stable session header, optional output cap, and heartbeat plugin."""
     if model in REASONING:
         efforts = "\n".join(f"              {e}: {e}" for e in EFFORTS)
@@ -110,7 +110,34 @@ def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, cont
         followup_wait = control.get("followup_wait") or 0
         if followup_wait:
             patch += f"        followupWaitSeconds: {float(followup_wait):g}\n"
+    if workspace is not None and Path(workspace).resolve() != REPO.resolve():
+        patch += code_intel_patch(workspace)
     return patch
+
+
+def code_intel_patch(workspace):
+    """Point the profile's code-intel MCP server at the worker's own checkout.
+
+    The headless profile pins CODE_INTEL_REPO_ROOT to the main checkout, so a
+    worktree worker's lookups described main, not the files it was editing.
+    The server script stays the main checkout's (worktrees cut from an older
+    commit may predate the freshness fix); only the indexed root moves.
+    """
+    ws = Path(workspace).resolve().as_posix()
+    server = (REPO / "plugins" / "code-intel" / "server" / "server.py").resolve().as_posix()
+    return (
+        "- id: mcp-code-intel\n"
+        "  config:\n"
+        "    serverName: code-intel\n"
+        "    transport: stdio\n"
+        f"    command: {json.dumps(Path(sys.executable).as_posix())}\n"
+        f"    args:\n      - {json.dumps(server)}\n"
+        f"    cwd: {json.dumps(ws)}\n"
+        "    env:\n"
+        f"      CODE_INTEL_REPO_ROOT: {json.dumps(ws)}\n"
+        '      PYTHONUTF8: "1"\n'
+        "    toolCallTimeoutMs: 60000\n"
+    )
 
 
 def main():
@@ -230,7 +257,8 @@ def main():
         "followup_wait": a.followup_wait,
     }
     with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8") as f:
-        f.write(build_patch(model, effort, key_env, a.max_output_tokens, base_url, patch_info))
+        f.write(build_patch(model, effort, key_env, a.max_output_tokens, base_url, patch_info,
+                                workspace=a.cwd))
         patch = f.name
     t0 = time.time()
     try:

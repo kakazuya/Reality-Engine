@@ -114,17 +114,20 @@ PROGRESS_NOTES_INSTRUCTION = (
     "writing it."
 )
 # Appended to every worker brief (Shivam, 2026-10-30: all dsh workers use
-# code-intel).  The dsh harness has no MCP, so workers call the CLI.
+# code-intel).  The headless dsh profile loads code-intel as an MCP server;
+# run_deepseek_harness points it at the worker's own workspace.
 CODE_INTEL_INSTRUCTION = (
-    "Standing code-navigation instruction: use code-intel from your shell "
-    "before grep or whole-file reads. From the worktree root: "
-    "`python plugins/code-intel/ci.py definition <name>` (where a symbol is "
-    "defined), `ci.py references <name>` (every use, including table/column "
-    "names inside SQL strings), `ci.py outline <file>` (symbols with line "
-    "numbers, instead of reading the whole module), `ci.py module_map <dir>`, "
-    "and `ci.py diagnostics <changed file>` before reporting done. JSON on "
-    "stdout, ~0.3 s warm. In your final report state how many code-intel "
-    "calls you made and your tool-call count before the first edit."
+    "Standing code-navigation instruction: you have code-intel tools "
+    "(mcp__code-intel__definition, __references, __callers, __symbols, "
+    "__module_map, __hover, __diagnostics), indexed on YOUR workspace and "
+    "fresh against on-disk edits. Use them before grep or whole-file reads: "
+    "definition/references for where a symbol (or a table/column name) is "
+    "defined and used, symbols(file=...) for a module outline instead of "
+    "reading it whole, module_map for a directory, diagnostics on every file "
+    "you changed before reporting done. If the MCP tools are unavailable, the "
+    "same commands run as `python plugins/code-intel/ci.py <cmd>` (JSON). In "
+    "your final report state how many code-intel calls you made and your "
+    "tool-call count before the first edit."
 )
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 1200
 MAX_PROGRESS_INTERVAL_SECONDS = 86_400
