@@ -22,6 +22,7 @@ import sqlite3
 import sys
 import time
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -36,6 +37,11 @@ D_PDFS = Path(r"D:\RealityEngine\pdfs")
 CUTOFF = "2024-04-01"
 OUT_DIR = REPO / "tasks" / "pilot_t2"
 DB_PATH = Path(os.environ.get("REALITY_CHUNKS_V3") or (REPO / ".tmp" / "pilot" / "chunks_v3_pilot.db"))
+# results notes: the page store built by scripts/fetch_results_notes_text.py, and the
+# PDF cache it shares (the BSE Pname uuid is the file name under the raw root).
+RESULTS_NOTES_DB = Path(os.environ.get("REALITY_RESULTS_NOTES_DB")
+                        or (REPO / ".tmp" / "results_notes" / "results_notes.db"))
+RESULTS_RAW = Path(os.environ.get("REALITY_RESULTS_RAW") or (REPO / ".tmp" / "results_notes_raw"))
 
 TYPE_PRIORITY = {"annual_report": 0, "concall": 1, "results_notes": 2, "deck": 3, "announcement": 4}
 DOC_TYPE_MAP = {"CONCALL_TRANSCRIPT": "concall", "ANNUAL_REPORT": "annual_report",
@@ -86,6 +92,7 @@ class Draft:
     sha256: str
     path: Path
     source_ref: str = ""
+    pages: list[str] | None = None  # page text from the results_notes store (no PDF needed)
 
 
 def ro(path: Path) -> sqlite3.Connection:
@@ -307,30 +314,131 @@ def load_decks(isins: list[str], index: FileIndex) -> list[Draft]:
 
 
 def load_results_notes(isins: list[str], index: FileIndex) -> list[Draft]:
+    """Resolve a results document by its stored pages, else by its Pname uuid PDF.
+
+    The pages come from ``RESULTS_NOTES_DB`` keyed ISIN + period + newsid; the newsid
+    is the BSE announcement of the ``Pname`` attachment in ``source_url``.  When the
+    page store has nothing for it, the PDF of that Pname name (staged under
+    ``RESULTS_RAW`` from the Drive copy) is the fallback.  ``known_at`` is the BSE
+    announcement time (``ann.DissemDT``), never a crawl date.
+    """
     con = ro(DATA / "equity_intelligence.db")
     q = ",".join("?" * len(isins))
     rows = con.execute(
         f"SELECT id, isin, symbol, title, publication_date, bse_dissem_ts, sha256_hash, "
         f"source_url, fiscal_period_end FROM corporate_documents WHERE isin IN ({q}) "
         f"AND doc_type IN ('FINANCIAL_RESULT','RESULTS') "
-        f"AND COALESCE(bse_dissem_ts, publication_date) >= ?", isins + [CUTOFF])
-    out = []
+        f"AND COALESCE(bse_dissem_ts, publication_date) >= ?", isins + [CUTOFF]).fetchall()
+    con.close()
+    attachments = []
     for r in rows:
-        known, src = parse_ts(r["bse_dissem_ts"]), "bse_dissem"
-        if not known:
-            known, src = parse_ts(r["publication_date"]), "filing_date"
-        if not known:
-            continue
-        path = index.by_sha(r["sha256_hash"] or "")
-        meta = DocMeta(
-            doc_id=(r["sha256_hash"] or f"corporate_documents:{r['id']}"),
-            source="corporate_documents", doc_type="results_notes", isin=r["isin"],
-            symbol=norm_symbol(r["symbol"]), title=r["title"] or "Results notes",
-            known_at=known, known_at_src=src, pit_conf=v3.pit_confidence(src),
-            fiscal_period="", raw_path=str(path) if path else "", raw_url=r["source_url"] or "",
-            source_ref=str(r["id"]), event_date=known[:10])
-        out.append(Draft(meta, r["sha256_hash"] or "", path or Path(""), str(r["id"])))
+        m = PNAME_RE.search(r["source_url"] or "")
+        if m:
+            attachments.append(m.group(1).lower())
+    newsids = _newsid_index(sorted(set(attachments)))
+    raw = _raw_pdf_index()
+    store = None
+    if RESULTS_NOTES_DB.is_file():
+        try:
+            store = ro(RESULTS_NOTES_DB)
+            if not store.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                                 "AND name='results_notes'").fetchone():
+                store.close()
+                store = None
+        except Exception:  # noqa: BLE001 - a missing page store is a fallback, not a failure
+            store = None
+    out = []
+    try:
+        for r in rows:
+            m = PNAME_RE.search(r["source_url"] or "")
+            attachment = m.group(1) if m else ""
+            newsid, dissem = newsids.get(attachment.lower(), ("", ""))
+            known = parse_ts(dissem) or parse_ts(r["bse_dissem_ts"]) or parse_ts(r["publication_date"])
+            if not known:
+                continue
+            src = "bse_dissem" if dissem or r["bse_dissem_ts"] else "filing_date"
+            period = (r["fiscal_period_end"] or "")[:10]
+            pages = None
+            stored = _stored_pages(store, r["isin"], period, newsid) if (store and newsid) else None
+            if stored:
+                period, stored_known, pages = stored
+                known = parse_ts(stored_known) or known
+            path = raw.get(attachment.lower()) if attachment else None
+            if path is None and newsid:
+                path = raw.get(f"{newsid}.pdf")
+            meta = DocMeta(
+                doc_id=(r["sha256_hash"] or f"corporate_documents:{r['id']}"),
+                source="corporate_documents", doc_type="results_notes", isin=r["isin"],
+                symbol=norm_symbol(r["symbol"]), title=r["title"] or "Results notes",
+                known_at=known, known_at_src=src, pit_conf=v3.pit_confidence(src),
+                fiscal_period=_quarter_label(period), raw_path=str(path) if path else "",
+                raw_url=r["source_url"] or "", source_ref=str(r["id"]), event_date=known[:10])
+            out.append(Draft(meta, r["sha256_hash"] or "", path or Path(""), str(r["id"]), pages))
+    finally:
+        if store is not None:
+            store.close()
     return out
+
+
+PNAME_RE = re.compile(r"[?&]Pname=([^&\s]+)", re.IGNORECASE)
+
+
+def _quarter_label(period_end: str) -> str:
+    """``2026-06-30`` -> ``Q1FY27`` (empty when the period is unknown)."""
+    try:
+        d = date.fromisoformat(str(period_end)[:10])
+    except (ValueError, TypeError):
+        return ""
+    q = {3: 4, 6: 1, 9: 2, 12: 3}.get(d.month)
+    if not q:
+        return ""
+    return f"Q{q}FY{(d.year + 1 if d.month != 3 else d.year) % 100:02d}"
+
+
+def _raw_pdf_index() -> dict[str, Path]:
+    """Basename -> path for the results-notes PDF cache (Pname and newsid names)."""
+    out: dict[str, Path] = {}
+    if RESULTS_RAW.is_dir():
+        for p in RESULTS_RAW.rglob("*.pdf"):
+            out.setdefault(p.name.lower(), p)
+    return out
+
+
+def _newsid_index(attachments: list[str]) -> dict[str, tuple[str, str]]:
+    """BSE attachment name (the Pname uuid) -> (NEWSID, DissemDT)."""
+    if not attachments:
+        return {}
+    out: dict[str, tuple[str, str]] = {}
+    con = ro(DATA / "bse_announcements.db")
+    try:
+        for i in range(0, len(attachments), 400):
+            batch = attachments[i:i + 400]
+            q = ",".join("?" * len(batch))
+            for r in con.execute(f"SELECT ATTACHMENTNAME, NEWSID, DissemDT FROM ann "
+                                 f"WHERE ATTACHMENTNAME IN ({q})", batch):
+                if r["DissemDT"]:
+                    out[r["ATTACHMENTNAME"].lower()] = (str(r["NEWSID"]), r["DissemDT"])
+    finally:
+        con.close()
+    return out
+
+
+def _stored_pages(con: sqlite3.Connection, isin: str, period: str,
+                  newsid: str) -> tuple[str, str, list[str]] | None:
+    """(period_end, known_at, page texts) from results_notes, keyed ISIN+period+newsid."""
+    sql = ("SELECT period_end, known_at, page_no, text FROM results_notes "
+           "WHERE isin = ? AND source_newsid = ?")
+    params: list[str] = [isin, newsid]
+    if period:
+        sql += " AND period_end = ?"
+        params.append(period)
+    rows = con.execute(sql + " ORDER BY period_end, page_no", params).fetchall()
+    if not rows:
+        return None
+    period_end = rows[0]["period_end"]
+    pages = [r["text"] or "" for r in rows if r["period_end"] == period_end]
+    return period_end, rows[0]["known_at"] or "", pages
+
 
 
 def load_bse_announcements(isins: list[str], index: FileIndex) -> list[Draft]:
@@ -539,18 +647,24 @@ def build(limit: int | None = None) -> dict:
         label = f"{i}/{len(ordered)} {d.meta.doc_type} {d.meta.symbol} {d.meta.known_at[:10]}"
         if i <= 3 or i % 10 == 0:
             print(f"  {label}: start", flush=True)
-        if not d.path or not d.path.is_file():
+        if d.pages is not None:
+            # Page text came from the results_notes store: no PDF read (the PDF may
+            # live only in Drive).  The content hash keys the same dedupe as a file.
+            sha = hashlib.sha256("\n".join(d.pages).encode("utf-8")).hexdigest()
+            pages = d.pages
+        elif not d.path or not d.path.is_file():
             stats["docs_no_file"] += 1
             continue
-        try:
-            sha = sha256_file(d.path)
-            if sha in written_shas:
-                continue  # the same bytes reached the store through another registry
-            with fitz.open(d.path) as pdf:
-                pages = [page.get_text("text") or "" for page in pdf]
-        except Exception as exc:  # noqa: BLE001 - one bad PDF is data, not a crash
-            print(f"  {label}: parse failed {type(exc).__name__}: {exc}")
-            continue
+        else:
+            try:
+                sha = sha256_file(d.path)
+                with fitz.open(d.path) as pdf:
+                    pages = [page.get_text("text") or "" for page in pdf]
+            except Exception as exc:  # noqa: BLE001 - one bad PDF is data, not a crash
+                print(f"  {label}: parse failed {type(exc).__name__}: {exc}")
+                continue
+        if sha in written_shas:
+            continue  # the same bytes reached the store through another registry
         written_shas.add(sha)
         d.sha256 = sha
         d.meta.doc_id = f"sha256:{sha}"
@@ -667,7 +781,8 @@ def write_coverage(con: sqlite3.Connection, ordered: list[Draft]) -> None:
             # a registry file is missing when nothing was written for that ISIN/type
             # beyond what resolved; list every expected ref not written as sha/doc id
             written_refs = {d.meta.source_ref for d in ordered
-                            if d.meta.isin == isin and d.meta.doc_type == dt and d.meta.raw_path}
+                            if d.meta.isin == isin and d.meta.doc_type == dt
+                            and (d.meta.raw_path or d.pages)}
             missing = [e for e in exp if e["ref"] not in written_refs]
             report["by_isin"][isin][dt] = {"expected": len(exp), "found": got,
                                            "missing": missing[:200],

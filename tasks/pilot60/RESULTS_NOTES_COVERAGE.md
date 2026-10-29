@@ -1,0 +1,75 @@
+# Results-notes coverage — T2 pilot
+
+expected **78**, found **76** (97.4%)
+
+## Buckets
+
+| group | expected | found | share |
+|---|---|---|---|
+| pilot-60 | 65 | 63 | 96.9% |
+| regression-30 | 15 | 15 | 100.0% |
+| LARGE | 15 | 15 | 100.0% |
+| MID-SMALL | 26 | 26 | 100.0% |
+| MICRO | 24 | 22 | 91.7% |
+
+## Per ISIN
+
+| ISIN | symbol | expected | found |
+|---|---|---|---|
+| INE00R701025 | DALBHARAT | 1 | 1 |
+| INE010J01012 | TEJASNET | 1 | 1 |
+| INE030A01027 | HINDUNILVR | 2 | 2 |
+| INE038A01020 | HINDALCO | 1 | 1 |
+| INE044A01036 | SUNPHARMA | 1 | 1 |
+| INE047A01021 | GRASIM | 2 | 2 |
+| INE053A01029 | INDHOTEL | 1 | 1 |
+| INE066F01020 |  | 2 | 2 |
+| INE089C01029 | STLTECH | 1 | 1 |
+| INE094A01015 | HINDPETRO | 1 | 1 |
+| INE0HR601026 | DDEVPLSTIK | 1 | 1 |
+| INE114A01011 | SAIL | 1 | 1 |
+| INE155A01022 | TMPV | 2 | 2 |
+| INE192B01031 | WELSPUNLIV | 1 | 1 |
+| INE228I01012 | ASAHISONG | 2 | 2 |
+| INE271C01023 | DLF | 2 | 2 |
+| INE296A01032 | BAJFINANCE | 1 | 1 |
+| INE303R01014 | KALYANKJIL | 2 | 2 |
+| INE318A01026 | PIDILITIND | 1 | 1 |
+| INE321D01016 | AGVENTURES | 3 | 1 |
+| INE323A01026 | BOSCHLTD | 1 | 1 |
+| INE325C01035 | DOLLAR | 1 | 1 |
+| INE345A01011 | HINDOILEXP | 1 | 1 |
+| INE365D01021 | ASHIANA | 1 | 1 |
+| INE389H01022 | KEC | 1 | 1 |
+| INE399L01023 | ATGL | 2 | 2 |
+| INE412U01025 | BIGBLOC | 1 | 1 |
+| INE415G01027 |  | 3 | 3 |
+| INE417T01026 |  | 4 | 4 |
+| INE442H01029 | ASHOKA | 1 | 1 |
+| INE463V01026 | ANANDRATHI | 1 | 1 |
+| INE516A01017 | UFLEX | 1 | 1 |
+| INE532F01054 | EDELWEISS | 2 | 2 |
+| INE540L01014 | ALKEM | 1 | 1 |
+| INE568Z01015 | URAVIDEF | 4 | 4 |
+| INE589A01014 | NLCINDIA | 1 | 1 |
+| INE669E01016 | IDEA | 2 | 2 |
+| INE670A01012 | TATAELXSI | 2 | 2 |
+| INE686F01025 | UBL | 1 | 1 |
+| INE702C01027 | APLAPOLLO | 1 | 1 |
+| INE752E01010 | POWERGRID | 2 | 2 |
+| INE765D01022 | WPIL | 1 | 1 |
+| INE776C01039 | GMRAIRPORT | 2 | 2 |
+| INE811K01011 | PRESTIGE | 2 | 2 |
+| INE834I01025 | KHADIM | 3 | 3 |
+| INE849A01020 |  | 3 | 3 |
+| INE871K01015 | HMVL | 1 | 1 |
+| INE898S01029 | AURUM | 1 | 1 |
+| INE930H01031 |  | 1 | 1 |
+| INE930P01018 | ANURAS | 1 | 1 |
+
+## Misses (0)
+
+- none
+
+## Miss reasons
+
