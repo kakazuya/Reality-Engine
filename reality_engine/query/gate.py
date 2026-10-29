@@ -54,11 +54,16 @@ METRIC_SYNONYMS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
                 "performance", "cagr", "excess"), ("dividend", "total return")),
     "cagr": (("cagr", "annualised", "annualized"), ()),
     "range": (("high", "low", "range", "support", "resistance", "52-week", "52 week", "ytd"), ()),
-    "gap": (("gap",), ()),
+    # A "gap" ask is a price gap, not the "data gaps" a question asks the answerer to name.
+    "gap": (("gap up", "gap down", "gapped", "opening gap", "gap open"), ("data gap",)),
     "rsi": (("rsi", "oversold", "overbought"), ()),
     "delivery": (("delivery", "delivered"), ()),
-    "valuation": (("valuation", "pe", "p/e", "ev/ebitda", "ev/sales", "multiple", "premium",
-                   "discount", "market cap"), ()),
+    # A valuation ask names a ratio (P/E, P/B, EV/EBITDA, book value, market cap).
+    # Bare "premium" / "discount" / "multiple" are about products, spot-vs-futures
+    # and "multiple plants": demanding a valuation row for those is a wrong ask.
+    "valuation": (("valuation", "pe", "p/e", "pe ratio", "price to earnings", "p/b", "pb",
+                   "price to book", "pb ratio", "book value", "ev/ebitda", "ev/sales",
+                   "market cap", "market capitalisation", "market capitalization"), ()),
     "guidance": (("guidance", "guided", "outlook", "expects", "target"), ()),
     "audit": (("audit", "auditor", "opinion", "qualified", "qualification"), ()),
 }
@@ -79,20 +84,27 @@ ASK_CONCEPTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "fii": (("fii", "fpi", "foreign institutional", "foreign portfolio"), ()),
     "dii": (("dii", "domestic institutional", "mutual fund"), ()),
     "share_count": (("shares outstanding", "paid-up", "paid up", "share capital"), ()),
-    "dividend": (("dividend", "payout"), ()),
+    "dividend": (("dividend", "payout"),
+                 # "split- and dividend-adjusted closes" names the CAGR's adjustment
+                 # basis, not a dividend ask: the ask is the CAGR.
+                 ("dividend adjusted", "dividends and splits", "adjusting for dividend",
+                  "dividend and split")),
     "rating": (("rating", "rated", "downgrade", "upgrade", "credit watch",
                 "outlook revision"), ()),
     "working_capital": (("receivable", "debtor", "inventory", "working capital",
                          "cash conversion"), ()),
-    "isin_identity": (("isin", "renam", "name change", "symbol change", "mapping"), ()),
+    # An ISIN in the ask is an entity reference ("ISIN INE864I01014 said..."), not an
+    # identity-change ask; only the change/rename/mapping wording is the concept.
+    "isin_identity": (("isin change", "renam", "name change", "symbol change", "mapping"), ()),
     "acquisition": (("acquisition", "acquire", "stake sale", "stake purchase", "demerger",
                      "amalgamat", "scheme of arrangement"), ()),
     "index_inclusion": (("index inclusion", "index entry", "passive buying", "passive flow",
                          "index-driven", "rebalance"), ()),
-    "futures": (("futures", "premium to spot", "basis widening", "basis", "rollover",
+    "futures": (("futures", "premium to spot", "basis widening", "rollover",
                  "open interest", "short covering", "short-covering", "cost of carry",
-                 "oi addition", "oi added"), ()),
-    "spectrum": (("spectrum", "licence", "license", "spectrum-liability"), ()),
+                 "oi addition", "oi added"), ("on the basis",)),
+    # "manufacturing licence" is not a spectrum licence: the spectrum word is the ask.
+    "spectrum": (("spectrum", "spectrum-liability"), ()),
     "listing": (("listing date", "listed on", "listing"), ()),
     "pledge": (("pledge",), ()),
     # The event/relation asks the pilot-60 hand check found answered with an
@@ -166,7 +178,7 @@ def metric_matches(metric: str | None, text: Any) -> bool:
     low = norm(text)
     for word in exclude:
         low = low.replace(word, " ")
-    return any(word in low for word in include)
+    return any(_phrase_hit(low, word) for word in include)
 
 
 def evidence_matches(metric: str | None, text: Any) -> bool:
@@ -174,11 +186,26 @@ def evidence_matches(metric: str | None, text: Any) -> bool:
     return metric_matches(metric, text)
 
 
+#: Endings a short alias may carry and still be the same word ("high" -> "higher",
+#: "margin" -> "margins").  The near-misses the v0 table let through ("pe" inside
+#: "per"/"complete", "pat" inside "patterns", "rsi" inside "diversification",
+#: "eps" inside "steps") are not among them.
+_WORD_ENDINGS = ("", "s", "es", "er", "ers", "ed", "ing", "est", "ion", "ions", "ity")
+
+
 def _phrase_hit(low: str, phrase: str) -> bool:
-    """Substring for long phrases; a whole word for short keys ("pe" is not "capex")."""
-    if len(phrase) <= 3:
-        return re.search(r"(?<![a-z0-9])" + re.escape(phrase) + r"(?![a-z0-9])", low) is not None
-    return phrase in low
+    """A phrase is a substring; a short alias is a word (with a plural/degree ending).
+
+    Whole-word matching alone lost the real asks ("higher highs", "margins"), and
+    open substring matching invented asks ("per" -> "pe"), so short aliases match
+    the word plus an inflection and nothing else.
+    """
+    if len(phrase) > 6 or " " in phrase or "/" in phrase:
+        return phrase in low
+    for ending in _WORD_ENDINGS:
+        if re.search(r"(?<![a-z0-9])" + re.escape(phrase + ending) + r"(?![a-z0-9])", low):
+            return True
+    return False
 
 
 def _concept_hit(text: str, concept: str) -> bool:

@@ -14,6 +14,7 @@ from reality_engine.query import compute
 from . import envelope, fmt_num, in_period, isin_of, normalise_label, terms_clause
 
 CHECKED = ["results_xbrl.filings", "results_xbrl.facts", "ar_facts.ar_facts",
+           "facts_pilot.company_segment_pnl",
            "deck_figures.pages", "deck_figures.facts", "concall_facts.cc_items"]
 
 PRICE_METRICS = {"cagr", "return", "range", "gap", "rsi", "delivery"}
@@ -30,6 +31,7 @@ CONCEPT_TERMS: dict[str, tuple[str, ...]] = {
     "cfo": ("%CashFlow%",),
     "order_book": ("%Order%",),
     "capacity": ("%Capacity%",),
+    "capex": ("%PropertyPlantAndEquipment%", "%CapitalExpenditure%", "%CapitalWork%"),
     "promoter": ("%Shareholding%",),
     "valuation": ("%EarningsLossPerShare%", "%PaidUp%", "%FaceValue%"),
     "guidance": ("%Guidance%",),
@@ -48,12 +50,67 @@ TEXT_TERMS: dict[str, tuple[str, ...]] = {
     "cfo": ("cash flow", "cfo"),
     "order_book": ("order book", "orderbook", "orders"),
     "capacity": ("capacity", "utilisation", "utilization"),
+    "capex": ("capex", "capital expenditure", "capital spending", "capital work"),
     "facilities": ("facilities", "plants", "manufacturing units", "factories"),
     "promoter": ("promoter", "shareholding"),
     "guidance": ("guidance", "outlook", "guided"),
     "valuation": ("pe", "p/e", "ev/ebitda", "valuation", "multiple"),
     "audit": ("audit", "auditor", "opinion"),
 }
+
+
+def _t1_rows(ctx: Any, name: str, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
+    """Rows from a T1 pilot store, read immutable when the build is outside the sandbox."""
+    try:
+        return ctx.rows(name, sql, params)
+    except Exception:  # noqa: BLE001 - the build dir may not be writable for a WAL open
+        from ..ctx import t1_path
+        path = t1_path(name)
+        if path is None or not path.is_file():
+            raise
+    from reality_engine.db.readonly import connect_ro
+    con = connect_ro(path, timeout_s=15, immutable=True)
+    try:
+        cur = con.execute(sql, tuple(params))
+        cols = [col[0] for col in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+    finally:
+        con.close()
+
+
+def _segment_pnl(ctx: Any, isin: str, as_of: str,
+                 period: tuple[str | None, str | None]) -> tuple[list[dict[str, Any]], int]:
+    """Segment revenue/PBT by segment name from ``company_segment_pnl`` (T1).
+
+    The XBRL facts carry the amount but not the member name; this table carries
+    both, so a "segment revenue" ask is answered by the field that holds it.
+    """
+    where = ["isin = ?", "known_at <= ?"]
+    params: list[Any] = [isin, as_of]
+    if period[0] and period[1]:
+        where.append("period_end >= ? AND period_end <= ?")
+        params.extend([period[0], period[1]])
+    try:
+        rows = _t1_rows(
+            ctx, "facts_pilot",
+            "SELECT segment, period_end, metric, basis, value_cr, share_of_total_pct, "
+            "doc_id, page, known_at FROM company_segment_pnl "
+            f"WHERE {' AND '.join(where)} ORDER BY period_end DESC, segment LIMIT 120",
+            tuple(params))
+    except Exception:  # noqa: BLE001 - the T1 build is optional in a plain data root
+        return [], 0
+    out = []
+    for r in rows:
+        if r.get("value_cr") is None:
+            continue
+        share = r.get("share_of_total_pct")
+        label = f"{r.get('segment')} segment {str(r.get('metric') or '').replace('_', ' ')}"
+        if share is not None:
+            label += f" ({float(share):.1f}% of total)"
+        out.append(_row("company_segment_pnl", label, r["value_cr"], "Rs crore",
+                        str(r.get("period_end") or ""), r.get("known_at"), r.get("doc_id"),
+                        r.get("page")))
+    return out, len(rows)
 
 def _period_bounds(slots: dict[str, Any]) -> tuple[str | None, str | None]:
     basis = str(slots.get("period_basis") or "")
@@ -112,13 +169,46 @@ def _deck_period_terms(slots: dict[str, Any]) -> tuple[list[str], str | None]:
     return sorted(set(terms + words)), None
 
 
-def _term_likes(metric: str | None, columns: list[str]) -> tuple[str, list[Any]]:
-    words = TEXT_TERMS.get(metric or "") if metric else ()
+def asked_words(question: str, metric: str | None) -> tuple[str, ...]:
+    """The words that carry *every* concept the ask names, not just the first metric.
+
+    A two-part ask ("capacity expansion ... with capex") must be answered on both
+    parts: the fact search reads the union, so a row for each part can come back.
+    """
+    from ..gate import ASK_CONCEPTS, asked_concepts
+    words: list[str] = list(TEXT_TERMS.get(metric or "", ()))
     if metric and not words:
-        words = (metric,)
+        words.append(str(metric))
+    for concept in asked_concepts(question):
+        if concept == metric:
+            continue
+        words.extend(TEXT_TERMS.get(concept) or ASK_CONCEPTS.get(concept, ((), ()))[0])
+    out: list[str] = []
+    for word in words:
+        if word not in out:
+            out.append(word)
+    return tuple(out[:10])
+
+
+def concept_heads(question: str, metric: str | None) -> tuple[str, ...]:
+    """One search word per concept the ask names (the store's leading alias)."""
+    from ..gate import asked_concepts
+    heads: list[str] = []
+    concepts = asked_concepts(question) or ([metric] if metric else [])
+    for concept in concepts:
+        words = TEXT_TERMS.get(concept) or (((metric,) if concept == metric else ()))
+        if words and words[0] not in heads:
+            heads.append(words[0])
+    return tuple(heads[:6])
+
+
+def _term_likes(metric: str | None, columns: list[str],
+                words: tuple[str, ...] | None = None) -> tuple[str, list[Any]]:
+    if words is None:
+        words = TEXT_TERMS.get(metric or "") or ((metric,) if metric else ())
     if not words:
         return "", []
-    return terms_clause(words, columns, mode="or")
+    return terms_clause(list(words), columns, mode="or")
 
 
 def _fiscal_terms(low: str, high: str | None) -> list[str]:
@@ -197,7 +287,8 @@ def _results(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | No
 
 
 def _ar(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | None],
-        metric: str | None, named: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], int]:
+        metric: str | None, named: dict[str, Any] | None = None,
+        words: tuple[str, ...] | None = None) -> tuple[list[dict[str, Any]], int]:
     where = ["isin = ?", "COALESCE(filed_at,'') <> ''", "substr(filed_at,1,10) <= ?"]
     params: list[Any] = [isin, as_of]
     if named:
@@ -209,7 +300,7 @@ def _ar(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | None],
         where.append("(" + " OR ".join("COALESCE(fiscal_year,'') LIKE ?"
                                        for _ in terms) + ")")
         params.extend(terms)
-    clause, clause_params = _term_likes(metric, ["item", "category", "quote"])
+    clause, clause_params = _term_likes(metric, ["item", "category", "quote"], words)
     if clause:
         where.append(clause)
         params.extend(clause_params)
@@ -230,14 +321,15 @@ def _ar(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | None],
 
 def _deck(ctx: Any, isin: str, as_of: str, metric: str | None,
           period_terms: tuple[list[str], str | None] | None = None,
-          named: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], int]:
+          named: dict[str, Any] | None = None,
+          words: tuple[str, ...] | None = None) -> tuple[list[dict[str, Any]], int]:
     where = ["p.isin = ?", "COALESCE(p.known_at,'') <> ''", "substr(p.known_at,1,10) <= ?"]
     params: list[Any] = [isin, as_of]
     if named:
         low, high = _window(str(named["date"]))
         where.append("substr(p.known_at,1,10) BETWEEN ? AND ?")
         params.extend([low, high])
-    clause, clause_params = _term_likes(metric, ["f.metric"])
+    clause, clause_params = _term_likes(metric, ["f.metric"], words)
     if clause:
         where.append(clause)
         params.extend(clause_params)
@@ -265,14 +357,16 @@ def _deck(ctx: Any, isin: str, as_of: str, metric: str | None,
 
 
 def _concall(ctx: Any, isin: str, as_of: str, metric: str | None,
-             named: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], int]:
+             named: dict[str, Any] | None = None,
+             words: tuple[str, ...] | None = None) -> tuple[list[dict[str, Any]], int]:
     where = ["i.isin = ?", "COALESCE(d.filed_at,'') <> ''", "substr(d.filed_at,1,10) <= ?"]
     params: list[Any] = [isin, as_of]
     if named:
         low, high = _window(str(named["date"]))
         where.append("substr(d.filed_at,1,10) BETWEEN ? AND ?")
         params.extend([low, high])
-    clause, clause_params = _term_likes(metric, ["i.metric", "i.statement", "i.quote"])
+    clause, clause_params = _term_likes(metric, ["i.metric", "i.statement", "i.quote"],
+                                        words)
     if clause:
         where.append(clause)
         params.extend(clause_params)
@@ -411,6 +505,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                         detail="no company ISIN at as_of; FACTS not applicable")
     period = _period_bounds(slots)
     named = named_of(slots)
+    words = asked_words(question, metric)
     rows: list[dict[str, Any]] = []
     candidates = 0
     if named:
@@ -421,11 +516,12 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         doc_note = f"{named['doc_type']} of {named['date']} (±{DOC_WINDOW_DAYS}d filing date)"
         if store is not None:
             if store is _deck:
-                got, candidates = _deck(ctx, isin, as_of, metric, _deck_period_terms(slots), named)
+                got, candidates = _deck(ctx, isin, as_of, metric, _deck_period_terms(slots),
+                                        named, words)
             elif store is _ar:
-                got, candidates = _ar(ctx, isin, as_of, period, metric, named)
+                got, candidates = _ar(ctx, isin, as_of, period, metric, named, words)
             else:
-                got, candidates = _concall(ctx, isin, as_of, metric, named)
+                got, candidates = _concall(ctx, isin, as_of, metric, named, words)
             rows = got
             # The named document's date IS the asked period: its own KPI label
             # ("FY26" on a Q1FY27 deck) is not a different period.
@@ -443,11 +539,12 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         metric_store = _metric_store(ctx, isin, as_of, question, metric, period)
         rows += metric_store
         for got, n in (_results(ctx, isin, as_of, period, metric),
-                       _ar(ctx, isin, as_of, period, metric)
+                       _ar(ctx, isin, as_of, period, metric, words=words)
                        if slots.get("period_basis") not in ("quarter end", "quarter span")
                        else ([], 0),
-                       _deck(ctx, isin, as_of, metric, _deck_period_terms(slots)),
-                       _concall(ctx, isin, as_of, metric)):
+                       _deck(ctx, isin, as_of, metric, _deck_period_terms(slots),
+                             words=words),
+                       _concall(ctx, isin, as_of, metric, words=words)):
             rows += got
             candidates += n
         candidates += len(metric_store)
@@ -466,23 +563,31 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     rows = [r for r in rows
             if isinstance(r.get("value"), (int, float)) and not isinstance(r.get("value"), bool)]
     if metric == "segment":
-        # XBRL segment facts carry the amount but the member name is unmapped
-        # (context is OneD/FourD); only an item that names the segment counts.
+        # Segment revenue by member lives in company_segment_pnl (T1).  When that
+        # table has no row for the asked period, only a fact that *names* a member
+        # can answer the ask: a bare "Segment Revenue" total from results_xbrl is
+        # not the per-segment split the question asked for.
+        segment_rows, seg_candidates = _segment_pnl(ctx, isin, as_of, period)
+        candidates += seg_candidates
         generic = {"segment revenue", "segment revenue from operations",
                    "segment profit before tax", "segment profitloss before tax",
                    "segment assets", "segment liabilities", "net segment assets",
-                   "net segment liabilities", "segment pbt before finance costs"}
-        named_rows = [r for r in rows
-                      if r.get("store") != "results_xbrl"
-                      and str(r.get("item") or "").strip().lower() not in generic
-                      and re.search(r"segment", str(r.get("item") or ""), re.I)]
+                   "net segment liabilities", "segment pbt before finance costs",
+                   "inter segment revenue"}
+        named_rows = ([r for r in segment_rows]
+                      if segment_rows else
+                      [r for r in rows
+                       if r.get("store") != "results_xbrl"
+                       and str(r.get("item") or "").strip().lower() not in generic
+                       and re.search(r"segment", str(r.get("item") or ""), re.I)])
         if not named_rows:
             # The pilot extraction store carries the segment note with the member name.
             named_rows = [r for r in _metric_store(ctx, isin, as_of, question, "segment", period)
                           if r.get("store") == "metric_state"]
         if not named_rows:
-            detail = ("segment facts exist but the segment member names are not mapped; "
-                      "a segment P&L by name needs company_segment_pnl / xbrl_concept_map")
+            detail = ("segment facts exist but the segment member names are not mapped "
+                      "for this period; a segment P&L by name needs company_segment_pnl "
+                      "(annual only in the T1 build) / xbrl_concept_map")
             return envelope("FACTS", ok=False, why="schema", checked=CHECKED,
                             gap="company_segment_pnl", detail=detail, nid_reason=detail)
         rows = named_rows
@@ -534,6 +639,25 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         1 if r.get("store") == "computed" else 0,
         str(r.get("known_at") or ""), hits(r), str(r.get("period") or "")), reverse=True)
     top = ranked[:6]
+    heads = concept_heads(question, metric)
+    if len(heads) > 1:
+        # A two-part ask must show a row for every concept it names: the newest
+        # six rows can all carry the same one, so one row per concept goes first.
+        def text_of(row: dict[str, Any]) -> str:
+            return f"{row.get('item') or ''} {row.get('quote') or ''}".lower()
+
+        picked: list[dict[str, Any]] = []
+        for head in heads:
+            for row in ranked:
+                if row not in picked and head in text_of(row):
+                    picked.append(row)
+                    break
+        for row in ranked:
+            if len(picked) >= 6:
+                break
+            if row not in picked:
+                picked.append(row)
+        top = picked[:6]
     detail = "; ".join(
         f"{r['item']} {r['period'] or ''} = {fmt_num(r['value'], r['unit'])} "
         f"({r['store']}, known {str(r.get('known_at'))[:10]})" for r in top[:3])

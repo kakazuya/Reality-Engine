@@ -70,6 +70,9 @@ METRICS: list[tuple[str, tuple[str, ...]]] = [
     ("pat", ("pat", "profit after tax", "net profit", "net income", "profit")),
     ("revenue", ("revenue", "turnover", "sales", "income from operations", "topline")),
     ("capacity", ("capacity", "utilisation", "utilization")),
+    # Capex is held in the fact stores but had no metric key, so a capex ask never
+    # reached FACTS and no row could carry the concept.
+    ("capex", ("capex", "capital expenditure", "capital spending")),
     ("facilities", ("facilities", "plants", "manufacturing units", "factory", "factories")),
     ("dso", ("dso", "receivable", "debtor", "collection days")),
     ("cfo", ("cfo", "cash flow from operations", "operating cash flow")),

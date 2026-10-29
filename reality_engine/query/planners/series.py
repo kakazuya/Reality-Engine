@@ -12,6 +12,7 @@ from typing import Any
 from reality_engine.query import compute
 
 from . import envelope, fmt_num, in_period, isin_of
+from .facts import _t1_rows
 
 CHECKED = ["truth_duckdb.px_daily", "equity_intelligence.daily_price_delivery",
            "equity_intelligence.mkt_nse_index_daily",
@@ -119,6 +120,144 @@ def _series_rows(stats: dict[str, Any],
     return rows
 
 
+def _flow_line(item: list[str], line: str, rows: list[dict[str, Any]] | None,
+               want_volume: bool, want_delivery: bool) -> tuple[list[str], str]:
+    """Add the volume/delivery the ask names, and label the row with them.
+
+    A row must say what it reports: the gate judges the row it is shown, so a
+    close row that also quotes volume has to name volume.
+    """
+    if not rows or not (want_volume or want_delivery):
+        return item, line
+    flow = compute.flow_stats(rows)
+    if want_volume and flow.get("volume_last") is not None:
+        line += (f", volume {fmt_num(flow['volume_last'])} {fmt_num(flow['volume_avg'])} "
+                 f"average over {flow['rows']} sessions")
+        item.append("volume")
+    if want_delivery and flow.get("delivery_last") is not None:
+        line += (f", delivery {flow['delivery_last']:.1f}% "
+                 f"({flow['delivery_avg']:.1f}% average)")
+        item.append("delivery")
+    return item, line
+
+
+def _valuation(ctx: Any, isin: str | None, as_of: str) -> dict[str, Any] | None:
+    """P/E, P/B and market cap over held data: close, TTM EPS and filed net worth.
+
+    ``company_state_daily`` carries the close, the market cap and the share count
+    on a PIT date; ``company_metric_series`` carries the filed EPS (per share) and
+    net worth (crore) with their own ``known_at``.  P/E uses the trailing four
+    quarters; P/B is market cap over the latest filed net worth.  Either ratio is
+    returned only when both of its inputs are held.
+    """
+    if not isin:
+        return None
+    try:
+        state = _t1_rows(
+            ctx, "market_state",
+            "SELECT date, close, mcap_cr, shares_out FROM company_state_daily "
+            "WHERE isin = ? AND date <= ? ORDER BY date DESC LIMIT 1", (isin, as_of))
+        eps = _t1_rows(
+            ctx, "facts_pilot",
+            "SELECT period_end, value FROM company_metric_series "
+            "WHERE isin = ? AND metric_key = 'eps' AND unit = 'INR_PER_SHARE' "
+            "AND basis = 'consolidated' AND known_at <= ? "
+            "ORDER BY period_end DESC, known_at DESC LIMIT 12", (isin, as_of))
+        worth = _t1_rows(
+            ctx, "facts_pilot",
+            "SELECT period_end, value FROM company_metric_series "
+            "WHERE isin = ? AND metric_key = 'net_worth' AND unit = 'INR_CRORE' "
+            "AND basis = 'consolidated' AND known_at <= ? "
+            "ORDER BY period_end DESC, known_at DESC LIMIT 4", (isin, as_of))
+    except Exception:  # noqa: BLE001 - the T1 build is optional in a plain data root
+        return None
+    if not state:
+        return None
+    day = state[0]
+    close, mcap = day.get("close"), day.get("mcap_cr")
+    stats: dict[str, Any] = {"price_date": day.get("date"), "close": close,
+                             "mcap_cr": mcap, "shares_out": day.get("shares_out")}
+    parts = []
+    if mcap:
+        parts.append(f"market cap {fmt_num(mcap)} crore on {day.get('date')}")
+    by_period: dict[str, Any] = {}
+    for row in eps:
+        by_period.setdefault(str(row.get("period_end")), row.get("value"))
+    quarters = [value for _, value in sorted(by_period.items(), reverse=True)[:4]]
+    if len(quarters) == 4 and close:
+        ttm = sum(float(v) for v in quarters if v is not None)
+        if ttm:
+            stats.update({"eps_ttm": ttm, "pe": float(close) / ttm,
+                          "eps_periods": sorted(by_period)[-1]})
+            parts.append(f"P/E {float(close) / ttm:.1f} (close {fmt_num(close)} / trailing "
+                         f"4-quarter EPS {ttm:.2f})")
+    if worth and mcap and worth[0].get("value"):
+        net_worth = float(worth[0]["value"])
+        if net_worth > 0:
+            stats.update({"net_worth_cr": net_worth,
+                          "book_value_per_share": (net_worth * 1e7 / day["shares_out"]
+                                                   if day.get("shares_out") else None),
+                          "pb": float(mcap) / net_worth,
+                          "net_worth_period": worth[0].get("period_end")})
+            label = (f"P/B {float(mcap) / net_worth:.2f} (market cap {fmt_num(mcap)} crore / "
+                     f"net worth {fmt_num(net_worth)} crore at {worth[0].get('period_end')})")
+            if stats["book_value_per_share"]:
+                label += f", book value per share {stats['book_value_per_share']:.1f}"
+            parts.append(label)
+    if not parts:
+        return None
+    return {"detail": "; ".join(parts), "stats": stats}
+
+
+VALUATION_ASK = re.compile(
+    r"\bp/b\b|\bpb\b|price to book|book value|\bp/e\b|\bpe\b|pe ratio|price to earnings|"
+    r"market cap|valuation|ev/ebitda|ev/sales", re.I)
+
+
+def _valuation_row(ctx: Any, slots: dict[str, Any], as_of: str,
+                   question: str) -> tuple[str, dict[str, Any], dict[str, Any]] | None:
+    """(detail, stats, row) when the ask names a valuation ratio it can compute."""
+    if not VALUATION_ASK.search(question or ""):
+        return None
+    valuation = _valuation(ctx, slots.get("isin") or isin_of(slots, ctx, as_of), as_of)
+    if not valuation:
+        return None
+    row = {"ref": str(slots.get("symbol") or slots.get("isin") or ""),
+           "item": _valuation_label(valuation["stats"]),
+           "known_at": as_of, "stats": valuation["stats"]}
+    return valuation["detail"], valuation["stats"], row
+
+
+def _valuation_label(stats: dict[str, Any]) -> str:
+    """Only the ratios the row actually reports (a row may not claim an uncomputed one)."""
+    labels = [name for key, name in (("pe", "P/E"), ("pb", "P/B")) if key in stats]
+    if stats.get("book_value_per_share"):
+        labels.append("book value per share")
+    if stats.get("mcap_cr"):
+        labels.append("market cap")
+    return ", ".join(labels) or "valuation"
+
+
+def _history(ctx: Any, symbol: str, as_of: str) -> list[tuple[str, float]]:
+    """The company's whole held daily close history (studies, not the routed window)."""
+    if not symbol:
+        return []
+    try:
+        rows = ctx.rows(
+            "equity_intelligence",
+            "SELECT date, close FROM daily_price_delivery WHERE symbol = ? AND date <= ? "
+            "AND close IS NOT NULL ORDER BY date LIMIT 6000", (symbol.upper(), as_of))
+    except Exception:  # noqa: BLE001 - a missing store is a degraded study
+        return []
+    return [(str(r["date"])[:10], r["close"]) for r in rows if r.get("close") is not None]
+
+
+def _pct_asked(question: str, default: float) -> float:
+    """The percentage an ask names for a move/drawdown ("15% below its high")."""
+    hits = [float(x) for x in re.findall(r"(\d{1,3}(?:\.\d+)?)\s*%", question or "")]
+    return hits[-1] if hits else default
+
+
 def _rsi_study(ctx: Any, symbol: str, as_of: str) -> dict[str, Any] | None:
     """Oversold days (RSI<30) and the 20-session forward return after each."""
     if not symbol:
@@ -180,6 +319,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     series: dict[str, list[tuple[str, float]]] = {}
     raw: dict[str, list[tuple[str, float]]] = {}
     ident: dict[str, tuple[str | None, str | None]] = {}
+    flows: dict[str, list[dict[str, Any]]] = {}
 
     names = indexes_in(question)
     commodity = commodity_in(question)
@@ -213,6 +353,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                     series[key] = points
                     raw[key] = _points(rows, "close")
                     ident[key] = (isin, symbol)
+                    flows[key] = [dict(row) for row in rows]
             if re.search(r"\bnifty\b|benchmark|relative strength", question, re.I):
                 bench = _points(_index_rows(ctx, "Nifty 50", start, end))
                 if bench:
@@ -234,6 +375,17 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
 
     series = {k: v for k, v in series.items() if v}
     if not series:
+        # A P/B or market-cap ask still answers when the routed price window is
+        # empty but the T1 state carries a PIT close and a filed book value.
+        valuation_hit = _valuation_row(ctx, slots, as_of, question)
+        if valuation_hit:
+            detail_text, val_stats, val_row = valuation_hit
+            return envelope("SERIES", ok=True, rows=[val_row],
+                            provenance=[{"ref": f"SERIES:{val_row['ref']}", "known_at": as_of}],
+                            pit=f"price date and filing known_at <= {as_of}", checked=CHECKED,
+                            degraded=degraded + ["no routed price window; the T1 state row "
+                                                 "supplies the close"],
+                            detail=detail_text)
         detail = (f"no price rows for {slots.get('symbol') or slots.get('isin')} "
                   f"between {start} and {end}")
         return envelope("SERIES", ok=False, why="no_doc", checked=CHECKED, degraded=degraded,
@@ -241,10 +393,14 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
 
     parts: list[str] = []
     stats: dict[str, Any] = {}
+    items: dict[str, str] = {}
     day_pct: dict[str, float] = {}
+    want_volume = bool(re.search(r"\bvolume|volumes|traded quantity|accumulat", question, re.I))
+    want_delivery = bool(re.search(r"\bdelivery|delivered", question, re.I))
     for name, points in series.items():
         st = compute.series_stats(points)
         stats[name] = st
+        item = ["close"]
         if len(points) == 1:
             line = f"{name}: close {fmt_num(st['first'])} on {st['start']}"
             if names:
@@ -259,21 +415,26 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                         line += f" ({day_pct[name]:+.2f}% on the day)"
                 except Exception:
                     pass
+            item, line = _flow_line(item, line, flows.get(name), want_volume, want_delivery)
+            items[name] = ", ".join(item)
             parts.append(line)
             continue
         cagr_pct, years = compute.cagr_between(st["first"], st["last"], st["start"], st["end"])
+        item.append("return")
         line = (f"{name}: {st['start']} close {fmt_num(st['first'])} -> {st['end']} close "
                 f"{fmt_num(st['last'])}, return {st['return_pct']:.1f}% "
                 f"({st['rows']} sessions)")
         if metric == "cagr" or "cagr" in question.lower():
             if cagr_pct is not None:
                 line += f", CAGR {cagr_pct:.1f}% over {years:.1f}y"
+                item.append("CAGR")
         if metric == "range" or re.search(r"\brange|support|resistance|52[- ]week|ytd|high|low\b",
                                           question, re.I):
             high_label = ("adjusted high" if name in raw and "adjusted" in question.lower()
                           else "high")
             line += (f", {high_label} {fmt_num(st['high'])} ({st['high_date']}), "
                      f"low {fmt_num(st['low'])} ({st['low_date']})")
+            item += ["high", "low"]
             if name in raw and "adjusted" in question.lower():
                 raw_st = compute.series_stats(raw[name])
                 line += (f"; raw close high {fmt_num(raw_st['high'])} "
@@ -283,6 +444,8 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 tests = sum(1 for _, v in points if abs(v - (st["high"] or v)) <= edge * 0.01
                             or abs(v - (st["low"] or v)) <= edge * 0.01)
                 line += f", {tests} daily closes within 1% of an edge"
+        item, line = _flow_line(item, line, flows.get(name), want_volume, want_delivery)
+        items[name] = ", ".join(item)
         parts.append(line)
 
     if len(series) >= 2:
@@ -323,6 +486,71 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         else:
             degraded.append("no RSI series for this symbol")
 
+    extra_rows: list[dict[str, Any]] = []
+    valuation_hit = _valuation_row(ctx, slots, as_of, question)
+    if valuation_hit:
+        detail_text, val_stats, val_row = valuation_hit
+        stats["valuation"] = val_stats
+        parts.append(detail_text)
+        extra_rows.append(val_row)
+    elif VALUATION_ASK.search(question or ""):
+        degraded.append("no held EPS/net-worth pair for a P/E or P/B on this date")
+
+    # The technical studies the bank asks for by name: a session count near the
+    # high, drawdown recovery time, RSI divergence.  Each is arithmetic over the
+    # same held closes, never a different window.
+    study_series = series.get(str(slots.get("symbol") or "")) or next(iter(series.values()), [])
+    if study_series and re.search(r"within\s+\d+(?:\.\d+)?\s*%|how many (?:prior )?sessions",
+                                  question, re.I):
+        pct = _pct_asked(question, 2.0)
+        near = compute.days_within(study_series, pct)
+        if near:
+            stats["days_within"] = dict(near, pct=pct)
+            parts.append(f"sessions within {pct:g}% of the window high: {near['near']} of "
+                         f"{near['sessions']} ({near['share_pct']:.0f}%), "
+                         f"{near['first']} .. {near['last']}")
+            degraded.append("the window high is the routed window's own high, not a "
+                            "reconstructed 52-week high")
+    if re.search(r"drawdown|recover", question, re.I):
+        # "the last three drawdowns of that size" is not a 52-week question: the
+        # study reads the company's own history (the same rule _rsi_study uses).
+        history = _history(ctx, str(slots.get("symbol") or ""), as_of) or study_series
+        falls = compute.drawdown_recoveries(history, _pct_asked(question, 15.0))
+        if falls:
+            stats["drawdowns"] = falls
+            said = "; ".join(
+                f"{f['peak']} -> {f['trough']} fell {f['fall_pct']:.1f}%"
+                + (f" and recovered after {f['sessions']} sessions ({f['recovered']})"
+                   if f["recovered"] else " and has not recovered in the window")
+                for f in falls)
+            parts.append(f"drawdown recovery ({len(falls)} falls of at least "
+                         f"{_pct_asked(question, 15.0):g}%): {said}")
+        elif history:
+            parts.append(f"no fall of at least {_pct_asked(question, 15.0):g}% in the held "
+                         f"close history ({len(history)} sessions)")
+            degraded.append("no qualifying drawdown in the held history")
+    if re.search(r"divergen", question, re.I):
+        try:
+            rsi_rows = ctx.rows(
+                "equity_intelligence",
+                "SELECT date, close, rsi_14 FROM daily_price_delivery "
+                "WHERE symbol = ? AND date <= ? AND rsi_14 IS NOT NULL "
+                "ORDER BY date LIMIT 4000", (str(slots.get("symbol") or "").upper(), as_of))
+        except Exception:  # noqa: BLE001 - a missing RSI column is a degraded answer
+            rsi_rows = []
+        divergence = compute.rsi_divergence(
+            [(r["date"], r["close"], r["rsi_14"]) for r in rsi_rows])
+        if divergence:
+            stats["rsi_divergence"] = divergence
+            parts.append(
+                f"RSI divergence: price low {divergence['first_low']} -> "
+                f"{divergence['last_low']} {'lower' if divergence['price_lower_low'] else 'higher'}"
+                f", RSI {'higher' if divergence['rsi_higher_low'] else 'lower'} "
+                f"({divergence['rsi_first']:.1f} -> {divergence['rsi_last']:.1f}): "
+                f"{'yes' if divergence['divergence'] else 'no'} divergence")
+        else:
+            degraded.append("fewer than two RSI price lows in the window; no divergence measurable")
+
     if slots.get("needs", {}).get("intraday"):
         degraded.append("intraday bars are not held; only daily high/low/close")
         detail = "; ".join(parts)
@@ -334,6 +562,9 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
 
     detail = "; ".join(parts)
     rows = in_period(_series_rows(stats, ident, as_of, start), slots, hop="SERIES")
+    for row in rows:   # name what each series row reports (close / volume / delivery / study)
+        row["item"] = items.get(row["ref"], "close")
+    rows += extra_rows
     return envelope(
         "SERIES", ok=True, rows=rows,
         provenance=[{"ref": f"SERIES:{name}", "known_at": as_of} for name in stats],

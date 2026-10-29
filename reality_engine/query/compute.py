@@ -198,3 +198,87 @@ def series_stats(points: Sequence[tuple[Any, Any]]) -> dict[str, Any]:
         "low_date": lo_date,
         "max_drawdown_pct": max_drawdown([(d.isoformat(), v) for d, v in clean]),
     }
+
+
+def flow_stats(rows: Sequence[Any]) -> dict[str, Any]:
+    """Volume / delivery numbers over the window rows (``volume``, ``delivery_pct``)."""
+    vols, deliv = [], []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        vol, pct = _f(row.get("volume")), _f(row.get("delivery_pct"))
+        if vol is not None:
+            vols.append(vol)
+        if pct is not None:
+            deliv.append(pct)
+    return {"volume_last": vols[-1] if vols else None,
+            "volume_avg": (sum(vols) / len(vols)) if vols else None,
+            "delivery_last": deliv[-1] if deliv else None,
+            "delivery_avg": (sum(deliv) / len(deliv)) if deliv else None,
+            "rows": len(vols)}
+
+
+def days_within(points: Sequence[tuple[Any, Any]], pct: float) -> dict[str, Any] | None:
+    """"How many sessions sat within ``pct``%% of the window high?"""
+    clean = [(_day(d), _f(v)) for d, v in points]
+    clean = [(d, v) for d, v in clean if d is not None and v is not None]
+    if len(clean) < 2:
+        return None
+    clean.sort(key=lambda item: item[0])
+    peak = max(v for _, v in clean)
+    if peak <= 0:
+        return None
+    near = [(d, v) for d, v in clean if v >= peak * (1.0 - pct / 100.0)]
+    return {"sessions": len(clean), "near": len(near),
+            "share_pct": len(near) / len(clean) * 100.0,
+            "first": near[0][0].isoformat() if near else None,
+            "last": near[-1][0].isoformat() if near else None}
+
+
+def drawdown_recoveries(points: Sequence[tuple[Any, Any]], threshold: float = 15.0,
+                        runs: int = 3) -> list[dict[str, Any]] | None:
+    """The last ``runs`` falls of >= ``threshold``%%: fall depth and sessions to regain."""
+    clean = [(_day(d), _f(v)) for d, v in points]
+    clean = [(d, v) for d, v in clean if d is not None and v is not None]
+    if len(clean) < 20:
+        return None
+    clean.sort(key=lambda item: item[0])
+    out: list[dict[str, Any]] = []
+    peak_day, peak = clean[0][0], clean[0][1]
+    trough_day, trough = peak_day, peak
+    for day, value in clean:
+        if value >= peak:
+            if peak > 0 and trough < peak * (1.0 - threshold / 100.0):
+                out.append({"peak": peak_day.isoformat(), "trough": trough_day.isoformat(),
+                            "fall_pct": (trough / peak - 1.0) * 100.0,
+                            "recovered": day.isoformat(),
+                            "sessions": (day - trough_day).days})
+            peak_day, peak = day, value
+            trough_day, trough = day, value
+        elif value < trough:
+            trough_day, trough = day, value
+    if peak > 0 and trough < peak * (1.0 - threshold / 100.0):
+        out.append({"peak": peak_day.isoformat(), "trough": trough_day.isoformat(),
+                    "fall_pct": (trough / peak - 1.0) * 100.0,
+                    "recovered": None, "sessions": None})
+    return out[-runs:] or None
+
+
+def rsi_divergence(dated: Sequence[tuple[Any, Any, Any]], lookback: int = 120) -> dict[str, Any] | None:
+    """Price lower low with RSI higher low (``dated`` = [(date, close, rsi)])."""
+    clean = [(d, _f(c), _f(r)) for d, c, r in dated]
+    clean = [row for row in clean if row[1] is not None and row[2] is not None]
+    if len(clean) < 30:
+        return None
+    clean = clean[-lookback:]
+    lows = [i for i in range(1, len(clean) - 1)
+            if clean[i][1] <= clean[i - 1][1] and clean[i][1] <= clean[i + 1][1]]
+    if len(lows) < 2:
+        return None
+    first, last = lows[-2], lows[-1]
+    price_lower = clean[last][1] < clean[first][1]
+    rsi_higher = clean[last][2] > clean[first][2]
+    return {"first_low": str(clean[first][0])[:10], "last_low": str(clean[last][0])[:10],
+            "price_lower_low": price_lower, "rsi_higher_low": rsi_higher,
+            "divergence": bool(price_lower and rsi_higher),
+            "rsi_first": clean[first][2], "rsi_last": clean[last][2]}

@@ -21,7 +21,7 @@ from typing import Any
 from .. import rerank
 from ..router import LIST_ASK
 from . import envelope
-from .facts import DOC_WINDOW_DAYS, TEXT_TERMS, named_of
+from .facts import DOC_WINDOW_DAYS, TEXT_TERMS, asked_words, named_of
 
 CHECKED = ["equity_intelligence.document_chunks", "ar_facts.ar_facts",
            "deck_figures.deck_sources", "bse_announcements.ann",
@@ -722,7 +722,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             # on: the query itself was the relevance test, so one hit is enough.
             need = 1 if not slots.get("metric") else max(1, (len(meaningful) + 1) // 2)
             metric_words = [word.lower() for word in
-                            TEXT_TERMS.get(str(slots.get("metric") or ""), ())]
+                            asked_words(question, str(slots.get("metric") or "") or None)]
             scored = []
             for passage in passages:
                 quote = str(passage.get("quote") or passage.get("text") or "").lower()
@@ -765,7 +765,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                                 checked=res.get("checked") or CHECKED_FTS, detail=wanted,
                                 nid_reason=wanted)
             passages = inside
-        metric_terms = TEXT_TERMS.get(str(slots.get("metric") or ""), ())
+        metric_terms = asked_words(question, str(slots.get("metric") or "") or None)
         passages = rerank.rank(
             passages, terms=meaningful or terms, metric_terms=metric_terms,
             entity=str(slots.get("symbol") or slots.get("isin") or ""),
