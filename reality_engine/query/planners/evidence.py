@@ -508,6 +508,16 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 candidates = _chunks_v3_search(ctx, slots, as_of, doc_type)
             except Exception:  # noqa: BLE001 - a broken pilot DB falls to the FTS path
                 candidates = None
+            # Extraction rows (rating actions, price revisions, contracts, cost inputs,
+            # supply links) are passages too: quote + page + known_at, PIT-filtered.
+            try:
+                from reality_engine.query import metrics
+                extra = metrics.evidence_rows(ctx, str(slots.get("isin") or ""), as_of,
+                                              str(slots.get("question") or ""))
+                if extra:
+                    candidates = extra + (candidates or [])
+            except Exception:  # noqa: BLE001
+                pass
             if candidates is not None:
                 need = max(1, (len(meaningful) + 1) // 2)
                 clean, partial = [], []
