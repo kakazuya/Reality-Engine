@@ -51,6 +51,17 @@ T1_FILES = {
     "facts_pilot": ("REALITY_FACTS", "facts_pilot.db"),
 }
 
+#: Pilot (b) store (``reality_engine.pilot.build_b``): commodity series, PIT index
+#: membership, F&O open interest and the full NSE bhavcopy.  A finished build, so it
+#: opens ``immutable=1``; the controller copies it into the SSD data root (the build
+#: writes ``.tmp/pilot_b/``).  Absent on a machine without the pilot: every reader
+#: below degrades instead of failing.
+MARKET_STATE_B_ENV = "REALITY_MARKET_STATE_B"
+MARKET_STATE_B_FILE = "market_state_b.db"
+#: Aliases opened ``immutable=1``: finished pilot builds with no live WAL.  A read-only
+#: sandbox cannot create the ``-shm``/``-wal`` sidecars a WAL open needs.
+IMMUTABLE_ALIASES = {"metric_state", "market_state_b", *T1_FILES}
+
 
 def t1_path(name: str) -> Path | None:
     env_file, filename = T1_FILES[name]
@@ -59,6 +70,20 @@ def t1_path(name: str) -> Path | None:
         return Path(path)
     root = os.environ.get(PILOT_T1_ENV)
     return Path(root) / filename if root else None
+
+
+def market_state_b_path(root: Path | None = None) -> Path | None:
+    """The pilot (b) store: env override, else the data root, else the build output."""
+    override = os.environ.get(MARKET_STATE_B_ENV)
+    if override:
+        candidate = Path(override)
+        return candidate if candidate.is_file() else None
+    base = Path(root) if root is not None else default_root()
+    for candidate in (base / "pilot" / "pilot60" / MARKET_STATE_B_FILE,
+                      REPO / ".tmp" / "pilot_b" / MARKET_STATE_B_FILE):
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 class QueryUnavailable(RuntimeError):
@@ -115,6 +140,11 @@ class Ctx:
                 if path is None or not path.is_file():
                     raise QueryUnavailable(f"T1 pilot database {name} not configured "
                                            f"(set {T1_FILES[name][0]} or {PILOT_T1_ENV})")
+            elif name == "market_state_b":
+                path = market_state_b_path(self._root())
+                if path is None:
+                    raise QueryUnavailable(f"pilot (b) database market_state_b not found "
+                                           f"(set {MARKET_STATE_B_ENV})")
             else:
                 path = self._root() / DB_FILES[name]
                 if name == "macro_pilot":
@@ -126,7 +156,8 @@ class Ctx:
             from reality_engine.db.readonly import connect_ro
             import sqlite3
             con = connect_ro(path, timeout_s=30, check_same_thread=False,
-                             cache_size_kib=-65536)
+                             cache_size_kib=-65536,
+                             immutable=name in IMMUTABLE_ALIASES)
             con.row_factory = sqlite3.Row
             conns[name] = con
             try:

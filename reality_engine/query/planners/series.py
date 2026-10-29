@@ -3,6 +3,10 @@
 Reads the DuckDB primary series (``px_daily``, adjusted closes) when the dated
 snapshot is present, falls back to ``daily_price_delivery`` (raw, indexed).
 PIT is always ``date <= as_of`` in the SQL.
+
+Commodity asks fall back to the pilot (b) ``series_observation`` (monthly World
+Bank series) when the live ``mkt_commodity_daily`` has no rows for the window;
+open-interest / PCR / rollover asks read ``fno_oi_daily`` the same way.
 """
 from __future__ import annotations
 
@@ -16,7 +20,8 @@ from .facts import _t1_rows
 
 CHECKED = ["truth_duckdb.px_daily", "equity_intelligence.daily_price_delivery",
            "equity_intelligence.mkt_nse_index_daily",
-           "equity_intelligence.mkt_commodity_daily"]
+           "equity_intelligence.mkt_commodity_daily",
+           "market_state_b.series_observation", "market_state_b.fno_oi_daily"]
 
 INDEXES = ["Nifty 50", "Nifty Bank", "Nifty IT", "Nifty Energy", "Nifty Metal", "Nifty Auto",
            "Nifty FMCG", "Nifty Pharma", "Nifty Realty", "Nifty PSU Bank",
@@ -24,12 +29,29 @@ INDEXES = ["Nifty 50", "Nifty Bank", "Nifty IT", "Nifty Energy", "Nifty Metal", 
            "Nifty Smallcap 100", "Nifty 500", "Nifty 200", "Nifty Next 50",
            "Nifty India Defence", "Nifty Infrastructure", "Nifty Consumer Durables",
            "Nifty Oil & Gas", "India VIX"]
-COMMODITIES = [("crude palm", "crude_palm"), ("brent", "crude_brent"), ("crude", "crude_brent"),
+COMMODITIES = [("crude palm", "crude_palm"), ("palm oil", "palm_oil"),
+               ("soybean", "soybean_oil"), ("brent", "crude_brent"), ("crude", "crude_brent"),
                ("copper", "copper"), ("usdinr", "usdinr"), ("rupee", "usdinr"),
                ("gold", "gold"), ("silver", "silver"), ("zinc", "zinc"),
                ("alumin", "aluminium"), ("coal", "coal_newcastle"),
                ("natural gas", "natural_gas"), ("steel", "steel_hrc_us"),
-               ("iron ore", "iron_ore_62"), ("platinum", "platinum")]
+               ("iron ore", "iron_ore_62"), ("platinum", "platinum"),
+               ("rubber", "rubber"), ("cotton", "cotton_a"), ("urea", "urea"),
+               ("nickel", "nickel")]
+#: Live commodity code -> the pilot (b) World Bank series that can stand in for it.
+#: Only the 22 held series appear: a code with no world-bank twin (aluminium,
+#: USD/INR, steel HRC) stays missing rather than served by a different commodity.
+WB_BY_CODE = {"crude_brent": "wb_crude_brent", "crude_palm": "wb_palm_oil",
+              "palm_oil": "wb_palm_oil", "soybean_oil": "wb_soybean_oil",
+              "copper": "wb_copper", "gold": "wb_gold", "silver": "wb_silver",
+              "zinc": "wb_zinc", "platinum": "wb_platinum", "iron_ore_62": "wb_iron_ore",
+              "coal_newcastle": "wb_coal_aus", "natural_gas": "wb_natgas_us",
+              "rubber": "wb_rubber", "cotton_a": "wb_cotton_a", "urea": "wb_urea",
+              "nickel": "wb_nickel"}
+#: Open interest, put-call ratio, rollover and the futures basis are all F&O asks.
+OI_ASK = re.compile(r"open interest|\bOI\b|\bPCR\b|put[- ]call|rollover|futures basis|"
+                    r"cost of carry|max pain|short[- ]covering|oi (?:addition|added|buildup|"
+                    r"build[- ]up)", re.I)
 
 
 def indexes_in(question: str) -> list[str]:
@@ -81,13 +103,184 @@ def _index_day_ranking(ctx: Any, day: str) -> list[dict[str, Any]]:
         (day,))
 
 
-def _commodity_rows(ctx: Any, code: str, start: str, end: str) -> list[dict[str, Any]]:
+def _commodity_live(ctx: Any, code: str, start: str, end: str) -> list[dict[str, Any]]:
     return ctx.rows(
         "equity_intelligence",
         "SELECT date, COALESCE(adj_close, close) AS adj_close, close, high AS adj_high, "
         "low AS adj_low FROM mkt_commodity_daily WHERE (lower(commodity) = lower(?) OR "
         "lower(ticker) = lower(?)) AND date >= ? AND date <= ? ORDER BY date",
         (code, code, start, end))
+
+
+def _commodity_pilot(ctx: Any, code: str, start: str, end: str,
+                     as_of: str) -> tuple[list[dict[str, Any]], str]:
+    """(rows, series_code) from the pilot (b) store; PIT is ``known_at <= as_of``."""
+    series_code = WB_BY_CODE.get(code)
+    if not series_code:
+        return [], code
+    try:
+        rows = ctx.rows(
+            "market_state_b",
+            "SELECT period_start AS date, value AS adj_close, value AS close, unit "
+            "FROM series_observation WHERE series_code = ? AND kind = 'commodity' "
+            "AND period_start >= ? AND period_start <= ? AND known_at <= ? "
+            "ORDER BY period_start",
+            (series_code, start, end, as_of))
+    except Exception:  # noqa: BLE001 - no pilot store is a degraded commodity path
+        return [], series_code
+    return rows, series_code
+
+
+def _commodity_rows(ctx: Any, code: str, start: str, end: str,
+                    as_of: str) -> tuple[list[dict[str, Any]], str]:
+    """(rows, store label): the live daily table first, the pilot (b) series second.
+
+    A live series that stops well before the asked window end (the exchange-traded
+    coal series ends 2025-12-26) is not a window answer: the pilot (b) series that
+    reaches further is preferred when it covers the end.
+    """
+    try:
+        live = _commodity_live(ctx, code, start, end)
+    except Exception:  # noqa: BLE001 - no live commodity table: try the pilot
+        live = []
+    stale = bool(live) and str(live[-1].get("date") or "") < _shift_days(end, -35)
+    if live and not stale:
+        return live, "equity_intelligence.mkt_commodity_daily"
+    pilot, series_code = _commodity_pilot(ctx, code, start, end, as_of)
+    if pilot and (not live or
+                  str(pilot[-1].get("date") or "") > str(live[-1].get("date") or "")):
+        return pilot, f"market_state_b.series_observation:{series_code}"
+    return live, "equity_intelligence.mkt_commodity_daily"
+
+
+def _shift_days(day: str, days: int) -> str:
+    from datetime import date as _date, timedelta
+    return (_date.fromisoformat(day) + timedelta(days=days)).isoformat()
+
+
+def _oi_rows(ctx: Any, underlying: str, as_of: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Open interest / PCR / rollover / futures basis for one underlying at as_of.
+
+    Returns (stats, rows) with ``rows`` empty when the contract is not held.  The
+    session date is the PIT anchor: ``date <= as_of`` in SQL, nothing else.
+    """
+    last = ctx.one("market_state_b", "SELECT MAX(date) AS d FROM fno_oi_daily "
+                                     "WHERE underlying = ? AND date <= ?", (underlying, as_of))
+    day = (last or {}).get("d")
+    if not day:
+        return {}, []
+    level = ctx.rows(
+        "market_state_b",
+        "SELECT option_type, expiry, SUM(oi) AS oi, SUM(oi_change) AS oi_change, "
+        "SUM(volume) AS volume, AVG(settle) AS settle FROM fno_oi_daily "
+        "WHERE underlying = ? AND date = ? GROUP BY option_type, expiry",
+        (underlying, day))
+    oi = {"CE": 0.0, "PE": 0.0, "FUT": 0.0}
+    change = {"CE": 0.0, "PE": 0.0, "FUT": 0.0}
+    volume = {"CE": 0.0, "PE": 0.0, "FUT": 0.0}
+    by_expiry: dict[str, float] = {}
+    front: dict[str, str] = {}
+    settle: dict[str, float] = {}
+    for row in level:
+        kind = str(row.get("option_type") or "")
+        if kind not in oi:
+            continue
+        oi[kind] += float(row.get("oi") or 0)
+        change[kind] += float(row.get("oi_change") or 0)
+        volume[kind] += float(row.get("volume") or 0)
+        expiry = str(row.get("expiry") or "")[:10]
+        by_expiry[expiry] = by_expiry.get(expiry, 0.0) + float(row.get("oi") or 0)
+        front[kind] = min(front.get(kind, expiry), expiry)
+        if kind == "FUT" and row.get("settle") is not None:
+            settle[expiry] = float(row["settle"])
+    total = sum(oi.values())
+    if not total:
+        return {}, []
+    stats: dict[str, Any] = {"date": day, "underlying": underlying, "oi": dict(oi),
+                             "oi_change": dict(change), "volume": dict(volume),
+                             "oi_total": total}
+    if oi["CE"] and oi["PE"]:
+        stats["pcr"] = oi["PE"] / oi["CE"]
+    front_expiry = min(by_expiry) if by_expiry else None
+    later = sum(v for k, v in by_expiry.items() if k != front_expiry)
+    if front_expiry and total:
+        stats["rollover_pct"] = later / total * 100
+        stats["front_expiry"] = front_expiry
+    futures = [(expiry, value) for expiry, value in settle.items()
+               if front.get("FUT") and expiry == front["FUT"]]
+    if futures:
+        stats["fut_settle"] = futures[0][1]
+        stats["fut_expiry"] = futures[0][0]
+        try:
+            spot = ctx.one("market_state_b",
+                           "SELECT close FROM mkt_nse_full_daily WHERE symbol = ? AND date = ? "
+                           "AND series = 'EQ' ORDER BY series LIMIT 1", (underlying, day))
+        except Exception:  # noqa: BLE001
+            spot = None
+        if spot and spot.get("close"):
+            stats["spot"] = float(spot["close"])
+            stats["basis_pct"] = (stats["fut_settle"] / float(spot["close"]) - 1) * 100
+    item = ["open interest"]
+    if "pcr" in stats:
+        item.append("put-call ratio")
+    if "rollover_pct" in stats:
+        item.append("rollover")
+    if "basis_pct" in stats:
+        item.append("futures basis")
+    rows = [{"ref": f"fno_oi_daily:{underlying}", "symbol": underlying,
+             "item": ", ".join(item), "period": day, "known_at": day,
+             "value": total, "unit": "contracts", "stats": stats}]
+    return stats, rows
+
+
+def _oi_hop(ctx: Any, slots: dict[str, Any], as_of: str) -> dict[str, Any] | None:
+    """The F&O envelope for an open-interest/PCR/rollover ask, or None to fall through."""
+    asked = [
+        (("bank nifty", "nifty bank"), "BANKNIFTY"),
+        (("fin nifty", "finnifty", "nifty financial"), "FINNIFTY"),
+        (("midcap nifty", "nifty midcap select", "midcpnifty"), "MIDCPNIFTY"),
+        (("nifty next 50", "niftynxt50"), "NIFTYNXT50"),
+        (("nifty 50", "nifty"), "NIFTY"),
+    ]
+    low = str(slots.get("question") or "").lower()
+    symbol = str(slots.get("symbol") or "").upper()
+    index_hits = sorted((low.find(key), code) for keys, code in asked
+                        for key in keys if key in low)
+    symbol_pos = low.find(symbol.lower()) if symbol else -1
+    # The subject is whichever is mentioned first: "SBI's open interest" is SBI,
+    # "the Nifty's put-call ratio" is the index; the other stays as a fallback.
+    index_code = index_hits[0][1] if index_hits else None
+    if index_code and (symbol_pos < 0 or index_hits[0][0] < symbol_pos):
+        underlyings = [index_code, symbol]
+    else:
+        underlyings = [symbol, index_code]
+    for underlying in dict.fromkeys(u for u in underlyings if u):
+        try:
+            stats, rows = _oi_rows(ctx, underlying, as_of)
+        except Exception:  # noqa: BLE001 - no pilot store: the price path still runs
+            return None
+        if not rows:
+            continue
+        oi = stats["oi"]
+        parts = [f"{underlying} F&O open interest {fmt_num(stats['oi_total'])} contracts on "
+                 f"{stats['date']} (CE {fmt_num(oi['CE'])}, PE {fmt_num(oi['PE'])}, "
+                 f"FUT {fmt_num(oi['FUT'])})",
+                 f"day-over-day OI change {fmt_num(sum(stats['oi_change'].values()))}"]
+        if "pcr" in stats:
+            parts.append(f"put-call ratio {stats['pcr']:.2f}")
+        if "rollover_pct" in stats:
+            parts.append(f"rollover {stats['rollover_pct']:.1f}% of open interest already in "
+                         f"later expiries (front {stats['front_expiry']})")
+        if "basis_pct" in stats:
+            parts.append(f"futures basis {stats['basis_pct']:+.2f}% "
+                         f"({stats['fut_expiry']} settle {fmt_num(stats['fut_settle'])} vs spot "
+                         f"{fmt_num(stats['spot'])})")
+        return envelope("SERIES", ok=True, rows=rows,
+                        provenance=[{"ref": f"SERIES:fno:{underlying}",
+                                     "known_at": stats["date"]}],
+                        pit=f"fno_oi_daily.date <= {as_of}", checked=CHECKED,
+                        detail="; ".join(parts))
+    return None
 
 
 def _points(rows: list[dict[str, Any]], key: str = "adj_close") -> list[tuple[str, float]]:
@@ -295,10 +488,16 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     metric = slots.get("metric")
     status = str(slots.get("status") or "")
     feed = status.split(":", 1)[-1] if status.startswith("needs_new_fetch:") else None
-    if re.search(r"max pain|maxpain|\bpcr\b|open interest|oi buildup", question, re.I) and feed:
-        detail = f"the question needs {feed}, which is not held"
-        return envelope("SERIES", ok=False, why="tool", checked=CHECKED, gap=feed,
-                        detail=detail, nid_reason=f"BLOCKED_TOOL: {feed}")
+    if OI_ASK.search(question):
+        # Open interest / PCR / rollover / futures basis: the F&O store answers the
+        # ask, so a case the old map blocked on the bhavcopy feed can still answer.
+        oi_hop = _oi_hop(ctx, slots, as_of)
+        if oi_hop is not None:
+            return oi_hop
+        if feed:
+            detail = f"the question needs {feed}, which is not held"
+            return envelope("SERIES", ok=False, why="tool", checked=CHECKED, gap=feed,
+                            detail=detail, nid_reason=f"BLOCKED_TOOL: {feed}")
     if re.search(r"tracking error|inav|iNAV", question, re.I):
         detail = "tracking error needs a daily iNAV series; only one premium snap per date is held"
         return envelope("SERIES", ok=False, why="schema", checked=CHECKED, gap="etf_inav_daily",
@@ -320,6 +519,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     raw: dict[str, list[tuple[str, float]]] = {}
     ident: dict[str, tuple[str | None, str | None]] = {}
     flows: dict[str, list[dict[str, Any]]] = {}
+    sources: dict[str, str] = {}
 
     names = indexes_in(question)
     commodity = commodity_in(question)
@@ -363,8 +563,10 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 rows = _index_rows(ctx, name, start, end)
                 series[name] = _points(rows)
         elif commodity:
-            rows = _commodity_rows(ctx, commodity, start, end)
-            series[commodity] = _points(rows)
+            rows, store = _commodity_rows(ctx, commodity, start, end, as_of)
+            label = store.split(":")[-1] if store.startswith("market_state_b") else commodity
+            series[label] = _points(rows)
+            sources[label] = store
         else:
             return envelope("SERIES", ok=False, na=True, checked=CHECKED,
                             detail="no entity for a price series",
@@ -421,9 +623,10 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             continue
         cagr_pct, years = compute.cagr_between(st["first"], st["last"], st["start"], st["end"])
         item.append("return")
+        pilot_series = sources.get(name, "").startswith("market_state_b")
         line = (f"{name}: {st['start']} close {fmt_num(st['first'])} -> {st['end']} close "
                 f"{fmt_num(st['last'])}, return {st['return_pct']:.1f}% "
-                f"({st['rows']} sessions)")
+                f"({st['rows']} {'months' if pilot_series else 'sessions'})")
         if metric == "cagr" or "cagr" in question.lower():
             if cagr_pct is not None:
                 line += f", CAGR {cagr_pct:.1f}% over {years:.1f}y"
@@ -447,6 +650,10 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         item, line = _flow_line(item, line, flows.get(name), want_volume, want_delivery)
         items[name] = ", ".join(item)
         parts.append(line)
+
+    for name, store in sources.items():
+        if store.startswith("market_state_b"):
+            degraded.append(f"{name}: {store} (monthly series, rows known by {as_of})")
 
     if len(series) >= 2:
         ordered = sorted(series, key=lambda key: stats[key].get("return_pct") or -1e9,
