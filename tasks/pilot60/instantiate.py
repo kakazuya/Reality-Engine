@@ -1,6 +1,7 @@
 """Instantiate the 1,073-case master bank on the stratified pilot-60 universe.
 
     python tasks/pilot60/instantiate.py
+    python tasks/pilot60/instantiate.py --rename-only   # rewrite questions in place
 
 Rules (task brief, 2026-10-28):
   * single-company case -> 3 instantiations, one per bucket; prefer the parent
@@ -20,6 +21,7 @@ from __future__ import annotations
 import csv
 import json
 import random
+import re
 import sqlite3
 import sys
 from collections import Counter, defaultdict
@@ -55,24 +57,27 @@ def load_universe() -> list[dict]:
     return rows
 
 
-def parent_identity(cases: list[dict]) -> tuple[dict, dict]:
-    """symbol/bse_code -> isin, and isin -> sector, from the held master."""
-    sym2isin, isin2sector = {}, {}
+def parent_identity(cases: list[dict]) -> tuple[dict, dict, dict]:
+    """symbol/bse_code -> isin, isin -> sector, isin -> name/codes, from the held master."""
+    sym2isin, isin2sector, ident = {}, {}, {}
     con = sqlite3.connect(f"file:{DATA_ROOT / 'equity_intelligence.db'}?mode=ro", uri=True)
     try:
-        for isin, sym, bse, sector, industry in con.execute(
-                "SELECT isin, nse_symbol, bse_code, sector, industry FROM master_companies"):
+        for isin, sym, bse, sector, industry, name in con.execute(
+                "SELECT isin, nse_symbol, bse_code, sector, industry, company_name "
+                "FROM master_companies"):
             if sym:
                 sym2isin[str(sym).upper()] = isin
             if bse:
                 sym2isin[str(bse)] = isin
             isin2sector[isin] = sector or industry or ""
+            ident[isin] = {"name": name or "", "symbol": sym or "",
+                           "bse_code": str(bse or "")}
         for isin, sector in con.execute("SELECT isin, sector FROM company_industry"):
             if sector:
                 isin2sector.setdefault(isin, sector)
     finally:
         con.close()
-    return sym2isin, isin2sector
+    return sym2isin, isin2sector, ident
 
 
 def sessions(con: sqlite3.Connection) -> tuple[dict, dict]:
@@ -146,10 +151,73 @@ def peer_set(rng: random.Random, rows: list[dict], sectors: list[str], used: set
     return picked[:3]
 
 
+def _replace(question: str, old: str, new: str) -> str:
+    """Replace one company token; a bare name is replaced where it stands alone."""
+    if len(old or "") < 3 or not new or old.lower() == (new or "").lower():
+        return question
+    pattern = r"(?<![A-Za-z0-9])" + re.escape(old) + r"(?![A-Za-z0-9])"
+    return re.sub(pattern, new, question, flags=re.I)
+
+
+def _aliases(parent: dict, name: str, symbol: str) -> list[tuple[str, str]]:
+    """(how the bank spells the parent, what to write instead) for one company.
+
+    The text spells a company by its name, by the name without the legal suffix
+    ("JSW Steel Limited" -> "JSW Steel"), by its symbol or by its BSE code.  The
+    replacement is the instance's name, or its symbol when master has no name.
+    """
+    full = (parent.get("name") or "").strip()
+    pairs = [(full, name)]
+    base = re.sub(r"\s+(limited|ltd|private|pvt|corporation|corp)\.?$", "", full, flags=re.I)
+    if base and base.lower() != full.lower():
+        pairs.append((base, name))
+    pairs += [(parent.get("symbol") or "", symbol), (parent.get("bse_code") or "", symbol)]
+    return [(old, new) for old, new in pairs if len(old) >= 3 and new]
+
+
+def rename_questions(rows: list[dict], ident: dict, sym2isin: dict | None = None) -> int:
+    """Rewrite each instance question with the instance company's own name.
+
+    The instance is the entity the answer is produced for, so a question that still
+    reads "Trent ..." (the parent case's company) is misleading for a human reader
+    even though the grader judges by slot.  A single-company instance is renamed to
+    its one entity; a peer-set instance is renamed company by company to its peer
+    set (the answer ranks that set, not the parent's).  Deterministic: the text only
+    ever moves forward, and a second run reproduces the same text.
+    """
+    renamed = 0
+    sym2isin = sym2isin or {}
+    for row in rows:
+        parents = [ident[item.get("isin")] for item in row.get("substituted_from") or []
+                   if item.get("isin") in ident]
+        children = []
+        for entity in row.get("entities") or []:
+            symbol = str(entity.get("symbol") or "")
+            isin = str(entity.get("isin") or "")
+            children.append(ident.get(isin) or ident.get(sym2isin.get(symbol.upper()) or "")
+                            or {"name": "", "symbol": symbol, "bse_code": ""})
+        children = [child for child in children if child.get("symbol") or child.get("name")]
+        if row.get("kind") not in ("stock", "peer_set") or not parents or not children:
+            continue
+        question = str(row.get("question") or "")
+        text = question
+        for index, parent in enumerate(parents):
+            child = children[min(index, len(children) - 1)]
+            # A company with no master name is named by its symbol, which is what
+            # the answer prints: better terse and correct than another company.
+            alias = child.get("name") or child.get("symbol") or ""
+            for old, new in _aliases(parent, alias, child.get("symbol") or alias):
+                text = _replace(text, old, new)
+        if text != question:
+            row["question"] = text
+            renamed += 1
+    return renamed
+
+
 def build_instances() -> tuple[list[dict], dict, list[dict]]:
     cases = load_cases()
     universe = load_universe()
-    sym2isin, isin2sector = parent_identity(cases)
+    sym2isin, isin2sector, ident = parent_identity(cases)
     con = sqlite3.connect(f"file:{T1}?mode=ro", uri=True)
     _, days = sessions(con)
     con.close()
@@ -217,6 +285,7 @@ def build_instances() -> tuple[list[dict], dict, list[dict]]:
         "kinds": dict(Counter(r["kind"] for r in rows)),
         "buckets": dict(Counter(r["bucket"] for r in rows if r["bucket"])),
         "sectors": dict(Counter(r["sector"] for r in rows if r["kind"] == "stock")),
+        "renamed": rename_questions(rows, ident),
         "shifted": sum(1 for r in rows if r["shift"].get("shifted")),
         "forward_as_of": sum(1 for r in rows if r["shift"].get("forward")),
         "skipped": skipped,
@@ -224,7 +293,33 @@ def build_instances() -> tuple[list[dict], dict, list[dict]]:
     return rows, stats, skipped
 
 
+def rename_only() -> int:
+    """Rewrite the instance questions of the existing INSTANCES.jsonl in place.
+
+    The question is rebuilt from the parent bank case (``build_instances`` copies it
+    verbatim) and then renamed, so the pass is deterministic: running it twice gives
+    the same text instead of compounding a replacement from the renamed text.
+    """
+    path = OUT_DIR / "INSTANCES.jsonl"
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()]
+    cases = {case["mid"]: case for case in load_cases()}
+    for row in rows:
+        parent = cases.get(row.get("parent_mid"))
+        if parent is not None and parent.get("question"):
+            row["question"] = parent["question"]
+    sym2isin, _, ident = parent_identity(list(cases.values()))
+    renamed = rename_questions(rows, ident, sym2isin)
+    with path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print(f"renamed {renamed} of {len(rows)} instance questions -> {path}")
+    return 0
+
+
 def main() -> int:
+    if "--rename-only" in sys.argv:
+        return rename_only()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     rows, stats, skipped = build_instances()
     with (OUT_DIR / "INSTANCES.jsonl").open("w", encoding="utf-8") as fh:
@@ -239,6 +334,7 @@ def main() -> int:
              f"- stock instances by bucket: {stats['buckets']}",
              f"- rows with a shifted period/as_of: {stats['shifted']} "
              f"(forward as_of: {stats['forward_as_of']})",
+             f"- rows whose question now names its own company: {stats['renamed']}",
              f"- skipped cases: {len(skipped)}", ""]
     if skipped:
         lines += ["| mid | reason |", "|---|---|"]

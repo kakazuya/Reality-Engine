@@ -40,7 +40,7 @@ from reality_engine.query.answer import (  # noqa: E402
     METRIC_SYNONYMS, evidence_matches, metric_matches)
 from reality_engine.query.decompose import decompose, sub_case  # noqa: E402
 from reality_engine.query.gate import (  # noqa: E402
-    asked_concepts, gate_hop, gate_run, key_terms)
+    asked_concepts, ask_coverage, gate_hop, gate_run, key_terms, unrelated_rows)
 from reality_engine.query.router import named_document, period_bounds, route  # noqa: E402
 
 WINDOW_DAYS = 3
@@ -74,6 +74,10 @@ class DocIndex:
     def __init__(self) -> None:
         self.ctx = None
         self.ok = False
+        # 1,073 cases reduce to a few hundred distinct (symbol, doc type, date)
+        # lookups; the snapshot scan behind each one is the whole run time.
+        self._latest: dict[Any, str | None] = {}
+        self._exists: dict[Any, bool] = {}
         try:
             from reality_engine.query.ctx import Ctx
             self.ctx = Ctx()
@@ -91,6 +95,13 @@ class DocIndex:
             return []
 
     def latest(self, symbol: str | None, doc_type: str | None, as_of: str) -> str | None:
+        key = (symbol, doc_type, as_of)
+        if key not in self._latest:
+            self._latest[key] = self._latest_of(symbol, doc_type, as_of)
+        return self._latest[key]
+
+    def _latest_of(self, symbol: str | None, doc_type: str | None,
+                   as_of: str) -> str | None:
         if not symbol or not doc_type or doc_type not in DOC_TABLES or not self.ok:
             return None
         table, key, day_col = DOC_TABLES[doc_type]
@@ -101,6 +112,13 @@ class DocIndex:
 
     def exists(self, symbol: str | None, doc_type: str | None, day: str,
                tol: int = WINDOW_DAYS) -> bool:
+        key = (symbol, doc_type, day, tol)
+        if key not in self._exists:
+            self._exists[key] = self._exists_at(symbol, doc_type, day, tol)
+        return self._exists[key]
+
+    def _exists_at(self, symbol: str | None, doc_type: str | None, day: str,
+                   tol: int = WINDOW_DAYS) -> bool:
         if not symbol or not doc_type or doc_type not in DOC_TABLES or not self.ok:
             return False
         from datetime import date, timedelta
@@ -281,8 +299,11 @@ def _runs_of(row: dict[str, Any]) -> list[dict[str, Any]]:
         return runs
     out = []
     for run in row.get("gate") or []:
-        out.append({"index": run.get("index"), "text": run.get("text"),
+        text = str(run.get("text") or "")
+        out.append({"index": run.get("index"), "text": text,
                     "answered": not run.get("gate"), "hops": run.get("hops") or [],
+                    "slots": run.get("slots") or {},
+                    "concepts": asked_concepts(text),
                     "metric": None, "entities": []})
     return out
 
@@ -293,10 +314,13 @@ def _subs_for(case: dict, row: dict[str, Any]) -> list[dict[str, Any]]:
     if runs:
         return [{"index": run["index"], "text": run.get("text") or "",
                  "metric": run.get("metric"),
+                 "concepts": run.get("concepts") or asked_concepts(run.get("text") or ""),
+                 "slots": run.get("slots") or {},
                  "named_document": named_document({"question": run.get("text") or ""}),
                  "entity_from": None, "universe": False, "routing_text": run.get("text") or "",
                  "steps": []} for run in runs]
-    return decompose(case)
+    return [dict(sub, concepts=asked_concepts(sub["text"]), slots={})
+            for sub in decompose(case)]
 
 
 def _coverage(case: dict, row: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
@@ -311,6 +335,7 @@ def _coverage(case: dict, row: dict[str, Any]) -> tuple[list[dict[str, Any]], li
     for sub in subs:
         chain = _sub_chain(case, sub) if not runs else []
         chain_hit = bool(set(chain) & hops_ok) if hops_ok and chain else False
+        missing_parts: list[str] = []
         if runs and sub["index"] < len(runs):
             run = runs[sub["index"]]
             evidence = any(hop.get("ok") and not hop.get("na") and
@@ -319,6 +344,16 @@ def _coverage(case: dict, row: dict[str, Any]) -> tuple[list[dict[str, Any]], li
                            if hop.get("hop") != "resolve")
             ok = bool(run.get("answered")) and evidence
             how = "sub-hop"
+            # Every part of a multi-part ask must be carried by the run's rows:
+            # "share count AND promoter holding", "promoter AND public", "raw AND
+            # adjusted", "business AND segments".  One part is PARTIAL.
+            if ok:
+                checked = [hop for hop in run.get("hops") or []
+                           if hop.get("hop") != "resolve" and not hop.get("na")]
+                parts_ok, why = ask_coverage(checked, sub.get("concepts") or [], [])
+                if parts_ok is False:
+                    ok = False
+                    missing_parts = why
         else:
             anchors = _anchor_words(sub["text"])
             hits = sum(1 for word in anchors if word in low)
@@ -330,6 +365,7 @@ def _coverage(case: dict, row: dict[str, Any]) -> tuple[list[dict[str, Any]], li
         if not ok:
             reasons.append(f"sub-question {sub['index'] + 1} not addressed: "
                            f"'{sub['text'][:90]}'")
+            reasons.extend(missing_parts)
         covered.append({"index": sub["index"], "text": sub["text"], "covered": ok,
                         "chain": chain, "how": how, "metric": sub.get("metric")})
     return covered, reasons
@@ -488,6 +524,71 @@ def _unrelated(claims: list[dict[str, Any]], subs: list[dict[str, Any]]) -> list
     return keep
 
 
+def _page_gap(subs: list[dict[str, Any]], row: dict[str, Any]) -> str | None:
+    """A page ask answered with the page's title alone is not what the page says."""
+    if not any(re.search(r"\bpage\s+\d+", str(sub.get("text") or ""), re.I)
+               for sub in subs):
+        return None
+    quotes = [str(item.get("quote") or item.get("text") or "")
+              for run in _runs_of(row) for hop in run.get("hops") or []
+              for item in hop.get("rows") or []]
+    content = " ".join(quote for quote in quotes if quote).strip()
+    if not content or not content.lstrip().upper().startswith("TITLE |"):
+        return None
+    body = re.sub(r"(?i)^\s*TITLE\s*\|", "", content).strip()
+    if len(body) < 60:
+        return (f"the page is answered with its title only ('{body[:50]}'), not with "
+                f"what the page says")
+    return None
+
+
+def _unrelated(case: dict, row: dict[str, Any],
+               subs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rows whose entity or concept matches no part of the ask.
+
+    Two sources, both of which must be clean:
+    * the hops of each sub-run, judged against that sub-question's own ask (a price
+      row is not "unrelated" to the half that asked for the price);
+    * the numeric rows the answer prints (``item = value (store, known day)``), which
+      are what a reader sees -- the Novelis EBITDA bridge is appended text, the
+      revenue row is an appended row.
+
+    A hop's rendered ``detail`` is the hop's own arithmetic, so a computed "5 daily
+    closes within 1% of an edge" is the high it reports.
+    """
+    runs = _runs_of(row)
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(items: list[dict[str, Any]], hop: str) -> None:
+        for item in items:
+            key = str(item.get("text") or "")[:60]
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(dict(item, hop=hop))
+
+    for index, run in enumerate(runs):
+        sub = subs[index] if index < len(subs) else {}
+        concepts = sub.get("concepts") or []
+        terms = [] if concepts else key_terms(str(run.get("text") or ""))
+        for hop in run.get("hops") or []:
+            if hop.get("hop") == "resolve" or hop.get("na") or not hop.get("ok"):
+                continue
+            add(unrelated_rows(hop.get("rows") or [], concepts, terms, hop.get("detail")),
+                str(hop.get("hop")))
+    concepts: list[str] = []
+    for sub in subs:
+        for concept in sub.get("concepts") or []:
+            if concept not in concepts:
+                concepts.append(concept)
+    terms = [] if concepts else key_terms(str(case.get("question") or ""))
+    for claim in _claims(row):
+        text = f"{claim.get('item') or ''} {claim.get('unit') or ''}".strip()
+        add(unrelated_rows([text], concepts, terms), "claim")
+    return out
+
+
 def grade_row(case: dict, row: dict[str, Any], index: DocIndex | None = None,
               source: str = "v1") -> dict[str, Any]:
     """Apply the strict rules to one bench row (never upgrades a bench grade)."""
@@ -495,9 +596,11 @@ def grade_row(case: dict, row: dict[str, Any], index: DocIndex | None = None,
     index = index or DocIndex()
     bench = str(row.get("grade") or "PARTIAL")
     graded["bench_grade"] = bench
+    graded["unrelated_rows"] = 0
     subs = _subs_for(case, row)
     graded["strict_subs"] = [{"index": sub["index"], "text": sub["text"],
-                              "metric": sub.get("metric")} for sub in subs]
+                              "metric": sub.get("metric"),
+                              "concepts": sub.get("concepts")} for sub in subs]
     reasons: list[str] = []
     if bench in BLOCKED:
         graded["strict_grade"] = bench
@@ -537,14 +640,20 @@ def grade_row(case: dict, row: dict[str, Any], index: DocIndex | None = None,
     stale = _stale(case, row, index, claims, subs)
     if stale:
         reasons.append(stale)
-    unrelated = _unrelated(claims, subs)
-    if unrelated:
-        reasons.append(f"{len(unrelated)} unrelated row(s): " + "; ".join(unrelated[:2]))
+    page = _page_gap(subs, row)
+    if page:
+        reasons.append(page)
+    unrelated = _unrelated(case, row, subs)
+    graded["unrelated_rows"] = len(unrelated)
+    # Two unrelated rows, or one that carries a number, is not an answer with
+    # decoration: it is an answer that appended something the ask never wanted.
+    if len(unrelated) > 1 or any(item.get("numeric") for item in unrelated):
+        reasons.append(f"{len(unrelated)} unrelated row(s): " +
+                       "; ".join(str(item.get("text"))[:60] for item in unrelated[:2]))
     if grade == "ANSWERED" and reasons:
         grade = "PARTIAL"
     graded["strict_grade"] = grade
     graded["strict_reasons"] = reasons
-    graded["unrelated_rows"] = len(unrelated)
     return graded
 
 

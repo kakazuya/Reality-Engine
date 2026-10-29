@@ -1,289 +1,11 @@
-### MB0302#L LARGE Financial Services F2
-Q: What was Crisil (NSE: CRISIL)'s YTD high price in 2026, with the value and the date, and on which exchange?
-A: BAJFINANCE: 2026-01-01 close 973.1 -> 2026-10-19 close 957.4, return -1.6% (196 sessions), high 1,159 (2026-08-05), low 801.5 (2026-03-30), 5 daily closes within 1% of an edge
--- run 0: What was Crisil (NSE: CRISIL)'s YTD high price in 2026, with the value and the date, and o | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE296A01032", "symbol": "BAJFINANCE", "known_at": "2026-10-19", "ref": "symbol_isin_history:BAJFINANCE@2025-06-16..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "BAJFINANCE"}
-
-### MB1046#L LARGE Power F3
-Q: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size take to recover?
-A: POWERGRID: 2025-09-24 close 293.3 -> 2026-09-24 close 266.4, return -9.2% (247 sessions), high 320.9 (2026-04-27), low 254.1 (2026-01-20), 16 daily closes within 1% of an edge
--- run 0: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size ta | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE752E01010", "symbol": "POWERGRID", "known_at": "2026-09-24", "ref": "symbol_isin_history:532898@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "POWERGRID"}
-
-### MB0028#MI MICRO Unclassified F2
-Q: What was the YTD high price of BSE: 532810 in 2026 (value and date)?
-A: UFBL: 2026-01-01 close 216.9 -> 2026-10-19 close 668.4, return 208.1% (196 sessions), high 838.0 (2026-08-24), low 173.9 (2026-01-29), 8 daily closes within 1% of an edge
--- run 0: What was the YTD high price of BSE: 532810 in 2026 (value and date) | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE382M01027", "symbol": "UFBL", "known_at": "2026-10-19", "ref": "symbol_isin_history:UFBL@2025-10-13..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "UFBL"}
-
-### MB1044#MI MICRO Capital Goods F3
-Q: HAL is within 2% of its 52-week high. How many prior sessions this year were this close, and what followed?
-A: HEGAM: 2025-09-24 close 521.9 -> 2026-09-24 close 235.2, return -54.9% (247 sessions), high 739.2 (2026-08-18), low 215.1 (2026-09-16), 3 daily closes within 1% of an edge
--- run 0: HAL is within 2% of its 52-week high. How many prior sessions this year were this close | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE545A01024", "symbol": "HEGAM", "known_at": "2026-09-24", "ref": "symbol_isin_history:HEGAM@2026-09-22..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "HEGAM"}
--- run 1: what followed | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE545A01024", "symbol": "HEGAM", "known_at": "2026-09-24", "ref": "symbol_isin_history:HEGAM@2026-09-22..2026-10-16"}
-
-### MB0985#MS MID-SMALL Financial Services F16
-Q: Bajaj Finance: does a rate cut help or hurt the cost of funds before it helps AUM, and what does history say?
-A: ANANDRATHI: close 2,164 on 2026-10-19; annual_report 2026-04-27T20:18:06 p10 CIN : L67120MH1995PLC086696: CIN : L67120MH1995PLC086696 
-l ___ ~ j 
-• 
-• 
-• 
-• 
-• 
-• 
-• 
-
-Board of Directors
-Leadership
-The Foundation of 
-Governance and Trust
-Execution Led by 
-Experience 
-Key Leadership Per | annual_report 2026-04-27T20:18:06 p184 22 EMPLOYEE BENEFIT EXPENSES (Contd..): 22	 EMPLOYEE BENEFIT EXPENSES (Contd..)
-	
-C	
-Defined
--- run 0: Bajaj Finance: does a rate cut help or hurt the cost of funds before it helps AUM | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE463V01026", "symbol": "ANANDRATHI", "known_at": "2026-10-19", "ref": "symbol_isin_history:543415@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "ANANDRATHI"}
-  EVIDENCE ok=True e=True a=True p=None
-    {"isin": "INE463V01026", "symbol": "ANANDRATHI", "quote": "CIN : L67120MH1995PLC086696 \nl ___ ~ j \n• \n• \n• \n• \n• \n• \n• \n\nBoard of Directors\nLeadership\nThe Foundation of \nGovernance and Trust\nExecution Led by \nExperience", "section": "CIN : L67120MH1995PLC086696", "period": "FY26", "kn
-    {"isin": "INE463V01026", "symbol": "ANANDRATHI", "quote": "22\t EMPLOYEE BENEFIT EXPENSES (Contd..)\n\t\nC\t\nDefined Contribution Plans\n\t\n\t\nAmount recognized as an expense under the head “Contribution to Provident and other ", "section": "22 EMPLOYEE BENEFIT EXPENSES (Contd..)", "period": "FY2
-    {"isin": "INE463V01026", "symbol": "ANANDRATHI", "quote": "22\t EMPLOYEE BENEFIT EXPENSES (Contd..)\n\t\n\t\nAsset Liability Matching Strategy:\n\t\n\t\nThe money contributed by the Company to the Gratuity fund to finance the liab", "section": "22 EMPLOYEE BENEFIT EXPENSES (Contd..)", "period": "FY2
--- run 1: what does history say | gate=None
-  resolve ok=True e=True a=True p=None
-    {"isin": "INE463V01026", "symbol": "ANANDRATHI", "known_at": "2026-10-19", "ref": "symbol_isin_history:543415@2024-07-01..2026-10-16"}
-  EVIDENCE ok=True e=True a=True p=None
-    {"isin": "INE463V01026", "symbol": "ANANDRATHI", "quote": "Consistently Rewarding Shareholders\n19\nFY17\n32:1\nFY22\n1:2\nFY25\n1:1\nFY27\n1:1\nBONUS SHARE HISTORY\nBuy-Back\n(Rs. / Share)\n(Rs. Cr)\n(Rs. / Share)\n(Rs. Cr)\n(Rs. / Sh", "section": "Private Wealth", "known_at": "2026-07-09T18:28:47"
-    {"isin": "INE463V01026", "symbol": "ANANDRATHI", "quote": "Consistently Rewarding Shareholders\n20\nFY17\n32:1\nFY22\n1:2\nFY25\n1:1\nFY27\n1:1\nBONUS SHARE HISTORY\nAll dividends declared prior to the final dividend for FY25 have", "section": "Private Wealth", "known_at": "2026-10-09T18:35:57", "da
-
-### MB0275#MS MID-SMALL Construction Materials F2
-Q: Dalmia Bharat (NSE: DALBHARAT) ke kitne equity shares hain aur promoter holding kitni hai? Dono numbers latest filing se, date ke saath batao.
-A: Promoter holding % 2026-06-30 = 55.84 % (shp_index, known 2026-07-21); Building, Jamnagar held in name of promoter entity Dalmia Cement (Bharat) Limited for 41 years (amount below rounding off threshold) FY26 = 0.0 Rs crore (ar_facts, known 2026-06-04); Building, Ballabhgarh held in name of promoter entity Dalmia Cement (Bharat) Limited for 46 years FY26 = 1.0 Rs crore (ar_facts, known 2026-06-04); DALBHARAT: close 1
--- run 0: Dalmia Bharat (NSE: DALBHARAT) ke kitne equity shares hain aur promoter holding kitni hai? | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE00R701025", "symbol": "DALBHARAT", "known_at": "2026-10-19", "ref": "symbol_isin_history:542216@2024-07-01..2026-10-16"}
-  FACTS ok=True e=None a=True p=None
-    {"item": "Promoter holding %", "period": "2026-06-30", "known_at": "2026-07-21T15:03:36", "ref": "shp_index:2026-06-30", "value": 55.84, "unit": "%", "store": "shp_index"}
-    {"item": "Building, Jamnagar held in name of promoter entity Dalmia Cement (Bharat) Limited for 41 years (amount below rounding off threshold)", "quote": "Building, Jamnagar 0 Dalmia Cement (Bharat) Limited*", "period": "FY26", "known_at": "2026-06-04T22:04:33.853", "ref": "ar_facts:23830#151", "val
-    {"item": "Building, Ballabhgarh held in name of promoter entity Dalmia Cement (Bharat) Limited for 46 years", "quote": "Building, Ballabhgarh 1 Dalmia Cement (Bharat) Limited*", "period": "FY26", "known_at": "2026-06-04T22:04:33.853", "ref": "ar_facts:23830#151", "value": 1.0, "unit": "Rs crore", "s
-    {"item": "Building, Mussoorie held in name of promoter entity Dalmia Cement (Bharat) Limited for 55 years", "quote": "Building, Mussoorie 2 Dalmia Cement (Bharat) Limited*", "period": "FY26", "known_at": "2026-06-04T22:04:33.853", "ref": "ar_facts:23830#151", "value": 2.0, "unit": "Rs crore", "store
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "DALBHARAT"}
-
-### MB1046#MS MID-SMALL Consumer Durables F3
-Q: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size take to recover?
-A: KALYANKJIL: 2025-09-24 close 479.1 -> 2026-09-24 close 573.6, return 19.7% (247 sessions), high 634.6 (2026-07-30), low 330.8 (2026-06-11), 4 daily closes within 1% of an edge
--- run 0: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size ta | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE303R01014", "symbol": "KALYANKJIL", "known_at": "2026-09-24", "ref": "symbol_isin_history:543278@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "KALYANKJIL"}
-
-### MB0023 None None F1
-Q: How many manufacturing facilities does Ganesha Ecosphere have, per its investor presentation of 5 August 2026?
-A: named deck 2026-08-05: Manufacturing Facilities - = 6.00 - (deck_figures, known 2026-08-03); State-of-the-art manufacturing facilities strategically located across India; Strategically realigning product portfolio towards high-margin, value-added products - = 4.00 - (deck_figures, known 2026-08-03); Warangal facilities operationalized 2023 = 50,000 TPA (deck_figures, known 2026-08-03); deck 2026-08-03T21:30:56.757 p1
--- run 0: How many manufacturing facilities does Ganesha Ecosphere have, per its investor presentati | gate=None
-  resolve ok=True e=True a=False p=False
-    {"isin": "INE845D01014", "symbol": "GANECOS", "known_at": "2026-10-19", "ref": "symbol_isin_history:514167@2024-07-01..2026-10-16"}
-  FACTS ok=True e=None a=True p=True
-    {"item": "Manufacturing Facilities", "period": "-", "known_at": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035e931c3d4a564cfa77688a1ba000b7ce91cbb#14", "value": 6.0, "unit": "-", "store": "deck_figures"}
-    {"item": "State-of-the-art manufacturing facilities strategically located across India; Strategically realigning product portfolio towards high-margin, value-added produc", "period": "-", "known_at": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035e931c3d4a564cfa77688a1ba
-    {"item": "Warangal facilities operationalized", "period": "2023", "known_at": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035e931c3d4a564cfa77688a1ba000b7ce91cbb#22", "value": 50000.0, "unit": "TPA", "store": "deck_figures"}
-    {"item": "Shifting towards clean renewable energy plant's across production facilities with total installed capacity of Rooftop Solar power installations", "period": "-", "known_at": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035e931c3d4a564cfa77688a1ba000b7ce91cbb#28",
-  EVIDENCE ok=True e=None a=True p=True
-    {"quote": "TITLE | Ganesha Ecosphere | Leading PET Plastic Recycling Company\nRich Industry Experience | - | 3+ | Decades\nProduct Variants | - | 500+ | -\nCustomers across 1", "known_at": "2026-08-03T21:30:56.757", "date": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035
-    {"quote": "duct portfolio with a leap into the next generation of recycling - GoRewise | - | 3 | -\nState-of-the-art manufacturing facilities strategically located across I", "known_at": "2026-08-03T21:30:56.757", "date": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035e9
-    {"quote": "TITLE | State-of-the-art manufacturing facilities strategically located across India\nKanpur | - | 10,200 | TPA\nrPET Fibre | - | 7,200 | TPA\nDyed Textured Yarn |", "known_at": "2026-08-03T21:30:56.757", "date": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035
-
-### MB0871 None None F12
-Q: IRFC Q2 results date: when, and was it pre-intimated?
-A: IRFC: close 79.3 on 2026-09-30
--- run 0: IRFC Q2 results date: when | gate=None
-  resolve ok=True e=True a=True p=True
-    {"isin": "INE053F01010", "symbol": "IRFC", "known_at": "2026-10-28", "ref": "symbol_isin_history:none-at-as_of"}
+### MB0441#L LARGE Metals & Mining F15
+Q: BHEL 4 Jun 2024 volume and delivery
+A: HINDALCO: close 649.0 on 2024-06-04, volume 24,250,212 24,250,212 average over 1 sessions, delivery 52.9% (52.9% average)
+-- run 0: BHEL 4 Jun 2024 volume and delivery | gate=None
+  resolve ok=True e=True a=False p=True
+    {"isin": "INE038A01020", "symbol": "HINDALCO", "known_at": "2024-06-04", "ref": "symbol_isin_history:HINDALCO@2019-01-01..2026-10-16"}
   SERIES ok=True e=True a=True p=True
-    {"known_at": "2026-10-28", "ref": "IRFC"}
--- run 1: was it pre-intimated | gate=None
-  resolve ok=True e=True a=False p=True
-    {"isin": "INE053F01010", "symbol": "IRFC", "known_at": "2026-10-28", "ref": "symbol_isin_history:none-at-as_of"}
-
-### MB0094 None None F2
-Q: BANKINDIA net npa Q1FY27
-A: Net NPA Q1 FY 2026-27 = 24.0 bps (deck_figures, known 2026-09-08); Net NPA Q1 FY 2026-27 = 4,019 ₹ Cr (deck_figures, known 2026-09-08); Net NPA Q1 FY 2026-27 (YoY) = 24.0 bps (deck_figures, known 2026-07-24); BANKINDIA: close 140.4 on 2026-06-30
--- run 0: BANKINDIA net npa Q1FY27 | gate=None
-  resolve ok=True e=True a=False p=True
-    {"isin": "INE084A01016", "symbol": "BANKINDIA", "known_at": "2026-10-19", "ref": "symbol_isin_history:532149@2024-07-01..2026-10-16"}
-  FACTS ok=True e=None a=True p=True
-    {"item": "Net NPA", "period": "Q1 FY 2026-27", "known_at": "2026-09-08T17:19:04.23", "ref": "deck_figures:59b9cc029d353d566086bf6c9cb0aba4bb43f400a365b3a74a1aae984668752d#9", "value": 24.0, "unit": "bps", "store": "deck_figures"}
-    {"item": "Net NPA", "period": "Q1 FY 2026-27", "known_at": "2026-09-08T17:19:04.23", "ref": "deck_figures:59b9cc029d353d566086bf6c9cb0aba4bb43f400a365b3a74a1aae984668752d#33", "value": 4019.0, "unit": "₹ Cr", "store": "deck_figures"}
-    {"item": "Net NPA", "period": "Q1 FY 2026-27 (YoY)", "known_at": "2026-07-24T17:18:29.743", "ref": "deck_figures:ec312f66350fa599ffc45589b5a2aeadb20933cc50a59722bf431555c0173b23#4", "value": 24.0, "unit": "bps", "store": "deck_figures"}
-  SERIES ok=True e=True a=False p=True
-    {"known_at": "2026-10-19", "ref": "BANKINDIA"}
-
-### MB1044 None None F3
-Q: HAL is within 2% of its 52-week high. How many prior sessions this year were this close, and what followed?
-A: HAL: 2025-09-24 close 4,724 -> 2026-09-24 close 4,774, return 1.1% (247 sessions), high 5,099 (2026-08-18), low 3,487 (2026-03-30), 3 daily closes within 1% of an edge
--- run 0: HAL is within 2% of its 52-week high. How many prior sessions this year were this close | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE066F01020", "symbol": "HAL", "known_at": "2026-09-24", "ref": "symbol_isin_history:541154@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "HAL"}
--- run 1: what followed | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE066F01020", "symbol": "HAL", "known_at": "2026-09-24", "ref": "symbol_isin_history:541154@2024-07-01..2026-10-16"}
-
-### MB0948 None None F4
-Q: Trent versus the Nifty consumption index: did the stock's weight increase come from price or from index reconstitution?
-A: TRENT: close 2,892 on 2026-10-19; deck 2026-04-22T16:17:02 p12: RESULTS CONTEXT
-❖Operating economics (contd.): 
-─
-Our operating performance including return on capital employed continues to remain accretive. In FY26, our ROCE was over 29%.
-─
-In
--- run 0: decompose relative return | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE849A01020", "symbol": "TRENT", "known_at": "2026-10-19", "ref": "symbol_isin_history:500251@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "TRENT"}
-  EVIDENCE ok=True e=True a=True p=None
-    {"isin": "INE849A01020", "symbol": "TRENT", "quote": "RESULTS CONTEXT\n❖Operating economics (contd.): \n─\nOur operating performance including return on capital employed continues to remain accretive. In FY26, our ROC", "section": "Investor Presentation |", "known_at": "2026-04-22T16:17:02", "date":
--- run 1: check for reconstitution events | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE849A01020", "symbol": "TRENT", "known_at": "2026-10-19", "ref": "symbol_isin_history:500251@2024-07-01..2026-10-16"}
--- run 2: state which part is passive | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE849A01020", "symbol": "TRENT", "known_at": "2026-10-19", "ref": "symbol_isin_history:500251@2024-07-01..2026-10-16"}
-
-### MB0274#L LARGE Telecommunication F2
-Q: BHARTIHEXA share count promoter holding
-A: Promoter shareholding as at March 31, 2026 as on March 31, 2026 = 25.64 % (ar_facts, known 2026-08-05); Promoter shareholding as at Mar 31, 2026 as at Mar 31, 2026 = 25.64 % (ar_facts, known 2026-08-05); Foreign shareholding as on March 31, 2026 - Promoter/Promoter Group (Foreign) FY26 = 19.01 % (ar_facts, known 2026-08-05); IDEA: close 12.3 on 2026-10-19
--- run 0: BHARTIHEXA share count promoter holding | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE669E01016", "symbol": "IDEA", "known_at": "2026-10-19", "ref": "symbol_isin_history:532822@2024-07-01..2026-10-16"}
-  FACTS ok=True e=None a=True p=None
-    {"item": "Promoter shareholding as at March 31, 2026", "quote": "promoter shareholding stands at 25.64%", "period": "as on March 31, 2026", "known_at": "2026-08-05T13:44:13.647", "ref": "ar_facts:41429#207", "value": 25.64, "unit": "%", "store": "ar_facts"}
-    {"item": "Promoter shareholding as at Mar 31, 2026", "quote": "promoter shareholding stands at 25.64%", "period": "as at Mar 31, 2026", "known_at": "2026-08-05T13:44:13.647", "ref": "ar_facts:41429#264", "value": 25.64, "unit": "%", "store": "ar_facts"}
-    {"item": "Foreign shareholding as on March 31, 2026 - Promoter/Promoter Group (Foreign)", "quote": "Promoter / Promoter Group (Foreign) - 19.01%", "period": "FY26", "known_at": "2026-08-05T13:44:13.647", "ref": "ar_facts:41429#17", "value": 19.01, "unit": "%", "store": "ar_facts"}
-    {"item": "Promoter shareholding diluted substantially; Government of India becomes 49% shareholder - shift in control dynamics", "quote": "dilution of promoter shareholding", "period": "FY26", "known_at": "2026-08-05T13:44:13.647", "ref": "ar_facts:41429#93", "value": 49.0, "unit": "%", "store": "ar
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "IDEA"}
-
-### MB1044#L LARGE Metals & Mining F3
-Q: HAL is within 2% of its 52-week high. How many prior sessions this year were this close, and what followed?
-A: HINDALCO: 2025-09-24 close 741.0 -> 2026-09-24 close 982.0, return 32.5% (247 sessions), high 1,150 (2026-05-27), low 741.0 (2025-09-24), 7 daily closes within 1% of an edge
--- run 0: HAL is within 2% of its 52-week high. How many prior sessions this year were this close | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE038A01020", "symbol": "HINDALCO", "known_at": "2026-09-24", "ref": "symbol_isin_history:500440@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "HINDALCO"}
--- run 1: what followed | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE038A01020", "symbol": "HINDALCO", "known_at": "2026-09-24", "ref": "symbol_isin_history:500440@2024-07-01..2026-10-16"}
-
-### MB0280#MI MICRO General Diversified F2
-Q: What are Kotyark Industries (NSE: KOTYARK)'s exact share count and promoter holding now, after its corporate action? If the post-action count is not held, answer NOT IN DATA.
-A: Promoter holding % 2026-09-30 = 75.0 % (shp_index, known 2026-10-10); Non-promoter holding percentage as on 31.03.2026 = 25.0 % (ar_facts, known 2026-08-31); Promoter holding percentage as on 31.03.2026 = 75.0 % (ar_facts, known 2026-08-31); DDEVPLSTIK: close 256.3 on 2026-10-19
--- run 0: What are Kotyark Industries (NSE: KOTYARK)'s exact share count and promoter holding now, a | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE0HR601026", "symbol": "DDEVPLSTIK", "known_at": "2026-10-19", "ref": "symbol_isin_history:DDEVPLSTIK@2025-01-15..2026-10-16"}
-  FACTS ok=True e=None a=True p=None
-    {"item": "Promoter holding %", "period": "2026-09-30", "known_at": "2026-10-10T16:13:43", "ref": "shp_index:2026-09-30", "value": 75.0, "unit": "%", "store": "shp_index"}
-    {"item": "Non-promoter holding percentage", "quote": "Total Non Promoters Holdings 25874109 25.00", "period": "as on 31.03.2026", "known_at": "2026-08-31T16:15:31.353", "ref": "ar_facts:119814#128", "value": 25.0, "unit": "%", "store": "ar_facts"}
-    {"item": "Promoter holding percentage", "quote": "Total Promoter's Holdings 77602555 75.00", "period": "as on 31.03.2026", "known_at": "2026-08-31T16:15:31.353", "ref": "ar_facts:119814#128", "value": 75.0, "unit": "%", "store": "ar_facts"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "DDEVPLSTIK"}
-
-### MB1046#MI MICRO Unclassified F3
-Q: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size take to recover?
-A: KHADIM: 2025-09-24 close 274.3 -> 2026-09-24 close 120.5, return -56.1% (247 sessions), high 274.3 (2025-09-24), low 78.6 (2026-03-30), 2 daily closes within 1% of an edge
--- run 0: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size ta | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE834I01025", "symbol": "KHADIM", "known_at": "2026-09-24", "ref": "symbol_isin_history:540775@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "KHADIM"}
-
-### MB0304#MS MID-SMALL General Diversified F2
-Q: IPRINGLTD ytd high 2026
-A: EDELWEISS: 2026-01-01 close 108.7 -> 2026-10-19 close 128.2, return 17.9% (196 sessions), high 142.7 (2026-09-30), low 99.7 (2026-03-30), 3 daily closes within 1% of an edge
--- run 0: IPRINGLTD ytd high 2026 | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE532F01054", "symbol": "EDELWEISS", "known_at": "2026-10-19", "ref": "symbol_isin_history:532922@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "EDELWEISS"}
-
-### MB1040#MS MID-SMALL Power F3
-Q: Adani Power is overbought on RSI but still making higher highs. Does overbought in a strong trend mean sell here?
-A: NLCINDIA: close 263.2 on 2026-09-24; RSI(14) at 2026-09-24: 50.0 (percentile 44); 6 oversold days; 20-session forward return after an oversold day averaged 4.5% and was positive 67% of 6 times; annual_report 2026-09-07T23:59:58 p97: Capital expenditure reached an all-time high 
-of ₹9,131 crore, with thermal and renewables-linked project 
-investments forming the core driver for accelerating Ghatampur 
-construct
--- run 0: Adani Power is overbought on RSI but still making higher highs. Does overbought in a stron | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE589A01014", "symbol": "NLCINDIA", "known_at": "2026-09-24", "ref": "symbol_isin_history:513683@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=True p=None
-    {"known_at": "2026-09-24", "ref": "NLCINDIA"}
-    {"known_at": "2026-09-24", "ref": "rsi_study"}
-  EVIDENCE ok=True e=True a=True p=None
-    {"isin": "INE589A01014", "symbol": "NLCINDIA", "quote": "Capital expenditure reached an all-time high \nof ₹9,131 crore, with thermal and renewables-linked project \ninvestments forming the core driver for accelerating ", "section": "STATUTORY REPORTS > MANAGEMENT DISCUSSION AND ANALYSIS (CONTD.) (c
-
-### MB0041 None None F1
-Q: What did CESC (NSE: CESC)'s latest annual report (FY2026) disclose about a change in ownership or control, and where in the report?
-A: CESC: close 150.2 on 2026-03-31; ar 2026-08-14 pNone: ory Reports Financial Statements SHAREHOLDING PATTERN Tables 2 and 3 give the pattern of shareholding by ownership and share class respectively. Table 2: Pattern of Shareholding by | ar 2026-08-14 pNone: Directors who are part of the Board of Directors 22. Turnover rate for permanent employees and workers (Disclose trends for the past 3 years) FY 2025-26 (Turnover
--- run 0: What did CESC (NSE: CESC)'s latest annual report (FY2026) disclose about a change in owner | gate=None
-  resolve ok=True e=True a=False p=True
-    {"isin": "INE486A01021", "symbol": "CESC", "known_at": "2026-10-19", "ref": "symbol_isin_history:500084@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=True
-    {"known_at": "2026-10-19", "ref": "CESC"}
-  EVIDENCE ok=True e=None a=True p=True
-    {"quote": "ory Reports Financial Statements SHAREHOLDING PATTERN Tables 2 and 3 give the pattern of shareholding by ownership and share class respectively. Table 2: Patter", "known_at": "2026-08-14", "date": "2026-08-14", "ref": "document_chunks:35753#None"}
-    {"quote": "Directors who are part of the Board of Directors 22. Turnover rate for permanent employees and workers (Disclose trends for the past 3 years) FY 2025-26 (Turnov", "known_at": "2026-08-14", "date": "2026-08-14", "ref": "document_chunks:35753#None"}
-    {"quote": "rnal and child health through nutrition, education, and primary healthcare services, fostering community ownership and long-term behavioural change. Skill Devel", "known_at": "2026-08-14", "date": "2026-08-14", "ref": "document_chunks:35753#None"}
--- run 1: where in the report | gate=None
-  resolve ok=True e=True a=None p=True
-    {"isin": "INE486A01021", "symbol": "CESC", "known_at": "2026-10-19", "ref": "symbol_isin_history:500084@2024-07-01..2026-10-16"}
-
-### MB0303 None None F2
-Q: What was NSE: OMMETALS (now OMINFRAL)'s YTD high price in 2026, with the value and the date, and on which exchange?
-A: OMINFRAL: 2026-01-01 close 96.9 -> 2026-10-19 close 67.2, return -30.7% (196 sessions), high 99.7 (2026-05-07), low 67.2 (2026-10-19), 2 daily closes within 1% of an edge
--- run 0: What was NSE: OMMETALS (now OMINFRAL)'s YTD high price in 2026, with the value and the dat | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE239D01028", "symbol": "OMINFRAL", "known_at": "2026-10-19", "ref": "symbol_isin_history:531092@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "OMINFRAL"}
-
-### MB1046 None None F3
-Q: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size take to recover?
-A: TITAN: 2025-09-24 close 3,418 -> 2026-09-24 close 4,832, return 41.4% (247 sessions), high 5,169 (2026-08-28), low 3,327 (2025-09-26), 7 daily closes within 1% of an edge
--- run 0: find 15% drawdowns | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE280A01028", "symbol": "TITAN", "known_at": "2026-09-24", "ref": "symbol_isin_history:500114@2024-07-01..2026-10-16"}
--- run 1: measure recovery time | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE280A01028", "symbol": "TITAN", "known_at": "2026-09-24", "ref": "symbol_isin_history:500114@2024-07-01..2026-10-16"}
--- run 2: report the range | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE280A01028", "symbol": "TITAN", "known_at": "2026-09-24", "ref": "symbol_isin_history:500114@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "TITAN"}
+    {"isin": "INE038A01020", "symbol": "HINDALCO", "item": "close, volume, delivery", "period": "2024-06-04", "known_at": "2024-06-04", "ref": "HINDALCO"}
 
 ### MB0304#L LARGE Automobile and Auto Components F2
 Q: IPRINGLTD ytd high 2026
@@ -291,128 +13,18 @@ A: BOSCHLTD: 2026-01-01 close 36,140 -> 2026-10-19 close 45,195, return 25.1% (1
 -- run 0: IPRINGLTD ytd high 2026 | gate=None
   resolve ok=True e=True a=False p=None
     {"isin": "INE323A01026", "symbol": "BOSCHLTD", "known_at": "2026-10-19", "ref": "symbol_isin_history:500530@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "BOSCHLTD"}
-
-### MB1043#L LARGE Automobile and Auto Components F3
-Q: Ola Electric's RSI made a higher low while price made a lower low. Is that divergence worth acting on, and how often has it worked?
-A: BOSCHLTD: close 47,750 on 2026-09-24; RSI(14) at 2026-09-24: 50.0 (percentile 43); 61 oversold days; 20-session forward return after an oversold day averaged 1.4% and was positive 52% of 61 times; annual_report 2026-07-10T10:31:33 p143 ANNUAL REPORT 2025-26: ANNUAL REPORT 2025-26     
-140
-The two-wheeler segment grew 11 % YoY, surpassing its 2019 
-peak, driven by a favorable monsoon, higher agricultural output, 
-and 
--- run 0: Ola Electric's RSI made a higher low while price made a lower low. Is that divergence wort | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE323A01026", "symbol": "BOSCHLTD", "known_at": "2026-09-24", "ref": "symbol_isin_history:500530@2024-07-01..2026-10-16"}
   SERIES ok=True e=True a=True p=None
-    {"known_at": "2026-09-24", "ref": "BOSCHLTD"}
-    {"known_at": "2026-09-24", "ref": "rsi_study"}
-  EVIDENCE ok=True e=True a=True p=None
-    {"isin": "INE323A01026", "symbol": "BOSCHLTD", "quote": "ANNUAL REPORT 2025-26     \n140\nThe two-wheeler segment grew 11 % YoY, surpassing its 2019 \npeak, driven by a favorable monsoon, higher agricultural output, \nand", "section": "ANNUAL REPORT 2025-26", "period": "FY26", "known_at": "2026-07-1
-    {"isin": "INE323A01026", "symbol": "BOSCHLTD", "quote": "Heavy Commercial Vehicle (HCV) segment delivered \nstrong 15.8% Y-on-Y growth, returning to its FY 2018-19 peak, \nsupported by sustained infrastructure-led deman", "section": "74 Annual General Meeting (cont.)", "known_at": "2026-08-11T18:16:
-    {"isin": "INE323A01026", "symbol": "BOSCHLTD", "quote": "ANNUAL REPORT 2025-26     \n128\nForeign exchange volatility is expected to persist, especially in \nemerging markets which are sensitive to capital inflows and hi", "section": "ANNUAL REPORT 2025-26", "period": "FY26", "known_at": "2026-07-10
--- run 1: how often has it worked | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE323A01026", "symbol": "BOSCHLTD", "known_at": "2026-09-24", "ref": "symbol_isin_history:500530@2024-07-01..2026-10-16"}
+    {"isin": "INE323A01026", "symbol": "BOSCHLTD", "item": "close, return, high, low", "period": "2026-01-01..2026-10-19", "known_at": "2026-10-19", "ref": "BOSCHLTD"}
 
-### MB0304#MI MICRO General Diversified F2
-Q: IPRINGLTD ytd high 2026
-A: BIGBLOC: 2026-01-01 close 75.0 -> 2026-10-19 close 41.1, return -45.2% (196 sessions), high 75.0 (2026-01-01), low 33.8 (2026-10-14), 3 daily closes within 1% of an edge
--- run 0: IPRINGLTD ytd high 2026 | gate=None
+### MB1046#L LARGE Power F3
+Q: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size take to recover?
+A: POWERGRID: 2025-09-24 close 293.3 -> 2026-09-24 close 266.4, return -9.2% (247 sessions), high 320.9 (2026-04-27), low 254.1 (2026-01-20), 16 daily closes within 1% of an edge; drawdown recovery (3 falls of at least 15%): 2022-05-09 -> 2022-09-26 fell -18.1% and recovered after 226 sessions (2023-05-10); 2023-07-31 -> 2023-09-12 fell -28.1% and recovered after 143 sessions (2024-02-02); 2024-09-26 -> 2025-02-28 fell 
+-- run 0: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size ta | gate=None
   resolve ok=True e=True a=False p=None
-    {"isin": "INE412U01025", "symbol": "BIGBLOC", "known_at": "2026-10-19", "ref": "symbol_isin_history:540061@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "BIGBLOC"}
-
-### MB0280#MS MID-SMALL General Diversified F2
-Q: What are Kotyark Industries (NSE: KOTYARK)'s exact share count and promoter holding now, after its corporate action? If the post-action count is not held, answer NOT IN DATA.
-A: Promoter holding % 2026-09-30 = 31.54 % (shp_index, known 2026-10-19); Promoters and Promoters Group - % of Holding as on March 31, 2026 = 32.26 % (ar_facts, known 2026-09-03); Total promoter and promoter group shareholding percentage FY26 = 32.26 % (ar_facts, known 2026-09-03); EDELWEISS: close 128.2 on 2026-10-19
--- run 0: What are Kotyark Industries (NSE: KOTYARK)'s exact share count and promoter holding now, a | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE532F01054", "symbol": "EDELWEISS", "known_at": "2026-10-19", "ref": "symbol_isin_history:532922@2024-07-01..2026-10-16"}
-  FACTS ok=True e=None a=True p=None
-    {"item": "Promoter holding %", "period": "2026-09-30", "known_at": "2026-10-19T15:58:40", "ref": "shp_index:2026-09-30", "value": 31.54, "unit": "%", "store": "shp_index"}
-    {"item": "Promoters and Promoters Group - % of Holding", "quote": "Promoters and Promoters Group 32.26", "period": "as on March 31, 2026", "known_at": "2026-09-03T19:28:37.707", "ref": "ar_facts:119899#121", "value": 32.26, "unit": "%", "store": "ar_facts"}
-    {"item": "Total promoter and promoter group shareholding percentage", "quote": "305,308,981 32.26% 0.46%", "period": "FY26", "known_at": "2026-09-03T19:28:37.707", "ref": "ar_facts:119899#238", "value": 32.26, "unit": "%", "store": "ar_facts"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "EDELWEISS"}
-
-### MB1043#MS MID-SMALL Automobile and Auto Components F3
-Q: Ola Electric's RSI made a higher low while price made a lower low. Is that divergence worth acting on, and how often has it worked?
-A: TMPV: close 295.0 on 2026-09-24; RSI(14) at 2026-09-24: 50.0 (percentile 66); 32 oversold days; 20-session forward return after an oversold day averaged 1.8% and was positive 73% of 26 times; annual_report 2026-06-15T21:56:45 p156: BUSINESS PERFORMANCE
-The Indian Passenger Vehicle (‘PV’) industry saw its 
-highest-ever volumes in FY26 of over 4.6 million units, on the 
-back of GST 2.0, which enhanced vehicle a
--- run 0: Ola Electric's RSI made a higher low while price made a lower low. Is that divergence wort | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE155A01022", "symbol": "TMPV", "known_at": "2026-09-24", "ref": "symbol_isin_history:TMPV@2025-10-24..2026-10-16"}
+    {"isin": "INE752E01010", "symbol": "POWERGRID", "known_at": "2026-09-24", "ref": "symbol_isin_history:532898@2024-07-01..2026-10-16"}
   SERIES ok=True e=True a=True p=None
-    {"known_at": "2026-09-24", "ref": "TMPV"}
-    {"known_at": "2026-09-24", "ref": "rsi_study"}
-  EVIDENCE ok=True e=True a=True p=None
-    {"isin": "INE155A01022", "symbol": "TMPV", "quote": "BUSINESS PERFORMANCE\nThe Indian Passenger Vehicle (‘PV’) industry saw its \nhighest-ever volumes in FY26 of over 4.6 million units, on the \nback of GST 2.0, whic", "section": "BUSINESS PERFORMANCE", "period": "FY26", "known_at": "2026-06-15T21:5
--- run 1: how often has it worked | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE155A01022", "symbol": "TMPV", "known_at": "2026-09-24", "ref": "symbol_isin_history:TMPV@2025-10-24..2026-10-16"}
-
-### MB0043 None None F1
-Q: What did NSE: SHIL (now HINDWAREAP)'s latest annual report (FY2026) disclose about a change in ownership or control, and where in the report?
-A: HINDWAREAP: close 174.8 on 2026-03-31; ar 2026-07-25 pNone: re Home Innovation Limited This extends far beyond product design to encompass the complete lifecycle of ownership. From hassle-free installations and highly responsive customer ca | ar 2026-07-25 pNone: termined by the Committee. b. measures for risk mitigation including systems and processes for internal control of identified
--- run 0: What did NSE: SHIL (now HINDWAREAP)'s latest annual report (FY2026) disclose about a chang | gate=None
-  resolve ok=True e=True a=False p=True
-    {"isin": "INE05AN01011", "symbol": "HINDWAREAP", "known_at": "2026-10-19", "ref": "symbol_isin_history:542905@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=True
-    {"known_at": "2026-10-19", "ref": "HINDWAREAP"}
-  EVIDENCE ok=True e=None a=True p=True
-    {"quote": "re Home Innovation Limited This extends far beyond product design to encompass the complete lifecycle of ownership. From hassle-free installations and highly re", "known_at": "2026-07-25", "date": "2026-07-25", "ref": "document_chunks:38879#None"}
-    {"quote": "termined by the Committee. b. \u0007measures for risk mitigation including systems and processes for internal control of identified", "known_at": "2026-07-25", "date": "2026-07-25", "ref": "document_chunks:38879#None"}
-    {"quote": "e manufacturing for PTMT bath fittings serves as a natural complement to this category, enhancing direct control over product quality, accelerating development ", "known_at": "2026-07-25", "date": "2026-07-25", "ref": "document_chunks:38879#None"}
--- run 1: where in the report | gate=None
-  resolve ok=True e=True a=None p=True
-    {"isin": "INE05AN01011", "symbol": "HINDWAREAP", "known_at": "2026-10-19", "ref": "symbol_isin_history:542905@2024-07-01..2026-10-16"}
-
-### MB0028 None None F2
-Q: What was the YTD high price of BSE: 532810 in 2026 (value and date)?
-A: PFC: 2026-01-01 close 363.1 -> 2026-10-19 close 332.4, return -8.5% (196 sessions), high 481.4 (2026-04-28), low 318.0 (2026-10-01), 4 daily closes within 1% of an edge
--- run 0: What was the YTD high price of BSE: 532810 in 2026 (value and date) | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE134E01011", "symbol": "PFC", "known_at": "2026-10-19", "ref": "symbol_isin_history:532810@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "PFC"}
-
-### MB1048 None None F3
-Q: BEL versus HAL: which has spent more of the last two years within 10% of its 52-week high, and does that predict anything?
-A: window return % 2025-09-24..2026-09-24: HAL 1.06; BEL -0.87; BEL: 2025-09-24 close 395.4 -> 2026-09-24 close 392.0, return -0.9% (247 sessions), high 468.4 (2026-03-06), low 382.9 (2026-09-15), 10 daily closes within 1% of an edge; HAL: 2025-09-24 close 4,724 -> 2026-09-24 close 4,774, return 1.1% (247 sessions), high 5,099 (2026-08-18), low 3,487 (2026-03-30), 3 daily closes within 1% of an edge; excess return HAL m
--- run 0: BEL versus HAL: which has spent more of the last two years within 10% of its 52-week high | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE263A01024", "symbol": "BEL", "known_at": "2026-09-24", "ref": "symbol_isin_history:500049@2024-07-01..2026-10-16"}
-  COMPARE ok=True e=True a=True p=None
-    {"known_at": "2026-09-24", "ref": "peer:INE066F01020", "value": 1.0647981540676144}
-    {"known_at": "2026-09-24", "ref": "peer:INE263A01024", "value": -0.8724238209634527}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "BEL"}
-    {"known_at": "2026-09-24", "ref": "HAL"}
--- run 1: does that predict anything | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE263A01024", "symbol": "BEL", "known_at": "2026-09-24", "ref": "symbol_isin_history:500049@2024-07-01..2026-10-16"}
-
-### MB0301#L LARGE Financial Services F2
-Q: What was SBI Cards and Payment Services (NSE: SBICARD)'s YTD high price in 2026, with the value and the date, and on which exchange?
-A: BAJFINANCE: 2026-01-01 close 973.1 -> 2026-10-19 close 957.4, return -1.6% (196 sessions), high 1,159 (2026-08-05), low 801.5 (2026-03-30), 5 daily closes within 1% of an edge
--- run 0: What was SBI Cards and Payment Services (NSE: SBICARD)'s YTD high price in 2026, with the  | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE296A01032", "symbol": "BAJFINANCE", "known_at": "2026-10-19", "ref": "symbol_isin_history:BAJFINANCE@2025-06-16..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "BAJFINANCE"}
-
-### MB1047#L LARGE Chemicals F3
-Q: Trent at a new high: what share of the last year's trading days were within 5% of the then-current 52-week high?
-A: PIDILITIND: 2025-09-24 close 1,520 -> 2026-09-24 close 1,522, return 0.2% (247 sessions), high 1,702 (2026-08-12), low 1,274 (2026-04-02), 9 daily closes within 1% of an edge
--- run 0: Trent at a new high: what share of the last year's trading days were within 5% of the then | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE318A01026", "symbol": "PIDILITIND", "known_at": "2026-09-24", "ref": "symbol_isin_history:500331@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "PIDILITIND"}
+    {"isin": "INE752E01010", "symbol": "POWERGRID", "item": "close, return, high, low", "period": "2025-09-24..2026-09-24", "known_at": "2026-09-24", "ref": "POWERGRID"}
+    {"item": "close", "period": "2025-09-24", "known_at": "2026-09-24", "ref": "drawdowns"}
 
 ### MB0008#MI MICRO Capital Goods F2
 Q: ZENTEC 3-yr price CAGR
@@ -420,103 +32,253 @@ A: HEGAM: 2023-10-03 close 346.9 -> 2026-10-19 close 219.1, return -36.8% (752 s
 -- run 0: ZENTEC 3-yr price CAGR | gate=None
   resolve ok=True e=True a=False p=True
     {"isin": "INE545A01024", "symbol": "HEGAM", "known_at": "2026-10-19", "ref": "symbol_isin_history:HEGAM@2026-09-22..2026-10-16"}
-  SERIES ok=True e=True a=False p=True
-    {"known_at": "2026-10-19", "ref": "HEGAM"}
+  SERIES ok=True e=True a=True p=True
+    {"isin": "INE545A01024", "symbol": "HEGAM", "item": "close, return, CAGR", "period": "2023-10-03..2026-10-19", "known_at": "2026-10-19", "ref": "HEGAM"}
 
-### MB0110#MS MID-SMALL General Diversified F2
-Q: What was InfoBeans Technologies (NSE: INFOBEAN)'s 3-year adjusted price CAGR across its corporate action? If adjusted prices are missing, answer NOT IN DATA.
-A: EDELWEISS: 2023-10-03 close 63.0 -> 2026-10-19 close 128.2, return 103.4% (752 sessions), CAGR 26.3% over 3.0y
--- run 0: What was InfoBeans Technologies (NSE: INFOBEAN)'s 3-year adjusted price CAGR across its co | gate=None
-  resolve ok=True e=True a=False p=True
-    {"isin": "INE532F01054", "symbol": "EDELWEISS", "known_at": "2026-10-19", "ref": "symbol_isin_history:532922@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=True
-    {"known_at": "2026-10-19", "ref": "EDELWEISS"}
-
-### MB1044#MS MID-SMALL Capital Goods F3
-Q: HAL is within 2% of its 52-week high. How many prior sessions this year were this close, and what followed?
-A: APLAPOLLO: 2025-09-24 close 1,676 -> 2026-09-24 close 2,185, return 30.3% (247 sessions), high 2,281 (2026-02-11), low 1,660 (2025-09-26), 6 daily closes within 1% of an edge
--- run 0: HAL is within 2% of its 52-week high. How many prior sessions this year were this close | gate=None
+### MB1046#MI MICRO Unclassified F3
+Q: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size take to recover?
+A: KHADIM: 2025-09-24 close 274.3 -> 2026-09-24 close 120.5, return -56.1% (247 sessions), high 274.3 (2025-09-24), low 78.6 (2026-03-30), 2 daily closes within 1% of an edge; drawdown recovery (1 falls of at least 15%): 2023-11-07 -> 2026-08-12 fell -78.1% and has not recovered in the window
+-- run 0: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size ta | gate=None
   resolve ok=True e=True a=False p=None
-    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "known_at": "2026-09-24", "ref": "symbol_isin_history:533758@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "APLAPOLLO"}
--- run 1: what followed | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "known_at": "2026-09-24", "ref": "symbol_isin_history:533758@2024-07-01..2026-10-16"}
+    {"isin": "INE834I01025", "symbol": "KHADIM", "known_at": "2026-09-24", "ref": "symbol_isin_history:540775@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE834I01025", "symbol": "KHADIM", "item": "close, return, high, low", "period": "2025-09-24..2026-09-24", "known_at": "2026-09-24", "ref": "KHADIM"}
+    {"item": "close", "period": "2025-09-24", "known_at": "2026-09-24", "ref": "drawdowns"}
 
-### MB0311 None None F1
-Q: What did Onesource Specialty Pharma (NSE: ONESOURCE) say about its newly commissioned facilities, as of the latest data, and in which document type?
-A: Plants in Bengaluru (4 owned by OneSource, 1 under loan license agreement) as on date = 5.00 number (ar_facts, known 2026-08-31); Saplings planted in and around facilities FY26 = 2,000 number (ar_facts, known 2026-08-31); Fatalities across manufacturing facilities FY26 = 0.00 number (ar_facts, known 2026-08-31); ar 2026-08-31 pNone: 0+ Years Development and Manufacturing Experience One of the Few USFDA-approved Penic
--- run 0: What did Onesource Specialty Pharma (NSE: ONESOURCE) say about its newly commissioned faci | gate=None
+### MB0281#MS MID-SMALL Capital Goods F1
+Q: What does page 10 of Data Patterns (India) (NSE: DATAPATTNS)'s investor presentation dated 30 July 2026 say about its manufacturing licence or capacity?
+A: named deck 2026-07-30: Existing capacity 2026-07-30 = 5.00 Mn Ton (deck_figures, known 2026-08-01); Greenfield & Brownfield capacity 2026-07-30 = 2.00 Mn Ton (deck_figures, known 2026-08-01); Total capacity 2026-07-30 = 8.00 Mn Ton (deck_figures, known 2026-08-01); deck 2026-08-01 page 10/38: Capacity Expansion Plan By FY28
+Greenfield & Brownfield 
+capacity
+Debottlenecking
+Total capacity
+8 Mn Ton
+Structural Steel
+Exi
+-- run 0: What does page 10 of Data Patterns (India) (NSE: DATAPATTNS)'s investor presentation dated | gate=None
   resolve ok=True e=True a=False p=False
-    {"isin": "INE013P01021", "symbol": "ONESOURCE", "known_at": "2026-10-19", "ref": "symbol_isin_history:ONESOURCE@2025-01-24..2026-10-16"}
-  FACTS ok=True e=None a=True p=True
-    {"item": "Plants in Bengaluru (4 owned by OneSource, 1 under loan license agreement)", "quote": "5 in Bengaluru (4 owned by OneSource and 1 under loan", "period": "as on date", "known_at": "2026-08-31T20:32:25.133", "ref": "ar_facts:121796#190", "value": 5.0, "unit": "number", "store": "ar_facts"}
-    {"item": "Saplings planted in and around facilities", "quote": "2,000+ Saplings Planted in and around", "period": "FY26", "known_at": "2026-08-31T20:32:25.133", "ref": "ar_facts:121796#18", "value": 2000.0, "unit": "number", "store": "ar_facts"}
-    {"item": "Fatalities across manufacturing facilities", "quote": "Zero Fatalities across our Manufacturing Facilities", "period": "FY26", "known_at": "2026-08-31T20:32:25.133", "ref": "ar_facts:121796#18", "value": 0.0, "unit": "number", "store": "ar_facts"}
-    {"item": "State-of-the-art manufacturing facilities approved by leading global regulatory authorities", "quote": "Operating through five state-of-the-art facilities", "period": "FY26", "known_at": "2026-08-31T20:32:25.133", "ref": "ar_facts:121796#22", "value": 5.0, "unit": "number", "store": "ar_fa
-  EVIDENCE ok=True e=None a=True p=True
-    {"quote": "0+ Years Development and Manufacturing Experience One of the Few USFDA-approved Penicillin Manufacturing Facilities Globally Top 5 Penicillin Supplier to the US", "known_at": "2026-08-31", "date": "2026-08-31", "ref": "document_chunks:37737#None"}
-    {"quote": "tunity Emerging Market Opportunities Proactive Risk Governance Manufactured Capital • 5 State-of-the-Art Facilities • Regulatory Inspections and Customer Audits", "known_at": "2026-08-31", "date": "2026-08-31", "ref": "document_chunks:37737#None"}
-    {"quote": "by Renewable Energy • 541.69 MT of Waste Recycled and Reused • 2,000+ Saplings Planted in and around our Facilities • Improved resource efficiency and reduced r", "known_at": "2026-08-31", "date": "2026-08-31", "ref": "document_chunks:37737#None"}
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "known_at": "2026-10-19", "ref": "symbol_isin_history:533758@2024-07-01..2026-10-16"}
+  FACTS ok=True e=True a=True p=True
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "item": "Existing capacity", "period": "2026-07-30", "known_at": "2026-08-01T15:13:06.22", "ref": "deck_figures:46cfe8b723673da1f991cfb03a69f06027d4c64ef8e3fe799250bb64cec3ca56#10", "value": 5.0, "unit": "Mn Ton", "store": "deck_figures"}
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "item": "Greenfield & Brownfield capacity", "period": "2026-07-30", "known_at": "2026-08-01T15:13:06.22", "ref": "deck_figures:46cfe8b723673da1f991cfb03a69f06027d4c64ef8e3fe799250bb64cec3ca56#10", "value": 2.0, "unit": "Mn Ton", "store": "deck_figures"
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "item": "Total capacity", "period": "2026-07-30", "known_at": "2026-08-01T15:13:06.22", "ref": "deck_figures:46cfe8b723673da1f991cfb03a69f06027d4c64ef8e3fe799250bb64cec3ca56#10", "value": 8.0, "unit": "Mn Ton", "store": "deck_figures"}
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "item": "total capacity", "period": "2026-07-30", "known_at": "2026-08-01T15:13:06.22", "ref": "deck_figures:46cfe8b723673da1f991cfb03a69f06027d4c64ef8e3fe799250bb64cec3ca56#38", "value": 5.0, "unit": "Mn Ton", "store": "deck_figures"}
+  EVIDENCE ok=True e=True a=True p=True
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "quote": "Capacity Expansion Plan By FY28\nGreenfield & Brownfield \ncapacity\nDebottlenecking\nTotal capacity\n8 Mn Ton\nStructural Steel\nExisting capacity\n5 Mn Ton\nStructural", "period": "2026-08-01", "known_at": "2026-08-01", "ref": "page:None#10
 
-### MB0305 None None F2
-Q: Lakshmi Mills Company (NSE: LAKSHMIMIL) ka 2026 ka YTD high price kya tha, aur kis date ko? NSE ya BSE, exchange bhi batao.
-A: LAKSHMIMIL: 2026-01-01 close 7,876 -> 2026-10-19 close 8,188, return 4.0% (195 sessions), high 8,370 (2026-08-28), low 7,022 (2026-01-29), 11 daily closes within 1% of an edge
--- run 0: Lakshmi Mills Company (NSE: LAKSHMIMIL) ka 2026 ka YTD high price kya tha, aur kis date ko | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE938C01019", "symbol": "LAKSHMIMIL", "known_at": "2026-10-19", "ref": "symbol_isin_history:LAKSHMIMIL@2026-08-18..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "LAKSHMIMIL"}
-
-### MB1048#P None Capital Goods F3
-Q: BEL versus HAL: which has spent more of the last two years within 10% of its 52-week high, and does that predict anything?
-A: window return % 2025-09-24..2026-09-24: APLAPOLLO 30.3; HEGAM -54.9; TMPV -56.8; APLAPOLLO: 2025-09-24 close 1,676 -> 2026-09-24 close 2,185, return 30.3% (247 sessions), high 2,281 (2026-02-11), low 1,660 (2025-09-26), 6 daily closes within 1% of an edge; HEGAM: 2025-09-24 close 521.9 -> 2026-09-24 close 235.2, return -54.9% (247 sessions), high 739.2 (2026-08-18), low 215.1 (2026-09-16), 3 daily closes within 1% of
--- run 0: BEL versus HAL: which has spent more of the last two years within 10% of its 52-week high | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "known_at": "2026-09-24", "ref": "symbol_isin_history:533758@2024-07-01..2026-10-16"}
-  COMPARE ok=True e=True a=True p=None
-    {"known_at": "2026-09-24", "ref": "peer:INE702C01027", "value": 30.342441236129346}
-    {"known_at": "2026-09-24", "ref": "peer:INE545A01024", "value": -54.92431500287411}
-    {"known_at": "2026-09-24", "ref": "peer:INE155A01022", "value": -56.805036971959886}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-09-24", "ref": "APLAPOLLO"}
-    {"known_at": "2026-09-24", "ref": "HEGAM"}
-    {"known_at": "2026-09-24", "ref": "TMPV"}
--- run 1: does that predict anything | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "known_at": "2026-09-24", "ref": "symbol_isin_history:533758@2024-07-01..2026-10-16"}
-
-### MB0280#L LARGE Power F2
-Q: What are Kotyark Industries (NSE: KOTYARK)'s exact share count and promoter holding now, after its corporate action? If the post-action count is not held, answer NOT IN DATA.
-A: Promoter holding % 2026-09-30 = 51.34 % (shp_index, known 2026-10-15); Govt. of India shareholding - = 51.34 - (deck_figures, known 2026-08-07); Government of India shareholding (promoter) FY26 = 51.34 % (ar_facts, known 2026-07-29); POWERGRID: close 250.3 on 2026-10-19
--- run 0: What are Kotyark Industries (NSE: KOTYARK)'s exact share count and promoter holding now, a | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE752E01010", "symbol": "POWERGRID", "known_at": "2026-10-19", "ref": "symbol_isin_history:532898@2024-07-01..2026-10-16"}
-  FACTS ok=True e=None a=True p=None
-    {"item": "Promoter holding %", "period": "2026-09-30", "known_at": "2026-10-15T10:50:22", "ref": "shp_index:2026-09-30", "value": 51.34, "unit": "%", "store": "shp_index"}
-    {"item": "Govt. of India shareholding", "period": "-", "known_at": "2026-08-07T10:50:57.63", "ref": "deck_figures:53f0fa3fbebe2b7a5debf1ff370ad6a5058a24051667cd8d1acf8ca5626b3257#5", "value": 51.34, "unit": "-", "store": "deck_figures"}
-    {"item": "Government of India shareholding (promoter)", "quote": "Government of India (Promoter) 4774884280 51.34", "period": "FY26", "known_at": "2026-07-29T23:21:42", "ref": "ar_facts:68141#216", "value": 51.34, "unit": "%", "store": "ar_facts"}
-    {"item": "Government of India (Promoter) shareholding", "quote": "Government of India (Promoter) 4774884280 51.34", "period": "FY26", "known_at": "2026-07-29T23:21:42", "ref": "ar_facts:68141#304", "value": 51.34, "unit": "%", "store": "ar_facts"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "POWERGRID"}
-
-### MB0275#MI MICRO Unclassified F2
-Q: Dalmia Bharat (NSE: DALBHARAT) ke kitne equity shares hain aur promoter holding kitni hai? Dono numbers latest filing se, date ke saath batao.
-A: Promoter holding % 2026-09-30 = 50.82 % (shp_index, known 2026-10-14); SPECIALITY: close 136.3 on 2026-10-19
--- run 0: Dalmia Bharat (NSE: DALBHARAT) ke kitne equity shares hain aur promoter holding kitni hai? | gate=None
-  resolve ok=True e=True a=False p=None
-    {"isin": "INE247M01014", "symbol": "SPECIALITY", "known_at": "2026-10-19", "ref": "symbol_isin_history:534425@2024-07-01..2026-10-16"}
-  FACTS ok=True e=None a=True p=None
-    {"item": "Promoter holding %", "period": "2026-09-30", "known_at": "2026-10-14T17:50:48", "ref": "shp_index:2026-09-30", "value": 50.82, "unit": "%", "store": "shp_index"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "SPECIALITY"}
-
-### MB0302#MS MID-SMALL Financial Services F2
-Q: What was Crisil (NSE: CRISIL)'s YTD high price in 2026, with the value and the date, and on which exchange?
+### MB0028#MS MID-SMALL Financial Services F2
+Q: What was the YTD high price of BSE: 532810 in 2026 (value and date)?
 A: ANANDRATHI: 2026-01-01 close 1,547 -> 2026-10-19 close 2,164, return 39.8% (196 sessions), high 2,230 (2026-09-08), low 1,436 (2026-02-02), 13 daily closes within 1% of an edge
--- run 0: What was Crisil (NSE: CRISIL)'s YTD high price in 2026, with the value and the date, and o | gate=None
+-- run 0: What was the YTD high price of BSE: 532810 in 2026 (value and date) | gate=None
   resolve ok=True e=True a=False p=None
     {"isin": "INE463V01026", "symbol": "ANANDRATHI", "known_at": "2026-10-19", "ref": "symbol_isin_history:543415@2024-07-01..2026-10-16"}
-  SERIES ok=True e=True a=False p=None
-    {"known_at": "2026-10-19", "ref": "ANANDRATHI"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE463V01026", "symbol": "ANANDRATHI", "item": "close, return, high, low", "period": "2026-01-01..2026-10-19", "known_at": "2026-10-19", "ref": "ANANDRATHI"}
+
+### MB1046#MS MID-SMALL Consumer Durables F3
+Q: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size take to recover?
+A: KALYANKJIL: 2025-09-24 close 479.1 -> 2026-09-24 close 573.6, return 19.7% (247 sessions), high 634.6 (2026-07-30), low 330.8 (2026-06-11), 4 daily closes within 1% of an edge; drawdown recovery (3 falls of at least 15%): 2024-01-11 -> 2024-02-06 fell -15.5% and recovered after 9 sessions (2024-02-15); 2024-09-24 -> 2024-11-05 fell -15.5% and recovered after 34 sessions (2024-12-09); 2025-01-02 -> 2026-06-11 fell -58
+-- run 0: Titan is 15% below its 52-week high. How long did the last three drawdowns of that size ta | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE303R01014", "symbol": "KALYANKJIL", "known_at": "2026-09-24", "ref": "symbol_isin_history:543278@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE303R01014", "symbol": "KALYANKJIL", "item": "close, return, high, low", "period": "2025-09-24..2026-09-24", "known_at": "2026-09-24", "ref": "KALYANKJIL"}
+    {"item": "close", "period": "2025-09-24", "known_at": "2026-09-24", "ref": "drawdowns"}
+
+### MB0127 None None F2
+Q: For all listed companies in the industry, rank the companies by public shareholding as of Sep 2026.
+A: Public holding %, LT +100.00 (2026-09-30); PRIMESECU +100.00 (2026-09-30); EQUITASBNK +100.00 (2026-09-30); INDGN +100.00 (2026-09-30); SAMHI +100.00 (2026-09-30)
+-- run 0: For all listed companies in the industry, rank the companies by public shareholding as of  | gate=None
+  SCREEN ok=True e=None a=True p=True
+    {"symbol": "LT", "item": "Public holding %", "period": "2026-09-30", "known_at": "2026-10-17", "ref": "shp_index:INE018A01030", "value": 100.0}
+    {"symbol": "PRIMESECU", "item": "Public holding %", "period": "2026-09-30", "known_at": "2026-10-18", "ref": "shp_index:INE032B01021", "value": 100.0}
+    {"symbol": "EQUITASBNK", "item": "Public holding %", "period": "2026-09-30", "known_at": "2026-10-15", "ref": "shp_index:INE063P01018", "value": 100.0}
+    {"symbol": "INDGN", "item": "Public holding %", "period": "2026-09-30", "known_at": "2026-10-19", "ref": "shp_index:INE065X01017", "value": 100.0}
+
+### MB0023 None None F1
+Q: How many manufacturing facilities does Ganesha Ecosphere have, per its investor presentation of 5 August 2026?
+A: named deck 2026-08-05: Manufacturing Facilities 2026-08-05 = 6.00 - (deck_figures, known 2026-08-03); State-of-the-art manufacturing facilities strategically located across India; Strategically realigning product portfolio towards high-margin, value-added products 2026-08-05 = 4.00 - (deck_figures, known 2026-08-03); Warangal facilities operationalized 2026-08-05 = 50,000 TPA (deck_figures, known 2026-08-03); deck 20
+-- run 0: How many manufacturing facilities does Ganesha Ecosphere have, per its investor presentati | gate=None
+  resolve ok=True e=True a=False p=False
+    {"isin": "INE845D01014", "symbol": "GANECOS", "known_at": "2026-10-19", "ref": "symbol_isin_history:514167@2024-07-01..2026-10-16"}
+  FACTS ok=True e=True a=True p=True
+    {"isin": "INE845D01014", "symbol": "GANECOS", "item": "Manufacturing Facilities", "period": "2026-08-05", "known_at": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035e931c3d4a564cfa77688a1ba000b7ce91cbb#14", "value": 6.0, "unit": "-", "store": "deck_figures"}
+    {"isin": "INE845D01014", "symbol": "GANECOS", "item": "State-of-the-art manufacturing facilities strategically located across India; Strategically realigning product portfolio towards high-margin, value-added produc", "period": "2026-08-05", "known_at": "2026-08-03T21:30:56.757", "ref": "deck_figure
+    {"isin": "INE845D01014", "symbol": "GANECOS", "item": "Warangal facilities operationalized", "period": "2026-08-05", "known_at": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd52e29097588035e931c3d4a564cfa77688a1ba000b7ce91cbb#22", "value": 50000.0, "unit": "TPA", "store": "deck_figur
+    {"isin": "INE845D01014", "symbol": "GANECOS", "item": "Shifting towards clean renewable energy plant's across production facilities with total installed capacity of Rooftop Solar power installations", "period": "2026-08-05", "known_at": "2026-08-03T21:30:56.757", "ref": "deck_figures:e1f0329370c0fd5
+  EVIDENCE ok=True e=True a=True p=True
+    {"symbol": "GANECOS", "quote": "TITLE | Ganesha Ecosphere | Leading PET Plastic Recycling Company\nRich Industry Experience | - | 3+ | Decades\nProduct Variants | - | 500+ | -\nCustomers across 1", "period": "2026-08-03", "known_at": "2026-08-03T21:30:56.757", "date": "2026-08-03T21:30:56.757", "ref
+    {"symbol": "GANECOS", "quote": "duct portfolio with a leap into the next generation of recycling - GoRewise | - | 3 | -\nState-of-the-art manufacturing facilities strategically located across I", "period": "2026-08-03", "known_at": "2026-08-03T21:30:56.757", "date": "2026-08-03T21:30:56.757", "ref":
+    {"symbol": "GANECOS", "quote": "TITLE | State-of-the-art manufacturing facilities strategically located across India\nKanpur | - | 10,200 | TPA\nrPET Fibre | - | 7,200 | TPA\nDyed Textured Yarn |", "period": "2026-08-03", "known_at": "2026-08-03T21:30:56.757", "date": "2026-08-03T21:30:56.757", "ref
+
+### MB0304 None None F2
+Q: IPRINGLTD ytd high 2026
+A: IPRINGLTD: 2026-01-01 close 113.0 -> 2026-10-19 close 136.2, return 20.6% (196 sessions), high 176.7 (2026-09-01), low 95.5 (2026-03-27), 3 daily closes within 1% of an edge
+-- run 0: IPRINGLTD ytd high 2026 | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE558A01019", "symbol": "IPRINGLTD", "known_at": "2026-10-19", "ref": "symbol_isin_history:IPRINGLTD@2026-08-17..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE558A01019", "symbol": "IPRINGLTD", "item": "close, return, high, low", "period": "2026-01-01..2026-10-19", "known_at": "2026-10-19", "ref": "IPRINGLTD"}
+
+### MB1047#L LARGE Chemicals F3
+Q: Trent at a new high: what share of the last year's trading days were within 5% of the then-current 52-week high?
+A: PIDILITIND: 2025-09-24 close 1,520 -> 2026-09-24 close 1,522, return 0.2% (247 sessions), high 1,702 (2026-08-12), low 1,274 (2026-04-02), 9 daily closes within 1% of an edge; sessions within 5% of the window high: 30 of 247 (12%), 2026-07-06 .. 2026-09-04
+-- run 0: Trent at a new high: what share of the last year's trading days were within 5% of the then | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE318A01026", "symbol": "PIDILITIND", "known_at": "2026-09-24", "ref": "symbol_isin_history:500331@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE318A01026", "symbol": "PIDILITIND", "item": "close, return, high, low", "period": "2025-09-24..2026-09-24", "known_at": "2026-09-24", "ref": "PIDILITIND"}
+    {"item": "close", "known_at": "2026-09-24", "ref": "days_within"}
+
+### MB0028#MI MICRO Unclassified F2
+Q: What was the YTD high price of BSE: 532810 in 2026 (value and date)?
+A: UFBL: 2026-01-01 close 216.9 -> 2026-10-19 close 668.4, return 208.1% (196 sessions), high 838.0 (2026-08-24), low 173.9 (2026-01-29), 8 daily closes within 1% of an edge
+-- run 0: What was the YTD high price of BSE: 532810 in 2026 (value and date) | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE382M01027", "symbol": "UFBL", "known_at": "2026-10-19", "ref": "symbol_isin_history:UFBL@2025-10-13..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE382M01027", "symbol": "UFBL", "item": "close, return, high, low", "period": "2026-01-01..2026-10-19", "known_at": "2026-10-19", "ref": "UFBL"}
+
+### MB1047#MI MICRO Other F3
+Q: Trent at a new high: what share of the last year's trading days were within 5% of the then-current 52-week high?
+A: INE343B01030: 2025-09-24 close 191.0 -> 2026-09-24 close 68.1, return -64.4% (247 sessions), high 230.7 (2025-12-22), low 68.1 (2026-09-24), 4 daily closes within 1% of an edge; sessions within 5% of the window high: 3 of 247 (1%), 2025-12-22 .. 2025-12-24
+-- run 0: Trent at a new high: what share of the last year's trading days were within 5% of the then | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE343B01030", "symbol": "RAJESHEXPO", "known_at": "2026-09-24", "ref": "symbol_isin_history:531500@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE343B01030", "item": "close, return, high, low", "period": "2025-09-24..2026-09-24", "known_at": "2026-09-24", "ref": "INE343B01030"}
+    {"item": "close", "known_at": "2026-09-24", "ref": "days_within"}
+
+### MB0289#MS MID-SMALL General Diversified F1
+Q: As of 30 September 2026, what did page 27 of Magnum Ventures (NSE: MAGNUM)'s latest deck filed by that date say?
+A: deck 2026-09-28 page 27/39: TITLE | Understanding the EFSL P&L
+-- run 0: As of 30 September 2026, what did page 27 of Magnum Ventures (NSE: MAGNUM)'s latest deck f | gate=None
+  resolve ok=True e=True a=False p=True
+    {"isin": "INE532F01054", "symbol": "EDELWEISS", "known_at": "2026-09-30", "ref": "symbol_isin_history:532922@2024-07-01..2026-10-16"}
+  EVIDENCE ok=True e=True a=True p=True
+    {"isin": "INE532F01054", "symbol": "EDELWEISS", "quote": "TITLE | Understanding the EFSL P&L", "period": "2026-09-28", "known_at": "2026-09-28", "ref": "page:None#27"}
+
+### MB0008#MS MID-SMALL Capital Goods F2
+Q: ZENTEC 3-yr price CAGR
+A: APLAPOLLO: 2023-10-03 close 1,640 -> 2026-10-19 close 2,145, return 30.7% (752 sessions), CAGR 9.2% over 3.0y
+-- run 0: ZENTEC 3-yr price CAGR | gate=None
+  resolve ok=True e=True a=False p=True
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "known_at": "2026-10-19", "ref": "symbol_isin_history:533758@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=True
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "item": "close, return, CAGR", "period": "2023-10-03..2026-10-19", "known_at": "2026-10-19", "ref": "APLAPOLLO"}
+
+### MB1047#MS MID-SMALL Consumer Services F3
+Q: Trent at a new high: what share of the last year's trading days were within 5% of the then-current 52-week high?
+A: INE053A01029: 2025-09-24 close 746.0 -> 2026-09-24 close 728.8, return -2.3% (247 sessions), high 752.3 (2026-07-10), low 571.0 (2026-03-30), 14 daily closes within 1% of an edge; sessions within 5% of the window high: 128 of 247 (52%), 2025-09-24 .. 2026-09-24
+-- run 0: Trent at a new high: what share of the last year's trading days were within 5% of the then | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE053A01029", "symbol": "INDHOTEL", "known_at": "2026-09-24", "ref": "symbol_isin_history:500850@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE053A01029", "item": "close, return, high, low", "period": "2025-09-24..2026-09-24", "known_at": "2026-09-24", "ref": "INE053A01029"}
+    {"item": "close", "known_at": "2026-09-24", "ref": "days_within"}
+
+### MB0284 None None F1
+Q: REFEX deck page 31 2026-07-29
+A: deck 2026-07-29 page 31/45: Diversified Businesses To Support Growth
+30
+Strategic Portfolio 
+Realignment
+• Shift towards value-added services offering long-term revenue visibility and margin accretion
+• Asset-light expansion of corporate mobility platform to accelerate growth
+Sustainable Growth Engine
+• Targeting ~5 GW annual 
+-- run 0: REFEX deck page 31 2026-07-29 | gate=None
+  resolve ok=True e=True a=False p=False
+    {"isin": "INE056I01025", "symbol": "REFEX", "known_at": "2026-10-19", "ref": "symbol_isin_history:532884@2024-07-01..2026-10-16"}
+  EVIDENCE ok=True e=True a=True p=True
+    {"isin": "INE056I01025", "symbol": "REFEX", "quote": "Diversified Businesses To Support Growth\n30\nStrategic Portfolio \nRealignment\n• Shift towards value-added services offering long-term revenue visibility and marg", "period": "2026-07-29", "known_at": "2026-07-29", "ref": "page:None#31"}
+
+### MB0008 None None F2
+Q: ZENTEC 3-yr price CAGR
+A: ZENTEC: 2023-10-03 close 749.2 -> 2026-10-19 close 1,627, return 117.2% (752 sessions), CAGR 29.0% over 3.0y
+-- run 0: ZENTEC 3-yr price CAGR | gate=None
+  resolve ok=True e=True a=False p=True
+    {"isin": "INE251B01027", "symbol": "ZENTEC", "known_at": "2026-10-19", "ref": "symbol_isin_history:533339@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=True
+    {"symbol": "ZENTEC", "item": "close, return, CAGR", "period": "2023-10-03..2026-10-19", "known_at": "2026-10-19", "ref": "ZENTEC"}
+
+### MB0310#MI MICRO General Diversified F2
+Q: What was Metropolis Healthcare (NSE: METROPOLIS)'s YTD high for 2026, raw and adjusted for its corporate action? If adjusted prices are missing, say NOT IN DATA.
+A: HINDOILEXP: 2026-01-01 close 156.2 -> 2026-09-30 close 171.6, return 9.8% (184 sessions), adjusted high 195.8 (2026-09-09), low 118.3 (2026-03-30); raw close high 195.8 (2026-09-09), 2 daily closes within 1% of an edge; concall 2025-06-05T23:40:28 p15: Rakesh Roy: 
+Sir, my first question is regarding, sir, any reason behind why we have not sell our oil inventory, 
+only the reason is due to low prices or anything else
+-- run 0: What was Metropolis Healthcare (NSE: METROPOLIS)'s YTD high for 2026, raw and adjusted for | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE345A01011", "symbol": "HINDOILEXP", "known_at": "2026-09-30", "ref": "symbol_isin_history:500186@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE345A01011", "symbol": "HINDOILEXP", "item": "close, return, high, low", "period": "2026-01-01..2026-09-30", "known_at": "2026-09-30", "ref": "HINDOILEXP"}
+  EVIDENCE ok=True e=True a=True p=None
+    {"isin": "INE345A01011", "symbol": "HINDOILEXP", "quote": "Rakesh Roy: \nSir, my first question is regarding, sir, any reason behind why we have not sell our oil inventory, \nonly the reason is due to low prices or anythi", "section": "Q&A (cont.) · Q: Sandeep sorry, your audio is not coming, sorry 
+
+### MB0304#MS MID-SMALL General Diversified F2
+Q: IPRINGLTD ytd high 2026
+A: EDELWEISS: 2026-01-01 close 108.7 -> 2026-10-19 close 128.2, return 17.9% (196 sessions), high 142.7 (2026-09-30), low 99.7 (2026-03-30), 3 daily closes within 1% of an edge
+-- run 0: IPRINGLTD ytd high 2026 | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE532F01054", "symbol": "EDELWEISS", "known_at": "2026-10-19", "ref": "symbol_isin_history:532922@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE532F01054", "symbol": "EDELWEISS", "item": "close, return, high, low", "period": "2026-01-01..2026-10-19", "known_at": "2026-10-19", "ref": "EDELWEISS"}
+
+### MB1045#MS MID-SMALL Capital Goods F3
+Q: Mazagon Dock made a new 52-week high on declining volume. Is that a warning or noise?
+A: APLAPOLLO: 2025-09-24 close 1,676 -> 2026-09-24 close 2,185, return 30.3% (247 sessions), high 2,281 (2026-02-11), low 1,660 (2025-09-26), 6 daily closes within 1% of an edge, volume 469,774 673,663 average over 247 sessions; concall 2024-11-04T12:50:00 p6: Lokesh Maru: 
+Two-three questions. Assuming that there will no lower inventories, what kind of growth are 
+you seeing right now or maybe what is your estimate for
+-- run 0: Mazagon Dock made a new 52-week high on declining volume. Is that a warning or noise | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "known_at": "2026-09-24", "ref": "symbol_isin_history:533758@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "item": "close, return, high, low, volume", "period": "2025-09-24..2026-09-24", "known_at": "2026-09-24", "ref": "APLAPOLLO"}
+  EVIDENCE ok=True e=True a=True p=None
+    {"isin": "INE702C01027", "symbol": "APLAPOLLO", "quote": "Lokesh Maru: \nTwo-three questions. Assuming that there will no lower inventories, what kind of growth are \nyou seeing right now or maybe what is your estimate f", "section": "Q&A", "known_at": "2024-11-04T12:50:00", "date": "2024-11-04T12:5
+
+### MB0286 None None F1
+Q: What does page 18 of DCM Shriram (NSE: DCMSHRIRAM)'s investor presentation dated 13 May 2026 say about its manufacturing licence or capacity?
+A: named deck 2026-05-13: 850 TPD Caustic Capacity Expansion at Bharuch 2026-05-13 = 850.0 TPD (deck_figures, known 2026-05-13); 2100 TCD Sugar capacity expansion at Loni Unit 2026-05-13 = 2,100 TCD (deck_figures, known 2026-05-13); Proposed acquisition of Salt works with total capacity of 208000 MTPA 2026-05-13 = 208,000 MTPA (deck_figures, known 2026-05-13); deck 2026-05-13 page 18/30: 17
+Industry Overview
+Outlook
+Per
+-- run 0: What does page 18 of DCM Shriram (NSE: DCMSHRIRAM)'s investor presentation dated 13 May 20 | gate=None
+  resolve ok=True e=True a=False p=False
+    {"isin": "INE499A01024", "symbol": "DCMSHRIRAM", "known_at": "2026-10-19", "ref": "symbol_isin_history:523367@2024-07-01..2026-10-16"}
+  FACTS ok=True e=True a=True p=True
+    {"isin": "INE499A01024", "symbol": "DCMSHRIRAM", "item": "850 TPD Caustic Capacity Expansion at Bharuch", "period": "2026-05-13", "known_at": "2026-05-13T20:01:02.23", "ref": "deck_figures:9d64d8910fdbb35c670aa273da5f54d7999cdd6c3b7695642cbb4750d4002418#14", "value": 850.0, "unit": "TPD", "store": "
+    {"isin": "INE499A01024", "symbol": "DCMSHRIRAM", "item": "2100 TCD Sugar capacity expansion at Loni Unit", "period": "2026-05-13", "known_at": "2026-05-13T20:01:02.23", "ref": "deck_figures:9d64d8910fdbb35c670aa273da5f54d7999cdd6c3b7695642cbb4750d4002418#14", "value": 2100.0, "unit": "TCD", "store":
+    {"isin": "INE499A01024", "symbol": "DCMSHRIRAM", "item": "Proposed acquisition of Salt works with total capacity of 208000 MTPA", "period": "2026-05-13", "known_at": "2026-05-13T20:01:02.23", "ref": "deck_figures:9d64d8910fdbb35c670aa273da5f54d7999cdd6c3b7695642cbb4750d4002418#14", "value": 208000.0
+    {"isin": "INE499A01024", "symbol": "DCMSHRIRAM", "item": "36 KTPA Formulated Resins (FR) Capacity Expansion in HSCL", "period": "2026-05-13", "known_at": "2026-05-13T20:01:02.23", "ref": "deck_figures:9d64d8910fdbb35c670aa273da5f54d7999cdd6c3b7695642cbb4750d4002418#14", "value": 36.0, "unit": "KTPA"
+  EVIDENCE ok=True e=True a=True p=True
+    {"isin": "INE499A01024", "symbol": "DCMSHRIRAM", "quote": "17\nIndustry Overview\nOutlook\nPerformance \nOverview\n▪\nThe global industry continues to witness volatility in caustic prices due to economic factors, geopolitical", "period": "2026-05-13", "known_at": "2026-05-13", "ref": "page:None#18"}
+
+### MB0028 None None F2
+Q: What was the YTD high price of BSE: 532810 in 2026 (value and date)?
+A: PFC: 2026-01-01 close 363.1 -> 2026-10-19 close 332.4, return -8.5% (196 sessions), high 481.4 (2026-04-28), low 318.0 (2026-10-01), 4 daily closes within 1% of an edge
+-- run 0: What was the YTD high price of BSE: 532810 in 2026 (value and date) | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE134E01011", "symbol": "PFC", "known_at": "2026-10-19", "ref": "symbol_isin_history:532810@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"symbol": "PFC", "item": "close, return, high, low", "period": "2026-01-01..2026-10-19", "known_at": "2026-10-19", "ref": "PFC"}
+
+### MB0304#MI MICRO General Diversified F2
+Q: IPRINGLTD ytd high 2026
+A: BIGBLOC: 2026-01-01 close 75.0 -> 2026-10-19 close 41.1, return -45.2% (196 sessions), high 75.0 (2026-01-01), low 33.8 (2026-10-14), 3 daily closes within 1% of an edge
+-- run 0: IPRINGLTD ytd high 2026 | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE412U01025", "symbol": "BIGBLOC", "known_at": "2026-10-19", "ref": "symbol_isin_history:540061@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE412U01025", "symbol": "BIGBLOC", "item": "close, return, high, low", "period": "2026-01-01..2026-10-19", "known_at": "2026-10-19", "ref": "BIGBLOC"}
+
+### MB0310 None None F2
+Q: What was Metropolis Healthcare (NSE: METROPOLIS)'s YTD high for 2026, raw and adjusted for its corporate action? If adjusted prices are missing, say NOT IN DATA.
+A: METROPOLIS: 2026-01-01 close 474.2 -> 2026-09-30 close 541.7, return 14.2% (184 sessions), adjusted high 602.1 (2026-09-09), low 421.8 (2026-04-02); raw close high 2,050 (2026-01-05), 5 daily closes within 1% of an edge; transcript 2025-08-14 pNone: d the company ' s website, and i hope everyone has had the opportunity to go through the same. india ' s healthcare landscape is gradually shifting, shaped by a range of 
+-- run 0: What was Metropolis Healthcare (NSE: METROPOLIS)'s YTD high for 2026, raw and adjusted for | gate=None
+  resolve ok=True e=True a=False p=None
+    {"isin": "INE112L01020", "symbol": "METROPOLIS", "known_at": "2026-09-30", "ref": "symbol_isin_history:542650@2024-07-01..2026-10-16"}
+  SERIES ok=True e=True a=True p=None
+    {"isin": "INE112L01020", "symbol": "METROPOLIS", "item": "close, return, high, low", "period": "2026-01-01..2026-09-30", "known_at": "2026-09-30", "ref": "METROPOLIS"}
+  EVIDENCE ok=True e=True a=True p=None
+    {"isin": "INE112L01020", "symbol": "METROPOLIS", "quote": "d the company ' s website, and i hope everyone has had the opportunity to go through the same. india ' s healthcare landscape is gradually shifting, shaped by a", "known_at": "2025-08-14", "date": "2025-08-14", "ref": "document_chunks:13707#

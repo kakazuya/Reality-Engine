@@ -39,7 +39,7 @@ HAND_RESULTS = OUT / "RESULTS_HAND60.jsonl"
 BANK_ORIGINALS = BENCH / "GATE_RESULTS_originals.jsonl"
 BANK_INSTANCES = BENCH / "GATE_RESULTS_instances.jsonl"
 SAMPLE40 = OUT / "GATE_SAMPLE40.jsonl"
-SEED40 = 20261029
+SEED40 = 20261030
 
 
 def _load(path: Path) -> list[dict]:
@@ -270,15 +270,13 @@ def bank(limit_originals: int | None = None, limit_instances: int | None = None,
 # 40-row precision sample
 # --------------------------------------------------------------------------
 def sample40() -> int:
-    # The pool is every row the new answer contract (gate included) calls
-    # ANSWERED: the bench grade answered and the strict grader's independent
-    # gate recompute finding nothing (it reads only the rows the answer shows).
+    # The pool is every row the strict grader calls ANSWERED: the bench grade
+    # answered, every part of the ask carried, no unrelated row, in period.
     orig = _load(BENCH / "GATE_RESULTS_originals_strict.jsonl")
     inst = _load(BENCH / "GATE_RESULTS_instances_strict.jsonl")
     if orig or inst:
         def gate_ok(row: dict) -> bool:
-            return (row.get("bench_grade") == "ANSWERED"
-                    and not row.get("gate_recomputed"))
+            return row.get("strict_grade") == "ANSWERED"
     else:  # not graded yet: fall back to the planner's own grade
         orig = _load(BENCH / "GATE_RESULTS_originals.jsonl")
         inst = _load(BANK_INSTANCES)
@@ -551,7 +549,8 @@ def report() -> int:
                      f"{sum(n for (v, g), n in after.items() if g == 'ANSWERED')} of them "
                      f"ANSWERED.")
 
-    lines += ["", "## 3. 40-row precision (new ANSWERED rows, seed 20261029)", ""]
+    lines += ["", f"## 3. Answer precision (hand-checked strict-ANSWERED rows, seed {SEED40})",
+              ""]
     if sample:
         ok = sum(1 for row in sample if verdicts.get(row["mid"], {}).get("verdict") == "OK")
         partial = sum(1 for row in sample
@@ -559,29 +558,40 @@ def report() -> int:
         bad = sum(1 for row in sample
                   if verdicts.get(row["mid"], {}).get("verdict") == "WRONG")
         checked = ok + partial + bad
-        lines.append(f"- sample: {len(sample)} rows the gated contract calls ANSWERED, "
-                     f"stratified by bucket x family; hand-checked {checked}")
-        lines.append(f"- precision: **{_pct(ok, checked)}** (OK), {partial} partial, {bad} wrong; "
-                     f"Wilson 95% lower bound on OK/checked = **{wilson_lower(ok, checked):.3f}**")
+        lines.append(f"- sample: {len(sample)} rows the gated contract calls ANSWERED — the "
+                     f"*whole* remaining pool (stratified by bucket x family; the 5 rows the "
+                     f"pilot already hand-checked are excluded, and the hardened contract "
+                     f"leaves fewer than 40 rows to draw)" if len(sample) < 40 else
+                     f"- sample: {len(sample)} rows the gated contract calls ANSWERED, "
+                     f"stratified by bucket x family")
+        lines.append(f"- hand-checked {checked}: precision **{_pct(ok, checked)}** (OK), "
+                     f"{partial} partial, {bad} wrong; Wilson 95% lower bound on OK/checked "
+                     f"= **{wilson_lower(ok, checked):.3f}**")
         body = []
         for row in sample:
             verdict = verdicts.get(row["mid"], {})
             body.append([row["mid"], row.get("bucket"), row.get("sector"),
                          f"F{(row.get('family') or ['?'])[0]}",
                          str(row.get("question"))[:70],
+                         row.get("unrelated_rows", 0),
                          verdict.get("verdict", "unchecked"),
                          str(verdict.get("note") or "")[:90]])
         lines.append("")
-        lines.append(_table(["mid", "bucket", "sector", "family", "question", "verdict",
-                             "note"], body))
+        lines.append(_table(["mid", "bucket", "sector", "family", "question",
+                             "unrelated rows", "verdict", "note"], body))
         lines.append("")
+        modes: Counter = Counter(
+            str(verdicts.get(row["mid"], {}).get("mode") or "unclassified")
+            for row in sample
+            if verdicts.get(row["mid"], {}).get("verdict") in ("PARTIAL", "WRONG"))
+        if modes:
+            lines.append("- failure modes of the non-OK rows: " + ", ".join(
+                f"**{mode}** {count}" for mode, count in modes.most_common()) + ".")
         lines.append(
-            "- Of the 31 non-OK rows: 15 answer a specific technical study (drawdown "
-            "recovery, RSI divergence, share of days near the 52-week high) with a generic "
-            "1-year return/high/low or an oversold-day aggregate; 6 omit the equity share "
-            "count on a two-part ask; 4 omit the exchange on a YTD-high ask; 4 answer a "
-            "narrative/date ask with an unrelated passage or a close; 1 reports the deck's "
-            "bps change as the net-NPA level; 1 covers only the facility count.")
+            "- The hand check judges the *instance* entity (the substituted company the "
+            "answer is produced for), against the row's own returned evidence, at the "
+            "strictness the answer contract claims: value/date/period/document as asked, "
+            "every named part of the ask, and no unrelated row that carries a number.")
     else:
         lines.append("No sample drawn.")
 
@@ -615,6 +625,11 @@ def report() -> int:
         lines.append(f"\n- PIT breaches: **{pit}** rows"
                      + (f" ({sum(1 for r in bank if r.get('pit_violations') or r.get('pit'))}"
                         f" cases)" if pit else " (0 cases)"))
+        unrelated = sum(int(row.get("unrelated_rows") or 0) for row in bank)
+        with_unrelated = sum(1 for row in bank if row.get("unrelated_rows"))
+        lines.append(f"- unrelated rows appended to answers: **{unrelated}** row(s) over "
+                     f"**{_pct(with_unrelated, len(bank))}** cases; a case is PARTIAL when two "
+                     f"are appended or one of them carries a number")
         p50, p95, pmax = _latency([float(row.get("seconds") or 0.0) for row in bank])
         lines.append(f"- latency (answer seconds): p50 **{p50:.2f}s**, p95 **{p95:.2f}s**, "
                      f"max **{pmax:.2f}s**")
@@ -696,6 +711,31 @@ def report() -> int:
         "- Pilot stores were read immutable: REALITY_CHUNKS_V3=D:\\RealityEngine\\pilot\\"
         "pilot60\\chunks_v3_pilot.db, REALITY_PILOT_T1=\\pilot\\pilot60, "
         "REALITY_MACRO_PILOT_DB=\\pilot\\macro_all.db.")
+    lines.append(
+        "- 2026-10-29 hardening (this run). The 10-row hand check of the previous strict "
+        "ANSWERED set found 4 OK / 3 PARTIAL / 3 WRONG, so the ask gate now requires every "
+        "named part: promoter AND public holding, share count AND promoter holding, "
+        "business AND segments, raw AND adjusted, the exchange when the question asks for "
+        "it (\"on which exchange?\", \"nse bse\") and the side of the RSI band (an "
+        "\"oversold days\" row does not answer \"RSI stayed above 70\"). A judgement ask "
+        "(\"has the debt fallen, or has it moved into CWIP and JVs\") needs a row carrying "
+        "that metric: a price return is not it.")
+    lines.append(
+        "- The unrelated-row penalty is judged per hop *and* per numeric claim the answer "
+        "prints: two unrelated rows, or one that carries a number, make the case PARTIAL, "
+        "and `unrelated_rows` is reported per row and in the bank totals.")
+    lines.append(
+        "- Instance questions are regenerated with the instance company's own name "
+        "(`instantiate.py --rename-only`: 1,408 questions renamed, deterministic, 0 left "
+        "naming the parent). The approved bank is untouched; its defects are in "
+        "`tasks/master_bank/BANK_DEFECTS_2026-10-29.md`.")
+    lines.append(
+        "- Before/after on the same 2,681 result rows: strict ANSWERED was 137 (5.1%) on "
+        "main 3489a87; this hardening leaves 24 (0.9%), and 19 of the 20 hand-checked rows "
+        "of that remainder are right (the 20th is an under-specified industry ask, a bank "
+        "defect). Recall is the cost of the rule: the answerer still cannot print the "
+        "exchange, the adjusted basis, an episode list or page content, so those asks are "
+        "now PARTIAL until the planners render them.")
     text = "\n".join(lines) + "\n"
     path = BENCH / "GATE_RUN_2026-10-29.md"
     path.write_text(text, encoding="utf-8")
