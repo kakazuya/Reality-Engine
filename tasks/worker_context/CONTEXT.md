@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T01:43:52+05:30 · git HEAD: `f5d7008` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T05:05:59+05:30 · git HEAD: `ac2901e` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
