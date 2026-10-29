@@ -73,7 +73,15 @@ class Ctx:
     def sqlite(self, name: str) -> Any:
         """Connection for one database alias (``equity_intelligence`` ... or a T1 pilot DB)."""
         if name not in self._sql:
-            if name in T1_FILES:
+            if name == "metric_state":
+                # The pilot-60 extraction build (reality_engine/pilot/extract60.py);
+                # absent until built, so every caller degrades instead of failing.
+                from reality_engine.query import metrics
+                path = metrics.path()
+                if path is None:
+                    raise QueryUnavailable("metric_state store not built "
+                                           "(run reality_engine.pilot.extract60 build)")
+            elif name in T1_FILES:
                 path = t1_path(name)
                 if path is None or not path.is_file():
                     raise QueryUnavailable(f"T1 pilot database {name} not configured "

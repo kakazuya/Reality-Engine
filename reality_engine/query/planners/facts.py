@@ -355,6 +355,16 @@ def row_period(rows: list[dict[str, Any]]) -> str:
     return f"{rows[1]['quarter_end']} -> {rows[0]['quarter_end']}"
 
 
+def _metric_store(ctx: Any, isin: str, as_of: str, question: str, metric: str | None,
+                  period: tuple[str | None, str | None]) -> list[dict[str, Any]]:
+    """Facts from the pilot-60 extraction tables (``metric_state``), when built."""
+    try:
+        from reality_engine.query import metrics
+        return metrics.facts_rows(ctx, isin, as_of, question, metric, period)
+    except Exception:  # noqa: BLE001 - no store / bad row shape degrades to the held stores
+        return []
+
+
 def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     metric = slots.get("metric")
     question = str(slots.get("question") or "")
@@ -395,6 +405,8 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             return envelope("FACTS", ok=True, na=True, checked=CHECKED, detail=detail,
                             degraded=[f"named-document preference: {doc_note}; no older document used"])
     else:
+        metric_store = _metric_store(ctx, isin, as_of, question, metric, period)
+        rows += metric_store
         for got, n in (_results(ctx, isin, as_of, period, metric),
                        _ar(ctx, isin, as_of, period, metric)
                        if slots.get("period_basis") != "quarter end" else ([], 0),
@@ -402,6 +414,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                        _concall(ctx, isin, as_of, metric)):
             rows += got
             candidates += n
+        candidates += len(metric_store)
         if metric == "promoter":
             promoter = _promoter_facts(ctx, isin, as_of, question)
             rows = promoter + rows
@@ -421,6 +434,10 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                       if r.get("store") != "results_xbrl"
                       and str(r.get("item") or "").strip().lower() not in generic
                       and re.search(r"segment", str(r.get("item") or ""), re.I)]
+        if not named_rows:
+            # The pilot extraction store carries the segment note with the member name.
+            named_rows = [r for r in _metric_store(ctx, isin, as_of, question, "segment", period)
+                          if r.get("store") == "metric_state"]
         if not named_rows:
             detail = ("segment facts exist but the segment member names are not mapped; "
                       "a segment P&L by name needs company_segment_pnl / xbrl_concept_map")

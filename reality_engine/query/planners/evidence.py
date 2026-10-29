@@ -228,6 +228,15 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 candidates = _chunks_v3_search(db, slots, as_of, doc_type)
             except Exception:  # noqa: BLE001 - a broken pilot DB must not break the answer
                 candidates = None  # the legacy doc_find path is the fallback
+            # Extraction rows (rating actions, price revisions, contracts, cost inputs,
+            # supply links) are passages too: quote + page + known_at, PIT-filtered.
+            try:
+                from reality_engine.query import metrics
+                candidates = (metrics.evidence_rows(ctx, str(slots.get("isin") or ""), as_of,
+                                                    str(slots.get("question") or ""))
+                              + (candidates or []))
+            except Exception:  # noqa: BLE001
+                pass
             if candidates is not None:
                 # The chunks_v3 store is the authoritative text index for a pilot
                 # ISIN.  Ranked FTS is the relevance signal here: half the ask's

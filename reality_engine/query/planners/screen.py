@@ -97,6 +97,37 @@ def _universe(ctx: Any, question: str, slots: dict[str, Any]) -> tuple[str, list
     return "m.is_active = 1 AND m.is_nifty500 = 1", []
 
 
+def _metric_screen(ctx: Any, question: str, as_of: str, table: str) -> dict[str, Any] | None:
+    """Rank the held universe on an extraction table (pilot-60 ``metric_state``)."""
+    try:
+        from reality_engine.query import metrics
+        ranked = metrics.screen(ctx, question, as_of, table)
+    except Exception:  # noqa: BLE001 - no store: the caller keeps its blocked answer
+        return None
+    if len(ranked) < 2:
+        return None
+    symbols = {}
+    try:
+        marks = ",".join("?" * len(ranked))
+        symbols = {r["isin"]: r["nse_symbol"] for r in ctx.rows(
+            "equity_intelligence",
+            f"SELECT isin, nse_symbol FROM master_companies WHERE isin IN ({marks})",
+            tuple(r["isin"] for r in ranked))}
+    except Exception:  # noqa: BLE001
+        pass
+    detail = f"{table} ranked on {ranked[0]['unit'] or 'value'} at {as_of}: " + "; ".join(
+        f"{symbols.get(r['isin']) or r['isin']} {r['item']} {r['value']}" for r in ranked[:5])
+    return envelope(
+        "SCREEN", ok=True, checked=["metric_state." + table],
+        rows=[{"ref": r["ref"], "known_at": str(r["known_at"])[:10],
+               "symbol": symbols.get(r["isin"]), "value": r["value"], "item": r["item"]}
+              for r in ranked],
+        provenance=[{"ref": r["ref"], "known_at": str(r["known_at"])[:10]}
+                    for r in ranked[:5]],
+        pit=f"metric_state.{table}.known_at <= {as_of}", detail=detail,
+        degraded=[f"{table} rows are the pilot-60 extraction build, not the full market"])
+
+
 def _pilot_universe(ctx: Any, question: str, as_of: str) -> tuple[set[str] | None, str | None]:
     """ISIN set from the T1 pilot build (whole-market company_state_daily / membership_pit).
 
@@ -157,6 +188,9 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     if status.startswith("needs_new_table"):
         table = status.split(":", 1)[-1]
         if table in SCREEN_TABLES:
+            ranked = _metric_screen(ctx, question, as_of, table)
+            if ranked:
+                return ranked
             return envelope("SCREEN", ok=False, why="schema", checked=CHECKED, gap=table,
                             detail=f"screen needs {table}; that table is not held yet",
                             nid_reason=f"BLOCKED_SCHEMA: {table}")

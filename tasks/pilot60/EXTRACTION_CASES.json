@@ -1,0 +1,1533 @@
+{
+ "n": 212,
+ "held_tables": {
+  "company_operating_metrics": 55,
+  "company_segment_pnl": 51,
+  "company_cost_structure": 21,
+  "order_intake": 21,
+  "order_book_contract": 31,
+  "company_capacity_utilisation": 70,
+  "capex_project": 19,
+  "company_price_revision": 61,
+  "company_debt_mix": 18,
+  "rating_action": 230,
+  "supply_link": 0
+ },
+ "available": [
+  "capex_project",
+  "company_capacity_utilisation",
+  "company_cost_structure",
+  "company_debt_mix",
+  "company_operating_metrics",
+  "company_price_revision",
+  "company_segment_pnl",
+  "order_book_contract",
+  "order_intake",
+  "rating_action"
+ ],
+ "before": {
+  "PARTIAL": 155,
+  "BLOCKED_SCHEMA": 36,
+  "BLOCKED_TOOL": 21
+ },
+ "after": {
+  "PARTIAL": 152,
+  "BLOCKED_SCHEMA": 23,
+  "ANSWERED": 9,
+  "NOT_IN_DATA": 8,
+  "BLOCKED_TOOL": 20
+ },
+ "lift": {
+  "NOT_IN_DATA": 8,
+  "PARTIAL": -3,
+  "BLOCKED_TOOL": -1,
+  "ANSWERED": 9,
+  "BLOCKED_SCHEMA": -13
+ },
+ "rows": [
+  {
+   "mid": "MB0006",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_segment_pnl))",
+   "blocker_after": "hop failed: FACTS (segment facts exist but the segment member names are not mapped; a segment P&L by name needs company_segment_pnl / xbrl_concept_map)"
+  },
+  {
+   "mid": "MB0052",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "policy Ministry of Youth Affairs and Sports issues operational guidelines for revised Scheme of Assistance to National Sports Federations (NSFs) matched, but its sector/company targets do not map to h",
+   "blocker_after": "segment facts exist but the segment member names are not mapped; a segment P&L by name needs company_segment_pnl / xbrl_concept_map"
+  },
+  {
+   "mid": "MB0054",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, April 6 to 8, 2026 (2026-04-22) matched, but its sector/company targets do not map to held ISINs (company_segment_pnl)",
+   "blocker_after": "segment facts exist but the segment member names are not mapped; a segment P&L by name needs company_segment_pnl / xbrl_concept_map"
+  },
+  {
+   "mid": "MB0056",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_segment_pnl)",
+   "blocker_after": "segment facts exist but the segment member names are not mapped; a segment P&L by name needs company_segment_pnl / xbrl_concept_map"
+  },
+  {
+   "mid": "MB0060",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, April 6 to 8, 2026 (2026-04-22) matched, but its sector/company targets do not map to held ISINs (company_segment_pnl)",
+   "blocker_after": "segment facts exist but the segment member names are not mapped; a segment P&L by name needs company_segment_pnl / xbrl_concept_map"
+  },
+  {
+   "mid": "MB0083",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_segment_pnl))",
+   "blocker_after": "hop failed: FACTS (segment facts exist but the segment member names are not mapped; a segment P&L by name needs company_segment_pnl / xbrl_concept_map)"
+  },
+  {
+   "mid": "MB0085",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Union Minister Shri Hardeep Singh Puri Addresses Valedictory Session of SRCC\u2019s Centenary Conclave \u2018Pathways to Viksit Bharat\u2019 matched, but its sector/company targets do not ",
+   "blocker_after": "hop failed: FACTS (segment facts exist but the segment member names are not mapped; a segment P&L by name needs company_segment_pnl / xbrl_concept_map)"
+  },
+  {
+   "mid": "MB0088",
+   "before": "PARTIAL",
+   "after": "ANSWERED",
+   "blocker_before": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Memorandum explaining the Finance Bill matched, but its sector/company targets do not map to held ISINs (company_segment_pnl))",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0090",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_segment_pnl))",
+   "blocker_after": "hop failed: FACTS (segment facts exist but the segment member names are not mapped; a segment P&L by name needs company_segment_pnl / xbrl_concept_map)"
+  },
+  {
+   "mid": "MB0337",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: COMPARE (no comparable guidance for two peers filed by 2099-12-31)",
+   "blocker_after": "hop failed: COMPARE (no comparable guidance for two peers filed by 2099-12-31)"
+  },
+  {
+   "mid": "MB0344",
+   "before": "BLOCKED_SCHEMA",
+   "after": "NOT_IN_DATA",
+   "blocker_before": "company_capacity_utilisation not held: no price rows for ULTRACEMCO between 2027-03-31 and 2027-03-31",
+   "blocker_after": "no price rows for ULTRACEMCO between 2027-03-31 and 2027-03-31"
+  },
+  {
+   "mid": "MB0345",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: FACTS (facts exist for HINDALCO but none carries the asked metric (capacity))",
+   "blocker_after": "hop failed: FACTS (facts exist for HINDALCO but none carries the asked metric (capacity))"
+  },
+  {
+   "mid": "MB0350",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: FACTS (facts exist for INE646L01027 but none carries the asked metric (capacity))",
+   "blocker_after": "hop failed: FACTS (facts exist for INE646L01027 but none carries the asked metric (capacity))"
+  },
+  {
+   "mid": "MB0352",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: FACTS (facts exist for SUZLON but none carries the asked metric (revenue))",
+   "blocker_after": "hop failed: FACTS (facts exist for SUZLON but none carries the asked metric (revenue))"
+  },
+  {
+   "mid": "MB0353",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVIDENCE (no chunk of AMBER carries expect, matter known by 2099-12-31)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of AMBER carries expect, matter known by 2099-12-31)"
+  },
+  {
+   "mid": "MB0354",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVIDENCE (no chunk of JUBLFOOD carries jubilant, foodworks, stores known by 2099-12-31)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of JUBLFOOD carries jubilant, foodworks, stores known by 2099-12-31)"
+  },
+  {
+   "mid": "MB0355",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "answer does not carry the ground-truth value yet (\u201cSAIL decided actually to advance some of its major capital repairs during quarter 1, so t)",
+   "blocker_after": "answer does not carry the ground-truth value yet (\u201cSAIL decided actually to advance some of its major capital repairs during quarter 1, so t)"
+  },
+  {
+   "mid": "MB0356",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVIDENCE (no chunk of MUTHOOTFIN carries muthoot, finance, opened known by 2099-12-31)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of MUTHOOTFIN carries muthoot, finance, opened known by 2099-12-31)"
+  },
+  {
+   "mid": "MB0358",
+   "before": "BLOCKED_SCHEMA",
+   "after": "NOT_IN_DATA",
+   "blocker_before": "order_intake not held: no price rows for IRCON between 2027-03-31 and 2027-03-31",
+   "blocker_after": "no price rows for IRCON between 2027-03-31 and 2027-03-31"
+  },
+  {
+   "mid": "MB0374",
+   "before": "BLOCKED_SCHEMA",
+   "after": "ANSWERED",
+   "blocker_before": "CASE_MAP blocker needs_new_table:company_capacity_utilisation: v0 measured only an adjacent held-data part",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0398",
+   "before": "BLOCKED_SCHEMA",
+   "after": "ANSWERED",
+   "blocker_before": "CASE_MAP blocker needs_new_table:rating_action: v0 measured only an adjacent held-data part",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0399",
+   "before": "BLOCKED_SCHEMA",
+   "after": "ANSWERED",
+   "blocker_before": "CASE_MAP blocker needs_new_table:rating_action: v0 measured only an adjacent held-data part",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0409",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: FACTS (facts exist for KEI but none carries the asked metric (pat))",
+   "blocker_after": "hop failed: FACTS (facts exist for KEI but none carries the asked metric (pat))"
+  },
+  {
+   "mid": "MB0410",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "answer does not carry the ground-truth value yet (WELCORP: \u201cPress Release issued by CARE Ratings for the Company''s Credit Ratings\u201d filed 20)",
+   "blocker_after": "answer does not carry the ground-truth value yet (WELCORP: \u201cPress Release issued by CARE Ratings for the Company''s Credit Ratings\u201d filed 20)"
+  },
+  {
+   "mid": "MB0415",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "answer does not carry the ground-truth value yet (\u201cSAIL decided actually to advance some of its major capital repairs during quarter 1, so t)",
+   "blocker_after": "answer does not carry the ground-truth value yet (\u201cSAIL decided actually to advance some of its major capital repairs during quarter 1, so t)"
+  },
+  {
+   "mid": "MB0418",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVIDENCE (no chunk of ICICILIFE carries search, note, text known by 2026-10-20)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of ICICILIFE carries search, note, text known by 2026-10-20)"
+  },
+  {
+   "mid": "MB0427",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_operating_metrics; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (index membership is one snapshot dated 2026-09-30; a screen as of 2020-03-23 needs company_membership_pit)"
+  },
+  {
+   "mid": "MB0451",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVENT (no event row around 2024-05-20; price moved -2.22% on 2024-05-21)",
+   "blocker_after": "hop failed: EVENT (no event row around 2024-05-20; price moved -2.22% on 2024-05-21)"
+  },
+  {
+   "mid": "MB0454",
+   "before": "PARTIAL",
+   "after": "ANSWERED",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0455",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: FACTS (facts exist for INE646L01027 but none carries the asked metric (ebitda))"
+  },
+  {
+   "mid": "MB0456",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: EVIDENCE (no passage carries the ask)"
+  },
+  {
+   "mid": "MB0460",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_operating_metrics; that table is not held yet)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of TITAN carries state, gold, move known by 2026-10-07)"
+  },
+  {
+   "mid": "MB0461",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVENT (no event row around 2026-09-30; price moved +0.01% on 2026-10-01)",
+   "blocker_after": "hop failed: EVENT (no event row around 2026-09-30; price moved +0.01% on 2026-10-01)"
+  },
+  {
+   "mid": "MB0462",
+   "before": "BLOCKED_SCHEMA",
+   "after": "ANSWERED",
+   "blocker_before": "CASE_MAP blocker needs_new_table:company_capacity_utilisation: v0 measured only an adjacent held-data part",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0464",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: COMPARE (no comparable metric for two peers filed by 2026-10-07)"
+  },
+  {
+   "mid": "MB0466",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Assam: Assam Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2022-09-20 and 2026-09-30)"
+  },
+  {
+   "mid": "MB0467",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Economic_Survey: Economic Survey 2025-26 - chapters matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "answer does not carry the ground-truth value yet (usdinr closed 81.48 on 2022-09-30)"
+  },
+  {
+   "mid": "MB0468",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "answer does not carry the ground-truth value yet (usdinr closed 96.05 on 2026-09-30)"
+  },
+  {
+   "mid": "MB0469",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_operating_metrics; that table is not held yet)",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, September 28-30, 2022 (2022-10-14) matched, but its sector/company targets do not map to held ISINs (c"
+  },
+  {
+   "mid": "MB0471",
+   "before": "PARTIAL",
+   "after": "ANSWERED",
+   "blocker_before": "hop failed: SCREEN (screen needs company_operating_metrics; that table is not held yet)",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0474",
+   "before": "PARTIAL",
+   "after": "ANSWERED",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Assam: Assam Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0475",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: FACTS (facts exist for SCI but none carries the asked metric (revenue))"
+  },
+  {
+   "mid": "MB0478",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: FACTS (facts exist for DIXON but none carries the asked metric (margin))"
+  },
+  {
+   "mid": "MB0480",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: FACTS (facts exist for KPITTECH but none carries the asked metric (revenue))"
+  },
+  {
+   "mid": "MB0481",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_operating_metrics; that table is not held yet)",
+   "blocker_after": "hop failed: FACTS (facts exist for JUBLFOOD but none carries the asked metric (pat))"
+  },
+  {
+   "mid": "MB0482",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_operating_metrics; that table is not held yet)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of OLECTRA carries disclosure, discounting known by 2026-10-07)"
+  },
+  {
+   "mid": "MB0484",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_operating_metrics; that table is not held yet)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of JUBLFOOD carries food, delivery, platform known by 2026-10-07)"
+  },
+  {
+   "mid": "MB0485",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: FACTS (facts exist for INE646L01027 but none carries the asked metric (margin))",
+   "blocker_after": "hop failed: FACTS (facts exist for INE646L01027 but none carries the asked metric (margin))"
+  },
+  {
+   "mid": "MB0487",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "answer does not carry the ground-truth value yet (\u201cwhich will take us from the current capacity of 184 million tons, 184 million includes In)",
+   "blocker_after": "answer does not carry the ground-truth value yet (\u201cwhich will take us from the current capacity of 184 million tons, 184 million includes In)"
+  },
+  {
+   "mid": "MB0489",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_operating_metrics; that table is not held yet)",
+   "blocker_after": "hop failed: FACTS (facts exist for ASIANPAINT but none carries the asked metric (margin))"
+  },
+  {
+   "mid": "MB0491",
+   "before": "BLOCKED_SCHEMA",
+   "after": "NOT_IN_DATA",
+   "blocker_before": "company_operating_metrics not held: no chunk of MUTHOOTFIN carries gold, loan, ticket known by 2026-10-07",
+   "blocker_after": "no chunk of MUTHOOTFIN carries gold, loan, ticket known by 2026-10-07"
+  },
+  {
+   "mid": "MB0492",
+   "before": "BLOCKED_SCHEMA",
+   "after": "ANSWERED",
+   "blocker_before": "CASE_MAP blocker needs_new_table:company_operating_metrics: v0 measured only an adjacent held-data part",
+   "blocker_after": ""
+  },
+  {
+   "mid": "MB0493",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: FACTS (facts exist for MOTHERSON but none carries the asked metric (revenue))",
+   "blocker_after": "hop failed: FACTS (facts exist for MOTHERSON but none carries the asked metric (revenue))"
+  },
+  {
+   "mid": "MB0494",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: FACTS (facts exist for CUMMINSIND but none carries the asked metric (revenue))"
+  },
+  {
+   "mid": "MB0495",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVIDENCE (no chunk of APOLLOHOSP carries hospital, arpob, unit known by 2026-10-07)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of APOLLOHOSP carries hospital, arpob, unit known by 2026-10-07)"
+  },
+  {
+   "mid": "MB0497",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com"
+  },
+  {
+   "mid": "MB0499",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0501",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com"
+  },
+  {
+   "mid": "MB0502",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_capacity_utilisation))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0505",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVENT (no event row around 2026-01-27; price moved +2.93% on 2026-01-28)",
+   "blocker_after": "hop failed: EVENT (no event row around 2026-01-27; price moved +2.93% on 2026-01-28)"
+  },
+  {
+   "mid": "MB0520",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Karnataka: Karnataka Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_Karnataka: Karnataka Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0535",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVENT (no event row around 2026-03-31; price moved -0.29% on 2026-04-01)",
+   "blocker_after": "hop failed: EVENT (no event row around 2026-03-31; price moved -0.29% on 2026-04-01)"
+  },
+  {
+   "mid": "MB0538",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVIDENCE (no chunk of ADANIGREEN carries adani, green, claimed known by 2026-10-07)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of ADANIGREEN carries adani, green, claimed known by 2026-10-07)"
+  },
+  {
+   "mid": "MB0539",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVIDENCE (no chunk of JUBLFOOD carries guided, additions known by 2026-10-07)",
+   "blocker_after": "hop failed: EVIDENCE (no chunk of JUBLFOOD carries guided, additions known by 2026-10-07)"
+  },
+  {
+   "mid": "MB0547",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: FACTS (facts exist for IRCON but none carries the asked metric (order_book))",
+   "blocker_after": "hop failed: FACTS (facts exist for IRCON but none carries the asked metric (order_book))"
+  },
+  {
+   "mid": "MB0602",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2026-09-27 and 2026-10-07)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2026-09-27 and 2026-10-07)"
+  },
+  {
+   "mid": "MB0604",
+   "before": "BLOCKED_SCHEMA",
+   "after": "NOT_IN_DATA",
+   "blocker_before": "company_cost_structure not held: no window return % rows for the asked universe between 2026-09-27 and 2026-10-07",
+   "blocker_after": "no window return % rows for the asked universe between 2026-09-27 and 2026-10-07"
+  },
+  {
+   "mid": "MB0605",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0610",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0611",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0626",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Ministry of Youth Affairs and Sports issues operational guidelines for revised Scheme of Assistance to National Sports Federations (NSFs) matched, but its sector/company tar",
+   "blocker_after": "hop failed: SERIES (no price rows for POLYCAB between 2026-10-27 and 2026-10-27)"
+  },
+  {
+   "mid": "MB0631",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0632",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0633",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0634",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0635",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0636",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0637",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "policy Union Minister Shri Hardeep Singh Puri Addresses Valedictory Session of SRCC\u2019s Centenary Conclave \u2018Pathways to Viksit Bharat\u2019 matched, but its sector/company targets do not map to held ISINs (c",
+   "blocker_after": "policy Union Minister Shri Hardeep Singh Puri Addresses Valedictory Session of SRCC\u2019s Centenary Conclave \u2018Pathways to Viksit Bharat\u2019 matched, but its sector/company targets do not map to held ISINs (c"
+  },
+  {
+   "mid": "MB0639",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0640",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0641",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0642",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0643",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0644",
+   "before": "BLOCKED_TOOL",
+   "after": "PARTIAL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0645",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0646",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Economic_Survey: Economic Survey 2025-26 - chapters matched, but its sector/company targets do not map to held ISINs (company_capacity_utilisation))",
+   "blocker_after": "hop failed: RIPPLE (policy Economic_Survey: Economic Survey 2025-26 - chapters matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0647",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0648",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0649",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0650",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0651",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c"
+  },
+  {
+   "mid": "MB0652",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com"
+  },
+  {
+   "mid": "MB0653",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c"
+  },
+  {
+   "mid": "MB0654",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com"
+  },
+  {
+   "mid": "MB0655",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Memorandum explaining the Finance Bill matched, but its sector/company targets do not map to held ISINs (company_debt_mix))",
+   "blocker_after": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Memorandum explaining the Finance Bill matched, but its sector/company targets do not map to held ISINs (company_debt_mix))"
+  },
+  {
+   "mid": "MB0656",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (bank_",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (bank_"
+  },
+  {
+   "mid": "MB0657",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (compa",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (compa"
+  },
+  {
+   "mid": "MB0658",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: June 05, 2026 (2026-06-05) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: June 05, 2026 (2026-06-05) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0659",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: June 05, 2026 (2026-06-05) matched, but its sector/company targets do not map to held ISINs (capex_project))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: June 05, 2026 (2026-06-05) matched, but its sector/company targets do not map to held ISINs (capex_project))"
+  },
+  {
+   "mid": "MB0661",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: June 05, 2026 (2026-06-05) matched, but its sector/company targets do not map to held ISINs (company_fx_exposure))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: June 05, 2026 (2026-06-05) matched, but its sector/company targets do not map to held ISINs (company_fx_exposure))"
+  },
+  {
+   "mid": "MB0662",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)"
+  },
+  {
+   "mid": "MB0663",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: June 05, 2026 (2026-06-05) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: June 05, 2026 (2026-06-05) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0665",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-02-06) matched, but its sector/company targets do not map to held ISINs (macro_claim_target))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-02-06) matched, but its sector/company targets do not map to held ISINs (macro_claim_target))"
+  },
+  {
+   "mid": "MB0666",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Budget at a Glance matched, but its sector/company targets do not map to held ISINs (company_debt_mix))",
+   "blocker_after": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Budget at a Glance matched, but its sector/company targets do not map to held ISINs (company_debt_mix))"
+  },
+  {
+   "mid": "MB0667",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Budget at a Glance matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Budget at a Glance matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0668",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Budget at a Glance matched, but its sector/company targets do not map to held ISINs (order_intake))",
+   "blocker_after": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Budget at a Glance matched, but its sector/company targets do not map to held ISINs (order_intake))"
+  },
+  {
+   "mid": "MB0669",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Memorandum explaining the Finance Bill matched, but its sector/company targets do not map to held ISINs (capex_project))",
+   "blocker_after": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Memorandum explaining the Finance Bill matched, but its sector/company targets do not map to held ISINs (capex_project))"
+  },
+  {
+   "mid": "MB0670",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "rural_wage_series not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "rural_wage_series not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0671",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (bank_deposit_rate))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (bank_deposit_rate))"
+  },
+  {
+   "mid": "MB0672",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: April 9, 2025 (2025-04-09) matched, but its sector/company targets do not map to held ISINs (company_debt_mix))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: April 9, 2025 (2025-04-09) matched, but its sector/company targets do not map to held ISINs (company_debt_mix))"
+  },
+  {
+   "mid": "MB0675",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "company_cost_structure not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "company_cost_structure not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0676",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "company_debt_mix not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "company_debt_mix not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0677",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "bank_deposit_rate not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "bank_deposit_rate not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0678",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "industry_volume_data not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "industry_volume_data not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0680",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 5 to 7, 2025 (2025-02-21) matched, but its sector/company targets do not map to held ISINs (c",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 5 to 7, 2025 (2025-02-21) matched, but its sector/company targets do not map to held ISINs (c"
+  },
+  {
+   "mid": "MB0681",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Haryana: Haryana Budget 2025-26 matched, but its sector/company targets do not map to held ISINs (company_debt_mix))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_Haryana: Haryana Budget 2025-26 matched, but its sector/company targets do not map to held ISINs (company_debt_mix))"
+  },
+  {
+   "mid": "MB0682",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)"
+  },
+  {
+   "mid": "MB0683",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (compa",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (compa"
+  },
+  {
+   "mid": "MB0684",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0686",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0687",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0688",
+   "before": "BLOCKED_SCHEMA",
+   "after": "NOT_IN_DATA",
+   "blocker_before": "company_debt_mix not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0689",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "screen needs company_metric_series; that table is not held yet",
+   "blocker_after": "screen needs company_metric_series; that table is not held yet"
+  },
+  {
+   "mid": "MB0690",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0691",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "freight_rate_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "freight_rate_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0692",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0693",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (compa",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (compa"
+  },
+  {
+   "mid": "MB0694",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com"
+  },
+  {
+   "mid": "MB0695",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "customs_schedules not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "customs_schedules not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0696",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0697",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0698",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0699",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "capex_project not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "capex_project not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0700",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com"
+  },
+  {
+   "mid": "MB0701",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0702",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0703",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0704",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (cap",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (cap"
+  },
+  {
+   "mid": "MB0705",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "freight_rate_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "freight_rate_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0706",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0708",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0709",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "rainfall_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "rainfall_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0710",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c"
+  },
+  {
+   "mid": "MB0711",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (industry_capacity_pipeline))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (industry_capacity_pipeline))"
+  },
+  {
+   "mid": "MB0712",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0713",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "company_capacity_utilisation not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "company_capacity_utilisation not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0714",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0715",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "industry_capacity_pipeline not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "industry_capacity_pipeline not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0717",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0718",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0719",
+   "before": "BLOCKED_SCHEMA",
+   "after": "NOT_IN_DATA",
+   "blocker_before": "company_price_revision not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0720",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Economic_Survey: Economic Survey 2025-26 - chapters matched, but its sector/company targets do not map to held ISINs (macro_claim_target))",
+   "blocker_after": "hop failed: RIPPLE (policy Economic_Survey: Economic Survey 2025-26 - chapters matched, but its sector/company targets do not map to held ISINs (macro_claim_target))"
+  },
+  {
+   "mid": "MB0721",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "supply_chain_map not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "supply_chain_map not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0722",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no delivery % change rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no delivery % change rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0724",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0725",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no delivery % change rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no delivery % change rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0726",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0727",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0728",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "industry_volume_data not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "industry_volume_data not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0729",
+   "before": "BLOCKED_SCHEMA",
+   "after": "NOT_IN_DATA",
+   "blocker_before": "company_segment_pnl not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0730",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "company_cost_structure not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "company_cost_structure not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0732",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_state_daily; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (screen needs company_state_daily; that table is not held yet)"
+  },
+  {
+   "mid": "MB0735",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "industry_capacity_pipeline not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "industry_capacity_pipeline not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0736",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "company_debt_mix not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "company_debt_mix not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0737",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "capex_project not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "capex_project not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0739",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "capex_project not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "capex_project not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0745",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "promoter_pledge_event not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "promoter_pledge_event not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0747",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "screen needs company_state_daily; that table is not held yet",
+   "blocker_after": "screen needs company_state_daily; that table is not held yet"
+  },
+  {
+   "mid": "MB0749",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0750",
+   "before": "BLOCKED_SCHEMA",
+   "after": "NOT_IN_DATA",
+   "blocker_before": "capex_project not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0752",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 3 to 5, 2026 (2026-06-19) matched, but its sector/company targets do not map to held ISINs (compa",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 3 to 5, 2026 (2026-06-19) matched, but its sector/company targets do not map to held ISINs (compa"
+  },
+  {
+   "mid": "MB0753",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (bank_",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 4 to 6, 2025 (2025-06-20) matched, but its sector/company targets do not map to held ISINs (bank_"
+  },
+  {
+   "mid": "MB0754",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Memorandum explaining the Finance Bill matched, but its sector/company targets do not map to held ISINs (company_debt_mix))",
+   "blocker_after": "hop failed: RIPPLE (policy Union_Budget: Union Budget FY2026-27 - Memorandum explaining the Finance Bill matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0756",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Nagaland: Nagaland Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_Nagaland: Nagaland Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0759",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)"
+  },
+  {
+   "mid": "MB0760",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (ord",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (ord"
+  },
+  {
+   "mid": "MB0761",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVENT (no event row around 2026-10-14; price moved -1.65% on 2026-10-15)",
+   "blocker_after": "hop failed: EVENT (no event row around 2026-10-14; price moved -1.65% on 2026-10-15)"
+  },
+  {
+   "mid": "MB0762",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "company_debt_mix not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "company_debt_mix not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0763",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com"
+  },
+  {
+   "mid": "MB0764",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0765",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "policy RBI_Monetary_Policy: RBI Full Document (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_debt_mix)",
+   "blocker_after": "policy RBI_Monetary_Policy: RBI Full Document (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit)"
+  },
+  {
+   "mid": "MB0766",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c"
+  },
+  {
+   "mid": "MB0767",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: EVENT (event store unavailable and no price window)",
+   "blocker_after": "hop failed: EVENT (event store unavailable and no price window)"
+  },
+  {
+   "mid": "MB0769",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_debt_mix))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0772",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (bank_loan_book_repricing))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (bank_loan_book_repricing))"
+  },
+  {
+   "mid": "MB0773",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)"
+  },
+  {
+   "mid": "MB0774",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0775",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Assam: Assam Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_Assam: Assam Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0776",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)",
+   "blocker_after": "hop failed: SCREEN (no window return % rows for the asked universe between 2099-12-21 and 2099-12-31)"
+  },
+  {
+   "mid": "MB0777",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 3 to 5, 2026 (2026-06-19) matched, but its sector/company targets do not map to held ISINs (compa",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 3 to 5, 2026 (2026-06-19) matched, but its sector/company targets do not map to held ISINs (compa"
+  },
+  {
+   "mid": "MB0778",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)"
+  },
+  {
+   "mid": "MB0779",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-06-05) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-06-05) matched, but its sector/company targets do not map to held ISINs (company_cost_structure))"
+  },
+  {
+   "mid": "MB0780",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Assam: Assam Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (competitor_action))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_Assam: Assam Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (competitor_action))"
+  },
+  {
+   "mid": "MB0782",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0783",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, February 4 to 6, 2026 (2026-02-20) matched, but its sector/company targets do not map to held ISINs (c"
+  },
+  {
+   "mid": "MB0784",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "cbic_notifications not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "cbic_notifications not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0785",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-06-05) matched, but its sector/company targets do not map to held ISINs (macro_claim_target))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Full Document (2026-06-05) matched, but its sector/company targets do not map to held ISINs (macro_claim_target))"
+  },
+  {
+   "mid": "MB0786",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)"
+  },
+  {
+   "mid": "MB0787",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 3 to 5, 2026 (2026-06-19) matched, but its sector/company targets do not map to held ISINs (compa",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, June 3 to 5, 2026 (2026-06-19) matched, but its sector/company targets do not map to held ISINs (compa"
+  },
+  {
+   "mid": "MB0788",
+   "before": "BLOCKED_TOOL",
+   "after": "BLOCKED_TOOL",
+   "blocker_before": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31",
+   "blocker_after": "commodity_price_daily not held: no window return % rows for the asked universe between 2099-12-21 and 2099-12-31"
+  },
+  {
+   "mid": "MB0789",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_MPC_Minutes: RBI Minutes of the Monetary Policy Committee Meeting, August 3 to 5, 2026 (2026-08-19) matched, but its sector/company targets do not map to held ISINs (com"
+  },
+  {
+   "mid": "MB0790",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_segment_pnl))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_West_Bengal: West Bengal Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0791",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0794",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0796",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "screen needs company_metric_series; that table is not held yet",
+   "blocker_after": "screen needs company_metric_series; that table is not held yet"
+  },
+  {
+   "mid": "MB0799",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Secretary, Department of Urban Development, MoHUA chairs 10th meeting of CSMC under PMAY-U 2.0 matched, but its sector/company targets do not map to held ISINs (event_calend",
+   "blocker_after": "hop failed: RIPPLE (policy Secretary, Department of Urban Development, MoHUA chairs 10th meeting of CSMC under PMAY-U 2.0 matched, but its sector/company targets do not map to held ISINs (event_calend"
+  },
+  {
+   "mid": "MB0804",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_segment_pnl))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: October 7, 2026 (2026-10-07) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0805",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy Secretary, Department of Urban Development, MoHUA chairs 10th meeting of CSMC under PMAY-U 2.0 matched, but its sector/company targets do not map to held ISINs (company_capa",
+   "blocker_after": "hop failed: RIPPLE (policy Secretary, Department of Urban Development, MoHUA chairs 10th meeting of CSMC under PMAY-U 2.0 matched, but its sector/company targets do not map to held ISINs (company_capa"
+  },
+  {
+   "mid": "MB0806",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: August 5, 2026 (2026-08-05) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy RBI_Monetary_Policy: RBI Governor\u2019s Statement: August 5, 2026 (2026-08-05) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  },
+  {
+   "mid": "MB0808",
+   "before": "BLOCKED_SCHEMA",
+   "after": "BLOCKED_SCHEMA",
+   "blocker_before": "screen needs company_metric_series; that table is not held yet",
+   "blocker_after": "screen needs company_metric_series; that table is not held yet"
+  },
+  {
+   "mid": "MB0809",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)",
+   "blocker_after": "hop failed: SCREEN (screen needs company_metric_series; that table is not held yet)"
+  },
+  {
+   "mid": "MB0810",
+   "before": "PARTIAL",
+   "after": "PARTIAL",
+   "blocker_before": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))",
+   "blocker_after": "hop failed: RIPPLE (policy State_Budget_Tamil_Nadu: Tamil Nadu Budget Analysis FY2026-27 (PRS) matched, but its sector/company targets do not map to held ISINs (company_sector_pit))"
+  }
+ ]
+}
