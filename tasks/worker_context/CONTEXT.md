@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T05:42:19+05:30 · git HEAD: `dba7712` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T05:52:01+05:30 · git HEAD: `6863c3d` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -16,7 +16,7 @@ reality_engine/
   pilot/ (5 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
   pipeline/ (19 py) — Pipeline runners.
   processing/ (45 py) — Document and image processing components.
-  query/ (18 py) — Query layer v1 — sub-question decomposition + router + planners + answer assembly.
+  query/ (19 py) — Query layer v1 — sub-question decomposition + router + planners + answer assembly.
   reporting/ (3 py) — Reporting module for Reality Engine.
   scripts/ (149 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
@@ -274,6 +274,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/query/compute.py` — Pure arithmetic for the query layer: no I/O, no globals.
 - `reality_engine/query/ctx.py` — Query context: read-only connections and the tool handles the planners use.
 - `reality_engine/query/decompose.py` — Split one master-bank case into sub-questions, deterministically.
+- `reality_engine/query/gate.py` — Entity / ask / period gate for the answer contract (2026-10-29).
 - `reality_engine/query/rerank.py` — Cheap local reranker for EVIDENCE passages (no embeddings, no network).
 - `reality_engine/query/router.py` — Deterministic router: a master-bank case -> planner chain + slots.
 - `reality_engine/query/state.py` — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company …
