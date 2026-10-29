@@ -5,8 +5,12 @@ is held (``macro_claim_target`` in the live DB, or the pilot DB named by
 ``REALITY_MACRO_PILOT_DB``), stage 2 takes the claim's own curated targets —
 sector / basic industry / ISIN / theme — instead of re-parsing the free-text
 ``policy_events.sectors``; without it the planner falls back to the text parse so
-nothing regresses.  Stage 3 (cost/segment transmission) is not held yet, so a
-chain that needs it says which table is missing instead of inventing the link.
+nothing regresses.  The sector hop reads the T1 ``company_sector_pit`` as of the
+decision day and falls back to today's live classification.  Every row is dated at
+the window it is about and filtered through ``in_period``, so a policy or price
+from another period is dropped rather than reported.  Stage 3 (cost/segment
+transmission) is not held yet, so a chain that needs it says which table is
+missing instead of inventing the link.
 """
 from __future__ import annotations
 
@@ -16,7 +20,7 @@ from typing import Any
 
 from reality_engine.query import compute
 
-from . import envelope, fmt_num, terms_clause
+from . import envelope, fmt_num, in_period, terms_clause
 
 CHECKED = ["equity_intelligence.policy_events", "equity_intelligence.master_companies",
            "equity_intelligence.daily_price_delivery", "macro_claim_target"]
@@ -299,6 +303,36 @@ def _company_rows(ctx: Any, sql: str, args: tuple) -> list[dict]:
         return []
 
 
+def _sector_targets(ctx: Any, kind: str, ident: str, as_of: str) -> list[dict[str, Any]]:
+    """Held ISINs in a sector/basic industry at ``as_of``: the PIT store, else live.
+
+    ``company_sector_pit`` is piecewise-constant (``valid_from``/``valid_to``), so a
+    label adopted after the decision day is not used before it.  A root without the
+    T1 build falls back to today's classification, which is stated as degraded.
+    """
+    column = "basic_industry" if kind == "basic_industry" else "sector"
+    try:
+        rows = ctx.rows(
+            "market_state",
+            f"SELECT isin FROM company_sector_pit WHERE {column} = ? "
+            "AND valid_from <= ? AND (valid_to IS NULL OR valid_to >= ?) "
+            "ORDER BY isin LIMIT ?", (ident, as_of, as_of, MAX_TARGETS))
+        if rows:
+            return rows
+    except Exception:  # noqa: BLE001 - the T1 store is optional in a fixture root
+        pass
+    rows = _company_rows(
+        ctx,
+        f"SELECT isin, symbol AS nse_symbol FROM company_industry WHERE {column} = ? "
+        "LIMIT ?", (ident, MAX_TARGETS))
+    if not rows and kind == "sector":
+        rows = _company_rows(
+            ctx, "SELECT isin, nse_symbol, company_name FROM master_companies "
+                 "WHERE is_active=1 AND (sector = ? OR industry = ?) LIMIT ?",
+            (ident, ident, MAX_TARGETS))
+    return rows
+
+
 def _targets_from_claims(ctx: Any, rows: list[dict], as_of: str) -> tuple[list[dict], list[str]]:
     """macro_claim_target -> held ISINs (sector/basic_industry/isin/theme)."""
     found: dict[str, dict] = {}
@@ -315,20 +349,8 @@ def _targets_from_claims(ctx: Any, rows: list[dict], as_of: str) -> tuple[list[d
         kind, ident = str(target.get("target_kind") or ""), str(target.get("target_id") or "")
         if kind == "isin":
             add({"isin": ident}, kind, ident)
-        elif kind == "sector":
-            for row in _company_rows(
-                    ctx, "SELECT isin, symbol AS nse_symbol FROM company_industry "
-                         "WHERE sector=? LIMIT ?", (ident, MAX_TARGETS)):
-                add(row, kind, ident)
-            for row in _company_rows(
-                    ctx, "SELECT isin, nse_symbol, company_name FROM master_companies "
-                         "WHERE is_active=1 AND (sector=? OR industry=?) LIMIT ?",
-                    (ident, ident, MAX_TARGETS)):
-                add(row, kind, ident)
-        elif kind == "basic_industry":
-            for row in _company_rows(
-                    ctx, "SELECT isin, symbol AS nse_symbol FROM company_industry "
-                         "WHERE basic_industry=? LIMIT ?", (ident, MAX_TARGETS)):
+        elif kind in ("sector", "basic_industry"):
+            for row in _sector_targets(ctx, kind, ident, as_of):
                 add(row, kind, ident)
         elif kind == "theme":
             try:
@@ -349,12 +371,10 @@ def _targets_from_claims(ctx: Any, rows: list[dict], as_of: str) -> tuple[list[d
     return list(found.values()), notes
 
 
-def _market(ctx: Any, isins: list[str], anchor: str, as_of: str) -> dict[str, float]:
+def _market(ctx: Any, isins: list[str], start: str, end: str) -> dict[str, float]:
     if not isins:
         return {}
     try:
-        start = (date.fromisoformat(anchor) - timedelta(days=5)).isoformat()
-        end = min((date.fromisoformat(anchor) + timedelta(days=10)).isoformat(), as_of)
         marks = ",".join("?" * len(isins))
         rows = ctx.rows(
             "equity_intelligence",
@@ -393,14 +413,34 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                             nid_reason=f"BLOCKED_SCHEMA: {gate_table}")
         return envelope("RIPPLE", ok=False, why="no_doc", checked=CHECKED,
                         detail=detail, nid_reason=detail)
-    policy = policies[0]
-    claim_rows, claim_db = _claim_target_rows(ctx, policy["id"], as_of)
-    claim_meta = _claim_meta(ctx, claim_db, policy["id"]) if claim_db else None
-    claim_targets, claim_notes = (_targets_from_claims(ctx, claim_rows, as_of)
-                                  if claim_rows else ([], []))
-    targets = claim_targets or _targets(ctx, policy)
-    target_source = (f"macro_claim_target ({claim_db})" if claim_targets
-                     else "policy_events.sectors")
+    # A trigger whose targets map to no held ISIN is not the chain the ask wants:
+    # keep the next-best trigger instead of answering "schema gap" on the first one.
+    policy = claim_meta = None
+    targets: list[dict[str, Any]] = []
+    claim_notes: list[str] = []
+    target_source = ""
+    for candidate in policies:
+        rows, db = _claim_target_rows(ctx, candidate["id"], as_of)
+        meta = _claim_meta(ctx, db, candidate["id"]) if db else None
+        mapped, notes = _targets_from_claims(ctx, rows, as_of) if rows else ([], [])
+        found = mapped or _targets(ctx, candidate)
+        if not found:
+            continue
+        policy, claim_meta, targets = candidate, meta, found
+        claim_notes = notes
+        target_source = (f"macro_claim_target ({db})" if mapped else "policy_events.sectors")
+        break
+    if policy is None:
+        policy = policies[0]
+        rows, db = _claim_target_rows(ctx, policy["id"], as_of)
+        claim_notes = (_targets_from_claims(ctx, rows, as_of)[1] if rows else [])
+        missing = gate_table or ("macro_claim_target" if rows else "company_sector_pit")
+        detail = (f"policy {policy.get('title') or policy.get('policy_name')} matched, but its "
+                  f"sector/company targets do not map to held ISINs ({missing})")
+        if claim_notes:
+            detail += "; " + "; ".join(claim_notes[:2])
+        return envelope("RIPPLE", ok=False, why="schema", checked=CHECKED, gap=missing,
+                        detail=detail, nid_reason=detail)
     # The market window anchors on the parsed effective date only when the parse is
     # precise enough to trust; a prose date ("end of 2026") falls back to publication,
     # which is the day the market actually learns of the policy.
@@ -409,39 +449,60 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     if claim_meta and claim_meta.get("effective_date"):
         effective = str(claim_meta["effective_date"])[:10]
         confidence = float(claim_meta.get("effective_pit_conf") or 0.0)
-        if effective <= as_of and confidence >= 0.7:
+        if published <= effective <= as_of and confidence >= 0.7:
             anchor, anchor_conf = effective, confidence
-    moves = _market(ctx, [t["isin"] for t in targets], anchor, as_of)
-    if not targets:
-        missing = gate_table or ("macro_claim_target" if claim_rows else "company_sector_pit")
-        detail = (f"policy {policy.get('title') or policy.get('policy_name')} matched, but its "
-                  f"sector/company targets do not map to held ISINs ({missing})")
-        if claim_notes:
-            detail += "; " + "; ".join(claim_notes[:2])
-        return envelope("RIPPLE", ok=False, why="schema", checked=CHECKED, gap=missing,
-                        detail=detail, nid_reason=detail)
+    # An ask that names its own window is about that window's move, not the policy's
+    # publication day: measure the window the router resolved, with a few sessions of
+    # baseline before it, so the row it returns is dated inside the ask.
+    basis = str(slots.get("period_basis") or "")
+    asked_from = str(slots.get("date_from") or "")[:10]
+    asked_to = str(slots.get("date_to") or "")[:10]
+    windowed = basis in ("named date", "named dates", "month", "month span",
+                         "quarter end", "fiscal year end", "quarter span",
+                         "fiscal year span", "since")
+    if windowed and len(asked_from) == 10:
+        period_label = asked_from
+        start = (date.fromisoformat(asked_from) - timedelta(days=5)).isoformat()
+        end = min(asked_to if len(asked_to) == 10 and asked_to >= asked_from else asked_from,
+                  as_of)
+    else:
+        period_label = anchor
+        start = (date.fromisoformat(anchor) - timedelta(days=5)).isoformat()
+        end = min((date.fromisoformat(anchor) + timedelta(days=10)).isoformat(), as_of)
+    moves = _market(ctx, [t["isin"] for t in targets], start, end)
+    names = {t["isin"]: t["nse_symbol"] for t in targets}
+    ranked = sorted(moves.items(), key=lambda item: item[1], reverse=True)
     detail = (f"trigger: {policy.get('policy_name') or policy.get('title')} "
-              f"(known {str(policy.get('published_at'))[:10]}, effective {anchor}"
+              f"(known {published}, effective {anchor}"
               + (f" pit_conf {anchor_conf:.2f}" if anchor_conf else "")
               + f"); {len(targets)} held target(s) via {target_source}")
-    ranked = sorted(moves.items(), key=lambda item: item[1], reverse=True)
     if ranked:
-        names = {t["isin"]: t["nse_symbol"] for t in targets}
         detail += "; market: " + ", ".join(f"{names.get(i) or i} {fmt_num(v)}%"
                                            for i, v in ranked[:4])
     degraded = ["transmission hop (input share / pass-through) is not held: "
                 "company_cost_structure, company_segment_pnl"]
     if claim_notes:
         degraded.append("claim target map: " + "; ".join(claim_notes[:3]))
-    ok = True
+    # Rows are dated at the window they are about, so a policy/price from another
+    # period is dropped here instead of being reported as this period's answer.
+    rows = [{"ref": f"policy_events:{policy['id']}", "known_at": published,
+             "period": published, "item": "policy",
+             "title": policy.get("title") or policy.get("policy_name")}] + [
+        {"ref": f"daily_price_delivery:{isin}", "known_at": end, "period": period_label,
+         "isin": isin, "item": "window return", "return_pct": value, "value": value}
+        for isin, value in ranked[:10]]
+    kept = in_period(rows, slots, hop="RIPPLE")
+    if len(kept) < len(rows):
+        degraded.append(f"{len(rows) - len(kept)} row(s) outside the asked period were "
+                        "dropped")
+    if not kept:
+        detail = (f"policy {policy.get('policy_name') or policy.get('title')} matched with "
+                  f"{len(targets)} held target(s), but no row about it falls in the asked "
+                  f"period ({asked_from}..{asked_to or asked_from})")
+        return envelope("RIPPLE", ok=False, why="no_doc", checked=CHECKED, degraded=degraded,
+                        detail=detail, nid_reason=detail)
     return envelope(
-        "RIPPLE", ok=ok, gap=None,
-        rows=[{"ref": f"policy_events:{policy['id']}", "known_at": str(policy["published_at"])[:10],
-               "title": policy.get("title")}] +
-              [{"ref": f"daily_price_delivery:{isin}", "known_at": as_of, "return_pct": value}
-               for isin, value in ranked[:10]],
-        provenance=[{"ref": f"policy_events:{policy['id']}",
-                     "known_at": str(policy["published_at"])[:10]}],
+        "RIPPLE", ok=True, gap=None, rows=kept,
+        provenance=[{"ref": f"policy_events:{policy['id']}", "known_at": published}],
         pit=f"claim published_at <= {as_of}; market rows date <= {as_of}", checked=CHECKED,
-        degraded=degraded, detail=detail,
-        nid_reason=None if ok else detail)
+        degraded=degraded, detail=detail)
