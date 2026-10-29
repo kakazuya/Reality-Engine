@@ -173,14 +173,16 @@ def _chunks_v3_search(ctx: Any, slots: dict[str, Any], as_of: str,
         tag_sql = " JOIN tagged ON tagged.chunk_id = hits.chunk_id"
     sql = (f"WITH {', '.join(ctes)} "
            f"SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, "
-           f"c.speaker_role, c.body, c.header FROM hits{tag_sql} "
+           f"c.speaker_role, c.body, c.header, c.isin, c.symbol_at_time, c.fiscal_period "
+           f"FROM hits{tag_sql} "
            f"JOIN chunk c ON c.chunk_id = hits.chunk_id "
            f"WHERE {' AND '.join(where)} ORDER BY hits.score LIMIT ?")
     args = [match] + list(tags or []) + params + [limit]
     rows = con.execute(sql, args).fetchall()
     return [{"store": "chunks_v3", "doc_id": row[0], "doc_type": row[1],
              "date": row[2], "page": row[3], "section": row[4], "speaker": row[5],
-             "speaker_role": row[6], "quote": row[7] or "", "header": row[8] or ""}
+             "speaker_role": row[6], "quote": row[7] or "", "header": row[8] or "",
+             "isin": row[9], "symbol": row[10], "period": row[11]}
             for row in rows]
 
 
@@ -484,7 +486,9 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 return envelope(
                     "EVIDENCE", ok=True,
                     rows=[{"ref": f"page:{doc.get('doc_id')}#{res.get('page')}",
-                           "known_at": doc.get("date") or as_of}],
+                           "known_at": doc.get("date") or as_of,
+                           "quote": (res.get("text") or "")[:300],
+                           "doc_type": doc.get("doc_type"), "page": res.get("page")}],
                     provenance=[{"ref": f"doc_page:{doc.get('doc_id')}",
                                  "known_at": doc.get("date") or as_of}],
                     pit=f"document known_at <= {as_of}", checked=res.get("checked") or CHECKED,
@@ -525,7 +529,12 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                     return envelope(
                         "EVIDENCE", ok=True,
                         rows=[{"ref": f"chunks_v3:{p.get('doc_id')}#{p.get('page')}",
-                               "known_at": p.get("date")} for p in chosen],
+                               "known_at": p.get("date"), "date": p.get("date"),
+                               "doc_type": p.get("doc_type"), "page": p.get("page"),
+                               "quote": (p.get("quote") or "")[:300],
+                               "section": p.get("section"), "isin": p.get("isin"),
+                               "symbol": p.get("symbol"), "period": p.get("period")}
+                              for p in chosen],
                         provenance=[{"ref": f"chunks_v3:{p.get('doc_id')}#{p.get('page')}",
                                      "known_at": p.get("date")} for p in chosen],
                         pit=f"chunk known_at <= {as_of} pushed into the FTS + filter SQL",
