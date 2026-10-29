@@ -39,6 +39,8 @@ sys.path.insert(0, str(REPO))
 from reality_engine.query.answer import (  # noqa: E402
     METRIC_SYNONYMS, evidence_matches, metric_matches)
 from reality_engine.query.decompose import decompose, sub_case  # noqa: E402
+from reality_engine.query.gate import (  # noqa: E402
+    asked_concepts, gate_hop, gate_run, key_terms)
 from reality_engine.query.router import named_document, period_bounds, route  # noqa: E402
 
 WINDOW_DAYS = 3
@@ -127,6 +129,44 @@ def _evidence(row: dict[str, Any]) -> list[str]:
     return [str(item) for item in (row.get("evidence") or [])]
 
 
+def _gate_of(case: dict, row: dict[str, Any]) -> tuple[list[str], int]:
+    """Recompute the entity/ask/period gate from the returned rows.
+
+    The stored ``gate`` block carries the rows the planner actually returned
+    (capped at 8 per hop) and the slots the run was routed with.  The flags the
+    planner wrote are *not* read: ``gate_hop``/``gate_run`` recompute them, and a
+    disagreement is counted so the report can show the planner is not trusted.
+    """
+    runs = row.get("gate") or []
+    if not runs:
+        return [], 0
+    reasons: list[str] = []
+    mismatches = 0
+    for run in runs:
+        slots = dict(run.get("slots") or {})
+        slots.setdefault("question", case.get("question"))
+        text = str(run.get("text") or "")
+        sub = {"text": text, "period": case.get("period"),
+               "named_document": named_document({"question": text})}
+        concepts = asked_concepts(f"{text} {slots.get('question') or ''}")
+        terms = [] if concepts else key_terms(text)
+        hops = []
+        for hop in run.get("hops") or []:
+            stored = {key: hop.get(key) for key in
+                      ("entity_match", "ask_match", "period_match")}
+            recomputed = (gate_hop(hop, slots, concepts, terms, sub["named_document"])
+                          if hop.get("ok") and not hop.get("na") else dict(hop))
+            if any(recomputed.get(key) != stored.get(key) for key in stored):
+                mismatches += 1
+            hops.append(recomputed)
+        reason = gate_run(hops, sub, concepts, terms)
+        if reason:
+            reasons.append(reason)
+        if (run.get("gate") or None) != reason:
+            mismatches += 1
+    return reasons, mismatches
+
+
 def _claims(row: dict[str, Any]) -> list[dict[str, Any]]:
     """Numeric answer rows: item / value / unit / store / day.
 
@@ -160,6 +200,17 @@ def _claims(row: dict[str, Any]) -> list[dict[str, Any]]:
                     continue
                 out.append({"item": str(fact.get("item") or ""), "value": fact.get("value"),
                             "unit": str(fact.get("unit") or ""), "store": str(fact.get("store")),
+                            "day": str(fact.get("known_at") or "")[:10]})
+    for run in row.get("gate") or []:
+        for hop in run.get("hops") or []:
+            if hop.get("hop") != "FACTS":
+                continue
+            for fact in hop.get("rows") or []:
+                if fact.get("value") is None:
+                    continue
+                out.append({"item": str(fact.get("item") or ""), "value": fact.get("value"),
+                            "unit": str(fact.get("unit") or ""),
+                            "store": str(fact.get("store") or ""),
                             "day": str(fact.get("known_at") or "")[:10]})
     seen = set()
     unique = []
@@ -223,9 +274,22 @@ def _return_entities(text: str) -> list[str]:
 # --------------------------------------------------------------------------
 # rules
 # --------------------------------------------------------------------------
+def _runs_of(row: dict[str, Any]) -> list[dict[str, Any]]:
+    """The per-sub runs of a result row (old ``subs`` or the gate record)."""
+    runs = row.get("subs") or []
+    if runs:
+        return runs
+    out = []
+    for run in row.get("gate") or []:
+        out.append({"index": run.get("index"), "text": run.get("text"),
+                    "answered": not run.get("gate"), "hops": run.get("hops") or [],
+                    "metric": None, "entities": []})
+    return out
+
+
 def _subs_for(case: dict, row: dict[str, Any]) -> list[dict[str, Any]]:
     """The decomposition the row was produced with (v1 runs), else recompute."""
-    runs = row.get("subs") or []
+    runs = _runs_of(row)
     if runs:
         return [{"index": run["index"], "text": run.get("text") or "",
                  "metric": run.get("metric"),
@@ -240,7 +304,7 @@ def _coverage(case: dict, row: dict[str, Any]) -> tuple[list[dict[str, Any]], li
     subs = _subs_for(case, row)
     text = _text(row)
     low = text.lower()
-    runs = row.get("subs") or []
+    runs = _runs_of(row)
     hops_ok = set(row.get("hops_ok") or [])
     reasons: list[str] = []
     covered: list[dict[str, Any]] = []
@@ -460,6 +524,11 @@ def grade_row(case: dict, row: dict[str, Any], index: DocIndex | None = None,
         graded["strict_grade"] = "WRONG"
         graded["strict_reasons"] = reasons
         return graded
+    gate_reasons, gate_mismatch = _gate_of(case, row)
+    graded["gate_recomputed"] = gate_reasons
+    graded["gate_flag_mismatches"] = gate_mismatch
+    if gate_reasons:
+        reasons.extend(gate_reasons)
     grade = "ANSWERED" if bench == "ANSWERED" else "PARTIAL"
     if named_partial:
         reasons.append(named_partial)
@@ -628,12 +697,16 @@ def build_report(v0: list[dict[str, Any]], v1: list[dict[str, Any]],
     for row in v0 + v1:
         for reason in row.get("strict_reasons") or []:
             for key in ("sub-question", "different metric", "follow-up was",
-                        "exists, but", "stale:", "unrelated row"):
+                        "exists, but", "stale:", "unrelated row", "GATE"):
                 if key in reason:
                     counts[key] += 1
                     break
+        row["gate_flag_mismatches"] = row.get("gate_flag_mismatches") or 0
     body = [[key, value] for key, value in counts.most_common()]
     lines.append(_table(["rule", "rows"], body or [["none", 0]]))
+    mismatched = sum(1 for row in v1 if row.get("gate_flag_mismatches"))
+    lines.append(f"\nGate rows recomputed by this grader: {len(v1)}; rows where the "
+                 f"planner's own flag disagreed with the recomputation: {mismatched}.")
     lines.append("\nA row with no strict reason but a PARTIAL grade is the bench's own hop "
                  "failure (the strict rules added nothing); the blocker column names it.")
     return "\n".join(lines) + "\n"

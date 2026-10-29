@@ -192,8 +192,14 @@ def period_bounds(case: dict) -> tuple[str | None, str | None, str]:
         return min(dates), max(dates), "named dates"
     if len(dates) == 1:
         return dates[0], dates[0], "named date"
+    month_re = rf"{_MONTH_RE}[a-z]*[\s\-]+(\d{{4}})"
     months = [(int(m.group(2)), MONTHS[m.group(1).lower()[:3]])
-              for m in re.finditer(rf"{_MONTH_RE}[a-z]*[\s\-]+(\d{{4}})", text, re.I)]
+              for m in re.finditer(month_re, period, re.I)]
+    if not months:
+        # The case's own period field wins; a question that merely mentions a
+        # comparison month ("Sep-2026 vs Feb-2026") must not widen the window.
+        months = [(int(m.group(2)), MONTHS[m.group(1).lower()[:3]])
+                  for m in re.finditer(month_re, question, re.I)]
     if len(months) >= 2:
         (y1, m1), (y2, m2) = months[0], months[-1]
         last = {1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30,
@@ -214,6 +220,14 @@ def period_bounds(case: dict) -> tuple[str | None, str | None, str]:
     if as_of:
         end = date.fromisoformat(as_of)
         low = text.lower()
+        if re.search(r"\b(?:last|previous|prior)\s+quarter\b", low):
+            # "last quarter" is the most recent quarter that has closed: the ask
+            # is a dated quarter, not an open-ended lookback.
+            ends = [f"{end.year - 1}-12-31", f"{end.year}-03-31", f"{end.year}-06-30",
+                    f"{end.year}-09-30", f"{end.year}-12-31"]
+            closed = [day for day in ends if day < as_of]
+            if closed:
+                return closed[-1], closed[-1], "quarter end"
         if re.search(r"\bytd\b|year[- ]to[- ]date", low):
             return f"{as_of[:4]}-01-01", as_of, "year to date"
         if re.search(r"52[- ]week", low):

@@ -28,6 +28,8 @@ from typing import Any
 
 from .ctx import Ctx
 from .decompose import decompose, sub_case
+from .gate import (METRIC_SYNONYMS, asked_concepts, evidence_matches, gate_hop,
+                   gate_run, key_terms, metric_matches)
 from .planners import load_planners
 from .router import period_bounds, route
 
@@ -37,70 +39,8 @@ from .router import period_bounds, route
 HOP_WORKERS = 4
 _POOL = ThreadPoolExecutor(max_workers=HOP_WORKERS, thread_name_prefix="qhop")
 
-# canonical metric -> (include phrases, exclude phrases).  Phrases are matched
-# as substrings of the normalised row text; the excludes stop the trap the v0
-# bench hit ("Net Promoter Score" is not promoter holding, a "sales volume drop"
-# is not revenue).
-METRIC_SYNONYMS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
-    "revenue": (("revenue", "turnover", "sales", "income from operations", "topline"),
-                ("sales volume", "volume drop", "growth in volume")),
-    "pat": (("pat", "profit after tax", "net profit", "net income", "profit", "bottom line"),
-            ("margin", "operating profit", "profit before tax")),
-    "ebitda": (("ebitda", "operating profit"), ("margin",)),
-    "margin": (("margin", "opm"), ()),
-    "eps": (("eps", "earnings per share"), ()),
-    "net_npa": (("npa", "non performing", "non-performing"), ("net worth",)),
-    "promoter": (("promoter", "shareholding", "stake", "holding pattern", "pledge",
-                  "promoter holding", "public holding", "holding %"),
-                 ("net promoter", "nps", "promoter score", "total shareholding pattern",
-                  "shares outstanding", "paid-up", "paid up", "share capital")),
-    "facilities": (("facilit", "plant", "factory", "factories", "manufacturing unit"),
-                   ("capacity", "capex", "installation")),
-    "capacity": (("capacity", "capacities", "utilisation", "utilization", "mtpa", "tpa"),
-                 ("capacity utilisation of the plant",)),
-    "order_book": (("order book", "orderbook", "order intake", "orders"), ()),
-    "dso": (("receivable", "debtor", "collection", "dso"), ()),
-    "cfo": (("cash flow", "cfo", "operating cash"), ()),
-    "segment": (("segment", "business mix", "vertical", "division"), ()),
-    "return": (("return", "close", "rose", "fell", "gained", "dropped", "moved",
-                "performance", "cagr", "excess"), ("dividend", "total return")),
-    "cagr": (("cagr", "annualised", "annualized"), ()),
-    "range": (("high", "low", "range", "support", "resistance", "52-week", "52 week", "ytd"), ()),
-    "gap": (("gap",), ()),
-    "rsi": (("rsi", "oversold", "overbought"), ()),
-    "delivery": (("delivery", "delivered"), ()),
-    "valuation": (("valuation", "pe", "p/e", "ev/ebitda", "ev/sales", "multiple", "premium",
-                   "discount", "market cap"), ()),
-    "guidance": (("guidance", "guided", "outlook", "expects", "target"), ()),
-    "audit": (("audit", "auditor", "opinion", "qualified", "qualification"), ()),
-}
-
-
-def _norm(text: Any) -> str:
-    return re.sub(r"[^a-z0-9%./ ]+", " ", str(text or "").lower())
-
-
-def metric_matches(metric: str | None, text: Any) -> bool:
-    """Does ``text`` belong to the asked metric family?  Unknown metric -> True.
-
-    Look-alike phrases are stripped first, not used as a veto: a slide that says
-    "Manufacturing Facilities ... Washing Capacity" is a facilities passage, a
-    transcript that says "margins ... ebitda margins" is an EBITDA passage, and
-    "Net Promoter Score (NPS)" stops being a promoter-holding row once "net
-    promoter" and "nps" are removed.
-    """
-    if not metric or metric not in METRIC_SYNONYMS:
-        return True
-    include, exclude = METRIC_SYNONYMS[metric]
-    low = _norm(text)
-    for word in exclude:
-        low = low.replace(word, " ")
-    return any(word in low for word in include)
-
-
-def evidence_matches(metric: str | None, text: Any) -> bool:
-    """Same family test for EVIDENCE quotes (long text, same stripping rule)."""
-    return metric_matches(metric, text)
+__all__ = ["answer", "filter_hop", "hop_results", "metric_matches", "evidence_matches",
+           "row_matches", "METRIC_SYNONYMS", "pit_audit", "assemble"]
 
 
 def row_matches(metric: str | None, row: dict[str, Any]) -> bool:
@@ -300,6 +240,12 @@ def _prepare_sub(case: dict, sub: dict[str, Any], picked: dict[str, Any] | None,
 
 def _run_record(index: int, sub: dict[str, Any], plan: dict[str, Any],
                 variant: dict[str, Any], hops: list[dict[str, Any]]) -> dict[str, Any]:
+    slots = plan["slots"]
+    concepts = asked_concepts(f"{sub.get('text') or ''} {slots.get('question') or ''}")
+    terms = [] if concepts else key_terms(str(sub.get("text") or ""))
+    named = sub.get("named_document")
+    hops = [gate_hop(hop, slots, concepts, terms, named) for hop in hops]
+    gate = gate_run(hops, sub, concepts, terms)
     body = [hop for hop in hops if hop["hop"] != "resolve"]
     answered = [hop for hop in body if hop["ok"] and not hop["na"]]
     identity_only = bool(body) and all(hop["na"] for hop in body) and any(
@@ -311,9 +257,15 @@ def _run_record(index: int, sub: dict[str, Any], plan: dict[str, Any],
     if (answered or identity_only) and bad:
         detail += " | MISSING: " + "; ".join(
             f"{hop['hop']}: {hop.get('detail')}" for hop in bad)
+    if gate:
+        detail += (" | MISSING: " if detail else " | ") + gate
     return {"index": index, "text": sub["text"],
             "chain": plan["chain"], "hops": hops,
-            "answered": bool(answered or identity_only), "detail": detail,
+            "answered": bool(answered or identity_only) and not gate, "detail": detail,
+            "gate": gate, "ask_concepts": concepts,
+            "slots": {k: slots.get(k) for k in (
+                "isin", "symbol", "symbols", "period", "period_basis",
+                "date_from", "date_to")},
             "metric": sub.get("metric"), "steps": sub.get("steps") or [],
             "entities": list(variant.get("entities") or [])}
 
@@ -374,9 +326,11 @@ def answer(case: dict, ctx: Ctx | None = None, close: bool = True) -> dict[str, 
                 if run["answered"]:
                     parts.append(label + run["detail"])
                 else:
-                    parts.append(f"{label}MISSING: " + "; ".join(
+                    missing = "; ".join(
                         f"{hop['hop']}: {hop.get('detail')}"
-                        for hop in run["hops"] if not hop["ok"] and not hop["na"]))
+                        for hop in run["hops"] if not hop["ok"] and not hop["na"])
+                    parts.append(f"{label}MISSING: " + (missing or str(run.get("gate") or
+                                                                     "no evidence")))
             text, nid = " | ".join(parts)[:4000], False
         else:
             text, nid = _nid_text(case, first_plan, flat)[:4000], True

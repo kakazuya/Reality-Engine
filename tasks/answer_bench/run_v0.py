@@ -139,6 +139,46 @@ def apply_recheck(rows: list[dict]) -> tuple[list[str], list[str]]:
     return changed, kept
 
 
+GATE_ROW_KEYS = ("isin", "symbol", "item", "quote", "text", "context", "section",
+                 "period", "known_at", "date", "ref", "value", "unit", "store")
+GATE_ROWS_PER_HOP = 8
+
+
+def _gate_row(row: dict) -> dict:
+    out = {}
+    for key in GATE_ROW_KEYS:
+        value = row.get(key)
+        if value in (None, ""):
+            continue
+        out[key] = str(value)[:160] if isinstance(value, str) else value
+    return out
+
+
+def _gate_record(out: dict) -> list[dict]:
+    """The per-sub rows + flags the strict grader recomputes the gate from."""
+    record = []
+    for run in out.get("subs") or []:
+        slots = {}
+        for key in ("isin", "symbol", "symbols", "period", "period_basis",
+                    "date_from", "date_to"):
+            if run.get("slots", {}).get(key) is not None:
+                slots[key] = run["slots"][key]
+        hops = []
+        for hop in run.get("hops") or []:
+            hops.append({"hop": hop.get("hop"), "ok": bool(hop.get("ok")),
+                         "na": bool(hop.get("na")),
+                         "entity_match": hop.get("entity_match"),
+                         "ask_match": hop.get("ask_match"),
+                         "period_match": hop.get("period_match"),
+                         "detail": str(hop.get("detail") or "")[:600],
+                         "rows": [_gate_row(row) for row in (hop.get("rows") or [])
+                                  if isinstance(row, dict)][:GATE_ROWS_PER_HOP]})
+        record.append({"index": run.get("index"), "text": run.get("text"),
+                       "gate": run.get("gate"), "ask_concepts": run.get("ask_concepts"),
+                       "slots": slots, "hops": hops})
+    return record
+
+
 def run_case(case: dict, ctx: Ctx, cmap: dict[str, dict]) -> dict:
     mid = case["mid"]
     case = dict(case)
@@ -157,6 +197,13 @@ def run_case(case: dict, ctx: Ctx, cmap: dict[str, dict]) -> dict:
         results.append({"hop": hop["hop"], "ok": hop["ok"], "na": hop["na"],
                         "detail": hop.get("detail"), "evidence": hop.get("evidence") or [],
                         "why": hop.get("why"), "gap": hop.get("gap")})
+    for run in out["subs"]:
+        if run.get("gate"):
+            # The entity/ask/period gate is a failed hop of its own, so the
+            # bench's own grade turns PARTIAL and names the check.
+            results.append({"hop": "GATE", "ok": False, "na": False,
+                            "detail": run["gate"], "evidence": [], "why": "relevance",
+                            "gap": None})
     graded = run_bench.finish(case, budget, results)
     body_ok = [hop for hop in out["hops"]
                if hop["hop"] != "resolve" and hop["ok"] and not hop["na"]]
@@ -183,6 +230,7 @@ def run_case(case: dict, ctx: Ctx, cmap: dict[str, dict]) -> dict:
         graded["blocker"] = f"{name} not held: " + (graded.get("blocker") or "")
     graded["seconds"] = round(time.perf_counter() - started, 3)
     graded["pit_violations"] = out["pit_violations"]
+    graded["gate"] = _gate_record(out)
     graded["v0"] = {"chain": out["plan"]["chain"], "status": case["case_status"],
                     "nid": out["nid"], "answer": out["answer"]}
     return graded
