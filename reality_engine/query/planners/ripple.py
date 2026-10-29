@@ -30,6 +30,14 @@ MAX_TARGETS = 40
 MAX_CANDIDATES = 400
 #: A same-day ask may still be answered by a policy announced in the run-up to it.
 DATE_LOOKBACK_DAYS = 90
+#: The ask prints its date to the day; a claim may be stamped a day or two either side.
+#: The bench's own named-document rule uses the same three-day tolerance.
+DATE_GRACE_DAYS = 3
+#: Declared gaps that make a case an EVENT / corporate-action ask, not a policy one.  A
+#: trigger that finds nothing on one of these cases is not a RIPPLE gap: the case's own
+#: annotation says which store it needs, and none of these is a policy store.
+EVENT_TABLES = {"event_day0", "event_leakage_window", "corporate_action",
+                "corporate_actions", "corporate_action_register", "bulk_block_deals"}
 
 _STATES = ("tamil nadu|karnataka|kerala|maharashtra|gujarat|rajasthan|punjab|haryana|"
            "odisha|assam|bihar|jharkhand|chhattisgarh|telangana|goa|delhi|uttarakhand|"
@@ -89,6 +97,8 @@ def _issuer_class(row: dict[str, Any]) -> str:
 
 
 #: Words that appear in so many claims that one of them alone is not a trigger.
+#: Hinglish function words are here because the bank's Hinglish asks put them into the
+#: term window where they match nothing in the corpus (``mein``, ``kyun``, ``batao``).
 GENERIC_TERMS = {
     "amount", "announced", "announces", "anything", "application", "applications",
     "approval", "approved", "award", "backed", "bank", "banks", "board", "budget",
@@ -105,14 +115,62 @@ GENERIC_TERMS = {
     "sessions", "share", "shares", "size", "spend", "spending", "split", "state",
     "states", "statement", "subsidy", "subsidies", "tick", "timestamp", "trace",
     "turns", "unit", "weakens",
+    # Hinglish / transliterated function words: filler, never a topic.
+    "asar", "aur", "batao", "bhi", "dena", "dijiye", "gaya", "hai", "hain", "hua",
+    "kaisa", "kaise", "kam", "kare", "karke", "kaun", "ke", "ki", "kitna", "ko",
+    "kuch", "kya", "kyun", "me", "mein", "nahi", "par", "sa", "sabse", "se", "tha",
+    "un", "us", "wala", "wale", "ye", "yeh", "zyada",
+}
+
+#: Ask wording -> the vocabulary the policy corpus actually uses.  Deterministic and
+#: curated: a synonym only widens the search ("rationalization"/"rationalisation"), it
+#: never replaces the issuer, date and topic gates below.
+TRIGGER_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "el nino": ("drought", "rainfall", "kharif"),
+    "nino": ("drought", "rainfall", "kharif"),
+    "rationalization": ("rationalisation",),
+    "rationalisation": ("rationalization",),
+    "green hydrogen": ("hydrogen",),
+    "coal-gasification": ("gasification",),
+    "gasification": ("coal gasification", "syngas"),
+    "data centre": ("data center",),
+    "data-centre": ("data center", "data centre"),
+    "data center": ("data centre",),
+    "jewellery": ("jewelry", "gems", "bullion"),
+    "jewelry": ("jewellery", "gems", "bullion"),
+    "bullion": ("gold",),
+    "pli": ("production linked", "incentive"),
+    "tax holiday": ("tax exemption", "tax incentive"),
+    "buy-back": ("buyback",),
 }
 
 
+def _expand(terms: list[str], symbol: str = "") -> list[str]:
+    """The search terms, synonym-expanded and without the ask's own ticker: a company
+    name never appears in a policy row, so it must not consume a window slot."""
+    drop = {symbol.lower()} if symbol else set()
+    out: list[str] = []
+    for term in terms:
+        key = str(term).lower().strip()
+        if not key or key in drop:
+            continue
+        if key not in out:
+            out.append(key)
+        for extra in TRIGGER_SYNONYMS.get(key, ()):  # one level, no recursion
+            if extra not in out:
+                out.append(extra)
+    return out[:9]
+
+
 def _topic_hits(row: dict[str, Any], terms: list[str]) -> tuple[list[str], list[str]]:
-    """(terms hit in title/policy_name, terms hit only in sector/company/product)."""
+    """(terms hit in title/policy_name, terms hit only in the claim's own fields).
+
+    The claim's ``instrument`` is one of those fields: a duty claim IS a tariff claim
+    even when its title never prints the word the ask used.
+    """
     head = f"{row.get('title') or ''} {row.get('policy_name') or ''}".lower()
-    fields = " ".join(str(row.get(key) or "")
-                      for key in ("sectors", "companies", "products")).lower()
+    fields = " ".join(str(row.get(key) or "") for key in
+                      ("sectors", "companies", "products", "instrument")).lower()
     title_terms = [term for term in terms if term in head]
     field_terms = [term for term in terms if term not in title_terms and term in fields]
     return title_terms, field_terms
@@ -129,8 +187,11 @@ def _scored_candidates(ctx: Any, slots: dict[str, Any], as_of: str) -> list[dict
     raw_terms = [str(t).lower() for t in (slots.get("terms") or []) if len(str(t)) > 3]
     # Topical (non-generic) words first: the question order can lead with filler
     # ("weakens", "imported") and push the word that names the policy out of the window.
+    # The window is eight, not four: a tariff ask opens with the company's own trade
+    # ("sensitive", "heat", "exchanger") before it reaches "customs".
     terms = ([term for term in raw_terms if term not in GENERIC_TERMS] +
-             [term for term in raw_terms if term in GENERIC_TERMS])[:4]
+             [term for term in raw_terms if term in GENERIC_TERMS])[:8]
+    terms = _expand(terms, str(slots.get("symbol") or ""))
     asks = _issuer_asks(question)
     # A date window is a gate when the ask names a time, and a one-year recency gate when
     # it merely has a decision date: the policy driving a 2026 question is not a 2020 one.
@@ -142,21 +203,37 @@ def _scored_candidates(ctx: Any, slots: dict[str, Any], as_of: str) -> list[dict
         lookback = 365
     date_from = str(slots.get("date_from") or "")[:10] if windowed else ""
     date_to = str(slots.get("date_to") or "")[:10] if windowed else ""
+    gate_to = date_to
     if date_from and date_from == date_to:
         lookback = max(lookback, DATE_LOOKBACK_DAYS)
     start = date_from
     if date_from:
         try:
-            start = (date.fromisoformat(date_from) - timedelta(days=lookback)).isoformat()
+            first = date.fromisoformat(date_from)
+            # A window that starts after the decision day asks what happens next; the
+            # policy behind it is already published, so the run-up is measured from the
+            # decision day, not from a future window start.
+            if as_of < "2099-01-01" and first > date.fromisoformat(as_of):
+                anchor = date.fromisoformat(as_of)
+                lookback = max(lookback, 365)
+            else:
+                anchor = first
+            start = (anchor - timedelta(days=lookback)).isoformat()
         except ValueError:
             start = date_from
+    if gate_to:
+        try:  # the ask's date is printed to the day; the claim may be stamped a day later
+            gate_to = (date.fromisoformat(gate_to)
+                       + timedelta(days=DATE_GRACE_DAYS)).isoformat()
+        except ValueError:
+            pass
     clause, params = terms_clause(terms, ["p.title", "p.policy_name", "p.sectors",
-                                          "p.companies", "p.products"])
+                                          "p.companies", "p.products", "p.instrument"])
     # Rank the candidates in SQL by how many asked terms they carry, so a generic term
     # ("budget", "order") cannot push the real topical claims past the row limit.
     head_cols = ["lower(COALESCE(p.title,''))", "lower(COALESCE(p.policy_name,''))"]
     field_cols = ["lower(COALESCE(p.sectors,''))", "lower(COALESCE(p.companies,''))",
-                  "lower(COALESCE(p.products,''))"]
+                  "lower(COALESCE(p.products,''))", "lower(COALESCE(p.instrument,''))"]
     terms_score, terms_params = [], []
     for term in terms:
         like = f"%{term}%"
@@ -195,7 +272,7 @@ def _scored_candidates(ctx: Any, slots: dict[str, Any], as_of: str) -> list[dict
         published = str(row.get("published_at") or "")[:10]
         if not published:
             continue
-        if date_to and published > date_to:
+        if gate_to and published > gate_to:
             continue
         if start and published < start:
             continue
@@ -205,7 +282,9 @@ def _scored_candidates(ctx: Any, slots: dict[str, Any], as_of: str) -> list[dict
         scored.append((score, title_hits + field_hits, published,
                        int(row.get("id") or 0), row))
     scored.sort(key=lambda item: (item[0], item[1], item[2], item[3]), reverse=True)
-    return [item[4] for item in scored[:5]]
+    # Eight, not five: the strongest-scoring claims are not always the ones whose own
+    # targets map to a held ISIN, and ``plan`` walks this list until one does.
+    return [item[4] for item in scored[:8]]
 
 
 def _policy(ctx: Any, slots: dict[str, Any], as_of: str) -> list[dict[str, Any]]:
@@ -311,16 +390,17 @@ def _sector_targets(ctx: Any, kind: str, ident: str, as_of: str) -> list[dict[st
     T1 build falls back to today's classification, which is stated as degraded.
     """
     column = "basic_industry" if kind == "basic_industry" else "sector"
-    try:
-        rows = ctx.rows(
-            "market_state",
-            f"SELECT isin FROM company_sector_pit WHERE {column} = ? "
-            "AND valid_from <= ? AND (valid_to IS NULL OR valid_to >= ?) "
-            "ORDER BY isin LIMIT ?", (ident, as_of, as_of, MAX_TARGETS))
-        if rows:
-            return rows
-    except Exception:  # noqa: BLE001 - the T1 store is optional in a fixture root
-        pass
+    for db in ("sector_pit", "market_state"):
+        try:
+            rows = ctx.rows(
+                db,
+                f"SELECT isin FROM company_sector_pit WHERE {column} = ? "
+                "AND valid_from <= ? AND (valid_to IS NULL OR valid_to >= ?) "
+                "ORDER BY isin LIMIT ?", (ident, as_of, as_of, MAX_TARGETS))
+            if rows:
+                return rows
+        except Exception:  # noqa: BLE001 - the PIT store is optional in a fixture root
+            continue
     rows = _company_rows(
         ctx,
         f"SELECT isin, symbol AS nse_symbol FROM company_industry WHERE {column} = ? "
@@ -333,8 +413,100 @@ def _sector_targets(ctx: Any, kind: str, ident: str, as_of: str) -> list[dict[st
     return rows
 
 
+#: Theme id -> the thematic NSE index whose members are held in
+#: ``company_membership_pit``.  Only a theme with a real index is listed: a curated
+#: guess would be a membership claim the table cannot support.
+THEME_INDEX = {"defence": "niftyindiadefence", "omc_refining": "niftyoilgas"}
+#: A commodity's own wording in ``company_cost_structure.input_key``.
+COMMODITY_COST_ALIASES = {
+    "coal": ("coal", "coking", "coking_coal"), "crude": ("crude", "fuel", "brent"),
+    "natural gas": ("gas", "lng"), "steel": ("steel", "iron"), "aluminium": ("alum"),
+    "copper": ("copper",), "power": ("power",), "freight": ("freight",),
+    "cotton": ("cotton", "yarn"), "rubber": ("rubber",), "gold": ("gold", "bullion"),
+    "silver": ("silver",), "palm oil": ("palm", "edible"), "urea": ("urea", "fertil"),
+}
+#: A state budget's named state -> the held project/product rows that place a plant
+#: there.  The extraction store is the only held facility-location source; when it does
+#: not carry the state the hop says so instead of guessing an ISIN.
+STATE_SOURCES = (
+    ("capex_project", "project", "quote"),
+    ("company_capacity_utilisation", "product", "quote"),
+)
+
+
+def _theme_targets(ctx: Any, ident: str, as_of: str) -> list[dict[str, Any]]:
+    """Theme members from ``company_membership_pit`` (thematic indices, pilot (b) store)."""
+    index_code = THEME_INDEX.get(str(ident).lower().replace("-", "_"))
+    if not index_code:
+        return []
+    try:
+        return ctx.rows(
+            "market_state_b",
+            "SELECT isin FROM company_membership_pit WHERE index_code = ? "
+            "AND added_on <= ? AND (removed_on IS NULL OR removed_on >= ?) "
+            "ORDER BY isin LIMIT ?", (index_code, as_of, as_of, MAX_TARGETS))
+    except Exception:  # noqa: BLE001 - the pilot (b) store is optional
+        return []
+
+
+def _commodity_targets(ctx: Any, ident: str, as_of: str) -> tuple[list[dict], str | None]:
+    """Commodity users/producers: held input-share rows, then the industry map.
+
+    ``company_cost_structure`` names the inputs a company buys (``coking_coal``,
+    ``fuel``); the claim builder's own product -> industry map names the industries that
+    produce or consume the commodity.  Either route returns held ISINs only.
+    """
+    from reality_engine.pilot.macro_claims import PRODUCT_TERMS  # the one curated map
+
+    key = " ".join(str(ident or "").lower().replace("_", " ").split())
+    if not key:
+        return [], None
+    found: list[dict[str, Any]] = []
+    aliases = {key} | set(COMMODITY_COST_ALIASES.get(key, ()))
+    clauses = " OR ".join("lower(COALESCE(input_key,'')) LIKE ?" for _ in aliases)
+    try:
+        found += ctx.rows(
+            "metric_state",
+            f"SELECT DISTINCT isin FROM company_cost_structure WHERE known_at <= ? "
+            f"AND ({clauses}) ORDER BY isin LIMIT ?",
+            [as_of, *[f"%{alias}%" for alias in sorted(aliases)], MAX_TARGETS])
+    except Exception:  # noqa: BLE001 - the extraction store is optional
+        pass
+    for term, industries in PRODUCT_TERMS.items():
+        if key != term and not re.search(r"\b" + re.escape(term) + r"\b", key):
+            continue
+        for kind, industry in industries:
+            if len(found) >= MAX_TARGETS:
+                break
+            found += _sector_targets(ctx, kind, industry, as_of)
+    if found:
+        return found, None
+    return [], (f"commodity '{ident}' has no held cost-structure row or industry map")
+
+
+def _state_targets(ctx: Any, ident: str, as_of: str) -> list[dict[str, Any]]:
+    """Held ISINs with a plant/product that names the state (extraction store)."""
+    state = str(ident or "").lower()
+    if not state:
+        return []
+    found: list[dict[str, Any]] = []
+    for table, name_col, quote_col in STATE_SOURCES:
+        try:
+            found += ctx.rows(
+                "metric_state",
+                f"SELECT DISTINCT isin FROM {table} WHERE known_at <= ? AND ("
+                f"lower(COALESCE({name_col},'')) LIKE ? OR "
+                f"lower(COALESCE({quote_col},'')) LIKE ?) ORDER BY isin LIMIT ?",
+                (as_of, f"%{state}%", f"%{state}%", MAX_TARGETS))
+        except Exception:  # noqa: BLE001 - the extraction store is optional
+            continue
+        if len(found) >= MAX_TARGETS:
+            break
+    return found[:MAX_TARGETS]
+
+
 def _targets_from_claims(ctx: Any, rows: list[dict], as_of: str) -> tuple[list[dict], list[str]]:
-    """macro_claim_target -> held ISINs (sector/basic_industry/isin/theme)."""
+    """macro_claim_target -> held ISINs (any of the six target kinds)."""
     found: dict[str, dict] = {}
     notes: list[str] = []
 
@@ -353,19 +525,25 @@ def _targets_from_claims(ctx: Any, rows: list[dict], as_of: str) -> tuple[list[d
             for row in _sector_targets(ctx, kind, ident, as_of):
                 add(row, kind, ident)
         elif kind == "theme":
-            try:
-                theme_rows = ctx.rows(
-                    "equity_intelligence",
-                    "SELECT isin FROM universe_membership WHERE theme=? "
-                    "AND (valid_from IS NULL OR valid_from<=?) "
-                    "AND (valid_to IS NULL OR valid_to>=?) LIMIT ?",
-                    (ident, as_of, as_of, MAX_TARGETS))
-            except Exception:  # noqa: BLE001 - theme membership is not built in the live DB
-                theme_rows = []
+            theme_rows = _theme_targets(ctx, ident, as_of)
             for row in theme_rows:
                 add(row, kind, ident)
             if not theme_rows:
-                notes.append(f"theme '{ident}' membership table not held")
+                notes.append(f"theme '{ident}' has no thematic index in "
+                             "company_membership_pit")
+        elif kind == "state":
+            state_rows = _state_targets(ctx, ident, as_of)
+            for row in state_rows:
+                add(row, kind, ident)
+            if not state_rows:
+                notes.append(f"state '{ident}' has no held plant/location fact "
+                             "(extract_pilot60 capex_project/company_capacity_utilisation)")
+        elif kind == "commodity":
+            commodity_rows, note = _commodity_targets(ctx, ident, as_of)
+            for row in commodity_rows:
+                add(row, kind, ident)
+            if note:
+                notes.append(note)
         else:
             notes.append(f"{kind} target '{ident}' has no held ISIN map")
     return list(found.values()), notes
@@ -399,7 +577,8 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         return envelope("RIPPLE", ok=True, na=True, checked=CHECKED,
                         detail="no policy/ripple chain asked; RIPPLE not applicable")
     status = str(slots.get("status") or "")
-    gate_table = (status.split(":", 1)[-1] if status.startswith("needs_new_table:") else None)
+    declared = status.split(":", 1)[-1] if ":" in status else ""
+    gate_table = declared if status.startswith("needs_new_table:") else None
     try:
         policies = _policy(ctx, slots, as_of)
     except Exception as exc:  # noqa: BLE001
@@ -407,6 +586,12 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                         detail=f"policy store failed: {type(exc).__name__}: {exc}")
     if not policies:
         detail = f"no policy event matching the ask published on or before {as_of}"
+        if declared in EVENT_TABLES:
+            # The case's own gap is an event / corporate-action store, so it is an EVENT
+            # ask: no policy trigger exists to find, and this is not a RIPPLE failure.
+            return envelope("RIPPLE", ok=True, na=True, checked=CHECKED,
+                            detail=f"{detail}; the case's gap is {declared}, not a policy "
+                                   "store: RIPPLE not applicable")
         if gate_table:
             return envelope("RIPPLE", ok=False, why="schema", checked=CHECKED, gap=gate_table,
                             detail=f"{detail}; the chain needs {gate_table}",
@@ -431,10 +616,25 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         target_source = (f"macro_claim_target ({db})" if mapped else "policy_events.sectors")
         break
     if policy is None:
+        if declared in EVENT_TABLES:
+            # The case's own gap is an event / corporate-action store and the trigger
+            # found nothing it can map: this is not a RIPPLE answer to give either way.
+            return envelope("RIPPLE", ok=True, na=True, checked=CHECKED,
+                            detail=f"no policy trigger with held targets; the case's gap "
+                                   f"is {declared}, not a policy store: RIPPLE not applicable")
         policy = policies[0]
         rows, db = _claim_target_rows(ctx, policy["id"], as_of)
         claim_notes = (_targets_from_claims(ctx, rows, as_of)[1] if rows else [])
-        missing = gate_table or ("macro_claim_target" if rows else "company_sector_pit")
+        # Name the store that would close the gap, from the target kinds the claim
+        # actually carries (a state target needs a facility map, not a sector one).
+        kinds = {str(row.get("target_kind") or "") for row in rows}
+        missing = gate_table or next(
+            (table for kind, table in (("state", "company_facilities_pit"),
+                                       ("theme", "company_theme_pit"),
+                                       ("commodity", "company_cost_structure"),
+                                       ("sector", "company_sector_pit"),
+                                       ("basic_industry", "company_sector_pit"))
+             if kind in kinds), "macro_claim_target")
         detail = (f"policy {policy.get('title') or policy.get('policy_name')} matched, but its "
                   f"sector/company targets do not map to held ISINs ({missing})")
         if claim_notes:
