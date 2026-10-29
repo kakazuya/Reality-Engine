@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T05:05:59+05:30 · git HEAD: `ac2901e` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T05:42:19+05:30 · git HEAD: `dba7712` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -319,7 +319,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 
 Ranked by mentions in `tasks/STATE.md`, `plugins/dsh-worker/jobs.yaml` and the 20 newest `tasks/dsh_tasks/*.md` briefs:
 
-- `reality_engine/scripts/results_notes.py` (24 refs) — Quarterly results PDFs -> notes chunks, one fiscal quarter at a time (newest first), with a gate per quarter.
+- `reality_engine/scripts/results_notes.py` (26 refs) — Quarterly results PDFs -> notes chunks, one fiscal quarter at a time (newest first), with a gate per quarter.
 - `reality_engine/scripts/ar_queue.py` (23 refs) — Annual-report work queue for readers that only answer inside the OpenCode app (OpenCode Zen free models).
 - `reality_engine/scripts/ingest_annual_reports.py` (16 refs) — Annual-report fact extraction with the free readers that passed the AR must-find test (tasks/ar_study/free_test):
 - `reality_engine/scripts/resource_watchdog.py` (12 refs) — Machine-wide resource watchdog: keeps the long jobs alive and records every case of wasted compute.
@@ -582,7 +582,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.scripts.fetch_nse_api_raw` | test_market_gap_backfill.py |
 | `reality_engine.scripts.fetch_originals` | test_fetch_originals.py |
 | `reality_engine.scripts.fetch_price_bands` | test_pilot_t1.py |
-| `reality_engine.scripts.fetch_results_notes_text` | test_new_feeds_g2.py |
+| `reality_engine.scripts.fetch_results_notes_text` | test_new_feeds_g2.py, test_pilot60.py |
 | `reality_engine.scripts.fetch_wpi_items` | test_extra_series.py |
 | `reality_engine.scripts.load_deck_chunks` | test_deck_chunk_load.py |
 | `reality_engine.scripts.load_market_raw` | test_market_gap_backfill.py |
