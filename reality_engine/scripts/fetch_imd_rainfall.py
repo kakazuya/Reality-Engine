@@ -29,6 +29,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -45,11 +46,23 @@ from reality_engine.scripts.series_common import (
 )
 
 DEFAULT_OUT = r"D:\RealityEngine\raw\input_cost_series"
+#: Live rainfall pages (2026-10-29). The old ``imd_latest/contents/*rainfall*``
+#: and ``imd.gov.in`` URLs this module used to open are gone (404 / timeout);
+#: each live page carries a direct link to the table it renders
+#: (``../Rainfall/<NAME>_COUNTRY_INDIA_c*.pdf``), so links are still discovered,
+#: never guessed.
 LANDING_URLS = (
-    "https://mausam.imd.gov.in/",
-    "https://mausam.imd.gov.in/imd_latest/contents/rainfall.php",
-    "https://www.imd.gov.in/",
+    "https://mausam.imd.gov.in/responsive/rainfallinformation.php",
+    "https://mausam.imd.gov.in/responsive/rainfall_statistics.php?PAGE=7",
+    "https://mausam.imd.gov.in/responsive/rainfall_statistics.php?PAGE=5",
+    "https://mausam.imd.gov.in/responsive/rainfall_statistics.php?PAGE=3",
 )
+#: The weekly departure tables: "SUBDIVISION_RAINFALL_DEPARTUREWEEKLY_..." is the
+#: regional table IMD prints every Thursday (state-like regions with one column
+#: per week); the district file is the same shape at district level and is only
+#: used when the subdivision file is missing.
+WEEKLY_TABLE_RE = re.compile(r"(?i)rainfall_departureweekly.*\.pdf$")
+TABLE_SUB_RE = re.compile(r"(?i)subdivision")
 #: Year/archive pages followed from a landing page, capped so a run stays bounded.
 MAX_ARCHIVE_PAGES = 8
 MONSOON_MONTHS = (6, 7, 8, 9)
@@ -73,6 +86,10 @@ _BULLETIN_DATED = re.compile(
     rf"{_MNAME}\.?,?\s*(20\d{{2}})")
 _ANCHOR_DATE = re.compile(r"(20\d{2})[-./](\d{1,2})[-./](\d{1,2})")
 _ANCHOR_DMY = re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](20\d{2})(?!\d)")
+_DATE_COL = re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](20\d{2})(?!\d)")
+#: The week-column header of the departure table: two or more dates in a row.
+_DATE_SEQ_RE = re.compile(
+    r"((?:\d{1,2}[-./]\d{1,2}[-./]20\d{2}\s+){1,}\d{1,2}[-./]\d{1,2}[-./]20\d{2})")
 _DEP_HEADER = re.compile(r"(?i)\bdeparture\b|\bdep\.?\b|\banomaly\b|\bdeviation\b")
 _STATE_HEADER = re.compile(r"(?i)^\s*(states?|state\s*/\s*ut|sub.?division|region|"
                            r"met.?sub.?division|homogeneous)s?\b")
@@ -265,6 +282,81 @@ def archive_pages(html: str, page_url: str, limit: int = MAX_ARCHIVE_PAGES) -> l
     return out
 
 
+def weekly_tables(pages: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """``(url, 'subdivision'|'district')`` weekly departure tables named by the pages."""
+    found: list[tuple[str, str]] = []
+    for page_url, html in pages:
+        for url, _text in anchors(html, page_url):
+            if not WEEKLY_TABLE_RE.search(url.rsplit("/", 1)[-1]):
+                continue
+            kind = "subdivision" if TABLE_SUB_RE.search(url) else "district"
+            if not any(kind == k for _, k in found):
+                found.append((url, kind))
+    # The subdivision table first: the district table is 30 pages of the same
+    # numbers at a granularity a state-level series does not want.
+    return sorted(found, key=lambda item: item[1] != "subdivision")
+
+
+_NUM_TOKEN = re.compile(r"^-?\d+(?:\.\d+)?$")
+
+
+def parse_week_table(text: str) -> dict:
+    """``Week by week departures`` table -> one row per region per week.
+
+    The printed header carries the week-ending dates and every region line
+    carries one departure per week, in that order. The PDF's text layer arrives
+    as one token stream, so rows are rebuilt from tokens (a serial number, the
+    region's words, then exactly as many numbers as the header has weeks) and a
+    line that does not add up is skipped, never padded or shifted.
+    """
+    stream = re.sub(r"\s+", " ", text or "")
+    headers = list(_DATE_SEQ_RE.finditer(stream))
+    if not headers:
+        return {"status": "refused", "reason": "no week-ending header", "weeks": [], "rows": []}
+    rows: dict[tuple[str, str], dict] = {}
+    weeks: list[str] = []
+    for k, header in enumerate(headers):
+        # Every page of the table repeats the header, so each block is parsed
+        # against its own date list; the "Period: a To b" line is a two-date
+        # block whose rows never match and is skipped by the length check.
+        block = [_iso(m.group(3), m.group(2), m.group(1))
+                 for m in _DATE_COL.finditer(header.group(0))]
+        body_end = headers[k + 1].start() if k + 1 < len(headers) else len(stream)
+        tokens = stream[header.end():body_end].split()
+        weeks = weeks or block
+        i = 0
+        while i < len(tokens):
+            if not tokens[i].isdigit():
+                i += 1
+                continue
+            j, name = i + 1, []
+            while j < len(tokens) and not _NUM_TOKEN.match(tokens[j]):
+                name.append(tokens[j])
+                j += 1
+            values = []
+            while j < len(tokens) and _NUM_TOKEN.match(tokens[j]) and len(values) < len(block):
+                values.append(tokens[j])
+                j += 1
+            if not name or len(values) != len(block):
+                i += 1
+                continue
+            label = clean_state(" ".join(name))
+            if len(label) < 3 or label.lower() in _HEADER_WORDS:
+                i += 1
+                continue
+            for week, raw in zip(block, values):
+                value = num(raw)
+                if value is not None and -100.0 <= value <= 2000.0:
+                    rows[(label, week)] = {"state": label, "week_end": week,
+                                           "departure_pct": value}
+            i = j
+    if len(rows) < 5:
+        return {"status": "refused", "reason": "week table rows not recognised",
+                "weeks": weeks, "rows": []}
+    return {"status": "ok", "reason": None, "weeks": weeks,
+            "rows": sorted(rows.values(), key=lambda r: (r["week_end"], r["state"]))}
+
+
 # ---------------------------------------------------------------------------
 # Fetch
 # ---------------------------------------------------------------------------
@@ -296,7 +388,7 @@ def fetch_weeks(out: Path, start: date, end: date, landing: tuple[str, ...],
     raw_dir.mkdir(parents=True, exist_ok=True)
     pages: list[tuple[str, str]] = []
     info: dict = {"landing": [], "requests": 0, "weeks_fetched": 0,
-                  "weeks_missing": [], "failed": []}
+                  "weeks_missing": [], "failed": [], "weekly_tables": []}
     archive_budget = MAX_ARCHIVE_PAGES
     for url in landing:
         info["requests"] += 1
@@ -324,6 +416,30 @@ def fetch_weeks(out: Path, start: date, end: date, landing: tuple[str, ...],
     links = discover_bulletins(pages)
     info["links_found"] = len(links)
     rows: list[dict] = []
+    first, last = start.isoformat(), end.isoformat()
+    for url, kind in weekly_tables(pages)[:1]:       # subdivision first, district as fallback
+        info["requests"] += 1
+        try:
+            payload = http_get(url, timeout=120)
+        except Exception as exc:                                  # noqa: BLE001
+            info["failed"].append({"weekly_table": url, "reason": str(exc)[:160]})
+            continue
+        suffix = ".pdf" if payload[:4] == b"%PDF" else ".html"
+        (raw_dir / f"imd_weekly_{kind}{suffix}").write_bytes(payload)
+        body = pdf_text(payload) or payload.decode("utf-8", "replace")
+        parsed = parse_week_table(body)
+        info["weekly_tables"].append({"url": url, "kind": kind,
+                                      "weeks": parsed["weeks"], "rows": len(parsed["rows"]),
+                                      "status": parsed["status"]})
+        print(f"  weekly table {kind}: {parsed['status']}, {len(parsed['rows'])} rows, "
+              f"weeks {parsed['weeks'][:1]}..{parsed['weeks'][-1:]}")
+        for row in parsed["rows"]:
+            if not first <= row["week_end"] <= last:
+                continue
+            known_at, conf = bulletin_date("", row["week_end"])
+            rows.append({"state": row["state"], "week_end": row["week_end"],
+                         "departure_pct": row["departure_pct"], "known_at": known_at,
+                         "source_url": url, "pit_conf": conf, "source": SOURCE})
     for week_end in monsoon_weeks(start, end):
         iso = week_end.isoformat()
         url = links.get(iso)
@@ -363,6 +479,25 @@ def plan(start: date, end: date) -> dict:
     }
 
 
+def merge_previous(path: Path, rows: list[dict]) -> list[dict]:
+    """Rows already in the CSV plus this run's, one per (state, week_end).
+
+    The live table carries only the weeks of the current month, so a run would
+    otherwise overwrite last month's weeks with nothing added. Keeping what an
+    earlier run published is how this series accumulates a history the source
+    itself does not archive; a re-fetched week simply replaces its own row.
+    """
+    merged: dict[tuple[str, str], dict] = {}
+    if path.exists():
+        with path.open(newline="", encoding="utf-8") as f:
+            for old in csv.DictReader(f):
+                if old.get("state") and old.get("week_end"):
+                    merged[(old["state"], old["week_end"])] = old
+    for row in rows:
+        merged[(row["state"], row["week_end"])] = {k: row.get(k, "") for k in CSV_COLUMNS}
+    return sorted(merged.values(), key=lambda r: (r["week_end"], r["state"]))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -388,17 +523,21 @@ def main(argv=None):
                 pages.append((url, http_get(url, timeout=60).decode("utf-8", "replace")))
             except Exception as exc:                              # noqa: BLE001
                 print(f"  {url}: {str(exc)[:160]}")
+        for url, kind in weekly_tables(pages):
+            print(f"  weekly table ({kind})  {url}")
         for week_end, url in discover_bulletins(pages).items():
             print(f"  {week_end}  {url}")
         return 0
 
     out = Path(args.out)
     rows, info = fetch_weeks(out, start, end, LANDING_URLS)
+    info["weeks_missing"] = f"{len(info['weeks_missing'])} weeks not published by the source"
     print(f"imd: {info}")
-    written = write_csv(out / "imd_rainfall_departure.csv", CSV_COLUMNS, rows)
-    states = sorted({r["state"] for r in rows})
-    print(f"wrote {written} rows, {len(states)} states -> "
-          f"{out / 'imd_rainfall_departure.csv'}")
+    path = out / "imd_rainfall_departure.csv"
+    merged = merge_previous(path, rows)
+    written = write_csv(path, CSV_COLUMNS, merged)
+    states = sorted({r["state"] for r in merged})
+    print(f"wrote {written} rows, {len(states)} states -> {path}")
     return 0 if written else 1
 
 
