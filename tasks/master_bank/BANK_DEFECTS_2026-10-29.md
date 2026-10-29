@@ -48,3 +48,23 @@ Measured on `INSTANCES.jsonl` **before** the fix: **1,191 of 2,098** rows named 
 
 Proposed fix: `period` → `11-12 Aug 2026`; keep the text; make the delivery planner read the period window from the text when the two disagree, and return one row per exchange. Instance rows inherit the corrected period.
 
+
+## 4. Applied 29 Oct 2026, Shivam approved
+- **Period fixed** to the dates each question names. Each changed row keeps `period_before_fix`; backups are `*.bak-20261029-bankfix`.
+
+  | case | new period |
+  |---|---|
+  | MB0231, MB0232 | 15-16 Sep 2026 |
+  | MB0233 | 10-11 Jun 2026 |
+  | MB0234, MB0235 | 11-12 Aug 2026 |
+  | MB0237 | 10-11 Feb 2026 |
+  | MB0238 | 14-15 Jul 2026 |
+  | MB0240 | 13-14 Oct 2026 |
+
+  The 20 instance rows of these cases are updated too.
+- **Not changed:**
+  - MB0239 is a deliberate future-date trap: as of 31 Mar it asks for September data, so the answer is NOT IN DATA.
+  - MB0222: the 2022 date is the policy's reference date, not the asked period.
+  - The 4 ambiguities: their reference dates are legitimate.
+- **Parent–child naming:** already fixed by `instantiate.py --rename-only` (merged in `c3206b9`). 0 instance questions name the parent company.
+- **Exchange clarity:** the questions already say "NSE and BSE". The fix belongs to the planners, which must return one row per exchange plus the combined total. That is in the next design round.
