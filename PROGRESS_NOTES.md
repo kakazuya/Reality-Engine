@@ -1,0 +1,1 @@
+- 06:00 schema-final: built tasks/SCHEMA_FINAL_2026-10-29.{sql,md} + 1,073-row cases JSONL; a/b/c = 629/435/9; SQL executes ok; 55 query tests pass; missing tables none. Next: final report / hand-off.
