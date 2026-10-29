@@ -360,6 +360,23 @@ HS_CHAPTERS: dict[str, tuple[tuple[str, str], ...]] = {
 }
 HS_RE = re.compile(r"\b(?:hs|heading|chapter)\s*(?:no\.?\s*)?(\d{2})\d{0,6}\b", re.I)
 
+# --- commodity terms -------------------------------------------------------------------
+# A customs/tax claim often names the commodity it taxes but no industry.  The target is
+# the commodity itself, and RIPPLE maps it onward (held input-share rows first, then the
+# product -> industry map above).  Curated: only names the customs schedule or a budget
+# line actually uses, and read from the claim's own products/policy fields (never the
+# surrounding quote, for the same reason the product terms are not).
+COMMODITY_TERMS: dict[str, str] = {
+    "crude": "crude", "crude oil": "crude", "petroleum": "crude", "brent": "crude",
+    "natural gas": "natural gas", "lng": "natural gas", "coking coal": "coal",
+    "coal": "coal", "iron ore": "iron ore", "steel": "steel", "aluminium": "aluminium",
+    "aluminum": "aluminium", "copper": "copper", "zinc": "zinc", "gold": "gold",
+    "silver": "silver", "cotton": "cotton", "rubber": "rubber", "palm oil": "palm oil",
+    "edible oil": "oil", "urea": "urea", "cement": "cement",
+    "fertiliser": "fertilizer", "fertilizer": "fertilizer", "lithium": "lithium",
+    "nickel": "nickel",
+}
+
 # Themes are only emitted where a curated universe exists (universe_membership is not
 # built in the live DB yet; the planner reports that instead of inventing members).
 THEME_TERMS = {
@@ -669,6 +686,10 @@ def claim_targets(row: dict, companies: CompanyIndex,
             if re.search(r"\b" + re.escape(term) + r"\b", text):
                 for kind, ident in hit:
                     _add(targets, seen, kind, ident, direction, f"product term '{term}'")
+        for term, commodity in COMMODITY_TERMS.items():
+            if re.search(r"\b" + re.escape(term) + r"\b", text):
+                _add(targets, seen, "commodity", commodity, direction,
+                     f"commodity term '{term}'")
         hs_text = _clean(" ".join(str(row.get(k) or "") for k in
                                   ("products", "policy_name", "quote", "new_value")))
         for chapter in HS_RE.findall(hs_text):

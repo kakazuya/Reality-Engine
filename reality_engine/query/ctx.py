@@ -58,9 +58,15 @@ T1_FILES = {
 #: below degrades instead of failing.
 MARKET_STATE_B_ENV = "REALITY_MARKET_STATE_B"
 MARKET_STATE_B_FILE = "market_state_b.db"
+#: Sector PIT store (``reality_engine.pilot.build_sector_pit``): ``company_sector_pit``
+#: alone, for the pilot universe, in its own small file.  The full T1 ``market_state``
+#: DB carries the same table next to a 7.3M-row price panel; this alias lets RIPPLE read
+#: the classification without opening that.  ``immutable=1``: a finished build.
+SECTOR_PIT_ENV = "REALITY_SECTOR_PIT"
+SECTOR_PIT_FILE = "sector_pit.db"
 #: Aliases opened ``immutable=1``: finished pilot builds with no live WAL.  A read-only
 #: sandbox cannot create the ``-shm``/``-wal`` sidecars a WAL open needs.
-IMMUTABLE_ALIASES = {"metric_state", "market_state_b", *T1_FILES}
+IMMUTABLE_ALIASES = {"metric_state", "market_state_b", "sector_pit", *T1_FILES}
 
 
 def t1_path(name: str) -> Path | None:
@@ -70,6 +76,28 @@ def t1_path(name: str) -> Path | None:
         return Path(path)
     root = os.environ.get(PILOT_T1_ENV)
     return Path(root) / filename if root else None
+
+
+def sector_pit_path(root: Path | None = None) -> Path | None:
+    """The sector PIT store: env override, else the data root, else the worktree build.
+
+    The worktree build (``.tmp/sector_pit.db``) is only consulted for the *default* data
+    root: a caller that points the context at its own root (a fixture, another machine's
+    copy) gets that root's store or nothing, never this checkout's scratch build.
+    """
+    override = os.environ.get(SECTOR_PIT_ENV)
+    if override:
+        candidate = Path(override)
+        return candidate if candidate.is_file() else None
+    base = Path(root) if root is not None else default_root()
+    candidate = base / "pilot" / "pilot60" / SECTOR_PIT_FILE
+    if candidate.is_file():
+        return candidate
+    if base.resolve() == default_root().resolve():
+        candidate = REPO / ".tmp" / SECTOR_PIT_FILE
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def market_state_b_path(root: Path | None = None) -> Path | None:
@@ -145,6 +173,12 @@ class Ctx:
                 if path is None:
                     raise QueryUnavailable(f"pilot (b) database market_state_b not found "
                                            f"(set {MARKET_STATE_B_ENV})")
+            elif name == "sector_pit":
+                path = sector_pit_path(self._root())
+                if path is None:
+                    raise QueryUnavailable(f"sector PIT store not found "
+                                           f"(run reality_engine.pilot.build_sector_pit, or "
+                                           f"set {SECTOR_PIT_ENV})")
             else:
                 path = self._root() / DB_FILES[name]
                 if name == "macro_pilot":
