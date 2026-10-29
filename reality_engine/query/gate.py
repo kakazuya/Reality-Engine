@@ -41,7 +41,10 @@ METRIC_SYNONYMS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "promoter": (("promoter", "shareholding", "stake", "holding pattern", "pledge",
                   "promoter holding", "public holding", "holding %"),
                  ("net promoter", "nps", "promoter score", "total shareholding pattern",
-                  "shares outstanding", "paid-up", "paid up", "share capital")),
+                  # The public split is its own ask: a "public holding %" row must not
+                  # answer a promoter ask ("promoter AND public" is two rows).
+                  "public holding", "public shareholding", "public stake", "non-promoter",
+                  "free float", "shares outstanding", "paid-up", "paid up", "share capital")),
     "facilities": (("facilit", "plant", "factory", "factories", "manufacturing unit"),
                    ("capacity", "capex", "installation")),
     "capacity": (("capacity", "capacities", "utilisation", "utilization", "mtpa", "tpa"),
@@ -50,10 +53,14 @@ METRIC_SYNONYMS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "dso": (("receivable", "debtor", "collection", "dso"), ()),
     "cfo": (("cash flow", "cfo", "operating cash"), ()),
     "segment": (("segment", "business mix", "vertical", "division"), ()),
-    "return": (("return", "close", "rose", "fell", "gained", "dropped", "moved",
-                "performance", "cagr", "excess"), ("dividend", "total return")),
+    "return": (("return", "close", "rose", "fell", "gained", "dropped", "move", "moved",
+                "performance", "cagr", "excess"),
+               # "the debt was moved into CWIP" is a balance-sheet ask, not a price ask.
+               ("dividend", "total return", "moved into", "moved to", "moved out of")),
     "cagr": (("cagr", "annualised", "annualized"), ()),
-    "range": (("high", "low", "range", "support", "resistance", "52-week", "52 week", "ytd"), ()),
+    "range": (("high", "low", "range", "support", "resistance", "52-week", "52 week", "ytd"),
+              # "has an oversold RSI marked a durable low" is a bottom ask, not a range.
+              ("durable low", "durable bottom")),
     # A "gap" ask is a price gap, not the "data gaps" a question asks the answerer to name.
     "gap": (("gap up", "gap down", "gapped", "opening gap", "gap open"), ("data gap",)),
     "rsi": (("rsi", "oversold", "overbought"), ()),
@@ -83,7 +90,14 @@ ASK_CONCEPTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
                         "non-promoter", "free float"), ()),
     "fii": (("fii", "fpi", "foreign institutional", "foreign portfolio"), ()),
     "dii": (("dii", "domestic institutional", "mutual fund"), ()),
-    "share_count": (("shares outstanding", "paid-up", "paid up", "share capital"), ()),
+    "share_count": (("shares outstanding", "paid-up", "paid up", "share capital",
+                     "share count", "number of shares", "total shares",
+                     "equity shares", "issued capital"), ()),
+    # "business + segments" is two asks: the business itself and its segments.
+    "business_model": (("business", "business model", "business profile",
+                        "what the company does", "business description"),
+                       ("business responsibility", "business partner", "business environment",
+                        "doing business", "business mix", "business growth")),
     "dividend": (("dividend", "payout"),
                  # "split- and dividend-adjusted closes" names the CAGR's adjustment
                  # basis, not a dividend ask: the ask is the CAGR.
@@ -127,15 +141,47 @@ ASK_CONCEPTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
                      "stressed book", "slippage"), ()),
     "options": (("max pain", "call oi", "put oi", "open interest", "strike", "expiry",
                  "option"), ()),
+    # "raw and adjusted for its corporate action" asks for the same number twice.
+    # Only asked when *both* words are present (``basis_parts``), so a "split- and
+    # dividend-adjusted closes" CAGR ask stays a single ask.
+    "raw": (("raw",), ("raw material",)),
+    "adjusted": (("adjusted",), ("dividend adjusted", "split adjusted", "dividends and splits",
+                                 "adjusting for dividend", "dividend and split")),
+    # The exchange is a part of the ask when the question asks for it ("with the
+    # value and the date, and on which exchange?", "11-12 Aug nse bse").  An
+    # identity reference ("(NSE: MBEL)", "NSE: OMMETALS") is not that ask.
+    "exchange": (("nse", "bse", "exchange", "national stock exchange",
+                  "bombay stock exchange"), ()),
+    # The side of the RSI band is a part too: "oversold days" does not answer
+    # "RSI stayed above 70".
+    "overbought": (("overbought", "over-bought", "above 70"), ()),
+    "oversold": (("oversold", "over-sold", "below 30"), ()),
+    # "newly commissioned facilities" is about what came on stream, not how many
+    # facilities exist: the row has to say so.
+    "commissioned": (("commissioned", "commissioning", "newly commissioned",
+                      "commenced operations", "commenced commercial"), ()),
+    # "is that a warning or noise?" is answered only when the answer says which.
+    "warning_noise": (("warning", "warning sign", "noise", "false signal", "healthy"),
+                      ()),
+    # "within 5% of the *then-current* 52-week high" is a rolling measure; a fixed
+    # window high is a different statistic and must not pass as it.
+    "rolling_high": (("rolling", "then-current", "then current", "52-week high at the time",
+                      "trailing high"), ()),
 }
 
 #: A row that carries a narrower concept also answers the broader one.
 RELATED: dict[str, set[str]] = {
     "return": {"cagr", "range", "rsi", "gap", "delivery", "volume", "band", "open_interest",
                "futures", "valuation", "spread"},
-    "promoter": {"public_holding", "fii", "dii", "share_count", "pledge"},
+    # Promoter holding is not the public split ("promoter AND public" is two rows)
+    # and a share count is not a holding percentage: only the other owners' splits
+    # answer a promoter ask.
+    "promoter": {"fii", "dii", "pledge"},
     "acquisition": {"listing", "index_inclusion"},
 }
+#: The two bases one number can be asked on ("raw and adjusted").  They are a
+#: requirement on the row that answers, never evidence that a passage is related.
+BASIS = {"raw", "adjusted"}
 #: Narrower price asks a plain "close" row must not satisfy.
 SPECIFIC_RETURN = {"cagr", "range", "rsi", "gap", "delivery", "volume", "band",
                    "open_interest", "futures", "valuation", "spread"}
@@ -210,6 +256,14 @@ def _phrase_hit(low: str, phrase: str) -> bool:
 
 def _concept_hit(text: str, concept: str) -> bool:
     low = norm(text)
+    if concept.startswith("episodes:"):
+        number = concept.split(":", 1)[1]
+        words = COUNT_WORDS.get(number, (number,))
+        # The answer has to say it found that many ("3 falls", "three drawdowns"):
+        # a bare digit is a decimal ("274.3") far more often than an episode count.
+        return any(_phrase_hit(low, word) for word in words if not word.isdigit()) or any(
+            _phrase_hit(low, f"{number} {noun}")
+            for noun in ("falls", "drawdowns", "episodes", "times", "quarters", "years"))
     include, exclude = ASK_CONCEPTS.get(concept) or METRIC_SYNONYMS.get(
         concept, ((), ()))
     if not include:
@@ -308,16 +362,30 @@ def asked_concepts(question: str) -> list[str]:
             found.append(concept)
     if "roic" in found and "return" in found:
         found.remove("return")  # "return on capital" is not a price return
-    if "public_holding" in found and "promoter" in found:
+    if "public_holding" in found and "promoter" in found and not PROMOTER_WORD.search(question):
         found.remove("promoter")  # the public split IS the ask
     if "band" in found and "range" in found:
         found.remove("range")  # "price band" is a circuit band, not a 52-week range
+    if "exchange" in found and not EXCHANGE_ASK.search(question):
+        found.remove("exchange")  # "(NSE: MBEL)" is the symbol, not an exchange ask
     if "futures" in found:
         found = [c for c in found if c not in ("valuation", "return", "open_interest")]
     # "price CAGR", "52-week high", "delivery" are the ask; a plain close row
     # must not satisfy them, so the general price concept drops out.
     if "return" in found and any(c in SPECIFIC_RETURN for c in found):
         found.remove("return")
+    # "raw and adjusted" is two parts of one ask.  A lone "adjusted" is the basis
+    # of the number asked for ("split- and dividend-adjusted closes"), not an ask --
+    # unless the question asks for the adjusted number itself.
+    if not (BASIS <= set(found)):
+        found = [c for c in found if c not in BASIS
+                 or (c == "adjusted" and ADJUSTED_ASK.search(question))]
+    episodes = COUNT_ASK.search(question)
+    if episodes:
+        count = episodes.group("count").lower()
+        found.append("episodes:" + (count if count.isdigit() else COUNT_DIGIT[count]))
+    if ROLLING_ASK.search(question) and "rolling_high" not in found:
+        found.append("rolling_high")
     return found
 
 
@@ -332,6 +400,152 @@ def _row_covers(row: Any, concept: str) -> bool:
     return any(_concept_hit(text, target) or
                (target in METRIC_SYNONYMS and metric_matches(target, text))
                for target in targets)
+
+
+#: An ask that names the promoter outright asks for the promoter number too, even
+#: when it also says "public" ("promoter aur public dono ka percentage").
+PROMOTER_WORD = re.compile(r"\bpromoters?\b", re.I)
+#: The exchange is only a part when the question *asks* for it, not when it quotes
+#: the symbol ("Metropolis Healthcare (NSE: METROPOLIS)").
+EXCHANGE_ASK = re.compile(
+    r"\b(?:on|which|what|each|both|either)\s+exchange\b|\bexchange\s*(?:\?|$)"
+    r"|\bnse\s*(?:/|,|and|&|or|ya|yaa|,|)\s*bse\b", re.I)
+#: "the last three times / drawdowns / episodes" asks for that many episodes, not
+#: an average over every occurrence.
+COUNT_ASK = re.compile(
+    r"\b(?:the\s+)?last\s+(?P<count>three|two|four|five|3|2|4|5)\s+"
+    r"(?:times|episodes|drawdowns|quarters|years|falls)\b", re.I)
+COUNT_WORDS = {"2": ("2", "two"), "3": ("3", "three"), "4": ("4", "four"),
+               "5": ("5", "five")}
+COUNT_DIGIT = {"two": "2", "three": "3", "four": "4", "five": "5"}
+#: "adjusted price CAGR" / "adjusted for its corporate action" asks for the
+#: adjusted number; a lone "adjusted" that qualifies something else does not.
+ADJUSTED_ASK = re.compile(
+    r"\badjusted\s+(?:price|prices|close|closes|cagr|return|returns|high|low|series)\b"
+    r"|\braw\s+and\s+adjusted\b|\badjusted\s+for\s+its\b", re.I)
+#: "the then-current 52-week high" (rolling) is a different measure from the window high.
+ROLLING_ASK = re.compile(
+    r"\b(?:then-current|then current|rolling|trailing)\b[^?]{0,30}\bhigh\b", re.I)
+
+
+#: The verbs a judgement ask turns on ("has the debt fallen", "has it improved").
+JUDGEMENT = re.compile(
+    r"\b(?P<aux>has|have|had|is|are|was|were|did|does|do)\b"
+    r"(?P<mid>[^?.;!]{0,90}?)"
+    r"\b(?P<verb>fallen|fell|fall|moved|move|improved|improve|risen|rose|rise|declined|"
+    r"decline|dropped|drop|increased|increase|grown|grew|grow|reduced|reduce|deleveraged|"
+    r"deleveraging|shrunk|shrank|turned|expanded|absorbed|slipped)\b", re.I)
+JUDGEMENT_SKIP = set("""the a an its it they them their this that these those there here
+and or but if then than so also just only even still yet very much more most less least
+actually really now today currently already finally since after before over under into from
+with about between within during while when where which what who whose how why all any
+both each every some none no not been being be was were is are has have had did does do
+company companies stock stocks share shares price prices counter per cent percent
+business segment segments growth number value level total net gross
+recovered recover rebound rebounded rallied rally surged surge climbed climb up down
+outperformed underperformed gained lost rising falling moving improving""".split())
+DIRECT_OBJECT = re.compile(r"\binto\b(?P<rest>[^?.;!,]{0,40})", re.I)
+
+
+def judgement_subject(question: str) -> list[str]:
+    """The X a judgement ask is about ("has the debt fallen" -> ``["debt"]``).
+
+    Only the words the ask turns on are kept: auxiliaries, adverbs and price words
+    ("stock", "share", "price") are dropped, because a judgement about the stock's
+    price *is* answered by a price row.  A capitalised word (the company name) is
+    dropped too, so a routed instance question never satisfies its own check.
+    """
+    text = str(question or "")
+    proper = {word.lower() for word in re.findall(r"\b[A-Z][A-Za-z0-9&.\-]{2,}", text)}
+    subjects: list[str] = []
+    found = False
+    for match in JUDGEMENT.finditer(text):
+        found = True
+        for word in re.findall(r"[A-Za-z][A-Za-z0-9\-]{2,}", match.group("mid")):
+            low = word.lower()
+            if low in JUDGEMENT_SKIP or low in proper or low.endswith("ly"):
+                continue
+            if low not in subjects:
+                subjects.append(low)
+    for match in DIRECT_OBJECT.finditer(text):
+        found = True
+        for word in re.findall(r"[A-Za-z][A-Za-z0-9\-]{2,}", match.group("rest")):
+            low = word.lower()
+            if low in JUDGEMENT_SKIP or low in proper:
+                continue
+            if low not in subjects:
+                subjects.append(low)
+    return subjects if found else []
+
+
+def substance_missing(hops: list[dict[str, Any]], subjects: list[str]) -> list[str]:
+    """Judgement subjects no row of the run carries (a price return is not the metric)."""
+    if not subjects:
+        return []
+    blob = " ".join(row_text(row) for hop in hops for row in hop.get("rows") or [])
+    blob += " " + " ".join(str(hop.get("detail") or "") for hop in hops)
+    low = norm(blob)
+    return [subject for subject in subjects
+            if not re.search(r"(?<![a-z0-9])" + re.escape(subject) + r"(?![a-z0-9])", low)]
+
+
+# --------------------------------------------------------------------------
+# unrelated rows
+# --------------------------------------------------------------------------
+def segments(text: Any) -> list[str]:
+    """The rendered rows of an answer (the answer joins them with '; ')."""
+    return [part.strip() for part in re.split(r";\s*", str(text or "")) if part.strip()]
+
+
+#: What a row *says*: the identity keys (ref/page id) are not content.
+CONTENT_KEYS = ("item", "metric", "quote", "text", "context", "section", "header",
+                "title", "unit")
+
+
+def content_text(row: Any) -> str:
+    if not isinstance(row, dict):
+        return str(row or "")
+    return " ".join(str(row.get(key) or "") for key in CONTENT_KEYS
+                    if row.get(key) not in (None, ""))
+
+
+def carries_number(text: Any) -> bool:
+    """A number that is not part of a date ("484", "1,150", "10.7%")."""
+    return bool(re.search(r"\d", DATE_RE.sub(" ", str(text or ""))))
+
+
+def unrelated_rows(rows: list[Any], concepts: list[str],
+                   terms: list[str], detail: Any = "") -> list[dict[str, Any]]:
+    """The rows of one hop that carry no part of the ask.
+
+    A row is related when it carries an asked concept (or a key term when the ask
+    names no known concept).  The hop's own rendered ``detail`` counts, like it
+    does in ``ask_coverage`` -- a computed "5 daily closes within 1% of an edge"
+    is the high it is about, but a Novelis EBITDA bridge is not.
+
+    Only the *metric* concepts count here: "raw and adjusted" is a basis
+    requirement on the row that answers, not a licence for an "Adjusted EBITDA"
+    passage to ride along.
+    """
+    if not concepts and not terms:
+        return []
+    judge = [concept for concept in concepts if concept not in BASIS] or []
+    shown = str(detail or "")
+    if judge and any(_row_covers({"item": shown}, concept) for concept in judge):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        text = row if isinstance(row, str) else row_text(row)
+        if judge and any(_row_covers({"item": text}, concept) for concept in judge):
+            continue
+        low = norm(text)
+        if not judge and any(
+                re.search(r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])", low)
+                for term in terms):
+            continue
+        out.append({"text": str(text)[:120],
+                    "numeric": carries_number(content_text(row)) or carries_number(shown)})
+    return out
 
 
 def ask_match(hop: dict[str, Any], concepts: list[str], terms: list[str]) -> bool | None:
@@ -353,7 +567,8 @@ def ask_match(hop: dict[str, Any], concepts: list[str], terms: list[str]) -> boo
 
 def ask_coverage(hops: list[dict[str, Any]], concepts: list[str],
                  terms: list[str]) -> tuple[bool | None, list[str]]:
-    """Every asked concept must be carried by some row of the run.
+    """Every asked concept -- including both bases of a "raw and adjusted" ask --
+    must be carried by some row of the run.
 
     A hop's ``detail`` is a rendering of its own rows (the SERIES arithmetic
     lives there), so it counts as evidence for the concept the row carries.
@@ -578,4 +793,9 @@ def gate_run(hops: list[dict[str, Any]], sub: dict[str, Any],
     ok, missing = ask_coverage(checked, concepts, terms)
     if ok is False:
         return "GATE " + missing[0]
+    absent = substance_missing(checked, judgement_subject(str(sub.get("text") or "")))
+    if absent:
+        return (f"GATE concept_substance: the judgement ask is about "
+                f"{', '.join(absent)} but no row carries it (a price return is not the "
+                f"asked metric)")
     return None
