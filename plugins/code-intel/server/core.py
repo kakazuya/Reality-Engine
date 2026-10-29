@@ -11,7 +11,6 @@ rather than raising through MCP.
 """
 from __future__ import annotations
 
-import ast
 import datetime
 import os
 import shutil
@@ -21,9 +20,15 @@ import threading
 import time
 from pathlib import Path
 
-from lsp import LspClient, LspError, path_to_uri, uri_to_path
-
 SERVER_DIR = Path(__file__).resolve().parent
+PLUGIN_DIR = SERVER_DIR.parent
+for _entry_dir in (SERVER_DIR, PLUGIN_DIR):   # ``lsp.py`` is here, ``astindex.py`` beside it
+    if str(_entry_dir) not in sys.path:
+        sys.path.insert(0, str(_entry_dir))
+
+from lsp import LspClient, LspError, path_to_uri, uri_to_path  # noqa: E402
+import astindex  # noqa: E402  (stdlib only, never starts a server)
+
 REPO_ROOT = Path(os.environ.get("CODE_INTEL_REPO_ROOT") or SERVER_DIR.parents[2]).resolve()
 CACHE_DIR = SERVER_DIR / ".cache"
 LIFECYCLE_LOG = CACHE_DIR / "lifecycle.log"
@@ -39,6 +44,8 @@ MAX_DIAGNOSTIC_FILES = 20
 MAX_DIAGNOSTICS_PER_FILE = 100
 MAX_MODULES = 300
 MAX_HOVER_CHARS = 4000
+MAX_SYNC_FILES = int(os.environ.get("CODE_INTEL_MAX_SYNC_FILES", "40"))
+SYNC_TIMEOUT = 10.0
 SNIPPET_LINES = 5
 HOT_FILES = ("reality_engine/db/readonly.py", "reality_engine/config.py")
 
@@ -132,7 +139,13 @@ _start_lock = threading.Lock()
 _diag_cond = threading.Condition()
 _diag: dict[str, tuple[int, list]] = {}
 _opened_lock = threading.Lock()
-_opened: dict[str, int] = {}   # normalised path -> last didChange version
+# normalised path -> {"version": last didChange version, "sig": (mtime, size, ctime), "uri": str}
+# ``sig`` is what the language server was last given, so a disk edit that never
+# went through the editor is detectable without trusting the server's index.
+_opened: dict[str, dict] = {}
+_sync_lock = threading.Lock()
+_disk_snapshot: dict[str, tuple[int, int, int]] | None = None   # scan at server start / last sync
+_last_head: str | None = None                                    # git HEAD at that scan
 
 
 def _diag_key(path: Path | str) -> str:
@@ -208,6 +221,7 @@ def _client(timeout: float = REQUEST_TIMEOUT) -> LspClient:
             _opened.clear()          # a new process has no open documents
         with _diag_cond:
             _diag.clear()            # ... and no diagnostics for them either
+        _reset_sync()                # disk baseline: the fresh server reads from disk now
         lifecycle(f"langserver up pid={fresh.pid()} {fresh.server_info.get('name', '')} "
                    f"{fresh.server_info.get('version', '')}")
         seed = _seed_file()
@@ -285,29 +299,156 @@ def _snippet(path: Path, line0: int, radius: int = SNIPPET_LINES) -> list[str]:
     return [f"{i + 1}: {lines[i]}" for i in range(start, stop)]
 
 
-def _open(client: LspClient, path: Path) -> str:
+def _sig(path: Path) -> tuple[int, int, int] | None:
+    try:
+        info = path.stat()
+    except OSError:
+        return None
+    return (info.st_mtime_ns, info.st_size, info.st_ctime_ns)
+
+
+def _push(client: LspClient, path: Path) -> str:
     """Open the document, or push new text when it is already open.
 
     A repeated ``didOpen`` is ignored by pyright and would never publish fresh
     diagnostics, so an already-open file gets a full-text ``didChange`` instead.
+    The signature is stored with the text: it is the server's copy, not the disk.
     """
     uri = path_to_uri(path)
     key = _diag_key(path)
     try:
-        with _opened_lock:
-            version = _opened.get(key)
-            _opened[key] = (version or 0) + 1
         text = path.read_text(encoding="utf-8", errors="replace")
-        if version is None:
+    except OSError:
+        text = ""
+    signature = _sig(path)
+    with _opened_lock:
+        entry = _opened.get(key)
+        version = (entry["version"] if entry else 0) + 1
+        _opened[key] = {"version": version, "sig": signature, "uri": uri}
+    try:
+        if entry is None:
             client.notify("textDocument/didOpen", {"textDocument": {
                 "uri": uri, "languageId": "python", "version": 1, "text": text}})
         else:
             client.notify("textDocument/didChange", {
-                "textDocument": {"uri": uri, "version": version + 1},
+                "textDocument": {"uri": uri, "version": version},
                 "contentChanges": [{"text": text}]})
     except LspError as exc:
         raise CodeIntelError(exc.code, exc.message) from exc
     return uri
+
+
+def _open(client: LspClient, path: Path) -> str:
+    """Open/re-send a file unconditionally: diagnostics needs the push to fire."""
+    return _push(client, path)
+
+
+def _fresh(client: LspClient, path: Path) -> str:
+    """Push the file only when the server's copy is older than the disk."""
+    key = _diag_key(path)
+    signature = _sig(path)
+    with _opened_lock:
+        entry = _opened.get(key)
+    if entry is not None and signature is not None and entry["sig"] == signature:
+        return entry["uri"]
+    return _push(client, path)
+
+
+def _head() -> str | None:
+    """This checkout's git HEAD (None outside a git repo or for a nested fixture)."""
+    try:
+        done = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "--show-toplevel", "HEAD"],
+                              capture_output=True, text=True, timeout=SYNC_TIMEOUT)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode != 0:
+        return None
+    lines = done.stdout.split()
+    if len(lines) < 2:
+        return None
+    try:
+        toplevel = Path(lines[0]).resolve()
+    except OSError:
+        return None
+    return lines[1] if toplevel == REPO_ROOT else None
+
+
+def _git_changes(old: str, new: str) -> list[str]:
+    """Python files a commit range touched; [] when git cannot answer."""
+    try:
+        done = subprocess.run(["git", "-C", str(REPO_ROOT), "diff", "--name-only", old, new, "--"],
+                              capture_output=True, text=True, timeout=SYNC_TIMEOUT)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if done.returncode != 0:
+        return []
+    return [line.strip() for line in done.stdout.splitlines() if line.strip().endswith(".py")]
+
+
+def _reset_sync() -> None:
+    """Baseline for the next sync: the disk as a freshly started server will read it."""
+    global _disk_snapshot, _last_head
+    try:
+        snapshot = astindex.scan(REPO_ROOT)
+    except (OSError, ValueError):
+        snapshot = {}
+    head = _head()
+    with _sync_lock:
+        _disk_snapshot = snapshot
+        _last_head = head
+
+
+def _sync_changes() -> int:
+    """Make the language server's view of changed files match the disk.
+
+    The server keeps the text it was first given: a git merge, a worker edit or
+    another session's write never reaches it through an editor event.  Catches
+    both the mtime/size/ctime moved since the last sweep and a moved git HEAD
+    (a merge or checkout leaves files with fresh mtimes but a clean status, and
+    status-only detection would miss it).  Returns how many files were pushed;
+    capped so one huge merge cannot stall a tool call.
+    """
+    global _disk_snapshot, _last_head
+    try:
+        snapshot = astindex.scan(REPO_ROOT)
+    except (OSError, ValueError):
+        return 0
+    with _sync_lock:
+        previous, previous_head = _disk_snapshot, _last_head
+    if previous is None:
+        _reset_sync()
+        return 0
+    changed = {rel for rel, signature in snapshot.items() if previous.get(rel) != signature}
+    head = _head()
+    if head and previous_head and head != previous_head:
+        changed.update(rel for rel in _git_changes(previous_head, head)
+                       if not astindex.SKIP_PARTS & set(Path(rel).parts))
+    with _sync_lock:
+        _disk_snapshot = snapshot
+        _last_head = head
+    client = _server.client
+    if client is None or not client.alive:
+        return 0                     # nothing to feed yet; the next start reads from disk
+    pushed = 0
+    failed: list[str] = []
+    for rel in sorted(changed)[:MAX_SYNC_FILES]:
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            continue
+        try:
+            _fresh(client, path)
+            pushed += 1
+        except CodeIntelError:
+            failed.append(rel)
+    if failed:
+        # a failed push must not be recorded as synced, or the stale copy is forever
+        with _sync_lock:
+            for rel in failed:
+                if rel in previous:
+                    snapshot[rel] = previous[rel]
+                else:
+                    snapshot.pop(rel, None)
+    return pushed
 
 
 def _inside_repo(path: Path) -> bool:
@@ -382,6 +523,55 @@ def _name_position(hit: dict, symbol: str) -> tuple[Path, int, int]:
     return path, line0, index if index >= 0 else int(start.get("character", 0))
 
 
+def _ast_index() -> dict | None:
+    """The mtime-invalidated ast index, or None when the checkout cannot be indexed."""
+    try:
+        return astindex.load(REPO_ROOT)
+    except (OSError, ValueError):
+        return None
+
+
+def _hit_is_stale(hit: dict) -> bool:
+    """True when the server points at a line that no longer holds the name.
+
+    pyright's workspace index can hold the text it was first given; a position
+    from it is only trusted when the disk agrees.
+    """
+    name = str(hit.get("name") or "")
+    location = hit.get("location") or {}
+    if not name or "uri" not in location:
+        return False
+    try:
+        path = uri_to_path(location["uri"])
+    except ValueError:
+        return False
+    start = (location.get("range") or {}).get("start") or {}
+    return name not in _line_text(path, int(start.get("line", 0)))
+
+
+def _ast_definition(symbol: str) -> list[dict]:
+    index = _ast_index()
+    return astindex.definitions(index, symbol) if index else []
+
+
+def _ast_references(symbol: str, limit: int) -> dict | None:
+    index = _ast_index()
+    if not index:
+        return None
+    hits, total = astindex.references(index, symbol, limit=limit)
+    if not total:
+        return None
+    return {"ok": True, "symbol": symbol, "count": len(hits), "limit": limit,
+            "truncated": total > len(hits), "references": hits, "source": "ast"}
+
+
+def _ast_symbols(query: str, limit: int) -> tuple[list[dict], int]:
+    index = _ast_index()
+    if not index:
+        return [], 0
+    return astindex.search_names(index, query, limit=limit)
+
+
 def _changed_python_files(limit: int = 50) -> list[Path]:
     try:
         done = subprocess.run(["git", "-C", str(REPO_ROOT), "status", "--porcelain", "--untracked-files=all"],
@@ -408,52 +598,44 @@ def _changed_python_files(limit: int = 50) -> list[Path]:
     return files
 
 
+def _in_program(path: Path) -> bool:
+    """Is the file in the pyright program (pyrightconfig.json ``include``)?
+
+    Pyright never publishes diagnostics for a file outside the include roots, so
+    waiting for them would burn the whole diagnostics budget on a timeout.
+    """
+    try:
+        rel = path.resolve().relative_to(REPO_ROOT).as_posix()
+    except (ValueError, OSError):
+        return False
+    if "/" not in rel:
+        return True                  # a root-level module is part of the program
+    roots = astindex.pyright_roots(REPO_ROOT)
+    if not roots:
+        return True
+    return any(rel == root or rel.startswith(root + "/") for root in roots)
+
+
 def _module_outline(path: Path) -> dict:
     text = path.read_text(encoding="utf-8", errors="replace")
     try:
-        tree = ast.parse(text)
+        symbols, module_doc = astindex.module_symbols(text)
     except SyntaxError as exc:
         raise CodeIntelError("syntax_error", f"{_rel(path)}:{exc.lineno}: {exc.msg}") from exc
-    symbols: list[dict] = []
-
-    def first_doc(node) -> str:
-        doc = ast.get_docstring(node, clean=True) or ""
-        return doc.splitlines()[0].strip() if doc else ""
-
-    def walk(nodes, prefix: str = "") -> None:
-        container = prefix.rstrip(".")
-        for node in nodes:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                symbols.append({"name": node.name, "container": container,
-                                "kind": "method" if prefix else "function", "line": node.lineno,
-                                "end_line": getattr(node, "end_lineno", node.lineno),
-                                "doc": first_doc(node)})
-            elif isinstance(node, ast.ClassDef):
-                symbols.append({"name": node.name, "container": container, "kind": "class",
-                                "line": node.lineno, "end_line": getattr(node, "end_lineno", node.lineno),
-                                "doc": first_doc(node)})
-                walk(node.body, prefix + node.name + ".")
-            else:
-                # defs nested in if/try/with blocks are still module members
-                for field in ("body", "orelse", "finalbody", "handlers"):
-                    block = getattr(node, field, None)
-                    if isinstance(block, list) and block and isinstance(block[0], ast.AST):
-                        walk(block, prefix)
-
-    walk(tree.body)
     return {"file": _rel(path), "language": "python", "lines": len(text.splitlines()),
-            "module_doc": first_doc(tree), "count": len(symbols), "symbols": symbols}
+            "module_doc": module_doc, "count": len(symbols), "symbols": symbols}
 
 
 # --------------------------------------------------------------------------- tools
 def definition(symbol: str | None = None, file: str | None = None, line: int | None = None,
                col: int | None = None) -> dict:
+    _sync_changes()
     if file and line:
         path = _path(file)
         if not path.is_file():
             raise CodeIntelError("not_found", f"no such file: {file}")
         client = _client()
-        uri = _open(client, path)
+        uri = _fresh(client, path)
         result = _call("textDocument/definition", {"textDocument": {"uri": uri}, "position": {
             "line": max(0, int(line) - 1), "character": max(0, int(col or 1) - 1)}})
         locations = [result] if isinstance(result, dict) else list(result or [])
@@ -468,35 +650,55 @@ def definition(symbol: str | None = None, file: str | None = None, line: int | N
         raise CodeIntelError("bad_request", "pass symbol=... or file=...&line=...")
     hits = _search_symbols(symbol, REQUEST_TIMEOUT)
     hit = _pick_symbol(hits, symbol)
-    if hit is None:
-        raise CodeIntelError("not_found", f"no symbol matching {symbol!r}")
+    stale = hit is not None and _hit_is_stale(hit)
+    if hit is None or stale:
+        replacement = _ast_definition(symbol)
+        if replacement:
+            return {"ok": True, "symbol": symbol, "count": len(replacement),
+                    "definitions": replacement, "candidates": max(0, len(hits) - 1),
+                    "source": "ast"}
+        if hit is None:
+            raise CodeIntelError("not_found", f"no symbol matching {symbol!r}")
     path, line0, char0 = _name_position(hit, symbol)
     location = _location(path, line0, char0)
     location["snippet"] = _snippet(path, line0)
     location["name"] = hit.get("name")
     location["kind"] = _kind_name(hit.get("kind"))
     location["container"] = hit.get("containerName") or ""
-    return {"ok": True, "symbol": symbol, "count": 1, "definitions": [location],
-            "candidates": max(0, len(hits) - 1)}
+    out = {"ok": True, "symbol": symbol, "count": 1, "definitions": [location],
+           "candidates": max(0, len(hits) - 1), "source": "lsp"}
+    if stale:
+        out["stale"] = True          # the ast index does not know this name either
+    return out
 
 
 def references(symbol: str | None = None, file: str | None = None, line: int | None = None,
                col: int | None = None, limit: int = 50) -> dict:
     limit = max(1, min(int(limit), MAX_REFERENCES))
+    _sync_changes()
     client = _client()
     if file and line:
         path = _path(file)
         if not path.is_file():
             raise CodeIntelError("not_found", f"no such file: {file}")
-        uri = _open(client, path)
+        uri = _fresh(client, path)
         position = {"line": max(0, int(line) - 1), "character": max(0, int(col or 1) - 1)}
         name = None
     elif symbol:
         hits = _search_symbols(symbol, REQUEST_TIMEOUT)
         hit = _pick_symbol(hits, symbol)
         if hit is None:
+            fallback = _ast_references(symbol, limit)
+            if fallback is not None:
+                return fallback
             raise CodeIntelError("not_found", f"no symbol matching {symbol!r}")
         path, line0, char0 = _name_position(hit, symbol)
+        if symbol not in _line_text(path, line0):
+            # the server's copy of the defining file is older than the disk, so a
+            # position query against it would resolve whatever used to be there
+            fallback = _ast_references(symbol, limit)
+            if fallback is not None:
+                return fallback
         uri = path_to_uri(path)
         position = {"line": line0, "character": char0}
         name = symbol
@@ -509,7 +711,7 @@ def references(symbol: str | None = None, file: str | None = None, line: int | N
     locations.sort(key=lambda loc: (loc["file"], loc["line"]))
     return {"ok": True, "symbol": name or f"{_rel(path)}:{position['line'] + 1}",
             "count": len(locations), "limit": limit, "truncated": len(locations) > limit,
-            "references": locations[:limit]}
+            "references": locations[:limit], "source": "lsp"}
 
 
 def callers(function: str, limit: int = 50) -> dict:
@@ -536,7 +738,13 @@ def symbols(file: str | None = None, query: str | None = None, limit: int = 100)
         return outline
     if not query:
         raise CodeIntelError("bad_request", "pass file=... or query=...")
+    _sync_changes()
     hits = _search_symbols(query, REQUEST_TIMEOUT)
+    if not hits or any(_hit_is_stale(hit) for hit in hits):
+        fresh_hits, total = _ast_symbols(query, limit)
+        if fresh_hits:
+            return {"ok": True, "query": query, "count": len(fresh_hits),
+                    "truncated": total > len(fresh_hits), "symbols": fresh_hits, "source": "ast"}
     results = []
     for hit in hits[:limit]:
         location = _loc_from_lsp(hit["location"])
@@ -545,15 +753,16 @@ def symbols(file: str | None = None, query: str | None = None, limit: int = 100)
         results.append({"name": hit.get("name"), "kind": _kind_name(hit.get("kind")),
                         "container": hit.get("containerName") or "", **location})
     return {"ok": True, "query": query, "count": len(results), "truncated": len(hits) > limit,
-            "symbols": results}
+            "symbols": results, "source": "lsp"}
 
 
 def hover(file: str, line: int, col: int = 1) -> dict:
     path = _path(file)
     if not path.is_file():
         raise CodeIntelError("not_found", f"no such file: {file}")
+    _sync_changes()
     client = _client()
-    uri = _open(client, path)
+    uri = _fresh(client, path)
     result = _call("textDocument/hover", {"textDocument": {"uri": uri}, "position": {
         "line": max(0, int(line) - 1), "character": max(0, int(col) - 1)}})
     contents = (result or {}).get("contents")
@@ -572,6 +781,7 @@ def hover(file: str, line: int, col: int = 1) -> dict:
 
 def diagnostics(files: list[str] | None = None, changed: bool = False) -> dict:
     started = time.monotonic()
+    _sync_changes()                  # a file's imports matter as much as the file
     targets: list[Path] = []
     if changed:
         targets.extend(_changed_python_files())
@@ -579,9 +789,12 @@ def diagnostics(files: list[str] | None = None, changed: bool = False) -> dict:
         path = _path(item)
         if path.is_file() and path not in targets:
             targets.append(path)
+    skipped = [_rel(path) for path in targets if not _in_program(path)]
+    targets = [path for path in targets if _in_program(path)]
     if not targets:
         return {"ok": True, "files": [], "count": 0, "error_count": 0, "warning_count": 0,
-                "note": "no changed or listed Python files"}
+                "skipped": skipped,
+                "note": "no changed or listed Python files inside the pyright program"}
     truncated_files = len(targets) > MAX_DIAGNOSTIC_FILES
     targets = targets[:MAX_DIAGNOSTIC_FILES]
     client = _client()
@@ -609,6 +822,7 @@ def diagnostics(files: list[str] | None = None, changed: bool = False) -> dict:
             "count": sum(entry["count"] for entry in out),
             "error_count": sum(1 for entry in out for d in entry["diagnostics"] if d["severity"] == "error"),
             "warning_count": sum(1 for entry in out for d in entry["diagnostics"] if d["severity"] == "warning"),
+            "skipped": skipped,
             "truncated": truncated_files, "elapsed_ms": int((time.monotonic() - started) * 1000)}
 
 
@@ -618,17 +832,30 @@ def module_map(package: str = "reality_engine", limit: int = MAX_MODULES) -> dic
     if not root.is_dir():
         raise CodeIntelError("not_found", f"no such directory: {package}")
     skip = SKIP_PARTS
+    index = _ast_index() or {}
+    cached = index.get("files") or {}
     modules = []
     for path in sorted(root.rglob("*.py")):
         if skip & set(path.relative_to(root).parts):
             continue
+        rel = _rel(path)
+        entry = cached.get(rel)
+        if entry is not None:                # already parsed and mtime-checked by the index
+            symbols = entry.get("symbols") or []
+            classes = sum(1 for item in symbols if item.get("kind") == "class")
+            modules.append({"file": rel, "purpose": entry.get("doc") or "(no docstring)",
+                            "classes": classes, "functions": len(symbols) - classes,
+                            "lines": entry.get("lines") or 0})
+            if len(modules) >= limit:
+                break
+            continue
         try:
             outline = _module_outline(path)
         except CodeIntelError as exc:
-            modules.append({"file": _rel(path), "purpose": f"<unparsed: {exc.message}>"})
+            modules.append({"file": rel, "purpose": f"<unparsed: {exc.message}>"})
             continue
         classes = sum(1 for item in outline["symbols"] if item["kind"] == "class")
-        modules.append({"file": _rel(path), "purpose": outline["module_doc"] or "(no docstring)",
+        modules.append({"file": rel, "purpose": outline["module_doc"] or "(no docstring)",
                         "classes": classes, "functions": outline["count"] - classes,
                         "lines": outline["lines"]})
         if len(modules) >= limit:
