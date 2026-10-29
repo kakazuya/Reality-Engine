@@ -15,6 +15,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from reality_engine.query import compute
+
 REPO = Path(__file__).resolve().parents[2]
 # The controller copies the build to the SSD pilot folder; a fresh worktree build stays in .tmp.
 DEFAULT = REPO / "reality_engine" / "data" / "pilot" / "pilot60" / "extract_pilot60.db"
@@ -208,6 +210,178 @@ def facts_rows(ctx: Any, isin: str, as_of: str, question: str,
                           r["source_doc_id"], r["page"], r["quote"])
                     for r in rows if r["revision_pct"] is not None]
     return out
+
+
+#: concept -> the ``company_metric_series`` keys its components are held under.
+SERIES_KEYS: dict[str, tuple[str, ...]] = {
+    "revenue": ("revenue",),
+    "pat": ("pat",),
+    "eps": ("eps",),
+    "ebitda": ("pbt", "finance_costs", "depreciation"),
+    "margin": ("revenue", "pat", "pbt", "finance_costs", "depreciation"),
+    "working_capital": ("inventory", "receivables", "payables"),
+    "roic": ("pbt", "finance_costs", "net_worth", "borrowings_current",
+             "borrowings_noncurrent", "cash"),
+}
+#: metric_key -> the row label the answer shows (the key itself is a table code).
+KEY_LABEL = {
+    "revenue": "Revenue", "pat": "Profit after tax", "eps": "EPS",
+    "pbt": "Profit before tax", "finance_costs": "Finance costs",
+    "depreciation": "Depreciation", "inventory": "Inventory",
+    "receivables": "Trade receivables", "payables": "Trade payables",
+    "net_worth": "Net worth", "borrowings_current": "Borrowings (current)",
+    "borrowings_noncurrent": "Borrowings (non-current)",
+    "cash": "Cash and cash equivalents",
+}
+#: the store's own unit codes -> the words the answer contract shows.
+UNIT_WORDS = {"INR_CRORE": "Rs crore", "INR_PER_SHARE": "Rs/share",
+              "INR": "INR", "PCT": "%", "pure": "%"}
+
+
+def _unit_words(unit: Any) -> str:
+    return UNIT_WORDS.get(str(unit or ""), str(unit or ""))
+
+
+def _pilot_fact(label: str, value: Any, unit: str, period: str | None,
+                anchor: dict[str, Any] | None, quote: str | None = None) -> dict[str, Any]:
+    """Same row shape as ``planners.facts._row``, keyed to the T1 facts build."""
+    anchor = anchor or {}
+    return {"store": "facts_pilot", "item": label, "value": value, "unit": unit,
+            "period": period, "known_at": anchor.get("known_at"), "doc_id": anchor.get("doc_id"),
+            "page": None, "quote": (quote or "")[:400] or None, "context": "computed",
+            "ref": f"facts_pilot:{anchor.get('doc_id') or label}"}
+
+
+def _concept_rows(metric: str, slot: dict[str, dict], period_end: Any) -> list[dict[str, Any]]:
+    """One labelled row per asked concept from one period's held components."""
+    def held(key: str) -> dict[str, Any] | None:
+        row = slot.get(key)
+        return row if row and row.get("value") is not None else None
+
+    def value(key: str) -> Any:
+        row = held(key)
+        return None if row is None else float(row["value"])
+
+    def fact(label: str, number: Any, unit: str, *anchors: dict[str, Any] | None,
+             quote: str | None = None) -> list[dict[str, Any]]:
+        row = next((a for a in anchors if a), None)
+        if number is None or row is None:
+            return []
+        return [_pilot_fact(label, number, unit, period_end, row, quote)]
+
+    def money(label: str, number: Any, *anchors: dict[str, Any] | None,
+              quote: str | None = None) -> list[dict[str, Any]]:
+        return fact(label, number, "Rs crore", *anchors, quote=quote)
+
+    if metric == "revenue":
+        return money("Revenue", value("revenue"), held("revenue"))
+    if metric == "pat":
+        return money("Profit after tax", value("pat"), held("pat"))
+    if metric == "eps":
+        return fact("EPS", value("eps"), "Rs/share", held("eps"))
+    ebitda = compute.add(value("pbt"), value("finance_costs"), value("depreciation"))
+    if metric == "ebitda":
+        return money("EBITDA (PBT + finance costs + depreciation)", ebitda,
+                     held("pbt"), held("finance_costs"), held("depreciation"),
+                     quote=f"PBT {value('pbt')} + finance costs {value('finance_costs')} "
+                           f"+ depreciation {value('depreciation')}")
+    if metric == "margin":
+        revenue = value("revenue")
+        rows = fact("EBITDA margin (EBITDA / revenue)", compute.margin(ebitda, revenue), "%",
+                    held("revenue"), held("pbt"),
+                    quote=f"EBITDA {ebitda} / revenue {revenue} x 100")
+        rows += fact("PAT margin (PAT / revenue)", compute.margin(value("pat"), revenue), "%",
+                     held("pat"), held("revenue"),
+                     quote=f"PAT {value('pat')} / revenue {revenue} x 100")
+        return rows
+    if metric == "working_capital":
+        rows = []
+        for key in ("inventory", "receivables", "payables"):
+            rows += money(KEY_LABEL[key], value(key), held(key))
+        rows += money("Working capital (inventory + receivables - payables)",
+                      compute.working_capital(value("inventory"), value("receivables"),
+                                              value("payables")),
+                      held("receivables"), held("inventory"), held("payables"),
+                      quote=f"inventory {value('inventory')} + receivables "
+                            f"{value('receivables')} - payables {value('payables')}")
+        return rows
+    if metric == "roic":
+        ebit = compute.add(value("pbt"), value("finance_costs"))
+        borrowings = compute.add(value("borrowings_current"), value("borrowings_noncurrent"))
+        return fact("Return on invested capital (ROIC, pre-tax EBIT / "
+                    "(net worth + borrowings - cash))",
+                    compute.roic(ebit, value("net_worth"), borrowings, value("cash")), "%",
+                    held("net_worth"), held("pbt"),
+                    quote=f"EBIT {ebit} / (net worth {value('net_worth')} + borrowings "
+                          f"{borrowings} - cash {value('cash')}) x 100")
+    return []
+
+
+def _t1_con(ctx: Any) -> tuple[Any, bool]:
+    """(connection, opened-here) for the T1 facts build, or ``(None, False)``."""
+    try:
+        return ctx.sqlite("facts_pilot"), False
+    except Exception:  # noqa: BLE001 - fall back to the configured/SSD pilot path
+        from reality_engine.query.ctx import t1_path
+        path = t1_path("facts_pilot")
+        if path is None or not path.is_file():
+            return None, False
+        from reality_engine.db.readonly import connect_ro
+        return connect_ro(path, timeout_s=15, immutable=True), True
+
+
+def pilot_rows(ctx: Any, isin: str, as_of: str, metric: str | None,
+               period: tuple[str | None, str | None] = (None, None),
+               kind: str | None = None, limit: int = 6) -> list[dict[str, Any]]:
+    """Facts for the asked concept from the T1 build (``facts_pilot``).
+
+    ``company_metric_series`` is the whole-market XBRL fact table (1.06 M rows;
+    ``period_kind`` quarter/half/fy/instant, ``basis`` consolidated or
+    standalone).  The derived ratios (EBITDA, margin, working capital, ROIC) are
+    computed from those held components by ``compute`` so no store invents a
+    number and every row keeps the component's own ``known_at``.
+    """
+    keys = SERIES_KEYS.get(metric or "")
+    if not keys:
+        return []
+    con, owned = _t1_con(ctx)
+    if con is None:
+        return []
+    where = ["isin = ?", "known_at <= ?", "metric_key IN (" + ",".join("?" * len(keys)) + ")"]
+    params: list[Any] = [isin, as_of, *keys]
+    if period[0] and period[1]:
+        where += ["period_end >= ?", "period_end <= ?"]
+        params += [period[0], period[1]]
+    if kind:
+        # Flow keys carry the asked granularity; balance-sheet keys are 'instant'
+        # and belong to the same period end (a return on capital needs both).
+        where.append("(period_kind = ? OR period_kind = 'instant')")
+        params.append(kind)
+    try:
+        fetched = [dict(row) for row in con.execute(
+            "SELECT metric_key, period_end, period_kind, basis, value, unit, source, doc_id, "
+            f"known_at FROM company_metric_series WHERE {' AND '.join(where)} "
+            "ORDER BY period_end DESC, CASE period_kind WHEN 'quarter' THEN 0 "
+            "WHEN 'half' THEN 1 WHEN 'fy' THEN 2 ELSE 3 END, known_at DESC LIMIT 400",
+            tuple(params)).fetchall()]
+    except Exception:  # noqa: BLE001 - a missing table degrades to the other stores
+        return []
+    finally:
+        if owned:
+            con.close()
+    groups: dict[Any, dict[str, dict[str, Any]]] = {}
+    for row in fetched:
+        slot = groups.setdefault(row["period_end"], {})
+        prev = slot.get(row["metric_key"])
+        if prev is None or (row["basis"] == "consolidated"
+                            and prev.get("basis") != "consolidated"):
+            slot[row["metric_key"]] = row
+    out: list[dict[str, Any]] = []
+    for period_end in sorted(groups, key=lambda day: str(day or ""), reverse=True):
+        out += _concept_rows(metric, groups[period_end], period_end)
+        if len(out) >= limit:
+            break
+    return out[:limit]
 
 
 def evidence_rows(ctx: Any, isin: str, as_of: str, question: str,

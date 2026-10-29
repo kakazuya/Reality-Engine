@@ -6,8 +6,11 @@ into a partial answer, never into a number.
 """
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from typing import Any, Iterable, Sequence
+
+_NUMBER = re.compile(r"[-+]?\d[\d,]*(?:\.\d+)?")
 
 
 def _f(value: Any) -> float | None:
@@ -73,6 +76,57 @@ def ratio(numerator: Any, denominator: Any) -> float | None:
 def delta(begin: Any, end: Any) -> float | None:
     a, b = _f(begin), _f(end)
     return None if a is None or b is None else b - a
+
+
+def first_number(text: Any) -> float | None:
+    """The first number written in an extracted text value.
+
+    The extraction stores keep some figures as text ("1,801", "INR1,860 crores",
+    "350 to 400", "more than 25%"); the row is numeric when that text states one.
+    A range keeps its lower bound, and the row's quote carries the original.
+    """
+    if isinstance(text, (int, float)) and not isinstance(text, bool):
+        return _f(text)
+    match = _NUMBER.search(str(text or ""))
+    return _f(match.group(0).replace(",", "")) if match else None
+
+
+def add(*values: Any) -> float | None:
+    """Sum of the parts, or ``None`` when any part is missing."""
+    parts = [_f(value) for value in values]
+    return None if any(part is None for part in parts) else sum(parts)
+
+
+def working_capital(inventory: Any, receivables: Any, payables: Any) -> float | None:
+    """Inventory + receivables - payables, in the components' own unit.
+
+    One missing component makes the sum unusable: an imputed zero would invent a
+    working-capital number the filings never stated.
+    """
+    parts = [_f(inventory), _f(receivables), _f(payables)]
+    if any(part is None for part in parts):
+        return None
+    return parts[0] + parts[1] - parts[2]
+
+
+def invested_capital(net_worth: Any, borrowings: Any, cash: Any = 0.0) -> float | None:
+    """Shareholders' funds + borrowings - cash; ``None`` unless it is positive."""
+    funds, debt = _f(net_worth), _f(borrowings)
+    if funds is None or debt is None:
+        return None
+    capital = funds + debt - (_f(cash) or 0.0)
+    return capital if capital > 0 else None
+
+
+def roic(operating_profit: Any, net_worth: Any, borrowings: Any,
+         cash: Any = 0.0) -> float | None:
+    """Pre-tax EBIT / (net worth + borrowings - cash), in percent."""
+    return margin(operating_profit, invested_capital(net_worth, borrowings, cash))
+
+
+def per_share(total: Any, shares: Any) -> float | None:
+    """A money amount divided by a share count (dividend per share, EPS)."""
+    return ratio(total, shares)
 
 
 def window_return(points: Sequence[tuple[Any, Any]]) -> tuple[float | None, float | None, float | None]:

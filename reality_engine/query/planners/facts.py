@@ -28,15 +28,46 @@ CONCEPT_TERMS: dict[str, tuple[str, ...]] = {
     "net_npa": ("%NonPerforming%", "%NPA%"),
     "margin": ("%Margin%",),
     "dso": ("%Receivable%", "%Debtor%"),
-    "cfo": ("%CashFlow%",),
+    # The operating cash flow line is the concept; "%CashFlow%" alone also pulls
+    # investing/financing lines, which carry the word but not the number asked.
+    "cfo": ("%CashFlowsFromUsedInOperatingActivities%", "%CashFlowsFromUsedInOperations%",
+            "%CashFlowFromOperating%"),
     "order_book": ("%Order%",),
     "capacity": ("%Capacity%",),
     "capex": ("%PropertyPlantAndEquipment%", "%CapitalExpenditure%", "%CapitalWork%"),
+    "dividend": ("%Dividend%",),
+    "working_capital": ("%Inventor%", "%TradeReceivable%", "%TradePayable%",
+                        "%Receivable%", "%Payable%"),
     "promoter": ("%Shareholding%",),
     "valuation": ("%EarningsLossPerShare%", "%PaidUp%", "%FaceValue%"),
     "guidance": ("%Guidance%",),
     "audit": ("%Audit%", "%Opinion%"),
 }
+
+#: XBRL concept -> the row label the answer contract shows.  The camel-case split
+#: is not a label: "PurchaseOfPropertyPlantAndEquipment..." answers nothing ("capex"
+#: is the word the ask uses), and "PercentageOfNpa" states neither "net" nor "%".
+CONCEPT_LABELS: dict[str, str] = {
+    "PercentageOfNpa": "Net NPA %",
+    "PercentageOfGrossNpa": "Gross NPA %",
+    "NonPerformingAssets": "Net NPA (amount)",
+    "GrossNonPerformingAssets": "Gross NPA (amount)",
+    "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities":
+        "Capex (purchase of property, plant and equipment)",
+    "PurchaseOfPropertyPlantAndEquipmentCapitalWorkInProgress": "Capex (capital work in progress)",
+    "CashFlowsFromUsedInOperatingActivities": "Cash flow from operations",
+    "CashFlowsFromUsedInOperations": "Cash flow from operations",
+    "DividendsPaidClassifiedAsFinancingActivities": "Dividends paid (cash flow statement)",
+    "DividendPerShare": "Dividend per share",
+    "SegmentRevenue": "Segment revenue (total)",
+    "SegmentRevenueFromOperations": "Segment revenue (total)",
+    "RevenueFromOperations": "Revenue from operations",
+    "ProfitLossForPeriod": "Profit after tax",
+    "ProfitLossFromOrdinaryActivitiesAfterTax": "Profit after tax",
+    "ProfitBeforeTax": "Profit before tax",
+}
+#: Concepts stated as a fraction of one (unit "pure") and shown as a percentage.
+PERCENT_CONCEPTS = {"PercentageOfNpa", "PercentageOfGrossNpa"}
 
 TEXT_TERMS: dict[str, tuple[str, ...]] = {
     "segment": ("segment", "business mix", "vertical"),
@@ -57,6 +88,23 @@ TEXT_TERMS: dict[str, tuple[str, ...]] = {
     "valuation": ("pe", "p/e", "ev/ebitda", "valuation", "multiple"),
     "audit": ("audit", "auditor", "opinion"),
 }
+
+
+#: Concepts FACTS serves as a numeric metric.  The router names most of them;
+#: this is the fallback when it routes no metric at all ("ROIC through the cycle",
+#: "dividend policy") and FACTS is still the planner that holds the number.
+FACTS_CONCEPTS = ("segment", "revenue", "pat", "ebitda", "eps", "net_npa", "margin",
+                  "dso", "cfo", "order_book", "capacity", "capex", "dividend",
+                  "working_capital", "roic", "guidance", "valuation", "audit", "promoter")
+
+
+def asked_metric(question: str) -> str | None:
+    """The stored numeric metric an ask names when the router routed none."""
+    from ..gate import asked_concepts
+    for concept in asked_concepts(question):
+        if concept in FACTS_CONCEPTS:
+            return concept
+    return None
 
 
 def _t1_rows(ctx: Any, name: str, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
@@ -142,6 +190,22 @@ def _window(day: str) -> tuple[str, str]:
             (anchor + timedelta(days=DOC_WINDOW_DAYS)).isoformat())
 
 
+def _quarter_of(day: str) -> tuple[str, str]:
+    """The quarter end a call/deck of that day reports on (Mar/Jun/Sep/Dec 31).
+
+    A 4 November call reports the 30 September quarter; the named date is what the
+    question anchors on, so the reader gets that quarter's figure and not the
+    newest one held.
+    """
+    from datetime import date
+    anchor = date.fromisoformat(str(day)[:10])
+    ends = [date(anchor.year, month, day_)
+            for month, day_ in ((3, 31), (6, 30), (9, 30), (12, 31))]
+    past = [end for end in ends if end <= anchor]
+    end = past[-1] if past else date(anchor.year - 1, 12, 31)
+    return end.isoformat(), end.isoformat()
+
+
 def _deck_period_terms(slots: dict[str, Any]) -> tuple[list[str], str | None]:
     """(quarter-or-month labels, year) a deck figure must name to be the asked period."""
     basis = str(slots.get("period_basis") or "")
@@ -192,11 +256,13 @@ def asked_words(question: str, metric: str | None) -> tuple[str, ...]:
 
 def concept_heads(question: str, metric: str | None) -> tuple[str, ...]:
     """One search word per concept the ask names (the store's leading alias)."""
-    from ..gate import asked_concepts
+    from ..gate import ASK_CONCEPTS, asked_concepts
     heads: list[str] = []
     concepts = asked_concepts(question) or ([metric] if metric else [])
     for concept in concepts:
-        words = TEXT_TERMS.get(concept) or (((metric,) if concept == metric else ()))
+        words = TEXT_TERMS.get(concept) or ASK_CONCEPTS.get(concept, ((), ()))[0]
+        if not words and concept == metric:
+            words = (concept,)
         if words and words[0] not in heads:
             heads.append(words[0])
     return tuple(heads[:6])
@@ -265,6 +331,11 @@ def _results(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | No
         if concepts:
             sql += " AND (" + " OR ".join("concept LIKE ?" for _ in concepts) + ")"
             args.extend(concepts)
+        elif metric:
+            # The ask names a concept this schedule does not classify (order book,
+            # capacity, guidance, loan growth): a revenue or PBT row is another
+            # concept, not the answer.  Only an unnamed numeric ask reads the base.
+            return [], len(filings)
         else:
             base = ("RevenueFromOperations", "Income", "ProfitLossForPeriod", "ProfitBeforeTax")
             sql += " AND concept IN (" + ",".join("?" * len(base)) + ")"
@@ -279,8 +350,13 @@ def _results(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | No
         filing = by_file.get(row["file"])
         if not filing:
             continue
-        label = re.sub(r"(?<!^)(?=[A-Z])", " ", row["concept"] or "")
-        out.append(_row("results_xbrl", label, row["value"], row["unit"] or "INR",
+        concept = row["concept"] or ""
+        label = CONCEPT_LABELS.get(concept) or re.sub(r"(?<!^)(?=[A-Z])", " ", concept)
+        value, unit = row["value"], row["unit"] or "INR"
+        if concept in PERCENT_CONCEPTS and str(unit).lower() == "pure":
+            value = float(value) * 100.0  # XBRL states the ratio (0.005 = 0.50%)
+            unit = "%"
+        out.append(_row("results_xbrl", label, value, unit,
                         str(row["period_end"] or filing["period_end"]),
                         filing["known_at"], row["file"], context=row["context"]))
     return out, len(filings)
@@ -376,10 +452,19 @@ def _concall(ctx: Any, isin: str, as_of: str, metric: str | None,
             "SELECT i.doc_id, i.metric, i.value, i.unit, i.period, i.quote, d.filed_at "
             "FROM cc_items i JOIN cc_docs d ON d.doc_id = i.doc_id "
             f"WHERE {' AND '.join(where)} ORDER BY d.filed_at DESC, i.idx LIMIT 160", params)
-        return [_row("concall_facts", r["metric"] or "", r["value"], r["unit"], r["period"],
-                     r["filed_at"], r["doc_id"], quote=r["quote"]) for r in rows], len(rows)
+        # The extraction store keeps its figure as text ("1,801", "350 to 400"):
+        # a value that states a number is a fact, not only a passage.
+        return [_row("concall_facts", r["metric"] or "", _number(r["value"]), r["unit"],
+                     r["period"], r["filed_at"], r["doc_id"], quote=r["quote"])
+                for r in rows], len(rows)
     except Exception:
         return [], 0
+
+
+def _number(value: Any) -> Any:
+    """The number an extracted value states, else the text unchanged."""
+    parsed = compute.first_number(value)
+    return parsed if parsed is not None else value
 
 
 def _computed(rows: list[dict[str, Any]], metric: str | None) -> dict[str, Any] | None:
@@ -490,13 +575,54 @@ def _metric_store(ctx: Any, isin: str, as_of: str, question: str, metric: str | 
         return []
 
 
+def _pilot_store(ctx: Any, isin: str, as_of: str, metric: str | None,
+                 period: tuple[str | None, str | None],
+                 kind: str | None) -> list[dict[str, Any]]:
+    """Facts from the T1 build (``facts_pilot``), when the run configured it."""
+    try:
+        from reality_engine.query import metrics
+        return metrics.pilot_rows(ctx, isin, as_of, metric, period, kind)
+    except Exception:  # noqa: BLE001 - no T1 build / bad row shape degrades to the held stores
+        return []
+
+
+def _series_kind(slots: dict[str, Any]) -> str | None:
+    """The ``period_kind`` a period ask names (a Q4FY26 row is not the FY26 row)."""
+    basis = str(slots.get("period_basis") or "")
+    if basis in ("quarter end", "quarter span"):
+        return "quarter"
+    if basis in ("fiscal year end", "fiscal year span"):
+        return "fy"
+    return None
+
+
+def _pilot_period(slots: dict[str, Any]) -> tuple[tuple[str | None, str | None], str | None,
+                                                  str | None]:
+    """(period bounds, period_kind, date to stamp) for the numeric fact build.
+
+    A "named date" ask ("on its 4 November call") names the document, not a period
+    end: the figures are the quarter that call reports on, and the row is stamped
+    with the named date (the same rule the named-document branch applies).
+    """
+    basis = str(slots.get("period_basis") or "")
+    if basis in ("named date", "named dates") and slots.get("date_from"):
+        return _quarter_of(str(slots["date_from"])), "quarter", str(slots["date_from"])
+    return _period_bounds(slots), _series_kind(slots), None
+
+
 def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     metric = slots.get("metric")
     question = str(slots.get("question") or "")
-    if not slots.get("needs", {}).get("financials"):
+    routed = metric is not None and metric not in PRICE_METRICS
+    if metric is None or metric in PRICE_METRICS:
+        # The router names a metric for most numeric asks, and routes "return on
+        # capital" as a price "return"; when the question names a concept these
+        # stores hold (ROIC, working capital, dividend), FACTS answers that.
+        metric = asked_metric(question) or metric
+    if metric is None or metric in PRICE_METRICS:
         return envelope("FACTS", ok=True, na=True, checked=CHECKED,
                         detail="no stored numeric metric asked; FACTS not applicable")
-    if metric is None or metric in PRICE_METRICS:
+    if not slots.get("needs", {}).get("financials") and routed:
         return envelope("FACTS", ok=True, na=True, checked=CHECKED,
                         detail="no stored numeric metric asked; FACTS not applicable")
     isin = isin_of(slots, ctx, as_of)
@@ -538,16 +664,43 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     else:
         metric_store = _metric_store(ctx, isin, as_of, question, metric, period)
         rows += metric_store
-        for got, n in (_results(ctx, isin, as_of, period, metric),
-                       _ar(ctx, isin, as_of, period, metric, words=words)
-                       if slots.get("period_basis") not in ("quarter end", "quarter span")
-                       else ([], 0),
-                       _deck(ctx, isin, as_of, metric, _deck_period_terms(slots),
-                             words=words),
-                       _concall(ctx, isin, as_of, metric, words=words)):
-            rows += got
-            candidates += n
-        candidates += len(metric_store)
+        # A two-part ask ("capacity expansion with capex", "EBITDA margins") names a
+        # concept of its own per part: each part gets its own store search, so the
+        # rows that answer one part cannot crowd out the other inside the top rows.
+        from ..gate import asked_concepts
+        from reality_engine.query import metrics as metric_reads
+        searches = [metric]
+        for concept in asked_concepts(question):
+            if concept != metric and concept in (CONCEPT_TERMS | TEXT_TERMS) \
+                    and concept not in searches:
+                searches.append(concept)
+        searches = searches[:3]
+        for concept in searches:
+            search_words = words if concept == metric else asked_words(question, concept)
+            for got, n in (_results(ctx, isin, as_of, period, concept),
+                           _ar(ctx, isin, as_of, period, concept, words=search_words)
+                           if slots.get("period_basis") not in ("quarter end", "quarter span")
+                           else ([], 0),
+                           _deck(ctx, isin, as_of, concept, _deck_period_terms(slots),
+                                 words=search_words),
+                           _concall(ctx, isin, as_of, concept, words=search_words)):
+                rows += got
+                candidates += n
+        # The whole-market XBRL fact build: revenue/PAT/EPS are held there per
+        # quarter (and FY), and the ratios the bank asks by name are derived from
+        # those components rather than reported from a store that never had them.
+        pilot_period, pilot_kind, stamp = _pilot_period(slots)
+        wanted = [metric] + [c for c in searches if c != metric
+                             and c in metric_reads.SERIES_KEYS][:2]
+        pilot: list[dict[str, Any]] = []
+        for name in wanted:
+            pilot += _pilot_store(ctx, isin, as_of, name, pilot_period, pilot_kind)
+        for row in pilot:
+            if stamp:
+                row["context"] = f"quarter ended {row.get('period')}"
+                row["period"] = stamp
+        rows = pilot + rows
+        candidates += len(metric_store) + len(pilot)
         if metric == "promoter":
             promoter = _promoter_facts(ctx, isin, as_of, question)
             rows = promoter + rows
@@ -562,11 +715,24 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     # is evidence, not a figure.
     rows = [r for r in rows
             if isinstance(r.get("value"), (int, float)) and not isinstance(r.get("value"), bool)]
+    if not rows and named:
+        # The named document states no number for this concept (a transcript quote
+        # is EVIDENCE): the figures behind it are the quarter it reports on, and the
+        # named date stays the row's period (the document IS the period asked).
+        fallback = _pilot_store(ctx, isin, as_of, metric, _quarter_of(str(named["date"])),
+                                "quarter")
+        if fallback:
+            for row in fallback:
+                row["period"] = named["date"]
+            rows = fallback
+            candidates += len(fallback)
+            named = None  # the rows are that quarter's; their period is the anchor
     if metric == "segment":
-        # Segment revenue by member lives in company_segment_pnl (T1).  When that
-        # table has no row for the asked period, only a fact that *names* a member
-        # can answer the ask: a bare "Segment Revenue" total from results_xbrl is
-        # not the per-segment split the question asked for.
+        # Segment revenue by member lives in company_segment_pnl (T1).  The member
+        # row states both halves of a "segment revenue" ask; when only the note's
+        # own total is held (a quarter has no by-member row in the annual build),
+        # that total still carries the concept, and the revenue line is returned
+        # beside it so neither half of the ask goes unanswered.
         segment_rows, seg_candidates = _segment_pnl(ctx, isin, as_of, period)
         candidates += seg_candidates
         generic = {"segment revenue", "segment revenue from operations",
@@ -574,23 +740,42 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                    "segment assets", "segment liabilities", "net segment assets",
                    "net segment liabilities", "segment pbt before finance costs",
                    "inter segment revenue"}
-        named_rows = ([r for r in segment_rows]
-                      if segment_rows else
-                      [r for r in rows
-                       if r.get("store") != "results_xbrl"
-                       and str(r.get("item") or "").strip().lower() not in generic
-                       and re.search(r"segment", str(r.get("item") or ""), re.I)])
-        if not named_rows:
+        member_rows = list(segment_rows) or [
+            r for r in rows
+            if r.get("store") != "results_xbrl"
+            and str(r.get("item") or "").strip().lower() not in generic
+            and re.search(r"segment", str(r.get("item") or ""), re.I)]
+        total_rows = [r for r in rows
+                      if re.search(r"segment", str(r.get("item") or ""), re.I)
+                      and r not in member_rows]
+        if not member_rows and not total_rows:
             # The pilot extraction store carries the segment note with the member name.
-            named_rows = [r for r in _metric_store(ctx, isin, as_of, question, "segment", period)
-                          if r.get("store") == "metric_state"]
-        if not named_rows:
+            member_rows = [r for r in _metric_store(ctx, isin, as_of, question, "segment",
+                                                    period)
+                           if r.get("store") == "metric_state"]
+        if not member_rows and not total_rows:
             detail = ("segment facts exist but the segment member names are not mapped "
                       "for this period; a segment P&L by name needs company_segment_pnl "
                       "(annual only in the T1 build) / xbrl_concept_map")
             return envelope("FACTS", ok=False, why="schema", checked=CHECKED,
                             gap="company_segment_pnl", detail=detail, nid_reason=detail)
-        rows = named_rows
+        wants_split = bool(re.search(r"\beach\b|\bsplit\b|segment[- ]wise|by segment|"
+                                     r"break-?up|per segment|segments'|各", question, re.I))
+        if not member_rows and wants_split:
+            # The note's own total is not "the number for each reported segment":
+            # say what is held instead of passing a total off as the split.
+            total = next((r for r in total_rows
+                          if re.match(r"segment revenue",
+                                      str(r.get("item") or "").strip().lower())), None)
+            detail = ("the segment note's total for this period is held"
+                      + (f" ({fmt_num(total['value'], total.get('unit'))})" if total else "")
+                      + ", but the per-member split for this period is not: "
+                        "company_segment_pnl is annual in the T1 build")
+            return envelope("FACTS", ok=False, why="schema", checked=CHECKED,
+                            gap="company_segment_pnl", detail=detail, nid_reason=detail)
+        revenue_rows = _pilot_store(ctx, isin, as_of, "revenue", *_pilot_period(slots)[:2])
+        rows = (member_rows or total_rows) + [r for r in revenue_rows
+                                              if r not in (member_rows or total_rows)]
     if metric == "net_npa":
         # Gross and net NPA share a concept family; the qualifier decides.
         if re.search(r"\bnet\b", question, re.I):
