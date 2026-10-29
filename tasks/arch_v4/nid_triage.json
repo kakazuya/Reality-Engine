@@ -1,0 +1,2696 @@
+{
+ "version": "1.0",
+ "generated_at": "2026-10-30",
+ "question": "Every v4 'not_in_data' case triaged to (a) fetch, (b) proxy, (c) absent",
+ "rule": "Shivam, 30 Oct 2026: 'not in data' is not an acceptable answer by itself.",
+ "inputs": {
+  "concept_registry": "tasks/arch_v4/concept_registry.json (v4.1, 150 NID of 1,073)",
+  "registry_coverage": "tasks/arch_v4/registry_coverage.md",
+  "bank": "tasks/master_bank/MASTER_BANK.jsonl (1,073 cases, sha 64d2f46318127f76)",
+  "schema": "tasks/SCHEMA_FINAL_2026-10-29.md sections 5-6",
+  "stores": [
+   "results_xbrl.db",
+   "equity_intelligence.db",
+   "ar_facts.db",
+   "deck_figures.db",
+   "concall_facts.db",
+   "bse_announcements.db",
+   "truth_2026-10-19.duckdb",
+   "pilot/pilot60/*.db"
+  ],
+  "sandbox_network": "Outbound network is unavailable in this sandbox (web_search has no key; TLS fetch fails). A source is marked verified when the exact feed is already held (rows in our stores) or the URL is a live constant in an existing fetcher; no live HEAD check was possible."
+ },
+ "method": {
+  "case_source": "rebuilt the v4 registry in memory with build_concept_registry.build() (897 mapped / 150 NID / 26 unmapped reproduced exactly), so every case id and its registry reason is the registry's own.",
+  "grouping": "grouped by TRUE missing atom and ask shape, not by registry reason; each case has exactly one class.",
+  "verdict_rule": "a = the atom is held or fetchable free in <=1 day and the answer is a fact/computation; b = the atom is not published and the answer needs a proxy formula or a labelled assumption; c = neither.",
+  "caveat": "A case can be unlocked by an (a) atom and still need a labelled view; the verdict describes the DATA, not the reasoning layer."
+ },
+ "verdicts": {
+  "a": 74,
+  "b": 74,
+  "c": 2,
+  "total": 150
+ },
+ "totals": {
+  "cases": 150,
+  "classes": 31,
+  "build_hours_a": 62.0,
+  "build_hours_b": 59.0,
+  "build_hours_total": 121.0,
+  "cases_per_hour_a": 1.19,
+  "cases_per_hour_b": 1.25,
+  "network_fetch_hours": 9.0,
+  "build_only_hours": 112.0
+ },
+ "classes": [
+  {
+   "id": "adj_price_series",
+   "label": "Adjusted price / total-return series",
+   "verdict": "a",
+   "missing_atom": "price.adj_close (already held)",
+   "cases": [
+    "MB0070",
+    "MB0101",
+    "MB0102",
+    "MB0103",
+    "MB0105",
+    "MB0106",
+    "MB0110",
+    "MB0180",
+    "MB0310",
+    "MB0908"
+   ],
+   "hours": 1.0,
+   "target_table": "truth_duckdb.px_nse_adj / px_bse_adj",
+   "target_atom": "price.adj_close + formula price.cagr_adj",
+   "source": {
+    "name": "truth_2026-10-19.duckdb px_nse_adj/px_bse_adj (NSE+BSE bhavcopy x corporate-action factors)",
+    "url": "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_04062024.csv",
+    "format": "DuckDB rows: date, symbol, adj_open/high/low/close, cum_price_factor, cum_div_factor, tr_close",
+    "history": "2019-01-01..2026-10-19 (4.3M NSE + 6.8M BSE rows)",
+    "pit_column": "date (price date); snapshot_built 2026-10-19",
+    "verified": "held rows"
+   },
+   "notes": "Registry matched 'adjusted/corporate action' to corp.amount_per_share. The adjusted series is already held; only the registry atom/formula is missing. No fetch, no new table.",
+   "case_count": 10,
+   "cases_per_hour": 10.0
+  },
+  {
+   "id": "event_window",
+   "label": "Event day-0 and pre-event leak windows",
+   "verdict": "a",
+   "missing_atom": "event_day0 + daily price/delivery (held)",
+   "cases": [
+    "MB0819",
+    "MB0823",
+    "MB0824",
+    "MB0827",
+    "MB0830",
+    "MB1049"
+   ],
+   "hours": 1.0,
+   "target_table": "market_state.event_leakage_window (0 rows; event_day0 has 3,010,610)",
+   "target_atom": "event window statistic",
+   "source": {
+    "name": "pilot60 event_day0 + company_state_daily + daily_price_delivery",
+    "url": "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_04062024.csv",
+    "format": "rows: event_id, isin, event_kind, known_at, session_0, offset, in_session, ret_pct, delivery_z",
+    "history": "2019-01-01..2026-10-19",
+    "pit_column": "known_at (IST dissemination); session_0 is the first session at/after known_at",
+    "verified": "held rows"
+   },
+   "notes": "Build is the 0.5 h event_leakage_window job already listed in SCHEMA_FINAL row 32. Corporate-action day-0 comes from corporate_actions.broadcast_date/ex_date. No intraday bars needed.",
+   "case_count": 6,
+   "cases_per_hour": 6.0
+  },
+  {
+   "id": "net_npa",
+   "label": "Net NPA % (banks)",
+   "verdict": "a",
+   "missing_atom": "fin.npa",
+   "cases": [
+    "MB0007",
+    "MB0091",
+    "MB0092",
+    "MB0093",
+    "MB0094",
+    "MB0095",
+    "MB0096",
+    "MB0097",
+    "MB0098",
+    "MB0099",
+    "MB0100"
+   ],
+   "hours": 3.0,
+   "target_table": "results_xbrl.facts -> company_metric_series(metric_key='net_npa')",
+   "target_atom": "fin.npa / fin.gross_npa",
+   "source": {
+    "name": "NSE integrated XBRL result filings (held and parsed)",
+    "url": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_BANKING_1696123_18072026040126_WEB.xml",
+    "format": "XBRL (XML) -> results_xbrl.facts(concept, context, value); PercentageOfNpa is a fraction, multiply by 100",
+    "history": "2018-12-31..2026-09-30; 31,614 integrated/bank-taxonomy filings, 2,973 symbols",
+    "pit_column": "filings.filing_ts (dissem_ts and broadcast_ts also held)",
+    "verified": "held rows"
+   },
+   "notes": "Two rows per (file, concept): standalone and consolidated often share context OneD; dedupe by filing + basis before casting. Verified values: BANKBARODA Q1FY27 PercentageOfNpa 0.005 -> 0.50%; HDFCBANK Q2FY27 0.0037 -> 0.37%; AUBANK 0.0076 -> 0.76%.",
+   "case_count": 11,
+   "cases_per_hour": 3.667
+  },
+  {
+   "id": "cfo",
+   "label": "Cash flow from operations",
+   "verdict": "a",
+   "missing_atom": "fin.cfo",
+   "cases": [
+    "MB0413",
+    "MB0999",
+    "MB1001"
+   ],
+   "hours": 1.0,
+   "target_table": "results_xbrl.facts -> company_metric_series(metric_key='cfo')",
+   "target_atom": "fin.cfo",
+   "source": {
+    "name": "NSE integrated XBRL result filings (held)",
+    "url": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1690003_09072026063612_WEB.xml",
+    "format": "XBRL concept CashFlowsFromUsedInOperatingActivities (cash-flow statement, YTD context FourD)",
+    "history": "2018-12-31..2026-09-30",
+    "pit_column": "filings.filing_ts",
+    "verified": "held rows"
+   },
+   "notes": "YTD contexts must be differenced to quarters. Debtor days = receivables/revenue x 365 from the same filing; MB0999's 'deal terms' leg is EVIDENCE, not a missing atom.",
+   "case_count": 3,
+   "cases_per_hour": 3.0
+  },
+  {
+   "id": "bank_transmission",
+   "label": "Rate change -> NIM / credit cost / deposit repricing",
+   "verdict": "b",
+   "missing_atom": "fin.nim, fin.credit_cost, deposit/lending repricing split",
+   "cases": [
+    "MB0472",
+    "MB0473",
+    "MB0655",
+    "MB0662",
+    "MB0671",
+    "MB0672",
+    "MB0677",
+    "MB0680",
+    "MB0719",
+    "MB0729",
+    "MB0753",
+    "MB0772",
+    "MB0790",
+    "MB0793",
+    "MB0804",
+    "MB0851",
+    "MB0881",
+    "MB0931",
+    "MB0968",
+    "MB0984",
+    "MB0985"
+   ],
+   "hours": 8.0,
+   "target_table": "metric_state.company_metric_series (nim, credit_cost) over held XBRL",
+   "target_atom": "formula",
+   "proxy": {
+    "recipe": "NIM_q = (InterestEarned_q - InterestExpended_q) / avg(Advances + Investments) x 4; credit_cost_q = ProvisionsOtherThanTaxAndContingencies_q / avg(Advances); deposit repricing from the AR deposit schedule (savings/term split); the repricing order (EBLR -> MCLR -> fixed) from the AR/deck disclosure",
+    "assumption": "quarter-end balances approximate averages; the disclosed NIM includes CRR/SLR and other earning assets, so the computed series is a proxy, not the reported number",
+    "confidence": "medium-high (NIM within ~10-15% of reported; credit cost medium)",
+    "worked_example": "MB0931 HDFC Bank Q2FY27: InterestEarned_q 83,427 cr - InterestExpended_q 48,807 cr = NII 34,619 cr; earning assets = Advances 33.16 lakh cr + Investments 13.57 lakh cr = 46.73 lakh cr; NIM = 34,619/4,673,000 x 4 = 2.96% annualised on quarter-end balances. The one-off leg is RevenueOnInvestments vs OtherIncome in the same filing; if the treasury delta is more than half the NIM delta, label the expansion one-off."
+   },
+   "case_count": 21,
+   "cases_per_hour": 2.625
+  },
+  {
+   "id": "corp_action_terms",
+   "label": "Dividend / bonus / split amount per share and dates",
+   "verdict": "a",
+   "missing_atom": "corp.amount_per_share",
+   "cases": [
+    "MB0280",
+    "MB0370",
+    "MB0558",
+    "MB0563",
+    "MB0597",
+    "MB0841",
+    "MB0842",
+    "MB0843",
+    "MB0845",
+    "MB0892"
+   ],
+   "hours": 4.0,
+   "target_table": "market_state.corporate_action_class(amount_per_share, ratio, ex_date, rec_date)",
+   "target_atom": "corp.amount_per_share",
+   "source": {
+    "name": "equity_intelligence.corporate_actions.subject (NSE corporate-actions API, already fetched)",
+    "url": "https://www.nseindia.com/api/corporates-corporateActions?index=equities",
+    "format": "JSON list -> subject text: 'Interim Dividend - Rs 1.15 Per Share', 'Face Value Split (Sub-Division) - From Rs 10/- Per Share To Re 1/- Per Share', 'Bonus 1:2'",
+    "history": "2019-01-03..2026-10-23; 10,907 DIVIDEND rows (10,572 carry 'Per Share'), 319 BONUS, 308 SPLIT",
+    "pit_column": "broadcast_date (exchange dissemination); ex_date/rec_date are event dates",
+    "verified": "held rows + live constant in reality_engine/ingestion/corporate_actions_client.py"
+   },
+   "notes": "Parser + spot check is the whole build. Bonus ratio is not in every subject; those fall back to the BSE attachment (same reader as corp_action_schemes). Verified example: IRFC Re 1.15 interim dividend ex 2026-10-23.",
+   "case_count": 10,
+   "cases_per_hour": 2.5
+  },
+  {
+   "id": "cwip",
+   "label": "Capital work in progress",
+   "verdict": "a",
+   "missing_atom": "fin.cwip",
+   "cases": [
+    "MB0967",
+    "MB0996"
+   ],
+   "hours": 1.0,
+   "target_table": "results_xbrl.facts -> company_metric_series(metric_key='cwip')",
+   "target_atom": "fin.cwip",
+   "source": {
+    "name": "NSE integrated XBRL result filings (held)",
+    "url": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1690003_09072026063612_WEB.xml",
+    "format": "XBRL concept CapitalWorkInProgress (balance-sheet instant OneI)",
+    "history": "2018-12-31..2026-09-30",
+    "pit_column": "filings.filing_ts",
+    "verified": "held rows"
+   },
+   "notes": "Reliance Power / Jaiprakash Power are both INDAS filers; the concept is in their balance sheet. CWIP plus capitalised interest needs the finance-cost note (ar_facts) for the second leg.",
+   "case_count": 2,
+   "cases_per_hour": 2.0
+  },
+  {
+   "id": "fno_oi",
+   "label": "Option open interest at a strike",
+   "verdict": "a",
+   "missing_atom": "market_state.fno_oi_daily",
+   "cases": [
+    "MB1061"
+   ],
+   "hours": 0.5,
+   "target_table": "market_state_b.fno_oi_daily (16,242,454 rows, already built)",
+   "target_atom": "fno_oi",
+   "source": {
+    "name": "NSE F&O bhavcopy (fetcher exists: reality_engine/scripts/fetch_fo_bhavcopy.py)",
+    "url": "https://nsearchives.nseindia.com/content/fo/",
+    "format": "daily zip/CSV per underlying/expiry/strike/option_type: oi, oi_change, volume, settle",
+    "history": "held (16.2M rows); fetch resumable from the NSE archive",
+    "pit_column": "date (session); fetched after close",
+    "verified": "held rows"
+   },
+   "notes": "Registry reason said 'paid-only consensus'. It is neither paid nor missing: OI is held. The interpretation (ceiling vs hedge) is a labelled view.",
+   "case_count": 1,
+   "cases_per_hour": 2.0
+  },
+  {
+   "id": "mechanism_lag",
+   "label": "Commodity/policy shock -> company -> second round",
+   "verdict": "b",
+   "missing_atom": "lead-lag coefficients and pass-through",
+   "cases": [
+    "MB0356",
+    "MB0460",
+    "MB0605",
+    "MB0632",
+    "MB0638",
+    "MB0653",
+    "MB0664",
+    "MB0670",
+    "MB0682",
+    "MB0723",
+    "MB0758",
+    "MB0780",
+    "MB0792",
+    "MB0800",
+    "MB0852",
+    "MB0855",
+    "MB0921"
+   ],
+   "hours": 10.0,
+   "target_table": "market_state.series_observation (22 series) + company_metric_series + policy_events",
+   "target_atom": "measured lead-lag",
+   "proxy": {
+    "recipe": "for each hop, cross-correlate the held monthly series (World Bank Pink Sheet: wb_gold, wb_rubber, wb_crude_brent, wb_urea, wb_natgas_*, wb_coal_*, wb_cotton_a, wb_dap, wb_iron_ore) against the company metric at lags 0-4 quarters; report the lag that maximises |correlation| and its sample size; the hop with no held series is stated as an assumption, not measured",
+    "assumption": "monthly commodity averages map to the quarter they fall in; policy dates are policy_events.effective_date; unmeasured hops are labelled",
+    "confidence": "medium-low (direction often clear, magnitude and lag usually not)",
+    "worked_example": "MB0460 (gold 2,028 -> 4,186.7, 7 Aug 2020 to 30 Sep 2026): TITAN adjusted close 1,091.05 -> 4,587 (+320%, 26.3% CAGR) vs MUTHOOTFIN 1,217 -> 2,737.1 (+125%, 14.1% CAGR). Price says the jeweller won, not the gold-loan NBFC; the answer must name the channel (gold -> jewellery revenue vs gold -> LTV/AUM) and say that gold alone explains neither, so the pass-through is an assumption."
+   },
+   "case_count": 17,
+   "cases_per_hour": 1.7
+  },
+  {
+   "id": "free_float_weight",
+   "label": "Free float and index weight",
+   "verdict": "b",
+   "missing_atom": "market_state.company_membership_pit.weight",
+   "cases": [
+    "MB0660",
+    "MB0733",
+    "MB0738",
+    "MB0744",
+    "MB0848",
+    "MB0926"
+   ],
+   "hours": 4.0,
+   "target_table": "market_state.company_membership_pit.weight (column missing; membership 10,895 rows / 133 indices held)",
+   "target_atom": "free_float / index weight",
+   "proxy": {
+    "recipe": "free_float = shares_out x (1 - promoter_pct/100); float_mcap = free_float x close; weight_i = float_mcap_i / sum(float_mcap) over the index's members at that date (company_membership_pit added_on/removed_on); a promoter sale of k pp multiplies the weight by (100 - P + k)/(100 - P)",
+    "assumption": "float-weighted index with no capping band; promoter % at the last quarter-end before the event",
+    "confidence": "high for free float and direction, medium for the absolute weight (index capping and banding not modelled)",
+    "worked_example": "MB0738 (promoter sells 8% via OFS): MUTHOOTFIN promoter 73.35%, public 26.65% (company_ownership_pit 2026-06-30). After an 8 pp OFS the float goes 26.65% -> 34.65%, a 1.30x relative increase; a float-weighted index weight rises ~1.30x before capping. Answer: float up, weight up, and the price reaction is a flow question the data cannot separate from the sale's information content."
+   },
+   "case_count": 6,
+   "cases_per_hour": 1.5
+  },
+  {
+   "id": "hfc_securitisation",
+   "label": "Securitised disbursement leader (HFCs)",
+   "verdict": "b",
+   "missing_atom": "fin.securitisation",
+   "cases": [
+    "MB0012",
+    "MB0141",
+    "MB0142",
+    "MB0143",
+    "MB0144",
+    "MB0145",
+    "MB0146",
+    "MB0147",
+    "MB0148"
+   ],
+   "hours": 6.0,
+   "target_table": "metric_state.company_operating_metrics (securitised share)",
+   "target_atom": "securitisation",
+   "proxy": {
+    "recipe": "securitised_share = securitisation_income / (securitisation_income + interest_income) from the AR note, or 'loans assigned' / disbursements from the PPT; rank HFCs by that share; guard: net NPA from results_xbrl PercentageOfNpa, delta <= 2 pp",
+    "assumption": "securitisation income is proportional to the securitised book (same yield across HFCs)",
+    "confidence": "medium-low (income-to-book ratio is an imperfect proxy for disbursement share)",
+    "worked_example": "MB0141 Can Fin Homes Q1FY27: the net-NPA leg is exact from XBRL (PercentageOfNpa); the securitised share is read from the Q1FY27 investor presentation (held deck, securitisation/assignment slide). Answer form: 'Can Fin net NPA x% (XBRL filing f); securitised share y% of disbursements (PPT p.n); guard passes/fails by z pp', with the securitised share labelled an estimate. The deck text search currently finds no securitisation passage, so this needs a targeted page extraction first."
+   },
+   "case_count": 9,
+   "cases_per_hour": 1.5
+  },
+  {
+   "id": "jv_terms",
+   "label": "JV / subsidiary terms, timing and capital",
+   "verdict": "a",
+   "missing_atom": "corp.jv_terms",
+   "cases": [
+    "MB0332",
+    "MB0335",
+    "MB0537",
+    "MB0546",
+    "MB0565"
+   ],
+   "hours": 4.0,
+   "target_table": "metric_state.entity_relations + jv/subsidiary facts",
+   "target_atom": "corp.jv_terms",
+   "source": {
+    "name": "BSE announcements + concall + deck (held)",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "announcement headlines/attachments + cc_items + deck facts; JV terms as dates/amounts/conditions",
+    "history": "2019-12-31..2026-10-19",
+    "pit_column": "ann.DissemDT / known_at",
+    "verified": "held rows"
+   },
+   "notes": "Cochin Shipyard ISRF / Dixon-Vivo: terms are in Reg-30 announcements and concall; no new feed. 'Firm order vs JV optionality' is a labelled view over the extracted terms.",
+   "case_count": 5,
+   "cases_per_hour": 1.25
+  },
+  {
+   "id": "valuation_judgement",
+   "label": "Valuation / capital-allocation judgement",
+   "verdict": "b",
+   "missing_atom": "expectations and decomposition (no held atom)",
+   "cases": [
+    "MB0877",
+    "MB0888",
+    "MB0935",
+    "MB0939",
+    "MB0959",
+    "MB0965",
+    "MB1005",
+    "MB1010",
+    "MB1011",
+    "MB1013",
+    "MB1028"
+   ],
+   "hours": 10.0,
+   "target_table": "formula layer (PB/ROE, payout, FCF) over held financials + guidance",
+   "target_atom": "expectations",
+   "proxy": {
+    "recipe": "state the arithmetic: g_implied from PB = (ROE - g)/(r - g) with r = 12% and ROE = 3-yr average; payout = (CFO - capex)/dividends; premium to book = PB vs ROE; then compare with the company's own guidance (concall_facts) and its delivered trend, not consensus",
+    "assumption": "cost of equity 12%; sustainable ROE from the 3-yr average; no analyst consensus (Shivam 2026-10-19: consensus is a guess, use guidance instead)",
+    "confidence": "low-medium (a labelled view, never a 'fair value')",
+    "worked_example": "MB1010 Power Grid: payout = regulated equity x allowed RoE x (1 - capex share of regulated equity). If the capex cycle slows, regulated equity growth slows and the same RoE supports a higher payout mechanically; the answer gives the payout range at the last five years' capex intensity and labels the regulated-return assumption."
+   },
+   "case_count": 11,
+   "cases_per_hour": 1.1
+  },
+  {
+   "id": "backtest",
+   "label": "Testable delivery / 52-week-high hypotheses",
+   "verdict": "a",
+   "missing_atom": "no atom missing; statistic over held prices",
+   "cases": [
+    "MB0583",
+    "MB1032",
+    "MB1048"
+   ],
+   "hours": 3.0,
+   "target_table": "reality_engine/processing/validation_harness.py output (walk-forward)",
+   "target_atom": "measured statistic",
+   "source": {
+    "name": "daily_price_delivery + truth px_*_adj (held)",
+    "url": "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_04062024.csv",
+    "format": "date, symbol, close, delivery_pct, 52w high; event windows and forward returns",
+    "history": "2019-01-01..2026-10-19",
+    "pit_column": "date",
+    "verified": "held rows"
+   },
+   "notes": "These are measurements, not forecasts: the question asks whether high delivery predicts, so the answer is a hit-rate / IC with a sample size. The existing harness does walk-forward scoring.",
+   "case_count": 3,
+   "cases_per_hour": 1.0
+  },
+  {
+   "id": "float_income",
+   "label": "Float income share of revenue",
+   "verdict": "b",
+   "missing_atom": "fin.float_income (not disclosed)",
+   "cases": [
+    "MB0483",
+    "MB0568"
+   ],
+   "hours": 2.0,
+   "target_table": "metric_state.company_metric_series (float_income estimate)",
+   "target_atom": "formula",
+   "proxy": {
+    "recipe": "float_income = average client funding book x 91-day T-bill/yield; client funding book from the AR 'client funding' note (or 'balances with clearing corporation'); cross-check against interest income; report the estimate as a range",
+    "assumption": "client float is invested at the short rate and the book is stable through the quarter",
+    "confidence": "low-medium (management explicitly refuses the split)",
+    "worked_example": "MB0483 Angel One: 2023-04-21 transcript p.25, management (Vineet Agrawal): 'We are not disclosing the breakup of the float income and the interest income, which we earn from client funding book yet.' So the share is a proxy: client funding book x short rate; the answer must label it an estimate and say the company does not disclose it."
+   },
+   "case_count": 2,
+   "cases_per_hour": 1.0
+  },
+  {
+   "id": "retail_mtm",
+   "label": "Retail mark-to-market loss on a day",
+   "verdict": "b",
+   "missing_atom": "investor-level holdings (not published)",
+   "cases": [
+    "MB0629"
+   ],
+   "hours": 1.0,
+   "target_table": "estimate only",
+   "target_atom": "formula",
+   "proxy": {
+    "recipe": "retail_loss = sum over ISINs of (public_pct - fii_pct - dii_pct) x shares_out x delta_price; where FII/DII are missing use public_pct and report an upper bound",
+    "assumption": "quarter-end ownership applied to that day's price change; public % includes institutions when the split is missing",
+    "confidence": "low-medium (upper bound, not a measured loss)",
+    "worked_example": "MB0629 (4 Jun 2024): public (non-promoter) holding value is Rs 8.99 lakh crore across 1,724 matched ISINs in company_state_daily x company_ownership_pit; Nifty fell 5.9% that day, so the upper bound is ~Rs 53,000 crore. The answer must say it is an upper bound because public includes FII/DII where the split is null."
+   },
+   "case_count": 1,
+   "cases_per_hour": 1.0
+  },
+  {
+   "id": "corp_action_schemes",
+   "label": "Demerger / buyback / rights terms and mechanics",
+   "verdict": "a",
+   "missing_atom": "corp.scheme_terms",
+   "cases": [
+    "MB0436",
+    "MB0735",
+    "MB0746",
+    "MB0749",
+    "MB0862",
+    "MB0889",
+    "MB0891"
+   ],
+   "hours": 8.0,
+   "target_table": "market_state.corporate_action_class(scheme fields) + event_day0",
+   "target_atom": "corp.scheme_terms",
+   "source": {
+    "name": "BSE corporate-announcement metadata (held) + attachment PDFs (6,621 material announcements held; rest fetchable free)",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "PDF attachments + ann rows (NEWSID, DissemDT, headline, category, attachment name); corporate_actions MERGER/DEMERGER/BUYBACK/RIGHTS rows",
+    "history": "bse_announcements 2019-12-31..2026-10-19 (1.9M rows); 95 MERGER + 234 BUYBACK + 253 RIGHTS corporate actions",
+    "pit_column": "ann.DissemDT (IST) and corporate_actions.broadcast_date",
+    "verified": "held rows"
+   },
+   "notes": "Buyback subjects are just 'Buy Back'; price/size/acceptance come from the attachment. Demerger record-date mechanics come from the scheme announcement. 8 h is the reader, not a fetch.",
+   "case_count": 7,
+   "cases_per_hour": 0.875
+  },
+  {
+   "id": "capex_project",
+   "label": "Capex project amount, commissioning window, slippage",
+   "verdict": "a",
+   "missing_atom": "metric_state.capex_project",
+   "cases": [
+    "MB0334",
+    "MB0529",
+    "MB0761"
+   ],
+   "hours": 4.0,
+   "target_table": "metric_state.capex_project",
+   "target_atom": "capex_project",
+   "source": {
+    "name": "concall 645k items + deck 13.6M facts (held)",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "dated statements with amount, location, commissioning window; slippage = announced date vs commissioned date in a later statement",
+    "history": "2016-2026 concalls; 2021-2026 decks",
+    "pit_column": "known_at of each statement",
+    "verified": "held rows"
+   },
+   "notes": "SCHEMA_FINAL row 11 already prices this at 4 h. SRF Dahej (Rs 180 crore, 8 months) is the worked case; the same table answers MB0761's slippage question.",
+   "case_count": 3,
+   "cases_per_hour": 0.75
+  },
+  {
+   "id": "guidance_vs_actual",
+   "label": "Guidance versus delivered",
+   "verdict": "a",
+   "missing_atom": "metric_state.guidance_vs_actual",
+   "cases": [
+    "MB0969",
+    "MB0971"
+   ],
+   "hours": 3.0,
+   "target_table": "metric_state.guidance_vs_actual",
+   "target_atom": "guidance_vs_actual",
+   "source": {
+    "name": "concall guidance items (concall_facts) + company_metric_series actuals",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "guidance value + period + firmness -> compare to the later reported value",
+    "history": "2016-2026 concalls",
+    "pit_column": "cc_docs filing time / known_at",
+    "verified": "held rows"
+   },
+   "notes": "SCHEMA_FINAL row 29 prices this at 0.5 h after company_metric_series. JLR margin and IREDA loan-growth guidance are the two cases.",
+   "case_count": 2,
+   "cases_per_hour": 0.667
+  },
+  {
+   "id": "related_party",
+   "label": "Related-party loans / investments in notes",
+   "verdict": "a",
+   "missing_atom": "metric_state.related_party",
+   "cases": [
+    "MB0418",
+    "MB0561"
+   ],
+   "hours": 3.0,
+   "target_table": "metric_state.supply_link / related_party facts",
+   "target_atom": "related_party",
+   "source": {
+    "name": "ar_facts related-party facts (575k) + results notes (results_notes.db 84.5 MB, chunks_v3)",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "AR note rows with counterparty, nature, amount, quote; results-note chunks",
+    "history": "2015-03-31..2026-03-31 ARs",
+    "pit_column": "ar_docs.filed_at / chunk published_date",
+    "verified": "held rows"
+   },
+   "notes": "Evidence bar: a named counterparty plus amount and a quote. MB0965 (Vedanta upstreaming) moved to valuation_judgement because subsidiary cash upstreaming is not filed.",
+   "case_count": 2,
+   "cases_per_hour": 0.667
+  },
+  {
+   "id": "dividend_coverage",
+   "label": "Dividend covered by free cash flow",
+   "verdict": "a",
+   "missing_atom": "formula over held atoms (cfo, capex, dividends paid)",
+   "cases": [
+    "MB1009"
+   ],
+   "hours": 2.0,
+   "target_table": "formula: fcf = cfo - capex; coverage = fcf / dividends_paid",
+   "target_atom": "fin.cfo + capex + dividend",
+   "source": {
+    "name": "results_xbrl cash-flow and dividend concepts (held)",
+    "url": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1690003_09072026063612_WEB.xml",
+    "format": "XBRL: CashFlowsFromUsedInOperatingActivities, PurchaseOfPropertyPlantAndEquipment, DividendsPaid",
+    "history": "2018-12-31..2026-09-30",
+    "pit_column": "filings.filing_ts",
+    "verified": "held rows"
+   },
+   "notes": "Coal India: FY26 FCF vs dividend; if PurchaseOfPropertyPlantAndEquipment is absent, capex comes from the 'purchase of PPE' line in the same cash-flow statement.",
+   "case_count": 1,
+   "cases_per_hour": 0.5
+  },
+  {
+   "id": "kmp_churn",
+   "label": "CFO / KMP appointments and resignations",
+   "verdict": "a",
+   "missing_atom": "metric_state.company_kmp",
+   "cases": [
+    "MB0394"
+   ],
+   "hours": 2.0,
+   "target_table": "metric_state.company_kmp",
+   "target_atom": "company_kmp",
+   "source": {
+    "name": "BSE announcement headlines (held 1.9M) + AR remuneration/governance facts",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "headline regex on 'appointment/resignation/cessation of Chief Financial Officer' + attachment date",
+    "history": "2019-12-31..2026-10-19",
+    "pit_column": "ann.DissemDT",
+    "verified": "held rows"
+   },
+   "notes": "Deterministic regex over headlines, then hand-check 20 rows. No new feed.",
+   "case_count": 1,
+   "cases_per_hour": 0.5
+  },
+  {
+   "id": "loans_book",
+   "label": "Loan book / AUM (lookup)",
+   "verdict": "a",
+   "missing_atom": "fin.loan_book",
+   "cases": [
+    "MB0962"
+   ],
+   "hours": 2.0,
+   "target_table": "results_xbrl.facts + ar_facts + concall_facts -> company_metric_series(metric_key='loans')",
+   "target_atom": "fin.loan_book",
+   "source": {
+    "name": "NSE XBRL concept Advances (banks) + AR/concall 'loans'/'AUM' facts",
+    "url": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_BANKING_1696123_18072026040126_WEB.xml",
+    "format": "XBRL Advances instant; ar_facts/concall loans facts with quote and period",
+    "history": "2018-12-31..2026-09-30",
+    "pit_column": "filings.filing_ts / cc_items known_at",
+    "verified": "held rows"
+   },
+   "notes": "MUTHOOTFIN already returns 'Standalone loans INR 1,64,000 crores' from the Q4FY26 concall. Only one case is a pure loan-book lookup; the other 14 'loans' cases are transmission questions and sit in the (b) classes.",
+   "case_count": 1,
+   "cases_per_hour": 0.5
+  },
+  {
+   "id": "second_order_suppliers",
+   "label": "Second-layer listed suppliers",
+   "verdict": "b",
+   "missing_atom": "metric_state.supply_link",
+   "cases": [
+    "MB0512",
+    "MB0518",
+    "MB0523",
+    "MB0868"
+   ],
+   "hours": 8.0,
+   "target_table": "metric_state.supply_link",
+   "target_atom": "supply edge",
+   "proxy": {
+    "recipe": "curated edge supplier -> customer/segment from AR related-party and customer-concentration notes + 'award of order' announcements that name the buyer; evidence bar = a filing naming the relationship; size only where the order value is filed",
+    "assumption": "a named relationship implies revenue exposure; unlisted intermediaries are skipped",
+    "confidence": "medium for who is in the chain, low for the size",
+    "worked_example": "MB0512 (BEL/HAL indigenisation): the second layer is only names with a filing that names a defence programme or PSU customer (e.g. a 'receipt of order from BEL' announcement). Answer: list the names with the filing date and order value, and say plainly which links are inferred from sector membership rather than a named order."
+   },
+   "case_count": 4,
+   "cases_per_hour": 0.5
+  },
+  {
+   "id": "unit_metrics",
+   "label": "Unit volumes, ARPOB, LTV, ticket size",
+   "verdict": "a",
+   "missing_atom": "fin.unit_volume",
+   "cases": [
+    "MB0491",
+    "MB0495",
+    "MB0617"
+   ],
+   "hours": 6.0,
+   "target_table": "metric_state.company_operating_metrics (17 cases priced at 4 h in SCHEMA_FINAL row 7)",
+   "target_atom": "fin.unit_volume",
+   "source": {
+    "name": "concall 645k items + deck 13.6M facts + monthly business-update PDFs on BSE",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "structured item/value/unit/period/quote; monthly updates are 1-2 page press releases",
+    "history": "concall 2016-2026; decks 2021-2026; monthly updates as filed",
+    "pit_column": "known_at",
+    "verified": "held rows (deck_figures already returns OLAELEC Deliveries 39,192 for Q1FY27)"
+   },
+   "notes": "Ola's September-2026 monthly number needs the monthly business-update attachment (headline held; PDF fetch, ~20 files). Apollo ARPOB and Muthoot LTV are already in concall items.",
+   "case_count": 3,
+   "cases_per_hour": 0.5
+  },
+  {
+   "id": "policy_incidence",
+   "label": "Policy incidence: who is hit first and second",
+   "verdict": "b",
+   "missing_atom": "metric_state.tariff_exposure",
+   "cases": [
+    "MB0513",
+    "MB0608"
+   ],
+   "hours": 6.0,
+   "target_table": "metric_state.tariff_exposure + company_cost_structure",
+   "target_atom": "input-cost share",
+   "proxy": {
+    "recipe": "first hit = companies whose cost-of-materials line contains the taxed input (cogs split from company_cost_structure); second = their customers by sector input share; the policy row comes from policy_events with effective_date and amount",
+    "assumption": "input-cost shares are the transmission weights; no firm-level pass-through coefficient",
+    "confidence": "medium-low",
+    "worked_example": "MB0513 (TCS on coal and iron ore doubles to 2% from 1 Apr 2026): first hit = coal/iron-ore producers and steel/cement (coal is in cogs); second = power and steel users. Answer: name the policy_events row, the first-layer cogs exposures, and label the second layer as an input-share estimate, not a measured pass-through."
+   },
+   "case_count": 2,
+   "cases_per_hour": 0.333
+  },
+  {
+   "id": "debt_maturity",
+   "label": "Debt maturity profile",
+   "verdict": "a",
+   "missing_atom": "metric_state.company_debt_mix",
+   "cases": [
+    "MB0994"
+   ],
+   "hours": 3.5,
+   "target_table": "metric_state.company_debt_mix",
+   "target_atom": "company_debt_mix",
+   "source": {
+    "name": "AR borrowings-maturity note (ar_facts)",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "maturity buckets (<1y, 1-3y, 3-5y, >5y) with secured/unsecured split",
+    "history": "2015-03-31..2026-03-31",
+    "pit_column": "ar_docs.filed_at",
+    "verified": "held rows"
+   },
+   "notes": "SCHEMA_FINAL row 10 prices the mix table at 3.5 h; Vedanta's note is the case.",
+   "case_count": 1,
+   "cases_per_hour": 0.286
+  },
+  {
+   "id": "forecast_scenario",
+   "label": "Forward scenario, no target price",
+   "verdict": "b",
+   "missing_atom": "forecast",
+   "cases": [
+    "MB0627"
+   ],
+   "hours": 4.0,
+   "target_table": "scenario layer over trend + guidance",
+   "target_atom": "scenario",
+   "proxy": {
+    "recipe": "show the arithmetic of a doubling: a mid-cap at 20x with 18% earnings growth needs ~40x, or a 100% earnings beat, in 12 months; give a range and the assumptions, never a single name as a fact",
+    "assumption": "multiple and earnings paths are scenarios, not predictions",
+    "confidence": "low (by construction)",
+    "worked_example": "MB0627 ('which mid-cap will double in 2027?'): answer with the two paths (re-rating vs earnings) and the screen that would produce candidates, and state that any single name is a scenario. SCHEMA_FINAL section 4 marks this kind as NOT IN DATA with a labelled view."
+   },
+   "case_count": 1,
+   "cases_per_hour": 0.25
+  },
+  {
+   "id": "order_book",
+   "label": "Order wins (theme second layer)",
+   "verdict": "a",
+   "missing_atom": "metric_state.order_book_contract",
+   "cases": [
+    "MB0870"
+   ],
+   "hours": 4.0,
+   "target_table": "metric_state.order_book_contract + theme_map",
+   "target_atom": "order_book_contract",
+   "source": {
+    "name": "BSE 'Award of Order / Receipt of Order' announcements + order_alert events (164)",
+    "url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/7dc128e7-8fd8-475c-b9ed-11fe16e49cc3.pdf",
+    "format": "headline + attachment: customer, value, execution period",
+    "history": "2019-12-31..2026-10-19",
+    "pit_column": "ann.DissemDT",
+    "verified": "held rows"
+   },
+   "notes": "theme_map is 0 rows, so the theme leg must be curated (20 min). Green hydrogen second layer = companies whose filing names a green-hydrogen order, not sector labels.",
+   "case_count": 1,
+   "cases_per_hour": 0.25
+  },
+  {
+   "id": "promoter_pledge",
+   "label": "Promoter pledge time series",
+   "verdict": "a",
+   "missing_atom": "company_ownership_pit.pledge_pct (column exists, 0 of 49,126 rows populated)",
+   "cases": [
+    "MB0924"
+   ],
+   "hours": 6.0,
+   "target_table": "company_ownership_pit.pledge_pct",
+   "target_atom": "ownership.pledge_pct",
+   "source": {
+    "name": "NSE corporate shareholding-pattern XBRL (fetcher: reality_engine/scripts/fetch_shareholding.py --xbrl --parse)",
+    "url": "https://www.nseindia.com/api/corporate-share-holdings-master?index=equities",
+    "format": "XBRL per filing; shp_facts holds every category-level concept; pledge concepts are in the promoter-group context",
+    "history": "2015-12-31..2026-10-16 (50,838 shp_index rows); only 40 files parsed so far",
+    "pit_column": "shp_index.broadcast_at (IST)",
+    "verified": "code + held rows (shp_facts 30,509 rows from 40 parsed files)"
+   },
+   "notes": "Fetch is ~0.4 s/file x ~50k files plus parse. This is PIPELINE_TODO B3, already scripted but stalled at 40 files. It also fixes the solvency gate (pledge > 15%).",
+   "case_count": 1,
+   "cases_per_hour": 0.167
+  },
+  {
+   "id": "refurbished_sales",
+   "label": "Refurbished / second-hand electronics sales",
+   "verdict": "c",
+   "missing_atom": "no series exists",
+   "cases": [
+    "MB0195",
+    "MB0200"
+   ],
+   "hours": 0.0,
+   "target_table": "none",
+   "target_atom": "none",
+   "notes": "ABSENT. Tried: BSE announcement headlines (no monthly/quarterly sales series), investor decks and concalls (qualitative only), no exchange or industry-body series, no free source (GfK/Counterpoint are paid and do not cover India refurbished retail). Import data would not give refurbished retail sales and is not held. Both cases' rubrics accept the NID statement (SCHEMA_FINAL section 4 lists the refurbished family as declared NOT IN DATA).",
+   "case_count": 2,
+   "cases_per_hour": null
+  }
+ ],
+ "cases": [
+  {
+   "case_id": "MB0007",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "shivam30",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "Bank of Maharashtra net NPA %"
+  },
+  {
+   "case_id": "MB0012",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "shivam30",
+   "entity_level": "industry",
+   "family": [
+    4,
+    8
+   ],
+   "question": "HFC securitisation leader, QoQ/YoY with NPA guard"
+  },
+  {
+   "case_id": "MB0070",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2,
+    11
+   ],
+   "question": "What is Motherson Sumi Wiring India (NSE: MSUMI)'s P/B now versus the stored ratio, after adjusting for its corporate action? If book value per share is not held, say NOT IN DATA."
+  },
+  {
+   "case_id": "MB0091",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was Bank of Baroda (NSE: BANKBARODA)'s net NPA % for Q1FY27, and which XBRL concept and filing carry it?"
+  },
+  {
+   "case_id": "MB0092",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was Fino Payments Bank (NSE: FINOPB)'s net NPA % for Q1FY27, and which XBRL concept and filing carry it?"
+  },
+  {
+   "case_id": "MB0093",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was BSE scrip code 590003's net NPA % for Q1FY27, and which XBRL concept and filing carry it?"
+  },
+  {
+   "case_id": "MB0094",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "BANKINDIA net npa Q1FY27"
+  },
+  {
+   "case_id": "MB0095",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "Equitas Small Finance Bank (NSE: EQUITASBNK) ka net NPA percentage Q1FY27 mein kitna tha? Gross NPA aur net NPA dono, XBRL filing se batao."
+  },
+  {
+   "case_id": "MB0096",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was IndusInd Bank (NSE: INDUSINDBK)'s net NPA % for April-June 2026 (Q1 FY2026-27), and which XBRL concept and filing carry it?"
+  },
+  {
+   "case_id": "MB0097",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "industry",
+   "family": [
+    2
+   ],
+   "question": "For all listed companies in Banks, rank the banks by net NPA % for Q1FY27, and state the source for each."
+  },
+  {
+   "case_id": "MB0098",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "index",
+   "family": [
+    2
+   ],
+   "question": "For the NIFTY HOUSING constituents, rank the banks by net NPA % for Q1FY27, and state the source for each."
+  },
+  {
+   "case_id": "MB0099",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "As of 30 June 2026, what net NPA % had The Jammu & Kashmir Bank (NSE: J&KBANK) last reported for Q1FY27?"
+  },
+  {
+   "case_id": "MB0100",
+   "class_id": "net_npa",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was AU Small Finance Bank (NSE: AUBANK)'s net NPA % for Q2FY27? If that quarter's filing is not held, or the bank's XBRL uses a taxonomy without that concept, answer NOT IN DATA and say which."
+  },
+  {
+   "case_id": "MB0101",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was Laxmi Goldorna House (NSE: LGHL)'s 3-year price CAGR to 19 October 2026, using split- and dividend-adjusted closes? State both endpoint dates."
+  },
+  {
+   "case_id": "MB0102",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was Orient Technologies (NSE: ORIENTTECH)'s 3-year price CAGR to 19 October 2026, using split- and dividend-adjusted closes? State both endpoint dates."
+  },
+  {
+   "case_id": "MB0103",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was NSE: RUCHI (now PATANJALI)'s 3-year price CAGR to 19 October 2026, using split- and dividend-adjusted closes? State both endpoint dates."
+  },
+  {
+   "case_id": "MB0105",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "eClerx Services (NSE: ECLERX) ka pichle 3 saal ka adjusted price CAGR kya raha? Start aur end date saaf-saaf likho, dividends aur splits adjust karke."
+  },
+  {
+   "case_id": "MB0106",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was Brigade Enterprises (NSE: BRIGADE)'s 3-year price CAGR to 30 September 2026, using split- and dividend-adjusted closes? State both endpoint dates."
+  },
+  {
+   "case_id": "MB0110",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was InfoBeans Technologies (NSE: INFOBEAN)'s 3-year adjusted price CAGR across its corporate action? If adjusted prices are missing, answer NOT IN DATA."
+  },
+  {
+   "case_id": "MB0141",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "industry",
+   "family": [
+    4,
+    8
+   ],
+   "question": "Is Can Fin Homes (NSE: CANFINHOME) the leader in securitised disbursement among listed HFCs for Q1FY27, with net NPA up no more than 2 pp? Show the comparison."
+  },
+  {
+   "case_id": "MB0142",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "industry",
+   "family": [
+    4,
+    8
+   ],
+   "question": "Among large-cap HFCs, who leads securitised disbursement for Q1FY27 with net NPA up no more than 2 pp?"
+  },
+  {
+   "case_id": "MB0143",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "industry",
+   "family": [
+    4,
+    8
+   ],
+   "question": "For NSE: IBULHSGFIN (now SAMMAANCAP), is it the leader in securitised disbursement among listed HFCs for Q1FY27, with net NPA up no more than 2 pp? Show the naming history if the symbol or ISIN changed."
+  },
+  {
+   "case_id": "MB0144",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "industry",
+   "family": [
+    4,
+    8
+   ],
+   "question": "hfc securitisation leader q1fy27 net npa"
+  },
+  {
+   "case_id": "MB0145",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "industry",
+   "family": [
+    4,
+    8
+   ],
+   "question": "Listed HFCs mein securitised disbursement ka leader kaun hai Q1FY27 mein? QoQ aur YoY winner batao, lekin net NPA 2 percentage point se zyada na badhe."
+  },
+  {
+   "case_id": "MB0146",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "industry",
+   "family": [
+    4,
+    8
+   ],
+   "question": "Which listed HFC is the leader in securitised disbursement for January-March 2026 (Q4FY26), QoQ and YoY, with net NPA rising no more than 2 pp?"
+  },
+  {
+   "case_id": "MB0147",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "industry",
+   "family": [
+    4,
+    8
+   ],
+   "question": "For all listed companies in Housing Finance, which listed financial company is the securitisation leader for Q1FY27 with the net-NPA guard, and what is the evidence?"
+  },
+  {
+   "case_id": "MB0148",
+   "class_id": "hfc_securitisation",
+   "verdict": "b",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "variations300",
+   "entity_level": "index",
+   "family": [
+    4,
+    8
+   ],
+   "question": "For the NIFTY HOUSING FINANCE constituents, rank the financial companies on securitised disbursement for Q1FY27, with the net-NPA guard."
+  },
+  {
+   "case_id": "MB0180",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    6,
+    9
+   ],
+   "question": "For 20 Microns (NSE: 20MICRONS), did the tariff impact and any later negative correlation survive its corporate action on adjusted prices? If not, answer NOT IN DATA."
+  },
+  {
+   "case_id": "MB0195",
+   "class_id": "refurbished_sales",
+   "verdict": "c",
+   "registry_reason": "NSE publishes no free retro intraday bars; no company discloses a refurbished-sales series",
+   "source_bank": "variations300",
+   "entity_level": "theme",
+   "family": [
+    6,
+    7
+   ],
+   "question": "CY2026 mein second-hand aur refurbished electronics/laptops ki demand kyun badhi? Kaun listed companies ko fayda hoga, aur ye structural hai ya cyclical? Data gap bhi batao."
+  },
+  {
+   "case_id": "MB0200",
+   "class_id": "refurbished_sales",
+   "verdict": "c",
+   "registry_reason": "no company discloses a refurbished-sales series",
+   "source_bank": "variations300",
+   "entity_level": "theme",
+   "family": [
+    6,
+    7
+   ],
+   "question": "What do our stores say about refurbished/second-hand electronics sales in CY2026, and who benefits? If no sales series exists, answer NOT IN DATA and say which store is missing."
+  },
+  {
+   "case_id": "MB0280",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What are Kotyark Industries (NSE: KOTYARK)'s exact share count and promoter holding now, after its corporate action? If the post-action count is not held, answer NOT IN DATA."
+  },
+  {
+   "case_id": "MB0310",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "variations300",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "What was Metropolis Healthcare (NSE: METROPOLIS)'s YTD high for 2026, raw and adjusted for its corporate action? If adjusted prices are missing, say NOT IN DATA."
+  },
+  {
+   "case_id": "MB0332",
+   "class_id": "jv_terms",
+   "verdict": "a",
+   "registry_reason": "metric_key 'investments' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    12
+   ],
+   "question": "Dixon's Vivo joint venture: from which quarter does management expect it to start showing up in revenue?"
+  },
+  {
+   "case_id": "MB0334",
+   "class_id": "capex_project",
+   "verdict": "a",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    12
+   ],
+   "question": "SRF is putting up a second pharma-intermediate plant at Dahej. How much is the capex and over what commissioning window did management guide?"
+  },
+  {
+   "case_id": "MB0335",
+   "class_id": "jv_terms",
+   "verdict": "a",
+   "registry_reason": "metric_key 'investments' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    12
+   ],
+   "question": "Cochin Shipyard's ISRF joint venture with Drydocks World, Dubai: by when is it targeted to be in place, and what is it conditional on?"
+  },
+  {
+   "case_id": "MB0356",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    12
+   ],
+   "question": "Muthoot Finance opened 177 branches in a year. When does gold-loan demand seasonally peak, and what did management say about branch-level demand?"
+  },
+  {
+   "case_id": "MB0370",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "open300",
+   "entity_level": "market-wide",
+   "family": [
+    13
+   ],
+   "question": "Kaunsi company ne FY26 mein buyback ya special dividend announce kiya? Date aur amount ke saath batao. (Hinglish)"
+  },
+  {
+   "case_id": "MB0394",
+   "class_id": "kmp_churn",
+   "verdict": "a",
+   "registry_reason": "metric_key 'cfo' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "market-wide",
+   "family": [
+    14
+   ],
+   "question": "CFO churn 2024-2026 listed companies"
+  },
+  {
+   "case_id": "MB0413",
+   "class_id": "cfo",
+   "verdict": "a",
+   "registry_reason": "metric_key 'cfo' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "market-wide",
+   "family": [
+    14
+   ],
+   "question": "Which companies have operating cash flow persistently below reported profit, and for how many years?"
+  },
+  {
+   "case_id": "MB0418",
+   "class_id": "related_party",
+   "verdict": "a",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "market-wide",
+   "family": [
+    14
+   ],
+   "question": "Which companies' results notes mention a related-party loan or advance to a promoter-group entity?"
+  },
+  {
+   "case_id": "MB0436",
+   "class_id": "corp_action_schemes",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    15
+   ],
+   "question": "Siemens fell 42.93% on 7 April 2025. Was that a real loss of value? Explain with the corporate-action record."
+  },
+  {
+   "case_id": "MB0460",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "industry",
+   "family": [
+    16
+   ],
+   "question": "Gold was 2,028 on 7 August 2020 and 4,186.7 on 30 September 2026. Kaun jeetta hai—jeweller ya gold-loan NBFC? (Hinglish)"
+  },
+  {
+   "case_id": "MB0472",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'nim' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    16
+   ],
+   "question": "A rate cut compresses a bank's NIM but lifts loan growth. For HDFC Bank, which effect dominated last cycle, and what does the disclosure say?"
+  },
+  {
+   "case_id": "MB0473",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    16
+   ],
+   "question": "Muthoot's cost of funds rises with the repo. How does that interact with the gold-loan yield cap, and who bears it?"
+  },
+  {
+   "case_id": "MB0483",
+   "class_id": "float_income",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    17
+   ],
+   "question": "Brokers earn float income on client balances. How much of Angel One's revenue is float income, and what happens when rates fall?"
+  },
+  {
+   "case_id": "MB0491",
+   "class_id": "unit_metrics",
+   "verdict": "a",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    17
+   ],
+   "question": "Gold-loan ticket sizes are rising. What does that do to Muthoot's loan-to-value and risk, and where is it disclosed?"
+  },
+  {
+   "case_id": "MB0495",
+   "class_id": "unit_metrics",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    17
+   ],
+   "question": "Hospital ARPOB is the key unit metric. What drives it at Apollo, and how much is price versus occupancy?"
+  },
+  {
+   "case_id": "MB0512",
+   "class_id": "second_order_suppliers",
+   "verdict": "b",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "open300",
+   "entity_level": "industry",
+   "family": [
+    19
+   ],
+   "question": "Defence indigenisation gave BEL and HAL large orders. Which second-layer listed suppliers gain, and how do you establish the link?"
+  },
+  {
+   "case_id": "MB0513",
+   "class_id": "policy_incidence",
+   "verdict": "b",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "open300",
+   "entity_level": "policy",
+   "family": [
+    19
+   ],
+   "question": "The TCS on coal and iron-ore sales doubles to 2% from 1 April 2026. Who is hit first, who second, and does any listed layer gain?"
+  },
+  {
+   "case_id": "MB0518",
+   "class_id": "second_order_suppliers",
+   "verdict": "b",
+   "registry_reason": "metric_key 'investments' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    19
+   ],
+   "question": "Cochin Shipyard's Drydocks World JV will need steel and marine equipment. Which listed companies are the plausible suppliers, and what is the evidence standard?"
+  },
+  {
+   "case_id": "MB0523",
+   "class_id": "second_order_suppliers",
+   "verdict": "b",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "open300",
+   "entity_level": "policy",
+   "family": [
+    19
+   ],
+   "question": "US tariffs on Indian textiles have been 50% since August 2025. Which listed dye and chemical suppliers are exposed second-hand, and what is the evidence bar?"
+  },
+  {
+   "case_id": "MB0529",
+   "class_id": "capex_project",
+   "verdict": "a",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    3,
+    12
+   ],
+   "question": "SRF guided the Dahej second pharma plant in eight months with Rs 180 crore. Has it commissioned, and how would you check?"
+  },
+  {
+   "case_id": "MB0537",
+   "class_id": "jv_terms",
+   "verdict": "a",
+   "registry_reason": "metric_key 'investments' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    3,
+    12
+   ],
+   "question": "Cochin Shipyard targeted the ISRF JV before the end of the financial year. Has the JV been signed, and what would confirm it?"
+  },
+  {
+   "case_id": "MB0546",
+   "class_id": "jv_terms",
+   "verdict": "a",
+   "registry_reason": "metric_key 'investments' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    2,
+    12
+   ],
+   "question": "Cochin Shipyard has an ISRF JV pipeline alongside its order book. How do you separate firm orders from JV optionality?"
+  },
+  {
+   "case_id": "MB0558",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    1,
+    3
+   ],
+   "question": "Trent did a 1:2 bonus with ex-date 4 June 2026. What does that do to the EPS series, and how should a price chart treat it?"
+  },
+  {
+   "case_id": "MB0561",
+   "class_id": "related_party",
+   "verdict": "a",
+   "registry_reason": "metric_key 'investments' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "market-wide",
+   "family": [
+    1,
+    3
+   ],
+   "question": "Which companies put money into a subsidiary or JV last year, and was it disclosed as a related-party transaction?"
+  },
+  {
+   "case_id": "MB0563",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    1,
+    3
+   ],
+   "question": "buyback vs dividend choices FY26"
+  },
+  {
+   "case_id": "MB0565",
+   "class_id": "jv_terms",
+   "verdict": "a",
+   "registry_reason": "metric_key 'investments' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    1,
+    3
+   ],
+   "question": "Cochin Shipyard's ISRF JV needs capital. What is the committed amount, and who funds it?"
+  },
+  {
+   "case_id": "MB0568",
+   "class_id": "float_income",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    1,
+    3
+   ],
+   "question": "Angel One earns float income on client funds. How does it deploy that float, and what is the risk if rates fall?"
+  },
+  {
+   "case_id": "MB0583",
+   "class_id": "backtest",
+   "verdict": "a",
+   "registry_reason": "forecast, not a held fact",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    2,
+    4
+   ],
+   "question": "Delivery percentage around results: does a high-delivery reaction day predict the next week? Test it on KEI and Titagarh."
+  },
+  {
+   "case_id": "MB0597",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "Trent's 1:2 bonus had an ex-date of 4 June 2026. How should an event study treat that day?"
+  },
+  {
+   "case_id": "MB0605",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "open300",
+   "entity_level": "industry",
+   "family": [
+    16,
+    18
+   ],
+   "question": "Gold is 4,186.7. If it goes to 5,000, do jewellers or gold-loan NBFCs do better, and why is the answer not obvious?"
+  },
+  {
+   "case_id": "MB0608",
+   "class_id": "policy_incidence",
+   "verdict": "b",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "open300",
+   "entity_level": "policy",
+   "family": [
+    16,
+    18
+   ],
+   "question": "If the semiconductor incentive doubles, which listed companies benefit first and which only in the second round?"
+  },
+  {
+   "case_id": "MB0617",
+   "class_id": "unit_metrics",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "open300",
+   "entity_level": "stock",
+   "family": [
+    20
+   ],
+   "question": "How many electric two-wheelers did Ola Electric deliver in September 2026?"
+  },
+  {
+   "case_id": "MB0627",
+   "class_id": "forecast_scenario",
+   "verdict": "b",
+   "registry_reason": "forecast, not a held fact",
+   "source_bank": "open300",
+   "entity_level": "market-cap bucket",
+   "family": [
+    20
+   ],
+   "question": "Which mid-cap will double in 2027?"
+  },
+  {
+   "case_id": "MB0629",
+   "class_id": "retail_mtm",
+   "verdict": "b",
+   "registry_reason": "investor-level holdings are not published in India",
+   "source_bank": "open300",
+   "entity_level": "market-wide",
+   "family": [
+    20
+   ],
+   "question": "How much money did retail investors lose on 4 June 2024, in rupees?"
+  },
+  {
+   "case_id": "MB0632",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "industry",
+   "family": [
+    16
+   ],
+   "question": "Natural rubber and crude-based inputs rise together. How long before tyre makers' replacement-market price hikes reach the OEMs, and what does the OEM's own cost per vehicle do to two-wheeler and passenger-car volume two quarters later?"
+  },
+  {
+   "case_id": "MB0638",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "industry",
+   "family": [
+    16
+   ],
+   "question": "Gas and ammonia prices rise. Urea makers' cost goes up but the retail price is controlled, so the subsidy bill rises instead. Trace that to farm income, then to tractor and two-wheeler volumes, and say which of those lags we can actually measure."
+  },
+  {
+   "case_id": "MB0653",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    18
+   ],
+   "question": "US tariffs of 50% have hit Indian labour-intensive exports since August 2025. Trace the order loss to the exporter's utilisation, then to its contract workforce, then to the second-order effect on the domestic cotton and leather supply chain. What is already visible in the filings?"
+  },
+  {
+   "case_id": "MB0655",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary; registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value)",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    18
+   ],
+   "question": "The RBI raised the repo 25 bps to 5.50% on 7 October 2026 and moved the stance to calibrated tightening. Trace it through the loan book that reprices first, the deposit book that reprices last, and then through the NBFC and housing-finance cost of funds. Which lender's NIM is hit first?"
+  },
+  {
+   "case_id": "MB0660",
+   "class_id": "free_float_weight",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    18
+   ],
+   "question": "FPI short-term and concentration limits are removed and the Fully Accessible Route is extended to longer G-secs. Trace it to foreign ownership of mid-caps, then to the float and the market-cap bucket, then to index eligibility. Which listed names become eligible for flows they were not eligible for before?"
+  },
+  {
+   "case_id": "MB0662",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'nim' is not in the held concept vocabulary; registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value)",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    18
+   ],
+   "question": "Full hedging-cost support is offered to banks raising fresh 3-5 year FCNR(B) deposits. Trace it to the bank's swap cost, then to NIM, then to credit growth. Why would a bank take a lower-margin deposit deliberately?"
+  },
+  {
+   "case_id": "MB0664",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    18
+   ],
+   "question": "The collateral-free MSE loan limit is raised with effect from April 2026. Trace it to bank and NBFC credit to MSME suppliers, then to the supplier's terms with its large customer, then to the large customer's working capital. Does the buyer gain or lose?"
+  },
+  {
+   "case_id": "MB0670",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    18
+   ],
+   "question": "A National Mission on High Yielding Seeds is announced. Trace it to seed replacement rates, then to agrochem and fertiliser use per acre, then to farm income, then to two-wheeler and tractor demand. Which hop has no data behind it at all?"
+  },
+  {
+   "case_id": "MB0671",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary; registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value)",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    16
+   ],
+   "question": "The repo goes up 25 bps. Split the loan book into EBLR, MCLR and fixed, split the deposit book into savings and term, and compute which bank's NIM falls first. The answer needs both repricing schedules, not the headline rate."
+  },
+  {
+   "case_id": "MB0672",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    16
+   ],
+   "question": "The 2025 rate cuts reach the NBFC's cost of funds with a lag, but its AUM growth needs a credit cycle, not a rate cut. Trace the cost of funds, then the spread, then the AUM, and say which NBFC's spread expands rather than narrows."
+  },
+  {
+   "case_id": "MB0677",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary; registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value)",
+   "source_bank": "ripple200",
+   "entity_level": "industry",
+   "family": [
+    16
+   ],
+   "question": "Household savings move from term deposits to mutual funds. Trace it to the bank's deposit mix, then to its NIM, then to the cost of the loan it can no longer fund cheaply. Which listed lender is most exposed to that migration?"
+  },
+  {
+   "case_id": "MB0680",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    16
+   ],
+   "question": "The central bank changes the CRR. Trace it to the bank's lendable resources, then to the marginal corporate loan price, then to the capex it enables. How much of a 50 bps CRR cut is worth in NIM, and does the answer change the capex decision?"
+  },
+  {
+   "case_id": "MB0682",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    16
+   ],
+   "question": "The repo goes up and car loans get dearer. Trace it to the EMI, then to the monthly payment at the entry price point, then to volumes for the entry segment versus the premium. Which listed OEM is most exposed to the entry segment?"
+  },
+  {
+   "case_id": "MB0719",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "industry",
+   "family": [
+    19
+   ],
+   "question": "A large bank cuts its home-loan rate to win prime customers. Trace it to the HFC's spread, then to the HFC's disbursement mix, then to its cost of funds. Which listed HFC is stuck with the customer the bank does not want?"
+  },
+  {
+   "case_id": "MB0723",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    19
+   ],
+   "question": "Electronics manufacturing scales on a PLI scheme. Trace the scheme to the assembler's scale, then to its component import bill, then to the domestic component supplier's opportunity, then to the assembler's margin per unit. Where does the value stay?"
+  },
+  {
+   "case_id": "MB0729",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary; metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "industry",
+   "family": [
+    19
+   ],
+   "question": "A bank decides to build a small-ticket personal-loan book. Trace it to the NBFC's borrower acquisition cost, then to its ticket size, then to its credit cost. Which listed lender loses the most profitable slice?"
+  },
+  {
+   "case_id": "MB0733",
+   "class_id": "free_float_weight",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+   "source_bank": "ripple200",
+   "entity_level": "market-wide",
+   "family": [
+    3
+   ],
+   "question": "A small-cap re-rates from a 2,000 crore to a 12,000 crore market cap and enters an index. Trace it to the passive flow, then to the float, then to the price. Does the index inclusion cause the re-rating or follow it?"
+  },
+  {
+   "case_id": "MB0735",
+   "class_id": "corp_action_schemes",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "ripple200",
+   "entity_level": "market-wide",
+   "family": [
+    3
+   ],
+   "question": "A company with surplus cash announces a buyback instead of a capex. Trace it to the EPS, then to the return on capital, then to the capacity it did not build, then to its market share two years later."
+  },
+  {
+   "case_id": "MB0738",
+   "class_id": "free_float_weight",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+   "source_bank": "ripple200",
+   "entity_level": "market-wide",
+   "family": [
+    3
+   ],
+   "question": "A promoter sells 8% through an offer for sale. Trace it to the free float, then to the index weight, then to the stock's reaction to flows. Does a higher float help or hurt the price?"
+  },
+  {
+   "case_id": "MB0744",
+   "class_id": "free_float_weight",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+   "source_bank": "ripple200",
+   "entity_level": "market-wide",
+   "family": [
+    3
+   ],
+   "question": "Promoters raise their stake through creeping acquisition. Trace it to the free float, then to the delivery percentage, then to the price impact of a future sale. Which listed name has the tightest float?"
+  },
+  {
+   "case_id": "MB0746",
+   "class_id": "corp_action_schemes",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "ripple200",
+   "entity_level": "market-wide",
+   "family": [
+    3
+   ],
+   "question": "A company announces a rights issue at a discount. Trace it to the share count, then to the EPS, then to the ex-rights price. Which number does a naive EPS series get wrong?"
+  },
+  {
+   "case_id": "MB0749",
+   "class_id": "corp_action_schemes",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "ripple200",
+   "entity_level": "market-wide",
+   "family": [
+    3
+   ],
+   "question": "A company announces a tender buyback at a premium. Trace it to the acceptance ratio, then to the EPS, then to the promoter's stake. What does the premium tell you?"
+  },
+  {
+   "case_id": "MB0753",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'nim' is not in the held concept vocabulary; registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value)",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    12
+   ],
+   "question": "The repo is cut. Using the last easing cycle, how many quarters before the bank's NIM troughs, and does the trough arrive before or after the deposit repricing is complete?"
+  },
+  {
+   "case_id": "MB0758",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "industry",
+   "family": [
+    12
+   ],
+   "question": "MGNREGS spending rises. Trace it to rural wages, then to two-wheeler entry-segment volume, and state the lag you can actually verify versus the one you are assuming."
+  },
+  {
+   "case_id": "MB0761",
+   "class_id": "capex_project",
+   "verdict": "a",
+   "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "stock",
+   "family": [
+    12
+   ],
+   "question": "A capacity is announced with a commissioning date. Across the last cycle, how much did the date slip, and what is the slippage measured against?"
+  },
+  {
+   "case_id": "MB0772",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    16
+   ],
+   "question": "The repo is raised 25 bps. A bank's loan yield rises and its bond portfolio falls in value on the same day. Net the NIM gain against the treasury loss, and say which one is a P&L event and which is an OCI event."
+  },
+  {
+   "case_id": "MB0780",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "policy",
+   "family": [
+    16
+   ],
+   "question": "An incentive scheme pays a subsidy per unit and the large player cuts the price by the same amount to win volume. Net the subsidy gain against the price cut and say who keeps it."
+  },
+  {
+   "case_id": "MB0790",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary; metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "industry",
+   "family": [
+    16
+   ],
+   "question": "An NBFC grows its AUM fast and its credit cost rises at the same time. Net growth against credit cost and say which listed lender's provisioning cycle is closest to turning."
+  },
+  {
+   "case_id": "MB0792",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "macro",
+   "family": [
+    11
+   ],
+   "question": "Entry-segment two-wheeler demand: does the rural wage series, the scheme allocation, or the dealer inventory turn first? Which of them is point-in-time today?"
+  },
+  {
+   "case_id": "MB0793",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'nim' is not in the held concept vocabulary; registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value)",
+   "source_bank": "ripple200",
+   "entity_level": "macro",
+   "family": [
+    11
+   ],
+   "question": "Bank NIM: does the weighted average call rate, the deposit rate, or credit growth turn first? And is the deposit rate a point-in-time series at all?"
+  },
+  {
+   "case_id": "MB0800",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "macro",
+   "family": [
+    11
+   ],
+   "question": "Cement demand: dispatches, GST collection, or pet coke first? Which turns before the other two?"
+  },
+  {
+   "case_id": "MB0804",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary",
+   "source_bank": "ripple200",
+   "entity_level": "macro",
+   "family": [
+    11
+   ],
+   "question": "NBFC credit cost: bounce rates, disbursement growth, or GNPA first? Which one is point-in-time in a filing, and which is not published at all?"
+  },
+  {
+   "case_id": "MB0819",
+   "class_id": "event_window",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "ripple200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "The Union Budget speech is delivered inside the session, so day 0 is the speech session. Build the 4 sessions before it for the textile names and say whether positioning before a scheduled event is leakage or expectation."
+  },
+  {
+   "case_id": "MB0823",
+   "class_id": "event_window",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "ripple200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "A demerger scheme is filed with the exchanges. The board approval and the filing are two candidate day-0s. Build both windows and say which one a leaker would have acted on."
+  },
+  {
+   "case_id": "MB0824",
+   "class_id": "event_window",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "ripple200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "A company announces a stock split, which has no cash effect. Build day 0 and check the 4 sessions before it. This is the negative control: how often does a delivery spike appear before an event that cannot carry information?"
+  },
+  {
+   "case_id": "MB0827",
+   "class_id": "event_window",
+   "verdict": "a",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "ripple200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "Take ORIENTPPR's most recent auditor change. Build day 0 and check the 4 sessions before it. An auditor resignation should not leak, which makes it a second control."
+  },
+  {
+   "case_id": "MB0830",
+   "class_id": "event_window",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "ripple200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "A buyback is announced after the close, so day 0 is the next session. Check the 4 sessions before it: is the pre-window evidence of a leak, or of price support before a tender?"
+  },
+  {
+   "case_id": "MB0841",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    12,
+    9
+   ],
+   "question": "IRFC declared a Re 1.15 interim dividend with an ex-date of 23 Oct 2026 — who was on the register, and how did the stock trade into it?"
+  },
+  {
+   "case_id": "MB0842",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "market-wide",
+   "family": [
+    4
+   ],
+   "question": "List the listed companies that went ex-dividend in the week of 19 Oct 2026, with the amount each declared."
+  },
+  {
+   "case_id": "MB0843",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    12,
+    10
+   ],
+   "question": "Oberoi Realty ka dividend kal ex ho raha hai — record date aur ex-date mein difference kyu hai, aur mujhe kya dekhna chahiye?"
+  },
+  {
+   "case_id": "MB0845",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "sector",
+   "family": [
+    2,
+    4
+   ],
+   "question": "Among listed PSU banks, which paid an interim dividend in the September quarter, and how much per share?"
+  },
+  {
+   "case_id": "MB0848",
+   "class_id": "free_float_weight",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+   "source_bank": "reddit200",
+   "entity_level": "market-cap bucket",
+   "family": [
+    10,
+    13
+   ],
+   "question": "Micro-cap names under Rs 20 look cheap — is that value, or just a float too small to trust?"
+  },
+  {
+   "case_id": "MB0851",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value)",
+   "source_bank": "reddit200",
+   "entity_level": "policy",
+   "family": [
+    18,
+    6
+   ],
+   "question": "If the RBI cuts the repo rate by 25bp in December, which listed lenders reprice deposits first and by how much?"
+  },
+  {
+   "case_id": "MB0852",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "reddit200",
+   "entity_level": "macro",
+   "family": [
+    19,
+    16
+   ],
+   "question": "If crude holds above $90 for a quarter, how does that reach second-round input costs down the listed chain?"
+  },
+  {
+   "case_id": "MB0855",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "reddit200",
+   "entity_level": "sector",
+   "family": [
+    19,
+    18
+   ],
+   "question": "Which listed sectors gain most if the 10-year yield falls 50bp, and which lose on the second round?"
+  },
+  {
+   "case_id": "MB0862",
+   "class_id": "corp_action_schemes",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    12,
+    9
+   ],
+   "question": "The Tata Motors demerger left two listed lines — which approvals were still pending at the record date, and how did the pair trade into it?"
+  },
+  {
+   "case_id": "MB0868",
+   "class_id": "second_order_suppliers",
+   "verdict": "b",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    19,
+    8
+   ],
+   "question": "If the data-centre build-out doubles, is KEI's cable order book the second-order winner or does the wiring spend land elsewhere first?"
+  },
+  {
+   "case_id": "MB0870",
+   "class_id": "order_book",
+   "verdict": "a",
+   "registry_reason": "NSE publishes no free retro intraday bars",
+   "source_bank": "reddit200",
+   "entity_level": "theme",
+   "family": [
+    11,
+    19
+   ],
+   "question": "As of 23 Oct 2026, which listed names had disclosed order wins inside the green hydrogen theme's second layer?"
+  },
+  {
+   "case_id": "MB0877",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    10
+   ],
+   "question": "IREDA ran up a lot after listing. Is it too late to enter now, or does the loan-book growth still justify a fresh position?"
+  },
+  {
+   "case_id": "MB0881",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary; metric_key 'net_npa' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "sector",
+   "family": [
+    8
+   ],
+   "question": "PSU banks: which of the large ones has the best combination of NIM and credit cost this quarter, and which is most exposed to a slippage cycle?"
+  },
+  {
+   "case_id": "MB0888",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "paid-only (no consensus feed acquired)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "NTPC Green and the renewable IPP pack: after the listing, which one trades at the biggest premium to book, and what does the market expect from it?"
+  },
+  {
+   "case_id": "MB0889",
+   "class_id": "corp_action_schemes",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    12
+   ],
+   "question": "After the Tata Motors demerger into TMPV and TMCV, which entity carries the auto-finance exposure, and how should the cost basis split?"
+  },
+  {
+   "case_id": "MB0891",
+   "class_id": "corp_action_schemes",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    12
+   ],
+   "question": "Vedanta's demerger: which listed entity will hold the aluminium business, and what happens to my shares between the record date and listing?"
+  },
+  {
+   "case_id": "MB0892",
+   "class_id": "corp_action_terms",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    12
+   ],
+   "question": "If a company announces a 1:1 bonus, what price should the stock open at on the ex-date, and does my average cost change?"
+  },
+  {
+   "case_id": "MB0908",
+   "class_id": "adj_price_series",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    15
+   ],
+   "question": "Tata Motors moved sharply around the demerger record date. How much of the move was the mechanical price adjustment?"
+  },
+  {
+   "case_id": "MB0921",
+   "class_id": "mechanism_lag",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    18
+   ],
+   "question": "Rail capex was front-loaded this year. Does that show up first in RVNL's revenue or in IRFC's loan book, and with what lag?"
+  },
+  {
+   "case_id": "MB0924",
+   "class_id": "promoter_pledge",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    14
+   ],
+   "question": "Vedanta: how has promoter pledge moved over the last four quarters, and does the dividend policy depend on it?"
+  },
+  {
+   "case_id": "MB0926",
+   "class_id": "free_float_weight",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    14
+   ],
+   "question": "Vodafone Idea: did the promoter group raise its stake through the preferential issue, and what did that do to the free float?"
+  },
+  {
+   "case_id": "MB0931",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'nim' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "HDFC Bank Q2FY26: was the NIM expansion real or a one-off treasury gain, and what did management guide?"
+  },
+  {
+   "case_id": "MB0935",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    8
+   ],
+   "question": "HDFC Bank versus ICICI Bank on NIM, ROA and credit cost: which is the cleaner compounder from here?"
+  },
+  {
+   "case_id": "MB0939",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "DMart still trades at a high PE. What growth rate is the market assuming, and what has the company actually delivered?"
+  },
+  {
+   "case_id": "MB0959",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    17
+   ],
+   "question": "ITC: between dividends and FMCG reinvestment, which one has earned the better return, and what does the last five years say?"
+  },
+  {
+   "case_id": "MB0962",
+   "class_id": "loans_book",
+   "verdict": "a",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    17
+   ],
+   "question": "Bajaj Finance: how much dilution has funded the growth, and is per-share value growing as fast as the loan book?"
+  },
+  {
+   "case_id": "MB0965",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    14
+   ],
+   "question": "Vedanta: the parent pays dividends while carrying debt. Is the cash actually upstreamed from subsidiaries, and what do the related-party notes say?"
+  },
+  {
+   "case_id": "MB0967",
+   "class_id": "cwip",
+   "verdict": "a",
+   "registry_reason": "metric_key 'cwip' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    14
+   ],
+   "question": "Reliance Power: how much of the balance sheet is CWIP and capitalised interest, and when does it start depreciating?"
+  },
+  {
+   "case_id": "MB0968",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    14
+   ],
+   "question": "Yes Bank: are provisions keeping pace with the stressed book, and how much of the recovery is write-back rather than operating profit?"
+  },
+  {
+   "case_id": "MB0969",
+   "class_id": "guidance_vs_actual",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    3
+   ],
+   "question": "Tata Motors: JLR margin guidance has moved every year. What was promised, what was delivered, and what is the current gap?"
+  },
+  {
+   "case_id": "MB0971",
+   "class_id": "guidance_vs_actual",
+   "verdict": "a",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    3
+   ],
+   "question": "IREDA: loan-growth guidance versus actual book growth. Has the company consistently beaten its own number?"
+  },
+  {
+   "case_id": "MB0984",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    16
+   ],
+   "question": "If the RBI cuts rates, what happens to HDFC Bank's NIM first and loan growth second, and how long is the lag?"
+  },
+  {
+   "case_id": "MB0985",
+   "class_id": "bank_transmission",
+   "verdict": "b",
+   "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    16
+   ],
+   "question": "Bajaj Finance: does a rate cut help or hurt the cost of funds before it helps AUM, and what does history say?"
+  },
+  {
+   "case_id": "MB0994",
+   "class_id": "debt_maturity",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    14
+   ],
+   "question": "Vedanta: how much debt matures in the next two years, and can dividends plus cash cover it without asset sales?"
+  },
+  {
+   "case_id": "MB0996",
+   "class_id": "cwip",
+   "verdict": "a",
+   "registry_reason": "metric_key 'cwip' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    14
+   ],
+   "question": "Jaiprakash Power: has the debt actually fallen, or has it been moved into CWIP and JVs?"
+  },
+  {
+   "case_id": "MB0999",
+   "class_id": "cfo",
+   "verdict": "a",
+   "registry_reason": "metric_key 'cfo' is not in the held concept vocabulary; private transaction terms are never filed",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "TCS: does CFO track PAT, and are receivables days creeping as deal terms lengthen?"
+  },
+  {
+   "case_id": "MB1001",
+   "class_id": "cfo",
+   "verdict": "a",
+   "registry_reason": "metric_key 'cfo' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "Mphasis: direct-client mix has risen. Did DSO and CFO/PAT improve with it, or did the mix just move revenue?"
+  },
+  {
+   "case_id": "MB1005",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "metric_key 'investments' is not in the held concept vocabulary",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "Tata Investment: is the market cap above or below the value of its listed portfolio, and how has that gap behaved?"
+  },
+  {
+   "case_id": "MB1009",
+   "class_id": "dividend_coverage",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "Coal India: is the dividend covered by free cash flow after the capex plan, or is it borrowing from the future?"
+  },
+  {
+   "case_id": "MB1010",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "Power Grid: the regulated return sets the dividend. What happens to the payout if the capex cycle slows?"
+  },
+  {
+   "case_id": "MB1011",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "ITC: how much of the dividend is covered by the cigarette cash flow once the FMCG reinvestment is funded?"
+  },
+  {
+   "case_id": "MB1013",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    2
+   ],
+   "question": "NMDC: at the bottom of the iron-ore cycle, would the dividend be cut, and what did the last downturn show?"
+  },
+  {
+   "case_id": "MB1028",
+   "class_id": "valuation_judgement",
+   "verdict": "b",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    3
+   ],
+   "question": "Tata Motors PV: the post-demerger base is thin. What is the first real support level, and is there enough history to trust it?"
+  },
+  {
+   "case_id": "MB1032",
+   "class_id": "backtest",
+   "verdict": "a",
+   "registry_reason": "forecast, not a held fact",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "IRFC's breakout came with high delivery %. Does high delivery at a breakout predict a better 20-day hold than low delivery?"
+  },
+  {
+   "case_id": "MB1048",
+   "class_id": "backtest",
+   "verdict": "a",
+   "registry_reason": "forecast, not a held fact",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    3
+   ],
+   "question": "BEL versus HAL: which has spent more of the last two years within 10% of its 52-week high, and does that predict anything?"
+  },
+  {
+   "case_id": "MB1049",
+   "class_id": "event_window",
+   "verdict": "a",
+   "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+   "source_bank": "reddit200",
+   "entity_level": "market-wide",
+   "family": [
+    9
+   ],
+   "question": "Tata Motors PV gapped up after its first post-demerger result. Has the gap filled, and how many sessions did it take?"
+  },
+  {
+   "case_id": "MB1061",
+   "class_id": "fno_oi",
+   "verdict": "a",
+   "registry_reason": "paid-only (no consensus feed acquired)",
+   "source_bank": "reddit200",
+   "entity_level": "stock",
+   "family": [
+    9
+   ],
+   "question": "SBI saw a large OI addition at a strike above spot. Is that a ceiling the market expects, or a hedge?"
+  }
+ ],
+ "registry_defects": [
+  "12 cases carry 'NSE publishes no free retro intraday bars'; none needs intraday. Every one is a session-window or chain question answerable from daily OHLCV/delivery (Shivam 2026-10-29: intraday prices are not needed).",
+  "40 cases carry market_state.corporate_action_class.amount_per_share. Split by true ask: 10 adjusted-price/return (already held), 10 dividend/bonus/split terms (held subject text), 7 scheme/buyback terms (held announcements), 13 need other atoms (debt maturity, pledge, related party).",
+  "net_npa 21 -> 11: 9 are HFC securitisation questions with an NPA guard, 1 (MB0761) is capex commissioning slippage.",
+  "'investor-level holdings are not published in India' -> aggregate public % IS published, so MB0629 is a proxy (b), not absent.",
+  "'private transaction terms are never filed' (MB0999) is a second reason on a CFO/DSO question; no private-terms atom is needed.",
+  "'investments' 8 cases are mostly JV/subsidiary questions, not the balance-sheet Investments line (only MB1005 is a portfolio-NAV question).",
+  "'loans' 15 cases are mostly rate-transmission/mechanism questions; exactly one (MB0962) is a loan-book lookup.",
+  "MB0655/MB0671/MB0677 cite company_metric_series.value as a gap, but the table holds 1,056,589 rows over 21 metric keys; the gap is metric keys (nim, loans, credit_cost), not the table.",
+  "Mis-mapped reasons: MB0761 (net NPA for a capex question), MB0195 (intraday for a refurbished-demand question), MB0332/0335/0518/0537/0546/0565 (investments for JV questions)."
+ ],
+ "plan_top5": [
+  "adj_price_series",
+  "event_window",
+  "net_npa",
+  "cfo",
+  "bank_transmission"
+ ]
+}
