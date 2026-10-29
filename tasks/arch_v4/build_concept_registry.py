@@ -224,13 +224,14 @@ _ATOMS = [
     ("price.free_float", "free float", "market", "%", "day", "gap",
      "market_state.company_membership_pit.weight",
      "free float|float|free-float|float percentage|index weight"),
+    # ---- own estimates: v4.1 decision 1 (no paid consensus feed) --------------
+    # One atom: an estimate per company, per estimated atom, per period.  It is a build
+    # job (metric_state.own_estimate), not a paid fetch; the estimated atom is a dim.
+    ("own.estimate", "own estimate (replaces street consensus)", "consensus", "INR|%|x",
+     "quarter|FY|event", "gap",
+     "metric_state.own_estimate.value (build job: held quarterly trend + guidance claims + opinions stores)",
+     "consensus|street estimate|analyst estimate|analyst estimates|broker estimates|market expects|estimates|expected by analysts|guidance versus consensus|target price|price target|fair value|upside target|broker target|rating target"),
     # ---- declared absent: the registry's NOT IN DATA reasons ---------------
-    ("absent.consensus", "analyst consensus estimate", "absent", "INR", "quarter", "absent",
-     "none: paid-only (no consensus feed acquired)",
-     "consensus|street estimate|analyst estimate|analyst estimates|broker estimates|market expects|estimates|expected by analysts|guidance versus consensus"),
-    ("absent.price_target", "analyst price target", "absent", "INR", "event", "absent",
-     "none: paid-only (target prices are broker research)",
-     "target price|price target|fair value|upside target|broker target|rating target"),
     ("absent.intraday", "intraday amplitude", "absent", "INR", "day", "absent",
      "none: NSE publishes no free retro intraday bars",
      "intraday amplitude|intraday range|intraday move|tick data|minute bars|seconds|intraday high low"),
@@ -303,6 +304,11 @@ _DIMS = [
      "'page 41 of the deck' is a dim on text.passage."),
     ("lookback", [20, 50, 200], "daily_price_delivery.sma_*", 20,
      "the moving-average length."),
+    # v4.1 decision 1: an own estimate is carried per estimated atom, never one concept
+    # per estimated measure ("beat consensus revenue" = own.estimate with est_atom=fin.revenue)
+    ("est_atom", "open (registry atom ids)",
+     "metric_state.own_estimate.est_atom", "the part's atom",
+     "the estimated measure; 'beat/miss' compares the realised atom against this estimate."),
 ]
 
 
@@ -1432,7 +1438,7 @@ def write_md(state: dict) -> str:
     st = cov["status"]
     A("| status | cases | share | meaning |\n|---|---:|---:|---|")
     A(f"| mapped | {st.get('mapped',0)} | {cov['mapped_pct']}% | every clause resolves to an atom/formula/rule and all slots are filled |")
-    A(f"| not_in_data | {st.get('not_in_data',0)} | {round(100*st.get('not_in_data',0)/cov['n'],2)}% | resolves, but a required atom is absent or a gap → NID with the registry's reason |")
+    A(f"| not_in_data | {st.get('not_in_data',0)} | {round(100*st.get('not_in_data',0)/cov['n'],2)}% | resolves, but a required atom is absent or a gap → a **ticket** (v4.1 d3: fetch, proxy, or NID with what was tried), not an answer |")
     A(f"| unmapped | {st.get('unmapped',0)} | {round(100*st.get('unmapped',0)/cov['n'],2)}% | a clause names a measure the registry cannot express |")
     A(f"\n**Mapped + NID = {cov['answered_pct']}%** (the ceiling for the 95% gate: NID counts only "
       "where the data truly does not exist).\n")
@@ -1487,7 +1493,9 @@ def write_md(state: dict) -> str:
     A("| term | clauses |\n|---|---:|")
     for term, n in cov["top_residues"][:30]:
         A(f"| `{term}` | {n} |")
-    A("\n### 4.2 NOT IN DATA reasons (declared absent atoms)\n")
+    A("\n### 4.2 NOT IN DATA reasons (gap and absent atoms)\n")
+    A("A typed NID is a to-do, not an answer (v4.1 decision 3): every row below is triaged "
+      "into a fetch job, a proxy estimate, or a true NOT IN DATA in `tasks/arch_v4/NID_TRIAGE.md`.\n")
     A("| reason | cases |\n|---|---:|")
     for reason, n in cov["nid_reasons"][:15]:
         A(f"| {reason} | {n} |")
@@ -1544,7 +1552,8 @@ def print_check(state: dict) -> None:
     print(f"  mapped        {st.get('mapped',0):>5}  {cov['mapped_pct']:>6}%")
     print(f"  not_in_data   {st.get('not_in_data',0):>5}  {round(100*st.get('not_in_data',0)/cov['n'],2):>6}%   (with the registry's reason)")
     print(f"  unmapped      {st.get('unmapped',0):>5}  {round(100*st.get('unmapped',0)/cov['n'],2):>6}%")
-    print(f"  mapped+NID    {st.get('mapped',0)+st.get('not_in_data',0):>5}  {cov['answered_pct']:>6}%   <- gate ceiling")
+    print(f"  mapped+NID    {st.get('mapped',0)+st.get('not_in_data',0):>5}  {cov['answered_pct']:>6}%   "
+          f"<- expressiveness ceiling: a typed NID is a ticket, not an answer (v4.1 d3)")
     print("\nsize vs coverage curve (lexicon entries added -> cases covered)")
     pts = curve["curve"]
     pool = max(1, curve["pool"])

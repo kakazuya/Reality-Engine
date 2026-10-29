@@ -1446,19 +1446,19 @@
    ]
   },
   {
-   "atom_id": "absent.consensus",
-   "label": "analyst consensus estimate",
-   "kind": "absent",
+   "atom_id": "own.estimate",
+   "label": "own estimate (replaces street consensus)",
+   "kind": "consensus",
    "store": "fact_view",
    "table": "fact",
-   "column": "absent.consensus",
-   "source": "none: paid-only (no consensus feed acquired)",
-   "unit": "INR",
-   "grain": "quarter",
+   "column": "own.estimate",
+   "source": "metric_state.own_estimate.value (build job: held quarterly trend + guidance claims + opinions stores)",
+   "unit": "INR|%|x",
+   "grain": "quarter|FY|event",
    "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
    "pit": "known_at",
-   "coverage": "absent",
-   "coverage_note": "paid-only (no consensus feed acquired)",
+   "coverage": "gap",
+   "coverage_note": "registry knows the measure; the store does not carry it yet (metric_state.own_estimate.value)",
    "synonyms": [
     "consensus",
     "street estimate",
@@ -1468,24 +1468,7 @@
     "market expects",
     "estimates",
     "expected by analysts",
-    "guidance versus consensus"
-   ]
-  },
-  {
-   "atom_id": "absent.price_target",
-   "label": "analyst price target",
-   "kind": "absent",
-   "store": "fact_view",
-   "table": "fact",
-   "column": "absent.price_target",
-   "source": "none: paid-only (target prices are broker research)",
-   "unit": "INR",
-   "grain": "event",
-   "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
-   "pit": "known_at",
-   "coverage": "absent",
-   "coverage_note": "paid-only (target prices are broker research)",
-   "synonyms": [
+    "guidance versus consensus",
     "target price",
     "price target",
     "fair value",
@@ -1851,6 +1834,13 @@
    "source": "daily_price_delivery.sma_*",
    "default": 20,
    "note": "the moving-average length."
+  },
+  {
+   "dim_id": "est_atom",
+   "values": "open (registry atom ids)",
+   "source": "metric_state.own_estimate.est_atom",
+   "default": "the part's atom",
+   "note": "the estimated measure; 'beat/miss' compares the realised atom against this estimate."
   }
  ],
  "formulas": [
@@ -10868,7 +10858,7 @@
   {
    "surface": "consensus",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10877,7 +10867,7 @@
   {
    "surface": "consensu",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10886,7 +10876,7 @@
   {
    "surface": "street estimate",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10895,7 +10885,7 @@
   {
    "surface": "street estimates",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10904,7 +10894,7 @@
   {
    "surface": "analyst estimate",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10913,7 +10903,7 @@
   {
    "surface": "analyst estimates",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10922,7 +10912,7 @@
   {
    "surface": "broker estimates",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10931,7 +10921,7 @@
   {
    "surface": "broker estimate",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10940,7 +10930,7 @@
   {
    "surface": "market expects",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10949,7 +10939,7 @@
   {
    "surface": "market expect",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10958,7 +10948,7 @@
   {
    "surface": "estimates",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10967,7 +10957,7 @@
   {
    "surface": "estimate",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10976,7 +10966,7 @@
   {
    "surface": "expected by analysts",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10985,7 +10975,7 @@
   {
    "surface": "expected by analyst",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -10994,7 +10984,7 @@
   {
    "surface": "guidance versus consensus",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11003,7 +10993,7 @@
   {
    "surface": "guidance versus consensu",
    "kind": "atom",
-   "id": "absent.consensus",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11012,7 +11002,7 @@
   {
    "surface": "target price",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11021,7 +11011,7 @@
   {
    "surface": "target prices",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11030,7 +11020,7 @@
   {
    "surface": "price target",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11039,7 +11029,7 @@
   {
    "surface": "price targets",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11048,7 +11038,7 @@
   {
    "surface": "fair value",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11057,7 +11047,7 @@
   {
    "surface": "fair values",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11066,7 +11056,7 @@
   {
    "surface": "upside target",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11075,7 +11065,7 @@
   {
    "surface": "upside targets",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11084,7 +11074,7 @@
   {
    "surface": "broker target",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11093,7 +11083,7 @@
   {
    "surface": "broker targets",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11102,7 +11092,7 @@
   {
    "surface": "rating target",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -11111,7 +11101,7 @@
   {
    "surface": "rating targets",
    "kind": "atom",
-   "id": "absent.price_target",
+   "id": "own.estimate",
    "lang": "en",
    "hand_checked": true,
    "why": "",
@@ -23144,7 +23134,7 @@
     2
    ],
    [
-    "paid-only (no consensus feed acquired)",
+    "registry knows the measure; the store does not carry it yet (metric_state.own_estimate.value)",
     2
    ],
    [
