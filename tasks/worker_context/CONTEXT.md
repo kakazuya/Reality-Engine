@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T05:52:01+05:30 · git HEAD: `6863c3d` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T06:03:15+05:30 · git HEAD: `7c0f8fe` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -13,10 +13,10 @@ reality_engine/
   db/ (9 py) — Database services.
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
-  pilot/ (5 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
+  pilot/ (6 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
   pipeline/ (19 py) — Pipeline runners.
   processing/ (45 py) — Document and image processing components.
-  query/ (19 py) — Query layer v1 — sub-question decomposition + router + planners + answer assembly.
+  query/ (20 py) — Query layer v1 — sub-question decomposition + router + planners + answer assembly.
   reporting/ (3 py) — Reporting module for Reality Engine.
   scripts/ (149 py) — Operational job scripts: one module per data job; most-referenced list below
   search/ (4 py) — Search services.
@@ -200,6 +200,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 ### reality_engine/pilot/
 - `reality_engine/pilot/build_t1.py` — T1 (deterministic) pilot build — PILOT_SPEC §3 deterministic tier, SCHEMA_V3 §B/§C.
 - `reality_engine/pilot/checks_t1.py` — Checks for the T1 pilot build — the numbers behind tasks/pilot_t1/CHECKS.md.
+- `reality_engine/pilot/extract60.py` — Targeted fact extraction for the pilot-60 universe — build-time tables.
 - `reality_engine/pilot/macro_claims.py` — macro_claim_target pilot (G10 / policy_target) — deterministic claim -> target map.
 - `reality_engine/pilot/universe60.py` — Stratified 60-company pilot universe (golden-rule step 4, tasks/pilot60).
 
@@ -275,6 +276,7 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/query/ctx.py` — Query context: read-only connections and the tool handles the planners use.
 - `reality_engine/query/decompose.py` — Split one master-bank case into sub-questions, deterministically.
 - `reality_engine/query/gate.py` — Entity / ask / period gate for the answer contract (2026-10-29).
+- `reality_engine/query/metrics.py` — Typed reads over the pilot-60 extraction store (``metric_state``).
 - `reality_engine/query/rerank.py` — Cheap local reranker for EVIDENCE passages (no embeddings, no network).
 - `reality_engine/query/router.py` — Deterministic router: a master-bank case -> planner chain + slots.
 - `reality_engine/query/state.py` — One query entry point (PIPELINE_TODO Q4, first version 2026-10-19): everything known about a company …
@@ -502,6 +504,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.ingestion.policy_press_client` | test_policy_press_client.py |
 | `reality_engine.ingestion.telegram_client` | test_telegram_hardening.py |
 | `reality_engine.pilot.build_t1` | test_pilot_t1.py |
+| `reality_engine.pilot.extract60` | test_extraction_pilot60.py |
 | `reality_engine.pilot.macro_claims` | test_macro_claim_target.py |
 | `reality_engine.pipeline.bootstrap` | test_bootstrap.py |
 | `reality_engine.pipeline.bse_backfill` | test_bse_backfill.py |
@@ -552,6 +555,7 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.query.compute` | test_query_compute.py |
 | `reality_engine.query.ctx` | test_macro_claim_target.py, test_query_planners.py, test_query_v1.py |
 | `reality_engine.query.decompose` | test_query_v1.py |
+| `reality_engine.query.metrics` | test_extraction_pilot60.py |
 | `reality_engine.query.planners.ripple` | test_macro_claim_target.py |
 | `reality_engine.query.rerank` | test_query_v1.py |
 | `reality_engine.query.router` | test_query_router.py, test_query_v1.py |
