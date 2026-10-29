@@ -113,6 +113,19 @@ PROGRESS_NOTES_INSTRUCTION = (
     "variable): what's done, what's next, blockers. Do not stop or wait after "
     "writing it."
 )
+# Appended to every worker brief (Shivam, 2026-10-30: all dsh workers use
+# code-intel).  The dsh harness has no MCP, so workers call the CLI.
+CODE_INTEL_INSTRUCTION = (
+    "Standing code-navigation instruction: use code-intel from your shell "
+    "before grep or whole-file reads. From the worktree root: "
+    "`python plugins/code-intel/ci.py definition <name>` (where a symbol is "
+    "defined), `ci.py references <name>` (every use, including table/column "
+    "names inside SQL strings), `ci.py outline <file>` (symbols with line "
+    "numbers, instead of reading the whole module), `ci.py module_map <dir>`, "
+    "and `ci.py diagnostics <changed file>` before reporting done. JSON on "
+    "stdout, ~0.3 s warm. In your final report state how many code-intel "
+    "calls you made and your tool-call count before the first edit."
+)
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 1200
 MAX_PROGRESS_INTERVAL_SECONDS = 86_400
 # The supervisor's own status ping must never read as the end of the task.
@@ -1276,7 +1289,8 @@ class Manager:
                 warnings.extend(pack_warnings)
             # Standing instruction, not a question: the worker must never stop
             # or answer it, only append a progress line.
-            text = f"{text.rstrip()}\n\n{PROGRESS_NOTES_INSTRUCTION}\n"
+            text = (f"{text.rstrip()}\n\n{CODE_INTEL_INSTRUCTION}\n\n"
+                    f"{PROGRESS_NOTES_INSTRUCTION}\n")
             atomic_write_text(job_dir / "brief.md", text)
             baseline = (
                 gitutil.snapshot(

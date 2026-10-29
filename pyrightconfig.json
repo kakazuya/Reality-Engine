@@ -1,7 +1,7 @@
 {
   "include": [
     "reality_engine",
-    "plugins/code-intel/server",
+    "plugins/code-intel",
     "plugins/dsh-worker/server",
     "plugins/reality-data/server"
   ],
