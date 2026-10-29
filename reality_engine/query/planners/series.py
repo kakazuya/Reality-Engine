@@ -11,7 +11,7 @@ from typing import Any
 
 from reality_engine.query import compute
 
-from . import envelope, fmt_num, isin_of
+from . import envelope, fmt_num, in_period, isin_of
 
 CHECKED = ["truth_duckdb.px_daily", "equity_intelligence.daily_price_delivery",
            "equity_intelligence.mkt_nse_index_daily",
@@ -94,6 +94,31 @@ def _points(rows: list[dict[str, Any]], key: str = "adj_close") -> list[tuple[st
             for r in rows if r.get(key) is not None]
 
 
+def _row_period(stats: dict[str, Any]) -> str | None:
+    """The window a series row is about, shown to the gate (never the as_of day)."""
+    start, end = stats.get("start"), stats.get("end")
+    if start and end:
+        return start if start == end else f"{start}..{end}"
+    return stats.get("data_end")
+
+
+def _series_rows(stats: dict[str, Any],
+                 ident: dict[str, tuple[str | None, str | None]],
+                 as_of: str, fallback_period: str | None = None) -> list[dict[str, Any]]:
+    rows = []
+    for name in stats:
+        value = stats[name]
+        period = _row_period(value) if isinstance(value, dict) else fallback_period
+        row = {"ref": name, "known_at": as_of, "period": period, "stats": value}
+        isin, symbol = ident.get(name, (None, None))
+        if isin:
+            row["isin"] = isin
+        if symbol:
+            row["symbol"] = symbol
+        rows.append(row)
+    return rows
+
+
 def _rsi_study(ctx: Any, symbol: str, as_of: str) -> dict[str, Any] | None:
     """Oversold days (RSI<30) and the 20-session forward return after each."""
     if not symbol:
@@ -154,29 +179,25 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     degraded: list[str] = []
     series: dict[str, list[tuple[str, float]]] = {}
     raw: dict[str, list[tuple[str, float]]] = {}
+    ident: dict[str, tuple[str | None, str | None]] = {}
 
     names = indexes_in(question)
     commodity = commodity_in(question)
+    # The asked entity owns the series: a commodity or index word in the question
+    # ("gold", "copper", "Nifty 50") is context, not the subject.  Reading the
+    # commodity instead of the stock is the GOLD leak the entity gate caught.
+    keys = [str(s) for s in (slots.get("symbols") or [])
+            if not str(s).startswith("IN")][:4]
+    if not keys and slots.get("isin"):
+        keys = [str(slots["isin"])]
+    if not keys and slots.get("symbol"):
+        keys = [str(slots["symbol"])]
     try:
-        if names:
-            for name in names:
-                rows = _index_rows(ctx, name, start, end)
-                series[name] = _points(rows)
-        elif commodity:
-            rows = _commodity_rows(ctx, commodity, start, end)
-            series[commodity] = _points(rows)
-        else:
-            symbols = [s for s in (slots.get("symbols") or [])
-                       if not str(s).startswith("IN")][:4]
-            if not symbols and slots.get("symbol"):
-                symbols = [str(slots["symbol"])]
-            if not symbols:
-                return envelope("SERIES", ok=False, na=True, checked=CHECKED,
-                                detail="no entity for a price series",
-                                nid_reason="gate G1: no symbol/ISIN to price")
-            for symbol in symbols:
-                isin = slots.get("isin") if len(symbols) == 1 else isin_of(
-                    {"symbol": symbol}, ctx, as_of)
+        if keys:
+            for key in keys:
+                isin = key if key.startswith("IN") else (
+                    slots.get("isin") if len(keys) == 1 else isin_of({"symbol": key}, ctx, as_of))
+                symbol = None if key.startswith("IN") else key.upper()
                 rows: list[dict[str, Any]] = []
                 try:
                     rows = _stock_duck(ctx, isin, symbol, start, end)
@@ -189,12 +210,24 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                         rows = []
                 points = _points(rows)
                 if points:
-                    series[symbol] = points
-                    raw[symbol] = _points(rows, "close")
+                    series[key] = points
+                    raw[key] = _points(rows, "close")
+                    ident[key] = (isin, symbol)
             if re.search(r"\bnifty\b|benchmark|relative strength", question, re.I):
                 bench = _points(_index_rows(ctx, "Nifty 50", start, end))
                 if bench:
                     series["Nifty 50"] = bench
+        elif names:
+            for name in names:
+                rows = _index_rows(ctx, name, start, end)
+                series[name] = _points(rows)
+        elif commodity:
+            rows = _commodity_rows(ctx, commodity, start, end)
+            series[commodity] = _points(rows)
+        else:
+            return envelope("SERIES", ok=False, na=True, checked=CHECKED,
+                            detail="no entity for a price series",
+                            nid_reason="gate G1: no symbol/ISIN to price")
     except Exception as exc:  # noqa: BLE001
         return envelope("SERIES", ok=False, why="tool", checked=CHECKED,
                         detail=f"series store failed: {type(exc).__name__}: {exc}")
@@ -295,15 +328,14 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         detail = "; ".join(parts)
         return envelope("SERIES", ok=False, why="schema", checked=CHECKED, degraded=degraded,
                         detail=f"{detail} | daily window only, intraday amplitude not in data",
-                        rows=[{"ref": name, "known_at": as_of, "stats": st}
-                              for name, st in stats.items()],
+                        rows=_series_rows(stats, ident, as_of, start),
                         pit=f"date <= {as_of}",
                         nid_reason="intraday bars / how-many-tests count are not in held data")
 
     detail = "; ".join(parts)
+    rows = in_period(_series_rows(stats, ident, as_of, start), slots, hop="SERIES")
     return envelope(
-        "SERIES", ok=True, rows=[{"ref": name, "known_at": as_of, "stats": st}
-                                 for name, st in stats.items()],
+        "SERIES", ok=True, rows=rows,
         provenance=[{"ref": f"SERIES:{name}", "known_at": as_of} for name in stats],
         pit=f"date <= {as_of} (session close)", checked=CHECKED, degraded=degraded,
         detail=detail)
