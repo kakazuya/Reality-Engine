@@ -102,6 +102,84 @@ def _kind(row: dict[str, Any]) -> str | None:
     return _CHUNK_TYPE.get(match.group(1) if match else "", None)
 
 
+def _doc_window(slots: dict[str, Any], as_of: str) -> tuple[str, str] | None:
+    """The document-date window the gate allows for this ask (None = no bound).
+
+    Named date / month asks judge the document's own date (±3d); a quarter or
+    fiscal-year ask judges a row's own period label first and lets an unlabelled
+    document through only when it was filed in the period's filing window.
+    """
+    basis = str(slots.get("period_basis") or "")
+    low, high = str(slots.get("date_from") or "")[:10], str(slots.get("date_to") or "")[:10]
+    if not low or not high:
+        return None
+    if basis in ("named date", "named dates", "month", "month span"):
+        lo, hi = _shift(low, -DOC_WINDOW_DAYS), _shift(high, DOC_WINDOW_DAYS)
+    elif basis in ("quarter end", "fiscal year end"):
+        lo, hi = low, _shift(high, 300 if basis == "fiscal year end" else 180)
+    elif basis in ("quarter span", "fiscal year span", "since"):
+        lo, hi = low, high
+    else:
+        return None
+    return lo, min(hi, str(as_of)[:10])
+
+
+def _shift(day: str, days: int) -> str:
+    return (_date.fromisoformat(day[:10]) + timedelta(days=days)).isoformat()
+
+
+def _label_terms(want: str | None) -> list[str]:
+    """LIKE terms matching the asked fiscal label in either spelling the stores use."""
+    if not want:
+        return []
+    match = re.match(r"^Q([1-4])FY(\d{2})$", want)
+    if match:
+        year = 2000 + int(match.group(2))
+        return [f"%q{match.group(1)}%fy{match.group(2)}%", f"%q{match.group(1)}%{year}%"]
+    if want.startswith("FY"):
+        year = 2000 + int(want[2:])
+        return [f"%fy{want[2:]}%", f"%{year}%"]
+    return [f"%{want.lower()}%"]
+
+
+def _period_passages(passages: list[dict[str, Any]], slots: dict[str, Any],
+                     as_of: str, named: dict[str, Any] | None = None
+                     ) -> list[dict[str, Any]]:
+    """Keep the passages the gate's period check accepts.
+
+    The row's own label decides first (an FY ask keeps a Q4FY26 passage, shown at
+    the asked granularity); a document without a label must fall in the window.
+    A *named document* ask is judged on its filing date instead: the document's
+    date is the period, not the fiscal label its KPIs carry.
+    """
+    from ..gate import _label
+    from . import label_within
+    if named and named.get("date"):
+        anchor = _shift(str(named["date"]), 0)
+        window = (_shift(anchor, -DOC_WINDOW_DAYS),
+                  min(_shift(anchor, DOC_WINDOW_DAYS), str(as_of)[:10]))
+    else:
+        window = _doc_window(slots, as_of)
+    want = "" if named else str(slots.get("period_label") or "")
+    basis = str(slots.get("period_basis") or "")
+    fiscal_basis = basis in ("quarter end", "fiscal year end", "quarter span",
+                             "fiscal year span")
+    out: list[dict[str, Any]] = []
+    for passage in passages:
+        got = _label("", str(passage.get("period") or ""))[1]
+        if want and got and not label_within(got, want):
+            continue
+        day = str(passage.get("date") or "")[:10]
+        if window and not (len(day) == 10 and window[0] <= day <= window[1]):
+            continue
+        if named:
+            passage = dict(passage, period=day or None)
+        elif fiscal_basis and want and label_within(got, want) and got != want:
+            passage = dict(passage, period=want)
+        out.append(passage)
+    return out
+
+
 def _v3_covers(ctx: Any, isin: str | None, symbol: str | None) -> bool:
     """Does the chunks_v3 pilot store hold documents for this identity?"""
     store = ctx.chunks_v3()
@@ -129,7 +207,9 @@ def _chunks_v3_search(ctx: Any, slots: dict[str, Any], as_of: str,
 
     The FTS match is materialised first (26 ms measured) and the filters then
     run against ``chunk``: the opposite plan (filter ``chunk`` then scan the
-    virtual table per row) took ~1 s on the same 37k-chunk store.
+    virtual table per row) took ~1 s on the same 37k-chunk store.  The period is
+    pushed into the same SQL: a labelled document must be labelled in the asked
+    quarter/FY; an unlabelled one must be filed in the period's filing window.
     """
     store = ctx.chunks_v3()
     match = _fts_query([str(t) for t in (slots.get("terms") or [])])
@@ -138,10 +218,36 @@ def _chunks_v3_search(ctx: Any, slots: dict[str, Any], as_of: str,
     con = store[1]
     where = ["c.known_at <= ?"]
     params: list[Any] = [as_of]
+    window = _doc_window(slots, as_of)
+    want = slots.get("period_label")
+    if want and str(slots.get("period_basis") or "") in (
+            "quarter end", "fiscal year end", "quarter span", "fiscal year span"):
+        terms = _label_terms(str(want))
+        labelled = " OR ".join(
+            "lower(COALESCE(c.fiscal_period,'')) LIKE ? OR "
+            "lower(COALESCE(d.fiscal_period,'')) LIKE ?" for _ in terms)
+        tree = []
+        for term in terms:
+            tree += [term, term]
+        bare = "COALESCE(NULLIF(c.fiscal_period,''), d.fiscal_period, '') = ''"
+        if window:
+            where.append(f"(({labelled}) OR ({bare} AND c.known_at >= ? AND c.known_at <= ?))")
+            params.extend(tree + [window[0], window[1]])
+        else:
+            where.append(f"({labelled})")
+            params.extend(tree)
+    elif window:
+        where.append("c.known_at >= ? AND c.known_at <= ?")
+        params.extend([window[0], window[1]])
     isin = slots.get("isin")
     if isin:
         where.append("c.isin = ?")
         params.append(isin)
+    else:
+        symbol = slots.get("symbol")
+        if symbol:
+            where.append("upper(COALESCE(c.symbol_at_time,'')) = upper(?)")
+            params.append(str(symbol))
     if doc_type:
         where.append("c.doc_type = ?")
         params.append(doc_type)
@@ -173,16 +279,18 @@ def _chunks_v3_search(ctx: Any, slots: dict[str, Any], as_of: str,
         tag_sql = " JOIN tagged ON tagged.chunk_id = hits.chunk_id"
     sql = (f"WITH {', '.join(ctes)} "
            f"SELECT c.doc_id, c.doc_type, c.known_at, c.page_from, c.section, c.speaker, "
-           f"c.speaker_role, c.body, c.header, c.isin, c.symbol_at_time, c.fiscal_period "
+           f"c.speaker_role, c.body, c.header, c.isin, c.symbol_at_time, c.fiscal_period, "
+           f"d.fiscal_period "
            f"FROM hits{tag_sql} "
            f"JOIN chunk c ON c.chunk_id = hits.chunk_id "
+           f"JOIN doc d ON d.doc_id = c.doc_id "
            f"WHERE {' AND '.join(where)} ORDER BY hits.score LIMIT ?")
     args = [match] + list(tags or []) + params + [limit]
     rows = con.execute(sql, args).fetchall()
     return [{"store": "chunks_v3", "doc_id": row[0], "doc_type": row[1],
              "date": row[2], "page": row[3], "section": row[4], "speaker": row[5],
              "speaker_role": row[6], "quote": row[7] or "", "header": row[8] or "",
-             "isin": row[9], "symbol": row[10], "period": row[11]}
+             "isin": row[9], "symbol": row[10], "period": row[11] or row[12]}
             for row in rows]
 
 
@@ -219,6 +327,10 @@ def _fts_passages(ctx: Any, slots: dict[str, Any], terms: list[str], as_of: str,
                 (anchor + span).isoformat(), str(as_of)[:10])
         except ValueError:
             lo = hi = None
+    else:
+        window = _doc_window(slots, as_of)
+        if window:
+            lo, hi = window
     if lo and hi:
         sql += " AND d.published_date >= ? AND d.published_date <= ?"
         args += [lo, hi]
@@ -250,7 +362,8 @@ def _fts_passages(ctx: Any, slots: dict[str, Any], terms: list[str], as_of: str,
 
 
 def _corpus_passages(ctx: Any, terms: list[str], as_of: str,
-                     date_to: str | None, limit: int = 30) -> list[dict[str, Any]]:
+                     date_to: str | None, date_from: str | None = None,
+                     limit: int = 30) -> list[dict[str, Any]]:
     """Bounded corpus search over ``intelligence_fts`` (no dense index, no LLM)."""
     match = _fts_query(terms)
     if not match:
@@ -263,6 +376,10 @@ def _corpus_passages(ctx: Any, terms: list[str], as_of: str,
     if cap and cap < str(as_of)[:10]:
         sql += " AND d.published_date <= ?"
         args.append(cap)
+    floor = str(date_from or "")[:10]
+    if floor:
+        sql += " AND d.published_date >= ?"
+        args.append(floor)
     sql += " LIMIT ?"
     args.append(max(int(limit), 10))
     rows = ctx.rows("equity_intelligence", sql, args)
@@ -336,6 +453,10 @@ def _store_passages(ctx: Any, slots: dict[str, Any], terms: list[str], as_of: st
                 (anchor + span).isoformat(), str(as_of)[:10])
         except ValueError:
             lo = hi = None
+    else:
+        window = _doc_window(slots, as_of)
+        if window:
+            lo, hi = window
     if doc_type in (None, "deck"):
         try:
             decks = ctx.rows(
@@ -433,13 +554,16 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 return envelope("EVIDENCE", ok=False, why="schema", checked=CHECKED_FTS,
                                 gap="chunks_v3", detail=detail, nid_reason=detail)
             try:
-                passages = _corpus_passages(ctx, terms, as_of,
-                                            slots.get("date_to") or as_of, limit=30)
+                window = _doc_window(slots, as_of)
+                passages = _corpus_passages(
+                    ctx, terms, as_of, slots.get("date_to") or as_of,
+                    date_from=window[0] if window else None, limit=30)
             except Exception as exc:  # noqa: BLE001
                 return envelope("EVIDENCE", ok=False, why="tool", checked=CHECKED_FTS,
                                 detail=f"corpus search failed: {type(exc).__name__}: {exc}")
             passages = [p for p in passages
                         if (p.get("date") or "")[:10] and (p.get("date") or "")[:10] <= as_of]
+            passages = _period_passages(passages, slots, as_of)
             if passages:
                 passages = rerank.rank(passages, terms=terms,
                                        metric_terms=TEXT_TERMS.get(
@@ -481,13 +605,23 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                        as_of=as_of)
             if res.get("found") and res.get("text"):
                 doc = res.get("document") or {}
+                doc_day = str(doc.get("date") or "")[:10]
+                window = _doc_window(slots, as_of)
+                if window and not (len(doc_day) == 10 and window[0] <= doc_day <= window[1]):
+                    detail = (f"page {res.get('page')} is in the {doc.get('doc_type')} of "
+                              f"{doc_day}, outside the asked period ({slots.get('period')})")
+                    return envelope("EVIDENCE", ok=False, why="no_doc",
+                                    checked=res.get("checked") or CHECKED,
+                                    detail=detail, nid_reason=detail)
                 detail = (f"{doc.get('doc_type')} {doc.get('date')} page {res.get('page')}"
                           f"/{res.get('page_count')}: {(res.get('text') or '')[:300]}")
                 return envelope(
                     "EVIDENCE", ok=True,
                     rows=[{"ref": f"page:{doc.get('doc_id')}#{res.get('page')}",
                            "known_at": doc.get("date") or as_of,
+                           "period": doc_day or None,
                            "quote": (res.get("text") or "")[:300],
+                           "isin": slots.get("isin"), "symbol": slots.get("symbol"),
                            "doc_type": doc.get("doc_type"), "page": res.get("page")}],
                     provenance=[{"ref": f"doc_page:{doc.get('doc_id')}",
                                  "known_at": doc.get("date") or as_of}],
@@ -519,6 +653,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             except Exception:  # noqa: BLE001
                 pass
             if candidates is not None:
+                candidates = _period_passages(candidates, slots, as_of, named)
                 need = max(1, (len(meaningful) + 1) // 2)
                 clean, partial = [], []
                 for passage in candidates:
@@ -542,8 +677,10 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                                "known_at": p.get("date"), "date": p.get("date"),
                                "doc_type": p.get("doc_type"), "page": p.get("page"),
                                "quote": (p.get("quote") or "")[:300],
-                               "section": p.get("section"), "isin": p.get("isin"),
-                               "symbol": p.get("symbol"), "period": p.get("period")}
+                               "section": p.get("section"),
+                               "isin": slots.get("isin") or p.get("isin"),
+                               "symbol": slots.get("symbol") or p.get("symbol"),
+                               "period": p.get("period")}
                               for p in chosen],
                         provenance=[{"ref": f"chunks_v3:{p.get('doc_id')}#{p.get('page')}",
                                      "known_at": p.get("date")} for p in chosen],
@@ -564,6 +701,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             passages = [p for p in (res.get("passages") or [])
                         if (p.get("date") or "")[:10]
                         and (p.get("date") or "")[:10] <= as_of]
+            passages = _period_passages(passages, slots, as_of, named)
             res = dict(res, checked=res.get("checked") or CHECKED_FTS)
         else:
             passages = _fts_passages(ctx, slots, meaningful, as_of, doc_type, date, limit=30)
@@ -574,6 +712,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                     passages = _store_passages(ctx, slots, meaningful, as_of, doc_type, date)
                 except Exception:  # noqa: BLE001 - a satellite store miss is not fatal
                     passages = []
+            passages = _period_passages(passages, slots, as_of, named)
             res = {"checked": CHECKED_FTS, "warnings": []}
         found_any = bool(passages)
         if meaningful and passages:
@@ -639,6 +778,9 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             "EVIDENCE", ok=True,
             rows=[{"ref": f"{p.get('store')}:{p.get('doc_id')}#{p.get('page')}",
                    "known_at": p.get("date"), "date": p.get("date"),
+                   "period": p.get("period"),
+                   "isin": slots.get("isin") or p.get("isin"),
+                   "symbol": slots.get("symbol") or p.get("symbol"),
                    "doc_type": p.get("doc_type"), "page": p.get("page"),
                    "quote": (p.get("quote") or "")[:300], "score": p.get("score")}
                   for p in top],

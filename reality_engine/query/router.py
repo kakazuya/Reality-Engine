@@ -171,6 +171,12 @@ def parse_dates(text: str) -> list[str]:
     out: list[str] = []
     for match in re.finditer(r"(\d{4})-(\d{2})-(\d{2})", text):
         out.append(match.group(0))
+    # One range that shares its month: "10-18 Sep 2026" / "10 – 18 September 2026".
+    for match in re.finditer(
+            rf"\b(\d{{1,2}})\s*[-–]\s*(\d{{1,2}})\s+{_MONTH_RE}[a-z]*\s+(\d{{4}})\b", text, re.I):
+        month = MONTHS[match.group(3).lower()[:3]]
+        for day in (match.group(1), match.group(2)):
+            out.append(f"{match.group(4)}-{month:02d}-{int(day):02d}")
     for match in re.finditer(rf"\b(\d{{1,2}})\s+{_MONTH_RE}[a-z]*\s+(\d{{4}})\b", text, re.I):
         out.append(f"{match.group(3)}-{MONTHS[match.group(2).lower()[:3]]:02d}-{int(match.group(1)):02d}")
     return out
@@ -181,46 +187,108 @@ def _quarter_end(fy: int, quarter: int) -> str:
             3: f"{fy - 1}-12-31", 4: f"{fy}-03-31"}[quarter]
 
 
+def _fy(value: str) -> int:
+    """FY27 / FY2027 / 27 / 2027 -> the fiscal year that ends 2027-03-31."""
+    year = int(value)
+    return 2000 + year if year < 100 else year
+
+
+def _fy_end(fy: int) -> str:
+    return f"{fy}-03-31"
+
+
+_MONTH_LAST = {1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30,
+               10: 31, 11: 30, 12: 31}
+_MONTH_SPAN_RE = re.compile(
+    rf"{_MONTH_RE}[a-z]*\s*[-–—/]\s*{_MONTH_RE}[a-z]*\.?\s*,?\s*(\d{{4}})", re.I)
+_MONTH_YEAR_RE = rf"{_MONTH_RE}[a-z]*[\s\-]+(\d{{4}})"
+
+
 def period_bounds(case: dict) -> tuple[str | None, str | None, str]:
-    """(date_from, date_to, basis). ``basis`` says which slot produced them."""
+    """(date_from, date_to, basis). ``basis`` says which slot produced them.
+
+    The forms resolved here are the ones the gate checks (``named date``,
+    ``named dates``, ``quarter end``, ``fiscal year end``, ``month``,
+    ``month span``) plus open/span forms it leaves to the planner's own lookback
+    (``since``, ``quarter span``, ``fiscal year span``, ``as_of``, ``lookback``).
+    """
     as_of = str(case.get("as_of") or "")[:10] or None
     period = str(case.get("period") or "")
     question = str(case.get("question") or "")
     text = f"{period} {question}"
+    low_text = text.lower()
     dates = parse_dates(period) or parse_dates(question)
+    if re.search(r"\bsince\b", low_text):
+        # "since Jan 2026": an open window from the anchor to as_of (the same
+        # class as a lookback: PIT caps the right edge).
+        anchor = dates[0] if dates else None
+        if anchor is None:
+            match = re.search(_MONTH_YEAR_RE, period, re.I) or \
+                re.search(_MONTH_YEAR_RE, question, re.I)
+            if match:
+                anchor = f"{match.group(2)}-{MONTHS[match.group(1).lower()[:3]]:02d}-01"
+        if anchor and as_of:
+            return anchor, as_of, "since"
     if len(dates) >= 2:
         return min(dates), max(dates), "named dates"
     if len(dates) == 1:
         return dates[0], dates[0], "named date"
-    month_re = rf"{_MONTH_RE}[a-z]*[\s\-]+(\d{{4}})"
+    # A fiscal-year span ("FY20-FY26") before the single-FY forms: a span is a
+    # window, not the first FY point.
+    match = re.search(r"FY\s*(\d{2,4})\s*[-–/]\s*FY\s*(\d{2,4})", text, re.I)
+    if match:
+        return _fy_end(_fy(match.group(1))), _fy_end(_fy(match.group(2))), "fiscal year span"
+    # Hyphenated fiscal year: "FY2026-27" is FY27, "Q1 FY2026-27" is its June quarter.
+    match = re.search(r"Q([1-4])\s*FY\s*(\d{4})\s*[-/]\s*(\d{2,4})", text, re.I)
+    if match:
+        fy = _fy(match.group(3))
+        day = _quarter_end(fy, int(match.group(1)))
+        return day, day, "quarter end"
+    match = re.search(r"FY\s*(\d{4})\s*[-/]\s*(\d{2,4})", text, re.I)
+    if match:
+        day = _fy_end(_fy(match.group(2)))
+        return day, day, "fiscal year end"
+    # Quarter span ("Q4FY26-Q1FY27") and a single quarter.
+    quarters = re.findall(r"Q([1-4])\s*FY\s*(\d{2,4})", text, re.I)
+    if len(quarters) >= 2:
+        first, last = quarters[0], quarters[-1]
+        low = _quarter_end(_fy(first[1]), int(first[0]))
+        high = _quarter_end(_fy(last[1]), int(last[0]))
+        if low != high:
+            return min(low, high), max(low, high), "quarter span"
+    if quarters:
+        q1, y1 = quarters[0]
+        day = _quarter_end(_fy(y1), int(q1))
+        return day, day, "quarter end"
+    # Month windows: a span that shares its year ("Jun-Jul 2026") first, because
+    # the single-month regex would only see the July half.
+    spans = [(int(m.group(3)), MONTHS[m.group(1).lower()[:3]], MONTHS[m.group(2).lower()[:3]])
+             for m in _MONTH_SPAN_RE.finditer(text)]
+    if spans:
+        first = min(spans, key=lambda item: (item[0], item[1]))
+        last = max(spans, key=lambda item: (item[0], item[2]))
+        return (f"{first[0]}-{first[1]:02d}-01",
+                f"{last[0]}-{last[2]:02d}-{_MONTH_LAST[last[2]]}", "month span")
     months = [(int(m.group(2)), MONTHS[m.group(1).lower()[:3]])
-              for m in re.finditer(month_re, period, re.I)]
+              for m in re.finditer(_MONTH_YEAR_RE, period, re.I)]
     if not months:
         # The case's own period field wins; a question that merely mentions a
         # comparison month ("Sep-2026 vs Feb-2026") must not widen the window.
         months = [(int(m.group(2)), MONTHS[m.group(1).lower()[:3]])
-                  for m in re.finditer(month_re, question, re.I)]
+                  for m in re.finditer(_MONTH_YEAR_RE, question, re.I)]
     if len(months) >= 2:
         (y1, m1), (y2, m2) = months[0], months[-1]
-        last = {1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30,
-                10: 31, 11: 30, 12: 31}[m2]
-        return f"{y1}-{m1:02d}-01", f"{y2}-{m2:02d}-{last}", "month span"
-    match = re.search(r"Q([1-4])\s*FY(\d{2,4})", text, re.I)
+        return f"{y1}-{m1:02d}-01", f"{y2}-{m2:02d}-{_MONTH_LAST[m2]}", "month span"
+    # A single fiscal year ("FY25"; "FY 2025-26" and "Q1 FY2026-27" were handled
+    # above).  After the month forms: an explicit month beats an FY mention.
+    match = re.search(r"FY\s*(\d{2,4})\b", text, re.I)
     if match:
-        fy = int(match.group(2))
-        fy = 2000 + fy if fy < 100 else fy
-        day = _quarter_end(fy, int(match.group(1)))
-        return day, day, "quarter end"
-    match = re.search(r"FY(\d{2,4})", text, re.I)
-    if match:
-        year = match.group(1)
-        year = 2000 + int(year) if len(year) == 2 else int(year)
-        return f"{year}-03-31", f"{year}-03-31", "fiscal year end"
+        day = _fy_end(_fy(match.group(1)))
+        return day, day, "fiscal year end"
     from datetime import date, timedelta
     if as_of:
         end = date.fromisoformat(as_of)
-        low = text.lower()
-        if re.search(r"\b(?:last|previous|prior)\s+quarter\b", low):
+        if re.search(r"\b(?:last|previous|prior)\s+quarter\b", low_text):
             # "last quarter" is the most recent quarter that has closed: the ask
             # is a dated quarter, not an open-ended lookback.
             ends = [f"{end.year - 1}-12-31", f"{end.year}-03-31", f"{end.year}-06-30",
@@ -228,26 +296,27 @@ def period_bounds(case: dict) -> tuple[str | None, str | None, str]:
             closed = [day for day in ends if day < as_of]
             if closed:
                 return closed[-1], closed[-1], "quarter end"
-        if re.search(r"\bytd\b|year[- ]to[- ]date", low):
+        if re.search(r"\bytd\b|year[- ]to[- ]date", low_text):
             return f"{as_of[:4]}-01-01", as_of, "year to date"
-        if re.search(r"52[- ]week", low):
+        if re.search(r"52[- ]week", low_text):
             return (end - timedelta(days=365)).isoformat(), as_of, "52 weeks"
-        spans = {"3-yr": 3, "3 yr": 3, "three-year": 3, "3 year": 3,
+        spans = {"2 quarters": 0.5, "two quarters": 0.5, "3 quarters": 0.75,
+                 "three quarters": 0.75, "4 quarters": 1.0, "four quarters": 1.0,
+                 "3-yr": 3, "3 yr": 3, "three-year": 3, "3 year": 3,
                  "five-year": 5, "5-yr": 5, "5 yr": 5, "two-year": 2, "2-yr": 2, "2 yr": 2,
                  "last year": 1, "past year": 1, "one-year": 1, "one year": 1, "12-month": 1,
                  "six-month": 0.5, "6-month": 0.5, "six month": 0.5, "6 month": 0.5,
                  "two months": 2 / 12, "two month": 2 / 12, "3-month": 0.25, "three month": 0.25,
                  "quarter": 0.25, "one month": 1 / 12}
         for key, span in spans.items():
-            if key in low:
+            if key in low_text:
                 return ((end - timedelta(days=int(round(365.25 * span)))).isoformat(),
                         as_of, f"lookback {key}")
         match = re.search(rf"{_MONTH_RE}[a-z]*\s+(\d{{4}})", period, re.I)
         if match:
             year, month = int(match.group(2)), MONTHS[match.group(1).lower()[:3]]
-            last = {1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30,
-                    10: 31, 11: 30, 12: 31}[month]
-            return f"{year}-{month:02d}-01", f"{year}-{month:02d}-{last}", "month"
+            return (f"{year}-{month:02d}-01",
+                    f"{year}-{month:02d}-{_MONTH_LAST[month]}", "month")
         return as_of, as_of, "as_of"
     return None, None, "none"
 
@@ -451,6 +520,11 @@ def route(case: dict) -> dict[str, Any]:
         "answer_kind": case.get("answer_kind"), "template": case.get("template"),
         "status": status,
     }
+    # The label the gate will judge a row's own period against ("Q1FY27",
+    # "FY26"), resolved once here so every planner filters on the same label.
+    from .gate import _label as _gate_label  # lazy: gate imports this module lazily
+    slots["period_label"] = _gate_label(str(slots.get("question") or ""),
+                                        str(slots.get("period") or ""))[1]
     return {"chain": chain, "slots": slots, "as_of": slots["as_of"] or "2099-12-31",
             "status": status, "status_reason": status_reason, "pit_keys": _pit_keys(chain)}
 

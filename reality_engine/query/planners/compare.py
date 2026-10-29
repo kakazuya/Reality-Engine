@@ -11,7 +11,7 @@ from typing import Any
 
 from reality_engine.query import compute
 
-from . import envelope, fmt_num, isin_of
+from . import envelope, fmt_num, in_period, isin_of
 
 CHECKED = ["results_xbrl.filings", "results_xbrl.facts",
            "equity_intelligence.daily_price_delivery", "equity_intelligence.master_companies"]
@@ -81,19 +81,33 @@ def _price_returns(ctx: Any, isins: list[str], start: str, end: str) -> dict[str
     return out
 
 
-def _fin_growth(ctx: Any, isins: list[str], as_of: str) -> dict[str, tuple[float, str]]:
+def _fin_growth(ctx: Any, isins: list[str], as_of: str,
+                period: tuple[str | None, str | None] = (None, None)
+                ) -> dict[str, tuple[float, str]]:
     if not isins:
         return {}
     marks = ",".join("?" * len(isins))
+    where = [f"fi.isin IN ({marks})", "x.concept = 'RevenueFromOperations'",
+             "x.value IS NOT NULL",
+             "COALESCE(f.dissem_ts,f.broadcast_ts,f.filing_ts) <> ''",
+             "substr(COALESCE(f.dissem_ts,f.broadcast_ts,f.filing_ts),1,10) <= ?"]
+    params: list[Any] = [*isins, as_of]
+    if period[0] and period[1]:
+        from datetime import date, timedelta
+        low = period[0]
+        if period[0] == period[1]:
+            # A single requested quarter: grow it against the same quarter a year
+            # ago, so the row still sits in the asked quarter.
+            low = (date.fromisoformat(period[0]) - timedelta(days=370)).isoformat()
+        where.append("f.period_end >= ? AND f.period_end <= ?")
+        params.extend([low, period[1]])
     try:
         rows = ctx.rows(
             "results_xbrl",
             "SELECT fi.isin, f.period_end, x.concept, x.value FROM filings f "
             "JOIN filings_isin fi ON fi.file = f.file JOIN facts x ON x.file = f.file "
-            f"WHERE fi.isin IN ({marks}) AND x.concept = 'RevenueFromOperations' "
-            "AND x.value IS NOT NULL AND COALESCE(f.dissem_ts,f.broadcast_ts,f.filing_ts) <> '' "
-            "AND substr(COALESCE(f.dissem_ts,f.broadcast_ts,f.filing_ts),1,10) <= ? "
-            "ORDER BY fi.isin, f.period_end", [*isins, as_of])
+            f"WHERE {' AND '.join(where)} "
+            "ORDER BY fi.isin, f.period_end", params)
     except Exception:
         return {}
     bucket: dict[str, list[tuple[str, float]]] = {}
@@ -128,12 +142,15 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                                r"return|perform|price", question, re.I))
     start = slots.get("date_from") or as_of
     end = min(slots.get("date_to") or as_of, as_of)
+    period = (slots.get("date_from"), slots.get("date_to"))
     if metric in FIN_METRICS and not price_ask:
-        values = _fin_growth(ctx, isins, as_of)
-        label = "revenue growth (latest filed year, PIT)"
+        values = _fin_growth(ctx, isins, as_of, period)
+        label = "revenue growth (filed for the asked period, PIT)"
+        periods = {k: v[1] for k, v in values.items()}
     else:
         values = _price_returns(ctx, isins, start, end)
         label = f"window return % {start}..{end}"
+        periods = {}
     if len(values) < 2:
         detail = f"no comparable {metric or 'metric'} for two peers filed by {as_of}"
         return envelope("COMPARE", ok=False, why="no_doc", checked=CHECKED,
@@ -151,10 +168,14 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     detail = f"{label}: " + "; ".join(
         f"{names.get(isin) or isin} {fmt_num(value, '')}" for isin, value, _ in ranked)
     known = max((v[1] for v in values.values() if isinstance(v, tuple)), default=end)
+    window = start if start == end else f"{start}..{end}"
+    rows = in_period(
+        [{"ref": f"peer:{isin}", "known_at": known, "value": value, "rank": rank,
+          "period": periods.get(isin) or window} for isin, value, rank in ranked],
+        slots, hop="COMPARE")
     return envelope(
         "COMPARE", ok=True,
-        rows=[{"ref": f"peer:{isin}", "known_at": known, "value": value, "rank": rank}
-              for isin, value, rank in ranked],
+        rows=rows,
         provenance=[{"ref": f"COMPARE:{isin}", "known_at": known} for isin, _, _ in ranked],
         pit=f"each peer's own filing timestamp <= {as_of}", checked=CHECKED,
         detail=detail)

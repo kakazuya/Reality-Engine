@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from . import envelope, fmt_num
+from . import envelope, fmt_num, in_period
 
 CHECKED = ["equity_intelligence.master_companies", "equity_intelligence.index_membership",
            "equity_intelligence.daily_price_delivery", "equity_intelligence.quarterly_financials",
@@ -16,21 +16,36 @@ SCREEN_TABLES = ("company_state_daily", "price_band_daily", "sector_flow_daily",
 
 
 def _promoter_screen(slots: dict[str, Any], as_of: str, ctx: Any, question: str) -> dict[str, Any]:
-    """Biggest promoter-holding change over the last year, from shp_index (PIT broadcast)."""
+    """Biggest promoter-holding change over the last year, from shp_index (PIT broadcast).
+
+    A named month/quarter ask ranks that quarter's holding level instead: the
+    window the router resolved decides which shareholding filing is in scope.
+    """
     from datetime import date, timedelta
     floor = (date.fromisoformat(as_of) - timedelta(days=400)).isoformat()
     tier = _tier(question)
     where = ["COALESCE(s.broadcast_at,'') <> ''", "substr(s.broadcast_at,1,10) <= ?",
              "s.quarter_end >= ?"]
     params: list[Any] = [as_of, floor]
+    want_public = bool(re.search(r"\bpublic\b", question, re.I))
     if tier:
         where.append("m.market_cap_tier = ?")
         params.append(tier)
+    basis = str(slots.get("period_basis") or "")
+    low, high = str(slots.get("date_from") or "")[:10], str(slots.get("date_to") or "")[:10]
+    window = None
+    if basis in ("month", "quarter end", "month span", "named date", "named dates") \
+            and low and high:
+        window = ((date.fromisoformat(low) - timedelta(days=3)).isoformat(),
+                  (date.fromisoformat(high) + timedelta(days=3)).isoformat())
+        where.append("s.quarter_end >= ? AND s.quarter_end <= ?")
+        params.extend(window)
     try:
         rows = ctx.rows(
             "equity_intelligence",
-            "SELECT s.isin, s.symbol, s.quarter_end, s.promoter_pct, s.broadcast_at, "
-            "m.market_cap_tier FROM shp_index s JOIN master_companies m ON m.isin = s.isin "
+            "SELECT s.isin, s.symbol, s.quarter_end, s.promoter_pct, s.public_pct, "
+            "s.broadcast_at, m.market_cap_tier FROM shp_index s "
+            "JOIN master_companies m ON m.isin = s.isin "
             f"WHERE {' AND '.join(where)} ORDER BY s.isin, s.quarter_end", params)
     except Exception as exc:  # noqa: BLE001
         return envelope("SCREEN", ok=False, why="tool", checked=CHECKED,
@@ -39,24 +54,35 @@ def _promoter_screen(slots: dict[str, Any], as_of: str, ctx: Any, question: str)
     for row in rows:
         bucket.setdefault(row["isin"], []).append(row)
     ranked = []
+    level = False
     for points in bucket.values():
-        if len(points) < 2 or points[0]["promoter_pct"] is None or points[-1]["promoter_pct"] is None:
+        column = "public_pct" if want_public else "promoter_pct"
+        if points[-1][column] is None:
             continue
-        ranked.append((points[-1], float(points[-1]["promoter_pct"]) - float(points[0]["promoter_pct"])))
+        if len(points) < 2 or window:
+            # An in-window filing is a level ("as of Sep 2026"), not a change.
+            ranked.append((points[-1], float(points[-1][column])))
+            level = True
+            continue
+        if points[0][column] is None:
+            continue
+        ranked.append((points[-1], float(points[-1][column]) - float(points[0][column])))
     if not ranked:
         detail = f"no two shareholding filings within 400 days of {as_of}"
         return envelope("SCREEN", ok=False, why="no_doc", checked=CHECKED,
                         detail=detail, nid_reason=detail)
-    ranked.sort(key=lambda item: item[1])
+    ranked.sort(key=lambda item: item[1], reverse=level)
     top = ranked[:15]
-    detail = ("promoter holding change (pp), " +
-              "; ".join(f"{row['symbol']} {value:+.2f}pp "
-                        f"({points[0]['quarter_end']}->{row['quarter_end']})"
-                        for row, value in top[:5]
-                        for points in [bucket[row["isin"]]]))
+    item = ("Public holding %" if want_public else "Promoter holding %") if level \
+        else "Promoter holding change (pp)"
+    detail = (f"{item}, " +
+              "; ".join(f"{row['symbol']} {value:+.2f}"
+                        f"{'' if level else 'pp'} ({row['quarter_end']})"
+                        for row, value in top[:5]))
     return envelope(
         "SCREEN", ok=True,
         rows=[{"ref": f"shp_index:{row['isin']}", "known_at": str(row["broadcast_at"])[:10],
+               "period": row["quarter_end"], "item": item,
                "symbol": row["symbol"], "value": value} for row, value in top],
         provenance=[{"ref": f"SCREEN:shp_index:{row['isin']}",
                      "known_at": str(row["broadcast_at"])[:10]} for row, _ in top[:5]],
@@ -286,10 +312,14 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     degraded = ([pilot_note, f"universe from the T1 pilot build for the whole market at {as_of}"]
                 if pilot_note else
                 ["membership is the held snapshot, not a point-in-time index history"])
+    period = date_from if date_from == date_to else f"{date_from}..{date_to}"
+    rows = in_period(
+        [{"ref": f"daily_price_delivery:{entry['rows'][0]['isin']}", "known_at": post_to,
+          "period": period, "item": label, "symbol": entry["symbol"], "value": v}
+         for entry, v in top], slots, hop="SCREEN")
     return envelope(
         "SCREEN", ok=True,
-        rows=[{"ref": f"daily_price_delivery:{entry['rows'][0]['isin']}", "known_at": post_to,
-               "symbol": entry["symbol"], "value": v} for entry, v in top],
+        rows=rows,
         provenance=[{"ref": f"SCREEN:{entry['symbol']}", "known_at": post_to}
                     for entry, _ in top[:5]],
         pit=f"daily rows date <= {as_of}; membership snapshot only", checked=CHECKED,

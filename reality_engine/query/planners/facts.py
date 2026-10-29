@@ -11,7 +11,7 @@ from typing import Any
 
 from reality_engine.query import compute
 
-from . import envelope, fmt_num, isin_of, terms_clause
+from . import envelope, fmt_num, in_period, isin_of, normalise_label, terms_clause
 
 CHECKED = ["results_xbrl.filings", "results_xbrl.facts", "ar_facts.ar_facts",
            "deck_figures.pages", "deck_figures.facts", "concall_facts.cc_items"]
@@ -57,7 +57,8 @@ TEXT_TERMS: dict[str, tuple[str, ...]] = {
 
 def _period_bounds(slots: dict[str, Any]) -> tuple[str | None, str | None]:
     basis = str(slots.get("period_basis") or "")
-    if basis in ("quarter end", "fiscal year end", "month"):
+    if basis in ("quarter end", "fiscal year end", "month", "month span",
+                 "quarter span", "fiscal year span"):
         return slots.get("date_from"), slots.get("date_to")
     return None, None
 
@@ -88,17 +89,27 @@ def _deck_period_terms(slots: dict[str, Any]) -> tuple[list[str], str | None]:
     """(quarter-or-month labels, year) a deck figure must name to be the asked period."""
     basis = str(slots.get("period_basis") or "")
     day = str(slots.get("date_from") or "")
-    if not day or basis not in ("quarter end", "fiscal year end"):
+    if not day or basis not in ("quarter end", "fiscal year end", "quarter span",
+                                "fiscal year span"):
         return [], None
     try:
-        month, year = int(day[5:7]), day[:4]
+        start_year, month = int(day[:4]), int(day[5:7])
     except ValueError:
         return [], None
-    if basis == "fiscal year end":
-        return [f"fy{int(year) % 100:02d}"], year
+    high_year = int(str(slots.get("date_to") or day)[:4])
+    if basis in ("fiscal year end", "fiscal year span"):
+        terms: list[str] = []
+        for fy in range(start_year, high_year + 1):
+            terms += [f"fy{fy % 100:02d}", f"fy{fy}", str(fy)]
+        return sorted(set(terms)), None
     quarter = {6: "q1", 9: "q2", 12: "q3", 3: "q4"}.get(month, "")
     month_name = {3: "mar", 6: "jun", 9: "sep", 12: "dec"}.get(month, "")
-    return [term for term in (quarter, month_name) if term], year
+    fy = start_year if month == 3 else start_year + 1
+    terms = [f"fy{fy % 100:02d}", f"fy{fy}", str(start_year)]
+    if quarter:
+        terms += [quarter, f"{quarter}fy{fy % 100:02d}", f"{quarter} fy{fy % 100:02d}"]
+    words = [term for term in (quarter, month_name) if term]
+    return sorted(set(terms + words)), None
 
 
 def _term_likes(metric: str | None, columns: list[str]) -> tuple[str, list[Any]]:
@@ -108,6 +119,24 @@ def _term_likes(metric: str | None, columns: list[str]) -> tuple[str, list[Any]]
     if not words:
         return "", []
     return terms_clause(words, columns, mode="or")
+
+
+def _fiscal_terms(low: str, high: str | None) -> list[str]:
+    """LIKE terms that name every fiscal year between two period ends.
+
+    ``fiscal_year`` is written "FY26", "FY 2025-26" or "2026-03-31" across the
+    stores, so both spellings are matched (a "%2026%" alone misses "FY26").
+    """
+    def fy_of(day: str) -> int:
+        year, month = int(str(day)[:4]), int(str(day)[5:7] or 3)
+        return year + 1 if month > 3 else year
+    first, last = fy_of(low), fy_of(str(high or low)[:10])
+    if last < first:
+        first, last = last, first
+    terms = []
+    for fy in range(first, last + 1):
+        terms += [f"%fy{fy % 100:02d}%", f"%{fy}%"]
+    return terms
 
 
 def _row(store: str, item: str, value: Any, unit: str | None, period: str | None,
@@ -176,8 +205,10 @@ def _ar(ctx: Any, isin: str, as_of: str, period: tuple[str | None, str | None],
         where.append("substr(filed_at,1,10) BETWEEN ? AND ?")
         params.extend([low, high])
     if period[0]:
-        params.append(f"%{str(period[0])[:4]}%")
-        where.append("COALESCE(fiscal_year,'') LIKE ?")
+        terms = _fiscal_terms(period[0], period[1])
+        where.append("(" + " OR ".join("COALESCE(fiscal_year,'') LIKE ?"
+                                       for _ in terms) + ")")
+        params.extend(terms)
     clause, clause_params = _term_likes(metric, ["item", "category", "quote"])
     if clause:
         where.append(clause)
@@ -396,6 +427,10 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             else:
                 got, candidates = _concall(ctx, isin, as_of, metric, named)
             rows = got
+            # The named document's date IS the asked period: its own KPI label
+            # ("FY26" on a Q1FY27 deck) is not a different period.
+            for row in rows:
+                row["period"] = named["date"]
         else:
             return envelope("FACTS", ok=True, na=True, checked=CHECKED,
                             detail=f"{named['doc_type']} text is EVIDENCE, not a fact store")
@@ -409,7 +444,8 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         rows += metric_store
         for got, n in (_results(ctx, isin, as_of, period, metric),
                        _ar(ctx, isin, as_of, period, metric)
-                       if slots.get("period_basis") != "quarter end" else ([], 0),
+                       if slots.get("period_basis") not in ("quarter end", "quarter span")
+                       else ([], 0),
                        _deck(ctx, isin, as_of, metric, _deck_period_terms(slots)),
                        _concall(ctx, isin, as_of, metric)):
             rows += got
@@ -419,6 +455,12 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             promoter = _promoter_facts(ctx, isin, as_of, question)
             rows = promoter + rows
             candidates += len(promoter)
+    # Every fact row names the asked entity (the gate reads isin/symbol, and a
+    # store id is not an identity).
+    for row in rows:
+        row.setdefault("isin", isin)
+        if slots.get("symbol"):
+            row.setdefault("symbol", slots["symbol"])
     # Only numeric facts count as facts; a concall passage with a text payload
     # is evidence, not a figure.
     rows = [r for r in rows
@@ -453,7 +495,17 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     computed = _computed(rows, metric)
     if computed:
         rows.insert(0, computed)
+    # Honour the resolved period: a fact from another quarter/month/date is not
+    # the answer.  An FY ask shows a Q4FY26 fact filed for that year as FY26.
+    if str(slots.get("period_basis") or "") in ("quarter end", "fiscal year end",
+                                                "quarter span", "fiscal year span"):
+        normalise_label(rows, slots.get("period_label"))
+    kept = in_period(rows, slots, named, hop="FACTS")
+    dropped = len(rows) - len(kept)
+    rows = kept
     degraded = []
+    if dropped:
+        degraded.append(f"{dropped} fact row(s) outside the asked period were dropped")
     if not period[0] and not named:
         degraded.append("no period in the ask; newest facts shown")
     if named:

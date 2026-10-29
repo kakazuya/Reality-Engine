@@ -109,6 +109,47 @@ def identity_symbols(ctx: Any, slots: dict[str, Any], isin: str | None) -> list[
     return out
 
 
+def label_within(got: str | None, want: str | None) -> bool:
+    """Is a row's own label inside the asked label?  ``Q4FY26`` sits in ``FY26``."""
+    if not got or not want:
+        return False
+    if got == want:
+        return True
+    return want.startswith("FY") and got.startswith("Q") and got.endswith(want[2:])
+
+
+def normalise_label(rows: Sequence[Any], want: str | None) -> None:
+    """Render an in-period row at the asked granularity (an FY26 ask shows Q4FY26 as FY26)."""
+    if not want:
+        return
+    from ..gate import _label
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        got = _label("", str(row.get("period") or ""))[1]
+        if got and got != want and label_within(got, want):
+            row["period"] = want
+
+
+def in_period(rows: Sequence[Any], slots: dict[str, Any],
+              named: dict[str, Any] | None = None,
+              hop: str | None = None) -> list[Any]:
+    """Rows the gate's period check accepts, judged by the router's resolved window.
+
+    The router resolves the asked period once into ``date_from/date_to/
+    period_basis``; this keeps a planner from returning rows about another
+    quarter/month/date.  ``None`` (no period asked, or an open lookback) keeps
+    every row; a miss here is an honest empty hop, never a wrong-period row.
+    """
+    from ..gate import period_match
+    out = []
+    for row in rows:
+        if period_match({"hop": hop, "rows": [row]}, slots, named) is False:
+            continue
+        out.append(row)
+    return out
+
+
 def load_planners() -> dict[str, Callable[..., dict[str, Any]]]:
     from . import compare, event, evidence, expectations, facts, resolve, ripple, screen, series
     return {
