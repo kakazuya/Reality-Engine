@@ -574,5 +574,73 @@ class TestRipplePlanner(PilotFixture):
         self.assertIn("policy_events.sectors", hop["detail"])
 
 
+class TestSectorHopAsOf(PilotFixture):
+    """The sector hop reads the T1 PIT store at the decision day, not today's labels."""
+
+    def ctx(self) -> Ctx:
+        ctx = Ctx(root=self.tmp)
+        self.addCleanup(ctx.close)
+        return ctx
+
+    def test_pit_store_membership_is_as_of(self):
+        other = temp_root("sector_pit_")
+        self.addCleanup(shutil.rmtree, other, True)
+        _make(other / "market_state_pilot.db", [
+            "CREATE TABLE company_sector_pit(isin TEXT NOT NULL, macro TEXT, sector TEXT, "
+            "industry TEXT, basic_industry TEXT, valid_from TEXT NOT NULL, valid_to TEXT, "
+            "source TEXT NOT NULL, PRIMARY KEY (isin, valid_from))",
+        ], [
+            ("INSERT INTO company_sector_pit VALUES (?,?,?,?,?,?,?,?)",
+             ("INE000A01009", "Capital Goods", "Capital Goods", "Capital Goods",
+              "Iron & Steel Products", "2026-01-01", None, "test")),
+            ("INSERT INTO company_sector_pit VALUES (?,?,?,?,?,?,?,?)",
+             ("INE000A01010", "Capital Goods", "Capital Goods", "Capital Goods",
+              "Iron & Steel Products", "2026-07-01", None, "test")),
+        ])
+        ctx = self.ctx()
+        rows = [{"target_kind": "basic_industry", "target_id": "Iron & Steel Products"}]
+        with mock.patch.dict(os.environ, {"REALITY_PILOT_T1": str(other)}):
+            targets, _ = ripple._targets_from_claims(ctx, rows, AS_OF)
+        isins = {target["isin"] for target in targets}
+        self.assertIn("INE000A01009", isins)        # adopted 1 Jan, valid at as_of
+        self.assertNotIn("INE000A01010", isins)     # adopted 1 Jul, after as_of
+
+
+class TestRipplePeriod(PilotFixture):
+    """A RIPPLE row about another period is dropped, never reported for this one."""
+
+    def plan(self, **over):
+        ctx = Ctx(root=self.tmp)
+        self.addCleanup(ctx.close)
+        slots = route(case(family=[18], **over))["slots"]
+        return slots, load_planners()["RIPPLE"](slots, slots.get("as_of") or AS_OF, ctx)
+
+    def pilot(self):
+        return mock.patch.dict(os.environ, {
+            "REALITY_MACRO_PILOT_DB": str(self.tmp / "pilot" / macro_claims.DB_NAME)})
+
+    def test_row_outside_the_window_is_dropped(self):
+        with self.pilot():
+            slots, hop = self.plan(
+                question="CEMCO moved in 10-18 Sep 2026 on the cement duty",
+                period="10-18 Sep 2026", as_of="2026-10-19",
+                template="R02:policy_events.id=101")
+        self.assertEqual(slots["date_from"], "2026-09-10")
+        self.assertFalse(hop["ok"])
+        self.assertEqual(hop["rows"], [])
+        self.assertIn("asked period", hop["detail"])
+
+    def test_row_inside_the_window_is_kept_and_the_old_policy_dropped(self):
+        with self.pilot():
+            _, hop = self.plan(
+                question="CEMCO moved on 1 April 2026 on the cement duty",
+                period="1 April 2026", as_of="2026-04-30",
+                template="R02:policy_events.id=101")
+        self.assertTrue(hop["ok"], hop["detail"])
+        self.assertTrue(all(row["period"] == "2026-04-01" for row in hop["rows"]))
+        self.assertTrue(any(row.get("return_pct") is not None for row in hop["rows"]))
+        self.assertTrue(any("outside the asked period" in note for note in hop["degraded"]))
+
+
 if __name__ == "__main__":
     unittest.main()

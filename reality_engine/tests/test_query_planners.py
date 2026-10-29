@@ -7,9 +7,11 @@ published after the as_of day.  No live database is touched.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import tempfile
 import shutil
+import unittest
 from pathlib import Path
 
 from reality_engine.query import answer, load_planners, pit_audit, route
@@ -268,6 +270,114 @@ class TestEvent(PlannerFixtureTest):
         hop = self.run_plan("EVENT", self.slots(question="AAA rose on 4 June 2026 after results",
                                                 family=[9], period="4 June 2026"))
         assert hop["ok"] is True and "results" in hop["detail"]
+
+    def test_day0_rule_at_15_29_and_15_31(self):
+        from reality_engine.query.planners import event
+        assert event.day0("2026-10-16T15:29:00") == "2026-10-16"
+        assert event.day0("2026-10-16T15:31:00") == "2026-10-17"
+
+
+class EventDay0Store(unittest.TestCase):
+    """The T1 day-0 store, the ann headline and the PIT cap, on a fixture root."""
+
+    @classmethod
+    def setUpClass(cls):
+        # mkdtemp's private DACL denies sqlite writes in this sandbox; a plain
+        # mkdir under the worktree's .tmp inherits the workspace ACE.
+        base = Path(__file__).resolve().parents[2] / ".tmp"
+        cls.tmp = base / "test_query_event_day0"
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+        cls.tmp.mkdir(parents=True, exist_ok=True)
+        _make(cls.tmp / "equity_intelligence.db", [
+            "CREATE TABLE master_companies(isin TEXT, nse_symbol TEXT, sector TEXT, "
+            "industry TEXT, is_active INTEGER)",
+            "CREATE TABLE daily_price_delivery(date TEXT, symbol TEXT, isin TEXT, close REAL, "
+            "prev_close REAL)",
+        ], [
+            ("INSERT INTO master_companies VALUES (?,?,?,?,?)",
+             (ISIN, "AAA", "Capital Goods", "Capital Goods", 1)),
+        ])
+        con = sqlite3.connect(cls.tmp / "equity_intelligence.db")
+        for day, close in (("2026-10-14", 100.0), ("2026-10-15", 102.0), ("2026-10-16", 101.0),
+                           ("2026-10-19", 99.0), ("2026-10-20", 103.0), ("2026-10-21", 104.0)):
+            con.execute("INSERT INTO daily_price_delivery VALUES (?,?,?,?,?)",
+                        (day, "AAA", ISIN, close, close - 1))
+        con.commit()
+        con.close()
+        _make(cls.tmp / "market_state_pilot.db", [
+            "CREATE TABLE event_day0(event_id TEXT, isin TEXT, event_kind TEXT, "
+            "known_at TEXT, session_0 TEXT, offset INTEGER, in_session INTEGER, "
+            "pit_conf REAL, PRIMARY KEY(event_id, isin))",
+            "CREATE INDEX ix_ed0_isin_sess ON event_day0(isin, session_0)",
+        ], [
+            ("INSERT INTO event_day0 VALUES (?,?,?,?,?,?,?,?)",
+             ("announcement:n1", ISIN, "announcement", "2026-10-16T14:05:00",
+              "2026-10-16", 0, 1, 1.0)),
+            # known after as_of: must never enter a run decided on 2026-10-19
+            ("INSERT INTO event_day0 VALUES (?,?,?,?,?,?,?,?)",
+             ("results:r1", ISIN, "results", "2026-10-21T18:10:00",
+              "2026-10-22", 1, 0, 1.0)),
+        ])
+        _make(cls.tmp / "bse_announcements.db", [
+            "CREATE TABLE ann(NEWSID TEXT, SCRIP_CD TEXT, ATTACHMENTNAME TEXT, "
+            "NEWSSUB TEXT, HEADLINE TEXT, CATEGORYNAME TEXT, SUBCATNAME TEXT, NEWS_DT TEXT, "
+            "DT_TM TEXT, News_submission_dt TEXT, DissemDT TEXT, QUARTER_ID TEXT, "
+            "Fld_Attachsize TEXT, ANNOUNCEMENT_TYPE TEXT, symbol TEXT)",
+            "CREATE INDEX idx_ann_sym_dissem ON ann(symbol, DissemDT)",
+        ], [
+            ("INSERT INTO ann(NEWSID, DissemDT, CATEGORYNAME, SUBCATNAME, HEADLINE, symbol) "
+             "VALUES (?,?,?,?,?,?)",
+             ("n1", "2026-10-16T14:05:00", "Company Update", "Award of Order",
+              "Outcome of Board Meeting: order win worth 1,200 crore", "AAA")),
+        ])
+        # A UTC stamp late on the decision day is the NEXT IST day: not knowable yet.
+        try:
+            import duckdb
+            from datetime import datetime
+            (cls.tmp / "snapshots").mkdir()
+            dc = duckdb.connect(str(cls.tmp / "snapshots" / "truth_2026-10-19.duckdb"))
+            dc.execute("CREATE TABLE events(isin TEXT, known_at_utc TIMESTAMP, kind TEXT, "
+                       "source_ref TEXT, summary TEXT)")
+            dc.execute("INSERT INTO events VALUES (?,?,?,?,?)",
+                       [ISIN, datetime(2026, 10, 19, 20, 0), "results", "late",
+                        "outcome known after as_of"])
+            dc.execute("INSERT INTO events VALUES (?,?,?,?,?)",
+                       [ISIN, datetime(2026, 10, 19, 4, 0), "order_win", "early",
+                        "order won, intraday"])
+            dc.close()
+        except Exception:  # noqa: BLE001 - duckdb is optional; the ann path still answers
+            pass
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def plan(self, **over):
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"REALITY_PILOT_T1": str(self.tmp)}):
+            ctx = Ctx(root=self.tmp)
+            try:
+                slots = route(case(as_of="2026-10-19", **over))["slots"]
+                return load_planners()["EVENT"](slots, "2026-10-19", ctx)
+            finally:
+                ctx.close()
+
+    def test_day0_store_row_with_ann_headline(self):
+        hop = self.plan(question="AAA announcement on 16 October 2026", family=[9],
+                        period="16 October 2026")
+        assert hop["ok"] is True, hop["detail"]
+        assert hop["rows"][0]["period"] == "2026-10-16"
+        assert "order win" in hop["rows"][0]["quote"]
+        assert "day 0 2026-10-16" in hop["detail"]
+
+    def test_event_known_after_as_of_is_absent(self):
+        hop = self.plan(question="AAA announcement on 16 October 2026", family=[9],
+                        period="16 October 2026")
+        assert all(row["period"] != "2026-10-22" for row in hop["rows"])
+        assert "results" not in hop["detail"]
+        # 20:00 UTC on 19 October is 01:30 IST on the 20th: not knowable at as_of.
+        assert "known after as_of" not in str(hop["rows"])
+        assert pit_audit([hop], "2026-10-19") == []
 
 
 class TestEvidence(PlannerFixtureTest):
