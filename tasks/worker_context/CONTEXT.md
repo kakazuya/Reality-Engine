@@ -1,6 +1,6 @@
 # Worker context pack
 
-Generated: 2026-10-29T06:03:15+05:30 · git HEAD: `7c0f8fe` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
+Generated: 2026-10-29T09:31:09+05:30 · git HEAD: `2bfd7a7` · data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data`
 Staleness: regenerate with `python -m reality_engine.scripts.build_worker_context`; the `worker_context` job runs daily and a pack older than 26 h is regenerated before a worker starts.
 Read this once. It replaces file-by-file orientation; the task brief is still the authority for what to do.
 
@@ -13,7 +13,7 @@ reality_engine/
   db/ (9 py) — Database services.
   harness/ (28 py) — Shared, point-in-time research harness. Importing never opens a database.
   ingestion/ (27 py) — Reality Engine Ingestion Subsystem
-  pilot/ (6 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
+  pilot/ (8 py) — Pilot builds (golden-rule step 4). Deterministic tier: ``build_t1``; checks: ``checks_t1``.
   pipeline/ (19 py) — Pipeline runners.
   processing/ (45 py) — Document and image processing components.
   query/ (20 py) — Query layer v1 — sub-question decomposition + router + planners + answer assembly.
@@ -198,7 +198,9 @@ Module one-liners (first docstring line, clipped; `__init__.py` and modules with
 - `reality_engine/ingestion/youtube_transcriber.py` — YouTube / MP4 transcription wrapper for Fundamental Reality Engine.
 
 ### reality_engine/pilot/
+- `reality_engine/pilot/build_b.py` — Pilot (b) build — the (b) tables whose source is already held. No network, no live writes.
 - `reality_engine/pilot/build_t1.py` — T1 (deterministic) pilot build — PILOT_SPEC §3 deterministic tier, SCHEMA_V3 §B/§C.
+- `reality_engine/pilot/checks_b.py` — Checks for the pilot (b) build — the numbers behind tasks/pilot_b/REPORT.md.
 - `reality_engine/pilot/checks_t1.py` — Checks for the T1 pilot build — the numbers behind tasks/pilot_t1/CHECKS.md.
 - `reality_engine/pilot/extract60.py` — Targeted fact extraction for the pilot-60 universe — build-time tables.
 - `reality_engine/pilot/macro_claims.py` — macro_claim_target pilot (G10 / policy_target) — deterministic claim -> target map.
@@ -348,11 +350,11 @@ Data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data` (
 |---|---|---|---|---|
 | truth_duckdb | `truth_2026-10-19.duckdb` | 8.5 GB | 63 | Dated, read-only research snapshot (2026-10-19) built from the live SQLite DBs: clean entity-level prices with split/bonus/dividend adjustment and point-in-time known_at timestamps (date-only sources stamped 23:59:59 IST), plus consolidated results/AR/deck/concall/ownership/policy tables. Prefer this for historical/as-of research; SQLite is the live source with newer rows and full text. |
 | equity_intelligence | `equity_intelligence.db` | 50.3 GB | 123 | Live primary equity database: company master, normalized daily prices, financials, corporate actions/documents, ownership/market flows, policy/macro/ripple layers, substrate analytics, Telegram signals and quarantine. Use it for latest/live data and full text; use truth_duckdb for adjusted price history and PIT-stamped research tables. Mixed raw and derived; check per-table notes. |
-| ar_facts | `ar_facts.db` | 19.1 GB | 8 | Annual-report extraction store: document registry, ~33M extracted facts with quotes/units, processing provenance and FTS. Managed by the AR pipeline and hand-review overlays in equity_intelligence. |
+| ar_facts | `ar_facts.db` | 20.4 GB | 8 | Annual-report extraction store: document registry, ~33M extracted facts with quotes/units, processing provenance and FTS. Managed by the AR pipeline and hand-review overlays in equity_intelligence. |
 | deck_figures | `deck_figures.db` | 9.9 GB | 14 | Investor-presentation/deck reader store: per-page vision-model calls, extracted printed numeric facts, chart trend labels and spend/queue ledgers, with symbol/ISIN/known_at resolvable via pages. |
 | concall_facts | `concall_facts.db` | 741 MB | 4 | Concall transcript extraction store: one row per processed concall document, extracted guidance/analyst items as text, QA checks and FTS. |
 | results_xbrl | `results_xbrl.db` | 6.1 GB | 4 | NSE quarterly-results XBRL store: filing registry, long facts and a pivoted quarterly view. Authoritative for reported quarterly financials; monetary values are in rupees. |
-| bse_announcements | `bse_announcements.db` | 1.1 GB | 2 | BSE corporate-announcement feed: one metadata row per NEWSID (headline/category/timestamps/attachment) plus a per-scrip fetch ledger. Metadata only; the duckdb snapshot has a PIT-stamped copy. |
+| bse_announcements | `bse_announcements.db` | 1.2 GB | 2 | BSE corporate-announcement feed: one metadata row per NEWSID (headline/category/timestamps/attachment) plus a per-scrip fetch ledger. Metadata only; the duckdb snapshot has a PIT-stamped copy. |
 
 Top 60 tables (key tables first, then by row count; full lists in `schemas/`):
 
@@ -503,7 +505,8 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.ingestion.pdf_ingestor` | test_document_industry_tag.py, test_fiscal_extraction.py, test_macro_ingest.py, test_pua_fallback.py, test_repo_identity.py |
 | `reality_engine.ingestion.policy_press_client` | test_policy_press_client.py |
 | `reality_engine.ingestion.telegram_client` | test_telegram_hardening.py |
-| `reality_engine.pilot.build_t1` | test_pilot_t1.py |
+| `reality_engine.pilot.build_b` | test_pilot_b_tables.py |
+| `reality_engine.pilot.build_t1` | test_pilot_b_tables.py, test_pilot_t1.py |
 | `reality_engine.pilot.extract60` | test_extraction_pilot60.py |
 | `reality_engine.pilot.macro_claims` | test_macro_claim_target.py |
 | `reality_engine.pipeline.bootstrap` | test_bootstrap.py |
@@ -552,13 +555,15 @@ Data-touching tests must use in-memory/temp fixtures, never the live DBs.
 | `reality_engine.processing.substrate_hygiene` | test_desk_backtest.py, test_horizon_excess.py, test_peer_graph_and_hygiene.py, test_portfolio_ledger.py |
 | `reality_engine.processing.video_screen_ocr` | test_video_ocr_pilot.py |
 | `reality_engine.query.answer` | test_query_planners.py, test_query_v1.py |
-| `reality_engine.query.compute` | test_query_compute.py |
-| `reality_engine.query.ctx` | test_macro_claim_target.py, test_query_planners.py, test_query_v1.py |
+| `reality_engine.query.compute` | test_query_compute.py, test_query_concepts.py |
+| `reality_engine.query.ctx` | test_macro_claim_target.py, test_query_period.py, test_query_planners.py, test_query_v1.py |
 | `reality_engine.query.decompose` | test_query_v1.py |
+| `reality_engine.query.gate` | test_query_concepts.py, test_query_period.py |
 | `reality_engine.query.metrics` | test_extraction_pilot60.py |
+| `reality_engine.query.planners.facts` | test_query_concepts.py |
 | `reality_engine.query.planners.ripple` | test_macro_claim_target.py |
 | `reality_engine.query.rerank` | test_query_v1.py |
-| `reality_engine.query.router` | test_query_router.py, test_query_v1.py |
+| `reality_engine.query.router` | test_query_period.py, test_query_router.py, test_query_v1.py |
 | `reality_engine.raw_store` | test_dedupe_raw.py |
 | `reality_engine.reporting.writer` | test_action_thesis.py, test_agent_and_reporting.py |
 | `reality_engine.scripts.backfill_call_rows` | test_backfill_call_rows.py |
