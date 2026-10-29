@@ -68,6 +68,29 @@ SERIES = {
 #: outlook, not a transaction level.
 _HRC_CUE = re.compile(r"(?i)\b(hrc|hr coil|hot[- ]rolled\s+(?:coil|steel|strip|sheet)s?)\b")
 _BDI_CUE = re.compile(r"(?i)\bbaltic\s+dry(?:\s+index)?\b|\bbdi\b")
+#: The few slugs that name the series itself: they are fetched first. "Baltic"
+#: alone is the sea (geopolitics, 12 of 12 hits in the 2025 archive), so the
+#: freight index needs its full name.
+_SERIES_SLUG = re.compile(r"(?i)\bhrc\b|hot[-_ ]rolled|baltic[-_ ]dry|\bbdi\b")
+#: The commodity beats worth a fetch when the slug names one. Industry words only:
+#: "shipping" is dropped because the shipping beat covers cruise tourism and
+#: shipbuilding (12 of 12 hits were not freight), while a freight-price story
+#: says "baltic dry" or "freight". Broad enough to catch a steel story whose slug
+#: does not say HRC -- the article's own text still makes the final call.
+_COMMODITY_WORD = re.compile(
+    r"(?i)\b(steel|cement|coking|coal|commodit\w*|metals?|freight|iron[-_ ]ore|"
+    r"hrc|hot[-_ ]rolled|baltic[-_ ]dry|bdi|wpi)\b")
+#: Or the URL sits in a commodity section (``/markets/commodities/``,
+#: ``/industry/indl-goods/svs/steel/``), matched as whole path segments.
+_COMMODITY_SECTION = re.compile(
+    r"(?i)/(?:commodit\w*|steel|cement|coal|metals?|freight|indl-goods)/")
+#: A ``robots.txt`` that declares several sitemaps lists its news archive after
+#: unrelated ones (ET puts ``companylisting.cms`` first), so the news-shaped ones
+#: are read first and the company listing never is.
+_NEWS_SITEMAP = re.compile(r"(?i)news|article|story|sitemap-index|/sitemap")
+#: Child sitemaps fetched per outlet. A year index expands to ~12 month files, so
+#: one outlet costs at most a minute of paced requests, not the whole archive.
+MAX_CHILD_FETCH = 36
 
 _MONEY_PER_TONNE = re.compile(
     r"(?i)(?:rs\.?|\u20b9|inr)\s*([\d,]+(?:\.\d+)?)\s*(?:per\s+|/\s*|a\s+)"
@@ -82,6 +105,16 @@ _MONTHS = {m: i for i, m in enumerate(
 _MNAME = r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*"
 _DMY_TEXT = re.compile(rf"(?i)\b(\d{{1,2}})(?:st|nd|rd|th)?\s+{_MNAME}\.?,?\s*(20\d{{2}})\b")
 _MDY_TEXT = re.compile(rf"(?i)\b{_MNAME}\.?\s+(\d{{1,2}})(?:st|nd|rd|th)?,?\s*(20\d{{2}})\b")
+_DAY_MONTH_NO_YEAR = re.compile(rf"(?i)\b(?:on|as\s+of)\s+(\d{{1,2}})(?:st|nd|rd|th)?\s+{_MNAME}\b")
+#: "on April 29" -- group(1) is the month, group(2) the day (the month pattern's
+#: own capture comes first). A four-digit year cannot match the day group. The
+#: locative preposition is required: "since October 7" records a comparison, and
+#: reading it as the price date pushed a June level into the previous year.
+_MONTH_DAY_NO_YEAR = re.compile(rf"(?i)\b(?:on|as\s+of)\s+(?:{_MNAME})\.?\s+(\d{{1,2}})\b")
+#: A bare month dates a price only after a locative preposition. "since October"
+#: and "from April" compare against a level, and reading those as the price date
+#: moved a June reading to the previous year.
+_MONTH_ONLY = re.compile(rf"(?i)\b(?:in|during|as\s+of)\s+({_MNAME})\b")
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 _WS = re.compile(r"\s+")
 
@@ -199,10 +232,25 @@ def parse_sitemap(payload: bytes) -> dict:
 
 
 def _date_in(text: str) -> str:
-    """``YYYY-MM-DD`` hidden in a URL or a ``lastmod`` -> ISO date, else ``''``."""
+    """``YYYY-MM-DD`` hidden in a URL or a ``lastmod`` -> ISO date, else ``''``.
+
+    Two archive naming schemes matter here: both outlets publish their history as
+    ``<year>-<month name>-<half>.xml`` (``2025-june-1.xml``), which carries no
+    numeric date, and Business Standard also links a ``year-2025.xml`` index. A
+    month file is dated to its own first or sixteenth, so the weekly pick lands on
+    the file that holds that week instead of skipping the whole archive.
+    """
     m = re.search(r"(20\d{2})[-/](\d{1,2})[-/](\d{1,2})", text or "")
     if m and 1 <= int(m.group(2)) <= 12 and 1 <= int(m.group(3)) <= 31:
         return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    m = re.search(r"(?i)\b(20\d{2})-([a-z]{3,9})-(\d)\b", text or "")
+    if m:
+        month = _MONTHS.get(m.group(2).lower()[:3], 0)
+        if 1 <= month <= 12:
+            return f"{m.group(1)}-{month:02d}-{'01' if m.group(3) == '1' else '16'}"
+    m = re.search(r"(?i)\byear[-_ ]?(20\d{2})\b", text or "")
+    if m:
+        return f"{m.group(1)}-01-01"
     return (text or "")[:10] if re.match(r"20\d{2}-\d{2}-\d{2}", text or "") else ""
 
 
@@ -216,14 +264,25 @@ def weekly_days(start: date, end: date, weekday: int = 4) -> list[date]:
     return out
 
 
+#: A year/month archive is published in several flavours: articles, video,
+#: liveblog, AMP. They share a date, so a tie must prefer the article archive.
+_NON_ARTICLE_SITEMAP = re.compile(r"(?i)/(?:video|liveblog|amp)[-/]")
+
 def pick_weekly(entries: list[dict], days: list[date]) -> list[str]:
     """For each sampled day, the sitemap/url entry dated nearest on or before it.
+
+    The date in the loc wins over ``lastmod``: an archive child is named for the
+    period it holds (``year-2025.xml``), while its ``lastmod`` is when the file
+    was last rebuilt -- often today, which would hide the whole archive. Equally
+    dated children are ordered so an article archive sorts after its video and
+    liveblog siblings, and the pick below takes the last one at or before the day.
 
     Deterministic: exact date wins, else the newest entry not after the day,
     else the oldest entry after it (a forward-only archive).
     """
-    dated = sorted(((e["lastmod"] or _date_in(e["loc"]), e["loc"]) for e in entries
-                    if (e["lastmod"] or _date_in(e["loc"]))), key=lambda t: t[0])
+    dated = sorted(((_date_in(e["loc"]) or e["lastmod"], e["loc"]) for e in entries
+                    if (_date_in(e["loc"]) or e["lastmod"])),
+                   key=lambda t: (t[0], not _NON_ARTICLE_SITEMAP.search(t[1]), t[1]))
     if not dated:
         return []
     picked: list[str] = []
@@ -252,7 +311,11 @@ _TITLE_RE = re.compile(r"(?is)<title[^>]*>(.*?)</title>")
 _H1_RE = re.compile(r"(?is)<h1[^>]*>(.*?)</h1>")
 _LD_DATE = re.compile(r'(?i)"datePublished"\s*:\s*"([^"]+)"')
 _TIME_TAG = re.compile(r'(?is)<time\b[^>]*?datetime=["\']([^"\']+)["\']')
-_BODY_LIMIT = 12_000
+#: Scripts and styles are text nodes as far as a tag-stripping helper is
+#: concerned: leaving them in front of the article pushed the story (and the
+#: price it quotes) past the body limit on every outlet page.
+_OPAQUE_RE = re.compile(r"(?is)<(script|style|noscript|svg)\b.*?</\1\s*>")
+_BODY_LIMIT = 40_000
 
 
 def article_text(html: str) -> dict:
@@ -275,13 +338,21 @@ def article_text(html: str) -> dict:
     m = re.search(r"(?is)<meta\b[^>]*?name=[\"']description[\"'][^>]*?content=[\"']([^\"']+)", html or "")
     if m:
         desc = text_of(m.group(1))
-    body = text_of(html or "")[:_BODY_LIMIT]
+    body = text_of(_OPAQUE_RE.sub(" ", html or ""))[:_BODY_LIMIT]
     return {"title": title, "heading": heading, "description": desc,
             "body": body, "published": published}
 
 
+#: A price statement is a sentence; a "sentence" this long is a run of page
+#: furniture that happens to end in a full stop (a footer glued to the story by
+#: one period), and the number found in it is a year or a menu item. 600 chars
+#: is well above any real market sentence and below the merged footer blocks.
+MAX_SENTENCE_CHARS = 600
+
+
 def sentences(text: str) -> list[str]:
-    return [s.strip() for s in _SENTENCE_SPLIT.split(text or "") if s.strip()]
+    return [s.strip() for s in _SENTENCE_SPLIT.split(text or "")
+            if s.strip() and len(s) <= MAX_SENTENCE_CHARS]
 
 
 def quote_of(sentence: str, start: int, end: int, max_words: int = MAX_QUOTE_WORDS) -> str:
@@ -293,6 +364,22 @@ def quote_of(sentence: str, start: int, end: int, max_words: int = MAX_QUOTE_WOR
     pos = min(len(words) - 1, len(sentence[:start].split()))
     first = max(0, min(pos - max_words // 2, len(words) - max_words))
     return " ".join(" ".join(words[first:first + max_words]).strip(" ,;:").split())
+
+
+def _same_year_month(month: int, day: int, fallback: str) -> str | None:
+    """A date written without its year -> the year it must belong to, or ``None``.
+
+    The publication year, or the year before it when that month had not arrived
+    yet (a June story saying "in January"). Never a year ahead of publication.
+    """
+    published = (fallback or "")[:10]
+    if not re.match(r"20\d{2}-\d{2}", published):
+        return None
+    year = int(published[:4]) - (1 if month > int(published[5:7]) else 0)
+    try:
+        return date(year, month, day).isoformat()
+    except ValueError:
+        return None
 
 
 def price_date_in(sentence: str, fallback: str) -> tuple[str, str]:
@@ -311,6 +398,23 @@ def price_date_in(sentence: str, fallback: str) -> tuple[str, str]:
                         int(m.group(2))).isoformat(), "stated"
         except ValueError:
             pass
+    # "on April 29" / "in January": the outlet drops the year, and defaulting
+    # those to the publication date puts an April level in June.
+    m = _DAY_MONTH_NO_YEAR.search(sentence or "")
+    if m and 1 <= int(m.group(1)) <= 31:
+        iso = _same_year_month(_MONTHS[m.group(2).lower()[:3]], int(m.group(1)), fallback)
+        if iso:
+            return iso, "stated"
+    m = _MONTH_DAY_NO_YEAR.search(sentence or "")
+    if m and 1 <= int(m.group(2)) <= 31:
+        iso = _same_year_month(_MONTHS[m.group(1).lower()[:3]], int(m.group(2)), fallback)
+        if iso:
+            return iso, "stated"
+    m = _MONTH_ONLY.search(sentence or "")
+    if m:
+        iso = _same_year_month(_MONTHS[m.group(1).lower()[:3]], 1, fallback)
+        if iso:
+            return iso, "stated"
     return fallback, "pubdate"
 
 
@@ -369,6 +473,12 @@ def extract_points(text: str, source_url: str, outlet: str, known_at: str,
             for hit in found:
                 key = (code, hit["value"])
                 price_date, basis = price_date_in(sentence, price_date_default)
+                published_day = (known_at or "")[:10]
+                if basis == "stated" and published_day and price_date > published_day:
+                    # A date printed on the page itself (the render date in the
+                    # masthead) is ahead of publication, so the "level" beside it
+                    # is the year. Impossible dates are dropped, not re-dated.
+                    continue
                 row = {
                     "series_code": code,
                     "price_date": price_date,
@@ -476,11 +586,35 @@ def rss_articles(feeds, stats: dict, article_budget: int, fetcher=http_get) -> l
     return out
 
 
+def candidate(url: str) -> bool:
+    """A sitemap URL worth one article fetch: it names a series or a commodity beat."""
+    return bool(_SERIES_SLUG.search(url) or _COMMODITY_WORD.search(url)
+                or _COMMODITY_SECTION.search(url))
+
+
 def sitemap_articles(outlets, start: date, end: date, stats: dict,
                      fetcher=http_get) -> list[dict]:
-    """Walk ``robots.txt`` -> sitemap index -> the child sitemap nearest each sampled week."""
+    """Walk ``robots.txt`` -> sitemap index -> the child sitemap nearest each sampled week.
+
+    Both outlets publish their history as month files behind a year index, so a
+    child that is itself an index is expanded one level (bounded by
+    :data:`MAX_CHILD_FETCH`). Without that, the archive is unreachable and the
+    backfill reads only the last few days.
+    """
     days = weekly_days(start, end)
+    first, last = start.isoformat(), end.isoformat()
     found: list[dict] = []
+
+    def take(entries: list[dict]) -> None:
+        """Append the entries a fetch could use, skipping a point dated off-window."""
+        for entry in entries:
+            published = entry["lastmod"] or ""
+            if published and not first <= published <= last:
+                continue                     # a today/yesterday sitemap in a historic run
+            if candidate(entry["loc"]):
+                found.append({"outlet": outlet, "url": entry["loc"],
+                              "published": entry["lastmod"], "title": "", "text": ""})
+
     for outlet, base in outlets.items():
         stats["requests"] += 1
         try:
@@ -489,7 +623,8 @@ def sitemap_articles(outlets, start: date, end: date, stats: dict,
             stats["sitemaps"].append({"outlet": outlet, "status": "failed",
                                       "reason": str(exc)[:160]})
             continue
-        urls = robots_sitemaps(robots)
+        urls = sorted(robots_sitemaps(robots),
+                      key=lambda u: 0 if _NEWS_SITEMAP.search(u) else 1)
         if not urls:
             stats["sitemaps"].append({"outlet": outlet, "status": "no-sitemap"})
             continue
@@ -503,29 +638,73 @@ def sitemap_articles(outlets, start: date, end: date, stats: dict,
                                           "status": "failed", "reason": str(exc)[:160]})
                 continue
             parsed = parse_sitemap(payload)
-            entries = parsed["entries"]
             if parsed["kind"] == "sitemapindex":
-                child_locs += pick_weekly(entries, days)
+                dated = [(_date_in(e["loc"]) or e["lastmod"], e["loc"])
+                         for e in parsed["entries"] if _date_in(e["loc"]) or e["lastmod"]]
+                # The files that DESCRIBE the window first: a year index
+                # ("year-2025.xml") is what holds January, and the nearest-dated
+                # rule would otherwise pick a fresher unrelated listing.
+                covering = [loc for d, loc in dated if first <= d <= last]
+                child_locs += list(dict.fromkeys(covering + pick_weekly(parsed["entries"], days)))
             else:
-                found += [{"outlet": outlet, "url": e["loc"], "published": "",
-                           "title": "", "text": ""} for e in entries
-                          if _HRC_CUE.search(e["loc"]) or _BDI_CUE.search(e["loc"])]
-        stats["sitemaps"].append({"outlet": outlet, "index": urls[0],
-                                  "status": "ok" if child_locs else "index-only",
-                                  "children": len(child_locs)})
-        for child in child_locs:
+                take(parsed["entries"])
+        queue, fetched = list(dict.fromkeys(child_locs))[:MAX_CHILD_FETCH], 0
+        while queue and fetched < MAX_CHILD_FETCH:
+            child = queue.pop(0)
+            fetched += 1
             stats["requests"] += 1
             try:
-                payload = fetcher(child, timeout=60)
+                payload = fetcher(child, timeout=120)
             except Exception as exc:                          # noqa: BLE001
                 stats["sitemaps"].append({"outlet": outlet, "child": child,
                                           "status": "failed", "reason": str(exc)[:160]})
                 continue
-            for entry in parse_sitemap(payload)["entries"]:
-                if _HRC_CUE.search(entry["loc"]) or _BDI_CUE.search(entry["loc"]):
-                    found.append({"outlet": outlet, "url": entry["loc"],
-                                  "published": entry["lastmod"], "title": "", "text": ""})
-    return found
+            parsed = parse_sitemap(payload)
+            if parsed["kind"] == "sitemapindex":              # a year -> its month files
+                queue += [loc for loc in pick_weekly(parsed["entries"], days)
+                          if loc not in queue][:MAX_CHILD_FETCH - fetched]
+                continue
+            take(parsed["entries"])
+        stats["sitemaps"].append({"outlet": outlet, "index": urls[0],
+                                  "status": "ok" if fetched else "index-only",
+                                  "children": fetched})
+    # The budget is far smaller than the candidate list, so the few URLs whose
+    # own slug names the series go first, then one candidate per month at a time:
+    # a weekly series needs a candidate in every month, not the first hundred
+    # January ones. Undated candidates come last (they cost a fetch to date).
+    ordered = sorted(found, key=lambda c: (_slug_rank(c["url"]), c["published"] or "",
+                                           c["url"]))
+    spread: list[dict] = []
+    for rank in sorted({_slug_rank(c["url"]) for c in ordered}):
+        by_month: dict[str, list[dict]] = {}
+        for item in (c for c in ordered if _slug_rank(c["url"]) == rank):
+            by_month.setdefault((item["published"] or "")[:7] or "9999", []).append(item)
+        for i in range(max((len(v) for v in by_month.values()), default=0)):
+            for month in sorted(by_month):
+                if i < len(by_month[month]):
+                    spread.append(by_month[month][i])
+    return spread
+
+
+#: Outlet article ids (ET ``/articleshow/117798403.cms``, BS ``...-125061700311_1.html``).
+#: A section hub carries the beat in its path but has no id and no publication
+#: time, so pages carrying an id are fetched first.
+_ARTICLE_ID = re.compile(r"\d{6,}")
+#: A slug that says "price" is where a level gets printed (measured on BS June
+#: 2025: 2 HRC levels in 40 price/commodity articles, 0 in the rest); the
+#: commodity word alone is usually company news ("commissions galvanising line").
+_PRICE_WORD = re.compile(r"(?i)\b(price|prices|rate|rates|quotations?)\b")
+
+
+def _slug_rank(url: str) -> int:
+    """0 names the series, 1 a price story on a commodity beat, 2 the beat, 3 a hub."""
+    if not _ARTICLE_ID.search(url):
+        return 3
+    if _SERIES_SLUG.search(url):
+        return 0
+    if _COMMODITY_WORD.search(url) and _PRICE_WORD.search(url):
+        return 1
+    return 2
 
 
 def _article_default_date(candidate: dict) -> str:
@@ -631,6 +810,10 @@ def main(argv=None):
         candidates += sitemap_articles(OUTLET_BASES, start, end, stats)
     rows, stats = harvest(candidates, stats, args.max_articles, key)
     rows = dedupe(rows)
+    # The archive walk reaches today's sitemaps too, so an explicit window is
+    # enforced on the point's own date: a 2025 backfill never emits a 2026 level.
+    first, last = start.isoformat(), end.isoformat()
+    rows = [r for r in rows if first <= (r["price_date"] or "") <= last]
     out = Path(args.out)
     written = write_csv(out / "news_price_points.csv", CSV_COLUMNS, rows)
     print(f"news: {stats}")

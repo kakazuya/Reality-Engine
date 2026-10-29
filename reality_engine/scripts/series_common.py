@@ -13,11 +13,14 @@ Python (the controller runs them outside this sandbox).
 
 from __future__ import annotations
 
+import base64
 import calendar
 import csv
 import html as html_lib
 import os
 import re
+import socket
+import ssl
 import time
 import urllib.error
 import urllib.request
@@ -32,6 +35,14 @@ USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 #: centrally in :func:`http_get` so no fetcher has to remember it.
 PACE_SEC = 1.0
 _LAST_HIT: dict[str, float] = {}
+#: Host -> HTTP code of a 403/429 seen this run. A host that says "no" once is
+#: not asked again: the report names it, and the rest of the run continues.
+BLOCKED: dict[str, int] = {}
+#: host -> verified context (system store plus the AIA intermediate, when the
+#: server omits it). Cached so one handshake fix serves the whole run.
+_CONTEXTS: dict[str, ssl.SSLContext] = {}
+#: Hosts whose chain was already completed once; a second failure is permanent.
+_FIXED: set[str] = set()
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
@@ -39,36 +50,147 @@ _WS_RE = re.compile(r"\s+")
 
 def _pace(url: str) -> None:
     host = urlparse(url).netloc or url
+    if host in BLOCKED:
+        raise RuntimeError(f"{host}: not asked again after HTTP {BLOCKED[host]}")
     wait = PACE_SEC - (time.monotonic() - _LAST_HIT.get(host, 0.0))
     if wait > 0:
         time.sleep(wait)
     _LAST_HIT[host] = time.monotonic()
 
 
-def http_get(url: str, timeout: int = 90, referer: str = "", retries: int = 1) -> bytes:
-    """GET ``url`` as a browser would, paced per host; one retry on transport error only.
+#: An AIA URI is a DER ``IA5String`` (tag 0x86, one-byte length, then the ASCII
+#: URL), so the issuer the server forgot to send is readable without an X.509
+#: library. The length byte is honoured: the neighbouring ASN.1 bytes are often
+#: printable and a bare "http://" scan would eat them.
+_IA5_TAG = 0x86
+
+
+def aia_urls(der: bytes) -> list[str]:
+    """``caIssuers`` URLs named inside a certificate's DER blob.
+
+    This is the AIA extension (``http://yr1.i.lencr.org/`` for the OEA site): the
+    certificate says where its issuer can be downloaded, which is exactly what a
+    server that omits the intermediate makes necessary.
+    """
+    out: list[str] = []
+    for i, byte in enumerate(der or b""):
+        if byte != _IA5_TAG or i + 2 >= len(der):
+            continue
+        end = i + 2 + der[i + 1]
+        if end > len(der):
+            continue
+        blob = der[i + 2:end]
+        if not blob.startswith(b"http"):
+            continue
+        url = blob.decode("ascii", "replace")
+        if "." in urlparse(url).netloc and url not in out:
+            out.append(url)
+    return out
+
+
+def context_with_chain(extra_pems: tuple[str, ...] = ()) -> ssl.SSLContext:
+    """A verifying context: the system store plus the intermediates the server omitted.
+
+    ``CERT_NONE`` never appears here. A host whose chain cannot be completed
+    stays unverifiable and its request fails, which is the safe answer.
+    """
+    ctx = ssl.create_default_context()
+    for pem in extra_pems:
+        ctx.load_verify_locations(cadata=pem)
+    return ctx
+
+
+def _aia_intermediate(url: str, timeout: int) -> str:
+    """PEM of the issuer certificate named by the leaf's AIA extension, or ``""``.
+
+    The unverified handshake here reads the certificate only; the data GET that
+    matters always runs on :func:`context_with_chain`, never on this context.
+    """
+    host = urlparse(url).netloc.split(":")[0]
+    try:
+        with socket.create_connection((host, 443), timeout=timeout) as sock:
+            with ssl._create_unverified_context().wrap_socket(  # noqa: SLF001
+                    sock, server_hostname=host) as tls:
+                der = tls.getpeercert(binary_form=True)
+        for aia in aia_urls(der):
+            if aia.lower().endswith(".crl"):
+                continue                     # the leaf also names its revocation list
+            for _attempt in range(2):        # one retry: the issuer host is a third party
+                try:
+                    payload = http_get(aia, timeout=timeout, retries=0)
+                    break
+                except Exception:                            # noqa: BLE001
+                    payload = b""
+                    time.sleep(1.0)
+            if payload[:1] == b"\x30":                      # DER SEQUENCE
+                body = base64.encodebytes(payload).decode("ascii")
+                return ("-----BEGIN CERTIFICATE-----\n"
+                        + body + "-----END CERTIFICATE-----\n")
+    except Exception:                                      # noqa: BLE001
+        return ""
+    return ""
+
+
+def _context(url: str) -> ssl.SSLContext:
+    host = urlparse(url).netloc
+    if host not in _CONTEXTS:
+        _CONTEXTS[host] = context_with_chain()
+    return _CONTEXTS[host]
+
+
+def _cert_error(exc: BaseException) -> bool:
+    """True for an incomplete-chain failure, wrapped by urllib or not.
+
+    ``ssl.SSLError`` carries a string ``reason``, so testing only
+    ``getattr(exc, "reason", exc)`` misses the bare exception that urllib lets
+    through on some paths -- and the run then reports a chain failure it could
+    have repaired.
+    """
+    for candidate in (exc, getattr(exc, "reason", None)):
+        if isinstance(candidate, ssl.SSLCertVerificationError):
+            return True
+        if isinstance(candidate, str) and "CERTIFICATE_VERIFY_FAILED" in candidate:
+            return True
+    return False
+
+
+def http_get(url: str, timeout: int = 90, referer: str = "", retries: int = 2) -> bytes:
+    """GET ``url`` as a browser would, paced per host; transport errors are retried.
 
     A 4xx is never retried: a moved page is a permanent answer and retrying it
-    just doubles the request count. Raises ``RuntimeError`` with the last error.
+    just doubles the request count. A 403/429 also parks the host for the rest of
+    the run (:data:`BLOCKED`), which is the rule for every source here. A chain
+    the server sends incomplete is completed from the leaf's AIA URL and retried
+    once on a verifying context -- never by relaxing verification.
     """
     headers = {"User-Agent": USER_AGENT, "Accept": "*/*"}
     if referer:
         headers["Referer"] = referer
+    host = urlparse(url).netloc
     last: object = None
     for attempt in range(retries + 1):
         try:
             _pace(url)
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout,
+                                        context=_context(url)) as resp:
                 return resp.read()
         except urllib.error.HTTPError as exc:                   # noqa: PERF203
+            if exc.code in (403, 429):
+                BLOCKED[host] = exc.code
             if 400 <= exc.code < 500:
                 raise RuntimeError(f"GET {url}: HTTP {exc.code}") from exc
             last = exc
         except Exception as exc:                                # noqa: BLE001
+            if _cert_error(exc):
+                pem = "" if host in _FIXED else _aia_intermediate(url, timeout)
+                if not pem:
+                    raise RuntimeError(f"GET {url} failed: {exc}") from exc
+                _FIXED.add(host)
+                _CONTEXTS[host] = context_with_chain((pem,))
             last = exc
         if attempt < retries:
-            time.sleep(1.0 + attempt)
+            time.sleep(1.0 + 2 ** attempt)                       # 1s, 3s, 7s
     raise RuntimeError(f"GET {url} failed: {last}")
 
 

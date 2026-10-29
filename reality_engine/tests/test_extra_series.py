@@ -10,7 +10,9 @@ opens a live database, or writes outside the workspace ``.tmp`` directory.
 import csv
 import io
 import os
+import ssl
 import unittest
+import urllib.error
 import uuid
 from contextlib import redirect_stdout
 from datetime import date
@@ -20,6 +22,7 @@ from unittest.mock import patch
 from reality_engine.scripts import extract_news_prices as news
 from reality_engine.scripts import fetch_imd_rainfall as imd
 from reality_engine.scripts import fetch_wpi_items as wpi
+from reality_engine.scripts import series_common as common
 from reality_engine.scripts.series_common import anchors, html_rows, num, write_csv
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "extra_series"
@@ -517,6 +520,407 @@ class TestSeriesCommon(unittest.TestCase):
         rows = html_rows("<table><tr><th>Item</th><th>Weight</th></tr>"
                          "<tr><td>Urea</td><td>1.5</td></tr></table>")
         self.assertEqual(rows, [["Item", "Weight"], ["Urea", "1.5"]])
+
+
+# ---------------------------------------------------------------------------
+# Regression fixtures for the 2026-10-29 live fixes
+# ---------------------------------------------------------------------------
+class TestTlsChainFix(unittest.TestCase):
+    """The OEA chain arrives incomplete: it is completed, never left unverified."""
+
+    URL = b"http://yr1.i.lencr.org/59.cer"
+
+    @classmethod
+    def _leaf(cls, url: bytes = URL, tail: bytes = b"") -> bytes:
+        # An ASN.1-shaped blob: the AIA ``caIssuers`` value is an IA5String
+        # (tag 0x86, one-byte length), followed by a printable decoy run that a
+        # bare "http" scan would swallow. The length byte must cut it off.
+        return (b"\x30\x82\x01\x00"
+                + b"\x86" + bytes([len(url)]) + url
+                + b"\x13" + bytes([len(tail)]) + tail)
+
+    def test_the_aia_url_is_read_from_the_leaf_and_the_length_is_honoured(self):
+        der = self._leaf(tail=b"http://decoy.example/x.cer")
+        self.assertEqual(common.aia_urls(der), ["http://yr1.i.lencr.org/59.cer"])
+
+    def test_a_leaf_without_an_aia_names_no_issuer(self):
+        self.assertEqual(common.aia_urls(b"\x30\x03\x02\x01\x01"), [])
+        self.assertEqual(common.aia_urls(b""), [])
+
+    def test_the_context_verifies_certificates_and_hostnames(self):
+        ctx = common.context_with_chain()
+        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(ctx.check_hostname)
+
+    def test_an_unreadable_intermediate_is_refused_not_ignored(self):
+        with self.assertRaises(ssl.SSLError):
+            common.context_with_chain(("not a pem",))
+
+    def test_an_incomplete_chain_that_cannot_be_completed_fails_closed(self):
+        cert = urllib.error.URLError(
+            ssl.SSLCertVerificationError(1, "unable to get local issuer certificate"))
+        with patch.dict(common.BLOCKED, {}, clear=True), \
+                patch.dict(common._CONTEXTS, {}, clear=True), \
+                patch.object(common, "_aia_intermediate", return_value=""), \
+                patch.object(common.urllib.request, "urlopen", side_effect=cert) as get:
+            with self.assertRaises(RuntimeError):
+                common.http_get("https://chain-closed.example/", retries=1)
+        self.assertEqual(get.call_count, 1)                  # a retry would just repeat it
+
+    def test_a_completed_chain_retries_on_a_verifying_context(self):
+        cert = urllib.error.URLError(
+            ssl.SSLCertVerificationError(1, "unable to get local issuer certificate"))
+
+        class _Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_exc):
+                return False
+
+            def read(self):
+                return b"payload"
+
+        contexts: list = []
+
+        def build(extra=()):
+            ctx = ssl.create_default_context()                 # the real builder's mode
+            contexts.append((tuple(extra), ctx))
+            return ctx
+
+        calls: list = []
+
+        def get(_req, timeout=None, context=None):
+            calls.append(context)
+            if len(calls) == 1:
+                raise cert
+            return _Resp()
+
+        with patch.dict(common.BLOCKED, {}, clear=True), \
+                patch.dict(common._CONTEXTS, {}, clear=True), \
+                patch.object(common, "_FIXED", set()), \
+                patch.object(common, "context_with_chain", side_effect=build), \
+                patch.object(common, "_aia_intermediate", return_value="PEM"), \
+                patch.object(common.urllib.request, "urlopen", side_effect=get):
+            self.assertEqual(common.http_get("https://chain-retry.example/"), b"payload")
+        self.assertEqual(len(contexts), 2)
+        self.assertEqual(contexts[1][0], ("PEM",))             # the issuer is loaded
+        self.assertEqual(len(calls), 2)
+        for ctx in calls:
+            self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+
+
+class TestWpiWorkbookFix(unittest.TestCase):
+    """Item rows come from the monthly index workbook, not the .docx release."""
+
+    HEADER = ["COMMODITY", "COMM_WT", "INDX042019", "INDX052019"]
+    WORKBOOK = ("https://eaindustry.nic.in/indx_download_1112/"
+                "monthly_index_202606.xls")
+
+    def test_the_heavier_label_wins_when_a_group_and_an_item_share_a_name(self):
+        rows = [["Manufacture of cement", 1.0, 100.0, 101.0],
+                ["Cement, lime & plaster", 6.0, 140.0, 141.5]]
+        got, info = wpi.rows_from_matrix(self.HEADER, rows, "2011_12", self.WORKBOOK,
+                                         date(2019, 4, 1), date(2019, 5, 31))
+        self.assertEqual([(r["series_code"], r["date"], r["value"]) for r in got],
+                         [("wpi_cement", "2019-04-30", 140.0),
+                          ("wpi_cement", "2019-05-31", 141.5)])
+        self.assertEqual(got[0]["unit"], "index_2011_12_100")
+        self.assertEqual(info["series_matched"], 1)
+
+    def test_months_come_from_the_printed_column_names_and_only_the_window(self):
+        self.assertEqual(wpi.month_columns(self.HEADER),
+                         [(2, "2019-04"), (3, "2019-05")])
+        self.assertEqual(wpi.month_columns(["Apr-23", "Apr-2012", "Item"]),
+                         [(0, "2023-04"), (1, "2012-04")])
+        got, _ = wpi.rows_from_matrix(self.HEADER, [["a. Coking Coal", 20.0, 130.0, 131.5]],
+                                      "2011_12", self.WORKBOOK,
+                                      date(2019, 4, 1), date(2019, 4, 30))
+        self.assertEqual([r["date"] for r in got], ["2019-04-30"])
+
+    def test_every_tree_enumerator_is_stripped_before_matching(self):
+        expected = {"(A). COAL": "wpi_coal_group",
+                    "(a). Coking Coal": "wpi_coking_coal",
+                    "e.Manufacture of cement": "wpi_cement",
+                    "Hot Rolled (HR) Coils & Sheets, including Narrow Strip": "wpi_hrc",
+                    "Hot Rolled Steel Coils/Sheets/Strips": "wpi_hrc"}
+        for label, code in expected.items():
+            self.assertEqual(wpi.match_item(label), code, label)
+
+    def test_a_payload_that_is_not_a_workbook_is_refused(self):
+        self.assertEqual(wpi.workbook_matrix(b"<html>no workbook</html>"), ([], []))
+        got, info = wpi.read_index_workbook(b"<html/>", self.WORKBOOK,
+                                            date(2019, 1, 1), date(2019, 12, 31))
+        self.assertEqual(got, [])
+        self.assertIn("reason", info)
+
+    def test_an_xlsx_workbook_is_read_by_container_not_by_extension(self):
+        try:
+            import openpyxl
+        except ImportError:                                  # pragma: no cover
+            self.skipTest("openpyxl not installed")
+        book = openpyxl.Workbook()
+        sheet = book.active
+        sheet.append(["COMMODITY", "COMM_WT", "INDX042019", "INDX052019"])
+        sheet.append(["a. Coking Coal", 20.0, 130.0, 131.5])
+        sheet.append(["Hot Rolled Steel Coils/Sheets/Strips", 5.0, 126.1, 127.0])
+        buf = io.BytesIO()
+        book.save(buf)
+        rows, info = wpi.read_index_workbook(buf.getvalue(), self.WORKBOOK,
+                                             date(2019, 4, 1), date(2019, 5, 31))
+        self.assertEqual(info["base"], "2011_12")
+        self.assertEqual([(r["series_code"], r["date"], r["value"]) for r in rows],
+                         [("wpi_coking_coal", "2019-04-30", 130.0),
+                          ("wpi_coking_coal", "2019-05-31", 131.5),
+                          ("wpi_hrc", "2019-04-30", 126.1),
+                          ("wpi_hrc", "2019-05-31", 127.0)])
+
+
+class TestImdWeekTableFix(unittest.TestCase):
+    """The live bulletin is a week-by-week departure PDF, not a per-week page."""
+
+    def test_the_published_week_table_yields_one_row_per_state_per_week(self):
+        parsed = imd.parse_week_table(
+            _fixture("imd_weekly_departure_pages.txt").decode("utf-8"))
+        self.assertEqual(parsed["status"], "ok")
+        self.assertEqual(parsed["weeks"], ["2026-10-07", "2026-10-14",
+                                           "2026-10-21", "2026-10-28"])
+        states = {r["state"] for r in parsed["rows"]}
+        self.assertIn("Chhattisgarh", states)
+        self.assertNotIn("Virtual", states)          # a row split by the page break
+        self.assertEqual(len(parsed["rows"]), len(states) * 4)
+        values = {(r["state"], r["week_end"]): r["departure_pct"] for r in parsed["rows"]}
+        self.assertEqual(values[("Chhattisgarh", "2026-10-07")], -95.0)
+        self.assertEqual(values[("Konkan & Goa", "2026-10-21")], -52.0)
+
+    def test_a_table_without_week_columns_is_refused(self):
+        parsed = imd.parse_week_table("S.No Subdivision June July\n1 COAL -5 -6")
+        self.assertEqual(parsed["status"], "refused")
+        self.assertEqual(parsed["rows"], [])
+
+    def test_the_subdivision_table_is_chosen_over_the_district_table(self):
+        page = ('<a href="../Rainfall/DISTRICT_RAINFALL_DEPARTUREWEEKLY_'
+                'COUNTRY_INDIA_c.pdf">d</a>'
+                '<a href="../Rainfall/SUBDIVISION_RAINFALL_DEPARTUREWEEKLY_'
+                'COUNTRY_INDIA_c.pdf">s</a>')
+        got = imd.weekly_tables(
+            [("https://mausam.imd.gov.in/responsive/rainfallinformation.php", page)])
+        self.assertEqual([kind for _url, kind in got], ["subdivision", "district"])
+        self.assertIn("SUBDIVISION_", got[0][0])
+
+
+class TestNewsSlugFix(unittest.TestCase):
+    """The archive is month-named and the URL cue must survive a hyphenated slug."""
+
+    def test_a_url_is_a_candidate_on_its_series_or_its_commodity_section(self):
+        for url in ("https://x.example/markets/hot-rolled-coil-prices-rise.html",
+                    "https://x.example/shipping/baltic-dry-index-slips-4.html",
+                    "https://x.example/markets/commodities/gold-hits-a-record.html",
+                    "https://economictimes.indiatimes.com/industry/indl-goods/svs/"
+                    "steel/vedanta-bets-on-steel-again/articleshow/117798403.cms"):
+            self.assertTrue(news.candidate(url), url)
+        self.assertFalse(news.candidate("https://x.example/markets/sensex-close.html"))
+        # a section path is a beat, not the series: this one is cruise tourism
+        self.assertFalse(news.candidate(
+            "https://economictimes.indiatimes.com/industry/transportation/"
+            "shipping-/-transport/india-eyes-cruise-tourism/articleshow/1.cms"))
+
+    def test_a_month_named_archive_child_carries_its_own_date(self):
+        self.assertEqual(news._date_in("https://et.example/news/2025-june-1.xml"), "2025-06-01")
+        self.assertEqual(news._date_in("https://bs.example/sitemap/2025-june-2.xml"), "2025-06-16")
+        self.assertEqual(news._date_in("https://bs.example/sitemap/year-2025.xml"), "2025-01-01")
+        self.assertEqual(news._date_in("2025-06-17T11:19:15+05:30"), "2025-06-17")
+        self.assertEqual(news._date_in("https://x.example/about.html"), "")
+
+    def test_a_year_index_is_expanded_into_its_month_files(self):
+        robots = b"Sitemap: https://bs.example/sitemap-index.xml\n"
+        index = (b'<?xml version="1.0"?><sitemapindex>'
+                 b'<sitemap><loc>https://bs.example/sitemap/news-sitemap.xml</loc>'
+                 b'<lastmod>2026-10-28</lastmod></sitemap>'
+                 b'<sitemap><loc>https://bs.example/sitemap/web-story-1.xml</loc>'
+                 b'<lastmod>2025-09-10</lastmod></sitemap>'
+                 b'<sitemap><loc>https://bs.example/sitemap/year-2025.xml</loc>'
+                 b'</sitemap></sitemapindex>')
+        year = (b'<?xml version="1.0"?><sitemapindex>'
+                b'<sitemap><loc>https://bs.example/sitemap/2025-january-1.xml</loc>'
+                b'</sitemap>'
+                b'<sitemap><loc>https://bs.example/sitemap/2025-june-1.xml</loc>'
+                b'</sitemap></sitemapindex>')
+        january = (b'<?xml version="1.0"?><urlset>'
+                   b'<url><loc>https://bs.example/markets/news/hot-rolled-coil-prices-'
+                   b'fall-125011000001_1.html</loc>'
+                   b'<lastmod>2025-01-10</lastmod></url>'
+                   b'<url><loc>https://bs.example/markets/sensex-close.html</loc>'
+                   b'<lastmod>2025-01-10</lastmod></url></urlset>')
+        june = (b'<?xml version="1.0"?><urlset>'
+                b'<url><loc>https://bs.example/markets/news/baltic-dry-index-hits-'
+                b'8-month-high-125061300370_1.html</loc>'
+                b'<lastmod>2025-06-13</lastmod></url></urlset>')
+        stale = (b'<?xml version="1.0"?><urlset>'
+                 b'<url><loc>https://bs.example/markets/commodities/gold-price-fall-'
+                 b'126102700383_1.html</loc>'
+                 b'<lastmod>2026-10-28</lastmod></url></urlset>')
+        fake = _NoNetwork({"https://bs.example/robots.txt": robots,
+                          "https://bs.example/sitemap-index.xml": index,
+                          "https://bs.example/sitemap/news-sitemap.xml":
+                              b'<?xml version="1.0"?><urlset></urlset>',
+                          "https://bs.example/sitemap/web-story-1.xml": stale,
+                          "https://bs.example/sitemap/year-2025.xml": year,
+                          "https://bs.example/sitemap/2025-january-1.xml": january,
+                          "https://bs.example/sitemap/2025-june-1.xml": june})
+        stats = {"requests": 0, "feeds": [], "sitemaps": [], "articles_failed": [],
+                 "articles_no_known_at": [], "articles_parsed": 0}
+        found = news.sitemap_articles({"bs": "https://bs.example"},
+                                      date(2025, 1, 1), date(2025, 9, 30),
+                                      stats, fetcher=fake)
+        self.assertEqual([c["url"] for c in found],
+                         ["https://bs.example/markets/news/hot-rolled-coil-prices-"
+                          "fall-125011000001_1.html",
+                          "https://bs.example/markets/news/baltic-dry-index-hits-"
+                          "8-month-high-125061300370_1.html"])
+        self.assertEqual(stats["requests"], 6)   # robots + index + year, stale, 2 months
+
+    def test_an_article_archive_beats_its_video_sibling_on_the_same_date(self):
+        index = (b'<?xml version="1.0"?><sitemapindex>'
+                 b'<sitemap><loc>https://x.example/sitemap/video-year-2025.xml</loc>'
+                 b'</sitemap>'
+                 b'<sitemap><loc>https://x.example/sitemap/year-2025.xml</loc>'
+                 b'</sitemap></sitemapindex>')
+        self.assertEqual(
+            news.pick_weekly(news.parse_sitemap(index)["entries"], [date(2025, 6, 6)]),
+            ["https://x.example/sitemap/year-2025.xml"])
+
+    def test_a_point_outside_the_requested_window_is_not_written(self):
+        def row(day: str) -> dict:
+            return {"series_code": "baltic_dry_index", "price_date": day,
+                    "value": 1904.0, "unit": "index_points", "known_at": day + "T11:19",
+                    "quote": "jumped 9.6% to 1,904", "source_url": "https://bs.example/a",
+                    "outlet": "business-standard", "price_date_basis": "published",
+                    "pit_conf": 0.7, "extractor": "regex"}
+
+        out = _tmpdir("news_window")
+        stats = {"requests": 0, "feeds": [], "sitemaps": [], "articles_failed": [],
+                 "articles_no_known_at": [], "articles_parsed": 0}
+        buf = io.StringIO()
+        with patch.object(news, "rss_articles", return_value=[]), \
+                patch.object(news, "sitemap_articles", return_value=[]), \
+                patch.object(news, "harvest",
+                             return_value=([row("2025-06-13"), row("2026-10-14")], stats)), \
+                redirect_stdout(buf):
+            rc = news.main(["--from", "2025-01-01", "--to", "2025-12-31", "--out", str(out)])
+        self.assertEqual(rc, 0)                      # one row survived, so the run is a success
+        with (out / "news_price_points.csv").open(newline="", encoding="utf-8") as f:
+            written = list(csv.DictReader(f))
+        self.assertEqual([r["price_date"] for r in written], ["2025-06-13"])
+
+    def test_scripts_and_styles_are_not_part_of_the_article_body(self):
+        html = ('<html><head><script>var x = "sensex close";</script>'
+                '<style>.a{color:red}</style></head><body><h1>HRC</h1>'
+                '<p>HRC prices rose to Rs 52,000 per tonne.</p></body></html>')
+        got = news.article_text(html)
+        self.assertNotIn("var x", got["body"])
+        self.assertNotIn("color:red", got["body"])
+        self.assertIn("Rs 52,000", got["body"])
+
+    def test_the_urls_that_name_a_series_are_fetched_before_the_rest_of_the_budget(self):
+        robots = b"Sitemap: https://bs.example/sitemap-index.xml\n"
+        index = (b'<?xml version="1.0"?><sitemapindex>'
+                 b'<sitemap><loc>https://bs.example/sitemap/2025-09-10.xml</loc>'
+                 b'<lastmod>2025-09-10</lastmod></sitemap></sitemapindex>')
+        child = (b'<?xml version="1.0"?><urlset>'
+                 b'<url><loc>https://bs.example/steel/why-cement-demand-matters'
+                 b'-125090000001_1.html</loc>'
+                 b'<lastmod>2025-01-02</lastmod></url>'
+                 b'<url><loc>https://bs.example/markets/news/hot-rolled-coil-prices-fall'
+                 b'-125093000001_1.html</loc>'
+                 b'<lastmod>2025-09-30</lastmod></url>'
+                 b'<url><loc>https://bs.example/markets/sensex-close.html</loc>'
+                 b'<lastmod>2025-09-30</lastmod></url></urlset>')
+        fake = _NoNetwork({"https://bs.example/robots.txt": robots,
+                           "https://bs.example/sitemap-index.xml": index,
+                           "https://bs.example/sitemap/2025-09-10.xml": child})
+        stats = {"requests": 0, "feeds": [], "sitemaps": [], "articles_failed": [],
+                 "articles_no_known_at": [], "articles_parsed": 0}
+        found = news.sitemap_articles({"bs": "https://bs.example"},
+                                      date(2025, 1, 1), date(2025, 9, 30),
+                                      stats, fetcher=fake)
+        self.assertEqual([c["url"] for c in found],
+                         ["https://bs.example/markets/news/hot-rolled-coil-prices-fall"
+                          "-125093000001_1.html",
+                          "https://bs.example/steel/why-cement-demand-matters"
+                          "-125090000001_1.html"])
+
+    def test_a_sentence_of_page_furniture_is_not_a_price_statement(self):
+        footer = ("Hot Rolled Coils traded at Rs 52,000 per tonne. Advertise with Us "
+                  "Sitemap Subscribe Careers BS Apps Copyrights \u00a9 2026 Business "
+                  "Standard Private Ltd., ") + ("menu item " * 120)
+        rows, _ = news.extract_points(footer, "u", "bs",
+                                      "2025-06-17T11:19:15+05:30", "2025-06-17")
+        self.assertEqual([(r["price_date"], r["value"]) for r in rows],
+                         [("2025-06-17", 52000.0)])
+        self.assertTrue(all(len(s) <= news.MAX_SENTENCE_CHARS for s in news.sentences(footer)))
+
+    def test_the_budget_covers_every_month_before_a_second_article_from_one(self):
+        robots = b"Sitemap: https://bs.example/sitemap-index.xml\n"
+        index = (b'<?xml version="1.0"?><sitemapindex>'
+                 b'<sitemap><loc>https://bs.example/sitemap/2025-january-1.xml</loc>'
+                 b'</sitemap></sitemapindex>')
+        entries = b"".join(
+            f'<url><loc>https://bs.example/markets/news/steel-prices-{m}-{i}-'
+            f'1250110{i:05d}_1.html</loc>'
+            f'<lastmod>2025-{m:02d}-{i + 1:02d}</lastmod></url>'.encode()
+            for m in (1, 2, 3) for i in range(2))
+        child = (b'<?xml version="1.0"?><urlset>' + entries + b'</urlset>')
+        fake = _NoNetwork({"https://bs.example/robots.txt": robots,
+                           "https://bs.example/sitemap-index.xml": index,
+                           "https://bs.example/sitemap/2025-january-1.xml": child})
+        stats = {"requests": 0, "feeds": [], "sitemaps": [], "articles_failed": [],
+                 "articles_no_known_at": [], "articles_parsed": 0}
+        found = news.sitemap_articles({"bs": "https://bs.example"},
+                                      date(2025, 1, 1), date(2025, 3, 31),
+                                      stats, fetcher=fake)
+        months = [c["published"][:7] for c in found]
+        self.assertEqual(len(months), 6)
+        self.assertEqual(sorted(months[:3]), ["2025-01", "2025-02", "2025-03"])
+
+    def test_a_date_written_without_its_year_is_recovered(self):
+        for text, day in (
+                ("HRC was Rs 46,600 per tonne in January but then fell.", "2025-01-01"),
+                ("HRC was Rs 52,900 a tonne on April 29, according to data.", "2025-04-29"),
+                ("HRC was Rs 50,000 per tonne in December.", "2024-12-01")):
+            rows, _ = news.extract_points(text, "u", "bs",
+                                          "2025-06-26T13:32:59+05:30", "2025-06-26")
+            self.assertEqual([(r["price_date"], r["price_date_basis"]) for r in rows],
+                             [(day, "stated")], text)
+        # a comparison is not a date: "highest since October" is not the price date
+        rows, _ = news.extract_points(
+            "The Baltic Dry Index jumped 9.6% to 1,904, its highest level since October 7.",
+            "u", "bs", "2025-06-13T11:19:00+05:30", "2025-06-13")
+        self.assertEqual([(r["price_date"], r["price_date_basis"]) for r in rows],
+                         [("2025-06-13", "pubdate")])
+
+    def test_a_page_render_date_cannot_date_a_point(self):
+        chrome = "The Baltic Dry Index, as on Thursday, October 29, 2026, has surged to 1,968."
+        rows, _ = news.extract_points(chrome, "u", "bs",
+                                      "2025-06-17T11:19:15+05:30", "2025-06-17")
+        self.assertEqual(rows, [])                   # the masthead date, not the story's
+        story = "The Baltic Dry Index, as on Friday, June 13, 2025, has surged to 1,968."
+        rows, _ = news.extract_points(story, "u", "bs",
+                                      "2025-06-17T11:19:15+05:30", "2025-06-17")
+        self.assertEqual([(r["price_date"], r["value"]) for r in rows],
+                         [("2025-06-13", 1968.0)])
+
+    def test_an_article_id_ranks_before_a_section_hub(self):
+        article = ("https://et.example/industry/indl-goods/svs/steel/"
+                   "vedanta-bets-on-steel-again/articleshow/117798403.cms")
+        self.assertEqual(news._slug_rank(article), 2)
+        self.assertEqual(news._slug_rank(
+            "https://bs.example/markets/news/indian-steel-prices-weaken-on-monsoon-"
+            "demand-slump-125062600377_1.html"), 1)          # a price story wins the budget
+        self.assertEqual(news._slug_rank("https://et.example/industry/indl-goods/svs/steel"), 3)
+        self.assertEqual(news._slug_rank(
+            "https://bs.example/markets/news/baltic-dry-index-hits-8-month-high-"
+            "125061300370_1.html"), 0)
 
 
 if __name__ == "__main__":
