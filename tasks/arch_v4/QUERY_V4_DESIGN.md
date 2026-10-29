@@ -6,6 +6,26 @@ programs in this directory: `build_concept_registry.py` (registry + coverage ove
 master-bank cases) and `bench_screen.py` (timings + RAM on the pilot stores). Numbers taken
 from other documents say so.
 
+## v4.1 changes (30 Oct 2026) — Shivam's six decisions + the evening layer
+
+This revision is binding. Each row names the decision, what changed here, and the generator
+output that was re-measured.
+
+| # | decision (30 Oct 2026) | where this document changed |
+|---|---|---|
+| 1 | **Consensus = our own estimates, no paid feed.** `own_estimate` per company, per atom, per period; inputs = own quarterly trend + guidance adjustment + analyst numbers from the opinions store where they exist; each estimate stores method, inputs and `known_at`; beat/miss is measured against it, and against the opinions report when one exists | §A.1 (atom table), §A.2 (`est_atom` dim), **§A.8 (new spec)**, §B.5 (migration order), §C.1 (Ask), §D.4 (answer types), §H.5 (the old `absent.consensus`/`absent.price_target` class is gone), §H.7 (build) |
+| 2 | **Extraction vocabulary: exhaustive surface, few labels.** Every phrase verbatim and unbounded; ~60–80 topics in two levels sharing ids with registry atoms; facets instead of more labels; cluster the phrases, keep the smallest topic set covering ≥95%, remainder `other:<raw>`, promote a growing `other` cluster | §A.5 (two lexicons), **§A.9 (new pipeline/tables/check)**, §B.1/§B.3 (claim joins the label), §H.8, **`VOCAB_PASS1.md`** (first measured pass on the pilot: phrases, clusters, topics, 20 sample mappings) |
+| 3 | **NOT IN DATA is not an answer by itself.** A typed NID is not counted as answered; triage (a) free fetch within one day → fetch job, (b) genuinely hard → labelled proxy estimate with its assumption, (c) only then NID listing what was tried. New `proxy` answer type (proxy, assumption, confidence) | §A.6 (ceiling restated), §D.4 (answer contract), **§H.5 (triage; `NID_TRIAGE.md` is the triage worker's output)**, §H.0 |
+| 4 | **Sector store is not empty.** `sector_pit.db.company_sector_pit` has **482 rows**; the defect is that `valid_from` is a 2019-01-01 backcast of *today's* classification (hindsight). Specify the six-step sector build with honest effort | §B.2 (correction + the real defect), **§B.6 (new six-step build, effort per step)**, §H.6, open questions |
+| 5 | **Discovery backtest is hindsight-free and runs on the pilot first.** Order: pilot backtest → Shivam approves the full schema → only then the full database | **§E.5 (new: pilot universe/window/`edge.known_at` enforcement/edge-or-no-edge metrics)**, §H.0 (order of work) |
+| 6 | **GPU vs CPU is unmeasured.** Rewrite the GPU section as a thesis plus the test that decides it; assert no result | **§F.8 (rewritten)**, §H.0; the GPU benchmark worker writes `tasks/arch_v4/bench_gpu.md` |
+| E | **Evening portfolio decision layer** (design-only): `portfolio_positions`, `asset_universe`, `daily_scorecard`, `recommendation_log`; nightly scoring of holdings against alternatives after tax, costs and slippage; hold/trim/switch/exit with evidence, confidence and what would change the call; the log graded on later outcomes; signals only until the strategy tests pass out of sample; holdings read-only from the brokers (official Kite MCP for Zerodha; Angel One by its export) | **§F.9 (new)**, §E.2 (link 8: the recommendation log is graded like `say_vs_do`), §H.9 |
+
+Numbers re-measured for this revision: **60 atoms, 19 dims, 13 formulas, 26 operators, 2,242
+lexicon rows** (was 61/18: the two paid-consensus atoms became one `own.estimate` atom with an
+`est_atom` dim), coverage **897 mapped / 150 NID / 26 unmapped** unchanged, `--check`
+deterministic **PASS**. The 150 NID are now *tickets*, not answers (§H.5).
+
 ## 0. Why v4, in one paragraph
 
 The pilot gate is **27/2,681 strict = 1.0%**, and the failure reasons are almost all
@@ -15,12 +35,19 @@ GATE_RESULTS_*_strict.jsonl`). The data is mostly there; what is missing is (a) 
 the words a question uses to the measures the database holds, (b) a typed decomposition so
 that "promoter **and** public", "NSE **and** BSE **and** the sum", "raw **and** adjusted"
 become three parts that must each come back, and (c) an executor that returns exactly one
-result per part. v4 makes those three things data instead of code: a registry of **61 atoms,
-18 dims, 13 formulas, 26 operators and a mined lexicon**, one executor over one long-format
+result per part. v4 makes those three things data instead of code: a registry of **60 atoms,
+19 dims, 13 formulas, 26 operators and a mined lexicon**, one executor over one long-format
 fact view, and a decomposer that never sees a bank field. Measured on the whole bank: **897
 cases map (83.6%), 150 resolve to NOT IN DATA with the registry's stated reason (14.0%), 26
 stay unmapped (2.4%)** — i.e. the registry can express **97.6%** of the bank's asks before any
 data question is asked at all *(measured, §A.6)*.
+
+That 97.6% is an **expressiveness** ceiling, not an answer rate. v4.1 (decision 3) does not
+count a typed NID as answered: each of the 150 is a triage ticket — fetch it free within a
+day, answer it from a labelled proxy, or close it as true NOT IN DATA with what was tried
+(§H.5; the triage worker's list is `tasks/arch_v4/NID_TRIAGE.md`). Consensus is no longer an
+absent class: the estimates are ours, built from our own series, guidance and the opinions
+store (§A.8).
 
 The rest of this document specifies each piece, the shapes that remove planner code, the
 discovery layer that finds the 2nd/3rd-order links, the engine and the measured budget, and
@@ -45,12 +72,12 @@ Lakshmi Mills (NSE: LAKSHMIMIL) ka 2026 ka YTD high price kya tha, aur kis date 
 window: 2026-01-01..2026-10-19 ("year to date", by the existing `period_bounds`)
 ```
 
-## A.1 atoms — 61 rows *(measured)*
+## A.1 atoms — 60 rows *(measured)*
 
 One row per **raw measure**: `atom_id, label, kind, store, table, column, source, unit,
 grain, entity_key, pit, coverage, coverage_note, synonyms`. The generated table is
 `concept_registry.json["atoms"]`; the declarations are the `_ATOMS` list in
-`build_concept_registry.py` (hand-checked, 61 rows).
+`build_concept_registry.py` (hand-checked, 60 rows).
 
 | kind | atoms | examples |
 |---|---:|---|
@@ -59,10 +86,11 @@ grain, entity_key, pit, coverage, coverage_note, synonyms`. The generated table 
 | `ownership` | 6 | `hold.pct` (holder class is a dim), `hold.pledge_pct`, `hold.fpi_limit_utilised`, `flows.net_inr`, `corp.amount_per_share` |
 | `narrative` | 2 | `claim.claim` (**topic is a dim**), `text.passage` (page is a dim) |
 | `macro` | 8 | `macro.policy`, `macro.claim`, `macro.commodity_close`, `macro.index_close`, `macro.flow`, `macro.oi`, `macro.etf_premium`, `macro.series` |
-| `absent` | 7 | `absent.consensus`, `absent.price_target`, `absent.intraday`, `absent.investor_holdings`, `absent.refurb_sales`, `absent.forecast`, `absent.private_terms` |
+| `own` | 1 | `own.estimate` (**estimated atom and method are dims**, §A.8 — replaces `absent.consensus` / `absent.price_target`) |
+| `absent` | 5 | `absent.intraday`, `absent.investor_holdings`, `absent.refurb_sales`, `absent.forecast`, `absent.private_terms` |
 
-Coverage status per atom *(measured)*: **43 held**, **11 gap** (the registry knows the
-measure, the pilot store does not carry it yet — listed in §H.4), **7 absent** (nothing
+Coverage status per atom *(measured)*: **43 held**, **12 gap** (the registry knows the
+measure, the pilot store does not carry it yet — listed in §H.4), **5 absent** (nothing
 publishes it; the atom exists so the NOT IN DATA wording has a reason, not an apology).
 
 Two design decisions carry most of the minimality:
@@ -75,9 +103,12 @@ Two design decisions carry most of the minimality:
    topic values on one atom.
 2. **Nothing derived is an atom.** Margin, growth, ratios, D/E, working-capital cycle, per-
    rupee revenue, book value per share are formulas (§A.3); ranking, change, max-with-date, a
-   ripple walk are operators (§A.4). That is why 61 rows cover a 1,073-case bank.
+   ripple walk are operators (§A.4). That is why 60 rows cover a 1,073-case bank. The one
+   estimate-shaped row, `own.estimate`, is a *measured object* (we produce it and store its
+   method, inputs and `known_at`), not a formula: it is the consensus that no free feed sells
+   us (§A.8).
 
-## A.2 dims — 18 rows *(measured)*
+## A.2 dims — 19 rows *(measured)*
 
 A dim is a qualifier that lives **on** an atom. Each row: `dim_id, values, source, default,
 note`. The five the brief names plus the ones the bank actually needs:
@@ -89,7 +120,7 @@ note`. The five the brief names plus the ones the bank actually needs:
 | `consolidation` | consolidated, standalone | a filing carries both; the dim picks one |
 | `holder_class` | promoter, public, FII, DII, MF, insurance, retail, pledge, fpi_limit | one `hold.pct` atom, nine columns (MB0125 asks promoter **and** public) |
 | `segment` | open set | from the segment note; the mix comes from `f.share_of` |
-| `topic` | open set (223 values in the lexicon, mined) | the narrative topic on `claim.claim` |
+| `topic` | open set — **label ids from §A.9** (surface phrases stay verbatim in the document lexicon) | the narrative topic on `claim.claim` |
 | `scope` | stock, sector, industry, index, theme, mcap_bucket, price_band, fno, market_wide | the entity_set; "which sugar companies" is a membership join |
 | `doctype` | announcement, concall, deck, ar, results, pib, rbi, budget | the source class of a passage/claim |
 | `flow_kind` | insider, deal, bulk, block | sign of `flows.net_inr` |
@@ -102,6 +133,7 @@ note`. The five the brief names plus the ones the bank actually needs:
 | `period_kind` | day, quarter, FY, event, span | the window grain, from `period_bounds` |
 | `page` | numeric | "page 41 of the deck" is a dim on `text.passage` |
 | `lookback` | 20, 50, 200 | the SMA length |
+| `est_atom` | open set of registry atom ids | **v4.1:** the measure an `own.estimate` is for; "beat consensus revenue" is one atom plus `est_atom=fin.revenue`, never a per-measure atom family |
 
 ## A.3 formulas — 13 rows *(measured)*
 
@@ -184,6 +216,14 @@ overlap. The registry's coverage therefore comes from the hand-declared atom syn
 declared topics, and the *mining* deliverable is the opposite list — §A.7's residue and the
 60 `mined_candidates` in the JSON: phrases the bank uses that the registry still lacks.
 
+**Two lexicons, not one (v4.1 decision 2).** The table above is the **query lexicon**: the
+words a *question* uses, mapped to atoms/formulas/dims/operators (2,242 rows). The words a
+*document* uses are a separate, much larger object — the **surface layer** of §A.9: every
+extracted phrase kept verbatim with no cap (148,652 distinct phrases for the 60 pilot
+companies, measured in `VOCAB_PASS1.md`), mapped to ~60–80 **label** ids that share ids with
+the registry atoms, with `other:<raw>` for the tail. Neither lexicon is mined into the other;
+a bank phrase and a company's phrase are different evidence.
+
 **Minimality rule, enforced in code:** a new entry is admitted only if a case cannot be
 written with the existing ones, and an operator/formula is preferred over an atom. The
 generator prints the size-vs-coverage curve that makes the rule checkable (§A.6).
@@ -195,9 +235,16 @@ From `python tasks/arch_v4/build_concept_registry.py --check` *(measured)*:
 | status | cases | share | meaning |
 |---|---:|---:|---|
 | mapped | 897 | 83.6% | every clause resolves to an atom/formula/rule; slots filled |
-| not_in_data | 150 | 14.0% | resolves, but a required atom is `absent`/`gap` → NID with the registry's reason |
+| not_in_data | 150 | 14.0% | resolves, but a required atom is `absent`/`gap` → a **ticket** (§H.5), not an answer |
 | unmapped | 26 | 2.4% | a clause names a measure the registry cannot express |
-| **mapped + NID** | **1,047** | **97.6%** | the ceiling for the 95% gate |
+| **mapped + NID** | **1,047** | **97.6%** | the *expressiveness* ceiling |
+
+**Read the third column correctly (v4.1 decision 3).** 97.6% says the registry can *write
+down* the ask; it is not the gate's expected answer rate. A typed NID is a to-do: every one
+of the 150 is triaged into (a) a free fetch that closes it within a day, (b) a labelled proxy
+answer (the proxy, its assumption, its confidence), or (c) a true NOT IN DATA that lists what
+was tried. The triage output is `tasks/arch_v4/NID_TRIAGE.md`; until it lands, the honest
+answer rate is **83.6%** and the plan to raise it is the triage list, not a bigger registry.
 
 By source bank *(measured)*: variations300 281/18/1, open300 268/18/14, reddit200
 208/22/13, ripple200 171/26/3, shivam30 28/2/0 (mapped / NID / unmapped). By entity level:
@@ -243,6 +290,107 @@ entity, with the same reason vocabulary.
 Every case id is listed in `registry_coverage.md` §4.4. These 26 are **not** a data problem and
 not a reason to grow atoms: 9 are decomposer refinements and 17 are named rules.
 
+## A.8 `own.estimate` — consensus is ours (v4.1 decision 1)
+
+No paid consensus feed. An **own estimate** is a first-class measured object with an
+auditable method, stored per **(company, estimated atom, period)**; the estimated atom is the
+`est_atom` dim, so "beat consensus revenue" and "target price" are the same atom read twice.
+
+```sql
+CREATE TABLE own_estimate(
+  isin TEXT NOT NULL,
+  est_atom TEXT NOT NULL,             -- fin.revenue | fin.pat | fin.eps | price.close | …
+  period_end TEXT NOT NULL,           -- the period being estimated
+  value REAL, unit TEXT,              -- one number, one unit
+  method TEXT NOT NULL,               -- trend | trend_guidance | trend_guidance_opinion
+  inputs_json TEXT NOT NULL,          -- the exact rows used: series refs, claim/guidance refs,
+                                      -- opinions-doc refs, and the arithmetic
+  n_obs INT, confidence REAL,         -- 0-1; small caps are thin, say so
+  known_at TEXT NOT NULL,             -- when WE could first have computed it (PIT)
+  as_of TEXT NOT NULL,                -- the information cut of the inputs
+  PRIMARY KEY (isin, est_atom, period_end, as_of));
+```
+
+**Method ladder** (each step is stored, never hidden):
+
+1. `trend` — the company's own quarterly series: a seasonal-naive plus a damped-trend
+   extrapolation (last 8–12 quarters; robust to the one-off quarter by using the median of
+   the last four YoY growth rates). This is the base and it always exists where the series
+   does.
+2. `trend_guidance` — adjustment by the company's own claims (concall/deck): a guidance claim
+   is a `claim` row (§B.3) with topic = the estimated atom, `direction`, `magnitude`,
+   `horizon`. The adjustment is the guided delta applied at the stated horizon, capped at
+   ±1.5× the trend's own standard error; the claim refs go into `inputs_json`.
+3. `trend_guidance_opinion` — where the opinions store has an analyst number for (isin,
+   est_atom, period), the estimate is the analyst number, stored as-is with the report ref;
+   otherwise the trend+guidance estimate stands. **The opinions store today**: no
+   `opinions.db` exists; the Drive research-report inventory is
+   `D:\RealityEngine\raw\user_research_drive` (529 files: 268 docx, 170 xlsx, 63 pdf, 16 mp4;
+   139 company folders, 281 company files) and it covers **1 of the 60 pilot ISINs** (Tejas
+   Networks). `equity_intelligence.telegram_posts` (4,527 rows, exact timestamps) is the only
+   opinion-shaped store in a database. So path 3 applies to almost nothing today — which is
+   exactly why the ladder is trend-first and why "thin coverage in small caps" is stated, not
+   papered over.
+
+**Beat/miss.** `realised(atom, period) - own_estimate` with its sign and relative size
+(`/ |estimate|`), reported as `beat | miss | in-line` (in-line = |diff| ≤ 2% or ≤ the
+estimate's own confidence band) **and**, when an opinions report exists, the same arithmetic
+against that report's number. Both readings are printed; they can disagree, and the answer
+says which store each came from. A miss is never upgraded to a beat by a later re-estimate:
+`known_at` fixes what we could have known at the time, and re-estimates are new rows with a
+new `as_of`.
+
+**Coverage rule.** An `own.estimate` exists wherever the quarterly series exists (the trend
+leg never needs a feed). Where it does not exist, the part is a triage ticket (§H.5), not a
+silent NID: the build job is the `own_estimate` table, not a purchase.
+
+## A.9 Document vocabulary: exhaustive surface, few labels (v4.1 decision 2)
+
+The extraction we run ourselves keeps **every phrase**, and assigns a small number of
+**labels**. Two layers, two tables, one join:
+
+- **Surface layer (unlimited, automatic).** Every extracted phrase is stored verbatim with
+  its provenance: `vocab.surface(surface_id, surface_verbatim, norm_key, source_kind, doc_id,
+  isin, page_ref, known_at, occurrences)`. Nothing is dropped, nothing is normalised away:
+  the phrase the company printed stays the audit trail (`Asepto total capacity target`,
+  `↑ 16% on account of higher shipments`).
+- **Label layer (~60–80 topics, two levels).** `vocab.label(label_id, parent_id, level,
+  label, definition, registry_atoms, created_at)`; level 1 is 8 families
+  (`financial_performance`, `costs_balance_sheet`, `segments_business`, `demand_orders`,
+  `guidance_risk`, `people_governance`, `ownership_market`, `policy_macro`) plus
+  `operations_other`; level 2 is the topic. **Ids are shared with the registry atoms**
+  (`label.registry_atoms`), so a claim and the number it is about join on one id.
+- **Facets, not more labels.** `direction` (`up|down|neutral`), `magnitude` (value+unit),
+  `horizon` (`Q1FY27|FY27|3 years`), `certainty` (`stated|expected|aspirational`),
+  `guidance_vs_fact` (`guidance|fact`) are columns on the claim row, never label values.
+  The label says *what it is about*; the facets say *what was said about it*.
+- **`other:<raw>` and promotion.** A surface with no label is stored as `other:<raw>` (the
+  raw phrase itself), never guessed. `other` surfaces are clustered; a cluster with
+  ≥20 occurrences, ≥3 companies and ≥2 document types queues for promotion, and promotion is
+  one hand-edited label row with its date and evidence. A growing `other` cluster therefore
+  becomes a topic; it never stays a bucket.
+
+**How the label count is chosen (the rule, and the measured pass).** Cluster the phrases,
+then pick the smallest topic set covering ≥95% of them with hand-checkable precision.
+`VOCAB_PASS1.md` ran the first measured pass on the pilot's three existing extractions
+(cc_items, deck metrics, AR categories; 60 ISINs, read-only):
+
+| measured | value |
+|---|---:|
+| verbatim surface distinct / occurrences | 148,652 / 1,691,352 |
+| surfaces carrying 95% of occurrences (the mapping workload) | 64,948 |
+| topics needed for 95% with a declared vocabulary (method A) | 137 used, **64.8%** of occurrences |
+| coverage at 60 / 80 topics | 62.4% / 64.1% |
+| lexical clustering (no declared vocabulary) for 95% | 11,467 clusters |
+| hand check on 20 sample mappings | 13/14 exact, 3 alias gaps found |
+
+The finding is in the numbers: 60–80 labels is the right operating size (60 topics cover
+62.4%, and the marginal topic after ~120 adds ~0), but **token matching saturates at ~65%**.
+The 95% must therefore be reached by a **semantic** mapping over the 64,948 head surfaces
+(§H.8), with the tail as `other:<raw>` by construction. The release check is in
+`VOCAB_PASS1.md` §4: 100% of surfaces mapped (label or `other:<raw>`), ≥95% exact precision
+on a 100-mapping hand sample, head surfaces mapped, label growth only by promotion.
+
 ---
 
 # B. Database shape that removes most planner code
@@ -263,7 +411,7 @@ UNION ALL
   SELECT isin, 'hold.pct', 'holder_class=promoter', quarter_end, quarter_end,
          promoter_pct, '%', broadcast_at, 'shp_index'
   FROM equity_intelligence.shareholding
-  /* … one branch per atom; 61 branches, no data copy … */
+  /* … one branch per atom; 60 branches, no data copy … */
 ;
 ```
 
@@ -282,7 +430,8 @@ Which existing tables become views, and which need columns:
 | `shareholding` / `company_ownership_pit` | `fact` branch + `holder_class` | none |
 | `policy_events`, `macro_claim_target`, `series_observation`, `mkt_commodity_daily`, `mkt_fii_dii_cash`, `fno_oi_daily` | `fact` branches (`macro.*`) | none |
 | `event_day0` + `event_leakage_window` | **not** the fact view: the event-study engine reads them directly | none |
-| `cc_items`, `deck_facts`, `ar_facts`, `chunks_v3.chunk` | new `claim` table (§B.3) + `text` branch | `claim.topic`, `claim.direction/magnitude/horizon` |
+| `cc_items`, `deck_facts`, `ar_facts`, `chunks_v3.chunk` | new `claim` table (§B.3) + `vocab.surface`/`vocab.label` (§A.9) + `text` branch | `claim.topic` = label id; `claim.direction/magnitude/horizon/certainty` |
+| `metric_state.own_estimate` (v4.1, build job §H.7) | `fact` branch (`own.estimate` + `dims.est_atom`) | the table itself |
 | `index_membership`, `company_sector_pit`, `theme_map`, `company_state_daily.mcap_bucket` | new `membership` table with validity (§B.2) | `removed_on` (present), `weight` |
 | `corporate_actions` / `corporate_action_class` | `fact` branch (`corp.amount_per_share`) | **build it for the pilot** (§H.4) |
 
@@ -302,34 +451,51 @@ CREATE TABLE membership(
 
 "Which sugar companies…" becomes `membership(set_kind='sector', set_value='sugar',
 valid_from <= d < valid_to)` joined to the fact view. `company_membership_pit` in the pilot
-already has 10,895 rows over 124 index codes and 1,888 ISINs *(measured)*; the sector store is
-empty in the pilot (`sector_pit.db.company_sector_pit` has 0 rows) and must be built before
-sector screens can answer — that is a one-day curation job, not a schema change.
+already has 10,895 rows over 124 index codes and 1,888 ISINs *(measured)*.
+
+**Correction (v4.1, decision 4).** An earlier draft of this document said the sector store is
+empty. That is wrong. Re-read on 30 Oct 2026: `reality_engine/data/pilot/pilot60/sector_pit.db`
+→ `company_sector_pit` has **482 rows / 482 ISINs / 28 sectors**, all
+`source='nse_classification'` (the earlier "0 rows" came from reading the wrong pilot file —
+the T1 build writes `company_sector_pit` into *both* `market_state_pilot.db` and
+`sector_pit.db`; the file named in the old sentence was not the one the T1 build filled).
+
+The real defect is not emptiness, it is **hindsight**: all 482 rows carry
+`valid_from='2019-01-01'` and `valid_to IS NULL`, i.e. today's NSE classification is backcast
+over seven years. A 2019 question answered with a 2026 label is a look-ahead leak.
+
+**The sector build replaces the backcast with a point-in-time store — six steps, honest
+effort.** Full spec and per-step estimates in §B.6.
 
 ## B.3 Typed claim table for narrative sources
 
 ```sql
 CREATE TABLE claim(
-  entity_id TEXT, topic TEXT,            -- a topic atom from the dim table
+  entity_id TEXT, topic TEXT,            -- a vocab.label id (level 2), never a raw phrase
   direction TEXT,                        -- up | down | neutral
   magnitude REAL, unit TEXT, horizon TEXT,
+  certainty TEXT,                        -- stated | expected | aspirational
+  guidance_vs_fact TEXT,                 -- guidance | fact
   quote TEXT, page_no INT, doc_id TEXT, doctype TEXT,
-  known_at TEXT, pit_conf REAL);
+  surface_id INT,                        -- the verbatim phrase (§A.9), for the audit trail
+  known_at TEXT, pit_conf REAL,
+  FOREIGN KEY (surface_id) REFERENCES surface(surface_id));
 ```
 
-Filled **at ingest** by the extraction that already runs, so a query is a lookup:
+Filled **at ingest** by the extraction that already runs, so a query is a lookup. The raw
+phrase stays in `surface`; `topic` is the label; the facets say what was said about it:
 
 | existing extraction | feeds `claim` | rows held |
 |---|---|---:|
-| `concall_facts.cc_items` (metric, direction, firmness, statement, quote) | topic = `metric`; direction from `direction` | 645 k |
-| `deck_figures.facts` (metric, period, value) | topic = `metric` (numeric claims) | 13.6 M |
-| `ar_facts.ar_facts` (category, item, quote) | topic = `category`+`item` | 32.4 M |
+| `concall_facts.cc_items` (metric, direction, firmness, statement, quote) | topic = the `vocab.label` the surface maps to; direction from `direction` | 645 k |
+| `deck_figures.facts` (metric, period, value) | topic = label; the deck phrase is the `surface` (§A.9) | 13.6 M |
+| `ar_facts.ar_facts` (category, item, quote) | topic = label over `category`+`item` | 32.4 M |
 | `policy_events` / `macro_claim_target` | policy claims and their targets | 21.6 k / 44.7 k |
 
-This is the single biggest coverage lever in the bank: the 223-topic lexicon resolves
-"products", "business model", "control change", "auditor", "order book", "guidance" without a
-new atom each — and the executor's per-entity check turns "this company never said it" into a
-precise NID instead of a wrong number.
+This is the single biggest coverage lever in the bank: the label layer resolves "products",
+"business model", "control change", "auditor", "order book", "guidance" without a new atom each
+(maximum 80 labels, measured pass in `VOCAB_PASS1.md`) — and the executor's per-entity check
+turns "this company never said it" into a precise triage ticket instead of a wrong number.
 
 ## B.4 Exposure edges
 
@@ -337,14 +503,88 @@ precise NID instead of a wrong number.
 last_tested)` — shared by the discovery layer (§E) and the ripple `walk` operator. One table,
 one quality vocabulary (`verified | measured_weak | plausible_untested | contradicted`).
 
-## B.5 Migration order (each step independently shippable)
+## B.5 Migration order (each step independently shippable, in this order)
 
 1. `fact` view over the tables that need no new column (market, metric series, ownership,
    macro). Everything in §D already runs on it.
-2. `membership` from `company_membership_pit` + `company_sector_pit` (sector curation).
-3. `claim` table from `cc_items` (the highest-value source first), then decks, then ARs.
-4. `edge` table (§E) — empty at first; `walk` answers "no typed edge" until it fills.
-5. `corporate_action_class` build (closes 4 of the 26 unmapped and ~10 of the NID cases).
+2. `vocab.surface` + `vocab.label` + `vocab.map` (§A.9) over the three extractions; the head
+   64,948 surfaces labelled, the tail `other:<raw>`. `claim` follows immediately, topic =
+   label id.
+3. `membership` from `company_membership_pit` + the **PIT sector build** (§B.6) — the
+   2019-01-01 backcast is replaced, not reused.
+4. `own_estimate` (§A.8) from the held quarterly series first, then guidance claims, then the
+   opinions store where a report exists.
+5. `claim` table backfill from `cc_items` (highest value first), then decks, then ARs.
+6. `edge` table (§E) — empty at first; `walk` answers "no typed edge" until it fills.
+7. `corporate_action_class` build (closes 4 of the 26 unmapped and ~10 of the NID cases).
+
+## B.6 Sector, exposure and peer build (v4.1 decision 4)
+
+The store today: 482 rows / 482 ISINs / 28 sectors in
+`pilot/pilot60/sector_pit.db.company_sector_pit`, every row `valid_from='2019-01-01'`,
+`valid_to=NULL`, `source='nse_classification'`. That is one snapshot of *today's*
+classification backcast over seven years. The build below replaces it. Effort is in
+**person-days for one build worker**, measured against what the repo already holds; the
+number is an estimate and is labelled as one.
+
+**Step 1 — PIT classification and index membership from NSE archives.**
+Sources: `D:\RealityEngine\raw\index_constituents` (archive already downloaded),
+`company_membership_pit` (10,895 rows, 124 index codes, 1,888 ISINs), NSE's archived
+classification sheets. Build `membership` with only factual windows: `valid_from` = the date
+the file was published or first archived, `known_at` = that date, `removed_on` when a later
+file drops the name. Where an earlier state is unknown, the row starts at the first archived
+snapshot and carries `pit_known=0` — it is never backcast to 2019. **3–4 days** (1 day crawl
+and parse, 1 day join/validate, 1–2 days on the classification history: NSE does not publish
+a dated classification series, so the history is only as good as the archive; if the archive
+starts in 2021, the store starts in 2021).
+*Exit check:* zero rows whose `known_at` precedes their source file; per-index membership
+counts on 5 sampled dates equal the archived file.
+
+**Step 2 — revenue-weighted multi-sector exposure from segment data.**
+`metric_state.company_segment_pnl` gives segment revenue; the missing piece is a
+segment-name → sector map (~28 sectors; ~400 segment strings in the pilot, hand-mapped once,
+stored as `segment_sector_map`). Weight = segment revenue / total revenue for the period, with
+the unallocated remainder as `unallocated`. A company is then multi-sector
+(`membership.set_kind='exposure'`, `weight`), and sector screens can weight by exposure
+instead of a single label. **4–5 days** (2 days mapping + review, 1 day build, 1–2 days QA:
+weights sum to 1, periods align, unallocated share reported).
+
+**Step 3 — value-chain position: inputs and outputs (feeds `edge`).**
+*Inputs* from the annual report raw-material cost shares (`ar_facts`: category/item + value,
+e.g. "cost of materials consumed", with the item text as the input), *outputs* and customer
+industries from segment/customer-concentration notes and the company's own product text.
+Writes `edge(origin='text', driver=commodity|sector, target=isin, mechanism='input share',
+strength=share, known_at=filing date)`. This is the only step whose data is sparse: cost
+shares are disclosed by a minority of companies (mostly manufacturers), so coverage will be
+uneven and is reported, not imputed. **5–7 days** (2 days extraction rules over `ar_facts`, 1
+day linking input names to commodity series, 1 day customer/output industries, 1–3 days QA —
+the honest risk is precision, which is why every edge carries the quote that produced it).
+
+**Step 4 — statistical peers from clustering factor-residual returns.**
+Residualise every company's daily returns on the declared common factors (the existing
+`factor_spine` + the `bench_screen.py` residualisation, measured 59 ms), then cluster the
+residual-return correlation matrix per rolling window (12-month, 1-month step), storing peer
+sets with `valid_from`/`known_at`. Peers are a *measured* store, never a label guess.
+**2–3 days** (the maths exists; the work is the rolling store, the stability check and the
+"refuse when too few active features" rule that `peer_graph.py` already applies).
+
+**Step 5 — themes (thematic indices + product tags).**
+Theme membership from the held index codes (thematic indices in `index_list`) plus product
+tags extracted from the company's own documents; `theme_map` already has
+`source='curated'|'opinion'` and the rule that an opinion theme never silently becomes
+curated (architecture doc Q2). **2 days.**
+
+**Step 6 — the checks that decide whether any of it ships.**
+(a) **PIT validation**: every date used by a query must be ≥ the source's `known_at`; a
+leakage test (query the store as of 2019-06-30 and fail if any label was first published
+later) blocks the load. (b) **30-company hand sample**: one page per company showing the
+label, the filing it came from, the exposure weights and the peer set; a human marks
+right/wrong; ≥28/30 must pass. (c) **Coverage**: per year and per sector, the share of the
+universe with a PIT label, with exposure weights, and with a peer set; the gaps are printed,
+never filled. **3 days.**
+
+**Total: 19–24 person-days** (≈4–5 weeks for one worker; the steps are independent after
+step 1, so 3 workers cut it to about 2 weeks, with step 1 as the gate for steps 2 and 5).
 
 ---
 
@@ -372,6 +612,12 @@ Ambiguity is **emitted, not guessed**: "NSE **and** BSE **plus** the combined to
 parts with the same atom and three dim readings; "raw and adjusted" is two parts; "promoter
 and public" is two parts. The strict grader evaluates part coverage against this Ask, so an
 Ask that silently picked one reading would be *visible* as a missing part.
+
+An estimated part is explicit, never implicit: `{"atom": "own.estimate", "dims":
+{"est_atom": "fin.revenue"}}` and, when the question is a beat/miss, the realised atom is a
+second part. The executor returns that part with `shape="estimate"` and the method/inputs it
+used (§A.8), so the reader can see whether the number is a trend, a guidance-adjusted trend,
+or an analyst report.
 
 ## C.2 The decomposer (no model, no bank fields)
 
@@ -438,9 +684,11 @@ parts: [ price.shares_out | exchange=NSE | value_at | window=as_of
          hold.pct | holder_class=promoter | last_visible | window=as_of
          corp.amount_per_share | dims{event_kind=corporate_action} | first_visible ]   -> NID
 ```
-Fix: the third part is a *typed NID*: `corp.amount_per_share` is a declared `gap`, so the
-executor prints "post-action count not held: market_state.corporate_action_class is not built
-for the pilot" instead of a wrong number.
+Fix (v4.1): the third part is a **ticket**, not an answer: `corp.amount_per_share` is a
+declared `gap`, so the triage (§H.5) routes it to the `corporate_action_class` build (a
+build job, H.5b, 3–5 days) and the part stays open until it lands. Until then the block names
+the missing table and the build — it is never silently answered with a wrong number, and the
+gate does not count it as answered.
 
 **3. MB0125 — `M & B Engineering (NSE: MBEL) mein public shareholding Sep 2026 tak kitni hai?
 Promoter aur public dono ka percentage filing se batao.`** *(Hinglish, ownership)*
@@ -624,7 +872,9 @@ reasoning and not just the words.
 ```
 execute(part, as_of) -> Result            # exactly one per part, always
   Result = {part_index, atom, dims, window, unit, value(s), period, isin,
-            source_ref, known_at, shape, rule_used?, verdict?, nid_reason?}
+            source_ref, known_at, shape, answer_type,   # measured | estimate | proxy | not_in_data
+            method?, inputs?, confidence?,               # estimate / proxy
+            rule_used?, verdict?, nid_reason?, tried?}
 ```
 
 It is one function: operator template + `WHERE` on `fact`, with `known_at <= as_of` and the
@@ -658,11 +908,35 @@ row that is not a part's result has nowhere to come from.
 | `gate.asked_concepts` heuristics | **deleted**: the Ask *is* the list of asked concepts |
 | answer assembler | becomes the renderer (§D.4); the LLM no longer formats numbers |
 
-## D.4 Renderer and the LLM's role
+## D.4 Renderer and the answer contract (v4.1 decision 3)
 
-One block per part: value, unit, period, entity/ISIN, source, `known_at`; or
-`NOT IN DATA: <the fact> — Checked: <stores, rows after PIT> — Why: <the registry's reason> —
-To close: <table or fetch>`.
+Every part returns exactly one block, and the block's **type** is part of the contract. A
+typed NOT IN DATA is **not** an answered part; the gate counts only the first three types as
+answered (`estimate` and `proxy` are labelled, never dressed as measured).
+
+| type | when | block fields |
+|---|---|---|
+| `measured` | the fact is held and PIT-filtered | value, unit, period, entity/ISIN, source table, `known_at` |
+| `estimate` | `own.estimate` (§A.8) | value, unit, period, entity, **method** (`trend`/`trend_guidance`/`trend_guidance_opinion`), the inputs (series refs, guidance refs, opinions-doc refs), confidence, `known_at` |
+| `proxy` | the datum is not held, but a workaround from other held sources answers the ask (decision 3b) | the **proxy** (what is being used in its place), the **assumption** (the stated bridge from proxy to answer, with the arithmetic), the **confidence**, and the sources used |
+| `not_in_data` | only after triage (decision 3c) | `NOT IN DATA: <the fact> — Tried: <fetches attempted, with dates> — Checked: <stores, rows after PIT> — Why: <the registry's reason> — To close: <the exact table/fetch>` |
+
+`proxy` is a first-class answer type, not a hedge: the block must state the proxy, the
+assumption that makes the proxy informative, and a confidence in [0,1]. A proxy whose
+assumption cannot be written down is not an answer — it is a ticket.
+
+**NID triage** (the process behind the fourth type; the per-case list is
+`tasks/arch_v4/NID_TRIAGE.md`):
+
+1. **Fetch** — can the data be fetched free within one day (NSE/BSE archive, a filed PDF, an
+   index constituent file)? Then it is a fetch job; the part stays open with the job's id.
+2. **Proxy** — the datum is genuinely hard to get (paid, private, never published). Answer
+   from a proxy or workaround drawn from held sources, labelled `proxy` with its assumption
+   and confidence (e.g. "investor-wise holding" → the FCRA/EPT-2 footpath is not held; proxy =
+   the shareholding pattern's institution totals, assumption = the institution total bounds
+   the name-level position, confidence 0.4).
+3. **NID** — only when 1 and 2 are exhausted: list what was tried. The list is the evidence
+   the gate needs; "we don't have it" alone is not.
 
 The LLM runs **after** the blocks exist and only: (a) writes the prose that connects the
 parts, (b) names the connections it sees between parts, (c) suggests what to look at next.
@@ -692,7 +966,7 @@ reaction_lag(event_id, hop, entity, first_price_response_day, days_late, known_a
 Nothing is dropped: a link that fails FDR stays visible as `measured_weak` or `contradicted`
 with its numbers. The grey area is the product.
 
-## E.2 The seven mechanisms
+## E.2 The eight mechanisms
 
 1. **Measured links** — residualised driver series × company atoms, lagged 0–20 days, in-sample
    fit and out-of-sample check. Writes `edge(origin='measured')`.
@@ -710,6 +984,10 @@ with its numbers. The grey area is the product.
    earlier window (`regime_break`); the edge stays with `label='contradicted'`.
 7. **Analog search** — nearest past cycle over the shared atoms, no hindsight on the target
    window (`analog_cycle`).
+8. **Recommendation grading** (v4.1 evening layer, §F.9) — every recommendation the evening
+   layer issues is a claim with a horizon and a measurable outcome; it is graded exactly like
+   `say_vs_do` (hit rate with n, on later realised atoms), so the discovery layer and the
+   portfolio layer share one credibility vocabulary and one grader.
 
 ## E.3 Guards (non-negotiable)
 
@@ -743,6 +1021,74 @@ with its numbers. The grey area is the product.
 18. Which claim topic appears in the AR but never in a concall (forward-looking vs backward)?
 19. Which coalitions of drivers explain a stock's last 12 moves better than its sector?
 20. Which links are knowable only from a document we hold but never quote?
+
+## E.5 Pilot discovery backtest (v4.1 decision 5) — the gate before the full database
+
+**Order of work, binding:** pilot backtest → Shivam approves the full schema → only then the
+full database. Nothing in §E/§F is built at full scale before the pilot backtest has run and
+been reviewed. The pilot backtest is a *machinery test* (does a hindsight-free discovery
+process produce stable, measurable links on 60 names?), not a claim that an edge exists.
+
+**Inputs (all held, read-only):** `market_state_pilot.company_state_daily` (492 sessions ×
+the pilot ISINs), the pilot `company_membership_pit`/`company_sector_pit` (§B.6), the pilot
+claims (§A.9), and the per-edge statistics from `bench_screen.py`'s residualisation. No
+network, no paid call.
+
+**Universe.** The 60 pilot ISINs (`tasks/pilot60/UNIVERSE.csv`), restricted at each fold to
+names with a PIT sector label, ≥200 traded sessions and a non-quarantined price series
+(expected ~55 of 60). Membership is evaluated at the fold's decision date, never today's.
+
+**Window (fixed before the first run, no peeking).** Monthly decision dates, one-year
+non-overlapping folds:
+
+| fold | fit (edges estimated) | test (edges scored) |
+|---|---|---|
+| F1 | 2019-01 .. 2021-12 | 2022-01 .. 2022-12 |
+| F2 | 2019-01 .. 2022-12 | 2023-01 .. 2023-12 |
+| F3 | 2019-01 .. 2023-12 | 2024-01 .. 2024-12 |
+| F4 | 2019-01 .. 2024-12 | 2025-01 .. 2025-12 |
+
+2026 is the **holdout**: it is not read by the backtest at all until the machinery passes
+(the pilot store's last session is 2026-09/10). Forward returns: 1, 3 and 6 months, computed
+with the existing executable-price rule (`harness/execution.py` semantics: no stale quote at
+either endpoint).
+
+**How `edge.known_at` is enforced (the mechanism, not a promise).**
+1. A fold has one decision date `t` (the last session of the fit window). The edge loader is
+   run with `as_of = t`: `WHERE known_at <= t` is in the SQL, the same way the fact view does
+   it — not a Python filter afterwards.
+2. The edge's feature inputs may not carry a value whose `known_at` > `t`; a value with
+   `period_end` after `t` is allowed only if it was published before `t` (a period label is
+   not a publication).
+3. A **replay check**: running the loader twice, once on the full store and once on a copy
+   physically truncated to `known_at <= t`, must produce the same edge set (same rows, same
+   strengths) — that is the test that hindsight did not leak in through a join.
+4. The test window's returns are never used to fit, normalise or select an edge; only to
+   score the edges that existed at `t`.
+
+**Metrics that decide "edge / no edge" (declared before the run).** For each candidate edge
+and for the aggregate edge set, at each fold:
+
+| # | metric | passes when |
+|---|---|---|
+| 1 | out-of-sample rank IC (edge score vs forward residual return), monthly cross-sections | mean IC > 0 and IC t-stat ≥ 2 after BH-FDR across all tests |
+| 2 | sign hit rate of the top-decile call, per fold | ≥ 55% over ≥ 36 monthly observations in total |
+| 3 | FDR | BH q ≤ 0.10 across every edge test in the fold, not per look |
+| 4 | fold stability | sign and \|t\| ≥ 2 retained in ≥ 3 of 4 folds |
+| 5 | economic | top-decile minus bottom-decile residual spread ≥ 1.5 × round-trip cost (30 bp debit + a stated slippage assumption), before tax; after-tax version reported alongside |
+| 6 | decay | no edge whose OOS IC falls > 50% versus its in-sample IC |
+
+**Verdict rule.** An edge is `edge` only if 1 **and** 2 **and** 4 pass (3 is the error control
+that makes 1 credible); it is `no edge` if the OOS IC is ≤ 0 or the sign flips, and it is
+`inconclusive` if the tests are underpowered (n < 36 months or a fold's universe < 30 names).
+Every candidate is reported with its count of tests, so the multiple-testing bill is visible.
+A "no edge" result is a result: the pilot is 60 names and 28 sectors, so the honest expected
+outcome is that most edges are inconclusive — the purpose is to prove the machinery and to
+find the handful that survive, not to force a verdict.
+
+The pilot backtest report is `tasks/arch_v4/PILOT_BACKTEST.md` (built by the backtest worker
+on this specification); it is the document Shivam reviews before the full schema is approved
+(§H.0).
 
 ---
 
@@ -781,7 +1127,7 @@ and paths stale; a data-quality check must pass before anything is marked stale 
 |---|---|---|---|
 | **hot** | query time | fact-view lookups, stored edges, 3-hop beam walk | <2 s (measured: lookups 0.01–9.6 ms; walk 6.7 ms) |
 | **warm** | nightly incremental | features, stale edges, attention, reaction lags | minutes (measured: residualise + 10 lags = 0.21 s; +1 day = 2.1 ms/edge-set) |
-| **cold** | weekly, off-peak | full re-tests, FDR pass, new candidates, LLM link proposals, regime scan | hours, capped, ordered by expected value (impact × low attention ÷ test cost) |
+| **cold** | weekly, off-peak **and only after the §E.5 pilot gate (H.0)** | full re-tests, FDR pass, new candidates, link proposals, regime scan | hours, capped, ordered by expected value (impact × low attention ÷ test cost) |
 
 ## F.6 Storage
 
@@ -825,23 +1171,127 @@ linear algebra, so §F.5 re-states the budgets as **hot < 2 s, warm = feature bu
 refresh, cold = weekly batch** — and the engineering effort belongs in the fact view's
 partitions and the dirty-propagation graph, not in a faster gemm.
 
-## F.8 GPU (GTX 1050 Ti, 4 GB) — specified, not installed
+## F.8 GPU vs CPU — a thesis and the test that decides it (v4.1 decision 6)
 
-- **Which steps are dense/sparse matrix work**: the screen (lagged cross-correlation, `N×D`),
-  factor residualisation (`T×N×F`), A²/A³ (`N×D×N`), and the FDR batch (vectorised p-values).
-  The hot path (lookups, stored edges, beam walk) is **not** GPU work.
-- **Where it wins**: measured CPU throughput is 4.3 G multiply-adds/s; the card is ~2 TFLOP/s
-  fp32 peak ≈ 230× before bus and launch overhead. So it wins on the weekly cold tier (many
-  windows × many lags × many drivers) and on A^k at full universe — not on a 15 ms gemm where a
-  CUDA context costs more than the answer. Same lesson as this card's OCR run: measure first.
-- **VRAM tiling** (~3 GB of the 4): the panel is `T×N` fp32 (500×4,000 = 8 MB), the driver
-  matrix 1 MB, the `N×N` covariance at 4,000 entities 64 MB. Tile over rows:
-  `rows_per_tile = 0.75 GB / (N·4 B)` = 50,331 days at N=4,000 — the whole window fits in one
-  tile; only `N×N` products above ~8,000 entities need splitting. Accumulate fp32, never fp64.
-- **Install (named only, nothing installed here)**: `cupy-cuda12x` (CUDA 12 driver) or `torch`
-  with the CUDA 12 wheel. CPU fallback = the numpy path in `bench_screen.py`, kept as the
-  reference the GPU result is checked against (`np.allclose`, 1e-5, one window, before every
-  cold run).
+**Nothing here is measured. Do not cite a speed-up from this section.** The CPU numbers in
+§F.7 are measured on this box; the GPU side is a **hypothesis** with a named experiment. A
+separate worker runs the benchmark and writes `tasks/arch_v4/bench_gpu.md`; until that file
+exists with a result table, the design stays CPU-only and no cold-tier step is specified
+against a GPU.
+
+**Thesis (to be tested, not assumed).**
+
+- *H1 — the cold tier is GPU-shaped.* The weekly batch is many independent windows × lags ×
+  drivers, i.e. tall-skinny matrix work with no Python object churn. If any step is GPU-shaped,
+  it is this one: the CPU path is a loop over windows, and a batched GEMM on the card should
+  cut wall-clock once the batch is large enough.
+- *H2 — the hot and warm tiers are not GPU-shaped.* Query-time lookups (0.01–9.6 ms), the
+  3-hop beam walk (6.7 ms) and the incremental update (2.1 ms/day) are latency-bound; a CUDA
+  context, a host→device copy and a synchronise cost more than the work. Predicted: GPU loses
+  or ties there.
+- *H3 — the bottleneck is not the gemm.* §F.7 measured that panel assembly (57 s per 2.3 M
+  rows from SQLite) dominates the arithmetic (~170 ms for residualise + ten lags). If H3
+  holds, a 200× GPU gemm changes nothing and the engineering belongs in partitions and the
+  dirty-propagation graph. **This is the thesis's real risk: the cheap thing to accelerate is
+  not the expensive thing.**
+
+**The test that decides it (pre-registered; the benchmark worker runs exactly this).**
+
+| # | experiment | measure | decides |
+|---|---|---|---|
+| T1 | full cold-tier workload (all folds in §E.5 × 10 lags × 33–60 drivers) on CPU (numpy, `bench_screen.py`) and on the card (cuPy or torch CUDA), same inputs, fp32 | wall-clock, peak RAM/VRAM, 3 repeats, median ± spread | H1: GPU ≥ 3× faster on the *end-to-end* job (not one gemm) |
+| T2 | hot path: 1,000 stored-edge lookups + 100 three-hop walks | p50/p95 latency | H2: GPU not slower at p95 |
+| T3 | one new day, ten lags, incremental | per-day time | H2: GPU is not needed (it should lose) |
+| T4 | panel assembly alone, CPU only, cold cache | seconds | H3: if assembly ≥ 10× the arithmetic, a GPU result cannot move the budget |
+
+**Decision rule, fixed in advance.** Adopt a GPU path **only if** T1 shows ≥ 3× end-to-end
+and T2 shows no p95 regression; otherwise stay CPU and put the effort into panel assembly and
+the dirty graph. T4 is reported first, because if it dominates, T1's 3× is unreachable no
+matter what the card can do. The CPU path stays the reference: any GPU result must pass an
+`np.allclose` (1e-5) check on one window before it is timed.
+
+**What does not change either way.** The CPU path in `bench_screen.py` is the reference
+implementation; the hot path remains SQL + stored edges; there are no GPU-only features in the
+query contract. The install candidate (named only, not installed): `cupy-cuda12x` or the
+CUDA-12 `torch` wheel, on the GTX 1050 Ti (4 GB) — and 4 GB is a stated ceiling, so tiling is
+part of the test, not an optimisation after it.
+
+## F.9 Evening portfolio decision layer (design-only, v4.1)
+
+What it is: **after the close, score what we hold against what we could hold instead**, after
+tax, costs and slippage, and emit a graded recommendation per position. It is the consumer of
+the query layer, not a second intelligence stack. **Signals only until the strategy tests pass
+out of sample**: until then every row says `recommendation`, never `instruction`, and a human
+executes anything.
+
+Four tables (SQLite, one writer, additive):
+
+```sql
+CREATE TABLE asset_universe(          -- stocks + the non-stock legs, one row per tradable asset
+  asset_id TEXT PRIMARY KEY,          -- isin for equities; INV_CASH | LIQ_FUND | GOLD_ETF |
+                                      -- SILVER_ETF | GILT_10Y | NIFTYBEES | …
+  asset_class TEXT NOT NULL,          -- stock | cash | liquid_fund | gold | silver | gsec | index_etf
+  tradable INTEGER NOT NULL, lot_size INT, min_ticket_inr REAL,
+  tax_treatment TEXT NOT NULL,        -- equity_stcg_ltcg | debt_slab | commodity_gold | …
+  broker_ref TEXT, known_at TEXT, active INTEGER NOT NULL DEFAULT 1);
+
+CREATE TABLE portfolio_positions(     -- read-only from the brokers, never written by us
+  account TEXT NOT NULL, broker TEXT NOT NULL,     -- zerodha | angelone
+  asset_id TEXT NOT NULL, qty REAL, avg_cost REAL, as_of TEXT NOT NULL,
+  source TEXT NOT NULL,               -- kite_mcp | angelone_export
+  read_at TEXT NOT NULL,
+  PRIMARY KEY (account, asset_id, as_of));
+
+CREATE TABLE daily_scorecard(         -- the nightly scoring, one row per held/candidate asset
+  date TEXT NOT NULL, asset_id TEXT NOT NULL,
+  exp_return_1y REAL, exp_return_after_tax REAL,   -- the ranking quantity
+  switch_cost_inr REAL, slippage_bp REAL, tax_if_sold_inr REAL,
+  score REAL, rank INT, evidence_json TEXT NOT NULL, known_at TEXT NOT NULL,
+  PRIMARY KEY (date, asset_id));
+
+CREATE TABLE recommendation_log(      -- every call is a graded claim, never an order
+  rec_id INTEGER PRIMARY KEY, date TEXT NOT NULL, account TEXT, asset_id TEXT,
+  action TEXT NOT NULL,               -- hold | trim | switch | exit
+  target_asset_id TEXT, size_pct REAL,
+  evidence_json TEXT NOT NULL,        -- the scorecard rows, the atoms, the known_at of each
+  confidence REAL NOT NULL,           -- 0-1, calibrated over time
+  what_would_change TEXT NOT NULL,    -- the stated falsifier of this call
+  status TEXT NOT NULL DEFAULT 'open',-- open | graded | superseded
+  graded_at TEXT, horizon_months INT, realised_excess REAL, verdict TEXT);
+```
+
+**The nightly scoring (after close, ~21:00 IST, after the 19:35 price job).**
+1. Load holdings read-only: the **official Kite MCP** for Zerodha and the **Angel One export**
+   file. No order endpoints, no write scopes; a missing/stale export marks the account
+   `as_of` stale and the run refuses to recommend a switch it cannot size.
+2. For each asset (held and candidate), compute the expected 1-year return from the held
+   atoms (the same fact view the query layer reads), then convert to **post-tax** return using
+   the tax-rules table built from the enacted Gazette texts (never a hardcoded rate — the
+   2026-10-19 decision) and the holding period.
+3. Cost to switch = exit cost (STT/brokerage + the actual tax on the realised gain + slippage
+   in bp by liquidity bucket) + entry cost + the tracking/expense drag of the alternative.
+   Slippage is a stated assumption per liquidity bucket, stored in the row, not a constant in
+   code.
+4. Rank on `exp_return_after_tax - switching cost amortised over the horizon`; a switch is
+   only recommended when the improvement exceeds the cost by a margin and the confidence is
+   above the calibrated threshold. Otherwise `hold` is the answer (it defaulted to hold, it
+   did not fail to decide).
+5. Outputs `hold | trim | switch | exit` **with evidence, confidence and what would change
+   the call**. `exit` also requires the "why now" atom (the same `claim`/fact rows the query
+   layer would cite), so a call is never a mood.
+
+**The log is graded, so the layer can be believed or discarded.** Each open recommendation is
+graded at 1/3/6/12 months on later outcomes: the held asset's excess return vs the benchmark
+and the counterfactual (what the alternative would have done), the tax actually saved or
+paid, and whether the stated `what_would_change` fired. Verdicts feed the confidence
+calibration (a 0.7-confidence call must win ~70% of the time); the scorecard is the evening
+twin of the `say_vs_do` rule (§E.2.8).
+
+**Guardrails (non-negotiable).** Signals only until a portfolio-level backtest passes out of
+sample (§E.5's gate, cash-only long book per `FRAMEWORK.md`); no auto-trading code path
+exists; holdings are read-only; every recommendation carries the evidence ids and its
+falsifier; a static allocation is always a valid alternative and the layer must beat its own
+silence to justify existing.
 
 ---
 
@@ -865,9 +1315,25 @@ partitions and the dirty-propagation graph, not in a faster gemm.
 
 # H. Work packages
 
-Four packages, disjoint files, each with its acceptance test. The gate-gain estimates below
-are shares of the *failure-reason findings* (2,681-case run: `ask_match` 2,884, sub-question
+Packages are disjoint files, each with its acceptance test. The gate-gain estimates below are
+shares of the *failure-reason findings* (2,681-case run: `ask_match` 2,884, sub-question
 2,708, unrelated ~1,500, blocked 383, NID 132) — they overlap, so **they do not add**.
+
+## H.0 Order of work (v4.1, binding)
+
+1. **Pilot first.** The pilot stores (60 ISINs) already answer the WP1–WP4 acceptance tests;
+   nothing in this document is built at full scale before the pilot gate passes.
+2. **Discovery pilot backtest** on the pilot universe (§E.5) → report
+   `tasks/arch_v4/PILOT_BACKTEST.md`.
+3. **Shivam approves the full schema** (the approved artifact is the DDL + the pilot reports:
+   `registry_coverage.md`, `VOCAB_PASS1.md`, `PILOT_BACKTEST.md`, `NID_TRIAGE.md`).
+4. **Only then the full database**: chunking, tagging, embedding, loading — the golden rule's
+   order (AGENTS.md), unchanged.
+5. The GPU decision (§F.8) and the evening layer (§F.9) are design-only until 2–3 finish; the
+   evening layer additionally waits for the portfolio-level out-of-sample test.
+
+The last two words on any disagreement: no full-scale build, and no instruction-style output,
+before the pilot gate and the backtest are reviewed.
 
 ## H.1 WP1 — registry generator + lexicon (this deliverable, shipped as the baseline)
 
@@ -877,12 +1343,16 @@ rebuild (`PASS`); 897 mapped / 150 NID / 26 unmapped.
 Attacks: the *vocabulary* half of `ask_match` (a concept the answer never carried). Estimated
 share: **15–25% of ask_match** (the concepts a registry row now names).
 
-## H.2 WP2 — fact view + entity sets + claim/edge tables
+## H.2 WP2 — fact view + entity sets + vocabulary/claim/edge tables
 
-Files: `reality_engine/query/v4/fact_view.sql`, `build_membership.py`, `build_claim.py`,
-`build_edge_schema.py`. Acceptance: the view returns one row per (entity, atom, period) for all
-43 held atoms on the pilot; `membership` covers 1,888 ISINs / 124 index sets; `claim` holds
-≥600 k rows from `cc_items` with topics; a spot-check of 50 random claims against their quote.
+Files: `reality_engine/query/v4/fact_view.sql`, `build_membership.py`, `build_vocab.py`,
+`build_claim.py`, `build_own_estimate.py`, `build_edge_schema.py`. Acceptance: the view returns
+one row per (entity, atom, period) for all 43 held atoms on the pilot; `membership` covers
+1,888 ISINs / 124 index sets **from the PIT sector build (§B.6), not the 2019 backcast**;
+`vocab.surface` holds the measured 148,652 pilot surfaces with 100% mapped to a label or
+`other:<raw>` (`VOCAB_PASS1.md` §4); `claim` holds ≥600 k rows from `cc_items` with label ids
+and facets; `own_estimate` covers the pilot's held quarterly series for the beat/miss atoms
+(§A.8); a spot-check of 50 random claims against their quote.
 Attacks: the "store had it but no view saw it" class — the largest block of sub-question
 failures. Estimated share: **~40% of the sub-question class**.
 
@@ -897,63 +1367,142 @@ sum", "raw AND adjusted"). Estimated share: **~30% of the sub-question class** a
 ## H.4 WP4 — executor + answer contract + renderer + grader alignment
 
 Files: `reality_engine/query/v4/execute.py`, `render.py`, `tasks/answer_bench/grade_v2.py`.
-Acceptance: one result per part for every mapped case; the renderer prints value/unit/period/
-ISIN/source/`known_at` or the four-gate NID wording; `grade_v2` scores coverage against the Ask
-and reproduces today's 1.0% on the old answers (a sanity anchor). Attacks: `ask_match` by
+Acceptance: one result per part for every mapped case, each carrying its `answer_type`
+(measured / estimate / proxy / not_in_data, §D.4); the renderer prints value/unit/period/
+ISIN/source/`known_at`, or the estimate's method+inputs, or the proxy+assumption+confidence,
+or the four-gate NID wording with what was tried; `grade_v2` scores coverage against the Ask,
+counts only `measured|estimate|proxy` as answered (a typed NID is **not** an answer), and
+reproduces today's 1.0% on the old answers (a sanity anchor). Attacks: `ask_match` by
 construction (every part carries its concept) and "unrelated rows" (no part → no row).
 Estimated share: **~35–45% of `ask_match` and most of the ~1,500 unrelated-row findings**.
 
-Then a fifth package, **discovery/engine (§E/§F)**, only after the gate passes.
+Then **discovery/engine (§E/§F)** and the **evening layer (§F.9)**, only after the pilot gate
+(H.0).
 
-## H.5 Data gaps — the cases that still fail because the data is absent
+## H.5 The 150 NID are tickets — triage, not apology (v4.1 decision 3)
 
-**(a) Absent by nature (7 atoms) — no fetch closes these.** `absent.consensus`,
-`absent.price_target` (paid broker research), `absent.intraday` (no free retro intraday bars),
-`absent.investor_holdings` (not published in India), `absent.refurb_sales`,
-`absent.forecast`, `absent.private_terms`. Cases: 24 atom-mentions across the 150 NID cases
-*(measured)* — intraday alone accounts for 14.
-Decision needed (Shivam): buy consensus, or accept NID for those parts.
+A typed NID is **not counted as answered** by the gate. Every one of the 150 cases goes
+through `tasks/arch_v4/NID_TRIAGE.md` (a separate worker; that file is the per-case list, this
+section is the policy). Measured reasons across the 150 (from `registry_coverage.md` §4.2;
+a case can carry two reasons, so they do not add):
 
-**(b) Pilot build missing (11 atoms) — a build job, not a fetch.** Counts are atom-mentions across the 150 NID cases (a case can name two missing atoms, so they do not add to 150).
- The concept map carries 21
-metric keys; these 11 atoms need a mapping row (and for ratio atoms a formula over mapped
-concepts), and one of them needs a table built:
+**(a) Answered by the estimate layer — no fetch, no ticket.** `own.estimate` (§A.8) covers
+consensus and price-target asks: **2 cases** measured (the bank rarely says "consensus"
+literally; the beat/miss framings need the estimate *atom*, not the word). Answer type
+`estimate`, with method and inputs — never a typed NID.
 
-| atom | what is missing | closes |
-|---|---|---:|
-| `fin.npa`, `fin.nim`, `fin.credit_cost`, `fin.loan_book` | `metric_key` rows for the banking concepts (gross/net NPA, NIM, provisions, advances) — the raw XBRL concepts exist in `results_xbrl.facts` | 64 mentions |
-| `fin.cwip`, `fin.investments`, `fin.cfo` | same, for the balance-sheet/cash-flow concepts | 15 mentions |
-| `fin.deposits`, `fin.unit_volume`, `price.free_float` | new atom rows + the reader/operating-metrics coverage | 28 mentions |
-| `corp.amount_per_share` | **build `market_state.corporate_action_class`** (the live DB already has `equity_intelligence.corporate_actions`, and the pilot store has no corporate-action table at all) | 40 mentions |
+**(b) Built from data already held — a build job, not a fetch.**
 
-**(c) The fetch stream (211 cases).** This is *per-entity document coverage*: a company that
-never filed a concall, or whose deck is not in the store, cannot answer a claim part however
-good the registry is. The registry measurement deliberately cannot see this, because it
-measures expressiveness, not per-entity coverage. The check to run before the fetch stream is
-one query per case: `claim(entity, topic)` and `chunks_v3.chunk(isin, doc_type)` row counts
-after `known_at <= as_of`. The NID reason then names the store and the document instead of the
-concept, and the fetch list is the set of (entity, doc_type) with zero rows — which is what the
-211-case stream should be built from, not from a guess.
+| work | cases | effort |
+|---|---:|---|
+| `corp.amount_per_share` → build `corporate_action_class` (the live DB has `corporate_actions`; the pilot store has no table) | 40 | 3–5 days |
+| banking concept keys (`loans` 23, `net_npa` 22, `nim` 13, `credit_cost` 6) → mapping rows over the XBRL concepts already held in `results_xbrl.facts` | 64 | 2–3 days |
+| `cwip` 2, `investments` 8, `cfo` 5 → same mapping rows | 15 | 1–2 days |
+| `deposits` 7, `unit_volume` 13, `price.free_float` 8 → one atom row + reader/weight coverage each | 28 | 2–4 days |
+
+**(c) Free fetch within one day → a fetch job.** This is mostly *per-entity document
+coverage*: the 211-case stream. A company that never filed a concall, or whose deck is not in
+the store, cannot answer a claim part however good the registry is. The fetch list is built
+from one query per case — `claim(entity, topic)` and `chunks_v3.chunk(isin, doc_type)` row
+counts after `known_at <= as_of`; every (entity, doc_type) with zero rows that is *filed and
+free* (NSE/BSE archive) is a fetch job, not a NID. **Effort is in the stream, not in this
+design.**
+
+**(d) Genuinely hard → proxy with its assumption, or NID with what was tried.**
+`absent.intraday` 14 (no free retro intraday bars → proxy: daily high-low range / close as an
+amplitude proxy, assumption stated, confidence low), `absent.forecast` 4 (no forecast is a
+fact → proxy is a scenario, and a scenario is labelled), `absent.refurb_sales` 2,
+`absent.investor_holdings` and `absent.private_terms` (rare in the bank). Each is answered as
+a `proxy` block (proxy, assumption, confidence, sources) or, when no bridge can be stated, as
+NID listing the fetches tried. **Never a bare "not in data".**
+
+**(e) The decision the triage produces.** For each case: `fetch(job_id)`, `proxy(result,
+assumption, confidence)` or `nid(tried[])`. The gate counts the first two; the third is
+visible debt with an owner and an attempted-fetch log. The triage worker's output is the input
+to the next fetch wave — not a reason to grow the registry.
+
+## H.6 WP6 — sector, exposure and peer build (§B.6)
+
+Six steps, 19–24 person-days; step 1 (PIT classification + membership) is the gate for steps
+2 and 5. Acceptance: the leakage test fails the load if any label was first published after
+the date it is used for; the 30-company hand sample passes ≥28/30; coverage is printed per
+sector per year. The 2019-01-01 backcast in `company_sector_pit` is replaced, not migrated.
+
+## H.7 WP7 — `own_estimate` build (§A.8)
+
+Trend leg first (it needs nothing new), then the guidance adjustment from `claim` rows, then
+the opinions join where a report exists. **3–4 days** (1 day trend + backtest, 1–2 days
+guidance claims and caps, 1 day opinions join and the beat/miss report). Acceptance: an
+`own_estimate` row for every (pilot ISIN, beat/miss atom, quarter) where the series exists;
+the estimate's own out-of-sample error is measured (MAPE by cap bucket) and printed; a
+re-estimate never rewrites history (new `as_of` rows only).
+
+## H.8 WP8 — vocabulary semantic mapping + label release (§A.9, `VOCAB_PASS1.md`)
+
+Map the 64,948 head surfaces (95% of occurrences) to the ~60–80 labels with a semantic mapper
+(the local embedding index; no paid model), keep the tail as `other:<raw>`, run the 100-mapping
+hand check, and promote `other` clusters that pass the promotion rule. **5–8 days** (2 days
+mapper, 2 days review of the head, 1–2 days promotion queue, 1–2 days re-measure as
+`VOCAB_PASS2.md`). Acceptance: 100% of surfaces mapped; ≥95% exact on the 100-mapping sample;
+every `other` cluster with ≥20 occurrences / ≥3 companies / ≥2 doc types is in the promotion
+queue with its evidence.
+
+## H.9 WP9 — evening portfolio layer (§F.9) — design-only until the gate
+
+When built: the four tables, the nightly scorecard, the recommendation log and its grader.
+**5–7 days** (2 days tables + holdings readers — Kite MCP read-only and the Angel One export,
+2 days scoring after tax/cost/slippage, 1–2 days grading, 1 day calibration report).
+Acceptance: a recommendation carries evidence, confidence and its falsifier; the log is graded
+at 1/3/6/12 months; the layer emits signals only (no order path exists); a static allocation
+is the benchmark it must beat before it is called useful.
+
+## H.10 WP10 — pilot discovery backtest (§E.5)
+
+Machinery + four folds + the report `tasks/arch_v4/PILOT_BACKTEST.md`. **10–15 days** (the
+machinery exists in `bench_screen.py`; the work is the fold loop, the `known_at` replay check,
+the FDR pass and the write-up). Acceptance: the replay check is byte-identical; every fold's
+edge set is produced with `known_at <= t` in SQL; the report states edge / no edge /
+inconclusive per candidate with the test count. This report is what Shivam reviews before the
+full schema (H.0).
 
 ---
 
 # Open questions for Shivam
 
-1. **Consensus estimates**: buy a feed, or accept NID for the `absent.consensus` /
-   `absent.price_target` classes (14 cases, and every "beat/miss vs street" framing)?
-2. **`claim` topics at scale**: is the extraction vocabulary (cc_items metrics, deck metrics,
-   AR categories) the approved topic space, or do you want a hand-curated 50-topic list that
-   the extraction must map into? The first is broader, the second is checkable.
-3. **Does the 95% gate count a typed NID as answered?** The design assumes yes when the reason
-   is `absent` and the wording lists what was checked. If not, the ceiling moves from 97.6% to
-   83.6% and the data-gap section becomes the plan.
-4. **Sector store**: `sector_pit.db.company_sector_pit` is empty in the pilot. Is one day of
-   curation approved (needed before any sector screen can answer)?
-5. **Discovery backtesting**: `edge.known_at` makes a hindsight-free backtest possible — do you
-   want the first version scored on the last 12 months before any edge is allowed into the hot
-   tier?
-6. **GPU**: approve `cupy-cuda12x` when the cold tier is built, or keep CPU-only until a
-   measured run beats it? (The measurement says CPU wins on everything except the weekly batch.)
+The six decisions of 30 Oct 2026 are closed and written into the body. What remains is the
+small set of numbers the decisions still need from you; none of them blocks WP1–WP4.
+
+1. **The label gate's wording.** `VOCAB_PASS1.md` measured that a 60–80-topic vocabulary with
+   token matching covers 64.8% of phrase occurrences; 95% is reached only over the *head*
+   surfaces (64,948 surfaces carry 95% of occurrences), and only with a semantic mapper. Do
+   you want the gate as **(a)** "≥95% of occurrences are labelled *or* explicitly
+   `other:<raw>`" (100% by construction, honest but weaker) or **(b)** "≥95% of the head
+   surfaces carry an exact label, hand-checked at ≥95% precision" (the one this design
+   recommends)? (a) and (b) differ in what a failing case is blamed on.
+2. **The estimate method's caps.** §A.8 caps a guidance adjustment at ±1.5× the trend's
+   standard error and calls |diff| ≤ 2% "in-line". Revenue and EPS have very different
+   natural error; do you want the band per atom (e.g. 2% revenue, 5% EPS), or one number for
+   all?
+3. **Proxy acceptability.** What confidence floor counts as an *answered* proxy part in the
+   gate (this design says: any stated proxy counts, because the assumption is inspectable;
+   the alternative is to require ≥0.5 confidence, which would re-open ~10 of the 150 tickets)?
+   And are the named bridges acceptable — intraday amplitude → daily high-low/close, and
+   investor-level holdings → institutional totals?
+4. **Sector-build effort.** §B.6 prices it at 19–24 person-days (≈2 weeks with three workers),
+   gated on step 1. If the NSE classification archive starts in 2021, the PIT store starts in
+   2021 and everything before it is `pit_known=0` — is that an acceptable history, or should
+   the build stop and wait for an archive?
+5. **Pilot backtest power.** 60 names, 28 sectors, four folds (2022–2025) and 2026 untouched.
+   Approve the verdict rule of §E.5 — including that most edges are expected to be
+   *inconclusive* and that an inconclusive edge does not enter the hot tier.
+6. **Evening layer inputs.** Confirm the brokers (Zerodha via the official Kite MCP, Angel One
+   via its export only), the slippage assumptions per liquidity bucket, the switch margin
+   (this design requires the after-tax improvement to exceed the switch cost by a margin
+   before a switch is recommended), and that a static allocation is the benchmark the layer
+   must beat.
+7. **GPU benchmark approval.** The test in §F.8 needs one install (`cupy-cuda12x` or the
+   CUDA-12 torch wheel) on the GTX 1050 Ti box. Approve that install for the benchmark worker
+   only; no GPU dependency enters the query path either way.
 
 ---
 
@@ -962,11 +1511,20 @@ concept, and the fetch list is the set of (entity, doc_type) with zero rows — 
 ```
 python tasks/arch_v4/build_concept_registry.py --check      # writes concept_registry.json + registry_coverage.md
 python tasks/arch_v4/build_concept_registry.py --show MB0305,MB0125
-python tasks/arch_v4/bench_screen.py                        # writes bench_screen.md
+python tasks/arch_v4/vocab_pass1.py                         # the measured vocabulary pass (VOCAB_PASS1.md)
+python tasks/arch_v4/vocab_pass1.py --json                  # the same numbers as JSON
+python tasks/arch_v4/bench_screen.py                        # writes bench_screen.md (CPU baseline)
 ```
 
 Inputs: `tasks/master_bank/MASTER_BANK.jsonl` (1,073 cases, sha `64d2f46318127f76`),
-`tasks/SCHEMA_FINAL_2026-10-29.sql` (137 tables), pilot stores under
-`reality_engine/data/pilot/pilot60/` (read-only, `mode=ro&immutable=1`). Gate counts from
-`tasks/answer_bench/GATE_RESULTS_*_strict.jsonl`. The generator is deterministic (byte-identical
-rebuild verified) and touches no database outside the pilot stores.
+`tasks/pilot60/UNIVERSE.csv` (the 60 pilot ISINs), `tasks/SCHEMA_FINAL_2026-10-29.sql` (137
+tables), pilot stores under `reality_engine/data/pilot/pilot60/` (read-only,
+`mode=ro&immutable=1`). Gate counts from `tasks/answer_bench/GATE_RESULTS_*_strict.jsonl`. The
+generator is deterministic (byte-identical rebuild verified, `PASS`) and touches no database
+outside the pilot stores. `build_concept_registry.py` now emits **60 atoms / 19 dims** (v4.1:
+the two paid-consensus atoms became one `own.estimate` atom); coverage is unchanged at 897
+mapped / 150 NID / 26 unmapped.
+
+Companion documents, each produced by its own worker, not by this one:
+`VOCAB_PASS1.md` (this directory), `NID_TRIAGE.md` (the 150 NID cases, in progress),
+`bench_gpu.md` (the GPU test, in progress), `PILOT_BACKTEST.md` (after §E.5 is built).

@@ -6,21 +6,21 @@ Bank: `tasks\master_bank\MASTER_BANK.jsonl` · 1073 cases · sha `64d2f46318127f
 
 | table | rows | what a row is |
 |---|---:|---|
-| atoms | 61 | one raw measure -> store, column, unit, grain |
-| dims | 18 | a qualifier that lives on an atom |
+| atoms | 60 | one raw measure -> store, column, unit, grain |
+| dims | 19 | a qualifier that lives on an atom |
 | formulas | 13 | a derived measure as an expression over atoms |
 | operators | 26 | a closed-set parameterised result template |
 | lexicon | 2242 | surface phrase -> atom / formula / dim / operator / scope / period |
 | hand_check | 5 | mined entries a human must confirm |
 
-Atom coverage: **43 held**, **11 gap** (registry knows the measure, the store does not yet carry it), **7 absent** (declared NOT IN DATA with its reason).
+Atom coverage: **43 held**, **12 gap** (registry knows the measure, the store does not yet carry it), **5 absent** (declared NOT IN DATA with its reason).
 
 ## 2. Coverage over the 1,073 cases
 
 | status | cases | share | meaning |
 |---|---:|---:|---|
 | mapped | 897 | 83.6% | every clause resolves to an atom/formula/rule and all slots are filled |
-| not_in_data | 150 | 13.98% | resolves, but a required atom is absent or a gap → NID with the registry's reason |
+| not_in_data | 150 | 13.98% | resolves, but a required atom is absent or a gap → a **ticket** (v4.1 d3: fetch, proxy, or NID with what was tried), not an answer |
 | unmapped | 26 | 2.42% | a clause names a measure the registry cannot express |
 
 **Mapped + NID = 97.58%** (the ceiling for the 95% gate: NID counts only where the data truly does not exist).
@@ -137,7 +137,9 @@ Entity default: **35 cases** name no entity at all, so the Ask contract's defaul
 | `market` | 2 |
 | `issue` | 1 |
 
-### 4.2 NOT IN DATA reasons (declared absent atoms)
+### 4.2 NOT IN DATA reasons (gap and absent atoms)
+
+A typed NID is a to-do, not an answer (v4.1 decision 3): every row below is triaged into a fetch job, a proxy estimate, or a true NOT IN DATA in `tasks/arch_v4/NID_TRIAGE.md`.
 
 | reason | cases |
 |---|---:|
@@ -154,7 +156,7 @@ Entity default: **35 cases** name no entity at all, so the Ask contract's defaul
 | metric_key 'cfo' is not in the held concept vocabulary | 5 |
 | forecast, not a held fact | 4 |
 | no company discloses a refurbished-sales series | 2 |
-| paid-only (no consensus feed acquired) | 2 |
+| registry knows the measure; the store does not carry it yet (metric_state.own_estimate.value) | 2 |
 | metric_key 'cwip' is not in the held concept vocabulary | 2 |
 
 ### 4.3 registry gaps (atom defined, store does not carry it yet)
@@ -172,6 +174,7 @@ Entity default: **35 cases** name no entity at all, so the Ask contract's defaul
 | `fin.deposits` | registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value) |
 | `fin.unit_volume` | registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value) |
 | `price.free_float` | registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight) |
+| `own.estimate` | registry knows the measure; the store does not carry it yet (metric_state.own_estimate.value) |
 
 ### 4.4 unmapped cases (26)
 
