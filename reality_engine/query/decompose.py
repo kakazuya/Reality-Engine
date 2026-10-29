@@ -28,7 +28,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .router import metric_of, named_document
+from .gate import asked_concepts
+from .router import APPEND_CONCEPTS, CONCEPT_PHRASE, implied_ask, metric_of, named_document
 
 MAX_SUBS = 3
 
@@ -126,6 +127,7 @@ def decompose(case: dict) -> list[dict[str, Any]]:
         for step in steps:
             best = max(subs, key=lambda sub: _overlap(step, sub["text"]))
             best["steps"].append(step)
+    parent_concepts = asked_concepts(question + " " + str(case.get("period") or ""))
     for index, sub in enumerate(subs):
         previous_is_ranking = bool(index) and bool(RANKING.search(subs[index - 1]["text"]))
         dependent = (bool(index) and previous_is_ranking and ANAPHOR.search(sub["text"]) and
@@ -134,6 +136,23 @@ def decompose(case: dict) -> list[dict[str, Any]]:
         sub["universe"] = bool(RANKING.search(sub["text"])) and \
             str(case.get("entity_level") or "stock") != "stock"
         sub["named_document"] = named_document({"question": sub["text"]})
+        # A short sub-question that names no concept takes the ask its family /
+        # template implies ("which one was worst" -> price return); a sub that
+        # names one half of a two-concept ask also carries the other, because the
+        # run is judged against the whole ask.  The phrases go into the text the
+        # planner AND the gate read, so both see the same asks.
+        hints = [hint] if (hint := implied_ask(sub["text"], case)) else []
+        named = set(asked_concepts(" ".join([sub["text"], *hints])))
+        for concept in parent_concepts:
+            phrase = CONCEPT_PHRASE.get(concept)
+            if concept in named or concept not in APPEND_CONCEPTS or not phrase or \
+                    len(hints) >= 3:
+                continue
+            hints.append(phrase)
+            named |= set(asked_concepts(phrase))
+        if hints:
+            sub["text"] = f"{sub['text']} ({', '.join(hints)})"
+            sub["routing_text"] = f"{sub['routing_text']} ({', '.join(hints)})"
         sub["metric"] = metric_of(sub["routing_text"])[0]
     return subs
 

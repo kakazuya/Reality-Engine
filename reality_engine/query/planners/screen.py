@@ -5,90 +5,398 @@ import re
 from typing import Any
 
 from . import envelope, fmt_num, in_period
+from .facts import _t1_rows
 
 CHECKED = ["equity_intelligence.master_companies", "equity_intelligence.index_membership",
            "equity_intelligence.daily_price_delivery", "equity_intelligence.quarterly_financials",
-           "equity_intelligence.shp_index"]
+           "equity_intelligence.shp_index", "equity_intelligence.price_bands",
+           "equity_intelligence.mkt_nse_insider", "market_state.company_ownership_pit",
+           "market_state.company_state_daily", "facts_pilot.company_metric_series"]
 
 SCREEN_TABLES = ("company_state_daily", "price_band_daily", "sector_flow_daily",
                  "company_metric_series", "company_membership_pit", "event_day0",
                  "company_theme_pit", "company_operating_metrics")
 
+HOLDING_ASK = re.compile(r"\b(promoter|shareholding|public holding|public shareholding|"
+                         r"free float|pledge|non-promoter)\b", re.I)
+BAND_ASK = re.compile(r"\b(price band|band|circuit|base price)\b", re.I)
+VALUATION_ASK = re.compile(r"\b(p/b|pb|price to book|book value|p/e|pe|price to earnings|"
+                           r"market cap|market capitalisation|market capitalization|"
+                           r"ev/ebitda|ev/sales|valuation)\b", re.I)
+SECTORS = ("Consumer Durables", "Financial Services", "Information Technology",
+           "Metals & Mining", "Capital Goods", "Automobile and Auto Components",
+           "Oil Gas & Consumable Fuels", "Construction Materials", "Realty", "Chemicals",
+           "Healthcare", "Fast Moving Consumer Goods", "Consumer Services", "Power",
+           "Telecommunication", "Textiles", "Transport Services", "Industrial Products",
+           "General Diversified")
 
-def _promoter_screen(slots: dict[str, Any], as_of: str, ctx: Any, question: str) -> dict[str, Any]:
-    """Biggest promoter-holding change over the last year, from shp_index (PIT broadcast).
 
-    A named month/quarter ask ranks that quarter's holding level instead: the
-    window the router resolved decides which shareholding filing is in scope.
-    """
-    from datetime import date, timedelta
-    floor = (date.fromisoformat(as_of) - timedelta(days=400)).isoformat()
-    tier = _tier(question)
-    where = ["COALESCE(s.broadcast_at,'') <> ''", "substr(s.broadcast_at,1,10) <= ?",
-             "s.quarter_end >= ?"]
-    params: list[Any] = [as_of, floor]
-    want_public = bool(re.search(r"\bpublic\b", question, re.I))
-    if tier:
-        where.append("m.market_cap_tier = ?")
-        params.append(tier)
-    basis = str(slots.get("period_basis") or "")
+def _sector(question: str) -> str | None:
+    low = question.lower()
+    for name in SECTORS:
+        if name.lower() in low:
+            return name
+    return None
+
+
+def _symbol_isins(ctx: Any, symbol: str | None, isin: str | None) -> list[str]:
+    """Every ISIN the symbol has traded under (a holding row may carry an old one)."""
+    out = [isin] if isin else []
+    if symbol:
+        key = ("holding_isins", symbol.upper())
+        cached = ctx.cache_get(key)
+        if cached is None:
+            try:
+                rows = ctx.rows(
+                    "equity_intelligence",
+                    "SELECT DISTINCT isin FROM symbol_isin_history "
+                    "WHERE upper(symbol) = upper(?)", (symbol,))
+                cached = [r["isin"] for r in rows if r.get("isin")]
+            except Exception:  # noqa: BLE001 - the identity store is optional
+                cached = []
+            ctx.cache_put(key, cached)
+        out += list(cached)
+    return list(dict.fromkeys(value for value in out if value))
+
+
+def _holding_rows(ctx: Any, isins: list[str], symbol: str | None, as_of: str,
+                  want_public: bool, want_pledge: bool) -> list[dict[str, Any]]:
+    """Promoter / public / pledge levels from the ownership tables, newest PIT first."""
+    quarters: list[dict[str, Any]] = []
+    marks = ",".join("?" * len(isins)) if isins else ""
+    if isins:
+        try:
+            quarters = _t1_rows(
+                ctx, "market_state",
+                "SELECT isin, quarter_end, known_at, promoter_pct, public_pct, pledge_pct "
+                f"FROM company_ownership_pit WHERE isin IN ({marks}) AND known_at <= ? "
+                "ORDER BY quarter_end DESC LIMIT 8", (*isins, as_of))
+        except Exception:  # noqa: BLE001 - the T1 build is optional
+            quarters = []
+    if not quarters:
+        isin_clause = f"isin IN ({marks}) OR " if marks else ""
+        try:
+            quarters = ctx.rows(
+                "equity_intelligence",
+                "SELECT isin, quarter_end, broadcast_at AS known_at, promoter_pct, "
+                "public_pct, NULL AS pledge_pct FROM shp_index "
+                f"WHERE ({isin_clause}upper(symbol) = upper(?)) "
+                "AND COALESCE(broadcast_at,'') <> '' AND substr(broadcast_at,1,10) <= ? "
+                "ORDER BY quarter_end DESC LIMIT 8",
+                (*isins, symbol or "", as_of))
+        except Exception:  # noqa: BLE001
+            quarters = []
+    out: list[dict[str, Any]] = []
+    for row in quarters:
+        day = str(row.get("quarter_end") or "")[:10]
+        known = str(row.get("known_at") or "")[:10] or as_of
+        if want_public:
+            if row.get("public_pct") is not None:
+                out.append({"ref": f"shp_index:{row.get('isin')}", "item": "Public holding %",
+                            "period": day, "known_at": known, "symbol": symbol,
+                            "isin": row.get("isin"), "value": row["public_pct"]})
+            continue
+        if row.get("promoter_pct") is not None:
+            out.append({"ref": f"shp_index:{row.get('isin')}", "item": "Promoter holding %",
+                        "period": day, "known_at": known, "symbol": symbol,
+                        "isin": row.get("isin"), "value": row["promoter_pct"]})
+        if want_pledge and row.get("pledge_pct") is not None:
+            out.append({"ref": f"shp_index:{row.get('isin')}", "item": "Promoter pledge %",
+                        "period": day, "known_at": known, "symbol": symbol,
+                        "isin": row.get("isin"), "value": row["pledge_pct"]})
+    return out
+
+
+def _pledge_events(ctx: Any, symbol: str | None, as_of: str, slots: dict[str, Any],
+                   corpus: bool = False) -> list[dict[str, Any]]:
+    """Pledge creation/release filings from the NSE insider (SAST) table."""
+    where = ["lower(raw_json) LIKE '%pledge%'", "substr(disseminated_at,1,10) <= ?"]
+    params: list[Any] = [as_of]
+    if symbol and not corpus:
+        where.append("upper(symbol) = upper(?)")
+        params.append(symbol)
     low, high = str(slots.get("date_from") or "")[:10], str(slots.get("date_to") or "")[:10]
-    window = None
-    if basis in ("month", "quarter end", "month span", "named date", "named dates") \
-            and low and high:
-        window = ((date.fromisoformat(low) - timedelta(days=3)).isoformat(),
-                  (date.fromisoformat(high) + timedelta(days=3)).isoformat())
-        where.append("s.quarter_end >= ? AND s.quarter_end <= ?")
-        params.extend(window)
+    if low and high:
+        where.append("substr(disseminated_at,1,10) >= ? AND substr(disseminated_at,1,10) <= ?")
+        params.extend([low, high])
     try:
         rows = ctx.rows(
             "equity_intelligence",
-            "SELECT s.isin, s.symbol, s.quarter_end, s.promoter_pct, s.public_pct, "
-            "s.broadcast_at, m.market_cap_tier FROM shp_index s "
-            "JOIN master_companies m ON m.isin = s.isin "
-            f"WHERE {' AND '.join(where)} ORDER BY s.isin, s.quarter_end", params)
-    except Exception as exc:  # noqa: BLE001
-        return envelope("SCREEN", ok=False, why="tool", checked=CHECKED,
-                        detail=f"promoter screen failed: {type(exc).__name__}: {exc}")
-    bucket: dict[str, list[dict[str, Any]]] = {}
+            "SELECT symbol, transaction_type, securities_qty, after_pct, disseminated_at, "
+            "acquirer_name, raw_json FROM mkt_nse_insider "
+            f"WHERE {' AND '.join(where)} ORDER BY disseminated_at DESC LIMIT 80", tuple(params))
+    except Exception:  # noqa: BLE001 - the SAST table is optional
+        return []
+    out = []
     for row in rows:
-        bucket.setdefault(row["isin"], []).append(row)
-    ranked = []
-    level = False
-    for points in bucket.values():
-        column = "public_pct" if want_public else "promoter_pct"
-        if points[-1][column] is None:
-            continue
-        if len(points) < 2 or window:
-            # An in-window filing is a level ("as of Sep 2026"), not a change.
-            ranked.append((points[-1], float(points[-1][column])))
-            level = True
-            continue
-        if points[0][column] is None:
-            continue
-        ranked.append((points[-1], float(points[-1][column]) - float(points[0][column])))
-    if not ranked:
-        detail = f"no two shareholding filings within 400 days of {as_of}"
+        raw = str(row.get("raw_json") or "").lower()
+        label = ("Pledge creation" if "pledge creation" in raw
+                 else "Pledge release" if "release" in raw or "revok" in raw
+                 else "Pledge")
+        qty = row.get("securities_qty")
+        out.append({"ref": f"mkt_nse_insider:{row.get('acquirer_name') or ''}",
+                    "item": f"Promoter {label} (shares)", "period":
+                    str(row.get("disseminated_at") or "")[:10],
+                    "known_at": str(row.get("disseminated_at") or "")[:10],
+                    "symbol": row.get("symbol"), "value": qty,
+                    "detail": f"{label} by {row.get('acquirer_name') or 'promoter'}"})
+    return out
+
+
+def _asked_quarter(question: str) -> str | None:
+    """"as of Sep 2026" -> 2026-09-30 (the quarter the holding filing reports)."""
+    match = re.search(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})",
+                      question, re.I)
+    if not match:
+        return None
+    month = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, "jul": 7,
+             "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}[match.group(1).lower()[:3]]
+    quarter_end = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}[(month - 1) // 3 + 1]
+    return f"{match.group(2)}-{quarter_end}"
+
+
+def _universe_holding(ctx: Any, question: str, slots: dict[str, Any], as_of: str,
+                      want_public: bool) -> list[dict[str, Any]]:
+    """Rank the asked universe on its shareholding level for the asked quarter."""
+    where = ["COALESCE(s.broadcast_at,'') <> ''", "substr(s.broadcast_at,1,10) <= ?"]
+    params: list[Any] = [as_of]
+    low, high = str(slots.get("date_from") or "")[:10], str(slots.get("date_to") or "")[:10]
+    quarter = _asked_quarter(question)
+    if low and high:
+        where.append("s.quarter_end >= ? AND s.quarter_end <= ?")
+        params.extend([low, high])
+    elif quarter:
+        where.append("s.quarter_end = ?")
+        params.append(quarter)
+    else:
+        where.append("s.quarter_end = (SELECT MAX(quarter_end) FROM shp_index "
+                     "WHERE substr(broadcast_at,1,10) <= ? AND quarter_end >= "
+                     "(SELECT date(MAX(broadcast_at), '-400 days') FROM shp_index))")
+        params.append(as_of)
+    filters: list[tuple[str, Any]] = []
+    tier = _tier(question)
+    if tier:
+        filters.append(("m.market_cap_tier = ?", tier))
+    sector = _sector(question)
+    if sector:
+        filters.append(("lower(COALESCE(m.industry, m.sector, '')) LIKE ?",
+                        f"%{sector.lower()}%"))
+    index = _index(question)
+    if index:
+        filters.append(("s.isin IN (SELECT isin FROM index_membership "
+                        "WHERE lower(index_name) LIKE ?)", f"%{index.lower()}%"))
+    column = "public_pct" if want_public else "promoter_pct"
+
+    def run(extra: list[tuple[str, Any]]) -> list[dict[str, Any]]:
+        clauses = list(where) + [clause for clause, _ in extra]
+        args: list[Any] = list(params) + [value for _, value in extra]
+        return ctx.rows(
+            "equity_intelligence",
+            "SELECT s.symbol, s.isin, s.quarter_end, s.promoter_pct, s.public_pct, "
+            "s.broadcast_at FROM shp_index s "
+            "LEFT JOIN master_companies m ON upper(m.nse_symbol) = upper(s.symbol) "
+            f"WHERE {' AND '.join(clauses)} AND s.{column} IS NOT NULL "
+            f"ORDER BY s.{column} DESC LIMIT 15", tuple(args))
+
+    rows: list[dict[str, Any]] = []
+    try:
+        rows = run(filters)
+        if not rows and (sector or index):
+            # The bank's sector label is not always our industry label: rank the
+            # whole held universe rather than report no filing at all.
+            rows = run([f for f in filters if "market_cap_tier" in f[0]])
+    except Exception:  # noqa: BLE001 - the shareholding index is optional
+        return []
+    item = "Public holding %" if want_public else "Promoter holding %"
+    return [{"ref": f"shp_index:{r.get('isin')}", "item": item,
+             "period": str(r.get("quarter_end") or "")[:10],
+             "known_at": str(r.get("broadcast_at") or "")[:10],
+             "symbol": r.get("symbol"), "isin": r.get("isin"),
+             "value": r.get(column)} for r in rows]
+
+
+def _holding_screen(slots: dict[str, Any], as_of: str, ctx: Any,
+                    question: str) -> dict[str, Any]:
+    """The shareholding index for the asked line and quarter (single name or corpus)."""
+    symbol = str(slots.get("symbol") or "") or None
+    isins = _symbol_isins(ctx, symbol, slots.get("isin"))
+    want_public = bool(re.search(r"\bpublic\b|free float|non-promoter", question, re.I))
+    want_pledge = bool(re.search(r"\bpledge", question, re.I))
+    rows: list[dict[str, Any]] = []
+    if want_pledge:
+        rows += _pledge_events(ctx, symbol, as_of, slots, corpus=not symbol)
+    if symbol or isins:
+        rows += _holding_rows(ctx, isins, symbol, as_of, want_public, want_pledge)
+    else:
+        rows += _universe_holding(ctx, question, slots, as_of, want_public)
+    rows = in_period(rows, slots, hop="SCREEN")
+    if not rows:
+        detail = (f"no shareholding filing for {symbol or slots.get('isin') or 'the universe'} "
+                  f"in the asked window known by {as_of}")
         return envelope("SCREEN", ok=False, why="no_doc", checked=CHECKED,
                         detail=detail, nid_reason=detail)
-    ranked.sort(key=lambda item: item[1], reverse=level)
-    top = ranked[:15]
-    item = ("Public holding %" if want_public else "Promoter holding %") if level \
-        else "Promoter holding change (pp)"
-    detail = (f"{item}, " +
-              "; ".join(f"{row['symbol']} {value:+.2f}"
-                        f"{'' if level else 'pp'} ({row['quarter_end']})"
-                        for row, value in top[:5]))
+    item = ("Public holding %" if want_public and not want_pledge
+            else "Promoter pledge" if want_pledge else "Promoter holding %")
+    detail = (f"{item}: " + "; ".join(
+        f"{r.get('symbol') or r.get('isin')} {fmt_num(r.get('value'))} "
+        f"({r.get('period')})" for r in rows[:5]))
     return envelope(
-        "SCREEN", ok=True,
-        rows=[{"ref": f"shp_index:{row['isin']}", "known_at": str(row["broadcast_at"])[:10],
-               "period": row["quarter_end"], "item": item,
-               "symbol": row["symbol"], "value": value} for row, value in top],
-        provenance=[{"ref": f"SCREEN:shp_index:{row['isin']}",
-                     "known_at": str(row["broadcast_at"])[:10]} for row, _ in top[:5]],
-        pit=f"broadcast_at date <= {as_of}; quarter_end within 400 days",
-        checked=CHECKED,
-        detail=detail)
+        "SCREEN", ok=True, rows=rows,
+        provenance=[{"ref": f"SCREEN:{r.get('ref')}", "known_at": r.get("known_at")}
+                    for r in rows[:5]],
+        pit=f"quarter_end / disseminated_at <= {as_of}",
+        checked=CHECKED, detail=detail)
+
+
+def _band_screen(slots: dict[str, Any], as_of: str, ctx: Any,
+                 question: str) -> dict[str, Any]:
+    """The names in a 2/5/10% circuit band on the asked session (price_bands)."""
+    anchor = min(str(slots.get("date_from") or as_of)[:10], str(as_of)[:10])
+    limit = re.search(r"\b(\d{1,2})\s*%", question)
+    max_band = int(limit.group(1)) if limit else None
+    try:
+        day_row = ctx.one("equity_intelligence",
+                          "SELECT MAX(date) AS d FROM price_bands WHERE date <= ?", (anchor,))
+    except Exception as exc:  # noqa: BLE001
+        return envelope("SCREEN", ok=False, why="tool", checked=CHECKED,
+                        detail=f"price band store failed: {type(exc).__name__}: {exc}")
+    day = str((day_row or {}).get("d") or "")[:10]
+    if not day:
+        detail = f"no price band row on or before {anchor}"
+        return envelope("SCREEN", ok=False, why="no_doc", checked=CHECKED,
+                        detail=detail, nid_reason=detail)
+    try:
+        bands = ctx.rows(
+            "equity_intelligence",
+            "SELECT symbol, band FROM price_bands WHERE date = ? AND band <> 'No Band'",
+            (day,))
+    except Exception as exc:  # noqa: BLE001
+        return envelope("SCREEN", ok=False, why="tool", checked=CHECKED,
+                        detail=f"price band read failed: {type(exc).__name__}: {exc}")
+    if max_band is not None:
+        bands = [b for b in bands
+                 if str(b.get("band") or "").isdigit() and int(b["band"]) <= max_band]
+    traded: dict[str, float] = {}
+    try:
+        for row in ctx.rows(
+                "equity_intelligence",
+                "SELECT symbol, turnover_lacs FROM mkt_nse_full_daily WHERE date = ?",
+                (day,)):
+            if row.get("turnover_lacs") is not None:
+                traded[str(row["symbol"]).upper()] = float(row["turnover_lacs"])
+    except Exception:  # noqa: BLE001 - ordering by turnover is a nicety
+        traded = {}
+    bands.sort(key=lambda b: traded.get(str(b["symbol"]).upper(), 0.0), reverse=True)
+    if not bands:
+        detail = f"no name carried a <= {max_band}% band on {day}"
+        return envelope("SCREEN", ok=False, why="no_doc", checked=CHECKED,
+                        detail=detail, nid_reason=detail)
+    top = bands[:15]
+    out = [{"ref": f"price_bands:{b['symbol']}", "item": f"price band {b['band']}%",
+            "period": day, "known_at": as_of, "symbol": b["symbol"],
+            "value": b["band"]} for b in top]
+    detail = (f"price band on {day}: " + "; ".join(
+        f"{b['symbol']} {b['band']}%" for b in top[:6]))
+    degraded = [] if day == anchor else [f"the band series ends {day}; the ask is {anchor}"]
+    return envelope("SCREEN", ok=True, rows=out,
+                    provenance=[{"ref": f"SCREEN:price_bands:{b['symbol']}",
+                                 "known_at": as_of} for b in top[:5]],
+                    pit=f"price_bands.date <= {as_of}", checked=CHECKED,
+                    detail=detail, degraded=degraded)
+
+
+def _valuation_screen(slots: dict[str, Any], as_of: str, ctx: Any,
+                      question: str) -> dict[str, Any] | None:
+    """Rank the asked universe on P/B, P/E or market cap from the PIT state row."""
+    low = question.lower()
+    if re.search(r"p/b|pb|price to book|book value", low):
+        kind = "pb"
+    elif re.search(r"p/e|pe ratio|price to earnings|\bpe\b", low):
+        kind = "pe"
+    else:
+        kind = "mcap"
+    anchor = min(str(slots.get("date_from") or as_of)[:10], str(as_of)[:10])
+    sector = _sector(question)
+    where, params = ("m.is_active = 1", [])
+    if sector:
+        where = "lower(COALESCE(m.industry, m.sector, '')) LIKE ?"
+        params = [f"%{sector.lower()}%"]
+    try:
+        names = ctx.rows(
+            "equity_intelligence",
+            f"SELECT m.isin, m.nse_symbol FROM master_companies m WHERE {where} "
+            "AND m.isin IS NOT NULL LIMIT 800", tuple(params))
+    except Exception:  # noqa: BLE001
+        return None
+    isins = list(dict.fromkeys(r["isin"] for r in names if r.get("isin")))
+    symbols = {r["isin"]: r.get("nse_symbol") for r in names}
+    if not isins:
+        return None
+    marks = ",".join("?" * len(isins))
+    try:
+        state = _t1_rows(
+            ctx, "market_state",
+            "SELECT isin, date, close, mcap_cr FROM company_state_daily "
+            "WHERE date = (SELECT MAX(date) FROM company_state_daily WHERE date <= ?) "
+            f"AND isin IN ({marks})", (anchor, *isins))
+    except Exception:  # noqa: BLE001 - the T1 build is optional
+        return None
+    if not state:
+        return None
+    by_isin = {r["isin"]: r for r in state if r.get("isin")}
+    values: dict[str, float] = {}
+    extra: dict[str, str] = {}
+    if kind in ("pb", "pe"):
+        metric_key, unit = (("net_worth", "INR_CRORE") if kind == "pb"
+                            else ("eps", "INR_PER_SHARE"))
+        try:
+            facts_rows = _t1_rows(
+                ctx, "facts_pilot",
+                "SELECT isin, period_end, value FROM company_metric_series "
+                "WHERE metric_key = ? AND unit = ? AND basis = 'consolidated' "
+                f"AND known_at <= ? AND isin IN ({marks}) ORDER BY period_end DESC",
+                (metric_key, unit, as_of, *isins))
+        except Exception:  # noqa: BLE001
+            facts_rows = []
+        per: dict[str, list[float]] = {}
+        for row in facts_rows:
+            if row.get("value") is None:
+                continue
+            per.setdefault(str(row.get("isin")), []).append(float(row["value"]))
+        for isin, vals in per.items():
+            day = by_isin.get(isin)
+            if not day:
+                continue
+            if kind == "pb" and day.get("mcap_cr") and vals[0]:
+                values[isin] = float(day["mcap_cr"]) / vals[0]
+                extra[isin] = f"net worth {vals[0]:,.0f} cr"
+            elif kind == "pe":
+                quarters = vals[:4]
+                if len(quarters) == 4 and day.get("close") and sum(quarters):
+                    values[isin] = float(day["close"]) / sum(quarters)
+                    extra[isin] = f"trailing 4q EPS {sum(quarters):.2f}"
+    else:
+        for isin, day in by_isin.items():
+            if day.get("mcap_cr"):
+                values[isin] = float(day["mcap_cr"])
+    if len(values) < 2:
+        return None
+    label = {"pb": "P/B", "pe": "P/E (TTM)", "mcap": "Market cap (Rs crore)"}[kind]
+    ranked = sorted(values.items(), key=lambda item: item[1], reverse=True)[:15]
+    day = next(iter(by_isin.values()))["date"]
+    out = [{"ref": f"company_state_daily:{isin}", "item": label, "period": day,
+            "known_at": as_of, "symbol": symbols.get(isin), "isin": isin,
+            "value": round(value, 2)} for isin, value in ranked]
+    detail = (f"{label} on {day}" + (f" ({sector})" if sector else "") + ": " + "; ".join(
+        f"{symbols.get(isin) or isin} {value:.2f}" for isin, value in ranked[:5]))
+    degraded = []
+    if day != anchor:
+        degraded.append(f"state row is {day}, the asked session is {anchor}")
+    return envelope("SCREEN", ok=True, rows=out,
+                    provenance=[{"ref": f"SCREEN:{label}:{isin}", "known_at": as_of}
+                                for isin, _ in ranked[:5]],
+                    pit=f"company_state_daily.date <= {as_of}; filings known_at <= {as_of}",
+                    checked=CHECKED, detail=detail, degraded=degraded)
 
 
 def _tier(question: str) -> str | None:
@@ -206,6 +514,25 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     if not slots.get("needs", {}).get("screen"):
         return envelope("SCREEN", ok=True, na=True, checked=CHECKED,
                         detail="single-entity ask; SCREEN not applicable")
+    # The held-field ladders run before the price screen: a holding/band ask names
+    # a field (shp_index, price_bands, mkt_nse_insider), not a return window.
+    if HOLDING_ASK.search(question):
+        return _holding_screen(slots, as_of, ctx, question)
+    if BAND_ASK.search(question):
+        # One company's band is a SERIES field, not a market ranking: the SERIES
+        # planner returns its price_bands row with its own date.
+        universe = (str(slots.get("entity_level") or "stock") != "stock"
+                    or bool(re.search(r"which (companies|names|stocks|large|mid|small)|"
+                                      r"rank|top \d|for all", question, re.I)))
+        if slots.get("symbol") and not universe:
+            return envelope("SCREEN", ok=True, na=True, checked=CHECKED,
+                            detail="single-entity band is a SERIES field")
+        return _band_screen(slots, as_of, ctx, question)
+    if VALUATION_ASK.search(question) and re.search(
+            r"which|for all|rank|top \d|across|list", question, re.I):
+        ranked = _valuation_screen(slots, as_of, ctx, question)
+        if ranked:
+            return ranked
     if re.search(r"\bNifty [A-Z]", question) and not re.search(
             r"which (companies|large|mid|small|stocks|names)", question, re.I):
         return envelope("SCREEN", ok=True, na=True, checked=CHECKED,
@@ -220,9 +547,6 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             return envelope("SCREEN", ok=False, why="schema", checked=CHECKED, gap=table,
                             detail=f"screen needs {table}; that table is not held yet",
                             nid_reason=f"BLOCKED_SCHEMA: {table}")
-    if slots.get("metric") == "promoter" and re.search(r"which|biggest|largest|most|rank",
-                                                       question, re.I):
-        return _promoter_screen(slots, as_of, ctx, question)
     allowed, pilot_note = _pilot_universe(ctx, question, as_of)
     named_index = _index(question)
     if named_index and allowed is None:

@@ -217,7 +217,9 @@ VALUATION_ASK = re.compile(
 def _valuation_row(ctx: Any, slots: dict[str, Any], as_of: str,
                    question: str) -> tuple[str, dict[str, Any], dict[str, Any]] | None:
     """(detail, stats, row) when the ask names a valuation ratio it can compute."""
-    if not VALUATION_ASK.search(question or ""):
+    # "book-value date" / "P/B-vs-P/E" spell the ratio with a hyphen; normalise it
+    # so a follow-up "state the book-value date" still reads the valuation block.
+    if not VALUATION_ASK.search((question or "").replace("-", " ")):
         return None
     valuation = _valuation(ctx, slots.get("isin") or isin_of(slots, ctx, as_of), as_of)
     if not valuation:
@@ -290,6 +292,213 @@ def _rsi_study(ctx: Any, symbol: str, as_of: str) -> dict[str, Any] | None:
     }
 
 
+def _flow_fallback(ctx: Any, isin: str | None, symbol: str | None, start: str,
+                   end: str) -> list[dict[str, Any]]:
+    """Delivery/volume rows from the live store when the price snapshot has them NULL.
+
+    The DuckDB snapshot carries close/high/low for every ISIN but its delivery
+    columns are NULL for thin names; ``daily_price_delivery`` (NSE + BSE, indexed
+    on symbol/ISIN/date) holds the delivered quantity and percent.
+    """
+    key = isin if isin else symbol
+    if not key:
+        return []
+    where = "isin = ?" if isin else "upper(symbol) = upper(?)"
+    try:
+        return ctx.rows(
+            "equity_intelligence",
+            "SELECT date, total_volume AS volume, delivery_pct FROM daily_price_delivery "
+            f"WHERE {where} AND date >= ? AND date <= ? ORDER BY date",
+            (key, start, end))
+    except Exception:  # noqa: BLE001 - a missing delivery table is a degraded label
+        return []
+
+
+_MONTH_NUM = {m: i + 1 for i, m in enumerate(
+    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"])}
+_SPAN_RE = re.compile(
+    r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*[-–—]\s*"
+    r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})", re.I)
+
+
+def _study_window(question: str, as_of: str) -> tuple[str, str, str] | None:
+    """The window the ask's own high/low names, when it is not the routed one."""
+    from datetime import date, timedelta
+    text = question or ""
+    match = _SPAN_RE.search(text)
+    if match:
+        year = int(match.group(5))
+        low = f"{year}-{_MONTH_NUM[match.group(2).lower()[:3]]:02d}-{int(match.group(1)):02d}"
+        high = f"{year}-{_MONTH_NUM[match.group(4).lower()[:3]]:02d}-{int(match.group(3)):02d}"
+        return (min(low, high), max(low, high), "asked span")
+    from ..router import parse_dates
+    days = parse_dates(text)
+    low_text = text.lower()
+    # "As of 30 June 2026, what was the YTD high in 2026" names the window END, not
+    # the window: the YTD/52-week form wins over the single parsed date.
+    end = days[0] if days else as_of
+    if re.search(r"52[- ]week", low_text):
+        return ((date.fromisoformat(end) - timedelta(days=365)).isoformat(), end,
+                "52 weeks")
+    if re.search(r"\bytd\b|year[- ]to[- ]date", low_text):
+        return f"{end[:4]}-01-01", end, "YTD"
+    if re.search(r"all[- ]time|record high|record low", low_text):
+        return "1900-01-01", end, "held history"
+    if len(days) >= 2:
+        return min(days), max(days), "asked span"
+    if days:
+        return days[0], days[0], "asked date"
+    return None
+
+
+def _range_study(ctx: Any, slots: dict[str, Any], as_of: str,
+                 question: str) -> tuple[str, dict[str, Any]] | None:
+    """The high/low the ask itself names, over the company's own held closes.
+
+    "MMP's YTD high in 1 January-30 September 2026" is a window the router's
+    single named date does not carry; the study reads the ask's own window so the
+    row can name the high and its date (a close row cannot).
+    """
+    window = _study_window(question, as_of)
+    if not window:
+        return None
+    history = _history(ctx, str(slots.get("symbol") or ""), as_of)
+    if not history:
+        return None
+    low, high, label = window
+    points = [(day, value) for day, value in history if low <= day <= high]
+    stats = compute.series_stats(points)
+    if not stats.get("rows"):
+        return None
+    detail = (f"{label} high {fmt_num(stats['high'])} ({stats['high_date']}), "
+              f"low {fmt_num(stats['low'])} ({stats['low_date']}) over "
+              f"{stats['rows']} sessions ({stats['start']}..{stats['end']})")
+    row = {"ref": str(slots.get("symbol") or slots.get("isin") or ""),
+           "item": "high, low", "period": stats["end"], "known_at": as_of,
+           "isin": slots.get("isin"), "symbol": slots.get("symbol"),
+           "stats": dict(stats, study=label, window_low=low, window_high=high)}
+    return detail, row
+
+
+BAND_ASK = re.compile(r"\b(price band|band|circuit|base price)\b", re.I)
+LISTING_ASK = re.compile(r"\b(listing|listed|ipo|initial public offer|prospectus|grey market)\b",
+                         re.I)
+
+
+def _listing_study(ctx: Any, slots: dict[str, Any], as_of: str,
+                   question: str) -> tuple[str, dict[str, Any]] | None:
+    """The listing date / first trade the ask names, from the security master."""
+    if not LISTING_ASK.search(question or ""):
+        return None
+    isin, symbol = slots.get("isin"), str(slots.get("symbol") or "")
+    if not isin and not symbol:
+        return None
+    where, params = ("isin = ?", (isin,)) if isin else ("upper(nse_symbol) = upper(?)",
+                                                       (symbol,))
+    try:
+        row = ctx.one(
+            "equity_intelligence",
+            f"SELECT isin, nse_symbol, nse_listing_date, first_trade FROM security_master "
+            f"WHERE {where} LIMIT 1", params)
+    except Exception:  # noqa: BLE001 - the identity store is optional
+        return None
+    if not row:
+        return None
+    listing = str(row.get("nse_listing_date") or "")[:10]
+    first = str(row.get("first_trade") or "")[:10]
+    if not listing and not first:
+        return None
+    detail = (f"listing date {listing or 'n/a'}"
+              + (f", first trade {first}" if first else ""))
+    day = str(slots.get("date_to") or as_of)[:10]
+    out = {"ref": f"security_master:{row.get('isin')}", "item": "listing date, first trade",
+           "period": day, "known_at": as_of, "isin": row.get("isin"),
+           "symbol": row.get("nse_symbol") or slots.get("symbol"),
+           "value": listing or first}
+    return detail, out
+
+
+def _band_study(ctx: Any, slots: dict[str, Any], as_of: str,
+                start: str, end: str) -> tuple[str, list[dict[str, Any]], list[str]] | None:
+    """The price band the exchange applied, and how often a close sat on it.
+
+    ``price_bands`` is the live NSE series (band 2/5/10/20/40 or "No Band"); the
+    same sessions' high/close decide an "upper band" close (close == high with a
+    real limit).  The series is sparse and ends before the snapshot date, so the
+    latest held band rows are returned with their own dates rather than passed off
+    as the asked date.
+    """
+    from datetime import date, timedelta
+    isin, symbol = slots.get("isin"), str(slots.get("symbol") or "")
+    if not symbol:
+        return None  # price_bands is symbol-keyed
+    anchor = min(str(end or as_of)[:10], str(as_of)[:10])
+    degraded: list[str] = []
+    try:
+        floor = (date.fromisoformat(anchor) - timedelta(days=60)).isoformat()
+        rows = ctx.rows(
+            "equity_intelligence",
+            "SELECT date, band, remarks FROM price_bands WHERE upper(symbol) = upper(?) "
+            "AND date >= ? AND date <= ? ORDER BY date", (symbol, floor, anchor))
+    except Exception:  # noqa: BLE001 - a missing band series is a degraded study
+        return None
+    if not rows:
+        try:
+            rows = ctx.rows(
+                "equity_intelligence",
+                "SELECT date, band, remarks FROM price_bands WHERE upper(symbol) = upper(?) "
+                "AND date <= ? ORDER BY date DESC LIMIT 20", (symbol, anchor))
+            rows = list(reversed(rows))
+            if rows:
+                degraded.append(f"no band row within 60 days of {anchor}; latest held is "
+                                f"{rows[-1]['date']}")
+        except Exception:  # noqa: BLE001
+            return None
+    if not rows:
+        return None
+    latest = rows[-1]
+    band = str(latest.get("band") or "").strip()
+    if not band:
+        return None
+    label = f"price band {band}%" if band.isdigit() else f"price band {band}"
+    # Upper-band closes among the returned sessions: a close at the day's high
+    # while a real circuit is in force is a sealed upper limit.
+    upper = None
+    if re.search(r"upper|circuit|hit|stuck|closed", str(slots.get("question") or ""), re.I):
+        day_where = "isin = ?" if isin else "upper(symbol) = upper(?)"
+        try:
+            days = ctx.rows(
+                "equity_intelligence",
+                "SELECT date, close, high FROM daily_price_delivery WHERE "
+                + day_where + " AND date >= ? AND date <= ?",
+                ((isin if isin else symbol), rows[0]["date"], rows[-1]["date"]))
+        except Exception:  # noqa: BLE001
+            days = []
+        limits = {str(r["date"]): str(r.get("band") or "") for r in rows}
+        upper = sum(1 for day in days
+                    if day.get("high") is not None and day.get("close") is not None
+                    and float(day["close"]) >= float(day["high"])
+                    and limits.get(str(day["date"]), "No Band") not in ("", "No Band"))
+    detail = f"{label} on {latest['date']}"
+    if len(rows) > 1:
+        changed = rows[0]["band"] != latest["band"]
+        detail += (f" ({rows[0]['date']} band {rows[0]['band']}"
+                   f"{' -> ' if changed else ', unchanged'}"
+                   f"{latest['band'] if changed else ''}; {len(rows)} band sessions held)")
+    if upper is not None:
+        detail += f", upper-band closes {upper} of {len(rows)} band sessions"
+    out = [{"ref": f"price_bands:{symbol}", "item": label,
+            "period": latest["date"], "known_at": as_of,
+            "isin": slots.get("isin"), "symbol": slots.get("symbol"),
+            "value": band}]
+    if upper is not None:
+        out.append({"ref": f"price_bands:{symbol}", "item": "upper-band closes",
+                    "period": latest["date"], "known_at": as_of,
+                    "isin": slots.get("isin"), "symbol": slots.get("symbol"),
+                    "value": upper})
+    return detail, out, degraded
+
+
 def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
     question = str(slots.get("question") or "")
     metric = slots.get("metric")
@@ -308,7 +517,8 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                   "first close, so the pop cannot be computed from held data")
         return envelope("SERIES", ok=False, why="schema", checked=CHECKED, gap="ipo_issue_price",
                         detail=detail, nid_reason=detail)
-    if not slots.get("needs", {}).get("price") and metric not in {"return", "cagr", "range"}:
+    if not slots.get("needs", {}).get("price") and metric not in {"return", "cagr", "range",
+                                                                 "band", "volume", "delivery"}:
         return envelope("SERIES", ok=True, na=True, checked=CHECKED,
                         detail="no dated series asked; SERIES not applicable")
     start = slots.get("date_from") or as_of
@@ -401,6 +611,16 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
         st = compute.series_stats(points)
         stats[name] = st
         item = ["close"]
+        flow_rows = flows.get(name) or []
+        flow = compute.flow_stats(flow_rows)
+        if (want_volume and flow.get("volume_last") is None) or \
+                (want_delivery and flow.get("delivery_last") is None):
+            fallback = _flow_fallback(ctx, ident.get(name, (None, None))[0],
+                                      ident.get(name, (None, None))[1], start, end)
+            if fallback:
+                degraded.append(f"{name}: volume/delivery read from daily_price_delivery "
+                                f"(the price snapshot has them NULL)")
+                flow_rows = flow_rows + fallback
         if len(points) == 1:
             line = f"{name}: close {fmt_num(st['first'])} on {st['start']}"
             if names:
@@ -415,7 +635,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                         line += f" ({day_pct[name]:+.2f}% on the day)"
                 except Exception:
                     pass
-            item, line = _flow_line(item, line, flows.get(name), want_volume, want_delivery)
+            item, line = _flow_line(item, line, flow_rows, want_volume, want_delivery)
             items[name] = ", ".join(item)
             parts.append(line)
             continue
@@ -444,7 +664,7 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
                 tests = sum(1 for _, v in points if abs(v - (st["high"] or v)) <= edge * 0.01
                             or abs(v - (st["low"] or v)) <= edge * 0.01)
                 line += f", {tests} daily closes within 1% of an edge"
-        item, line = _flow_line(item, line, flows.get(name), want_volume, want_delivery)
+        item, line = _flow_line(item, line, flow_rows, want_volume, want_delivery)
         items[name] = ", ".join(item)
         parts.append(line)
 
@@ -487,13 +707,40 @@ def plan(slots: dict[str, Any], as_of: str, ctx: Any) -> dict[str, Any]:
             degraded.append("no RSI series for this symbol")
 
     extra_rows: list[dict[str, Any]] = []
+    # A high/low ask is answered by the high and low, not by the close: the study
+    # reads the window the ask itself names (YTD, 52 weeks, a named span) when the
+    # routed window is a single date.
+    range_study = None
+    if re.search(r"\b(high|low|range|52[- ]week|ytd|all[- ]time|record high|record low)\b",
+                 question, re.I):
+        range_study = _range_study(ctx, slots, as_of, question)
+        if range_study:
+            detail_text, row = range_study
+            stats["range_study"] = row["stats"]
+            parts.append(detail_text)
+            extra_rows.append(row)
+    if metric == "band" or BAND_ASK.search(question or ""):
+        band_study = _band_study(ctx, slots, as_of, start, end)
+        if band_study:
+            detail_text, band_rows, band_notes = band_study
+            parts.append(detail_text)
+            degraded.extend(band_notes)
+            extra_rows.extend(band_rows)
+        else:
+            degraded.append(f"price bands are not held for {slots.get('symbol') or ''} "
+                            f"in this window")
+    listing_hit = _listing_study(ctx, slots, as_of, question)
+    if listing_hit:
+        detail_text, listing_row = listing_hit
+        parts.append(detail_text)
+        extra_rows.append(listing_row)
     valuation_hit = _valuation_row(ctx, slots, as_of, question)
     if valuation_hit:
         detail_text, val_stats, val_row = valuation_hit
         stats["valuation"] = val_stats
         parts.append(detail_text)
         extra_rows.append(val_row)
-    elif VALUATION_ASK.search(question or ""):
+    elif VALUATION_ASK.search((question or "").replace("-", " ")):
         degraded.append("no held EPS/net-worth pair for a P/E or P/B on this date")
 
     # The technical studies the bank asks for by name: a session count near the
