@@ -9,13 +9,18 @@ of the PDF is stored — ``has_note_word`` marks the pages whose text mentions
 
 An announcement is processed once (a standalone/consolidated filing pair does not
 duplicate it) and a filing keeps every announcement that matches it, so no basis
-is lost.  Resumable: a cached PDF is reused only after it opens as a valid PDF,
-and an existing partial store (the old note-pages-only version) is completed from
-the cached PDF when it holds fewer pages than the PDF has.
+is lost.  Resumable: a stored announcement is skipped from the page counts alone
+(`--recheck` re-opens the cached PDFs to complete an old partial store), and a
+cached PDF is reused only after it opens as a valid PDF.
+
+The source database is always opened read-only through ``connect_ro``; the store is
+written to ``--out-db`` (default: ``--db``, which keeps the single-file test/debug use).
 
 Usage:
     python -m reality_engine.scripts.fetch_results_notes_text
     python -m reality_engine.scripts.fetch_results_notes_text --limit 20 --since 2026-06-30
+    python -m reality_engine.scripts.fetch_results_notes_text --isins-file isins.txt \\
+        --out-db .tmp/results_notes/results_notes.db --raw-root .tmp/results_notes_raw --since 2024-03-31
 """
 from __future__ import annotations
 
@@ -29,6 +34,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
+from reality_engine.db.readonly import connect_ro
 from reality_engine.toolbelt._common import resolve_db
 from reality_engine.raw_store import store_bytes
 
@@ -40,6 +46,11 @@ BSE_HEADERS = {"Referer": "https://www.bseindia.com/",
 NOTE_RE = re.compile(r"\bnotes?\b", re.IGNORECASE)
 MATCH_WINDOW_SECONDS = 4 * 24 * 3600
 DOWNLOAD_ATTEMPTS = 4  # first try plus 3 backoff retries: 0.5 s, 1 s, 2 s
+RATE_SECONDS = 1.0  # one BSE request per second (results_notes.py measured 76/min safe)
+
+
+class RateLimited(RuntimeError):
+    """BSE answered 403/429: stop the run instead of hammering the endpoint."""
 
 DDL = """
 CREATE TABLE IF NOT EXISTS results_notes (
@@ -157,6 +168,8 @@ def download(newsid: str, attachment: str, root: Path, offline: bool) -> Path | 
                 print(f"  truncated PDF {newsid}: {len(content)} bytes")
         except urllib.error.HTTPError as exc:
             print(f"  download failed {newsid} try {attempt + 1}: HTTP {exc.code}")
+            if exc.code in (403, 429):
+                raise RateLimited(f"HTTP {exc.code} on {attachment}") from exc
             if exc.code in (404, 410):  # the attachment is gone; retrying cannot help
                 break
         except Exception as exc:  # noqa: BLE001 - one filing must not stop the run
@@ -192,16 +205,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ann-db", help="bse_announcements database (default: REALITY_DATA_ROOT/bse_announcements.db)")
     ap.add_argument("--limit", type=int, help="Result announcements to process in this run")
     ap.add_argument("--since", help="only filings with period_end >= YYYY-MM-DD")
+    ap.add_argument("--isins-file", help="only filings whose ISIN is listed in this file (one per line)")
+    ap.add_argument("--out-db", help="write results_notes here; --db is still read read-only "
+                                     "(default: --db)")
     ap.add_argument("--raw-root", help=f"raw PDF root (default: REALITY_RAW_ROOT or {DEFAULT_RAW_ROOT})")
     ap.add_argument("--offline", action="store_true", help="use only cached PDFs, never download")
+    ap.add_argument("--recheck", action="store_true",
+                    help="re-open cached PDFs to complete an old partial store")
     args = ap.parse_args(argv)
 
     db = resolve_db(args.db or "results_xbrl")
+    out_db = Path(args.out_db) if args.out_db else db
     ann_db = resolve_db(args.ann_db or "bse_announcements")
     root = raw_root(args.raw_root)
-    con = sqlite3.connect(db, timeout=600)
-    con.execute("PRAGMA busy_timeout = 600000")
-    ensure_schema(con)
 
     sql = """SELECT file, isin, scrip_code, period_end, broadcast_ts, filing_ts
              FROM filings
@@ -212,8 +228,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.since:
         sql += " AND period_end >= ?"
         params.append(args.since)
+    if args.isins_file:
+        wanted = [line.strip() for line in Path(args.isins_file).read_text(encoding="utf-8").splitlines()
+                  if line.strip()]
+        if not wanted:
+            raise SystemExit(f"no ISINs in {args.isins_file}")
+        sql += f" AND isin IN ({','.join('?' * len(wanted))})"
+        params += wanted
     sql += " ORDER BY period_end DESC, broadcast_ts DESC"
-    filings = con.execute(sql, params).fetchall()
+    src = connect_ro(db, timeout_s=30)
+    try:
+        filings = src.execute(sql, params).fetchall()
+    finally:
+        src.close()
 
     by_scrip: dict[str, list[tuple[str, str, str]]] = {}
     for _file, isin, scrip_code, period_end, broadcast_ts, filing_ts in filings:
@@ -226,7 +253,13 @@ def main(argv: list[str] | None = None) -> int:
     candidates.sort(reverse=True)
     print(f"result announcements: {len(candidates)} for {len(by_scrip)} scrips with filings; filings: {len(filings)}")
 
-    processed = skipped = pages = 0
+    out_db.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(out_db, timeout=600)
+    con.execute("PRAGMA busy_timeout = 600000")
+    ensure_schema(con)
+
+    processed = skipped = pages = downloads = 0
+    last_request = 0.0
     # ponytail: BSE downloads are sequential; parallelise only if a full history backfill matters.
     for dissem, code, newsid, attachment in candidates:
         if args.limit and processed >= args.limit:
@@ -235,19 +268,36 @@ def main(argv: list[str] | None = None) -> int:
         if not matches:
             skipped += 1
             continue
-        pdf = download(newsid, attachment, root, args.offline)
+        stored = {m: con.execute(
+            "SELECT COUNT(DISTINCT page_no) FROM results_notes "
+            "WHERE isin = ? AND period_end = ? AND source_newsid = ?", (*m, newsid)).fetchone()[0]
+            for m in matches}
+        # Cheap resume: a non-empty store for every match is done; the delete+insert
+        # is one transaction, so a killed run never leaves partial rows.  --recheck
+        # re-opens the cached PDFs to complete an old note-pages-only store.
+        if not args.recheck and all(stored.values()):
+            skipped += 1
+            continue
+        if not args.offline:
+            wait = RATE_SECONDS - (time.monotonic() - last_request)
+            if wait > 0:
+                time.sleep(wait)
+            last_request = time.monotonic()
+        cached = (root / "results_notes_text" / f"{newsid}.pdf").is_file()
+        try:
+            pdf = download(newsid, attachment, root, args.offline)
+        except RateLimited as exc:
+            print(f"stopping: BSE rate-limited the run ({exc}); resume later")
+            break
         if pdf is None:
             skipped += 1
             continue
+        if not cached:
+            downloads += 1
+
         page_count = pdf_page_count(pdf)
-        todo = []
-        for isin, period_end in matches:
-            stored = con.execute(
-                "SELECT COUNT(DISTINCT page_no) FROM results_notes "
-                "WHERE isin = ? AND period_end = ? AND source_newsid = ?",
-                (isin, period_end, newsid)).fetchone()[0]
-            if stored != page_count:
-                todo.append((isin, period_end))
+        todo = [(isin, period_end) for (isin, period_end) in matches
+                if stored[(isin, period_end)] != page_count]
         if not todo:
             skipped += 1
             continue
@@ -269,7 +319,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {newsid[:8]} {dissem}: {len(texts)} pages for {linked}")
 
     con.close()
-    print(f"results_notes: {processed} announcements, {pages} pages, {skipped} skipped")
+    print(f"results_notes: {processed} announcements, {pages} pages, {downloads} downloaded, "
+          f"{skipped} skipped")
     return 0
 
 

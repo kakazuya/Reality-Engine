@@ -119,23 +119,41 @@ def isin_alias(b, isins: list[str]) -> dict[str, str]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--only", choices=("annual_report", "concall", "deck", "results_notes",
+                                       "announcement"),
+                    help="build one doc type only, e.g. results_notes into its own store")
+    ap.add_argument("--out-db", help="chunk store (default: .tmp/pilot60/chunks_v3_pilot.db)")
+    ap.add_argument("--out-dir", help="report dir (default: the store's dir with --only)")
     args = ap.parse_args(argv)
     b = load_builder()
     isins = isins60()
-    b.DB_PATH = DB_PATH
-    b.OUT_DIR = OUT_DIR
+    db_path = Path(args.out_db) if args.out_db else DB_PATH
+    out_dir = Path(args.out_dir) if args.out_dir else (db_path.parent if args.only else OUT_DIR)
+    b.DB_PATH = db_path
+    b.OUT_DIR = out_dir
     b.pilot_isins = lambda: isins
     b.isin_alias = lambda given: isin_alias(b, given)
+    if args.only:
+        loaders = {"annual_report": ("load_annual_reports",), "concall": ("load_concalls",),
+                   "deck": ("load_decks",), "results_notes": ("load_results_notes",),
+                   "announcement": ("load_bse_announcements", "load_nse_attachments")}
+        for doc_type, names in loaders.items():
+            if doc_type != args.only:
+                for name in names:
+                    setattr(b, name, lambda *_a, **_k: [])
+        if args.only == "results_notes":
+            # its resolver reads the results raw root, not the D: PDF tree walk
+            b.FileIndex = b._NoIndex
     cap = os.environ.get("REALITY_T2_MAX_PER_TYPE")
     if cap:
         cap_loaders(b, cap)
-    print(f"T2 ISINs: {len(isins)} -> {DB_PATH}")
+    print(f"T2 ISINs: {len(isins)} -> {db_path}")
     stats = b.build(args.limit)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
     known = stats.get("known_at_checks") or []
     bad = [c for c in known if c["known_at"] != c["record_known_at"]]
     stats["known_at_mismatches"] = len(bad)
-    (OUT_DIR / "chunks_build.json").write_text(json.dumps(
+    (out_dir / "chunks_build.json").write_text(json.dumps(
         {k: v for k, v in stats.items() if k != "known_at_checks"}, indent=1), encoding="utf-8")
     lines = ["# known_at check — first rows vs the filing record", "",
              "| doc_id | type | source ref | chunk known_at | record known_at | match |",
@@ -145,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
                      f"{c['known_at']} | {c['record_known_at']} | "
                      f"{'OK' if c['known_at'] == c['record_known_at'] else 'MISMATCH'} |")
     lines += ["", f"mismatches: {len(bad)} / {len(known)}"]
-    (OUT_DIR / "known_at_check.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (out_dir / "known_at_check.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"known_at: {len(bad)} mismatch / {len(known)} rows")
     print(json.dumps({k: v for k, v in stats.items() if k != "known_at_checks"}, indent=2))
     return 0
