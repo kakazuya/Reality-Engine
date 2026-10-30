@@ -41,7 +41,7 @@ ROUTE BY QUESTION SHAPE FIRST — one call each, before any sql():
 - financial numbers, segments, guidance -> facts(symbol, kind, period); OHLCV range -> price(...)
 Symbols, BSE codes, ISINs and names all resolve inside each tool. A {"found": false} answer lists what was checked and the nearest documents: follow its hint, then say NOT IN DATA; do not hand-write SQL over the same tables. Filing dates can be the evening of, or a day after, the date a user names. Exact share counts come from filings; XBRL paid-up capital / face value is rounded.
 
-Use catalog() when you need the map: every database, table, one-line description, key columns, row count and date coverage. For a specific company go straight to the data tools; resolve is optional because price/facts resolve the symbol themselves. resolve(query) turns a symbol, company name or ISIN into the canonical identity (ISIN history included). price(symbol, start, end=None, adjusted=False) returns OHLCV, delivery quantity/percent and traded value; close is raw unless adjusted=True. facts(symbol, kind=None, period=None) returns annual-report segments/financials/KPIs, XBRL results, deck figures and concall guidance in one call; kind accepts segments, financials, kpis, guidance, results, deck, concall, ar, or free text; period accepts FY25, Q4FY26 or a date. search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, as_of=None) returns text passages (as_of drops documents published after that date, and undated ones); sql(query, db) is a bounded read-only escape hatch.
+Use catalog() when you need the map: one line per database by default, with db= for that database's tables and query= for a word search across them. schema(table, db) gives one table's columns, types, row count, indexes and sample keys — use it instead of PRAGMA/sqlite_master probes. For a specific company go straight to the data tools; resolve is optional because price/facts resolve the symbol themselves. resolve(query) turns a symbol, company name or ISIN into the canonical identity (ISIN history included). price(symbol, start, end=None, adjusted=False) returns OHLCV, delivery quantity/percent and traded value; close is raw unless adjusted=True. facts(symbol, kind=None, period=None) returns annual-report segments/financials/KPIs, XBRL results, deck figures and concall guidance in one call; kind accepts segments, financials, kpis, guidance, results, deck, concall, ar, or free text; period accepts FY25, Q4FY26 or a date. search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, as_of=None) returns text passages (as_of drops documents published after that date, and undated ones); sql(query, db) is a bounded read-only escape hatch.
 
 Examples: price("PPL", "2026-03-30"); facts("PPL", kind="segments", period="FY25"); facts("PPL") for a broad fundamentals answer. Provenance names the database, table and snapshot; quarantine keys are applied to annual-report facts and demo tables are never presented as data."""
 
@@ -102,15 +102,31 @@ def _warm_search() -> None:
 @server.tool(
     name="catalog",
     description=(
-        "Return the whole data map in one call: every database, its tables, one-line "
-        "descriptions, key columns, row counts and date coverage. Curated descriptions "
-        "are merged when catalog_descriptions.yaml is present. refresh=true re-introspects "
-        "the live files (slower)."
+        "The data map, compact by default: one line per database (key, kind, table "
+        "count, description) plus the vector indexes. Narrow it with db='<key>' "
+        "(that database's tables: description, key columns, row count, coverage) or "
+        "query='<word>' (tables matching the word anywhere). schema(table, db) is the "
+        "per-table tool. refresh=true re-introspects the live files (slower)."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
-def catalog(refresh: bool = False) -> dict[str, Any]:
-    return _safe(lambda: catalog_mod.get_catalog(refresh=refresh))
+def catalog(refresh: bool = False, db: str | None = None,
+            query: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: catalog_mod.catalog_view(db=db, query=query, refresh=refresh))
+
+
+@server.tool(
+    name="schema",
+    description=(
+        "One table's shape in one call: columns with types, row count, indexes, date "
+        "coverage and up to three sample rows of its key columns. Resolved from the "
+        "catalog cache, so it is fast and needs no warm search index; a miss returns "
+        "the nearest table names. Use it instead of PRAGMA/sqlite_master probes."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
+)
+def schema(table: str, db: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: catalog_mod.get_schema(table, db=db))
 
 
 @server.tool(

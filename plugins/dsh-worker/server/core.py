@@ -114,10 +114,11 @@ PROGRESS_NOTES_INSTRUCTION = (
     "writing it."
 )
 # Appended to every worker brief (Shivam, 2026-10-30: all dsh workers use
-# code-intel).  The headless dsh profile loads code-intel as an MCP server;
-# run_deepseek_harness points it at the worker's own workspace.
+# code-intel, the read tools and the reality-data tools).  The headless dsh
+# profile loads both MCP servers; run_deepseek_harness points code-intel at the
+# worker's own workspace.
 CODE_INTEL_INSTRUCTION = (
-    "Standing code-navigation instruction: you have code-intel tools "
+    "Standing tool instruction: you have code-intel tools "
     "(mcp__code-intel__definition, __references, __callers, __symbols, "
     "__module_map, __hover, __diagnostics), indexed on YOUR workspace and "
     "fresh against on-disk edits. Use them before grep or whole-file reads: "
@@ -125,9 +126,14 @@ CODE_INTEL_INSTRUCTION = (
     "defined and used, symbols(file=...) for a module outline instead of "
     "reading it whole, module_map for a directory, diagnostics on every file "
     "you changed before reporting done. If the MCP tools are unavailable, the "
-    "same commands run as `python plugins/code-intel/ci.py <cmd>` (JSON). In "
-    "your final report state how many code-intel calls you made and your "
-    "tool-call count before the first edit."
+    "same commands run as `python plugins/code-intel/ci.py <cmd>` (JSON). "
+    "Use the read/grep/glob tools, not pwsh, to read, search and list files. "
+    "For a read-only DB question use mcp__reality-data__sql, not inline "
+    "Python; for a table's columns, types and indexes use "
+    "mcp__reality-data__schema, not PRAGMA probes. Send independent read-only "
+    "calls (reads, searches, code-intel) in ONE parallel batch. In your final "
+    "report state how many code-intel calls you made and your tool-call count "
+    "before the first edit."
 )
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 1200
 MAX_PROGRESS_INTERVAL_SECONDS = 86_400
@@ -1018,7 +1024,7 @@ class Manager:
         followup_wait_seconds: int = 0,
         controller_lease_seconds: int = 1800,
         refresh_context: bool = True,
-        context_pack: bool = False,
+        context_pack: bool = True,
         use_worktree: bool = False,
         base: str | None = None,
         test_cmd: str | None = None,
@@ -1262,10 +1268,11 @@ class Manager:
             if write_scope in ("data", "full"):
                 write_roots += [str(self.config.data_root), D_REALITY_ENGINE]
             # The generated repo/data map (tasks/worker_context/CONTEXT.md) is
-            # attached before the task brief only when the caller opts in
-            # (context_pack=true; the default is false).  A stale pack is
-            # regenerated with a 60 s bound; failure is a warning, never a
-            # refused start.
+            # attached before the task brief by default (Shivam, 2026-10-30);
+            # pass context_pack=false to opt out.  The path is the MAIN
+            # checkout's, so a worktree worker gets the same pack by absolute
+            # path.  A stale pack is regenerated with a 60 s bound; failure is
+            # a warning, never a refused start.
             warnings: list[str] = list(brief_warnings)
             context_info: dict[str, Any] = {
                 "enabled": False,

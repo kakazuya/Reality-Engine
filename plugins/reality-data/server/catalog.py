@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import Any
 
 from core import (
-    DATA, DUCK_KEY, ROOT, _lock as core_lock, _run_duck, _run_sqlite,
-    connect_duck, connect_sqlite, db_path, provenance, quarantine,
+    DATA, DB_ALIASES, DUCK_KEY, ROOT, DataError, _lock as core_lock, _run_duck,
+    _run_sqlite, connect_duck, connect_sqlite, db_path, provenance, quarantine,
     quarantined_doc_ids, snapshot_path,
 )
 
@@ -432,6 +432,250 @@ def get_catalog(refresh: bool = False, cache_path: Path | None = None,
             "large_table_counts": "measured 2026-10-24; other rows are MAX(rowid), rows_approx",
         },
     }
+
+
+def _resolve_db(db: str | None) -> str | None:
+    if not db:
+        return None
+    key = DB_ALIASES.get(str(db).strip().lower())
+    if key is None:
+        raise DataError("unknown_db", f"unknown db {db!r}; choose from {sorted(DB_ALIASES)}")
+    return key
+
+
+def _one_line(row: dict[str, Any], db_key: str | None = None) -> dict[str, Any]:
+    """The compact per-table row: what a table is, its size and its keys."""
+    out: dict[str, Any] = {"table": row["name"]}
+    if db_key is not None:
+        out["db"] = db_key
+    out["rows"] = row.get("rows")
+    if row.get("rows_approx"):
+        out["rows_approx"] = True
+    out["key_columns"] = row.get("key_columns") or []
+    out["description"] = (row.get("description") or "")[:120]
+    coverage = row.get("date_coverage")
+    if coverage:
+        out["date_coverage"] = coverage
+    return out
+
+
+def catalog_view(db: str | None = None, query: str | None = None,
+                 refresh: bool = False, limit: int = 40) -> dict[str, Any]:
+    """Compact catalog: one line per database, one db's tables, or one search.
+
+    ``catalog()`` used to return the whole map (~97k characters) and overflowed
+    the caller's limit; the default is now one line per database and the caller
+    narrows with ``db=`` or ``query=``.  ``schema()`` is the per-table tool.
+    """
+    out = get_catalog(refresh=refresh)
+    key = _resolve_db(db)
+    hint = ("catalog(db='<key>') lists one database's tables; catalog(query='<word>') "
+            "finds tables anywhere; schema(table, db) gives columns, types, indexes and "
+            "sample keys.")
+    if key is not None:
+        chosen = next((d for d in out["databases"] if d["key"] == key), None)
+        if chosen is None or chosen.get("error"):
+            raise DataError("db_unavailable", f"{key} could not be introspected")
+        tables = [_one_line(t) for t in chosen["tables"]]
+        return {
+            "db": key,
+            "kind": chosen["kind"],
+            "path": chosen["path"],
+            "description": chosen["description"],
+            "table_count": len(tables),
+            "tables": tables,
+            "hint": "schema(table, db='%s') for one table's columns, indexes and samples."
+                    % key,
+        }
+    if query:
+        needle = str(query).strip().lower()
+        hits = []
+        for database in out["databases"]:
+            for table in database["tables"]:
+                haystack = f"{table['name']} {table.get('description') or ''}".lower()
+                if needle in haystack:
+                    hits.append(_one_line(table, database["key"]))
+        return {
+            "query": query,
+            "matched": len(hits),
+            "tables": hits[:max(1, int(limit))],
+            "truncated": len(hits) > max(1, int(limit)),
+            "hint": hint,
+        }
+    return {
+        "snapshot": out["snapshot"],
+        "generated_at": out["generated_at"],
+        "cache_missing": out["cache_missing"],
+        "databases": [
+            {
+                "key": database["key"],
+                "kind": database["kind"],
+                "tables": database["table_count"],
+                "description": database["description"],
+            }
+            for database in out["databases"]
+        ],
+        "indexes": [
+            {
+                "key": item.get("key"),
+                "rows": item.get("rows"),
+                "done_rows": item.get("done_rows"),
+                "coverage_pct": item.get("coverage_pct"),
+                "available": item.get("available"),
+            }
+            for item in out["indexes"]
+        ],
+        "descriptions_loaded": out["descriptions"]["loaded"],
+        "hint": hint,
+    }
+
+
+# --------------------------------------------------------------------- schema
+def _nearest_tables(name: str, limit: int = 8) -> list[str]:
+    """Closest table names across every database (substring, tokens, then fuzzy)."""
+    import difflib
+
+    cache = _load_cache() or _introspect(refresh=False)
+    pairs: list[tuple[str, str]] = []
+    for db_key, _kind in DB_SPECS:
+        tables = ((cache.get("databases") or {}).get(db_key) or {}).get("tables", {})
+        pairs.extend((db_key, table) for table in tables)
+    needle = name.strip().lower()
+    tokens = [token for token in re.split(r"[^a-z0-9]+", needle) if len(token) > 2]
+    out: list[str] = [f"{db}.{table}" for db, table in pairs if needle and needle in table.lower()]
+    out += [f"{db}.{table}" for db, table in pairs
+            if tokens and all(token in table.lower() for token in tokens)]
+    by_name = {table.lower(): f"{db}.{table}" for db, table in reversed(pairs)}
+    out += [by_name[match] for match in
+            difflib.get_close_matches(needle, list(by_name), n=limit, cutoff=0.6)]
+    return list(dict.fromkeys(out))[:limit]
+
+
+def _table_indexes(db_key: str, kind: str, table: str) -> list[dict[str, Any]]:
+    """Indexes on one table; a store miss is reported as no index, never an error."""
+    out: list[dict[str, Any]] = []
+    if kind == "duckdb":
+        try:
+            _cols, rows = _run_duck(
+                "select index_name from duckdb_indexes() where table_name = ?", (table,)
+            )
+            out = [{"name": str(row[0])} for row in rows[:8] if row and row[0]]
+        except Exception:
+            return []
+        return out
+    try:
+        rows = _run_sqlite(
+            db_key,
+            "select name from sqlite_master where type='index' and tbl_name = ? "
+            "and sql is not null order by name",
+            (table,),
+        )
+        for row in rows[:8]:
+            index_name = str(row["name"])
+            columns: list[str] = []
+            try:
+                info = _run_sqlite(db_key, f'pragma index_info("{index_name}")')
+                columns = [str(item["name"]) for item in info if item["name"]]
+            except Exception:
+                columns = []
+            out.append({"name": index_name, "columns": columns})
+    except Exception:
+        return []
+    return out
+
+
+def _sample_keys(db_key: str, kind: str, table: str,
+                 columns: list[list[Any]]) -> dict[str, Any]:
+    """Up to three rows of the table's most useful key columns (bounded LIMIT)."""
+    lowered = {str(col[0]).lower(): str(col[0]) for col in columns}
+    keys = [lowered[name] for name in PREFERRED_KEYS if name in lowered][:4]
+    if not keys:
+        keys = [str(col[0]) for col in columns[:3]]
+    if not keys:
+        return {"columns": [], "rows": []}
+    select = ", ".join(f'"{key}"' for key in keys)
+    sql = f'SELECT {select} FROM "{table}" LIMIT 3'
+    try:
+        if kind == "duckdb":
+            _cols, rows = _run_duck(sql)
+            sample = [[_compact(value) for value in row] for row in rows]
+        else:
+            rows = _run_sqlite(db_key, sql)
+            sample = [[_compact(row[key]) for key in keys] for row in rows]
+    except Exception:
+        return {"columns": keys, "rows": []}
+    return {"columns": keys, "rows": sample}
+
+
+def _compact(value: Any) -> Any:
+    if isinstance(value, (dt.datetime, dt.date)):
+        return value.isoformat()
+    if isinstance(value, (bytes, bytearray)):
+        return value.decode("utf-8", "replace")[:60]
+    if isinstance(value, str):
+        return value[:80]
+    return value
+
+
+def get_schema(table: str, db: str | None = None) -> dict[str, Any]:
+    """Columns, types, row count, indexes and sample keys for ONE table.
+
+    Resolved from the catalog cache (no live introspection, no search index);
+    a miss returns the nearest table names so the next call is the right one.
+    """
+    name = str(table or "").strip()
+    key = _resolve_db(db)
+    cache = _load_cache() or _introspect(refresh=False)
+    databases = (cache.get("databases") or {})
+    lowered = name.lower()
+    candidates: list[tuple[str, str, dict[str, Any]]] = []
+    for db_key, _kind in DB_SPECS:
+        if key is not None and db_key != key:
+            continue
+        tables = (databases.get(db_key) or {}).get("tables", {})
+        for existing, info in tables.items():
+            if existing.lower() == lowered and isinstance(info, dict) and not info.get("error"):
+                candidates.append((db_key, existing, info))
+    if not candidates and key is not None:
+        # A wrong db= should still help: say where the table actually lives.
+        for db_key, _kind in DB_SPECS:
+            tables = (databases.get(db_key) or {}).get("tables", {})
+            for existing, info in tables.items():
+                if existing.lower() == lowered and not info.get("error"):
+                    candidates.append((db_key, existing, info))
+    if not candidates:
+        return {
+            "found": False,
+            "table": name,
+            "nearest": _nearest_tables(name),
+            "hint": "schema(table) with one of the nearest names, or catalog(query=...)",
+        }
+    db_key, table_name, info = candidates[0]
+    kind = str(((databases.get(db_key) or {}).get("kind")) or "sqlite")
+    columns = [col for col in info.get("columns") or [] if col]
+    curated = ((_load_descriptions().get(db_key) or {}).get("tables") or {}).get(table_name)
+    curated = curated if isinstance(curated, dict) else {}
+    result: dict[str, Any] = {
+        "found": True,
+        "db": db_key,
+        "table": table_name,
+        "kind": kind,
+        "path": str(db_path(db_key)),
+        "description": curated.get("description") or _auto_description(db_key, table_name),
+        "row_count": info.get("rows"),
+        "rows_approx": bool(info.get("rows_approx", False)),
+        "columns": [f"{col[0]} {col[1]}".strip() for col in columns],
+        "indexes": _table_indexes(db_key, kind, table_name),
+    }
+    if info.get("date_coverage"):
+        result["date_coverage"] = info["date_coverage"]
+    if len(candidates) > 1:
+        result["also_in"] = [f"{other_db}.{other_table}"
+                             for other_db, other_table, _ in candidates[1:4]]
+    result["sample"] = _sample_keys(db_key, kind, table_name, columns)
+    result["hint"] = ("sql(query='select ... from %s', db='%s') for rows; "
+                      "catalog(db='%s') for the other tables." % (table_name, db_key, db_key))
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
