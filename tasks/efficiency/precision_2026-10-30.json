@@ -1,0 +1,11 @@
+{
+ "shell file read": {"sampled": 30, "correct": 30},
+ "shell search": {"sampled": 30, "correct": 29},
+ "shell list/stat": {"sampled": 30, "correct": 30},
+ "inline Python DB query": {"sampled": 30, "correct": 30},
+ "inline Python other": {"sampled": 30, "correct": 30},
+ "tests/compile": {"sampled": 30, "correct": 30},
+ "bench or gate runs": {"sampled": 30, "correct": 30},
+ "git": {"sampled": 30, "correct": 30},
+ "sleep/poll": {"sampled": 30, "correct": 30}
+}
