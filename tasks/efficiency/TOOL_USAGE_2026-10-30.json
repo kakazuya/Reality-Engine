@@ -1,0 +1,2775 @@
+{
+ "before_after": {
+  "after": {
+   "calls": 679,
+   "grep_tool_calls": 34,
+   "ids": [
+    "20261030T173149Z-5d66898d",
+    "20261030T180414Z-e09031f3",
+    "20261030T180428Z-556bef7d",
+    "20261030T180452Z-0683cd3a"
+   ],
+   "jobs": 4,
+   "jobs_detail": [
+    {
+     "calls": 157,
+     "id": "20261030T173149Z-5d66898d",
+     "lsp": 6,
+     "shell": 35,
+     "started": "2026-10-30T17:31+00:00"
+    },
+    {
+     "calls": 224,
+     "id": "20261030T180414Z-e09031f3",
+     "lsp": 8,
+     "shell": 77,
+     "started": "2026-10-30T18:04+00:00"
+    },
+    {
+     "calls": 111,
+     "id": "20261030T180428Z-556bef7d",
+     "lsp": 3,
+     "shell": 42,
+     "started": "2026-10-30T18:04+00:00"
+    },
+    {
+     "calls": 187,
+     "id": "20261030T180452Z-0683cd3a",
+     "lsp": 3,
+     "shell": 49,
+     "started": "2026-10-30T18:04+00:00"
+    }
+   ],
+   "lsp_calls": 20,
+   "lsp_per_job": 5.0,
+   "lsp_share_pct": 2.95,
+   "read_calls": 131,
+   "shell_calls": 203,
+   "shell_share_pct": 29.9,
+   "sql_calls": 11
+  },
+  "before": {
+   "calls": 18999,
+   "grep_tool_calls": 756,
+   "ids": [],
+   "jobs": 183,
+   "jobs_detail": [
+    {
+     "calls": 0,
+     "id": "20261020T231343Z-5ad960ba",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:13+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234634Z-7824d99b",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234635Z-667232ff",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234635Z-77b5dc0c",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234636Z-6814abad",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234637Z-e0c97bfc",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234638Z-d16064ab",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234639Z-e974952d",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234640Z-94d4e03e",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234642Z-4e0b8284",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261020T234643Z-3646c74f",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-20T23:46+00:00"
+    },
+    {
+     "calls": 11,
+     "id": "20261020T235050Z-c60cc959",
+     "lsp": 0,
+     "shell": 9,
+     "started": "2026-10-20T23:50+00:00"
+    },
+    {
+     "calls": 213,
+     "id": "20261021T000005Z-bd30a33c",
+     "lsp": 0,
+     "shell": 43,
+     "started": "2026-10-21T00:00+00:00"
+    },
+    {
+     "calls": 9,
+     "id": "20261021T004859Z-de1289c6",
+     "lsp": 0,
+     "shell": 2,
+     "started": "2026-10-21T00:48+00:00"
+    },
+    {
+     "calls": 2,
+     "id": "20261021T192716Z-52a63bc6",
+     "lsp": 0,
+     "shell": 1,
+     "started": "2026-10-21T19:27+00:00"
+    },
+    {
+     "calls": 2,
+     "id": "20261023T194641Z-5e857d63",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-23T19:46+00:00"
+    },
+    {
+     "calls": 3,
+     "id": "20261023T195415Z-6ad1c185",
+     "lsp": 0,
+     "shell": 1,
+     "started": "2026-10-23T19:54+00:00"
+    },
+    {
+     "calls": 63,
+     "id": "20261023T202508Z-7ae1770d",
+     "lsp": 0,
+     "shell": 18,
+     "started": "2026-10-23T20:25+00:00"
+    },
+    {
+     "calls": 173,
+     "id": "20261023T203805Z-b3dd71b2",
+     "lsp": 0,
+     "shell": 109,
+     "started": "2026-10-23T20:38+00:00"
+    },
+    {
+     "calls": 42,
+     "id": "20261023T212848Z-862d24bf",
+     "lsp": 0,
+     "shell": 38,
+     "started": "2026-10-23T21:28+00:00"
+    },
+    {
+     "calls": 347,
+     "id": "20261023T215357Z-145850d9",
+     "lsp": 0,
+     "shell": 161,
+     "started": "2026-10-23T21:53+00:00"
+    },
+    {
+     "calls": 40,
+     "id": "20261023T234355Z-5f0c3c26",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-23T23:43+00:00"
+    },
+    {
+     "calls": 67,
+     "id": "20261023T234816Z-24da9abe",
+     "lsp": 0,
+     "shell": 5,
+     "started": "2026-10-23T23:48+00:00"
+    },
+    {
+     "calls": 76,
+     "id": "20261023T234816Z-51e36412",
+     "lsp": 0,
+     "shell": 37,
+     "started": "2026-10-23T23:48+00:00"
+    },
+    {
+     "calls": 386,
+     "id": "20261023T234907Z-59821b17",
+     "lsp": 0,
+     "shell": 128,
+     "started": "2026-10-23T23:49+00:00"
+    },
+    {
+     "calls": 159,
+     "id": "20261024T080304Z-3fc60999",
+     "lsp": 0,
+     "shell": 68,
+     "started": "2026-10-24T08:03+00:00"
+    },
+    {
+     "calls": 269,
+     "id": "20261024T092518Z-59f0be52",
+     "lsp": 0,
+     "shell": 168,
+     "started": "2026-10-24T09:25+00:00"
+    },
+    {
+     "calls": 75,
+     "id": "20261024T132140Z-d16588e0",
+     "lsp": 0,
+     "shell": 53,
+     "started": "2026-10-24T13:21+00:00"
+    },
+    {
+     "calls": 93,
+     "id": "20261024T132956Z-99625306",
+     "lsp": 0,
+     "shell": 32,
+     "started": "2026-10-24T13:29+00:00"
+    },
+    {
+     "calls": 35,
+     "id": "20261024T133203Z-0eb45906",
+     "lsp": 0,
+     "shell": 19,
+     "started": "2026-10-24T13:32+00:00"
+    },
+    {
+     "calls": 147,
+     "id": "20261024T133314Z-c3d8c398",
+     "lsp": 0,
+     "shell": 87,
+     "started": "2026-10-24T13:33+00:00"
+    },
+    {
+     "calls": 244,
+     "id": "20261024T135121Z-81c27dbf",
+     "lsp": 0,
+     "shell": 123,
+     "started": "2026-10-24T13:51+00:00"
+    },
+    {
+     "calls": 247,
+     "id": "20261024T140312Z-e4caa4da",
+     "lsp": 0,
+     "shell": 80,
+     "started": "2026-10-24T14:03+00:00"
+    },
+    {
+     "calls": 153,
+     "id": "20261024T154434Z-b952dbc2",
+     "lsp": 0,
+     "shell": 53,
+     "started": "2026-10-24T15:44+00:00"
+    },
+    {
+     "calls": 137,
+     "id": "20261024T154931Z-53e4ddd3",
+     "lsp": 0,
+     "shell": 68,
+     "started": "2026-10-24T15:49+00:00"
+    },
+    {
+     "calls": 148,
+     "id": "20261024T170739Z-f811f6ae",
+     "lsp": 0,
+     "shell": 66,
+     "started": "2026-10-24T17:07+00:00"
+    },
+    {
+     "calls": 148,
+     "id": "20261024T171951Z-9545562f",
+     "lsp": 0,
+     "shell": 9,
+     "started": "2026-10-24T17:19+00:00"
+    },
+    {
+     "calls": 175,
+     "id": "20261024T172743Z-a480564b",
+     "lsp": 0,
+     "shell": 67,
+     "started": "2026-10-24T17:27+00:00"
+    },
+    {
+     "calls": 187,
+     "id": "20261024T173154Z-a7513688",
+     "lsp": 0,
+     "shell": 38,
+     "started": "2026-10-24T17:31+00:00"
+    },
+    {
+     "calls": 201,
+     "id": "20261024T180419Z-6912a7a8",
+     "lsp": 0,
+     "shell": 95,
+     "started": "2026-10-24T18:04+00:00"
+    },
+    {
+     "calls": 256,
+     "id": "20261024T180421Z-eed294f4",
+     "lsp": 0,
+     "shell": 118,
+     "started": "2026-10-24T18:04+00:00"
+    },
+    {
+     "calls": 136,
+     "id": "20261024T181301Z-e5311613",
+     "lsp": 0,
+     "shell": 92,
+     "started": "2026-10-24T18:13+00:00"
+    },
+    {
+     "calls": 138,
+     "id": "20261024T192703Z-4b9de800",
+     "lsp": 0,
+     "shell": 51,
+     "started": "2026-10-24T19:27+00:00"
+    },
+    {
+     "calls": 105,
+     "id": "20261024T192707Z-46114a74",
+     "lsp": 0,
+     "shell": 43,
+     "started": "2026-10-24T19:27+00:00"
+    },
+    {
+     "calls": 221,
+     "id": "20261024T192711Z-cecb3619",
+     "lsp": 0,
+     "shell": 61,
+     "started": "2026-10-24T19:27+00:00"
+    },
+    {
+     "calls": 189,
+     "id": "20261024T192715Z-b16ead85",
+     "lsp": 0,
+     "shell": 73,
+     "started": "2026-10-24T19:27+00:00"
+    },
+    {
+     "calls": 98,
+     "id": "20261024T195347Z-cf5504ae",
+     "lsp": 0,
+     "shell": 52,
+     "started": "2026-10-24T19:53+00:00"
+    },
+    {
+     "calls": 57,
+     "id": "20261024T201038Z-0a8cd96b",
+     "lsp": 0,
+     "shell": 19,
+     "started": "2026-10-24T20:10+00:00"
+    },
+    {
+     "calls": 85,
+     "id": "20261024T201315Z-0663e71c",
+     "lsp": 0,
+     "shell": 63,
+     "started": "2026-10-24T20:13+00:00"
+    },
+    {
+     "calls": 39,
+     "id": "20261024T202147Z-7d479a4e",
+     "lsp": 0,
+     "shell": 10,
+     "started": "2026-10-24T20:21+00:00"
+    },
+    {
+     "calls": 85,
+     "id": "20261024T203100Z-98fd2c20",
+     "lsp": 0,
+     "shell": 54,
+     "started": "2026-10-24T20:30+00:00"
+    },
+    {
+     "calls": 103,
+     "id": "20261024T203411Z-1ea12c6b",
+     "lsp": 0,
+     "shell": 59,
+     "started": "2026-10-24T20:34+00:00"
+    },
+    {
+     "calls": 119,
+     "id": "20261024T204214Z-cac341d2",
+     "lsp": 0,
+     "shell": 50,
+     "started": "2026-10-24T20:42+00:00"
+    },
+    {
+     "calls": 36,
+     "id": "20261024T205532Z-561ef17e",
+     "lsp": 0,
+     "shell": 14,
+     "started": "2026-10-24T20:55+00:00"
+    },
+    {
+     "calls": 159,
+     "id": "20261024T205800Z-cf67559c",
+     "lsp": 0,
+     "shell": 38,
+     "started": "2026-10-24T20:58+00:00"
+    },
+    {
+     "calls": 79,
+     "id": "20261024T214423Z-d0240da4",
+     "lsp": 0,
+     "shell": 36,
+     "started": "2026-10-24T21:44+00:00"
+    },
+    {
+     "calls": 112,
+     "id": "20261024T220404Z-1e48a1bd",
+     "lsp": 0,
+     "shell": 34,
+     "started": "2026-10-24T22:04+00:00"
+    },
+    {
+     "calls": 196,
+     "id": "20261024T223019Z-5e5e35ab",
+     "lsp": 0,
+     "shell": 53,
+     "started": "2026-10-24T22:30+00:00"
+    },
+    {
+     "calls": 28,
+     "id": "20261024T223128Z-6ce317e0",
+     "lsp": 2,
+     "shell": 13,
+     "started": "2026-10-24T22:31+00:00"
+    },
+    {
+     "calls": 32,
+     "id": "20261024T223131Z-fdaa1f6e",
+     "lsp": 1,
+     "shell": 13,
+     "started": "2026-10-24T22:31+00:00"
+    },
+    {
+     "calls": 41,
+     "id": "20261024T224835Z-eabc5fa2",
+     "lsp": 1,
+     "shell": 7,
+     "started": "2026-10-24T22:48+00:00"
+    },
+    {
+     "calls": 78,
+     "id": "20261024T224841Z-a0f6360e",
+     "lsp": 1,
+     "shell": 20,
+     "started": "2026-10-24T22:48+00:00"
+    },
+    {
+     "calls": 40,
+     "id": "20261024T224844Z-2ae5d9bb",
+     "lsp": 2,
+     "shell": 7,
+     "started": "2026-10-24T22:48+00:00"
+    },
+    {
+     "calls": 21,
+     "id": "20261024T224847Z-ce940fed",
+     "lsp": 1,
+     "shell": 11,
+     "started": "2026-10-24T22:48+00:00"
+    },
+    {
+     "calls": 64,
+     "id": "20261024T232835Z-d20b523f",
+     "lsp": 0,
+     "shell": 31,
+     "started": "2026-10-24T23:28+00:00"
+    },
+    {
+     "calls": 101,
+     "id": "20261024T234407Z-ce690db0",
+     "lsp": 1,
+     "shell": 29,
+     "started": "2026-10-24T23:44+00:00"
+    },
+    {
+     "calls": 47,
+     "id": "20261025T002015Z-79891139",
+     "lsp": 2,
+     "shell": 20,
+     "started": "2026-10-25T00:20+00:00"
+    },
+    {
+     "calls": 110,
+     "id": "20261025T044835Z-9541b376",
+     "lsp": 0,
+     "shell": 2,
+     "started": "2026-10-25T04:48+00:00"
+    },
+    {
+     "calls": 136,
+     "id": "20261025T044852Z-9e836525",
+     "lsp": 0,
+     "shell": 15,
+     "started": "2026-10-25T04:48+00:00"
+    },
+    {
+     "calls": 113,
+     "id": "20261025T044905Z-69644a44",
+     "lsp": 0,
+     "shell": 4,
+     "started": "2026-10-25T04:49+00:00"
+    },
+    {
+     "calls": 119,
+     "id": "20261025T044913Z-e57200d9",
+     "lsp": 0,
+     "shell": 15,
+     "started": "2026-10-25T04:49+00:00"
+    },
+    {
+     "calls": 62,
+     "id": "20261025T052032Z-9391cebd",
+     "lsp": 2,
+     "shell": 11,
+     "started": "2026-10-25T05:20+00:00"
+    },
+    {
+     "calls": 68,
+     "id": "20261025T074944Z-d9955304",
+     "lsp": 3,
+     "shell": 33,
+     "started": "2026-10-25T07:49+00:00"
+    },
+    {
+     "calls": 85,
+     "id": "20261025T074948Z-e3822c50",
+     "lsp": 2,
+     "shell": 46,
+     "started": "2026-10-25T07:49+00:00"
+    },
+    {
+     "calls": 35,
+     "id": "20261025T074952Z-1dcabe7a",
+     "lsp": 0,
+     "shell": 8,
+     "started": "2026-10-25T07:49+00:00"
+    },
+    {
+     "calls": 85,
+     "id": "20261025T080606Z-6df8ebbe",
+     "lsp": 0,
+     "shell": 36,
+     "started": "2026-10-25T08:06+00:00"
+    },
+    {
+     "calls": 73,
+     "id": "20261025T081455Z-b7b498e9",
+     "lsp": 0,
+     "shell": 55,
+     "started": "2026-10-25T08:14+00:00"
+    },
+    {
+     "calls": 59,
+     "id": "20261025T082139Z-f896e3a7",
+     "lsp": 1,
+     "shell": 33,
+     "started": "2026-10-25T08:21+00:00"
+    },
+    {
+     "calls": 74,
+     "id": "20261025T083921Z-96890dfa",
+     "lsp": 1,
+     "shell": 30,
+     "started": "2026-10-25T08:39+00:00"
+    },
+    {
+     "calls": 26,
+     "id": "20261025T085724Z-8db7b1e5",
+     "lsp": 0,
+     "shell": 15,
+     "started": "2026-10-25T08:57+00:00"
+    },
+    {
+     "calls": 47,
+     "id": "20261025T090819Z-79b79d14",
+     "lsp": 0,
+     "shell": 1,
+     "started": "2026-10-25T09:08+00:00"
+    },
+    {
+     "calls": 78,
+     "id": "20261025T090820Z-a20ccaca",
+     "lsp": 0,
+     "shell": 3,
+     "started": "2026-10-25T09:08+00:00"
+    },
+    {
+     "calls": 122,
+     "id": "20261025T123252Z-e22819ec",
+     "lsp": 0,
+     "shell": 60,
+     "started": "2026-10-25T12:32+00:00"
+    },
+    {
+     "calls": 72,
+     "id": "20261025T123255Z-3274fb3e",
+     "lsp": 2,
+     "shell": 23,
+     "started": "2026-10-25T12:32+00:00"
+    },
+    {
+     "calls": 90,
+     "id": "20261025T123258Z-007ac55f",
+     "lsp": 0,
+     "shell": 32,
+     "started": "2026-10-25T12:32+00:00"
+    },
+    {
+     "calls": 116,
+     "id": "20261025T123302Z-e856c1b1",
+     "lsp": 2,
+     "shell": 49,
+     "started": "2026-10-25T12:33+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261025T123305Z-b6851343",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-25T12:33+00:00"
+    },
+    {
+     "calls": 73,
+     "id": "20261025T123453Z-dcc88036",
+     "lsp": 1,
+     "shell": 28,
+     "started": "2026-10-25T12:34+00:00"
+    },
+    {
+     "calls": 35,
+     "id": "20261025T125149Z-6da76ac5",
+     "lsp": 0,
+     "shell": 26,
+     "started": "2026-10-25T12:51+00:00"
+    },
+    {
+     "calls": 75,
+     "id": "20261025T125328Z-207de46b",
+     "lsp": 0,
+     "shell": 64,
+     "started": "2026-10-25T12:53+00:00"
+    },
+    {
+     "calls": 54,
+     "id": "20261025T125604Z-b6408cdc",
+     "lsp": 1,
+     "shell": 37,
+     "started": "2026-10-25T12:56+00:00"
+    },
+    {
+     "calls": 56,
+     "id": "20261025T130738Z-b225fb07",
+     "lsp": 1,
+     "shell": 6,
+     "started": "2026-10-25T13:07+00:00"
+    },
+    {
+     "calls": 36,
+     "id": "20261025T131131Z-33db8593",
+     "lsp": 2,
+     "shell": 12,
+     "started": "2026-10-25T13:11+00:00"
+    },
+    {
+     "calls": 38,
+     "id": "20261025T132057Z-6bf36ace",
+     "lsp": 0,
+     "shell": 25,
+     "started": "2026-10-25T13:20+00:00"
+    },
+    {
+     "calls": 67,
+     "id": "20261025T132544Z-91c3732d",
+     "lsp": 0,
+     "shell": 27,
+     "started": "2026-10-25T13:25+00:00"
+    },
+    {
+     "calls": 89,
+     "id": "20261025T134250Z-38519e70",
+     "lsp": 1,
+     "shell": 16,
+     "started": "2026-10-25T13:42+00:00"
+    },
+    {
+     "calls": 49,
+     "id": "20261025T135133Z-c01c539c",
+     "lsp": 0,
+     "shell": 39,
+     "started": "2026-10-25T13:51+00:00"
+    },
+    {
+     "calls": 64,
+     "id": "20261025T135217Z-a6c8bb40",
+     "lsp": 0,
+     "shell": 32,
+     "started": "2026-10-25T13:52+00:00"
+    },
+    {
+     "calls": 54,
+     "id": "20261025T141010Z-d7b5df82",
+     "lsp": 0,
+     "shell": 14,
+     "started": "2026-10-25T14:10+00:00"
+    },
+    {
+     "calls": 83,
+     "id": "20261025T141901Z-c870a878",
+     "lsp": 0,
+     "shell": 35,
+     "started": "2026-10-25T14:19+00:00"
+    },
+    {
+     "calls": 60,
+     "id": "20261025T145343Z-47e408df",
+     "lsp": 1,
+     "shell": 25,
+     "started": "2026-10-25T14:53+00:00"
+    },
+    {
+     "calls": 39,
+     "id": "20261025T151433Z-2a0b16b1",
+     "lsp": 0,
+     "shell": 21,
+     "started": "2026-10-25T15:14+00:00"
+    },
+    {
+     "calls": 83,
+     "id": "20261025T153116Z-48dc1df6",
+     "lsp": 3,
+     "shell": 30,
+     "started": "2026-10-25T15:31+00:00"
+    },
+    {
+     "calls": 79,
+     "id": "20261025T161212Z-f74b42d5",
+     "lsp": 4,
+     "shell": 22,
+     "started": "2026-10-25T16:12+00:00"
+    },
+    {
+     "calls": 204,
+     "id": "20261025T161216Z-02376206",
+     "lsp": 3,
+     "shell": 92,
+     "started": "2026-10-25T16:12+00:00"
+    },
+    {
+     "calls": 88,
+     "id": "20261025T164229Z-1a5db8ea",
+     "lsp": 4,
+     "shell": 39,
+     "started": "2026-10-25T16:42+00:00"
+    },
+    {
+     "calls": 220,
+     "id": "20261025T174322Z-877e239e",
+     "lsp": 2,
+     "shell": 94,
+     "started": "2026-10-25T17:43+00:00"
+    },
+    {
+     "calls": 160,
+     "id": "20261025T193448Z-6c7054a0",
+     "lsp": 2,
+     "shell": 69,
+     "started": "2026-10-25T19:34+00:00"
+    },
+    {
+     "calls": 140,
+     "id": "20261025T222251Z-0e333a73",
+     "lsp": 2,
+     "shell": 57,
+     "started": "2026-10-25T22:22+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261025T222315Z-9a1fd286",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-25T22:23+00:00"
+    },
+    {
+     "calls": 198,
+     "id": "20261025T222321Z-c779e4a4",
+     "lsp": 2,
+     "shell": 90,
+     "started": "2026-10-25T22:23+00:00"
+    },
+    {
+     "calls": 206,
+     "id": "20261025T222500Z-ff82f10f",
+     "lsp": 1,
+     "shell": 121,
+     "started": "2026-10-25T22:25+00:00"
+    },
+    {
+     "calls": 99,
+     "id": "20261026T234721Z-94ab68dc",
+     "lsp": 0,
+     "shell": 23,
+     "started": "2026-10-26T23:47+00:00"
+    },
+    {
+     "calls": 51,
+     "id": "20261027T002613Z-06cac05a",
+     "lsp": 0,
+     "shell": 27,
+     "started": "2026-10-27T00:26+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261027T002638Z-bcde4c25",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-27T00:26+00:00"
+    },
+    {
+     "calls": 33,
+     "id": "20261027T002757Z-52ef59af",
+     "lsp": 0,
+     "shell": 16,
+     "started": "2026-10-27T00:27+00:00"
+    },
+    {
+     "calls": 32,
+     "id": "20261027T002828Z-095da489",
+     "lsp": 0,
+     "shell": 17,
+     "started": "2026-10-27T00:28+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261027T101219Z-135a7ffc",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-27T10:12+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261027T101252Z-ac20b6ec",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-27T10:12+00:00"
+    },
+    {
+     "calls": 73,
+     "id": "20261027T101711Z-6f426298",
+     "lsp": 1,
+     "shell": 28,
+     "started": "2026-10-27T10:17+00:00"
+    },
+    {
+     "calls": 150,
+     "id": "20261027T105641Z-be4c5350",
+     "lsp": 2,
+     "shell": 61,
+     "started": "2026-10-27T10:56+00:00"
+    },
+    {
+     "calls": 85,
+     "id": "20261027T105845Z-0b1b965a",
+     "lsp": 0,
+     "shell": 58,
+     "started": "2026-10-27T10:58+00:00"
+    },
+    {
+     "calls": 106,
+     "id": "20261027T125742Z-f402d945",
+     "lsp": 0,
+     "shell": 40,
+     "started": "2026-10-27T12:57+00:00"
+    },
+    {
+     "calls": 116,
+     "id": "20261027T130242Z-84259659",
+     "lsp": 0,
+     "shell": 97,
+     "started": "2026-10-27T13:02+00:00"
+    },
+    {
+     "calls": 107,
+     "id": "20261027T173433Z-6b857b5a",
+     "lsp": 0,
+     "shell": 52,
+     "started": "2026-10-27T17:34+00:00"
+    },
+    {
+     "calls": 220,
+     "id": "20261027T184539Z-fce4cff9",
+     "lsp": 0,
+     "shell": 90,
+     "started": "2026-10-27T18:45+00:00"
+    },
+    {
+     "calls": 115,
+     "id": "20261027T192637Z-50f7a4c7",
+     "lsp": 0,
+     "shell": 47,
+     "started": "2026-10-27T19:26+00:00"
+    },
+    {
+     "calls": 107,
+     "id": "20261027T193025Z-39b30996",
+     "lsp": 0,
+     "shell": 50,
+     "started": "2026-10-27T19:30+00:00"
+    },
+    {
+     "calls": 147,
+     "id": "20261027T200502Z-2da753d0",
+     "lsp": 1,
+     "shell": 91,
+     "started": "2026-10-27T20:05+00:00"
+    },
+    {
+     "calls": 117,
+     "id": "20261027T214238Z-68fa6d6c",
+     "lsp": 2,
+     "shell": 68,
+     "started": "2026-10-27T21:42+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261027T214256Z-4a7c665b",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-27T21:42+00:00"
+    },
+    {
+     "calls": 149,
+     "id": "20261027T214259Z-b6e40c70",
+     "lsp": 2,
+     "shell": 70,
+     "started": "2026-10-27T21:42+00:00"
+    },
+    {
+     "calls": 88,
+     "id": "20261027T215126Z-1c9b89fd",
+     "lsp": 2,
+     "shell": 34,
+     "started": "2026-10-27T21:51+00:00"
+    },
+    {
+     "calls": 82,
+     "id": "20261027T220056Z-1441e4e5",
+     "lsp": 2,
+     "shell": 40,
+     "started": "2026-10-27T22:00+00:00"
+    },
+    {
+     "calls": 112,
+     "id": "20261027T225946Z-dfa2106a",
+     "lsp": 0,
+     "shell": 47,
+     "started": "2026-10-27T22:59+00:00"
+    },
+    {
+     "calls": 126,
+     "id": "20261028T100317Z-bfc3aa6b",
+     "lsp": 2,
+     "shell": 44,
+     "started": "2026-10-28T10:03+00:00"
+    },
+    {
+     "calls": 74,
+     "id": "20261028T102804Z-ef87a668",
+     "lsp": 1,
+     "shell": 30,
+     "started": "2026-10-28T10:28+00:00"
+    },
+    {
+     "calls": 51,
+     "id": "20261028T111941Z-711e3a41",
+     "lsp": 0,
+     "shell": 17,
+     "started": "2026-10-28T11:19+00:00"
+    },
+    {
+     "calls": 125,
+     "id": "20261028T122607Z-4bb80e1a",
+     "lsp": 2,
+     "shell": 55,
+     "started": "2026-10-28T12:26+00:00"
+    },
+    {
+     "calls": 93,
+     "id": "20261028T124718Z-d6f8a0ea",
+     "lsp": 3,
+     "shell": 35,
+     "started": "2026-10-28T12:47+00:00"
+    },
+    {
+     "calls": 81,
+     "id": "20261028T124736Z-e326e1e5",
+     "lsp": 2,
+     "shell": 29,
+     "started": "2026-10-28T12:47+00:00"
+    },
+    {
+     "calls": 155,
+     "id": "20261028T125051Z-69020cbf",
+     "lsp": 0,
+     "shell": 108,
+     "started": "2026-10-28T12:50+00:00"
+    },
+    {
+     "calls": 189,
+     "id": "20261028T125314Z-007dc139",
+     "lsp": 0,
+     "shell": 83,
+     "started": "2026-10-28T12:53+00:00"
+    },
+    {
+     "calls": 129,
+     "id": "20261028T130735Z-36e1c921",
+     "lsp": 2,
+     "shell": 71,
+     "started": "2026-10-28T13:07+00:00"
+    },
+    {
+     "calls": 275,
+     "id": "20261028T142827Z-a646d304",
+     "lsp": 4,
+     "shell": 65,
+     "started": "2026-10-28T14:28+00:00"
+    },
+    {
+     "calls": 181,
+     "id": "20261028T142845Z-fb560141",
+     "lsp": 0,
+     "shell": 61,
+     "started": "2026-10-28T14:28+00:00"
+    },
+    {
+     "calls": 265,
+     "id": "20261028T155107Z-484394b6",
+     "lsp": 1,
+     "shell": 95,
+     "started": "2026-10-28T15:51+00:00"
+    },
+    {
+     "calls": 64,
+     "id": "20261028T161548Z-363e9555",
+     "lsp": 1,
+     "shell": 31,
+     "started": "2026-10-28T16:15+00:00"
+    },
+    {
+     "calls": 172,
+     "id": "20261028T165609Z-069a714a",
+     "lsp": 1,
+     "shell": 62,
+     "started": "2026-10-28T16:56+00:00"
+    },
+    {
+     "calls": 179,
+     "id": "20261028T175323Z-4efba8ca",
+     "lsp": 2,
+     "shell": 70,
+     "started": "2026-10-28T17:53+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261028T175341Z-108a31e1",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-28T17:53+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261028T175344Z-a98f4750",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-28T17:53+00:00"
+    },
+    {
+     "calls": 59,
+     "id": "20261028T175500Z-c6fb2bb7",
+     "lsp": 3,
+     "shell": 14,
+     "started": "2026-10-28T17:55+00:00"
+    },
+    {
+     "calls": 199,
+     "id": "20261028T175541Z-42ce9e60",
+     "lsp": 1,
+     "shell": 81,
+     "started": "2026-10-28T17:55+00:00"
+    },
+    {
+     "calls": 189,
+     "id": "20261028T181638Z-b384c636",
+     "lsp": 0,
+     "shell": 106,
+     "started": "2026-10-28T18:16+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261028T185532Z-5c661a67",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-28T18:55+00:00"
+    },
+    {
+     "calls": 142,
+     "id": "20261028T185734Z-b913bc48",
+     "lsp": 2,
+     "shell": 84,
+     "started": "2026-10-28T18:57+00:00"
+    },
+    {
+     "calls": 0,
+     "id": "20261028T185934Z-d84205e3",
+     "lsp": 0,
+     "shell": 0,
+     "started": "2026-10-28T18:59+00:00"
+    },
+    {
+     "calls": 141,
+     "id": "20261028T193549Z-8a2903ea",
+     "lsp": 2,
+     "shell": 56,
+     "started": "2026-10-28T19:35+00:00"
+    },
+    {
+     "calls": 83,
+     "id": "20261028T193719Z-0e77c373",
+     "lsp": 1,
+     "shell": 16,
+     "started": "2026-10-28T19:37+00:00"
+    },
+    {
+     "calls": 150,
+     "id": "20261028T195100Z-204a0fc3",
+     "lsp": 1,
+     "shell": 68,
+     "started": "2026-10-28T19:51+00:00"
+    },
+    {
+     "calls": 134,
+     "id": "20261028T200955Z-ce1e5b77",
+     "lsp": 0,
+     "shell": 72,
+     "started": "2026-10-28T20:09+00:00"
+    },
+    {
+     "calls": 174,
+     "id": "20261028T201348Z-9607fbc1",
+     "lsp": 2,
+     "shell": 113,
+     "started": "2026-10-28T20:13+00:00"
+    },
+    {
+     "calls": 144,
+     "id": "20261028T203738Z-455c9b2a",
+     "lsp": 0,
+     "shell": 47,
+     "started": "2026-10-28T20:37+00:00"
+    },
+    {
+     "calls": 114,
+     "id": "20261028T231329Z-b5e218fa",
+     "lsp": 2,
+     "shell": 55,
+     "started": "2026-10-28T23:13+00:00"
+    },
+    {
+     "calls": 63,
+     "id": "20261028T231428Z-02fed1cb",
+     "lsp": 2,
+     "shell": 48,
+     "started": "2026-10-28T23:14+00:00"
+    },
+    {
+     "calls": 243,
+     "id": "20261028T231523Z-f6f865b9",
+     "lsp": 1,
+     "shell": 147,
+     "started": "2026-10-28T23:15+00:00"
+    },
+    {
+     "calls": 146,
+     "id": "20261028T233558Z-1c234fe0",
+     "lsp": 2,
+     "shell": 64,
+     "started": "2026-10-28T23:35+00:00"
+    },
+    {
+     "calls": 45,
+     "id": "20261029T001216Z-487ea709",
+     "lsp": 0,
+     "shell": 31,
+     "started": "2026-10-29T00:12+00:00"
+    },
+    {
+     "calls": 213,
+     "id": "20261029T002159Z-598aa67b",
+     "lsp": 0,
+     "shell": 89,
+     "started": "2026-10-29T00:21+00:00"
+    },
+    {
+     "calls": 151,
+     "id": "20261029T002306Z-cb3480d4",
+     "lsp": 0,
+     "shell": 64,
+     "started": "2026-10-29T00:23+00:00"
+    },
+    {
+     "calls": 190,
+     "id": "20261029T003313Z-eec60bdd",
+     "lsp": 1,
+     "shell": 90,
+     "started": "2026-10-29T00:33+00:00"
+    },
+    {
+     "calls": 188,
+     "id": "20261029T040106Z-71e04786",
+     "lsp": 3,
+     "shell": 64,
+     "started": "2026-10-29T04:01+00:00"
+    },
+    {
+     "calls": 136,
+     "id": "20261029T040215Z-756b4cc4",
+     "lsp": 2,
+     "shell": 62,
+     "started": "2026-10-29T04:02+00:00"
+    },
+    {
+     "calls": 220,
+     "id": "20261029T040315Z-4082dcff",
+     "lsp": 0,
+     "shell": 128,
+     "started": "2026-10-29T04:03+00:00"
+    },
+    {
+     "calls": 355,
+     "id": "20261029T040413Z-5d203544",
+     "lsp": 1,
+     "shell": 185,
+     "started": "2026-10-29T04:04+00:00"
+    },
+    {
+     "calls": 220,
+     "id": "20261029T040713Z-6f0edd1c",
+     "lsp": 2,
+     "shell": 89,
+     "started": "2026-10-29T04:07+00:00"
+    },
+    {
+     "calls": 217,
+     "id": "20261029T053108Z-34562ae1",
+     "lsp": 2,
+     "shell": 102,
+     "started": "2026-10-29T05:31+00:00"
+    },
+    {
+     "calls": 147,
+     "id": "20261029T200044Z-74b8a2ce",
+     "lsp": 0,
+     "shell": 65,
+     "started": "2026-10-29T20:00+00:00"
+    },
+    {
+     "calls": 143,
+     "id": "20261029T212350Z-d8b6983e",
+     "lsp": 1,
+     "shell": 48,
+     "started": "2026-10-29T21:23+00:00"
+    },
+    {
+     "calls": 89,
+     "id": "20261029T212409Z-75391ac5",
+     "lsp": 0,
+     "shell": 36,
+     "started": "2026-10-29T21:24+00:00"
+    },
+    {
+     "calls": 124,
+     "id": "20261029T213416Z-ca99007d",
+     "lsp": 1,
+     "shell": 40,
+     "started": "2026-10-29T21:34+00:00"
+    },
+    {
+     "calls": 95,
+     "id": "20261029T220658Z-f640c6a6",
+     "lsp": 0,
+     "shell": 29,
+     "started": "2026-10-29T22:06+00:00"
+    }
+   ],
+   "lsp_calls": 119,
+   "lsp_per_job": 0.65,
+   "lsp_share_pct": 0.63,
+   "read_calls": 2596,
+   "shell_calls": 8046,
+   "shell_share_pct": 42.35,
+   "sql_calls": 744
+  }
+ },
+ "change_ts": "2026-10-29T22:45:00+00:00",
+ "chars_per_token": 4,
+ "classes": [
+  "LSP navigation",
+  "LSP diagnostics",
+  ".py read whole file",
+  ".py read ranged",
+  "other file reads",
+  "shell file read",
+  "shell search",
+  "shell list/stat",
+  "inline Python DB query",
+  "inline Python other",
+  "sql tool query",
+  "schema probe (any route)",
+  "other reality-data tools",
+  "tests/compile",
+  "bench or gate runs",
+  "git",
+  "edit/write",
+  "sleep/poll",
+  "web",
+  "subagent or worker control",
+  "other"
+ ],
+ "counts": {
+  "claude_files": 26,
+  "codex_present": false,
+  "dsh_jobs": 187,
+  "opencode_sessions": 34
+ },
+ "generated_at": "2026-10-30T18:34:23+00:00",
+ "integrity": {
+  "claude": {
+   "chosen_deduped_sum": 129316,
+   "chosen_diff_pct": 0.1027,
+   "chosen_provider_aggregate": 129449,
+   "chosen_session": "9e451e0e-3307-4a38-a2a9-477f118b16ff.jsonl",
+   "chosen_steps": 149,
+   "max_abs_diff_pct": 46.88,
+   "method": "transcript sum of usage over unique message.id vs the provider aggregate the client recorded in its cost-state line. The cost-state line is a live snapshot: it is exact where written after the last message and drifts on long or resumed sessions, so only the chosen exact session is used for the acceptance check.",
+   "sessions_with_provider_aggregate": 21,
+   "sessions_within_2pct": 12
+  },
+  "dsh": {
+   "counted": 15318,
+   "diff_pct": 1.21,
+   "jobs_reporting": 132,
+   "note": "only jobs that wrote progress.jsonl carry a worker counter; older jobs have no independent count",
+   "total_counted_all_jobs": 19678,
+   "worker_reported": 15135
+  },
+  "opencode": {
+   "diff_pct": 0.03,
+   "message_sum_out": 20128,
+   "session_aggregate_out": 20134
+  }
+ },
+ "precision": {
+  "bench or gate runs": {
+   "correct": 30,
+   "precision": 100.0,
+   "sampled": 30
+  },
+  "git": {
+   "correct": 30,
+   "precision": 100.0,
+   "sampled": 30
+  },
+  "inline Python DB query": {
+   "correct": 30,
+   "precision": 100.0,
+   "sampled": 30
+  },
+  "inline Python other": {
+   "correct": 30,
+   "precision": 100.0,
+   "sampled": 30
+  },
+  "shell file read": {
+   "correct": 30,
+   "precision": 100.0,
+   "sampled": 30
+  },
+  "shell list/stat": {
+   "correct": 30,
+   "precision": 100.0,
+   "sampled": 30
+  },
+  "shell search": {
+   "correct": 29,
+   "precision": 96.66666666666667,
+   "sampled": 30
+  },
+  "sleep/poll": {
+   "correct": 30,
+   "precision": 100.0,
+   "sampled": 30
+  },
+  "tests/compile": {
+   "correct": 30,
+   "precision": 100.0,
+   "sampled": 30
+  }
+ },
+ "since": null,
+ "sources": {
+  "claude": {
+   "cache_creation": 13443969,
+   "cache_read": 1523425891,
+   "calls_n": 5659,
+   "carry": 1880125354.0,
+   "chars": 8386663,
+   "classes": {
+    ".py read ranged": {
+     "calls": 39,
+     "carry": 5183580.333333333,
+     "chars": 61400,
+     "est_tokens": 15350,
+     "failures": 0,
+     "route_shell": 0
+    },
+    ".py read whole file": {
+     "calls": 3,
+     "carry": 108141.0,
+     "chars": 110044,
+     "est_tokens": 27511,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "LSP diagnostics": {
+     "calls": 1,
+     "carry": 5530.0,
+     "chars": 1877,
+     "est_tokens": 469,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "LSP navigation": {
+     "calls": 7,
+     "carry": 69804.8,
+     "chars": 10821,
+     "est_tokens": 2705,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "bench or gate runs": {
+     "calls": 1,
+     "carry": 11646.0,
+     "chars": 7,
+     "est_tokens": 2,
+     "failures": 0,
+     "route_shell": 1
+    },
+    "edit/write": {
+     "calls": 1026,
+     "carry": 561245539.6333331,
+     "chars": 385021,
+     "est_tokens": 96255,
+     "failures": 42,
+     "route_shell": 467
+    },
+    "git": {
+     "calls": 301,
+     "carry": 97664356.50000001,
+     "chars": 241069,
+     "est_tokens": 60267,
+     "failures": 11,
+     "route_shell": 301
+    },
+    "inline Python DB query": {
+     "calls": 240,
+     "carry": 112800783.10000001,
+     "chars": 279483,
+     "est_tokens": 69871,
+     "failures": 26,
+     "route_shell": 240
+    },
+    "inline Python other": {
+     "calls": 602,
+     "carry": 201654732.88333333,
+     "chars": 697254,
+     "est_tokens": 174314,
+     "failures": 31,
+     "route_shell": 602
+    },
+    "other": {
+     "calls": 510,
+     "carry": 102749331.86666667,
+     "chars": 85599,
+     "est_tokens": 21400,
+     "failures": 5,
+     "route_shell": 84
+    },
+    "other file reads": {
+     "calls": 106,
+     "carry": 9600346.819047619,
+     "chars": 542868,
+     "est_tokens": 135717,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "other reality-data tools": {
+     "calls": 14,
+     "carry": 7274872.333333333,
+     "chars": 19416,
+     "est_tokens": 4854,
+     "failures": 0,
+     "route_shell": 10
+    },
+    "schema probe (any route)": {
+     "calls": 12,
+     "carry": 6859714.8,
+     "chars": 17382,
+     "est_tokens": 4346,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "shell file read": {
+     "calls": 583,
+     "carry": 104893750.58333333,
+     "chars": 1189755,
+     "est_tokens": 297439,
+     "failures": 15,
+     "route_shell": 583
+    },
+    "shell list/stat": {
+     "calls": 372,
+     "carry": 85083337.96666667,
+     "chars": 333521,
+     "est_tokens": 83380,
+     "failures": 19,
+     "route_shell": 364
+    },
+    "shell search": {
+     "calls": 439,
+     "carry": 74101893.49999999,
+     "chars": 561010,
+     "est_tokens": 140252,
+     "failures": 6,
+     "route_shell": 374
+    },
+    "sleep/poll": {
+     "calls": 89,
+     "carry": 8915605.083333332,
+     "chars": 36839,
+     "est_tokens": 9210,
+     "failures": 7,
+     "route_shell": 89
+    },
+    "sql tool query": {
+     "calls": 44,
+     "carry": 13420356.666666666,
+     "chars": 30049,
+     "est_tokens": 7512,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "subagent or worker control": {
+     "calls": 1108,
+     "carry": 229732497.55000013,
+     "chars": 3517225,
+     "est_tokens": 879306,
+     "failures": 13,
+     "route_shell": 0
+    },
+    "tests/compile": {
+     "calls": 78,
+     "carry": 29372341.666666664,
+     "chars": 76386,
+     "est_tokens": 19096,
+     "failures": 0,
+     "route_shell": 78
+    },
+    "web": {
+     "calls": 84,
+     "carry": 8250783.914285714,
+     "chars": 189637,
+     "est_tokens": 47409,
+     "failures": 0,
+     "route_shell": 0
+    }
+   },
+   "cost": 459.2227068300002,
+   "failures": 175,
+   "present": true,
+   "provider_in": 813224,
+   "provider_out": 3302901,
+   "sessions_n": 24,
+   "share": {
+    ".py read ranged": 0.7,
+    ".py read whole file": 1.3,
+    "LSP diagnostics": 0.0,
+    "LSP navigation": 0.1,
+    "bench or gate runs": 0.0,
+    "edit/write": 4.6,
+    "git": 2.9,
+    "inline Python DB query": 3.3,
+    "inline Python other": 8.3,
+    "other": 1.0,
+    "other file reads": 6.5,
+    "other reality-data tools": 0.2,
+    "schema probe (any route)": 0.2,
+    "shell file read": 14.2,
+    "shell list/stat": 4.0,
+    "shell search": 6.7,
+    "sleep/poll": 0.4,
+    "sql tool query": 0.4,
+    "subagent or worker control": 41.9,
+    "tests/compile": 0.9,
+    "web": 2.3
+   },
+   "steps": 5245,
+   "thinking": 731509,
+   "thinking_est": 0,
+   "thinking_in_output": true,
+   "top_sessions": [
+    {
+     "before_first_edit": null,
+     "cache_read": 641035071,
+     "calls": 2357,
+     "carry": 1336649311.0,
+     "cost": 204.77596570000003,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/ff716247-82f8-4187-b4ef-979332bf677e.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "Tasks/optimizations README and dsh-workers launch",
+     "provider_in": 405121,
+     "provider_out": 1514693,
+     "seconds_to_first_edit": null,
+     "started": 1792870001.973,
+     "steps": 2100
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 288473410,
+     "calls": 1308,
+     "carry": 379583447.0,
+     "cost": 82.76093700000014,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/27cb1822-f021-484b-91bd-36ac128a589a.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "Tasks/optimizations README and dsh-workers launch",
+     "provider_in": 254448,
+     "provider_out": 627231,
+     "seconds_to_first_edit": null,
+     "started": 1792870001.973,
+     "steps": 1152
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 228295043,
+     "calls": 465,
+     "carry": 64655125.0,
+     "cost": 55.25609260000002,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/bc1ea63e-bdf5-40a5-bab2-e1574245d982.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "sv-Info_Diffusion_Model",
+     "provider_in": 944,
+     "provider_out": 167342,
+     "seconds_to_first_edit": null,
+     "started": 1793215577.393,
+     "steps": 514
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 171462001,
+     "calls": 423,
+     "carry": 46592425.0,
+     "cost": 45.59621789999998,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/ae59bca5-428f-40fc-9cdf-2f998442ab87.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "DeepSeek jobs and worker fleet setup",
+     "provider_in": 23467,
+     "provider_out": 267115,
+     "seconds_to_first_edit": null,
+     "started": 1792825428.51,
+     "steps": 384
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 68925264,
+     "calls": 274,
+     "carry": 17824673.0,
+     "cost": 19.764003100000007,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/95b97606-181e-4032-abc4-966aa7f63f1f.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "dsh-worker MCP version 0.2.0",
+     "provider_in": 3867,
+     "provider_out": 142214,
+     "seconds_to_first_edit": null,
+     "started": 1792784783.032,
+     "steps": 263
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 38161847,
+     "calls": 147,
+     "carry": 11795317.0,
+     "cost": 15.428008600000004,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model--claude-worktrees-dsh-mcp-hardening-22ffa5/9e451e0e-3307-4a38-a2a9-477f118b16ff.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "Stress-test and harden dsh-worker MCP server",
+     "provider_in": 5864,
+     "provider_out": 129449,
+     "seconds_to_first_edit": null,
+     "started": 1792613642.26,
+     "steps": 149
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 40498731,
+     "calls": 175,
+     "carry": 11707076.0,
+     "cost": 14.314137600000002,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/2af74277-d2b7-4843-8dd0-513d8b60df75.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "neo-Info_Diffusion_Model",
+     "provider_in": 23717,
+     "provider_out": 125036,
+     "seconds_to_first_edit": null,
+     "started": 1793299243.94,
+     "steps": 185
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 21046678,
+     "calls": 85,
+     "carry": 4376614.0,
+     "cost": 0.0,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/ff716247-82f8-4187-b4ef-979332bf677e/subagents/agent-a4360f2db380a1ab0.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "agent-a4",
+     "provider_in": 166,
+     "provider_out": 95500,
+     "seconds_to_first_edit": null,
+     "started": 1793088164.931,
+     "steps": 81
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 16462970,
+     "calls": 107,
+     "carry": 2885857.0,
+     "cost": 7.182938000000001,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/8ad2516a-ccd1-4058-9943-3812a0326e4a.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "Setup status check: Codex, DeepSeek, database",
+     "provider_in": 246,
+     "provider_out": 58020,
+     "seconds_to_first_edit": null,
+     "started": 1792505694.358,
+     "steps": 112
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 7430000,
+     "calls": 112,
+     "carry": 1609579.0,
+     "cost": 3.9214608000000006,
+     "id": "C--Users-warri-Downloads-Info-Diffusion-Model/86cf8135-8a1c-42ad-9bb8-a82bc4f3fd44.jsonl",
+     "model": "claude-opus-5-5",
+     "name": "neo-Info_Diffusion_Model",
+     "provider_in": 89501,
+     "provider_out": 68706,
+     "seconds_to_first_edit": null,
+     "started": 1793380109.046,
+     "steps": 41
+    }
+   ],
+   "truncated": 0
+  },
+  "codex": {
+   "cache_creation": 0,
+   "cache_read": 0,
+   "calls_n": 0,
+   "carry": 0.0,
+   "chars": 0,
+   "classes": {},
+   "cost": 0.0,
+   "failures": 0,
+   "present": false,
+   "provider_in": 0,
+   "provider_out": 0,
+   "sessions_n": 0,
+   "share": {},
+   "steps": 0,
+   "thinking": 0,
+   "thinking_est": 0,
+   "thinking_in_output": true,
+   "top_sessions": [],
+   "truncated": 0
+  },
+  "dsh": {
+   "cache_creation": 0,
+   "cache_read": 0,
+   "calls_n": 19678,
+   "carry": 634032413.6396531,
+   "chars": 33143417,
+   "classes": {
+    ".py read ranged": {
+     "calls": 1305,
+     "carry": 40796348.42000148,
+     "chars": 5665472,
+     "est_tokens": 1416368,
+     "failures": 4,
+     "route_shell": 0
+    },
+    ".py read whole file": {
+     "calls": 494,
+     "carry": 21968280.298392814,
+     "chars": 3502772,
+     "est_tokens": 875693,
+     "failures": 3,
+     "route_shell": 0
+    },
+    "LSP diagnostics": {
+     "calls": 90,
+     "carry": 422892.41878540476,
+     "chars": 348049,
+     "est_tokens": 87012,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "LSP navigation": {
+     "calls": 49,
+     "carry": 3278909.205545604,
+     "chars": 186258,
+     "est_tokens": 46564,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "bench or gate runs": {
+     "calls": 151,
+     "carry": 1292158.8447066378,
+     "chars": 99373,
+     "est_tokens": 24843,
+     "failures": 4,
+     "route_shell": 151
+    },
+    "edit/write": {
+     "calls": 6616,
+     "carry": 301089453.094715,
+     "chars": 1477025,
+     "est_tokens": 369256,
+     "failures": 253,
+     "route_shell": 619
+    },
+    "git": {
+     "calls": 317,
+     "carry": 4150358.968136435,
+     "chars": 820344,
+     "est_tokens": 205086,
+     "failures": 15,
+     "route_shell": 317
+    },
+    "inline Python DB query": {
+     "calls": 894,
+     "carry": 48844584.44615667,
+     "chars": 1231144,
+     "est_tokens": 307786,
+     "failures": 180,
+     "route_shell": 894
+    },
+    "inline Python other": {
+     "calls": 2736,
+     "carry": 78238907.2615313,
+     "chars": 5153792,
+     "est_tokens": 1288448,
+     "failures": 290,
+     "route_shell": 2736
+    },
+    "other": {
+     "calls": 323,
+     "carry": 4379373.642485844,
+     "chars": 310939,
+     "est_tokens": 77735,
+     "failures": 34,
+     "route_shell": 261
+    },
+    "other file reads": {
+     "calls": 928,
+     "carry": 14252124.937013397,
+     "chars": 5060945,
+     "est_tokens": 1265236,
+     "failures": 11,
+     "route_shell": 0
+    },
+    "other reality-data tools": {
+     "calls": 263,
+     "carry": 1300260.891685505,
+     "chars": 839195,
+     "est_tokens": 209799,
+     "failures": 0,
+     "route_shell": 43
+    },
+    "schema probe (any route)": {
+     "calls": 142,
+     "carry": 3627189.513458877,
+     "chars": 320697,
+     "est_tokens": 80174,
+     "failures": 6,
+     "route_shell": 26
+    },
+    "shell file read": {
+     "calls": 438,
+     "carry": 11871869.85002842,
+     "chars": 947356,
+     "est_tokens": 236839,
+     "failures": 21,
+     "route_shell": 438
+    },
+    "shell list/stat": {
+     "calls": 1329,
+     "carry": 33679806.040485784,
+     "chars": 1621127,
+     "est_tokens": 405282,
+     "failures": 131,
+     "route_shell": 1223
+    },
+    "shell search": {
+     "calls": 1219,
+     "carry": 36980837.39098368,
+     "chars": 2393488,
+     "est_tokens": 598372,
+     "failures": 23,
+     "route_shell": 535
+    },
+    "sleep/poll": {
+     "calls": 705,
+     "carry": 14924822.354542825,
+     "chars": 567152,
+     "est_tokens": 141788,
+     "failures": 24,
+     "route_shell": 187
+    },
+    "sql tool query": {
+     "calls": 613,
+     "carry": 3872120.2823548606,
+     "chars": 1053921,
+     "est_tokens": 263480,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "subagent or worker control": {
+     "calls": 128,
+     "carry": 4239722.939618317,
+     "chars": 16961,
+     "est_tokens": 4240,
+     "failures": 0,
+     "route_shell": 0
+    },
+    "tests/compile": {
+     "calls": 819,
+     "carry": 4740227.742361812,
+     "chars": 961984,
+     "est_tokens": 240496,
+     "failures": 234,
+     "route_shell": 819
+    },
+    "web": {
+     "calls": 119,
+     "carry": 82165.09666326322,
+     "chars": 565423,
+     "est_tokens": 141356,
+     "failures": 11,
+     "route_shell": 0
+    }
+   },
+   "cost": 0.0,
+   "failures": 1244,
+   "present": true,
+   "provider_in": 0,
+   "provider_out": 12964501,
+   "sessions_n": 187,
+   "share": {
+    ".py read ranged": 17.1,
+    ".py read whole file": 10.6,
+    "LSP diagnostics": 1.1,
+    "LSP navigation": 0.6,
+    "bench or gate runs": 0.3,
+    "edit/write": 4.5,
+    "git": 2.5,
+    "inline Python DB query": 3.7,
+    "inline Python other": 15.5,
+    "other": 0.9,
+    "other file reads": 15.3,
+    "other reality-data tools": 2.5,
+    "schema probe (any route)": 1.0,
+    "shell file read": 2.9,
+    "shell list/stat": 4.9,
+    "shell search": 7.2,
+    "sleep/poll": 1.7,
+    "sql tool query": 3.2,
+    "subagent or worker control": 0.1,
+    "tests/compile": 2.9,
+    "web": 1.7
+   },
+   "steps": 16335,
+   "thinking": 0,
+   "thinking_est": 6458839,
+   "thinking_in_output": true,
+   "top_sessions": [
+    {
+     "before_first_edit": 36,
+     "cache_read": 0,
+     "calls": 355,
+     "carry": 39791825.3151441,
+     "cost": 0.0,
+     "id": "20261029T040413Z-5d203544",
+     "model": "",
+     "name": "20261029T040413Z-5d203544",
+     "provider_in": 0,
+     "provider_out": 223735,
+     "seconds_to_first_edit": 505.0,
+     "started": 1793246653.0,
+     "steps": 356
+    },
+    {
+     "before_first_edit": 32,
+     "cache_read": 0,
+     "calls": 265,
+     "carry": 22451802.61532001,
+     "cost": 0.0,
+     "id": "20261028T155107Z-484394b6",
+     "model": "",
+     "name": "20261028T155107Z-484394b6",
+     "provider_in": 0,
+     "provider_out": 196927,
+     "seconds_to_first_edit": 301.0,
+     "started": 1793202667.0,
+     "steps": 244
+    },
+    {
+     "before_first_edit": 19,
+     "cache_read": 0,
+     "calls": 275,
+     "carry": 19044968.38999046,
+     "cost": 0.0,
+     "id": "20261028T142827Z-a646d304",
+     "model": "",
+     "name": "20261028T142827Z-a646d304",
+     "provider_in": 0,
+     "provider_out": 229721,
+     "seconds_to_first_edit": 182.0,
+     "started": 1793197707.0,
+     "steps": 201
+    },
+    {
+     "before_first_edit": 12,
+     "cache_read": 0,
+     "calls": 220,
+     "carry": 17623767.91622392,
+     "cost": 0.0,
+     "id": "20261027T184539Z-fce4cff9",
+     "model": "",
+     "name": "20261027T184539Z-fce4cff9",
+     "provider_in": 0,
+     "provider_out": 180845,
+     "seconds_to_first_edit": 126.0,
+     "started": 1793126739.0,
+     "steps": 217
+    },
+    {
+     "before_first_edit": 24,
+     "cache_read": 0,
+     "calls": 243,
+     "carry": 16000984.130807672,
+     "cost": 0.0,
+     "id": "20261028T231523Z-f6f865b9",
+     "model": "",
+     "name": "20261028T231523Z-f6f865b9",
+     "provider_in": 0,
+     "provider_out": 161998,
+     "seconds_to_first_edit": 262.0,
+     "started": 1793229322.0,
+     "steps": 215
+    },
+    {
+     "before_first_edit": 15,
+     "cache_read": 0,
+     "calls": 213,
+     "carry": 15807998.671129756,
+     "cost": 0.0,
+     "id": "20261029T002159Z-598aa67b",
+     "model": "",
+     "name": "20261029T002159Z-598aa67b",
+     "provider_in": 0,
+     "provider_out": 157995,
+     "seconds_to_first_edit": 135.0,
+     "started": 1793233319.0,
+     "steps": 203
+    },
+    {
+     "before_first_edit": 21,
+     "cache_read": 0,
+     "calls": 116,
+     "carry": 14803656.81714244,
+     "cost": 0.0,
+     "id": "20261027T130242Z-84259659",
+     "model": "",
+     "name": "20261027T130242Z-84259659",
+     "provider_in": 0,
+     "provider_out": 258685,
+     "seconds_to_first_edit": 683.0,
+     "started": 1793106162.0,
+     "steps": 112
+    },
+    {
+     "before_first_edit": 25,
+     "cache_read": 0,
+     "calls": 217,
+     "carry": 14298904.833817896,
+     "cost": 0.0,
+     "id": "20261029T053108Z-34562ae1",
+     "model": "",
+     "name": "20261029T053108Z-34562ae1",
+     "provider_in": 0,
+     "provider_out": 138930,
+     "seconds_to_first_edit": 166.0,
+     "started": 1793251868.0,
+     "steps": 218
+    },
+    {
+     "before_first_edit": 6,
+     "cache_read": 0,
+     "calls": 189,
+     "carry": 14162922.928536057,
+     "cost": 0.0,
+     "id": "20261028T125314Z-007dc139",
+     "model": "",
+     "name": "20261028T125314Z-007dc139",
+     "provider_in": 0,
+     "provider_out": 173719,
+     "seconds_to_first_edit": 81.0,
+     "started": 1793191994.0,
+     "steps": 176
+    },
+    {
+     "before_first_edit": 12,
+     "cache_read": 0,
+     "calls": 155,
+     "carry": 13935337.586624138,
+     "cost": 0.0,
+     "id": "20261028T125051Z-69020cbf",
+     "model": "",
+     "name": "20261028T125051Z-69020cbf",
+     "provider_in": 0,
+     "provider_out": 168000,
+     "seconds_to_first_edit": 149.0,
+     "started": 1793191851.0,
+     "steps": 156
+    }
+   ],
+   "truncated": 1485
+  },
+  "opencode": {
+   "cache_creation": 0,
+   "cache_read": 101075,
+   "calls_n": 0,
+   "carry": 1196.0,
+   "chars": 0,
+   "classes": {},
+   "cost": 0.036907442,
+   "failures": 0,
+   "present": true,
+   "provider_in": 205414,
+   "provider_out": 20134,
+   "sessions_n": 34,
+   "share": {},
+   "steps": 31,
+   "thinking": 194246,
+   "thinking_est": 0,
+   "thinking_in_output": false,
+   "top_sessions": [
+    {
+     "before_first_edit": null,
+     "cache_read": 6144,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.0,
+     "id": "ses_e85c1d7ffffeRQd4vkSdv51BU5",
+     "model": "deepseek-v4.1-flash-free",
+     "name": "asr-correct-inline clip04_company",
+     "provider_in": 9907,
+     "provider_out": 4433,
+     "seconds_to_first_edit": null,
+     "started": 1793052256.297,
+     "steps": 1
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 4224,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.0,
+     "id": "ses_e85cb8cebffezfMdxZ4pP1mATw",
+     "model": "deepseek-v4.1-flash-free",
+     "name": "asr-correct clip06_ama",
+     "provider_in": 7120,
+     "provider_out": 3399,
+     "seconds_to_first_edit": null,
+     "started": 1793051620.307,
+     "steps": 1
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 17592,
+     "calls": 0,
+     "carry": 1189.0,
+     "cost": 0.00173465,
+     "id": "ses_ea13b324bffecl1H4Q7XpihLgO",
+     "model": "beam-free",
+     "name": "Greeting",
+     "provider_in": 40918,
+     "provider_out": 635,
+     "seconds_to_first_edit": null,
+     "started": 1792591318.744,
+     "steps": 5
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 1017,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.0,
+     "id": "ses_e76a9f262ffedIGKxteD86guYx",
+     "model": "iceman-contributor-free",
+     "name": "modeltest iceman-contributor-free q2",
+     "provider_in": 6180,
+     "provider_out": 1695,
+     "seconds_to_first_edit": null,
+     "started": 1793305480.769,
+     "steps": 1
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 605,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.0,
+     "id": "ses_e769d5c21ffeahDVaNhXJOhyna",
+     "model": "iceman-contributor-free",
+     "name": "modeltest iceman-contributor-free q4",
+     "provider_in": 6477,
+     "provider_out": 1687,
+     "seconds_to_first_edit": null,
+     "started": 1793306305.627,
+     "steps": 1
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 70,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.0,
+     "id": "ses_e76a9f25effekJgIHSzqF9tzMP",
+     "model": "iceman-contributor-free",
+     "name": "modeltest iceman-contributor-free q1",
+     "provider_in": 7036,
+     "provider_out": 1034,
+     "seconds_to_first_edit": null,
+     "started": 1793305480.754,
+     "steps": 1
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 1017,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.0,
+     "id": "ses_e76a9f25cffezpgwUR1YNl9nDI",
+     "model": "iceman-contributor-free",
+     "name": "modeltest iceman-contributor-free q3",
+     "provider_in": 6101,
+     "provider_out": 858,
+     "seconds_to_first_edit": null,
+     "started": 1793305480.759,
+     "steps": 1
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 0,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.0159381,
+     "id": "ses_e769d5c14ffeKmqs6ve1s9RmdI",
+     "model": "deepseek-v4.1-flash",
+     "name": "modeltest deepseek-v4.1-flash_max q4",
+     "provider_in": 44870,
+     "provider_out": 790,
+     "seconds_to_first_edit": null,
+     "started": 1793306305.634,
+     "steps": 2
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 70,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.0,
+     "id": "ses_e769d5c3bffewcehSXMhwHQYL2",
+     "model": "iceman-contributor-free",
+     "name": "modeltest iceman-contributor-free q5",
+     "provider_in": 7055,
+     "provider_out": 767,
+     "seconds_to_first_edit": null,
+     "started": 1793306305.616,
+     "steps": 1
+    },
+    {
+     "before_first_edit": null,
+     "cache_read": 0,
+     "calls": 0,
+     "carry": 0.0,
+     "cost": 0.00790545,
+     "id": "ses_e769d5c0dffe3TjadB5Kni2s77",
+     "model": "deepseek-v4.1-flash",
+     "name": "modeltest deepseek-v4.1-flash_max q2",
+     "provider_in": 8323,
+     "provider_out": 662,
+     "seconds_to_first_edit": null,
+     "started": 1793306305.65,
+     "steps": 1
+    }
+   ],
+   "truncated": 0
+  }
+ },
+ "waste": {
+  "a": {
+   "count": 77,
+   "edited_ratio_median": 0.0,
+   "edited_whole_reads": 63,
+   "formula": "calls: whole-file .py reads with file>=200 lines and file not in the session's edited set; tokens: their output chars/4. For files it did edit, median(file lines / lines of the largest edit region) is reported instead.",
+   "tokens": 163407
+  },
+  "b": {
+   "by_class": {
+    "shell file read": 1021,
+    "shell list/stat": 1587,
+    "shell search": 909
+   },
+   "count": 3517,
+   "formula": "shell-route calls in shell file read / shell search / shell list-stat, output chars/4.",
+   "tokens": 1412034
+  },
+  "c": {
+   "count": 1134,
+   "formula": "calls classified inline Python DB query, output chars/4.",
+   "tokens": 377245
+  },
+  "d": {
+   "count": 20,
+   "formula": "schema-probe calls whose command/target names a store documented in tasks/worker_context/schemas/*.md (the file stems), output chars/4.",
+   "schema_tables": [
+    "ar_facts",
+    "bse_announcements",
+    "concall_facts",
+    "deck_figures",
+    "equity_intelligence",
+    "results_xbrl",
+    "truth_duckdb"
+   ],
+   "tables_hit": {
+    "bse_announcements": 1,
+    "concall_facts": 7,
+    "deck_figures": 1,
+    "equity_intelligence": 10,
+    "results_xbrl": 1
+   },
+   "tokens": 10229
+  },
+  "e": {
+   "count": 462,
+   "formula": "repeated = sum over sessions of (occurrences-1) per identical normalised shell command; tokens = chars of the repeats /4. Separate list: .py scripts run >=3x in one session.",
+   "scripts_run_3plus": [
+    {
+     "runs": 3,
+     "script": "tmp_inspect_reality.py",
+     "session": "20261023T215357Z-145850d9"
+    },
+    {
+     "runs": 6,
+     "script": "tmp_sqlite_schema.py",
+     "session": "20261023T215357Z-145850d9"
+    },
+    {
+     "runs": 3,
+     "script": "tmp_catalog_check.py",
+     "session": "20261023T215357Z-145850d9"
+    },
+    {
+     "runs": 3,
+     "script": "tmp_fact_debug.py",
+     "session": "20261023T215357Z-145850d9"
+    },
+    {
+     "runs": 6,
+     "script": "plugins/reality-data/tests/acceptance_check.py",
+     "session": "20261023T215357Z-145850d9"
+    },
+    {
+     "runs": 3,
+     "script": "tmp_ppl_chunks.py",
+     "session": "20261023T215357Z-145850d9"
+    },
+    {
+     "runs": 5,
+     "script": "plugins\\dsh-worker\\server\\store.py",
+     "session": "20261023T234907Z-59821b17"
+    },
+    {
+     "runs": 5,
+     "script": "reality_engine\\tests\\test_dsh_worker_stress.py",
+     "session": "20261023T234907Z-59821b17"
+    },
+    {
+     "runs": 3,
+     "script": "plugins\\dsh-worker\\server\\jobs.py",
+     "session": "20261023T234907Z-59821b17"
+    },
+    {
+     "runs": 3,
+     "script": "plugins\\dsh-worker\\runtime\\test-tmp\\phase2_demo.py",
+     "session": "20261023T234907Z-59821b17"
+    },
+    {
+     "runs": 17,
+     "script": "_tmp_probe3.py",
+     "session": "20261024T080304Z-3fc60999"
+    },
+    {
+     "runs": 5,
+     "script": "_tmp_check.py",
+     "session": "20261024T080304Z-3fc60999"
+    },
+    {
+     "runs": 4,
+     "script": "C:\\Users\\warri\\AppData\\Local\\Temp\\dsh-vxFy4P\\fy26_parallel.py",
+     "session": "20261024T092518Z-59f0be52"
+    },
+    {
+     "runs": 4,
+     "script": "C:\\Users\\warri\\AppData\\Local\\Temp\\dsh-vxFy4P\\fy26_run.py",
+     "session": "20261024T092518Z-59f0be52"
+    },
+    {
+     "runs": 5,
+     "script": "C:\\Users\\warri\\AppData\\Local\\Temp\\dsh-vxFy4P\\fy26_pool.py",
+     "session": "20261024T092518Z-59f0be52"
+    },
+    {
+     "runs": 11,
+     "script": "tasks\\coverage\\build_report.py",
+     "session": "20261024T154931Z-53e4ddd3"
+    },
+    {
+     "runs": 3,
+     "script": "tasks\\coverage\\work\\fam2_build.py",
+     "session": "20261024T154931Z-53e4ddd3"
+    },
+    {
+     "runs": 6,
+     "script": "tasks\\research\\decision_pilot\\prep_b.py",
+     "session": "20261024T172743Z-a480564b"
+    },
+    {
+     "runs": 7,
+     "script": "tasks\\research\\decision_pilot\\run_pilot.py",
+     "session": "20261024T172743Z-a480564b"
+    },
+    {
+     "runs": 3,
+     "script": "plugins/dsh-worker/runtime/demo_progress.py",
+     "session": "20261024T173154Z-a7513688"
+    }
+   ],
+   "tokens": 131031
+  },
+  "f": {
+   "count": 1419,
+   "formula": "calls whose status/is_error/exit-code marks them failed; tokens = their output chars/4; top-15 signatures = class + 70-char command prefix.",
+   "signatures": [
+    [
+     "tests/compile :: python -m unittest discover -s plugins/reality-data/tests -p \"test_*.p\u2026",
+     19
+    ],
+    [
+     "tests/compile :: python -m unittest reality_engine.tests.test_dsh_worker_plugin.PluginT\u2026",
+     12
+    ],
+    [
+     "shell list/stat :: Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Select-Obj\u2026",
+     9
+    ],
+    [
+     "web :: web_search",
+     8
+    ],
+    [
+     "inline Python other :: cd C:\\Users\\warri\\Downloads\\IDM-worktrees\\20261027T193025Z-39b30996\\ta\u2026",
+     8
+    ],
+    [
+     "inline Python other :: python .tmp/minipytest.py reality_engine.tests.test_query_planners 2>&\u2026",
+     8
+    ],
+    [
+     "tests/compile :: C:\\Users\\warri\\AppData\\Local\\Programs\\Python\\Python314\\python.exe -m u\u2026",
+     7
+    ],
+    [
+     "inline Python other :: python .tmp\\proto.py 2>&1",
+     7
+    ],
+    [
+     "inline Python DB query :: C:\\Users\\warri\\AppData\\Local\\Programs\\Python\\Python314\\python.exe -c \"\u2026",
+     6
+    ],
+    [
+     "inline Python other :: C:\\Users\\warri\\AppData\\Local\\Programs\\Python\\Python314\\python.exe tmp_\u2026",
+     6
+    ],
+    [
+     "inline Python other :: cd \"C:\\Users\\warri\\Downloads\\IDM-worktrees\\20261028T195100Z-204a0fc3\";\u2026",
+     6
+    ],
+    [
+     "edit/write :: S=\"C:/Users/warri/AppData/Local/Temp/claude/C--Users-warri-Downloads-I\u2026",
+     6
+    ],
+    [
+     "edit/write :: C:\\Users\\warri\\Downloads\\IDM-worktrees\\20261024T154434Z-b952dbc2\\plugi\u2026",
+     5
+    ],
+    [
+     "tests/compile :: python -m unittest reality_engine.tests.test_dsh_worker_plugin 2>&1 | \u2026",
+     5
+    ],
+    [
+     "edit/write :: plugins/dsh-worker/server/plugin_server.py",
+     5
+    ]
+   ],
+   "tokens": 332766
+  },
+  "g": {
+   "count": 5033,
+   "formula": "steps saved = sum over maximal runs of >=2 consecutive model steps whose calls are all read-only, of (run length - 1). Each saved step would also have re-sent the context, so the token value is the step's carry, reported as 0 here because it is already inside context-carry.",
+   "read_only_calls": 8754,
+   "runs": 1378,
+   "tokens": 0
+  },
+  "h": {
+   "calls_max": 75,
+   "calls_mean": 20.7,
+   "calls_p50": 18,
+   "calls_p90": 36,
+   "formula": "calls before the first edit/write, per session, from the worker's own tool_calls_before_first_edit where present else counted from the transcript; seconds = first edit timestamp - session start.",
+   "n": 96,
+   "rows": [
+    {
+     "calls": 75,
+     "seconds": 938.0,
+     "session": "20261029T212409Z-75391ac5",
+     "source": "dsh"
+    },
+    {
+     "calls": 48,
+     "seconds": 1513.0,
+     "session": "20261025T135133Z-c01c539c",
+     "source": "dsh"
+    },
+    {
+     "calls": 46,
+     "seconds": 613.0,
+     "session": "20261028T181638Z-b384c636",
+     "source": "dsh"
+    },
+    {
+     "calls": 44,
+     "seconds": 664.0,
+     "session": "20261027T214259Z-b6e40c70",
+     "source": "dsh"
+    },
+    {
+     "calls": 44,
+     "seconds": 673.0,
+     "session": "20261029T040215Z-756b4cc4",
+     "source": "dsh"
+    },
+    {
+     "calls": 40,
+     "seconds": 617.0,
+     "session": "20261025T123258Z-007ac55f",
+     "source": "dsh"
+    },
+    {
+     "calls": 40,
+     "seconds": 999.0,
+     "session": "20261028T200955Z-ce1e5b77",
+     "source": "dsh"
+    },
+    {
+     "calls": 38,
+     "seconds": 1127.0,
+     "session": "20261028T185734Z-b913bc48",
+     "source": "dsh"
+    },
+    {
+     "calls": 36,
+     "seconds": 636.0,
+     "session": "20261028T175323Z-4efba8ca",
+     "source": "dsh"
+    },
+    {
+     "calls": 36,
+     "seconds": 505.0,
+     "session": "20261029T040413Z-5d203544",
+     "source": "dsh"
+    },
+    {
+     "calls": 35,
+     "seconds": 308.0,
+     "session": "20261029T212350Z-d8b6983e",
+     "source": "dsh"
+    },
+    {
+     "calls": 33,
+     "seconds": 1159.0,
+     "session": "20261028T231329Z-b5e218fa",
+     "source": "dsh"
+    },
+    {
+     "calls": 32,
+     "seconds": 301.0,
+     "session": "20261028T155107Z-484394b6",
+     "source": "dsh"
+    },
+    {
+     "calls": 31,
+     "seconds": 284.0,
+     "session": "20261030T180428Z-556bef7d",
+     "source": "dsh"
+    },
+    {
+     "calls": 29,
+     "seconds": 954.0,
+     "session": "20261027T105845Z-0b1b965a",
+     "source": "dsh"
+    }
+   ],
+   "seconds_p50": 222.0,
+   "seconds_p90": 739.0
+  },
+  "i": {
+   "count": 191,
+   "formula": "calls with measured output >10,000 chars; tokens = chars/4. Results truncated by the writer are a lower bound (see per-source truncated count).",
+   "tokens": 719058,
+   "top_sources": [
+    [
+     "subagent or worker control :: mcp__dsh-worker__worker_result",
+     353249
+    ],
+    [
+     "subagent or worker control :: mcp__dsh-worker__worker_status",
+     94098
+    ],
+    [
+     "other file reads :: C:\\Users\\warri\\AppData\\Local\\Temp\\claude\\C--Users-warri-Down\u2026",
+     64906
+    ],
+    [
+     ".py read whole file :: C:\\Users\\warri\\Downloads\\Info_Diffusion_Model\\.claude\\worktr\u2026",
+     27509
+    ],
+    [
+     "other file reads :: C:\\Users\\warri\\AppData\\Local\\Temp\\claude\\C--Users-warri--cla\u2026",
+     20428
+    ],
+    [
+     "shell file read :: cat /c/Users/warri/Downloads/Info_Diffusion_Model/plugins/ds\u2026",
+     19010
+    ],
+    [
+     "subagent or worker control :: mcp__dsh-worker__list_workers",
+     18464
+    ],
+    [
+     "shell file read :: cd \"C:/Users/warri/Downloads/Info_Diffusion_Model/.claude/wo\u2026",
+     14759
+    ],
+    [
+     "inline Python other :: python -c \" import json d=json.load(open(r'C:\\Users\\warri\\.c\u2026",
+     11636
+    ],
+    [
+     "shell search :: cd /<redacted>-skills/2\u2026",
+     8371
+    ],
+    [
+     "inline Python other :: PYTHONIOENCODING=utf-8 python - <<'EOF' import re for arm,j \u2026",
+     7444
+    ],
+    [
+     "shell file read :: cat \"C:/Users/warri/AppData/Local/Temp/claude/C--Users-warri\u2026",
+     6968
+    ],
+    [
+     "git :: cd /c/Users/warri/Downloads/IDM-worktrees/20261025T145343Z-4\u2026",
+     6014
+    ],
+    [
+     "shell file read :: head -c 12000 \"C:/Users/warri/Downloads/Info_Diffusion_Model\u2026",
+     5936
+    ],
+    [
+     "subagent or worker control :: mcp__dsh-worker__merge_worker",
+     5833
+    ]
+   ]
+  },
+  "j": {
+   "count": 794,
+   "formula": "calls in sleep/poll (sleep, Start-Sleep, timeout /t, job_output/job_list waits); seconds = explicit sleep durations only, so it is a lower bound.",
+   "seconds": 45029.0
+  }
+ }
+}
