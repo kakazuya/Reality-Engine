@@ -1,0 +1,223 @@
+{
+  "case_id": "MB0723",
+  "class_id": "mechanism_lag",
+  "verdict": "b",
+  "question": "Electronics manufacturing scales on a PLI scheme. Trace the scheme to the assembler's scale, then to its component import bill, then to the domestic component supplier's opportunity, then to the assembler's margin per unit. Where does the value stay?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+  "entity": {
+    "resolved": "EMIL",
+    "isin": "INE02YR01019",
+    "matched": "ELECTRONICS"
+  },
+  "search_terms": [
+    "commodity",
+    "raw material",
+    "input cost",
+    "spread",
+    "lag",
+    "electronics",
+    "manufacturing",
+    "scales",
+    "pli",
+    "scheme",
+    "trace",
+    "assembler"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 291,
+      "hits": [
+        {
+          "doc_id": 119929,
+          "category": "promoter_background",
+          "item": "Promoter founded erstwhile sole proprietorship M/s Bajaj Electronics in 1980; Chairman & MD Pavan Kumar Bajaj has over 42 years of retail business management experience",
+          "quote": "Founded the erstwhile Sole Proprietorship, M/s Bajaj Electronics, in 1980"
+        },
+        {
+          "doc_id": 119929,
+          "category": "senior_management",
+          "item": "Chief Operating Officer Mr Sandeep Singh Jolly, over two decades in electronics retail, formerly Samsung India Senior Director Product Head NC&ME",
+          "quote": "Formerly associated with Samsung India as Senior Director, Product Head, NC&ME"
+        },
+        {
+          "doc_id": 119929,
+          "category": "senior_management",
+          "item": "Company Secretary and Compliance Officer Mr Rajiv Kumar, qualified Company Secretary with MBA and B.Com",
+          "quote": "Qualified Company Secretary with a Master's degree in Business Administration"
+        },
+        {
+          "doc_id": 119929,
+          "category": "risk_management",
+          "item": "Risk categories classified: Strategic, Operational, Financial, Compliance and Regulatory, Technology and Cybersecurity, Human Capital, ESG",
+          "quote": "Strategic Risks, Operational Risks, Financial Risks, Compliance and Regulatory Risks"
+        },
+        {
+          "doc_id": 119929,
+          "category": "key_audit_matter",
+          "item": "Vendor incentives (price support rebates from vendors) recorded as reduction against cost of purchases and impacting closing inventory valuation; high volume of schemes and manual computations require significant management effort",
+          "quote": "Vendor incentives: Refer note 3(A)(k) for material accounting policy"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 60,
+      "hits": [
+        {
+          "doc_id": 28592,
+          "metric": "Electronics Mart India Limited revenue growth",
+          "statement": null,
+          "quote": "And looking at that, we're quite confident that FY '23 would be in line with what we had expected and projected around 20% growth. That is what we looked at and we are on track of delivering that number sir."
+        },
+        {
+          "doc_id": 28592,
+          "metric": "Electronics Mart India Limited store additions in existing markets",
+          "statement": null,
+          "quote": "FY '23 end, we would be adding up another 15 to 18 stores in the existing market."
+        },
+        {
+          "doc_id": 28592,
+          "metric": "Electronics Mart India Limited organic revenue growth",
+          "statement": null,
+          "quote": "So we will look at an organic split and development of that going forward would be in the range of around 20% to 25%. That is what we will look at organically for the coming times sir."
+        },
+        {
+          "doc_id": 28592,
+          "metric": "Electronics Mart India Limited annual store additions",
+          "statement": null,
+          "quote": "So sir, usually, we plan to add up around 20-odd stores every year, that is what the plan is."
+        },
+        {
+          "doc_id": 28587,
+          "metric": "Gross margin by category",
+          "statement": "ACs and coolers have the highest gross margin at around 18%, followed by televisions and large appliances at around 17% to 18%, mobiles at 9% to 10% and laptops at around 6%.",
+          "quote": "air-conditioned air coolers being one of the highest gross margin categories with around 18% and then televisions at the 17% larger appliances at around 17%, 18%, mobile phones at around 9% to 10%, laptops are the lowest around 6%"
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 18,
+      "rows": 476,
+      "hits": [
+        {
+          "sha256": "04b5cbb2e15dfdf3ebce4ff07c90729ee2cab8f2df7e8fe60c2f58acf99fcb34",
+          "page_no": 5,
+          "metric": "Sales Mix: Large Appliances",
+          "value": 44.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "04b5cbb2e15dfdf3ebce4ff07c90729ee2cab8f2df7e8fe60c2f58acf99fcb34",
+          "page_no": 5,
+          "metric": "Sales Mix: Small Appliances, IT & Others",
+          "value": 14.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "04b5cbb2e15dfdf3ebce4ff07c90729ee2cab8f2df7e8fe60c2f58acf99fcb34",
+          "page_no": 6,
+          "metric": "Sales Mix - Large Appliances",
+          "value": 44.0,
+          "unit": "%"
+        },
+        {
+          "sha256": "04b5cbb2e15dfdf3ebce4ff07c90729ee2cab8f2df7e8fe60c2f58acf99fcb34",
+          "page_no": 6,
+          "metric": "Sales Mix - Small Appliances, IT & Others",
+          "value": 14.0,
+          "unit": "%"
+        },
+        {
+          "sha256": "04b5cbb2e15dfdf3ebce4ff07c90729ee2cab8f2df7e8fe60c2f58acf99fcb34",
+          "page_no": 13,
+          "metric": "4th largest consumer durables and electronics retailer in India",
+          "value": 4.0,
+          "unit": "-"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"commodity\" OR \"raw material\" OR \"input cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "SWELECTES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 applicable laws and regulations of the Dubai Multi Commodities Centre (\u201cDMCC\u201d) and the United Arab Emirates. The proposed \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (\u201cDMCC\u201d) Size: Share \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 e) The customs duty case relating to imported raw materials was decided in favour of the Company by \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 f) The customs duty case relating to imported raw materials was decided in favour of the Holding Company \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "commodity raw material input cost",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "concall_facts.cc_items",
+        "truth_duckdb.ar_docs",
+        "ar_facts.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 827,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

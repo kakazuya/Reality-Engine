@@ -1,0 +1,225 @@
+{
+  "case_id": "MB1028",
+  "class_id": "valuation_judgement",
+  "verdict": "b",
+  "question": "Tata Motors PV: the post-demerger base is thin. What is the first real support level, and is there enough history to trust it?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+  "entity": {
+    "resolved": "TMPV",
+    "isin": "INE155A01022",
+    "matched": "TATA MOTORS"
+  },
+  "search_terms": [
+    "price to book",
+    "pb",
+    "roe",
+    "payout",
+    "free cash flow",
+    "valuation",
+    "tata",
+    "motors",
+    "post",
+    "demerger",
+    "base",
+    "thin"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 4822,
+      "hits": [
+        {
+          "doc_id": 88889,
+          "category": "auditor_opinion",
+          "item": "Consolidated audit opinion is unmodified (true and fair view), with overriding effect of Composite Scheme of Arrangement for demerger of commercial vehicles business",
+          "quote": "give a true and fair view in conformity with the accounting principles"
+        },
+        {
+          "doc_id": 88889,
+          "category": "emphasis_of_matter",
+          "item": "Emphasis of Matter on note 50(I): Scheme for demerger of commercial vehicles business approved by NCLT vide order dated 25 August 2025; appointed date 1 July 2025; certified copy filed with ROC Maharashtra on 1 October 2025; accounted retrospectively overriding Appendix A to Ind AS 10; opinion not modified",
+          "quote": "The Scheme has been approved by the NCLT vide its order dated 25 August 2025 with appointed date of 1 July 2025"
+        },
+        {
+          "doc_id": 88889,
+          "category": "key_audit_matters",
+          "item": "KAM: Accounting for demerger of Commercial Vehicles Business (Note 50(I)) - significant judgements/estimates in determining fair value of demerged undertaking; disclosed as discontinued operations per Ind AS 105; assets and liabilities transferred to TML on going concern basis",
+          "quote": "the said demerged undertaking has been disclosed as discontinued operations in accordance with Ind AS 105"
+        },
+        {
+          "doc_id": 88889,
+          "category": "signal",
+          "item": "Demerger of commercial vehicles business accounted retrospectively from 1 July 2025, overriding the relevant requirements of Appendix A to Ind AS 10 which would have required accounting from NCLT approval date 25 August 2025",
+          "quote": "which overrides the relevant requirements of Appendix A to Ind AS 10"
+        },
+        {
+          "doc_id": 88889,
+          "category": "Share-based payments",
+          "item": "SLTI Scheme 2021 authorized PSUs",
+          "quote": "Not exceeding 75,00,000 PSUs in aggregate"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 168,
+      "hits": [
+        {
+          "doc_id": 88940,
+          "metric": "Jaguar Land Rover free cash flow target (confirmed analyst's figure)",
+          "statement": null,
+          "quote": "there is a variety of volumes the way we're doing this, which will enable us to get to 5% EBIT and free cash flow of GBP1 billion going forward"
+        },
+        {
+          "doc_id": 88940,
+          "metric": "Tata Motors automotive debt",
+          "statement": null,
+          "quote": "We do expect to deliver a strong improvement in EBIT and free cash flow as we get to near automotive debt free by FY '24. That's the journey we're committed to."
+        },
+        {
+          "doc_id": 88940,
+          "metric": "Tata Motors electric vehicle product launches",
+          "statement": null,
+          "quote": "So you can expect two products at least in in every financial year is what I can say."
+        },
+        {
+          "doc_id": 88940,
+          "metric": "Tata Motors electric passenger vehicle assembly",
+          "statement": null,
+          "quote": "For all our products, now we have integrated in our main assembly line. So literally, we can fully convert the ICE capacity into EV"
+        },
+        {
+          "doc_id": 88940,
+          "metric": "Tata Motors battery manufacturing facilities",
+          "statement": null,
+          "quote": "there is clearly a plan from a Tata group perspective if you look at setting a battery facilities up."
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 36,
+      "rows": 4881,
+      "hits": [
+        {
+          "sha256": "0c63b40223556a67a42d59e74c8f24d369170034060c58170f91b16a21ee05a3",
+          "page_no": 5,
+          "metric": "PBT (bei)",
+          "value": 6.1,
+          "unit": "\u20b9KCr"
+        },
+        {
+          "sha256": "0c63b40223556a67a42d59e74c8f24d369170034060c58170f91b16a21ee05a3",
+          "page_no": 5,
+          "metric": "PBT (bei)",
+          "value": -1.8,
+          "unit": "\u20b9KCr"
+        },
+        {
+          "sha256": "0c63b40223556a67a42d59e74c8f24d369170034060c58170f91b16a21ee05a3",
+          "page_no": 5,
+          "metric": "PBT (bei)",
+          "value": 5.3,
+          "unit": "\u20b9KCr"
+        },
+        {
+          "sha256": "0c63b40223556a67a42d59e74c8f24d369170034060c58170f91b16a21ee05a3",
+          "page_no": 5,
+          "metric": "PBT (bei) YoY",
+          "value": 7.9,
+          "unit": "-"
+        },
+        {
+          "sha256": "0c63b40223556a67a42d59e74c8f24d369170034060c58170f91b16a21ee05a3",
+          "page_no": 5,
+          "metric": "PBT (bei)",
+          "value": 11.4,
+          "unit": "\u20b9KCr"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}) AND concep",
+      "filings": 60,
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"price to book\" OR \"pb\" OR \"roe\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "price to book pb roe",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "ar_facts.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 9871,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

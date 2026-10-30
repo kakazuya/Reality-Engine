@@ -1,0 +1,301 @@
+{
+  "case_id": "MB0968",
+  "class_id": "bank_transmission",
+  "verdict": "b",
+  "question": "Yes Bank: are provisions keeping pace with the stressed book, and how much of the recovery is write-back rather than operating profit?",
+  "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "YESBANK",
+    "isin": "INE528G01035",
+    "matched": "YES BANK"
+  },
+  "search_terms": [
+    "net interest margin",
+    "nim",
+    "credit cost",
+    "provision",
+    "treasury",
+    "yes",
+    "bank",
+    "provisions",
+    "keeping",
+    "pace",
+    "stressed",
+    "book"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 4261,
+      "hits": [
+        {
+          "doc_id": 95917,
+          "category": "business_metric",
+          "item": "Rural Banking presence",
+          "quote": "Widened reach through presence in 13 states"
+        },
+        {
+          "doc_id": 95917,
+          "category": "business_metric",
+          "item": "Rural Banking active borrower base",
+          "quote": "Active borrower base of ~91,000 farmers"
+        },
+        {
+          "doc_id": 95917,
+          "category": "business_metric",
+          "item": "Commercial Banking client turnover limit",
+          "quote": "small to mid-size corporates with turnover up to ` 1,500 crore"
+        },
+        {
+          "doc_id": 95917,
+          "category": "business_metric",
+          "item": "Commercial Banking on-ground locations",
+          "quote": "extensive on-ground network at 62 locations pan-India"
+        },
+        {
+          "doc_id": 95917,
+          "category": "business_metric",
+          "item": "API Banking products and services",
+          "quote": "provides 1,500+ API-related products and services"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 288,
+      "hits": [
+        {
+          "doc_id": 95968,
+          "metric": "YES BANK CASA ratio",
+          "statement": null,
+          "quote": "Looking ahead at FY2023 we would like to share our strategic objective guidance which includes casa ratio at 35%."
+        },
+        {
+          "doc_id": 95968,
+          "metric": "YES BANK improvement in retail MSME versus corporate advances mix",
+          "statement": null,
+          "quote": "The mix between the retail MSME and corporate would further improve by 400 basis points."
+        },
+        {
+          "doc_id": 95968,
+          "metric": "YES BANK total advances growth",
+          "statement": null,
+          "quote": "We are targeting a total advances growth of more than 15%"
+        },
+        {
+          "doc_id": 95968,
+          "metric": "YES BANK large-corporate advances growth",
+          "statement": null,
+          "quote": "contributed by 10% growth on large corporates"
+        },
+        {
+          "doc_id": 95968,
+          "metric": "YES BANK retail MSME and medium-enterprise advances growth",
+          "statement": null,
+          "quote": "more than 25% growth in retail MSME and medium enterprise"
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 6,
+      "rows": 2639,
+      "hits": [
+        {
+          "sha256": "2f78a09ca8f014e7406dc6cc45d7163abfbaace6ed2457879670219bfd80bb38",
+          "page_no": 9,
+          "metric": "Loan Book",
+          "value": 2.3,
+          "unit": "-"
+        },
+        {
+          "sha256": "2f78a09ca8f014e7406dc6cc45d7163abfbaace6ed2457879670219bfd80bb38",
+          "page_no": 9,
+          "metric": "Share of Branch Banking Deposits",
+          "value": 54.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "2f78a09ca8f014e7406dc6cc45d7163abfbaace6ed2457879670219bfd80bb38",
+          "page_no": 16,
+          "metric": "Banks",
+          "value": 0.2,
+          "unit": "-"
+        },
+        {
+          "sha256": "2f78a09ca8f014e7406dc6cc45d7163abfbaace6ed2457879670219bfd80bb38",
+          "page_no": 16,
+          "metric": "Banks",
+          "value": 70.6,
+          "unit": "-"
+        },
+        {
+          "sha256": "2f78a09ca8f014e7406dc6cc45d7163abfbaace6ed2457879670219bfd80bb38",
+          "page_no": 16,
+          "metric": "Banks",
+          "value": 33.7,
+          "unit": "-"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{}) AND concept IN ({},{},{})",
+      "filings": 15,
+      "rows": 52,
+      "hits": [
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420095_19042025053136_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 308949100000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420095_19042025053136_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 76161300000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420095_19042025053136_WEB.xml",
+          "concept": "InterestExpended",
+          "value": 219505600000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420095_19042025053136_WEB.xml",
+          "concept": "InterestExpended",
+          "value": 53397700000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420100_19042025053202_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 309188100000.0,
+          "unit": "INR"
+        }
+      ]
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"net interest margin\" OR \"nim\" OR \"credit cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Ill, Next to Telephone Bhavan, Secretariat Road, Opp. NIMS Hospital, Punjagutta Main Road, New Delhi - 110024. Ph : 011 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "net interest margin nim credit cost",
+      "found": true,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann"
+      ],
+      "rows": 5,
+      "hits": [
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-24",
+          "doc_id": 6944,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 103,
+          "quote": "h delivers profitable growth on a consistent and predictable basis. this includes building a robust income engine with sustainably superior net interest margins ( nim ) and best - in - class fee generation, coupled with an optimum cost structure, which aids in generating superlative operating profits. at the same time, ensuring a strong credit and risk management culture to minimise credit costs, leading to maximisat",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-24",
+          "doc_id": 6944,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 256,
+          "quote": "al assets, the deepening of the low - cost retail liability franchise, and the ongoing shift in the advances mix \u2013 collectively positioning net interest income as the primary engine of the bank ' s return - on - assets expansion fy26 fy25 fy24 fy23 fy22 2. 3 2. 6 2. 4 2. 4 2. 6 nim ( % ) net interest income grew 9. 3 % y - o - y to ` 9, 776 crore, with net interest margin expanding to 2. 6 % from 2. 4 % in fy 2024 -",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "transcript",
+          "date": "2026-04-24",
+          "doc_id": 9837,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 18,
+          "quote": "say, internal, outside of the jc flowers arc write - backs, we will look to improve our roa 25 to 50 basis points. and it ' s a function of net interest margin improvement, is a function of making sure we ' re disciplined on cost and containing the credit cost as well. so really, that ' s our endeavor. what you ' ve said are exactly our aspirations and our ambitions as well to not only maintain, but to improve over t",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "transcript",
+          "date": "2025-10-27",
+          "doc_id": 9839,
+          "page": 4,
+          "page_count": 13,
+          "chunk_index": 3,
+          "quote": ", which is one of the best amongst peers at the moment. e ) the npa ratios are flat on quarter - on - quarter basis with gnpa at 1. 6 % and net npa ratio at 0. 3 %. the fourth important vector is that during the quarter, we have been able to broadly maintain our net interest margins ( nim ) at similar levels as last quarter as the asset repricing impact was largely offset by reduction in ridf balances and high - cost",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2025-07-26",
+          "doc_id": 6945,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 93,
+          "quote": "h delivers profitable growth on a consistent and predictable basis. this includes building a robust income engine with sustainably superior net interest margins ( nim ) and diverse fee pools, coupled with an optimum cost structure, which aids in generating superlative operating profits. at the same time, ensuring a strong credit and risk management culture to minimise credit costs, leading to maximisation of roa prof",
+          "score": 1
+        }
+      ]
+    }
+  ],
+  "structured_rows": 7240,
+  "own_document_hits": 5,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

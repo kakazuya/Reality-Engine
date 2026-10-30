@@ -1,0 +1,222 @@
+{
+  "case_id": "MB0926",
+  "class_id": "free_float_weight",
+  "verdict": "b",
+  "question": "Vodafone Idea: did the promoter group raise its stake through the preferential issue, and what did that do to the free float?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+  "entity": {
+    "resolved": "IDEA",
+    "isin": "INE669E01016",
+    "matched": "VODAFONE IDEA"
+  },
+  "search_terms": [
+    "free float",
+    "float",
+    "promoter",
+    "public shareholding",
+    "weight",
+    "vodafone",
+    "idea",
+    "did",
+    "group",
+    "raise",
+    "stake",
+    "through"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 2340,
+      "hits": [
+        {
+          "doc_id": 41429,
+          "category": "regulatory",
+          "item": "SEBI special window opened for one year for lodging requests to transfer physical shares where transfers were executed before April 1, 2019; processed through transfer-cum-demat route",
+          "quote": "opened for one year from February 5, 2026 to February 4, 2027"
+        },
+        {
+          "doc_id": 41429,
+          "category": "related_party_transactions",
+          "item": "Vodafone Group settled Contingent Liability Adjustment Mechanism receivable",
+          "quote": "Contingent Liability Adjustment Mechanism receivable amounting to ` 6,394 crore"
+        },
+        {
+          "doc_id": 41429,
+          "category": "related_party_transactions",
+          "item": "Aditya Birla Group committed equity infusion through fully convertible instruments",
+          "quote": "equity infusion of US$500 million (approximately ` 4,730 crore)"
+        },
+        {
+          "doc_id": 41429,
+          "category": "borrowings",
+          "item": "Non-convertible debentures raised ahead of AGR resolution",
+          "quote": "raised ` 3,300 crore through non-convertible debentures"
+        },
+        {
+          "doc_id": 41429,
+          "category": "regulatory_policy",
+          "item": "DoT established dedicated 6G Innovation Group",
+          "quote": "dedicated 6G Innovation Group"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 76,
+      "hits": [
+        {
+          "doc_id": 41472,
+          "metric": "Vodafone Idea ARPU",
+          "statement": null,
+          "quote": "We\u2019ve always stated that we would like to see the ARPU at least in the short term go up to Rs. 200"
+        },
+        {
+          "doc_id": 41472,
+          "metric": "Vodafone Idea ARPU",
+          "statement": null,
+          "quote": "and then further increase up to Rs. 250 in the longer term, Rs. 250 or higher in the longer term."
+        },
+        {
+          "doc_id": 41472,
+          "metric": "Vodafone Idea revenue and EBITDA",
+          "statement": null,
+          "quote": "We expect revenue and EBITDA to grow as a result of that."
+        },
+        {
+          "doc_id": 41472,
+          "metric": "Vodafone Idea future annual capex",
+          "statement": null,
+          "quote": "As Ravinder explained, we are actively in the stages of closing our funding discussions so definitely this will increase from the figures that we have seen in the last two years."
+        },
+        {
+          "doc_id": 41472,
+          "metric": null,
+          "statement": "Management did not view customer affordability as an immediate impediment to the next tariff increases.",
+          "quote": "We believe that this should create opportunity for us to continue to further increase tariffs down the road in the future."
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 15,
+      "rows": 242,
+      "hits": [
+        {
+          "sha256": "027a66421f8fa678fc5c9c08872da9ad9c21c9cd8c40c54b3449011a6103e0ef",
+          "page_no": 1,
+          "metric": "IDEA",
+          "value": 532822.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "027a66421f8fa678fc5c9c08872da9ad9c21c9cd8c40c54b3449011a6103e0ef",
+          "page_no": 5,
+          "metric": "Total active wireless subscriber base - market share - Vodafone Idea",
+          "value": 23.7,
+          "unit": "%"
+        },
+        {
+          "sha256": "027a66421f8fa678fc5c9c08872da9ad9c21c9cd8c40c54b3449011a6103e0ef",
+          "page_no": 5,
+          "metric": "Business services mobility RMS - Vodafone Idea",
+          "value": 31.9,
+          "unit": "%"
+        },
+        {
+          "sha256": "027a66421f8fa678fc5c9c08872da9ad9c21c9cd8c40c54b3449011a6103e0ef",
+          "page_no": 5,
+          "metric": "IoT connectivity RMS - Vodafone Idea",
+          "value": 44.2,
+          "unit": "%"
+        },
+        {
+          "sha256": "027a66421f8fa678fc5c9c08872da9ad9c21c9cd8c40c54b3449011a6103e0ef",
+          "page_no": 6,
+          "metric": "Vodafone Idea Sub-GHz (800/900)",
+          "value": 282.0,
+          "unit": "MHz"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"free float\" OR \"float\" OR \"promoter\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "KMEW",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 The Promoter Group infused approximately 215 Crores towards the issuance of Warrants, while the balance amount of approximately \u2026 "
+        },
+        {
+          "symbol": "ADVENZYMES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 for his outstanding contribution to the implementation and promotion of the Atal Pension Yojana. Prior to his appointment \u2026 "
+        },
+        {
+          "symbol": "LLOYDSENGG",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 Whether the promoter/ promoter group/ group companies have any interest in this transaction? If yes, nature of interest \u2026 "
+        },
+        {
+          "symbol": "SWELECTES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 as per SEBI LODR Regulations and whether the promoter/ promoter the Listed entity at present holds 100% equity \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 1/- each, fully paid-up, to Promoters and Non-Promoters. These allotments resulted from the warrant holders exercising \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "free float float promoter",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "ar_facts.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 2658,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

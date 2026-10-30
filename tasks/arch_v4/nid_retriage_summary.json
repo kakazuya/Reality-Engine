@@ -1,0 +1,751 @@
+{
+  "question": "which proxy tickets already have held evidence?",
+  "rule": "Shivam, 30 Oct 2026: 'not in data' is not an acceptable answer by itself.",
+  "proxy_tickets": 74,
+  "by_class": {
+    "hfc_securitisation": {
+      "tickets": 9,
+      "structured": 2,
+      "document": 0,
+      "corpus": 7,
+      "none": 0
+    },
+    "mechanism_lag": {
+      "tickets": 17,
+      "structured": 6,
+      "document": 0,
+      "corpus": 11,
+      "none": 0
+    },
+    "bank_transmission": {
+      "tickets": 21,
+      "structured": 7,
+      "document": 0,
+      "corpus": 14,
+      "none": 0
+    },
+    "float_income": {
+      "tickets": 2,
+      "structured": 0,
+      "document": 2,
+      "corpus": 0,
+      "none": 0
+    },
+    "second_order_suppliers": {
+      "tickets": 4,
+      "structured": 1,
+      "document": 0,
+      "corpus": 3,
+      "none": 0
+    },
+    "policy_incidence": {
+      "tickets": 2,
+      "structured": 1,
+      "document": 0,
+      "corpus": 1,
+      "none": 0
+    },
+    "forecast_scenario": {
+      "tickets": 1,
+      "structured": 0,
+      "document": 0,
+      "corpus": 1,
+      "none": 0
+    },
+    "retail_mtm": {
+      "tickets": 1,
+      "structured": 0,
+      "document": 0,
+      "corpus": 1,
+      "none": 0
+    },
+    "free_float_weight": {
+      "tickets": 6,
+      "structured": 4,
+      "document": 0,
+      "corpus": 2,
+      "none": 0
+    },
+    "valuation_judgement": {
+      "tickets": 11,
+      "structured": 9,
+      "document": 0,
+      "corpus": 2,
+      "none": 0
+    }
+  },
+  "by_level": {
+    "structured": 30,
+    "document": 2,
+    "corpus": 42,
+    "none": 0
+  },
+  "cases": [
+    {
+      "case_id": "MB0012",
+      "class_id": "hfc_securitisation",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0141",
+      "class_id": "hfc_securitisation",
+      "entity": "CANFINHOME",
+      "structured_rows": 4048,
+      "own_document_hits": 1,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0142",
+      "class_id": "hfc_securitisation",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0143",
+      "class_id": "hfc_securitisation",
+      "entity": "SAMMAANCAP",
+      "structured_rows": 791,
+      "own_document_hits": 1,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0144",
+      "class_id": "hfc_securitisation",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0145",
+      "class_id": "hfc_securitisation",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0146",
+      "class_id": "hfc_securitisation",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0147",
+      "class_id": "hfc_securitisation",
+      "entity": "HDFC",
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0148",
+      "class_id": "hfc_securitisation",
+      "entity": "HDFC",
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0356",
+      "class_id": "mechanism_lag",
+      "entity": "MUTHOOTFIN",
+      "structured_rows": 30131,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0460",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0472",
+      "class_id": "bank_transmission",
+      "entity": "HDFCBANK",
+      "structured_rows": 6522,
+      "own_document_hits": 5,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0473",
+      "class_id": "bank_transmission",
+      "entity": "MUTHOOTMF",
+      "structured_rows": 2927,
+      "own_document_hits": 5,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0483",
+      "class_id": "float_income",
+      "entity": "ANGELONE",
+      "structured_rows": 0,
+      "own_document_hits": 1,
+      "corpus_hits": 5,
+      "evidence_level": "document"
+    },
+    {
+      "case_id": "MB0512",
+      "class_id": "second_order_suppliers",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0513",
+      "class_id": "policy_incidence",
+      "entity": "COALINDIA",
+      "structured_rows": 9968,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0518",
+      "class_id": "second_order_suppliers",
+      "entity": "COCHINSHIP",
+      "structured_rows": 1618,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0523",
+      "class_id": "second_order_suppliers",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0568",
+      "class_id": "float_income",
+      "entity": "ANGELONE",
+      "structured_rows": 0,
+      "own_document_hits": 1,
+      "corpus_hits": 5,
+      "evidence_level": "document"
+    },
+    {
+      "case_id": "MB0605",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0608",
+      "class_id": "policy_incidence",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0627",
+      "class_id": "forecast_scenario",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0629",
+      "class_id": "retail_mtm",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0632",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 23,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0638",
+      "class_id": "mechanism_lag",
+      "entity": "MAKERSL",
+      "structured_rows": 206,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0653",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0655",
+      "class_id": "bank_transmission",
+      "entity": "HDFC",
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0660",
+      "class_id": "free_float_weight",
+      "entity": null,
+      "structured_rows": 129,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0662",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0664",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 522,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0670",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0671",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0672",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0677",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0680",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 89,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0682",
+      "class_id": "mechanism_lag",
+      "entity": "PREMIUM",
+      "structured_rows": 21,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0719",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0723",
+      "class_id": "mechanism_lag",
+      "entity": "EMIL",
+      "structured_rows": 827,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0729",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0733",
+      "class_id": "free_float_weight",
+      "entity": null,
+      "structured_rows": 231,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0738",
+      "class_id": "free_float_weight",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0744",
+      "class_id": "free_float_weight",
+      "entity": "FCONSUMER",
+      "structured_rows": 203,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0753",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0758",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0772",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0780",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0790",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0792",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0793",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0800",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0804",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0848",
+      "class_id": "free_float_weight",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0851",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0852",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0855",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0868",
+      "class_id": "second_order_suppliers",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0877",
+      "class_id": "valuation_judgement",
+      "entity": "IREDA",
+      "structured_rows": 177,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0881",
+      "class_id": "bank_transmission",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0888",
+      "class_id": "valuation_judgement",
+      "entity": "PREMIUM",
+      "structured_rows": 31,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0921",
+      "class_id": "mechanism_lag",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB0926",
+      "class_id": "free_float_weight",
+      "entity": "IDEA",
+      "structured_rows": 2658,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0931",
+      "class_id": "bank_transmission",
+      "entity": "HDFCBANK",
+      "structured_rows": 6935,
+      "own_document_hits": 5,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0935",
+      "class_id": "valuation_judgement",
+      "entity": "HDFCBANK",
+      "structured_rows": 5003,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0939",
+      "class_id": "valuation_judgement",
+      "entity": null,
+      "structured_rows": 163,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0959",
+      "class_id": "valuation_judgement",
+      "entity": "ITC",
+      "structured_rows": 2766,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0965",
+      "class_id": "valuation_judgement",
+      "entity": "VAML",
+      "structured_rows": 5,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0968",
+      "class_id": "bank_transmission",
+      "entity": "YESBANK",
+      "structured_rows": 7240,
+      "own_document_hits": 5,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0984",
+      "class_id": "bank_transmission",
+      "entity": "HDFCBANK",
+      "structured_rows": 6545,
+      "own_document_hits": 5,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB0985",
+      "class_id": "bank_transmission",
+      "entity": "BAJFINANCE",
+      "structured_rows": 4,
+      "own_document_hits": 5,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB1005",
+      "class_id": "valuation_judgement",
+      "entity": "TATAINVEST",
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB1010",
+      "class_id": "valuation_judgement",
+      "entity": null,
+      "structured_rows": 0,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "corpus"
+    },
+    {
+      "case_id": "MB1011",
+      "class_id": "valuation_judgement",
+      "entity": "ITC",
+      "structured_rows": 4066,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB1013",
+      "class_id": "valuation_judgement",
+      "entity": "NMDC",
+      "structured_rows": 6654,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    },
+    {
+      "case_id": "MB1028",
+      "class_id": "valuation_judgement",
+      "entity": "TMPV",
+      "structured_rows": 9871,
+      "own_document_hits": 0,
+      "corpus_hits": 5,
+      "evidence_level": "structured"
+    }
+  ]
+}

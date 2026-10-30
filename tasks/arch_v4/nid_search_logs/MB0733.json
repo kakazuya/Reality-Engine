@@ -1,0 +1,129 @@
+{
+  "case_id": "MB0733",
+  "class_id": "free_float_weight",
+  "verdict": "b",
+  "question": "A small-cap re-rates from a 2,000 crore to a 12,000 crore market cap and enters an index. Trace it to the passive flow, then to the float, then to the price. Does the index inclusion cause the re-rating or follow it?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+  "entity": {
+    "resolved": null,
+    "isin": "INE944C01017",
+    "matched": "MARKET"
+  },
+  "search_terms": [
+    "free float",
+    "float",
+    "promoter",
+    "public shareholding",
+    "weight",
+    "small",
+    "cap",
+    "rates",
+    "crore",
+    "market",
+    "enters",
+    "index"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 231,
+      "hits": [
+        {
+          "doc_id": 129911,
+          "category": "shareholding",
+          "item": "Promoters and Promoter Group shareholding as on 31.03.2026",
+          "quote": "Promoters and Promoter Group 3412203 68.2441"
+        },
+        {
+          "doc_id": 129911,
+          "category": "shareholding",
+          "item": "Public shareholding as on 31.03.2026",
+          "quote": "Public 1434812 28.6962"
+        },
+        {
+          "doc_id": 129911,
+          "category": "shareholding",
+          "item": "DVR shares held by Mani Market Creators Limited (95.45% of DVR class)",
+          "quote": "Mani Market Creators Limited 52,50,000 95.45"
+        },
+        {
+          "doc_id": 129911,
+          "category": "market_data",
+          "item": "BSE share price Apr-25: high, low, volume",
+          "quote": "Apr-25 16.49 12.16 7108"
+        },
+        {
+          "doc_id": 129911,
+          "category": "market_data",
+          "item": "BSE share price May-25: high, low, volume",
+          "quote": "May-25 15.93 12.02 17678"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE944C01017",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"free float\" OR \"float\" OR \"promoter\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "KMEW",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 The Promoter Group infused approximately 215 Crores towards the issuance of Warrants, while the balance amount of approximately \u2026 "
+        },
+        {
+          "symbol": "ADVENZYMES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 for his outstanding contribution to the implementation and promotion of the Atal Pension Yojana. Prior to his appointment \u2026 "
+        },
+        {
+          "symbol": "LLOYDSENGG",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 Whether the promoter/ promoter group/ group companies have any interest in this transaction? If yes, nature of interest \u2026 "
+        },
+        {
+          "symbol": "SWELECTES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 as per SEBI LODR Regulations and whether the promoter/ promoter the Listed entity at present holds 100% equity \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 1/- each, fully paid-up, to Promoters and Non-Promoters. These allotments resulted from the warrant holders exercising \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 231,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

@@ -1,0 +1,222 @@
+{
+  "case_id": "MB0513",
+  "class_id": "policy_incidence",
+  "verdict": "b",
+  "question": "The TCS on coal and iron-ore sales doubles to 2% from 1 April 2026. Who is hit first, who second, and does any listed layer gain?",
+  "registry_reason": "NSE publishes no free retro intraday bars",
+  "entity": {
+    "resolved": "COALINDIA",
+    "isin": "INE522F01014",
+    "matched": "COAL"
+  },
+  "search_terms": [
+    "duty",
+    "tariff",
+    "input cost",
+    "raw material",
+    "policy",
+    "tcs",
+    "coal",
+    "iron",
+    "ore",
+    "sales",
+    "doubles",
+    "april"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 8069,
+      "hits": [
+        {
+          "doc_id": 21619,
+          "category": "governance",
+          "item": "Corporate Identification Number of Coal India Limited",
+          "quote": "CIN: L23109WB1973GOI028844"
+        },
+        {
+          "doc_id": 21619,
+          "category": "project_pipeline",
+          "item": "Pre-feasibility studies completed for Coal-to-Chemical plants near ECL, SECL, WCL mine heads to produce methanol, Ammonia, Ammonium Nitrate; tendering on",
+          "quote": "integrated Coal-to-Chemical (C2C) plants utilizing low-ash coal"
+        },
+        {
+          "doc_id": 21619,
+          "category": "project_pipeline",
+          "item": "C2C plant planned at MCL using high ash coal to produce Ammonium Nitrate for coal producing subsidiaries",
+          "quote": "high ash coal, to produce Ammonium Nitrate (AN) at MCL"
+        },
+        {
+          "doc_id": 21619,
+          "category": "production",
+          "item": "Total raw coal production (Underground 25.624; Opencast 597.01)",
+          "quote": "Total 622.63"
+        },
+        {
+          "doc_id": 21619,
+          "category": "production",
+          "item": "Total raw coal production (Underground 26.454; Opencast 569.766)",
+          "quote": "Total 596.22"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 109,
+      "hits": [
+        {
+          "doc_id": 21668,
+          "metric": "Coal India dispatch target",
+          "statement": null,
+          "quote": "we kept the target for dispatch as 740 and production target at 670."
+        },
+        {
+          "doc_id": 21668,
+          "metric": "Coal India dispatch outlook",
+          "statement": null,
+          "quote": "nobody knows when the third wave will hit. If it does not hit then till March we will do 650, but if it hits in the summer or something then everything goes topsy-turvy"
+        },
+        {
+          "doc_id": 21668,
+          "metric": "Potential coal price increase",
+          "statement": null,
+          "quote": "we are thinking very seriously about it. Unfortunately, for the last three months when we were discussing this, the COVID thing was there"
+        },
+        {
+          "doc_id": 21668,
+          "metric": "PFL coal-to-fertilizer project",
+          "statement": null,
+          "quote": "Coal to fertilizer is one project of PFL that was started about two, three years back and the construction got hampered because of COVID otherwise it should have reached to 30% level, it is now 10% to 15%."
+        },
+        {
+          "doc_id": 21668,
+          "metric": "Overall Indian coal demand",
+          "statement": "Management expects coal demand to rise with economic growth, but views the FY2022 targets as ambitious.",
+          "quote": "Assuming that there will be quite a good growth in this economy and so, the demand for coal will rise tremendously."
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 11,
+      "rows": 1790,
+      "hits": [
+        {
+          "sha256": "122f433111c63a64ac110014390eab5e26eee51512903aa7d3971c6503a9dd5c",
+          "page_no": 3,
+          "metric": "Peak Coal Production",
+          "value": 703.2,
+          "unit": "MT"
+        },
+        {
+          "sha256": "122f433111c63a64ac110014390eab5e26eee51512903aa7d3971c6503a9dd5c",
+          "page_no": 3,
+          "metric": "Peak Coal Production Target",
+          "value": 1.0,
+          "unit": "BT"
+        },
+        {
+          "sha256": "122f433111c63a64ac110014390eab5e26eee51512903aa7d3971c6503a9dd5c",
+          "page_no": 3,
+          "metric": "Coal Production",
+          "value": 79.0,
+          "unit": "Mt"
+        },
+        {
+          "sha256": "122f433111c63a64ac110014390eab5e26eee51512903aa7d3971c6503a9dd5c",
+          "page_no": 3,
+          "metric": "Highest ever coal production",
+          "value": 703.2,
+          "unit": "MT"
+        },
+        {
+          "sha256": "122f433111c63a64ac110014390eab5e26eee51512903aa7d3971c6503a9dd5c",
+          "page_no": 3,
+          "metric": "Global coal production",
+          "value": 6.0,
+          "unit": "billion tonnes"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"duty\" OR \"tariff\" OR \"input cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 Accordingly, we do not accept or assume any liability or any duty of care for any other purpose \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 Accordingly, we do not accept or assume any liability or any duty of care for any other purpose \u2026 "
+        },
+        {
+          "symbol": "OIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Expenses (a) Excise Duty (b) Purchases of Stock-in-Trade (c) Changes in Inventories of Finished Goods (d \u2026 "
+        },
+        {
+          "symbol": "OIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Expenses (a) Excise Duty (b) Purchases of Stock-in-Trade (c) Changes in Inventories of Finished Goods (d \u2026 "
+        },
+        {
+          "symbol": "OIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Expenses (a) Cost of materials consumed (b) Excise Duty (c) Purchases of Stock-in-Trade (d) changes in \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "duty tariff input cost",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "ar_facts.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 9968,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

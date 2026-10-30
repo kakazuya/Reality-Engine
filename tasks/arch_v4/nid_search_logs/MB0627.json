@@ -1,0 +1,74 @@
+{
+  "case_id": "MB0627",
+  "class_id": "forecast_scenario",
+  "verdict": "b",
+  "question": "Which mid-cap will double in 2027?",
+  "registry_reason": "forecast, not a held fact",
+  "entity": {
+    "resolved": null,
+    "isin": null,
+    "matched": null
+  },
+  "search_terms": [
+    "scenario",
+    "if",
+    "target",
+    "guidance",
+    "mid",
+    "cap",
+    "double"
+  ],
+  "searches": [
+    {
+      "store": "structured",
+      "skipped": "no company resolved from the question"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"scenario\" OR \"if\" OR \"target\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "KAYNES",
+          "doc_type": "CONCALL_TRANSCRIPT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 robust inflows from Indian Railways Kavach deployment and industrial IoT clients. Target 40%+ YoY revenue growth in FY27."
+        },
+        {
+          "symbol": "ASIANPAINT",
+          "doc_type": "CONCALL_TRANSCRIPT",
+          "date": "2026-08-14",
+          "snippet": "Targeting double-digit EBITDA margin resilience even in volatile crude oil and TiO2 pricing environments."
+        },
+        {
+          "symbol": "ZSARACOM",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-12",
+          "snippet": " \u2026 512020 Regulation 30, 33 and other applicable regulations, if any, of the SEBI (Listing Obligations and Disclosure Requirements \u2026 "
+        },
+        {
+          "symbol": "LLOYDSENGG",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 Regulations, 2015, the Statement of Deviation or variation, if any, for the quarter ended 30th June 2026, in \u2026 "
+        },
+        {
+          "symbol": "LLOYDSENGG",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 Whether the promoter/ promoter group/ group companies have any interest in this transaction? If yes, nature of interest \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 0,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "corpus",
+  "candidate_real_evidence": false,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

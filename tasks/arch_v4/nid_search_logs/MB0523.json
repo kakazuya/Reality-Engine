@@ -1,0 +1,79 @@
+{
+  "case_id": "MB0523",
+  "class_id": "second_order_suppliers",
+  "verdict": "b",
+  "question": "US tariffs on Indian textiles have been 50% since August 2025. Which listed dye and chemical suppliers are exposed second-hand, and what is the evidence bar?",
+  "registry_reason": "NSE publishes no free retro intraday bars",
+  "entity": {
+    "resolved": null,
+    "isin": null,
+    "matched": null
+  },
+  "search_terms": [
+    "supplier",
+    "vendor",
+    "customer",
+    "supply chain",
+    "second order",
+    "tariffs",
+    "indian",
+    "textiles",
+    "since",
+    "august",
+    "listed",
+    "dye"
+  ],
+  "searches": [
+    {
+      "store": "structured",
+      "skipped": "no company resolved from the question"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"supplier\" OR \"vendor\" OR \"customer\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "BDL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 LOIl that were subsequently short closed by the customer which is backed by advances of \u00a5 36,234.42 \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 292.28 Crores) on account of HPC wages reimbursement recoverable \u00b7 from its customer 'NTPC' . The Company had earlier \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 2026-08-10]\naccount of HPC wages reimbursement recoverable \u00b7 from its customer 'NTPC' . The Company had earlier obtained \u2026 "
+        },
+        {
+          "symbol": "IRMENERGY",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 Operational Highlights \u2022 The Company added 3,328 domestic (PNG) customers, 93 commercial customers, 5 industrial customers and commissioned \u2026 "
+        },
+        {
+          "symbol": "IRMENERGY",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 Operational Highlights \u2022 The Company added 3,328 domestic (PNG) customers, 93 commercial customers, 5 industrial customers and commissioned \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 0,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "corpus",
+  "candidate_real_evidence": false,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

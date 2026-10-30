@@ -1,0 +1,225 @@
+{
+  "case_id": "MB0935",
+  "class_id": "valuation_judgement",
+  "verdict": "b",
+  "question": "HDFC Bank versus ICICI Bank on NIM, ROA and credit cost: which is the cleaner compounder from here?",
+  "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "HDFCBANK",
+    "isin": "INE040A01034",
+    "matched": "HDFC BANK"
+  },
+  "search_terms": [
+    "price to book",
+    "pb",
+    "roe",
+    "payout",
+    "free cash flow",
+    "valuation",
+    "hdfc",
+    "bank",
+    "versus",
+    "icici",
+    "nim",
+    "roa"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 4920,
+      "hits": [
+        {
+          "doc_id": 38156,
+          "category": "sustainable finance",
+          "item": "Sustainable finance portfolio as percentage of Bank's total book",
+          "quote": "comprising about 28 per cent of Bank's total book"
+        },
+        {
+          "doc_id": 38156,
+          "category": "financial",
+          "item": "Capital Adequacy Ratio vs minimum requirement of 11.9%",
+          "quote": "Capital Adequacy Ratio of 19.7%, well above the minimum requirement of 11.9%"
+        },
+        {
+          "doc_id": 38156,
+          "category": "related_party_shares",
+          "item": "Mr. Keshavan (director) shareholding in the Bank as on March 31, 2026",
+          "quote": "Mr. Keshavan does not hold any shares of the Bank as on March 31, 2026"
+        },
+        {
+          "doc_id": 38156,
+          "category": "related_party_shares",
+          "item": "Mrs. Renu Karnad (Non-Executive Non-Independent Director) equity shares held in the Bank as on March 31, 2026",
+          "quote": "Mrs. Karnad, holds 96,98,614 equity shares of the Bank as on March 31, 2026"
+        },
+        {
+          "doc_id": 38156,
+          "category": "related_party_shares",
+          "item": "Mr. Sashidhar Jagdishan (MD & CEO) equity shares held in the Bank as on March 31, 2026",
+          "quote": "Mr. Jagdishan holds 35,67,800 equity shares of the Bank as on March 31, 2026"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 66,
+      "hits": [
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank branch additions",
+          "statement": null,
+          "quote": "FY\u201924 branch addition. At this moment, we expect to continue the speed at which, not necessarily every quarter evenly, but the speed at which we have done over the last 15 months to 18 months, we will continue."
+        },
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank cost-to-income ratio",
+          "statement": null,
+          "quote": "And we had mentioned that our cost to income will go past 40, 41 and the quarter can touch 42, we will operate at that level."
+        },
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank net interest margin",
+          "statement": null,
+          "quote": "But again, it operates within that range, narrow range or margin 4.1 plus minus 5-10 basis points. That is where it operates."
+        },
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank return on asset",
+          "statement": null,
+          "quote": "You continue to operate in that 1.9 to 2.1 type of a range on return on asset."
+        },
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank credit cost",
+          "statement": null,
+          "quote": "Credit cost normalizes to pre-COVID levels, not to the COVID levels, to pre-COVID levels."
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 11,
+      "rows": 17,
+      "hits": [
+        {
+          "sha256": "07095e1cdb1291645c43b855274e1cc60edf3e29ad0eca63b3c60c6a921a52e6",
+          "page_no": 1,
+          "metric": "Postal Code (HDFC Bank Office)",
+          "value": 400020.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "bbef49bc7c8df71fc57b98f6a81b5ac4042134eb4f5c7bdae39e293192e8bd9b",
+          "page_no": 10,
+          "metric": "Bank statement through account aggregator",
+          "value": 2.0,
+          "unit": "mins"
+        },
+        {
+          "sha256": "bbef49bc7c8df71fc57b98f6a81b5ac4042134eb4f5c7bdae39e293192e8bd9b",
+          "page_no": 11,
+          "metric": "Large Customer Base \u2013 % of HDFC's customers are not banking with HDFC Bank",
+          "value": 65.0,
+          "unit": "%"
+        },
+        {
+          "sha256": "bbef49bc7c8df71fc57b98f6a81b5ac4042134eb4f5c7bdae39e293192e8bd9b",
+          "page_no": 16,
+          "metric": "What happens in a month - hdfcbank.com - 40M visitors; 100M+ visits (visitors)",
+          "value": 40.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "bbef49bc7c8df71fc57b98f6a81b5ac4042134eb4f5c7bdae39e293192e8bd9b",
+          "page_no": 16,
+          "metric": "What happens in a month - Amongst the top 10 bank websites in the world",
+          "value": 10.0,
+          "unit": "-"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{},{},{},{},{},{},{},{}) AND concept IN ({},{})",
+      "filings": 14,
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"price to book\" OR \"pb\" OR \"roe\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "price to book pb roe",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "ar_facts.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 5003,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

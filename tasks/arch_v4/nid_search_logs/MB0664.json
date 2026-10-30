@@ -1,0 +1,129 @@
+{
+  "case_id": "MB0664",
+  "class_id": "mechanism_lag",
+  "verdict": "b",
+  "question": "The collateral-free MSE loan limit is raised with effect from April 2026. Trace it to bank and NBFC credit to MSME suppliers, then to the supplier's terms with its large customer, then to the large customer's working capital. Does the buyer gain or lose?",
+  "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": null,
+    "isin": "INE172D01021",
+    "matched": "CAPITAL"
+  },
+  "search_terms": [
+    "commodity",
+    "raw material",
+    "input cost",
+    "spread",
+    "lag",
+    "collateral",
+    "free",
+    "mse",
+    "loan",
+    "limit",
+    "raised",
+    "effect"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 522,
+      "hits": [
+        {
+          "doc_id": 135036,
+          "category": "loans",
+          "item": "Sub-Standard Assets",
+          "quote": "Sub-Standard Assets 410.00"
+        },
+        {
+          "doc_id": 135036,
+          "category": "loans",
+          "item": "Sub-Standard Assets",
+          "quote": "Sub-Standard Assets 2,568.34"
+        },
+        {
+          "doc_id": 135036,
+          "category": "loans",
+          "item": "Standard Assets",
+          "quote": "Standard Assets 17,791.88"
+        },
+        {
+          "doc_id": 135036,
+          "category": "loans",
+          "item": "Standard Assets",
+          "quote": "Standard Assets 15,079.39"
+        },
+        {
+          "doc_id": 135036,
+          "category": "related-party",
+          "item": "loans or advances to promoters, directors, KMPs and related parties",
+          "quote": "No loans or advances exist in the name of promoters, directors, KMPs"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE172D01021",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"commodity\" OR \"raw material\" OR \"input cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "SWELECTES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 applicable laws and regulations of the Dubai Multi Commodities Centre (\u201cDMCC\u201d) and the United Arab Emirates. The proposed \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (\u201cDMCC\u201d) Size: Share \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 e) The customs duty case relating to imported raw materials was decided in favour of the Company by \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 f) The customs duty case relating to imported raw materials was decided in favour of the Holding Company \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 522,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

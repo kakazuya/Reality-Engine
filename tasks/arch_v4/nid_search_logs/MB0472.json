@@ -1,0 +1,305 @@
+{
+  "case_id": "MB0472",
+  "class_id": "bank_transmission",
+  "verdict": "b",
+  "question": "A rate cut compresses a bank's NIM but lifts loan growth. For HDFC Bank, which effect dominated last cycle, and what does the disclosure say?",
+  "registry_reason": "metric_key 'nim' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "HDFCBANK",
+    "isin": "INE040A01034",
+    "matched": "HDFC BANK"
+  },
+  "search_terms": [
+    "net interest margin",
+    "nim",
+    "credit cost",
+    "provision",
+    "treasury",
+    "rate",
+    "cut",
+    "compresses",
+    "bank",
+    "but",
+    "lifts",
+    "loan"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 6334,
+      "hits": [
+        {
+          "doc_id": 38156,
+          "category": "sustainable finance",
+          "item": "Sustainable finance portfolio as percentage of Bank's total book",
+          "quote": "comprising about 28 per cent of Bank's total book"
+        },
+        {
+          "doc_id": 38156,
+          "category": "employee",
+          "item": "Employee turnover rate",
+          "quote": "23.1% EMPLOYEE TURNOVER RATE"
+        },
+        {
+          "doc_id": 38156,
+          "category": "financial",
+          "item": "Capital Adequacy Ratio vs minimum requirement of 11.9%",
+          "quote": "Capital Adequacy Ratio of 19.7%, well above the minimum requirement of 11.9%"
+        },
+        {
+          "doc_id": 38156,
+          "category": "related_party_shares",
+          "item": "Mr. Keshavan (director) shareholding in the Bank as on March 31, 2026",
+          "quote": "Mr. Keshavan does not hold any shares of the Bank as on March 31, 2026"
+        },
+        {
+          "doc_id": 38156,
+          "category": "related_party_shares",
+          "item": "Mrs. Renu Karnad (Non-Executive Non-Independent Director) equity shares held in the Bank as on March 31, 2026",
+          "quote": "Mrs. Karnad, holds 96,98,614 equity shares of the Bank as on March 31, 2026"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 108,
+      "hits": [
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank branch additions",
+          "statement": null,
+          "quote": "FY\u201924 branch addition. At this moment, we expect to continue the speed at which, not necessarily every quarter evenly, but the speed at which we have done over the last 15 months to 18 months, we will continue."
+        },
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank cost-to-income ratio",
+          "statement": null,
+          "quote": "And we had mentioned that our cost to income will go past 40, 41 and the quarter can touch 42, we will operate at that level."
+        },
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank net interest margin",
+          "statement": null,
+          "quote": "But again, it operates within that range, narrow range or margin 4.1 plus minus 5-10 basis points. That is where it operates."
+        },
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank return on asset",
+          "statement": null,
+          "quote": "You continue to operate in that 1.9 to 2.1 type of a range on return on asset."
+        },
+        {
+          "doc_id": 38188,
+          "metric": "HDFC Bank credit cost",
+          "statement": null,
+          "quote": "Credit cost normalizes to pre-COVID levels, not to the COVID levels, to pre-COVID levels."
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 11,
+      "rows": 32,
+      "hits": [
+        {
+          "sha256": "07095e1cdb1291645c43b855274e1cc60edf3e29ad0eca63b3c60c6a921a52e6",
+          "page_no": 1,
+          "metric": "Postal Code (HDFC Bank Office)",
+          "value": 400020.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "bbef49bc7c8df71fc57b98f6a81b5ac4042134eb4f5c7bdae39e293192e8bd9b",
+          "page_no": 8,
+          "metric": "Loan Against Shares E2E",
+          "value": 80.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "bbef49bc7c8df71fc57b98f6a81b5ac4042134eb4f5c7bdae39e293192e8bd9b",
+          "page_no": 8,
+          "metric": "Loan Against Shares Physical",
+          "value": 20.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "bbef49bc7c8df71fc57b98f6a81b5ac4042134eb4f5c7bdae39e293192e8bd9b",
+          "page_no": 8,
+          "metric": "Unsecured Loans E2E",
+          "value": 35.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "bbef49bc7c8df71fc57b98f6a81b5ac4042134eb4f5c7bdae39e293192e8bd9b",
+          "page_no": 8,
+          "metric": "Unsecured Loans Partial Digital",
+          "value": 61.0,
+          "unit": "-"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{},{},{},{},{},{},{},{}) AND concept IN ({},{},{})",
+      "filings": 14,
+      "rows": 48,
+      "hits": [
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420333_19042025104215_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 3363674300000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420333_19042025104215_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 867793400000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420333_19042025104215_WEB.xml",
+          "concept": "InterestExpended",
+          "value": 1838942000000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_BANKING_1420333_19042025104215_WEB.xml",
+          "concept": "InterestExpended",
+          "value": 469862100000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_BANKING_1421434_21042025050837_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 3005170400000.0,
+          "unit": "INR"
+        }
+      ]
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"net interest margin\" OR \"nim\" OR \"credit cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Ill, Next to Telephone Bhavan, Secretariat Road, Opp. NIMS Hospital, Punjagutta Main Road, New Delhi - 110024. Ph : 011 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "net interest margin nim credit cost",
+      "found": true,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann"
+      ],
+      "rows": 5,
+      "hits": [
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-11",
+          "doc_id": 8115,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 60,
+          "quote": "and december 2025 led to repricing of both, assets and liabilities. since assets repriced faster than deposits there has been an impact on net interest margin ( nim ). despite the lower nims, the return on assets continued to be stable at 1. 9 per cent mainly due to cost efficiencies. merger as you are aware, post the merger of hdfc ltd. with hdfc bank, the hdfc bank group has several key subsidiaries with businesse",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-11",
+          "doc_id": 8115,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 331,
+          "quote": "indian economy. financial performance the financial performance of your bank for the year ended march 31, 2026 remained healthy with total net revenue ( net interest income plus other income ) rising 13. 6 per cent to ` 1, 91, 218. 6 crore from ` 1, 68, 302. 4 crore in the previous year. revenue growth was driven by an increase in both net interest income and fees & commission. net interest income ( nii ) grew by 4.",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2025-07-14",
+          "doc_id": 8116,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 51,
+          "quote": "t financial year, your bank reported healthy growth while maintaining pristine asset quality which has been its usp across business cycles. net profit increased by 10. 7 per cent to h67, 347. 4 crore on march 31, 2025 while net interest income grew by 13. 0 per cent to h1, 22, 670. 1 crore. our net interest margin ( nim ) stood at 3. 48 per cent. your bank \u2019 s balance sheet rose by over eight per cent to h39, 10, 199",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2025-07-14",
+          "doc_id": 8116,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 275,
+          "quote": "your bank during the year ended march 31, 2025 remained healthy with total net revenue ( net interest income plus other income ) rising 6. 7 per cent to ` 1, 68, 302. 4 crore from ` 1, 57, 773. 5 crore in the previous year. revenue growth was driven by an increase in net interest income. net interest income grew by 13. 0 per cent to ` 1, 22, 670. 1 crore. net interest margin ( nim ) stood 3. 48 per cent. total net re",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2023-07-19",
+          "doc_id": 8117,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 241,
+          "quote": "e headwinds. financial performance the financial performance of your bank during the year ended march 31, 2023, remained healthy with total net revenue ( net interest income plus other income ) rising 16. 3 per cent to ` 118, 057. 1 crore from ` 101, 519. 5 crore in the previous year. revenue growth was driven by an increase in both net interest income and other income. net interest income grew by 20. 6 per cent to `",
+          "score": 1
+        }
+      ]
+    }
+  ],
+  "structured_rows": 6522,
+  "own_document_hits": 5,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

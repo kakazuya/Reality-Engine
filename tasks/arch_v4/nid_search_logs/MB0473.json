@@ -1,0 +1,304 @@
+{
+  "case_id": "MB0473",
+  "class_id": "bank_transmission",
+  "verdict": "b",
+  "question": "Muthoot's cost of funds rises with the repo. How does that interact with the gold-loan yield cap, and who bears it?",
+  "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "MUTHOOTMF",
+    "isin": "INE046W01019",
+    "matched": "MUTHOOT"
+  },
+  "search_terms": [
+    "net interest margin",
+    "nim",
+    "credit cost",
+    "provision",
+    "treasury",
+    "muthoot",
+    "cost",
+    "funds",
+    "rises",
+    "repo",
+    "interact",
+    "gold"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 521,
+      "hits": [
+        {
+          "doc_id": 59824,
+          "category": "related_party_transaction",
+          "item": "Gold loan stock keeping/custody arrangement with Muthoot Fincorp Limited (Promoter & Holding Company); referral fee not exceeding 1.25% of loan amount up to \u20b95,00,000 and not exceeding 0.75% for loan amounts exceeding \u20b95,00,000",
+          "quote": "referral fee not exceeding 1.25% of the loan amount"
+        },
+        {
+          "doc_id": 59824,
+          "category": "related_party_transaction",
+          "item": "Co-lending framework with Muthoot Fincorp Limited extended for 12 months, loan ticket size not exceeding \u20b91,00,000, CLM rate on MML's share 15%, management fee of 0.25% payable to MFL",
+          "quote": "loan ticket size not exceeding \u20b91,00,000"
+        },
+        {
+          "doc_id": 59824,
+          "category": "related_party_transaction",
+          "item": "Appointment of Muthoot Fincorp Limited as Business Correspondent for generating Loan Against Property (LAP) business",
+          "quote": "Business Correspondent for generating Loan Against Property"
+        },
+        {
+          "doc_id": 59824,
+          "category": "director_change",
+          "item": "Ms. Hannah Muthoot (DIN: 10762532) appointed as Additional Director (Non-Executive, Non-Independent) on June 30, 2026; appointment to be approved at 34th AGM",
+          "quote": "appointed Ms. Hannah Muthoot as an Additional Director"
+        },
+        {
+          "doc_id": 59824,
+          "category": "related_party_shares",
+          "item": "Equity shares held by Mr. Thomas Muthoot (Chairman, Non-Executive) as on March 31, 2026",
+          "quote": "29,93,935"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 272,
+      "hits": [
+        {
+          "doc_id": 59852,
+          "metric": "NIM",
+          "statement": null,
+          "quote": "we will continue to maintain our NIM at around 12.7%, 12.8% but at the same time a benefit of our reduction in cost we will pass on to our borrower also."
+        },
+        {
+          "doc_id": 59852,
+          "metric": "Credit cost",
+          "statement": null,
+          "quote": "we had projected a credit cost of around 1.7% so we are much below our projection and we believe that this will continue to remain as the portfolio quality improves"
+        },
+        {
+          "doc_id": 59852,
+          "metric": "Credit cost",
+          "statement": null,
+          "quote": "I think in the long run one should look at around 1.5% to 2% kind of a credit cost in this business."
+        },
+        {
+          "doc_id": 59852,
+          "metric": "Sustainable NIM (inconsistent in call: earlier 12.7 to 12.8)",
+          "statement": null,
+          "quote": "I think in a sustainable manner 12.5% NIM is what we can expect in this business."
+        },
+        {
+          "doc_id": 59852,
+          "metric": "Muthoot Microfin's addressable customer base",
+          "statement": "Management expects AUM growth of 34% to be sustainable because branch infrastructure and customer acquisition are already in place.",
+          "quote": "we believe with the infrastructure we have put in place and the customer acquisition that we are doing we can continue to sustain that growth rate of 34%."
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 18,
+      "rows": 2116,
+      "hits": [
+        {
+          "sha256": "02c1ba72aad5e161cb4d7d678d3c907a94cb382a527bc0dafe34f21525b95213",
+          "page_no": 4,
+          "metric": "Muthoot Microfin Limited (MML) is the 2nd Largest company by AUM under the Muthoot Pappachan Group.",
+          "value": 2.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "02c1ba72aad5e161cb4d7d678d3c907a94cb382a527bc0dafe34f21525b95213",
+          "page_no": 5,
+          "metric": "Company was acquired by promoters of \u201cMuthoot Pappachan Group\u201d",
+          "value": 2011.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "02c1ba72aad5e161cb4d7d678d3c907a94cb382a527bc0dafe34f21525b95213",
+          "page_no": 6,
+          "metric": "Thomas Muthoot Exp",
+          "value": 39.0,
+          "unit": "years"
+        },
+        {
+          "sha256": "02c1ba72aad5e161cb4d7d678d3c907a94cb382a527bc0dafe34f21525b95213",
+          "page_no": 6,
+          "metric": "Thomas George Muthoot Exp",
+          "value": 39.0,
+          "unit": "years"
+        },
+        {
+          "sha256": "02c1ba72aad5e161cb4d7d678d3c907a94cb382a527bc0dafe34f21525b95213",
+          "page_no": 6,
+          "metric": "Thomas Muthoot John Exp",
+          "value": 15.0,
+          "unit": "years"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{},{},{},{},{},{}) AND concept IN ({},{},{})",
+      "filings": 12,
+      "rows": 18,
+      "hits": [
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1434250_08052025073140_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 23694790000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1434250_08052025073140_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 5270300000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1508756_11082025070404_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 5187060000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1566279_05112025104024_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 10544940000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1566279_05112025104024_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 5357880000.0,
+          "unit": "INR"
+        }
+      ]
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"net interest margin\" OR \"nim\" OR \"credit cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Ill, Next to Telephone Bhavan, Secretariat Road, Opp. NIMS Hospital, Punjagutta Main Road, New Delhi - 110024. Ph : 011 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "net interest margin nim credit cost",
+      "found": true,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann"
+      ],
+      "rows": 5,
+      "hits": [
+        {
+          "store": "deck_figures",
+          "doc_type": "deck",
+          "date": "2024-11-06",
+          "doc_id": "ea7d44dad3f1740b9c402434365d6a21f00040132b1b61f2567000d56ee154bf",
+          "page": 15,
+          "page_count": null,
+          "quote": ") | YoY Growth | -27 bps | bps\nRevenue from Operation (%) | Q1FY25 | 20.91% | %\nRevenue from Operation (%) | QoQ Growth | +10 bps | bps\nNet Interest Margin (%) | Q2FY25 | 13.36% | %\nNet Interest Margin (%) | Q2FY24 | 12.79% | %\nNet Interest Margin (%) | YoY Growth | +57 bps | bps\nNet Interest Margin (%) | Q1FY25 | 13.29% | %\nNet Interest Margin (%) | QoQ Growth | +7 bps | bps\nOpex Ratio (%) | Q2FY25 | 6.15% | %\nOpex",
+          "score": 2
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-15",
+          "doc_id": 39114,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 21,
+          "quote": "ts (GNPA ) reduced from 4.85% to 3.89% as of March 31, 2026. Notwithstanding these dynamics, our core financial indicators remained strong. Net Interest Margin (NIM) was sustained at 11.9%, while our Capital Adequacy Ratio (CAR) stood at a healthy 23.9%, comfortably above regulatory requirements. We also strengthened our balance sheet resilience by increasing the provision coverage ratio for Stage 3 assets to 71.5%,",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-15",
+          "doc_id": 39114,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 35,
+          "quote": "ch as Individual Loans, Micro LAP, and Gold Loans Financial / Liquidity Risk Dependence on limited or high-cost funding sources Pressure on Net Interest Margins (NIMs) and reduced flexibility in capital deployment Optimisation of the liability mix through Pass-Through Certificates (PTCs), External Commercial Borrowings (ECBs), and Non-Convertible Debentures (NCDs) Maintenance of a strong liquidity buffer Key Highligh",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-15",
+          "doc_id": 39114,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 36,
+          "quote": "high-cost funding sources Pressure on Net Interest Margins (NIMs) and reduced flexibility in capital deployment Optimisation of the liability mix through Pass-Through Certificates (PTCs), External Commercial Borrowings (ECBs), and Non-Convertible Debentures (NCDs) Maintenance of a strong liquidity buffer Key Highlights of 2025\u201326 Implemented MFIN and Sa-Dhan Guardrails 2.0, lowering the share of over-leveraged borrow",
+          "score": 1
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "transcript",
+          "date": "2025-11-11",
+          "doc_id": 13289,
+          "page": 13,
+          "page_count": 17,
+          "chunk_index": 17,
+          "quote": "presentation quarter - on - quarter. the yield is improving from 18. 1 % to 18. 6 %, and it will further improve in the coming quarter. our net interest margins are also improving. we are at 11. 9 % from 11. 5 % in last quarter. this is further likely to improve, and it will be upper metrics of our guidance by the end of the financial year. and most importantly, the credit cost is coming down and opex, as i said, wil",
+          "score": 1
+        }
+      ]
+    }
+  ],
+  "structured_rows": 2927,
+  "own_document_hits": 5,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

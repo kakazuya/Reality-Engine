@@ -1,0 +1,153 @@
+{
+  "case_id": "MB0965",
+  "class_id": "valuation_judgement",
+  "verdict": "b",
+  "question": "Vedanta: the parent pays dividends while carrying debt. Is the cash actually upstreamed from subsidiaries, and what do the related-party notes say?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+  "entity": {
+    "resolved": "VAML",
+    "isin": "INE1CDF01017",
+    "matched": "VEDANTA"
+  },
+  "search_terms": [
+    "price to book",
+    "pb",
+    "roe",
+    "payout",
+    "free cash flow",
+    "valuation",
+    "vedanta",
+    "parent",
+    "pays",
+    "dividends",
+    "while",
+    "carrying"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 1,
+      "rows": 5,
+      "hits": [
+        {
+          "sha256": "00343582868a0cf6a22aa89636224c51ab0c22db60b2f89a735290ad03586cdb",
+          "page_no": 5,
+          "metric": "Vedanta Aluminium, Jharsuguda shone at CII Industry Carnival 2026",
+          "value": 2026.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "00343582868a0cf6a22aa89636224c51ab0c22db60b2f89a735290ad03586cdb",
+          "page_no": 30,
+          "metric": "EBITDA \u2013 Vedanta Aluminium",
+          "value": 7634.0,
+          "unit": "\u20b9 crore"
+        },
+        {
+          "sha256": "00343582868a0cf6a22aa89636224c51ab0c22db60b2f89a735290ad03586cdb",
+          "page_no": 30,
+          "metric": "EBITDA \u2013 Vedanta Aluminium",
+          "value": 3282.0,
+          "unit": "\u20b9 crore"
+        },
+        {
+          "sha256": "00343582868a0cf6a22aa89636224c51ab0c22db60b2f89a735290ad03586cdb",
+          "page_no": 30,
+          "metric": "EBITDA \u2013 Vedanta Aluminium",
+          "value": 133.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "00343582868a0cf6a22aa89636224c51ab0c22db60b2f89a735290ad03586cdb",
+          "page_no": 30,
+          "metric": "EBITDA \u2013 Vedanta Aluminium",
+          "value": 6217.0,
+          "unit": "\u20b9 crore"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{}) AND concept IN ({},{})",
+      "filings": 3,
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"price to book\" OR \"pb\" OR \"roe\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "price to book pb roe",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 5,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

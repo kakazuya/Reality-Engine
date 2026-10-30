@@ -1,0 +1,113 @@
+{
+  "case_id": "MB0147",
+  "class_id": "hfc_securitisation",
+  "verdict": "b",
+  "question": "For all listed companies in Housing Finance, which listed financial company is the securitisation leader for Q1FY27 with the net-NPA guard, and what is the evidence?",
+  "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "HDFC",
+    "isin": "INE001A01036",
+    "matched": "HOUSING"
+  },
+  "search_terms": [
+    "securitisation",
+    "securitization",
+    "assigned loans",
+    "sell down",
+    "housing loan",
+    "listed",
+    "companies",
+    "housing",
+    "finance",
+    "financial",
+    "company",
+    "leader"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE001A01036",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "filings.isin=INE001A01036",
+      "rows": 0,
+      "hits": [],
+      "note": "no XBRL filing for this ISIN"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"securitisation\" OR \"securitization\" OR \"assigned loans\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of Security"
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of Security \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Final guidelines would be issued post examination of the comments received; \u2022 Framework for Securitisation of Stressed Assets: Discussion \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 January 25, 2023 Discussion paper on securitisation of stressed assets framework (SSAF). February 17, 2023 Draft guidelines on \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "Economic_Survey",
+          "date": "2024-07-23",
+          "snippet": " \u2026 SAPCC State Action Plan on Climate Change SARFAESI Securitisation and Reconstruction of Financial Assets and Enforcement of Security \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "securitisation securitization assigned loans",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "truth_duckdb.bse_ann",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 0,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "corpus",
+  "candidate_real_evidence": false,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

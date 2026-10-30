@@ -1,0 +1,196 @@
+{
+  "case_id": "MB0985",
+  "class_id": "bank_transmission",
+  "verdict": "b",
+  "question": "Bajaj Finance: does a rate cut help or hurt the cost of funds before it helps AUM, and what does history say?",
+  "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "BAJFINANCE",
+    "isin": "INE296A01024",
+    "matched": "BAJAJ FINANCE"
+  },
+  "search_terms": [
+    "net interest margin",
+    "nim",
+    "credit cost",
+    "provision",
+    "treasury",
+    "bajaj",
+    "finance",
+    "rate",
+    "cut",
+    "help",
+    "hurt",
+    "cost"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE296A01024",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{}) AND concept IN ({},{},{})",
+      "filings": 2,
+      "rows": 4,
+      "hits": [
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1428433_29042025085701_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 515485700000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1428433_29042025085701_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 138240500000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1428677_30042025123348_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 611635500000.0,
+          "unit": "INR"
+        },
+        {
+          "file": "INTEGRATED_FILING_NBFC_INDAS_1428677_30042025123348_WEB.xml",
+          "concept": "InterestEarned",
+          "value": 163591400000.0,
+          "unit": "INR"
+        }
+      ]
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"net interest margin\" OR \"nim\" OR \"credit cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Ill, Next to Telephone Bhavan, Secretariat Road, Opp. NIMS Hospital, Punjagutta Main Road, New Delhi - 110024. Ph : 011 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "net interest margin nim credit cost",
+      "found": true,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann"
+      ],
+      "rows": 5,
+      "hits": [
+        {
+          "store": "deck_figures",
+          "doc_type": "deck",
+          "date": "2026-10-19",
+          "doc_id": "40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+          "page": 69,
+          "page_count": 69,
+          "quote": "support centre\nMSME\nMicro, Small & Medium Enterprises\nAUM\nAssets under management\nMTF\nMargin Trading Facility\nAUF\nAssets under finance\nNII\nNet interest income\nBBPS\nBharat bill payment system\nNIM\nNet interest margin\nBL\nBusiness loan\nNNPA\nNet non performing assets\nCC\nCash credit\nNPA\nNon performing assets\nCIF\nCards in force\nOD\nOverdraft\nCOF\nCost of funds\nONDC\nOpen Network for Digital Commerce\nCV\nCommercial vehicle\nOTR",
+          "score": 3
+        },
+        {
+          "store": "deck_figures",
+          "doc_type": "deck",
+          "date": "2025-04-29",
+          "doc_id": "0002ff376c6f0b77fb601ae856e7944bc6aaab85fffae2346a04c84b00c6d0ff",
+          "page": 24,
+          "page_count": null,
+          "quote": "ddition | FY25 | 12 - 14 | MM\nCustomer franchise addition | FY25 | 18.18 | MM\nAUM growth | FY25 | 26% - 28% | -\nAUM growth | FY25 | 26% | -\nNet Interest Margin (NIM) moderation | FY25 | 30 - 40 | bps\nNet Interest Margin (NIM) moderation | FY25 | 49 | bps\nOpex to Net total income (NTI) improvement | FY25 | 20 - 40 | bps\nOpex to Net total income (NTI) improvement | FY25 | 80 | bps\nCredit cost | FY25 | 1.75% - 1.85% | -",
+          "score": 2
+        },
+        {
+          "store": "deck_figures",
+          "doc_type": "deck",
+          "date": "2025-04-29",
+          "doc_id": "0002ff376c6f0b77fb601ae856e7944bc6aaab85fffae2346a04c84b00c6d0ff",
+          "page": 24,
+          "page_count": null,
+          "quote": "18.18 | MM\nAUM growth (What we said) | FY25 | 26% | %\nAUM growth (What we said) | FY25 | 28% | %\nAUM growth (What we did) | FY25 | 26% | %\nNet Interest Margin (NIM) moderation (What we said) | FY25 | 30 | bps\nNet Interest Margin (NIM) moderation (What we said) | FY25 | 40 | bps\nNet Interest Margin (NIM) moderation (What we did) | FY25 | 49 | bps\nOpex to Net total income (NTI) improvement (What we said) | FY25 | 20 |",
+          "score": 2
+        },
+        {
+          "store": "deck_figures",
+          "doc_type": "deck",
+          "date": "2025-04-29",
+          "doc_id": "0002ff376c6f0b77fb601ae856e7944bc6aaab85fffae2346a04c84b00c6d0ff",
+          "page": 25,
+          "page_count": null,
+          "quote": "TITLE | Management assessment for FY26\nCustomer franchise | FY26 | 14-16 | MM\nAUM | FY26 | 24-25% | -\nNet Interest Margin (NIM) | FY26 | 10-15 | bps\nFee and other income | FY26 | 13-15% | -\nOpex to Net total income (NTI) | - | 40-50 | bps\nCredit cost | FY26 | 1.85%-1.95% | -\nReturn on assets | - | 4.4%-4.6% | -\nReturn on equity | FY26 | 19%-20% | -\nFINAI | FY26 | 100 | AI applications",
+          "score": 2
+        },
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-07",
+          "doc_id": 7482,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 117,
+          "quote": "ed interest rate risk management framework that ensures interest rate volatility does not materially affect its investment portfolio or its net interest margin. 54 39th annual report 2025 - 26 54 39th annual report 2025 - 26 price risk quoted equity investments carry exposure to price risk. bfl manages this through periodic monitoring of the investment portfolio and performance of investee companies. mark - to - mark",
+          "score": 1
+        }
+      ]
+    }
+  ],
+  "structured_rows": 4,
+  "own_document_hits": 5,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

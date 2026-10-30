@@ -1,10 +1,41 @@
 # Query layer v4 — factored concept registry, one executor, a discovery layer
 
-Status: design (30 Oct 2026). Supersedes the planner-patch line of work described in
-`tasks/arch_v3/QUERY_LAYER.md`. Every number marked *(measured)* was produced by the two
-programs in this directory: `build_concept_registry.py` (registry + coverage over the 1,073
-master-bank cases) and `bench_screen.py` (timings + RAM on the pilot stores). Numbers taken
-from other documents say so.
+## v4.2 changes (30 Oct 2026, evening) — the answers, the re-triage and the GPU result
+
+This revision is binding and supersedes v4.1 where the two disagree. Every row names the
+decision, the sections it changed, and the artifact that carries the measurement.
+
+| # | decision (Shivam, 30 Oct 2026 evening) | where this document changed | evidence |
+|---|---|---|---|
+| 1 | **Label gate = option (b).** ≥95% of the *head* surfaces carry an exact label, hand-checked at ≥95% precision. Option (a) is removed, not ranked second | §A.9 (gate restated, (a) struck), §H.8; the question is deleted from "Open questions" | `VOCAB_PASS1.md` §4 |
+| 2 | **"In-line" is a band per atom, not one number.** Each atom's band is derived at build time from the measured historical error of the `trend` estimate for that atom, stored per atom × mcap bucket in a small table and read by a lookup at query time. The fixed 2% is gone | **§A.8 (`own_estimate_band`, build + lookup)**, §H.7 | the table itself, re-measured on each rebuild |
+| 3 | **A proxy is the last resort, not a route.** Order is: search everything held (structured + raw documents) → fetch if free within a day → proxy → NOT IN DATA listing what was tried. A proxy answer must carry its `search_log` ref or it does not count as answered; the gate reports `real_answered` and `proxy_answered` separately and **only an approved proxy counts towards 95%** | **§A.6**, **§D.4 (proxy row + the four-step triage)**, **§H.5**, §E.5; the 74 proxy tickets were re-triaged | `nid_retriage.py`, `nid_search_logs/` (74 files), `nid_retriage_summary.json` |
+| 4 | **Sector labels are ours, dated, and may lead NSE.** The v4.1 premise of an on-disk index-constituent archive is **false** and is corrected (3 current CSVs, no history). New step 1: an own PIT label per company from what its filings said at the time, `known_at` = filing date, with a confidence, never backcast before its first supporting filing; scored against the NSE label when one later exists (agreement + lead time). Company documents are held only from 2024-04-01, so a **pilot-only** AR backfill for FY2019–FY2024 is specified (design + size estimate, **not fetched**) | §B.2, **§B.6 (step 1 rewritten, backfill spec added)**, §H.6 | this document §B.6; §B.6 verification note |
+| 5 | **The §E.5 verdict rule is PENDING** and is **not approved**. Four amendments are recorded as proposals, not merged | **§E.5** (PENDING banner, `492 → 1,927 sessions`, metrics 5 & 6 in the verdict, the t < 2 bucket, fold availability, F1–F3 status) | `bench_screen.md`; the pilot store |
+| 6 | **Evening-layer costs come from a dated table, never a constant.** `broker_charges(broker, segment, charge, rate, unit, cap, min, side, effective_from, source_url, checked_on)` seeded with the rate cards checked 2026-10-30. Round trip on ₹1 lakh via NSE: **Zerodha 23.8 bp, Angel One 29.3 bp**, replacing the fixed 30 bp. Slippage measured per liquidity bucket from held daily OHLC (a high-low spread estimator, labelled an estimate; no intraday data). Switch margin: after-tax improvement ≥ 1.5 × total switch cost | **§F.9.1 (new: the table, the seed rows, the seeded values)**, §F.9, **§E.5 metric 5**, §H.9 | `zerodha.com/charges`, `angelone.in/pricing` (checked 2026-10-30) |
+
+**Also folded in.**
+
+| item | where | what changed |
+|---|---|---|
+| `NID_TRIAGE.md` → work packages | **§H.5**, §H.0 | the 31 classes, their 121 build-hours and the execution order are the WP backlog; the proxy half is now governed by decision 3 and was re-searched (`nid_search_logs/`) |
+| `bench_gpu.md` | **§F.5, §F.8 (rewritten from thesis to measured result)**, §F.7 | CPU for the hot path, GPU for nightly and cold, with the measured crossovers; `CUPY_CACHE_IN_MEMORY=1` in sandboxes. Open question 7 is deleted |
+| False-discovery null | **§E.3, §F.1, §F.7** | the null was mis-specified (self-membership pairs left in, commodity columns used as "factors"). Three nulls measured; block permutation on the pair set with the mechanical pairs dropped is adopted |
+| `bench_screen.py` | **§F.7**, `bench_screen.md` | drivers are standardised, so the screen is a **correlation** and asserts \|r\| ≤ 1; the GPU guess ("wins past ~10k entities") is replaced by the measured crossings |
+| Effort in **worker-hours** | **§H.11 (new)**, every WP estimate in §H | person-days are gone. Calibrated on the 202 finished dsh workers in `plugins/dsh-worker/runtime/jobs/*/status.json` |
+| The opinions store | **§A.8** | 529 raw files covering **1 of the 60 pilot ISINs**: the design now states exactly what `own.estimate` does without it instead of listing it as a method leg it will use |
+| `bench_screen.py`'s defect | §F.7 | it multiplied standardised returns by raw driver levels (abs max 55,385) and called the output a correlation |
+
+Numbers re-measured for this revision: **60 atoms, 19 dims, 13 formulas, 26 operators, 2,242
+lexicon rows**, coverage **897 mapped / 150 NID / 26 unmapped** unchanged, `--check`
+deterministic **PASS**. The screen benchmark was re-run after the standardisation fix.
+
+Status: design (30 Oct 2026, v4.2). Supersedes the planner-patch line of work described in
+`tasks/arch_v3/QUERY_LAYER.md`. Every number marked *(measured)* was produced by a program in
+this directory: `build_concept_registry.py` (registry + coverage over the 1,073 master-bank
+cases), `bench_screen.py` (timings, RAM and the false-discovery null on the pilot stores),
+`vocab_pass1.py` (the document vocabulary), `nid_retriage.py` (the proxy-ticket search logs) or
+`bench_gpu.py` (the CPU/GPU comparison). Numbers taken from other documents say so.
 
 ## v4.1 changes (30 Oct 2026) — Shivam's six decisions + the evening layer
 
@@ -43,11 +74,13 @@ stay unmapped (2.4%)** — i.e. the registry can express **97.6%** of the bank's
 data question is asked at all *(measured, §A.6)*.
 
 That 97.6% is an **expressiveness** ceiling, not an answer rate. v4.1 (decision 3) does not
-count a typed NID as answered: each of the 150 is a triage ticket — fetch it free within a
-day, answer it from a labelled proxy, or close it as true NOT IN DATA with what was tried
-(§H.5; the triage worker's list is `tasks/arch_v4/NID_TRIAGE.md`). Consensus is no longer an
-absent class: the estimates are ours, built from our own series, guidance and the opinions
-store (§A.8).
+count a typed NID as answered, and v4.2 (decision 3) fixes the order in which a ticket is
+worked: **search everything held** (structured stores and raw document text) → **fetch** if the
+fetch is free within a day → **proxy** only after that search has failed and the controller has
+reviewed the log → **NOT IN DATA** listing what was tried (§D.4, §H.5; the triage worker's list
+is `tasks/arch_v4/NID_TRIAGE.md`, and the search evidence for its 74 proxy tickets is
+`tasks/arch_v4/nid_search_logs/`). The re-triage found held evidence for 32 of those 74, which
+is the clearest sign the proxy was sitting one step too early.
 
 The rest of this document specifies each piece, the shapes that remove planner code, the
 discovery layer that finds the 2nd/3rd-order links, the engine and the measured budget, and
@@ -239,12 +272,14 @@ From `python tasks/arch_v4/build_concept_registry.py --check` *(measured)*:
 | unmapped | 26 | 2.4% | a clause names a measure the registry cannot express |
 | **mapped + NID** | **1,047** | **97.6%** | the *expressiveness* ceiling |
 
-**Read the third column correctly (v4.1 decision 3).** 97.6% says the registry can *write
-down* the ask; it is not the gate's expected answer rate. A typed NID is a to-do: every one
-of the 150 is triaged into (a) a free fetch that closes it within a day, (b) a labelled proxy
-answer (the proxy, its assumption, its confidence), or (c) a true NOT IN DATA that lists what
-was tried. The triage output is `tasks/arch_v4/NID_TRIAGE.md`; until it lands, the honest
-answer rate is **83.6%** and the plan to raise it is the triage list, not a bigger registry.
+**Read the third column correctly (v4.1 decision 3, tightened by v4.2 decision 3).** 97.6% says
+the registry can *write down* the ask; it is not the gate's expected answer rate. A typed NID is
+a to-do, and the order of work on it is fixed: **search everything held** (structured stores and
+the raw document text) → **fetch** if the fetch is free within one day → **proxy** only when
+both fail → **NOT IN DATA** listing what was tried. The triage output is
+`tasks/arch_v4/NID_TRIAGE.md`; the search evidence behind it is `nid_search_logs/`, one file per
+proxy ticket (§H.5). Until those tickets close, the honest answer rate is **83.6%** and the plan
+to raise it is the ticket list, not a bigger registry.
 
 By source bank *(measured)*: variations300 281/18/1, open300 268/18/14, reddit200
 208/22/13, ripple200 171/26/3, shivam30 28/2/0 (mapped / NID / unmapped). By entity level:
@@ -332,13 +367,67 @@ CREATE TABLE own_estimate(
    exactly why the ladder is trend-first and why "thin coverage in small caps" is stated, not
    papered over.
 
-**Beat/miss.** `realised(atom, period) - own_estimate` with its sign and relative size
-(`/ |estimate|`), reported as `beat | miss | in-line` (in-line = |diff| ≤ 2% or ≤ the
-estimate's own confidence band) **and**, when an opinions report exists, the same arithmetic
-against that report's number. Both readings are printed; they can disagree, and the answer
-says which store each came from. A miss is never upgraded to a beat by a later re-estimate:
-`known_at` fixes what we could have known at the time, and re-estimates are new rows with a
-new `as_of`.
+**What `own.estimate` does with no opinions store (v4.2).** The third leg is inoperative for
+59 of the 60 pilot names, so the design says what runs in its place rather than implying
+coverage it does not have:
+
+1. Every pilot estimate is `trend` or `trend_guidance`; the `method` column says which. No row
+   is ever stamped `trend_guidance_opinion` for a name whose report we do not hold.
+2. Beat/miss is measured against **our own** estimate. The second reading (against the
+   report's number) is printed only where the store covers the name — one pilot ISIN (Tejas
+   Networks) — and the answer says so in one line when it cannot be printed.
+3. Consensus-shaped asks are still answered: `own.estimate` plus its method, `n_obs` and the
+   §A.8 band. What cannot be claimed is the **dispersion** of the street's view, and the answer
+   states that limit instead of implying a survey.
+4. The gate does not treat a consensus question as better answered than a trend estimate
+   deserves: the block carries `method=trend`, `n_obs` and `band_pct`, so a reader can see the
+   difference between "we modelled it" and "an analyst wrote it".
+5. The 529-file Drive inventory is a roadmap item, not a leg. Adding a name is one report
+   parsed, linked to (isin, est_atom, period) and stamped with its `known_at`; the ladder
+   already takes it where it exists, so coverage grows without a schema change.
+
+**Beat/miss, and the in-line band per atom (v4.2 decision 2).**
+`realised(atom, period) - own_estimate`, with its sign and relative size (`/ |estimate|`),
+reported as `beat | miss | in-line`. **"In-line" is not one number and it is not picked by
+hand.** It is `|diff| ≤ band(est_atom, mcap_bucket)`, where the band is the measured
+out-of-sample error of the `trend` leg for that atom in that market-cap bucket — stored in one
+small table and read by a lookup at query time. The fixed 2% this section used to carry is
+gone.
+
+```sql
+CREATE TABLE own_estimate_band(
+  est_atom TEXT NOT NULL,               -- fin.revenue | fin.pat | fin.eps | …
+  mcap_bucket TEXT NOT NULL,            -- large | mid | small | micro (master_companies.market_cap_tier)
+  n_obs INT NOT NULL,                   -- walk-forward estimates scored
+  mape REAL NOT NULL,                   -- median |diff| / |realised| of the trend leg, OOS
+  p75_abs_pct REAL NOT NULL,            -- the 75th percentile of that absolute error
+  band_pct REAL NOT NULL,               -- what the lookup returns: p75, floored at 0.5
+  fallback TEXT,                        -- 'pooled_atom' | 'pooled_all' | NULL
+  measured_from TEXT NOT NULL,          -- the series, window and as_of the error was measured on
+  as_of TEXT NOT NULL,
+  PRIMARY KEY (est_atom, mcap_bucket, as_of));
+```
+
+The band is written by the same job that writes `own_estimate` (§H.7), from the same
+walk-forward errors: for every (atom, bucket) the `trend` leg is re-run on history and scored
+against what was later reported. **The band is therefore a measurement of our own estimator,
+not a tolerance we hoped for.** Rule: `band_pct = p75_abs_pct`, floored at 0.5% (below that a
+rounding difference is not a miss). Where `n_obs < 8` the row takes the pooled band for that
+atom across buckets; where that is missing too it takes `pooled_all` and records `fallback`.
+No path returns a constant — a missing band is a build defect and is printed as one.
+
+The lookup is part of the answer, never a footnote, so a reader can check the claim:
+
+```
+in-line = |diff| <= {band_pct}%  — the p75 walk-forward error of the trend estimate for
+                                   {est_atom} in the {mcap_bucket} bucket
+                                   (n = {n_obs}, measured to {as_of})
+```
+
+When an opinions report exists for the name, the same arithmetic is run against that report's
+number as well. Both readings are printed; they can disagree, and the answer says which store
+each came from. A miss is never upgraded to a beat by a later re-estimate: `known_at` fixes
+what we could have known at the time, and re-estimates are new rows with a new `as_of`.
 
 **Coverage rule.** An `own.estimate` exists wherever the quarterly series exists (the trend
 leg never needs a feed). Where it does not exist, the part is a triage ticket (§H.5), not a
@@ -384,12 +473,25 @@ then pick the smallest topic set covering ≥95% of them with hand-checkable pre
 | lexical clustering (no declared vocabulary) for 95% | 11,467 clusters |
 | hand check on 20 sample mappings | 13/14 exact, 3 alias gaps found |
 
-The finding is in the numbers: 60–80 labels is the right operating size (60 topics cover
+**The finding is in the numbers:** 60–80 labels is the right operating size (60 topics cover
 62.4%, and the marginal topic after ~120 adds ~0), but **token matching saturates at ~65%**.
 The 95% must therefore be reached by a **semantic** mapping over the 64,948 head surfaces
-(§H.8), with the tail as `other:<raw>` by construction. The release check is in
-`VOCAB_PASS1.md` §4: 100% of surfaces mapped (label or `other:<raw>`), ≥95% exact precision
-on a 100-mapping hand sample, head surfaces mapped, label growth only by promotion.
+(§H.8), with the tail as `other:<raw>` by construction.
+
+**The release gate (v4.2 decision 1 — option (b), the only option).** The gate is:
+
+> **≥95% of the head surfaces carry an exact label** — one of the ~60–80 label ids, not
+> `other:<raw>` — **and a 100-mapping hand sample scores ≥95% exact precision.**
+
+The earlier alternative ("≥95% of *occurrences* are labelled **or** explicitly `other:<raw>`")
+is **removed**, not ranked second: it is satisfied by construction the moment the tail is
+written as `other:<raw>`, so it grades the writer rather than the mapper. Saying what was
+*not* labelled, and how much of the corpus that is, are reporting duties of `VOCAB_PASS2.md`;
+they are not the gate.
+
+The full release check is in `VOCAB_PASS1.md` §4, restated under this gate: head surfaces
+mapped at ≥95%; ≥95% exact precision on the 100-mapping hand sample; the `other:<raw>` share
+printed per document type; label growth only by promotion (§A.9 above).
 
 ---
 
@@ -524,21 +626,61 @@ The store today: 482 rows / 482 ISINs / 28 sectors in
 `pilot/pilot60/sector_pit.db.company_sector_pit`, every row `valid_from='2019-01-01'`,
 `valid_to=NULL`, `source='nse_classification'`. That is one snapshot of *today's*
 classification backcast over seven years. The build below replaces it. Effort is in
-**person-days for one build worker**, measured against what the repo already holds; the
-number is an estimate and is labelled as one.
+**worker-hours** (§H.11), one worker-hour being one wall-clock hour of a finished dsh worker;
+the numbers are estimates anchored on measured workers and are labelled as estimates.
 
-**Step 1 — PIT classification and index membership from NSE archives.**
-Sources: `D:\RealityEngine\raw\index_constituents` (archive already downloaded),
-`company_membership_pit` (10,895 rows, 124 index codes, 1,888 ISINs), NSE's archived
-classification sheets. Build `membership` with only factual windows: `valid_from` = the date
-the file was published or first archived, `known_at` = that date, `removed_on` when a later
-file drops the name. Where an earlier state is unknown, the row starts at the first archived
-snapshot and carries `pit_known=0` — it is never backcast to 2019. **3–4 days** (1 day crawl
-and parse, 1 day join/validate, 1–2 days on the classification history: NSE does not publish
-a dated classification series, so the history is only as good as the archive; if the archive
-starts in 2021, the store starts in 2021).
-*Exit check:* zero rows whose `known_at` precedes their source file; per-index membership
-counts on 5 sampled dates equal the archived file.
+**Step 1 — our own PIT classification from the filings, scored against NSE when NSE exists
+(v4.2 decision 4).**
+
+*The archive claim was false, and it is corrected here.* v4.1 stated that
+`D:\RealityEngine\raw\index_constituents` held an on-disk archive of index constituents. That is
+not true, and it is corrected here. Verified
+2026-10-30: that directory holds **exactly three files, all `*_current.csv`** —
+`nifty50_current.csv`, `nifty100_current.csv`, `niftymidcap150_current.csv`, written
+2026-10-20. There is no dated history and no archive. Three current snapshots are the only
+factual index membership we hold from that path; `company_membership_pit` (10,895 rows, 124
+index codes, 1,888 ISINs) is the rest. So the build cannot be "parse the archive": the labels
+have to be **ours**, derived from what each company's filings said at the time.
+
+1a. **Own PIT label per company.** Source of truth is the company's own disclosure:
+    `metric_state.company_segment_pnl` segment revenue (the dominant segment by revenue at the
+    filing date) and the annual report's business description (`ar_facts` category/item at
+    `dr_filed_at`). Each label row carries `valid_from = known_at = the filing date`,
+    `source_ref` (doc id + page), `method` (`segment_revenue` | `ar_business_description`) and
+    a **confidence** (segment share at the filing date, capped at 1.0; a two-way split scores
+    lower than a dominant one). **Rule: no label may precede its first supporting filing.**
+    A 2019 question gets 2019's label or `no_label` — never today's.
+
+1b. **Score our label against NSE's, when NSE's arrives.** Where an NSE classification or
+    index-constituent snapshot exists for a later date, compare our label at that date with
+    NSE's and write `(agreement, lead_days)` to a `sector_label_score` row: `agreement` = exact
+    sector match / the coarser NSE bucket, `lead_days` = how many days before NSE our label
+    said it. That is how "our label may lead NSE" becomes a **measured** claim instead of an
+    assertion, and it is the same discipline as `say_vs_do`: a classifier that is never scored
+    is a guess with a schema.
+
+1c. **Membership from factual windows only.** `valid_from` = the date the snapshot was
+    published or first archived, `known_at` = that date, `removed_on` when a later file drops
+    the name. Where an earlier state is unknown the row starts at the first snapshot and
+    carries `pit_known=0` — never backcast to 2019.
+
+**Step 1d — pilot-only annual-report backfill, FY2019–FY2024 (design + size only; NOT
+fetched).** Without it, folds F1–F3 of §E.5 have no PIT labels: company documents are held
+only from **2024-04-01**, so a decision date in 2022 can read no label and no business
+description, and every filing-based edge test in those folds is unpowered.
+
+| item | estimate (labelled: a size estimate, not a measurement) |
+|---|---|
+| universe | the 60 pilot ISINs, `tasks/pilot60/UNIVERSE.csv` |
+| documents | 60 × 6 fiscal years ≈ **360 AR filings**, fewer where a name listed after FY19; FY24 partially held already |
+| pages / bytes | ~250 pages and ~10 MB per report → ~90,000 pages, ~3.6 GB |
+| extraction | text layer with PyMuPDF (~40 pages/s) for the digital majority; the scanned minority (~20%, ~72 docs) through the existing OCR path at ~1.5 s/page → ~7–8 hours of unattended CPU |
+| chunks / facts | ~135,000 chunks into `document_chunks`/FTS; ~360,000 `ar_facts` rows at the current ~1,000 facts/report |
+| effort | **10–14 worker-hours** (§H.11): fetch 2, parse+OCR 3 (unattended), extraction queue 4–6, QA 2 |
+| scope guard | **pilot only.** The full-universe backfill is a separate decision after the pilot gate (§H.0); nothing here authorises it |
+
+This is the one place in §B.6 where a fetch is the right answer rather than a proxy: the
+documents are public, free, and the fold labels cannot be built without them.
 
 **Step 2 — revenue-weighted multi-sector exposure from segment data.**
 `metric_state.company_segment_pnl` gives segment revenue; the missing piece is a
@@ -546,8 +688,8 @@ segment-name → sector map (~28 sectors; ~400 segment strings in the pilot, han
 stored as `segment_sector_map`). Weight = segment revenue / total revenue for the period, with
 the unallocated remainder as `unallocated`. A company is then multi-sector
 (`membership.set_kind='exposure'`, `weight`), and sector screens can weight by exposure
-instead of a single label. **4–5 days** (2 days mapping + review, 1 day build, 1–2 days QA:
-weights sum to 1, periods align, unallocated share reported).
+instead of a single label. **2 worker-hours** (the segment-name → sector map is ~400 strings in the pilot, hand-mapped
+once; the build and the QA are one script and one report).
 
 **Step 3 — value-chain position: inputs and outputs (feeds `edge`).**
 *Inputs* from the annual report raw-material cost shares (`ar_facts`: category/item + value,
@@ -556,23 +698,24 @@ industries from segment/customer-concentration notes and the company's own produ
 Writes `edge(origin='text', driver=commodity|sector, target=isin, mechanism='input share',
 strength=share, known_at=filing date)`. This is the only step whose data is sparse: cost
 shares are disclosed by a minority of companies (mostly manufacturers), so coverage will be
-uneven and is reported, not imputed. **5–7 days** (2 days extraction rules over `ar_facts`, 1
-day linking input names to commodity series, 1 day customer/output industries, 1–3 days QA —
-the honest risk is precision, which is why every edge carries the quote that produced it).
+uneven and is reported, not imputed. **3 worker-hours** (extraction rules over `ar_facts`, input names linked to commodity series,
+output/customer industries, and QA — the honest risk is precision, which is why every edge
+carries the quote that produced it).
 
 **Step 4 — statistical peers from clustering factor-residual returns.**
 Residualise every company's daily returns on the declared common factors (the existing
 `factor_spine` + the `bench_screen.py` residualisation, measured 59 ms), then cluster the
 residual-return correlation matrix per rolling window (12-month, 1-month step), storing peer
 sets with `valid_from`/`known_at`. Peers are a *measured* store, never a label guess.
-**2–3 days** (the maths exists; the work is the rolling store, the stability check and the
-"refuse when too few active features" rule that `peer_graph.py` already applies).
+**2 worker-hours** (the maths already exists and is benchmarked — `bench_screen.py` times the
+residualisation at 15.8 ms; the work is the rolling store, the stability check and the "refuse
+when too few active features" rule `peer_graph.py` already applies).
 
 **Step 5 — themes (thematic indices + product tags).**
 Theme membership from the held index codes (thematic indices in `index_list`) plus product
 tags extracted from the company's own documents; `theme_map` already has
 `source='curated'|'opinion'` and the rule that an opinion theme never silently becomes
-curated (architecture doc Q2). **2 days.**
+curated (architecture doc Q2). **1.5 worker-hours.**
 
 **Step 6 — the checks that decide whether any of it ships.**
 (a) **PIT validation**: every date used by a query must be ≥ the source's `known_at`; a
@@ -581,10 +724,17 @@ later) blocks the load. (b) **30-company hand sample**: one page per company sho
 label, the filing it came from, the exposure weights and the peer set; a human marks
 right/wrong; ≥28/30 must pass. (c) **Coverage**: per year and per sector, the share of the
 universe with a PIT label, with exposure weights, and with a peer set; the gaps are printed,
-never filled. **3 days.**
+never filled. **2 worker-hours.**
 
-**Total: 19–24 person-days** (≈4–5 weeks for one worker; the steps are independent after
-step 1, so 3 workers cut it to about 2 weeks, with step 1 as the gate for steps 2 and 5).
+*Exit checks (§B.6 step 6 runs them):* zero rows whose `known_at` precedes their source
+filing; per-index membership counts on 5 sampled dates equal the held snapshot; the leakage
+test (query as of 2019-06-30, fail if any label was first published later); the 30-company
+hand sample.
+
+**Total: 24–28 worker-hours** (step 1 + 1d 14–16 h, step 2 2, step 3 3, step 4 2, step 5 1.5,
+step 6 2). The steps are independent after step 1, so three or four workers run steps 2–6 in
+parallel and the build is one working session plus the backfill; step 1 is the gate for steps 2
+and 5, and step 1d is the gate for folds F1–F3 of §E.5.
 
 ---
 
@@ -911,32 +1061,57 @@ row that is not a part's result has nowhere to come from.
 ## D.4 Renderer and the answer contract (v4.1 decision 3)
 
 Every part returns exactly one block, and the block's **type** is part of the contract. A
-typed NOT IN DATA is **not** an answered part; the gate counts only the first three types as
-answered (`estimate` and `proxy` are labelled, never dressed as measured).
+typed NOT IN DATA is **not** an answered part, and — v4.2 decision 3 — a proxy is not an
+unqualified yes either. The gate keeps **two counters**:
+
+| counter | counts | what it is allowed to claim |
+|---|---|---|
+| `real_answered` | `measured` + `estimate` | the answer the data supports |
+| `proxy_answered` | `proxy` blocks **carrying an approved `search_log` ref** | a bridge, with its assumption on the page |
+| (not counted) | `proxy` without a `search_log`, and `not_in_data` | a ticket |
+
+`proxy` blocks never stand in for the headline number: the 95% gate is evaluated on
+`real_answered`, and a proxy is reported next to it as a separate figure with its approval
+state. Only an **approved** proxy counts towards the 95%; an unapproved one is visible debt.
 
 | type | when | block fields |
 |---|---|---|
 | `measured` | the fact is held and PIT-filtered | value, unit, period, entity/ISIN, source table, `known_at` |
 | `estimate` | `own.estimate` (§A.8) | value, unit, period, entity, **method** (`trend`/`trend_guidance`/`trend_guidance_opinion`), the inputs (series refs, guidance refs, opinions-doc refs), confidence, `known_at` |
-| `proxy` | the datum is not held, but a workaround from other held sources answers the ask (decision 3b) | the **proxy** (what is being used in its place), the **assumption** (the stated bridge from proxy to answer, with the arithmetic), the **confidence**, and the sources used |
+| `proxy` | the datum is not held **and** an exhaustive logged search of the raw data has failed **and** the controller (Opus) has reviewed that log | the **proxy**, the **assumption** (the stated bridge from proxy to answer, with the arithmetic), the **confidence** in [0,1], the sources used, **`search_log`** (the ref into `nid_search_logs/` or the run's own log), and **`approved_by`** |
 | `not_in_data` | only after triage (decision 3c) | `NOT IN DATA: <the fact> — Tried: <fetches attempted, with dates> — Checked: <stores, rows after PIT> — Why: <the registry's reason> — To close: <the exact table/fetch>` |
 
-`proxy` is a first-class answer type, not a hedge: the block must state the proxy, the
-assumption that makes the proxy informative, and a confidence in [0,1]. A proxy whose
-assumption cannot be written down is not an answer — it is a ticket.
+`proxy` is a labelled bridge, never a route: the block must state the proxy, the assumption
+that makes it informative, a confidence in [0,1], and the `search_log` that proves we looked
+first. A proxy whose assumption cannot be written down is a ticket. **A proxy with no
+`search_log` ref does not count as answered at all** — in the gate, in the report, or in the
+figure quoted to Shivam.
 
-**NID triage** (the process behind the fourth type; the per-case list is
-`tasks/arch_v4/NID_TRIAGE.md`):
+**NID triage — four steps, in this order, binding (v4.2 decision 3).** The per-case list is
+`tasks/arch_v4/NID_TRIAGE.md`; the search evidence for the proxy tickets is
+`tasks/arch_v4/nid_search_logs/` (one file per ticket, produced by `nid_retriage.py`).
 
-1. **Fetch** — can the data be fetched free within one day (NSE/BSE archive, a filed PDF, an
-   index constituent file)? Then it is a fetch job; the part stays open with the job's id.
-2. **Proxy** — the datum is genuinely hard to get (paid, private, never published). Answer
-   from a proxy or workaround drawn from held sources, labelled `proxy` with its assumption
-   and confidence (e.g. "investor-wise holding" → the FCRA/EPT-2 footpath is not held; proxy =
-   the shareholding pattern's institution totals, assumption = the institution total bounds
-   the name-level position, confidence 0.4).
-3. **NID** — only when 1 and 2 are exhausted: list what was tried. The list is the evidence
-   the gate needs; "we don't have it" alone is not.
+1. **Search everything held.** Every structured store the class needs (`results_xbrl`,
+   `ar_facts`, `concall_facts`, `deck_figures`, `metric_state`, the market tables) *and* the
+   raw document text (the query layer's own `doc_find`, plus the FTS index it falls back to),
+   scoped to the entity when the question names one. The search writes what it looked for,
+   where it looked, and its top hits. **This step is not optional and it is not a formality:**
+   18 of the 74 proxy tickets returned held structured rows on the first pass, and every one of
+   them had already been labelled "not published".
+2. **Fetch, if the fetch is free within one day** (NSE/BSE archive, a filed PDF, an index
+   constituent file). The part stays open with the fetch job's id. A day's fetch beats a
+   lifetime of proxy.
+3. **Proxy** — only when 1 and 2 failed. Answer from a bridge over held sources, labelled
+   `proxy` with its assumption, confidence and `search_log` ref, and **approved by the
+   controller** after reviewing that log (e.g. "investor-wise holding" → the FCRA/EPT-2
+   footpath is not held; proxy = the shareholding pattern's institution totals, assumption =
+   the institution total bounds the name-level position, confidence 0.4).
+4. **NOT IN DATA** — only when 1, 2 and 3 are exhausted: list what was tried. That list is the
+   evidence the gate needs; "we don't have it" alone is not.
+
+The order matters because it inverts the default. Before v4.2 the proxy sat at step 2 and
+collected half the NID cases; a proxy is now the *last* thing tried, and it costs a logged
+search and a review to reach.
 
 The LLM runs **after** the blocks exist and only: (a) writes the prose that connects the
 parts, (b) names the connections it sees between parts, (c) suggests what to look at next.
@@ -991,7 +1166,21 @@ with its numbers. The grey area is the product.
 
 ## E.3 Guards (non-negotiable)
 
-- **FDR correction** across all tests at once (Benjamini–Hochberg), not per look.
+- **FDR correction** across all tests at once (Benjamini–Hochberg), not per look — **and the
+  null that sets it is the block-permutation null, not 1/√T** (v4.2). Measured on the pilot
+  panel (§F.7, `bench_screen.md` §5): with 492 sessions and 133,386 pairs, max \|corr\| under no
+  relationship is **0.393 (median) / 0.499 (max)** by circular-shift block permutation, against
+  **0.205** for the textbook per-pair permutation. A forward-filled monthly commodity series is
+  autocorrelated, so a shuffle of the whole driver row is the only null that prices the
+  accidental lag alignment the screen actually explores; using the per-pair number would
+  declare roughly twice as many links as there is evidence for, and using 1/√T would declare
+  all of them.
+- **Mechanical pairs are not tested.** A company and the index-group mean it belongs to are
+  related by arithmetic, not by a discoverable link: 4,206 such pairs on the pilot. They are
+  excluded from the test set before FDR, not "controlled for" after. Measured on those pairs
+  alone: max \|corr\| **0.501** when the leading commodity columns were used as the factors and
+  **0.003** once the market and index-group means are the factors — which is also the fix to
+  the residualisation itself (§F.1).
 - **Out-of-sample**: the later window is never used to fit the earlier one.
 - **A mechanism is required for `verified`**: a typed path (`edge.mechanism`), not correlation.
 - **Every edge carries `known_at`**, so a discovery backtest cannot use hindsight.
@@ -1022,17 +1211,25 @@ with its numbers. The grey area is the product.
 19. Which coalitions of drivers explain a stock's last 12 moves better than its sector?
 20. Which links are knowable only from a document we hold but never quote?
 
-## E.5 Pilot discovery backtest (v4.1 decision 5) — the gate before the full database
+## E.5 Pilot discovery backtest (v4.1 decision 5) — **PENDING Shivam's answer**
+
+> **STATUS: PENDING — this verdict rule is NOT approved.** It is the only open question left in
+> this document. Everything below the banner except the four *proposed amendments* is the v4.1
+> rule unchanged and stays binding for the machinery work; the proposals are recorded so the
+> build workers can see where the rule is expected to move, and **no worker may apply them as
+> if they were approved**. Until Shivam answers, the pilot backtest runs the v4.1 rule as
+> written and reports the proposed metrics **alongside** the verdict, clearly labelled.
 
 **Order of work, binding:** pilot backtest → Shivam approves the full schema → only then the
 full database. Nothing in §E/§F is built at full scale before the pilot backtest has run and
 been reviewed. The pilot backtest is a *machinery test* (does a hindsight-free discovery
 process produce stable, measurable links on 60 names?), not a claim that an edge exists.
 
-**Inputs (all held, read-only):** `market_state_pilot.company_state_daily` (492 sessions ×
-the pilot ISINs), the pilot `company_membership_pit`/`company_sector_pit` (§B.6), the pilot
-claims (§A.9), and the per-edge statistics from `bench_screen.py`'s residualisation. No
-network, no paid call.
+**Inputs (all held, read-only):** `market_state_pilot.company_state_daily` — the store holds
+**1,927 sessions, 2019-01-01..2026-10-19** (v4.1 said "492 sessions": that is only the window
+`bench_screen.py --days 730` reads for its timing run, not the store's coverage) — the pilot
+`company_membership_pit`/`company_sector_pit` (§B.6), the pilot claims (§A.9), and the per-edge
+statistics from `bench_screen.py`'s residualisation. No network, no paid call.
 
 **Universe.** The 60 pilot ISINs (`tasks/pilot60/UNIVERSE.csv`), restricted at each fold to
 names with a PIT sector label, ≥200 traded sessions and a non-quarantined price series
@@ -1075,8 +1272,37 @@ and for the aggregate edge set, at each fold:
 | 2 | sign hit rate of the top-decile call, per fold | ≥ 55% over ≥ 36 monthly observations in total |
 | 3 | FDR | BH q ≤ 0.10 across every edge test in the fold, not per look |
 | 4 | fold stability | sign and \|t\| ≥ 2 retained in ≥ 3 of 4 folds |
-| 5 | economic | top-decile minus bottom-decile residual spread ≥ 1.5 × round-trip cost (30 bp debit + a stated slippage assumption), before tax; after-tax version reported alongside |
+| 5 | economic | top-decile minus bottom-decile residual spread ≥ 1.5 × the round-trip cost **read from the dated cost table, `broker_charges` (§F.9.1)** — not a constant: 23.8 bp Zerodha / 29.3 bp Angel One on ₹1 lakh via NSE at the 2026-10-30 rates, plus the slippage of the liquidity bucket — before tax; the after-tax version is reported alongside |
 | 6 | decay | no edge whose OOS IC falls > 50% versus its in-sample IC |
+
+**Proposed amendments (30 Oct 2026) — recorded, NOT approved, NOT applied.**
+
+1. **Metrics 5 and 6 join the verdict.** As the rule stands, `economic` and `decay` are
+   declared and then ignored by the verdict: an edge can pass on IC, hit rate and fold
+   stability while costing more to trade than it earns, or while its out-of-sample IC has
+   collapsed against its in-sample IC. Proposal: an edge is `edge` only if 1 **and** 2 **and**
+   4 **and** 5 **and** 6 pass; 3 stays the error control. Cost of the change: some current
+   passes become `no edge`, which is the point.
+2. **An adequately powered candidate with IC > 0 but t < 2 is `no edge`, not silence.** The
+   rule has a bucket for "IC ≤ 0 or sign flipped" (`no edge`) and a bucket for "underpowered"
+   (`inconclusive`), and nothing for the case that actually dominates a 60-name pilot: enough
+   months, positive IC, and not enough t to claim it. Proposal: that case is `no edge` — it
+   cannot enter the hot tier and it must not be reported as "inconclusive", which reads as
+   "try again later" and is how a null result survives forever.
+3. **The window is not 492 sessions.** The store holds **1,927 sessions, 2019-01-01..2026-10-19**
+   (§E.5 inputs, corrected above); the fold table already spends 2019-01..2025-12 on fit and
+   test and keeps 2026 as holdout. The amendment is to state the coverage once, at the store,
+   and let every fold read from it — the 492 figure was a benchmark window that leaked into
+   the backtest spec.
+4. **Which folds can test filing-based edges, and what happens with fewer than four.**
+   Company documents are held only from **2024-04-01**, so a decision date before mid-2024 can
+   read no filing-based label or description; §B.6 step 1d (the pilot-only AR backfill for
+   FY2019–FY2024, 10–14 worker-hours) is what makes F1–F3 usable at all. Proposal, in this
+   order: (a) run F1–F3 on price/membership edges only, and say so per fold; (b) run F4
+   (fit 2019-01..2024-12 → test 2025) on filing-based edges, which is the fold the backfill
+   actually unlocks; (c) if the backfill is not approved, **metric 4 becomes "≥ 2 of the
+   available folds"** with the shortfall named in the report, and a candidate tested in fewer
+   than two folds is `inconclusive` by definition — never `edge` on one fold.
 
 **Verdict rule.** An edge is `edge` only if 1 **and** 2 **and** 4 pass (3 is the error control
 that makes 1 credible); it is `no edge` if the OOS IC is ≤ 0 or the sign flips, and it is
@@ -1096,10 +1322,14 @@ on this specification); it is the document Shivam reviews before the full schema
 
 ## F.1 Factor stripping first
 
-Residualise every company series on ~10–20 declared common factors (market, sector groups,
-rates, INR, commodity groups) **before** testing any link. Correlated "n factors" collapse into
-a few latent ones, which is why the measured residualisation is `O(T·N·F)` and cheap
-(§F.4).
+Residualise every company series on the **declared common factors — the equal-weight market and
+the index-group means** — **before** testing any link. (v4.2: `bench_screen.py` used to pass the
+leading *commodity* columns as the "20 given factors" because they come first in the matrix.
+That is backwards: a commodity level is a driver, and stripping drivers out of the panel before
+testing them is how a real link disappears while a definition survives — a company and its own
+group mean stayed at max \|corr\| 0.501 under the old choice and fall to 0.003 under this one.)
+Correlated "n factors" collapse into a few latent ones, which is why the measured
+residualisation is `O(T·N·F)` and cheap (§F.7, 14.3 ms on the pilot panel).
 
 ## F.2 Mechanism gate + hierarchy
 
@@ -1111,7 +1341,7 @@ costs allow: a company test costs ~10³ more than a sector test, and most sector
 ## F.3 Shock-first walk
 
 When a driver moves >2σ, beam-search outward from it, top-k per hop, ≤3 hops. Measured at
-**6.7 ms for 3 hops, top-10** on a 2,000×500 edge matrix *(measured)*, so the walk can be part
+**5.5 ms for 3 hops, top-10** on a 2,000×500 edge matrix *(measured)*, so the walk can be part
 of the query path, not a nightly batch.
 
 ## F.4 Incremental, never recompute
@@ -1123,11 +1353,15 @@ and paths stale; a data-quality check must pass before anything is marked stale 
 
 ## F.5 Three tiers, with the budgets the measurements actually support
 
-| tier | when | what | budget (measured basis) |
-|---|---|---|---|
-| **hot** | query time | fact-view lookups, stored edges, 3-hop beam walk | <2 s (measured: lookups 0.01–9.6 ms; walk 6.7 ms) |
-| **warm** | nightly incremental | features, stale edges, attention, reaction lags | minutes (measured: residualise + 10 lags = 0.21 s; +1 day = 2.1 ms/edge-set) |
-| **cold** | weekly, off-peak **and only after the §E.5 pilot gate (H.0)** | full re-tests, FDR pass, new candidates, link proposals, regime scan | hours, capped, ordered by expected value (impact × low attention ÷ test cost) |
+| tier | when | what | device (measured, §F.8) | budget (measured basis) |
+|---|---|---|---|---|
+| **hot** | query time | fact-view lookups, stored edges, 3-hop beam walk | **CPU** — the walk is 5.8 ms; the one-day update is a clean CPU win (0.45× on the card), and a cold CUDA context costs 0.80 s | <2 s (measured: lookups 0.01–9.6 ms; walk 5.8 ms) |
+| **warm/nightly** | nightly incremental | features, stale edges, attention, reaction lags, the daily screen and rolling windows | **GPU** — screen 4.32×, rolling 4.63× at the design size; the CPU numbers are the reference (`np.allclose` before timing) | minutes (measured CPU: residualise + 10 lags = 253 ms; +1 day = 1.8 ms/edge-set) |
+| **cold** | weekly, off-peak **and only after the §E.5 pilot gate (H.0)** | full re-tests, FDR pass + block-permutation null, new candidates, link proposals, regime scan, A^k, covariance/eigen | **GPU** — permutations 14.51×, A^k 3.95×, cov+eig 5.22× | hours, capped, ordered by expected value (impact × low attention ÷ test cost) |
+
+The tier boundary is **not** a device boundary by design: it falls where it falls because a
+per-call workload pays a transfer and a sync (hot), while a pass over a resident panel amortises
+them (nightly, cold). §F.8 has the numbers that made that call.
 
 ## F.6 Storage
 
@@ -1142,79 +1376,129 @@ and paths stale; a data-quality check must pass before anything is marked stale 
 ## F.7 Measured CPU benchmark (`bench_screen.py`)
 
 Panel: **492 sessions × 4,042 companies** from `market_state_pilot.company_state_daily`
-(2,296,201 rows); drivers: **33** from held series (22 World Bank commodities forward-filled,
-equal-weight market, 10 index-membership groups). numpy only, read-only.
+(2,296,201 rows); drivers: **33** standardised columns from held series (22 World Bank
+commodities forward-filled, equal-weight market, 10 index-membership groups). numpy only,
+read-only. The 492 is the `--days 730` window this benchmark reads, **not** the store's
+coverage (§E.5).
 
 | step | measured (last run) |
 |---|---:|
-| one lag, full screen (N×D, one BLAS gemm) | 13.2 ms |
-| ten lags | 145 ms |
-| factor residualisation (20 given factors, OLS) | 59 ms |
-| **residualise + ten lags** | **170 ms** |
-| A² on 2,000×500 bipartite (20,000 typed edges, fp32) | 19.0 ms |
-| A³ | 36.3 ms |
-| prune below threshold after a multiply | 13.8 ms |
-| shock walk, 3 hops top-10 | 6.3 ms |
-| one new day, ten lags (incremental) | 1.9 ms |
-| RAM peak (process RSS) | 588 MB (**the row loader**, not the maths: the panel is 7.6 MB) |
+| one lag, full screen (N×D, one BLAS gemm, true correlation) | 18.8 ms |
+| ten lags | 183.7 ms |
+| factor residualisation (11 declared factors: market + 10 index groups, OLS) | 14.3 ms |
+| **residualise + ten lags** | **253 ms** |
+| A² on 2,000×500 bipartite (20,000 typed edges, fp32) | 18.4 ms |
+| A³ | 36.6 ms |
+| prune below threshold after a multiply | 8.9 ms |
+| shock walk, 3 hops top-10 | 5.8 ms |
+| one new day, ten lags (incremental) | 1.8 ms |
+| RAM peak (process RSS) | 592 MB (**the row loader**, not the maths: the panel is 7.6 MB) |
 
-Run-to-run variance on this box is 10–30% (the residualisation solve swings 20–59 ms); the
-exact last run is in `bench_screen.md`, which the program rewrites each time. Extrapolation to
-the design size (arithmetic on the measured rate, not a second measurement): 2,000 entities ×
-500 drivers × 492 days → **0.10 s per screen, 1.0 s for ten lags**; at 4,042 entities →
-0.20 s / 2.0 s.
+Run-to-run variance on this box is 10–30%; the exact last run is in `bench_screen.md`, which the
+program rewrites each time. Extrapolation to the design size (arithmetic on the measured rate,
+not a second measurement): 2,000 entities × 500 drivers × 492 days → **0.14 s per screen, 1.41 s
+for ten lags**; at 4,042 entities → **0.28 s / 2.84 s**.
+
+**Two defects were fixed in the benchmark itself (v4.2), and they matter more than the
+timings.**
+
+1. **It was not computing a correlation.** The driver matrix was built from raw held levels —
+   a commodity level reaches **55,385** — and multiplied straight into a gemm against
+   standardised returns, so the "screen" value was a cross-product of magnitude ~10⁴. Drivers
+   are now standardised once, before the clock starts, and `screen_corr` returns a Pearson
+   correlation and **asserts \|r\| ≤ 1** on every call. The timings barely move (the
+   standardisation is outside the timed region); the number finally means what the design says
+   it means.
+2. **The false-discovery null was mis-specified**, and §E.3 carries the decision. Measured on
+   this panel: observed max \|corr\| **0.411** over 133,386 pairs; **block permutation**
+   (circular shift of every driver row together) gives **0.393 median / 0.465 p90 / 0.499 max**
+   over 20 shuffles; **per-pair permutation** gives **0.205** over all pairs (median of 200
+   draws from the t(490) null, and 0.209 on 2,000 sampled pairs × 10 real shuffles). The
+   4,206 mechanical self-membership pairs are what made the old null look like noise: on those
+   pairs alone max \|corr\| was **0.501** when the leading commodity columns were the "factors",
+   and falls to **0.003** once the market and index-group means are. Note that the observed
+   maximum (0.411) is **below** the block null's p90 — on the pilot panel nothing survives the
+   honest null, which is the expected answer at 492 sessions and 60 names and is reported as a
+   result rather than tuned away.
 
 **Acceptance targets: confirmed, but the first two are far too loose.** The full daily screen
-is ~170 ms (~1,700× under the 5-minute target) and the incremental update is ~2 ms (300,000×
-under 10 minutes). The 5-minute budget is really spent in panel assembly and feature build, not in
-linear algebra, so §F.5 re-states the budgets as **hot < 2 s, warm = feature build + stale-edge
-refresh, cold = weekly batch** — and the engineering effort belongs in the fact view's
-partitions and the dirty-propagation graph, not in a faster gemm.
+is ~253 ms (~1,200× under the 5-minute target) and the incremental update is ~1.8 ms
+(~340,000× under 10 minutes). The 5-minute budget is really spent in panel assembly and feature
+build, not in linear algebra, so §F.5 re-states the budgets as **hot < 2 s, warm = feature build
++ stale-edge refresh, cold = weekly batch** — and the engineering effort belongs in the fact
+view's partitions and the dirty-propagation graph, not in a faster gemm.
 
-## F.8 GPU vs CPU — a thesis and the test that decides it (v4.1 decision 6)
+## F.8 GPU vs CPU — measured (v4.2 decision 7; `bench_gpu.md`)
 
-**Nothing here is measured. Do not cite a speed-up from this section.** The CPU numbers in
-§F.7 are measured on this box; the GPU side is a **hypothesis** with a named experiment. A
-separate worker runs the benchmark and writes `tasks/arch_v4/bench_gpu.md`; until that file
-exists with a result table, the design stays CPU-only and no cold-tier step is specified
-against a GPU.
+**This is a result, not a thesis.** `bench_gpu.py` ran seven workloads as **one function
+parameterised by the array module**, so both columns execute the same arithmetic: fp32 on both
+devices, `np.allclose` checked before any timing, median of 5 runs, GPU synchronised before the
+clock stops. Machine: GTX 1050 Ti (sm_61, 4.0 GB, no TF32), CuPy 14.2 on the CUDA 12.9 runtime,
+8 logical CPUs, Python 3.14.7, numpy 2.5.4.
 
-**Thesis (to be tested, not assumed).**
+One-time CUDA cost per process, measured: `import cupy` 0.32 s, context + first kernel compile +
+first launch + sync 0.48 s → **0.80 s before the first byte of work**. One full-size transfer is
+**3.29 ms up, 6.81 ms down** (7.6 MB, pageable memory). Every per-call workload has to earn that
+back, and most cannot.
 
-- *H1 — the cold tier is GPU-shaped.* The weekly batch is many independent windows × lags ×
-  drivers, i.e. tall-skinny matrix work with no Python object churn. If any step is GPU-shaped,
-  it is this one: the CPU path is a loop over windows, and a batched GEMM on the card should
-  cut wall-clock once the batch is large enough.
-- *H2 — the hot and warm tiers are not GPU-shaped.* Query-time lookups (0.01–9.6 ms), the
-  3-hop beam walk (6.7 ms) and the incremental update (2.1 ms/day) are latency-bound; a CUDA
-  context, a host→device copy and a synchronise cost more than the work. Predicted: GPU loses
-  or ties there.
-- *H3 — the bottleneck is not the gemm.* §F.7 measured that panel assembly (57 s per 2.3 M
-  rows from SQLite) dominates the arithmetic (~170 ms for residualise + ten lags). If H3
-  holds, a 200× GPU gemm changes nothing and the engineering belongs in partitions and the
-  dirty-propagation graph. **This is the thesis's real risk: the cheap thing to accelerate is
-  not the expensive thing.**
+| tier | workload | largest measured | CPU fp32 | GPU incl. transfer | GPU/CPU | device |
+|---|---|---|---:|---:|---:|---|
+| hot | 3-hop shock walk | A 2000×500 | 5.29 ms | 1.93 ms | 2.75× | **tie (unstable)** |
+| hot | incremental one day, 10 lags | 4,042 × 33 | 1.47 ms | 3.25 ms | 0.45× | **CPU** |
+| nightly | daily screen (residualise + 10 lags) | 4,042 × 1,650 | 514 ms | 119 ms | 4.32× | **GPU** |
+| nightly | rolling windows | 20 × 123 d | 546 ms | 118 ms | 4.63× | **GPU** |
+| cold | permutation null | 20 shuffles | 2.65 s | 183 ms | 14.51× | **GPU** |
+| cold | A^k with pruning | A 8000×8000 | 5.37 s | 1.36 s | 3.95× | **GPU** |
+| cold | covariance + top-20 eigen | 4,042 × 4,042 | 7.22 s | 1.38 s | 5.22× | **GPU** |
 
-**The test that decides it (pre-registered; the benchmark worker runs exactly this).**
+**Crossovers, with transfer (the pessimistic case):** screen at **N = 1,024** (3.54×, and
+already 13.32× at the pilot panel) — v4.1's "wins past ~10k entities" guess is off by an order
+of magnitude; A^k at **500 × 125** (12.79×); rolling at **1 window** (4.77×); covariance at
+**512** (3.82×); permutations at **1 shuffle** (12.15×). The shock walk crosses at 2,000 × 500
+but is inside its own run-to-run spread. **No crossover** for the incremental one-day update at
+any measured size.
 
-| # | experiment | measure | decides |
-|---|---|---|---|
-| T1 | full cold-tier workload (all folds in §E.5 × 10 lags × 33–60 drivers) on CPU (numpy, `bench_screen.py`) and on the card (cuPy or torch CUDA), same inputs, fp32 | wall-clock, peak RAM/VRAM, 3 repeats, median ± spread | H1: GPU ≥ 3× faster on the *end-to-end* job (not one gemm) |
-| T2 | hot path: 1,000 stored-edge lookups + 100 three-hop walks | p50/p95 latency | H2: GPU not slower at p95 |
-| T3 | one new day, ten lags, incremental | per-day time | H2: GPU is not needed (it should lose) |
-| T4 | panel assembly alone, CPU only, cold cache | seconds | H3: if assembly ≥ 10× the arithmetic, a GPU result cannot move the budget |
+**Decision, applied to §F.5:**
 
-**Decision rule, fixed in advance.** Adopt a GPU path **only if** T1 shows ≥ 3× end-to-end
-and T2 shows no p95 regression; otherwise stay CPU and put the effort into panel assembly and
-the dirty graph. T4 is reported first, because if it dominates, T1's 3× is unreachable no
-matter what the card can do. The CPU path stays the reference: any GPU result must pass an
-`np.allclose` (1e-5) check on one window before it is timed.
+- **Hot path: CPU.** The incremental update is a clean CPU win (0.45×) and the shock walk
+  cannot be awarded to either device — it synchronises three times per call on a card that is
+  also driving the desktop, and measured 1.03×, 1.94× and 2.77× on three runs of the same
+  script. The design's real hot path is cheaper than that walk, so the tier stays on the CPU.
+- **Nightly and cold: GPU.** This contradicts v4.1, and not because of size: the screen wins
+  end to end at the pilot panel already, and only a genuinely cold call (process start, upload,
+  download) makes the CPU the right answer there.
+- **The dividing line is not the tier — it is the unit of work.** One call pays a sync and a
+  transfer each way against microseconds of arithmetic and loses; a pass over data that stays
+  resident amortises them and wins. Every per-call workload loses and every resident-panel pass
+  wins at the sizes that matter, which is why the rule survives a new GPU or a new workload
+  without re-deriving it.
 
-**What does not change either way.** The CPU path in `bench_screen.py` is the reference
-implementation; the hot path remains SQL + stored edges; there are no GPU-only features in the
-query contract. The install candidate (named only, not installed): `cupy-cuda12x` or the
-CUDA-12 `torch` wheel, on the GTX 1050 Ti (4 GB) — and 4 GB is a stated ceiling, so tiling is
-part of the test, not an optimisation after it.
+**What the fp32 comparison does and does not say.** Five of the seven rows miss the `allclose`
+gate, and the attribution is on the record: on the pilot screen row, numpy's own fp32 is 8.8×
+from numpy fp64 on the same output while the GPU in fp64 is 7.5e-08× from numpy fp64. The
+disagreement is fp32 arithmetic on a near-zero correlation — a sum of 492 O(1) products that
+cancel — not the device. The cold tier therefore keeps its permutation accounting in fp64
+wherever the statistic is a near-zero value.
+
+**Operation.**
+- **Install (named, not required by the query path):** `cupy-cuda12x` on the GTX 1050 Ti. 4 GB
+  is a stated ceiling: the heaviest measured workload peaked at 1,953 MB of pool inside a
+  2.5 GB budget, so tiling is part of the test and not an optimisation after it.
+- **`CUPY_CACHE_IN_MEMORY=1` in every sandboxed or read-only run.** The default kernel cache
+  writes to `~/.cupy`; where the home directory is not writable the first kernel compile fails
+  *after* the 0.32 s import, which reads as "CuPy is broken". It is not.
+- The numpy path stays the reference implementation. Any GPU result passes `np.allclose`
+  against it on one window **before** it is timed, and that check is part of the run, not a
+  comment.
+- No GPU-only feature enters the query contract either way: the hot path is SQL + stored edges
+  on the CPU, exactly as §D.1 specifies.
+
+**What `bench_gpu.md` does not measure** (carried into the open, not hidden): batching the 1,000
+permutations as one gemm (it would widen the GPU margin, but it is no longer the same algorithm
+on both devices); pinned memory and copy streams (would move every crossover down); fp16/tensor
+cores (this card has none — this is a Pascal verdict); sustained thermals; and the panel load,
+which is 46–57 s from SQLite on **either** device and remains the argument for the cached or
+Parquet panel in §F.6.
 
 ## F.9 Evening portfolio decision layer (design-only, v4.1)
 
@@ -1260,6 +1544,91 @@ CREATE TABLE recommendation_log(      -- every call is a graded claim, never an 
   graded_at TEXT, horizon_months INT, realised_excess REAL, verdict TEXT);
 ```
 
+## F.9.1 Costs, slippage and the switch margin (v4.2 decision 6)
+
+**Costs are data, never a constant.** A fixed basis-point number in code is a bug that silently
+ages: STT and stamp duty move with the Finance Act, and brokerage is a per-broker contract.
+Five of the eight charges below differ between the two brokers, and two of them are capped per
+order rather than scaled per rupee — so one 30 bp constant is wrong for every order size and
+both brokers. Hence a dated table:
+
+```sql
+CREATE TABLE broker_charges(
+  broker TEXT NOT NULL,          -- zerodha | angelone
+  segment TEXT NOT NULL,         -- equity_delivery | equity_intraday | …
+  charge TEXT NOT NULL,          -- brokerage | stt | exchange_txn | sebi | stamp_duty | gst | dp
+  rate REAL NOT NULL,            -- 0.000307 for 0.00307%
+  unit TEXT NOT NULL,            -- pct_turnover | pct_brokerage | inr_per_order | inr_per_crore | inr_per_scrip
+  cap REAL,                      -- ₹20 per executed order, where the card caps
+  min REAL,                      -- ₹5 per executed order, where the card floors
+  side TEXT NOT NULL,            -- buy | sell | both
+  effective_from TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  checked_on TEXT NOT NULL,      -- the day a human read the page
+  status TEXT NOT NULL,          -- verified | to_confirm_from_contract_note
+  PRIMARY KEY (broker, segment, charge, side, effective_from));
+```
+
+**Seed — rate cards checked 2026-10-30, equity.**
+
+| charge | Zerodha delivery | Angel One delivery | Zerodha intraday | Angel One intraday |
+|---|---|---|---|---|
+| brokerage, per executed order | ₹0 | lower of ₹20 / 0.1%, min ₹5 | lower of ₹20 / 0.03% | lower of ₹20 / 0.1%, min ₹5 |
+| STT | 0.1% buy + sell | same | 0.025% sell | same |
+| NSE transaction | 0.00307% | 0.0030699% | 0.00307% | 0.0030699% |
+| BSE transaction (groups A/B) | 0.00375% | 0.00375% | 0.00375% | 0.00375% |
+| SEBI | ₹10/crore | same | same | same |
+| stamp duty, buy side | 0.015% | same | 0.003% | same |
+| GST | 18% on brokerage + transaction + SEBI | same | same | same |
+| DP, per scrip per sell | ₹15.34 incl. GST | ₹20 + GST = ₹23.60 | none | none |
+
+Sources: <https://zerodha.com/charges/>, <https://www.angelone.in/pricing>,
+<https://www.angelone.in/exchange-transaction-charges>,
+<https://www.angelone.in/news/product-updates/pricing-update-nov-2025-b2c>. Angel One's own pages
+conflict — the brokerage calculator says ₹0 delivery brokerage, a support page quotes ₹59 DP for
+a BSDA account — so **every Angel One row is seeded `status='to_confirm_from_contract_note'`**,
+and until a contract note settles it the *higher* reading is used for a cost estimate, because
+an under-estimated cost is exactly what makes a switch look good.
+
+**Round trip on ₹1 lakh, NSE cash, delivery, buy + sell** (DP on the sell leg):
+
+| broker | brokerage | STT | NSE txn | SEBI | stamp | GST | DP | total | bp |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Zerodha | 0 | 200.00 | 6.14 | 0.20 | 15.00 | 1.14 | 15.34 | ₹237.82 | **23.8** |
+| Angel One | 40.00 | 200.00 | 6.14 | 0.20 | 15.00 | 8.34 | 23.60 | ₹293.28 | **29.3** |
+
+The fixed 30 bp is therefore replaced by this lookup wherever it was quoted (§E.5 metric 5 and
+the nightly scoring below). The 5.5 bp gap between the brokers is larger than the whole economic
+margin of many candidate edges, so **the broker is part of the experiment, not a footnote**.
+
+**Slippage: measured per liquidity bucket from daily OHLC, and labelled an estimate.** No
+intraday data (Shivam's earlier ruling), so the estimator is the daily high-low spread:
+
+```
+slippage_bp(bucket) = 10,000 * median over the trailing 60 sessions of  0.5 * (high - low) / close
+```
+
+The 0.5 is the "you cross half the spread" convention and it is stored in the row, not buried.
+This is an **estimate of a cost we cannot observe**: a recommendation that clears its cost by
+less than the estimate's own dispersion is not a recommendation. Buckets by median traded value
+(> ₹50 cr, ₹10–50 cr, ₹1–10 cr, < ₹1 cr); every `daily_scorecard` row stores its `slippage_bp`
+and the bucket it came from, so the number can be re-derived.
+
+**Switch margin: after-tax improvement ≥ 1.5 × total switch cost.** Matches §E.5 metric 5 and is
+non-negotiable here:
+
+```
+total switch cost = exit cost (brokerage/STT/stamp + the actual tax on the realised gain + slippage)
+                  + entry cost + the alternative's own expense drag
+
+switch only if  exp_return_after_tax(alternative) - exp_return_after_tax(held)
+                 >= 1.5 * total switch cost
+```
+
+The 1.5× exists because every term in that inequality is an estimate; below it the sign of the
+answer is not knowable. **A static allocation stays the benchmark**: the layer must beat its own
+silence to justify existing (§F.9 guardrails).
+
 **The nightly scoring (after close, ~21:00 IST, after the 19:35 price job).**
 1. Load holdings read-only: the **official Kite MCP** for Zerodha and the **Angel One export**
    file. No order endpoints, no write scopes; a missing/stale export marks the account
@@ -1268,10 +1637,10 @@ CREATE TABLE recommendation_log(      -- every call is a graded claim, never an 
    atoms (the same fact view the query layer reads), then convert to **post-tax** return using
    the tax-rules table built from the enacted Gazette texts (never a hardcoded rate — the
    2026-10-19 decision) and the holding period.
-3. Cost to switch = exit cost (STT/brokerage + the actual tax on the realised gain + slippage
-   in bp by liquidity bucket) + entry cost + the tracking/expense drag of the alternative.
-   Slippage is a stated assumption per liquidity bucket, stored in the row, not a constant in
-   code.
+3. Cost to switch = exit cost (STT/brokerage/stamp from `broker_charges` + the actual tax on
+   the realised gain + slippage in bp for the liquidity bucket) + entry cost + the
+   tracking/expense drag of the alternative. Both the charge rows and the slippage estimate are
+   stored in the scorecard row (§F.9.1), never constants in code.
 4. Rank on `exp_return_after_tax - switching cost amortised over the horizon`; a switch is
    only recommended when the improvement exceeds the cost by a margin and the confidence is
    above the calibrated threshold. Otherwise `hold` is the answer (it defaulted to hold, it
@@ -1329,8 +1698,9 @@ shares of the *failure-reason findings* (2,681-case run: `ask_match` 2,884, sub-
    `registry_coverage.md`, `VOCAB_PASS1.md`, `PILOT_BACKTEST.md`, `NID_TRIAGE.md`).
 4. **Only then the full database**: chunking, tagging, embedding, loading — the golden rule's
    order (AGENTS.md), unchanged.
-5. The GPU decision (§F.8) and the evening layer (§F.9) are design-only until 2–3 finish; the
-   evening layer additionally waits for the portfolio-level out-of-sample test.
+5. The GPU decision is **made and measured** (§F.8: CPU hot path, GPU nightly and cold), so it
+   no longer waits on anything; the evening layer (§F.9) stays design-only until 2–3 finish and
+   additionally waits for the portfolio-level out-of-sample test.
 
 The last two words on any disagreement: no full-scale build, and no instruction-style output,
 before the pilot gate and the backtest are reviewed.
@@ -1393,12 +1763,12 @@ literally; the beat/miss framings need the estimate *atom*, not the word). Answe
 
 **(b) Built from data already held — a build job, not a fetch.**
 
-| work | cases | effort |
+| work | cases | effort (worker-hours, §H.11) |
 |---|---:|---|
-| `corp.amount_per_share` → build `corporate_action_class` (the live DB has `corporate_actions`; the pilot store has no table) | 40 | 3–5 days |
-| banking concept keys (`loans` 23, `net_npa` 22, `nim` 13, `credit_cost` 6) → mapping rows over the XBRL concepts already held in `results_xbrl.facts` | 64 | 2–3 days |
-| `cwip` 2, `investments` 8, `cfo` 5 → same mapping rows | 15 | 1–2 days |
-| `deposits` 7, `unit_volume` 13, `price.free_float` 8 → one atom row + reader/weight coverage each | 28 | 2–4 days |
+| `corp.amount_per_share` → build `corporate_action_class` (the live DB has `corporate_actions`; the pilot store has no table) | 40 | 6–10 |
+| banking concept keys (`loans` 23, `net_npa` 22, `nim` 13, `credit_cost` 6) → mapping rows over the XBRL concepts already held in `results_xbrl.facts` | 64 | 4–6 |
+| `cwip` 2, `investments` 8, `cfo` 5 → same mapping rows | 15 | 2–4 |
+| `deposits` 7, `unit_volume` 13, `price.free_float` 8 → one atom row + reader/weight coverage each | 28 | 4–8 |
 
 **(c) Free fetch within one day → a fetch job.** This is mostly *per-entity document
 coverage*: the 211-case stream. A company that never filed a concall, or whose deck is not in
@@ -1408,101 +1778,179 @@ counts after `known_at <= as_of`; every (entity, doc_type) with zero rows that i
 free* (NSE/BSE archive) is a fetch job, not a NID. **Effort is in the stream, not in this
 design.**
 
-**(d) Genuinely hard → proxy with its assumption, or NID with what was tried.**
-`absent.intraday` 14 (no free retro intraday bars → proxy: daily high-low range / close as an
-amplitude proxy, assumption stated, confidence low), `absent.forecast` 4 (no forecast is a
-fact → proxy is a scenario, and a scenario is labelled), `absent.refurb_sales` 2,
-`absent.investor_holdings` and `absent.private_terms` (rare in the bank). Each is answered as
-a `proxy` block (proxy, assumption, confidence, sources) or, when no bridge can be stated, as
-NID listing the fetches tried. **Never a bare "not in data".**
+**(d) Genuinely hard → search first, then proxy with its assumption, then NID with what was
+tried.** `absent.intraday` 14 (no free retro intraday bars → the last resort is a proxy: the
+daily high-low range / close as an amplitude proxy, assumption stated, confidence low),
+`absent.forecast` 4 (no forecast is a fact → a scenario, and a scenario is labelled),
+`absent.refurb_sales` 2, `absent.investor_holdings` and `absent.private_terms` (rare in the
+bank). Every one of these now reaches the proxy **only after** step 1 of §D.4's order has run
+and its log is attached.
 
-**(e) The decision the triage produces.** For each case: `fetch(job_id)`, `proxy(result,
-assumption, confidence)` or `nid(tried[])`. The gate counts the first two; the third is
-visible debt with an owner and an attempted-fetch log. The triage worker's output is the input
-to the next fetch wave — not a reason to grow the registry.
+**The re-triage of the 74 proxy tickets (v4.2 decision 3, measured).** `nid_retriage.py` ran
+the deterministic search over the held stores and the document text for all 74 cases that
+`NID_TRIAGE.md` sent to a proxy, and wrote one log per ticket to `nid_search_logs/` (74 files).
+Result:
+
+| evidence found | tickets | what it means |
+|---|---:|---|
+| **structured rows held** | **30** | a held table already answers the class — these were filed as "not published" while the rows sat on disk |
+| **the company's own document passage** | **2** | the fact is in a filing we hold, in prose |
+| corpus match only | 42 | the class term exists somewhere in 2.3 M chunks; that is not evidence and is not counted |
+| nothing | 0 | — |
+
+So **32 of 74 proxy tickets show candidate real evidence** and go to step 1/2 of the triage
+before any proxy is written. The 42 corpus-only tickets are the honest proxy candidates, and
+each still needs the controller's review of its log. **No ticket was re-labelled by this run**;
+the logs are the review material, and the worst class — `bank_transmission`, 21 tickets, 7 with
+held rows — is also the largest, so the "half of the NID goes to proxy" figure was never a data
+statement, it was a search that had not been run.
+
+Per class (structured / own-document / corpus): `valuation_judgement` 9/0/2 ·
+`bank_transmission` 7/0/14 · `mechanism_lag` 6/0/11 · `free_float_weight` 4/0/2 ·
+`hfc_securitisation` 2/0/7 · `second_suppliers` 1/0/3 · `policy_incidence` 1/0/1 ·
+`float_income` 0/2/0 · `forecast_scenario` 0/0/1 · `retail_mtm` 0/0/1.
+
+**(e) The decision the triage produces.** For each case: `fetch(job_id)`,
+`proxy(result, assumption, confidence, search_log, approved_by)` or `nid(tried[])`. The gate
+keeps `real_answered` (`measured`+`estimate`) and `proxy_answered` (approved proxies only) as
+**separate** numbers (§D.4); the third bucket is visible debt with an owner and an
+attempted-search log. A proxy without its `search_log` counts as debt, not as an answer.
 
 ## H.6 WP6 — sector, exposure and peer build (§B.6)
 
-Six steps, 19–24 person-days; step 1 (PIT classification + membership) is the gate for steps
-2 and 5. Acceptance: the leakage test fails the load if any label was first published after
+Six steps, **24–28 worker-hours** (§B.6, including the 10–14 h pilot AR backfill of step 1d);
+step 1 (PIT classification + membership) is the gate for steps 2 and 5. Acceptance: the leakage test fails the load if any label was first published after
 the date it is used for; the 30-company hand sample passes ≥28/30; coverage is printed per
 sector per year. The 2019-01-01 backcast in `company_sector_pit` is replaced, not migrated.
 
 ## H.7 WP7 — `own_estimate` build (§A.8)
 
 Trend leg first (it needs nothing new), then the guidance adjustment from `claim` rows, then
-the opinions join where a report exists. **3–4 days** (1 day trend + backtest, 1–2 days
-guidance claims and caps, 1 day opinions join and the beat/miss report). Acceptance: an
-`own_estimate` row for every (pilot ISIN, beat/miss atom, quarter) where the series exists;
-the estimate's own out-of-sample error is measured (MAPE by cap bucket) and printed; a
-re-estimate never rewrites history (new `as_of` rows only).
+the opinions join where a report exists. **3–4 worker-hours** (trend leg + the walk-forward
+`own_estimate_band` build, guidance claims and caps, the opinions join, the beat/miss report —
+one builder and one report). Acceptance: an `own_estimate` row for every (pilot ISIN,
+beat/miss atom, quarter) where the series exists; an `own_estimate_band` row for every
+(atom, mcap bucket) that the estimates touch, with `n_obs` and the measured `p75_abs_pct`
+printed; the estimate's own out-of-sample error is measured and printed; a re-estimate never
+rewrites history (new `as_of` rows only).
 
 ## H.8 WP8 — vocabulary semantic mapping + label release (§A.9, `VOCAB_PASS1.md`)
 
 Map the 64,948 head surfaces (95% of occurrences) to the ~60–80 labels with a semantic mapper
 (the local embedding index; no paid model), keep the tail as `other:<raw>`, run the 100-mapping
-hand check, and promote `other` clusters that pass the promotion rule. **5–8 days** (2 days
-mapper, 2 days review of the head, 1–2 days promotion queue, 1–2 days re-measure as
-`VOCAB_PASS2.md`). Acceptance: 100% of surfaces mapped; ≥95% exact on the 100-mapping sample;
-every `other` cluster with ≥20 occurrences / ≥3 companies / ≥2 doc types is in the promotion
-queue with its evidence.
+hand check, and promote `other` clusters that pass the promotion rule. **6–8 worker-hours**
+(mapper, review of the head, the promotion queue, the re-measure as `VOCAB_PASS2.md`; the one
+human-shaped step is the 100-mapping hand check, which is why the gate is precision and not
+volume). Acceptance: **≥95% of the head surfaces carry an exact label** and the 100-mapping
+sample scores **≥95% exact precision** (§A.9's gate, option (b)); the `other:<raw>` share is
+printed per document type; every `other` cluster with ≥20 occurrences / ≥3 companies / ≥2 doc
+types is in the promotion queue with its evidence.
 
 ## H.9 WP9 — evening portfolio layer (§F.9) — design-only until the gate
 
-When built: the four tables, the nightly scorecard, the recommendation log and its grader.
-**5–7 days** (2 days tables + holdings readers — Kite MCP read-only and the Angel One export,
-2 days scoring after tax/cost/slippage, 1–2 days grading, 1 day calibration report).
+When built: the four tables, the `broker_charges` seed (§F.9.1), the nightly scorecard, the
+recommendation log and its grader. **7–9 worker-hours** (tables + holdings readers — Kite MCP
+read-only and the Angel One export; the scoring after tax, cost and slippage; the grading; the
+calibration report).
 Acceptance: a recommendation carries evidence, confidence and its falsifier; the log is graded
 at 1/3/6/12 months; the layer emits signals only (no order path exists); a static allocation
 is the benchmark it must beat before it is called useful.
 
 ## H.10 WP10 — pilot discovery backtest (§E.5)
 
-Machinery + four folds + the report `tasks/arch_v4/PILOT_BACKTEST.md`. **10–15 days** (the
-machinery exists in `bench_screen.py`; the work is the fold loop, the `known_at` replay check,
-the FDR pass and the write-up). Acceptance: the replay check is byte-identical; every fold's
+Machinery + four folds + the report `tasks/arch_v4/PILOT_BACKTEST.md`. **5–7 worker-hours**
+(the machinery exists in `bench_screen.py`, and the GPU worker's 1.58 h for seven
+correctness-checked workloads is the measured anchor for "a fold loop plus a null pass"; the
+work is the fold loop, the `known_at` replay check, the block-permutation null and the
+write-up). Acceptance: the replay check is byte-identical; every fold's
 edge set is produced with `known_at <= t` in SQL; the report states edge / no edge /
 inconclusive per candidate with the test count. This report is what Shivam reviews before the
 full schema (H.0).
 
 ---
 
+## H.11 Effort in worker-hours (v4.2) — calibrated on finished workers
+
+v4.1 quoted person-days. A person-day is a human unit and this build is not done by humans: the
+work is dsh workers, each handed one brief, so the honest unit is **one wall-clock hour of one
+finished worker, orientation and sandbox friction included**. The calibration is measured, not
+assumed, from `plugins/dsh-worker/runtime/jobs/*/status.json` (read 2026-10-30):
+
+| measurement | value |
+|---|---:|
+| jobs with a recorded start and finish | **202** |
+| completed / cancelled / control_unavailable / launcher_error / lost / lease_expired | 172 / 12 / 9 / 4 / 3 / 2 |
+| elapsed, median | **0.31 h** (19 min) |
+| elapsed, p25 / p75 / p90 | 0.13 h / 0.75 h / 1.33 h |
+| longest measured job | 5.0 h (a 23,321-deck download + parse + chunk run) |
+| total worker-hours across all 202 jobs | **113.9 h** |
+
+The arch_v4 deliverables have their own anchors, matched to their `brief.md`:
+
+| worker | measured elapsed | what it produced |
+|---|---:|---|
+| the v4 design worker | **0.65 h** | the 60-atom registry generator, `concept_registry.json`, `registry_coverage.md`, the design |
+| the v4.1 revision worker | **0.74 h** | this document, with six decisions folded in |
+| the NID triage worker | **0.31 h** | 150 cases, 31 classes, 121 human build-hours itemised |
+| the GPU benchmark worker | **1.58 h** | 7 workloads on both devices, correctness-checked, 17 KB report |
+
+**Rule: estimate in measured deliverables, not in days.** One finished worker at 0.31–1.58 h is
+the unit (p90 of the whole population is 1.33 h), so a task that is one builder plus one report
+is quoted at **1.5 worker-hours**, and a multi-step build is that many steps. Where a v4.1
+person-day figure survives as a cross-check, the measured ratio is **0.65–1.0 worker-hours per
+person-day** — the design worker and the deck worker bracket it — and the table below uses the
+conservative end, never dividing by a factor below 1.
+
+| package | what it is | worker-hours |
+|---|---|---:|
+| WP1 registry + lexicon | shipped | 0.65 (measured) |
+| WP2 fact view + membership + vocab/claim/edge builders | 6 builders | 6–9 |
+| WP3 decomposer + evaluation | decomposer + eval + report | 3–4 |
+| WP4 executor + answer contract + renderer + grader | 4 files | 4–6 |
+| WP6 sector, exposure and peer build (§B.6) | 6 steps **+ the pilot AR backfill** | 24–28 |
+| WP7 `own_estimate` + `own_estimate_band` (§A.8) | 1 builder + 1 report | 3–4 |
+| WP8 vocabulary semantic mapping + label release (§A.9) | mapper + head review + promotion + re-measure | 6–8 |
+| WP9 evening portfolio layer (§F.9, §F.9.1) | 4 tables + `broker_charges` + scorecard + grader | 7–9 |
+| WP10 pilot discovery backtest (§E.5) | 4 folds + block null + report | 5–7 |
+| the NID ticket backlog (§H.5) | 31 classes, 121 human build-hours restated | 18–22 |
+| **total** | | **77–98 worker-hours** |
+
+With three or four workers running disjoint briefs in parallel — §H.0 keeps §E/§F behind the
+pilot gate, so the concurrency is real — that is **20–25 hours of wall clock**. The total is an
+estimate built on measured workers and is labelled as one: if a package overruns its quote by
+more than the p90–median spread (about 1 h), the brief was wrong, not the calibration.
+
+---
+
 # Open questions for Shivam
 
-The six decisions of 30 Oct 2026 are closed and written into the body. What remains is the
-small set of numbers the decisions still need from you; none of them blocks WP1–WP4.
+**One question is open, and it is the §E.5 verdict rule — marked PENDING in §E.5 and not
+approved.** Everything else the v4.1 draft asked has been answered and written into the body:
 
-1. **The label gate's wording.** `VOCAB_PASS1.md` measured that a 60–80-topic vocabulary with
-   token matching covers 64.8% of phrase occurrences; 95% is reached only over the *head*
-   surfaces (64,948 surfaces carry 95% of occurrences), and only with a semantic mapper. Do
-   you want the gate as **(a)** "≥95% of occurrences are labelled *or* explicitly
-   `other:<raw>`" (100% by construction, honest but weaker) or **(b)** "≥95% of the head
-   surfaces carry an exact label, hand-checked at ≥95% precision" (the one this design
-   recommends)? (a) and (b) differ in what a failing case is blamed on.
-2. **The estimate method's caps.** §A.8 caps a guidance adjustment at ±1.5× the trend's
-   standard error and calls |diff| ≤ 2% "in-line". Revenue and EPS have very different
-   natural error; do you want the band per atom (e.g. 2% revenue, 5% EPS), or one number for
-   all?
-3. **Proxy acceptability.** What confidence floor counts as an *answered* proxy part in the
-   gate (this design says: any stated proxy counts, because the assumption is inspectable;
-   the alternative is to require ≥0.5 confidence, which would re-open ~10 of the 150 tickets)?
-   And are the named bridges acceptable — intraday amplitude → daily high-low/close, and
-   investor-level holdings → institutional totals?
-4. **Sector-build effort.** §B.6 prices it at 19–24 person-days (≈2 weeks with three workers),
-   gated on step 1. If the NSE classification archive starts in 2021, the PIT store starts in
-   2021 and everything before it is `pit_known=0` — is that an acceptable history, or should
-   the build stop and wait for an archive?
-5. **Pilot backtest power.** 60 names, 28 sectors, four folds (2022–2025) and 2026 untouched.
-   Approve the verdict rule of §E.5 — including that most edges are expected to be
-   *inconclusive* and that an inconclusive edge does not enter the hot tier.
-6. **Evening layer inputs.** Confirm the brokers (Zerodha via the official Kite MCP, Angel One
-   via its export only), the slippage assumptions per liquidity bucket, the switch margin
-   (this design requires the after-tax improvement to exceed the switch cost by a margin
-   before a switch is recommended), and that a static allocation is the benchmark the layer
-   must beat.
-7. **GPU benchmark approval.** The test in §F.8 needs one install (`cupy-cuda12x` or the
-   CUDA-12 torch wheel) on the GTX 1050 Ti box. Approve that install for the benchmark worker
-   only; no GPU dependency enters the query path either way.
+| v4.1 question | closed by | where |
+|---|---|---|
+| 1. label gate, (a) or (b) | v4.2 decision 1: **(b)**, (a) removed | §A.9 |
+| 2. one in-line number or per atom | v4.2 decision 2: **per atom, measured, per mcap bucket** | §A.8 |
+| 3. proxy acceptability floor | v4.2 decision 3: **no floor — a proxy is the last resort and needs a `search_log` + approval** | §D.4, §H.5 |
+| 4. sector-build effort and a 2021-start archive | v4.2 decision 4: **our own dated labels; the archive claim was false; the pilot AR backfill is specified** | §B.6 |
+| 6. evening-layer inputs (brokers, slippage, switch margin) | v4.2 decision 6: **the `broker_charges` table, the measured slippage estimator, the 1.5× margin** | §F.9.1 |
+| 7. GPU benchmark install | v4.2 decision 7: **measured; `cupy-cuda12x` on the 1050 Ti, no GPU in the query path** | §F.8 |
+
+**The open one.**
+
+1. **§E.5's verdict rule (PENDING).** Do you approve the v4.1 rule — an edge is `edge` only if
+   metrics 1 **and** 2 **and** 4 pass, `no edge` on IC ≤ 0 or a sign flip, `inconclusive` when
+   underpowered — and do you approve the **four proposed amendments** recorded in §E.5:
+   (i) metrics 5 (economic) and 6 (decay) join the verdict; (ii) an adequately powered
+   candidate with IC > 0 and t < 2 is `no edge`, not silence; (iii) the window is the store's
+   1,927 sessions, not 492; (iv) metric 4 becomes "≥ 2 of the available folds" if the pilot AR
+   backfill is not approved, and a candidate tested in fewer than two folds is `inconclusive`
+   by definition?
+   *Why it matters now:* the pilot backtest runs this rule, and the pilot is 60 names — so
+   most candidates will land in whichever bucket the rule puts them in. The difference between
+   `no edge` and `inconclusive` is the difference between a decision and a permanent maybe.
+   *Default if you say nothing:* the v4.1 rule as written, with the proposed metrics reported
+   next to the verdict and clearly labelled "proposal, not part of the rule".
 
 ---
 
@@ -1513,7 +1961,10 @@ python tasks/arch_v4/build_concept_registry.py --check      # writes concept_reg
 python tasks/arch_v4/build_concept_registry.py --show MB0305,MB0125
 python tasks/arch_v4/vocab_pass1.py                         # the measured vocabulary pass (VOCAB_PASS1.md)
 python tasks/arch_v4/vocab_pass1.py --json                  # the same numbers as JSON
-python tasks/arch_v4/bench_screen.py                        # writes bench_screen.md (CPU baseline)
+python tasks/arch_v4/bench_screen.py                        # writes bench_screen.md (CPU baseline + the FDR null)
+python tasks/arch_v4/nid_retriage.py --check                # self-check only, no writes
+python tasks/arch_v4/nid_retriage.py                        # writes nid_search_logs/ + nid_retriage_summary.json
+python tasks/arch_v4/bench_gpu.py                           # writes bench_gpu.md (§F.8; needs cupy, see §F.8)
 ```
 
 Inputs: `tasks/master_bank/MASTER_BANK.jsonl` (1,073 cases, sha `64d2f46318127f76`),
@@ -1525,6 +1976,13 @@ outside the pilot stores. `build_concept_registry.py` now emits **60 atoms / 19 
 the two paid-consensus atoms became one `own.estimate` atom); coverage is unchanged at 897
 mapped / 150 NID / 26 unmapped.
 
-Companion documents, each produced by its own worker, not by this one:
-`VOCAB_PASS1.md` (this directory), `NID_TRIAGE.md` (the 150 NID cases, in progress),
-`bench_gpu.md` (the GPU test, in progress), `PILOT_BACKTEST.md` (after §E.5 is built).
+Companion artifacts in this directory, each produced by its own worker:
+
+| artifact | status |
+|---|---|
+| `VOCAB_PASS1.md` | done — the document-vocabulary measurement behind §A.9 |
+| `NID_TRIAGE.md` + `nid_triage.json` | done — the 150 NID cases, 31 classes, one verdict each |
+| `nid_retriage.py` + `nid_search_logs/` (74 files) + `nid_retriage_summary.json` | done (v4.2) — the deterministic search behind every proxy verdict, §H.5 |
+| `bench_gpu.py` + `bench_gpu.md` | done (v4.2) — the CPU/GPU comparison behind §F.8 |
+| `bench_screen.py` + `bench_screen.md` | done (v4.2) — the CPU timings and the false-discovery null, §F.7 |
+| `PILOT_BACKTEST.md` | **not started** — built by the backtest worker on §E.5 once its verdict rule is approved |

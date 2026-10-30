@@ -1,0 +1,226 @@
+{
+  "case_id": "MB1013",
+  "class_id": "valuation_judgement",
+  "verdict": "b",
+  "question": "NMDC: at the bottom of the iron-ore cycle, would the dividend be cut, and what did the last downturn show?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+  "entity": {
+    "resolved": "NMDC",
+    "isin": "INE584A01023",
+    "matched": "symbol NMDC"
+  },
+  "search_terms": [
+    "price to book",
+    "pb",
+    "roe",
+    "payout",
+    "free cash flow",
+    "valuation",
+    "nmdc",
+    "bottom",
+    "iron",
+    "ore",
+    "cycle",
+    "dividend"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 4972,
+      "hits": [
+        {
+          "doc_id": 121645,
+          "category": "operational",
+          "item": "Iron ore grade",
+          "quote": "produces high-quality iron ore with a premium grade of 64% Fe"
+        },
+        {
+          "doc_id": 121645,
+          "category": "operational",
+          "item": "Annual iron ore production",
+          "quote": "highest-ever annual iron ore production of 53.15 million tonnes"
+        },
+        {
+          "doc_id": 121645,
+          "category": "financials",
+          "item": "Profit before tax",
+          "quote": "Profit (before tax) of ` 10,155 crores in FY\u201926"
+        },
+        {
+          "doc_id": 121645,
+          "category": "dividends",
+          "item": "Interim dividend per share",
+          "quote": "declared an Interim dividend of `2.50 per share"
+        },
+        {
+          "doc_id": 121645,
+          "category": "dividends",
+          "item": "Final dividend recommended per share",
+          "quote": "recommended payment of final dividend of `1.00 per share"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 233,
+      "hits": [
+        {
+          "doc_id": 62684,
+          "metric": "NMDC iron ore production",
+          "statement": null,
+          "quote": "we have targeted 44 million tons and we hope to achieve that target we are on 44 is something which we need to do and we will do it"
+        },
+        {
+          "doc_id": 62684,
+          "metric": "NMDC Nagarnar steel plant commissioning",
+          "statement": null,
+          "quote": "we are targeting the commissioner in the Q3 or rather early Q4 late Q3 or early Q4 so we are waiting for what you call the byproduct plant to get ready"
+        },
+        {
+          "doc_id": 62684,
+          "metric": "NMDC Donimalai pellet plant production",
+          "statement": null,
+          "quote": "we expect by the end ofQ3 both the filter process to be there from Q3 onwards we will be producing at the stated capacity of 1.2 million ton"
+        },
+        {
+          "doc_id": 62684,
+          "metric": "NMDC Jharkhand coal mining start",
+          "statement": null,
+          "quote": "The mining will start hopefully from Q3 or Q4.but the salable would take couple of more quarters."
+        },
+        {
+          "doc_id": 62684,
+          "metric": "NMDC long-term iron ore production aspiration",
+          "statement": null,
+          "quote": "We are drawing up a big capex plan so that we can go up to 100 million ton in 4-5 years time. We are drawing up the capex plan for that."
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 24,
+      "rows": 1449,
+      "hits": [
+        {
+          "sha256": "0dd1b56640144a658facfb39a7c6050f357d9ceb1bedafaece99302ee0d36f8a",
+          "page_no": 5,
+          "metric": "PBT Before exceptional item",
+          "value": 2351.0,
+          "unit": "INR Cr"
+        },
+        {
+          "sha256": "0dd1b56640144a658facfb39a7c6050f357d9ceb1bedafaece99302ee0d36f8a",
+          "page_no": 5,
+          "metric": "PBT Before exceptional item",
+          "value": 2435.0,
+          "unit": "INR Cr"
+        },
+        {
+          "sha256": "0dd1b56640144a658facfb39a7c6050f357d9ceb1bedafaece99302ee0d36f8a",
+          "page_no": 5,
+          "metric": "PBT Before exceptional item",
+          "value": 3.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "0dd1b56640144a658facfb39a7c6050f357d9ceb1bedafaece99302ee0d36f8a",
+          "page_no": 5,
+          "metric": "PBT Before exceptional item",
+          "value": 4267.0,
+          "unit": "INR Cr"
+        },
+        {
+          "sha256": "0dd1b56640144a658facfb39a7c6050f357d9ceb1bedafaece99302ee0d36f8a",
+          "page_no": 5,
+          "metric": "PBT After exceptional item",
+          "value": 2351.0,
+          "unit": "INR Cr"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}) AND concep",
+      "filings": 60,
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"price to book\" OR \"pb\" OR \"roe\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "price to book pb roe",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "concall_facts.cc_items",
+        "truth_duckdb.ar_docs",
+        "ar_facts.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 6654,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}
