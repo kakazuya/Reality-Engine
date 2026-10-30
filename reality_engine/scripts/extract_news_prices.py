@@ -50,6 +50,7 @@ from reality_engine.scripts.series_common import (
     text_of,
     write_csv,
 )
+from reality_engine.toolbelt.cost_ledger import record_usage
 
 DEFAULT_OUT = r"D:\RealityEngine\raw\input_cost_series"
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -535,7 +536,9 @@ def deepseek_points(sentences_in: list[str], key: str, timeout: int = 90) -> lis
                   "messages": [{"role": "user", "content": prompt}]})
         if resp.status_code != 200:
             return []
-        body = resp.json()["choices"][0]["message"].get("content") or ""
+        payload = resp.json()
+        record_usage(GO_MODEL, payload.get("usage"), "extract_news_prices")
+        body = payload["choices"][0]["message"].get("content") or ""
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", body.strip())
         start, end = raw.find("["), raw.rfind("]")
         parsed = json.loads(raw[start:end + 1]) if 0 <= start < end else []

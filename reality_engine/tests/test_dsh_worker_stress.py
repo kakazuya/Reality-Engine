@@ -651,7 +651,7 @@ class LifecycleTests(StressBase):
             if parent.poll() is None:
                 parent.kill()
 
-    def test_supervisor_killed_alone_takes_worker_and_lock_needs_cancel(self):
+    def test_supervisor_killed_alone_frees_the_workspace_lock(self):
         manager = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="60")
         job_id = manager.start_worker(
             brief="kill sup", permission="workspace-write", confirm_repo_root_write=True
@@ -667,17 +667,16 @@ class LifecycleTests(StressBase):
         lost = self.wait(manager, job_id, lambda s: s["phase"] == "lost")
         self.assertFalse(procutil.process_alive(worker_pid, worker_ticks), "job object must kill the worker")
         self.assertTrue(lost["final"])
-        with self.assertRaises(core.PluginError) as caught:
-            manager.start_worker(
-                brief="second", permission="workspace-write", confirm_repo_root_write=True
-            )
-        self.assertEqual(caught.exception.code, "workspace_busy")
-        self.assertTrue(manager.cancel_worker(job_id, confirm=True)["lock_released"])
+        # 'lost' is a final phase: both recorded processes are proven dead, so
+        # the lock is released and the next writer starts without a cancel.
         fast = self.manager()
         follow = fast.start_worker(
             brief="second", permission="workspace-write", confirm_repo_root_write=True
         )
         self.wait(fast, follow["job_id"], lambda s: s["final"])
+        released = manager.cancel_worker(job_id, confirm=True)
+        self.assertTrue(released["already_final"])
+        self.assertFalse(released["lock_released"])   # the lock was already gone
 
     def test_pid_reuse_is_not_reported_alive(self):
         me = os.getpid()
@@ -831,7 +830,9 @@ class McpSurfaceTests(StressBase):
             loop = asyncio.get_running_loop()
             deadline = loop.time() + 20
             while loop.time() < deadline:
-                status = await self._call(session, "worker_status", {"job_id": started["job_id"]})
+                status = await self._call(
+                    session, "worker_status", {"job_id": started["job_id"], "verbose": True}
+                )
                 if status["final"]:
                     break
                 await asyncio.sleep(0.1)
@@ -848,7 +849,7 @@ class McpSurfaceTests(StressBase):
                 session, "message_worker", {"job_id": started["job_id"], "message": "न" * 4001}
             )
             self.assertEqual(long_msg["error"]["code"], "message_too_long")
-            listed = await self._call(session, "list_workers", {})
+            listed = await self._call(session, "list_workers", {"verbose": True})
             self.assertTrue(listed["jobs"][0]["summary"].startswith("done:"))
 
         run_async(self._session(scenario, cwd=str(foreign)), 90)
@@ -950,7 +951,9 @@ class SharedControlProcessTests(StressBase):
         deadline = loop.time() + timeout
         last = None
         while loop.time() < deadline:
-            last = await self._call(session, "worker_status", {"job_id": job_id})
+            last = await self._call(
+                session, "worker_status", {"job_id": job_id, "verbose": True}
+            )
             if predicate(last):
                 return last
             await asyncio.sleep(0.1)
@@ -987,7 +990,7 @@ class SharedControlProcessTests(StressBase):
                 job_id,
                 lambda s: s["running"] and s["heartbeat"].get("control_available"),
             )
-            listed = await self._call(session_y, "list_workers", {})
+            listed = await self._call(session_y, "list_workers", {"verbose": True})
             row = next(item for item in listed["jobs"] if item["job_id"] == job_id)
             self.assertEqual(row["owner_session"], "session-X")
             self.assertEqual(row["worktree_branch"], f"dsh/{job_id}")
@@ -1196,7 +1199,9 @@ class SharedControlProcessTests(StressBase):
             results = await asyncio.gather(spam(session_y), spam(session_z))
             for response in (item for group in results for item in group):
                 self.assertTrue(response["ok"], response)
-            status = await self._call(session_x, "worker_status", {"job_id": job_id})
+            status = await self._call(
+                session_x, "worker_status", {"job_id": job_id, "verbose": True}
+            )
             self.assertEqual(
                 status["controller_lease"]["renewals"], renewals_per_server * 2
             )

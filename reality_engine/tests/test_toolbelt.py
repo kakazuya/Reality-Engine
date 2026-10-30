@@ -387,6 +387,21 @@ class TestCostLedger(ToolbeltTestCase):
         self.assertAlmostEqual(report["total_usd"], 0.65)
         self.assertIn("x", report["by_purpose"])
 
+    def test_record_usage_logs_model_tokens_and_caller(self) -> None:
+        ledger = self.dir / "spend.jsonl"
+        entry = cost_ledger.record_usage(
+            "beam-free", {"prompt_tokens": 120, "completion_tokens": 7},
+            "nid_beam_preread", ledger=ledger) or {}
+        self.assertEqual((entry["in_tok"], entry["out_tok"]), (120, 7))
+        self.assertEqual(entry["caller"], "nid_beam_preread")
+        self.assertEqual(entry["usd"], 0.0)   # free/unpriced model still counts tokens
+        self.assertIsNone(cost_ledger.record_usage("m", {}, "x", ledger=ledger))
+        pricing = cost_ledger.record_usage(
+            "deepseek-v4.1-flash", {"prompt_tokens": 1_000_000}, "concall_pilot",
+            ledger=ledger) or {}
+        self.assertAlmostEqual(pricing["usd"], 0.15)
+        self.assertEqual(len(cost_ledger.read_entries(ledger)), 2)
+
     def test_cli_cap_exits_nonzero(self) -> None:
         ledger = self.dir / "spend.jsonl"
         with contextlib.redirect_stdout(io.StringIO()):

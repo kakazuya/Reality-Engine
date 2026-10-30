@@ -82,12 +82,16 @@ the repo has moved on, and do not paste its contents into briefs.
   refuses to start rather than falling back to a hard timeout. A positive
   `followup_wait_seconds` opts into a bounded host-side wait for explicit
   same-conversation follow-ups; 0 preserves ordinary one-shot exit.
-- `worker_status` — read persisted phase, process ownership, heartbeat/session
-  state, last activity, `awaiting_input`, controller-lease deadline/remaining
-  time, and whether a result is ready. A live PID is not proof of progress.
+- `worker_status` — **default is compact** (well under 1,000 chars): phase,
+  done, succeeded, the one-line summary, tool-call counts, lease seconds left
+  and failure reason. Pass `verbose=true` for the full record: persisted phase,
+  process ownership, heartbeat/session state, last activity, `awaiting_input`,
+  controller-lease deadline/remaining time, and whether a result is ready. A
+  live PID is not proof of progress.
   `owner_session`/`last_steerer` say which MCP session started/steered it;
   `worktree` reports branch/base/head/commits/files_changed for worktree jobs.
-  Report `progress.summary` to the user; `progress.done` is the finished flag.
+  Report `progress.summary` to the user; the top-level `done` (verbose:
+  `progress.done`) is the finished flag.
   `result.md` streams while running, so never treat a non-empty result file as
   done (`result_ready` is only true once final). `progress.events` has tool-call
   counts, the last tool and recent file writes; `progress.latest_finish_by` is
@@ -102,7 +106,9 @@ the repo has moved on, and do not paste its contents into briefs.
   as progress, and a stale/expired wait descriptor stops suppressing checks.
 - `worker_progress` — the supervisor's model-free progress digests, newest
   first (`job_id` omitted = all running jobs). Each has timestamp, phase,
-  elapsed, tool calls (total/by tool/delta), model steps, output tokens, last
+  elapsed, tool calls (total/by tool/delta), model steps, output tokens, input
+  and cached-input tokens (provider-reported from 31 Oct), `batched_read_steps`
+  (steps saved by batching read-only calls), last
   tool + target, files written since the last digest, idle seconds, lease time
   left, a >20-minute stall flag, the worker's last 3 committed text lines and
   the latest `PROGRESS_NOTES.md` line (`<workspace>/.tmp/PROGRESS_NOTES.md`, the
@@ -111,11 +117,14 @@ the repo has moved on, and do not paste its contents into briefs.
   metric: how many tool calls, and how long, before the first edit/write). Prefer this over pinging a running
   worker; it never touches the worker's conversation. `since` takes an
   ISO-8601 time or `30m`/`2h`.
-- `worker_result` — bounded final or partial answer, exit outcome, artifact
-  hints, and limits. While a deliberate input wait is active it returns the most
-  recent committed assistant answer with `interim=true`, `final=false`; thinking
-  and event logs are excluded. Ignore the reasoning log; it is deliberately not
-  returned.
+- `worker_result` — **default is a compact envelope** (under 800 chars plus the
+  answer): outcome, exit code, content, worktree branch/head and changed-file
+  count. Pass `verbose=true` for artifacts, limits, heartbeat, warnings, paths
+  and the full worktree record. Bounded final or partial answer, exit outcome,
+  artifact hints, and limits. While a deliberate input wait is active it returns
+  the most recent committed assistant answer with `interim=true`, `final=false`;
+  thinking and event logs are excluded. Ignore the reasoning log; it is
+  deliberately not returned.
 - `message_worker` — `kind="status"` (default) posts a status nudge to
   `dsh-heartbeat-control/1` `/ping`; the adapter frames it as
   `[dsh-heartbeat status check]` and the plugin prefixes the delivered text with
@@ -144,10 +153,11 @@ the repo has moved on, and do not paste its contents into briefs.
 - `cancel_worker` — destructive; requires `confirm=true`. It validates the
   recorded supervisor PID and kernel creation time before killing the owned
   process tree. Never kill by image name.
-- `list_workers` — inspect persisted jobs, optionally for one workspace
-  (repository root or a registered worktree); each row has a one-line
-  `summary`, `owner_session`, `last_steerer`, and the newest digest
-  (`last_digest_at`/`digest_summary`); corrupt records are listed
+- `list_workers` — compact by default: up to 5 persisted jobs, newest first, one
+  `{job_id, phase, line}` each; `workspace` narrows to the repository root or a
+  registered worktree. Pass `verbose=true` for the full rows: one-line
+  `summary`, `owner_session`, `last_steerer`, worktree branch, paths and the
+  newest digest (`last_digest_at`/`digest_summary`); corrupt records are listed
   under `unreadable`.
 - `merge_worker` — merge a finished worktree job's `dsh/<job_id>` into the
   checked-out target (default `main`) under the repo-wide merge lock, with

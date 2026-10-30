@@ -34,6 +34,7 @@ from reality_engine.config import raw_dir, resolve_stored_path
 import pymupdf
 import requests
 from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
+from reality_engine.toolbelt.cost_ledger import record_usage
 
 if __import__("sys").platform == "win32":
     # 2026-10-17: a start of the 213 MB opencode.exe now and then fails with 'not a valid Win32 application'; Windows then
@@ -304,6 +305,7 @@ def call(r, prompt, http):
             raise RuntimeError(f"response {j.get('status')}: {str(j.get('incomplete_details') or j.get('error'))[:150]}")
         text = "".join(c.get("text", "") for o in j.get("output", []) if o.get("type") == "message"
                        for c in o.get("content", []) if c.get("type") == "output_text")
+        record_usage(r["model"], u, "ingest_annual_reports")
         return text, u.get("input_tokens"), u.get("output_tokens")
     if r["kind"] == "chat":
         resp = http.post(r["url"], timeout=900, json={"model": r["model"], "max_tokens": 32000,
@@ -313,6 +315,7 @@ def call(r, prompt, http):
         if resp.status_code != 200 or not resp.json().get("choices"):
             raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
         j = resp.json(); u = j.get("usage", {})
+        record_usage(r["model"], u, "ingest_annual_reports")
         return j["choices"][0]["message"].get("content") or "", u.get("prompt_tokens"), u.get("completion_tokens")
     if r.get("fallback"):
         text, it, ot = call({k: v for k, v in r.items() if k != "fallback"}, prompt, http)

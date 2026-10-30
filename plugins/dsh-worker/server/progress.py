@@ -44,6 +44,25 @@ MAX_SCAN_BYTES = 8 * 1024 * 1024
 MAX_LINE_BYTES = 4 * 1024 * 1024
 RECENT_FILES = 10
 WRITE_TOOLS = frozenset({"write", "edit", "multiedit", "multi_edit", "apply_patch", "notebook_edit"})
+# A model step counts toward ``batched_read_steps`` when every call in it is
+# read-only.  Conservative whitelist: shell and anything that can mutate are
+# excluded, so the count is a lower bound.
+READ_ONLY_PREFIXES = ("mcp__code-intel__", "mcp__reality-data__")
+READ_ONLY_TOOLS = frozenset({
+    "read", "grep", "glob", "read_image", "list_files",
+    "mcp__dsh-worker__worker_status", "mcp__dsh-worker__worker_result",
+    "mcp__dsh-worker__worker_progress", "mcp__dsh-worker__list_workers",
+    "mcp__dsh-worker__list_jobs", "mcp__dsh-worker__job_log",
+    "mcp__dsh-worker__inspect_run", "mcp__dsh-worker__server_info",
+    "mcp__data-gather__list_feeds", "mcp__data-gather__feed_status",
+    "mcp__data-gather__gap_report",
+})
+
+
+def _is_read_only_tool(tool: str) -> bool:
+    name = tool.lower()
+    return name in READ_ONLY_TOOLS or name.startswith(READ_ONLY_PREFIXES)
+
 
 # Progress digests (supervisor, model-free).
 PROGRESS_SCHEMA = "dsh-worker-progress/1"
@@ -62,10 +81,12 @@ MAX_DIGESTS = 50
 class _State:
     __slots__ = (
         "offset", "identity", "tool_calls", "by_tool", "tool_failures", "steps",
-        "output_tokens", "last_input_tokens", "turns", "text_events", "thinking_events",
+        "output_tokens", "input_tokens", "cache_read_tokens", "last_input_tokens",
+        "turns", "text_events", "thinking_events",
         "errors", "last_error", "last_tool", "last_tool_hint", "recent_files",
         "file_writes", "text_tail", "final_seen", "lines", "unparsed_lines",
-        "session_id", "first_edit_calls",
+        "session_id", "first_edit_calls", "step_read_only", "step_other",
+        "read_only_run", "read_only_steps", "batched_read_steps",
     )
 
     def __init__(self) -> None:
@@ -76,6 +97,8 @@ class _State:
         self.tool_failures = 0
         self.steps = 0
         self.output_tokens = 0
+        self.input_tokens = 0
+        self.cache_read_tokens = 0
         self.last_input_tokens: int | None = None
         self.turns = 0
         self.text_events = 0
@@ -95,6 +118,13 @@ class _State:
         # cost); None until the worker mutates a file.  The count is the
         # 0-based index of that first write call in the tool-call sequence.
         self.first_edit_calls: int | None = None
+        # Calls in the current model step, split by read-only/mutating, and the
+        # run of consecutive all-read-only steps (steps saved by batching).
+        self.step_read_only = 0
+        self.step_other = 0
+        self.read_only_run = 0
+        self.read_only_steps = 0
+        self.batched_read_steps = 0
 
 
 def _int(value: Any) -> int:
@@ -207,6 +237,10 @@ class EventScanner:
             state.by_tool[tool] += 1
             state.last_tool = tool
             state.last_tool_hint = _hint(tool, args)
+            if _is_read_only_tool(tool):
+                state.step_read_only += 1
+            else:
+                state.step_other += 1
             if tool.lower() in WRITE_TOOLS:
                 if state.first_edit_calls is None:
                     state.first_edit_calls = state.tool_calls - 1
@@ -228,9 +262,28 @@ class EventScanner:
                 state.steps += 1
                 usage = event.get("usage") if isinstance(event.get("usage"), dict) else {}
                 state.output_tokens += _int(usage.get("outputTokens") or usage.get("output_tokens"))
-                inp = usage.get("inputTokens") or usage.get("input_tokens")
-                if inp is not None:
-                    state.last_input_tokens = _int(inp)
+                input_tokens = usage.get("inputTokens")
+                if input_tokens is None:
+                    input_tokens = usage.get("input_tokens")
+                if input_tokens is not None:
+                    state.last_input_tokens = _int(input_tokens)
+                    state.input_tokens += state.last_input_tokens
+                state.cache_read_tokens += _int(
+                    usage.get("cacheReadTokens")
+                    or usage.get("cache_read_tokens")
+                    or usage.get("cachedTokens")
+                )
+                # Steps saved by batching: a run of >=2 consecutive model steps
+                # whose calls are all read-only could have been one step.
+                if state.step_read_only and not state.step_other:
+                    state.read_only_steps += 1
+                    state.read_only_run += 1
+                else:
+                    if state.read_only_run > 1:
+                        state.batched_read_steps += state.read_only_run - 1
+                    state.read_only_run = 0
+                state.step_read_only = 0
+                state.step_other = 0
             elif phase == "turn_start":
                 state.turns += 1
         elif kind == "text":
@@ -274,9 +327,13 @@ class EventScanner:
             "turns": state.turns,
             "model_steps": state.steps,
             "output_tokens": state.output_tokens,
+            "input_tokens": state.input_tokens,
+            "cache_read_tokens": state.cache_read_tokens,
             "last_input_tokens": state.last_input_tokens,
             "tool_calls": state.tool_calls,
             "tool_calls_by_tool": dict(state.by_tool.most_common(top_tools)),
+            "read_only_steps": state.read_only_steps,
+            "batched_read_steps": state.batched_read_steps,
             "tool_failures": state.tool_failures,
             "last_tool": state.last_tool,
             "last_tool_target": state.last_tool_hint,
@@ -361,6 +418,9 @@ def digest_line(record: dict[str, Any] | None) -> str | None:
             f"first edit after {before} calls"
             + (f" ({fmt_duration(orientation)})" if orientation is not None else "")
         )
+    batched = int(record.get("batched_read_steps") or 0)
+    if batched:
+        parts.append(f"{batched} batched read steps")
     scope = record.get("write_scope")
     if scope and scope != "workspace":
         parts.append(f"scope {scope}")
@@ -404,9 +464,19 @@ def _digest_section(record: dict[str, Any]) -> list[str]:
         steps_delta = int(record.get("model_steps_delta") or 0)
         tokens = int(record.get("output_tokens") or 0)
         tokens_delta = int(record.get("output_tokens_delta") or 0)
+        input_tokens = int(record.get("input_tokens") or 0)
+        input_delta = int(record.get("input_tokens_delta") or 0)
+        cache_tokens = int(record.get("cache_read_tokens") or 0)
+        cache_delta = int(record.get("cache_read_tokens_delta") or 0)
         lines.append(
             f"- tool calls: {tools} (+{delta}) · model steps: {steps} (+{steps_delta})"
             f" · output tokens: {tokens:,} (+{tokens_delta:,})"
+        )
+        lines.append(
+            f"- input tokens: {input_tokens:,} (+{input_delta:,})"
+            f" · cached input: {cache_tokens:,} (+{cache_delta:,})"
+            f" · batched read steps: {int(record.get('batched_read_steps') or 0)}"
+            f" (+{int(record.get('batched_read_steps_delta') or 0)})"
         )
         by_tool = record.get("tool_calls_by_tool")
         if isinstance(by_tool, dict) and by_tool:
@@ -549,6 +619,9 @@ class DigestWriter:
         by_tool = dict(events.get("tool_calls_by_tool") or {}) if available else {}
         steps = int(events.get("model_steps") or 0) if available else 0
         tokens = int(events.get("output_tokens") or 0) if available else 0
+        input_tokens = int(events.get("input_tokens") or 0) if available else 0
+        cache_read_tokens = int(events.get("cache_read_tokens") or 0) if available else 0
+        batched_read_steps = int(events.get("batched_read_steps") or 0) if available else 0
         file_writes = int(events.get("file_writes") or 0) if available else 0
         recent = list(events.get("recent_file_writes") or []) if available else []
         previous = self._previous
@@ -612,6 +685,18 @@ class DigestWriter:
             "model_steps_delta": max(0, steps - int(previous.get("steps") or 0)),
             "output_tokens": tokens,
             "output_tokens_delta": max(0, tokens - int(previous.get("tokens") or 0)),
+            # Provider-reported input split (dsh step_end usage): inputTokens is
+            # the uncached part, cacheReadTokens the cached one.
+            "input_tokens": input_tokens,
+            "input_tokens_delta": max(0, input_tokens - int(previous.get("input") or 0)),
+            "cache_read_tokens": cache_read_tokens,
+            "cache_read_tokens_delta": max(
+                0, cache_read_tokens - int(previous.get("cache_read") or 0)
+            ),
+            "batched_read_steps": batched_read_steps,
+            "batched_read_steps_delta": max(
+                0, batched_read_steps - int(previous.get("batched") or 0)
+            ),
             "last_tool": events.get("last_tool") if available else None,
             "last_tool_target": events.get("last_tool_target") if available else None,
             "files_written": written,
@@ -639,6 +724,9 @@ class DigestWriter:
             "by_tool": by_tool,
             "steps": steps,
             "tokens": tokens,
+            "input": input_tokens,
+            "cache_read": cache_read_tokens,
+            "batched": batched_read_steps,
             "files": file_writes,
             "recent_files": recent,
         }

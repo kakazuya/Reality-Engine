@@ -4,6 +4,7 @@ import requests
 
 sys.path.insert(0, os.getcwd())
 from reality_engine.scripts.go_session import session_id
+from reality_engine.toolbelt.cost_ledger import record_usage
 
 OUT = sys.argv[1]
 KEY = os.environ.get("OPENCODE_GO_API_KEY_2") or os.environ["OPENCODE_GO_API_KEY"]
@@ -51,6 +52,7 @@ def one(path):
                 time.sleep(5 * (attempt + 1))
                 continue
             j = r.json()
+            record_usage("beam-free", j.get("usage"), "nid_beam_preread")
             c = j["choices"][0]["message"].get("content") or ""
             m = re.search(r"\{.*\}", c, re.S)
             v = json.loads(m.group(0))

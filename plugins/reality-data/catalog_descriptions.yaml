@@ -863,6 +863,12 @@ equity_intelligence:
       - event_id
       - event_date
       notes: PHASE5_DEMO* seed rows are quarantined (substrate_quarantine rule demo_macro_events); filter them before traversal.
+    macro_event_sources:
+      description: 'Per-event source audit: the claim the macro_events row makes, the verdict against the cited source, the verifying quote and the URL.'
+      key_columns:
+      - event_id
+      - source_url
+      notes: Independent verification layer added 2026-10-31; verdict is confirmed/partly_confirmed/contradicted/unverified. Never trust the event row without checking its verdict here.
     master_companies:
       description: 'Equity master: one row per ISIN with NSE symbol, BSE code, name, industry/sector, market-cap tier, index flags, active and
         screenable flags.'

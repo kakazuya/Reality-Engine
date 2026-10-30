@@ -2,6 +2,8 @@
 
     python tasks/pilot60/gate_run.py hand60     # rerun the 60 hand-checked rows
     python tasks/pilot60/gate_run.py bank       # 1,073 originals + 1,608 instances
+    python tasks/pilot60/gate_run.py bank --regress          # only strict-ANSWERED cases (~1 min)
+    python tasks/pilot60/gate_run.py bank --blocker GATE_ENTITY_MISS,hop failed  # one blocker stratum
     python tasks/pilot60/gate_run.py sample40   # draw 40 gated ANSWERED rows
     python tasks/pilot60/gate_run.py report     # GATE_RUN_2026-10-29.md
 
@@ -264,6 +266,104 @@ def bank(limit_originals: int | None = None, limit_instances: int | None = None,
         if chunk and len(todo) == chunk and len(done) + len(todo) < len(cases):
             break  # one chunk per process: keep the RSS bounded
     return 0
+
+
+# --------------------------------------------------------------------------
+# targeted re-run: the regression set or one blocker stratum
+# --------------------------------------------------------------------------
+REG_ORIGINALS = BENCH / "GATE_RESULTS_regress_originals.jsonl"
+REG_INSTANCES = BENCH / "GATE_RESULTS_regress_instances.jsonl"
+
+
+def _strict_rows() -> dict[str, dict]:
+    """mid -> row from the last full strict grading (bank + hand60, deduped)."""
+    out: dict[str, dict] = {}
+    for path in (
+        BENCH / "GATE_RESULTS_originals_strict.jsonl",
+        BENCH / "GATE_RESULTS_instances_strict.jsonl",
+        HAND_RESULTS.with_name("RESULTS_HAND60_strict.jsonl"),
+    ):
+        for row in _load(path):
+            if row.get("mid") is not None:
+                out[str(row["mid"])] = row
+    return out
+
+
+def targeted(regress: bool, blocker_names: list[str]) -> int:
+    """Re-run only the strict-ANSWERED cases and/or one blocker stratum.
+
+    Grading is unchanged (``grade_v1.grade_row``); the comparison is against the
+    last full strict results, so a gained/lost case is a real grade change and
+    every lost case is printed with its blocker.
+    """
+    before = _strict_rows()
+    if not before:
+        print("no strict results found; run a full bank + grade first", flush=True)
+        return 2
+    originals, inst = cases_by_mid()
+    hand_mids = set()
+    if HAND_JSON.exists():
+        hand_mids = {str(row["mid"]) for row in json.loads(
+            HAND_JSON.read_text(encoding="utf-8"))["rows"]}
+
+    def wanted(row: dict) -> bool:
+        grade = row.get("strict_grade")
+        if regress and grade == "ANSWERED":
+            return True
+        if not blocker_names:
+            return False
+        reason = _blocker_reason(row).lower()
+        return any(reason == name or reason.startswith(name) for name in blocker_names)
+
+    picks = [mid for mid, row in before.items() if wanted(row)]
+    picked_orig = [originals[mid] for mid in picks if mid in originals]
+    # `bank` skips as-is instances (they are copies of an original); do the same
+    # so a mid present in both files is not run twice.
+    picked_inst = [inst[mid] for mid in picks
+                   if mid in inst and inst[mid].get("kind") != "as_is"]
+    missing = len(picks) - len({c["mid"] for c in picked_orig + picked_inst})
+    label = "regress" if regress else "blocker"
+    print(f"{label}: {len(picks)} cases strict-matched ({len(picked_orig)} originals, "
+          f"{len(picked_inst)} instances), {missing} not in the case files", flush=True)
+    if not picks:
+        if blocker_names:
+            top = Counter(_blocker_reason(row) for row in before.values()
+                          if row.get("strict_grade") != "ANSWERED")
+            print("known blockers:", top.most_common(10), flush=True)
+        return 0
+    started = time.perf_counter()
+    rows: list[dict] = []
+    if picked_orig:
+        rows += _run(picked_orig, f"{label} originals", REG_ORIGINALS)
+    if picked_inst:
+        rows += _run(picked_inst, f"{label} instances", REG_INSTANCES)
+    import grade_v1
+    cases = {**originals, **inst}
+    index = grade_v1.DocIndex()
+    graded = {}
+    for row in rows:
+        result = grade_v1.grade_row(cases.get(row.get("mid"), {}), row, index)
+        result.update({key: row.get(key) for key in
+                       ("bucket", "sector", "kind", "parent_mid", "entity_level",
+                        "seconds", "family")})
+        graded[str(row.get("mid"))] = result
+    gained = [mid for mid, row in graded.items()
+              if before.get(mid, {}).get("strict_grade") != "ANSWERED"
+              and row.get("strict_grade") == "ANSWERED"]
+    lost = [mid for mid, row in graded.items()
+            if before.get(mid, {}).get("strict_grade") == "ANSWERED"
+            and row.get("strict_grade") != "ANSWERED"]
+    answered = sum(1 for row in graded.values() if row.get("strict_grade") == "ANSWERED")
+    print(f"{label}: {len(graded)} rerun, {answered} strict-ANSWERED, "
+          f"{len(gained)} gained, {len(lost)} lost vs the last full results "
+          f"({time.perf_counter() - started:.0f}s)")
+    for mid in sorted(lost):
+        print(f"  LOST {mid}: {_blocker_reason(graded[mid])} "
+              f"| was: {_blocker_reason(before[mid])}")
+    for mid in sorted(gained):
+        print(f"  GAINED {mid}: {_blocker_reason(graded[mid])}")
+    _write(BENCH / f"GATE_RESULTS_{label}_strict.jsonl", list(graded.values()))
+    return 1 if lost else 0
 
 
 # --------------------------------------------------------------------------
@@ -837,7 +937,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--chunk", type=int, default=0,
                     help="run at most N new cases per process (RSS stays bounded)")
     ap.add_argument("--skip-file", help="mids that hang or crash the runner")
+    ap.add_argument("--regress", action="store_true",
+                    help="bank mode: re-run every currently strict-ANSWERED case and diff grades")
+    ap.add_argument("--blocker", help="bank mode: every case whose current blocker starts "
+                                      "with one of these comma-separated names")
     args = ap.parse_args(argv)
+    if args.mode == "bank" and (args.regress or args.blocker):
+        names = [name.strip().lower() for name in (args.blocker or "").split(",") if name.strip()]
+        return targeted(args.regress, names)
     if args.mode == "hand60":
         return hand60()
     if args.mode == "bank":

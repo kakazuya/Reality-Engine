@@ -440,9 +440,11 @@ Two honest limits:
 `result.md` is streamed by the harness while the worker runs, so a non-empty
 file is **not** completion. Use these instead:
 
-- `worker_status.progress.done` is the finished flag (final phase reached).
-  `progress.succeeded` = finished with a non-empty answer;
-  `progress.answer_empty` = exit 0 but no answer.
+- `worker_status` is compact by default (`done`, `succeeded`, `summary`,
+  tool-call counts, lease seconds left, failure reason; under 1,000 chars).
+  `verbose=true` returns the full record, where `progress.done` is the finished
+  flag (final phase reached). `progress.succeeded` = finished with a non-empty
+  answer; `progress.answer_empty` = exit 0 but no answer.
 - `result_ready` is true only when final *and* non-empty. `result_is_streaming`
   says a running job has partial text so far.
 - `progress.summary` is one line, e.g. `running; elapsed 42m; last activity 1m
@@ -641,6 +643,7 @@ Progress digests have their own coverage: cadence on a fake clock, incremental
 offset resume (append + half-written line, deltas not cumulative totals), the
 stall flag, a final digest on finish, `progress_interval_seconds` validation and
 `0` disabling, `worker_progress` output shape (newest first, `since`, running
-jobs when `job_id` is omitted), `list_workers.last_digest_at`/`digest_summary`,
+jobs when `job_id` is omitted), provider input/cached tokens and
+`batched_read_steps` in the digest, `list_workers` (verbose) `last_digest_at`/`digest_summary`,
 the appended brief instruction plus `DSH_WORKER_PROGRESS_NOTES`, and the
 non-final "Status check —" prefix on `/ping` status pings.

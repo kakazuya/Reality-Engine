@@ -175,7 +175,9 @@ class PluginTests(unittest.TestCase):
         deadline = loop.time() + timeout
         last = None
         while loop.time() < deadline:
-            last = await self._call(session, "worker_status", {"job_id": job_id})
+            last = await self._call(
+                session, "worker_status", {"job_id": job_id, "verbose": True}
+            )
             if predicate(last):
                 return last
             await asyncio.sleep(0.1)
@@ -807,7 +809,7 @@ class PluginTests(unittest.TestCase):
             self.assertTrue(status["process"]["worker_alive"])
             self.assertFalse(status["final"])
             partial = await self._call(
-                session, "worker_result", {"job_id": job_id, "max_bytes": 4096}
+                session, "worker_result", {"job_id": job_id, "max_bytes": 4096, "verbose": True}
             )
             self.assertFalse(partial["final"])
             self.assertIn("partial output", partial["content"])
@@ -818,7 +820,9 @@ class PluginTests(unittest.TestCase):
                 session, "cancel_worker", {"job_id": job_id, "confirm": True}
             )
             self.assertTrue(cancelled["ok"], cancelled)
-            after = await self._call(session, "worker_status", {"job_id": job_id})
+            after = await self._call(
+                session, "worker_status", {"job_id": job_id, "verbose": True}
+            )
             self.assertTrue(after["final"])
             self.assertEqual(after["phase"], "cancelled")
             self.assertFalse(after["process"]["worker_alive"])
@@ -1065,7 +1069,7 @@ class PluginTests(unittest.TestCase):
                 session, "worker_progress", {"job_id": job_id, "since": "yesterday"}
             )
             self.assertEqual(bad_since["error"]["code"], "since_invalid")
-            listed = await self._call(session, "list_workers", {})
+            listed = await self._call(session, "list_workers", {"verbose": True})
             row = next(item for item in listed["jobs"] if item["job_id"] == job_id)
             self.assertIsNotNone(row["last_digest_at"])
             self.assertIn("tool calls", row["digest_summary"])
@@ -1084,6 +1088,48 @@ class PluginTests(unittest.TestCase):
             self.assertEqual(last["digests"][0]["phase"], "cancelled")
 
         self._run(self._with_session(scenario), timeout=120)
+
+    def test_worker_control_defaults_are_compact(self):
+        """Default status/result/list views stay small; verbose=true keeps the old record."""
+        self._reset_manager()
+        started = self._manager_instance().start_worker(brief="compact surface")
+        job_id = started["job_id"]
+        self._wait_status(job_id, lambda s: s["final"])
+
+        async def scenario(session):
+            status = await self._call(session, "worker_status", {"job_id": job_id})
+            self.assertLessEqual(len(json.dumps(status)), 1000, status)
+            self.assertEqual(status["job_id"], job_id)
+            self.assertTrue(status["done"])
+            self.assertEqual(status["phase"], "finished")
+            for absent in ("process", "heartbeat", "paths", "limits"):
+                self.assertNotIn(absent, status)
+
+            result = await self._call(session, "worker_result", {"job_id": job_id})
+            envelope = {key: value for key, value in result.items() if key != "content"}
+            self.assertLessEqual(len(json.dumps(envelope)), 800, envelope)
+            self.assertIn("fake final answer", result["content"])
+            for absent in ("artifacts", "limits", "heartbeat", "warnings"):
+                self.assertNotIn(absent, result)
+
+            # Old callers keep working through verbose=true.
+            full = await self._call(
+                session, "worker_status", {"job_id": job_id, "verbose": True}
+            )
+            self.assertIn("process", full)
+            self.assertIn("heartbeat", full)
+            full_result = await self._call(
+                session, "worker_result", {"job_id": job_id, "verbose": True}
+            )
+            self.assertIn("artifacts", full_result)
+            self.assertIn("limits", full_result)
+
+            listing = await self._call(session, "list_workers", {})
+            self.assertLessEqual(len(listing["jobs"]), 5)
+            row = next(item for item in listing["jobs"] if item["job_id"] == job_id)
+            self.assertEqual(set(row), {"job_id", "phase", "line"})
+
+        self._run(self._with_session(scenario))
 
     def test_progress_interval_zero_disables_digests(self):
         self._reset_manager()

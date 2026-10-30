@@ -44,6 +44,8 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+# pytest's sandbox-ACL cache dirs at the repo root (undeletable here)
+pytest-cache-files-*/
 
 # SQLite WAL and temporary journal files (preserve .db)
 *.db-wal
