@@ -173,6 +173,8 @@ def main():
     ap.add_argument("--reasoning", choices=("off", "on"), help="explicit reasoning toggle; off requires --smoke-test")
     ap.add_argument("--smoke-test", action="store_true", help="bounded connectivity probe; permits explicit effort overrides")
     ap.add_argument("--probe-base-url", help="localhost-only audit proxy; requires --smoke-test")
+    ap.add_argument("--extra-patch", help="YAML patch fragment appended after the generated overlay "
+                                         "(per-host MCP servers for a worker outside this checkout)")
     a = ap.parse_args()
 
     model, _, effort = a.model.partition("~")
@@ -256,9 +258,12 @@ def main():
         "endpoint": control_path,
         "followup_wait": a.followup_wait,
     }
+    extra = ""
+    if a.extra_patch:
+        extra = "\n" + Path(a.extra_patch).read_text(encoding="utf-8")
     with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8") as f:
         f.write(build_patch(model, effort, key_env, a.max_output_tokens, base_url, patch_info,
-                                workspace=a.cwd))
+                                workspace=a.cwd) + extra)
         patch = f.name
     t0 = time.time()
     try:
