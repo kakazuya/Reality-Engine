@@ -1,0 +1,2946 @@
+[
+ {
+  "case": "MB0012",
+  "cls": "hfc_securitisation",
+  "level": "corpus",
+  "question": "HFC securitisation leader, QoQ/YoY with NPA guard",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit identifies an HFC securitisation leader or provides QoQ/YoY securitisation data with an NPA guard.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 4.8,
+  "usage": {
+   "prompt_tokens": 589,
+   "completion_tokens": 239,
+   "total_tokens": 828,
+   "completion_tokens_details": {
+    "reasoning_tokens": 193
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 589,
+     "output": 239,
+     "reasoning": 193,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Final guidelines would be issued post examination of the comments received; • Framework for Securitisation of Stressed Assets: Discussi"
+  ]
+ },
+ {
+  "case": "MB0141",
+  "cls": "hfc_securitisation",
+  "level": "structured",
+  "question": "Is Can Fin Homes (NSE: CANFINHOME) the leader in securitised disbursement among listed HFCs for Q1FY27, with net NPA up no more than 2 pp? Show the comparison.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit shows Q1FY27 securitised disbursement or a listed-HFC comparison; only a Can Fin Homes NPA expectation and generic securitisation exposure hit.",
+  "quote_ok": false,
+  "n_hits": 21,
+  "secs": 8.0,
+  "usage": {
+   "prompt_tokens": 1992,
+   "completion_tokens": 918,
+   "total_tokens": 2910,
+   "completion_tokens_details": {
+    "reasoning_tokens": 864
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1992,
+     "output": 918,
+     "reasoning": 864,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 18575, \"category\": \"dividend\", \"item\": \"Final dividend per equity share (face value Rs 2 each)\", \"quote\": \"Final Dividend of `8.00 per equity share\"}",
+   "{\"doc_id\": 18575, \"category\": \"signal\", \"item\": \"Can Fin Vishwas housing loan scheme launched for informal-sector borrowers using alternative income assessment\", \"quote\": \"developed a new product called - Can Fin Vishwas",
+   "{\"doc_id\": 18575, \"category\": \"dividend\", \"item\": \"Final dividend per equity share recommended by Board on April 24, 2026\", \"quote\": \"recommended a final Dividend of `8/- per equity share\"}"
+  ]
+ },
+ {
+  "case": "MB0142",
+  "cls": "hfc_securitisation",
+  "level": "corpus",
+  "question": "Among large-cap HFCs, who leads securitised disbursement for Q1FY27 with net NPA up no more than 2 pp?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit provides large-cap HFC securitised disbursement or net NPA data for Q1FY27.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.6,
+  "usage": {
+   "prompt_tokens": 603,
+   "completion_tokens": 201,
+   "total_tokens": 804,
+   "completion_tokens_details": {
+    "reasoning_tokens": 161
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 603,
+     "output": 201,
+     "reasoning": 161,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Final guidelines would be issued post examination of the comments received; • Framework for Securitisation of Stressed Assets: Discussi"
+  ]
+ },
+ {
+  "case": "MB0143",
+  "cls": "hfc_securitisation",
+  "level": "structured",
+  "question": "For NSE: IBULHSGFIN (now SAMMAANCAP), is it the leader in securitised disbursement among listed HFCs for Q1FY27, with net NPA up no more than 2 pp? Show the naming history if the symbol or ISIN changed.",
+  "v": "PARTIAL",
+  "hit": "ar_facts#3",
+  "quote": "Formerly known as ‘Indiabulls Housing Finance Limited’",
+  "missing": "No hit establishes Q1FY27 securitised-disbursement leadership among listed HFCs, net NPA movement of no more than 2 pp, or symbol/ISIN history; only a company rename and a Q1FY27 secured-loan disbursement share are present.",
+  "quote_ok": true,
+  "n_hits": 20,
+  "secs": 31.3,
+  "usage": {
+   "prompt_tokens": 2145,
+   "completion_tokens": 1274,
+   "total_tokens": 3419,
+   "prompt_tokens_details": {
+    "cached_tokens": 2112
+   },
+   "completion_tokens_details": {
+    "reasoning_tokens": 1178
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 33,
+     "output": 1274,
+     "reasoning": 1178,
+     "cache_read": 2112,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 121823, \"category\": \"investments\", \"item\": \"Mutual funds provided as credit enhancement in assignment/securitisation deals\", \"quote\": \"provided as credit enhancement in respect of assignment/securitisation\"}",
+   "{\"doc_id\": 121823, \"category\": \"investments\", \"item\": \"Mutual funds provided as credit enhancement in assignment/securitisation deals - previous year\", \"quote\": \"previous year Rs. 106.17 Crore\"}",
+   "{\"doc_id\": 121823, \"category\": \"investments_encumbered\", \"item\": \"Investment in mutual funds under lien / provided as credit enhancement for assignment-securitisation deals\", \"quote\": \"under lien / provided as credit enh"
+  ]
+ },
+ {
+  "case": "MB0144",
+  "cls": "hfc_securitisation",
+  "level": "corpus",
+  "question": "hfc securitisation leader q1fy27 net npa",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit provides a company-specific net NPA figure for Q1FY27.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 4.0,
+  "usage": {
+   "prompt_tokens": 586,
+   "completion_tokens": 149,
+   "total_tokens": 735,
+   "completion_tokens_details": {
+    "reasoning_tokens": 116
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 586,
+     "output": 149,
+     "reasoning": 116,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Final guidelines would be issued post examination of the comments received; • Framework for Securitisation of Stressed Assets: Discussi"
+  ]
+ },
+ {
+  "case": "MB0145",
+  "cls": "hfc_securitisation",
+  "level": "corpus",
+  "question": "Listed HFCs mein securitised disbursement ka leader kaun hai Q1FY27 mein? QoQ aur YoY winner batao, lekin net NPA 2 percentage point se zyada na badhe.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains listed HFC securitised disbursement leadership, QoQ/YoY winners, or net NPA change for Q1FY27.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 4.4,
+  "usage": {
+   "prompt_tokens": 621,
+   "completion_tokens": 239,
+   "total_tokens": 860,
+   "completion_tokens_details": {
+    "reasoning_tokens": 190
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 621,
+     "output": 239,
+     "reasoning": 190,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Final guidelines would be issued post examination of the comments received; • Framework for Securitisation of Stressed Assets: Discussi"
+  ]
+ },
+ {
+  "case": "MB0146",
+  "cls": "hfc_securitisation",
+  "level": "corpus",
+  "question": "Which listed HFC is the leader in securitised disbursement for January-March 2026 (Q4FY26), QoQ and YoY, with net NPA rising no more than 2 pp?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit provides listed HFC securitised disbursement leadership for Q4FY26 or net NPA change.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 3.0,
+  "usage": {
+   "prompt_tokens": 619,
+   "completion_tokens": 189,
+   "total_tokens": 808,
+   "completion_tokens_details": {
+    "reasoning_tokens": 149
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 619,
+     "output": 189,
+     "reasoning": 149,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Final guidelines would be issued post examination of the comments received; • Framework for Securitisation of Stressed Assets: Discussi"
+  ]
+ },
+ {
+  "case": "MB0147",
+  "cls": "hfc_securitisation",
+  "level": "corpus",
+  "question": "For all listed companies in Housing Finance, which listed financial company is the securitisation leader for Q1FY27 with the net-NPA guard, and what is the evidence?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit identifies a securitisation leader among listed housing-finance/financial companies for Q1FY27 or any net-NPA guard evidence.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 5.0,
+  "usage": {
+   "prompt_tokens": 608,
+   "completion_tokens": 212,
+   "total_tokens": 820,
+   "completion_tokens_details": {
+    "reasoning_tokens": 165
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 608,
+     "output": 212,
+     "reasoning": 165,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Final guidelines would be issued post examination of the comments received; • Framework for Securitisation of Stressed Assets: Discussi"
+  ]
+ },
+ {
+  "case": "MB0148",
+  "cls": "hfc_securitisation",
+  "level": "corpus",
+  "question": "For the NIFTY HOUSING FINANCE constituents, rank the financial companies on securitised disbursement for Q1FY27, with the net-NPA guard.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "Company-level securitised disbursement and net-NPA data for NIFTY HOUSING FINANCE constituents for Q1FY27",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.5,
+  "usage": {
+   "prompt_tokens": 607,
+   "completion_tokens": 220,
+   "total_tokens": 827,
+   "completion_tokens_details": {
+    "reasoning_tokens": 176
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 607,
+     "output": 220,
+     "reasoning": 176,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of S",
+   "{\"symbol\": \"\", \"doc_type\": \"RBI_Annual_Report\", \"date\": \"2024-07-23\", \"snippet\": \" … Final guidelines would be issued post examination of the comments received; • Framework for Securitisation of Stressed Assets: Discussi"
+  ]
+ },
+ {
+  "case": "MB0356",
+  "cls": "mechanism_lag",
+  "level": "structured",
+  "question": "Muthoot Finance opened 177 branches in a year. When does gold-loan demand seasonally peak, and what did management say about branch-level demand?",
+  "v": "PARTIAL",
+  "hit": "concall_facts.cc_items#4",
+  "quote": "So you can easily double our business with the existing branch itself.",
+  "missing": "when gold-loan demand seasonally peaks",
+  "quote_ok": true,
+  "n_hits": 20,
+  "secs": 4.7,
+  "usage": {
+   "prompt_tokens": 1730,
+   "completion_tokens": 624,
+   "total_tokens": 2354,
+   "completion_tokens_details": {
+    "reasoning_tokens": 578
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1730,
+     "output": 624,
+     "reasoning": 578,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 59752, \"category\": \"CSR\", \"item\": \"Muthoot Aashiyana houses built to date\", \"quote\": \"has built 270 homes across the country\"}",
+   "{\"doc_id\": 59752, \"category\": \"CSR\", \"item\": \"Muthoot Aashiyana homes in Kerala\", \"quote\": \"over 200 in Kerala\"}",
+   "{\"doc_id\": 59752, \"category\": \"CSR\", \"item\": \"Muthoot Aashiyana homes in Rewari\", \"quote\": \"20 in Rewari\"}"
+  ]
+ },
+ {
+  "case": "MB0460",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "Gold was 2,028 on 7 August 2020 and 4,186.7 on 30 September 2026. Kaun jeetta hai—jeweller ya gold-loan NBFC? (Hinglish)",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No held hit mentions a relevant Indian jeweller or gold-loan NBFC, or compares them across the stated gold-price period.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.7,
+  "usage": {
+   "prompt_tokens": 623,
+   "completion_tokens": 249,
+   "total_tokens": 872,
+   "completion_tokens_details": {
+    "reasoning_tokens": 207
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 623,
+     "output": 249,
+     "reasoning": 207,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0472",
+  "cls": "bank_transmission",
+  "level": "structured",
+  "question": "A rate cut compresses a bank's NIM but lifts loan growth. For HDFC Bank, which effect dominated last cycle, and what does the disclosure say?",
+  "v": "PARTIAL",
+  "hit": "lookups_docs.doc_find#0",
+  "quote": "since assets repriced faster than deposits there has been an impact on net interest margin ( nim ).",
+  "missing": "the hit shows NIM compression from repricing but does not state whether it or loan growth dominated, nor compare loan growth.",
+  "quote_ok": true,
+  "n_hits": 30,
+  "secs": 31.9,
+  "usage": {
+   "prompt_tokens": 3199,
+   "completion_tokens": 1285,
+   "total_tokens": 4484,
+   "prompt_tokens_details": {
+    "cached_tokens": 3136
+   },
+   "completion_tokens_details": {
+    "reasoning_tokens": 1213
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 63,
+     "output": 1285,
+     "reasoning": 1213,
+     "cache_read": 3136,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 38156, \"category\": \"sustainable finance\", \"item\": \"Sustainable finance portfolio as percentage of Bank's total book\", \"quote\": \"comprising about 28 per cent of Bank's total book\"}",
+   "{\"doc_id\": 38156, \"category\": \"employee\", \"item\": \"Employee turnover rate\", \"quote\": \"23.1% EMPLOYEE TURNOVER RATE\"}",
+   "{\"doc_id\": 38156, \"category\": \"financial\", \"item\": \"Capital Adequacy Ratio vs minimum requirement of 11.9%\", \"quote\": \"Capital Adequacy Ratio of 19.7%, well above the minimum requirement of 11.9%\"}"
+  ]
+ },
+ {
+  "case": "MB0473",
+  "cls": "bank_transmission",
+  "level": "structured",
+  "question": "Muthoot's cost of funds rises with the repo. How does that interact with the gold-loan yield cap, and who bears it?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions repo-linked cost of funds, a gold-loan yield cap, or who bears the impact.",
+  "quote_ok": false,
+  "n_hits": 30,
+  "secs": 7.2,
+  "usage": {
+   "prompt_tokens": 3391,
+   "completion_tokens": 1067,
+   "total_tokens": 4458,
+   "completion_tokens_details": {
+    "reasoning_tokens": 1028
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 3391,
+     "output": 1067,
+     "reasoning": 1028,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 59824, \"category\": \"related_party_transaction\", \"item\": \"Gold loan stock keeping/custody arrangement with Muthoot Fincorp Limited (Promoter & Holding Company); referral fee not exceeding 1.25% of loan amount u",
+   "{\"doc_id\": 59824, \"category\": \"related_party_transaction\", \"item\": \"Co-lending framework with Muthoot Fincorp Limited extended for 12 months, loan ticket size not exceeding ₹1,00,000, CLM rate on MML's share 15%, managem",
+   "{\"doc_id\": 59824, \"category\": \"related_party_transaction\", \"item\": \"Appointment of Muthoot Fincorp Limited as Business Correspondent for generating Loan Against Property (LAP) business\", \"quote\": \"Business Correspondent "
+  ]
+ },
+ {
+  "case": "MB0483",
+  "cls": "float_income",
+  "level": "document",
+  "question": "Brokers earn float income on client balances. How much of Angel One's revenue is float income, and what happens when rates fall?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "Angel One's share of revenue from float income and the impact of falling interest rates",
+  "quote_ok": false,
+  "n_hits": 6,
+  "secs": 9.0,
+  "usage": {
+   "prompt_tokens": 764,
+   "completion_tokens": 1462,
+   "total_tokens": 2226,
+   "completion_tokens_details": {
+    "reasoning_tokens": 1431
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 764,
+     "output": 1462,
+     "reasoning": 1431,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … Trade ReceiVlbles cash and cas:h Eciu vale1ts Bank Balances other th.an Cash and Cash Eo.Ji … \"}",
+   "{\"symbol\": \"KENNAMET\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … 905 Cash and cash equivalents 460 1,645 Bank balances other than cash and cash equivalents 12 9 … \"}",
+   "{\"symbol\": \"POLYPLEX\", \"doc_type\": \"INVESTOR_PRESENTATION\", \"date\": \"2026-08-13\", \"snippet\": \" … Cash & bank balance + other bank balances + fixed deposits with bank + other investments in bonds and liquid funds • RoW … "
+  ]
+ },
+ {
+  "case": "MB0512",
+  "cls": "second_order_suppliers",
+  "level": "corpus",
+  "question": "Defence indigenisation gave BEL and HAL large orders. Which second-layer listed suppliers gain, and how do you establish the link?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit identifies second-layer listed suppliers benefiting from BEL/HAL defence orders or establishes that link.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 3.4,
+  "usage": {
+   "prompt_tokens": 632,
+   "completion_tokens": 446,
+   "total_tokens": 1078,
+   "completion_tokens_details": {
+    "reasoning_tokens": 405
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 632,
+     "output": 446,
+     "reasoning": 405,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"BDL\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-14\", \"snippet\": \" … LOIl that were subsequently short closed by the customer which is backed by advances of ¥ 36,234.42 … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … 292.28 Crores) on account of HPC wages reimbursement recoverable · from its customer 'NTPC' . The Company had earlier … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … 2026-08-10]\\naccount of HPC wages reimbursement recoverable · from its customer 'NTPC' . The Company had earlier obtained … \"}"
+  ]
+ },
+ {
+  "case": "MB0513",
+  "cls": "policy_incidence",
+  "level": "structured",
+  "question": "The TCS on coal and iron-ore sales doubles to 2% from 1 April 2026. Who is hit first, who second, and does any listed layer gain?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit states the TCS rate change to 2% from 1 April 2026, who is hit first/second, or any listed layer gain.",
+  "quote_ok": false,
+  "n_hits": 20,
+  "secs": 3.0,
+  "usage": {
+   "prompt_tokens": 1901,
+   "completion_tokens": 412,
+   "total_tokens": 2313,
+   "completion_tokens_details": {
+    "reasoning_tokens": 362
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1901,
+     "output": 412,
+     "reasoning": 362,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 21619, \"category\": \"governance\", \"item\": \"Corporate Identification Number of Coal India Limited\", \"quote\": \"CIN: L23109WB1973GOI028844\"}",
+   "{\"doc_id\": 21619, \"category\": \"project_pipeline\", \"item\": \"Pre-feasibility studies completed for Coal-to-Chemical plants near ECL, SECL, WCL mine heads to produce methanol, Ammonia, Ammonium Nitrate; tendering on\", \"quot",
+   "{\"doc_id\": 21619, \"category\": \"project_pipeline\", \"item\": \"C2C plant planned at MCL using high ash coal to produce Ammonium Nitrate for coal producing subsidiaries\", \"quote\": \"high ash coal, to produce Ammonium Nitrate ("
+  ]
+ },
+ {
+  "case": "MB0518",
+  "cls": "second_order_suppliers",
+  "level": "structured",
+  "question": "Cochin Shipyard's Drydocks World JV will need steel and marine equipment. Which listed companies are the plausible suppliers, and what is the evidence standard?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit identifies a Drydocks World JV, its steel or marine equipment needs, plausible listed suppliers, or an evidence standard.",
+  "quote_ok": false,
+  "n_hits": 20,
+  "secs": 3.0,
+  "usage": {
+   "prompt_tokens": 1888,
+   "completion_tokens": 376,
+   "total_tokens": 2264,
+   "completion_tokens_details": {
+    "reasoning_tokens": 335
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1888,
+     "output": 376,
+     "reasoning": 335,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 121576, \"category\": \"commodity-risk\", \"item\": \"Steel exposure quantity\", \"quote\": \"Exposure in Quantity terms towards the particular commodity 10610.52 Tonnes\"}",
+   "{\"doc_id\": 121576, \"category\": \"capacity\", \"item\": \"Marine Engineers Trained Annually\", \"quote\": \"Marine Engineers Trained Annually 160\"}",
+   "{\"doc_id\": 121576, \"category\": \"subsidiaries\", \"item\": \"Hooghly Cochin Shipyard Limited shares %\", \"quote\": \"Hooghly Cochin Shipyard Limited Subsidiary 100\"}"
+  ]
+ },
+ {
+  "case": "MB0523",
+  "cls": "second_order_suppliers",
+  "level": "corpus",
+  "question": "US tariffs on Indian textiles have been 50% since August 2025. Which listed dye and chemical suppliers are exposed second-hand, and what is the evidence bar?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions dye/chemical suppliers, textile exposure, or US tariff effects.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.3,
+  "usage": {
+   "prompt_tokens": 643,
+   "completion_tokens": 191,
+   "total_tokens": 834,
+   "completion_tokens_details": {
+    "reasoning_tokens": 154
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 643,
+     "output": 191,
+     "reasoning": 154,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"BDL\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-14\", \"snippet\": \" … LOIl that were subsequently short closed by the customer which is backed by advances of ¥ 36,234.42 … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … 292.28 Crores) on account of HPC wages reimbursement recoverable · from its customer 'NTPC' . The Company had earlier … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … 2026-08-10]\\naccount of HPC wages reimbursement recoverable · from its customer 'NTPC' . The Company had earlier obtained … \"}"
+  ]
+ },
+ {
+  "case": "MB0568",
+  "cls": "float_income",
+  "level": "document",
+  "question": "Angel One earns float income on client funds. How does it deploy that float, and what is the risk if rates fall?",
+  "v": "PARTIAL",
+  "hit": "lookups_docs.doc_find#0",
+  "quote": "This is the clients funds that they place with us in anticipation of trades so as we",
+  "missing": "How the float is deployed and the risk if rates fall are not stated.",
+  "quote_ok": true,
+  "n_hits": 6,
+  "secs": 9.6,
+  "usage": {
+   "prompt_tokens": 762,
+   "completion_tokens": 1293,
+   "total_tokens": 2055,
+   "completion_tokens_details": {
+    "reasoning_tokens": 1229
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 762,
+     "output": 1293,
+     "reasoning": 1229,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … Trade ReceiVlbles cash and cas:h Eciu vale1ts Bank Balances other th.an Cash and Cash Eo.Ji … \"}",
+   "{\"symbol\": \"KENNAMET\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … 905 Cash and cash equivalents 460 1,645 Bank balances other than cash and cash equivalents 12 9 … \"}",
+   "{\"symbol\": \"POLYPLEX\", \"doc_type\": \"INVESTOR_PRESENTATION\", \"date\": \"2026-08-13\", \"snippet\": \" … Cash & bank balance + other bank balances + fixed deposits with bank + other investments in bonds and liquid funds • RoW … "
+  ]
+ },
+ {
+  "case": "MB0605",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "Gold is 4,186.7. If it goes to 5,000, do jewellers or gold-loan NBFCs do better, and why is the answer not obvious?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit addresses gold prices, jewellers, or gold-loan NBFCs.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.4,
+  "usage": {
+   "prompt_tokens": 608,
+   "completion_tokens": 183,
+   "total_tokens": 791,
+   "completion_tokens_details": {
+    "reasoning_tokens": 149
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 608,
+     "output": 183,
+     "reasoning": 149,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0608",
+  "cls": "policy_incidence",
+  "level": "corpus",
+  "question": "If the semiconductor incentive doubles, which listed companies benefit first and which only in the second round?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit discusses semiconductor incentives, listed companies, or first/second-round beneficiaries.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.1,
+  "usage": {
+   "prompt_tokens": 592,
+   "completion_tokens": 123,
+   "total_tokens": 715,
+   "completion_tokens_details": {
+    "reasoning_tokens": 92
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 592,
+     "output": 123,
+     "reasoning": 92,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … Accordingly, we do not accept or assume any liability or any duty of care for any other purpose … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … Accordingly, we do not accept or assume any liability or any duty of care for any other purpose … \"}",
+   "{\"symbol\": \"OIL\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-07\", \"snippet\": \" … Expenses (a) Excise Duty (b) Purchases of Stock-in-Trade (c) Changes in Inventories of Finished Goods (d … \"}"
+  ]
+ },
+ {
+  "case": "MB0627",
+  "cls": "forecast_scenario",
+  "level": "corpus",
+  "question": "Which mid-cap will double in 2027?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit identifies a mid-cap that will double in 2027.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.0,
+  "usage": {
+   "prompt_tokens": 607,
+   "completion_tokens": 264,
+   "total_tokens": 871,
+   "completion_tokens_details": {
+    "reasoning_tokens": 227
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 607,
+     "output": 264,
+     "reasoning": 227,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"KAYNES\", \"doc_type\": \"CONCALL_TRANSCRIPT\", \"date\": \"2026-08-14\", \"snippet\": \" … robust inflows from Indian Railways Kavach deployment and industrial IoT clients. Target 40%+ YoY revenue growth in FY27.\"}",
+   "{\"symbol\": \"ASIANPAINT\", \"doc_type\": \"CONCALL_TRANSCRIPT\", \"date\": \"2026-08-14\", \"snippet\": \"Targeting double-digit EBITDA margin resilience even in volatile crude oil and TiO2 pricing environments.\"}",
+   "{\"symbol\": \"ZSARACOM\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-12\", \"snippet\": \" … 512020 Regulation 30, 33 and other applicable regulations, if any, of the SEBI (Listing Obligations and Disclosure Requirements "
+  ]
+ },
+ {
+  "case": "MB0629",
+  "cls": "retail_mtm",
+  "level": "corpus",
+  "question": "How much money did retail investors lose on 4 June 2024, in rupees?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions retail investor losses on 4 June 2024.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.0,
+  "usage": {
+   "prompt_tokens": 690,
+   "completion_tokens": 178,
+   "total_tokens": 868,
+   "completion_tokens_details": {
+    "reasoning_tokens": 145
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 690,
+     "output": 178,
+     "reasoning": 145,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"539300\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-14\", \"snippet\": \" … Chartered Accountants 49, MTM Colony, Opposite Ajmer Overbridge Bhilwara-311001 (Rajasthan) ‘( Email Id- opdadandco@gmail.com INDI",
+   "{\"symbol\": \"539300\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-14\", \"snippet\": \" … Chartered Accountants 49, MTM Colony, Opposite Ajmer Overbridge Bhilwara-311001 (Rajasthan) ‘( Email Id- opdadandco@gmail.com INDI",
+   "{\"symbol\": \"539300\", \"doc_type\": \"ANNOUNCEMENT\", \"date\": \"2026-08-14\", \"snippet\": \" … Chartered Accountants 49, MTM Colony, Opposite Ajmer Overbridge Bhilwara-311001 (Rajasthan) ‘( Email Id- opdadandco@gmail.com INDIA Co"
+  ]
+ },
+ {
+  "case": "MB0632",
+  "cls": "mechanism_lag",
+  "level": "structured",
+  "question": "Natural rubber and crude-based inputs rise together. How long before tyre makers' replacement-market price hikes reach the OEMs, and what does the OEM's own cost per vehicle do to two-wheeler and passenger-car volume two quarters later?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 3.7,
+  "usage": {
+   "prompt_tokens": 949,
+   "completion_tokens": 301,
+   "total_tokens": 1250,
+   "completion_tokens_details": {
+    "reasoning_tokens": 281
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 949,
+     "output": 301,
+     "reasoning": 281,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 138666, \"category\": \"signal\", \"item\": \"Auditor flags going-concern reliance on management financial support amid substantially eroded net worth\", \"quote\": \"the continuous financial support from the management ",
+   "{\"doc_id\": 138666, \"category\": \"segment\", \"item\": \"Company identified as single segment operating in agricultural produce, chemical and natural extracts industry\", \"quote\": \"single segment company operating in agricultur",
+   "{\"doc_id\": 138666, \"category\": \"risk_hedging\", \"item\": \"Commodity price risk or foreign exchange risk and hedging activities\", \"quote\": \"Commodity price risk or foreign exchange risk and hedging activities: Not Applicabl"
+  ]
+ },
+ {
+  "case": "MB0638",
+  "cls": "mechanism_lag",
+  "level": "structured",
+  "question": "Gas and ammonia prices rise. Urea makers' cost goes up but the retail price is controlled, so the subsidy bill rises instead. Trace that to farm income, then to tractor and two-wheeler volumes, and say which of those lags we can actually measure.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No provided hit contains information on gas/ammonia prices, urea makers' costs or subsidies, farm income, or tractor/two-wheeler volumes.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 2.7,
+  "usage": {
+   "prompt_tokens": 962,
+   "completion_tokens": 260,
+   "total_tokens": 1222,
+   "completion_tokens_details": {
+    "reasoning_tokens": 213
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 962,
+     "output": 260,
+     "reasoning": 213,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 54982, \"category\": \"related_party\", \"item\": \"Makers Laboratories holds equity shares in Ipca Laboratories Ltd (related party, same promoter group)\", \"quote\": \"The Company holds 960 equity shares (0.00%) in\"}",
+   "{\"doc_id\": 54982, \"category\": \"related_party\", \"item\": \"Ipca Laboratories Ltd does not hold any equity shares in Makers Laboratories\", \"quote\": \"Ipca Laboratories Ltd. does not hold any equity shares\"}",
+   "{\"doc_id\": 54982, \"category\": \"related_party\", \"item\": \"Promoter Group shareholding in Makers Laboratories Ltd\", \"quote\": \"The Promoter Group also holds 58.78% in the paid-up equity\"}"
+  ]
+ },
+ {
+  "case": "MB0653",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "US tariffs of 50% have hit Indian labour-intensive exports since August 2025. Trace the order loss to the exporter's utilisation, then to its contract workforce, then to the second-order effect on the domestic cotton and leather supply chain. What is already visible in the filings?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit shows US-tariff order loss, exporter utilisation, contract workforce, or cotton/leather supply-chain effects.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 3.2,
+  "usage": {
+   "prompt_tokens": 626,
+   "completion_tokens": 353,
+   "total_tokens": 979,
+   "completion_tokens_details": {
+    "reasoning_tokens": 305
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 626,
+     "output": 353,
+     "reasoning": 305,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0655",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "The RBI raised the repo 25 bps to 5.50% on 7 October 2026 and moved the stance to calibrated tightening. Trace it through the loan book that reprices first, the deposit book that reprices last, and then through the NBFC and housing-finance cost of funds. Which lender's NIM is hit first?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains repo rate, loan/deposit repricing, NBFC/housing-finance cost of funds, or lender NIM impact.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.3,
+  "usage": {
+   "prompt_tokens": 805,
+   "completion_tokens": 220,
+   "total_tokens": 1025,
+   "completion_tokens_details": {
+    "reasoning_tokens": 174
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 805,
+     "output": 220,
+     "reasoning": 174,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0660",
+  "cls": "free_float_weight",
+  "level": "structured",
+  "question": "FPI short-term and concentration limits are removed and the Fully Accessible Route is extended to longer G-secs. Trace it to foreign ownership of mid-caps, then to the float and the market-cap bucket, then to index eligibility. Which listed names become eligible for flows they were not eligible for before?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit addresses FPI/FAR policy changes, foreign ownership of mid-caps, float, market-cap buckets, or index eligibility.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 2.4,
+  "usage": {
+   "prompt_tokens": 1003,
+   "completion_tokens": 283,
+   "total_tokens": 1286,
+   "completion_tokens_details": {
+    "reasoning_tokens": 235
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1003,
+     "output": 283,
+     "reasoning": 235,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 129911, \"category\": \"shareholding\", \"item\": \"Promoters and Promoter Group shareholding as on 31.03.2026\", \"quote\": \"Promoters and Promoter Group 3412203 68.2441\"}",
+   "{\"doc_id\": 129911, \"category\": \"shareholding\", \"item\": \"Public shareholding as on 31.03.2026\", \"quote\": \"Public 1434812 28.6962\"}",
+   "{\"doc_id\": 129913, \"category\": \"auditor\", \"item\": \"Statutory auditor MRNP & Co LLP appointed for 5-year term from 33rd AGM to 38th AGM (2030)\", \"quote\": \"Statutory Auditors of the Company to hold office for a term of 5 ("
+  ]
+ },
+ {
+  "case": "MB0662",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "Full hedging-cost support is offered to banks raising fresh 3-5 year FCNR(B) deposits. Trace it to the bank's swap cost, then to NIM, then to credit growth. Why would a bank take a lower-margin deposit deliberately?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit addresses FCNR(B) deposit hedging-cost support, swap cost, NIM, or credit growth.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 3.2,
+  "usage": {
+   "prompt_tokens": 781,
+   "completion_tokens": 206,
+   "total_tokens": 987,
+   "completion_tokens_details": {
+    "reasoning_tokens": 166
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 781,
+     "output": 206,
+     "reasoning": 166,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0664",
+  "cls": "mechanism_lag",
+  "level": "structured",
+  "question": "The collateral-free MSE loan limit is raised with effect from April 2026. Trace it to bank and NBFC credit to MSME suppliers, then to the supplier's terms with its large customer, then to the large customer's working capital. Does the buyer gain or lose?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions the MSE loan limit, bank/NBFC MSME credit, supplier terms, or buyer working capital.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 2.9,
+  "usage": {
+   "prompt_tokens": 894,
+   "completion_tokens": 243,
+   "total_tokens": 1137,
+   "completion_tokens_details": {
+    "reasoning_tokens": 204
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 894,
+     "output": 243,
+     "reasoning": 204,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 135036, \"category\": \"loans\", \"item\": \"Sub-Standard Assets\", \"quote\": \"Sub-Standard Assets 410.00\"}",
+   "{\"doc_id\": 135036, \"category\": \"loans\", \"item\": \"Sub-Standard Assets\", \"quote\": \"Sub-Standard Assets 2,568.34\"}",
+   "{\"doc_id\": 135036, \"category\": \"loans\", \"item\": \"Standard Assets\", \"quote\": \"Standard Assets 17,791.88\"}"
+  ]
+ },
+ {
+  "case": "MB0670",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "A National Mission on High Yielding Seeds is announced. Trace it to seed replacement rates, then to agrochem and fertiliser use per acre, then to farm income, then to two-wheeler and tractor demand. Which hop has no data behind it at all?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit covers any hop: National Mission announcement, seed replacement rates, agrochem/fertiliser use per acre, farm income, or two-wheeler/tractor demand.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 4.1,
+  "usage": {
+   "prompt_tokens": 620,
+   "completion_tokens": 598,
+   "total_tokens": 1218,
+   "completion_tokens_details": {
+    "reasoning_tokens": 545
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 620,
+     "output": 598,
+     "reasoning": 545,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0671",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "The repo goes up 25 bps. Split the loan book into EBLR, MCLR and fixed, split the deposit book into savings and term, and compute which bank's NIM falls first. The answer needs both repricing schedules, not the headline rate.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains bank loan/deposit repricing schedules, EBLR/MCLR/fixed split, savings/term deposit split, or NIM impact data.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 3.0,
+  "usage": {
+   "prompt_tokens": 785,
+   "completion_tokens": 288,
+   "total_tokens": 1073,
+   "completion_tokens_details": {
+    "reasoning_tokens": 241
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 785,
+     "output": 288,
+     "reasoning": 241,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0672",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "The 2025 rate cuts reach the NBFC's cost of funds with a lag, but its AUM growth needs a credit cycle, not a rate cut. Trace the cost of funds, then the spread, then the AUM, and say which NBFC's spread expands rather than narrows.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains cost-of-funds, spread, or AUM information for any NBFC.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 1.9,
+  "usage": {
+   "prompt_tokens": 792,
+   "completion_tokens": 168,
+   "total_tokens": 960,
+   "completion_tokens_details": {
+    "reasoning_tokens": 134
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 792,
+     "output": 168,
+     "reasoning": 134,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0677",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "Household savings move from term deposits to mutual funds. Trace it to the bank's deposit mix, then to its NIM, then to the cost of the loan it can no longer fund cheaply. Which listed lender is most exposed to that migration?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit links household savings migration from term deposits to mutual funds to a listed lender's deposit mix, NIM, or loan funding cost.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.1,
+  "usage": {
+   "prompt_tokens": 779,
+   "completion_tokens": 169,
+   "total_tokens": 948,
+   "completion_tokens_details": {
+    "reasoning_tokens": 126
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 779,
+     "output": 169,
+     "reasoning": 126,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0680",
+  "cls": "bank_transmission",
+  "level": "structured",
+  "question": "The central bank changes the CRR. Trace it to the bank's lendable resources, then to the marginal corporate loan price, then to the capex it enables. How much of a 50 bps CRR cut is worth in NIM, and does the answer change the capex decision?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit covers CRR, bank lendable resources, NIM, or capex",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 1.9,
+  "usage": {
+   "prompt_tokens": 1183,
+   "completion_tokens": 202,
+   "total_tokens": 1385,
+   "completion_tokens_details": {
+    "reasoning_tokens": 163
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1183,
+     "output": 202,
+     "reasoning": 163,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 137248, \"category\": \"reserves\", \"item\": \"Special Reserve Fund is a statutory provision created as per RBI guidelines u/s 45-IC of the RBI Act applicable to NBFC companies\", \"quote\": \"Reserve Fund represents a ",
+   "{\"doc_id\": 137248, \"category\": \"director_changes\", \"item\": \"Niravkumar Chandreshkumar Parikh resigned as Managing Director & CFO w.e.f. 18 October 2024\", \"quote\": \"resigned from the post of Managing Director and Chief Fi",
+   "{\"doc_id\": 137248, \"category\": \"director_changes\", \"item\": \"Manoj Purushottam Rasania appointed MD & CFO w.e.f. 18 October 2024, resigned w.e.f. 2 May 2025\", \"quote\": \"appointed as Managing Director and Chief Financial O"
+  ]
+ },
+ {
+  "case": "MB0682",
+  "cls": "mechanism_lag",
+  "level": "structured",
+  "question": "The repo goes up and car loans get dearer. Trace it to the EMI, then to the monthly payment at the entry price point, then to volumes for the entry segment versus the premium. Which listed OEM is most exposed to the entry segment?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No held data links repo rates, car-loan EMIs, entry-segment monthly payments, or entry-versus-premium volumes to any listed OEM.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 2.6,
+  "usage": {
+   "prompt_tokens": 1111,
+   "completion_tokens": 220,
+   "total_tokens": 1331,
+   "prompt_tokens_details": {
+    "cached_tokens": 64
+   },
+   "completion_tokens_details": {
+    "reasoning_tokens": 167
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1047,
+     "output": 220,
+     "reasoning": 167,
+     "cache_read": 64,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"sha256\": \"24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c\", \"page_no\": 27, \"metric\": \"Raw material expenses\", \"value\": 15.04, \"unit\": \"₹ Cr\"}",
+   "{\"sha256\": \"24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c\", \"page_no\": 27, \"metric\": \"Raw material expenses\", \"value\": 15.81, \"unit\": \"₹ Cr\"}",
+   "{\"sha256\": \"24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c\", \"page_no\": 30, \"metric\": \"Raw material expenses\", \"value\": 32.92, \"unit\": \"₹ Cr\"}"
+  ]
+ },
+ {
+  "case": "MB0719",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "A large bank cuts its home-loan rate to win prime customers. Trace it to the HFC's spread, then to the HFC's disbursement mix, then to its cost of funds. Which listed HFC is stuck with the customer the bank does not want?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains any HFC spread, disbursement mix, cost of funds, or bank home-loan rate information.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.5,
+  "usage": {
+   "prompt_tokens": 784,
+   "completion_tokens": 217,
+   "total_tokens": 1001,
+   "completion_tokens_details": {
+    "reasoning_tokens": 178
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 784,
+     "output": 217,
+     "reasoning": 178,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0723",
+  "cls": "mechanism_lag",
+  "level": "structured",
+  "question": "Electronics manufacturing scales on a PLI scheme. Trace the scheme to the assembler's scale, then to its component import bill, then to the domestic component supplier's opportunity, then to the assembler's margin per unit. Where does the value stay?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions a PLI scheme, assembler scale, component import bill, domestic component supplier opportunity, or assembler margin per unit.",
+  "quote_ok": false,
+  "n_hits": 20,
+  "secs": 8.7,
+  "usage": {
+   "prompt_tokens": 1989,
+   "completion_tokens": 1157,
+   "total_tokens": 3146,
+   "completion_tokens_details": {
+    "reasoning_tokens": 1115
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1989,
+     "output": 1157,
+     "reasoning": 1115,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 119929, \"category\": \"promoter_background\", \"item\": \"Promoter founded erstwhile sole proprietorship M/s Bajaj Electronics in 1980; Chairman & MD Pavan Kumar Bajaj has over 42 years of retail business management",
+   "{\"doc_id\": 119929, \"category\": \"senior_management\", \"item\": \"Chief Operating Officer Mr Sandeep Singh Jolly, over two decades in electronics retail, formerly Samsung India Senior Director Product Head NC&ME\", \"quote\": \"F",
+   "{\"doc_id\": 119929, \"category\": \"senior_management\", \"item\": \"Company Secretary and Compliance Officer Mr Rajiv Kumar, qualified Company Secretary with MBA and B.Com\", \"quote\": \"Qualified Company Secretary with a Master's"
+  ]
+ },
+ {
+  "case": "MB0729",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "A bank decides to build a small-ticket personal-loan book. Trace it to the NBFC's borrower acquisition cost, then to its ticket size, then to its credit cost. Which listed lender loses the most profitable slice?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains lender acquisition cost, ticket size, credit cost, or profitability data needed to answer.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.8,
+  "usage": {
+   "prompt_tokens": 774,
+   "completion_tokens": 248,
+   "total_tokens": 1022,
+   "completion_tokens_details": {
+    "reasoning_tokens": 209
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 774,
+     "output": 248,
+     "reasoning": 209,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0733",
+  "cls": "free_float_weight",
+  "level": "structured",
+  "question": "A small-cap re-rates from a 2,000 crore to a 12,000 crore market cap and enters an index. Trace it to the passive flow, then to the float, then to the price. Does the index inclusion cause the re-rating or follow it?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains index inclusion, passive flow, float-based price impact, market-cap re-rating, or causality for the described small-cap scenario.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 3.4,
+  "usage": {
+   "prompt_tokens": 1006,
+   "completion_tokens": 341,
+   "total_tokens": 1347,
+   "completion_tokens_details": {
+    "reasoning_tokens": 297
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1006,
+     "output": 341,
+     "reasoning": 297,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 129911, \"category\": \"shareholding\", \"item\": \"Promoters and Promoter Group shareholding as on 31.03.2026\", \"quote\": \"Promoters and Promoter Group 3412203 68.2441\"}",
+   "{\"doc_id\": 129911, \"category\": \"shareholding\", \"item\": \"Public shareholding as on 31.03.2026\", \"quote\": \"Public 1434812 28.6962\"}",
+   "{\"doc_id\": 129911, \"category\": \"shareholding\", \"item\": \"DVR shares held by Mani Market Creators Limited (95.45% of DVR class)\", \"quote\": \"Mani Market Creators Limited 52,50,000 95.45\"}"
+  ]
+ },
+ {
+  "case": "MB0738",
+  "cls": "free_float_weight",
+  "level": "corpus",
+  "question": "A promoter sells 8% through an offer for sale. Trace it to the free float, then to the index weight, then to the stock's reaction to flows. Does a higher float help or hurt the price?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit links a promoter's 8% offer-for-sale to free float, index weight, stock reaction to flows, or whether higher float helps or hurts price.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.5,
+  "usage": {
+   "prompt_tokens": 619,
+   "completion_tokens": 222,
+   "total_tokens": 841,
+   "completion_tokens_details": {
+    "reasoning_tokens": 174
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 619,
+     "output": 222,
+     "reasoning": 174,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"KMEW\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-14\", \"snippet\": \" … The Promoter Group infused approximately 215 Crores towards the issuance of Warrants, while the balance amount of approximately … \"}",
+   "{\"symbol\": \"ADVENZYMES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-06\", \"snippet\": \" … for his outstanding contribution to the implementation and promotion of the Atal Pension Yojana. Prior to his appointment … \"}",
+   "{\"symbol\": \"LLOYDSENGG\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-06\", \"snippet\": \" … Whether the promoter/ promoter group/ group companies have any interest in this transaction? If yes, nature of interest … \"}"
+  ]
+ },
+ {
+  "case": "MB0744",
+  "cls": "free_float_weight",
+  "level": "structured",
+  "question": "Promoters raise their stake through creeping acquisition. Trace it to the free float, then to the delivery percentage, then to the price impact of a future sale. Which listed name has the tightest float?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions creeping acquisition, free float, delivery percentage, price impact of a future sale, or tightest float.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 2.6,
+  "usage": {
+   "prompt_tokens": 1061,
+   "completion_tokens": 256,
+   "total_tokens": 1317,
+   "completion_tokens_details": {
+    "reasoning_tokens": 217
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1061,
+     "output": 256,
+     "reasoning": 217,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 30384, \"category\": \"committee_governance\", \"item\": \"Stakeholders' Relationship and Share Transfer Committee - meetings held in FY24\", \"quote\": \"one meeting of Stakeholders' Relationship and Share Transfer Comm",
+   "{\"doc_id\": 30384, \"category\": \"committee_governance\", \"item\": \"Stakeholders' Relationship and Share Transfer Committee - Kishore Biyani (Promoter, Vice-Chairman) meetings attended\", \"quote\": \"Mr. Kishore Biyani# Chairman",
+   "{\"doc_id\": 30384, \"category\": \"committee_governance\", \"item\": \"Stakeholders' Relationship and Share Transfer Committee - Kishore Biyani ceased as Chairman from 21st October 2023\", \"quote\": \"ceased to be Chairman of Stake"
+  ]
+ },
+ {
+  "case": "MB0753",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "The repo is cut. Using the last easing cycle, how many quarters before the bank's NIM troughs, and does the trough arrive before or after the deposit repricing is complete?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains NIM trough timing, easing cycle quarters, or deposit repricing completion.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.1,
+  "usage": {
+   "prompt_tokens": 767,
+   "completion_tokens": 160,
+   "total_tokens": 927,
+   "completion_tokens_details": {
+    "reasoning_tokens": 127
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 767,
+     "output": 160,
+     "reasoning": 127,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0758",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "MGNREGS spending rises. Trace it to rural wages, then to two-wheeler entry-segment volume, and state the lag you can actually verify versus the one you are assuming.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit links MGNREGS spending to rural wages, two-wheeler entry-segment volume, or a verifiable lag.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.6,
+  "usage": {
+   "prompt_tokens": 604,
+   "completion_tokens": 340,
+   "total_tokens": 944,
+   "completion_tokens_details": {
+    "reasoning_tokens": 295
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 604,
+     "output": 340,
+     "reasoning": 295,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0772",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "The repo is raised 25 bps. A bank's loan yield rises and its bond portfolio falls in value on the same day. Net the NIM gain against the treasury loss, and say which one is a P&L event and which is an OCI event.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains the bank's NIM gain, treasury loss, or whether either is a P&L or OCI event.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 3.0,
+  "usage": {
+   "prompt_tokens": 784,
+   "completion_tokens": 174,
+   "total_tokens": 958,
+   "completion_tokens_details": {
+    "reasoning_tokens": 134
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 784,
+     "output": 174,
+     "reasoning": 134,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0780",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "An incentive scheme pays a subsidy per unit and the large player cuts the price by the same amount to win volume. Net the subsidy gain against the price cut and say who keeps it.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions a per-unit subsidy, a price cut by a large player, or who retains the net gain.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 3.5,
+  "usage": {
+   "prompt_tokens": 602,
+   "completion_tokens": 423,
+   "total_tokens": 1025,
+   "completion_tokens_details": {
+    "reasoning_tokens": 385
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 602,
+     "output": 423,
+     "reasoning": 385,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0790",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "An NBFC grows its AUM fast and its credit cost rises at the same time. Net growth against credit cost and say which listed lender's provisioning cycle is closest to turning.",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains AUM growth, credit cost, or any listed lender's provisioning cycle turning.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.0,
+  "usage": {
+   "prompt_tokens": 765,
+   "completion_tokens": 162,
+   "total_tokens": 927,
+   "completion_tokens_details": {
+    "reasoning_tokens": 125
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 765,
+     "output": 162,
+     "reasoning": 125,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0792",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "Entry-segment two-wheeler demand: does the rural wage series, the scheme allocation, or the dealer inventory turn first? Which of them is point-in-time today?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit addresses rural wage series, scheme allocation, dealer inventory, or entry-segment two-wheeler demand.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.2,
+  "usage": {
+   "prompt_tokens": 600,
+   "completion_tokens": 198,
+   "total_tokens": 798,
+   "completion_tokens_details": {
+    "reasoning_tokens": 160
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 600,
+     "output": 198,
+     "reasoning": 160,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0793",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "Bank NIM: does the weighted average call rate, the deposit rate, or credit growth turn first? And is the deposit rate a point-in-time series at all?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains bank NIM, weighted average call rate, deposit rate, credit growth timing, or whether the deposit rate is point-in-time.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.2,
+  "usage": {
+   "prompt_tokens": 763,
+   "completion_tokens": 189,
+   "total_tokens": 952,
+   "completion_tokens_details": {
+    "reasoning_tokens": 139
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 763,
+     "output": 189,
+     "reasoning": 139,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0800",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "Cement demand: dispatches, GST collection, or pet coke first? Which turns before the other two?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit addresses cement demand or the relative timing of dispatches, GST collection, and pet coke",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.5,
+  "usage": {
+   "prompt_tokens": 586,
+   "completion_tokens": 162,
+   "total_tokens": 748,
+   "completion_tokens_details": {
+    "reasoning_tokens": 121
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 586,
+     "output": 162,
+     "reasoning": 121,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0804",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "NBFC credit cost: bounce rates, disbursement growth, or GNPA first? Which one is point-in-time in a filing, and which is not published at all?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains NBFC credit cost, bounce rates, disbursement growth, or GNPA information.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 3.0,
+  "usage": {
+   "prompt_tokens": 764,
+   "completion_tokens": 422,
+   "total_tokens": 1186,
+   "completion_tokens_details": {
+    "reasoning_tokens": 386
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 764,
+     "output": 422,
+     "reasoning": 386,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0848",
+  "cls": "free_float_weight",
+  "level": "corpus",
+  "question": "Micro-cap names under Rs 20 look cheap — is that value, or just a float too small to trust?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No held data on share prices below Rs 20, float size, or valuation for micro-cap names.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 4.8,
+  "usage": {
+   "prompt_tokens": 599,
+   "completion_tokens": 705,
+   "total_tokens": 1304,
+   "completion_tokens_details": {
+    "reasoning_tokens": 667
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 599,
+     "output": 705,
+     "reasoning": 667,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"KMEW\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-14\", \"snippet\": \" … The Promoter Group infused approximately 215 Crores towards the issuance of Warrants, while the balance amount of approximately … \"}",
+   "{\"symbol\": \"ADVENZYMES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-06\", \"snippet\": \" … for his outstanding contribution to the implementation and promotion of the Atal Pension Yojana. Prior to his appointment … \"}",
+   "{\"symbol\": \"LLOYDSENGG\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-06\", \"snippet\": \" … Whether the promoter/ promoter group/ group companies have any interest in this transaction? If yes, nature of interest … \"}"
+  ]
+ },
+ {
+  "case": "MB0851",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "If the RBI cuts the repo rate by 25bp in December, which listed lenders reprice deposits first and by how much?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit provides data on which listed lenders reprice deposits first or by how much after an RBI repo rate cut.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 1.9,
+  "usage": {
+   "prompt_tokens": 756,
+   "completion_tokens": 134,
+   "total_tokens": 890,
+   "completion_tokens_details": {
+    "reasoning_tokens": 96
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 756,
+     "output": 134,
+     "reasoning": 96,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0852",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "If crude holds above $90 for a quarter, how does that reach second-round input costs down the listed chain?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit states how crude above $90 for a quarter transmits to second-round input costs down the listed chain.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.5,
+  "usage": {
+   "prompt_tokens": 589,
+   "completion_tokens": 205,
+   "total_tokens": 794,
+   "completion_tokens_details": {
+    "reasoning_tokens": 165
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 589,
+     "output": 205,
+     "reasoning": 165,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0855",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "Which listed sectors gain most if the 10-year yield falls 50bp, and which lose on the second round?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit discusses sector sensitivity to a 50bp fall in the 10-year yield or second-round losers.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.1,
+  "usage": {
+   "prompt_tokens": 591,
+   "completion_tokens": 136,
+   "total_tokens": 727,
+   "completion_tokens_details": {
+    "reasoning_tokens": 97
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 591,
+     "output": 136,
+     "reasoning": 97,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0868",
+  "cls": "second_order_suppliers",
+  "level": "corpus",
+  "question": "If the data-centre build-out doubles, is KEI's cable order book the second-order winner or does the wiring spend land elsewhere first?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions KEI, data-centre build-out, cable order book, or wiring spend.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 1.9,
+  "usage": {
+   "prompt_tokens": 635,
+   "completion_tokens": 166,
+   "total_tokens": 801,
+   "prompt_tokens_details": {
+    "cached_tokens": 64
+   },
+   "completion_tokens_details": {
+    "reasoning_tokens": 127
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 571,
+     "output": 166,
+     "reasoning": 127,
+     "cache_read": 64,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"BDL\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-14\", \"snippet\": \" … LOIl that were subsequently short closed by the customer which is backed by advances of ¥ 36,234.42 … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … 292.28 Crores) on account of HPC wages reimbursement recoverable · from its customer 'NTPC' . The Company had earlier … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … 2026-08-10]\\naccount of HPC wages reimbursement recoverable · from its customer 'NTPC' . The Company had earlier obtained … \"}"
+  ]
+ },
+ {
+  "case": "MB0877",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "IREDA ran up a lot after listing. Is it too late to enter now, or does the loan-book growth still justify a fresh position?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit provides IREDA loan-book growth, post-listing run-up, valuation, or entry-timing evidence.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 5.5,
+  "usage": {
+   "prompt_tokens": 1239,
+   "completion_tokens": 687,
+   "total_tokens": 1926,
+   "completion_tokens_details": {
+    "reasoning_tokens": 647
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1239,
+     "output": 687,
+     "reasoning": 647,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"sha256\": \"60c4d6ea8234ba7c544938db802c3ec4ec799e824ce888603fba0e07f1d80c10\", \"page_no\": 8, \"metric\": \"Ranked 2nd highest value-creator in India by Economic Times\", \"value\": 2.0, \"unit\": \"-\"}",
+   "{\"sha256\": \"60c4d6ea8234ba7c544938db802c3ec4ec799e824ce888603fba0e07f1d80c10\", \"page_no\": 13, \"metric\": \"Projected investment - Transm.\", \"value\": 2.6, \"unit\": \"₹ lakh Cr\"}",
+   "{\"sha256\": \"60c4d6ea8234ba7c544938db802c3ec4ec799e824ce888603fba0e07f1d80c10\", \"page_no\": 13, \"metric\": \"IREDA supported installations\", \"value\": 27.5, \"unit\": \"GW\"}"
+  ]
+ },
+ {
+  "case": "MB0881",
+  "cls": "bank_transmission",
+  "level": "corpus",
+  "question": "PSU banks: which of the large ones has the best combination of NIM and credit cost this quarter, and which is most exposed to a slippage cycle?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains PSU bank NIM, credit cost, or slippage-cycle data.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.6,
+  "usage": {
+   "prompt_tokens": 762,
+   "completion_tokens": 225,
+   "total_tokens": 987,
+   "completion_tokens_details": {
+    "reasoning_tokens": 192
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 762,
+     "output": 225,
+     "reasoning": 192,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}",
+   "{\"symbol\": \"534535\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-11\", \"snippet\": \" … Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 … \"}"
+  ]
+ },
+ {
+  "case": "MB0888",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "NTPC Green and the renewable IPP pack: after the listing, which one trades at the biggest premium to book, and what does the market expect from it?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions NTPC Green, renewable IPP, premium to book, or market expectations.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 2.0,
+  "usage": {
+   "prompt_tokens": 1179,
+   "completion_tokens": 162,
+   "total_tokens": 1341,
+   "completion_tokens_details": {
+    "reasoning_tokens": 122
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1179,
+     "output": 162,
+     "reasoning": 122,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"sha256\": \"24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c\", \"page_no\": 6, \"metric\": \"ROE\", \"value\": 28.9, \"unit\": \"%\"}",
+   "{\"sha256\": \"24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c\", \"page_no\": 11, \"metric\": \"Molded Industrial Packaging Revenue Contribution\", \"value\": 326.94, \"unit\": \"Lakhs\"}",
+   "{\"sha256\": \"24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c\", \"page_no\": 27, \"metric\": \"PBT\", \"value\": 3.6, \"unit\": \"₹ Cr\"}"
+  ]
+ },
+ {
+  "case": "MB0921",
+  "cls": "mechanism_lag",
+  "level": "corpus",
+  "question": "Rail capex was front-loaded this year. Does that show up first in RVNL's revenue or in IRFC's loan book, and with what lag?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hits mention RVNL, IRFC, rail capex, revenue, loan book, or lag.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.1,
+  "usage": {
+   "prompt_tokens": 597,
+   "completion_tokens": 163,
+   "total_tokens": 760,
+   "completion_tokens_details": {
+    "reasoning_tokens": 124
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 597,
+     "output": 163,
+     "reasoning": 124,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"SWELECTES\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-13\", \"snippet\": \" … Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … applicable laws and regulations of the Dubai Multi Commodities Centre (“DMCC”) and the United Arab Emirates. The proposed … \"}",
+   "{\"symbol\": \"512455\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-10\", \"snippet\": \" … LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (“DMCC”) Size: Share … \"}"
+  ]
+ },
+ {
+  "case": "MB0926",
+  "cls": "free_float_weight",
+  "level": "structured",
+  "question": "Vodafone Idea: did the promoter group raise its stake through the preferential issue, and what did that do to the free float?",
+  "v": "PARTIAL",
+  "hit": "ar_facts#2",
+  "quote": "equity infusion of US$500 million (approximately ` 4,730 crore)",
+  "missing": "Does not state it was a preferential issue, the resulting promoter stake change, or the effect on free float.",
+  "quote_ok": true,
+  "n_hits": 20,
+  "secs": 6.0,
+  "usage": {
+   "prompt_tokens": 1861,
+   "completion_tokens": 813,
+   "total_tokens": 2674,
+   "completion_tokens_details": {
+    "reasoning_tokens": 744
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1861,
+     "output": 813,
+     "reasoning": 744,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 41429, \"category\": \"regulatory\", \"item\": \"SEBI special window opened for one year for lodging requests to transfer physical shares where transfers were executed before April 1, 2019; processed through transfer",
+   "{\"doc_id\": 41429, \"category\": \"related_party_transactions\", \"item\": \"Vodafone Group settled Contingent Liability Adjustment Mechanism receivable\", \"quote\": \"Contingent Liability Adjustment Mechanism receivable amounting ",
+   "{\"doc_id\": 41429, \"category\": \"related_party_transactions\", \"item\": \"Aditya Birla Group committed equity infusion through fully convertible instruments\", \"quote\": \"equity infusion of US$500 million (approximately ` 4,730"
+  ]
+ },
+ {
+  "case": "MB0931",
+  "cls": "bank_transmission",
+  "level": "structured",
+  "question": "HDFC Bank Q2FY26: was the NIM expansion real or a one-off treasury gain, and what did management guide?",
+  "v": "ERROR",
+  "error": "AttributeError(\"'NoneType' object has no attribute 'group'\")",
+  "secs": 47.9
+ },
+ {
+  "case": "MB0935",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "HDFC Bank versus ICICI Bank on NIM, ROA and credit cost: which is the cleaner compounder from here?",
+  "v": "PARTIAL",
+  "hit": "concall_facts.cc_items#2",
+  "quote": "it operates within that range, narrow range or margin 4.1 plus minus 5-10 basis points.",
+  "missing": "ICICI Bank NIM, ROA and credit cost data, and any side-by-side comparison or 'cleaner compounder' conclusion",
+  "quote_ok": true,
+  "n_hits": 20,
+  "secs": 7.3,
+  "usage": {
+   "prompt_tokens": 2060,
+   "completion_tokens": 621,
+   "total_tokens": 2681,
+   "completion_tokens_details": {
+    "reasoning_tokens": 544
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 2060,
+     "output": 621,
+     "reasoning": 544,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 38156, \"category\": \"sustainable finance\", \"item\": \"Sustainable finance portfolio as percentage of Bank's total book\", \"quote\": \"comprising about 28 per cent of Bank's total book\"}",
+   "{\"doc_id\": 38156, \"category\": \"financial\", \"item\": \"Capital Adequacy Ratio vs minimum requirement of 11.9%\", \"quote\": \"Capital Adequacy Ratio of 19.7%, well above the minimum requirement of 11.9%\"}",
+   "{\"doc_id\": 38156, \"category\": \"related_party_shares\", \"item\": \"Mr. Keshavan (director) shareholding in the Bank as on March 31, 2026\", \"quote\": \"Mr. Keshavan does not hold any shares of the Bank as on March 31, 2026\"}"
+  ]
+ },
+ {
+  "case": "MB0939",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "DMart still trades at a high PE. What growth rate is the market assuming, and what has the company actually delivered?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No DMart PE, market-implied growth, or delivered growth data appears in the hits.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 3.9,
+  "usage": {
+   "prompt_tokens": 1076,
+   "completion_tokens": 410,
+   "total_tokens": 1486,
+   "completion_tokens_details": {
+    "reasoning_tokens": 374
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1076,
+     "output": 410,
+     "reasoning": 374,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 129911, \"category\": \"governance\", \"item\": \"Separate meeting of Independent Directors held on 31.01.2026; performance of non-independent directors evaluated\", \"quote\": \"Independent Directors of the Company was ",
+   "{\"doc_id\": 129911, \"category\": \"corporate\", \"item\": \"Corporate Identity Number (CIN)\", \"quote\": \"L74140GJ1991PLC016555\"}",
+   "{\"doc_id\": 129911, \"category\": \"corporate\", \"item\": \"Listed on BSE Limited; scrip code 526891; ISIN INE944C01017; annual listing fee for FY2025-26 paid to BSE\", \"quote\": \"Scrip Code: 526891 ISIN :INE944C01017\"}"
+  ]
+ },
+ {
+  "case": "MB0959",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "ITC: between dividends and FMCG reinvestment, which one has earned the better return, and what does the last five years say?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit provides ITC-specific returns for dividends versus FMCG reinvestment over the last five years.",
+  "quote_ok": false,
+  "n_hits": 15,
+  "secs": 3.6,
+  "usage": {
+   "prompt_tokens": 1590,
+   "completion_tokens": 360,
+   "total_tokens": 1950,
+   "completion_tokens_details": {
+    "reasoning_tokens": 325
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1590,
+     "output": 360,
+     "reasoning": 325,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 45325, \"category\": \"signal\", \"item\": \"Paperboards, Paper and Packaging performance impacted by low priced Chinese & Indonesian supplies in global markets including India, soft domestic demand and unprecedented",
+   "{\"doc_id\": 45325, \"category\": \"distribution\", \"item\": \"Digitally enabled sales plus Modern Trade share of FMCG portfolio (excl. Education & Stationery)\", \"quote\": \"now account for 34% of your Company's FMCG portfolio\"}",
+   "{\"doc_id\": 45325, \"category\": \"operations\", \"item\": \"Fresh Food Business - cloud kitchens operating footprint\", \"quote\": \"expanded its operating footprint to appx. 70 cloud kitchens\"}"
+  ]
+ },
+ {
+  "case": "MB0965",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "Vedanta: the parent pays dividends while carrying debt. Is the cash actually upstreamed from subsidiaries, and what do the related-party notes say?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit addresses Vedanta dividend upstreaming from subsidiaries or related-party notes.",
+  "quote_ok": false,
+  "n_hits": 10,
+  "secs": 1.8,
+  "usage": {
+   "prompt_tokens": 1256,
+   "completion_tokens": 151,
+   "total_tokens": 1407,
+   "completion_tokens_details": {
+    "reasoning_tokens": 120
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1256,
+     "output": 151,
+     "reasoning": 120,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"sha256\": \"00343582868a0cf6a22aa89636224c51ab0c22db60b2f89a735290ad03586cdb\", \"page_no\": 5, \"metric\": \"Vedanta Aluminium, Jharsuguda shone at CII Industry Carnival 2026\", \"value\": 2026.0, \"unit\": \"-\"}",
+   "{\"sha256\": \"00343582868a0cf6a22aa89636224c51ab0c22db60b2f89a735290ad03586cdb\", \"page_no\": 30, \"metric\": \"EBITDA – Vedanta Aluminium\", \"value\": 7634.0, \"unit\": \"₹ crore\"}",
+   "{\"sha256\": \"00343582868a0cf6a22aa89636224c51ab0c22db60b2f89a735290ad03586cdb\", \"page_no\": 30, \"metric\": \"EBITDA – Vedanta Aluminium\", \"value\": 3282.0, \"unit\": \"₹ crore\"}"
+  ]
+ },
+ {
+  "case": "MB0968",
+  "cls": "bank_transmission",
+  "level": "structured",
+  "question": "Yes Bank: are provisions keeping pace with the stressed book, and how much of the recovery is write-back rather than operating profit?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit states whether provisions keep pace with the stressed book or quantifies how much recovery is write-back versus operating profit.",
+  "quote_ok": false,
+  "n_hits": 30,
+  "secs": 34.7,
+  "usage": {
+   "prompt_tokens": 2898,
+   "completion_tokens": 1203,
+   "total_tokens": 4101,
+   "completion_tokens_details": {
+    "reasoning_tokens": 1164
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 2898,
+     "output": 1203,
+     "reasoning": 1164,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 95917, \"category\": \"business_metric\", \"item\": \"Rural Banking presence\", \"quote\": \"Widened reach through presence in 13 states\"}",
+   "{\"doc_id\": 95917, \"category\": \"business_metric\", \"item\": \"Rural Banking active borrower base\", \"quote\": \"Active borrower base of ~91,000 farmers\"}",
+   "{\"doc_id\": 95917, \"category\": \"business_metric\", \"item\": \"Commercial Banking client turnover limit\", \"quote\": \"small to mid-size corporates with turnover up to ` 1,500 crore\"}"
+  ]
+ },
+ {
+  "case": "MB0984",
+  "cls": "bank_transmission",
+  "level": "structured",
+  "question": "If the RBI cuts rates, what happens to HDFC Bank's NIM first and loan growth second, and how long is the lag?",
+  "v": "PARTIAL",
+  "hit": "lookups_docs.doc_find#0",
+  "quote": "since assets repriced faster than deposits there has been an impact on net interest margin",
+  "missing": "explicit RBI rate-cut causal link, loan-growth response, and lag duration",
+  "quote_ok": true,
+  "n_hits": 30,
+  "secs": 44.4,
+  "usage": {
+   "prompt_tokens": 3297,
+   "completion_tokens": 1212,
+   "total_tokens": 4509,
+   "prompt_tokens_details": {
+    "cached_tokens": 3264
+   },
+   "completion_tokens_details": {
+    "reasoning_tokens": 1155
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 33,
+     "output": 1212,
+     "reasoning": 1155,
+     "cache_read": 3264,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 38156, \"category\": \"sustainable finance\", \"item\": \"Sustainable finance portfolio as percentage of Bank's total book\", \"quote\": \"comprising about 28 per cent of Bank's total book\"}",
+   "{\"doc_id\": 38156, \"category\": \"financial\", \"item\": \"Capital Adequacy Ratio vs minimum requirement of 11.9%\", \"quote\": \"Capital Adequacy Ratio of 19.7%, well above the minimum requirement of 11.9%\"}",
+   "{\"doc_id\": 38156, \"category\": \"related_party_shares\", \"item\": \"Mr. Keshavan (director) shareholding in the Bank as on March 31, 2026\", \"quote\": \"Mr. Keshavan does not hold any shares of the Bank as on March 31, 2026\"}"
+  ]
+ },
+ {
+  "case": "MB0985",
+  "cls": "bank_transmission",
+  "level": "structured",
+  "question": "Bajaj Finance: does a rate cut help or hurt the cost of funds before it helps AUM, and what does history say?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit states whether a rate cut helps or hurts cost of funds before AUM, or cites historical experience for Bajaj Finance.",
+  "quote_ok": false,
+  "n_hits": 14,
+  "secs": 5.0,
+  "usage": {
+   "prompt_tokens": 2067,
+   "completion_tokens": 725,
+   "total_tokens": 2792,
+   "completion_tokens_details": {
+    "reasoning_tokens": 679
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 2067,
+     "output": 725,
+     "reasoning": 679,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"file\": \"INTEGRATED_FILING_NBFC_INDAS_1428433_29042025085701_WEB.xml\", \"concept\": \"InterestEarned\", \"value\": 515485700000.0, \"unit\": \"INR\"}",
+   "{\"file\": \"INTEGRATED_FILING_NBFC_INDAS_1428433_29042025085701_WEB.xml\", \"concept\": \"InterestEarned\", \"value\": 138240500000.0, \"unit\": \"INR\"}",
+   "{\"file\": \"INTEGRATED_FILING_NBFC_INDAS_1428677_30042025123348_WEB.xml\", \"concept\": \"InterestEarned\", \"value\": 611635500000.0, \"unit\": \"INR\"}"
+  ]
+ },
+ {
+  "case": "MB1005",
+  "cls": "valuation_judgement",
+  "level": "corpus",
+  "question": "Tata Investment: is the market cap above or below the value of its listed portfolio, and how has that gap behaved?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit mentions Tata Investment, its market cap, listed portfolio value, or the gap between them.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.2,
+  "usage": {
+   "prompt_tokens": 682,
+   "completion_tokens": 135,
+   "total_tokens": 817,
+   "completion_tokens_details": {
+    "reasoning_tokens": 100
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 682,
+     "output": 135,
+     "reasoning": 100,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"EMIL\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-07\", \"snippet\": \" … g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 … \"}",
+   "{\"symbol\": \"POLYPLEX\", \"doc_type\": \"INVESTOR_PRESENTATION\", \"date\": \"2026-08-13\", \"snippet\": \" … 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 … \"}",
+   "{\"symbol\": \"POLYPLEX\", \"doc_type\": \"INVESTOR_PRESENTATION\", \"date\": \"2026-08-13\", \"snippet\": \" … 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and … \"}"
+  ]
+ },
+ {
+  "case": "MB1010",
+  "cls": "valuation_judgement",
+  "level": "corpus",
+  "question": "Power Grid: the regulated return sets the dividend. What happens to the payout if the capex cycle slows?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit addresses Power Grid, regulated return, dividend payout, or a slowing capex cycle.",
+  "quote_ok": false,
+  "n_hits": 5,
+  "secs": 2.4,
+  "usage": {
+   "prompt_tokens": 680,
+   "completion_tokens": 213,
+   "total_tokens": 893,
+   "completion_tokens_details": {
+    "reasoning_tokens": 176
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 680,
+     "output": 213,
+     "reasoning": 176,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"symbol\": \"EMIL\", \"doc_type\": \"FINANCIAL_RESULT\", \"date\": \"2026-08-07\", \"snippet\": \" … g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 … \"}",
+   "{\"symbol\": \"POLYPLEX\", \"doc_type\": \"INVESTOR_PRESENTATION\", \"date\": \"2026-08-13\", \"snippet\": \" … 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 … \"}",
+   "{\"symbol\": \"POLYPLEX\", \"doc_type\": \"INVESTOR_PRESENTATION\", \"date\": \"2026-08-13\", \"snippet\": \" … 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and … \"}"
+  ]
+ },
+ {
+  "case": "MB1011",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "ITC: how much of the dividend is covered by the cigarette cash flow once the FMCG reinvestment is funded?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit contains ITC dividend coverage, cigarette cash flow, or FMCG reinvestment funding data.",
+  "quote_ok": false,
+  "n_hits": 15,
+  "secs": 2.7,
+  "usage": {
+   "prompt_tokens": 1618,
+   "completion_tokens": 224,
+   "total_tokens": 1842,
+   "completion_tokens_details": {
+    "reasoning_tokens": 188
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1618,
+     "output": 224,
+     "reasoning": 188,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 45325, \"category\": \"business_mix\", \"item\": \"Non-cigarettes businesses constitute about two-thirds of Net Segment Revenue; grown over 40-fold since turn of millennium\", \"quote\": \"non-cigarettes businesses have ",
+   "{\"doc_id\": 45325, \"category\": \"csr_impact_assessment\", \"item\": \"63 projects with outlay of more than Rs 1 crore each during FY 2023-24 taken up for impact assessment by 12 external agencies; over 22,450 samples covered\",",
+   "{\"doc_id\": 45325, \"category\": \"operations\", \"item\": \"Fresh Food Business - cloud kitchens operating footprint\", \"quote\": \"expanded its operating footprint to appx. 70 cloud kitchens\"}"
+  ]
+ },
+ {
+  "case": "MB1013",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "NMDC: at the bottom of the iron-ore cycle, would the dividend be cut, and what did the last downturn show?",
+  "v": "PARTIAL",
+  "hit": "ar_facts#3",
+  "quote": "declared an Interim dividend of `2.50 per share",
+  "missing": "whether the dividend would be cut at the bottom of the iron-ore cycle and what the last downturn showed",
+  "quote_ok": true,
+  "n_hits": 20,
+  "secs": 6.5,
+  "usage": {
+   "prompt_tokens": 1870,
+   "completion_tokens": 833,
+   "total_tokens": 2703,
+   "completion_tokens_details": {
+    "reasoning_tokens": 775
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 1870,
+     "output": 833,
+     "reasoning": 775,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 121645, \"category\": \"operational\", \"item\": \"Iron ore grade\", \"quote\": \"produces high-quality iron ore with a premium grade of 64% Fe\"}",
+   "{\"doc_id\": 121645, \"category\": \"operational\", \"item\": \"Annual iron ore production\", \"quote\": \"highest-ever annual iron ore production of 53.15 million tonnes\"}",
+   "{\"doc_id\": 121645, \"category\": \"financials\", \"item\": \"Profit before tax\", \"quote\": \"Profit (before tax) of ` 10,155 crores in FY’26\"}"
+  ]
+ },
+ {
+  "case": "MB1028",
+  "cls": "valuation_judgement",
+  "level": "structured",
+  "question": "Tata Motors PV: the post-demerger base is thin. What is the first real support level, and is there enough history to trust it?",
+  "v": "NONE",
+  "hit": "",
+  "quote": "",
+  "missing": "No hit states a support level or post-demerger price history for Tata Motors PV.",
+  "quote_ok": false,
+  "n_hits": 20,
+  "secs": 2.7,
+  "usage": {
+   "prompt_tokens": 2084,
+   "completion_tokens": 233,
+   "total_tokens": 2317,
+   "completion_tokens_details": {
+    "reasoning_tokens": 196
+   },
+   "cost": 0,
+   "opencode": {
+    "billing_source": "go",
+    "list_cost": 0,
+    "allowance": 0,
+    "tokens": {
+     "input": 2084,
+     "output": 233,
+     "reasoning": 196,
+     "cache_read": 0,
+     "cache_write_5m": 0,
+     "cache_write_1h": 0
+    }
+   }
+  },
+  "top": [
+   "{\"doc_id\": 88889, \"category\": \"auditor_opinion\", \"item\": \"Consolidated audit opinion is unmodified (true and fair view), with overriding effect of Composite Scheme of Arrangement for demerger of commercial vehicles busin",
+   "{\"doc_id\": 88889, \"category\": \"emphasis_of_matter\", \"item\": \"Emphasis of Matter on note 50(I): Scheme for demerger of commercial vehicles business approved by NCLT vide order dated 25 August 2025; appointed date 1 July 2",
+   "{\"doc_id\": 88889, \"category\": \"key_audit_matters\", \"item\": \"KAM: Accounting for demerger of Commercial Vehicles Business (Note 50(I)) - significant judgements/estimates in determining fair value of demerged undertaking; "
+  ]
+ }
+]
