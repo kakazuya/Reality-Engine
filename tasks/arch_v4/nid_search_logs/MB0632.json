@@ -1,0 +1,129 @@
+{
+  "case_id": "MB0632",
+  "class_id": "mechanism_lag",
+  "verdict": "b",
+  "question": "Natural rubber and crude-based inputs rise together. How long before tyre makers' replacement-market price hikes reach the OEMs, and what does the OEM's own cost per vehicle do to two-wheeler and passenger-car volume two quarters later?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+  "entity": {
+    "resolved": null,
+    "isin": "INE06MM01016",
+    "matched": "NATURAL"
+  },
+  "search_terms": [
+    "commodity",
+    "raw material",
+    "input cost",
+    "spread",
+    "lag",
+    "natural",
+    "rubber",
+    "crude",
+    "based",
+    "inputs",
+    "rise",
+    "together"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 23,
+      "hits": [
+        {
+          "doc_id": 138666,
+          "category": "signal",
+          "item": "Auditor flags going-concern reliance on management financial support amid substantially eroded net worth",
+          "quote": "the continuous financial support from the management of"
+        },
+        {
+          "doc_id": 138666,
+          "category": "segment",
+          "item": "Company identified as single segment operating in agricultural produce, chemical and natural extracts industry",
+          "quote": "single segment company operating in agricultural produce"
+        },
+        {
+          "doc_id": 138666,
+          "category": "risk_hedging",
+          "item": "Commodity price risk or foreign exchange risk and hedging activities",
+          "quote": "Commodity price risk or foreign exchange risk and hedging activities: Not Applicable"
+        },
+        {
+          "doc_id": 138666,
+          "category": "msme",
+          "item": "No amount payable to Micro, Small and Medium Enterprises suppliers as on March 31, 2024",
+          "quote": "no any amount payable to the suppliers of Micro, Small and Medium Enterprises"
+        },
+        {
+          "doc_id": 138666,
+          "category": "share_capital",
+          "item": "Authorised share capital increased from 1,20,00,000 to 3,00,00,000 equity shares of Rs 10 each",
+          "quote": "Authorised share capital"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE06MM01016",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"commodity\" OR \"raw material\" OR \"input cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "SWELECTES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 applicable laws and regulations of the Dubai Multi Commodities Centre (\u201cDMCC\u201d) and the United Arab Emirates. The proposed \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (\u201cDMCC\u201d) Size: Share \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 e) The customs duty case relating to imported raw materials was decided in favour of the Company by \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 f) The customs duty case relating to imported raw materials was decided in favour of the Holding Company \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 23,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

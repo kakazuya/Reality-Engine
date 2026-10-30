@@ -1,0 +1,142 @@
+{
+  "case_id": "MB0638",
+  "class_id": "mechanism_lag",
+  "verdict": "b",
+  "question": "Gas and ammonia prices rise. Urea makers' cost goes up but the retail price is controlled, so the subsidy bill rises instead. Trace that to farm income, then to tractor and two-wheeler volumes, and say which of those lags we can actually measure.",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+  "entity": {
+    "resolved": "MAKERSL",
+    "isin": "INE987A01010",
+    "matched": "MAKERS"
+  },
+  "search_terms": [
+    "commodity",
+    "raw material",
+    "input cost",
+    "spread",
+    "lag",
+    "gas",
+    "ammonia",
+    "prices",
+    "rise",
+    "urea",
+    "makers",
+    "cost"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 206,
+      "hits": [
+        {
+          "doc_id": 54982,
+          "category": "related_party",
+          "item": "Makers Laboratories holds equity shares in Ipca Laboratories Ltd (related party, same promoter group)",
+          "quote": "The Company holds 960 equity shares (0.00%) in"
+        },
+        {
+          "doc_id": 54982,
+          "category": "related_party",
+          "item": "Ipca Laboratories Ltd does not hold any equity shares in Makers Laboratories",
+          "quote": "Ipca Laboratories Ltd. does not hold any equity shares"
+        },
+        {
+          "doc_id": 54982,
+          "category": "related_party",
+          "item": "Promoter Group shareholding in Makers Laboratories Ltd",
+          "quote": "The Promoter Group also holds 58.78% in the paid-up equity"
+        },
+        {
+          "doc_id": 54982,
+          "category": "auditor",
+          "item": "M/s Poddar & Co., Cost Accountants (FRN 101734) appointed as Cost Auditors for FY 2026-27",
+          "quote": "appointed M/s Poddar & Co., Cost Accountants (Firm Registration No. 101734)"
+        },
+        {
+          "doc_id": 54982,
+          "category": "cost_auditor",
+          "item": "Cost auditors of the Company",
+          "quote": "Poddar & Co. Cost Accountants"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE987A01010",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"commodity\" OR \"raw material\" OR \"input cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "SWELECTES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 applicable laws and regulations of the Dubai Multi Commodities Centre (\u201cDMCC\u201d) and the United Arab Emirates. The proposed \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (\u201cDMCC\u201d) Size: Share \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 e) The customs duty case relating to imported raw materials was decided in favour of the Company by \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 f) The customs duty case relating to imported raw materials was decided in favour of the Holding Company \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "commodity raw material input cost",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "truth_duckdb.bse_ann",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "ar_facts.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 206,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

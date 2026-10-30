@@ -1,0 +1,161 @@
+{
+  "case_id": "MB0877",
+  "class_id": "valuation_judgement",
+  "verdict": "b",
+  "question": "IREDA ran up a lot after listing. Is it too late to enter now, or does the loan-book growth still justify a fresh position?",
+  "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "IREDA",
+    "isin": "INE202E01016",
+    "matched": "symbol IREDA"
+  },
+  "search_terms": [
+    "price to book",
+    "pb",
+    "roe",
+    "payout",
+    "free cash flow",
+    "valuation",
+    "ireda",
+    "ran",
+    "lot",
+    "listing",
+    "too",
+    "late"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 9,
+      "rows": 177,
+      "hits": [
+        {
+          "sha256": "60c4d6ea8234ba7c544938db802c3ec4ec799e824ce888603fba0e07f1d80c10",
+          "page_no": 8,
+          "metric": "Ranked 2nd highest value-creator in India by Economic Times",
+          "value": 2.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "60c4d6ea8234ba7c544938db802c3ec4ec799e824ce888603fba0e07f1d80c10",
+          "page_no": 13,
+          "metric": "Projected investment - Transm.",
+          "value": 2.6,
+          "unit": "\u20b9 lakh Cr"
+        },
+        {
+          "sha256": "60c4d6ea8234ba7c544938db802c3ec4ec799e824ce888603fba0e07f1d80c10",
+          "page_no": 13,
+          "metric": "IREDA supported installations",
+          "value": 27.5,
+          "unit": "GW"
+        },
+        {
+          "sha256": "60c4d6ea8234ba7c544938db802c3ec4ec799e824ce888603fba0e07f1d80c10",
+          "page_no": 16,
+          "metric": "Misc (Trans. / Emerging Tech)\u00b3",
+          "value": 2520.0,
+          "unit": "\u20b9 Cr"
+        },
+        {
+          "sha256": "60c4d6ea8234ba7c544938db802c3ec4ec799e824ce888603fba0e07f1d80c10",
+          "page_no": 16,
+          "metric": "Misc (Trans. / Emerging Tech)\u00b3",
+          "value": 3.0,
+          "unit": "% GLP"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{},{},{},{},{},{}) AND concept IN ({},{})",
+      "filings": 12,
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"price to book\" OR \"pb\" OR \"roe\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "price to book pb roe",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 177,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

@@ -1,0 +1,129 @@
+{
+  "case_id": "MB0483",
+  "class_id": "float_income",
+  "verdict": "b",
+  "question": "Brokers earn float income on client balances. How much of Angel One's revenue is float income, and what happens when rates fall?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+  "entity": {
+    "resolved": "ANGELONE",
+    "isin": "INE732I01013",
+    "matched": "ANGEL ONE"
+  },
+  "search_terms": [
+    "client funding",
+    "float",
+    "bank balance",
+    "interest income",
+    "idle cash",
+    "brokers",
+    "earn",
+    "income",
+    "client",
+    "balances",
+    "much",
+    "angel"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE732I01013",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"client funding\" OR \"float\" OR \"bank balance\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 Trade ReceiVlbles cash and cas:h Eciu vale1ts Bank Balances other th.an Cash and Cash Eo.Ji \u2026 "
+        },
+        {
+          "symbol": "KENNAMET",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 905 Cash and cash equivalents 460 1,645 Bank balances other than cash and cash equivalents 12 9 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 Cash & bank balance + other bank balances + fixed deposits with bank + other investments in bonds and liquid funds \u2022 RoW \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 Trade ReceiVlbles cash and cas:h Eciu vale1ts Bank Balances other th.an Cash and Cash Eo.Ji \u2026 "
+        },
+        {
+          "symbol": "KENNAMET",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 905 Cash and cash equivalents 460 1,645 Bank balances other than cash and cash equivalents 12 9 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "client funding float bank balance",
+      "found": true,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann"
+      ],
+      "rows": 1,
+      "hits": [
+        {
+          "store": "document_chunks",
+          "doc_type": "transcript",
+          "date": "2020-11-01",
+          "doc_id": 1648,
+          "page": 16,
+          "page_count": 21,
+          "chunk_index": 10,
+          "quote": ". Please go ahead. Manoj Bahety: My question was on trade payables number on balance sheet Rs 1,542 Crores, is it mainly the float money of clients available with us? Vineet Agrawal: This is the clients funds that they place with us in anticipation of trades so as we grow the client additions and the overall client base grows, this pool will grow. Manoj Bahety: Just wanted to understand we also have some borrowings o",
+          "score": 1
+        }
+      ]
+    }
+  ],
+  "structured_rows": 0,
+  "own_document_hits": 1,
+  "corpus_hits": 5,
+  "evidence_level": "document",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

@@ -1,0 +1,132 @@
+{
+  "case_id": "MB0939",
+  "class_id": "valuation_judgement",
+  "verdict": "b",
+  "question": "DMart still trades at a high PE. What growth rate is the market assuming, and what has the company actually delivered?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
+  "entity": {
+    "resolved": null,
+    "isin": "INE944C01017",
+    "matched": "MARKET"
+  },
+  "search_terms": [
+    "price to book",
+    "pb",
+    "roe",
+    "payout",
+    "free cash flow",
+    "valuation",
+    "dmart",
+    "still",
+    "trades",
+    "high",
+    "growth",
+    "rate"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 163,
+      "hits": [
+        {
+          "doc_id": 129911,
+          "category": "governance",
+          "item": "Separate meeting of Independent Directors held on 31.01.2026; performance of non-independent directors evaluated",
+          "quote": "Independent Directors of the Company was held on 31.01.2026"
+        },
+        {
+          "doc_id": 129911,
+          "category": "corporate",
+          "item": "Corporate Identity Number (CIN)",
+          "quote": "L74140GJ1991PLC016555"
+        },
+        {
+          "doc_id": 129911,
+          "category": "corporate",
+          "item": "Listed on BSE Limited; scrip code 526891; ISIN INE944C01017; annual listing fee for FY2025-26 paid to BSE",
+          "quote": "Scrip Code: 526891 ISIN :INE944C01017"
+        },
+        {
+          "doc_id": 129911,
+          "category": "corporate",
+          "item": "Registrar & Share Transfer Agent: MUFG Intime India Private Limited (formerly Link Intime India Private Limited); transfers processed fortnightly",
+          "quote": "MUFG Intime India Private Limited"
+        },
+        {
+          "doc_id": 129911,
+          "category": "market_data",
+          "item": "BSE share price Apr-25: high, low, volume",
+          "quote": "Apr-25 16.49 12.16 7108"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE944C01017",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "filings.isin=INE944C01017",
+      "rows": 0,
+      "hits": [],
+      "note": "no XBRL filing for this ISIN"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"price to book\" OR \"pb\" OR \"roe\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 163,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

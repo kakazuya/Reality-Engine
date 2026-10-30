@@ -1,0 +1,79 @@
+{
+  "case_id": "MB0145",
+  "class_id": "hfc_securitisation",
+  "verdict": "b",
+  "question": "Listed HFCs mein securitised disbursement ka leader kaun hai Q1FY27 mein? QoQ aur YoY winner batao, lekin net NPA 2 percentage point se zyada na badhe.",
+  "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": null,
+    "isin": null,
+    "matched": null
+  },
+  "search_terms": [
+    "securitisation",
+    "securitization",
+    "assigned loans",
+    "sell down",
+    "housing loan",
+    "listed",
+    "hfcs",
+    "securitised",
+    "disbursement",
+    "leader",
+    "kaun",
+    "q1fy27"
+  ],
+  "searches": [
+    {
+      "store": "structured",
+      "skipped": "no company resolved from the question"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"securitisation\" OR \"securitization\" OR \"assigned loans\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of Security"
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of Security \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Final guidelines would be issued post examination of the comments received; \u2022 Framework for Securitisation of Stressed Assets: Discussion \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 January 25, 2023 Discussion paper on securitisation of stressed assets framework (SSAF). February 17, 2023 Draft guidelines on \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "Economic_Survey",
+          "date": "2024-07-23",
+          "snippet": " \u2026 SAPCC State Action Plan on Climate Change SARFAESI Securitisation and Reconstruction of Financial Assets and Enforcement of Security \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 0,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "corpus",
+  "candidate_real_evidence": false,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

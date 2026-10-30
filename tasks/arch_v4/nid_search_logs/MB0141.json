@@ -1,0 +1,230 @@
+{
+  "case_id": "MB0141",
+  "class_id": "hfc_securitisation",
+  "verdict": "b",
+  "question": "Is Can Fin Homes (NSE: CANFINHOME) the leader in securitised disbursement among listed HFCs for Q1FY27, with net NPA up no more than 2 pp? Show the comparison.",
+  "registry_reason": "metric_key 'net_npa' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "CANFINHOME",
+    "isin": "INE477A01020",
+    "matched": "CAN FIN HOMES"
+  },
+  "search_terms": [
+    "securitisation",
+    "securitization",
+    "assigned loans",
+    "sell down",
+    "housing loan",
+    "fin",
+    "homes",
+    "canfinhome",
+    "leader",
+    "securitised",
+    "disbursement",
+    "among"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 2393,
+      "hits": [
+        {
+          "doc_id": 18575,
+          "category": "dividend",
+          "item": "Final dividend per equity share (face value Rs 2 each)",
+          "quote": "Final Dividend of `8.00 per equity share"
+        },
+        {
+          "doc_id": 18575,
+          "category": "signal",
+          "item": "Can Fin Vishwas housing loan scheme launched for informal-sector borrowers using alternative income assessment",
+          "quote": "developed a new product called - Can Fin Vishwas, Housing Loan Scheme"
+        },
+        {
+          "doc_id": 18575,
+          "category": "dividend",
+          "item": "Final dividend per equity share recommended by Board on April 24, 2026",
+          "quote": "recommended a final Dividend of `8/- per equity share"
+        },
+        {
+          "doc_id": 18575,
+          "category": "dividend",
+          "item": "Record date for entitlement to final dividend for FY 2025-26",
+          "quote": "Friday, July 03, 2026, is fixed as the 'Record Date'"
+        },
+        {
+          "doc_id": 18575,
+          "category": "csr",
+          "item": "Total CSR obligation for the financial year",
+          "quote": "Total CSR obligation for the financial year ((b)+(c)-(d))"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 116,
+      "hits": [
+        {
+          "doc_id": 18616,
+          "metric": "Can Fin Homes AUM growth",
+          "statement": null,
+          "quote": "We have indicated that we'll be looking at around 18% to 20% AUM growth is what we are projecting."
+        },
+        {
+          "doc_id": 18616,
+          "metric": "Can Fin Homes credit cost from write-offs",
+          "statement": null,
+          "quote": "No credit cost, we are talking about 10 bps only. We have so far not seen anything."
+        },
+        {
+          "doc_id": 18616,
+          "metric": "Can Fin Homes expected NPA portfolio",
+          "statement": null,
+          "quote": "while giving the guidance and projections, we had already indicated that the NPA we will be considering for the working would be 0.7%, and we don't expect that to go beyond that."
+        },
+        {
+          "doc_id": 18616,
+          "metric": "Can Fin Homes cost-to-income ratio",
+          "statement": null,
+          "quote": "but you can expect it to be somewhere in the 17.5% to 18%."
+        },
+        {
+          "doc_id": 18616,
+          "metric": "Can Fin Homes additional margin or spread upside from pending repricing",
+          "statement": null,
+          "quote": "From net-net, we might still have the -- because of this INR12,500 crores, you might still have on the entire book or somewhere in the range about 3 to 5 bps, it could probably go further from here."
+        }
+      ]
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 29,
+      "rows": 1539,
+      "hits": [
+        {
+          "sha256": "1dd5241c989bf97a4aa2376bc413bcf97f3fb7e85143241849e1233d1a2e021b",
+          "page_no": 3,
+          "metric": "Reach - Affordable Housing Loan Centers",
+          "value": 18.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "1dd5241c989bf97a4aa2376bc413bcf97f3fb7e85143241849e1233d1a2e021b",
+          "page_no": 6,
+          "metric": "Expertise gained over 38 years in housing finance",
+          "value": 38.0,
+          "unit": "years"
+        },
+        {
+          "sha256": "1dd5241c989bf97a4aa2376bc413bcf97f3fb7e85143241849e1233d1a2e021b",
+          "page_no": 9,
+          "metric": "Service in Can Fin",
+          "value": 32.0,
+          "unit": "Years"
+        },
+        {
+          "sha256": "1dd5241c989bf97a4aa2376bc413bcf97f3fb7e85143241849e1233d1a2e021b",
+          "page_no": 9,
+          "metric": "Service in Can Fin",
+          "value": 2.0,
+          "unit": "Year"
+        },
+        {
+          "sha256": "1dd5241c989bf97a4aa2376bc413bcf97f3fb7e85143241849e1233d1a2e021b",
+          "page_no": 9,
+          "metric": "Service in Can Fin",
+          "value": 1.0,
+          "unit": "month"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{}) AND concept IN ({},{})",
+      "filings": 7,
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"securitisation\" OR \"securitization\" OR \"assigned loans\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of Security"
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Secure Audio-video Meetings with Advanced Devices SARFAESI - Securitisation and Reconstruction of Financial Assets and Enforcement of Security \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 Final guidelines would be issued post examination of the comments received; \u2022 Framework for Securitisation of Stressed Assets: Discussion \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "RBI_Annual_Report",
+          "date": "2024-07-23",
+          "snippet": " \u2026 January 25, 2023 Discussion paper on securitisation of stressed assets framework (SSAF). February 17, 2023 Draft guidelines on \u2026 "
+        },
+        {
+          "symbol": "",
+          "doc_type": "Economic_Survey",
+          "date": "2024-07-23",
+          "snippet": " \u2026 SAPCC State Action Plan on Climate Change SARFAESI Securitisation and Reconstruction of Financial Assets and Enforcement of Security \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "securitisation securitization assigned loans",
+      "found": true,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann"
+      ],
+      "rows": 1,
+      "hits": [
+        {
+          "store": "document_chunks",
+          "doc_type": "ar",
+          "date": "2026-07-06",
+          "doc_id": 39306,
+          "page": null,
+          "page_count": null,
+          "chunk_index": 292,
+          "quote": "(II) On-balance sheet exposures towards Credit Enhancements (4) Amount of exposures to securitisation transactions other than MRR (I) Off-balance sheet exposures towards Credit Enhancements (a) Exposure to own securitizations (b) Exposure to third party securitisations (II) On-balance sheet exposures towards Credit Enhancements (a) Exposure to own securitisations (b) Exposure to third party securitisations Details of",
+          "score": 1
+        }
+      ]
+    }
+  ],
+  "structured_rows": 4048,
+  "own_document_hits": 1,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

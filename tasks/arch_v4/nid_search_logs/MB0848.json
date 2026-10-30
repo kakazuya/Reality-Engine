@@ -1,0 +1,98 @@
+{
+  "case_id": "MB0848",
+  "class_id": "free_float_weight",
+  "verdict": "b",
+  "question": "Micro-cap names under Rs 20 look cheap \u2014 is that value, or just a float too small to trust?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
+  "entity": {
+    "resolved": null,
+    "isin": "INE352A01017",
+    "matched": "VALUE"
+  },
+  "search_terms": [
+    "free float",
+    "float",
+    "promoter",
+    "public shareholding",
+    "weight",
+    "micro",
+    "cap",
+    "names",
+    "look",
+    "cheap",
+    "value",
+    "just"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE352A01017",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"free float\" OR \"float\" OR \"promoter\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "KMEW",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 The Promoter Group infused approximately 215 Crores towards the issuance of Warrants, while the balance amount of approximately \u2026 "
+        },
+        {
+          "symbol": "ADVENZYMES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 for his outstanding contribution to the implementation and promotion of the Atal Pension Yojana. Prior to his appointment \u2026 "
+        },
+        {
+          "symbol": "LLOYDSENGG",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-06",
+          "snippet": " \u2026 Whether the promoter/ promoter group/ group companies have any interest in this transaction? If yes, nature of interest \u2026 "
+        },
+        {
+          "symbol": "SWELECTES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 as per SEBI LODR Regulations and whether the promoter/ promoter the Listed entity at present holds 100% equity \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 1/- each, fully paid-up, to Promoters and Non-Promoters. These allotments resulted from the warrant holders exercising \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 0,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "corpus",
+  "candidate_real_evidence": false,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

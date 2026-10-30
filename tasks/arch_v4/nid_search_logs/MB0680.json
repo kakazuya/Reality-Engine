@@ -1,0 +1,132 @@
+{
+  "case_id": "MB0680",
+  "class_id": "bank_transmission",
+  "verdict": "b",
+  "question": "The central bank changes the CRR. Trace it to the bank's lendable resources, then to the marginal corporate loan price, then to the capex it enables. How much of a 50 bps CRR cut is worth in NIM, and does the answer change the capex decision?",
+  "registry_reason": "metric_key 'loans' is not in the held concept vocabulary; metric_key 'nim' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": null,
+    "isin": "INE850R01014",
+    "matched": "CORPORATE"
+  },
+  "search_terms": [
+    "net interest margin",
+    "nim",
+    "credit cost",
+    "provision",
+    "treasury",
+    "central",
+    "bank",
+    "changes",
+    "crr",
+    "trace",
+    "lendable",
+    "resources"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 89,
+      "hits": [
+        {
+          "doc_id": 137248,
+          "category": "reserves",
+          "item": "Special Reserve Fund is a statutory provision created as per RBI guidelines u/s 45-IC of the RBI Act applicable to NBFC companies",
+          "quote": "Reserve Fund represents a statutory provisions created as per the RBI guidelines"
+        },
+        {
+          "doc_id": 137248,
+          "category": "director_changes",
+          "item": "Niravkumar Chandreshkumar Parikh resigned as Managing Director & CFO w.e.f. 18 October 2024",
+          "quote": "resigned from the post of Managing Director and Chief Financial Officer"
+        },
+        {
+          "doc_id": 137248,
+          "category": "director_changes",
+          "item": "Manoj Purushottam Rasania appointed MD & CFO w.e.f. 18 October 2024, resigned w.e.f. 2 May 2025",
+          "quote": "appointed as Managing Director and Chief Financial Officer \u2026 resigned"
+        },
+        {
+          "doc_id": 137248,
+          "category": "director_changes",
+          "item": "Vishal Jethabhai Nayak appointed Managing Director w.e.f. 11 April 2025",
+          "quote": "appointed as Managing Director of the company w.e.f. 11th April 2025"
+        },
+        {
+          "doc_id": 137248,
+          "category": "director_changes",
+          "item": "Sunitha Thumu resigned as Independent Director w.e.f. 15 July 2024",
+          "quote": "resigned from the post of Non-Executive and Independent Director"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "deck_sources.isin=INE850R01014",
+      "rows": 0,
+      "hits": [],
+      "note": "no deck for this ISIN"
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "filings.isin=INE850R01014",
+      "rows": 0,
+      "hits": [],
+      "note": "no XBRL filing for this ISIN"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"net interest margin\" OR \"nim\" OR \"credit cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Ill, Next to Telephone Bhavan, Secretariat Road, Opp. NIMS Hospital, Punjagutta Main Road, New Delhi - 110024. Ph : 011 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 89,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

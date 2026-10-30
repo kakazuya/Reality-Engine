@@ -1,0 +1,151 @@
+{
+  "case_id": "MB0682",
+  "class_id": "mechanism_lag",
+  "verdict": "b",
+  "question": "The repo goes up and car loans get dearer. Trace it to the EMI, then to the monthly payment at the entry price point, then to volumes for the entry segment versus the premium. Which listed OEM is most exposed to the entry segment?",
+  "registry_reason": "metric_key 'loans' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": "PREMIUM",
+    "isin": "INE0M1F01011",
+    "matched": "PREMIUM"
+  },
+  "search_terms": [
+    "commodity",
+    "raw material",
+    "input cost",
+    "spread",
+    "lag",
+    "repo",
+    "goes",
+    "car",
+    "loans",
+    "get",
+    "dearer",
+    "trace"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 2,
+      "rows": 21,
+      "hits": [
+        {
+          "sha256": "24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c",
+          "page_no": 27,
+          "metric": "Raw material expenses",
+          "value": 15.04,
+          "unit": "\u20b9 Cr"
+        },
+        {
+          "sha256": "24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c",
+          "page_no": 27,
+          "metric": "Raw material expenses",
+          "value": 15.81,
+          "unit": "\u20b9 Cr"
+        },
+        {
+          "sha256": "24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c",
+          "page_no": 30,
+          "metric": "Raw material expenses",
+          "value": 32.92,
+          "unit": "\u20b9 Cr"
+        },
+        {
+          "sha256": "24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c",
+          "page_no": 30,
+          "metric": "Raw material expenses",
+          "value": 35.52,
+          "unit": "\u20b9 Cr"
+        },
+        {
+          "sha256": "24b32306fefccda423ebd1faad5df2a38fe649993aefe31c33aba762ae62ab2c",
+          "page_no": 30,
+          "metric": "Raw material expenses",
+          "value": 24.07,
+          "unit": "\u20b9 Cr"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "skipped": "class has no XBRL concept"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"commodity\" OR \"raw material\" OR \"input cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "SWELECTES",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 Other income Total Income Expenses Partlculars Cost of Raw materials and Components Consumed Purchase of Stock-in-Trade \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 applicable laws and regulations of the Dubai Multi Commodities Centre (\u201cDMCC\u201d) and the United Arab Emirates. The proposed \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 LGRF is a wholly owned subsidiary of the Company located at Dubai Multi Commodities Centre (\u201cDMCC\u201d) Size: Share \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 e) The customs duty case relating to imported raw materials was decided in favour of the Company by \u2026 "
+        },
+        {
+          "symbol": "MANALIPETC",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-13",
+          "snippet": " \u2026 f) The customs duty case relating to imported raw materials was decided in favour of the Holding Company \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "commodity raw material input cost",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 21,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

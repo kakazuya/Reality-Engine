@@ -1,0 +1,79 @@
+{
+  "case_id": "MB0608",
+  "class_id": "policy_incidence",
+  "verdict": "b",
+  "question": "If the semiconductor incentive doubles, which listed companies benefit first and which only in the second round?",
+  "registry_reason": "NSE publishes no free retro intraday bars",
+  "entity": {
+    "resolved": null,
+    "isin": null,
+    "matched": null
+  },
+  "search_terms": [
+    "duty",
+    "tariff",
+    "input cost",
+    "raw material",
+    "policy",
+    "semiconductor",
+    "incentive",
+    "doubles",
+    "listed",
+    "companies",
+    "benefit",
+    "first"
+  ],
+  "searches": [
+    {
+      "store": "structured",
+      "skipped": "no company resolved from the question"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"duty\" OR \"tariff\" OR \"input cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 Accordingly, we do not accept or assume any liability or any duty of care for any other purpose \u2026 "
+        },
+        {
+          "symbol": "512455",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-10",
+          "snippet": " \u2026 Accordingly, we do not accept or assume any liability or any duty of care for any other purpose \u2026 "
+        },
+        {
+          "symbol": "OIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Expenses (a) Excise Duty (b) Purchases of Stock-in-Trade (c) Changes in Inventories of Finished Goods (d \u2026 "
+        },
+        {
+          "symbol": "OIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Expenses (a) Excise Duty (b) Purchases of Stock-in-Trade (c) Changes in Inventories of Finished Goods (d \u2026 "
+        },
+        {
+          "symbol": "OIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Expenses (a) Cost of materials consumed (b) Excise Duty (c) Purchases of Stock-in-Trade (d) changes in \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 0,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "corpus",
+  "candidate_real_evidence": false,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

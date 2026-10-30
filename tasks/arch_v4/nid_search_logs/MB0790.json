@@ -1,0 +1,79 @@
+{
+  "case_id": "MB0790",
+  "class_id": "bank_transmission",
+  "verdict": "b",
+  "question": "An NBFC grows its AUM fast and its credit cost rises at the same time. Net growth against credit cost and say which listed lender's provisioning cycle is closest to turning.",
+  "registry_reason": "metric_key 'credit_cost' is not in the held concept vocabulary; metric_key 'loans' is not in the held concept vocabulary",
+  "entity": {
+    "resolved": null,
+    "isin": null,
+    "matched": null
+  },
+  "search_terms": [
+    "net interest margin",
+    "nim",
+    "credit cost",
+    "provision",
+    "treasury",
+    "nbfc",
+    "grows",
+    "aum",
+    "fast",
+    "credit",
+    "cost",
+    "rises"
+  ],
+  "searches": [
+    {
+      "store": "structured",
+      "skipped": "no company resolved from the question"
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"net interest margin\" OR \"nim\" OR \"credit cost\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-11",
+          "snippet": " \u2026 Block, Prestige Rai Towers, lnside Croma Building, Opp. NIMS, Punjagutta, Hyderabad - 500 082, T'S. Mobile : 99859 48569 \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 Ill, Next to Telephone Bhavan, Secretariat Road, Opp. NIMS Hospital, Punjagutta Main Road, New Delhi - 110024. Ph : 011 \u2026 "
+        },
+        {
+          "symbol": "534535",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 10't, B-Block, Prestige RaiTowers, ' Building, Opp. NIMS, Punjagutta, Hyderabad - )48569, Tel :040 - 23408569 #.ruo. : 25-105 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "skipped": "no company resolved from the question"
+    }
+  ],
+  "structured_rows": 0,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "corpus",
+  "candidate_real_evidence": false,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}

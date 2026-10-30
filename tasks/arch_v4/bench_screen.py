@@ -74,6 +74,14 @@ def timed(fn, repeat: int = 3) -> tuple[float, object]:
     return float(np.median(times)), out
 
 
+def standardise(M: np.ndarray) -> np.ndarray:
+    """z-score every column over the window: the screen's step 0, outside the timed region."""
+    mu = M.mean(axis=0, keepdims=True)
+    sd = M.std(axis=0, keepdims=True)
+    sd[sd == 0] = 1.0
+    return ((M - mu) / sd).astype(np.float32)
+
+
 # --------------------------------------------------------------------------- #
 # panel
 # --------------------------------------------------------------------------- #
@@ -166,17 +174,40 @@ def load_drivers(panel: dict) -> tuple[np.ndarray, list[str], dict]:
             continue
         cols.append(np.nanmean(panel["z"][:, cols_idx], axis=1).astype(np.float32))
         names.append(f"index:{code}")
-    D = np.column_stack([np.nan_to_num(c, nan=0.0) for c in cols]).astype(np.float32)
+    levels = np.column_stack([np.nan_to_num(c, nan=0.0) for c in cols]).astype(np.float32)
+    # The screen IS a correlation, so every driver is standardised once, here, outside the
+    # timed region.  Without it the gemm multiplies standardised returns by raw levels (a
+    # commodity level reaches 55,385) and the output is a cross-product, not a correlation.
+    level_max = float(np.abs(levels).max()) if levels.size else 0.0
+    D = standardise(levels)
+    # Regression guards for the defect this file shipped with.  A raw commodity level reaches
+    # 55,385; a standardised one does not.  If either assert fires, the screen is a
+    # cross-product again and every number below it is meaningless.
+    sd = D.std(axis=0)
+    live = sd >= 1e-6
+    assert float(np.abs(D).max()) < 50.0, \
+        f"driver matrix not standardised: max |value| = {float(np.abs(D).max()):,.0f}"
+    assert bool(live.any()) and bool(np.allclose(sd[live], 1.0, atol=1e-3)), \
+        "driver columns are not unit-variance after standardisation"
     build_s = time.perf_counter() - t0
     return D, names, {"build_s": build_s, "n_commodity": len(codes),
-                      "n_group": len(biggest), "membership_rows": len(members)}
+                      "n_group": len(biggest), "membership_rows": len(members),
+                      "level_max": level_max, "standardised": True,
+                      "flat_columns": int((~live).sum()),
+                      "index_codes": [code for code, _ in biggest],
+                      "index_pos": per_index}
 
 
 # --------------------------------------------------------------------------- #
 # the measured steps
 # --------------------------------------------------------------------------- #
 def screen_corr(Z: np.ndarray, D: np.ndarray, lag: int) -> np.ndarray:
-    """lagged cross-correlation of every company against every driver (the screen's inner loop)."""
+    """Lagged Pearson correlation of every company against every driver (the inner loop).
+
+    Both inputs are standardised, but the lag slice changes each column's mean, so the
+    normalisation is done here: without it the number is a cross-product and can leave
+    [-1, 1] — the defect this function now asserts against.
+    """
     Dz = np.nan_to_num(D, nan=0.0)
     if lag:
         a = np.nan_to_num(Z[lag:], nan=0.0)
@@ -184,8 +215,16 @@ def screen_corr(Z: np.ndarray, D: np.ndarray, lag: int) -> np.ndarray:
     else:
         a = np.nan_to_num(Z, nan=0.0)
         b = Dz
-    n = max(1, a.shape[0])
-    return (a.T @ b) / n
+    a = a - a.mean(axis=0, keepdims=True)
+    b = b - b.mean(axis=0, keepdims=True)
+    na = np.sqrt((a * a).sum(axis=0))
+    nb = np.sqrt((b * b).sum(axis=0))
+    na[na == 0] = np.nan
+    nb[nb == 0] = np.nan
+    out = (a.T @ b) / np.outer(na, nb)
+    worst = float(np.nanmax(np.abs(out))) if out.size else 0.0
+    assert worst <= 1.0 + 1e-5, f"screen value outside [-1, 1]: max |r| = {worst:.6g}"
+    return out
 
 
 def residualise(Z: np.ndarray, factors: np.ndarray) -> tuple[np.ndarray, float]:
@@ -208,6 +247,82 @@ def residualise(Z: np.ndarray, factors: np.ndarray) -> tuple[np.ndarray, float]:
     beta = np.linalg.solve(gram, Fz.T @ Zf)          # (k, N)
     resid = Zf - Fz @ beta
     return resid, time.perf_counter() - t0
+
+
+# --------------------------------------------------------------------------- #
+# false-discovery null: what does "max |corr| with no relationship" look like?
+# --------------------------------------------------------------------------- #
+def self_membership_mask(n: int, dn: list[str], isins: list[str],
+                         per_index: dict[str, list[int]]) -> np.ndarray:
+    """True where a pair is mechanically related: a company and its own index-group mean.
+
+    ``per_index`` already holds positions in the ``isins`` order, so no name lookup is needed
+    (that is the bug this note exists to stop reappearing).
+    """
+    mask = np.zeros((n, len(dn)), dtype=bool)
+    for j, name in enumerate(dn):
+        if not name.startswith("index:"):
+            continue
+        for i in per_index.get(name.split(":", 1)[1], []):
+            if 0 <= i < n:
+                mask[i, j] = True
+    return mask
+
+
+def null_block(Z: np.ndarray, D: np.ndarray, mask: np.ndarray | None = None,
+               reps: int = 20, seed: int = SEED) -> dict:
+    """Block (circular-shift) permutation null: one shift of every driver row, all drivers
+    together so the cross-driver structure is preserved and only the time alignment breaks."""
+    rng = np.random.default_rng(seed)
+    T = Z.shape[0]
+    worst = []
+    for _ in range(reps):
+        shift = int(rng.integers(1, T))
+        c = screen_corr(Z, np.roll(D, shift, axis=0), lag=0)
+        if mask is not None:
+            c = np.where(mask, np.nan, c)
+        worst.append(float(np.nanmax(np.abs(c))))
+    return {"reps": reps, "median": round(float(np.median(worst)), 4),
+            "p90": round(float(np.percentile(worst, 90)), 4),
+            "max": round(max(worst), 4)}
+
+
+def null_per_pair(Z: np.ndarray, D: np.ndarray, n_pairs: int = 2000, reps: int = 10,
+                  seed: int = SEED) -> dict:
+    """Per-pair permutation: each sampled pair gets its OWN shuffle of one series.
+
+    Only a sample of pairs is measured (the full 4,042 x 33 product x 10 shuffles is a
+    Python loop); the full set's expectation is the analytic max below.
+    """
+    rng = np.random.default_rng(seed)
+    T, N = Z.shape
+    nD = D.shape[1]
+    zn = np.nan_to_num(Z, nan=0.0)
+    dn = np.nan_to_num(D, nan=0.0)
+    worst = 0.0
+    for _ in range(reps):
+        for _ in range(n_pairs):
+            a = zn[:, int(rng.integers(N))]
+            b = dn[rng.permutation(T), int(rng.integers(nD))]
+            a = a - a.mean()
+            b = b - b.mean()
+            den = float(np.sqrt((a * a).sum() * (b * b).sum()))
+            if den:
+                worst = max(worst, abs(float(a @ b) / den))
+    return {"pairs_sampled": n_pairs, "reps": reps, "max": round(worst, 4)}
+
+
+def null_per_pair_full(T: int, n_pairs: int, reps: int = 200, seed: int = SEED) -> dict:
+    """Per-pair permutation over ALL pairs, as a maximum: one corr per pair is ~ t(T-2)/sqrt(t^2+T-2)
+    under the null, so the max over M independent pairs is sampled from that law."""
+    rng = np.random.default_rng(seed)
+    df = max(T - 2, 1)
+    out = []
+    for _ in range(reps):
+        t = rng.standard_t(df, n_pairs)
+        out.append(float(np.max(np.abs(t / np.sqrt(t * t + df)))))
+    return {"pairs": n_pairs, "median": round(float(np.median(out)), 4),
+            "p95": round(float(np.percentile(out, 95)), 4)}
 
 
 def adjacency(n: int = UNIVERSE_N, d: int = DRIVER_CEILING, seed: int = SEED,
@@ -249,13 +364,41 @@ def main(argv=None) -> int:
     rss_after_load = rss_mb()
 
     # ---- 1. the screen: residuals first, then lagged correlation -------------
-    fac = D[:, :20]                      # the 20 declared common factors
+    # The declared common factors are the market and the index groups (the last columns),
+    # not the leading commodity columns: a commodity level is a DRIVER, and stripping
+    # drivers out of the panel before testing them is how a real link disappears.
+    fac_idx = [i for i, name in enumerate(dnames) if not name.startswith("commodity:")][:20]
+    fac = D[:, fac_idx]
     resid, resid_s = residualise(Z, fac)
     one_s, _ = timed(lambda: screen_corr(resid, D, lag=0))
     ten_s, _ = timed(lambda: [screen_corr(resid, D, lag=lag) for lag in range(10)])
     full_s, _ = timed(lambda: (residualise(Z, fac)[0],
-                               [screen_corr(resid, D, lag) for lag in range(10)]))
+                               [screen_corr(resid, D, lag=lag) for lag in range(10)]))
     madds_per_lag = T * N * nD
+
+    # ---- 1b. what "max |corr| with no relationship" actually is -------------
+    memb = self_membership_mask(N, dnames, isins, dinfo["index_pos"])
+    obs = screen_corr(resid, D, lag=0)
+    # The defect the design records: with the leading commodity columns as the "factors",
+    # the index-group means are never residualised out, so a company and its own group mean
+    # stay near-collinear and the max-statistic null is set by that arithmetic, not by chance.
+    old_obs = screen_corr(residualise(Z, D[:, :20])[0], D, lag=0)
+    self_pair = lambda c: (round(float(np.nanmax(np.abs(np.where(memb, c, np.nan)))), 4)
+                           if memb.any() else 0.0)
+    null = {
+        "factors": [dnames[i] for i in fac_idx],
+        "pairs": int(np.isfinite(obs).sum()),
+        "self_membership_pairs": int(memb.sum()),
+        "self_membership_max_abs_corr_commodity_factors": self_pair(old_obs),
+        "self_membership_max_abs_corr_market_group_factors": self_pair(obs),
+        "observed_max_abs_corr": round(float(np.nanmax(np.abs(obs))), 4),
+        "observed_max_abs_corr_no_self": round(
+            float(np.nanmax(np.abs(np.where(memb, np.nan, obs)))), 4),
+        "block_all_pairs": null_block(resid, D, None),
+        "block_no_self_pairs": null_block(resid, D, memb),
+        "per_pair_sampled": null_per_pair(resid, D),
+        "per_pair_all_pairs": null_per_pair_full(T, int(np.isfinite(obs).sum())),
+    }
 
     # ---- 2. A^2 / A^3 on the full-universe edge matrix ----------------------
     A = adjacency()
@@ -296,12 +439,17 @@ def main(argv=None) -> int:
                   "load_s": round(panel["load_s"], 3)},
         "drivers": {"source": str(STATE_B.relative_to(DATA)), "columns": nD,
                     "commodity": dinfo["n_commodity"], "groups": dinfo["n_group"],
-                    "build_s": round(dinfo["build_s"], 3)},
+                    "build_s": round(dinfo["build_s"], 3),
+                    "standardised": dinfo["standardised"],
+                    "flat_columns": dinfo["flat_columns"],
+                    "level_max": round(dinfo["level_max"], 1)},
         "screen": {"madds_per_lag": int(madds_per_lag),
+                   "n_factors": int(fac.shape[1]),
                    "residualise_20f_s": round(resid_s, 4),
                    "one_lag_s": round(one_s, 4), "ten_lags_s": round(ten_s, 4),
                    "residualise_plus_ten_lags_s": round(full_s, 4),
                    "madds_per_s": round(rate, 1)},
+        "null": null,
         "graph": {"universe": UNIVERSE_N, "drivers": DRIVER_CEILING,
                   "density": 0.02, "edges": int(0.02 * UNIVERSE_N * DRIVER_CEILING),
                   "a2_s": round(a2_s, 5), "a3_s": round(a3_s, 5),
@@ -331,6 +479,7 @@ def main(argv=None) -> int:
 
 def render_md(res: dict, targets: dict, days: int) -> str:
     s, g, inc, ram = res["screen"], res["graph"], res["incremental"], res["ram"]
+    nul = res["null"]
     p, d = res["panel"], res["drivers"]
     L: list[str] = []
     A = L.append
@@ -348,14 +497,20 @@ def render_md(res: dict, targets: dict, days: int) -> str:
       f"index-membership groups) | {d['build_s']} s |")
     A("\nThe drivers are held series, not synthetic: World Bank commodity monthlies forward-"
       "filled onto the trading calendar, the equal-weight market return, and index-membership "
-      "group means (the pilot has no populated sector map, so membership stands in for it).\n")
+      "group means (the pilot has no populated sector map, so membership stands in for it). "
+      "Every driver column is standardised once, before the clock starts — without that the "
+      "gemm multiplies standardised returns by raw levels (a commodity level reaches "
+      f"{d['level_max']:,.0f} here) and the output is a cross-product, not a correlation.\n")
     A("## 2. Timings\n")
     A("| step | measured | note |\n|---|---:|---|")
     A(f"| one lag, full screen (N x D) | {s['one_lag_s']*1000:.1f} ms | "
       f"{s['madds_per_lag']:,} multiply-adds in one BLAS gemm |")
     A(f"| ten lags | {s['ten_lags_s']*1000:.1f} ms | ten gemms, the nightly per-driver sweep |")
-    A(f"| factor residualisation, 20 given factors | {s['residualise_20f_s']*1000:.1f} ms | "
+    A(f"| factor residualisation ({s['n_factors']} declared factors: market + index groups, "
+      f"OLS) | {s['residualise_20f_s']*1000:.1f} ms | "
       "OLS per company, `(F'F)^-1 F'Z`, linear in T x N x F |")
+    A(f"| declared factors used | {', '.join(nul['factors'])} | see §F.1 — the leading "
+      "commodity columns are drivers, not factors |")
     A(f"| **residualise + ten lags (full daily screen)** | "
       f"**{s['residualise_plus_ten_lags_s']*1000:.1f} ms** | what the nightly tier actually does |")
     A(f"| A^2 (2,000 x 500 bipartite -> 2,000 x 2,000) | {g['a2_s']*1000:.2f} ms | "
@@ -407,29 +562,59 @@ def render_md(res: dict, targets: dict, days: int) -> str:
       f"{ram['panel_mb']} MB once built, and the peak comes from materialising "
       f"{p['rows']:,} `(date, isin, close)` tuples before filling the array. Stream into a "
       "pre-allocated array and the working set is the panel size.\n")
-    A("## 5. GPU (GTX 1050 Ti, 4 GB) — what it would and would not change\n")
-    gpflops = 2.0
+    A("## 5. False-discovery null — which permutation gives an honest max |corr|\n")
+    A("An FDR pass needs the distribution of the **maximum** screen value when nothing is "
+      "related. Three nulls were measured on the residualised pilot panel, because the wrong "
+      "one inflates the threshold and hides every real link.\n")
+    A(f"- **observed** max |corr| = **{nul['observed_max_abs_corr']:.3f}** over "
+      f"{nul['pairs']:,} pairs. With the {nul['self_membership_pairs']:,} mechanical "
+      f"self-membership pairs excluded (a company and its own index-group mean) it is "
+      f"**{nul['observed_max_abs_corr_no_self']:.3f}**.")
+    A(f"  On those {nul['self_membership_pairs']:,} mechanical pairs alone the max is "
+      f"**{nul['self_membership_max_abs_corr_market_group_factors']:.3f}** with the market and "
+      f"index-group factors stripped, and "
+      f"**{nul['self_membership_max_abs_corr_commodity_factors']:.3f}** with the leading "
+      "commodity columns used as factors — which is the defect: a company and its own group "
+      "mean are near-collinear unless the group mean is residualised out, and then the "
+      "max-statistic null is set by that arithmetic rather than by chance.")
+    A(f"- **per-pair permutation** — each pair gets its own shuffle of one series, the textbook "
+      f"null: max |corr| = **{nul['per_pair_sampled']['max']:.3f}** on "
+      f"{nul['per_pair_sampled']['pairs_sampled']:,} sampled pairs x "
+      f"{nul['per_pair_sampled']['reps']} shuffles; over all {nul['pairs']:,} pairs the expected "
+      f"maximum is **{nul['per_pair_all_pairs']['median']:.3f}** (median of 200 draws from the "
+      f"t({p['days']}-2) null).")
+    A(f"- **block permutation** — one circular shift of every driver row, all drivers together, "
+      f"so the cross-driver structure and each driver's own autocorrelation survive and only the "
+      f"time alignment breaks: max |corr| = **{nul['block_all_pairs']['median']:.3f}** median / "
+      f"{nul['block_all_pairs']['max']:.3f} max over {nul['block_all_pairs']['reps']} shuffles "
+      f"on all pairs, and **{nul['block_no_self_pairs']['median']:.3f}** median / "
+      f"{nul['block_no_self_pairs']['max']:.3f} max once the mechanical pairs are dropped.")
+    A("\nThe design adopts the **block-permutation null on the pair set with the mechanical "
+      "self-membership pairs removed**. It is the only one of the three that keeps a driver's "
+      "own autocorrelation — which is what a false discovery on a forward-filled monthly "
+      "commodity series actually looks like — and the self-membership pairs are not tested at "
+      "all: that link is arithmetic, not evidence, and testing it would spend a false-discovery "
+      "slot on a definition.\n")
+    A(f"Factors used for the residualisation: {nul['factors']}.\n")
+    A("## 6. GPU (GTX 1050 Ti, 4 GB) — measured separately, in `bench_gpu.md`\n")
     A(f"The measured CPU throughput is {s['madds_per_s']/1e9:.1f} G multiply-adds/s "
-      f"(~{2*s['madds_per_s']/1e9:.1f} GFLOP/s). A GTX 1050 Ti is ~{gpflops:.0f} TFLOP/s fp32 "
-      f"peak, i.e. ~{gpflops*1e12/(2*s['madds_per_s']):.0f}x the measured rate before bus and "
-      "kernel-launch overhead.\n")
-    A("- **Where the GPU would win**: the weekly cold tier (many lags x many drivers x many "
-      "windows), A^k powers at full universe, and the dense screen when the entity count passes "
-      "~10k. The work is DGEMM/GEMV, so a `cupy` or `torch` port is mechanical.\n"
-      "- **Where it would not**: the hot path (single lookups, stored edges, a 3-hop beam walk) "
-      "is microseconds on the CPU; a CUDA context costs more than the answer. Same lesson as the "
-      "OCR experiment on this card: measure first. On this card GPU OCR lost to CPU.\n")
-    A("- **VRAM tiling**: the driver matrix is `T x D` (500 days x 500 drivers x fp32 = 1 MB); the "
-      "panel is `T x N` (500 x 4,000 x fp32 = 8 MB); the `N x N` covariance at 4,000 entities is "
-      "64 MB. Tiles are taken over the **row** axis: `rows_per_tile = 0.75 GB / (N * 4 bytes)` = "
-      f"{int(0.75*2**30/(4000*4)):,} days per tile at N=4,000, i.e. the whole window fits in one "
-      "tile with a 3 GB budget, and only the `N x N` products at >8,000 entities need splitting. "
-      "Accumulate in fp32, never fp64.\n")
-    A("- **Install (named, not done here)**: `cupy-cuda12x` (matches the CUDA 12 driver; a 4 GB "
-      "card needs no more) or `torch` with the CUDA 12 wheel. CPU fallback is the numpy path above, "
-      "kept as the reference implementation the GPU result is checked against (`np.allclose`, "
-      "1e-5, on one window before every cold run).\n")
-    A("## 6. What this does not measure\n")
+      f"(~{2*s['madds_per_s']/1e9:.1f} GFLOP/s). The device question is no longer a guess: "
+      "`bench_gpu.py` / `bench_gpu.md` ran 7 workloads as one function parameterised by the "
+      "array module (median of 5, `np.allclose` before timing).\n")
+    A("- **Where the GPU wins**: the nightly screen (4.32x at 4,042 companies x 1,650 drivers), "
+      "rolling windows (4.63x), and the weekly cold tier — permutations 14.51x, A^k 3.95x, "
+      "covariance + eigenvectors 5.22x. The crossings are far below the ~10k-entity guess this "
+      "section used to make: the screen is already 13.32x at the pilot size and 3.54x at 1,024 "
+      "companies.\n"
+      "- **Where it does not**: any per-call workload. The incremental one-day update is 0.45x "
+      "(1.47 ms CPU vs 3.25 ms GPU including transfer) and a cold CUDA context costs 0.80 s. The "
+      "hot path stays on the CPU because it is latency-shaped, not because the card is slow.\n")
+    A("- **Install (named, not required by the query path)**: `cupy-cuda12x` on the GTX 1050 Ti, "
+      "4 GB — a stated ceiling, so tiling is part of the test. Set `CUPY_CACHE_IN_MEMORY=1` in "
+      "sandboxed or read-only runs: the default kernel cache writes to `~/.cupy` and fails where "
+      "the home directory is not writable. The numpy path here stays the reference, checked "
+      "against any GPU result with `np.allclose` on one window before it is timed.\n")
+    A("## 7. What this does not measure\n")
     A("- Point-in-time stamping and `known_at` filtering cost (indexed SQL, measured separately in "
       "`tasks/arch_v3/SPEED_PLAN.md`: 0.01-9.6 ms per lookup).\n"
       "- The per-entity coverage check that decides NOT IN DATA for a claim topic (a lookup, not "

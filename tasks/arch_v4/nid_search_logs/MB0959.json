@@ -1,0 +1,185 @@
+{
+  "case_id": "MB0959",
+  "class_id": "valuation_judgement",
+  "verdict": "b",
+  "question": "ITC: between dividends and FMCG reinvestment, which one has earned the better return, and what does the last five years say?",
+  "registry_reason": "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
+  "entity": {
+    "resolved": "ITC",
+    "isin": "INE154A01025",
+    "matched": "ITC"
+  },
+  "search_terms": [
+    "price to book",
+    "pb",
+    "roe",
+    "payout",
+    "free cash flow",
+    "valuation",
+    "itc",
+    "between",
+    "dividends",
+    "fmcg",
+    "reinvestment",
+    "one"
+  ],
+  "searches": [
+    {
+      "store": "ar_facts",
+      "filter": "isin + category|item LIKE class terms",
+      "rows": 2758,
+      "hits": [
+        {
+          "doc_id": 45325,
+          "category": "signal",
+          "item": "Paperboards, Paper and Packaging performance impacted by low priced Chinese & Indonesian supplies in global markets including India, soft domestic demand and unprecedented surge in wood prices",
+          "quote": "impacted by low priced Chinese & Indonesian supplies"
+        },
+        {
+          "doc_id": 45325,
+          "category": "distribution",
+          "item": "Digitally enabled sales plus Modern Trade share of FMCG portfolio (excl. Education & Stationery)",
+          "quote": "now account for 34% of your Company's FMCG portfolio"
+        },
+        {
+          "doc_id": 45325,
+          "category": "operations",
+          "item": "Fresh Food Business - cloud kitchens operating footprint",
+          "quote": "expanded its operating footprint to appx. 70 cloud kitchens"
+        },
+        {
+          "doc_id": 45325,
+          "category": "segment_reporting",
+          "item": "Fresh Food Business reported under 'Others' segment for the first time, along with ITC Grand Central Hotel, Mumbai",
+          "quote": "being reported under the 'Others' segment for the first time"
+        },
+        {
+          "doc_id": 45325,
+          "category": "signal",
+          "item": "Education & Stationery Products Business faced subdued realisation amidst deflationary conditions due to low-priced paper imports and opportunistic play by local/regional players",
+          "quote": "subdued realisation amidst deflationary conditions due to low-priced paper imports"
+        }
+      ]
+    },
+    {
+      "store": "concall_facts.cc_items",
+      "filter": "isin + metric|statement LIKE terms",
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "deck_figures.facts",
+      "filter": "sha256 of the company's decks + metric LIKE terms",
+      "decks": 1,
+      "rows": 8,
+      "hits": [
+        {
+          "sha256": "77a7e8ed4c3a8738b0d89c3b8590b9ab34642d4840cbc4e8080055080ea0626f",
+          "page_no": 5,
+          "metric": "ITC MAARS",
+          "value": 2021.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "77a7e8ed4c3a8738b0d89c3b8590b9ab34642d4840cbc4e8080055080ea0626f",
+          "page_no": 5,
+          "metric": "ITC Hotels LEED Platinum certified",
+          "value": 2011.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "77a7e8ed4c3a8738b0d89c3b8590b9ab34642d4840cbc4e8080055080ea0626f",
+          "page_no": 5,
+          "metric": "ITC Sonar 1st hotel in the world to get carbon credits",
+          "value": 1.0,
+          "unit": "hotel"
+        },
+        {
+          "sha256": "77a7e8ed4c3a8738b0d89c3b8590b9ab34642d4840cbc4e8080055080ea0626f",
+          "page_no": 5,
+          "metric": "CII-ITC Centre for Sustainable Devpt.",
+          "value": 2006.0,
+          "unit": "-"
+        },
+        {
+          "sha256": "77a7e8ed4c3a8738b0d89c3b8590b9ab34642d4840cbc4e8080055080ea0626f",
+          "page_no": 49,
+          "metric": "ITC Field Teams",
+          "value": 1500.0,
+          "unit": "-"
+        }
+      ]
+    },
+    {
+      "store": "results_xbrl.facts",
+      "filter": "file IN ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}) AND concep",
+      "filings": 60,
+      "rows": 0,
+      "hits": []
+    },
+    {
+      "store": "intelligence_fts",
+      "match": "\"price to book\" OR \"pb\" OR \"roe\"",
+      "rows": 5,
+      "hits": [
+        {
+          "symbol": "EMIL",
+          "doc_type": "FINANCIAL_RESULT",
+          "date": "2026-08-07",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "INVESTOR_PRESENTATION",
+          "date": "2026-08-13",
+          "snippet": " \u2026 12% FY23 FY24 FY25 FY26 Q1FY27 ROE (With Cash & Cash Equivalents) ROE (Excluding Cash & Cash Equivalents) Dividend and \u2026 "
+        },
+        {
+          "symbol": "EMIL",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 g.un/{lc~!>) on tht' Udinc<l benefit pb.rh, nt c tl.W 11.55) (OM) 2 \u2026 "
+        },
+        {
+          "symbol": "POLYPLEX",
+          "doc_type": "ANNOUNCEMENT",
+          "date": "2026-08-14",
+          "snippet": " \u2026 42 (14) 43 Key Financial Indicators (2/2) ROE Normalized1 ROCE 12% 3% 7% 3% 14% 15% 4 \u2026 "
+        }
+      ]
+    },
+    {
+      "store": "lookups_docs.doc_find",
+      "terms": "price to book pb roe",
+      "found": false,
+      "checked": [
+        "equity_intelligence.document_chunks",
+        "ar_facts.ar_facts",
+        "deck_figures.deck_sources",
+        "deck_figures.outputs",
+        "truth_duckdb.bse_ann",
+        "deck_figures.doc_pages",
+        "deck_figures.pages",
+        "deck_figures.facts",
+        "truth_duckdb.cc_docs",
+        "truth_duckdb.ar_docs",
+        "ar_facts.ar_docs",
+        "equity_intelligence.corporate_documents"
+      ],
+      "rows": 0,
+      "hits": []
+    }
+  ],
+  "structured_rows": 2766,
+  "own_document_hits": 0,
+  "corpus_hits": 5,
+  "evidence_level": "structured",
+  "candidate_real_evidence": true,
+  "review": "controller reviews this log; the ticket is NOT re-labelled here"
+}
