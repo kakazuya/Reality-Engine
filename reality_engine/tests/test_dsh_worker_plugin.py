@@ -311,13 +311,13 @@ class PluginTests(unittest.TestCase):
                 print(f"--- {name} ---")
                 print(path.read_text(encoding="utf-8", errors="replace") if path.exists() else "(missing)")
         record = json.loads(argv_path.read_text(encoding="utf-8"))
-        # The context pack is opt-in, so a default start carries only the
-        # caller's text plus the standing progress instruction; it is never a
-        # question.
-        self.assertEqual(job["context_pack"]["enabled"], False)
-        self.assertFalse(record["task"].startswith("## Worker context pack"))
+        # The context pack is on by default (Shivam, 2026-10-30), so a default
+        # start carries the pack header plus the standing instructions; none of
+        # them is a question.
+        self.assertEqual(job["context_pack"]["enabled"], True)
+        self.assertTrue(record["task"].startswith("## Worker context pack"))
         self.assertIn("Do the fake task", record["task"])
-        self.assertNotIn("CONTEXT.md", record["task"])
+        self.assertIn("CONTEXT.md", record["task"])
         self.assertIn("PROGRESS_NOTES.md", record["task"])
         self.assertNotIn("?", core.PROGRESS_NOTES_INSTRUCTION)
         self.assertEqual(
@@ -1448,6 +1448,14 @@ class PluginTests(unittest.TestCase):
         self._git("init", "-b", "main")
         self._git("config", "user.name", "dsh worker test")
         self._git("config", "user.email", "dsh-worker-test@example.invalid")
+        # The fake checkout carries the ignore rules the real one has: the
+        # supervisor's per-job scratch (``.tmp/``), this plugin's own job
+        # records (``runtime/``) and the nested worktree checkouts are never the
+        # worker's deliverable, and ``git add -A`` would otherwise stage them (a
+        # pycache mirror under .tmp even fails with "Filename too long").
+        (self.root / ".gitignore").write_text(
+            ".tmp/\nruntime/\nworktrees/\n", encoding="utf-8"
+        )
         (self.root / "README.md").write_text("initial\n", encoding="utf-8")
         self._git("add", "-A")
         self._git("commit", "-m", "initial")
@@ -1555,11 +1563,15 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(job["owner_session"], self._manager_instance().config.session_label)
         self.assertEqual(job["worktree"]["base"], "HEAD")
         self.assertEqual(job["data_root"], str((self.root / "reality_engine" / "data").resolve()))
-        # The pack is opt-in, so the one-line worktree preamble is first; it
-        # tells the worker gitignored data comes from REALITY_DATA_ROOT.
+        # The pack is on by default.  Its path is the MAIN checkout's absolute
+        # path: a gitignored pack is never in the worktree, so the worker is
+        # pointed at the main checkout's copy instead.
         brief = (job_dir / "brief.md").read_text(encoding="utf-8")
-        self.assertTrue(brief.startswith(core.WORKTREE_PREAMBLE), brief[:200])
-        self.assertNotIn("## Worker context pack", brief)
+        self.assertTrue(brief.startswith("## Worker context pack (auto-attached)"), brief[:200])
+        self.assertIn(
+            str(self.root / "tasks" / "worker_context" / "CONTEXT.md"), brief[:600]
+        )
+        self.assertIn(core.WORKTREE_PREAMBLE, brief)
         self.assertIn("Add worker file", brief)
         final = self._wait_status(job_id, lambda s: s["final"])
         self.assertEqual(final["phase"], "finished", final)
@@ -1822,6 +1834,7 @@ class PluginTests(unittest.TestCase):
             # 3.3 derived / promotion
             "truth_snapshot", "nightly_chain", "peer_substrate_promotion",
             "data_quality_gates", "query_speed_check",
+            "dedupe_raw", "universe_membership",
             # 3.4 ops
             "boot_recover", "resource_watchdog", "deepseek_heartbeat", "db_backup",
             "capacity_loop", "continuous_loop", "forecast_tester",
@@ -1829,7 +1842,7 @@ class PluginTests(unittest.TestCase):
             # worker orientation pack (Task 01)
             "worker_context",
         }
-        self.assertEqual(len(expected), 61)
+        self.assertEqual(len(expected), 63)
         self.assertEqual(set(registry["order"]), expected)
         self.assertEqual(registry["schema"], jobs.REGISTRY_SCHEMA)
         sql_checks = 0
@@ -1847,13 +1860,23 @@ class PluginTests(unittest.TestCase):
                 check = entry["success_check"]
                 if check.get("kind") == "file":
                     file_checks += 1
-                    self.assertEqual(check["path"], "tasks/worker_context/CONTEXT.md")
+                    # A file check names a job's own log/status file, or the
+                    # shared worker pack; never an arbitrary path.
+                    self.assertTrue(
+                        check["path"] == "tasks/worker_context/CONTEXT.md"
+                        or check["path"].startswith("reality_engine/data/logs/"),
+                        f"{name}: {check['path']}",
+                    )
                     self.assertGreater(check["max_age_hours"], 0)
                 else:
                     sql_checks += 1
                     self.assertTrue(check["sql"].lower().startswith(("select", "with")))
         self.assertGreaterEqual(sql_checks, 30, "most data jobs need SQL freshness checks")
-        self.assertEqual(file_checks, 1)
+        self.assertEqual(file_checks, 2)
+        self.assertEqual(
+            registry["jobs"]["worker_context"]["success_check"]["path"],
+            "tasks/worker_context/CONTEXT.md",
+        )
         self.assertFalse(registry["jobs"]["concall_extraction"]["enabled"])
         self.assertTrue(registry["jobs"]["deck_figure_extraction"]["needs_gpu"])
 
@@ -2019,14 +2042,15 @@ class PluginTests(unittest.TestCase):
         self.assertTrue(any("Acceptance checks" in w for w in lint))
         self.assertTrue(any("Test command" in w for w in lint))
 
-    def test_start_worker_context_pack_is_opt_in_by_default(self):
-        # A pack file exists, but a start without context_pack must not attach it.
+    def test_start_worker_context_pack_is_on_by_default(self):
+        # A pack file exists and a start that does not pass the flag attaches it;
+        # context_pack=false is the opt-out.
         self._write_context_pack()
         started = self._manager_instance().start_worker(brief="default start")
         self.assertTrue(started["ok"], started)
-        self.assertEqual(started["context_pack"]["enabled"], False)
+        self.assertEqual(started["context_pack"]["enabled"], True)
         brief = (Path(started["status_path"]).parent / "brief.md").read_text(encoding="utf-8")
-        self.assertNotIn("## Worker context pack", brief)
+        self.assertTrue(brief.startswith("## Worker context pack"), brief[:300])
         self.assertIn("default start", brief)
 
     def test_start_worker_regenerates_stale_pack(self):

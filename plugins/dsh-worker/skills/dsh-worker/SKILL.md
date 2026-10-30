@@ -42,10 +42,11 @@ command(s)** · **Budget** (tool calls, paid $, wall time) · **Report format** 
 command(s) and returns `brief_lint:` warnings; they never block a start.
 
 The worker receives a standing header + the absolute
-`tasks/worker_context/CONTEXT.md` path before your brief only when
-`context_pack=true` is passed (opt-in, default false: A/B tests showed no
-accuracy or speed gain and ~30% more output tokens). The pack is the generated
-repo/data/test/sandbox map;
+`tasks/worker_context/CONTEXT.md` path before your brief by default; pass
+`context_pack=false` to send the brief only. The path is the MAIN checkout's,
+so a worktree worker gets the same pack. The pack is the generated
+repo/data/test/sandbox map (gitignored: `tasks/worker_context/CONTEXT.md` and
+`schemas/` are not source);
 regenerate it with `python -m reality_engine.scripts.build_worker_context` when
 the repo has moved on, and do not paste its contents into briefs.
 
@@ -59,9 +60,8 @@ the repo has moved on, and do not paste its contents into briefs.
   (default `None`; omit for pure heartbeat supervision, or pass an explicit
   value for a deliberate wall-clock cutoff), `followup_wait_seconds` (default
   0), `controller_lease_seconds` (default 1800, max 7200), `refresh_context`,
-  `context_pack` (default false; opt-in: `true` prepends the CONTEXT.md
-  header/path and regenerates the pack when older than 26 h; `false` sends the
-  brief only),
+  `context_pack` (default true: prepends the CONTEXT.md header/path and
+  regenerates the pack when older than 26 h; `false` sends the brief only),
   `progress_interval_seconds` (default 1200; `0` disables the supervisor's
   model-free progress digests), and `use_worktree`/`base` for an isolated
   worktree writer. `write_scope="workspace"` (default) writes the workspace and

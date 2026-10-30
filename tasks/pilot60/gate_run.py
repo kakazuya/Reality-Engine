@@ -402,21 +402,25 @@ def _latency(values: list[float]) -> tuple[float, float, float]:
     return pick(0.5), pick(0.95), ordered[-1]
 
 
+def _blocker_reason(row: dict) -> str:
+    """The first failing check of one row, short and stable (used by the tables)."""
+    if row.get("gate_recomputed"):
+        reason = row["gate_recomputed"][0]
+    elif row.get("blocker"):
+        reason = str(row["blocker"])
+    elif row.get("strict_reasons"):
+        reason = str(row["strict_reasons"][0])
+    else:
+        reason = "hop did not answer: " + "+".join(row.get("hops_failed") or ["no hop"])
+    return re.sub(r"\(.*", "", reason).strip()[:80]
+
+
 def _blockers(rows: list[dict], top: int = 15) -> str:
     groups: dict[str, list[dict]] = defaultdict(list)
     for row in rows:
         if row.get("strict_grade") == "ANSWERED":
             continue
-        if row.get("gate_recomputed"):
-            reason = row["gate_recomputed"][0]
-        elif row.get("blocker"):
-            reason = str(row["blocker"])
-        elif row.get("strict_reasons"):
-            reason = str(row["strict_reasons"][0])
-        else:
-            reason = "hop did not answer: " + "+".join(row.get("hops_failed") or ["no hop"])
-        reason = re.sub(r"\(.*", "", reason).strip()[:80]
-        groups[reason].append(row)
+        groups[_blocker_reason(row)].append(row)
     body = []
     for reason, members in sorted(groups.items(), key=lambda item: -len(item[1]))[:top]:
         fix = next((fix for pattern, fix in FIXES if pattern in reason),
@@ -424,6 +428,83 @@ def _blockers(rows: list[dict], top: int = 15) -> str:
         body.append([len(members), reason, fix,
                      ", ".join(str(row.get("mid")) for row in members[:3])])
     return _table(["cases", "blocker (first failing check)", "fix", "examples"], body)
+
+
+# The tracked, small artefact of a gate run: the jsonl rows it was built from are
+# regenerated every run and stay untracked; these counts are what a diff reads.
+GATE_SUMMARY = BENCH / "GATE_SUMMARY.json"
+
+
+def _rollup(rows: list[dict], key: str, top: int | None = None) -> dict[str, dict]:
+    """{value: {rows, answered, strict_pct}} for one grouping column."""
+    groups: dict[str, dict] = defaultdict(lambda: {"rows": 0, "answered": 0})
+    for row in rows:
+        value = row.get(key)
+        if isinstance(value, (list, tuple)):
+            value = value[0] if value else None
+        name = str(value) if value not in (None, "") else "unknown"
+        groups[name]["rows"] += 1
+        if row.get("strict_grade") == "ANSWERED":
+            groups[name]["answered"] += 1
+    ordered = sorted(groups.items(), key=lambda item: (-item[1]["rows"], item[0]))
+    if top:
+        ordered = ordered[:top]
+    return {
+        name: {
+            "rows": counts["rows"],
+            "answered": counts["answered"],
+            "answered_pct": round(100.0 * counts["answered"] / counts["rows"], 1)
+            if counts["rows"] else 0.0,
+        }
+        for name, counts in ordered
+    }
+
+
+def _summary_block(rows: list[dict]) -> dict:
+    grades = Counter(row.get("strict_grade") for row in rows)
+    answered = grades.get("ANSWERED", 0)
+    blockers = Counter(_blocker_reason(row) for row in rows
+                       if row.get("strict_grade") != "ANSWERED")
+    return {
+        "rows": len(rows),
+        "grades": dict(sorted(grades.items(), key=lambda item: -item[1])),
+        "answered": answered,
+        "answered_pct": round(100.0 * answered / len(rows), 1) if rows else 0.0,
+        "by_blocker": dict(blockers.most_common(20)),
+        "by_bucket": _rollup(rows, "bucket"),
+        "by_sector": _rollup(rows, "sector"),
+        "by_family": _rollup(rows, "family"),
+    }
+
+
+def write_gate_summary() -> Path:
+    """Write the tracked GATE_SUMMARY.json: counts by blocker, bucket, sector, family.
+
+    The full result jsonls (``GATE_RESULTS_*.jsonl``, ``RESULTS_HAND60*.jsonl``)
+    are gitignored — each run rewrites them and they cost ~5,600 changed lines per
+    gate commit.  This file is the comparison artefact that stays tracked.
+    """
+    sources = {
+        "bank_originals": BENCH / "GATE_RESULTS_originals_strict.jsonl",
+        "bank_instances": BENCH / "GATE_RESULTS_instances_strict.jsonl",
+        "hand60": HAND_RESULTS.with_name("RESULTS_HAND60_strict.jsonl"),
+    }
+    loaded = {name: _load(path) for name, path in sources.items()}
+    bank = loaded["bank_originals"] + loaded["bank_instances"]
+    summary = {
+        # No timestamp on purpose: identical inputs must produce a byte-identical
+        # file, so re-running the gate on unchanged results leaves git clean.
+        "sources": {name: {"path": str(sources[name].relative_to(REPO)),
+                           "rows": len(rows)}
+                    for name, rows in loaded.items()},
+        "note": "Counts only; the per-case jsonl rows are regenerated and gitignored. "
+                "Re-run `python tasks/pilot60/gate_run.py summary` to rebuild this file.",
+        "bank": _summary_block(bank),
+        "hand60": _summary_block(loaded["hand60"]),
+    }
+    GATE_SUMMARY.write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
+    print(f"wrote {GATE_SUMMARY} (bank {len(bank)} rows, hand60 {len(loaded['hand60'])})")
+    return GATE_SUMMARY
 
 
 def grade_bank() -> int:
@@ -740,13 +821,14 @@ def report() -> int:
     path = BENCH / "GATE_RUN_2026-10-29.md"
     path.write_text(text, encoding="utf-8")
     print(f"wrote {path}")
+    write_gate_summary()
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=("hand60", "bank", "grade", "sample40", "dump40",
-                                     "report"))
+                                     "report", "summary"))
     ap.add_argument("--limit-originals", type=int)
     ap.add_argument("--limit-instances", type=int)
     ap.add_argument("--shard", type=int, default=0)
@@ -763,6 +845,9 @@ def main(argv: list[str] | None = None) -> int:
                     args.resume, args.chunk, args.skip_file)
     if args.mode == "report":
         return report()
+    if args.mode == "summary":
+        write_gate_summary()
+        return 0
     if args.mode == "grade":
         return grade_bank()
     if args.mode == "dump40":

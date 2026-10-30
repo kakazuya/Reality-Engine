@@ -14,6 +14,13 @@ from pathlib import Path
 from typing import Any
 
 MAX_ENTRIES = 2000
+# The supervisor's per-job scratch dir inside the workspace (TMP/TEMP, pip/npm/
+# uv caches, PYTHONPYCACHEPREFIX).  It is never the worker's deliverable, and a
+# target repository need not gitignore it: a pycache mirror can carry paths past
+# Windows' 260-char limit, which makes ``git add -A`` fail with a long list of
+# "Filename too long" warnings.  Excluding it at the pathspec keeps the commit
+# about the worker's own files.
+SCRATCH_PATHSPEC = ":(exclude).tmp"
 # The empty tree.  Git can resolve it without the object being present for the
 # SHA-1 object format (every checkout in this repository); a SHA-256 repository
 # would refuse the command, which fails closed.
@@ -34,6 +41,9 @@ def _hidden() -> int:
 # worker-writable checkout may set any of them, and a snapshot must not execute
 # worker code either.  Command-line config wins over repository-local config,
 # including values pulled in with include.path.
+# Windows long paths for every git call, trusted or not: a worker's downloaded
+# wheels and a pycache mirror nest deeper than MAX_PATH.
+_LONG_PATH_CONFIG = ("-c", "core.longpaths=true")
 _SAFE_GIT_CONFIG = (
     # Hooks (pre-commit, post-checkout, post-index-change, ...) live in the git
     # dir, which a repo-root worker can write; point them at the null device.
@@ -64,6 +74,10 @@ _SAFE_GIT_CONFIG = (
     # An empty pager means no pager process is started at all.
     "-c",
     "core.pager=",
+    # Worker dependencies and caches land in <workspace>/.tmp, and a Windows
+    # pycache mirror easily passes MAX_PATH; without long-path support git
+    # refuses to add or delete those files ("Filename too long").
+    *_LONG_PATH_CONFIG,
 )
 # Environment hardening for every trusted invocation: no system/global config
 # (host hooksPath/filter/gpg/fsmonitor), no credential prompt, and attributes
@@ -114,7 +128,7 @@ def _run_git(
 
 
 def _git(repo: Path, args: list[str], timeout: float = 30.0) -> tuple[int, str, str]:
-    return _run_git(["git", "-C", str(repo), *args], timeout=timeout)
+    return _run_git(["git", "-C", str(repo), *_LONG_PATH_CONFIG, *args], timeout=timeout)
 
 
 def _git_env() -> dict[str, str]:
@@ -555,9 +569,16 @@ def commit_worktree(
     if code != 0:
         return fail("rev-parse --abbrev-ref", err or out)
     result["branch"] = out.strip()
-    code, out, err = trust(["status", "--porcelain=v1", "-z", "--untracked-files=all"])
+    code, out, err = trust(["status", "--porcelain=v1", "-z", "--untracked-files=all",
+                            "--", ".", SCRATCH_PATHSPEC])
     if code != 0:
         return fail("git status", err or out)
+    # ``git add`` refuses a pathspec that names an ignored path (the exclude
+    # magic still triggers the "paths are ignored" error), so only pass the
+    # exclusion when the repository does not already ignore the scratch dir.
+    add_exclude = (
+        [] if trust(["check-ignore", "-q", ".tmp"])[0] == 0 else [SCRATCH_PATHSPEC]
+    )
     dirty = bool(out.replace("\0", "").strip())
     if dirty:
         attribute_error = _attributes_driver_error(git_dir, stored_tree)
@@ -573,7 +594,7 @@ def commit_worktree(
             result["reason"] = "reparse_point_in_workspace"
             result["error"] = f"refused: reparse_point_in_workspace: {linked[:300]}"
             return result
-        code, out, err = trust(["add", "-A"])
+        code, out, err = trust(["add", "-A", "--", ".", *add_exclude])
         if code != 0:
             return fail("git add -A", err or out)
         code, out, err = trust(

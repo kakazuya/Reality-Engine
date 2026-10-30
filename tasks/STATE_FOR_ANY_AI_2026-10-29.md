@@ -46,10 +46,13 @@ Both leases run to 14:01 IST. `renew_worker_lease(job_id, 7200)` keeps them aliv
 
 Merge recipe:
 - `git merge --no-ff --no-commit dsh/<id>`;
-- for conflicts in `tasks/answer_bench/GATE_RESULTS_*` and `tasks/pilot60/RESULTS_HAND60*`, keep main's copy (`git checkout --ours`);
 - `git rm --cached PROGRESS_NOTES.md`;
 - run `python -m unittest discover -s reality_engine/tests -p "test_query_*.py"`;
 - commit with `By: Eagle`.
+
+(`tasks/answer_bench/GATE_RESULTS_*`, `tasks/pilot60/RESULTS_HAND60*`,
+`tasks/worker_context/CONTEXT.md` and the pilot-60 build artefacts are gitignored,
+so they no longer conflict or need a merge step.)
 
 RIPPLE2 builds `.tmp/sector_pit.db` in its worktree. Copy it to `reality_engine/data/pilot/pilot60/sector_pit.db`.
 

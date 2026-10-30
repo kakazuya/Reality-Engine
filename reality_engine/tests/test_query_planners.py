@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-import tempfile
 import shutil
 import unittest
 from pathlib import Path
@@ -51,8 +50,10 @@ def build_root(root: Path) -> None:
         "CREATE TABLE mkt_commodity_daily(date TEXT, commodity TEXT, ticker TEXT, "
         "close REAL, adj_close REAL)",
         "CREATE TABLE policy_events(id INTEGER, title TEXT, policy_name TEXT, sectors TEXT, "
-        "companies TEXT, direction_for_industry TEXT, effective_date TEXT, "
-        "published_at TEXT, quote TEXT)",
+        "companies TEXT, products TEXT, direction_for_industry TEXT, "
+        "effective_date TEXT, published_at TEXT, quote TEXT, instrument TEXT, "
+        "source_kind TEXT, source_id INTEGER)",
+        "CREATE TABLE raw_documents(doc_id INTEGER, source_type TEXT)",
         "CREATE TABLE index_membership(index_name TEXT, symbol TEXT, isin TEXT)",
     ], [
         ("INSERT INTO master_companies VALUES (?,?,?,?,?,?,?,?,?)",
@@ -66,9 +67,11 @@ def build_root(root: Path) -> None:
         ("INSERT INTO symbol_isin_history VALUES (?,?,?,?,?,?)",
          ("NSE", "BBB", PEER, "2019-01-01", "2026-06-26", 10)),
         ("INSERT INTO index_membership VALUES (?,?,?)", ("Nifty 50", "AAA", ISIN)),
-        ("INSERT INTO policy_events VALUES (?,?,?,?,?,?,?,?,?)",
+        ("INSERT INTO policy_events(id, title, policy_name, sectors, companies, "
+         "direction_for_industry, effective_date, published_at, quote, instrument) "
+         "VALUES (?,?,?,?,?,?,?,?,?,?)",
          (1, "Copper duty cut", "copper duty", "Capital Goods", "", "positive",
-          "2026-05-01", "2026-04-25T10:00:00", "duty cut on copper")),
+          "2026-06-05", "2026-06-02T10:00:00", "duty cut on copper", "customs_duty")),
     ])
     con = sqlite3.connect(eq)
     for i, day in enumerate(("2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04",
@@ -169,6 +172,9 @@ def build_root(root: Path) -> None:
         for i, day in enumerate(("2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04")):
             dc.execute("INSERT INTO px_daily VALUES ('NSE','E1',? ,?, 'AAA', ?,?,?,?,?,1000,40.0)",
                        [day, ISIN, 100 + i, 101 + i, 99 + i, 100 + i, 100 + i])
+            # Both peers trade: COMPARE must not read a one-name snapshot as the market.
+            dc.execute("INSERT INTO px_daily VALUES ('NSE','E2',? ,?, 'BBB', ?,?,?,?,?,1000,40.0)",
+                       [day, PEER, 200 + i, 201 + i, 199 + i, 200 + i, 200 + i])
         dc.close()
     except Exception:  # noqa: BLE001 - duckdb is optional; SERIES falls back to SQLite
         pass
@@ -187,10 +193,21 @@ def case(**over):
     return base
 
 
-class PlannerFixtureTest:
+class PlannerFixtureTest(unittest.TestCase):
+    """Shared fixture.  Every planner test is plain pytest-style ``assert``.
+
+    Inheriting ``unittest.TestCase`` keeps the module discoverable by BOTH
+    runners: pytest collects it as before, and ``python -m unittest`` (the only
+    runner guaranteed present in the worker sandbox) no longer finds 0 tests.
+    """
     @classmethod
     def setUpClass(cls):
-        cls.tmp = Path(tempfile.mkdtemp(prefix="query_fixture_"))
+        # mkdtemp's private DACL denies sqlite writes in this sandbox; a plain
+        # mkdir under the worktree's .tmp inherits the workspace ACE.
+        base = Path(__file__).resolve().parents[2] / ".tmp"
+        cls.tmp = base / "test_query_fixture"
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+        cls.tmp.mkdir(parents=True, exist_ok=True)
         build_root(cls.tmp)
         cls.ctx = Ctx(root=cls.tmp)
         cls.planners = load_planners()
@@ -211,7 +228,9 @@ class TestResolve(PlannerFixtureTest):
     def test_resolve_at_as_of(self):
         hop = self.run_plan("resolve", self.slots())
         assert hop["ok"] is True and hop["rows"][0]["isin"] == ISIN
-        assert "symbol_isin_history" in hop["pit"]
+        # The identity comes from the symbol window; ``pit`` states the rule.
+        assert hop["rows"][0]["ref"].startswith("symbol_isin_history:")
+        assert any("symbol_isin_history" in table for table in hop["checked"])
 
     def test_resolve_unknown_entity_is_g1(self):
         hop = self.run_plan("resolve", {"symbol": "NOPE", "symbols": ["NOPE"]})
@@ -221,7 +240,14 @@ class TestResolve(PlannerFixtureTest):
 
 class TestFacts(PlannerFixtureTest):
     def test_revenue_fact_is_pit_capped(self):
+        # Q1FY27 ends 2026-06-30 but its XBRL filing is disseminated 2026-07-10:
+        # on the quarter-end decision day the figure is not knowable yet.
         hop = self.run_plan("FACTS", self.slots(question="AAA revenue Q1FY27"))
+        assert hop["ok"] is False
+        assert all("Revenue from operations" not in (row.get("item") or "")
+                   for row in hop["rows"])
+        hop = self.run_plan("FACTS", self.slots(question="AAA revenue Q1FY27"),
+                            as_of="2026-07-15")
         assert hop["ok"] is True
         assert any("Revenue from operations" in (row["item"] or "") for row in hop["rows"])
 
@@ -395,7 +421,7 @@ class TestEvidence(PlannerFixtureTest):
         self.ctx.overrides["doc_find"] = fake_doc_find
         try:
             hop = self.run_plan("EVIDENCE", self.slots(question="What products does AAA make?",
-                                                       answer_kind="text+quote"))
+                                                       answer_kind="text+quote", period=None))
         finally:
             self.ctx.overrides.pop("doc_find", None)
         assert hop["ok"] is True
@@ -416,19 +442,22 @@ class TestEvidence(PlannerFixtureTest):
 
 class TestCompare(PlannerFixtureTest):
     def test_peer_rank(self):
+        # A one-day window has no return to compare: the ask names a window.
         hop = self.run_plan("COMPARE", self.slots(question="AAA versus BBB: which has better "
                                                   "return over the window",
                                                   entities=[{"symbol": "AAA"}, {"symbol": "BBB"}],
-                                                  family=[8]))
+                                                  family=[8], period="June 2026"))
         assert hop["ok"] is True
         assert len(hop["rows"]) >= 2
 
 
 class TestRipple(PlannerFixtureTest):
     def test_policy_trigger_and_market(self):
+        # The duty was published 2026-04-25 (effective 2026-05-01); the fixture's
+        # price series is June, so the reaction window is that month: a return
+        # needs at least two sessions.
         hop = self.run_plan("RIPPLE", self.slots(question="copper duty cut beneficiaries",
-                                                 family=[18],
-                                                 period="2026-05-01"))
+                                                 family=[18], period="June 2026"))
         assert hop["ok"] is True
         assert "trigger" in hop["detail"]
 
@@ -449,7 +478,9 @@ class TestExpectations(PlannerFixtureTest):
 
 class TestAnswer(PlannerFixtureTest):
     def test_full_answer_and_zero_pit_violations(self):
-        out = answer(case(question="AAA revenue Q1FY27"), self.ctx, close=False)
+        # 2026-07-15 is after the Q1FY27 filing (disseminated 2026-07-10).
+        out = answer(case(question="AAA revenue Q1FY27", as_of="2026-07-15"),
+                     self.ctx, close=False)
         assert out["answer"] and not out["nid"]
         assert out["pit_violations"] == []
         assert out["plan"]["chain"][0] == "resolve"

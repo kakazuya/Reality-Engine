@@ -1,0 +1,449 @@
+{
+ "sources": {
+  "bank_originals": {
+   "path": "tasks\\answer_bench\\GATE_RESULTS_originals_strict.jsonl",
+   "rows": 1073
+  },
+  "bank_instances": {
+   "path": "tasks\\answer_bench\\GATE_RESULTS_instances_strict.jsonl",
+   "rows": 1608
+  },
+  "hand60": {
+   "path": "tasks\\pilot60\\RESULTS_HAND60_strict.jsonl",
+   "rows": 60
+  }
+ },
+ "note": "Counts only; the per-case jsonl rows are regenerated and gitignored. Re-run `python tasks/pilot60/gate_run.py summary` to rebuild this file.",
+ "bank": {
+  "rows": 2681,
+  "grades": {
+   "PARTIAL": 2268,
+   "BLOCKED_SCHEMA": 167,
+   "NOT_IN_DATA": 138,
+   "ANSWERED": 61,
+   "BLOCKED_TOOL": 47
+  },
+  "answered": 61,
+  "answered_pct": 2.3,
+  "by_blocker": {
+   "GATE ask_match: no row carries the asked concept": 1090,
+   "GATE ask_match: too few key terms of the ask": 241,
+   "hop failed: EVIDENCE": 239,
+   "GATE period_match: the EVIDENCE rows are outside the asked period": 148,
+   "hop failed: EXPECTATIONS": 85,
+   "hop failed: FACTS": 66,
+   "hop failed: SCREEN": 41,
+   "1 unrelated row": 40,
+   "hop failed: COMPARE": 39,
+   "hop failed: RIPPLE": 25,
+   "CASE_MAP blocker needs_new_table:chunks_v3: v0 measured only an adjacent held-da": 21,
+   "hop failed: EVENT": 21,
+   "hop failed: SERIES": 19,
+   "8 unrelated row": 18,
+   "CASE_MAP blocker needs_new_table:event_day0: v0 measured only an adjacent held-d": 18,
+   "no planner produced evidence for this ask": 14,
+   "CASE_MAP blocker needs_new_table:xbrl_concept_map: v0 measured only an adjacent ": 13,
+   "2 unrelated row": 11,
+   "CASE_MAP blocker needs_new_fetch:exchange_originals: v0 measured only an adjacen": 9,
+   "sub-question 2 not addressed: 'which XBRL concept and filing carry it'": 8
+  },
+  "by_bucket": {
+   "unknown": {
+    "rows": 1130,
+    "answered": 29,
+    "answered_pct": 2.6
+   },
+   "LARGE": {
+    "rows": 517,
+    "answered": 14,
+    "answered_pct": 2.7
+   },
+   "MICRO": {
+    "rows": 517,
+    "answered": 7,
+    "answered_pct": 1.4
+   },
+   "MID-SMALL": {
+    "rows": 517,
+    "answered": 11,
+    "answered_pct": 2.1
+   }
+  },
+  "by_sector": {
+   "unknown": {
+    "rows": 1073,
+    "answered": 29,
+    "answered_pct": 2.7
+   },
+   "General Diversified": {
+    "rows": 340,
+    "answered": 8,
+    "answered_pct": 2.4
+   },
+   "Capital Goods": {
+    "rows": 199,
+    "answered": 6,
+    "answered_pct": 3.0
+   },
+   "Financial Services": {
+    "rows": 156,
+    "answered": 4,
+    "answered_pct": 2.6
+   },
+   "Power": {
+    "rows": 89,
+    "answered": 3,
+    "answered_pct": 3.4
+   },
+   "Unclassified": {
+    "rows": 88,
+    "answered": 1,
+    "answered_pct": 1.1
+   },
+   "Metals & Mining": {
+    "rows": 85,
+    "answered": 3,
+    "answered_pct": 3.5
+   },
+   "Other": {
+    "rows": 83,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Automobile and Auto Components": {
+    "rows": 74,
+    "answered": 2,
+    "answered_pct": 2.7
+   },
+   "Chemicals": {
+    "rows": 72,
+    "answered": 2,
+    "answered_pct": 2.8
+   },
+   "Telecommunication": {
+    "rows": 67,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Healthcare": {
+    "rows": 62,
+    "answered": 1,
+    "answered_pct": 1.6
+   },
+   "Fast Moving Consumer Goods": {
+    "rows": 58,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Construction Materials": {
+    "rows": 52,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Oil Gas & Consumable Fuels": {
+    "rows": 42,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Consumer Services": {
+    "rows": 35,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Realty": {
+    "rows": 33,
+    "answered": 1,
+    "answered_pct": 3.0
+   },
+   "Information Technology": {
+    "rows": 23,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Construction": {
+    "rows": 21,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Consumer Durables": {
+    "rows": 18,
+    "answered": 1,
+    "answered_pct": 5.6
+   },
+   "Services": {
+    "rows": 9,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Textiles": {
+    "rows": 2,
+    "answered": 0,
+    "answered_pct": 0.0
+   }
+  },
+  "by_family": {
+   "2": {
+    "rows": 507,
+    "answered": 29,
+    "answered_pct": 5.7
+   },
+   "1": {
+    "rows": 458,
+    "answered": 16,
+    "answered_pct": 3.5
+   },
+   "9": {
+    "rows": 251,
+    "answered": 5,
+    "answered_pct": 2.0
+   },
+   "3": {
+    "rows": 217,
+    "answered": 7,
+    "answered_pct": 3.2
+   },
+   "12": {
+    "rows": 190,
+    "answered": 1,
+    "answered_pct": 0.5
+   },
+   "16": {
+    "rows": 177,
+    "answered": 2,
+    "answered_pct": 1.1
+   },
+   "6": {
+    "rows": 156,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "14": {
+    "rows": 149,
+    "answered": 1,
+    "answered_pct": 0.7
+   },
+   "17": {
+    "rows": 140,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "15": {
+    "rows": 95,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "19": {
+    "rows": 62,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "10": {
+    "rows": 59,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "20": {
+    "rows": 57,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "18": {
+    "rows": 48,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "4": {
+    "rows": 47,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "11": {
+    "rows": 33,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "8": {
+    "rows": 20,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "13": {
+    "rows": 15,
+    "answered": 0,
+    "answered_pct": 0.0
+   }
+  }
+ },
+ "hand60": {
+  "rows": 60,
+  "grades": {
+   "PARTIAL": 57,
+   "ANSWERED": 3
+  },
+  "answered": 3,
+  "answered_pct": 5.0,
+  "by_blocker": {
+   "GATE ask_match: no row carries the asked concept": 40,
+   "hop failed: FACTS": 5,
+   "GATE period_match: the EVIDENCE rows are outside the asked period": 3,
+   "hop failed: EVIDENCE": 2,
+   "11 unrelated row": 2,
+   "GATE unit_match: the FACTS rows state no rupee unit for an absolute-value ask": 1,
+   "sub-question 2 not addressed: 'which XBRL concept and filing carry it'": 1,
+   "9 unrelated row": 1,
+   "GATE ask_match: too few key terms of the ask": 1,
+   "10 unrelated row": 1
+  },
+  "by_bucket": {
+   "LARGE": {
+    "rows": 20,
+    "answered": 2,
+    "answered_pct": 10.0
+   },
+   "MICRO": {
+    "rows": 20,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "MID-SMALL": {
+    "rows": 20,
+    "answered": 1,
+    "answered_pct": 5.0
+   }
+  },
+  "by_sector": {
+   "Capital Goods": {
+    "rows": 15,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Financial Services": {
+    "rows": 7,
+    "answered": 1,
+    "answered_pct": 14.3
+   },
+   "Power": {
+    "rows": 6,
+    "answered": 2,
+    "answered_pct": 33.3
+   },
+   "Telecommunication": {
+    "rows": 6,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Unclassified": {
+    "rows": 6,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "General Diversified": {
+    "rows": 4,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Metals & Mining": {
+    "rows": 3,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Automobile and Auto Components": {
+    "rows": 2,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Chemicals": {
+    "rows": 2,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Construction Materials": {
+    "rows": 2,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Consumer Services": {
+    "rows": 2,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Fast Moving Consumer Goods": {
+    "rows": 2,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Consumer Durables": {
+    "rows": 1,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Healthcare": {
+    "rows": 1,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "Other": {
+    "rows": 1,
+    "answered": 0,
+    "answered_pct": 0.0
+   }
+  },
+  "by_family": {
+   "2": {
+    "rows": 14,
+    "answered": 2,
+    "answered_pct": 14.3
+   },
+   "17": {
+    "rows": 9,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "1": {
+    "rows": 8,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "12": {
+    "rows": 8,
+    "answered": 1,
+    "answered_pct": 12.5
+   },
+   "4": {
+    "rows": 6,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "14": {
+    "rows": 5,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "9": {
+    "rows": 4,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "15": {
+    "rows": 2,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "3": {
+    "rows": 2,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "10": {
+    "rows": 1,
+    "answered": 0,
+    "answered_pct": 0.0
+   },
+   "20": {
+    "rows": 1,
+    "answered": 0,
+    "answered_pct": 0.0
+   }
+  }
+ }
+}

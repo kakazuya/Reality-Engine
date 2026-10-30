@@ -120,10 +120,12 @@ def _safe(call) -> dict[str, Any]:
         "OS sandbox does not separate them: the named DB locks and the brief are "
         "the real scope. approved_by records who approved a data/full job. The "
         "supervisor creates <workspace>/.tmp and points TMP/TEMP/caches at it. "
-        "context_pack (default false; opt-in) prepends the generated "
+        "context_pack (default true) prepends the generated "
         "tasks/worker_context/CONTEXT.md path + standing header to the brief and "
         "regenerates the pack when it is older than 26 h (bounded 60 s; failure is "
-        "a warning). Briefs missing Goal / Acceptance checks / Test command(s) get "
+        "a warning); pass context_pack=false to opt out. The path is the main "
+        "checkout's, so a worktree worker gets the same pack by absolute path. "
+        "Briefs missing Goal / Acceptance checks / Test command(s) get "
         "brief_lint warnings, never a refusal. A mutating worker whose workspace is "
         "the main checkout root needs confirm_repo_root_write=true (refused as "
         "repo_root_write_requires_confirmation otherwise): such a worker can "
@@ -154,7 +156,7 @@ def start_worker(
     followup_wait_seconds: int = 0,
     controller_lease_seconds: int = 1800,
     refresh_context: bool = True,
-    context_pack: bool = False,
+    context_pack: bool = True,
     use_worktree: bool = False,
     base: str | None = None,
     test_cmd: str | None = None,
