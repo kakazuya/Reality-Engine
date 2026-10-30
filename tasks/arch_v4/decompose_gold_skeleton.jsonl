@@ -1,0 +1,290 @@
+{"mid": "MB0001", "split": "dev", "question": "AEROFLEX products + close on a date"}
+{"mid": "MB0021", "split": "dev", "question": "What was the delivery volume (delivered quantity, not total traded quantity which includes intraday) of Ather Energy Ltd on 13 April 2026 and 14 April 2026, NSE + BSE combined? Give NSE, BSE and the sum per day."}
+{"mid": "MB0041", "split": "dev", "question": "What did CESC (NSE: CESC)'s latest annual report (FY2026) disclose about a change in ownership or control, and where in the report?"}
+{"mid": "MB0061", "split": "dev", "question": "What is Goldiam International (NSE: GOLDIAM)'s P/B now, and how does it compare with the stored ratio? State the price date and the book-value date."}
+{"mid": "MB0081", "split": "dev", "question": "What was Avantel (NSE: AVANTEL)'s segment revenue for Q1FY27, with the absolute number for each reported segment?"}
+{"mid": "MB0101", "split": "dev", "question": "What was Laxmi Goldorna House (NSE: LGHL)'s 3-year price CAGR to 19 October 2026, using split- and dividend-adjusted closes? State both endpoint dates."}
+{"mid": "MB0121", "split": "dev", "question": "What is Fertilizers and Chemicals Travancore (NSE: FACT)'s public shareholding as of Sep 2026?"}
+{"mid": "MB0141", "split": "dev", "question": "Is Can Fin Homes (NSE: CANFINHOME) the leader in securitised disbursement among listed HFCs for Q1FY27, with net NPA up no more than 2 pp? Show the comparison."}
+{"mid": "MB0161", "split": "dev", "question": "For Motilal Oswal Nasdaq 100 ETF (MOFN100) (MON100, ISIN INF247L01AP3), explain the jump in 10-18 Sep 2026 and 18-28 Sep 2026 using the underlying index and FX, and give the NAV tracking error."}
+{"mid": "MB0181", "split": "dev", "question": "For the Repo rate hiked 25 bps to 5.50% (2026-10-07), what were the causes, and which source published it first?"}
+{"mid": "MB0201", "split": "dev", "question": "For the Scheme for promotion of coal/lignite gasification (2026-02-01), how does it differ from the earlier coal-gasification scheme, and which industries does it hit?"}
+{"mid": "MB0221", "split": "dev", "question": "For the startup tax holiday extension (2025-02-01), how has it played out so far for the affected industry, and what do companies say?"}
+{"mid": "MB0241", "split": "dev", "question": "What is The Great Eastern Shipping Company (NSE: GESHIP)'s promoter holding as of Sep 2026, per the latest filing?"}
+{"mid": "MB0261", "split": "dev", "question": "Per POCL Enterprises (NSE: POEL)'s deck of 14 August 2026, what are its key products, and which company did it mention as acquired for inorganic growth?"}
+{"mid": "MB0281", "split": "dev", "question": "What does page 10 of Data Patterns (India) (NSE: DATAPATTNS)'s investor presentation dated 30 July 2026 say about its manufacturing licence or capacity?"}
+{"mid": "MB0301", "split": "dev", "question": "What was SBI Cards and Payment Services (NSE: SBICARD)'s YTD high price in 2026, with the value and the date, and on which exchange?"}
+{"mid": "MB0321", "split": "dev", "question": "Per Jupiter Wagons (NSE: JWL)'s 21 August 2026 earnings call, what did it say about its MOU with its partner, and how will EBITDA margins progress?"}
+{"mid": "MB0341", "split": "dev", "question": "RVNL's BharatNet work: what execution timeline did management give, and what happens after the build phase?"}
+{"mid": "MB0361", "split": "dev", "question": "Konsi companies ne FY27 ke liye EBITDA margin recovery ka guidance diya hai, aur har ek ka evidence kya hai? (Hinglish)"}
+{"mid": "MB0381", "split": "dev", "question": "Milefur's statutory auditor resigned. When was it filed, and what reason was given?"}
+{"mid": "MB0401", "split": "dev", "question": "What is TruAlt's promoter pledge as a percentage of promoter holding in the latest quarter? terse: TRUALT pledge %"}
+{"mid": "MB0421", "split": "dev", "question": "On 4 June 2024 the Nifty 50 fell 5.93%. What was the sector dispersion that day, and what kind of market move was it?"}
+{"mid": "MB0441", "split": "dev", "question": "BHEL 4 Jun 2024 volume and delivery"}
+{"mid": "MB0461", "split": "dev", "question": "Aluminium was 3,285 on 30 September 2026. Who gains and who loses among Hindalco, Vedanta and a downstream user?"}
+{"mid": "MB0481", "split": "dev", "question": "How do food-delivery fees affect a quick-commerce operator's profitability, and which line items move?"}
+{"mid": "MB0501", "split": "dev", "question": "PMAY-U 2.0 approved another 1.93 lakh houses. Which sectors and listed names gain, and how big is that versus annual demand?"}
+{"mid": "MB0521", "split": "dev", "question": "Airline fleet expansion means more MRO and leasing. Which listed names capture that, and which part is NOT IN DATA?"}
+{"mid": "MB0541", "split": "dev", "question": "RVNL's order inflow in Q1 FY27 was Rs 5,417 crore. What is its order book cover in years, and how much of the book is slow-moving?"}
+{"mid": "MB0561", "split": "dev", "question": "Which companies put money into a subsidiary or JV last year, and was it disclosed as a related-party transaction?"}
+{"mid": "MB0581", "split": "dev", "question": "Which stocks had the highest turnover on 4 June 2024, and was it concentrated in PSU financials?"}
+{"mid": "MB0601", "split": "dev", "question": "If the monsoon fails, which listed sectors are most exposed, and in what order would the effect show up?"}
+{"mid": "MB0621", "split": "dev", "question": "How much of Titagarh does FII money own right now?"}
+{"mid": "MB0641", "split": "dev", "question": "Iron-ore fines rise after a mining-lease disruption. Pellet and sponge-iron makers reprice first, the integrated mills later, and the downstream steel-products makers last. Which listed name in the chain has the least room to wait?"}
+{"mid": "MB0661", "split": "dev", "question": "The export-proceeds realisation period is restored to nine months. Trace it to the exporter's FX conversion behaviour, then to forward premia, then to the importer's hedging cost. Who pays for the longer window?"}
+{"mid": "MB0681", "split": "dev", "question": "Rates fall and the housing-finance company's spread compresses, but prepayments rise. Net the spread compression against the faster book turnover and say which listed HFC's ROE actually improves."}
+{"mid": "MB0701", "split": "dev", "question": "Two trade agreements pull in opposite directions: a US tariff raises the landed cost, an EU agreement lowers it. For the same exporter, which destination wins on margin, and does the mix shift happen inside one season?"}
+{"mid": "MB0721", "split": "dev", "question": "Two CDMO players commission capacity in the same molecule class. Trace the capacity, then the pricing of the contract, then the API supplier's volume, then the innovator's sourcing decision. Which listed name carries the fixed cost if the contract is delayed?"}
+{"mid": "MB0741", "split": "dev", "question": "A stock is removed from an index. Trace it to the passive selling, then to the delivery percentage, then to the price recovery. How long does the flow effect last?"}
+{"mid": "MB0761", "split": "dev", "question": "A capacity is announced with a commissioning date. Across the last cycle, how much did the date slip, and what is the slippage measured against?"}
+{"mid": "MB0781", "split": "dev", "question": "The rupee weakens. An auto ancillary exports to Europe and imports components from China. Net the export gain against the import cost and say where the euro and the yuan move differently from the dollar."}
+{"mid": "MB0801", "split": "dev", "question": "Freight: the Baltic index, the container rate, or the charter rate first? Which one is published with a date usable in a backtest?"}
+{"mid": "MB0821", "split": "dev", "question": "An index provider announces an inclusion and an effective date. That is two day-0s. Build both 4-session windows and say which one can show leakage and which one can only show flow."}
+{"mid": "MB0841", "split": "dev", "question": "IRFC declared a Re 1.15 interim dividend with an ex-date of 23 Oct 2026 — who was on the register, and how did the stock trade into it?"}
+{"mid": "MB0861", "split": "dev", "question": "Gold ETFs or jewellers: which is the better proxy?"}
+{"mid": "MB0881", "split": "dev", "question": "PSU banks: which of the large ones has the best combination of NIM and credit cost this quarter, and which is most exposed to a slippage cycle?"}
+{"mid": "MB0901", "split": "dev", "question": "Jaiprakash Power: did the band change after the last base-price reset, and did the change coincide with the volume spike?"}
+{"mid": "MB0921", "split": "dev", "question": "Rail capex was front-loaded this year. Does that show up first in RVNL's revenue or in IRFC's loan book, and with what lag?"}
+{"mid": "MB0941", "split": "dev", "question": "Eternal (ex-Zomato) on EV/sales: what does the multiple imply about the path to durable profit, and which segment has to carry it?"}
+{"mid": "MB0961", "split": "dev", "question": "HDFC Bank has never bought back stock. Is retained capital earning above the cost of equity, and should the payout change?"}
+{"mid": "MB0981", "split": "dev", "question": "Tata Chemicals: the soda ash cycle has turned. How much of the margin is cycle and how much is the company's cost advantage?"}
+{"mid": "MB1001", "split": "dev", "question": "Mphasis: direct-client mix has risen. Did DSO and CFO/PAT improve with it, or did the mix just move revenue?"}
+{"mid": "MB1021", "split": "dev", "question": "For Eternal, what would prove the profitability path is broken rather than delayed?"}
+{"mid": "MB1041", "split": "dev", "question": "Suzlon's RSI stayed above 70 for weeks during the rally. How long can that persist before a 10% drawdown, historically?"}
+{"mid": "MB1061", "split": "dev", "question": "SBI saw a large OI addition at a strike above spot. Is that a ceiling the market expects, or a hedge?"}
+{"mid": "MB0005", "split": "test", "question": "DEEDEV Aug-2026 concall remark"}
+{"mid": "MB0009", "split": "test", "question": "VISHNU Note 5 of latest results + geo split"}
+{"mid": "MB0013", "split": "test", "question": "OMCs: record Q4 then loss Q1; earliest PIT signal"}
+{"mid": "MB0017", "split": "test", "question": "Second-hand electronics boom CY2026: who benefits"}
+{"mid": "MB0025", "split": "test", "question": "How many equity shares does Lumax Auto Technologies have, and what is the promoter holding, as of the latest data?"}
+{"mid": "MB0029", "split": "test", "question": "What did NSE: SAILIFE say about its newly commissioned facilities, as of the latest data?"}
+{"mid": "MB0033", "split": "test", "question": "What does NSE: AMIORG (now ACUTAAS) make, and what was its NSE close on 16 October 2026?"}
+{"mid": "MB0037", "split": "test", "question": "For all listed companies in Industrial Products, list what each company makes and its NSE close on 16 October 2026."}
+{"mid": "MB0045", "split": "test", "question": "JSW Steel (NSE: JSWSTEEL) ke latest annual report mein ownership ya control change ke baare mein kya likha hai? Kaunsa saal, kaunsa page, aur exactly kya disclosure hai?"}
+{"mid": "MB0049", "split": "test", "question": "As of 30 June 2026, what did Prism Johnson (NSE: PRSMJOHNSN)'s latest filed annual report say about a change in control or ownership?"}
+{"mid": "MB0053", "split": "test", "question": "What is NSE: PVR (now PVRINOX)'s business, and what segments and segment revenue did it report for the latest quarter?"}
+{"mid": "MB0057", "split": "test", "question": "For all listed companies in Consumer Durables, what are the reported business segments and their latest segment revenue?"}
+{"mid": "MB0065", "split": "test", "question": "Flexituff Ventures International (NSE: FLEXITUFF) ka P/B ratio kitna hai? Database mein stored ratio aur aaj ke price se nikaala hua ratio dono batao, aur farq kyun hai."}
+{"mid": "MB0069", "split": "test", "question": "As of 31 March 2026, what was Satia Industries (NSE: SATIA)'s P/B using the price and book value known by that date? Compare it with the stored ratio."}
+{"mid": "MB0073", "split": "test", "question": "What did NSE: SUVENPHAR (now COHANCE)'s management say about demand and margins on its 15 May 2026 earnings call, and who said it?"}
+{"mid": "MB0077", "split": "test", "question": "For all listed companies in Industrial Manufacturing, what did management say about demand and margins on their latest earnings calls, with quoted evidence?"}
+{"mid": "MB0085", "split": "test", "question": "NTPC Green Energy (NSE: NTPCGREEN) ka Q1FY27 segment revenue kitna tha, segment-wise absolute numbers ke saath? XBRL context ka source bhi do."}
+{"mid": "MB0089", "split": "test", "question": "As of 30 June 2026, what segment revenue had Brainbees Solutions (NSE: FIRSTCRY) reported for Q1FY27?"}
+{"mid": "MB0093", "split": "test", "question": "What was BSE scrip code 590003's net NPA % for Q1FY27, and which XBRL concept and filing carry it?"}
+{"mid": "MB0097", "split": "test", "question": "For all listed companies in Banks, rank the banks by net NPA % for Q1FY27, and state the source for each."}
+{"mid": "MB0105", "split": "test", "question": "eClerx Services (NSE: ECLERX) ka pichle 3 saal ka adjusted price CAGR kya raha? Start aur end date saaf-saaf likho, dividends aur splits adjust karke."}
+{"mid": "MB0109", "split": "test", "question": "As of 30 June 2026, what was GRM Overseas (NSE: GRMOVER)'s 3-year adjusted price CAGR?"}
+{"mid": "MB0113", "split": "test", "question": "Note 5 of NSE: ADANIGAS (now ATGL)'s Q1FY27 results — what does it say, and what is the geographic revenue split, consolidated?"}
+{"mid": "MB0117", "split": "test", "question": "For all listed companies in the industry, which companies disclose a geographic revenue split in their results notes for Q1FY27, and what is it?"}
+{"mid": "MB0125", "split": "test", "question": "M & B Engineering (NSE: MBEL) mein public shareholding Sep 2026 tak kitni hai? Promoter aur public dono ka percentage filing se batao."}
+{"mid": "MB0129", "split": "test", "question": "As of 30 June 2026, what was Digicontent (NSE: DGCONTENT)'s public shareholding per the latest filing on or before that date?"}
+{"mid": "MB0133", "split": "test", "question": "Why did the companies in the gold-jewellery theme move in Jun-Jul 2026? The event is referenced by the gold price series (USD/oz); name the PIB release or macro series you rely on."}
+{"mid": "MB0137", "split": "test", "question": "For all listed companies in gold-jewellery, what moved in Jun-Jul 2026, and what do the macro, PIB and company evidence say caused it?"}
+{"mid": "MB0145", "split": "test", "question": "Listed HFCs mein securitised disbursement ka leader kaun hai Q1FY27 mein? QoQ aur YoY winner batao, lekin net NPA 2 percentage point se zyada na badhe."}
+{"mid": "MB0149", "split": "test", "question": "As of 30 June 2026, which HFC looked like the securitisation leader for Q1FY27, and on what evidence?"}
+{"mid": "MB0153", "split": "test", "question": "For BSE scrip code 532543, when did the Q4FY26-to-Q1FY27 profit swing become visible point-in-time, and from which filing?"}
+{"mid": "MB0157", "split": "test", "question": "For all listed companies in Petroleum Products, which companies swung from profit in Q4FY26 to a loss in Q1FY27, and what was the earliest point-in-time evidence?"}
+{"mid": "MB0165", "split": "test", "question": "Bajaj Finserv Nifty Bank ETF (BANKBETF, ISIN INF0QA701714) 10-18 September 2026 ke beech kyun jump hua aur 18-28 September mein kyun gira? Underlying index, FX aur NAV tracking error ke saath batao."}
+{"mid": "MB0169", "split": "test", "question": "As of 17 September 2026, what was the move in Quantum Gold ETF (QGOLDHALF, ISIN INF082J01408) up to that date, and what tracking error was visible by then?"}
+{"mid": "MB0173", "split": "test", "question": "How sensitive was NSE: DHARAMSI (now DMCC) to Customs tariff rationalization - remove 7 tariff rates (1 February 2025) in the 60 days after it, and did its 60-day return correlation with tariff news turn negative over the following 12 months? Give the rolling correlations and the evidence."}
+{"mid": "MB0177", "split": "test", "question": "For all listed companies in Industrial Products, how sensitive were the members to Customs tariff rationalization - remove 7 tariff rates (1 February 2025), and did the 60-day return correlation turn negative over the following 12 months?"}
+{"mid": "MB0185", "split": "test", "question": "RBI ne 2026-10-07 ko repo rate kyun badhaya? Causes batao, aur ye news PIB ne publish kiya ya sirf RBI ne? Provenance ke saath."}
+{"mid": "MB0189", "split": "test", "question": "As of 6 October 2026, what did the record show about the causes of the RBI action of 2026-10-07, and who published it first?"}
+{"mid": "MB0193", "split": "test", "question": "Using the document reference PIB PRID 2190872 on 2025-11-17, what does the policy record say about electronics demand in CY2026, and which companies does it touch?"}
+{"mid": "MB0197", "split": "test", "question": "For all listed companies in electronics, what does the policy record say about demand in CY2026, and which companies does it touch?"}
+{"mid": "MB0205", "split": "test", "question": "Coal gasification ke naye draft aur pehle wale scheme mein kya farq hai? Kaunse ministries aur industries affected hain, aur PIB/Budget se evidence do."}
+{"mid": "MB0209", "split": "test", "question": "As of 31 December 2025, how did the coal-gasification drafts differ from the earlier scheme? Use only documents known by that date."}
+{"mid": "MB0213", "split": "test", "question": "What did BSE scrip code 531531 say about El Nino 2026 in its transcripts, and how are dairy peers handling the same risk?"}
+{"mid": "MB0217", "split": "test", "question": "For all listed companies in Fast Moving Consumer Goods, what did managements say about El Nino 2026, and how are they handling it?"}
+{"mid": "MB0225", "split": "test", "question": "Data-centre operations ke liye tax holiday ka kya outcome raha? Budget, PIB, policy_events aur data-centre companies ke comments se evidence do."}
+{"mid": "MB0229", "split": "test", "question": "As of 1 February 2026, how had the data-centre tax holiday played out, using only evidence known by that date?"}
+{"mid": "MB0233", "split": "test", "question": "What was NSE: DALALSTCOM (now KEEPLEARN)'s delivered quantity (not total traded quantity) on 10 June 2026 and 11 June 2026, NSE and BSE, with the combined total per day?"}
+{"mid": "MB0237", "split": "test", "question": "For all listed companies in Automobiles, what was the delivered quantity on NSE and BSE on 10 February 2026 and 11 February 2026, ranked?"}
+{"mid": "MB0245", "split": "test", "question": "Himadri Speciality Chemical (NSE: HSCL) mein promoter ki holding Sep 2026 tak kitni hai? Latest shareholding filing se number aur date batao."}
+{"mid": "MB0249", "split": "test", "question": "As of 30 June 2026, what was The Phoenix Mills (NSE: PHOENIXLTD)'s promoter holding per the latest shareholding filing on or before that date?"}
+{"mid": "MB0253", "split": "test", "question": "How many manufacturing facilities does NSE: ARISINFRA (now ARIS) report in its investor presentation dated 5 August 2026, and where are they?"}
+{"mid": "MB0257", "split": "test", "question": "For all listed companies in Textiles & Apparels, how many manufacturing facilities does each company report in its latest investor presentation?"}
+{"mid": "MB0265", "split": "test", "question": "Bharat Petroleum Corporation (NSE: BPCL) ke 22 July 2026 wale deck mein main products kya hain, aur inorganic growth ke liye kis company ka acquisition mention kiya gaya hai?"}
+{"mid": "MB0269", "split": "test", "question": "As of 30 June 2026, what did Jaro Institute of Technology Management and Research (NSE: JARO)'s latest deck disclose about its products and acquisitions?"}
+{"mid": "MB0273", "split": "test", "question": "How many equity shares does NSE: PROZONINTU (now PROZONER) have, and what is its promoter holding, as of the latest data? Say which filing each number comes from."}
+{"mid": "MB0277", "split": "test", "question": "For all listed companies in Auto Components, give the latest exact share count and promoter holding for each company, with the filing date."}
+{"mid": "MB0285", "split": "test", "question": "Bodhi Tree Multimedia (NSE: BTML) ke 14 August 2026 wale investor presentation ke page 5 par kya dikhaya gaya hai? Text ya quote ke saath batao."}
+{"mid": "MB0289", "split": "test", "question": "As of 30 September 2026, what did page 27 of Magnum Ventures (NSE: MAGNUM)'s latest deck filed by that date say?"}
+{"mid": "MB0293", "split": "test", "question": "What did NSE: IDFCBANK (now IDFCFIRSTB) say about its capacity expansion, and the completion timeline, on its 31 July 2026 earnings call?"}
+{"mid": "MB0297", "split": "test", "question": "For all listed companies in Electrical Equipment, what capacity-expansion timelines did management give on their latest earnings calls?"}
+{"mid": "MB0305", "split": "test", "question": "Lakshmi Mills Company (NSE: LAKSHMIMIL) ka 2026 ka YTD high price kya tha, aur kis date ko? NSE ya BSE, exchange bhi batao."}
+{"mid": "MB0309", "split": "test", "question": "As of 30 June 2026, what was GMR Power and Urban Infra (NSE: GMRP&UI)'s YTD high in 2026 up to that date, and on which day?"}
+{"mid": "MB0313", "split": "test", "question": "What did NSE: MFL (now EPIGRAL) say about its newly commissioned facilities, as of the latest data, and in which document type?"}
+{"mid": "MB0317", "split": "test", "question": "For all listed companies in Pharmaceuticals & Biotechnology, what have the companies said about newly commissioned facilities across decks, calls and annual reports?"}
+{"mid": "MB0325", "split": "test", "question": "L&T Technology Services (NSE: LTTS) ki 24 October 2025 wali call mein MOU partner kaun hai, aur EBITDA margin ka path kya bataya gaya? Plan aur numbers quote karo."}
+{"mid": "MB0329", "split": "test", "question": "As of 30 September 2026, what had Ecos (India) Mobility & Hospitality (NSE: ECOSMOBLTY) disclosed about its MOU and margin path?"}
+{"mid": "MB0333", "split": "test", "question": "Tata Power's renewables arm: how much capacity was already commissioned when management spoke, and how much was due 'in the next few weeks'?"}
+{"mid": "MB0337", "split": "test", "question": "APLAPOLLO 8 MT by FY28 — slipped or on track?"}
+{"mid": "MB0343", "split": "test", "question": "BEL ka QRSAM order kis approval ka wait kar raha hai, aur kab tak? (Hinglish)"}
+{"mid": "MB0345", "split": "test", "question": "Hindalco's renewable-energy capacity: how much does it have, of what mix, and what did management say it does to cost?"}
+{"mid": "MB0349", "split": "test", "question": "UltraTech says cement demand for the country grew about 4% in the quarter. What did management give as the reason the market is not stronger?"}
+{"mid": "MB0353", "split": "test", "question": "Amber Enterprises signed a manufacturing collaboration covering Oppo, OnePlus and Realme. When was it executed, and when does management expect it to matter?"}
+{"mid": "MB0355", "split": "test", "question": "SAIL ne Q1FY27 mein capital repairs aage khiske kyun, aur output kab recover hoga? (Hinglish)"}
+{"mid": "MB0357", "split": "test", "question": "TEXRAIL 100 leasing rakes — when?"}
+{"mid": "MB0365", "split": "test", "question": "Which managements said working capital or receivables from government clients worsened last quarter?"}
+{"mid": "MB0369", "split": "test", "question": "Which companies flagged input-cost inflation in Q1 FY27, and which input did each name?"}
+{"mid": "MB0373", "split": "test", "question": "Which companies said export demand recovered in the last two quarters, and which markets did they name?"}
+{"mid": "MB0377", "split": "test", "question": "Tata Steel's Q1 FY27 filing: did it carry an audit qualification, and what exactly does the stored field say?"}
+{"mid": "MB0385", "split": "test", "question": "What were HDFC Bank's key audit matters in its latest annual report, and did any repeat?"}
+{"mid": "MB0389", "split": "test", "question": "Which companies have filed a 'Declaration of unmodified opinion' for every quarter in the last four quarters?"}
+{"mid": "MB0393", "split": "test", "question": "Kaynes Technology filed a 'Change in Management' on 13 May 2026. Who changed, in what role, and when did it take effect?"}
+{"mid": "MB0397", "split": "test", "question": "Welcorp filed an intimation about its credit rating. Who took the action and when was the press release issued?"}
+{"mid": "MB0400", "split": "test", "question": "Which companies filed a director resignation in September 2026, and did any cite a reason?"}
+{"mid": "MB0405", "split": "test", "question": "Did any auditor resign citing 'other commitments' or lack of time in the last year? Kaun sa auditor ne reason diya? (Hinglish)"}
+{"mid": "MB0409", "split": "test", "question": "Which companies disclosed a tax or regulatory demand in Q2 FY27 that is large relative to their profit?"}
+{"mid": "MB0413", "split": "test", "question": "Which companies have operating cash flow persistently below reported profit, and for how many years?"}
+{"mid": "MB0417", "split": "test", "question": "Q1FY27 audit-qualification statements — how many"}
+{"mid": "MB0425", "split": "test", "question": "The Union Budget 2026-27 was presented on Sunday 1 February 2026. What did the Nifty 50 do on the first trading session after it?"}
+{"mid": "MB0429", "split": "test", "question": "On 24 February 2022 the Nifty 50 fell 4.78%. What was happening in crude, and does the crude move support a geopolitical read?"}
+{"mid": "MB0433", "split": "test", "question": "On 23 October 2026 FIIs bought and DIIs bought much more. Who absorbed the supply, and did the index fall anyway?"}
+{"mid": "MB0437", "split": "test", "question": "PB Fintech fell 36% on 24 September 2026. What was scheduled that day, and what did the exchange ask for afterwards?"}
+{"mid": "MB0445", "split": "test", "question": "Bharat Electronics fell 4.46% on 28 July 2026, the session after its results. Was the market reaction consistent with the numbers?"}
+{"mid": "MB0449", "split": "test", "question": "Titagarh rose 2.06% on 13 August 2026 after results the previous evening. Was the reaction large relative to its own volatility?"}
+{"mid": "MB0453", "split": "test", "question": "Copper is up about 29% from May 2024. Does that help Hindustan Copper more than it hurts the cable makers, and why?"}
+{"mid": "MB0457", "split": "test", "question": "Crude at $103: what happens to the oil marketing companies' marketing margin, and what did IOC or BPCL say about under-recovery?"}
+{"mid": "MB0465", "split": "test", "question": "A copper spike hits cable makers, who sell to EPC contractors on fixed-price contracts. Who eats the loss, and how do you prove it?"}
+{"mid": "MB0469", "split": "test", "question": "RBI raised the repo by 50bp to 5.9% on 30 September 2022. What does that do to a vehicle-finance NBFC's spread, and how fast?"}
+{"mid": "MB0473", "split": "test", "question": "Muthoot's cost of funds rises with the repo. How does that interact with the gold-loan yield cap, and who bears it?"}
+{"mid": "MB0477", "split": "test", "question": "Repo up 250bp over two years: how would an auto-finance NBFC's spread move, and what does Bajaj Finance's disclosure show?"}
+{"mid": "MB0485", "split": "test", "question": "Fuel is the largest variable cost for an airline. At what load factor does a marginal flight turn contribution-positive, and what does IndiGo disclose?"}
+{"mid": "MB0489", "split": "test", "question": "Paint companies talk about premiumisation. What does that do to gross margin per litre, and can you measure it from the filings?"}
+{"mid": "MB0493", "split": "test", "question": "Semiconductor content per car is rising. Does that help Motherson more than a car-volume recovery would?"}
+{"mid": "MB0497", "split": "test", "question": "The US announced a 100% tariff on generic drug imports from 2028. Which listed Indian pharma exporters are most exposed, and how would you rank them?"}
+{"mid": "MB0502", "split": "test", "question": "CAQM Direction 98 requires PTZ-camera monitoring for red-category industries in NCR. Which listed companies must spend, and roughly how much?"}
+{"mid": "MB0503", "split": "test", "question": "The FY26 Budget cut customs duty on flat-rolled steel products to 15%, effective 1 May 2025. Who gains and who loses among listed companies, and in what order?"}
+{"mid": "MB0505", "split": "test", "question": "India signed the EU FTA on 27 January 2026, due in force at end-2026. Which listed textile exporters gain, and what did they do on the day?"}
+{"mid": "MB0509", "split": "test", "question": "TDB-DST signed a Rs 130 crore RDI support agreement with BigEndian Semiconductors. Kaunsi listed company ko iska fayda? (Hinglish)"}
+{"mid": "MB0513", "split": "test", "question": "The TCS on coal and iron-ore sales doubles to 2% from 1 April 2026. Who is hit first, who second, and does any listed layer gain?"}
+{"mid": "MB0517", "split": "test", "question": "BharatNet needs optical fibre and telecom gear. Which listed suppliers gain, and how is the award flowing?"}
+{"mid": "MB0524", "split": "test", "question": "Budget 2026-27 put Rs 7,500 crore into railway signalling and telecom. Beyond the wagon makers, who in the listed universe gains second-hand, and in what order?"}
+{"mid": "MB0525", "split": "test", "question": "Railway wagon banane wale ko steel kaun deta hai, aur scrap/CRGO pe exemption extend hone se chain mein kaun jeetta hai, kaun peeche reh jaata hai? (Hinglish)"}
+{"mid": "MB0529", "split": "test", "question": "SRF guided the Dahej second pharma plant in eight months with Rs 180 crore. Has it commissioned, and how would you check?"}
+{"mid": "MB0530", "split": "test", "question": "KEI's Sanand phase 1 was late by about six months and commissioned in December 2025. Did the company meet its own revised date?"}
+{"mid": "MB0533", "split": "test", "question": "RVNL's Q1 FY27 order inflow was Rs 5,417 crore. How does that compare with its annual revenue, and what does it imply for FY27?"}
+{"mid": "MB0536", "split": "test", "question": "IRCTC payment aggregator licence status Oct 2026"}
+{"mid": "MB0537", "split": "test", "question": "Cochin Shipyard targeted the ISRF JV before the end of the financial year. Has the JV been signed, and what would confirm it?"}
+{"mid": "MB0538", "split": "test", "question": "Adani Green claimed a 20 GW renewable milestone in Q1 FY27. What was the previous milestone, and how long did the last 5 GW take?"}
+{"mid": "MB0540", "split": "test", "question": "SAIL advanced capital repairs into Q1 FY27 to free up later quarters. Did the later quarters show the output recovery it implied?"}
+{"mid": "MB0545", "split": "test", "question": "Mazagon Dock's order book: how much is shipbuilding versus repairs, and which is more stable?"}
+{"mid": "MB0549", "split": "test", "question": "KEC T&D book-to-bill FY27"}
+{"mid": "MB0553", "split": "test", "question": "NBCC's PMC order book is large but its receivables are old. How do you judge whether the book is worth its face value?"}
+{"mid": "MB0557", "split": "test", "question": "Is Polycab's capex funded by debt or internal accruals, and how does the disclosure show it?"}
+{"mid": "MB0565", "split": "test", "question": "Cochin Shipyard's ISRF JV needs capital. What is the committed amount, and who funds it?"}
+{"mid": "MB0569", "split": "test", "question": "A company issues fresh equity to fund capex. How does that change ROCE and EPS, and what should an investor check first?"}
+{"mid": "MB0573", "split": "test", "question": "delivery-spike ratio leaders this week"}
+{"mid": "MB0577", "split": "test", "question": "What was the promoter holding in Titagarh last quarter? terse: TITAGARH promoter %"}
+{"mid": "MB0585", "split": "test", "question": "September 2026 mein FIIs ne kitna becha aur DIIs ne kitna kharida? (Hinglish)"}
+{"mid": "MB0589", "split": "test", "question": "HAL ne 14:19 par file kiya aur 1.75% chadha — kya yeh clean reaction hai? (Hinglish)"}
+{"mid": "MB0593", "split": "test", "question": "Jubilant FoodWorks filed at 16:30 on 13 August 2026. Why is the 14 August move the right window, and what was it?"}
+{"mid": "MB0597", "split": "test", "question": "Trent's 1:2 bonus had an ex-date of 4 June 2026. How should an event study treat that day?"}
+{"mid": "MB0605", "split": "test", "question": "Gold is 4,186.7. If it goes to 5,000, do jewellers or gold-loan NBFCs do better, and why is the answer not obvious?"}
+{"mid": "MB0609", "split": "test", "question": "If the RBI cuts 100bp over a year, which listed sectors re-rate first, and what breaks the chain?"}
+{"mid": "MB0612", "split": "test", "question": "If China+1 accelerates, which listed sectors win, and what is the first evidence you would look for?"}
+{"mid": "MB0613", "split": "test", "question": "If container freight rates spike, which listed exporters lose and does a shipping line gain?"}
+{"mid": "MB0617", "split": "test", "question": "How many electric two-wheelers did Ola Electric deliver in September 2026?"}
+{"mid": "MB0625", "split": "test", "question": "How much did Suzlon pay its statutory auditor last year?"}
+{"mid": "MB0629", "split": "test", "question": "How much money did retail investors lose on 4 June 2024, in rupees?"}
+{"mid": "MB0633", "split": "test", "question": "Steel HRC rises 15%. Auto ancillaries have annual price agreements with OEMs and quarterly raw-material indexation. Where does the margin land for the forging and stamping names versus the OEM, and which ancillary has the thinnest cover to absorb a two-quarter lag?"}
+{"mid": "MB0637", "split": "test", "question": "Edible-oil and crude-linked packaging costs rise into a weak rural quarter. Hindustan Unilever and the personal-care names face a cost push and a demand pull in opposite directions. Which one shows up in the volume number first, and where is the rural-income series that decides it?"}
+{"mid": "MB0645", "split": "test", "question": "Chinese intermediate prices drop and then rebound. Indian specialty-chemical makers had cut output at the low. Trace the margin recovery, the restocking by agrochemical formulators, and the farmer's cost per acre into the next kharif season."}
+{"mid": "MB0649", "split": "test", "question": "Pet coke and limestone rise while cement demand is soft. The large players hold price, the regional players cut. Which listed regional producer's margin breaks first, and how much does that change the cost of a house?"}
+{"mid": "MB0653", "split": "test", "question": "US tariffs of 50% have hit Indian labour-intensive exports since August 2025. Trace the order loss to the exporter's utilisation, then to its contract workforce, then to the second-order effect on the domestic cotton and leather supply chain. What is already visible in the filings?"}
+{"mid": "MB0657", "split": "test", "question": "The stance moved to accommodative in April 2025. Trace it through bank credit growth, then through the financing of corporate capex, then to the capital-goods order book. Where does the transmission break if credit is available but demand is not?"}
+{"mid": "MB0665", "split": "test", "question": "Kisan Credit Card guidelines are revised. Trace it to agri-credit availability, then to the farmer's purchase of seed and crop-protection, then to the agrochem and seed company's volume. Which listed name sells mostly through that channel?"}
+{"mid": "MB0669", "split": "test", "question": "Additional borrowing space is offered to states for power-sector reforms. Trace it to discom dues and payments, then to the generator's receivable days, then to the generator's capex. Which listed genco's cash cycle is most sensitive to a discom payment?"}
+{"mid": "MB0673", "split": "test", "question": "The rupee weakens 5% against the dollar. An IT services company earns in dollars and pays salaries in rupees, but also runs onsite staff paid in dollars and buys imported licences. Net the two sides and say which listed name's margin actually moves."}
+{"mid": "MB0677", "split": "test", "question": "Household savings move from term deposits to mutual funds. Trace it to the bank's deposit mix, then to its NIM, then to the cost of the loan it can no longer fund cheaply. Which listed lender is most exposed to that migration?"}
+{"mid": "MB0685", "split": "test", "question": "The rupee weakens and a shipping line earns in dollars and pays charter hire in dollars. Does the weaker rupee help the reported profit at all, and what does the balance sheet translation do?"}
+{"mid": "MB0689", "split": "test", "question": "A steel distributor funds inventory with a bank line. Rates rise, prices fall, and the inventory is worth less than it cost. Trace the interest cost, then the inventory write-down, then the bank's decision to renew the limit."}
+{"mid": "MB0693", "split": "test", "question": "Chinese producers dump surplus into India. Specialty-chemical ASPs fall, the domestic producer cuts output, and when the dumping stops the buyer has lost a qualified local source. Trace it and say what share of the chain our data can show."}
+{"mid": "MB0697", "split": "test", "question": "A competitor country's garment industry is disrupted. EU and US buyers shift programmes to India, the exporter adds a shift, and cotton buying tightens. How far can the Indian exporter scale before its own capacity binds?"}
+{"mid": "MB0700", "split": "test", "question": "A trade partner opens an excess-capacity investigation. Trace it to the risk premium on Indian exports, then to the buyer's order timing, then to the exporter's capacity plan. What does the exporter do before the finding?"}
+{"mid": "MB0705", "split": "test", "question": "War-risk premia rise on a shipping route. Trace it to the charter rate, then to the importer's landed cost, then to the inventory decision. Which listed shipping name benefits and which importer loses?"}
+{"mid": "MB0709", "split": "test", "question": "A monsoon deficit hits fodder and water. Milk procurement falls, the dairy's procurement price rises, and the packaged-food buyer's cost follows. Trace it and say whether the effect is one quarter or three."}
+{"mid": "MB0713", "split": "test", "question": "A large cement group buys capacity in a region where a mid-size producer earns its best margin. Trace the acquisition to regional pricing, then to the mid-size producer's realisation, then to its capacity utilisation. Who blinks first?"}
+{"mid": "MB0717", "split": "test", "question": "Tyre capacity is added by three players at once just as replacement demand softens. Trace the capacity, then the dealer price, then the margin, then the OEM contract for the next year. Which listed name has the least OEM exposure to hide behind?"}
+{"mid": "MB0725", "split": "test", "question": "A food-delivery aggregator raises its commission and cuts discounts at the same time. Trace it to the restaurant's take rate, then to its menu price, then to its order volume, then to its kitchen capacity. Which listed QSR is most exposed?"}
+{"mid": "MB0729", "split": "test", "question": "A bank decides to build a small-ticket personal-loan book. Trace it to the NBFC's borrower acquisition cost, then to its ticket size, then to its credit cost. Which listed lender loses the most profitable slice?"}
+{"mid": "MB0731", "split": "test", "question": "A mid-cap rallies 60% and raises equity. Trace the dilution, then the objects of the issue, then the capex, then the industry's capacity two years later. When does the reflexivity turn from a signal into a glut?"}
+{"mid": "MB0733", "split": "test", "question": "A small-cap re-rates from a 2,000 crore to a 12,000 crore market cap and enters an index. Trace it to the passive flow, then to the float, then to the price. Does the index inclusion cause the re-rating or follow it?"}
+{"mid": "MB0737", "split": "test", "question": "Four IPOs in one industry price in a quarter. Trace the supply of paper to the listed peers' valuation, then to their fund-raise plans, then to their capex. Who is diluted by someone else's IPO?"}
+{"mid": "MB0745", "split": "test", "question": "A promoter pledge is invoked. Trace it to the forced sale, then to the price, then to the company's borrowing cost. What does the disclosure actually contain?"}
+{"mid": "MB0749", "split": "test", "question": "A company announces a tender buyback at a premium. Trace it to the acceptance ratio, then to the EPS, then to the promoter's stake. What does the premium tell you?"}
+{"mid": "MB0753", "split": "test", "question": "The repo is cut. Using the last easing cycle, how many quarters before the bank's NIM troughs, and does the trough arrive before or after the deposit repricing is complete?"}
+{"mid": "MB0757", "split": "test", "question": "A monsoon deficit of 20% hits two districts. How many quarters before tractor volume falls, and what does our own history say about the lag between rainfall and volume?"}
+{"mid": "MB0765", "split": "test", "question": "A rating is downgraded. How long before the company's incremental borrowing cost rises, and does the existing debt reprice?"}
+{"mid": "MB0769", "split": "test", "question": "A company repays debt from cash flow. How many quarters before the interest saving appears, and how much of the saving is already in the run-rate?"}
+{"mid": "MB0770", "split": "test", "question": "A QIP is priced at a discount. How many quarters of EPS dilution follow, and when does the new capital start earning?"}
+{"mid": "MB0773", "split": "test", "question": "Copper rises. A cable maker's realisation rises with the metal, its working capital rises with the same metal, and its dealer may delay the order. Net the margin gain against the capital cost and say which one dominates a thin-margin year."}
+{"mid": "MB0777", "split": "test", "question": "Steel rises. The mill's revenue rises and its coking coal cost rises. Net the two and say which mill has captive coal or iron ore."}
+{"mid": "MB0785", "split": "test", "question": "Insurance FDI is opened. Capital and competition arrive together. Net the capital gain to the incumbent's stake against the compression of its underwriting margin."}
+{"mid": "MB0789", "split": "test", "question": "A tariff on generic drugs raises the cost of the US business and lowers the relative cost of the Indian business. For a company with both, does the India margin rise or does the group just get smaller?"}
+{"mid": "MB0793", "split": "test", "question": "Bank NIM: does the weighted average call rate, the deposit rate, or credit growth turn first? And is the deposit rate a point-in-time series at all?"}
+{"mid": "MB0797", "split": "test", "question": "Power demand: plant load factor, coal stock days, or the exchange price first? Which one is a leading indicator for the aluminium smelter's cost?"}
+{"mid": "MB0805", "split": "test", "question": "Hospital revenue per bed: bed count, occupancy, or pricing first? Which is dated in a filing?"}
+{"mid": "MB0809", "split": "test", "question": "Insurance: commission paid, annual premium equivalent, or the partner bank's fee income first? Which one is dated in a filing?"}
+{"mid": "MB0813", "split": "test", "question": "Take BEL's most recent order-win filing. If it was stamped after 15:30 IST, day 0 is the next session; if before, it is the same session. Which of the 4 sessions before day 0 carried an unusual delivery share?"}
+{"mid": "MB0817", "split": "test", "question": "Take HAL's most recent management-change filing. Build day 0 from its dissemination timestamp and check the 4 sessions before it. What does the filing actually name — the person, the role, and the date?"}
+{"mid": "MB0825", "split": "test", "question": "Take APLAPOLLO's most recent pledge disclosure. Build day 0 from the dissemination timestamp and check the 4 sessions before it for distribution rather than accumulation."}
+{"mid": "MB0829", "split": "test", "question": "A company cuts its guidance on the call and the transcript is published later. Build day 0 from the publication, then check the 4 sessions before it. Which document carries the cut?"}
+{"mid": "MB0833", "split": "test", "question": "Which Nifty 50 constituents kept their cash-market delivery above average through the September expiry?"}
+{"mid": "MB0837", "split": "test", "question": "As of 30 Sep 2026, which index constituents had gapped more than 2% after a positive US close, and did delivery confirm the gap?"}
+{"mid": "MB0844", "split": "test", "question": "As of 20 Oct 2026, what had 360 ONE announced about its interim payout, and when did it go ex?"}
+{"mid": "MB0845", "split": "test", "question": "Among listed PSU banks, which paid an interim dividend in the September quarter, and how much per share?"}
+{"mid": "MB0849", "split": "test", "question": "As of 23 Oct 2026, GTL Infra had closed at its upper price band on how many of the last 20 sessions?"}
+{"mid": "MB0853", "split": "test", "question": "Which listed sectors re-price fastest if the government raises the PLI outlay again?"}
+{"mid": "MB0857", "split": "test", "question": "As of 23 Oct 2026, had BHEL built a higher-highs base or a lower-highs distribution over the last 60 sessions?"}
+{"mid": "MB0865", "split": "test", "question": "Swiggy listed while Eternal was already public — which multiple did the issue ask, and how did that compare with the listed peer that week?"}
+{"mid": "MB0869", "split": "test", "question": "Which listed cable makers feel a doubling of data-centre capex third, after the cooling and connector layers have taken their share?"}
+{"mid": "MB0871", "split": "test", "question": "IRFC Q2 results date: when, and was it pre-intimated?"}
+{"mid": "MB0873", "split": "test", "question": "As of 20 Oct 2026, how many large-caps had still not intimated a results date for the September quarter?"}
+{"mid": "MB0874", "split": "test", "question": "Reliance has just reported Q2FY26. Is this a good level to start a position, or should I wait for a retest of the pre-result range?"}
+{"mid": "MB0877", "split": "test", "question": "IREDA ran up a lot after listing. Is it too late to enter now, or does the loan-book growth still justify a fresh position?"}
+{"mid": "MB0885", "split": "test", "question": "Ola Electric's listing pop faded quickly. What was the listing-day return, and how much of it was gone within a month?"}
+{"mid": "MB0889", "split": "test", "question": "After the Tata Motors demerger into TMPV and TMCV, which entity carries the auto-finance exposure, and how should the cost basis split?"}
+{"mid": "MB0893", "split": "test", "question": "Government OFS in IREDA: how is the floor price set, and does the stock usually trade at a discount to it before the issue closes?"}
+{"mid": "MB0897", "split": "test", "question": "Vodafone Idea's preferential allotment: which SEBI pricing rule set the floor, and did the issue dilute more than the announcement implied?"}
+{"mid": "MB0905", "split": "test", "question": "HDFC Bank jumped after its Q2FY26 result. Was the move in the numbers, the guidance, or the pre-result positioning?"}
+{"mid": "MB0909", "split": "test", "question": "I am holding Paytm at a large loss. Is there a fundamental case to average down, or is averaging just doubling a mistake?"}
+{"mid": "MB0913", "split": "test", "question": "Swiggy's lock-in expiry is behind us. Did the supply actually hit the price, and what does the delivery business need to show next?"}
+{"mid": "MB0917", "split": "test", "question": "Larsen & Toubro: did the order inflow announcements or the institutional flows better explain the last two quarters of returns?"}
+{"mid": "MB0925", "split": "test", "question": "Jaiprakash Power: is the promoter pledge rising alongside the debt, and what did the auditor say about going concern?"}
+{"mid": "MB0929", "split": "test", "question": "Infosys Q2FY26: what should I watch in the print, and which line item explained the market's reaction?"}
+{"mid": "MB0933", "split": "test", "question": "Reliance: which segment actually drove the quarter, and did the market react to the consolidated or the segment story?"}
+{"mid": "MB0934", "split": "test", "question": "Tata Motors PV versus Mahindra: which has the better EV mix and margin, and does the market already pay for it?"}
+{"mid": "MB0937", "split": "test", "question": "Polycab versus KEI: which has the better working-capital cycle, and does the margin gap justify the valuation gap?"}
+{"mid": "MB0945", "split": "test", "question": "Jio Financial was added to the Nifty 50 soon after listing. Did the index flow arrive before the stock's first big move?"}
+{"mid": "MB0949", "split": "test", "question": "Asian Paints: over ten years, has gross margin been stable enough to prove pricing power, or did it just track crude?"}
+{"mid": "MB0953", "split": "test", "question": "Hindustan Unilever: has D2C competition actually taken detergent share, and what does the volume trend say?"}
+{"mid": "MB0957", "split": "test", "question": "ABB India: the margin is at a record. Is the ROIC being earned on new capacity or on a cyclical order book?"}
+{"mid": "MB0965", "split": "test", "question": "Vedanta: the parent pays dividends while carrying debt. Is the cash actually upstreamed from subsidiaries, and what do the related-party notes say?"}
+{"mid": "MB0969", "split": "test", "question": "Tata Motors: JLR margin guidance has moved every year. What was promised, what was delivered, and what is the current gap?"}
+{"mid": "MB0973", "split": "test", "question": "Paytm: management gave a profitability timeline. Did the company hit it, and what did it cost in revenue growth?"}
+{"mid": "MB0977", "split": "test", "question": "DMart: what is revenue per square foot and inventory turns, and how have they moved as the store base aged?"}
+{"mid": "MB0985", "split": "test", "question": "Bajaj Finance: does a rate cut help or hurt the cost of funds before it helps AUM, and what does history say?"}
+{"mid": "MB0989", "split": "test", "question": "CG Power: how much can it reinvest in transformer capacity, and what returns has the last expansion earned?"}
+{"mid": "MB0993", "split": "test", "question": "Astral: does the piping capacity addition still make sense if housing starts slow, and what is the utilisation today?"}
+{"mid": "MB0995", "split": "test", "question": "Vodafone Idea: can operating cash flow cover interest and spectrum instalments, or is another capital raise certain?"}
+{"mid": "MB0997", "split": "test", "question": "Adani Green: what is net debt to EBITDA, and how is the capex funded if the refinancing window narrows?"}
+{"mid": "MB1005", "split": "test", "question": "Tata Investment: is the market cap above or below the value of its listed portfolio, and how has that gap behaved?"}
+{"mid": "MB1009", "split": "test", "question": "Coal India: is the dividend covered by free cash flow after the capex plan, or is it borrowing from the future?"}
+{"mid": "MB1013", "split": "test", "question": "NMDC: at the bottom of the iron-ore cycle, would the dividend be cut, and what did the last downturn show?"}
+{"mid": "MB1017", "split": "test", "question": "Amber: the air-conditioner business is seasonal and concentrated. What does that do to quarterly revenue and working capital?"}
+{"mid": "MB1025", "split": "test", "question": "HDFC Bank broke below its 50-day average and then reclaimed it. Which close confirmed the reclaim, and what did delivery do?"}
+{"mid": "MB1029", "split": "test", "question": "BEL broke to a new high in September. Was the breakout confirmed by volume and delivery, or was it a thin move?"}
+{"mid": "MB1033", "split": "test", "question": "Polycab is near its 52-week high but delivery has fallen. Is the move being driven by intraday traders rather than accumulation?"}
+{"mid": "MB1037", "split": "test", "question": "ITC's 50-day is flattening into the 200-day. What would a death cross actually change for a long-term holder?"}
+{"mid": "MB1038", "split": "test", "question": "Larsen & Toubro is near all three averages at once. Which average has acted as the better entry line over the last three years?"}
+{"mid": "MB1045", "split": "test", "question": "Mazagon Dock made a new 52-week high on declining volume. Is that a warning or noise?"}
+{"mid": "MB1049", "split": "test", "question": "Tata Motors PV gapped up after its first post-demerger result. Has the gap filled, and how many sessions did it take?"}
+{"mid": "MB1053", "split": "test", "question": "Paytm has had several earnings gaps. Which ones filled within a month, and did the unfilled ones share a volume signature?"}
+{"mid": "MB1057", "split": "test", "question": "Tata Power has outperformed the Nifty for six months. Is the RS at an extreme that historically mean-reverts?"}
+{"mid": "MB1063", "split": "test", "question": "ICICI Bank's rollover was lower than last expiry. Does that mean traders are exiting, or just moving to the next series early?"}
+{"mid": "MB1065", "split": "test", "question": "BANKNIFTY max pain is below spot into expiry. How often does the index actually drift to max pain?"}
+{"mid": "MB1069", "split": "test", "question": "Suzlon printed a delivery spike at a 52-week high. Was the spike genuine accumulation or a single block transfer?"}
+{"mid": "MB1073", "split": "test", "question": "RVNL had three delivery spikes in a month with no price progress. Is that distribution or absorption?"}
