@@ -228,3 +228,218 @@ HP-side benchmark files (left in place): `C:\RE\ocr_bench.py`, `C:\RE\capacity2.
 - The heartbeat supervisor over a long run.
 - Token counts per call (not exposed by `--json`; read them from the Go ledger).
 - Sustained multi-hour thermal behaviour of the NPU.
+
+---
+
+## 10. Real dsh workers — host, capacity, proof (2026-10-31, follow-up run)
+
+**Measured answer: six real workers is the operating point, not eight.** Six real
+`dsh` workers ran together: **7.49 GB RSS, 1.28 GB free RAM left, 42 processes,
+13–26% CPU**. One worker peaks at **1.29 GB** (8 processes: node + two Python MCP
+servers + basedpyright + shells); the same task took **16.9 s alone and 76.9 s**
+with the other five running (4.5×). Eight workers would need ~10.3 GB against the
+~7.5 GB this box has free, so 8 would swap — the simulated 155 MB/worker figure in
+§1 was off by ~8× because a real dsh worker keeps its two MCP servers, the LSP
+child and a Node runtime.
+
+Two real workers finished end to end (**298 s** and **450 s**) and their patches
+applied cleanly on the MSI (`dsh-hp/<id>` branches, 524 B and 514 B).
+
+### 10.1 Host setup — what was actually missing
+
+| item | state | note |
+|---|---|---|
+| Python for the MCP servers | **already fine on 3.14 ARM64** | The brief's 3.13 requirement is stale: `cryptography` 46.0.3 is installed from its `cp37-abi3-win_arm64` wheel and `pywin32` 312 has a cp314 win_arm64 wheel. The real blockers were four missing pure-Python packages: `pyjwt`, `uvicorn`, `httpx2`, `pyyaml`, now installed into `%LOCALAPPDATA%\Programs\Python\Python314-arm64`. **No 3.13 install was made.** |
+| `git` | already on PATH | `C:\Program Files\Git\cmd\git.exe` 2.56.0 (§7 item 3 is stale). HP job trees are owned by `BUILTIN\Administrators` while the ssh user is `zen7s`, so every runner git call passes `-c safe.directory=*`. |
+| Node-backed `dsh` shim | built | 5.6 KB AnyCPU C# launcher compiled once with `csc.exe`; runs `node.exe` on the bun-installed `@deepseek-ai/dsh/lib/bin.js`. Bun's launcher is kept as `~\.bun\bin\dsh.bun.exe`. `dsh --version` → `0.2.1-rc.5`; `DSH_NODE` overrides the node path. |
+| code-intel MCP | **answers a real call** | stdio JSON-RPC `initialize` + `tools/call`: `symbols("connect_ro")` → `reality_engine/db/readonly.py:119`, `source: lsp`. |
+| reality-data MCP | answers; needs data | `catalog()` returned `{ok:false, code:"snapshot_missing"}` with an empty `C:\RE\data` — a correct answer for a data-less host. `--dbs` mounts named DBs (WAL-consistent `sqlite3.backup`, read-only attribute, copied only when the MSI DB is newer). |
+| Tailscale address | flaky this run | `100.78.87.112` refused connections mid-run while `192.168.1.42` stayed up; `HP_RUN_HOST=zen7s@192.168.1.42` is the safe default for the runner. |
+
+The HP jobs run the same interpreter (3.14 ARM64), execute the job checkout's own
+`run_deepseek_harness.py` under the Node shim, and use the same model
+(`deepseek-v4.1-flash`), max effort, account 2 and stable `x-opencode-session`
+(`fb0219dd-…`). Each job gets the same context-pack header and the same
+`CODE_INTEL_INSTRUCTION` / `PROGRESS_NOTES_INSTRUCTION` text MSI workers get
+(imported from `plugins/dsh-worker/server` at start time, not copied prose).
+
+### 10.2 `reality_engine/scripts/hp_worker.py`
+
+```powershell
+# start (refuses Mon-Fri 06:30-09:30 / 11:30-15:30 IST exactly like the MSI manager)
+python -m reality_engine.scripts.hp_worker start tasks/brief.md `
+    [--dbs equity_intelligence.db,bse_announcements.db] [--test-cmd "python -m pytest ... -q"] `
+    [--commit HEAD] [--permission workspace-write|read-only] [--max-output-tokens N] [--timeout S] [--peak-ok]
+
+python -m reality_engine.scripts.hp_worker status [hp-...]   # state, exit, result size, test tail
+python -m reality_engine.scripts.hp_worker result <id>       # fetch + print result.md, status, log
+python -m reality_engine.scripts.hp_worker fetch-patch <id>  # git diff back, apply on dsh-hp/<id>
+python -m reality_engine.scripts.hp_worker cancel <id>       # taskkill /T the job's pid
+```
+
+A job is `C:\RE\jobs\<id>\`: `repo\` = `git archive <commit>` of the MSI HEAD with a
+throwaway `git init` + base commit (plus `.git/info/exclude` for the scratch files a
+worker produces), `brief.md`, `hp_mcp.yml` (per-run MCP patch), `run.cmd`, and
+`result.md*`. The launch is WMI `Win32_Process Create` — the route proved in §2; the
+launcher scp's `run.cmd` and only sends a ~600-character encoded command, because the
+old in-command base64 exceeded cmd.exe's 8 KiB limit. `run.cmd` runs the harness and
+then the `--test-cmd` **outside dsh's sandbox** (dsh's `workspace-write` blocks pytest
+temp dirs and piped child stdio on this host — both workers hit it and reported it),
+so the test tail in `status` is the real host result.
+
+DB sync stages a WAL-consistent copy with `sqlite3.backup`, copies only when the MSI
+file is newer (mtime stored beside the remote file), and marks the remote file
+read-only.
+
+### 10.3 Proof: two real workers, end to end
+
+| job | task | duration | result | host test | patch | applied on MSI |
+|---|---|---:|---:|---|---|---|
+| `hp-20261031T041248-a8844d` | docstring sentence in `hp_run.py` | 297.8 s | 4,104 chars | **10 passed** | 524 B | `dsh-hp/hp-…a8844d` ✔ |
+| `hp-20261031T041347-265ef0` | docstring line in `test_hp_run.py` | 449.8 s | 3,640 chars | **10 passed** | 514 B | `dsh-hp/hp-…265ef0` ✔ |
+
+- Both status records: `state completed`, `exit_code 0`, `failure null`, **0 heartbeat
+  pings, 0 unanswered**, 86/91 worker-activity events. No tool failure other than the
+  sandbox limits each worker diagnosed itself.
+- **Survives closing ssh**: both workers were launched by WMI and the start command had
+  returned long before completion; they ran to the end with no session open (same route
+  as the 90/90-tick test in §2).
+- The workers used both MCP servers in-run (`code-intel symbols/module_map/diagnostics`
+  and `reality-data catalog`) and reported the data-less answer honestly.
+
+### 10.4 Six at once — real RAM, CPU, time
+
+All six started within 6 s of each other (each uploads its own 129 MiB archive; the
+start path is bandwidth-bound, not memory-bound).
+
+| workers | free RAM | RSS of node+python | processes | CPU | time |
+|---:|---:|---:|---:|---:|---|
+| idle | 7.51 GB | 0 | 0 | ~0% | — |
+| 1 | 6.86 GB | **1,293 MB** | 8 | 9.6% | **16.9 s** (same brief) |
+| 2 (proof) | — | — | — | — | 298 s / 450 s |
+| **6** | **1.28 GB** | **7,488 MB** | **42** | 13–26% peak 100% at boot | 17.1–76.9 s (mean 38.8 s) |
+
+Per-worker ≈ **1.25 GB** in the six-worker run, matching the 1.29 GB single-worker
+peak. The box does not have 8 × 1.25 GB free next to the desktop + raw copy, so
+**6 is the measured safe number; 8 needs ~2.5–3 GB more RAM than it has**.
+
+### 10.5 OCR accuracy vs text-layer truth (20 pages) — the post-processing was the bug
+
+Text-layer pages: 20 non-scanned filings from `pilot60_history_manifest.db` on the
+MSI, the page with the most text per PDF, rendered 3× with pypdfium2, truth =
+`page.get_textpage().get_text_range()`, accuracy =
+`1 − edit_distance(casefolded truth, casefolded OCR) / len(truth)`.
+
+| page | truth chars | OCR chars | char acc. | line-sorted acc. |
+|---|---:|---:|---:|---:|
+| STLTECH__373691c5 p2 (slide) | 5,975 | 6,068 | **0.954** | 0.762 |
+| JUBLINGREA__dd188e96 p1 | 3,361 | 3,410 | 0.938 | 0.861 |
+| NLCINDIA__40a7cb32 p1 | 3,075 | 3,076 | 0.935 | 0.828 |
+| UBL__15cda7c0 p1 | 3,709 | 3,956 | 0.883 | 0.713 |
+| ASHIANA__45a28a8f p1 | 1,843 | 1,698 | 0.857 | 0.307 |
+| DOLLAR__27b15a3b p1 | 1,934 | 2,086 | 0.848 | 0.591 |
+| KEC__021b8327 p0 | 1,507 | 1,512 | 0.760 | 0.837 |
+| ASHIANA__5bc3f505 p0 | 1,540 | 1,604 | 0.745 | 0.706 |
+| ESAFSFB__0fe7c53a p0 | 2,668 | 2,429 | 0.724 | 0.534 |
+| KEC__0c7457f6 p0 | 1,375 | 1,388 | 0.671 | 0.789 |
+| STLTECH__c57b1e3b p0 | 1,298 | 1,307 | 0.613 | 0.854 |
+| BIGBLOC__ccd47fdc p0 | 1,346 | 1,621 | 0.609 | 0.683 |
+| KALYANKJIL (2 files, same letter) p0 | 1,682 | 1,706 | 0.600 | 0.853 |
+| IDEA__6259d560 p0 | 1,251 | 1,632 | 0.512 | 0.341 |
+| PIDILITIND__14ccea68 p0 | 1,799 | 1,695 | 0.499 | 0.670 |
+| UFBL__a606683d p0 | 1,639 | 1,654 | 0.459 | 0.858 |
+| URAVIDEF__8231788a p0 | 1,356 | 2,028 | 0.409 | 0.406 |
+| TMPV__ffe2f0d4 p0 | 748 | 880 | 0.389 | 0.738 |
+| PRESTIGE__3afb2252 p1 | 1,872 | 2,020 | 0.333 | 0.405 |
+| **mean (20)** | | | **0.667** | **0.680** |
+
+The old path (fixed 320-px rec canvas, wide lines squashed then clipped) scores
+**0.151 mean / OCR chars = 14.1% of truth** on the same 20 pages — that is the
+"gibberish" the brief warned about, and CPU/NPU agreement could not see it because
+both devices shared the same post-processing.
+
+**What was fixed in `reality_engine/scripts/hp_ocr_check.py`:**
+1. **Line chunking**: a full-width A4 line is ~50× taller than wide; the rec graph is
+   shape-locked at 48×960. Squashing it to 960 (or clipping at 320) destroys it. Each
+   line is now cut into ≤960-px-wide chunks at the emptiest column near the boundary;
+   the join adds a space only when the cut column was white.
+2. **Line bands inside a merged component** (row-density valleys), instead of one
+   recognition pass over a whole paragraph.
+3. **90°/270° retry** when a page yields <40 chars (landscape tables on portrait pages,
+   rotated scans). The GMR Airports encumbrance page went from **1 character to 1,654**
+   and now matches the page.
+
+Residual error is page content, not recognition: logo/all-caps letterheads are read as
+extra text (URAVIDEF 2,028 OCR chars vs 1,356 truth), the text layer's reading order
+differs from the visual order (ASHIANA Form C: the "FORM C" logo comes last in the text
+layer), and ruled tables are seen as graphics. On pages without a logo block the
+pipeline reaches 0.93–0.95.
+
+Cost of the fix: **43.9 pages/min** on the NPU (was 159.7 pages/min through the broken
+flat path; the extra rec chunks are the price). For the 1,073 scanned files (~13,300
+pages) that is **~5.0 h**, still ~3× the CPU and ~1.9× the GPU.
+
+### 10.6 Twenty scanned pages — NPU output vs the page
+
+Corpus: the first 20 entries of `C:\RE\pages30.txt` (middle page of each scanned PDF,
+`C:\RE\raw\pilot60_history`), `--provider qnn-htp`, chunked path. First 200 characters
+of NPU output vs my reading of the rendered page:
+
+| # | NPU first 200 chars | the page says |
+|---:|---|---|
+| 00 | `GlobalIyre Industry TireProduction TireRubberd Consumption (mn units) (ooo tonnes) +3.2% +3.1% 2,098 31,733 +2.2% 1,788 +2.3% 27,281 1,691 24,737 21,692 1,433 206 2011 2016 2021E 2806 2011 2016 2021E` | OCCL "Global Tyre Industry": two bar charts, production 1,433/1,691/1,788/2,098 mn units and rubber 21,692/24,737/27,281/31,733 kt; every number right, "206" is 2006, "Tyre" split. |
+| 01 | `Anupam Rasayan 1to acguire stake in Tanfac Industri ies from Birla Group Holdings Private Limited and Others Surat,February01,2022: Anupam Rasayan JIndia Ltd.(NSE,BSE: ANU) RAS）ARIL one of India'slead` | Anupam Rasayan press release: acquisition of 24.96% of Tanfac from Birla Group Holdings for ₹148.14 cr + 26% open offer for ₹154.31 cr. OCR is right apart from spacing. |
+| 02 | `? Asahisongwon physical form s hall not be processed unless t he securities are heldm Idmembers at the Registered Office of the Company d uring office hours in dematerialisedform with the depository,` | Asahi Songwon AGM notice, two columns. OCR interleaves the columns (left/right merged per line) — recognition is good, reading order is not. |
+| 03 | `SBMUTUALFUND SBl Funds Manag ement Limited A Joint venture bel ween SBr& AMUNDr PARTNERE RFORLFE (CIN:U65990MH 992PLC065289) Format for Disclosures under Regulation 29(1) of SEBI (Substantial Acquisit` | SBI MF Reg 29(1) form for Ashiana: 5,061,223 shares (4.9449%) before, 235,000 acquired, 5,296,223 (5.1745%) after. Header right; the table values are not in the first block. |
+| 04 | `sLOSUREUNDERREGULATTON 29D OF SEBI SUBSTANTIAL ACOUIS ONOF SHARESANDTAKEOERSREGU LAONSO Part-A-Details of tl heAsguisition Name of the Ta rget Company TC Adani Gas Limited Name(s)of the acg uirer andP` | Adani Gas Reg 29(1): Total Holdings SAS, after 41,13,31,740 shares (37.4002518%). All-caps heading is mangled; values later in the text are usable. |
+| 05 | `After the sa eholding ofe 0.% 0.80% a)shares carrying voting rights b)shares encumbered with the seller vRs otherwise than by eguity shares d)Warrants/convertblesec uritiesanyother instrument that ent` | Rajasthan Global Securities Reg 29(2): Majesco open-offer sale, 4,53,31,34 shares, 2,86,29,689 shares of ₹5 after. Body text readable, table numbers weak. |
+| 06 | `602,Floor 6,Rahei aTitanium MSKA Western Express Highway,Geetanjali Railway Colony,Ram Nagar,Goregaon （E） Mumbai 40o063,INDIA Tel: +91 22 6831 1600 & Associates chartered Accountants IndependentAudlit` | MSKA & Associates audit review report on Majesco's June-2021 results. Address and heading right; "MSKA"/"Auditor's" split. |
+| 07 | `Formatfordisclosures under Regulation 292lof sEBl (Substantial Acguisition if Shares and Takeovers) Regulal ons.z Nameaf the Target company(TO BIGBLOCCONSTI RUCTION LIMITED Namesof the acguirer and Pe` | Bigbloc Reg 29(2): Narayan Saboo, transmission of 2,50,000 shares, 7.90% → 8.26%, date 21-03-2022. Recognisable. |
+| 08 | `Chartered Accountants INDEPENDENFAUDITORSLIMITED R EVIEWREPORT To Board of Directors of BGBLOCCONSTR UCONMTTED We have reyiiewed the accompanying Staltement of Consolidated Unaud ited Financial Result` | RKM & Co. limited review of Bigbloc (Sep-2022). Company name and words are mangled; readable meaning. |
+| 09 | `Bnd ustriestd Date-24/0o9/2019 ListingDepartment The General Manager Calcuttastock Exchange Limited Departmento f corporate services Lyons Range BSELimited Kolkata-zoooo1 PhirozeJee eebhoyTower Dalal` | BMW Industries letter to the exchanges on a credit-rating outlook (24/09/2019), with a 3-row rating table. Good except the merged headings ("Bnd ustriestd" = BMW Industries Ltd). |
+| 10 | `Resolution( special Resolution required :(Ordinary /Special) Whether promoter/promot ter group are interested ino No the agenda/resolution? Description of resol lution considered Appointment of Ms. Pa` | Bosch resolution(7) e-voting table appointing Ms. Padmini Khare; the numbers table is not detected (1,161 chars). |
+| 11 | `N NA bVRs acquiredotl herwise than by eguity NA. N shares NA N.A NA c)Warrants/convertibl e securities/any other / NA. instrumentthat eni fitles the acguirer to receive shares carrying voting rights i` | Dalmiya Bharat Reg 29(2): Odisha Cement shares cancelled in the scheme, 23/01/2019, capital 5,69,00,220 → 19,27,27,553. Form labels partly readable. |
+| 12 | `september i4 2oi9 as the cut-off dateThe Comlpany has engaged the services of i Link Intime India pvt.Ltd.to providlethe e voting facilityoni instavote platform The Remote e- voting wil commence on Tu` | Karda Constructions e-voting/AGM letter (Sept 2019). Mostly correct, dates in digits get confused (14). |
+| 13 | `DLELMTED DLE DLEGateway Tower.R Block BUILDINGINDIA DLFCityPhase I1,Gurugram 122 002, HaryanaIndia Tel.:(+91-124) 4396000: investor-relationsadlf.in Annexurei BriefProfile of Ms. savifri Devi Si ngh a` | DLF Annexure 1: profiles of Ms. Savitri Devi Singh / Ms. Anushka Singh as non-executive independent directors. Header logo garbled, names right. |
+| 14 | `Annexure-A LIST OF PERSONS AC TING IN CONCERT (PACS) Formingpar oif disclosurc under Reguilation 2or D ofthe SEBl rSubstantial Acguisi ion of sares and Takeovers Reulations,21 01 1 dated 28.06.20j91 T` | DLF Annexure-A: the 16 PACs list. Heading right; table names later in the text. |
+| 15 | `Ni Ni TC(specifyholdingi ineachcategory)Nil Ni acquired/sold N N Ni dShares encumbered /invoked/releasedbyN1 d the acquirer e）Total（a+b+c+d） 60.00,000 o.24 o.24 After the aeuis ion/sale, holding of:` | DLF Reg 29(2) page 2: 60,00,000 shares (0.24%), after 1,84,92,28,865 (74.71%), 1 Aug 2023. Table labels noisy, numbers usable. |
+| 16 | `SR BATLIBOI &COLLP chartere soraEntity Relation 43 DLF Green Valley Partnership Firm 44 DLF Home Developers Limited Subsidiary 4 DLF Homes Goa Private Limited subsidiary 46 DLF Homes Panchkula Private` | S.R. Batliboi list of DLF group entities (rows 43–64). Nearly correct. |
+| 17 | `Format for disclosures undler Regulation 29(2) of SEBl (Substantial TAcquisition of Shares and Takeovers Regul ations,2011 Nameof the Targel tcompany(tc) DOLLARINDUST RIESLIMITED l Name(s) of the acgu` | Dollar Industries Reg 29(2): Simplex Impex, 25,576,771 (45.10%) before, 10,000 acquired. Good. |
+| 18 | `CHANDRAKALAGUPTA 16A GURUSADAY ROAD, FLAT-4AB,TOWER-3, TheEMPIRE K0LKATA-700019 Warrants/convertibi lesecurities/anyother instrument that entit les the acquirer to receive shares carryi ing voting rig` | Chandrakala Gupta inter-se gift transfer, 2,51,650 shares (0.44%) → 1,06,420 (0.19%). Address right, form text usable. |
+| 19 | `Disclosure by the 2romoter (s) to the Stock Exchangles and to the Target Companv for encuImbrance of shares / invocation olFencumbrancelrelease of encumbrance in terms of Reaulation 31 (1) and 31 (2` | GMR Airports encumbrance disclosure (landscape table). **Before the rotation retry this page produced 1 character**; now the heading and the rest of the table come out. |
+
+Hand verdict: **NPU text is usable for reading and indexing, not for blind figure
+extraction.** Body sentences come out right; logos, all-caps headings, ruled tables
+and rotated pages still need a human or the text layer.
+
+### 10.7 Commands used in this run
+
+```powershell
+python -m reality_engine.scripts.hp_worker start tasks/brief.md --test-cmd "python -m pytest reality_engine/tests/test_hp_run.py -q" --max-output-tokens 6000 --timeout 1500
+python -m reality_engine.scripts.hp_worker status
+python -m reality_engine.scripts.hp_worker result  hp-20261031T041248-a8844d
+python -m reality_engine.scripts.hp_worker fetch-patch hp-20261031T041248-a8844d   # -> dsh-hp/<id>
+python -m reality_engine.scripts.hp_worker cancel hp-...
+# OCR (deployed at C:\RE\hp_ocr_check.py, also committed in reality_engine/scripts)
+python C:\RE\hp_ocr_check.py --mode textlayer --text-dir C:\RE\ocr_text --models C:\RE\models_fixed --provider qnn-htp --out C:\RE\ocr_check
+python C:\RE\hp_ocr_check.py --mode scanned --list C:\RE\pages30.txt --base C:\RE\raw\pilot60_history --models C:\RE\models_fixed --provider qnn-htp --limit 20 --out C:\RE\ocr_check
+python -m pytest reality_engine/tests/test_hp_worker.py reality_engine/tests/test_hp_run.py -q   # 25 passed
+```
+
+Left on the HP: `C:\RE\jobs\hp-*` (worker jobs), `C:\RE\ocr_text` (20 text-layer
+PDFs), `C:\RE\ocr_pages` (20 rendered pages), `C:\RE\ocr_check` (rows JSONL),
+`C:\RE\mcp_check.py`, `C:\RE\hp_ocr_check.py`, the dsh shim and `dsh.bun.exe`.
+
+### 10.8 Still open
+
+- No DBs are mounted on the HP by default; a reality-data worker is only as good as
+  the `--dbs` list (copying 50 GB at 10 MB/s is 1.4 h).
+- Each start uploads a fresh 129 MiB archive; six starts are ~80 s of Wi-Fi and the
+  workers wait for it. A per-commit cache on the HP would cut that.
+- The HP tree's ownership (`Administrators` vs `zen7s`) makes plain git refuse it;
+  the runner passes `safe.directory=*`, but a human on the box will hit the warning.
+- Worker sandbox: pytest inside a `workspace-write` dsh session cannot create its
+  `0o700` temp dirs or pipe child stdio on this host. The runner's post-run test step
+  covers the check; a worker asked to run pytest itself will fail and should be told.
+- OCR: 0.93–0.95 on clean pages, not 0.95+ everywhere; the remaining loss is logos,
+  all-caps letterheads, ruled tables and text-layer reading order, not recognition.

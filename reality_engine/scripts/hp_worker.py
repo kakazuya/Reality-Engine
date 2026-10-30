@@ -32,7 +32,6 @@ exactly as the local dsh-worker refuses, unless ``--peak-ok`` is passed.
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import os
 import secrets
@@ -56,9 +55,29 @@ EFFORT = "max"
 ACCOUNT = "2"
 IST = timezone(timedelta(hours=5, minutes=30))
 JOBS = REPO / ".tmp" / "hp" / "jobs"
-PACK = REPO / "tasks" / "worker_context" / "CONTEXT.md"
-TEMPLATE = REPO / "tasks" / "worker_context" / "BRIEF_TEMPLATE.md"
 PROGRESS_RELATIVE = "PROGRESS_NOTES.md"
+# Worker scratch files that must never appear in the reviewable patch.
+EXCLUDES = ("PROGRESS_NOTES.md", "exit.txt", "pid.txt", "job.log", "test.log",
+            "_pytest*", "pytest-of-*", ".pytest*")
+
+
+def main_checkout() -> Path:
+    """The checkout that owns the generated context pack (this may be a worktree)."""
+    completed = subprocess.run(["git", "-C", str(REPO), "worktree", "list", "--porcelain"],
+                               capture_output=True, text=True)
+    for line in completed.stdout.splitlines():
+        if line.startswith("worktree "):
+            return Path(line[len("worktree "):])
+    return REPO
+
+
+def context_pack_paths() -> tuple[Path, Path]:
+    root = main_checkout() / "tasks" / "worker_context"
+    pack, template = root / "CONTEXT.md", root / "BRIEF_TEMPLATE.md"
+    missing = [str(p) for p in (pack, template) if not p.is_file()]
+    if missing:
+        raise SystemExit("worker context pack missing: " + ", ".join(missing))
+    return pack, template
 
 
 # --------------------------------------------------------------------------- #
@@ -228,6 +247,7 @@ def run_cmd(job_id: str, paths: dict[str, str], home: str, *, permission: str,
     command = worker_command(paths, home, permission=permission, timeout=timeout,
                              max_output_tokens=max_output_tokens)
     body = "\r\n".join([
+        f'cd /d "{paths["repo"]}"',
         f'set "PATH={GIT.rsplit(chr(92), 1)[0]};{NODE_DIR};%PATH%"',
         'set "PYTHONUTF8=1"',
         'set "REALITY_DATA_ROOT=C:\\RE\\data"',
@@ -253,11 +273,12 @@ def init_remote_repo(paths: dict[str, str], tar: bytes) -> str:
         "$ErrorActionPreference='Stop'\n"
         f"$g = '{GIT}'\n"
         f"$r = '{paths['repo']}'\n"
-        "& $g -C $r init -q\n"
-        "& $g -C $r add -A\n"
-        "& $g -C $r -c user.name='hp-worker' -c user.email='hp-worker@local' "
+        "& $g -c 'safe.directory=*' -C $r init -q\n"
+        f"[IO.File]::WriteAllLines(\"$r\\.git\\info\\exclude\", @({', '.join(repr(p) for p in EXCLUDES)}))\n"
+        "& $g -c 'safe.directory=*' -C $r add -A\n"
+        "& $g -c 'safe.directory=*' -C $r -c user.name='hp-worker' -c user.email='hp-worker@local' "
         "commit -q -m 'hp base'\n"
-        "& $g -C $r rev-parse HEAD\n"
+        "& $g -c 'safe.directory=*' -C $r rev-parse HEAD\n"
     )
     lines = [line.strip() for line in out.splitlines() if line.strip()]
     return lines[-1]
@@ -326,6 +347,27 @@ def sync_dbs(names: list[str]) -> list[str]:
     return copied
 
 
+def launch_script(job_id: str) -> str:
+    """Detached WMI launch of run.cmd (the launch measured to survive the ssh session).
+
+    run.cmd is scp'd with the other payload: embedding it here pushed the
+    encoded remote command past cmd.exe's 8 KiB command-line limit.
+    """
+    paths = job_parts(job_id)
+    directory = paths["remote"]
+    return "\n".join([
+        "$ErrorActionPreference = 'Stop'",
+        f"$d = '{directory}'",
+        'Remove-Item "$d\\exit.txt" -ErrorAction SilentlyContinue',
+        'Remove-Item "$d\\pid.txt" -ErrorAction SilentlyContinue',
+        '$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create '
+        '-Arguments @{ CommandLine = "cmd /c `"$d\\run.cmd`"" }',
+        'if ($r.ReturnValue -ne 0) { throw "WMI create failed: $($r.ReturnValue)" }',
+        '[IO.File]::WriteAllText("$d\\pid.txt", "$($r.ProcessId)")',
+        '"method=wmi pid=$($r.ProcessId)"',
+    ])
+
+
 # --------------------------------------------------------------------------- #
 # commands
 # --------------------------------------------------------------------------- #
@@ -366,8 +408,11 @@ def cmd_start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
     for line in sync_dbs(dbs):
         print(f"db       {line}")
 
+    wrapper = run_cmd(job_id, paths, home, permission=permission, timeout=timeout,
+                      max_output_tokens=max_output_tokens, test_cmd=test_cmd)
+    (local / "run.cmd").write_bytes(wrapper.encode("utf-8"))
     payload = [local / "brief.md", local / "hp_mcp.yml", local / "job.json",
-               PACK, TEMPLATE]
+               local / "run.cmd", *context_pack_paths()]
     target = f"{HOST}:{posix(paths['remote'])}/"
     completed = hp_run._scp([str(p) for p in payload] + [target])
     if completed.returncode != 0:
@@ -375,9 +420,7 @@ def cmd_start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
     hp_run.ps(f"Set-Content -LiteralPath '{paths['remote']}\\base.txt' -Value '{base}' "
               "-Encoding ASCII")
 
-    wrapper = run_cmd(job_id, paths, home, permission=permission, timeout=timeout,
-                      max_output_tokens=max_output_tokens, test_cmd=test_cmd)
-    launch = hp_run.ps(hp_run.build_run_script(job_id, wrapper, "wmi")).strip()
+    launch = hp_run.ps(launch_script(job_id)).strip()
     print(f"launch   {launch or 'wmi'}")
     print(f"watch    python -m reality_engine.scripts.hp_worker status {job_id}")
     return 0
@@ -391,6 +434,13 @@ Get-ChildItem $jobs -Directory | Sort-Object Name | ForEach-Object {
     $exit = ''
     $ef = Join-Path $_.FullName 'exit.txt'
     if (Test-Path $ef) { $exit = (Get-Content $ef -Raw).Trim() }
+    $rc = ''
+    $lf = Join-Path $_.FullName 'job.log'
+    if (Test-Path $lf) {
+        $m = Get-Content $lf -ErrorAction SilentlyContinue | Select-String -Pattern '^rc=(\d+)' | Select-Object -Last 1
+        if ($m) { $rc = $m.Matches[0].Groups[1].Value }
+    }
+    if ($exit -eq '' -and $rc -ne '') { $exit = $rc }
     $procId = ''
     $pf = Join-Path $_.FullName 'pid.txt'
     if (Test-Path $pf) { $procId = (Get-Content $pf -Raw).Trim() }
@@ -399,13 +449,16 @@ Get-ChildItem $jobs -Directory | Sort-Object Name | ForEach-Object {
     $state = if ($exit -ne '') { 'done' } elseif ($alive) { 'running' } else { 'stopped' }
     $result = Join-Path $_.FullName 'result.md'
     $rsize = if (Test-Path $result) { (Get-Item $result).Length } else { 0 }
+    $test = ''
+    $tf = Join-Path $_.FullName 'test.log'
+    if (Test-Path $tf) { $test = (Get-Content $tf -Tail 1 -ErrorAction SilentlyContinue) }
     $notes = Join-Path $_.FullName 'repo\PROGRESS_NOTES.md'
     $nline = ''
     if (Test-Path $notes) { $nline = (Get-Content $notes -Tail 1 -ErrorAction SilentlyContinue) }
     $last = ''
-    $lf = Join-Path $_.FullName 'result.md.log'
-    if (Test-Path $lf) { $last = (Get-Content $lf -Tail 1 -ErrorAction SilentlyContinue) }
-    '{0}|{1}|{2}|{3}|{4}|{5}' -f $_.Name, $state, $exit, $rsize, $last, $nline
+    $log = Join-Path $_.FullName 'result.md.log'
+    if (Test-Path $log) { $last = (Get-Content $log -Tail 1 -ErrorAction SilentlyContinue) }
+    "{0}|{1}|{2}|{3}|{4}|{5}`t{6}" -f $_.Name, $state, $exit, $rsize, $last, $nline, $test
 }
 """.replace("@ROOT@", ROOT.rstrip("\\"))
 
@@ -417,8 +470,9 @@ def parse_status(text: str) -> list[dict]:
         if not line:
             continue
         parts = (line.split("|", 5) + [""] * 6)[:6]
+        note, _, test = parts[5].partition("\t")
         rows.append({"job": parts[0], "state": parts[1], "exit": parts[2], "result": parts[3],
-                     "last": parts[4], "note": parts[5]})
+                     "last": parts[4], "note": note, "test": test})
     return rows
 
 
@@ -433,7 +487,7 @@ def cmd_status(job_id: str | None = None) -> int:
         return 0
     print(f"{'job':30s} {'state':8s} {'exit':>4s} {'res':>8s}  last log line")
     for r in rows:
-        tail = r["note"] or r["last"]
+        tail = r["test"] and f"test: {r['test']}" or r["note"] or r["last"]
         print(f"{r['job']:30s} {r['state']:8s} {r['exit'] or '-':>4s} {r['result']:>8s}  {tail[:110]}")
     return 0
 
@@ -474,8 +528,13 @@ def cmd_result(job_id: str) -> int:
 
 
 def latest_patch(paths: dict[str, str], base: str) -> bytes:
-    hp_run._ssh([GIT, "-C", paths["repo"], "add", "-A"])
-    completed = hp_run._ssh([GIT, "-C", paths["repo"], "diff", "--cached", "--binary", base])
+    # One quoted command line: the remote shell is cmd.exe, and the git path
+    # contains a space.  safe.directory: the HP tree can be owned by
+    # Administrators while the ssh user is zen7s, which makes git refuse it.
+    git = f'"{GIT}" -c "safe.directory=*" -C "{paths["repo"]}"'
+    hp_run._ssh([f"{git} reset -q"])  # drop earlier staging so .git/info/exclude applies
+    hp_run._ssh([f"{git} add -A"])
+    completed = hp_run._ssh([f"{git} diff --cached --binary {base}"])
     if completed.returncode != 0:
         raise SystemExit(f"git diff failed: {completed.stderr.decode(errors='replace').strip()}")
     return completed.stdout
@@ -491,14 +550,17 @@ def cmd_fetch_patch(job_id: str, branch: str | None) -> int:
         if not _fetch(paths["remote"] + "\\job.json", meta_file):
             raise SystemExit(f"no job.json for {job_id}")
     meta = json.loads(meta_file.read_text(encoding="utf-8"))
-    base = meta["commit"]
-    patch = latest_patch(paths, base)
+    remote_base = hp_run.ps(f"Get-Content -Raw '{paths['remote']}\\base.txt'").strip()
+    if not remote_base:
+        raise SystemExit(f"no base.txt on the HP for {job_id}")
+    patch = latest_patch(paths, remote_base)
     (local / "patch.diff").write_bytes(patch)
     if not patch.strip():
-        print(f"{job_id}: patch is empty (base {base[:12]})")
+        print(f"{job_id}: patch is empty (base {remote_base[:12]})")
         return 0
 
     branch = branch or f"dsh-hp/{job_id}"
+    base = meta["commit"]  # the MSI commit the archive was taken from
     review = REPO / ".tmp" / "hp" / "review" / job_id
     if review.exists():
         raise SystemExit(f"review worktree already exists: {review}")

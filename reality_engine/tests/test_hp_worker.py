@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -164,20 +163,23 @@ def test_latest_patch_diffs_against_the_base_and_handles_empty(monkeypatch):
     monkeypatch.setattr(hp_run, "_ssh", fake_ssh(calls, stdout=b""))
     paths = hp_worker.job_parts("hp-1")
     assert hp_worker.latest_patch(paths, "abc123") == b""
-    assert calls[0][0][1:] == ["-C", paths["repo"], "add", "-A"]
-    assert calls[1][0][1:] == ["-C", paths["repo"], "diff", "--cached", "--binary", "abc123"]
+    git = f'"{hp_worker.GIT}" -c "safe.directory=*" -C "{paths["repo"]}"'
+    assert calls[0][0] == [f"{git} reset -q"]
+    assert calls[1][0] == [f"{git} add -A"]
+    assert calls[2][0] == [f"{git} diff --cached --binary abc123"]
 
 
-def test_status_parser_keeps_progress_pipes(monkeypatch):
+def test_status_parser_keeps_progress_pipes():
     text = (
-        "hp-1|done|0|120|run_deepseek_harness: rc=0|notes: still going|with pipes\n"
-        "hp-2|running||0|thinking|\n"
+        "hp-1|done|0|120|run_deepseek_harness: rc=0|notes: still going|with pipes\t10 passed\n"
+        "hp-2|running||0|thinking||\n"
         "\n"
     )
     rows = hp_worker.parse_status(text)
     assert [r["job"] for r in rows] == ["hp-1", "hp-2"]
     assert rows[0]["state"] == "done" and rows[0]["exit"] == "0"
     assert rows[0]["note"] == "notes: still going|with pipes"
+    assert rows[0]["test"] == "10 passed"
     assert rows[1]["state"] == "running"
 
 
