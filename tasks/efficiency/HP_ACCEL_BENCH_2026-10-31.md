@@ -344,7 +344,8 @@ MSI, the page with the most text per PDF, rendered 3× with pypdfium2, truth =
 | KEC__0c7457f6 p0 | 1,375 | 1,388 | 0.671 | 0.789 |
 | STLTECH__c57b1e3b p0 | 1,298 | 1,307 | 0.613 | 0.854 |
 | BIGBLOC__ccd47fdc p0 | 1,346 | 1,621 | 0.609 | 0.683 |
-| KALYANKJIL (2 files, same letter) p0 | 1,682 | 1,706 | 0.600 | 0.853 |
+| KALYANKJIL__a9062e06 p0 | 1,682 | 1,706 | 0.600 | 0.853 |
+| KALYANKJIL__17d7027f p0 (same letter) | 1,682 | 1,706 | 0.600 | 0.853 |
 | IDEA__6259d560 p0 | 1,251 | 1,632 | 0.512 | 0.341 |
 | PIDILITIND__14ccea68 p0 | 1,799 | 1,695 | 0.499 | 0.670 |
 | UFBL__a606683d p0 | 1,639 | 1,654 | 0.459 | 0.858 |
