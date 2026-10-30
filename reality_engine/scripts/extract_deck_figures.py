@@ -60,6 +60,7 @@ import pymupdf
 import requests
 from reality_engine.config import resolve_stored_path
 from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
+from reality_engine.toolbelt.cost_ledger import record_usage
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 LIVE_DB = DATA / "equity_intelligence.db"
@@ -685,6 +686,8 @@ class Client:
             j = r.json(); u = j.get("usage", {})
             if not j.get("choices"):   # gateways sometimes return HTTP 200 with an upstream error body
                 return 502, r.text[:300], None
+            if str(MODELS[model].get("base", BASE)).startswith(BASE):
+                record_usage(MODELS[model].get("id", model), u, "extract_deck_figures")
             return 200, j["choices"][0]["message"].get("content") or "", (u.get("prompt_tokens", 0), u.get("completion_tokens", 0))
         body = {"model": model, **MODELS[model]["body"],
                 "input": [{"role": "user", "content": [{"type": "input_image", "image_url": url}, {"type": "input_text", "text": prompt}]}]}
@@ -692,6 +695,7 @@ class Client:
         if r.status_code != 200:
             return r.status_code, r.text[:300], None
         j = r.json(); u = j.get("usage", {})
+        record_usage(MODELS[model].get("id", model), u, "extract_deck_figures")
         txt = "".join(c.get("text", "") for o in j.get("output", []) if o.get("type") == "message" for c in o.get("content", []))
         return 200, txt, (u.get("input_tokens", 0), u.get("output_tokens", 0))
 

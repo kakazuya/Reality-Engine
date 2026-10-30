@@ -111,7 +111,7 @@ def charge(provider: str, model: str, in_tok: int = 0, out_tok: int = 0,
            usd: float | None = None, purpose: str = "", job_id: str = "", *,
            ledger: str | Path | None = None, cap_usd: float | None = None,
            cap_scope: str | None = None, price_in: float | None = None,
-           price_out: float | None = None) -> dict[str, Any]:
+           price_out: float | None = None, caller: str = "") -> dict[str, Any]:
     """Append one paid call; raises :class:`BudgetExceeded` before writing if capped."""
     cost = round(_cost(model, in_tok, out_tok, usd, price_in, price_out), 6)
     path = _ledger(ledger)
@@ -130,9 +130,31 @@ def charge(provider: str, model: str, in_tok: int = 0, out_tok: int = 0,
         "usd": cost,
         "purpose": purpose,
         "job_id": job_id,
+        "caller": caller,
     }
     _append(path, entry)
     return entry
+
+
+def record_usage(model: str, usage: dict[str, Any] | None, caller: str,
+                 provider: str = "opencode-go",
+                 ledger: str | Path | None = None) -> dict[str, Any] | None:
+    """Log one direct Go API response's model, tokens and caller.
+
+    ``usage`` is the provider's OpenAI-style block.  An unpriced/free model is
+    recorded at $0 so the tokens still count.  Never raises: a logging failure
+    must not break the API call it describes.
+    """
+    u = usage if isinstance(usage, dict) else {}
+    in_tok = int(u.get("prompt_tokens") or u.get("inputTokens") or u.get("input_tokens") or 0)
+    out_tok = int(u.get("completion_tokens") or u.get("outputTokens") or u.get("output_tokens") or 0)
+    if not (in_tok or out_tok):
+        return None
+    try:
+        return charge(provider, model, in_tok, out_tok, None, "", "", caller=caller,
+                      ledger=ledger, price_in=0.0, price_out=0.0)
+    except Exception:  # ledger trouble never fails the reader
+        return None
 
 
 def report(ledger: str | Path | None = None, scope: str | None = None) -> dict[str, Any]:

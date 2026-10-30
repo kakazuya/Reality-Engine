@@ -24,12 +24,17 @@ from core import (
 
 INSTRUCTIONS = (
     "Local DeepSeek/dsh worker control. start_worker returns immediately with a "
-    "job_id; poll worker_status rather than assuming PID liveness is progress. "
-    "worker_status.progress.summary is the one-line answer to 'is it done, is it "
-    "moving, by when'; progress.done is the reliable finished flag (result.md is "
-    "streamed while running, so a non-empty file is NOT completion). "
+    "job_id; do not poll in a loop - worker_status defaults to one compact view "
+    "(phase, done, succeeded, one-line summary, tool calls, lease seconds left) "
+    "and worker_result to outcome/exit/content/branch/head/changed-file count; "
+    "pass verbose=true for the full record. worker_status.done (verbose: "
+    "progress.done) is the reliable finished flag (result.md is streamed while "
+    "running, so a non-empty file is NOT completion). To wait on a long run, "
+    "start it detached and make ONE blocking call (a harness job_output with "
+    "wait=true, or a host-side wait on process exit/a file) instead of sleeping "
+    "in a loop. "
     "inspect_run gives the same read-only view of a run launched with the raw "
-    "harness. Use worker_result for the bounded final answer and artifact hints, never the "
+    "harness. Use worker_result for the bounded final answer, never the "
     "reasoning log. The supervisor also writes model-free progress digests "
     "(progress.jsonl/progress.md) every progress_interval_seconds (default 1200, "
     "0=off); read them with worker_progress instead of pinging a running worker. "
@@ -89,6 +94,68 @@ def _safe(call) -> dict[str, Any]:
                 "message": f"{type(exc).__name__}: {exc}",
             },
         }
+
+
+# The default views are the ones a controller reads on every step; the full
+# record is behind verbose=true.  Keep these under 1,000 chars (status) and
+# 800 chars plus the answer (result).
+def _compact_status(status: dict[str, Any]) -> dict[str, Any]:
+    progress_view = status.get("progress") or {}
+    events = progress_view.get("events") or {}
+    reason = status.get("failure_reason")
+    if isinstance(reason, dict):
+        tail = reason.get("launcher_stderr_tail") or []
+        reason = {
+            "likely_cause": reason.get("likely_cause"),
+            "detail": str(tail[-1])[:200] if tail else None,
+        }
+    return {
+        "ok": status.get("ok", True),
+        "job_id": status.get("job_id"),
+        "phase": status.get("phase"),
+        "done": progress_view.get("done", status.get("final")),
+        "succeeded": progress_view.get("succeeded"),
+        "summary": progress_view.get("summary"),
+        "tool_calls": events.get("tool_calls"),
+        "tool_calls_before_first_edit": progress_view.get("tool_calls_before_first_edit"),
+        "lease_seconds_left": progress_view.get("controller_lease_remaining_seconds"),
+        "failure_reason": reason,
+    }
+
+
+def _compact_result(result: dict[str, Any]) -> dict[str, Any]:
+    if not result.get("ok", True):
+        return result
+    worktree = result.get("worktree") or {}
+    return {
+        "ok": True,
+        "job_id": result.get("job_id"),
+        "outcome": result.get("outcome"),
+        "exit_code": result.get("exit_code"),
+        "content": result.get("content"),
+        "truncated": result.get("truncated"),
+        "result_bytes": result.get("result_bytes"),
+        "worktree": (
+            {
+                "branch": worktree.get("branch"),
+                "head": worktree.get("head"),
+                "changed_files": worktree.get("files_changed"),
+            }
+            if worktree.get("enabled")
+            else None
+        ),
+    }
+
+
+def _compact_jobs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "job_id": row.get("job_id"),
+            "phase": row.get("phase"),
+            "line": row.get("digest_summary") or row.get("summary"),
+        }
+        for row in rows
+    ]
 
 
 @server.tool(
@@ -194,35 +261,45 @@ def start_worker(
 @server.tool(
     name="worker_status",
     description=(
-        "Read persisted job, process, heartbeat and session state. Distinguishes "
-        "running, stale, dead/lost, unknown (unreadable record) and finished; PID "
-        "liveness is never treated as model progress. progress.done is the "
-        "finished flag; progress.summary/events give elapsed time, last activity, "
-        "tool-call counts, last tool, recent file writes and the hard upper bound "
-        "(lease/timeout) on when the job will stop. failure_reason explains failed "
-        "jobs. owner_session/last_steerer plus worktree branch/base/head/commits/"
-        "files_changed are included. Makes no inference call."
+        "Compact job view by default (under 1,000 chars): phase, done, "
+        "succeeded, one-line summary, tool-call counts, lease seconds left and "
+        "failure reason. done is the finished flag; PID liveness is never model "
+        "progress. verbose=true returns the full record: persisted process / "
+        "heartbeat / session state, running vs stale/dead/lost/unknown, owner "
+        "and worktree branch/base/head/commits/changed-file paths, resource "
+        "locks, limits and paths. Makes no inference call."
     ),
     annotations=ToolAnnotations(
         read_only_hint=True, destructive_hint=False, open_world_hint=False
     ),
 )
-def worker_status(job_id: str) -> dict[str, Any]:
-    return _safe(lambda: _get_manager().get_status(job_id))
+def worker_status(job_id: str, verbose: bool = False) -> dict[str, Any]:
+    if verbose:
+        return _safe(lambda: _get_manager().get_status(job_id))
+    status = _safe(lambda: _get_manager().get_status(job_id))
+    return status if not status.get("ok", True) else _safe(lambda: _compact_status(status))
 
 
 @server.tool(
     name="worker_result",
     description=(
-        "Return a bounded final/partial answer, exit outcome, artifact hints and "
-        "limits for a job. Never returns reasoning stderr or credentials."
+        "Return the bounded final/partial answer in a compact envelope (under "
+        "800 chars plus content): outcome, exit code, content, worktree branch "
+        "and head, changed-file count. verbose=true adds paths, artifacts, "
+        "heartbeat, limits, warnings and the full worktree record. Never "
+        "returns reasoning stderr or credentials."
     ),
     annotations=ToolAnnotations(
         read_only_hint=True, destructive_hint=False, open_world_hint=False
     ),
 )
-def worker_result(job_id: str, max_bytes: int | None = None) -> dict[str, Any]:
-    return _safe(lambda: _get_manager().worker_result(job_id, max_bytes))
+def worker_result(
+    job_id: str, max_bytes: int | None = None, verbose: bool = False
+) -> dict[str, Any]:
+    if verbose:
+        return _safe(lambda: _get_manager().worker_result(job_id, max_bytes))
+    result = _safe(lambda: _get_manager().worker_result(job_id, max_bytes))
+    return result if not result.get("ok", True) else _safe(lambda: _compact_result(result))
 
 
 @server.tool(
@@ -318,18 +395,25 @@ def cancel_worker(
 @server.tool(
     name="list_workers",
     description=(
-        "List persisted jobs, optionally filtered to one workspace (repository "
-        "root or a registered worktree), newest first. Each row includes the "
-        "owner session, the last steerer session, and the newest supervisor "
-        "progress digest (last_digest_at/digest_summary) in addition to "
-        "phase/summary. Read-only and bounded."
+        "List persisted jobs (default 5, newest first), optionally filtered to "
+        "one workspace: one short line each (job_id, phase, latest digest or "
+        "summary). verbose=true returns the full rows with owner session, "
+        "steerer, worktree branch, paths and digest fields. Read-only."
     ),
     annotations=ToolAnnotations(
         read_only_hint=True, destructive_hint=False, open_world_hint=False
     ),
 )
-def list_workers(workspace: str | None = None, limit: int = 20) -> dict[str, Any]:
-    return _safe(lambda: _get_manager().list_workers(workspace, limit))
+def list_workers(
+    workspace: str | None = None, limit: int = 5, verbose: bool = False
+) -> dict[str, Any]:
+    if verbose:
+        return _safe(lambda: _get_manager().list_workers(workspace, limit))
+    listing = _safe(lambda: _get_manager().list_workers(workspace, limit))
+    if not listing.get("ok", True):
+        return listing
+    listing["jobs"] = _compact_jobs(listing.get("jobs") or [])
+    return listing
 
 
 @server.tool(

@@ -360,7 +360,8 @@ def _call(session: dict, cls: str, route: str, tool: str, step: int, out_chars: 
 
 # --- dsh -------------------------------------------------------------------------
 
-def read_dsh(root: str, since: float | None) -> dict:
+def read_dsh(root: str, since: float | None, until: float | None = None,
+             exclude: set | None = None) -> dict:
     jobs = {}
     if not os.path.isdir(root):
         return {"present": False, "sessions": {}}
@@ -368,10 +369,14 @@ def read_dsh(root: str, since: float | None) -> dict:
         jd = os.path.join(root, name)
         if not os.path.isdir(jd):
             continue
+        if exclude and name in exclude:
+            continue
         ev = os.path.join(jd, "result.md.events.jsonl")
         status = _load_json(os.path.join(jd, "status.json"))
         started = _ts((status or {}).get("started_at")) or _ts(name.split("-")[0])
         if since and started and started < since:
+            continue
+        if until and started and started >= until:
             continue
         if not os.path.exists(ev):
             continue
@@ -382,6 +387,11 @@ def read_dsh(root: str, since: float | None) -> dict:
         prog = _last_jsonl(os.path.join(jd, "progress.jsonl"))
         if prog:
             s["provider_out"] = prog.get("output_tokens")
+            # Digest records from the 31 Oct round carry the provider's input
+            # split (uncached + cached) and the batching counter; older ones do not.
+            s["provider_in"] = prog.get("input_tokens")
+            s["provider_cache_read"] = prog.get("cache_read_tokens")
+            s["batched_read_steps"] = prog.get("batched_read_steps")
             s["provider_steps"] = prog.get("model_steps")
             s["model_steps"] = prog.get("model_steps") or 0
             s["tool_calls_reported"] = prog.get("tool_calls")
@@ -484,7 +494,7 @@ def _last_jsonl(path: str) -> dict | None:
 
 # --- Claude Code ----------------------------------------------------------------
 
-def read_claude(root: str, since: float | None) -> dict:
+def read_claude(root: str, since: float | None, until: float | None = None) -> dict:
     sessions = {}
     if not os.path.isdir(root):
         return {"present": False, "sessions": {}}
@@ -599,6 +609,8 @@ def read_claude(root: str, since: float | None) -> dict:
             store["tool_seconds"] = float(cost_state.get("totalToolDuration") or 0.0)
         if store["started"] and since and store["started"] < since:
             continue
+        if store["started"] and until and store["started"] >= until:
+            continue
         if store["steps"] or store["calls"]:
             sessions[rel] = store
     return {"present": True, "sessions": sessions, "files": len(files)}
@@ -621,7 +633,8 @@ def _result_text(block: dict) -> str:
 
 # --- OpenCode -------------------------------------------------------------------
 
-def read_opencode(root: str, since: float | None, workspace: str) -> dict:
+def read_opencode(root: str, since: float | None, workspace: str,
+                  until: float | None = None) -> dict:
     db = os.path.join(root, "opencode.db")
     if not os.path.isfile(db):
         return {"present": False, "sessions": {}}
@@ -646,6 +659,8 @@ def read_opencode(root: str, since: float | None, workspace: str) -> dict:
         for r in rows:
             started = (r["time_created"] or 0) / 1000.0
             if since and started and started < since:
+                continue
+            if until and started and started >= until:
                 continue
             s = _session()
             s["name"] = r["title"] or r["id"]
@@ -688,7 +703,7 @@ def read_opencode(root: str, since: float | None, workspace: str) -> dict:
 
 # --- Codex ----------------------------------------------------------------------
 
-def read_codex(root: str, _since: float | None) -> dict:
+def read_codex(root: str, _since: float | None, _until: float | None = None) -> dict:
     if not os.path.isdir(root):
         return {"present": False, "sessions": {}}
     sessions = {}
@@ -701,6 +716,51 @@ def read_codex(root: str, _since: float | None) -> dict:
             s["name"] = os.path.relpath(path, root)
             sessions[s["name"]] = s
     return {"present": True, "sessions": sessions, "note": "raw line scan only"}
+
+
+# --- direct API ledger ----------------------------------------------------------
+
+LEDGER_PATH = os.path.join("tasks", "ledgers", "spend.jsonl")
+
+
+def read_ledger(path: str | None, since: float | None = None,
+                until: float | None = None) -> dict:
+    """Direct Go/API calls from ``tasks/ledgers/spend.jsonl``.
+
+    Written by ``toolbelt.cost_ledger.record_usage``/``charge``: one JSON line per
+    response with model, tokens, cost and caller.  This is the only local record
+    of the readers that call the provider directly (no Claude/dsh wrapper).
+    """
+    if not path or not os.path.exists(path):
+        return {"present": False, "entries": 0, "in_tok": 0, "out_tok": 0,
+                "usd": 0.0, "by_model": {}, "by_caller": {}}
+    entries = []
+    by_model = collections.Counter()
+    by_caller = collections.Counter()
+    for line in _iter_lines(path):
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(entry, dict):
+            continue
+        at = _ts(entry.get("ts"))
+        if since and at and at < since:
+            continue
+        if until and at and at >= until:
+            continue
+        entries.append(entry)
+        by_model[str(entry.get("model") or "?")] += 1
+        by_caller[str(entry.get("caller") or entry.get("purpose") or "?")] += 1
+    return {
+        "present": True,
+        "entries": len(entries),
+        "in_tok": sum(int(e.get("in_tok") or 0) for e in entries),
+        "out_tok": sum(int(e.get("out_tok") or 0) for e in entries),
+        "usd": round(sum(float(e.get("usd") or 0.0) for e in entries), 6),
+        "by_model": dict(by_model),
+        "by_caller": dict(by_caller),
+    }
 
 
 # --- aggregation ----------------------------------------------------------------
@@ -720,7 +780,8 @@ def summarise(source: str, raw: dict) -> dict:
            "calls_n": 0, "failures": 0, "chars": 0, "truncated": 0,
            "provider_out": 0, "provider_in": 0, "cache_read": 0, "cache_creation": 0,
            "thinking": 0, "thinking_est": 0, "thinking_in_output": True,
-           "cost": 0.0, "carry": 0.0, "steps": 0,
+           "cost": 0.0, "carry": 0.0, "steps": 0, "wall_seconds": 0.0,
+           "batched_read_steps": 0,
            "classes": {}, "top_sessions": [], "share": {}}
     if source == "opencode":
         out["thinking_in_output"] = False  # reasoning is reported beside output
@@ -757,6 +818,9 @@ def summarise(source: str, raw: dict) -> dict:
         out["carry"] += carry
         out["steps"] += n_steps
         out["truncated"] += int(s.get("truncated") or 0)
+        out["batched_read_steps"] += int(s.get("batched_read_steps") or 0)
+        if s.get("started") and s.get("ended"):
+            out["wall_seconds"] += max(0.0, float(s["ended"]) - float(s["started"]))
         bucket = out["classes"]
         for c in calls:
             b = bucket.setdefault(c["cls"], {"calls": 0, "failures": 0, "chars": 0,
@@ -1160,20 +1224,123 @@ def samples(raw_sources: dict, per_class: int = 30, seed: int = 20261030) -> str
 
 # --- report ---------------------------------------------------------------------
 
-def build(roots: dict, since: float | None, workspace: str) -> dict:
-    raw = {
-        "dsh": read_dsh(roots["dsh"], since),
-        "claude": read_claude(roots["claude"], since),
-        "opencode": read_opencode(roots["opencode"], since, workspace),
-        "codex": read_codex(roots["codex"], since),
+def _rate(num, den):
+    """A ratio, or None when the denominator is missing/zero (older baselines)."""
+    try:
+        den = float(den or 0)
+        return round(float(num or 0) / den, 6) if den else None
+    except (TypeError, ValueError):
+        return None
+
+
+COMPARISON_METRICS = [
+    ("claude_cached_tokens_per_step", "Claude cached tokens per step", "tokens/step"),
+    ("claude_edit_share_of_carry", "Claude edit/write share of re-sent volume", "share"),
+    ("claude_tokens_per_control_call", "Tokens per worker-control call", "tokens/call"),
+    ("inline_db_share_of_db_calls", "Inline DB share of DB calls", "share"),
+    ("inline_db_failure_rate", "Inline DB failure rate", "share"),
+    ("batchable_steps_share", "Batchable steps as a share of steps", "share"),
+    ("sleep_seconds_per_worker_hour", "Sleep seconds per worker-hour", "s/h"),
+    ("lsp_per_job", "LSP calls per dsh job", "calls/job"),
+    ("calls_before_first_edit_p50", "Calls before first edit (p50)", "calls"),
+    ("read_share", "Read share of dsh calls", "share"),
+    ("tests_failure_rate", "Tests/compile failure rate", "share"),
+    ("shell_share", "Shell share of dsh calls", "share"),
+]
+
+
+def metrics(rep: dict) -> dict:
+    """The FIX_TRACKER_2026-10-31 rates, from one report dict (old or new)."""
+    sources = rep.get("sources") or {}
+    claude = sources.get("claude") or {}
+    dsh = sources.get("dsh") or {}
+    waste = rep.get("waste") or {}
+    cclasses = claude.get("classes") or {}
+    dclasses = dsh.get("classes") or {}
+
+    def calls(classes, name):
+        return int((classes.get(name) or {}).get("calls") or 0)
+
+    def failures(classes, name):
+        return int((classes.get(name) or {}).get("failures") or 0)
+
+    def carry(classes, name):
+        return float((classes.get(name) or {}).get("carry") or 0.0)
+
+    total_carry = sum(float((b or {}).get("carry") or 0.0) for b in cclasses.values())
+    ctrl = cclasses.get(CTRL) or {}
+    db_calls = calls(cclasses, PY_DB) + calls(cclasses, SQL_TOOL)
+    dsh_calls = int(dsh.get("calls_n") or 0) or 1
+    lsp = calls(dclasses, LSP_NAV) + calls(dclasses, LSP_DIAG)
+    reads = (calls(dclasses, PY_WHOLE) + calls(dclasses, PY_RANGED)
+             + calls(dclasses, READ_OTHER))
+    shell = sum(int((b or {}).get("route_shell") or 0) for b in dclasses.values())
+    sleep_seconds = float((waste.get("j") or {}).get("seconds") or 0)
+    worker_hours = float(dsh.get("wall_seconds") or 0) / 3600.0
+    steps_all = sum(int((s or {}).get("steps") or 0) for s in sources.values())
+    return {
+        "claude_cached_tokens_per_step": _rate(claude.get("cache_read"), claude.get("steps")),
+        "claude_edit_share_of_carry": _rate(carry(cclasses, EDIT), total_carry),
+        "claude_tokens_per_control_call": _rate(ctrl.get("est_tokens"), ctrl.get("calls")),
+        "inline_db_share_of_db_calls": _rate(calls(cclasses, PY_DB), db_calls),
+        "inline_db_failure_rate": _rate(failures(cclasses, PY_DB), calls(cclasses, PY_DB)),
+        "batchable_steps_share": _rate((waste.get("g") or {}).get("count"), steps_all),
+        "sleep_seconds_per_worker_hour": _rate(sleep_seconds, worker_hours),
+        "lsp_per_job": _rate(lsp, dsh.get("sessions_n")),
+        "calls_before_first_edit_p50": (waste.get("h") or {}).get("calls_p50"),
+        "read_share": _rate(reads, dsh_calls),
+        "tests_failure_rate": _rate(failures(dclasses, TESTS), calls(dclasses, TESTS)),
+        "shell_share": _rate(shell, dsh_calls),
     }
+
+
+def comparison(rep: dict, baseline: dict) -> dict:
+    """Baseline vs window for every FIX_TRACKER metric, as rates."""
+    base = metrics(baseline)
+    window = metrics(rep)
+    rows = []
+    for key, label, unit in COMPARISON_METRICS:
+        before, after = base.get(key), window.get(key)
+        delta = None
+        if isinstance(before, (int, float)) and isinstance(after, (int, float)) and before != 0:
+            delta = round((after - before) / abs(before), 4)
+        rows.append({"metric": key, "label": label, "unit": unit,
+                     "baseline": before, "window": after, "relative_delta": delta})
+    return {"baseline_generated_at": baseline.get("generated_at"),
+            "window_generated_at": rep.get("generated_at"), "metrics": rows}
+
+
+def _print_comparison(cmp: dict) -> None:
+    def fmt(value):
+        if value is None:
+            return "n/a"
+        return f"{value:,.4g}" if isinstance(value, float) else f"{value:,}"
+
+    print(f"{'metric':<46}{'baseline':>14}{'window':>14}{'delta':>10}")
+    for row in cmp["metrics"]:
+        rel = "n/a" if row["relative_delta"] is None else f"{row['relative_delta']:+.0%}"
+        print(f"{row['label']:<46}{fmt(row['baseline']):>14}{fmt(row['window']):>14}{rel:>10}")
+
+
+def build(roots: dict, since: float | None, workspace: str,
+          until: float | None = None, exclude: set | None = None,
+          ledger: str | None = None) -> dict:
+    raw = {
+        "dsh": read_dsh(roots["dsh"], since, until, exclude),
+        "claude": read_claude(roots["claude"], since, until),
+        "opencode": read_opencode(roots["opencode"], since, workspace, until),
+        "codex": read_codex(roots["codex"], since, until),
+    }
+    ledger_view = read_ledger(ledger, since, until)
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "since": datetime.fromtimestamp(since, timezone.utc).isoformat(timespec="seconds") if since else None,
+        "until": datetime.fromtimestamp(until, timezone.utc).isoformat(timespec="seconds") if until else None,
         "change_ts": CHANGE_TS,
         "chars_per_token": CHARS_PER_TOKEN,
         "classes": CLASSES,
         "sources": {k: summarise(k, v) for k, v in raw.items()},
+        "ledger": ledger_view,
         "waste": detectors(raw),
         "before_after": before_after(raw["dsh"]),
         "integrity": integrity(raw),
@@ -1182,6 +1349,7 @@ def build(roots: dict, since: float | None, workspace: str) -> dict:
             "claude_files": raw["claude"].get("files", 0),
             "opencode_sessions": len(raw["opencode"]["sessions"]),
             "codex_present": raw["codex"].get("present", False),
+            "ledger_entries": ledger_view["entries"],
         },
     }
     report["_raw"] = raw
@@ -1228,6 +1396,20 @@ def render_md(rep: dict) -> str:
         "Each step's output is re-sent on every later request, so this is the re-sent volume the "
         "outputs create, not a separate bill. Attributed to a class by sharing a step's output "
         "evenly across the calls in that step.")
+    add("")
+    led = rep.get("ledger") or {}
+    add("## Direct API ledger")
+    add("")
+    if not led.get("present"):
+        add("`tasks/ledgers/spend.jsonl` is not present: no direct Go/API reader has logged a call "
+            "in this window.")
+    else:
+        add(f"- entries: **{_fmt(led.get('entries', 0))}** · input tokens: {_fmt(led.get('in_tok', 0))} · "
+            f"output tokens: {_fmt(led.get('out_tok', 0))} · cost USD: {float(led.get('usd') or 0):.4f}")
+        if led.get("by_model"):
+            add(f"- by model: `{json.dumps(led['by_model'])[:600]}`")
+        if led.get("by_caller"):
+            add(f"- by caller: `{json.dumps(led['by_caller'])[:600]}`")
     add("")
 
     add("## Per source, per tool class")
@@ -1404,30 +1586,43 @@ def render_md(rep: dict) -> str:
 
     add("## What could not be measured, and why")
     add("")
-    add("- **dsh output sizes are lower bounds for truncated results** (the event writer caps them); "
+    add("- **dsh output sizes are lower bounds** for truncated results (the event writer caps them); "
         f"truncated results: {rep['sources']['dsh']['truncated'] if rep['sources']['dsh']['present'] else 0}.")
-    add("- **dsh input tokens are not recorded** anywhere in the job directory (events carry no usage); "
-        "only provider output tokens and model steps are available from `progress.jsonl`.")
+    add("- **dsh input tokens** come from `progress.jsonl` digests written from 31 Oct 2026 on "
+        "(`input_tokens`, `cache_read_tokens`); older jobs carry output tokens only.")
     add("- **OpenCode holds no tool calls at all** in the live DB: only text/reasoning parts. It is "
         "reported for model, tokens and cost, with zero tool calls — not omitted.")
     add("- **Codex is absent** on this machine (`~/.codex/sessions` does not exist).")
-    add("- **pytest is not installed** for the interpreter that runs this report, so the fixture "
-        "test was executed with `python -m unittest reality_engine.tests.test_tool_usage_report`; "
-        "the file is a plain `TestCase` and pytest will collect it unchanged.")
-    add("- **Direct Go API readers are out of scope.** `reality_engine/scripts/{extract_news_prices,"
-        "extract_deck_figures,concall_pilot,ar_queue}.py` post straight to `opencode.ai/zen/go/v1/"
-        "chat/completions` with no tool calls. `reality_engine/toolbelt/cost_ledger.py` already writes "
-        "`tasks/ledgers/spend.jsonl`, but no reader calls `charge()` and that ledger does not exist, so "
-        "their tokens are uncountable from local state. To count them: call `charge()` (or "
-        "`cost_ledger --add`) after every response, then sum the ledger by purpose; fall back to the "
-        "provider's billing export.")
+    add("- **pytest** is installed for the system interpreter from 31 Oct 2026; the fixture test also "
+        "runs unchanged under `python -m unittest reality_engine.tests.test_tool_usage_report`.")
+    add("- **Direct Go API readers** (`extract_news_prices`, `extract_deck_figures`, `concall_pilot`, "
+        "`ar_queue`, `ingest_annual_reports`) call `cost_ledger.record_usage()` after every response "
+        "and appear in the **Direct API ledger** section; `tasks/arch_v4/nid_beam_preread.py` does the "
+        "same. Before 31 Oct they logged nothing, so that window has no local record for them.")
     add("")
+    cmp = rep.get("comparison")
+    if cmp:
+        add("## Comparison vs baseline")
+        add("")
+        add(f"Baseline generated {cmp.get('baseline_generated_at')} · window {cmp.get('window_generated_at')}")
+        add("")
+        add("| metric | unit | baseline | window | delta |")
+        add("|---|---|---|---|---|")
+        for row in cmp["metrics"]:
+            rel = "n/a" if row["relative_delta"] is None else f"{row['relative_delta']:+.0%}"
+            add(f"| {row['label']} | {row['unit']} | {row['baseline']} | {row['window']} | {rel} |")
+        add("")
     return "\n".join(L)
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Read-only tool-usage and token accounting.")
     ap.add_argument("--since", help="only sessions starting on/after this date (YYYY-MM-DD or ISO)")
+    ap.add_argument("--until", help="only sessions starting before this date (YYYY-MM-DD or ISO)")
+    ap.add_argument("--compare", help="baseline report .json; print the FIX_TRACKER rates baseline vs window")
+    ap.add_argument("--exclude-jobs", help="comma-separated dsh job ids to leave out of the window")
+    ap.add_argument("--ledger", default=LEDGER_PATH,
+                    help="direct-API spend ledger (default tasks/ledgers/spend.jsonl)")
     ap.add_argument("--out", default=os.path.join("tasks", "efficiency", "TOOL_USAGE"),
                     help="output base path; writes <out>.md and <out>.json")
     ap.add_argument("--samples", help="write the 30-row classifier samples to this .md path")
@@ -1435,15 +1630,17 @@ def main(argv=None) -> int:
     ap.add_argument("--limit-samples", type=int, default=30)
     args = ap.parse_args(argv)
 
-    since = None
-    if args.since:
-        s = args.since
-        if len(s) == 10:
-            s += "T00:00:00+00:00"
-        since = _ts(s)
+    def _bound(value):
+        if len(value) == 10:
+            value += "T00:00:00+00:00"
+        return _ts(value)
+
+    since = _bound(args.since) if args.since else None
+    until = _bound(args.until) if args.until else None
+    exclude = {j.strip() for j in (args.exclude_jobs or "").split(",") if j.strip()}
 
     workspace = os.getcwd()
-    rep = build(DEFAULT_ROOTS, since, workspace)
+    rep = build(DEFAULT_ROOTS, since, workspace, until, exclude, args.ledger)
     if args.precision and os.path.exists(args.precision):
         with open(args.precision, encoding="utf-8") as fh:
             prec = json.load(fh)
@@ -1454,6 +1651,11 @@ def main(argv=None) -> int:
         os.makedirs(os.path.dirname(os.path.abspath(args.samples)) or ".", exist_ok=True)
         with open(args.samples, "w", encoding="utf-8") as fh:
             fh.write(samples(rep.pop("_raw"), args.limit_samples))
+    baseline = None
+    if args.compare:
+        with open(args.compare, encoding="utf-8") as fh:
+            baseline = json.load(fh)
+        rep["comparison"] = comparison(rep, baseline)
 
     rep.pop("_raw", None)
     out = args.out
@@ -1464,6 +1666,8 @@ def main(argv=None) -> int:
     with open(out + ".md", "w", encoding="utf-8") as fh:
         fh.write(render_md(keep))
     print(f"wrote {out}.md and {out}.json")
+    if rep.get("comparison"):
+        _print_comparison(rep["comparison"])
     return 0
 
 

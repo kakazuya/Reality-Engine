@@ -32,6 +32,7 @@ from reality_engine.config import raw_dir
 
 from reality_engine.scripts import ingest_annual_reports as ar
 from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
+from reality_engine.toolbelt.cost_ledger import record_usage
 
 QUEUE = raw_dir("ar_queue")
 STUDY_TEST = ar.ROOT / "tasks" / "ar_study" / "free_test"
@@ -344,7 +345,10 @@ def read_piece_kilo(model, prompt_file, key_env="KILO_API_KEY", timeout=900, url
                             "messages": [{"role": "user", "content": prompt_file.read_text(encoding="utf-8")}]})
     if r.status_code != 200 or not r.json().get("choices"):
         return "", r.status_code, r.text[:300]
-    return r.json()["choices"][0]["message"].get("content") or "", 0, ""
+    payload = r.json()
+    if "opencode.ai/zen/go" in url:   # the direct Go path is the one this ledger can see
+        record_usage(model, payload.get("usage"), "ar_queue")
+    return payload["choices"][0]["message"].get("content") or "", 0, ""
 
 
 _gem_turn = {}

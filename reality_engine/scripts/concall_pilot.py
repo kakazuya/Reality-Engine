@@ -18,6 +18,7 @@ import requests
 
 from reality_engine.scripts import ingest_annual_reports as ar
 from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
+from reality_engine.toolbelt.cost_ledger import record_usage
 
 PILOT = Path(__file__).resolve().parents[1] / "data" / "concall_pilot"
 GOOGLE = {"gemma-4-26b-a4b-it", "gemma-4-31b-it", "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.1-pro-preview",
@@ -104,6 +105,7 @@ def call_go(model, prompt, key, timeout=900):
             raise RuntimeError(f"response {j.get('status')}: {str(j.get('incomplete_details') or j.get('error'))[:150]}")
         text = "".join(c.get("text", "") for o in j.get("output", []) if o.get("type") == "message"
                        for c in o.get("content", []) if c.get("type") == "output_text")
+        record_usage(model, u, "concall_pilot")
         return text, u.get("input_tokens"), u.get("output_tokens")
     # '<id>~low' sends reasoning_effort=low (2026-10-19: Go MiniMax M3.1 Flash at default effort reasoned through all
     # 32k output tokens and returned empty content; at low it answered in 30 s)
@@ -116,6 +118,7 @@ def call_go(model, prompt, key, timeout=900):
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
     j = r.json(); u = j.get("usage", {})
+    record_usage(model, u, "concall_pilot")
     return j["choices"][0]["message"].get("content") or "", u.get("prompt_tokens"), u.get("completion_tokens")
 
 

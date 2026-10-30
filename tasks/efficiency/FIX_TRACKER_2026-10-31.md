@@ -8,7 +8,9 @@ Shivam asked (31 Oct): apply all 9 fixes, count for today and tomorrow, then jud
 python reality_engine/scripts/tool_usage_report.py --since 2026-10-31T00:30+05:30 --compare tasks/efficiency/TOOL_USAGE_2026-10-30.json --out tasks/efficiency/TOOL_USAGE_2026-11-01
 ```
 
-(`--compare` and `--until` arrive with round 2.) Exclude the 3 workers started before the fixes when comparing dsh rates.
+(`--compare`, `--until` and `--exclude-jobs` are live from round 2; `--compare`
+prints every metric below as a rate, baseline vs window.) Exclude the 3 workers
+started before the fixes when comparing dsh rates (`--exclude-jobs`).
 
 | # | Fix | Live from | Baseline (to 30 Oct) | Metric to compare | Saving promised |
 |---|---|---|---|---|---|

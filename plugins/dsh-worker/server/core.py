@@ -130,10 +130,16 @@ CODE_INTEL_INSTRUCTION = (
     "Use the read/grep/glob tools, not pwsh, to read, search and list files. "
     "For a read-only DB question use mcp__reality-data__sql, not inline "
     "Python; for a table's columns, types and indexes use "
-    "mcp__reality-data__schema, not PRAGMA probes. Send independent read-only "
-    "calls (reads, searches, code-intel) in ONE parallel batch. In your final "
-    "report state how many code-intel calls you made and your tool-call count "
-    "before the first edit."
+    "mcp__reality-data__schema, not PRAGMA probes. "
+    "Batch: send every independent read-only call in ONE step, e.g. read two "
+    "files and grep one symbol together in a single message, not four steps "
+    "one after another. "
+    "Never sleep or poll in a loop: start a long run detached and wait once "
+    "with a blocking call (the harness job_output with wait=true, or a "
+    "host-side wait until a process exits or a file appears), then read the "
+    "result. "
+    "In your final report state how many code-intel calls you made and your "
+    "tool-call count before the first edit."
 )
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 1200
 MAX_PROGRESS_INTERVAL_SECONDS = 86_400

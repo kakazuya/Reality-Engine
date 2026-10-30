@@ -57,7 +57,18 @@ def _fixture(root):
         "first_edit_at": "2026-01-01T00:10:00+00:00"}))
     _write(os.path.join(job, "progress.jsonl"), json.dumps({
         "output_tokens": 1000, "model_steps": 4, "tool_calls": 4,
+        "input_tokens": 2000, "cache_read_tokens": 50000, "batched_read_steps": 3,
         "tool_calls_before_first_edit": 3}) + "\n")
+
+    ledger = os.path.join(root, "ledger.jsonl")
+    _write(ledger, "\n".join(json.dumps(e) for e in (
+        {"ts": "2026-01-01T00:05:00+00:00", "provider": "opencode-go",
+         "model": "beam-free", "in_tok": 100, "out_tok": 10, "usd": 0.0,
+         "purpose": "", "job_id": "", "caller": "nid_beam_preread"},
+        {"ts": "2026-01-01T00:06:00+00:00", "provider": "opencode-go",
+         "model": "deepseek-v4.1-flash", "in_tok": 300, "out_tok": 30, "usd": 0.01,
+         "purpose": "", "job_id": "", "caller": "concall_pilot"},
+    )) + "\n")
 
     lines = []
     # one API message over three lines with the same id: usage once, both tools kept
@@ -100,7 +111,7 @@ def _fixture(root):
                               "tokens": {"output": 20, "reasoning": 5}}),))
     conn.commit()
     conn.close()
-    return {"dsh": dsh, "claude": claude, "opencode": oc, "codex": codex}
+    return {"dsh": dsh, "claude": claude, "opencode": oc, "codex": codex}, ledger
 
 
 class ClassifyTests(unittest.TestCase):
@@ -135,8 +146,8 @@ class ReportTests(unittest.TestCase):
         tmp = os.path.join(".tmp", "tur_" + uuid.uuid4().hex[:8])
         os.makedirs(tmp, exist_ok=True)
         try:
-            roots = _fixture(tmp)
-            rep = R.build(roots, None, tmp)
+            roots, ledger = _fixture(tmp)
+            rep = R.build(roots, None, tmp, None, set(), ledger)
 
             claude = rep["sources"]["claude"]
             # one message id over three lines: one step, usage once, both calls kept
@@ -155,11 +166,35 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(dsh["calls_n"], 4)
             self.assertEqual(dsh["failures"], 1)
             self.assertEqual(dsh["provider_out"], 1000)
+            # provider input split and the batching counter come from the digest
+            self.assertEqual((dsh["provider_in"], dsh["cache_read"]), (2000, 50000))
+            self.assertEqual(dsh["batched_read_steps"], 3)
+            self.assertEqual(dsh["wall_seconds"], 1800.0)
             dsess = rep["_raw"]["dsh"]["sessions"]["20260101T000000Z-aaaaaaaa"]
             self.assertEqual([c["cls"] for c in dsess["calls"]],
                              [R.SH_READ, R.PY_DB, R.PY_WHOLE, R.EDIT])
             self.assertEqual(dsess["before_first_edit"], 3)
             self.assertEqual(dsess["seconds_to_first_edit"], 600)
+
+            ledger_view = rep["ledger"]
+            self.assertEqual(ledger_view["entries"], 2)
+            self.assertEqual((ledger_view["in_tok"], ledger_view["out_tok"]), (400, 40))
+            self.assertEqual(sorted(ledger_view["by_caller"]),
+                             ["concall_pilot", "nid_beam_preread"])
+
+            # --exclude-jobs leaves the job out; --until cuts by start time
+            excluded = R.build(roots, None, tmp, None, {"20260101T000000Z-aaaaaaaa"}, ledger)
+            self.assertEqual(excluded["sources"]["dsh"]["sessions_n"], 0)
+            cut = R.build(roots, None, tmp, R._ts("2026-01-01T00:00:00+00:00"), set(), ledger)
+            self.assertEqual(cut["sources"]["dsh"]["sessions_n"], 0)
+            self.assertEqual(cut["ledger"]["entries"], 0)
+
+            cmp = R.comparison(rep, rep)
+            self.assertEqual(len(cmp["metrics"]), len(R.COMPARISON_METRICS))
+            for row in cmp["metrics"]:
+                if row["baseline"]:   # a zero baseline has no meaningful percentage
+                    self.assertEqual(row["relative_delta"], 0.0)
+            self.assertIsNone(R._rate(0, 0))
 
             oc = rep["sources"]["opencode"]
             self.assertEqual((oc["sessions_n"], oc["calls_n"]), (1, 0))
@@ -171,6 +206,7 @@ class ReportTests(unittest.TestCase):
             md = R.render_md({k: v for k, v in rep.items() if k != "_raw"})
             self.assertIn("Headline per source", md)
             self.assertIn("| codex | ABSENT |", md)
+            self.assertIn("Direct API ledger", md)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
