@@ -1,0 +1,290 @@
+{"mid": "MB0001", "split": "dev", "required": [{"measure": "claim.claim"}, {"measure": "price.close"}], "evidence": ["claim.claim", "price.close", "text.passage"]}
+{"mid": "MB0021", "split": "dev", "required": [{"measure": "price.delivery_qty", "dims": {"exchange": ["NSE", "BSE", "sum"]}}], "evidence": ["price.delivery_qty"], "note": "the ask excludes traded volume"}
+{"mid": "MB0041", "split": "dev", "required": [{"measure": "claim.claim"}, {"measure": "text.passage"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0061", "split": "dev", "required": [{"measure": "f.ratio", "dims": {"ratio_kind": ["pb"]}}], "evidence": ["f.ratio", "price.mcap", "fin.book_equity", "price.close"]}
+{"mid": "MB0081", "split": "dev", "required": [{"measure": "fin.segment_value"}], "evidence": ["fin.segment_value", "fin.revenue"]}
+{"mid": "MB0101", "split": "dev", "required": [{"measure": "f.cagr", "dims": {"basis": ["adjusted"]}}], "evidence": ["f.cagr", "price.close"]}
+{"mid": "MB0121", "split": "dev", "required": [{"measure": "hold.pct", "dims": {"holder_class": ["public"]}}], "evidence": ["hold.pct"]}
+{"mid": "MB0141", "split": "dev", "required": [{"measure": "fin.npa", "dims": {"npa_kind": ["net"]}}], "evidence": ["fin.npa", "fin.loan_book", "f.ratio", "fin.revenue"]}
+{"mid": "MB0161", "split": "dev", "required": [{"measure": "macro.etf_premium"}, {"measure": "macro.index_close"}], "evidence": ["macro.etf_premium", "macro.index_close", "macro.series", "price.close", "claim.claim"]}
+{"mid": "MB0181", "split": "dev", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.series", "claim.claim", "price.close"]}
+{"mid": "MB0201", "split": "dev", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.commodity_close", "claim.claim"]}
+{"mid": "MB0221", "split": "dev", "required": [{"measure": "macro.series"}, {"measure": "claim.claim"}], "evidence": ["macro.series", "claim.claim", "macro.policy"]}
+{"mid": "MB0241", "split": "dev", "required": [{"measure": "hold.pct", "dims": {"holder_class": ["promoter"]}}], "evidence": ["hold.pct"]}
+{"mid": "MB0261", "split": "dev", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage", "fin.revenue"]}
+{"mid": "MB0281", "split": "dev", "required": [{"measure": "text.passage", "dims": {"page": ["10"]}}], "evidence": ["text.passage", "claim.claim"]}
+{"mid": "MB0301", "split": "dev", "required": [{"measure": "price.high"}], "evidence": ["price.high", "price.close"]}
+{"mid": "MB0321", "split": "dev", "required": [{"measure": "claim.claim"}, {"measure": "f.margin"}], "evidence": ["claim.claim", "f.margin", "fin.ebitda"]}
+{"mid": "MB0341", "split": "dev", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0361", "split": "dev", "required": [{"measure": "f.margin"}], "evidence": ["f.margin", "claim.claim", "fin.ebitda"]}
+{"mid": "MB0381", "split": "dev", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0401", "split": "dev", "required": [{"measure": "f.share_of"}, {"measure": "hold.pledge_pct"}], "evidence": ["f.share_of", "hold.pledge_pct", "hold.pct"]}
+{"mid": "MB0421", "split": "dev", "required": [{"measure": "macro.index_close"}, {"measure": "price.close"}], "evidence": ["macro.index_close", "price.close", "f.pct_change", "claim.claim"]}
+{"mid": "MB0441", "split": "dev", "required": [{"measure": "price.volume"}, {"measure": "price.delivery_pct"}], "evidence": ["price.volume", "price.delivery_pct", "price.delivery_qty"]}
+{"mid": "MB0461", "split": "dev", "required": [{"measure": "macro.commodity_close"}], "evidence": ["macro.commodity_close", "price.close", "f.spread", "fin.revenue"]}
+{"mid": "MB0481", "split": "dev", "required": [{"measure": "f.margin"}], "evidence": ["f.margin", "fin.pat", "fin.revenue", "fin.segment_value", "claim.claim"]}
+{"mid": "MB0501", "split": "dev", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "macro.policy", "fin.revenue", "macro.claim"]}
+{"mid": "MB0521", "split": "dev", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "macro.claim", "macro.policy"]}
+{"mid": "MB0541", "split": "dev", "required": [{"measure": "fin.order_book"}, {"measure": "fin.order_intake"}], "evidence": ["fin.order_book", "fin.order_intake", "fin.revenue"]}
+{"mid": "MB0561", "split": "dev", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.investments"]}
+{"mid": "MB0581", "split": "dev", "required": [{"measure": "price.traded_value"}], "evidence": ["price.traded_value", "price.volume"]}
+{"mid": "MB0601", "split": "dev", "required": [{"measure": "macro.series"}], "evidence": ["macro.series", "claim.claim", "macro.commodity_close"]}
+{"mid": "MB0621", "split": "dev", "required": [{"measure": "hold.pct", "dims": {"holder_class": ["fii"]}}], "evidence": ["hold.pct", "macro.flow"]}
+{"mid": "MB0641", "split": "dev", "required": [{"measure": "macro.commodity_close"}], "evidence": ["macro.commodity_close", "f.spread", "fin.revenue", "f.margin", "price.close", "macro.claim"]}
+{"mid": "MB0661", "split": "dev", "required": [{"measure": "macro.series"}], "evidence": ["macro.series", "f.spread", "macro.policy", "macro.claim", "claim.claim"]}
+{"mid": "MB0681", "split": "dev", "required": [{"measure": "f.spread"}, {"measure": "f.ratio", "dims": {"ratio_kind": ["roe"]}}], "evidence": ["f.spread", "f.ratio", "macro.series", "fin.revenue", "claim.claim", "price.close"]}
+{"mid": "MB0701", "split": "dev", "required": [{"measure": "macro.policy"}, {"measure": "f.margin"}], "evidence": ["macro.policy", "f.margin", "f.share_of", "fin.revenue"]}
+{"mid": "MB0721", "split": "dev", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.capex", "price.volume", "fin.revenue", "macro.claim"]}
+{"mid": "MB0741", "split": "dev", "required": [{"measure": "price.delivery_pct"}, {"measure": "price.close"}], "evidence": ["price.delivery_pct", "price.close", "macro.index_close", "macro.flow", "macro.claim"]}
+{"mid": "MB0761", "split": "dev", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.capex"]}
+{"mid": "MB0781", "split": "dev", "required": [{"measure": "macro.series"}], "evidence": ["macro.series", "f.net", "fin.revenue", "claim.claim", "price.close"]}
+{"mid": "MB0801", "split": "dev", "required": [{"measure": "macro.series"}], "evidence": ["macro.series", "macro.commodity_close"]}
+{"mid": "MB0821", "split": "dev", "required": [{"measure": "price.close"}], "evidence": ["price.close", "price.delivery_pct", "macro.claim", "macro.index_close", "macro.flow", "claim.claim"]}
+{"mid": "MB0841", "split": "dev", "required": [{"measure": "corp.amount_per_share"}, {"measure": "hold.pct"}], "evidence": ["corp.amount_per_share", "hold.pct", "price.close"]}
+{"mid": "MB0861", "split": "dev", "required": [{"measure": "price.close"}], "evidence": ["price.close", "macro.commodity_close", "f.excess_return"]}
+{"mid": "MB0881", "split": "dev", "required": [{"measure": "fin.nim"}, {"measure": "fin.credit_cost"}], "evidence": ["fin.nim", "fin.credit_cost", "fin.npa"]}
+{"mid": "MB0901", "split": "dev", "required": [{"measure": "price.band"}, {"measure": "price.volume"}], "evidence": ["price.band", "price.volume", "price.close"]}
+{"mid": "MB0921", "split": "dev", "required": [{"measure": "fin.revenue"}, {"measure": "fin.loan_book"}], "evidence": ["fin.revenue", "fin.loan_book", "fin.capex", "macro.policy"]}
+{"mid": "MB0941", "split": "dev", "required": [{"measure": "f.ratio"}], "evidence": ["f.ratio", "fin.revenue", "fin.segment_value", "fin.pat"]}
+{"mid": "MB0961", "split": "dev", "required": [{"measure": "fin.book_equity"}], "evidence": ["fin.book_equity", "price.close", "f.ratio", "fin.pat"]}
+{"mid": "MB0981", "split": "dev", "required": [{"measure": "f.margin"}], "evidence": ["f.margin", "f.spread", "fin.revenue", "claim.claim", "macro.commodity_close"]}
+{"mid": "MB1001", "split": "dev", "required": [{"measure": "f.dso"}, {"measure": "fin.cfo"}], "evidence": ["f.dso", "fin.cfo", "fin.pat", "fin.revenue", "f.share_of"]}
+{"mid": "MB1021", "split": "dev", "required": [], "evidence": ["claim.claim", "fin.pat", "f.margin"], "expect_status": "unmapped"}
+{"mid": "MB1041", "split": "dev", "required": [{"measure": "price.rsi"}, {"measure": "f.drawdown"}], "evidence": ["price.rsi", "f.drawdown", "price.close"]}
+{"mid": "MB1061", "split": "dev", "required": [{"measure": "macro.oi"}], "evidence": ["macro.oi", "price.close", "own.estimate", "claim.claim"]}
+{"mid": "MB0005", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0009", "split": "test", "required": [{"measure": "text.passage"}, {"measure": "fin.segment_value"}], "evidence": ["text.passage", "fin.segment_value", "fin.revenue", "claim.claim"]}
+{"mid": "MB0013", "split": "test", "required": [{"measure": "fin.pat"}], "evidence": ["fin.pat", "fin.revenue", "claim.claim", "macro.policy"]}
+{"mid": "MB0017", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.revenue", "macro.series"]}
+{"mid": "MB0025", "split": "test", "required": [{"measure": "price.shares_out"}, {"measure": "hold.pct", "dims": {"holder_class": ["promoter"]}}], "evidence": ["price.shares_out", "hold.pct"]}
+{"mid": "MB0029", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage", "fin.capex"]}
+{"mid": "MB0033", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "price.close", "dims": {"exchange": ["NSE"]}}], "evidence": ["claim.claim", "price.close"]}
+{"mid": "MB0037", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "price.close", "dims": {"exchange": ["NSE"]}}], "evidence": ["claim.claim", "price.close"]}
+{"mid": "MB0045", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "text.passage"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0049", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0053", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.segment_value"}], "evidence": ["claim.claim", "fin.segment_value", "fin.revenue"]}
+{"mid": "MB0057", "split": "test", "required": [{"measure": "fin.segment_value"}], "evidence": ["fin.segment_value", "claim.claim", "fin.revenue"]}
+{"mid": "MB0065", "split": "test", "required": [{"measure": "f.ratio", "dims": {"ratio_kind": ["pb"]}}], "evidence": ["f.ratio", "price.mcap", "fin.book_equity", "price.close"]}
+{"mid": "MB0069", "split": "test", "required": [{"measure": "f.ratio", "dims": {"ratio_kind": ["pb"]}}], "evidence": ["f.ratio", "price.mcap", "fin.book_equity", "price.close"]}
+{"mid": "MB0073", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "f.margin"}], "evidence": ["claim.claim", "f.margin", "text.passage", "fin.ebitda"]}
+{"mid": "MB0077", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "f.margin"}], "evidence": ["claim.claim", "f.margin", "text.passage", "fin.ebitda"]}
+{"mid": "MB0085", "split": "test", "required": [{"measure": "fin.segment_value"}], "evidence": ["fin.segment_value", "fin.revenue", "text.passage"]}
+{"mid": "MB0089", "split": "test", "required": [{"measure": "fin.segment_value"}], "evidence": ["fin.segment_value", "fin.revenue"]}
+{"mid": "MB0093", "split": "test", "required": [{"measure": "fin.npa", "dims": {"npa_kind": ["net"]}}], "evidence": ["fin.npa", "text.passage", "claim.claim"]}
+{"mid": "MB0097", "split": "test", "required": [{"measure": "fin.npa", "dims": {"npa_kind": ["net"]}}], "evidence": ["fin.npa", "text.passage"]}
+{"mid": "MB0105", "split": "test", "required": [{"measure": "f.cagr", "dims": {"basis": ["adjusted"]}}], "evidence": ["f.cagr", "price.close"]}
+{"mid": "MB0109", "split": "test", "required": [{"measure": "f.cagr", "dims": {"basis": ["adjusted"]}}], "evidence": ["f.cagr", "price.close"]}
+{"mid": "MB0113", "split": "test", "required": [{"measure": "text.passage"}, {"measure": "fin.revenue", "dims": {"consolidation": ["consolidated"]}}], "evidence": ["text.passage", "fin.revenue", "fin.segment_value", "claim.claim"]}
+{"mid": "MB0117", "split": "test", "required": [{"measure": "fin.revenue"}], "evidence": ["fin.revenue", "fin.segment_value", "text.passage", "claim.claim"]}
+{"mid": "MB0125", "split": "test", "required": [{"measure": "hold.pct", "dims": {"holder_class": ["public", "promoter"]}}], "evidence": ["hold.pct"]}
+{"mid": "MB0129", "split": "test", "required": [{"measure": "hold.pct", "dims": {"holder_class": ["public"]}}], "evidence": ["hold.pct", "text.passage"]}
+{"mid": "MB0133", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "price.close"}], "evidence": ["macro.series", "price.close", "macro.policy", "macro.commodity_close", "claim.claim"]}
+{"mid": "MB0137", "split": "test", "required": [{"measure": "price.close"}, {"measure": "macro.series"}], "evidence": ["price.close", "macro.series", "macro.policy", "macro.commodity_close", "claim.claim"]}
+{"mid": "MB0145", "split": "test", "required": [{"measure": "fin.npa", "dims": {"npa_kind": ["net"]}}], "evidence": ["fin.npa", "fin.loan_book", "f.ratio", "fin.revenue"]}
+{"mid": "MB0149", "split": "test", "required": [{"measure": "fin.npa"}], "evidence": ["fin.npa", "fin.loan_book", "f.ratio", "claim.claim"]}
+{"mid": "MB0153", "split": "test", "required": [{"measure": "fin.pat"}], "evidence": ["fin.pat", "text.passage", "claim.claim"]}
+{"mid": "MB0157", "split": "test", "required": [{"measure": "fin.pat"}], "evidence": ["fin.pat", "text.passage", "claim.claim"]}
+{"mid": "MB0165", "split": "test", "required": [{"measure": "macro.etf_premium"}, {"measure": "macro.index_close"}], "evidence": ["macro.etf_premium", "macro.index_close", "macro.series", "price.close", "claim.claim"]}
+{"mid": "MB0169", "split": "test", "required": [{"measure": "macro.etf_premium"}, {"measure": "price.close"}], "evidence": ["macro.etf_premium", "price.close", "macro.series", "macro.commodity_close"]}
+{"mid": "MB0173", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "price.close"}], "evidence": ["macro.policy", "price.close", "macro.claim", "claim.claim", "f.excess_return"]}
+{"mid": "MB0177", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "price.close"}], "evidence": ["macro.policy", "price.close", "macro.claim", "claim.claim", "f.excess_return"]}
+{"mid": "MB0185", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.series", "claim.claim"]}
+{"mid": "MB0189", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.series", "claim.claim"]}
+{"mid": "MB0193", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.claim", "claim.claim", "text.passage"]}
+{"mid": "MB0197", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.claim", "claim.claim", "text.passage"]}
+{"mid": "MB0205", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.commodity_close", "claim.claim"]}
+{"mid": "MB0209", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.commodity_close", "claim.claim"]}
+{"mid": "MB0213", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "macro.series"}], "evidence": ["claim.claim", "macro.series", "text.passage", "macro.policy"]}
+{"mid": "MB0217", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "macro.series"}], "evidence": ["claim.claim", "macro.series", "text.passage", "macro.policy"]}
+{"mid": "MB0225", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "claim.claim"}], "evidence": ["macro.policy", "claim.claim", "text.passage"]}
+{"mid": "MB0229", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "claim.claim", "text.passage"]}
+{"mid": "MB0233", "split": "test", "required": [{"measure": "price.delivery_qty", "dims": {"exchange": ["NSE", "BSE", "sum"]}}], "evidence": ["price.delivery_qty"]}
+{"mid": "MB0237", "split": "test", "required": [{"measure": "price.delivery_qty", "dims": {"exchange": ["NSE", "BSE"]}}], "evidence": ["price.delivery_qty"]}
+{"mid": "MB0245", "split": "test", "required": [{"measure": "hold.pct", "dims": {"holder_class": ["promoter"]}}], "evidence": ["hold.pct", "text.passage"]}
+{"mid": "MB0249", "split": "test", "required": [{"measure": "hold.pct", "dims": {"holder_class": ["promoter"]}}], "evidence": ["hold.pct"]}
+{"mid": "MB0253", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0257", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0265", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0269", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0273", "split": "test", "required": [{"measure": "price.shares_out"}, {"measure": "hold.pct"}], "evidence": ["price.shares_out", "hold.pct", "text.passage"]}
+{"mid": "MB0277", "split": "test", "required": [{"measure": "price.shares_out"}, {"measure": "hold.pct"}], "evidence": ["price.shares_out", "hold.pct", "text.passage"]}
+{"mid": "MB0285", "split": "test", "required": [{"measure": "text.passage", "dims": {"page": ["5"]}}], "evidence": ["text.passage", "claim.claim"]}
+{"mid": "MB0289", "split": "test", "required": [{"measure": "text.passage", "dims": {"page": ["27"]}}], "evidence": ["text.passage", "claim.claim"]}
+{"mid": "MB0293", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.capex", "text.passage"]}
+{"mid": "MB0297", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.capex", "text.passage"]}
+{"mid": "MB0305", "split": "test", "required": [{"measure": "price.high", "dims": {"exchange": ["NSE", "BSE"]}}], "evidence": ["price.high", "price.close"]}
+{"mid": "MB0309", "split": "test", "required": [{"measure": "price.high"}], "evidence": ["price.high", "price.close"]}
+{"mid": "MB0313", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0317", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0325", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "f.margin"}], "evidence": ["claim.claim", "f.margin", "fin.ebitda", "text.passage"]}
+{"mid": "MB0329", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "f.margin"}], "evidence": ["claim.claim", "f.margin", "fin.ebitda", "text.passage"]}
+{"mid": "MB0333", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.capex", "fin.revenue"]}
+{"mid": "MB0337", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.capex"]}
+{"mid": "MB0343", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.order_intake", "text.passage"]}
+{"mid": "MB0345", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.capex", "f.margin"]}
+{"mid": "MB0349", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.revenue", "f.margin"]}
+{"mid": "MB0353", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0355", "split": "test", "required": [{"measure": "fin.capex"}, {"measure": "claim.claim"}], "evidence": ["fin.capex", "claim.claim", "fin.revenue"]}
+{"mid": "MB0357", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.capex", "price.close"]}
+{"mid": "MB0365", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "f.working_capital_cycle", "f.dso", "fin.receivables"]}
+{"mid": "MB0369", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.revenue", "f.margin"]}
+{"mid": "MB0373", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.revenue"]}
+{"mid": "MB0377", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0385", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0389", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0393", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0397", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0400", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0405", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0409", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "fin.pat", "text.passage"]}
+{"mid": "MB0413", "split": "test", "required": [{"measure": "fin.cfo"}, {"measure": "fin.pat"}], "evidence": ["fin.cfo", "fin.pat"]}
+{"mid": "MB0417", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0425", "split": "test", "required": [{"measure": "macro.index_close"}, {"measure": "macro.policy"}], "evidence": ["macro.index_close", "macro.policy", "price.close"]}
+{"mid": "MB0429", "split": "test", "required": [{"measure": "macro.index_close"}, {"measure": "macro.commodity_close"}], "evidence": ["macro.index_close", "macro.commodity_close", "price.close", "claim.claim"]}
+{"mid": "MB0433", "split": "test", "required": [{"measure": "macro.flow", "dims": {"holder_class": ["fii", "dii"]}}, {"measure": "macro.index_close"}], "evidence": ["macro.flow", "macro.index_close", "hold.pct"]}
+{"mid": "MB0437", "split": "test", "required": [{"measure": "price.close"}], "evidence": ["price.close", "claim.claim", "macro.policy"]}
+{"mid": "MB0445", "split": "test", "required": [{"measure": "price.close"}, {"measure": "fin.pat"}], "evidence": ["price.close", "fin.pat", "fin.revenue", "claim.claim"]}
+{"mid": "MB0449", "split": "test", "required": [{"measure": "price.close"}], "evidence": ["price.close", "f.pct_change", "fin.pat"]}
+{"mid": "MB0453", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.spread"}], "evidence": ["macro.commodity_close", "f.spread", "f.margin", "fin.revenue"]}
+{"mid": "MB0457", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.margin"}], "evidence": ["macro.commodity_close", "f.margin", "fin.revenue", "claim.claim"]}
+{"mid": "MB0465", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.margin"}], "evidence": ["macro.commodity_close", "f.margin", "f.spread", "fin.revenue", "claim.claim"]}
+{"mid": "MB0469", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "f.spread"}], "evidence": ["macro.policy", "f.spread", "macro.series", "fin.revenue"]}
+{"mid": "MB0473", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "f.spread"}], "evidence": ["macro.series", "f.spread", "macro.policy", "claim.claim"]}
+{"mid": "MB0477", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "f.spread"}], "evidence": ["macro.series", "f.spread", "claim.claim", "macro.policy"]}
+{"mid": "MB0485", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.revenue"}], "evidence": ["claim.claim", "fin.revenue", "f.margin"]}
+{"mid": "MB0489", "split": "test", "required": [{"measure": "f.margin"}, {"measure": "claim.claim"}], "evidence": ["f.margin", "claim.claim", "fin.revenue"]}
+{"mid": "MB0493", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.revenue"}], "evidence": ["claim.claim", "fin.revenue", "f.margin"]}
+{"mid": "MB0497", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "fin.revenue"}], "evidence": ["macro.policy", "fin.revenue", "claim.claim", "f.ratio"]}
+{"mid": "MB0502", "split": "test", "required": [{"measure": "fin.capex"}], "evidence": ["fin.capex", "macro.policy", "claim.claim"]}
+{"mid": "MB0503", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "macro.commodity_close", "claim.claim"]}
+{"mid": "MB0505", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "price.close"}], "evidence": ["macro.policy", "price.close", "fin.revenue", "claim.claim"]}
+{"mid": "MB0509", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "claim.claim"]}
+{"mid": "MB0513", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "macro.commodity_close"}], "evidence": ["macro.policy", "macro.commodity_close", "f.spread", "claim.claim"]}
+{"mid": "MB0517", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "claim.claim"}], "evidence": ["macro.policy", "claim.claim", "fin.order_intake"]}
+{"mid": "MB0524", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "claim.claim", "fin.order_intake"]}
+{"mid": "MB0525", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.spread"}], "evidence": ["macro.commodity_close", "f.spread", "fin.revenue", "claim.claim"]}
+{"mid": "MB0529", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.capex"}], "evidence": ["claim.claim", "fin.capex"]}
+{"mid": "MB0530", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.capex"}], "evidence": ["claim.claim", "fin.capex"]}
+{"mid": "MB0533", "split": "test", "required": [{"measure": "fin.order_intake"}, {"measure": "fin.revenue"}], "evidence": ["fin.order_intake", "fin.revenue", "fin.order_book"]}
+{"mid": "MB0536", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0537", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0538", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.capex"}], "evidence": ["claim.claim", "fin.capex"]}
+{"mid": "MB0540", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.revenue"}], "evidence": ["claim.claim", "fin.revenue", "fin.capex"]}
+{"mid": "MB0545", "split": "test", "required": [{"measure": "fin.order_book"}], "evidence": ["fin.order_book", "claim.claim", "fin.revenue"]}
+{"mid": "MB0549", "split": "test", "required": [{"measure": "fin.order_book"}, {"measure": "fin.revenue"}], "evidence": ["fin.order_book", "fin.revenue", "fin.order_intake"]}
+{"mid": "MB0553", "split": "test", "required": [{"measure": "fin.order_book"}, {"measure": "fin.receivables"}], "evidence": ["fin.order_book", "fin.receivables", "f.dso"]}
+{"mid": "MB0557", "split": "test", "required": [{"measure": "fin.capex"}], "evidence": ["fin.capex", "fin.cfo", "fin.total_debt"]}
+{"mid": "MB0565", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.investments"}], "evidence": ["claim.claim", "fin.investments", "fin.capex"]}
+{"mid": "MB0569", "split": "test", "required": [{"measure": "price.shares_out"}, {"measure": "f.ratio"}, {"measure": "fin.eps"}], "evidence": ["price.shares_out", "f.ratio", "fin.eps", "fin.capex", "fin.pat"]}
+{"mid": "MB0573", "split": "test", "required": [{"measure": "price.delivery_pct"}], "evidence": ["price.delivery_pct", "price.close", "price.volume"]}
+{"mid": "MB0577", "split": "test", "required": [{"measure": "hold.pct", "dims": {"holder_class": ["promoter"]}}], "evidence": ["hold.pct"]}
+{"mid": "MB0585", "split": "test", "required": [{"measure": "macro.flow", "dims": {"holder_class": ["fii", "dii"]}}], "evidence": ["macro.flow"]}
+{"mid": "MB0589", "split": "test", "required": [{"measure": "price.close"}], "evidence": ["price.close", "macro.claim", "claim.claim"]}
+{"mid": "MB0593", "split": "test", "required": [{"measure": "price.close"}], "evidence": ["price.close", "claim.claim", "macro.claim"]}
+{"mid": "MB0597", "split": "test", "required": [{"measure": "price.close"}], "evidence": ["price.close", "price.delivery_pct", "claim.claim"]}
+{"mid": "MB0605", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "price.close"}], "evidence": ["macro.commodity_close", "price.close", "f.excess_return", "f.spread"]}
+{"mid": "MB0609", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "price.close"}], "evidence": ["macro.policy", "price.close", "macro.series", "f.spread"]}
+{"mid": "MB0612", "split": "test", "required": [], "evidence": ["macro.policy", "price.close", "claim.claim"], "expect_status": "unmapped"}
+{"mid": "MB0613", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "price.close"}], "evidence": ["macro.series", "price.close", "f.margin", "f.spread"]}
+{"mid": "MB0617", "split": "test", "required": [{"measure": "fin.unit_volume"}], "evidence": ["fin.unit_volume", "price.volume", "claim.claim"]}
+{"mid": "MB0625", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0629", "split": "test", "required": [{"measure": "price.close"}, {"measure": "macro.flow"}], "evidence": ["price.close", "macro.flow", "hold.pct", "fin.revenue"]}
+{"mid": "MB0633", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.margin"}], "evidence": ["macro.commodity_close", "f.margin", "fin.revenue", "claim.claim"]}
+{"mid": "MB0637", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "fin.revenue"}], "evidence": ["macro.commodity_close", "fin.revenue", "claim.claim", "f.margin", "macro.series"]}
+{"mid": "MB0645", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.margin"}], "evidence": ["macro.commodity_close", "f.margin", "claim.claim", "fin.revenue"]}
+{"mid": "MB0649", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.margin"}], "evidence": ["macro.commodity_close", "f.margin", "fin.revenue", "claim.claim"]}
+{"mid": "MB0653", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "claim.claim"}], "evidence": ["macro.policy", "claim.claim", "fin.revenue"]}
+{"mid": "MB0657", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "fin.order_book"}], "evidence": ["macro.policy", "fin.order_book", "fin.loan_book", "fin.capex"]}
+{"mid": "MB0665", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "fin.unit_volume"}], "evidence": ["macro.policy", "fin.unit_volume", "claim.claim", "fin.revenue"]}
+{"mid": "MB0669", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "f.dso"}], "evidence": ["macro.policy", "f.dso", "fin.capex", "fin.receivables"]}
+{"mid": "MB0673", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "f.net"}, {"measure": "f.margin"}], "evidence": ["macro.series", "f.net", "f.margin", "fin.revenue"]}
+{"mid": "MB0677", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "fin.nim"}, {"measure": "fin.deposits"}], "evidence": ["macro.series", "fin.nim", "fin.deposits", "fin.loan_book"]}
+{"mid": "MB0685", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "fin.pat"}], "evidence": ["macro.series", "fin.pat", "f.margin", "fin.revenue"]}
+{"mid": "MB0689", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "fin.receivables"}], "evidence": ["macro.series", "fin.receivables", "f.working_capital_cycle", "f.margin", "claim.claim"]}
+{"mid": "MB0693", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.margin"}], "evidence": ["macro.commodity_close", "f.margin", "claim.claim", "fin.revenue"]}
+{"mid": "MB0697", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "fin.capex"}], "evidence": ["macro.policy", "fin.capex", "claim.claim", "fin.revenue"]}
+{"mid": "MB0700", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "claim.claim"}], "evidence": ["macro.policy", "claim.claim", "fin.capex"]}
+{"mid": "MB0705", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "macro.commodity_close"}], "evidence": ["macro.series", "macro.commodity_close", "claim.claim", "f.margin"]}
+{"mid": "MB0709", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "f.margin"}], "evidence": ["macro.series", "f.margin", "claim.claim", "fin.revenue"]}
+{"mid": "MB0713", "split": "test", "required": [{"measure": "macro.claim"}, {"measure": "fin.capex"}], "evidence": ["macro.claim", "fin.capex", "f.margin", "claim.claim"]}
+{"mid": "MB0717", "split": "test", "required": [{"measure": "fin.capex"}, {"measure": "f.margin"}], "evidence": ["fin.capex", "f.margin", "claim.claim", "fin.revenue"]}
+{"mid": "MB0725", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.revenue"}], "evidence": ["claim.claim", "fin.revenue", "f.margin"]}
+{"mid": "MB0729", "split": "test", "required": [{"measure": "fin.credit_cost"}], "evidence": ["fin.credit_cost", "fin.loan_book", "fin.npa", "claim.claim"]}
+{"mid": "MB0731", "split": "test", "required": [{"measure": "price.shares_out"}, {"measure": "fin.capex"}], "evidence": ["price.shares_out", "fin.capex", "claim.claim", "f.ratio"]}
+{"mid": "MB0733", "split": "test", "required": [{"measure": "price.mcap"}, {"measure": "price.close"}], "evidence": ["price.mcap", "price.close", "macro.flow", "price.free_float"]}
+{"mid": "MB0737", "split": "test", "required": [{"measure": "f.ratio"}, {"measure": "fin.capex"}], "evidence": ["f.ratio", "fin.capex", "price.shares_out", "claim.claim"]}
+{"mid": "MB0745", "split": "test", "required": [{"measure": "hold.pledge_pct"}, {"measure": "price.close"}], "evidence": ["hold.pledge_pct", "price.close", "claim.claim", "fin.total_debt"]}
+{"mid": "MB0749", "split": "test", "required": [{"measure": "fin.eps"}, {"measure": "hold.pct"}], "evidence": ["fin.eps", "hold.pct", "claim.claim", "price.shares_out"]}
+{"mid": "MB0753", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "fin.nim"}], "evidence": ["macro.series", "fin.nim", "fin.deposits"]}
+{"mid": "MB0757", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "fin.unit_volume"}], "evidence": ["macro.series", "fin.unit_volume", "claim.claim"]}
+{"mid": "MB0765", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.total_debt"}], "evidence": ["claim.claim", "fin.total_debt", "f.ratio", "fin.revenue"]}
+{"mid": "MB0769", "split": "test", "required": [{"measure": "fin.total_debt"}, {"measure": "fin.cfo"}], "evidence": ["fin.total_debt", "fin.cfo", "fin.pat"]}
+{"mid": "MB0770", "split": "test", "required": [{"measure": "price.shares_out"}, {"measure": "fin.eps"}], "evidence": ["price.shares_out", "fin.eps", "claim.claim"]}
+{"mid": "MB0773", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.net"}], "evidence": ["macro.commodity_close", "f.net", "f.margin", "f.working_capital_cycle"]}
+{"mid": "MB0777", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "f.net"}], "evidence": ["macro.commodity_close", "f.net", "fin.revenue", "f.margin"]}
+{"mid": "MB0785", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "f.net"}], "evidence": ["macro.policy", "f.net", "f.margin", "hold.pct"]}
+{"mid": "MB0789", "split": "test", "required": [{"measure": "macro.policy"}, {"measure": "f.margin"}], "evidence": ["macro.policy", "f.margin", "fin.revenue", "claim.claim"]}
+{"mid": "MB0793", "split": "test", "required": [{"measure": "fin.nim"}, {"measure": "macro.series"}], "evidence": ["fin.nim", "macro.series", "fin.deposits", "fin.loan_book"]}
+{"mid": "MB0797", "split": "test", "required": [{"measure": "macro.series"}], "evidence": ["macro.series", "macro.commodity_close", "fin.revenue", "claim.claim"]}
+{"mid": "MB0805", "split": "test", "required": [{"measure": "fin.revenue"}, {"measure": "claim.claim"}], "evidence": ["fin.revenue", "claim.claim", "text.passage"]}
+{"mid": "MB0809", "split": "test", "required": [{"measure": "fin.revenue"}, {"measure": "claim.claim"}], "evidence": ["fin.revenue", "claim.claim", "text.passage"]}
+{"mid": "MB0813", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "price.delivery_pct"}], "evidence": ["claim.claim", "price.delivery_pct", "price.close"]}
+{"mid": "MB0817", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage", "price.close"]}
+{"mid": "MB0825", "split": "test", "required": [{"measure": "hold.pledge_pct"}, {"measure": "price.delivery_pct"}], "evidence": ["hold.pledge_pct", "price.delivery_pct", "price.close", "claim.claim"]}
+{"mid": "MB0829", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "text.passage"}], "evidence": ["claim.claim", "text.passage", "f.margin"]}
+{"mid": "MB0833", "split": "test", "required": [{"measure": "price.delivery_pct"}], "evidence": ["price.delivery_pct", "price.close"]}
+{"mid": "MB0837", "split": "test", "required": [{"measure": "f.gap_pct"}, {"measure": "price.delivery_pct"}], "evidence": ["f.gap_pct", "price.delivery_pct", "price.close"]}
+{"mid": "MB0844", "split": "test", "required": [{"measure": "corp.amount_per_share"}], "evidence": ["corp.amount_per_share", "claim.claim", "text.passage"]}
+{"mid": "MB0845", "split": "test", "required": [{"measure": "corp.amount_per_share"}], "evidence": ["corp.amount_per_share", "claim.claim"]}
+{"mid": "MB0849", "split": "test", "required": [{"measure": "price.band"}], "evidence": ["price.band", "price.close"]}
+{"mid": "MB0853", "split": "test", "required": [{"measure": "macro.policy"}], "evidence": ["macro.policy", "price.close", "claim.claim"]}
+{"mid": "MB0857", "split": "test", "required": [{"measure": "price.high"}, {"measure": "price.low"}], "evidence": ["price.high", "price.low", "price.close"]}
+{"mid": "MB0865", "split": "test", "required": [{"measure": "f.ratio"}], "evidence": ["f.ratio", "price.mcap", "fin.revenue"]}
+{"mid": "MB0869", "split": "test", "required": [{"measure": "fin.capex"}, {"measure": "macro.policy"}], "evidence": ["fin.capex", "macro.policy", "claim.claim", "fin.revenue"]}
+{"mid": "MB0871", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0873", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "text.passage"]}
+{"mid": "MB0874", "split": "test", "required": [], "evidence": ["price.close", "claim.claim", "fin.pat"], "expect_status": "unmapped"}
+{"mid": "MB0877", "split": "test", "required": [{"measure": "fin.loan_book"}], "evidence": ["fin.loan_book", "price.close", "claim.claim", "f.ratio"]}
+{"mid": "MB0885", "split": "test", "required": [{"measure": "price.close"}], "evidence": ["price.close", "f.pct_change"]}
+{"mid": "MB0889", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.loan_book"}], "evidence": ["claim.claim", "fin.loan_book", "price.close", "text.passage"]}
+{"mid": "MB0893", "split": "test", "required": [{"measure": "claim.claim"}], "evidence": ["claim.claim", "price.close", "text.passage"]}
+{"mid": "MB0897", "split": "test", "required": [{"measure": "price.shares_out"}, {"measure": "claim.claim"}], "evidence": ["price.shares_out", "claim.claim", "price.close"]}
+{"mid": "MB0905", "split": "test", "required": [{"measure": "price.close"}, {"measure": "fin.pat"}], "evidence": ["price.close", "fin.pat", "fin.revenue", "claim.claim"]}
+{"mid": "MB0909", "split": "test", "required": [], "evidence": ["price.close", "fin.pat", "f.margin", "claim.claim"], "expect_status": "unmapped"}
+{"mid": "MB0913", "split": "test", "required": [{"measure": "price.close"}, {"measure": "price.delivery_pct"}], "evidence": ["price.close", "price.delivery_pct", "price.volume"]}
+{"mid": "MB0917", "split": "test", "required": [{"measure": "fin.order_intake"}, {"measure": "macro.flow"}], "evidence": ["fin.order_intake", "macro.flow", "price.close"]}
+{"mid": "MB0925", "split": "test", "required": [{"measure": "hold.pledge_pct"}, {"measure": "fin.total_debt"}, {"measure": "claim.claim"}], "evidence": ["hold.pledge_pct", "fin.total_debt", "claim.claim", "fin.revenue"]}
+{"mid": "MB0929", "split": "test", "required": [{"measure": "price.close"}], "evidence": ["price.close", "fin.revenue", "fin.pat", "claim.claim"]}
+{"mid": "MB0933", "split": "test", "required": [{"measure": "fin.segment_value"}, {"measure": "price.close"}], "evidence": ["fin.segment_value", "price.close", "fin.revenue"]}
+{"mid": "MB0934", "split": "test", "required": [{"measure": "f.margin"}], "evidence": ["f.margin", "f.ratio", "fin.segment_value", "price.close", "fin.revenue"]}
+{"mid": "MB0937", "split": "test", "required": [{"measure": "f.working_capital_cycle"}, {"measure": "f.margin"}, {"measure": "f.ratio"}], "evidence": ["f.working_capital_cycle", "f.margin", "f.ratio", "fin.revenue", "fin.receivables"]}
+{"mid": "MB0945", "split": "test", "required": [{"measure": "macro.flow"}, {"measure": "price.close"}], "evidence": ["macro.flow", "price.close", "price.mcap"]}
+{"mid": "MB0949", "split": "test", "required": [{"measure": "f.margin"}, {"measure": "macro.commodity_close"}], "evidence": ["f.margin", "macro.commodity_close", "fin.revenue"]}
+{"mid": "MB0953", "split": "test", "required": [{"measure": "fin.unit_volume"}, {"measure": "fin.segment_value"}], "evidence": ["fin.unit_volume", "fin.segment_value", "claim.claim", "fin.revenue"]}
+{"mid": "MB0957", "split": "test", "required": [{"measure": "f.ratio", "dims": {"ratio_kind": ["roic"]}}, {"measure": "f.margin"}], "evidence": ["f.ratio", "f.margin", "fin.order_book", "fin.capex"]}
+{"mid": "MB0965", "split": "test", "required": [{"measure": "fin.cfo"}, {"measure": "fin.total_debt"}, {"measure": "claim.claim"}], "evidence": ["fin.cfo", "fin.total_debt", "claim.claim"]}
+{"mid": "MB0969", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "f.margin"}], "evidence": ["claim.claim", "f.margin", "fin.revenue"]}
+{"mid": "MB0973", "split": "test", "required": [{"measure": "claim.claim"}, {"measure": "fin.revenue"}], "evidence": ["claim.claim", "fin.revenue", "fin.pat"]}
+{"mid": "MB0977", "split": "test", "required": [{"measure": "fin.revenue"}], "evidence": ["fin.revenue", "f.working_capital_cycle", "claim.claim"]}
+{"mid": "MB0985", "split": "test", "required": [{"measure": "macro.series"}, {"measure": "fin.loan_book"}], "evidence": ["macro.series", "fin.loan_book", "f.spread", "fin.nim"]}
+{"mid": "MB0989", "split": "test", "required": [{"measure": "fin.capex"}, {"measure": "f.ratio"}], "evidence": ["fin.capex", "f.ratio", "fin.revenue"]}
+{"mid": "MB0993", "split": "test", "required": [{"measure": "fin.capex"}, {"measure": "claim.claim"}], "evidence": ["fin.capex", "claim.claim", "fin.revenue"]}
+{"mid": "MB0995", "split": "test", "required": [{"measure": "fin.cfo"}, {"measure": "fin.total_debt"}], "evidence": ["fin.cfo", "fin.total_debt", "f.ratio", "price.shares_out"]}
+{"mid": "MB0997", "split": "test", "required": [{"measure": "f.ratio", "dims": {"ratio_kind": ["de"]}}, {"measure": "fin.capex"}], "evidence": ["f.ratio", "fin.capex", "fin.total_debt", "fin.ebitda"]}
+{"mid": "MB1005", "split": "test", "required": [{"measure": "price.mcap"}, {"measure": "fin.investments"}], "evidence": ["price.mcap", "fin.investments", "price.close"]}
+{"mid": "MB1009", "split": "test", "required": [{"measure": "fin.cfo"}, {"measure": "fin.capex"}, {"measure": "corp.amount_per_share"}], "evidence": ["fin.cfo", "fin.capex", "corp.amount_per_share"]}
+{"mid": "MB1013", "split": "test", "required": [{"measure": "macro.commodity_close"}, {"measure": "corp.amount_per_share"}], "evidence": ["macro.commodity_close", "corp.amount_per_share", "fin.cfo"]}
+{"mid": "MB1017", "split": "test", "required": [{"measure": "fin.revenue"}, {"measure": "f.working_capital_cycle"}], "evidence": ["fin.revenue", "f.working_capital_cycle", "fin.receivables"]}
+{"mid": "MB1025", "split": "test", "required": [{"measure": "price.sma"}, {"measure": "price.close"}, {"measure": "price.delivery_pct"}], "evidence": ["price.sma", "price.close", "price.delivery_pct"]}
+{"mid": "MB1029", "split": "test", "required": [{"measure": "price.close"}, {"measure": "price.volume"}, {"measure": "price.delivery_pct"}], "evidence": ["price.close", "price.volume", "price.delivery_pct", "price.high"]}
+{"mid": "MB1033", "split": "test", "required": [{"measure": "price.high"}, {"measure": "price.delivery_pct"}], "evidence": ["price.high", "price.delivery_pct", "price.close", "price.volume"]}
+{"mid": "MB1037", "split": "test", "required": [{"measure": "price.sma"}], "evidence": ["price.sma", "price.close"]}
+{"mid": "MB1038", "split": "test", "required": [{"measure": "price.sma"}], "evidence": ["price.sma", "price.close"]}
+{"mid": "MB1045", "split": "test", "required": [{"measure": "price.high"}, {"measure": "price.volume"}], "evidence": ["price.high", "price.volume", "price.delivery_pct", "price.close"]}
+{"mid": "MB1049", "split": "test", "required": [{"measure": "f.gap_pct"}, {"measure": "price.close"}], "evidence": ["f.gap_pct", "price.close"]}
+{"mid": "MB1053", "split": "test", "required": [{"measure": "f.gap_pct"}, {"measure": "price.volume"}], "evidence": ["f.gap_pct", "price.volume", "price.close"]}
+{"mid": "MB1057", "split": "test", "required": [{"measure": "f.excess_return"}, {"measure": "price.close"}], "evidence": ["f.excess_return", "price.close", "macro.index_close"]}
+{"mid": "MB1063", "split": "test", "required": [{"measure": "macro.oi"}], "evidence": ["macro.oi", "price.close"]}
+{"mid": "MB1065", "split": "test", "required": [{"measure": "macro.oi"}, {"measure": "macro.index_close"}], "evidence": ["macro.oi", "macro.index_close", "price.close"]}
+{"mid": "MB1069", "split": "test", "required": [{"measure": "price.delivery_pct"}, {"measure": "price.high"}], "evidence": ["price.delivery_pct", "price.high", "macro.flow", "price.close"]}
+{"mid": "MB1073", "split": "test", "required": [{"measure": "price.delivery_pct"}, {"measure": "price.close"}], "evidence": ["price.delivery_pct", "price.close"]}
