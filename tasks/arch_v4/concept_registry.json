@@ -46,7 +46,22 @@
     "closing rate",
     "price",
     "shares price",
-    "stock price"
+    "stock price",
+    "share price",
+    "market reaction",
+    "stock reaction",
+    "price reaction",
+    "listing pop",
+    "listing day",
+    "listing-day",
+    "first-day close",
+    "debut",
+    "price progress",
+    "price movement",
+    "price action",
+    "better proxy",
+    "cleanest proxy",
+    "proxy"
    ]
   },
   {
@@ -90,7 +105,18 @@
     "intraday high",
     "top",
     "highest price",
-    "peak price"
+    "peak price",
+    "52 week high",
+    "52-week high",
+    "yearly high",
+    "higher highs",
+    "higher high",
+    "swing high",
+    "record high",
+    "all time high",
+    "all-time high",
+    "previous high",
+    "lower highs"
    ]
   },
   {
@@ -113,7 +139,14 @@
     "intraday low",
     "bottom",
     "lowest price",
-    "trough"
+    "trough",
+    "52 week low",
+    "52-week low",
+    "yearly low",
+    "lower lows",
+    "lower low",
+    "swing low",
+    "previous low"
    ]
   },
   {
@@ -137,7 +170,14 @@
     "quantity traded",
     "traded volume",
     "number of shares traded",
-    "qty"
+    "qty",
+    "volume growth",
+    "volume trend",
+    "volume effect",
+    "volume recovery",
+    "trade volume",
+    "volumes traded",
+    "volume loss"
    ]
   },
   {
@@ -209,7 +249,10 @@
     "turnover",
     "amount traded",
     "liquidity",
-    "adtv"
+    "adtv",
+    "trading volume",
+    "value of trading",
+    "cash market volume"
    ]
   },
   {
@@ -232,7 +275,8 @@
     "market capitalization",
     "mcap",
     "cap",
-    "size"
+    "size",
+    "market value"
    ]
   },
   {
@@ -256,7 +300,18 @@
     "paid up capital",
     "paid-up capital",
     "outstanding shares",
-    "total shares"
+    "total shares",
+    "equity shares",
+    "equity share capital",
+    "number of equity shares",
+    "fresh equity",
+    "equity issuance",
+    "equity raise",
+    "raised equity",
+    "qip",
+    "qualified institutional placement",
+    "preferential allotment",
+    "allotment"
    ]
   },
   {
@@ -279,7 +334,10 @@
     "circuit limit",
     "band",
     "upper circuit",
-    "lower circuit"
+    "lower circuit",
+    "base price",
+    "base-price",
+    "base-price reset"
    ]
   },
   {
@@ -331,7 +389,12 @@
     "50 day average",
     "200 day average",
     "50 days",
-    "200 days"
+    "200 days",
+    "three averages",
+    "50 day moving average",
+    "200 day moving average",
+    "50-day",
+    "200-day"
    ]
   },
   {
@@ -357,7 +420,26 @@
     "income from operations",
     "income from operation",
     "turnover from operations",
-    "gross revenue"
+    "gross revenue",
+    "revenue growth",
+    "sales growth",
+    "topline growth",
+    "net sales",
+    "operating revenue",
+    "revenue per square foot",
+    "output value",
+    "revenue split",
+    "geographic revenue split",
+    "geographic split",
+    "geo split",
+    "business split",
+    "annual premium equivalent",
+    "premium income",
+    "fee income",
+    "commission paid",
+    "commission income",
+    "arpob",
+    "revenue per bed"
    ]
   },
   {
@@ -409,7 +491,13 @@
     "loss",
     "losses",
     "net loss",
-    "quarterly loss"
+    "quarterly loss",
+    "reported profit",
+    "reported net profit",
+    "profit overall",
+    "quarterly profit",
+    "profit swing",
+    "reported earnings"
    ]
   },
   {
@@ -501,7 +589,8 @@
     "cash & equivalents",
     "bank balance",
     "free cash",
-    "surplus cash"
+    "surplus cash",
+    "cash runway"
    ]
   },
   {
@@ -545,7 +634,13 @@
     "jv",
     "joint venture",
     "associates",
-    "inv"
+    "inv",
+    "listed portfolio",
+    "investment portfolio",
+    "portfolio value",
+    "stake value",
+    "subsidiary",
+    "subsidiaries"
    ]
   },
   {
@@ -568,7 +663,10 @@
     "debtors",
     "receivable",
     "outstanding receivables",
-    "dues"
+    "dues",
+    "old receivables",
+    "receivable quality",
+    "stressed book"
    ]
   },
   {
@@ -590,7 +688,16 @@
     "inventories",
     "stock in trade",
     "work in progress inventory",
-    "raw material stock"
+    "raw material stock",
+    "inventory turns",
+    "inventory days",
+    "dealer stock",
+    "dealer inventory",
+    "destocking",
+    "restocking",
+    "stock days",
+    "inventory build",
+    "inventory write-down"
    ]
   },
   {
@@ -636,7 +743,14 @@
     "capital outlay",
     "spending",
     "investment in fixed assets",
-    "addition to fixed assets"
+    "addition to fixed assets",
+    "capital repairs",
+    "capital spending",
+    "planned capex",
+    "capex plan",
+    "capex plan",
+    "data centre capex",
+    "data-centre capex"
    ]
   },
   {
@@ -661,7 +775,11 @@
     "interest cost",
     "interest paid",
     "interest outgo",
-    "capitalised interest"
+    "capitalised interest",
+    "cost of debt",
+    "borrowing cost",
+    "incremental borrowing cost",
+    "interest saving"
    ]
   },
   {
@@ -684,7 +802,9 @@
     "cash from operations",
     "cash flow from operations",
     "ocf",
-    "operating cashflow"
+    "operating cashflow",
+    "free cash flow",
+    "fcf"
    ]
   },
   {
@@ -709,7 +829,12 @@
     "book size",
     "credit book",
     "loan growth",
-    "book growth"
+    "book growth",
+    "disbursement",
+    "disbursements",
+    "securitised disbursement",
+    "loan-book",
+    "loan-book growth"
    ]
   },
   {
@@ -753,7 +878,10 @@
     "net npa",
     "slippages",
     "stressed assets",
-    "bad loans"
+    "bad loans",
+    "gnpa",
+    "stressed book",
+    "slippage"
    ]
   },
   {
@@ -774,7 +902,9 @@
     "credit cost",
     "provisions",
     "provision cost",
-    "loan loss"
+    "loan loss",
+    "bounce rates",
+    "provisioning"
    ]
   },
   {
@@ -797,7 +927,10 @@
     "utilisation",
     "utilization",
     "plant utilisation",
-    "cu"
+    "cu",
+    "load factor",
+    "plant load factor",
+    "capacity utilization improvement"
    ]
   },
   {
@@ -822,7 +955,11 @@
     "unexecuted order book",
     "book to bill",
     "book",
-    "order value"
+    "order value",
+    "book-to-bill",
+    "order book cover",
+    "order book to revenue",
+    "revenue visibility"
    ]
   },
   {
@@ -851,7 +988,9 @@
     "bid",
     "bids",
     "bidding",
-    "tender win"
+    "tender win",
+    "order-win",
+    "order win"
    ]
   },
   {
@@ -877,7 +1016,12 @@
     "segments",
     "segment mix",
     "segment share",
-    "business segments"
+    "business segments",
+    "geo split",
+    "geographic split",
+    "geographic revenue split",
+    "segment split",
+    "business split"
    ]
   },
   {
@@ -901,9 +1045,16 @@
     "holding percentage",
     "shareholding pattern",
     "holding",
-    "holders",
     "ownership",
-    "share holding pattern"
+    "share holding pattern",
+    "on the register",
+    "who was on the register",
+    "promoter group",
+    "fii ownership",
+    "dii ownership",
+    "retail investors own",
+    "shareholder",
+    "shareholders"
    ]
   },
   {
@@ -960,7 +1111,11 @@
     "buyback",
     "rights issue",
     "demerger",
-    "corporate action"
+    "corporate action",
+    "interim payout",
+    "final payout",
+    "payout",
+    "allotment"
    ]
   },
   {
@@ -1008,7 +1163,8 @@
     "block deal",
     "deal",
     "promoter buying",
-    "promoter selling"
+    "promoter selling",
+    "block transfer"
    ]
   },
   {
@@ -1063,7 +1219,37 @@
     "plans",
     "intends",
     "intend",
-    "strategy"
+    "strategy",
+    "flagged",
+    "flag",
+    "promised",
+    "promise",
+    "intimated",
+    "intimation",
+    "announced",
+    "announcement",
+    "downgraded",
+    "downgrade",
+    "upgraded",
+    "upgrade",
+    "appointed",
+    "appointment",
+    "wrote down",
+    "impairment",
+    "audit qualification",
+    "affirmed",
+    "reaffirmed",
+    "clarified",
+    "denied",
+    "cited",
+    "explained",
+    "delivered",
+    "confirms",
+    "confirmed",
+    "signed",
+    "dated",
+    "met",
+    "missed"
    ]
   },
   {
@@ -1088,7 +1274,13 @@
     "section",
     "quote",
     "quoted",
-    "text"
+    "text",
+    "note 5",
+    "notes to accounts",
+    "notes to the accounts",
+    "results note",
+    "results notes",
+    "note to accounts"
    ]
   },
   {
@@ -1109,13 +1301,16 @@
     "policy",
     "tariff",
     "tariffs",
+    "tariff rate",
+    "tariff rates",
     "duty",
     "import duty",
     "customs duty",
+    "customs tariff",
     "anti dumping",
+    "anti-dumping",
     "budget",
     "rbi",
-    "repo",
     "repo rate",
     "subsidy",
     "pli",
@@ -1130,7 +1325,18 @@
     "ministry",
     "government",
     "sebi",
-    "regulation"
+    "regulation",
+    "tax holiday",
+    "tax incentive",
+    "tax incentives",
+    "tax sops",
+    "safeguard duty",
+    "safeguard",
+    "export duty",
+    "countervailing duty",
+    "free trade agreement",
+    "fta",
+    "incentive scheme"
    ]
   },
   {
@@ -1151,9 +1357,12 @@
     "claim",
     "report",
     "research note",
+    "research report",
+    "broker note",
     "house view",
     "consensus view",
     "street",
+    "street view",
     "broker",
     "rbi says",
     "economist"
@@ -1179,6 +1388,11 @@
     "steel",
     "hrc",
     "iron ore",
+    "iron-ore",
+    "pellets",
+    "pellet",
+    "sponge iron",
+    "fines",
     "crude",
     "brent",
     "wti",
@@ -1206,7 +1420,26 @@
     "commodity",
     "commodities",
     "input cost",
-    "raw material price"
+    "raw material price",
+    "pulp",
+    "waste paper",
+    "wastepaper",
+    "edible oil",
+    "edible oils",
+    "pet coke",
+    "limestone",
+    "soda ash",
+    "scrap",
+    "metal price",
+    "metal prices",
+    "lme",
+    "thermal coal",
+    "crude oil",
+    "brent crude",
+    "steel price",
+    "steel prices",
+    "paper price",
+    "paper prices"
    ]
   },
   {
@@ -1230,12 +1463,17 @@
     "nifty 50",
     "bank nifty",
     "nifty it",
+    "nifty psu bank",
+    "nifty fmcg",
+    "nifty energy",
+    "sector index",
     "smallcap index",
     "midcap index",
     "index level",
     "benchmark",
     "bse index",
-    "nifty500"
+    "nifty500",
+    "index constituents"
    ]
   },
   {
@@ -1267,7 +1505,17 @@
     "fpi",
     "flow",
     "flows",
-    "flow prints"
+    "flow prints",
+    "passive buying",
+    "passive selling",
+    "passive flow",
+    "index flow",
+    "fund flow",
+    "fii outflow",
+    "fii selling",
+    "fii buying",
+    "dii buying",
+    "dii selling"
    ]
   },
   {
@@ -1292,7 +1540,16 @@
     "f&o",
     "put call",
     "pcr",
-    "option chain"
+    "option chain",
+    "rollover",
+    "max pain",
+    "call oi",
+    "put oi",
+    "futures premium",
+    "basis widening",
+    "expiry day",
+    "options expiry",
+    "into expiry"
    ]
   },
   {
@@ -1316,7 +1573,13 @@
     "nav premium",
     "discount to nav",
     "etf",
-    "exchange traded fund"
+    "exchange traded fund",
+    "tracking error",
+    "gold etf",
+    "silver etf",
+    "nifty etf",
+    "index etf",
+    "etf premium to inav"
    ]
   },
   {
@@ -1350,6 +1613,7 @@
     "inr",
     "usdinr",
     "dollar",
+    "repo",
     "repo rate",
     "policy rate",
     "interest rate",
@@ -1369,7 +1633,34 @@
     "gst rates",
     "tax",
     "taxes",
-    "current account"
+    "current account",
+    "forward premia",
+    "forward premium",
+    "forward premiums",
+    "price series",
+    "macro series",
+    "commodity series",
+    "rate series",
+    "wage inflation",
+    "rural wage",
+    "wages",
+    "10 year yield",
+    "bond yield",
+    "g-sec",
+    "yield",
+    "bank rate",
+    "cost of funds",
+    "exchange price",
+    "plant load factor",
+    "plf",
+    "coal stock",
+    "power demand",
+    "import volume",
+    "series of",
+    "price series",
+    "macro series",
+    "commodity series",
+    "rate series"
    ]
   },
   {
@@ -1392,7 +1683,8 @@
     "term deposits",
     "casa",
     "casa ratio",
-    "deposit franchise"
+    "deposit franchise",
+    "deposit repricing"
    ]
   },
   {
@@ -1420,7 +1712,14 @@
     "two wheelers",
     "three wheelers",
     "vehicles sold",
-    "tonnes sold"
+    "tonnes sold",
+    "deliver",
+    "delivers",
+    "tractor volume",
+    "vehicle volume",
+    "electric two wheelers",
+    "volume sold",
+    "unit volume"
    ]
   },
   {
@@ -1442,7 +1741,9 @@
     "float",
     "free-float",
     "float percentage",
-    "index weight"
+    "index weight",
+    "weight in the index",
+    "nifty weight"
    ]
   },
   {
@@ -1497,7 +1798,6 @@
     "intraday move",
     "tick data",
     "minute bars",
-    "seconds",
     "intraday high low"
    ]
   },
@@ -2540,6 +2840,258 @@
    "variant_of": "stock price"
   },
   {
+   "surface": "share price",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "share prices",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "share price"
+  },
+  {
+   "surface": "market reaction",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "market reactions",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "market reaction"
+  },
+  {
+   "surface": "stock reaction",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "stock reactions",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "stock reaction"
+  },
+  {
+   "surface": "price reaction",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "price reactions",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "price reaction"
+  },
+  {
+   "surface": "listing pop",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "listing pops",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "listing pop"
+  },
+  {
+   "surface": "listing day",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "listing days",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "listing day"
+  },
+  {
+   "surface": "first day close",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "first day closes",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "first day close"
+  },
+  {
+   "surface": "debut",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "debuts",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "debut"
+  },
+  {
+   "surface": "price progress",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "price progres",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "price progress"
+  },
+  {
+   "surface": "price movement",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "price movements",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "price movement"
+  },
+  {
+   "surface": "price action",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "price actions",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "price action"
+  },
+  {
+   "surface": "better proxy",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "better proxys",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "better proxy"
+  },
+  {
+   "surface": "cleanest proxy",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "cleanest proxys",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cleanest proxy"
+  },
+  {
+   "surface": "proxy",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "proxys",
+   "kind": "atom",
+   "id": "price.close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "proxy"
+  },
+  {
    "surface": "open",
    "kind": "atom",
    "id": "price.open",
@@ -2720,6 +3272,150 @@
    "variant_of": "peak price"
   },
   {
+   "surface": "52 week high",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "52 week highs",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "52 week high"
+  },
+  {
+   "surface": "yearly high",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "yearly highs",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "yearly high"
+  },
+  {
+   "surface": "higher highs",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "higher high",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "higher highs"
+  },
+  {
+   "surface": "swing high",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "swing highs",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "swing high"
+  },
+  {
+   "surface": "record high",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "record highs",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "record high"
+  },
+  {
+   "surface": "all time high",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "all time highs",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "all time high"
+  },
+  {
+   "surface": "previous high",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "previous highs",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "previous high"
+  },
+  {
+   "surface": "lower highs",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "lower high",
+   "kind": "atom",
+   "id": "price.high",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "lower highs"
+  },
+  {
    "surface": "low",
    "kind": "atom",
    "id": "price.low",
@@ -2828,6 +3524,96 @@
    "variant_of": "trough"
   },
   {
+   "surface": "52 week low",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "52 week lows",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "52 week low"
+  },
+  {
+   "surface": "yearly low",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "yearly lows",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "yearly low"
+  },
+  {
+   "surface": "lower lows",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "lower low",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "lower lows"
+  },
+  {
+   "surface": "swing low",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "swing lows",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "swing low"
+  },
+  {
+   "surface": "previous low",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "previous lows",
+   "kind": "atom",
+   "id": "price.low",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "previous low"
+  },
+  {
    "surface": "volume",
    "kind": "atom",
    "id": "price.volume",
@@ -2934,6 +3720,132 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "qty"
+  },
+  {
+   "surface": "volume growth",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "volume growths",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "volume growth"
+  },
+  {
+   "surface": "volume trend",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "volume trends",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "volume trend"
+  },
+  {
+   "surface": "volume effect",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "volume effects",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "volume effect"
+  },
+  {
+   "surface": "volume recovery",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "volume recoverys",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "volume recovery"
+  },
+  {
+   "surface": "trade volume",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "trade volumes",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "trade volume"
+  },
+  {
+   "surface": "volumes traded",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "volumes tradeds",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "volumes traded"
+  },
+  {
+   "surface": "volume loss",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "volume los",
+   "kind": "atom",
+   "id": "price.volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "volume loss"
   },
   {
    "surface": "delivered quantity",
@@ -3314,6 +4226,60 @@
    "variant_of": "adtv"
   },
   {
+   "surface": "trading volume",
+   "kind": "atom",
+   "id": "price.traded_value",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "trading volumes",
+   "kind": "atom",
+   "id": "price.traded_value",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "trading volume"
+  },
+  {
+   "surface": "value of trading",
+   "kind": "atom",
+   "id": "price.traded_value",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "value of tradings",
+   "kind": "atom",
+   "id": "price.traded_value",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "value of trading"
+  },
+  {
+   "surface": "cash market volume",
+   "kind": "atom",
+   "id": "price.traded_value",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "cash market volumes",
+   "kind": "atom",
+   "id": "price.traded_value",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cash market volume"
+  },
+  {
    "surface": "market cap",
    "kind": "atom",
    "id": "price.mcap",
@@ -3420,6 +4386,24 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "size"
+  },
+  {
+   "surface": "market value",
+   "kind": "atom",
+   "id": "price.mcap",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "market values",
+   "kind": "atom",
+   "id": "price.mcap",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "market value"
   },
   {
    "surface": "shares outstanding",
@@ -3530,6 +4514,204 @@
    "variant_of": "total shares"
   },
   {
+   "surface": "equity shares",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "equity share",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "equity shares"
+  },
+  {
+   "surface": "equity share capital",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "equity share capitals",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "equity share capital"
+  },
+  {
+   "surface": "number of equity shares",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "number of equity share",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "number of equity shares"
+  },
+  {
+   "surface": "fresh equity",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fresh equitys",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fresh equity"
+  },
+  {
+   "surface": "equity issuance",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "equity issuances",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "equity issuance"
+  },
+  {
+   "surface": "equity raise",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "equity raises",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "equity raise"
+  },
+  {
+   "surface": "raised equity",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "raised equitys",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "raised equity"
+  },
+  {
+   "surface": "qip",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "qips",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "qip"
+  },
+  {
+   "surface": "qualified institutional placement",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "qualified institutional placements",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "qualified institutional placement"
+  },
+  {
+   "surface": "preferential allotment",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "preferential allotments",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "preferential allotment"
+  },
+  {
+   "surface": "allotment",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "allotments",
+   "kind": "atom",
+   "id": "price.shares_out",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "allotment"
+  },
+  {
    "surface": "price band",
    "kind": "atom",
    "id": "price.band",
@@ -3636,6 +4818,42 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "lower circuit"
+  },
+  {
+   "surface": "base price",
+   "kind": "atom",
+   "id": "price.band",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "base prices",
+   "kind": "atom",
+   "id": "price.band",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "base price"
+  },
+  {
+   "surface": "base price reset",
+   "kind": "atom",
+   "id": "price.band",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "base price resets",
+   "kind": "atom",
+   "id": "price.band",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "base price reset"
   },
   {
    "surface": "rsi",
@@ -3926,6 +5144,60 @@
    "variant_of": "200 day average"
   },
   {
+   "surface": "three averages",
+   "kind": "atom",
+   "id": "price.sma",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "three average",
+   "kind": "atom",
+   "id": "price.sma",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "three averages"
+  },
+  {
+   "surface": "50 day moving average",
+   "kind": "atom",
+   "id": "price.sma",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "50 day moving averages",
+   "kind": "atom",
+   "id": "price.sma",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "50 day moving average"
+  },
+  {
+   "surface": "200 day moving average",
+   "kind": "atom",
+   "id": "price.sma",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "200 day moving averages",
+   "kind": "atom",
+   "id": "price.sma",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "200 day moving average"
+  },
+  {
    "surface": "revenue",
    "kind": "atom",
    "id": "fin.revenue",
@@ -4050,6 +5322,348 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "gross revenue"
+  },
+  {
+   "surface": "revenue growth",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "revenue growths",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "revenue growth"
+  },
+  {
+   "surface": "sales growth",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "sales growths",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "sales growth"
+  },
+  {
+   "surface": "topline growth",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "topline growths",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "topline growth"
+  },
+  {
+   "surface": "net sales",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "net sale",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "net sales"
+  },
+  {
+   "surface": "operating revenue",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "operating revenues",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "operating revenue"
+  },
+  {
+   "surface": "revenue per square foot",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "revenue per square foots",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "revenue per square foot"
+  },
+  {
+   "surface": "output value",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "output values",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "output value"
+  },
+  {
+   "surface": "revenue split",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "revenue splits",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "revenue split"
+  },
+  {
+   "surface": "geographic revenue split",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "geographic revenue splits",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "geographic revenue split"
+  },
+  {
+   "surface": "geographic split",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "geographic splits",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "geographic split"
+  },
+  {
+   "surface": "geo split",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "geo splits",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "geo split"
+  },
+  {
+   "surface": "business split",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "business splits",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "business split"
+  },
+  {
+   "surface": "annual premium equivalent",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "annual premium equivalents",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "annual premium equivalent"
+  },
+  {
+   "surface": "premium income",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "premium incomes",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "premium income"
+  },
+  {
+   "surface": "fee income",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fee incomes",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fee income"
+  },
+  {
+   "surface": "commission paid",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "commission paids",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "commission paid"
+  },
+  {
+   "surface": "commission income",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "commission incomes",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "commission income"
+  },
+  {
+   "surface": "arpob",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "arpobs",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "arpob"
+  },
+  {
+   "surface": "revenue per bed",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "revenue per beds",
+   "kind": "atom",
+   "id": "fin.revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "revenue per bed"
   },
   {
    "surface": "ebitda",
@@ -4374,6 +5988,114 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "quarterly loss"
+  },
+  {
+   "surface": "reported profit",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "reported profits",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "reported profit"
+  },
+  {
+   "surface": "reported net profit",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "reported net profits",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "reported net profit"
+  },
+  {
+   "surface": "profit overall",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "profit overalls",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "profit overall"
+  },
+  {
+   "surface": "quarterly profit",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "quarterly profits",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "quarterly profit"
+  },
+  {
+   "surface": "profit swing",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "profit swings",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "profit swing"
+  },
+  {
+   "surface": "reported earnings",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "reported earning",
+   "kind": "atom",
+   "id": "fin.pat",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "reported earnings"
   },
   {
    "surface": "eps",
@@ -4781,6 +6503,24 @@
    "variant_of": "surplus cash"
   },
   {
+   "surface": "cash runway",
+   "kind": "atom",
+   "id": "fin.cash",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "cash runways",
+   "kind": "atom",
+   "id": "fin.cash",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cash runway"
+  },
+  {
    "surface": "cwip",
    "kind": "atom",
    "id": "fin.cwip",
@@ -4934,6 +6674,114 @@
    "variant_of": "inv"
   },
   {
+   "surface": "listed portfolio",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "listed portfolios",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "listed portfolio"
+  },
+  {
+   "surface": "investment portfolio",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "investment portfolios",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "investment portfolio"
+  },
+  {
+   "surface": "portfolio value",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "portfolio values",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "portfolio value"
+  },
+  {
+   "surface": "stake value",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "stake values",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "stake value"
+  },
+  {
+   "surface": "subsidiary",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "subsidiarys",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "subsidiary"
+  },
+  {
+   "surface": "subsidiaries",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "subsidiarie",
+   "kind": "atom",
+   "id": "fin.investments",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "subsidiaries"
+  },
+  {
    "surface": "receivables",
    "kind": "atom",
    "id": "fin.receivables",
@@ -5024,6 +6872,60 @@
    "variant_of": "dues"
   },
   {
+   "surface": "old receivables",
+   "kind": "atom",
+   "id": "fin.receivables",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "old receivable",
+   "kind": "atom",
+   "id": "fin.receivables",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "old receivables"
+  },
+  {
+   "surface": "receivable quality",
+   "kind": "atom",
+   "id": "fin.receivables",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "receivable qualitys",
+   "kind": "atom",
+   "id": "fin.receivables",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "receivable quality"
+  },
+  {
+   "surface": "stressed book",
+   "kind": "atom",
+   "id": "fin.receivables",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "stressed books",
+   "kind": "atom",
+   "id": "fin.receivables",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "stressed book"
+  },
+  {
    "surface": "inventory",
    "kind": "atom",
    "id": "fin.inventory",
@@ -5112,6 +7014,168 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "raw material stock"
+  },
+  {
+   "surface": "inventory turns",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "inventory turn",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "inventory turns"
+  },
+  {
+   "surface": "inventory days",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "inventory day",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "inventory days"
+  },
+  {
+   "surface": "dealer stock",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "dealer stocks",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "dealer stock"
+  },
+  {
+   "surface": "dealer inventory",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "dealer inventorys",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "dealer inventory"
+  },
+  {
+   "surface": "destocking",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "destockings",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "destocking"
+  },
+  {
+   "surface": "restocking",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "restockings",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "restocking"
+  },
+  {
+   "surface": "stock days",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "stock day",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "stock days"
+  },
+  {
+   "surface": "inventory build",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "inventory builds",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "inventory build"
+  },
+  {
+   "surface": "inventory write down",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "inventory write downs",
+   "kind": "atom",
+   "id": "fin.inventory",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "inventory write down"
   },
   {
    "surface": "payables",
@@ -5312,6 +7376,96 @@
    "variant_of": "addition to fixed assets"
   },
   {
+   "surface": "capital repairs",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "capital repair",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "capital repairs"
+  },
+  {
+   "surface": "capital spending",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "capital spendings",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "capital spending"
+  },
+  {
+   "surface": "planned capex",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "planned capexs",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "planned capex"
+  },
+  {
+   "surface": "capex plan",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "capex plans",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "capex plan"
+  },
+  {
+   "surface": "data centre capex",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "data centre capexs",
+   "kind": "atom",
+   "id": "fin.capex",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "data centre capex"
+  },
+  {
    "surface": "interest",
    "kind": "atom",
    "id": "fin.interest_expense",
@@ -5438,6 +7592,78 @@
    "variant_of": "capitalised interest"
   },
   {
+   "surface": "cost of debt",
+   "kind": "atom",
+   "id": "fin.interest_expense",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "cost of debts",
+   "kind": "atom",
+   "id": "fin.interest_expense",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cost of debt"
+  },
+  {
+   "surface": "borrowing cost",
+   "kind": "atom",
+   "id": "fin.interest_expense",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "borrowing costs",
+   "kind": "atom",
+   "id": "fin.interest_expense",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "borrowing cost"
+  },
+  {
+   "surface": "incremental borrowing cost",
+   "kind": "atom",
+   "id": "fin.interest_expense",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "incremental borrowing costs",
+   "kind": "atom",
+   "id": "fin.interest_expense",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "incremental borrowing cost"
+  },
+  {
+   "surface": "interest saving",
+   "kind": "atom",
+   "id": "fin.interest_expense",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "interest savings",
+   "kind": "atom",
+   "id": "fin.interest_expense",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "interest saving"
+  },
+  {
    "surface": "cfo",
    "kind": "atom",
    "id": "fin.cfo",
@@ -5544,6 +7770,42 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "operating cashflow"
+  },
+  {
+   "surface": "free cash flow",
+   "kind": "atom",
+   "id": "fin.cfo",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "free cash flows",
+   "kind": "atom",
+   "id": "fin.cfo",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "free cash flow"
+  },
+  {
+   "surface": "fcf",
+   "kind": "atom",
+   "id": "fin.cfo",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fcfs",
+   "kind": "atom",
+   "id": "fin.cfo",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fcf"
   },
   {
    "surface": "loan book",
@@ -5688,6 +7950,60 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "book growth"
+  },
+  {
+   "surface": "disbursement",
+   "kind": "atom",
+   "id": "fin.loan_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "disbursements",
+   "kind": "atom",
+   "id": "fin.loan_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "disbursement"
+  },
+  {
+   "surface": "securitised disbursement",
+   "kind": "atom",
+   "id": "fin.loan_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "securitised disbursements",
+   "kind": "atom",
+   "id": "fin.loan_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "securitised disbursement"
+  },
+  {
+   "surface": "loan book growth",
+   "kind": "atom",
+   "id": "fin.loan_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "loan book growths",
+   "kind": "atom",
+   "id": "fin.loan_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "loan book growth"
   },
   {
    "surface": "nim",
@@ -5870,6 +8186,24 @@
    "variant_of": "bad loans"
   },
   {
+   "surface": "gnpa",
+   "kind": "atom",
+   "id": "fin.npa",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "gnpas",
+   "kind": "atom",
+   "id": "fin.npa",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "gnpa"
+  },
+  {
    "surface": "credit cost",
    "kind": "atom",
    "id": "fin.credit_cost",
@@ -5940,6 +8274,42 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "loan loss"
+  },
+  {
+   "surface": "bounce rates",
+   "kind": "atom",
+   "id": "fin.credit_cost",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "bounce rate",
+   "kind": "atom",
+   "id": "fin.credit_cost",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "bounce rates"
+  },
+  {
+   "surface": "provisioning",
+   "kind": "atom",
+   "id": "fin.credit_cost",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "provisionings",
+   "kind": "atom",
+   "id": "fin.credit_cost",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "provisioning"
   },
   {
    "surface": "capacity utilisation",
@@ -6039,6 +8409,60 @@
    "hand_checked": true,
    "why": "",
    "variant_of": null
+  },
+  {
+   "surface": "load factor",
+   "kind": "atom",
+   "id": "fin.capacity_utilisation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "load factors",
+   "kind": "atom",
+   "id": "fin.capacity_utilisation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "load factor"
+  },
+  {
+   "surface": "plant load factor",
+   "kind": "atom",
+   "id": "fin.capacity_utilisation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "plant load factors",
+   "kind": "atom",
+   "id": "fin.capacity_utilisation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "plant load factor"
+  },
+  {
+   "surface": "capacity utilization improvement",
+   "kind": "atom",
+   "id": "fin.capacity_utilisation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "capacity utilization improvements",
+   "kind": "atom",
+   "id": "fin.capacity_utilisation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "capacity utilization improvement"
   },
   {
    "surface": "order book",
@@ -6183,6 +8607,60 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "order value"
+  },
+  {
+   "surface": "order book cover",
+   "kind": "atom",
+   "id": "fin.order_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "order book covers",
+   "kind": "atom",
+   "id": "fin.order_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "order book cover"
+  },
+  {
+   "surface": "order book to revenue",
+   "kind": "atom",
+   "id": "fin.order_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "order book to revenues",
+   "kind": "atom",
+   "id": "fin.order_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "order book to revenue"
+  },
+  {
+   "surface": "revenue visibility",
+   "kind": "atom",
+   "id": "fin.order_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "revenue visibilitys",
+   "kind": "atom",
+   "id": "fin.order_book",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "revenue visibility"
   },
   {
    "surface": "order intake",
@@ -6527,6 +9005,24 @@
    "variant_of": "business segments"
   },
   {
+   "surface": "segment split",
+   "kind": "atom",
+   "id": "fin.segment_value",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "segment splits",
+   "kind": "atom",
+   "id": "fin.segment_value",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "segment split"
+  },
+  {
    "surface": "shareholding",
    "kind": "atom",
    "id": "hold.pct",
@@ -6635,24 +9131,6 @@
    "variant_of": "holding"
   },
   {
-   "surface": "holders",
-   "kind": "atom",
-   "id": "hold.pct",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "holder",
-   "kind": "atom",
-   "id": "hold.pct",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "holders"
-  },
-  {
    "surface": "ownership",
    "kind": "atom",
    "id": "hold.pct",
@@ -6687,6 +9165,132 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "share holding pattern"
+  },
+  {
+   "surface": "on the register",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "on the registers",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "on the register"
+  },
+  {
+   "surface": "who was on the register",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "who was on the registers",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "who was on the register"
+  },
+  {
+   "surface": "promoter group",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "promoter groups",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "promoter group"
+  },
+  {
+   "surface": "fii ownership",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fii ownerships",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fii ownership"
+  },
+  {
+   "surface": "dii ownership",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "dii ownerships",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "dii ownership"
+  },
+  {
+   "surface": "retail investors own",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "retail investors owns",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "retail investors own"
+  },
+  {
+   "surface": "shareholder",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "shareholders",
+   "kind": "atom",
+   "id": "hold.pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "shareholder"
   },
   {
    "surface": "pledge",
@@ -7094,6 +9698,60 @@
    "variant_of": "corporate action"
   },
   {
+   "surface": "interim payout",
+   "kind": "atom",
+   "id": "corp.amount_per_share",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "interim payouts",
+   "kind": "atom",
+   "id": "corp.amount_per_share",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "interim payout"
+  },
+  {
+   "surface": "final payout",
+   "kind": "atom",
+   "id": "corp.amount_per_share",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "final payouts",
+   "kind": "atom",
+   "id": "corp.amount_per_share",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "final payout"
+  },
+  {
+   "surface": "payout",
+   "kind": "atom",
+   "id": "corp.amount_per_share",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "payouts",
+   "kind": "atom",
+   "id": "corp.amount_per_share",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "payout"
+  },
+  {
    "surface": "fpi limit",
    "kind": "atom",
    "id": "hold.fpi_limit_utilised",
@@ -7344,6 +10002,24 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "promoter selling"
+  },
+  {
+   "surface": "block transfer",
+   "kind": "atom",
+   "id": "flows.net_inr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "block transfers",
+   "kind": "atom",
+   "id": "flows.net_inr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "block transfer"
   },
   {
    "surface": "said",
@@ -7913,6 +10589,546 @@
    "variant_of": "strategy"
   },
   {
+   "surface": "flagged",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "flaggeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "flagged"
+  },
+  {
+   "surface": "flag",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "flags",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "flag"
+  },
+  {
+   "surface": "promised",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "promiseds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "promised"
+  },
+  {
+   "surface": "promise",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "promises",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "promise"
+  },
+  {
+   "surface": "intimated",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "intimateds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "intimated"
+  },
+  {
+   "surface": "intimation",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "intimations",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "intimation"
+  },
+  {
+   "surface": "announced",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "announceds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "announced"
+  },
+  {
+   "surface": "announcement",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "announcements",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "announcement"
+  },
+  {
+   "surface": "downgraded",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "downgradeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "downgraded"
+  },
+  {
+   "surface": "downgrade",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "downgrades",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "downgrade"
+  },
+  {
+   "surface": "upgraded",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "upgradeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "upgraded"
+  },
+  {
+   "surface": "upgrade",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "upgrades",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "upgrade"
+  },
+  {
+   "surface": "appointed",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "appointeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "appointed"
+  },
+  {
+   "surface": "appointment",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "appointments",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "appointment"
+  },
+  {
+   "surface": "wrote down",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "wrote downs",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "wrote down"
+  },
+  {
+   "surface": "impairment",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "impairments",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "impairment"
+  },
+  {
+   "surface": "audit qualification",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "audit qualifications",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "audit qualification"
+  },
+  {
+   "surface": "affirmed",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "affirmeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "affirmed"
+  },
+  {
+   "surface": "reaffirmed",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "reaffirmeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "reaffirmed"
+  },
+  {
+   "surface": "clarified",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "clarifieds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "clarified"
+  },
+  {
+   "surface": "denied",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "denieds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "denied"
+  },
+  {
+   "surface": "cited",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "citeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cited"
+  },
+  {
+   "surface": "explained",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "explaineds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "explained"
+  },
+  {
+   "surface": "delivered",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "delivereds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "delivered"
+  },
+  {
+   "surface": "confirms",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "confirm",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "confirms"
+  },
+  {
+   "surface": "confirmed",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "confirmeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "confirmed"
+  },
+  {
+   "surface": "signed",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "signeds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "signed"
+  },
+  {
+   "surface": "dated",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "dateds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "dated"
+  },
+  {
+   "surface": "met",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "mets",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "met"
+  },
+  {
+   "surface": "missed",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "misseds",
+   "kind": "atom",
+   "id": "claim.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "missed"
+  },
+  {
    "surface": "page",
    "kind": "atom",
    "id": "text.passage",
@@ -8057,6 +11273,96 @@
    "variant_of": "text"
   },
   {
+   "surface": "note 5",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "note 5s",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "note 5"
+  },
+  {
+   "surface": "notes to accounts",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "notes to account",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "notes to accounts"
+  },
+  {
+   "surface": "notes to the accounts",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "notes to the account",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "notes to the accounts"
+  },
+  {
+   "surface": "results note",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "results notes",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "results note"
+  },
+  {
+   "surface": "note to accounts",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "note to account",
+   "kind": "atom",
+   "id": "text.passage",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "note to accounts"
+  },
+  {
    "surface": "policy",
    "kind": "atom",
    "id": "macro.policy",
@@ -8091,6 +11397,24 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "tariff"
+  },
+  {
+   "surface": "tariff rate",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "tariff rates",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "tariff rate"
   },
   {
    "surface": "duty",
@@ -8147,6 +11471,24 @@
    "variant_of": "customs duty"
   },
   {
+   "surface": "customs tariff",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "customs tariffs",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "customs tariff"
+  },
+  {
    "surface": "anti dumping",
    "kind": "atom",
    "id": "macro.policy",
@@ -8199,24 +11541,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "rbi"
-  },
-  {
-   "surface": "repo",
-   "kind": "atom",
-   "id": "macro.policy",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "repos",
-   "kind": "atom",
-   "id": "macro.policy",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "repo"
   },
   {
    "surface": "repo rate",
@@ -8489,6 +11813,186 @@
    "variant_of": "regulation"
   },
   {
+   "surface": "tax holiday",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "tax holidays",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "tax holiday"
+  },
+  {
+   "surface": "tax incentive",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "tax incentives",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "tax incentive"
+  },
+  {
+   "surface": "tax sops",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "tax sop",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "tax sops"
+  },
+  {
+   "surface": "safeguard duty",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "safeguard dutys",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "safeguard duty"
+  },
+  {
+   "surface": "safeguard",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "safeguards",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "safeguard"
+  },
+  {
+   "surface": "export duty",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "export dutys",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "export duty"
+  },
+  {
+   "surface": "countervailing duty",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "countervailing dutys",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "countervailing duty"
+  },
+  {
+   "surface": "free trade agreement",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "free trade agreements",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "free trade agreement"
+  },
+  {
+   "surface": "fta",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "ftas",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fta"
+  },
+  {
+   "surface": "incentive scheme",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "incentive schemes",
+   "kind": "atom",
+   "id": "macro.policy",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "incentive scheme"
+  },
+  {
    "surface": "claim",
    "kind": "atom",
    "id": "macro.claim",
@@ -8543,6 +12047,42 @@
    "variant_of": "research note"
   },
   {
+   "surface": "research report",
+   "kind": "atom",
+   "id": "macro.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "research reports",
+   "kind": "atom",
+   "id": "macro.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "research report"
+  },
+  {
+   "surface": "broker note",
+   "kind": "atom",
+   "id": "macro.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "broker notes",
+   "kind": "atom",
+   "id": "macro.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "broker note"
+  },
+  {
    "surface": "house view",
    "kind": "atom",
    "id": "macro.claim",
@@ -8595,6 +12135,24 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "street"
+  },
+  {
+   "surface": "street view",
+   "kind": "atom",
+   "id": "macro.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "street views",
+   "kind": "atom",
+   "id": "macro.claim",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "street view"
   },
   {
    "surface": "broker",
@@ -8739,6 +12297,60 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "iron ore"
+  },
+  {
+   "surface": "pellets",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "pellet",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "pellets"
+  },
+  {
+   "surface": "sponge iron",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "sponge irons",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "sponge iron"
+  },
+  {
+   "surface": "fines",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fine",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fines"
   },
   {
    "surface": "crude",
@@ -9245,6 +12857,276 @@
    "variant_of": "raw material price"
   },
   {
+   "surface": "pulp",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "pulps",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "pulp"
+  },
+  {
+   "surface": "waste paper",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "waste papers",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "waste paper"
+  },
+  {
+   "surface": "wastepaper",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "wastepapers",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "wastepaper"
+  },
+  {
+   "surface": "edible oil",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "edible oils",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "edible oil"
+  },
+  {
+   "surface": "pet coke",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "pet cokes",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "pet coke"
+  },
+  {
+   "surface": "limestone",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "limestones",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "limestone"
+  },
+  {
+   "surface": "soda ash",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "soda ashs",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "soda ash"
+  },
+  {
+   "surface": "scrap",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "scraps",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "scrap"
+  },
+  {
+   "surface": "metal price",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "metal prices",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "metal price"
+  },
+  {
+   "surface": "lme",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "lmes",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "lme"
+  },
+  {
+   "surface": "thermal coal",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "thermal coals",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "thermal coal"
+  },
+  {
+   "surface": "crude oil",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "crude oils",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "crude oil"
+  },
+  {
+   "surface": "brent crude",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "brent crudes",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "brent crude"
+  },
+  {
+   "surface": "steel price",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "steel prices",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "steel price"
+  },
+  {
+   "surface": "paper price",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "paper prices",
+   "kind": "atom",
+   "id": "macro.commodity_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "paper price"
+  },
+  {
    "surface": "nifty",
    "kind": "atom",
    "id": "macro.index_close",
@@ -9353,6 +13235,78 @@
    "variant_of": "nifty it"
   },
   {
+   "surface": "nifty psu bank",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "nifty psu banks",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "nifty psu bank"
+  },
+  {
+   "surface": "nifty fmcg",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "nifty fmcgs",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "nifty fmcg"
+  },
+  {
+   "surface": "nifty energy",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "nifty energys",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "nifty energy"
+  },
+  {
+   "surface": "sector index",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "sector indexs",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "sector index"
+  },
+  {
    "surface": "smallcap index",
    "kind": "atom",
    "id": "macro.index_close",
@@ -9459,6 +13413,24 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "nifty500"
+  },
+  {
+   "surface": "index constituents",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "index constituent",
+   "kind": "atom",
+   "id": "macro.index_close",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "index constituents"
   },
   {
    "surface": "fii flow",
@@ -9677,6 +13649,186 @@
    "variant_of": "flow prints"
   },
   {
+   "surface": "passive buying",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "passive buyings",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "passive buying"
+  },
+  {
+   "surface": "passive selling",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "passive sellings",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "passive selling"
+  },
+  {
+   "surface": "passive flow",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "passive flows",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "passive flow"
+  },
+  {
+   "surface": "index flow",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "index flows",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "index flow"
+  },
+  {
+   "surface": "fund flow",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fund flows",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fund flow"
+  },
+  {
+   "surface": "fii outflow",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fii outflows",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fii outflow"
+  },
+  {
+   "surface": "fii selling",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fii sellings",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fii selling"
+  },
+  {
+   "surface": "fii buying",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "fii buyings",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "fii buying"
+  },
+  {
+   "surface": "dii buying",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "dii buyings",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "dii buying"
+  },
+  {
+   "surface": "dii selling",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "dii sellings",
+   "kind": "atom",
+   "id": "macro.flow",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "dii selling"
+  },
+  {
    "surface": "open interest",
    "kind": "atom",
    "id": "macro.oi",
@@ -9812,6 +13964,168 @@
    "variant_of": "option chain"
   },
   {
+   "surface": "rollover",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "rollovers",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "rollover"
+  },
+  {
+   "surface": "max pain",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "max pains",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "max pain"
+  },
+  {
+   "surface": "call oi",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "call ois",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "call oi"
+  },
+  {
+   "surface": "put oi",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "put ois",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "put oi"
+  },
+  {
+   "surface": "futures premium",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "futures premiums",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "futures premium"
+  },
+  {
+   "surface": "basis widening",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "basis widenings",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "basis widening"
+  },
+  {
+   "surface": "expiry day",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "expiry days",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "expiry day"
+  },
+  {
+   "surface": "options expiry",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "options expirys",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "options expiry"
+  },
+  {
+   "surface": "into expiry",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "into expirys",
+   "kind": "atom",
+   "id": "macro.oi",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "into expiry"
+  },
+  {
    "surface": "etf premium",
    "kind": "atom",
    "id": "macro.etf_premium",
@@ -9936,6 +14250,114 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "exchange traded fund"
+  },
+  {
+   "surface": "tracking error",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "tracking errors",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "tracking error"
+  },
+  {
+   "surface": "gold etf",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "gold etfs",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "gold etf"
+  },
+  {
+   "surface": "silver etf",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "silver etfs",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "silver etf"
+  },
+  {
+   "surface": "nifty etf",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "nifty etfs",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "nifty etf"
+  },
+  {
+   "surface": "index etf",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "index etfs",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "index etf"
+  },
+  {
+   "surface": "etf premium to inav",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "etf premium to inavs",
+   "kind": "atom",
+   "id": "macro.etf_premium",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "etf premium to inav"
   },
   {
    "surface": "rainfall",
@@ -10226,6 +14648,24 @@
    "variant_of": "dollar"
   },
   {
+   "surface": "repo",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "repos",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "repo"
+  },
+  {
    "surface": "policy rate",
    "kind": "atom",
    "id": "macro.series",
@@ -10478,6 +14918,384 @@
    "variant_of": "current account"
   },
   {
+   "surface": "forward premia",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "forward premias",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "forward premia"
+  },
+  {
+   "surface": "forward premium",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "forward premiums",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "forward premium"
+  },
+  {
+   "surface": "price series",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "price serie",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "price series"
+  },
+  {
+   "surface": "macro series",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "macro serie",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "macro series"
+  },
+  {
+   "surface": "commodity series",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "commodity serie",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "commodity series"
+  },
+  {
+   "surface": "rate series",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "rate serie",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "rate series"
+  },
+  {
+   "surface": "wage inflation",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "wage inflations",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "wage inflation"
+  },
+  {
+   "surface": "rural wage",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "rural wages",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "rural wage"
+  },
+  {
+   "surface": "wages",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "wage",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "wages"
+  },
+  {
+   "surface": "10 year yield",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "10 year yields",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "10 year yield"
+  },
+  {
+   "surface": "bond yield",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "bond yields",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "bond yield"
+  },
+  {
+   "surface": "g sec",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "g secs",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "g sec"
+  },
+  {
+   "surface": "yield",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "yields",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "yield"
+  },
+  {
+   "surface": "bank rate",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "bank rates",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "bank rate"
+  },
+  {
+   "surface": "cost of funds",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "cost of fund",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cost of funds"
+  },
+  {
+   "surface": "exchange price",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "exchange prices",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "exchange price"
+  },
+  {
+   "surface": "plf",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "plfs",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "plf"
+  },
+  {
+   "surface": "coal stock",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "coal stocks",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "coal stock"
+  },
+  {
+   "surface": "power demand",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "power demands",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "power demand"
+  },
+  {
+   "surface": "import volume",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "import volumes",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "import volume"
+  },
+  {
+   "surface": "series of",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "series ofs",
+   "kind": "atom",
+   "id": "macro.series",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "series of"
+  },
+  {
    "surface": "deposits",
    "kind": "atom",
    "id": "fin.deposits",
@@ -10586,6 +15404,24 @@
    "variant_of": "deposit franchise"
   },
   {
+   "surface": "deposit repricing",
+   "kind": "atom",
+   "id": "fin.deposits",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "deposit repricings",
+   "kind": "atom",
+   "id": "fin.deposits",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "deposit repricing"
+  },
+  {
    "surface": "units",
    "kind": "atom",
    "id": "fin.unit_volume",
@@ -10674,24 +15510,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "dispatches"
-  },
-  {
-   "surface": "delivered",
-   "kind": "atom",
-   "id": "fin.unit_volume",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "delivereds",
-   "kind": "atom",
-   "id": "fin.unit_volume",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "delivered"
   },
   {
    "surface": "deliveries",
@@ -10784,6 +15602,114 @@
    "variant_of": "tonnes sold"
   },
   {
+   "surface": "deliver",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "delivers",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "deliver"
+  },
+  {
+   "surface": "tractor volume",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "tractor volumes",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "tractor volume"
+  },
+  {
+   "surface": "vehicle volume",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "vehicle volumes",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "vehicle volume"
+  },
+  {
+   "surface": "electric two wheelers",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "electric two wheeler",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "electric two wheelers"
+  },
+  {
+   "surface": "volume sold",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "volume solds",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "volume sold"
+  },
+  {
+   "surface": "unit volume",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "unit volumes",
+   "kind": "atom",
+   "id": "fin.unit_volume",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "unit volume"
+  },
+  {
    "surface": "free float",
    "kind": "atom",
    "id": "price.free_float",
@@ -10854,6 +15780,42 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "index weight"
+  },
+  {
+   "surface": "weight in the index",
+   "kind": "atom",
+   "id": "price.free_float",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "weight in the indexs",
+   "kind": "atom",
+   "id": "price.free_float",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "weight in the index"
+  },
+  {
+   "surface": "nifty weight",
+   "kind": "atom",
+   "id": "price.free_float",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "nifty weights",
+   "kind": "atom",
+   "id": "price.free_float",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "nifty weight"
   },
   {
    "surface": "consensus",
@@ -11196,24 +16158,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "minute bars"
-  },
-  {
-   "surface": "seconds",
-   "kind": "atom",
-   "id": "absent.intraday",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "second",
-   "kind": "atom",
-   "id": "absent.intraday",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "seconds"
   },
   {
    "surface": "intraday high low",
@@ -12233,24 +17177,6 @@
    "variant_of": "market wide"
   },
   {
-   "surface": "announcement",
-   "kind": "dim",
-   "id": "doctype=announcement",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "announcements",
-   "kind": "dim",
-   "id": "doctype=announcement",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "announcement"
-  },
-  {
    "surface": "results",
    "kind": "dim",
    "id": "doctype=results",
@@ -12764,42 +17690,6 @@
    "variant_of": "span"
   },
   {
-   "surface": "20",
-   "kind": "dim",
-   "id": "lookback=20",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "50",
-   "kind": "dim",
-   "id": "lookback=50",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "200",
-   "kind": "dim",
-   "id": "lookback=200",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "200s",
-   "kind": "dim",
-   "id": "lookback=200",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "200"
-  },
-  {
    "surface": "unadjusted",
    "kind": "dim",
    "id": "basis=raw",
@@ -12960,6 +17850,96 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "nse bse total"
+  },
+  {
+   "surface": "pb ratio",
+   "kind": "dim",
+   "id": "ratio_kind=pb",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "pb ratios",
+   "kind": "dim",
+   "id": "ratio_kind=pb",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "pb ratio"
+  },
+  {
+   "surface": "pe ratio",
+   "kind": "dim",
+   "id": "ratio_kind=pe",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "pe ratios",
+   "kind": "dim",
+   "id": "ratio_kind=pe",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "pe ratio"
+  },
+  {
+   "surface": "de ratio",
+   "kind": "dim",
+   "id": "ratio_kind=de",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "de ratios",
+   "kind": "dim",
+   "id": "ratio_kind=de",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "de ratio"
+  },
+  {
+   "surface": "interest cover",
+   "kind": "dim",
+   "id": "ratio_kind=icr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "interest covers",
+   "kind": "dim",
+   "id": "ratio_kind=icr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "interest cover"
+  },
+  {
+   "surface": "interest coverage",
+   "kind": "dim",
+   "id": "ratio_kind=icr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "interest coverages",
+   "kind": "dim",
+   "id": "ratio_kind=icr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "interest coverage"
   },
   {
    "surface": "what is",
@@ -14031,24 +19011,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "performance"
-  },
-  {
-   "surface": "market reaction",
-   "kind": "operator",
-   "id": "pct_change",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "market reactions",
-   "kind": "operator",
-   "id": "pct_change",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "market reaction"
   },
   {
    "surface": "market do",
@@ -16553,6 +21515,114 @@
    "variant_of": "margin path"
   },
   {
+   "surface": "profitability",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "profitabilitys",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "profitability"
+  },
+  {
+   "surface": "gross margin",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "gross margins",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "gross margin"
+  },
+  {
+   "surface": "margin recovery",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "margin recoverys",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "margin recovery"
+  },
+  {
+   "surface": "margin gap",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "margin gaps",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "margin gap"
+  },
+  {
+   "surface": "margin trough",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "margin troughs",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "margin trough"
+  },
+  {
+   "surface": "marketing margin",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "marketing margins",
+   "kind": "formula",
+   "id": "f.margin",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "marketing margin"
+  },
+  {
    "surface": "valuation",
    "kind": "formula",
    "id": "f.ratio",
@@ -16589,24 +21659,6 @@
    "variant_of": "p e"
   },
   {
-   "surface": "pe ratio",
-   "kind": "formula",
-   "id": "f.ratio",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "pe ratios",
-   "kind": "formula",
-   "id": "f.ratio",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "pe ratio"
-  },
-  {
    "surface": "p b",
    "kind": "formula",
    "id": "f.ratio",
@@ -16623,24 +21675,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "p b"
-  },
-  {
-   "surface": "pb ratio",
-   "kind": "formula",
-   "id": "f.ratio",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "pb ratios",
-   "kind": "formula",
-   "id": "f.ratio",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "pb ratio"
   },
   {
    "surface": "d e",
@@ -16677,24 +21711,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "debt to equity"
-  },
-  {
-   "surface": "interest coverage",
-   "kind": "formula",
-   "id": "f.ratio",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "interest coverages",
-   "kind": "formula",
-   "id": "f.ratio",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "interest coverage"
   },
   {
    "surface": "multiple",
@@ -16769,6 +21785,168 @@
    "variant_of": "stored ratio"
   },
   {
+   "surface": "net debt to ebitda",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "net debt to ebitdas",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "net debt to ebitda"
+  },
+  {
+   "surface": "debt to ebitda",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "debt to ebitdas",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "debt to ebitda"
+  },
+  {
+   "surface": "return on capital",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "return on capitals",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "return on capital"
+  },
+  {
+   "surface": "return on equity",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "return on equitys",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "return on equity"
+  },
+  {
+   "surface": "valuation gap",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "valuation gaps",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "valuation gap"
+  },
+  {
+   "surface": "valuation premium",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "valuation premiums",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "valuation premium"
+  },
+  {
+   "surface": "valuation comparison",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "valuation comparisons",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "valuation comparison"
+  },
+  {
+   "surface": "cost of equity",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "cost of equitys",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cost of equity"
+  },
+  {
+   "surface": "payout ratio",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "payout ratios",
+   "kind": "formula",
+   "id": "f.ratio",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "payout ratio"
+  },
+  {
    "surface": "dso",
    "kind": "formula",
    "id": "f.dso",
@@ -16841,6 +22019,24 @@
    "variant_of": "collection days"
   },
   {
+   "surface": "working capital",
+   "kind": "formula",
+   "id": "f.working_capital_cycle",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "working capitals",
+   "kind": "formula",
+   "id": "f.working_capital_cycle",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "working capital"
+  },
+  {
    "surface": "working capital cycle",
    "kind": "formula",
    "id": "f.working_capital_cycle",
@@ -16877,6 +22073,24 @@
    "variant_of": "cash conversion cycle"
   },
   {
+   "surface": "cash cycle",
+   "kind": "formula",
+   "id": "f.working_capital_cycle",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "cash cycles",
+   "kind": "formula",
+   "id": "f.working_capital_cycle",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cash cycle"
+  },
+  {
    "surface": "ccc",
    "kind": "formula",
    "id": "f.working_capital_cycle",
@@ -16911,24 +22125,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "dpo"
-  },
-  {
-   "surface": "inventory days",
-   "kind": "formula",
-   "id": "f.working_capital_cycle",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "inventory day",
-   "kind": "formula",
-   "id": "f.working_capital_cycle",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "inventory days"
   },
   {
    "surface": "share of",
@@ -17021,6 +22217,42 @@
    "variant_of": "percentage of"
   },
   {
+   "surface": "cost share",
+   "kind": "formula",
+   "id": "f.share_of",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "cost shares",
+   "kind": "formula",
+   "id": "f.share_of",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "cost share"
+  },
+  {
+   "surface": "share of the cost",
+   "kind": "formula",
+   "id": "f.share_of",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "share of the costs",
+   "kind": "formula",
+   "id": "f.share_of",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "share of the cost"
+  },
+  {
    "surface": "net of",
    "kind": "formula",
    "id": "f.net",
@@ -17111,6 +22343,132 @@
    "variant_of": "net it"
   },
   {
+   "surface": "net the",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "net thes",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "net the"
+  },
+  {
+   "surface": "net them",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "net thems",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "net them"
+  },
+  {
+   "surface": "net against",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "net againsts",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "net against"
+  },
+  {
+   "surface": "net two",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "net twos",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "net two"
+  },
+  {
+   "surface": "net positive",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "net positives",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "net positive"
+  },
+  {
+   "surface": "net winner",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "net winners",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "net winner"
+  },
+  {
+   "surface": "netting",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "nettings",
+   "kind": "formula",
+   "id": "f.net",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "netting"
+  },
+  {
    "surface": "per rupee",
    "kind": "formula",
    "id": "f.per_rupee_revenue",
@@ -17199,6 +22557,42 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "reinvestment need"
+  },
+  {
+   "surface": "reinvestment",
+   "kind": "formula",
+   "id": "f.per_rupee_revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "reinvestments",
+   "kind": "formula",
+   "id": "f.per_rupee_revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "reinvestment"
+  },
+  {
+   "surface": "reinvest",
+   "kind": "formula",
+   "id": "f.per_rupee_revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "reinvests",
+   "kind": "formula",
+   "id": "f.per_rupee_revenue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "reinvest"
   },
   {
    "surface": "book value per share",
@@ -17327,6 +22721,42 @@
    "variant_of": "opened gap"
   },
   {
+   "surface": "gapped",
+   "kind": "formula",
+   "id": "f.gap_pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "gappeds",
+   "kind": "formula",
+   "id": "f.gap_pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "gapped"
+  },
+  {
+   "surface": "gap filled",
+   "kind": "formula",
+   "id": "f.gap_pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "gap filleds",
+   "kind": "formula",
+   "id": "f.gap_pct",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "gap filled"
+  },
+  {
    "surface": "drawdown",
    "kind": "formula",
    "id": "f.drawdown",
@@ -17415,6 +22845,42 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "from its high"
+  },
+  {
+   "surface": "from the peak",
+   "kind": "formula",
+   "id": "f.drawdown",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "from the peaks",
+   "kind": "formula",
+   "id": "f.drawdown",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "from the peak"
+  },
+  {
+   "surface": "from peak",
+   "kind": "formula",
+   "id": "f.drawdown",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "from peaks",
+   "kind": "formula",
+   "id": "f.drawdown",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "from peak"
   },
   {
    "surface": "cagr",
@@ -17507,6 +22973,60 @@
    "variant_of": "5 year return"
   },
   {
+   "surface": "3 year return",
+   "kind": "formula",
+   "id": "f.cagr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "3 year returns",
+   "kind": "formula",
+   "id": "f.cagr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "3 year return"
+  },
+  {
+   "surface": "3y cagr",
+   "kind": "formula",
+   "id": "f.cagr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "3y cagrs",
+   "kind": "formula",
+   "id": "f.cagr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "3y cagr"
+  },
+  {
+   "surface": "3 year cagr",
+   "kind": "formula",
+   "id": "f.cagr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "3 year cagrs",
+   "kind": "formula",
+   "id": "f.cagr",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "3 year cagr"
+  },
+  {
    "surface": "excess return",
    "kind": "formula",
    "id": "f.excess_return",
@@ -17597,6 +23117,42 @@
    "variant_of": "underperform"
   },
   {
+   "surface": "outperformed",
+   "kind": "formula",
+   "id": "f.excess_return",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "outperformeds",
+   "kind": "formula",
+   "id": "f.excess_return",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "outperformed"
+  },
+  {
+   "surface": "underperformed",
+   "kind": "formula",
+   "id": "f.excess_return",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "underperformeds",
+   "kind": "formula",
+   "id": "f.excess_return",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "underperformed"
+  },
+  {
    "surface": "vs the index",
    "kind": "formula",
    "id": "f.excess_return",
@@ -17631,6 +23187,24 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "vs nifty"
+  },
+  {
+   "surface": "rs rating",
+   "kind": "formula",
+   "id": "f.excess_return",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "rs ratings",
+   "kind": "formula",
+   "id": "f.excess_return",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "rs rating"
   },
   {
    "surface": "spread",
@@ -17739,6 +23313,78 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "spread expansion"
+  },
+  {
+   "surface": "input output spread",
+   "kind": "formula",
+   "id": "f.spread",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "input output spreads",
+   "kind": "formula",
+   "id": "f.spread",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "input output spread"
+  },
+  {
+   "surface": "output price",
+   "kind": "formula",
+   "id": "f.spread",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "output prices",
+   "kind": "formula",
+   "id": "f.spread",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "output price"
+  },
+  {
+   "surface": "yield cap",
+   "kind": "formula",
+   "id": "f.spread",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "yield caps",
+   "kind": "formula",
+   "id": "f.spread",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "yield cap"
+  },
+  {
+   "surface": "realisation",
+   "kind": "formula",
+   "id": "f.spread",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "realisations",
+   "kind": "formula",
+   "id": "f.spread",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "realisation"
   },
   {
    "surface": "year to date",
@@ -18983,24 +24629,6 @@
    "variant_of": "electronics"
   },
   {
-   "surface": "index constituents",
-   "kind": "entity_set",
-   "id": "index",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "index constituent",
-   "kind": "entity_set",
-   "id": "index",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "index constituents"
-  },
-  {
    "surface": "index members",
    "kind": "entity_set",
    "id": "index",
@@ -19377,24 +25005,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "gap typed"
-  },
-  {
-   "surface": "gapped",
-   "kind": "rule",
-   "id": "gap_type",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "gappeds",
-   "kind": "rule",
-   "id": "gap_type",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "gapped"
   },
   {
    "surface": "breakout",
@@ -19793,24 +25403,6 @@
    "variant_of": "debt stress"
   },
   {
-   "surface": "valuation premium",
-   "kind": "rule",
-   "id": "valuation_premium",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "valuation premiums",
-   "kind": "rule",
-   "id": "valuation_premium",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "valuation premium"
-  },
-  {
    "surface": "valuation premiumd",
    "kind": "rule",
    "id": "valuation_premium",
@@ -19899,42 +25491,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "worth its face value"
-  },
-  {
-   "surface": "receivable quality",
-   "kind": "rule",
-   "id": "receivables_quality",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "receivable qualitys",
-   "kind": "rule",
-   "id": "receivables_quality",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "receivable quality"
-  },
-  {
-   "surface": "old receivables",
-   "kind": "rule",
-   "id": "receivables_quality",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "old receivable",
-   "kind": "rule",
-   "id": "receivables_quality",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "old receivables"
   },
   {
    "surface": "say vs do",
@@ -20333,24 +25889,6 @@
    "variant_of": "dilutive"
   },
   {
-   "surface": "equity issuance",
-   "kind": "rule",
-   "id": "dilution",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "equity issuances",
-   "kind": "rule",
-   "id": "dilution",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "equity issuance"
-  },
-  {
    "surface": "golden cross",
    "kind": "rule",
    "id": "golden_cross",
@@ -20709,24 +26247,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "acquisition"
-  },
-  {
-   "surface": "working capital",
-   "kind": "claim_topic",
-   "id": "working capital",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "working capitals",
-   "kind": "claim_topic",
-   "id": "working capital",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "working capital"
   },
   {
    "surface": "demand",
@@ -21285,24 +26805,6 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "exceptional"
-  },
-  {
-   "surface": "impairment",
-   "kind": "claim_topic",
-   "id": "impairment",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "impairments",
-   "kind": "claim_topic",
-   "id": "impairment",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "impairment"
   },
   {
    "surface": "write off",
@@ -22286,24 +27788,6 @@
    "variant_of": "kmp pay"
   },
   {
-   "surface": "tracking error",
-   "kind": "claim_topic",
-   "id": "tracking error",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": null
-  },
-  {
-   "surface": "tracking errors",
-   "kind": "claim_topic",
-   "id": "tracking error",
-   "lang": "en",
-   "hand_checked": true,
-   "why": "",
-   "variant_of": "tracking error"
-  },
-  {
    "surface": "throughput",
    "kind": "claim_topic",
    "id": "throughput",
@@ -22464,6 +27948,924 @@
    "hand_checked": true,
    "why": "",
    "variant_of": "turnaround"
+  },
+  {
+   "surface": "resignation",
+   "kind": "claim_topic",
+   "id": "resignation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "resignations",
+   "kind": "claim_topic",
+   "id": "resignation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "resignation"
+  },
+  {
+   "surface": "resigned",
+   "kind": "claim_topic",
+   "id": "resigned",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "resigneds",
+   "kind": "claim_topic",
+   "id": "resigned",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "resigned"
+  },
+  {
+   "surface": "credit rating",
+   "kind": "claim_topic",
+   "id": "credit rating",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "credit ratings",
+   "kind": "claim_topic",
+   "id": "credit rating",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "credit rating"
+  },
+  {
+   "surface": "rating action",
+   "kind": "claim_topic",
+   "id": "rating action",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "rating actions",
+   "kind": "claim_topic",
+   "id": "rating action",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "rating action"
+  },
+  {
+   "surface": "rating downgrade",
+   "kind": "claim_topic",
+   "id": "rating downgrade",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "rating downgrades",
+   "kind": "claim_topic",
+   "id": "rating downgrade",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "rating downgrade"
+  },
+  {
+   "surface": "rating upgrade",
+   "kind": "claim_topic",
+   "id": "rating upgrade",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "rating upgrades",
+   "kind": "claim_topic",
+   "id": "rating upgrade",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "rating upgrade"
+  },
+  {
+   "surface": "declaration of unmodified opinion",
+   "kind": "claim_topic",
+   "id": "declaration of unmodified opinion",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "declaration of unmodified opinions",
+   "kind": "claim_topic",
+   "id": "declaration of unmodified opinion",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "declaration of unmodified opinion"
+  },
+  {
+   "surface": "unmodified opinion",
+   "kind": "claim_topic",
+   "id": "unmodified opinion",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "unmodified opinions",
+   "kind": "claim_topic",
+   "id": "unmodified opinion",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "unmodified opinion"
+  },
+  {
+   "surface": "declaration",
+   "kind": "claim_topic",
+   "id": "declaration",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "declarations",
+   "kind": "claim_topic",
+   "id": "declaration",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "declaration"
+  },
+  {
+   "surface": "auditor resignation",
+   "kind": "claim_topic",
+   "id": "auditor resignation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "auditor resignations",
+   "kind": "claim_topic",
+   "id": "auditor resignation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "auditor resignation"
+  },
+  {
+   "surface": "auditor appointment",
+   "kind": "claim_topic",
+   "id": "auditor appointment",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "auditor appointments",
+   "kind": "claim_topic",
+   "id": "auditor appointment",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "auditor appointment"
+  },
+  {
+   "surface": "capacity expansion",
+   "kind": "claim_topic",
+   "id": "capacity expansion",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "capacity expansions",
+   "kind": "claim_topic",
+   "id": "capacity expansion",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "capacity expansion"
+  },
+  {
+   "surface": "capacity addition",
+   "kind": "claim_topic",
+   "id": "capacity addition",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "capacity additions",
+   "kind": "claim_topic",
+   "id": "capacity addition",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "capacity addition"
+  },
+  {
+   "surface": "expansion plan",
+   "kind": "claim_topic",
+   "id": "expansion plan",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "expansion plans",
+   "kind": "claim_topic",
+   "id": "expansion plan",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "expansion plan"
+  },
+  {
+   "surface": "commissioned",
+   "kind": "claim_topic",
+   "id": "commissioned",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "commissioneds",
+   "kind": "claim_topic",
+   "id": "commissioned",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "commissioned"
+  },
+  {
+   "surface": "plant shutdown",
+   "kind": "claim_topic",
+   "id": "plant shutdown",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "plant shutdowns",
+   "kind": "claim_topic",
+   "id": "plant shutdown",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "plant shutdown"
+  },
+  {
+   "surface": "force majeure",
+   "kind": "claim_topic",
+   "id": "force majeure",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "force majeures",
+   "kind": "claim_topic",
+   "id": "force majeure",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "force majeure"
+  },
+  {
+   "surface": "impairment loss",
+   "kind": "claim_topic",
+   "id": "impairment loss",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "impairment los",
+   "kind": "claim_topic",
+   "id": "impairment loss",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "impairment loss"
+  },
+  {
+   "surface": "preferential issue",
+   "kind": "claim_topic",
+   "id": "preferential issue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "preferential issues",
+   "kind": "claim_topic",
+   "id": "preferential issue",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "preferential issue"
+  },
+  {
+   "surface": "scheme of arrangement",
+   "kind": "claim_topic",
+   "id": "scheme of arrangement",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "scheme of arrangements",
+   "kind": "claim_topic",
+   "id": "scheme of arrangement",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "scheme of arrangement"
+  },
+  {
+   "surface": "director resignation",
+   "kind": "claim_topic",
+   "id": "director resignation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "director resignations",
+   "kind": "claim_topic",
+   "id": "director resignation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "director resignation"
+  },
+  {
+   "surface": "change in management",
+   "kind": "claim_topic",
+   "id": "change in management",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "change in managements",
+   "kind": "claim_topic",
+   "id": "change in management",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "change in management"
+  },
+  {
+   "surface": "management change",
+   "kind": "claim_topic",
+   "id": "management change",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "management changes",
+   "kind": "claim_topic",
+   "id": "management change",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "management change"
+  },
+  {
+   "surface": "change in control",
+   "kind": "claim_topic",
+   "id": "change in control",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "change in controls",
+   "kind": "claim_topic",
+   "id": "change in control",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "change in control"
+  },
+  {
+   "surface": "change in ownership",
+   "kind": "claim_topic",
+   "id": "change in ownership",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "change in ownerships",
+   "kind": "claim_topic",
+   "id": "change in ownership",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "change in ownership"
+  },
+  {
+   "surface": "pre intimation",
+   "kind": "claim_topic",
+   "id": "pre intimation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "pre intimations",
+   "kind": "claim_topic",
+   "id": "pre intimation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "pre intimation"
+  },
+  {
+   "surface": "dissemination timestamp",
+   "kind": "claim_topic",
+   "id": "dissemination timestamp",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "dissemination timestamps",
+   "kind": "claim_topic",
+   "id": "dissemination timestamp",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "dissemination timestamp"
+  },
+  {
+   "surface": "results date",
+   "kind": "claim_topic",
+   "id": "results date",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "results dates",
+   "kind": "claim_topic",
+   "id": "results date",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "results date"
+  },
+  {
+   "surface": "mou",
+   "kind": "claim_topic",
+   "id": "mou",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "mous",
+   "kind": "claim_topic",
+   "id": "mou",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "mou"
+  },
+  {
+   "surface": "partnership",
+   "kind": "claim_topic",
+   "id": "partnership",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "partnerships",
+   "kind": "claim_topic",
+   "id": "partnership",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "partnership"
+  },
+  {
+   "surface": "license",
+   "kind": "claim_topic",
+   "id": "license",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "licenses",
+   "kind": "claim_topic",
+   "id": "license",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "license"
+  },
+  {
+   "surface": "licence",
+   "kind": "claim_topic",
+   "id": "licence",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "licences",
+   "kind": "claim_topic",
+   "id": "licence",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "licence"
+  },
+  {
+   "surface": "approval",
+   "kind": "claim_topic",
+   "id": "approval",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "approvals",
+   "kind": "claim_topic",
+   "id": "approval",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "approval"
+  },
+  {
+   "surface": "regulatory approval",
+   "kind": "claim_topic",
+   "id": "regulatory approval",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "regulatory approvals",
+   "kind": "claim_topic",
+   "id": "regulatory approval",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "regulatory approval"
+  },
+  {
+   "surface": "payment aggregator",
+   "kind": "claim_topic",
+   "id": "payment aggregator",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "payment aggregators",
+   "kind": "claim_topic",
+   "id": "payment aggregator",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "payment aggregator"
+  },
+  {
+   "surface": "take rate",
+   "kind": "claim_topic",
+   "id": "take rate",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "take rates",
+   "kind": "claim_topic",
+   "id": "take rate",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "take rate"
+  },
+  {
+   "surface": "quick commerce",
+   "kind": "claim_topic",
+   "id": "quick commerce",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "quick commerces",
+   "kind": "claim_topic",
+   "id": "quick commerce",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "quick commerce"
+  },
+  {
+   "surface": "premiumisation",
+   "kind": "claim_topic",
+   "id": "premiumisation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "premiumisations",
+   "kind": "claim_topic",
+   "id": "premiumisation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "premiumisation"
+  },
+  {
+   "surface": "price hike",
+   "kind": "claim_topic",
+   "id": "price hike",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "price hikes",
+   "kind": "claim_topic",
+   "id": "price hike",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "price hike"
+  },
+  {
+   "surface": "price hike statement",
+   "kind": "claim_topic",
+   "id": "price hike statement",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "price hike statements",
+   "kind": "claim_topic",
+   "id": "price hike statement",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "price hike statement"
+  },
+  {
+   "surface": "under recovery",
+   "kind": "claim_topic",
+   "id": "under recovery",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "under recoverys",
+   "kind": "claim_topic",
+   "id": "under recovery",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "under recovery"
+  },
+  {
+   "surface": "asset quality",
+   "kind": "claim_topic",
+   "id": "asset quality",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "asset qualitys",
+   "kind": "claim_topic",
+   "id": "asset quality",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "asset quality"
+  },
+  {
+   "surface": "ticket size",
+   "kind": "claim_topic",
+   "id": "ticket size",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "ticket sizes",
+   "kind": "claim_topic",
+   "id": "ticket size",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "ticket size"
+  },
+  {
+   "surface": "input cost inflation",
+   "kind": "claim_topic",
+   "id": "input cost inflation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "input cost inflations",
+   "kind": "claim_topic",
+   "id": "input cost inflation",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "input cost inflation"
+  },
+  {
+   "surface": "index addition",
+   "kind": "claim_topic",
+   "id": "index addition",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "index additions",
+   "kind": "claim_topic",
+   "id": "index addition",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "index addition"
+  },
+  {
+   "surface": "index entry",
+   "kind": "claim_topic",
+   "id": "index entry",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "index entrys",
+   "kind": "claim_topic",
+   "id": "index entry",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "index entry"
+  },
+  {
+   "surface": "index rebalance",
+   "kind": "claim_topic",
+   "id": "index rebalance",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "index rebalances",
+   "kind": "claim_topic",
+   "id": "index rebalance",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "index rebalance"
+  },
+  {
+   "surface": "index removal",
+   "kind": "claim_topic",
+   "id": "index removal",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "index removals",
+   "kind": "claim_topic",
+   "id": "index removal",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "index removal"
+  },
+  {
+   "surface": "enters an index",
+   "kind": "claim_topic",
+   "id": "enters an index",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "enters an indexs",
+   "kind": "claim_topic",
+   "id": "enters an index",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "enters an index"
+  },
+  {
+   "surface": "added to the nifty",
+   "kind": "claim_topic",
+   "id": "added to the nifty",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "added to the niftys",
+   "kind": "claim_topic",
+   "id": "added to the nifty",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "added to the nifty"
+  },
+  {
+   "surface": "removed from the index",
+   "kind": "claim_topic",
+   "id": "removed from the index",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": null
+  },
+  {
+   "surface": "removed from the indexs",
+   "kind": "claim_topic",
+   "id": "removed from the index",
+   "lang": "en",
+   "hand_checked": true,
+   "why": "",
+   "variant_of": "removed from the index"
   },
   {
    "surface": "depreciation",
@@ -22675,11 +29077,6 @@
    "matched": "column market_state.event_day0.session_0"
   },
   {
-   "surface": "commissioned",
-   "evidence_questions": 17,
-   "matched": "column metric_state.capex_project.commissioned_on"
-  },
-  {
    "surface": "s cost",
    "evidence_questions": 16,
    "matched": "measure-like, no column/concept match"
@@ -22738,11 +29135,6 @@
    "surface": "the repo",
    "evidence_questions": 14,
    "matched": "measure-like, no column/concept match"
-  },
-  {
-   "surface": "announced",
-   "evidence_questions": 13,
-   "matched": "column metric_state.company_price_revision.announced_on"
   },
   {
    "surface": "cover",
@@ -22850,11 +29242,6 @@
    "matched": "measure-like, no column/concept match"
   },
   {
-   "surface": "capacity expansion",
-   "evidence_questions": 10,
-   "matched": "measure-like, no column/concept match"
-  },
-  {
    "surface": "close on",
    "evidence_questions": 10,
    "matched": "measure-like, no column/concept match"
@@ -22893,31 +29280,46 @@
    "surface": "book is",
    "evidence_questions": 9,
    "matched": "measure-like, no column/concept match"
+  },
+  {
+   "surface": "business and",
+   "evidence_questions": 9,
+   "matched": "measure-like, no column/concept match"
+  },
+  {
+   "surface": "contract",
+   "evidence_questions": 9,
+   "matched": "column metric_state.order_book_contract.contract_id"
+  },
+  {
+   "surface": "known",
+   "evidence_questions": 9,
+   "matched": "column equity_intelligence.insider_trades_v2.known_at"
   }
  ],
  "coverage": {
   "n": 1073,
   "status": {
-   "mapped": 897,
-   "not_in_data": 150,
-   "unmapped": 26
+   "mapped": 913,
+   "not_in_data": 146,
+   "unmapped": 14
   },
-  "mapped_pct": 83.6,
-  "answered_pct": 97.58,
+  "mapped_pct": 85.09,
+  "answered_pct": 98.7,
   "by_bank": {
    "open300": {
-    "mapped": 253,
-    "not_in_data": 34,
-    "unmapped": 13
+    "mapped": 263,
+    "not_in_data": 31,
+    "unmapped": 6
    },
    "reddit200": {
-    "mapped": 187,
-    "not_in_data": 47,
-    "unmapped": 9
+    "mapped": 194,
+    "not_in_data": 46,
+    "unmapped": 3
    },
    "ripple200": {
-    "mapped": 160,
-    "not_in_data": 37,
+    "mapped": 161,
+    "not_in_data": 36,
     "unmapped": 3
    },
    "shivam30": {
@@ -22925,9 +29327,9 @@
     "not_in_data": 2
    },
    "variations300": {
-    "mapped": 269,
-    "not_in_data": 30,
-    "unmapped": 1
+    "mapped": 267,
+    "unmapped": 2,
+    "not_in_data": 31
    }
   },
   "by_level": {
@@ -22936,50 +29338,50 @@
     "not_in_data": 2
    },
    "industry": {
-    "not_in_data": 19,
-    "mapped": 160,
+    "not_in_data": 20,
+    "mapped": 159,
     "unmapped": 2
    },
    "macro": {
-    "mapped": 18,
-    "not_in_data": 5
+    "mapped": 19,
+    "not_in_data": 4
    },
    "market-cap bucket": {
     "mapped": 13,
     "not_in_data": 2
    },
    "market-wide": {
-    "mapped": 78,
+    "mapped": 80,
     "not_in_data": 14,
-    "unmapped": 3
+    "unmapped": 1
    },
    "policy": {
-    "mapped": 72,
+    "mapped": 75,
     "unmapped": 3,
-    "not_in_data": 18
+    "not_in_data": 15
    },
    "price band": {
     "mapped": 4
    },
    "sector": {
-    "mapped": 11,
+    "mapped": 12,
     "unmapped": 1,
-    "not_in_data": 3
+    "not_in_data": 2
    },
    "stock": {
-    "mapped": 483,
-    "not_in_data": 84,
-    "unmapped": 17
+    "mapped": 492,
+    "not_in_data": 85,
+    "unmapped": 7
    },
    "theme": {
-    "mapped": 25,
-    "not_in_data": 3
+    "mapped": 26,
+    "not_in_data": 2
    }
   },
   "by_family": {
    "1": {
-    "mapped": 131,
-    "not_in_data": 5
+    "mapped": 130,
+    "not_in_data": 6
    },
    "10": {
     "mapped": 14,
@@ -22987,23 +29389,22 @@
     "unmapped": 1
    },
    "11": {
-    "mapped": 21,
-    "not_in_data": 5,
-    "unmapped": 1
+    "mapped": 22,
+    "not_in_data": 5
    },
    "12": {
-    "mapped": 47,
+    "mapped": 50,
     "not_in_data": 13,
-    "unmapped": 4
+    "unmapped": 1
    },
    "13": {
     "mapped": 14,
     "not_in_data": 1
    },
    "14": {
-    "mapped": 47,
-    "unmapped": 3,
-    "not_in_data": 10
+    "mapped": 48,
+    "not_in_data": 11,
+    "unmapped": 1
    },
    "15": {
     "mapped": 36,
@@ -23015,37 +29416,37 @@
     "unmapped": 2
    },
    "17": {
-    "mapped": 35,
-    "not_in_data": 5
+    "mapped": 33,
+    "not_in_data": 7
    },
    "18": {
-    "mapped": 32,
+    "mapped": 33,
     "unmapped": 2,
-    "not_in_data": 8
+    "not_in_data": 7
    },
    "19": {
-    "mapped": 35,
-    "not_in_data": 10,
+    "mapped": 41,
+    "not_in_data": 4,
     "unmapped": 1
    },
    "2": {
-    "mapped": 131,
-    "not_in_data": 31
-   },
-   "20": {
-    "mapped": 16,
-    "not_in_data": 3,
+    "mapped": 129,
+    "not_in_data": 32,
     "unmapped": 1
    },
+   "20": {
+    "mapped": 17,
+    "not_in_data": 3
+   },
    "3": {
-    "mapped": 54,
-    "not_in_data": 12,
-    "unmapped": 6
+    "not_in_data": 11,
+    "mapped": 59,
+    "unmapped": 2
    },
    "4": {
-    "not_in_data": 10,
+    "not_in_data": 11,
     "unmapped": 1,
-    "mapped": 14
+    "mapped": 13
    },
    "6": {
     "mapped": 90,
@@ -23057,45 +29458,41 @@
     "unmapped": 1
    },
    "9": {
-    "mapped": 53,
-    "unmapped": 3,
-    "not_in_data": 11
+    "mapped": 57,
+    "unmapped": 1,
+    "not_in_data": 9
    }
   },
   "top_residues": [
    [
     "order",
-    4
+    3
    ],
    [
     "capital",
     2
    ],
    [
-    "market",
-    2
+    "issue",
+    1
    ],
    [
-    "issue",
+    "market",
     1
    ]
   ],
   "nid_reasons": [
    [
     "registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share)",
-    40
+    45
    ],
    [
     "metric_key 'loans' is not in the held concept vocabulary",
-    23
+    32
    ],
    [
     "metric_key 'net_npa' is not in the held concept vocabulary",
     22
-   ],
-   [
-    "NSE publishes no free retro intraday bars",
-    14
    ],
    [
     "metric_key 'nim' is not in the held concept vocabulary",
@@ -23103,11 +29500,11 @@
    ],
    [
     "registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value)",
-    13
+    12
    ],
    [
     "metric_key 'investments' is not in the held concept vocabulary",
-    8
+    10
    ],
    [
     "registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight)",
@@ -23151,188 +29548,188 @@
    ]
   ],
   "unmapped": [
+   "MB0064",
    "MB0149",
-   "MB0343",
-   "MB0355",
-   "MB0389",
-   "MB0400",
    "MB0502",
    "MB0503",
    "MB0524",
-   "MB0530",
-   "MB0536",
    "MB0538",
-   "MB0540",
    "MB0589",
    "MB0612",
    "MB0700",
    "MB0731",
    "MB0770",
-   "MB0844",
-   "MB0871",
    "MB0874",
-   "MB0929",
    "MB0934",
-   "MB0995",
-   "MB1021",
-   "MB1038",
-   "MB1063"
+   "MB0995"
   ]
  },
  "curve": {
-  "candidate_entries": 737,
-  "chosen": 320,
+  "candidate_entries": 958,
+  "chosen": 354,
   "thresholds": {
    "80": {
-    "entries": 159,
+    "entries": 187,
     "covered": 860,
     "pct": 80.15
    },
    "90": {
-    "entries": 235,
-    "covered": 967,
-    "pct": 90.12
+    "entries": 277,
+    "covered": 966,
+    "pct": 90.03
    },
    "95": {
-    "entries": 280,
-    "covered": 1021,
-    "pct": 95.15
+    "entries": 325,
+    "covered": 1020,
+    "pct": 95.06
    }
   },
-  "reachable_pct": 98.97,
+  "reachable_pct": 97.86,
   "unreachable_n": 0,
   "points": [
    [
     0,
-    2
+    0
    ],
    [
     10,
-    146
+    144
    ],
    [
     20,
-    266
+    252
    ],
    [
     30,
-    364
+    342
    ],
    [
     40,
-    438
+    406
    ],
    [
     50,
-    498
+    470
    ],
    [
     60,
-    558
+    523
    ],
    [
     70,
-    605
+    566
    ],
    [
     80,
-    647
+    605
    ],
    [
     90,
-    681
+    635
    ],
    [
     100,
-    713
+    665
    ],
    [
     110,
-    745
+    687
    ],
    [
     120,
-    775
+    712
    ],
    [
     130,
-    796
+    738
    ],
    [
     140,
-    819
+    761
    ],
    [
     150,
-    840
+    782
    ],
    [
     160,
-    862
+    802
    ],
    [
     170,
-    883
+    824
    ],
    [
     180,
-    901
+    845
    ],
    [
     190,
-    917
+    866
    ],
    [
     200,
-    928
+    885
    ],
    [
     210,
-    939
+    895
    ],
    [
     220,
-    949
+    905
    ],
    [
     230,
-    959
+    918
    ],
    [
     240,
-    972
+    928
    ],
    [
     250,
-    984
+    938
    ],
    [
     260,
-    995
+    948
    ],
    [
     270,
-    1010
+    958
    ],
    [
     280,
-    1021
+    969
    ],
    [
     290,
-    1031
+    979
    ],
    [
     300,
-    1041
+    994
    ],
    [
     310,
-    1051
+    1004
    ],
    [
     320,
-    1062
+    1015
+   ],
+   [
+    330,
+    1025
+   ],
+   [
+    340,
+    1035
+   ],
+   [
+    350,
+    1045
    ]
   ]
  }

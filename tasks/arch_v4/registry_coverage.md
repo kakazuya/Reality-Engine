@@ -10,7 +10,7 @@ Bank: `tasks\master_bank\MASTER_BANK.jsonl` · 1073 cases · sha `64d2f46318127f
 | dims | 19 | a qualifier that lives on an atom |
 | formulas | 13 | a derived measure as an expression over atoms |
 | operators | 26 | a closed-set parameterised result template |
-| lexicon | 2242 | surface phrase -> atom / formula / dim / operator / scope / period |
+| lexicon | 2920 | surface phrase -> atom / formula / dim / operator / scope / period |
 | hand_check | 5 | mined entries a human must confirm |
 
 Atom coverage: **43 held**, **12 gap** (registry knows the measure, the store does not yet carry it), **5 absent** (declared NOT IN DATA with its reason).
@@ -19,112 +19,115 @@ Atom coverage: **43 held**, **12 gap** (registry knows the measure, the store do
 
 | status | cases | share | meaning |
 |---|---:|---:|---|
-| mapped | 897 | 83.6% | every clause resolves to an atom/formula/rule and all slots are filled |
-| not_in_data | 150 | 13.98% | resolves, but a required atom is absent or a gap → a **ticket** (v4.1 d3: fetch, proxy, or NID with what was tried), not an answer |
-| unmapped | 26 | 2.42% | a clause names a measure the registry cannot express |
+| mapped | 913 | 85.09% | every clause resolves to an atom/formula/rule and all slots are filled |
+| not_in_data | 146 | 13.61% | resolves, but a required atom is absent or a gap → a **ticket** (v4.1 d3: fetch, proxy, or NID with what was tried), not an answer |
+| unmapped | 14 | 1.3% | a clause names a measure the registry cannot express |
 
-**Mapped + NID = 97.58%** (the ceiling for the 95% gate: NID counts only where the data truly does not exist).
+**Mapped + NID = 98.7%** (the ceiling for the 95% gate: NID counts only where the data truly does not exist).
 
 ### 2.1 by source bank
 
 | bank | mapped | not_in_data | unmapped |
 |---|---:|---:|---:|
-| open300 | 253 | 34 | 13 |
-| reddit200 | 187 | 47 | 9 |
-| ripple200 | 160 | 37 | 3 |
+| open300 | 263 | 31 | 6 |
+| reddit200 | 194 | 46 | 3 |
+| ripple200 | 161 | 36 | 3 |
 | shivam30 | 28 | 2 | 0 |
-| variations300 | 269 | 30 | 1 |
+| variations300 | 267 | 31 | 2 |
 
 ### 2.2 by entity level
 
 | level | mapped | not_in_data | unmapped |
 |---|---:|---:|---:|
 | index | 33 | 2 | 0 |
-| industry | 160 | 19 | 2 |
-| macro | 18 | 5 | 0 |
+| industry | 159 | 20 | 2 |
+| macro | 19 | 4 | 0 |
 | market-cap bucket | 13 | 2 | 0 |
-| market-wide | 78 | 14 | 3 |
-| policy | 72 | 18 | 3 |
+| market-wide | 80 | 14 | 1 |
+| policy | 75 | 15 | 3 |
 | price band | 4 | 0 | 0 |
-| sector | 11 | 3 | 1 |
-| stock | 483 | 84 | 17 |
-| theme | 25 | 3 | 0 |
+| sector | 12 | 2 | 1 |
+| stock | 492 | 85 | 7 |
+| theme | 26 | 2 | 0 |
 
 ### 2.3 by primary family
 
 | family | mapped | not_in_data | unmapped |
 |---:|---:|---:|---:|
-| 1 | 131 | 5 | 0 |
-| 2 | 131 | 31 | 0 |
-| 3 | 54 | 12 | 6 |
-| 4 | 14 | 10 | 1 |
+| 1 | 130 | 6 | 0 |
+| 2 | 129 | 32 | 1 |
+| 3 | 59 | 11 | 2 |
+| 4 | 13 | 11 | 1 |
 | 6 | 90 | 3 | 0 |
 | 8 | 10 | 2 | 1 |
-| 9 | 53 | 11 | 3 |
+| 9 | 57 | 9 | 1 |
 | 10 | 14 | 2 | 1 |
-| 11 | 21 | 5 | 1 |
-| 12 | 47 | 13 | 4 |
+| 11 | 22 | 5 | 0 |
+| 12 | 50 | 13 | 1 |
 | 13 | 14 | 1 | 0 |
-| 14 | 47 | 10 | 3 |
+| 14 | 48 | 11 | 1 |
 | 15 | 36 | 2 | 0 |
 | 16 | 117 | 17 | 2 |
-| 17 | 35 | 5 | 0 |
-| 18 | 32 | 8 | 2 |
-| 19 | 35 | 10 | 1 |
-| 20 | 16 | 3 | 1 |
+| 17 | 33 | 7 | 0 |
+| 18 | 33 | 7 | 2 |
+| 19 | 41 | 4 | 1 |
+| 20 | 17 | 3 | 0 |
 
 ## 3. Size vs coverage curve
 
 Greedy set cover over clause requirements, starting from an **empty** lexicon: an entry is admissible when its surface matches a schema column, a held metric key, or a declared dim/operator surface — the same minimality rule the registry enforces. A case is covered when every clause of its question has an entry.
 
-The hand-checked seed is 2242 lexicon rows; the curve reaches the same clause coverage with **280 rows** at the 95% point, so about eight rows in ten of the seed are redundant synonyms.
+The hand-checked seed is 2920 lexicon rows; the curve reaches the same clause coverage with **325 rows** at the 95% point, so about eight rows in ten of the seed are redundant synonyms.
 
 | lexicon entries added | cases covered | coverage |
 |---:|---:|---:|
-| 0 | 2 | 0.2% |
-| 10 | 146 | 13.6% |
-| 20 | 266 | 24.8% |
-| 30 | 364 | 33.9% |
-| 40 | 438 | 40.8% |
-| 50 | 498 | 46.4% |
-| 60 | 558 | 52.0% |
-| 70 | 605 | 56.4% |
-| 80 | 647 | 60.3% |
-| 90 | 681 | 63.5% |
-| 100 | 713 | 66.4% |
-| 110 | 745 | 69.4% |
-| 120 | 775 | 72.2% |
-| 130 | 796 | 74.2% |
-| 140 | 819 | 76.3% |
-| 150 | 840 | 78.3% |
-| 160 | 862 | 80.3% |
-| 170 | 883 | 82.3% |
-| 180 | 901 | 84.0% |
-| 190 | 917 | 85.5% |
-| 200 | 928 | 86.5% |
-| 210 | 939 | 87.5% |
-| 220 | 949 | 88.4% |
-| 230 | 959 | 89.4% |
-| 240 | 972 | 90.6% |
-| 250 | 984 | 91.7% |
-| 260 | 995 | 92.7% |
-| 270 | 1010 | 94.1% |
-| 280 | 1021 | 95.2% |
-| 290 | 1031 | 96.1% |
-| 300 | 1041 | 97.0% |
-| 310 | 1051 | 97.9% |
-| 320 | 1062 | 99.0% |
-| 320 | 1062 | 99.0% |
+| 0 | 0 | 0.0% |
+| 10 | 144 | 13.4% |
+| 20 | 252 | 23.5% |
+| 30 | 342 | 31.9% |
+| 40 | 406 | 37.8% |
+| 50 | 470 | 43.8% |
+| 60 | 523 | 48.7% |
+| 70 | 566 | 52.7% |
+| 80 | 605 | 56.4% |
+| 90 | 635 | 59.2% |
+| 100 | 665 | 62.0% |
+| 110 | 687 | 64.0% |
+| 120 | 712 | 66.4% |
+| 130 | 738 | 68.8% |
+| 140 | 761 | 70.9% |
+| 150 | 782 | 72.9% |
+| 160 | 802 | 74.7% |
+| 170 | 824 | 76.8% |
+| 180 | 845 | 78.8% |
+| 190 | 866 | 80.7% |
+| 200 | 885 | 82.5% |
+| 210 | 895 | 83.4% |
+| 220 | 905 | 84.3% |
+| 230 | 918 | 85.6% |
+| 240 | 928 | 86.5% |
+| 250 | 938 | 87.4% |
+| 260 | 948 | 88.4% |
+| 270 | 958 | 89.3% |
+| 280 | 969 | 90.3% |
+| 290 | 979 | 91.2% |
+| 300 | 994 | 92.6% |
+| 310 | 1004 | 93.6% |
+| 320 | 1015 | 94.6% |
+| 330 | 1025 | 95.5% |
+| 340 | 1035 | 96.5% |
+| 350 | 1045 | 97.4% |
+| 354 | 1050 | 97.9% |
 
 Thresholds reached by the curve:
 
-- **80%** at **159 entries** (860 cases)
-- **90%** at **235 entries** (967 cases)
-- **95%** at **280 entries** (1021 cases)
+- **80%** at **187 entries** (860 cases)
+- **90%** at **277 entries** (966 cases)
+- **95%** at **325 entries** (1020 cases)
 
-Curve ceiling: **98.97%** of the coverable pool (1073 cases; 0 excluded as entity-resolution gaps, 0 unreachable for lack of any admissible surface — those are the true registry gaps). Candidate pool: 737 mined surfaces.
+Curve ceiling: **97.86%** of the coverable pool (1073 cases; 0 excluded as entity-resolution gaps, 0 unreachable for lack of any admissible surface — those are the true registry gaps). Candidate pool: 958 mined surfaces.
 
-Entity default: **35 cases** name no entity at all, so the Ask contract's default (entity_set = the held universe) applies. They are in the pool; the answer contract names the universe it used.
+Entity default: **34 cases** name no entity at all, so the Ask contract's default (entity_set = the held universe) applies. They are in the pool; the answer contract names the universe it used.
 
 ## 4. What does not map, and why
 
@@ -132,10 +135,10 @@ Entity default: **35 cases** name no entity at all, so the Ask contract's defaul
 
 | term | clauses |
 |---|---:|
-| `order` | 4 |
+| `order` | 3 |
 | `capital` | 2 |
-| `market` | 2 |
 | `issue` | 1 |
+| `market` | 1 |
 
 ### 4.2 NOT IN DATA reasons (gap and absent atoms)
 
@@ -143,13 +146,12 @@ A typed NID is a to-do, not an answer (v4.1 decision 3): every row below is tria
 
 | reason | cases |
 |---|---:|
-| registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share) | 40 |
-| metric_key 'loans' is not in the held concept vocabulary | 23 |
+| registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share) | 45 |
+| metric_key 'loans' is not in the held concept vocabulary | 32 |
 | metric_key 'net_npa' is not in the held concept vocabulary | 22 |
-| NSE publishes no free retro intraday bars | 14 |
 | metric_key 'nim' is not in the held concept vocabulary | 13 |
-| registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value) | 13 |
-| metric_key 'investments' is not in the held concept vocabulary | 8 |
+| registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value) | 12 |
+| metric_key 'investments' is not in the held concept vocabulary | 10 |
 | registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight) | 8 |
 | registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value) | 7 |
 | metric_key 'credit_cost' is not in the held concept vocabulary | 6 |
@@ -158,6 +160,7 @@ A typed NID is a to-do, not an answer (v4.1 decision 3): every row below is tria
 | no company discloses a refurbished-sales series | 2 |
 | registry knows the measure; the store does not carry it yet (metric_state.own_estimate.value) | 2 |
 | metric_key 'cwip' is not in the held concept vocabulary | 2 |
+| investor-level holdings are not published in India | 1 |
 
 ### 4.3 registry gaps (atom defined, store does not carry it yet)
 
@@ -176,36 +179,24 @@ A typed NID is a to-do, not an answer (v4.1 decision 3): every row below is tria
 | `price.free_float` | registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight) |
 | `own.estimate` | registry knows the measure; the store does not carry it yet (metric_state.own_estimate.value) |
 
-### 4.4 unmapped cases (26)
+### 4.4 unmapped cases (14)
 
-**9** name a measure the registry has no atom for (the residue table above); **17** name no measurable at all — a judgement or scope ask whose answer needs a named rule that is not declared yet. Each of those is one registry row away (§A.4), not a data problem.
+**7** name a measure the registry has no atom for (the residue table above); **7** name no measurable at all — a judgement or scope ask whose answer needs a named rule that is not declared yet. Each of those is one registry row away (§A.4), not a data problem.
 
+- `MB0064`
 - `MB0149`
-- `MB0343`
-- `MB0355`
-- `MB0389`
-- `MB0400`
 - `MB0502`
 - `MB0503`
 - `MB0524`
-- `MB0530`
-- `MB0536`
 - `MB0538`
-- `MB0540`
 - `MB0589`
 - `MB0612`
 - `MB0700`
 - `MB0731`
 - `MB0770`
-- `MB0844`
-- `MB0871`
 - `MB0874`
-- `MB0929`
 - `MB0934`
 - `MB0995`
-- `MB1021`
-- `MB1038`
-- `MB1063`
 
 ## 5. Mined lexicon — hand-check list
 
@@ -243,7 +234,6 @@ Frequent measure-like phrases with no registry entry — the list a human should
 | `the order` | 19 | measure-like, no column/concept match |
 | `through` | 19 | column metric_state.pass_through_history.pass_through_pct |
 | `session` | 18 | column market_state.event_day0.session_0 |
-| `commissioned` | 17 | column metric_state.capex_project.commissioned_on |
 | `s cost` | 16 | measure-like, no column/concept match |
 | `the margin` | 16 | measure-like, no column/concept match |
 | `action` | 15 | column equity_intelligence.corporate_actions.action_type |
@@ -256,4 +246,5 @@ Frequent measure-like phrases with no registry entry — the list a human should
 | `the capex` | 14 | measure-like, no column/concept match |
 | `the cost` | 14 | measure-like, no column/concept match |
 | `the repo` | 14 | measure-like, no column/concept match |
-| `announced` | 13 | column metric_state.company_price_revision.announced_on |
+| `cover` | 13 | column metric_state.company_interest_cover.cover_x |
+| `working` | 13 | measure-like, no column/concept match |

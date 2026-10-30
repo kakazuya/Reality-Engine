@@ -59,16 +59,23 @@ _ATOMS = [
     # ---- market: the price/delivery grain is a day -------------------------
     ("price.close", "close", "market", "INR", "day", "held",
      "equity_intelligence.daily_price_delivery.close",
-     "close|closing price|closing|bhav|last traded price|closing rate|price|shares price|stock price"),
+     "close|closing price|closing|bhav|last traded price|closing rate|price|shares price|stock price|"
+     "share price|market reaction|stock reaction|price reaction|listing pop|listing day|listing-day|"
+     "first-day close|debut|price progress|price movement|price action|better proxy|cleanest proxy|proxy"),
     ("price.open", "open", "market", "INR", "day", "held",
      "equity_intelligence.daily_price_delivery.open", "open|opening price|opening|opened at"),
     ("price.high", "high", "market", "INR", "day", "held",
-     "equity_intelligence.daily_price_delivery.high", "high|day high|intraday high|top|highest price|peak price"),
+     "equity_intelligence.daily_price_delivery.high",
+     "high|day high|intraday high|top|highest price|peak price|52 week high|52-week high|yearly high|"
+     "higher highs|higher high|swing high|record high|all time high|all-time high|previous high|lower highs"),
     ("price.low", "low", "market", "INR", "day", "held",
-     "equity_intelligence.daily_price_delivery.low", "low|day low|intraday low|bottom|lowest price|trough"),
+     "equity_intelligence.daily_price_delivery.low",
+     "low|day low|intraday low|bottom|lowest price|trough|52 week low|52-week low|yearly low|"
+     "lower lows|lower low|swing low|previous low"),
     ("price.volume", "volume", "market", "shares", "day", "held",
      "equity_intelligence.daily_price_delivery.total_volume",
-     "volume|volumes|traded quantity|quantity traded|traded volume|number of shares traded|qty"),
+     "volume|volumes|traded quantity|quantity traded|traded volume|number of shares traded|qty|"
+     "volume growth|volume trend|volume effect|volume recovery|trade volume|volumes traded|volume loss"),
     ("price.delivery_qty", "delivered quantity", "market", "shares", "day", "held",
      "equity_intelligence.daily_price_delivery.deliverable_volume",
      "delivered quantity|delivery quantity|deliverable quantity|delivered volume|delivery volume|deliverable volume|delivered qty"),
@@ -77,32 +84,42 @@ _ATOMS = [
      "delivery percent|delivery percentage|delivery pct|delivery %|delivery|delivery ratio|delivery spike"),
     ("price.traded_value", "traded value", "market", "INR", "day", "held",
      "equity_intelligence.daily_price_delivery.turnover_lacs",
-     "traded value|value traded|turnover value|turnover|amount traded|liquidity|adtv"),
+     "traded value|value traded|turnover value|turnover|amount traded|liquidity|adtv|"
+     "trading volume|value of trading|cash market volume"),
     ("price.mcap", "market cap", "market", "INR", "day", "held",
      "market_state.company_state_daily.mcap_cr",
-     "market cap|market capitalisation|market capitalization|mcap|cap|size"),
+     "market cap|market capitalisation|market capitalization|mcap|cap|size|market value"),
     ("price.shares_out", "shares outstanding", "market", "shares", "quarter", "held",
      "market_state.company_state_daily.shares_out",
-     "shares outstanding|share count|number of shares|paid up capital|paid-up capital|outstanding shares|total shares"),
+     "shares outstanding|share count|number of shares|paid up capital|paid-up capital|outstanding shares|total shares|"
+     "equity shares|equity share capital|number of equity shares|fresh equity|equity issuance|equity raise|"
+     "raised equity|qip|qualified institutional placement|preferential allotment|allotment"),
     ("price.band", "price band", "market", "band", "day", "held",
      "equity_intelligence.price_bands.band",
-     "price band|circuit|circuit limit|band|upper circuit|lower circuit"),
+     "price band|circuit|circuit limit|band|upper circuit|lower circuit|base price|base-price|base-price reset"),
     ("price.rsi", "RSI", "market", "index", "day", "held",
      "equity_intelligence.daily_price_delivery.rsi_14",
      "rsi|rsi 14|relative strength|oversold|overbought"),
     ("price.sma", "moving average", "market", "INR", "day", "held",
      "equity_intelligence.daily_price_delivery.sma_20",
-     "sma|moving average|dma|20dma|50dma|200dma|20 day|50 day|200 day|50 day average|200 day average|50 days|200 days"),
+     "sma|moving average|dma|20dma|50dma|200dma|20 day|50 day|200 day|50 day average|200 day average|"
+     "50 days|200 days|three averages|50 day moving average|200 day moving average|50-day|200-day"),
     # ---- fundamentals: quarter/FY grain -----------------------------------
     ("fin.revenue", "revenue", "fundamental", "INR", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=revenue)",
-     "revenue|revenues|sales|topline|total income|income from operations|income from operation|turnover from operations|gross revenue"),
+     "revenue|revenues|sales|topline|total income|income from operations|income from operation|"
+     "turnover from operations|gross revenue|revenue growth|sales growth|topline growth|net sales|"
+     "operating revenue|revenue per square foot|output value|revenue split|geographic revenue split|"
+     "geographic split|geo split|business split|annual premium equivalent|premium income|fee income|"
+     "commission paid|commission income|arpob|revenue per bed"),
     ("fin.ebitda", "EBITDA", "fundamental", "INR", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=ebitda)",
      "ebitda|operating profit|operating profit before tax|opbdt|pbdit|ebit"),
     ("fin.pat", "profit after tax", "fundamental", "INR", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=pat)",
-     "pat|profit after tax|net profit|profit after tax and minority|net income|profit|bottomline|net earnings|loss|losses|net loss|quarterly loss"),
+     "pat|profit after tax|net profit|profit after tax and minority|net income|profit|bottomline|"
+     "net earnings|loss|losses|net loss|quarterly loss|reported profit|reported net profit|"
+     "profit overall|quarterly profit|profit swing|reported earnings"),
     ("fin.eps", "EPS", "fundamental", "INR", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=eps)",
      "eps|earnings per share|diluted eps|basic eps"),
@@ -114,59 +131,74 @@ _ATOMS = [
      "debt|borrowings|total debt|long term debt|short term debt|gross debt|net debt"),
     ("fin.cash", "cash", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=cash)",
-     "cash|cash and equivalents|cash & equivalents|bank balance|free cash|surplus cash"),
+     "cash|cash and equivalents|cash & equivalents|bank balance|free cash|surplus cash|cash runway"),
     ("fin.cwip", "capital work in progress", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=cwip)",
      "cwip|capital work in progress|work in progress|capital advances"),
     ("fin.investments", "investments", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=investments)",
-     "investments|investment|jv|joint venture|associates|inv"),
+     "investments|investment|jv|joint venture|associates|inv|listed portfolio|investment portfolio|"
+     "portfolio value|stake value|subsidiary|subsidiaries"),
     ("fin.receivables", "receivables", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=receivables)",
-     "receivables|trade receivables|debtors|receivable|outstanding receivables|dues"),
+     "receivables|trade receivables|debtors|receivable|outstanding receivables|dues|old receivables|"
+     "receivable quality|stressed book"),
     ("fin.inventory", "inventory", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=inventory)",
-     "inventory|inventories|stock in trade|work in progress inventory|raw material stock"),
+     "inventory|inventories|stock in trade|work in progress inventory|raw material stock|"
+     "inventory turns|inventory days|dealer stock|dealer inventory|destocking|restocking|"
+     "stock days|inventory build|inventory write-down"),
     ("fin.payables", "payables", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=payables)",
      "payables|trade payables|creditors|payable|supplier dues"),
     ("fin.capex", "capex", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=capex)",
-     "capex|capital expenditure|capital spend|capital outlay|spending|investment in fixed assets|addition to fixed assets"),
+     "capex|capital expenditure|capital spend|capital outlay|spending|investment in fixed assets|"
+     "addition to fixed assets|capital repairs|capital spending|planned capex|capex plan|"
+     "capex plan|data centre capex|data-centre capex"),
     ("fin.interest_expense", "interest expense", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=finance_costs)",
-     "interest|interest expense|finance cost|finance costs|interest cost|interest paid|interest outgo|capitalised interest"),
+     "interest|interest expense|finance cost|finance costs|interest cost|interest paid|interest outgo|"
+     "capitalised interest|cost of debt|borrowing cost|incremental borrowing cost|interest saving"),
     ("fin.cfo", "cash from operations", "fundamental", "INR", "FY", "held",
      "metric_state.company_metric_series.value(metric_key=cfo)",
-     "cfo|operating cash flow|cash from operations|cash flow from operations|ocf|operating cashflow"),
+     "cfo|operating cash flow|cash from operations|cash flow from operations|ocf|operating cashflow|"
+     "free cash flow|fcf"),
     ("fin.loan_book", "loan book", "fundamental", "INR", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=loans)",
-     "loan book|advances|loans|aum|book size|credit book|loan growth|book growth"),
+     "loan book|advances|loans|aum|book size|credit book|loan growth|book growth|"
+     "disbursement|disbursements|securitised disbursement|loan-book|loan-book growth"),
     ("fin.nim", "net interest margin", "fundamental", "%", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=nim)",
      "nim|net interest margin|spread on advances|yield on advances"),
     ("fin.npa", "NPAs", "fundamental", "%", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=net_npa)",
-     "npa|gross npa|net npa|slippages|stressed assets|bad loans"),
+     "npa|gross npa|net npa|slippages|stressed assets|bad loans|gnpa|stressed book|slippage"),
     ("fin.credit_cost", "credit cost", "fundamental", "%", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=credit_cost)",
-     "credit cost|provisions|provision cost|loan loss"),
+     "credit cost|provisions|provision cost|loan loss|bounce rates|provisioning"),
     ("fin.capacity_utilisation", "capacity utilisation", "fundamental", "%", "quarter", "held",
      "metric_state.company_capacity_utilisation.value_pct",
-     "capacity utilisation|capacity utilization|utilisation|utilization|plant utilisation|cu"),
+     "capacity utilisation|capacity utilization|utilisation|utilization|plant utilisation|cu|"
+     "load factor|plant load factor|capacity utilization improvement"),
     ("fin.order_book", "order book", "fundamental", "INR", "quarter", "held",
      "metric_state.order_book_contract.value_cr(aggregate)",
-     "order book|orderbook|backlog|pending orders|unexecuted order book|book to bill|book|order value"),
+     "order book|orderbook|backlog|pending orders|unexecuted order book|book to bill|book|order value|"
+     "book-to-bill|order book cover|order book to revenue|revenue visibility"),
     ("fin.order_intake", "order intake", "fundamental", "INR", "quarter", "held",
      "metric_state.order_intake.value_cr",
-     "order intake|new orders|order inflow|orders won|fresh orders|order wins|order announced|bagged|bid|bids|bidding|tender win"),
+     "order intake|new orders|order inflow|orders won|fresh orders|order wins|order announced|bagged|"
+     "bid|bids|bidding|tender win|order-win|order win"),
     ("fin.segment_value", "segment P&L value", "fundamental", "INR", "FY", "held",
      "metric_state.company_segment_pnl.value_cr",
-     "segment revenue|segment profit|segment ebit|segment pbt|segment|segments|segment mix|segment share|business segments"),
+     "segment revenue|segment profit|segment ebit|segment pbt|segment|segments|segment mix|segment share|"
+     "business segments|geo split|geographic split|geographic revenue split|segment split|business split"),
     # ---- ownership ---------------------------------------------------------
     ("hold.pct", "shareholding percent", "ownership", "%", "quarter", "held",
      "equity_intelligence.shareholding.<holder_column>",
-     "shareholding|share holding|stake|holding percentage|shareholding pattern|holding|holders|ownership|share holding pattern"),
+     "shareholding|share holding|stake|holding percentage|shareholding pattern|holding|ownership|"
+     "share holding pattern|on the register|who was on the register|promoter group|fii ownership|"
+     "dii ownership|retail investors own|shareholder|shareholders"),
     ("hold.pledge_pct", "promoter pledge", "ownership", "%", "quarter", "held",
      "equity_intelligence.shareholding.promoter_pledged_pct",
      "pledge|pledged|pledged shares|promoter pledge|encumbrance|encumbered"),
@@ -175,55 +207,84 @@ _ATOMS = [
      "market_state.corporate_action_class.amount_per_share",
      "dividend|interim dividend|final dividend|special dividend|dividend per share|dps|"
      "ex date|ex dividend|record date|book closure|bonus issue|share split|stock split|"
-     "buyback|rights issue|demerger|corporate action"),
+     "buyback|rights issue|demerger|corporate action|interim payout|final payout|payout|allotment"),
     ("hold.fpi_limit_utilised", "FPI limit utilised", "ownership", "%", "quarter", "held",
      "equity_intelligence.shareholding.fpi_limit_utilised_pct",
      "fpi limit|fpi limit utilised|fpi utilisation|foreign limit"),
     ("flows.net_inr", "net insider/deal flow", "ownership", "INR", "day", "held",
      "market_state.event_leakage_window.insider_net_inr",
-     "insider|insider trade|insider buying|insider selling|sast|bulk deal|block deal|deal|promoter buying|promoter selling"),
+     "insider|insider trade|insider buying|insider selling|sast|bulk deal|block deal|deal|"
+     "promoter buying|promoter selling|block transfer"),
     # ---- narrative: one claim atom, topics are dim values, not atoms -------
     ("claim.claim", "typed claim", "narrative", "enum", "event", "held",
      "metric_state.claim(direction,magnitude,horizon)",
-     "said|says|say|stated|mentioned|remarks|remark|comment|commented|guidance|guided|guiding|tone|outlook|disclosed|disclosure|according to|management|call|concall|transcript|presentation|deck|annual report|ar|notes|note|md&a|commentary|target|targets|expects|expectation|plan|plans|intends|intend|strategy"),
+     "said|says|say|stated|mentioned|remarks|remark|comment|commented|guidance|guided|guiding|tone|outlook|"
+     "disclosed|disclosure|according to|management|call|concall|transcript|presentation|deck|annual report|ar|"
+     "notes|note|md&a|commentary|target|targets|expects|expectation|plan|plans|intends|intend|strategy|"
+     "flagged|flag|promised|promise|intimated|intimation|announced|announcement|downgraded|downgrade|"
+     "upgraded|upgrade|appointed|appointment|wrote down|impairment|audit qualification|affirmed|"
+     "reaffirmed|clarified|denied|cited|explained|delivered|confirms|confirmed|signed|dated|met|missed"),
     ("text.passage", "document passage", "narrative", "text", "event", "held",
      "chunks_v3.chunk.body",
-     "page|passage|paragraph|para|section|quote|quoted|text"),
+     "page|passage|paragraph|para|section|quote|quoted|text|note 5|notes to accounts|notes to the accounts|"
+     "results note|results notes|note to accounts"),
     # ---- macro / policy ----------------------------------------------------
     ("macro.policy", "policy event", "macro", "INR", "event", "held",
      "equity_intelligence.policy_events.amount_inr_crore",
-     "policy|tariff|tariffs|duty|import duty|customs duty|anti dumping|budget|rbi|repo|repo rate|subsidy|pli|notification|gazette|legislated|bill|scheme|pib|press release|cabinet|ministry|government|sebi|regulation"),
+     "policy|tariff|tariffs|tariff rate|tariff rates|duty|import duty|customs duty|customs tariff|"
+     "anti dumping|anti-dumping|budget|"
+     "rbi|repo rate|subsidy|pli|notification|gazette|legislated|bill|scheme|pib|press release|cabinet|"
+     "ministry|government|sebi|regulation|tax holiday|tax incentive|tax incentives|tax sops|"
+     "safeguard duty|safeguard|export duty|countervailing duty|free trade agreement|fta|incentive scheme"),
     ("macro.claim", "macro claim + target", "macro", "enum", "event", "held",
      "market_state.macro_claim.direction",
-     "claim|report|research note|house view|consensus view|street|broker|rbi says|economist"),
+     "claim|report|research note|research report|broker note|house view|consensus view|street|street view|"
+     "broker|rbi says|economist"),
     ("macro.commodity_close", "commodity price", "macro", "INR", "day", "held",
      "equity_intelligence.mkt_commodity_daily.close",
-     "copper|aluminium|steel|hrc|iron ore|crude|brent|wti|oil|gold|silver|sugar|ethanol|cane|rubber|cement|urea|potash|dap|cotton|yarn|palm oil|natural gas|coal|coking coal|zinc|nickel|lead|tin|commodity|commodities|input cost|raw material price"),
+     "copper|aluminium|steel|hrc|iron ore|iron-ore|pellets|pellet|sponge iron|fines|crude|brent|wti|oil|gold|"
+     "silver|sugar|ethanol|cane|rubber|cement|urea|potash|dap|cotton|yarn|palm oil|natural gas|coal|coking coal|"
+     "zinc|nickel|lead|tin|commodity|commodities|input cost|raw material price|pulp|waste paper|wastepaper|"
+     "edible oil|edible oils|pet coke|limestone|soda ash|scrap|metal price|metal prices|lme|thermal coal|"
+     "crude oil|brent crude|steel price|steel prices|paper price|paper prices"),
     ("macro.index_close", "index level", "macro", "index", "day", "held",
      "equity_intelligence.mkt_nse_index_daily.close",
-     "nifty|sensex|index|nifty 50|bank nifty|nifty it|smallcap index|midcap index|index level|benchmark|bse index|nifty500"),
+     "nifty|sensex|index|nifty 50|bank nifty|nifty it|nifty psu bank|nifty fmcg|nifty energy|sector index|"
+     "smallcap index|midcap index|index level|benchmark|bse index|nifty500|index constituents"),
     ("macro.flow", "FII/DII cash flow", "macro", "INR", "day", "held",
      "equity_intelligence.mkt_fii_dii_cash.net_inr_cr",
-     "fii flow|fii flows|dii flow|dii flows|foreign flow|institutional flow|fpi flow|net buying|net selling|fii|dii|fpi|flow|flows|flow prints"),
+     "fii flow|fii flows|dii flow|dii flows|foreign flow|institutional flow|fpi flow|net buying|net selling|"
+     "fii|dii|fpi|flow|flows|flow prints|passive buying|passive selling|passive flow|index flow|fund flow|"
+     "fii outflow|fii selling|fii buying|dii buying|dii selling"),
     ("macro.oi", "open interest", "macro", "contracts", "day", "held",
      "market_state.fno_oi_daily.oi",
-     "open interest|oi|futures|options|f&o|put call|pcr|option chain"),
+     "open interest|oi|futures|options|f&o|put call|pcr|option chain|rollover|max pain|"
+     "call oi|put oi|futures premium|basis widening|expiry day|options expiry|into expiry"),
     ("macro.etf_premium", "ETF premium to iNAV", "macro", "%", "day", "held",
      "equity_intelligence.etf_inav.premium_vs_inav_pct",
-     "etf premium|premium to inav|inav|nav premium|discount to nav|etf|exchange traded fund"),
+     "etf premium|premium to inav|inav|nav premium|discount to nav|etf|exchange traded fund|"
+     "tracking error|gold etf|silver etf|nifty etf|index etf|etf premium to inav"),
     ("macro.series", "macro series observation", "macro", "value", "month", "held",
      "market_state.series_observation.value",
-     "rainfall|monsoon|el nino|wpi|cpi|inflation|iip|gst collection|credit growth|deposit growth|trade deficit|fx reserve|rupee|inr|usdinr|dollar|repo rate|policy rate|interest rate|interest rates|rates|rate cut|rate hike|rate cuts|rate hikes|freight|freight rate|freight rates|container freight|transit time|gst|gst rate|gst rates|tax|taxes|current account"),
+     "rainfall|monsoon|el nino|wpi|cpi|inflation|iip|gst collection|credit growth|deposit growth|trade deficit|"
+     "fx reserve|rupee|inr|usdinr|dollar|repo|repo rate|policy rate|interest rate|interest rates|rates|rate cut|"
+     "rate hike|rate cuts|rate hikes|freight|freight rate|freight rates|container freight|transit time|gst|"
+     "gst rate|gst rates|tax|taxes|current account|forward premia|forward premium|forward premiums|"
+     "price series|macro series|commodity series|rate series|wage inflation|rural wage|wages|10 year yield|"
+     "bond yield|g-sec|yield|bank rate|cost of funds|exchange price|plant load factor|plf|coal stock|"
+     "power demand|import volume|series of|price series|macro series|commodity series|rate series"),
     # ---- measures the bank asks for that the pilot stores do not carry yet --
     ("fin.deposits", "bank deposits", "fundamental", "INR", "quarter", "gap",
      "metric_state.company_metric_series.value(metric_key=deposits)",
-     "deposits|deposit mix|term deposits|casa|casa ratio|deposit franchise"),
+     "deposits|deposit mix|term deposits|casa|casa ratio|deposit franchise|deposit repricing"),
     ("fin.unit_volume", "unit volumes", "fundamental", "units", "quarter", "gap",
      "metric_state.company_operating_metrics.value(unit volumes)",
-     "units|units sold|volumes sold|sales volume|dispatches|delivered|deliveries|two wheelers|three wheelers|vehicles sold|tonnes sold"),
+     "units|units sold|volumes sold|sales volume|dispatches|delivered|deliveries|two wheelers|"
+     "three wheelers|vehicles sold|tonnes sold|deliver|delivers|tractor volume|vehicle volume|"
+     "electric two wheelers|volume sold|unit volume"),
     ("price.free_float", "free float", "market", "%", "day", "gap",
      "market_state.company_membership_pit.weight",
-     "free float|float|free-float|float percentage|index weight"),
+     "free float|float|free-float|float percentage|index weight|weight in the index|nifty weight"),
     # ---- own estimates: v4.1 decision 1 (no paid consensus feed) --------------
     # One atom: an estimate per company, per estimated atom, per period.  It is a build
     # job (metric_state.own_estimate), not a paid fetch; the estimated atom is a dim.
@@ -234,7 +295,7 @@ _ATOMS = [
     # ---- declared absent: the registry's NOT IN DATA reasons ---------------
     ("absent.intraday", "intraday amplitude", "absent", "INR", "day", "absent",
      "none: NSE publishes no free retro intraday bars",
-     "intraday amplitude|intraday range|intraday move|tick data|minute bars|seconds|intraday high low"),
+     "intraday amplitude|intraday range|intraday move|tick data|minute bars|intraday high low"),
     ("absent.investor_holdings", "investor-level holdings", "absent", "%", "quarter", "absent",
      "none: investor-level holdings are not published in India",
      "which funds hold|fund-wise holding|investor-wise|individual investor|mutual fund name|shareholder name|investor-level|retail investors|investors lose|investor loss|retail losses"),
@@ -535,7 +596,23 @@ _TOPIC_SEED = (
     "stressed assets|capital allocation|return ratio|working capital|receivable quality|"
     "remuneration|ceo pay|compensation|kmp pay|tracking error|support|resistance|"
     "throughput|port throughput|lcoe|levelised cost|control|maturities|port|"
-    "second order|third order|lead time|turnaround"
+    "second order|third order|lead time|turnaround|"
+    "resignation|resigned|credit rating|rating action|rating downgrade|rating upgrade|"
+    "declaration of unmodified opinion|unmodified opinion|declaration|auditor resignation|"
+    "auditor appointment|capacity expansion|capacity addition|expansion plan|expansion plans|"
+    "commissioned|commissioning|plant shutdown|force majeure|going concern|impairment|"
+    "impairment loss|inventory write-down|related party|related-party|qip|preferential issue|"
+    "rights issue|buyback|interim dividend|final dividend|bonus issue|share split|stock split|"
+    "demerger|merger|scheme of arrangement|delisting|suspension|director resignation|"
+    "change in management|management change|control change|ownership change|change in control|"
+    "change in ownership|board meeting|pre-intimation|pre intimation|dissemination timestamp|"
+    "results date|order win|order wins|bid pipeline|mou|mous|partnership|partnerships|"
+    "license|licence|approval|regulatory approval|payment aggregator|"
+    "take rate|quick commerce|premiumisation|price hike|price hike statement|under-recovery|"
+    "asset quality|ticket size|market share|receivable quality|working capital|"
+    "input cost inflation|input-cost inflation|index inclusion|index addition|index entry|"
+    "index rebalance|index removal|enters an index|added to the nifty|removed from the index|"
+    "change in control|change in ownership|ownership change|control change|change of control"
 )
 _ENTITY_SELECTORS = {
     "sector": ("sector|sectors|industry|industries|basic industry|omc|omcs|nbfc|nbfcs|psu|psus|"
@@ -563,19 +640,30 @@ _DRIVER_ATOMS = {"macro.policy", "macro.claim", "macro.commodity_close", "macro.
 # a clause that only re-expresses the other parts (ordering, counting, existence)
 _CROSS_PART_OPS = {"rank", "compare", "list_distinct", "aggregate", "count", "exists", "join_entity_set"}
 _FORMULA_WORDS = {
-    "f.margin": "margin|margins|ebitda margin|net margin|opm|npm|operating margin|margin expansion|margin compression|margin path",
-    "f.ratio": "valuation|p/e|pe ratio|p/b|pb ratio|ev/ebitda|roic|roce|roe|d/e|debt to equity|interest coverage|icr|multiple|premium to book|ratio|ratios|stored ratio",
-    "f.dso": "dso|debtor days|receivable days|collection days",
-    "f.working_capital_cycle": "working capital cycle|cash conversion cycle|ccc|dpo|inventory days",
-    "f.share_of": "share of|share of total|mix|contribution|percentage of",
-    "f.net": "net of|net effect|offset|net gain|net loss|net it",
-    "f.per_rupee_revenue": "per rupee|per rupee of revenue|capital intensity|incremental capex|reinvestment need",
+    "f.margin": "margin|margins|ebitda margin|net margin|opm|npm|operating margin|margin expansion|"
+                "margin compression|margin path|profitability|gross margin|margin recovery|margin gap|"
+                "margin trough|marketing margin",
+    "f.ratio": "valuation|p/e|pe ratio|p/b|pb ratio|ev/ebitda|roic|roce|roe|d/e|debt to equity|"
+               "interest coverage|interest cover|icr|multiple|premium to book|ratio|ratios|stored ratio|"
+               "net debt to ebitda|debt to ebitda|return on capital|return on equity|valuation gap|"
+               "valuation premium|valuation comparison|cost of equity|payout ratio",
+    "f.dso": "dso|debtor days|receivable days|collection days|old receivables",
+    "f.working_capital_cycle": "working capital|working capital cycle|cash conversion cycle|cash cycle|"
+                               "ccc|dpo|inventory days|receivable days",
+    "f.share_of": "share of|share of total|mix|contribution|percentage of|cost share|share of the cost",
+    "f.net": "net of|net effect|offset|net gain|net loss|net it|net the|net them|net against|net two|"
+             "net positive|net winner|netting",
+    "f.per_rupee_revenue": "per rupee|per rupee of revenue|capital intensity|incremental capex|"
+                           "reinvestment need|reinvestment|reinvest",
     "f.book_value_per_share": "book value per share|bvps",
-    "f.gap_pct": "gap|gap up|gap down|gap percent|opened gap",
-    "f.drawdown": "drawdown|fall from peak|below peak|from the high|from its high",
-    "f.cagr": "cagr|compounded|annualised return|three year return|5 year return",
-    "f.excess_return": "excess return|relative return|alpha|outperform|underperform|vs the index|vs nifty",
-    "f.spread": "spread|spreads|gross spread|net interest spread|steel spread|spread compression|spread expansion",
+    "f.gap_pct": "gap|gap up|gap down|gap percent|opened gap|gapped|gap filled",
+    "f.drawdown": "drawdown|fall from peak|below peak|from the high|from its high|from the peak|from peak",
+    "f.cagr": "cagr|compounded|annualised return|three year return|5 year return|3 year return|"
+              "3-year return|3y cagr|three-year return|3 year cagr",
+    "f.excess_return": "excess return|relative return|alpha|outperform|underperform|outperformed|"
+                       "underperformed|relative strength|vs the index|vs nifty|rs rating",
+    "f.spread": "spread|spreads|gross spread|net interest spread|steel spread|spread compression|"
+                "spread expansion|input-output spread|output price|input cost|yield cap|realisation",
 }
 
 # a clause counts as resolved when it names one of these; fragments without one are
@@ -863,6 +951,8 @@ def build_lexicon(atoms: list[dict], dims: list[dict], ngrams: Counter,
         did = d["dim_id"]
         if isinstance(d["values"], list):
             for v in d["values"]:
+                if str(v).isdigit():
+                    continue          # "20" is a number, not the word "20" in "20 Oct 2026"
                 add(str(v).replace("_", " "), "dim", f"{did}={v}")
         # common surface words for a few dims
     for s, target in [("raw", "basis=raw"), ("unadjusted", "basis=raw"), ("adjusted", "basis=adjusted"),
@@ -870,7 +960,12 @@ def build_lexicon(atoms: list[dict], dims: list[dict], ngrams: Counter,
                       ("consolidated", "consolidation=consolidated"), ("cons", "consolidation=consolidated"),
                       ("standalone", "consolidation=standalone"), ("stand alone", "consolidation=standalone"),
                       ("both exchanges", "exchange=each"), ("dono", "exchange=each"),
-                      ("combined", "exchange=sum"), ("nse bse total", "exchange=sum")]:
+                      ("combined", "exchange=sum"), ("nse bse total", "exchange=sum"),
+                      # a ratio written with its word names the ratio_kind it is
+                      ("pb ratio", "ratio_kind=pb"), ("pe ratio", "ratio_kind=pe"),
+                      ("de ratio", "ratio_kind=de"), ("ev ebitda", "ratio_kind=ev_ebitda"),
+                      ("interest cover", "ratio_kind=icr"),
+                      ("interest coverage", "ratio_kind=icr")]:
         add(s, "dim", target)
 
     for op, words in _OP_WORDS.items():

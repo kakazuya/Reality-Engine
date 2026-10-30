@@ -6,7 +6,8 @@ Bank fields (``template``, ``family``, ``chain``, ``period``, ``answer_kind``) a
 read here — they belong to the evaluator.
 
     text -> clauses -> per-clause surface hits (two passes: CONTENT then MODIFIER)
-         -> one measure per part: atom | formula | claim topic | operator/rule default
+         -> one part per measure the clause names: atom | formula | claim topic |
+            operator/rule default (a clause can name several measures)
          -> dims as *readings*: a clause naming two values of one dim emits two parts
          -> entity from the text (no DB: symbol/ISIN/BSE code/name/scope/theme/default)
          -> window from the existing ``period_bounds()``, question text only
@@ -63,7 +64,7 @@ RULE_DEFAULT_ATOM = {
 #: Operators that qualify the whole ask ("in what order", "the combined total") rather than
 #: one reading; on a dim-only clause they must not overwrite the inherited reading's operator.
 _CROSS_PART_OPS = {"rank", "compare", "list_distinct", "aggregate", "count", "exists",
-                   "join_entity_set"}
+                   "join_entity_set", "screen"}
 
 #: Operators that *do* belong to a single reading, so they override on inheritance.
 _READING_OPS = {"max_with_date", "min_with_date", "change", "pct_change", "growth",
@@ -84,7 +85,6 @@ _DIM_OWNER = {
     "page": "text.passage",
     "est_atom": "own.estimate",
     "lookback": "price.sma",
-    "doctype": "text.passage",
     "direction": "claim.claim",
 }
 
@@ -93,6 +93,12 @@ _DIM_OWNER = {
 _DOC_POINTER = re.compile(
     r"\b(?:report|deck|presentation|transcript|filing|document|annual report|page|slides?)\b", re.I)
 _PAGE_RE = re.compile(r"\bpage\s*(\d{1,4})\b", re.I)
+#: A passage ask *locates* the text ("where in the report", "which page", "quote the section").
+#: A doctype alone ("results", "concall", "presentation") is a source qualifier, not a passage
+#: ask: "the concall remark" is a claim, and "the session after its results" is context.
+_LOCATOR = re.compile(
+    r"\b(?:where|which\s+page|what\s+page|page|section|slide|quote|quoted|passage|paragraph|para)\b",
+    re.I)
 #: "how much does FII *own*" is a holding; "how much did FII *sell*" is a flow (§A.2 flow_kind).
 _HOLD_VERB = re.compile(r"\b(?:own\w*|hold\w*|stake|shareholding|ownership)\b", re.I)
 _FLOW_VERB = re.compile(r"\b(?:bought|buy|bought|sold|sell|net|flow\w*|kharid\w*|bech\w*)\b", re.I)
@@ -110,7 +116,8 @@ _HINGLISH_STOP = {"pe", "de", "ka", "ki", "ke", "ko", "se", "ne", "mein", "hai",
 #: ("say which HFC's ROE improves" asks for f.ratio, not for the fact that someone spoke).
 _NARRATIVE_VERB = {"say", "says", "said", "tell", "tells", "told", "explain", "explains",
                    "explained", "mention", "mentions", "mentioned", "state", "states", "stated",
-                   "disclose", "discloses", "disclosed", "according"}
+                   "disclose", "discloses", "disclosed", "according", "report", "reports",
+                   "reported", "reporting", "flag", "flags", "flagged"}
 
 #: A narrative *noun* names the claim atom directly ("the concall remark", "management
 #: commentary"): one atom, the topic is a dim (§A.1).
@@ -174,6 +181,29 @@ _WS = re.compile(r"\s+")
 
 #: "M & B Engineering (NSE: MBEL)" names the listing venue, not an exchange reading.
 _TICKER_ANNOTATION = re.compile(r"\b(?:NSE|BSE)\s*:\s*[A-Z][A-Z0-9&\-]*")
+#: A possessive head ("Tata Steel's", "Coal India's") is an entity name; its words
+#: ("steel", "coal", "bank") must not be read as commodity/flow measures.  A colon head is
+#: *not* masked: "Bank NIM:" and "Defence pack:" name the measure/scope itself.
+_COMPANY_SPAN = re.compile(
+    r"\b[A-Z][A-Za-z0-9&.\-]*(?:\s+[A-Z][A-Za-z0-9&.\-]*){0,3}(?='s\b|\u2019s\b)")
+#: A capitalised multi-word span whose word is also a commodity surface ("Coal India",
+#: "JSW Steel", "Hindustan Copper") is a company name, not a commodity ask.
+_NAME_SPAN = re.compile(r"\b[A-Z][A-Za-z0-9&.\-]*(?:\s+[A-Z][A-Za-z0-9&.\-]*){1,3}\b")
+_NAME_MASK_IDS = {"macro.commodity_close"}
+
+
+def _mask_names(text: str, reg: Registry) -> str:
+    def repl(m: re.Match) -> str:
+        toks = [t.lower() for t in re.split(r"\s+", m.group(0)) if t]
+        if any(t in {"etf", "etfs", "fund", "funds"} for t in toks):
+            return m.group(0)
+        is_commodity = [any(e["id"] in _NAME_MASK_IDS for e in reg.matcher.by_surface.get(t, ()))
+                        for t in toks]
+        if all(is_commodity):
+            return m.group(0)      # "Steel HRC": the whole span is the commodity, not a name
+        return " " if any(is_commodity) else m.group(0)
+
+    return _NAME_SPAN.sub(repl, text)
 
 # entity hints, text only (the executor resolves them against security_master, PIT)
 _ISIN_RE = re.compile(r"\bINE[0-9A-Z]{9}[0-9]\b")
@@ -281,7 +311,7 @@ class Registry:
                 continue
             for v in values:
                 surface = str(v).lower()
-                if not surface:
+                if not surface or surface.isdigit():
                     continue
                 self.dim_value_words.add(surface)
                 self.dim_by_word.setdefault(surface, []).append((dim_id, str(v)))
@@ -429,7 +459,8 @@ def _lift_date(parts: list[Part], targets: list[Part]) -> list[Part] | None:
             continue
         new = Part(atom=base.atom, formula=base.formula, dims=base.dims, window=base.window,
                    operator=lift, shape=_shape_for(lift, base.concept),
-                   judgement=base.judgement, clause=base.clause, nid_reason=base.nid_reason)
+                   judgement=base.judgement, declared_default=base.declared_default,
+                   clause=base.clause, nid_reason=base.nid_reason)
         for i, p in enumerate(parts):
             if p is base:
                 parts[i] = new
@@ -523,8 +554,9 @@ def _apply_reading_dims(parts: list[Part], targets: list[Part], inherited: str,
                 expanded.append(Part(atom=base.atom, formula=base.formula,
                                      dims={**base.dims, dim_id: value}, window=base.window,
                                      operator=op, shape=_shape_for(op, base.concept),
-                                     judgement=base.judgement, clause=base.clause,
-                                     nid_reason=base.nid_reason))
+                                     judgement=base.judgement,
+                                     declared_default=base.declared_default,
+                                     clause=base.clause, nid_reason=base.nid_reason))
         out = expanded
     if out is group:
         return targets
@@ -550,87 +582,206 @@ def _owner_of(dims: dict[str, list[str]]) -> str | None:
 _SENTENCE_SPLIT = re.compile(r"(?<=[a-z0-9%])\.\s+(?=[A-Z0-9])")
 
 
-def _measure(clause: str, hits: list[dict], reg: Registry) -> tuple[str | None, dict[str, str]]:
-    """The one measure a clause names (§C.2), or ``None``.
+def _measures(clause: str, hits: list[dict], reg: Registry,
+              amount_ask: bool = False) -> list[tuple[str, dict, bool]]:
+    """The measures a clause names (§C.2), one per part; ``(concept, extra_dims, default)``.
 
     A formula wins over its own input atoms: the ask is the derived measure and the atoms are
-    its inputs (§A.3), so "EBITDA margin" is ``f.margin``, not ``fin.ebitda``.  A bare dim that
-    names a measure ("ROE", "how much does FII own", "page 10") resolves to the dim's owning
-    atom (§A.2), never to a neighbouring flow or claim atom that happens to share the word.
+    its inputs (§A.3), so "EBITDA margin" is ``f.margin``, not ``fin.ebitda``.  A clause can
+    name more than one measure ("a 52-week high on declining volume", "what did it say about
+    margins"): each is emitted, because the ask is the union of what it names.  A bare dim
+    that names a measure ("ROE", "how much does FII own", "page 10") resolves to the dim's
+    owning atom (§A.2).  The ``default`` flag marks the §C.2 declared-default readings (topic,
+    operator/rule default), scored separately from measures the text actually names.
     """
     atoms = [h for h in hits if h["kind"] == "atom"]
+    if _DECLARATIVE_PRICE.search(clause) and not _ASK.search(clause):
+        atoms = [a for a in atoms
+                 if not (a["id"] == "price.close" and a["surface"] in _GENERIC_PRICE)]
     formulas = [h for h in hits if h["kind"] == "formula"]
     topics = [h for h in hits if h["kind"] == "claim_topic"]
     rules = [h for h in hits if h["kind"] == "rule"]
+    scopes = [h for h in hits if h["kind"] == "entity_set"]
     raw_dims = _dim_readings(reg, hits)
+    topic_extra = {"topic": topics[0]["id"]} if topics else {}
+    # "gold-jewellery" is a theme scope; the word "gold" inside it is not a commodity ask
+    atoms = [a for a in atoms
+             if not any(a["surface"] != s["surface"] and a["surface"] in s["surface"].split()
+                        for s in scopes)]
 
+    if "page" in raw_dims or _NOTES_LOCATOR.search(clause):
+        return [("text.passage", {}, False)]   # "page 41"/"Note 5" asks for the passage
     if formulas:
-        return formulas[0]["id"], {}
-    if "page" in raw_dims:
-        return "text.passage", {}      # "page 41 of the deck" is the passage atom (§A.1)
+        fout: list[tuple[str, dict, bool]] = []
+        seen: set[str] = set()
+        for f in formulas:
+            if f["id"] not in seen:
+                fout.append((f["id"], {}, False))
+                seen.add(f["id"])
+        inputs = {atom for f in formulas for atom in (reg.formulas.get(f["id"]) or {}).get("over", [])}
+        for h in atoms:
+            if h["id"] in seen or h["id"] in inputs:
+                continue
+            fout.append((h["id"], {}, False))
+            seen.add(h["id"])
+        if any(row[0] != "macro.claim" for row in fout):
+            fout = [row for row in fout if row[0] != "macro.claim"]
+        # a corporate action named only as an event is a qualifier, not an amount ask
+        if not (amount_ask or _AMOUNT_ASK.search(clause)):
+            fout = [row for row in fout if row[0] != "corp.amount_per_share"]
+        return fout
+
     if atoms:
-        first = atoms[0]               # the first measure the clause names (§C.2)
+        first = atoms[0]
         surface, atom_id = first["surface"], first["id"]
-        if atom_id == "macro.claim" and _DOC_POINTER.search(clause):
-            return "text.passage", {}
+        if atom_id == "macro.claim" and _DOC_POINTER.search(clause) and _LOCATOR.search(clause):
+            return [("text.passage", {}, False)]
+        out: list[tuple[str, dict, bool]] = []
         if surface in _NARRATIVE_VERB:
             owner = _owner_of(raw_dims)
-            if owner:
-                return owner, {}
-            return "claim.claim", ({"topic": topics[0]["id"]} if topics else {})
-        if surface in reg.dim_value_words and surface.replace(" ", "_") not in atom_id:
+            if owner and owner != "text.passage":
+                out.append((owner, {}, False))
+            else:
+                out.append(("claim.claim", topic_extra, False))
+        elif (surface in reg.dim_value_words
+              or surface.rstrip("s") in reg.dim_value_words) \
+                and surface.replace(" ", "_") not in atom_id:
             owner = _owner_of(raw_dims)
-            if owner == "text.passage" and topics:
-                return "claim.claim", {"topic": topics[0]["id"]}
-            if owner and not (owner == "hold.pct" and _FLOW_VERB.search(clause)
-                              and not _HOLD_VERB.search(clause)):
-                return owner, {}
-        return atom_id, {}
+            if (owner and owner != "text.passage"
+                    and not (owner == "hold.pct" and _FLOW_VERB.search(clause)
+                             and not _HOLD_VERB.search(clause))):
+                out.append((owner, {}, False))
+            elif owner == "text.passage" and topics:
+                out.append(("claim.claim", topic_extra, True))
+            else:
+                out.append((atom_id, {}, False))
+        else:
+            out.append((atom_id, {}, False))
+        seen = {c for c, _e, _d in out}
+        for h in atoms[1:]:
+            aid = h["id"]
+            if aid in seen:
+                continue
+            out.append((aid, {}, False))
+            seen.add(aid)
+        # a narrative wrapper beside a named measure: "what did it say about margins"
+        if "claim.claim" not in seen and any(a["id"] == "claim.claim" for a in atoms):
+            out.append(("claim.claim", topic_extra, False))
+            seen.add("claim.claim")
+        # a company claim is the measure; "macro.claim" from the word "report" is not
+        if "claim.claim" in seen or any(row[0] != "macro.claim" for row in out):
+            out = [row for row in out if row[0] != "macro.claim"]
+        # a corporate action named only as an event is a qualifier, not an amount ask
+        if not (amount_ask or _AMOUNT_ASK.search(clause)):
+            out = [row for row in out if row[0] != "corp.amount_per_share"]
+        # "which Nifty 50 constituents ...": an index name is the scope, not the measure
+        if any(h["kind"] == "operator" and h["id"] in _CROSS_PART_OPS for h in hits):
+            out = [row for row in out if row[0] != "macro.index_close"]
+        return out
+    owner = _owner_of(raw_dims)
+    if owner:
+        # "which HFC's ROE improves": the dim names its own measure (§A.2)
+        return [(owner, {}, False)]
     if topics:
-        return "claim.claim", {"topic": topics[0]["id"]}
+        return [("claim.claim", topic_extra, True)]
     words = set(norm(clause).split())
     if words & _NARRATIVE_NOUN:
-        return "claim.claim", {}
+        return [("claim.claim", {}, False)]
     if rules:
-        return reg.rule_default_atom(rules[0]["id"]), {}
+        return [(reg.rule_default_atom(rules[0]["id"]), {}, True)]
     if _DOC_POINTER.search(clause) and _PAGE_RE.search(clause):
-        return "text.passage", {}
-    for h in hits:
-        if h["kind"] == "operator":
-            atom = reg.op_default_atom(h["id"])
-            if atom:
-                return atom, {}
-    return None, {}
+        return [("text.passage", {}, False)]
+    if _QUESTION.search(clause):
+        for h in hits:
+            if h["kind"] == "operator":
+                atom = reg.op_default_atom(h["id"])
+                if atom:
+                    return [(atom, {}, True)]
+    return []
 
 
 #: "split- and dividend-adjusted closes" is one basis reading, not a dividend ask.
 _ADJUSTED_PHRASE = re.compile(
     r"\b(?:split|bonus|dividend)(?:[\s\-]+and[\s\-]+(?:split|bonus|dividend))?[\s\-]+adjusted\b",
     re.I)
+#: "dividends aur splits adjust karke" / "adjusting for dividends" is the same basis reading.
+_CORP_BASIS = re.compile(
+    r"\b(?:dividends?|splits?|bonus)(?:\s+(?:and|aur|or|&)\s+(?:dividends?|splits?|bonus))*"
+    r"\s+adjust\w*\b|\badjust\w*\s+(?:for\s+)?(?:the\s+)?(?:dividends?|splits?|bonus)\b",
+    re.I)
+#: A clause that already asks for a corporate action (payout, ex-date, buyback) keeps it.
+_CORP_ASK = re.compile(
+    r"\b(?:declared|announce\w*|ex[\s\-]?date|record date|payout|per share|buyback|rights issue|"
+    r"bonus issue|split ratio|dps)\b", re.I)
+#: A unit phrase ("in rupees", "Rs crore") is how a number is told, not a measure of its own.
+_UNIT_PHRASE = re.compile(
+    r"\b(?:in|into|to)\s+(?:rupees|rs\.?|crore|lakh|million|billion|usd|dollars?|inr)\b|"
+    r"\b(?:rs\.?|usd|\$)\s*(?:crore|cr|lakh|million|billion|bn|mn)?\b", re.I)
+#: Only a clause that asks something reads an operator's declared default atom; a declarative
+#: background sentence ("milk procurement falls") is context, not a price ask.
+_QUESTION = re.compile(
+    r"\b(?:what|which|how|when|where|who|why|did|does|do|is|are|was|were|has|have|can|could|"
+    r"would|should|kya|kitna|kitni|kitne|kaun|kaunsi|kaunse|kaunsa)\b", re.I)
+#: The same for the generic "price/move" words: they name a share-price ask only in a question
+#: or an imperative ("give the close"), never in a background clause.
+_ASK = re.compile(
+    _QUESTION.pattern + r"|\b(?:give|tell|state|name|list|show|trace|rank|compare|build|check|"
+                       r"say|explain|report|batao|bata|likho)\b", re.I)
+_GENERIC_PRICE = {"price", "prices", "move", "moves", "moved", "change", "changed", "changes",
+                  "rise", "rises", "rose", "fall", "falls", "fell", "drop", "drops", "dropped"}
+#: A background sentence whose subject is a price ("prices fall", "players hold price") is
+#: context; a prepositional fragment ("then to the price") still names the reading.
+_DECLARATIVE_PRICE = re.compile(
+    r"\b(?:prices?|input cost|procurement price|dealer price|menu price|price agreements?)\b"
+    r"[^.;?]{0,40}?\b(?:rise|rises|rose|fall|falls|fell|drop|drops|move|moves|moved|change|"
+    r"changed|hold|holds|cut|cuts)\b|"
+    r"\b(?:hold|holds|cut|cuts)\s+(?:the\s+)?price\b", re.I)
+#: A corporate action named only as an event ("bonus had an ex-date") is a qualifier; the
+#: amount atom is only read when the clause asks for the amount.
+_AMOUNT_ASK = re.compile(
+    r"\b(?:how\s+much|amount|per\s+share|dps|payout|declared|dividend\s+yield|dividend|"
+    r"dilutive)\b", re.I)
+#: A judgement-only ask ("what would prove the path is broken") has no declared rule yet, so it
+#: is residue (§A.7: 17 of the measured-unmapped cases are undeclared judgement rules).
+_JUDGEMENT = re.compile(
+    r"\b(?:what\s+would\s+prove|what\s+evidence\s+would|how\s+(?:do|would)\s+you\s+prove|"
+    r"prove\s+that|what\s+would\s+confirm|how\s+would\s+you\s+check)\b", re.I)
 #: "food-delivery fees", "direct-client mix": a hyphenated compound whose half is a measure
-#: word is a compound noun, not that measure (the lexicon never matched the whole compound).
-_HYPHEN_COMPOUND = re.compile(r"\b([A-Za-z][A-Za-z0-9]*)-([A-Za-z][A-Za-z0-9]*)\b")
+#: word is a compound noun, not that measure — unless the whole hyphenated token *is* a
+#: measure surface once de-hyphenated ("iron-ore", "delivery-spike", "book-to-bill").
+_HYPHEN_COMPOUND = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z][A-Za-z0-9]*)+\b")
+#: "Note 5 of the results", "notes to accounts": a passage locator, not a claim word.
+_NOTES_LOCATOR = re.compile(r"\bnotes?\s+(?:\d+|to\s+(?:the\s+)?accounts)\b", re.I)
 
 
 #: Slash-written ratios ("P/B", "EV/EBITDA") normalise to their declared dim value.
-_RATIO_SLASH = ((re.compile(r"\bp\s*/\s*b\b", re.I), " pb "),
-                (re.compile(r"\bp\s*/\s*e\b", re.I), " pe "),
-                (re.compile(r"\bd\s*/\s*e\b", re.I), " de "),
-                (re.compile(r"\bdebt\s*(?:/|-)\s*equity\b", re.I), " de "),
+_RATIO_SLASH = ((re.compile(r"\bp\s*/\s*b\b", re.I), " pb ratio "),
+                (re.compile(r"\bp\s*/\s*e\b", re.I), " pe ratio "),
+                (re.compile(r"\bd\s*/\s*e\b", re.I), " de ratio "),
+                (re.compile(r"\bdebt\s*(?:/|-)\s*equity\b", re.I), " de ratio "),
+                (re.compile(r"\bnet\s+debt\s*(?:/|to)\s*ebitda\b", re.I), " de ratio "),
+                (re.compile(r"\bdebt\s*to\s*ebitda\b", re.I), " de ratio "),
                 (re.compile(r"\bev\s*/\s*ebit(?:da)?\b", re.I), " ev ebitda "))
 
 
 def _prepare(clause: str, reg: Registry) -> str:
     """Normalise the shapes that would otherwise be read as a measure they are not."""
     text = _ADJUSTED_PHRASE.sub("adjusted", clause)
+    text = _UNIT_PHRASE.sub(" ", text)
+    if re.search(r"\badjust\w*", text, re.I) and not _CORP_ASK.search(text):
+        text = _CORP_BASIS.sub("adjusted", text)
     for rx, replacement in _RATIO_SLASH:
         text = rx.sub(replacement, text)
 
     def mask(m: re.Match) -> str:
-        if m.group(0).lower() in reg.matcher.by_surface:
+        token = m.group(0).lower()
+        if token in reg.matcher.by_surface:
             return m.group(0)
-        left, right = m.group(1).lower(), m.group(2).lower()
-        return " " if (left in reg.measure_words or right in reg.measure_words) else m.group(0)
+        joined = token.replace("-", " ")
+        if joined in reg.matcher.by_surface:
+            return joined          # "delivery-spike", "iron-ore", "book-to-bill": the measure
+        parts = token.split("-")
+        return " " if any(p in reg.measure_words for p in parts) else m.group(0)
 
     return _HYPHEN_COMPOUND.sub(mask, text)
 
@@ -639,6 +790,10 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
     """One question -> one :class:`Ask`.  The only inputs are the text and the run date."""
     reg = registry or load_registry()
     text = question or ""
+    body = text
+    if re.search(r"\badjust\w*", body, re.I) and not _CORP_ASK.search(body):
+        body = _CORP_BASIS.sub("adjusted", body)   # before the split: "dividends aur splits adjust"
+    amount_ask = bool(_AMOUNT_ASK.search(body))
     residues: list[str] = []
     parts: list[Part] = []
     inherited: str | None = None      # the measure a dim-only clause attaches to
@@ -646,12 +801,17 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
     pending: dict[str, list[str]] = {}  # dims named before any measure ("raw and adjusted")
     scope_level: str | None = None
     topic_dims: dict[str, str] = {}   # dims the *first* part of the ask carried (topic etc.)
+    judgement_clauses: list[str] = []
 
-    for clause in split_clauses(text, reg.measure_words):
+    for clause in split_clauses(body, reg.measure_words):
         if _EXCLUSION.match(clause):
             continue                    # "not total traded quantity": an exclusion
         clause = _prepare(clause, reg)
-        hits = reg.matcher.hits(_TICKER_ANNOTATION.sub(" ", clause))
+        if _JUDGEMENT.search(clause):
+            judgement_clauses.append(clause)
+            continue                    # no declared rule -> residue only if nothing else asks
+        match_text = _mask_names(_COMPANY_SPAN.sub(" ", _TICKER_ANNOTATION.sub(" ", clause)), reg)
+        hits = reg.matcher.hits(match_text)
         raw_dims = {k: v for k, v in _dim_readings(reg, hits).items() if k != "scope"}
         page = _PAGE_RE.search(clause)
         if page:
@@ -660,10 +820,10 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
         for h in hits:
             if h["kind"] == "dim" and "=" in h["id"]:
                 dim_id, value = h["id"].split("=", 1)
-                if h["surface"] == value.lower():
+                if value.lower() in h["surface"].split():
                     named.add((dim_id, value.lower()))
-            elif h["kind"] == "atom":
-                # a dim value inside the atom's own name ("net NPA", "gross NPA") is a reading
+            elif h["kind"] in ("atom", "formula"):
+                # a dim value inside the measure's own name ("net NPA", "P/B ratio") is a reading
                 for word in h["surface"].split():
                     for dim_id, value in reg.dim_by_word.get(word, ()):
                         if _DIM_OWNER.get(dim_id) != h["id"]:
@@ -679,10 +839,10 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
         if scopes and scope_level is None:
             scope_level = scopes[0]["id"] or "sector"
 
-        # ---- the part's measure: one per part (§C.1) --------------------------------
-        concept, extra = _measure(clause, hits, reg)
+        # ---- the part's measures: one per measure the clause names (§C.1) -----------
+        measures = _measures(clause, hits, reg, amount_ask)
 
-        if concept is None:
+        if not measures:
             # ---- no measure: a date qualifier, a dim reading, a meta-op, filler, residue --
             if _DATE_QUALIFIER.search(clause) and targets:
                 lifted = _lift_date(parts, targets)
@@ -721,29 +881,32 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
             continue                   # filler ("as of 31 July 2026", "batao")
 
         # ---- a measure clause: one part per reading of its multi-valued dims ---------
-        if concept not in reg.atoms and concept not in reg.formulas:
-            concept = "claim.claim"
-        if concept == "claim.claim" and "topic" not in extra and topic_dims:
-            extra.update(topic_dims)   # a bare "what did they say" inherits the topic
         dims = _clean_dims(reg, _merge_dims(pending, raw_dims), named)
         pending = {}
         op = _pick_operator(hits)
         if rules:
             op = "rule"
-        readings = [{**extra, **r} for r in _readings(dims)] if dims else [dict(extra)]
         targets = []
-        for reading in readings:
-            part = Part(atom=concept if concept in reg.atoms else None,
-                        formula=concept if concept in reg.formulas else None,
-                        dims=reading, window=0, operator=op,
-                        shape=_shape_for(op, concept), judgement=bool(rules),
-                        clause=clause, nid_reason=reg.atom_nid_reason(concept))
-            parts.append(part)
-            targets.append(part)
-        inherited = concept
-        for key in ("topic", "est_atom"):
-            if key in extra:
-                topic_dims = {key: extra[key]}
+        inherited = measures[0][0]
+        for concept, extra, is_default in measures:
+            if concept not in reg.atoms and concept not in reg.formulas:
+                concept = "claim.claim"
+            extra = dict(extra)
+            if concept == "claim.claim" and "topic" not in extra and topic_dims:
+                extra.update(topic_dims)   # a bare "what did they say" inherits the topic
+            readings = [{**extra, **r} for r in _readings(dims)] if dims else [dict(extra)]
+            for reading in readings:
+                part = Part(atom=concept if concept in reg.atoms else None,
+                            formula=concept if concept in reg.formulas else None,
+                            dims=reading, window=0, operator=op,
+                            shape=_shape_for(op, concept), judgement=bool(rules),
+                            declared_default=is_default,
+                            clause=clause, nid_reason=reg.atom_nid_reason(concept))
+                parts.append(part)
+                targets.append(part)
+            for key in ("topic", "est_atom"):
+                if key in extra:
+                    topic_dims = {key: extra[key]}
 
     # ---- dedupe identical readings (a re-stated class must not double a part) ---------
     seen: set[tuple] = set()
@@ -755,6 +918,9 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
         seen.add(key)
         unique.append(p)
     parts = unique
+
+    if not parts and judgement_clauses:
+        residues.extend(judgement_clauses[:2])   # judgement-only ask: a typed unmapped
 
 
     # ---- window (§C.2): the existing parser, on the question text only ----------------

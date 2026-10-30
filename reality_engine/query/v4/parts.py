@@ -137,6 +137,9 @@ class Part:
     operator: str = "value_at"
     shape: str = "scalar"
     judgement: bool = False
+    #: True when the part's measure came from the §C.2 declared default (a topic, a dim's
+    #: owning atom, or an operator/rule default atom) rather than a measure word in the text.
+    declared_default: bool = False
     # provenance the decomposer emits; the executor may ignore it.
     clause: str = ""
     nid_reason: str = ""
@@ -174,6 +177,8 @@ class Part:
             d["formula"] = self.formula
         if self.judgement:
             d["judgement"] = True
+        if self.declared_default:
+            d["declared_default"] = True
         if self.clause:
             d["clause"] = self.clause
         if self.nid_reason:
@@ -185,6 +190,7 @@ class Part:
         return cls(atom=d.get("atom"), formula=d.get("formula"), dims=dict(d.get("dims") or {}),
                    window=int(d.get("window") or 0), operator=d.get("operator") or "value_at",
                    shape=d.get("shape") or "scalar", judgement=bool(d.get("judgement")),
+                   declared_default=bool(d.get("declared_default")),
                    clause=d.get("clause") or "", nid_reason=d.get("nid_reason") or "")
 
 

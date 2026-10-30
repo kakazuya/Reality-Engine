@@ -7,22 +7,25 @@ bank's own ``period``/``as_of`` for the window check only.
 Gold line:
 
     {"mid": "MB0125", "split": "dev", "required": [{"measure": "hold.pct",
-                                                    "dims": {"holder_class": ["promoter"],
-                                                             "public"]}}],
+                                                    "dims": {"holder_class": ["promoter"]},
+                                                    "named": true}],
      "evidence": ["hold.pct"], "expect_status": "mapped"}
 
 * ``required`` — the readings an ask must carry.  A reading is matched when some part has that
   measure and, for every dim it names, that value (a part carries one value per dim).
+* ``named`` — whether the question text names the measure (WP1b controller decision).  Named
+  readings are scored by ``named_recall`` (the 97% target); readings that the declared default
+  resolves are scored separately as ``default_coverage`` (reported, no target).  Older gold
+  lines without the flag fall back to the registry-surface audit for the split.
 * ``evidence`` — the concepts that legitimately *answer* the ask (the rubric's evidence set).
-* ``expect_status`` — asserted only where the design is explicit (the 26 unmapped cases).
+* ``expect_status`` — asserted only where the design is explicit.
 
-Measured on a held-out split: every even-indexed case of the deterministic stride-4 sample is
-``test``; the cases used while developing are ``dev``.  The 26 measured-unmapped cases of
-§A.7/registry_coverage 4.4 are oversampled into ``test`` so the "never guessed" rule is measured
-on all of them.
+The old ``test`` split is dev (controller decision, see ``decompose_gold_corrections.md``);
+the only held-out evidence is ``decompose_gold_blind.jsonl``:
 
-    python tasks/arch_v4/eval_decomposer.py            # all splits, exit 1 if test fails
-    python tasks/arch_v4/eval_decomposer.py --split dev --show 10
+    python tasks/arch_v4/eval_decomposer.py                     # the dev gold
+    python tasks/arch_v4/eval_decomposer.py --split blind \
+        --gold tasks/arch_v4/decompose_gold_blind.jsonl --accept
 """
 
 from __future__ import annotations
@@ -42,8 +45,7 @@ from reality_engine.query.v4.decompose import decompose, load_registry  # noqa: 
 GOLD = ROOT / "tasks" / "arch_v4" / "decompose_gold.jsonl"
 BANK = ROOT / "tasks" / "master_bank" / "MASTER_BANK.jsonl"
 
-TARGETS = {"part_recall": 0.97, "precision": 0.97, "dim_completeness": 1.0,
-           "unmapped_recall": 1.0}
+TARGETS = {"named_recall": 0.97, "precision": 0.97, "dim_completeness": 1.0}
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -95,6 +97,7 @@ def evaluate(gold: list[dict], cases: dict[str, dict], registry) -> dict:
     unmapped_expected = unmapped_ok = 0
     false_unmapped = 0
     expr_readings = expr_hit = unnamed_readings = 0
+    named_readings = named_hit = default_readings = default_hit = 0
     named_parts = named_parts_ok = default_parts = 0
     surfaces: dict[str, list[str]] = {}
     rows: list[dict] = []
@@ -132,15 +135,28 @@ def evaluate(gold: list[dict], cases: dict[str, dict], registry) -> dict:
                 expr_hit += found
             else:
                 unnamed_readings += 1
+            # the controller's split (WP1b): a reading the question names is scored against
+            # named_recall; a reading resolved only by the §C.2 declared default against
+            # default_coverage.  The blind gold carries its own ``named`` flag (labelled from
+            # the question alone); older gold falls back to the registry-surface audit.
+            is_named = r.get("named")
+            if is_named is None:
+                is_named = _named_in(text_norm, concept_surfaces(r["measure"]))
+            if is_named:
+                named_readings += 1
+                named_hit += found
+            else:
+                default_readings += 1
+                default_hit += found
         for p in ask.parts:
             parts_n += 1
             ok = p.concept in evidence
             parts_ok += ok
+            if p.declared_default:
+                default_parts += 1
             if _named_in(text_norm, concept_surfaces(p.concept)):
                 named_parts += 1
                 named_parts_ok += ok
-            else:
-                default_parts += 1
         named = [(d, v) for r in required for d, vs in (r.get("dims") or {}).items() for v in vs]
         missing_dims: list[str] = []
         if named:
@@ -187,6 +203,10 @@ def evaluate(gold: list[dict], cases: dict[str, dict], registry) -> dict:
         "n": len(gold),
         "part_recall": pct(req_readings and reading_hit, req_readings) if req_readings else 100.0,
         "concept_recall": pct(req_concepts and req_hit, req_concepts) if req_concepts else 100.0,
+        "named_recall": pct(named_hit, named_readings) if named_readings else 100.0,
+        "named_readings": named_readings,
+        "default_coverage": pct(default_hit, default_readings) if default_readings else 100.0,
+        "default_readings": default_readings,
         "precision": pct(parts_ok, parts_n),
         "dim_completeness": pct(dim_hit, dim_pairs) if dim_pairs else 100.0,
         "dim_cases": dim_cases,
@@ -239,9 +259,11 @@ def multipart_check(registry) -> list[str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--split", default="all", choices=["all", "dev", "test"])
+    ap.add_argument("--split", default="all", choices=["all", "dev", "test", "blind"])
     ap.add_argument("--gold", default=str(GOLD))
     ap.add_argument("--show", type=int, default=0, help="print this many failing cases")
+    ap.add_argument("--accept", action="store_true",
+                    help="apply the WP1b acceptance targets to this split")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
@@ -257,7 +279,10 @@ def main() -> int:
         if not subset:
             continue
         r = evaluate(subset, cases, registry)
-        print(f"\n[{split}] n={r['n']}  part_recall={r['part_recall']}%  "
+        print(f"\n[{split}] n={r['n']}  named_recall={r['named_recall']}% "
+              f"({r['named_readings']} named readings)  "
+              f"default_coverage={r['default_coverage']}% ({r['default_readings']} default readings)")
+        print(f"[{split}] part_recall={r['part_recall']}%  "
               f"concept_recall={r['concept_recall']}%  precision={r['precision']}%  "
               f"dim_completeness={r['dim_completeness']}% ({r['dim_cases']} dim-naming cases, "
               f"{r['dim_pairs']} named values)")
@@ -273,7 +298,7 @@ def main() -> int:
               f"{r['default_parts']}")
         print(f"[{split}] most-missed required measures: {r['missing_top']}")
         print(f"[{split}] most-common parts outside the evidence set: {r['extra_top']}")
-        if split == "test":
+        if args.accept:
             for name, target in TARGETS.items():
                 value = r[name]
                 ok = value >= target * 100
