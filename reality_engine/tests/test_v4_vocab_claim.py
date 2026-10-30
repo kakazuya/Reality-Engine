@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from reality_engine.query.v4 import (build_claim, build_edge_schema, build_own_estimate,
-                                     build_vocab)
+                                     build_vocab, map_vocab_beam)
 
 ISIN = "INE001A01036"     # a real row of tasks/pilot60/UNIVERSE.csv
 ISIN2 = "INE001B01026"
@@ -379,3 +379,88 @@ def test_edge_ddl_runs_clean_and_is_idempotent(tmp_path):
         con.execute("INSERT INTO edge (driver, target, origin, label, known_at) "
                     "VALUES ('crude','tyre','measured','invented','2026-01-01')")
     con.close()
+
+
+# --- beam mapping (WP8) -----------------------------------------------------
+def _beam_store(sources, vocab_db, tmp_path):
+    """A pass2 copy of the vocab store plus the declared-unmapped workload file."""
+    root = tmp_path / "pilot" / "v4"
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "unmapped_head.json").write_text(json.dumps([
+        {"surface": "signal", "occurrences": 3, "words": "signal"}]))
+    con = map_vocab_beam.open_pass2(tmp_path / "v4_vocab_pass2.db", vocab_db)
+    return con, root / "unmapped_head.json"
+
+
+def _fake_poster(answers):
+    """Stand-in for the model call: answers[i] gives the i-th reply's JSON body."""
+    calls = []
+
+    def poster(system, user, key):
+        calls.append(user)
+        body = answers[min(len(calls) - 1, len(answers) - 1)]
+        n = sum(1 for line in user.splitlines() if line[:1].isdigit() and ". " in line)
+        return {"content": json.dumps({str(i): body for i in range(n)}),
+                "finish": "stop", "in_tok": 12, "out_tok": 6}
+    poster.calls = calls
+    return poster
+
+
+def test_beam_parser_accepts_only_declared_ids():
+    allowed = {"pat", "revenue", "other"}
+    accepted, rejected = map_vocab_beam.parse_answers(
+        '{"0": "pat", "1": "profitability?", "2": "Revenue", "3": "other"',
+        {0: None, 1: None, 2: None, 3: None}, allowed)
+    assert accepted == {0: "pat", 2: "revenue", 3: "other"}
+    assert set(rejected) == {1}          # undeclared -> rejected, never mapped
+    # truncated body still yields complete pairs; a missing index is unanswered
+    got, bad = map_vocab_beam.parse_answers('{"0":"pat"', {0: None, 1: None}, allowed)
+    assert got == {0: "pat"} and set(bad) == {1}
+
+
+def test_beam_run_resumes_without_redoing_finished_batches(sources, vocab_db, tmp_path):
+    con, unmapped = _beam_store(sources, vocab_db, tmp_path)
+    rows = map_vocab_beam.workload(con, unmapped)
+    assert [r["surface"] for r in rows] == ["signal"]
+    labels = map_vocab_beam.labels_of(con)
+    assert "pat" in labels and "other" in labels
+    plan = map_vocab_beam.plan(rows)
+    poster = _fake_poster(["pat"])
+
+    first = map_vocab_beam.run(con, labels, plan, {}, "k", poster=poster, start=1, ceiling=1)
+    assert first["batches"] == 1 and first["surfaces"] == 1
+    again = map_vocab_beam.run(con, labels, plan, {}, "k", poster=poster, start=1, ceiling=1)
+    assert again["batches"] == 0 and again["skipped"] == 1
+    assert len(poster.calls) == 1        # the finished batch was not sent again
+
+    assert map_vocab_beam.apply(con) == {"updated": 1}
+    value, source, method = con.execute(
+        "SELECT m.map_value, m.source, m.method FROM surface s JOIN map m USING(surface_id) "
+        "WHERE s.surface_verbatim='signal'").fetchone()
+    con.close()
+    assert (value, source, method) == ("pat", "beam", "beam")
+
+
+def test_beam_rejected_answer_is_retried_once_then_other(sources, vocab_db, tmp_path):
+    con, unmapped = _beam_store(sources, vocab_db, tmp_path)
+    rows = map_vocab_beam.workload(con, unmapped)
+    labels = map_vocab_beam.labels_of(con)
+    plan = map_vocab_beam.plan(rows)
+
+    poster = _fake_poster(["not_a_label", "pat"])     # first ask rejected, retry answers
+    map_vocab_beam.run(con, labels, plan, {}, "k", poster=poster, start=1, ceiling=1)
+    assert len(poster.calls) == 2                      # one retry, not a second batch
+    answers = [dict(r) for r in con.execute("SELECT * FROM beam_answer")]
+    assert answers[0]["label_id"] == "pat" and answers[0]["first_pass"] == 0
+
+    con.execute("DELETE FROM beam_answer")
+    con.execute("DELETE FROM beam_batch")
+    poster = _fake_poster(["not_a_label", "still_not_a_label"])
+    map_vocab_beam.run(con, labels, plan, {}, "k", poster=poster, start=1, ceiling=1)
+    map_vocab_beam.apply(con)
+    value, label_id = con.execute(
+        "SELECT m.map_value, m.label_id FROM surface s JOIN map m USING(surface_id) "
+        "WHERE s.surface_verbatim='signal'").fetchone()
+    con.close()
+    assert label_id is None and value == "other:signal"   # wrong is worse than none
+

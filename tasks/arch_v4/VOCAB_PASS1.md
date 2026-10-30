@@ -1,5 +1,21 @@
 # VOCAB_PASS1 — measured vocabulary pass over the pilot's extracted phrases
 
+> **Correction, 31 Oct 2026 (WP8, re-measured by the WP2b build `build_vocab`).**
+> Two numbers in this note were wrong; the per-source rows and every other reading
+> stand.
+>
+> | this note said | the store measures | why |
+> |---|---:|---:|
+> | 1,691,352 occurrences (union) | **1,815,581** | the union row was summed from per-source Counters that *overwrote* a phrase shared by two stores instead of adding it. The per-source rows were right: 21,606 + 1,021,844 + 772,131 = 1,815,581 |
+> | 64,948 surfaces carry 95% of occurrences (43.7%) | **62,601 (42.11%)** | same measurement on the wrong denominator |
+>
+> Re-measured on the same 60-company pilot: 148,652 surfaces (unchanged), 1,815,581
+> occurrences, 62,601 head surfaces, of which **37,204 (59.43%) carry a declared
+> label**; labelled surfaces cover **1,276,402 occurrences (70.30%)**, the remaining
+> 29.70% stay `other:<raw>`. The promotion queue from that pass is 26,261 clusters,
+> 173 of them queued. `QUERY_V4_DESIGN.md` §A.9's table quotes the uncorrected
+> 1,691,352 / 64,948 and should be read against this block.
+
 Status: v4.1 decision 2, first measured pass (30 Oct 2026). Read-only on every store.
 Program: `python tasks/arch_v4/vocab_pass1.py` (deterministic; `--json` prints the same
 numbers as JSON). This is the number the label layer is sized from; it is a pass, not the
@@ -15,7 +31,7 @@ extractions that already run:
 | concall | `concall_facts.cc_items.metric` | 16,039 | 21,606 |
 | annual report | `ar_facts.ar_facts.category` | 20,005 | 1,021,844 |
 | deck | `deck_figures.facts.metric` (via `pages.sha256`, 1,254 pilot deck hashes) | 113,972 | 772,131 |
-| **surface layer** | union, verbatim | **148,652** | **1,691,352** |
+| **surface layer** | union, verbatim | **148,652** | **1,815,581** |
 
 The **surface layer is the measured size of "keep every phrase verbatim"**: 148,652
 distinct strings for 60 companies. Nothing here is thrown away.
@@ -53,11 +69,11 @@ the remaining 35% of occurrences are deck line labels and AR section phrases
 `market_data`) whose words are not a topic. So:
 
 - the label layer **cannot be mined lexically** (method B needs 11.5 k clusters), and
-- **the 95% target applies to the head of surfaces, not to raw occurrences**: 64,948
-  surfaces (43.7% of distinct phrases) carry 95% of occurrences. That head is the mapping
-  workload; the other 83,704 surfaces (5% of occurrences) are `other:<raw>` by design.
+- **the 95% target applies to the head of surfaces, not to raw occurrences**: 62,601
+  surfaces (42.1% of distinct phrases) carry 95% of occurrences. That head is the mapping
+  workload; the other 86,051 surfaces (5% of occurrences) are `other:<raw>` by design.
 - reaching 95% of *occurrences* with 60–80 labels needs a **semantic** mapper over the
-  64,948 head surfaces (the local embedding index / a reader), then the hand check. It is a
+  62,601 head surfaces (the local embedding index / a reader), then the hand check. It is a
   build job, not a vocabulary-size choice. **Open for Shivam:** restate the gate as
   "≥95% of occurrences labelled *or* explicitly `other`" (measured: 100% by construction,
   since every surface gets a label or an `other:<raw>` id) versus "≥95% labelled with a
@@ -123,7 +139,7 @@ Release check (runnable, no model):
   occurrences carrying a declared label is reported, never asserted to be 95%.
 - **precision**: a stratified random sample of 100 mappings must be ≥95% exact (this pass
   produced 92.9% on its 20-sample and found 3 mechanical fixes → the gate works).
-- **head coverage**: the 64,948 surfaces carrying 95% of occurrences are each mapped; new
+- **head coverage**: the 62,601 surfaces carrying 95% of occurrences are each mapped; new
   surfaces entering the head (`occurrences ≥ 20`) queue for review instead of staying
   `other`.
 - **growth**: the label layer grows only by promotion; the surface layer grows without
