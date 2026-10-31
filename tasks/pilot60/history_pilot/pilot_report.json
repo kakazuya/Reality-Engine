@@ -1,0 +1,222 @@
+{
+ "generated_at": "2026-10-31T05:51:00",
+ "sample": 200,
+ "processed": 181,
+ "duplicates_skipped": 19,
+ "docs": 181,
+ "chunks": 13718,
+ "outcomes": {
+  "chunked": 180,
+  "duplicate": 19,
+  "needs_ocr": 1
+ },
+ "elapsed_s": 179.55,
+ "seconds_per_file": 0.992,
+ "median_s": 0.249,
+ "p95_s": 4.819,
+ "peak_rss_bytes": 318218240,
+ "no_text_share": 0.0055,
+ "no_text_files": 1,
+ "known_at_mismatches": 0,
+ "composition": {
+  "announcement|2019": 7,
+  "announcement|2020": 7,
+  "announcement|2021": 7,
+  "announcement|2022": 7,
+  "announcement|2023": 7,
+  "announcement|2024": 7,
+  "annual_report|2019": 7,
+  "annual_report|2020": 7,
+  "annual_report|2021": 7,
+  "annual_report|2022": 7,
+  "annual_report|2023": 7,
+  "concall|2019": 7,
+  "concall|2020": 7,
+  "concall|2021": 7,
+  "concall|2022": 7,
+  "concall|2023": 7,
+  "concall|2024": 7,
+  "deck|2019": 7,
+  "deck|2020": 7,
+  "deck|2021": 7,
+  "deck|2022": 7,
+  "deck|2023": 7,
+  "deck|2024": 7,
+  "results_notes|2019": 7,
+  "results_notes|2020": 7,
+  "results_notes|2021": 7,
+  "results_notes|2022": 6,
+  "results_notes|2023": 6,
+  "results_notes|2024": 6
+ },
+ "seconds_per_file_by_type": {
+  "announcement": 0.029,
+  "annual_report": 4.303,
+  "concall": 0.347,
+  "deck": 0.231,
+  "results_notes": 0.378
+ },
+ "known_at_checks": [
+  {
+   "newsid": "0011ba87-192a-42d2-bf25-e3e5b93a4064",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-03-05T09:32:09",
+   "ledger_known_at": "2019-03-05T09:32:09",
+   "manifest_known_at": "2019-03-05T09:32:09",
+   "match": true
+  },
+  {
+   "newsid": "008a18b0-5fc1-4924-9ddc-bea77998260b",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-06-26T19:55:41",
+   "ledger_known_at": "2019-06-26T19:55:41",
+   "manifest_known_at": "2019-06-26T19:55:41",
+   "match": true
+  },
+  {
+   "newsid": "00164f45-3f7d-4edf-a24a-24628f4213e3",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-08-05T14:31:39",
+   "ledger_known_at": "2019-08-05T14:31:39",
+   "manifest_known_at": "2019-08-05T14:31:39",
+   "match": true
+  },
+  {
+   "newsid": "0071df1a-dbe6-4d67-a07f-07fccfd359de",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-11-05T14:41:30",
+   "ledger_known_at": "2019-11-05T14:41:30",
+   "manifest_known_at": "2019-11-05T14:41:30",
+   "match": true
+  },
+  {
+   "newsid": "0057d1e8-7a80-47b0-b10d-30160bd9713c",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-12-09T18:37:36",
+   "ledger_known_at": "2019-12-09T18:37:36",
+   "manifest_known_at": "2019-12-09T18:37:36",
+   "match": true
+  },
+  {
+   "newsid": "008754ec-5f5c-4a7b-ab13-5b72c0259d21",
+   "doc_type": "announcement",
+   "doc_known_at": "2020-01-29T18:01:32",
+   "ledger_known_at": "2020-01-29T18:01:32",
+   "manifest_known_at": "2020-01-29T18:01:32",
+   "match": true
+  },
+  {
+   "newsid": "002ec62e-d1e2-433b-8bec-25d9245eda20",
+   "doc_type": "announcement",
+   "doc_known_at": "2020-03-03T10:49:28",
+   "ledger_known_at": "2020-03-03T10:49:28",
+   "manifest_known_at": "2020-03-03T10:49:28",
+   "match": true
+  },
+  {
+   "newsid": "0097529d-1f3f-43cd-8c3e-2e00a92a59bf",
+   "doc_type": "announcement",
+   "doc_known_at": "2020-05-30T17:06:55",
+   "ledger_known_at": "2020-05-30T17:06:55",
+   "manifest_known_at": "2020-05-30T17:06:55",
+   "match": true
+  },
+  {
+   "newsid": "00060151-7d18-43c7-b340-1582edab8d1d",
+   "doc_type": "announcement",
+   "doc_known_at": "2020-07-23T12:58:53",
+   "ledger_known_at": "2020-07-23T12:58:53",
+   "manifest_known_at": "2020-07-23T12:58:53",
+   "match": true
+  },
+  {
+   "newsid": "006b8e7a-42d2-4d35-a6ac-4d63e8d06a13",
+   "doc_type": "announcement",
+   "doc_known_at": "2020-08-27T16:04:35",
+   "ledger_known_at": "2020-08-27T16:04:35",
+   "manifest_known_at": "2020-08-27T16:04:35",
+   "match": true
+  },
+  {
+   "newsid": "009767f9-afc2-4fcc-a674-cfecc92e8230",
+   "doc_type": "announcement",
+   "doc_known_at": "2020-09-21T20:00:47",
+   "ledger_known_at": "2020-09-21T20:00:47",
+   "manifest_known_at": "2020-09-21T20:00:47",
+   "match": true
+  },
+  {
+   "newsid": "0040f7bc-5f32-4345-aede-6f68aebf04d6",
+   "doc_type": "announcement",
+   "doc_known_at": "2020-12-13T12:27:13",
+   "ledger_known_at": "2020-12-13T12:27:13",
+   "manifest_known_at": "2020-12-13T12:27:13",
+   "match": true
+  },
+  {
+   "newsid": "003f5292-c9b4-4cfa-8a5c-7520e2776397",
+   "doc_type": "announcement",
+   "doc_known_at": "2021-05-31T14:04:50",
+   "ledger_known_at": "2021-05-31T14:04:50",
+   "manifest_known_at": "2021-05-31T14:04:50",
+   "match": true
+  },
+  {
+   "newsid": "0020d6a6-32e5-4c9e-8cf9-d69db0f007d2",
+   "doc_type": "announcement",
+   "doc_known_at": "2021-07-07T17:40:31",
+   "ledger_known_at": "2021-07-07T17:40:31",
+   "manifest_known_at": "2021-07-07T17:40:31",
+   "match": true
+  },
+  {
+   "newsid": "000875f4-4bfb-4d34-af0f-028c81dadfaa",
+   "doc_type": "announcement",
+   "doc_known_at": "2021-08-02T18:27:09",
+   "ledger_known_at": "2021-08-02T18:27:09",
+   "manifest_known_at": "2021-08-02T18:27:09",
+   "match": true
+  },
+  {
+   "newsid": "000cdb82-4640-4c56-a396-da53c5e333d0",
+   "doc_type": "announcement",
+   "doc_known_at": "2021-08-04T17:37:25",
+   "ledger_known_at": "2021-08-04T17:37:25",
+   "manifest_known_at": "2021-08-04T17:37:25",
+   "match": true
+  },
+  {
+   "newsid": "0002010c-ed08-439f-b476-6c8d5b2916cf",
+   "doc_type": "announcement",
+   "doc_known_at": "2021-08-05T18:24:34",
+   "ledger_known_at": "2021-08-05T18:24:34",
+   "manifest_known_at": "2021-08-05T18:24:34",
+   "match": true
+  },
+  {
+   "newsid": "0041fb6e-f307-4852-ac30-671b654f4162",
+   "doc_type": "announcement",
+   "doc_known_at": "2021-08-28T00:53:29",
+   "ledger_known_at": "2021-08-28T00:53:29",
+   "manifest_known_at": "2021-08-28T00:53:29",
+   "match": true
+  },
+  {
+   "newsid": "0076fab0-bc7a-4d18-9694-43c013e3b74e",
+   "doc_type": "announcement",
+   "doc_known_at": "2021-09-22T17:44:35",
+   "ledger_known_at": "2021-09-22T17:44:35",
+   "manifest_known_at": "2021-09-22T17:44:35",
+   "match": true
+  },
+  {
+   "newsid": "00c7103f-6716-4ab7-96da-6399af508306",
+   "doc_type": "announcement",
+   "doc_known_at": "2022-02-11T20:55:25",
+   "ledger_known_at": "2022-02-11T20:55:25",
+   "manifest_known_at": "2022-02-11T20:55:25",
+   "match": true
+  }
+ ],
+ "db_bytes": 63266816
+}

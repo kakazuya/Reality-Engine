@@ -1,0 +1,68 @@
+{
+ "shard": 3,
+ "shards": 4,
+ "assigned": 4507,
+ "processed": 4507,
+ "skipped_resume": 0,
+ "elapsed_s": 694.3,
+ "docs": 4507,
+ "chunks": 56328,
+ "outcomes": {
+  "chunked": 4323,
+  "needs_ocr": 184
+ },
+ "needs_ocr": 184,
+ "size_mismatch": 0,
+ "peak_rss_bytes": 547827712,
+ "seconds_per_file": 0.154,
+ "median_s": 0.027,
+ "p95_s": 0.416,
+ "known_at_checks": [
+  {
+   "shard": 3,
+   "newsid": "b0c8f56b-3d24-46e1-903e-5517efe3127c",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-01-01T16:14:45",
+   "ledger_known_at": "2019-01-01T16:14:45",
+   "manifest_known_at": "2019-01-01T16:14:45",
+   "match": true
+  },
+  {
+   "shard": 3,
+   "newsid": "a6b43619-a165-4c14-a62e-5983f60759a5",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-01-02T13:56:49",
+   "ledger_known_at": "2019-01-02T13:56:49",
+   "manifest_known_at": "2019-01-02T13:56:49",
+   "match": true
+  },
+  {
+   "shard": 3,
+   "newsid": "d9fd4f99-830b-42bd-b55d-9ec8baaf82e5",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-01-02T18:38:39",
+   "ledger_known_at": "2019-01-02T18:38:39",
+   "manifest_known_at": "2019-01-02T18:38:39",
+   "match": true
+  },
+  {
+   "shard": 3,
+   "newsid": "4f9f0d48-00d8-4a64-a67b-3a88c9acd035",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-01-03T17:17:48",
+   "ledger_known_at": "2019-01-03T17:17:48",
+   "manifest_known_at": "2019-01-03T17:17:48",
+   "match": true
+  },
+  {
+   "shard": 3,
+   "newsid": "e0e241c1-909c-4375-bf83-a4218245f670",
+   "doc_type": "announcement",
+   "doc_known_at": "2019-01-04T15:46:08",
+   "ledger_known_at": "2019-01-04T15:46:08",
+   "manifest_known_at": "2019-01-04T15:46:08",
+   "match": true
+  }
+ ],
+ "known_at_mismatches": 0
+}

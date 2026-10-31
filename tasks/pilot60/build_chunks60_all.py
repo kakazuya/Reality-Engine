@@ -133,6 +133,14 @@ def merge_reports(shard_dirs: list[Path]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(argv if argv is not None else sys.argv[1:])
+    if "--history" in argv:
+        # history mode owns its own sharding/merge (max 4 shards, RAM-gated); the
+        # FY25+ shard split below must not consume the history flags.
+        argv.remove("--history")
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from build_chunks60_history import main as history_main
+        return history_main(argv)
     ap = argparse.ArgumentParser()
     ap.add_argument("--shards", type=int, default=max(2, min(6, (os.cpu_count() or 4) // 2)))
     args = ap.parse_args(argv)

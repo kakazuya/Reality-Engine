@@ -117,6 +117,15 @@ def isin_alias(b, isins: list[str]) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(argv if argv is not None else sys.argv[1:])
+    if "--history" in argv:
+        # history mode: manifest-backed 2019-01-01..2024-03-31 build.  Its flags
+        # (--pilot/--full/--resume/--shards/--report-only) are parsed there, so the
+        # switch is intercepted before this parser sees them.
+        argv.remove("--history")
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from build_chunks60_history import main as history_main
+        return history_main(argv)
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int)
     ap.add_argument("--only", choices=("annual_report", "concall", "deck", "results_notes",
