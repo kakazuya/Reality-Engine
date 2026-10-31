@@ -1,6 +1,6 @@
 # v4 study operator cheap test — near-high count and forward return
 
-Task: `tasks/dsh_tasks/V4_STUDY_OPERATOR_TEST_2026-10-31.md` (idea 5 in
+Task: `tasks/archive/dsh_tasks/V4_STUDY_OPERATOR_TEST_2026-10-31.md` (moved after the job merged; idea 5 in
 `tasks/arch_v4/GATE95_REVIEW_2026-10-31.md`). Run: MB1044 and MB1047, every instance,
 hand-graded against an independent SQL recompute.
 

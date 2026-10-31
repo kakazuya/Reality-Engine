@@ -1,7 +1,6 @@
 # FY26 annual-report chunking — 2026-10-24
 
-Owner: Shivam · Worker: DeepSeek · Status: **in progress** (this note is updated in place; the final
-counts land in "Result" at the bottom).
+Owner: Shivam · Worker: DeepSeek · Status: **done** (final counts in §4, 19:00 IST).
 
 ## 1. Worker benchmark (1 vs 2 vs 4) — done 15:1x
 

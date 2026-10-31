@@ -647,7 +647,7 @@ exists.
 
 | | |
 |---|---|
-| Inputs | `results_xbrl.filings`: **76,416 filings** (measured). Only 27% carry notes text in the XBRL (**unverified** — from `HANDOFF_2026-10-26.md`; the query was not run here). `corporate_documents` FINANCIAL_RESULT 2,747. |
+| Inputs | `results_xbrl.filings`: **76,416 filings** (measured). Only 27% carry notes text in the XBRL (**unverified** — from `tasks/archive/optimizations/HANDOFF_2026-10-26.md`; the query was not run here). `corporate_documents` FINANCIAL_RESULT 2,747. |
 | Parser | Download the results PDF from BSE, keep **notes pages only** (the pages after the P&L), PyMuPDF text; OCR fallback. |
 | Chunking | `chunker_v2.chunk_annual_report` with `doc_type='results_notes'` (it already cuts on `Note N` headings). |
 | Labels | `fiscal_period` from the XBRL period; `isin`, `basis` (standalone/consolidated) from the XBRL `context`; `note_no` parsed from the heading → this is the join key to XBRL. `content_tags`: `accounting_note`, `related_party`, `debt`, `contingent_liability`, `segment`. |
@@ -1153,7 +1153,7 @@ Each number in this document traces to one of these. All used `reality_engine.db
 ## Appendix B — files read
 
 `tasks/LABELS_TAGGING_PLAN_2026-10-27.md`; `tasks/FRAMEWORK.md`; `tasks/STATE.md` (first 140 lines);
-`tasks/optimizations/HANDOFF_2026-10-26.md`; `tasks/optimizations/learn/C1C2_RESULTS_2026-10-26.md`;
+`tasks/archive/optimizations/HANDOFF_2026-10-26.md`; `tasks/optimizations/learn/C1C2_RESULTS_2026-10-26.md`;
 `tasks/worker_context/CONTEXT.md` (row counts and the 34.8k `raw_documents` figure);
 `reality_engine/processing/chunker_v2.py`; `reality_engine/scripts/load_deck_chunks.py`;
 `reality_engine/db/schema.sql` (lines 242-301, 395-444, 458-527, 641-660).

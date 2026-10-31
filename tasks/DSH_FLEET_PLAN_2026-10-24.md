@@ -1,5 +1,7 @@
 # dsh fleet: session-independent DeepSeek workers + data-job runner
 
+> **Implemented:** phases 1–2 landed in `plugins/dsh-worker/` (`tasks/MORNING_SUMMARY_2026-10-24.md`); this is the design record.
+
 Status: design by Claude, 2026-10-24 05:30 IST, at Shivam's request ("highest priority"). DeepSeek builds; Claude reviews.
 
 ## Goal

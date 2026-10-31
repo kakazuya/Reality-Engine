@@ -1,5 +1,7 @@
 # Worker optimisations — launch sheet for the next session (Claude)
 
+> **Status 31 Oct:** all four optimisations merged and installed (`MORNING_REPORT.md`); this is now the historical launch sheet. Live worker context is `tasks/worker_context/CONTEXT.md`.
+
 Shivam (2026-10-24/25): DeepSeek workers waste most of their time on rediscovery and sandbox workarounds. These four
 tasks are the first thing the next session does, after the app restart (which loads dsh-worker progress digests,
 merged in `6c0f59e`).
@@ -37,7 +39,9 @@ Grant more freedom only after 03 lands (its `write_scope` modes); `"full"` needs
    `tool_calls_before_first_edit` against `tasks/worker_context/orientation_baseline.json`. Target: ≥ 50% fewer
    orientation calls.
 
-## After the optimisations (paused work, see `tasks/handoff/`)
+## After the optimisations (paused work, now archived)
+
+The 24 Oct hand-offs are in `tasks/archive/handoff/`; the live queue is `tasks/handoff/QUEUE_2026-10-31.md`.
 
 Concall runner (`wip/concall-runner-2026-10-24`), chart/image pass (`dsh/20261024T180421Z-eed294f4`), local OCR
 pilot (`dsh/20261024T181301Z-e5311613`) — review, then resume with the new worker setup.

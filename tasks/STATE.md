@@ -7,6 +7,7 @@ Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or
 - Work queue, with what runs next and what waits for Shivam: `tasks/handoff/QUEUE_2026-10-31.md`.
 - Decision log: `D:\RealityEngine\plans\DECISION_LOG.md`, synced to Drive.
 - v4 design: `tasks/arch_v4/QUERY_V4_DESIGN.md`. Review of how to reach 95%: `tasks/arch_v4/GATE95_REVIEW_2026-10-31.md`.
+- Docs: stale hand-offs, state snapshots and merged briefs moved to `tasks/archive/` on 31 Oct; the move list is `tasks/archive/README.md`. Old gate numbers (8.2%, 10.2%, 1.0%) are out of date.
 
 ## Where the gate stands
 Golden rule step 5, 60-name pilot, 2,681 rows. Gate is not passed; the 30% checkpoint is missed.

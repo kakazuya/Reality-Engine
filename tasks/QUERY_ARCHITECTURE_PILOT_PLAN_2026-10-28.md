@@ -1,5 +1,7 @@
 # Query architecture + pilot plan (2026-10-28, Eagle)
 
+> **Historical design:** the live v4 design is `tasks/arch_v4/QUERY_V4_DESIGN.md`; the v1 planners and schema list below are this plan's record.
+
 Builds on `tasks/ARCHITECTURE_OVERHAUL_2026-10-27.md`, which holds the store layout, DDL, PIT rules and label rules, and keeps all of it. This document adds four things:
 - the **query layer** (how a question becomes an answer);
 - the **schema additions** the master bank needs;

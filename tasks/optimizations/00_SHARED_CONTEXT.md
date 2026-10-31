@@ -1,5 +1,7 @@
 # Shared context for every optimisation worker — READ THIS FIRST, then your own brief
 
+> **Historical (25 Oct):** the four optimisations merged (`MORNING_REPORT.md`); the live worker context is `tasks/worker_context/CONTEXT.md` and `tasks/STATE.md`. The machine paths below are as of 25 Oct.
+
 Written by Claude on 2026-10-25 from what the 2026-10-24 workers already discovered, so you do not rediscover it.
 **Budget rule: ≤ 25 tool calls before your first file edit.** Everything you need to start is below or in your brief.
 If something here is wrong, fix it in your report — do not silently work around it.

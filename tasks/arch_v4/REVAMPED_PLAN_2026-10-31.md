@@ -1,5 +1,7 @@
 # Revamped plan to the 95% gate — 31 Oct 2026
 
+> **Later result:** the baseline numbers and every "running" label below predate the 31 Oct 13:00 run. Current gate: 361/2,681 = 13.5% contract strict, 246/2,681 = 9.2% with shape checks, 0.00% read (`tasks/STATE.md`). The P0–P8 plan is unchanged.
+
 **Labels.** M = measured in the named file. E = estimate from it, at the confidence stated; no estimate has been upgraded. "Reviewer-measured" means the independent reviewer's measurement in `GATE95_REVIEW_2026-10-31.md`, not mine. Numbers are inline-labelled or named in the Provenance footer. Worker-hours are finished-worker hours (`QUERY_V4_DESIGN.md` §H.11), excluding hand grading and controller review. §1–§7 are the plan; §8 is the audit of the review and can be read last.
 
 ## 1. The situation in six lines
@@ -16,7 +18,7 @@
 | Move | Area | Old plan | New plan | Why |
 |---|---|---|---|---|
 | Stays | Golden rule; pilot/PIT/typed NID/proxy; WP2c; WP7/WP9/WP10 behind the gate; HP infra | As written | Unchanged; WP2c finishes, HP finishes and stops | Binding or not the blocker |
-| Changes | Gate measure | 30% strict checkpoint (`HANDOFF_2026-10-31.md:16`), then 95% | Truth panel (150 + 40), contract and shape counts beside it; 30% retired (D1); decomposer recall/precision and `--regress` become diagnostics | 3/40 RIGHT; 75% of answered rows wrong; the old measures see concept names, not truth |
+| Changes | Gate measure | 30% strict checkpoint (`tasks/archive/handoff/HANDOFF_2026-10-31.md:16`), then 95% | Truth panel (150 + 40), contract and shape counts beside it; 30% retired (D1); decomposer recall/precision and `--regress` become diagnostics | 3/40 RIGHT; 75% of answered rows wrong; the old measures see concept names, not truth |
 | Changes | Order | WP2c → WP3/WP4 → blind split/WP6 → gate | Truth grade + lookup repair first; reader test; scalar study; instance/scope; WP6/WP8/backtest delayed | 31% of failed rows lose held data; contract is blind to operator and window |
 | Changes | Lookup | Inside executor work | Own running package (P1) | 262 blank `as_of`; 87–93 dim rows; 21/60 names with no holdings |
 | Changes | Reader | Later design/build | Kill-or-keep test now (P2); build only if D5 | 97/1,116 text parts pass even the contract; 108,078 pilot chunks unread |
@@ -43,7 +45,7 @@ P0–P3 run now. P4 starts when P1 merges. P5–P7 wait for the decision named. 
 
 ## 4. Milestones as truth-panel numbers
 
-Replace the 30% strict checkpoint (M: `HANDOFF_2026-10-31.md:16`; `GATE_V4_SAMPLE40.md:98–101`) with the truth panel: 150 fixed rows, stratified by bucket, family and answer shape and weighted to the bank, plus 40 fresh rows per run from a pre-registered seed. The headline is the **full 2,681-row truth rate**; a second column gives the in-scope rate with exclusions listed; contract strict stays printed. The panel steers but cannot alone certify 95%: 143/150 RIGHT gives a Wilson 95% lower bound of about 91% (calculated), so the final gate must pre-declare a point estimate or a lower bound and use a larger sample or a validated judge.
+Replace the 30% strict checkpoint (M: `tasks/archive/handoff/HANDOFF_2026-10-31.md:16`; `GATE_V4_SAMPLE40.md:98–101`) with the truth panel: 150 fixed rows, stratified by bucket, family and answer shape and weighted to the bank, plus 40 fresh rows per run from a pre-registered seed. The headline is the **full 2,681-row truth rate**; a second column gives the in-scope rate with exclusions listed; contract strict stays printed. The panel steers but cannot alone certify 95%: 143/150 RIGHT gives a Wilson 95% lower bound of about 91% (calculated), so the final gate must pre-declare a point estimate or a lower bound and use a larger sample or a validated judge.
 
 | Milestone | Trigger | Proposed full-bank truth | Confidence | If missed |
 |---|---|---|---|---|

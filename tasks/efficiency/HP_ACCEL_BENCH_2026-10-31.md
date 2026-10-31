@@ -1,5 +1,7 @@
 # HP OmniBook 5 — capacity, OCR accelerators, network (2026-10-31)
 
+> **Corrections later the same day:** the HP does **not** need Python 3.13 — `cryptography` 46.0.3 installs on its 3.14 ARM64 and `mcp` runs there (§10.1 below); §2 and §7's 3.13 requirement is stale. The LAN address `192.168.1.42` now times out; use `HP_RUN_HOST=zen7s@100.78.87.112` (`tasks/STATE.md`).
+
 **Answers first**
 
 - **Capacity: yes, good enough. 8 simulated workers ran with 8.56 GB of commit left and every
