@@ -14,12 +14,12 @@ Golden rule step 5, 60-name pilot, 2,681 rows. Gate is not passed; the 30% check
 
 | Measure | Value | Source |
 |---|---:|---|
-| Contract strict | 361/2681 = 13.5% | gate on main, 31 Oct 13:00; before shareholding XBRL and near_high |
-| Contract + shape checks | 246/2681 = 9.2% | same run |
-| Rule grade, not reliable | 0.42% [0.17, 1.05] | `tasks/arch_v4/TRUTH_GRADE_2026-10-31.md` |
-| **Read grade: the number to trust** | **0/127 answered rows RIGHT, 0.00% [0.00, 0.40] of the bank; 42/127 ill-posed** | `tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md` |
+| Contract strict | 341/2681 = 12.7% | gate on main `17234a4`, 31 Oct 14:30 |
+| Contract + shape checks | 237/2681 = 8.8% | same run |
+| Rule grade, not reliable | 0.6% [0.28, 1.26] | `tasks/arch_v4/TRUTH_GRADE_2026-10-31.md`, same run |
+| **Read grade: the number to trust** | **0/127 answered rows RIGHT, 0.00% [0.00, 0.40] of the bank; 42/127 ill-posed** | `tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`, on the 13:00 run (13.5% contract); not yet repeated on later answers |
 
-The contract count measures answer shape, not truth. Largest cause: 66 of 127 answered rows return a nearby measure, not the one asked. Any earlier number (8.2%, 10.2%, 1.0%) is out of date.
+The contract count measures answer shape, not truth, and fell because stale and wrong-period values stopped counting. Largest cause in the read grade: 66 of 127 answered rows return a nearby measure, not the one asked. Any earlier number (8.2%, 10.2%, 13.5%, 1.0%) is out of date.
 
 ## Stores, `reality_engine/data/pilot/v4/`
 - `fact_v4_pilot.db`: core facts. `hold.pct` has promoter and public (57 of 60 names) plus FII, DII, MF and insurance (56); `hold.pledge_pct` has 57. **`price.close` is split/bonus-adjusted (`adj_close`, using later actions) while `price.open`, `price.high` and `price.low` are raw: POWERGRID 2023-09-11 stores 198.375, traded 264.50.** Returns are sound; levels before an action are not traded prices. Fix queued. No point-in-time corporate action atom.
