@@ -327,8 +327,15 @@ def parse_answers(text: str | None, wanted: dict[int, None],
 
 
 # --- model call --------------------------------------------------------------
-def call_beam(system: str, user: str, key: str, *, timeout: int = 300) -> dict:
-    """One request; raises RateLimited / BillingError, retries a 5xx twice."""
+def call_beam(system: str, user: str, key: str, *, timeout: int = 300,
+              job: str = "v4_vocab_pass2", caller: str = "v4_vocab_pass2") -> dict:
+    """One request; raises RateLimited / BillingError, retries a 5xx twice.
+
+    ``job`` is the stable OpenCode session tag (``go_session.session_id`` hashes
+    the job, model and key together); it stays constant across a resumable run.
+    ``caller`` is the ledger label, kept separate so a promotion run is not
+    charged to the pass2 job in ``tasks/ledgers/spend.jsonl``.
+    """
     key = key or ""
     last = ""
     body = {"model": MODEL, "max_tokens": MAX_TOKENS,
@@ -341,7 +348,7 @@ def call_beam(system: str, user: str, key: str, *, timeout: int = 300) -> dict:
             r = requests.post(
                 URL, timeout=timeout,
                 headers={"Authorization": f"Bearer {key}",
-                         "x-opencode-session": session_id("v4_vocab_pass2", MODEL, key)},
+                         "x-opencode-session": session_id(job, MODEL, key)},
                 json=body)
         except requests.RequestException as exc:
             last = repr(exc)[:200]
@@ -354,7 +361,7 @@ def call_beam(system: str, user: str, key: str, *, timeout: int = 300) -> dict:
             data = r.json()
             choice = (data.get("choices") or [{}])[0]
             usage = data.get("usage") or {}
-            record_usage(MODEL, usage, "v4_vocab_pass2")
+            record_usage(MODEL, usage, caller)
             return {"content": (choice.get("message") or {}).get("content") or "",
                     "finish": choice.get("finish_reason"),
                     "in_tok": int(usage.get("prompt_tokens") or 0),

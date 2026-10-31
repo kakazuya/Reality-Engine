@@ -1,0 +1,4127 @@
+{
+ "generated_at": "2026-10-31T00:29:13+00:00",
+ "applied": false,
+ "source_store": ".tmp/v4_vocab_source_copy.db (byte copy of C:\\RE\\data\\pilot\\v4\\v4_vocab.db; the mount is read-only)",
+ "model": "beam-free",
+ "note": "Beam suggestions only. No label or alias was written to map. New labels need a parent family at approval.",
+ "data_limit": "value/quote evidence is a two-excerpt sample from beam_context; the extraction stores needed for the occurrence-weighted share were not mounted",
+ "gate": {
+  "before": {
+   "uses": 1382374,
+   "uses_pct": 76.1394837244937,
+   "total_uses": 1815581,
+   "isin_pairs": 123408,
+   "isin_pairs_pct": 62.395971321960545,
+   "isin_total": 197782,
+   "surfaces": 89960,
+   "surfaces_pct": 60.517181067190485,
+   "total_surfaces": 148652,
+   "head_labelled": 43744,
+   "head_total": 62601,
+   "head_pct": 69.87747799555918
+  },
+  "after_mapper_fix": {
+   "uses": 1397615,
+   "uses_pct": 76.97893952404216,
+   "total_uses": 1815581,
+   "isin_pairs": 124147,
+   "isin_pairs_pct": 62.76961503069035,
+   "isin_total": 197782,
+   "surfaces": 90451,
+   "surfaces_pct": 60.84748271129887,
+   "total_surfaces": 148652,
+   "head_labelled": 43992,
+   "head_total": 62601,
+   "head_pct": 70.27363780131307
+  },
+  "after_proposals": {
+   "uses": 1502695,
+   "uses_pct": 82.76661850944684,
+   "total_uses": 1815581,
+   "isin_pairs": 130434,
+   "isin_pairs_pct": 65.94836739440395,
+   "isin_total": 197782,
+   "surfaces": 90749,
+   "surfaces_pct": 61.047950918924734,
+   "total_surfaces": 148652,
+   "head_labelled": 44290,
+   "head_total": 62601,
+   "head_pct": 70.74966853564639
+  },
+  "uses_target_pct": 95.0,
+  "shortfall_pp": 12.233,
+  "if_brsr_headings_are_buckets": {
+   "uses_removed": 23736,
+   "uses_pct_after": 81.459
+  }
+ },
+ "mapper_fix": {
+  "added_topics": [
+   "roe",
+   "roce",
+   "roa",
+   "ronw"
+  ],
+  "spelling_variants": [
+   "p&l",
+   "p_and_l",
+   "pnl",
+   "p/l",
+   "balance sheet",
+   "balance_sheet",
+   "balancesheet"
+  ],
+  "newly_labelled_surfaces": 491,
+  "newly_labelled_uses": 15241,
+  "newly_labelled_isin_pairs": 739,
+  "changed_existing_labels": 211
+ },
+ "new_labels": [
+  {
+   "label_id": "environment",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "environmental metrics and disclosures",
+   "surfaces": [
+    "environment",
+    "environmental",
+    "Environment"
+   ],
+   "uses": 4972,
+   "isin_pairs": 104
+  },
+  {
+   "label_id": "capital_commitment",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "capital commitments and pending contracts",
+   "surfaces": [
+    "capital_commitment",
+    "capital_commitments",
+    "commitment",
+    "capital commitment"
+   ],
+   "uses": 2950,
+   "isin_pairs": 176
+  },
+  {
+   "label_id": "credit_rating",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "credit rating assigned by rating agencies",
+   "surfaces": [
+    "credit_rating",
+    "credit rating",
+    "Credit Rating",
+    "credit ratings"
+   ],
+   "uses": 2878,
+   "isin_pairs": 128
+  },
+  {
+   "label_id": "fair_value",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "fair value measurements",
+   "surfaces": [
+    "fair_value",
+    "fair value"
+   ],
+   "uses": 2547,
+   "isin_pairs": 73
+  },
+  {
+   "label_id": "energy",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "energy consumption and efficiency",
+   "surfaces": [
+    "energy",
+    "Energy"
+   ],
+   "uses": 2529,
+   "isin_pairs": 61
+  },
+  {
+   "label_id": "aum",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "assets under management",
+   "surfaces": [
+    "AUM",
+    "Total AUM",
+    "AUM (₹ ‘000 Cr)"
+   ],
+   "uses": 2287,
+   "isin_pairs": 11
+  },
+  {
+   "label_id": "training",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "employee training hours and programs",
+   "surfaces": [
+    "training",
+    "Training"
+   ],
+   "uses": 2273,
+   "isin_pairs": 59
+  },
+  {
+   "label_id": "safety",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "safety incidents and practices",
+   "surfaces": [
+    "safety"
+   ],
+   "uses": 2227,
+   "isin_pairs": 45
+  },
+  {
+   "label_id": "exceptional_items",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "exceptional and one-off items",
+   "surfaces": [
+    "exceptional_items",
+    "Exceptional items",
+    "Exceptional Items",
+    "exceptional items"
+   ],
+   "uses": 2106,
+   "isin_pairs": 95
+  },
+  {
+   "label_id": "derivatives",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "derivative instruments and exposures",
+   "surfaces": [
+    "derivatives"
+   ],
+   "uses": 2043,
+   "isin_pairs": 38
+  },
+  {
+   "label_id": "water",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "water consumption and usage",
+   "surfaces": [
+    "water",
+    "esg_water"
+   ],
+   "uses": 1921,
+   "isin_pairs": 53
+  },
+  {
+   "label_id": "hedging",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "hedging instruments and coverage",
+   "surfaces": [
+    "hedging"
+   ],
+   "uses": 1890,
+   "isin_pairs": 37
+  },
+  {
+   "label_id": "waste",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "waste generation and disposal",
+   "surfaces": [
+    "waste",
+    "Waste",
+    "esg_waste"
+   ],
+   "uses": 1857,
+   "isin_pairs": 62
+  },
+  {
+   "label_id": "fair_value_hierarchy",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "fair value hierarchy levels",
+   "surfaces": [
+    "fair_value_hierarchy",
+    "fair value hierarchy"
+   ],
+   "uses": 1816,
+   "isin_pairs": 51
+  },
+  {
+   "label_id": "foreign_exchange",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign exchange earnings and exposures",
+   "surfaces": [
+    "foreign_exchange",
+    "foreign exchange"
+   ],
+   "uses": 1813,
+   "isin_pairs": 104
+  },
+  {
+   "label_id": "sustainability",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "sustainability and ESG initiatives",
+   "surfaces": [
+    "sustainability",
+    "Sustainability"
+   ],
+   "uses": 1763,
+   "isin_pairs": 60
+  },
+  {
+   "label_id": "compliance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "regulatory and statutory compliance",
+   "surfaces": [
+    "compliance",
+    "Compliance"
+   ],
+   "uses": 1579,
+   "isin_pairs": 71
+  },
+  {
+   "label_id": "caro",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "CARO audit reporting matters",
+   "surfaces": [
+    "caro"
+   ],
+   "uses": 1361,
+   "isin_pairs": 54
+  },
+  {
+   "label_id": "foreign_currency_exposure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign currency exposure",
+   "surfaces": [
+    "foreign_currency_exposure",
+    "foreign currency exposure",
+    "Foreign Currency Exposure"
+   ],
+   "uses": 1245,
+   "isin_pairs": 52
+  },
+  {
+   "label_id": "goodwill",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "goodwill and intangible assets",
+   "surfaces": [
+    "goodwill",
+    "Goodwill"
+   ],
+   "uses": 1241,
+   "isin_pairs": 43
+  },
+  {
+   "label_id": "emissions",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "greenhouse gas emissions",
+   "surfaces": [
+    "emissions"
+   ],
+   "uses": 1238,
+   "isin_pairs": 41
+  },
+  {
+   "label_id": "esg",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "ESG performance and ratings",
+   "surfaces": [
+    "esg",
+    "ESG"
+   ],
+   "uses": 1199,
+   "isin_pairs": 67
+  },
+  {
+   "label_id": "liquidity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "liquidity and funding position",
+   "surfaces": [
+    "liquidity",
+    "Liquidity"
+   ],
+   "uses": 1195,
+   "isin_pairs": 46
+  },
+  {
+   "label_id": "corporate_action",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "dividends and corporate actions",
+   "surfaces": [
+    "corporate_action",
+    "corporate action"
+   ],
+   "uses": 1176,
+   "isin_pairs": 84
+  },
+  {
+   "label_id": "macro",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "macroeconomic indicators",
+   "surfaces": [
+    "macro"
+   ],
+   "uses": 997,
+   "isin_pairs": 39
+  },
+  {
+   "label_id": "fleet",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "fleet and plant network",
+   "surfaces": [
+    "fleet"
+   ],
+   "uses": 958,
+   "isin_pairs": 33
+  },
+  {
+   "label_id": "discontinued_operations",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "discontinued operations",
+   "surfaces": [
+    "discontinued_operations",
+    "discontinued operations"
+   ],
+   "uses": 914,
+   "isin_pairs": 30
+  },
+  {
+   "label_id": "saleable_area",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "area available for sale",
+   "surfaces": [
+    "Saleable Area",
+    "Saleable Area (Lakhs Sq. ft.)"
+   ],
+   "uses": 877,
+   "isin_pairs": 3
+  },
+  {
+   "label_id": "complaints",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "complaints received and resolved",
+   "surfaces": [
+    "complaints"
+   ],
+   "uses": 873,
+   "isin_pairs": 50
+  },
+  {
+   "label_id": "fx_exposure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign currency exposure",
+   "surfaces": [
+    "fx_exposure"
+   ],
+   "uses": 824,
+   "isin_pairs": 42
+  },
+  {
+   "label_id": "exceptional_item",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "non-recurring items affecting profit",
+   "surfaces": [
+    "exceptional_item",
+    "exceptional item"
+   ],
+   "uses": 767,
+   "isin_pairs": 62
+  },
+  {
+   "label_id": "capital",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "capital structure and inputs",
+   "surfaces": [
+    "capital"
+   ],
+   "uses": 744,
+   "isin_pairs": 53
+  },
+  {
+   "label_id": "disputed_statutory_dues",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "disputed statutory dues",
+   "surfaces": [
+    "disputed_statutory_dues"
+   ],
+   "uses": 692,
+   "isin_pairs": 20
+  },
+  {
+   "label_id": "derivative",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "derivative instruments",
+   "surfaces": [
+    "derivative"
+   ],
+   "uses": 679,
+   "isin_pairs": 26
+  },
+  {
+   "label_id": "capital_structure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "capital structure",
+   "surfaces": [
+    "capital_structure",
+    "capital structure"
+   ],
+   "uses": 668,
+   "isin_pairs": 63
+  },
+  {
+   "label_id": "project",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "projects and initiatives",
+   "surfaces": [
+    "project"
+   ],
+   "uses": 639,
+   "isin_pairs": 23
+  },
+  {
+   "label_id": "sensitivity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "sensitivity analysis",
+   "surfaces": [
+    "sensitivity"
+   ],
+   "uses": 633,
+   "isin_pairs": 27
+  },
+  {
+   "label_id": "energy_consumption",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "energy consumption",
+   "surfaces": [
+    "energy_consumption"
+   ],
+   "uses": 625,
+   "isin_pairs": 34
+  },
+  {
+   "label_id": "human_rights_training",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "human rights training",
+   "surfaces": [
+    "human_rights_training"
+   ],
+   "uses": 599,
+   "isin_pairs": 40
+  },
+  {
+   "label_id": "iepf",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "investor education and protection fund",
+   "surfaces": [
+    "iepf",
+    "IEPF"
+   ],
+   "uses": 596,
+   "isin_pairs": 82
+  },
+  {
+   "label_id": "procurement",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "purchasing and sourcing",
+   "surfaces": [
+    "procurement"
+   ],
+   "uses": 594,
+   "isin_pairs": 36
+  },
+  {
+   "label_id": "offsetting",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "netting of financial assets and liabilities",
+   "surfaces": [
+    "offsetting"
+   ],
+   "uses": 537,
+   "isin_pairs": 6
+  },
+  {
+   "label_id": "fx_sensitivity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign exchange sensitivity",
+   "surfaces": [
+    "fx_sensitivity"
+   ],
+   "uses": 532,
+   "isin_pairs": 38
+  },
+  {
+   "label_id": "certification",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "certifications",
+   "surfaces": [
+    "certification"
+   ],
+   "uses": 519,
+   "isin_pairs": 46
+  },
+  {
+   "label_id": "listing",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "stock exchange listings",
+   "surfaces": [
+    "listing"
+   ],
+   "uses": 514,
+   "isin_pairs": 57
+  },
+  {
+   "label_id": "grievances",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "grievances and complaints",
+   "surfaces": [
+    "grievances"
+   ],
+   "uses": 509,
+   "isin_pairs": 39
+  },
+  {
+   "label_id": "commitments",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "commitments",
+   "surfaces": [
+    "commitments"
+   ],
+   "uses": 499,
+   "isin_pairs": 38
+  },
+  {
+   "label_id": "capital_adequacy_ratio",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "capital to risk-weighted assets ratio",
+   "surfaces": [
+    "CRAR (standalone)"
+   ],
+   "uses": 495,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "human_rights",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "human rights",
+   "surfaces": [
+    "human_rights"
+   ],
+   "uses": 494,
+   "isin_pairs": 42
+  },
+  {
+   "label_id": "rnd",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "research and development",
+   "surfaces": [
+    "rnd"
+   ],
+   "uses": 486,
+   "isin_pairs": 30
+  },
+  {
+   "label_id": "sensitivity_analysis",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "effect of variable changes",
+   "surfaces": [
+    "sensitivity_analysis",
+    "sensitivity analysis"
+   ],
+   "uses": 481,
+   "isin_pairs": 29
+  },
+  {
+   "label_id": "agm",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "annual general meeting",
+   "surfaces": [
+    "agm",
+    "AGM"
+   ],
+   "uses": 473,
+   "isin_pairs": 90
+  },
+  {
+   "label_id": "capital_employed",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "total capital used in business",
+   "surfaces": [
+    "Capital Employed",
+    "Capital Employed*"
+   ],
+   "uses": 472,
+   "isin_pairs": 9
+  },
+  {
+   "label_id": "assurance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "assurance providers",
+   "surfaces": [
+    "assurance"
+   ],
+   "uses": 469,
+   "isin_pairs": 36
+  },
+  {
+   "label_id": "ghg_emissions",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "greenhouse gas emissions",
+   "surfaces": [
+    "ghg_emissions",
+    "GHG Emissions"
+   ],
+   "uses": 460,
+   "isin_pairs": 33
+  },
+  {
+   "label_id": "litigation",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "litigation matters",
+   "surfaces": [
+    "litigation"
+   ],
+   "uses": 459,
+   "isin_pairs": 48
+  },
+  {
+   "label_id": "buyback",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "repurchase of company shares",
+   "surfaces": [
+    "buyback"
+   ],
+   "uses": 446,
+   "isin_pairs": 18
+  },
+  {
+   "label_id": "maturity_analysis",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "timing of financial liabilities",
+   "surfaces": [
+    "maturity_analysis"
+   ],
+   "uses": 443,
+   "isin_pairs": 9
+  },
+  {
+   "label_id": "msme",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "micro and small enterprises",
+   "surfaces": [
+    "msme"
+   ],
+   "uses": 436,
+   "isin_pairs": 50
+  },
+  {
+   "label_id": "capital_adequacy",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "regulatory capital adequacy ratio",
+   "surfaces": [
+    "Total Capital Adequacy Ratio (CRAR)",
+    "capital_adequacy"
+   ],
+   "uses": 415,
+   "isin_pairs": 5
+  },
+  {
+   "label_id": "consumer_complaints",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "complaints from consumers",
+   "surfaces": [
+    "consumer_complaints",
+    "consumer complaints"
+   ],
+   "uses": 411,
+   "isin_pairs": 54
+  },
+  {
+   "label_id": "network",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "retail network and outlets",
+   "surfaces": [
+    "network",
+    "Network"
+   ],
+   "uses": 406,
+   "isin_pairs": 14
+  },
+  {
+   "label_id": "energy_conservation",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "energy saving initiatives",
+   "surfaces": [
+    "energy_conservation",
+    "energy conservation"
+   ],
+   "uses": 399,
+   "isin_pairs": 43
+  },
+  {
+   "label_id": "actuarial_assumptions",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "assumptions for employee benefit valuations",
+   "surfaces": [
+    "actuarial_assumptions",
+    "actuarial assumptions"
+   ],
+   "uses": 386,
+   "isin_pairs": 31
+  },
+  {
+   "label_id": "grievance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "stakeholder complaints raised",
+   "surfaces": [
+    "grievance"
+   ],
+   "uses": 384,
+   "isin_pairs": 33
+  },
+  {
+   "label_id": "research_development",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "research and development activity",
+   "surfaces": [
+    "research_development",
+    "rd"
+   ],
+   "uses": 379,
+   "isin_pairs": 50
+  },
+  {
+   "label_id": "committee_attendance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "board committee meeting attendance",
+   "surfaces": [
+    "committee_attendance"
+   ],
+   "uses": 370,
+   "isin_pairs": 27
+  },
+  {
+   "label_id": "legal",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "legal matters",
+   "surfaces": [
+    "legal"
+   ],
+   "uses": 356,
+   "isin_pairs": 51
+  },
+  {
+   "label_id": "diversity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "workforce diversity metrics",
+   "surfaces": [
+    "diversity"
+   ],
+   "uses": 353,
+   "isin_pairs": 28
+  },
+  {
+   "label_id": "pbdt",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "profit before depreciation and tax",
+   "surfaces": [
+    "PBDT"
+   ],
+   "uses": 352,
+   "isin_pairs": 2
+  },
+  {
+   "label_id": "r_and_d",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "research and development spend",
+   "surfaces": [
+    "r_and_d"
+   ],
+   "uses": 345,
+   "isin_pairs": 20
+  },
+  {
+   "label_id": "research_and_development",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "research and development expenditure or activity",
+   "surfaces": [
+    "r&d",
+    "research and development"
+   ],
+   "uses": 343,
+   "isin_pairs": 24
+  },
+  {
+   "label_id": "safety_incidents",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "workplace safety incidents",
+   "surfaces": [
+    "safety_incidents"
+   ],
+   "uses": 334,
+   "isin_pairs": 27
+  },
+  {
+   "label_id": "forex",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign exchange earnings or exposure",
+   "surfaces": [
+    "forex"
+   ],
+   "uses": 330,
+   "isin_pairs": 42
+  },
+  {
+   "label_id": "maturity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "due dates of liabilities",
+   "surfaces": [
+    "maturity"
+   ],
+   "uses": 328,
+   "isin_pairs": 14
+  },
+  {
+   "label_id": "distribution",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "dealer and distribution network",
+   "surfaces": [
+    "distribution"
+   ],
+   "uses": 320,
+   "isin_pairs": 23
+  },
+  {
+   "label_id": "urban_b2c",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "urban b2c portfolio",
+   "surfaces": [
+    "Urban B2C"
+   ],
+   "uses": 314,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "marketing",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "promotional and customer outreach activities",
+   "surfaces": [
+    "marketing"
+   ],
+   "uses": 309,
+   "isin_pairs": 19
+  },
+  {
+   "label_id": "award",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "recognition received by company",
+   "surfaces": [
+    "award"
+   ],
+   "uses": 308,
+   "isin_pairs": 34
+  },
+  {
+   "label_id": "consolidation",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "combining financial statements of subsidiaries",
+   "surfaces": [
+    "consolidation"
+   ],
+   "uses": 306,
+   "isin_pairs": 22
+  },
+  {
+   "label_id": "actuarial_assumption",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "assumptions used in benefit obligation valuation",
+   "surfaces": [
+    "actuarial_assumption",
+    "actuarial assumption"
+   ],
+   "uses": 306,
+   "isin_pairs": 26
+  },
+  {
+   "label_id": "pcr",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "provision coverage ratio",
+   "surfaces": [
+    "PCR (%)",
+    "PCR"
+   ],
+   "uses": 302,
+   "isin_pairs": 4
+  },
+  {
+   "label_id": "contract_balances",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "balances from customer contracts",
+   "surfaces": [
+    "contract_balances"
+   ],
+   "uses": 299,
+   "isin_pairs": 23
+  },
+  {
+   "label_id": "restatement",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "revision of prior financial statements due to errors",
+   "surfaces": [
+    "restatement"
+   ],
+   "uses": 292,
+   "isin_pairs": 30
+  },
+  {
+   "label_id": "tier_1_capital",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "bank tier 1 regulatory capital",
+   "surfaces": [
+    "Tier 1 Capital"
+   ],
+   "uses": 292,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "tier_2_capital",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "bank tier 2 regulatory capital",
+   "surfaces": [
+    "Tier 2 Capital"
+   ],
+   "uses": 292,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "credit_facility_availability",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "unused committed credit lines",
+   "surfaces": [
+    "Availability under committed credit facilities"
+   ],
+   "uses": 291,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "leverage",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "debt relative to equity or earnings",
+   "surfaces": [
+    "leverage"
+   ],
+   "uses": 288,
+   "isin_pairs": 27
+  },
+  {
+   "label_id": "concentration",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "reliance on few customers or suppliers",
+   "surfaces": [
+    "concentration"
+   ],
+   "uses": 288,
+   "isin_pairs": 18
+  },
+  {
+   "label_id": "liquidity_maturity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "maturity profile of liabilities",
+   "surfaces": [
+    "liquidity_maturity"
+   ],
+   "uses": 285,
+   "isin_pairs": 14
+  },
+  {
+   "label_id": "nci",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "non-controlling interest in subsidiaries",
+   "surfaces": [
+    "nci"
+   ],
+   "uses": 284,
+   "isin_pairs": 20
+  },
+  {
+   "label_id": "prescription_ranking",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "prescription market ranking",
+   "surfaces": [
+    "Prescription Ranking"
+   ],
+   "uses": 280,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "air_emissions",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "gaseous pollutants released to atmosphere",
+   "surfaces": [
+    "air_emissions"
+   ],
+   "uses": 278,
+   "isin_pairs": 30
+  },
+  {
+   "label_id": "cost_of_funds",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "cost of funds",
+   "surfaces": [
+    "COF"
+   ],
+   "uses": 277,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "leverage_ratio",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "leverage ratio",
+   "surfaces": [
+    "Leverage Ratio"
+   ],
+   "uses": 277,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "cross_sell_franchise",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "cross-sell franchise value",
+   "surfaces": [
+    "Cross sell franchise"
+   ],
+   "uses": 268,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "strategy",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "strategic plans and targets",
+   "surfaces": [
+    "strategy"
+   ],
+   "uses": 267,
+   "isin_pairs": 44
+  },
+  {
+   "label_id": "hedge_accounting",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "hedge accounting adjustments",
+   "surfaces": [
+    "hedge_accounting"
+   ],
+   "uses": 263,
+   "isin_pairs": 10
+  },
+  {
+   "label_id": "retail_stores",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "number of retail stores",
+   "surfaces": [
+    "Retail Stores"
+   ],
+   "uses": 260,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "leverage_threshold",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "maximum permitted leverage ratio",
+   "surfaces": [
+    "Leverage Threshold"
+   ],
+   "uses": 256,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "exports",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "export contribution and sales",
+   "surfaces": [
+    "exports",
+    "Exports"
+   ],
+   "uses": 255,
+   "isin_pairs": 32
+  },
+  {
+   "label_id": "macro_economy",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "macroeconomic indicators and outlook",
+   "surfaces": [
+    "macro_economy"
+   ],
+   "uses": 252,
+   "isin_pairs": 10
+  },
+  {
+   "label_id": "water_withdrawal",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "water taken from sources",
+   "surfaces": [
+    "water_withdrawal"
+   ],
+   "uses": 247,
+   "isin_pairs": 29
+  },
+  {
+   "label_id": "foreign_currency",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign currency amounts and expenditure",
+   "surfaces": [
+    "foreign_currency"
+   ],
+   "uses": 247,
+   "isin_pairs": 17
+  },
+  {
+   "label_id": "net_gain_on_fair_value_changes",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "net gain from fair value changes in financial instruments",
+   "surfaces": [
+    "Net gain on fair value changes"
+   ],
+   "uses": 245,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "divestment",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "sale or disposal of assets or businesses",
+   "surfaces": [
+    "divestment"
+   ],
+   "uses": 244,
+   "isin_pairs": 30
+  },
+  {
+   "label_id": "market_position",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "competitive standing in market",
+   "surfaces": [
+    "market_position"
+   ],
+   "uses": 242,
+   "isin_pairs": 31
+  },
+  {
+   "label_id": "ghg",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "greenhouse gas emissions",
+   "surfaces": [
+    "ghg"
+   ],
+   "uses": 242,
+   "isin_pairs": 22
+  },
+  {
+   "label_id": "renewable_energy",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "energy from renewable sources",
+   "surfaces": [
+    "renewable_energy"
+   ],
+   "uses": 240,
+   "isin_pairs": 23
+  },
+  {
+   "label_id": "unclaimed_shares",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "shares unclaimed by shareholders",
+   "surfaces": [
+    "unclaimed_shares"
+   ],
+   "uses": 236,
+   "isin_pairs": 18
+  },
+  {
+   "label_id": "safety_performance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "workplace safety incidents and fatalities",
+   "surfaces": [
+    "safety_performance"
+   ],
+   "uses": 234,
+   "isin_pairs": 6
+  },
+  {
+   "label_id": "derivative_instruments",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "financial derivative contracts held",
+   "surfaces": [
+    "derivative instruments"
+   ],
+   "uses": 232,
+   "isin_pairs": 3
+  },
+  {
+   "label_id": "oci",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "other comprehensive income",
+   "surfaces": [
+    "oci"
+   ],
+   "uses": 231,
+   "isin_pairs": 28
+  },
+  {
+   "label_id": "guarantee",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "third-party guarantee obligations",
+   "surfaces": [
+    "guarantee"
+   ],
+   "uses": 220,
+   "isin_pairs": 25
+  },
+  {
+   "label_id": "brsr",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "business responsibility sustainability reporting",
+   "surfaces": [
+    "brsr"
+   ],
+   "uses": 216,
+   "isin_pairs": 27
+  },
+  {
+   "label_id": "hedge_reserve",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "reserve for cash flow hedge effectiveness",
+   "surfaces": [
+    "hedge_reserve"
+   ],
+   "uses": 210,
+   "isin_pairs": 4
+  },
+  {
+   "label_id": "kmp",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "key managerial personnel",
+   "surfaces": [
+    "kmp"
+   ],
+   "uses": 208,
+   "isin_pairs": 41
+  },
+  {
+   "label_id": "contract",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "signed customer contracts",
+   "surfaces": [
+    "contract"
+   ],
+   "uses": 206,
+   "isin_pairs": 24
+  },
+  {
+   "label_id": "reclassification",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "accounting reclassification",
+   "surfaces": [
+    "reclassification"
+   ],
+   "uses": 204,
+   "isin_pairs": 19
+  },
+  {
+   "label_id": "environment_waste",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "waste generation and disposal",
+   "surfaces": [
+    "environment-waste"
+   ],
+   "uses": 204,
+   "isin_pairs": 7
+  },
+  {
+   "label_id": "ev100",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "commitment to 100% electric vehicles",
+   "surfaces": [
+    "EV 100"
+   ],
+   "uses": 202,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "ep100",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "energy productivity commitment",
+   "surfaces": [
+    "EP 100"
+   ],
+   "uses": 200,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "affordability_index",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "housing affordability index",
+   "surfaces": [
+    "Affordability Index for Housing (By Metropolitan Area)"
+   ],
+   "uses": 200,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "sourcing",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "procurement of inputs",
+   "surfaces": [
+    "sourcing"
+   ],
+   "uses": 199,
+   "isin_pairs": 36
+  },
+  {
+   "label_id": "disputed_dues",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "disputed statutory dues",
+   "surfaces": [
+    "disputed_dues"
+   ],
+   "uses": 197,
+   "isin_pairs": 24
+  },
+  {
+   "label_id": "economic_value",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "value generated by the company for stakeholders",
+   "surfaces": [
+    "economic_value"
+   ],
+   "uses": 196,
+   "isin_pairs": 9
+  },
+  {
+   "label_id": "human_rights_complaints",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "complaints of human rights violations",
+   "surfaces": [
+    "human_rights_complaints"
+   ],
+   "uses": 194,
+   "isin_pairs": 30
+  },
+  {
+   "label_id": "insolvency",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "insolvency proceedings and settlements",
+   "surfaces": [
+    "insolvency"
+   ],
+   "uses": 194,
+   "isin_pairs": 22
+  },
+  {
+   "label_id": "investor_grievances",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "complaints from investors",
+   "surfaces": [
+    "investor_grievances"
+   ],
+   "uses": 193,
+   "isin_pairs": 33
+  },
+  {
+   "label_id": "fibre",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "textile fibre product",
+   "surfaces": [
+    "Fibre"
+   ],
+   "uses": 192,
+   "isin_pairs": 2
+  },
+  {
+   "label_id": "currency_exposure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "unhedged foreign currency exposure",
+   "surfaces": [
+    "currency_exposure"
+   ],
+   "uses": 189,
+   "isin_pairs": 8
+  },
+  {
+   "label_id": "equivalent_area_constructed",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "area constructed in equivalent units",
+   "surfaces": [
+    "Equivalent Area Constructed (Lakhs sq ft)"
+   ],
+   "uses": 189,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "fair_value_measurement",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "fair value hierarchy measurements",
+   "surfaces": [
+    "fair value measurement"
+   ],
+   "uses": 188,
+   "isin_pairs": 10
+  },
+  {
+   "label_id": "investor_complaints",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "investor grievances received",
+   "surfaces": [
+    "investor_complaints"
+   ],
+   "uses": 186,
+   "isin_pairs": 26
+  },
+  {
+   "label_id": "posh",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "complaints under the POSH Act",
+   "surfaces": [
+    "posh"
+   ],
+   "uses": 183,
+   "isin_pairs": 40
+  },
+  {
+   "label_id": "parental_leave",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "parental leave and return-to-work rates",
+   "surfaces": [
+    "parental_leave"
+   ],
+   "uses": 183,
+   "isin_pairs": 33
+  },
+  {
+   "label_id": "postal_ballot",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "postal ballot resolutions",
+   "surfaces": [
+    "postal_ballot"
+   ],
+   "uses": 183,
+   "isin_pairs": 30
+  },
+  {
+   "label_id": "energy_intensity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "energy use per unit output",
+   "surfaces": [
+    "energy_intensity"
+   ],
+   "uses": 182,
+   "isin_pairs": 26
+  },
+  {
+   "label_id": "struck_off_companies",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "balances with struck off companies",
+   "surfaces": [
+    "struck off companies"
+   ],
+   "uses": 182,
+   "isin_pairs": 10
+  },
+  {
+   "label_id": "sexual_harassment",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "workplace harassment cases",
+   "surfaces": [
+    "sexual_harassment"
+   ],
+   "uses": 180,
+   "isin_pairs": 40
+  },
+  {
+   "label_id": "aum_per_cross_sell_franchise",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "AUM per cross-sell franchise",
+   "surfaces": [
+    "AUM per cross sell franchise"
+   ],
+   "uses": 175,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "partnership",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "partnerships and collaborations",
+   "surfaces": [
+    "partnership"
+   ],
+   "uses": 173,
+   "isin_pairs": 29
+  },
+  {
+   "label_id": "digital",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "digital initiatives and technology adoption",
+   "surfaces": [
+    "digital"
+   ],
+   "uses": 172,
+   "isin_pairs": 21
+  },
+  {
+   "label_id": "technology",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "technology collaborations and patents",
+   "surfaces": [
+    "technology"
+   ],
+   "uses": 170,
+   "isin_pairs": 32
+  },
+  {
+   "label_id": "intellectual_property",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "patents and IP filings",
+   "surfaces": [
+    "intellectual_property"
+   ],
+   "uses": 165,
+   "isin_pairs": 18
+  },
+  {
+   "label_id": "performance_review",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "employee performance and career reviews",
+   "surfaces": [
+    "performance_review"
+   ],
+   "uses": 163,
+   "isin_pairs": 22
+  },
+  {
+   "label_id": "waste_generated",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "total waste generated",
+   "surfaces": [
+    "waste_generated"
+   ],
+   "uses": 163,
+   "isin_pairs": 15
+  },
+  {
+   "label_id": "capital_raising",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "equity and capital raising",
+   "surfaces": [
+    "capital_raising"
+   ],
+   "uses": 161,
+   "isin_pairs": 34
+  },
+  {
+   "label_id": "biodiversity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "biological diversity impacts and targets",
+   "surfaces": [
+    "biodiversity"
+   ],
+   "uses": 161,
+   "isin_pairs": 13
+  },
+  {
+   "label_id": "revpar",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "revenue per available room",
+   "surfaces": [
+    "RevPAR in ₹"
+   ],
+   "uses": 160,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "gearing",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "leverage ratio of debt to equity",
+   "surfaces": [
+    "gearing"
+   ],
+   "uses": 156,
+   "isin_pairs": 13
+  },
+  {
+   "label_id": "crar",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "capital to risk-weighted assets ratio",
+   "surfaces": [
+    "CRAR"
+   ],
+   "uses": 156,
+   "isin_pairs": 2
+  },
+  {
+   "label_id": "esg_rating",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "ESG rating assigned by agencies",
+   "surfaces": [
+    "esg_rating"
+   ],
+   "uses": 153,
+   "isin_pairs": 22
+  },
+  {
+   "label_id": "awards",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "awards and recognitions received",
+   "surfaces": [
+    "awards"
+   ],
+   "uses": 152,
+   "isin_pairs": 22
+  },
+  {
+   "label_id": "forex_exposure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign currency exposure",
+   "surfaces": [
+    "forex_exposure"
+   ],
+   "uses": 152,
+   "isin_pairs": 11
+  },
+  {
+   "label_id": "valuation",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "estimated value of an asset, company or investment",
+   "surfaces": [
+    "valuation"
+   ],
+   "uses": 151,
+   "isin_pairs": 18
+  },
+  {
+   "label_id": "vigilance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "vigilance complaints and cases",
+   "surfaces": [
+    "vigilance"
+   ],
+   "uses": 151,
+   "isin_pairs": 4
+  },
+  {
+   "label_id": "net_debt_to_equity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "net debt divided by equity",
+   "surfaces": [
+    "Net D/E"
+   ],
+   "uses": 151,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "esg_waste",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "waste generation metrics",
+   "surfaces": [
+    "ESG-waste"
+   ],
+   "uses": 151,
+   "isin_pairs": 4
+  },
+  {
+   "label_id": "foreign_currency_expenditure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "spending in foreign currency",
+   "surfaces": [
+    "foreign currency"
+   ],
+   "uses": 150,
+   "isin_pairs": 5
+  },
+  {
+   "label_id": "water_usage",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "water withdrawal and consumption",
+   "surfaces": [
+    "Water"
+   ],
+   "uses": 148,
+   "isin_pairs": 8
+  },
+  {
+   "label_id": "certifications",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "certifications and standards",
+   "surfaces": [
+    "certifications"
+   ],
+   "uses": 145,
+   "isin_pairs": 38
+  },
+  {
+   "label_id": "brsr_training",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "BRSR training coverage",
+   "surfaces": [
+    "brsr_training"
+   ],
+   "uses": 144,
+   "isin_pairs": 11
+  },
+  {
+   "label_id": "claims",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "claims submitted or pending",
+   "surfaces": [
+    "claims"
+   ],
+   "uses": 142,
+   "isin_pairs": 34
+  },
+  {
+   "label_id": "title_deeds",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "property title deed status",
+   "surfaces": [
+    "title_deeds"
+   ],
+   "uses": 142,
+   "isin_pairs": 17
+  },
+  {
+   "label_id": "financing",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "financing arrangements and credit",
+   "surfaces": [
+    "financing"
+   ],
+   "uses": 141,
+   "isin_pairs": 24
+  },
+  {
+   "label_id": "struck_off_company",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "companies struck off the register",
+   "surfaces": [
+    "struck_off_company"
+   ],
+   "uses": 141,
+   "isin_pairs": 12
+  },
+  {
+   "label_id": "distributors",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "number of distributors",
+   "surfaces": [
+    "Distributors"
+   ],
+   "uses": 141,
+   "isin_pairs": 4
+  },
+  {
+   "label_id": "natural_capital",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "natural assets and ecosystem resources",
+   "surfaces": [
+    "natural_capital"
+   ],
+   "uses": 139,
+   "isin_pairs": 10
+  },
+  {
+   "label_id": "water_intensity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "water use per unit of output",
+   "surfaces": [
+    "water_intensity"
+   ],
+   "uses": 138,
+   "isin_pairs": 25
+  },
+  {
+   "label_id": "fraud",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "fraudulent activity reported or noted",
+   "surfaces": [
+    "fraud"
+   ],
+   "uses": 137,
+   "isin_pairs": 37
+  },
+  {
+   "label_id": "fee_paying_aum",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "fee-paying assets under management",
+   "surfaces": [
+    "Fee Paying AUM"
+   ],
+   "uses": 136,
+   "isin_pairs": 1
+  },
+  {
+   "label_id": "value_chain",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "value chain partners and assessment",
+   "surfaces": [
+    "value_chain"
+   ],
+   "uses": 134,
+   "isin_pairs": 33
+  },
+  {
+   "label_id": "water_consumption",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "total water consumed",
+   "surfaces": [
+    "water_consumption"
+   ],
+   "uses": 133,
+   "isin_pairs": 16
+  },
+  {
+   "label_id": "foreign_currency_sensitivity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "sensitivity to currency movements",
+   "surfaces": [
+    "foreign_currency_sensitivity"
+   ],
+   "uses": 133,
+   "isin_pairs": 12
+  },
+  {
+   "label_id": "innovation",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "ideas, patents or innovation activity",
+   "surfaces": [
+    "innovation"
+   ],
+   "uses": 132,
+   "isin_pairs": 15
+  },
+  {
+   "label_id": "credit_quality",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "credit quality metrics",
+   "surfaces": [
+    "credit_quality"
+   ],
+   "uses": 132,
+   "isin_pairs": 12
+  },
+  {
+   "label_id": "collateral",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "assets pledged as collateral",
+   "surfaces": [
+    "collateral"
+   ],
+   "uses": 131,
+   "isin_pairs": 12
+  },
+  {
+   "label_id": "disclosure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "regulatory and sustainability disclosures",
+   "surfaces": [
+    "disclosure"
+   ],
+   "uses": 130,
+   "isin_pairs": 32
+  },
+  {
+   "label_id": "suspense_account",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "shares or folios in suspense escrow account",
+   "surfaces": [
+    "suspense_account"
+   ],
+   "uses": 130,
+   "isin_pairs": 17
+  },
+  {
+   "label_id": "market_size",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "market size",
+   "surfaces": [
+    "market_size"
+   ],
+   "uses": 129,
+   "isin_pairs": 13
+  },
+  {
+   "label_id": "corporate_guarantee",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "corporate guarantees",
+   "surfaces": [
+    "corporate_guarantee"
+   ],
+   "uses": 128,
+   "isin_pairs": 11
+  },
+  {
+   "label_id": "statutory_dues",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "statutory dues payable or deposited",
+   "surfaces": [
+    "statutory_dues"
+   ],
+   "uses": 127,
+   "isin_pairs": 36
+  },
+  {
+   "label_id": "union_membership",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "employees or workers in recognised unions",
+   "surfaces": [
+    "union_membership"
+   ],
+   "uses": 126,
+   "isin_pairs": 25
+  },
+  {
+   "label_id": "capital_markets",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "equity and debt fundraising activities",
+   "surfaces": [
+    "capital_markets"
+   ],
+   "uses": 126,
+   "isin_pairs": 14
+  },
+  {
+   "label_id": "training_coverage",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "employees covered by training",
+   "surfaces": [
+    "training_coverage"
+   ],
+   "uses": 125,
+   "isin_pairs": 20
+  },
+  {
+   "label_id": "dematerialization",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "shares held in dematerialized form",
+   "surfaces": [
+    "dematerialization"
+   ],
+   "uses": 119,
+   "isin_pairs": 25
+  },
+  {
+   "label_id": "disbursement",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "loan disbursements made",
+   "surfaces": [
+    "Disbursements"
+   ],
+   "uses": 118,
+   "isin_pairs": 3
+  },
+  {
+   "label_id": "safety_incident",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "workplace safety incidents",
+   "surfaces": [
+    "safety_incident"
+   ],
+   "uses": 117,
+   "isin_pairs": 13
+  },
+  {
+   "label_id": "penalty",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "penalties and fines imposed",
+   "surfaces": [
+    "penalty"
+   ],
+   "uses": 116,
+   "isin_pairs": 18
+  },
+  {
+   "label_id": "facility",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "facility or center",
+   "surfaces": [
+    "facility"
+   ],
+   "uses": 113,
+   "isin_pairs": 14
+  },
+  {
+   "label_id": "emphasis_of_matter",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "auditor emphasis of matter paragraphs",
+   "surfaces": [
+    "emphasis_of_matter"
+   ],
+   "uses": 112,
+   "isin_pairs": 22
+  },
+  {
+   "label_id": "esg_energy",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "energy consumption metrics",
+   "surfaces": [
+    "esg_energy"
+   ],
+   "uses": 112,
+   "isin_pairs": 7
+  },
+  {
+   "label_id": "demerger",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "separation of a business into independent entity",
+   "surfaces": [
+    "demerger"
+   ],
+   "uses": 111,
+   "isin_pairs": 11
+  },
+  {
+   "label_id": "health_safety",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "health and safety metrics",
+   "surfaces": [
+    "health_safety"
+   ],
+   "uses": 111,
+   "isin_pairs": 11
+  },
+  {
+   "label_id": "water_discharge",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "water discharged",
+   "surfaces": [
+    "water_discharge"
+   ],
+   "uses": 109,
+   "isin_pairs": 21
+  },
+  {
+   "label_id": "value_chain_assessment",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "assessment of value chain partners",
+   "surfaces": [
+    "value_chain_assessment"
+   ],
+   "uses": 108,
+   "isin_pairs": 33
+  },
+  {
+   "label_id": "fx",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign exchange rates and impacts",
+   "surfaces": [
+    "fx"
+   ],
+   "uses": 108,
+   "isin_pairs": 14
+  },
+  {
+   "label_id": "waste_disposal",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "waste disposed safely",
+   "surfaces": [
+    "waste_disposal"
+   ],
+   "uses": 108,
+   "isin_pairs": 13
+  },
+  {
+   "label_id": "recognition",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "awards and recognitions",
+   "surfaces": [
+    "recognition"
+   ],
+   "uses": 107,
+   "isin_pairs": 20
+  },
+  {
+   "label_id": "project_status",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "status of projects under execution",
+   "surfaces": [
+    "project_status"
+   ],
+   "uses": 106,
+   "isin_pairs": 11
+  },
+  {
+   "label_id": "corporate_structure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "corporate structure",
+   "surfaces": [
+    "corporate_structure"
+   ],
+   "uses": 102,
+   "isin_pairs": 20
+  },
+  {
+   "label_id": "fair_value_level3",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "level 3 fair value measurements",
+   "surfaces": [
+    "fair_value_level3"
+   ],
+   "uses": 102,
+   "isin_pairs": 12
+  },
+  {
+   "label_id": "gearing_ratio",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "borrowings relative to equity",
+   "surfaces": [
+    "gearing_ratio"
+   ],
+   "uses": 101,
+   "isin_pairs": 9
+  },
+  {
+   "label_id": "fundraising",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "raising funds via securities",
+   "surfaces": [
+    "fundraising"
+   ],
+   "uses": 97,
+   "isin_pairs": 29
+  },
+  {
+   "label_id": "fair_value_sensitivity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "OCI impact from price changes",
+   "surfaces": [
+    "fair_value_sensitivity"
+   ],
+   "uses": 96,
+   "isin_pairs": 8
+  },
+  {
+   "label_id": "intellectual_capital",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "intellectual capital developments",
+   "surfaces": [
+    "intellectual_capital"
+   ],
+   "uses": 95,
+   "isin_pairs": 13
+  },
+  {
+   "label_id": "exchange_rate",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign exchange rates",
+   "surfaces": [
+    "exchange_rate"
+   ],
+   "uses": 95,
+   "isin_pairs": 14
+  },
+  {
+   "label_id": "market_forecast",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "projected market demand",
+   "surfaces": [
+    "market_forecast"
+   ],
+   "uses": 95,
+   "isin_pairs": 11
+  },
+  {
+   "label_id": "disputed_claim",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "claims under dispute",
+   "surfaces": [
+    "disputed_claim"
+   ],
+   "uses": 93,
+   "isin_pairs": 13
+  },
+  {
+   "label_id": "technology_absorption",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "technology absorption initiatives",
+   "surfaces": [
+    "technology_absorption"
+   ],
+   "uses": 92,
+   "isin_pairs": 15
+  },
+  {
+   "label_id": "funding",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "capital raised",
+   "surfaces": [
+    "funding"
+   ],
+   "uses": 87,
+   "isin_pairs": 13
+  },
+  {
+   "label_id": "contracts",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "long-term contracts",
+   "surfaces": [
+    "contracts"
+   ],
+   "uses": 86,
+   "isin_pairs": 32
+  },
+  {
+   "label_id": "ghg_intensity",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "greenhouse gas emissions per unit of output",
+   "surfaces": [
+    "ghg_intensity"
+   ],
+   "uses": 86,
+   "isin_pairs": 16
+  },
+  {
+   "label_id": "fx_hedging",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "foreign exchange hedging",
+   "surfaces": [
+    "fx_hedging"
+   ],
+   "uses": 85,
+   "isin_pairs": 10
+  },
+  {
+   "label_id": "insurance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "insurance coverage and policies",
+   "surfaces": [
+    "insurance"
+   ],
+   "uses": 83,
+   "isin_pairs": 19
+  },
+  {
+   "label_id": "fund_raising",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "funds raised during the period",
+   "surfaces": [
+    "fund_raising"
+   ],
+   "uses": 82,
+   "isin_pairs": 20
+  },
+  {
+   "label_id": "legal_proceedings",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "ongoing legal proceedings",
+   "surfaces": [
+    "legal_proceedings"
+   ],
+   "uses": 82,
+   "isin_pairs": 19
+  },
+  {
+   "label_id": "infrastructure",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "physical infrastructure assets",
+   "surfaces": [
+    "infrastructure"
+   ],
+   "uses": 79,
+   "isin_pairs": 17
+  },
+  {
+   "label_id": "investor_grievance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "investor complaints and grievances",
+   "surfaces": [
+    "investor_grievance"
+   ],
+   "uses": 78,
+   "isin_pairs": 15
+  },
+  {
+   "label_id": "convertible_instruments",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "convertible debt instruments outstanding",
+   "surfaces": [
+    "convertible_instruments"
+   ],
+   "uses": 75,
+   "isin_pairs": 26
+  },
+  {
+   "label_id": "environmental_compliance",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "compliance with environmental regulations",
+   "surfaces": [
+    "environmental_compliance"
+   ],
+   "uses": 74,
+   "isin_pairs": 28
+  },
+  {
+   "label_id": "human_rights_assessment",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "human rights due diligence coverage",
+   "surfaces": [
+    "human_rights_assessment"
+   ],
+   "uses": 74,
+   "isin_pairs": 29
+  },
+  {
+   "label_id": "security",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "security pledged or created",
+   "surfaces": [
+    "security"
+   ],
+   "uses": 73,
+   "isin_pairs": 22
+  },
+  {
+   "label_id": "presence",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "distribution outlets or towns covered",
+   "surfaces": [
+    "Presence"
+   ],
+   "uses": 73,
+   "isin_pairs": 10
+  },
+  {
+   "label_id": "demat",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "dematerialised shareholding",
+   "surfaces": [
+    "demat"
+   ],
+   "uses": 71,
+   "isin_pairs": 16
+  },
+  {
+   "label_id": "posh_complaints",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "sexual harassment complaints under POSH",
+   "surfaces": [
+    "posh_complaints"
+   ],
+   "uses": 70,
+   "isin_pairs": 21
+  },
+  {
+   "label_id": "legal_proceeding",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "pending litigation",
+   "surfaces": [
+    "legal_proceeding"
+   ],
+   "uses": 69,
+   "isin_pairs": 18
+  },
+  {
+   "label_id": "iepf_transfer",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "amounts transferred to investor protection fund",
+   "surfaces": [
+    "iepf_transfer"
+   ],
+   "uses": 67,
+   "isin_pairs": 20
+  },
+  {
+   "label_id": "lca",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "life cycle assessment coverage",
+   "surfaces": [
+    "lca"
+   ],
+   "uses": 67,
+   "isin_pairs": 17
+  },
+  {
+   "label_id": "claim",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "amount claimed or claim receivable",
+   "surfaces": [
+    "claim"
+   ],
+   "uses": 66,
+   "isin_pairs": 14
+  },
+  {
+   "label_id": "sustainable_sourcing",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "sustainably sourced inputs",
+   "surfaces": [
+    "sustainable_sourcing"
+   ],
+   "uses": 65,
+   "isin_pairs": 30
+  },
+  {
+   "label_id": "cyber_security",
+   "parent_id": null,
+   "needs_family": true,
+   "definition": "cyber security framework and policy",
+   "surfaces": [
+    "cyber_security"
+   ],
+   "uses": 56,
+   "isin_pairs": 27
+  }
+ ],
+ "new_label_dedupe": {
+  "raw": 233,
+  "clusters": 214,
+  "merged_away": 19,
+  "groups": [
+   {
+    "representative": "exceptional_items",
+    "members": [
+     "exceptional_item",
+     "exceptional_items"
+    ],
+    "uses": 2873
+   },
+   {
+    "representative": "derivatives",
+    "members": [
+     "derivative",
+     "derivatives"
+    ],
+    "uses": 2722
+   },
+   {
+    "representative": "foreign_currency_exposure",
+    "members": [
+     "foreign_currency_exposure",
+     "forex_exposure",
+     "fx_exposure"
+    ],
+    "uses": 2221
+   },
+   {
+    "representative": "waste",
+    "members": [
+     "environment_waste",
+     "waste"
+    ],
+    "uses": 2061
+   },
+   {
+    "representative": "emissions",
+    "members": [
+     "emissions",
+     "ghg",
+     "ghg_emissions"
+    ],
+    "uses": 1940
+   },
+   {
+    "representative": "grievances",
+    "members": [
+     "grievance",
+     "grievances"
+    ],
+    "uses": 893
+   },
+   {
+    "representative": "disputed_statutory_dues",
+    "members": [
+     "disputed_dues",
+     "disputed_statutory_dues"
+    ],
+    "uses": 889
+   },
+   {
+    "representative": "actuarial_assumptions",
+    "members": [
+     "actuarial_assumption",
+     "actuarial_assumptions"
+    ],
+    "uses": 692
+   },
+   {
+    "representative": "certification",
+    "members": [
+     "certification",
+     "certifications"
+    ],
+    "uses": 664
+   },
+   {
+    "representative": "capital_adequacy_ratio",
+    "members": [
+     "capital_adequacy_ratio",
+     "crar"
+    ],
+    "uses": 651
+   },
+   {
+    "representative": "award",
+    "members": [
+     "award",
+     "awards"
+    ],
+    "uses": 460
+   },
+   {
+    "representative": "safety_incidents",
+    "members": [
+     "safety_incident",
+     "safety_incidents"
+    ],
+    "uses": 451
+   },
+   {
+    "representative": "struck_off_companies",
+    "members": [
+     "struck_off_companies",
+     "struck_off_company"
+    ],
+    "uses": 323
+   },
+   {
+    "representative": "contract",
+    "members": [
+     "contract",
+     "contracts"
+    ],
+    "uses": 292
+   },
+   {
+    "representative": "investor_grievances",
+    "members": [
+     "investor_grievance",
+     "investor_grievances"
+    ],
+    "uses": 271
+   },
+   {
+    "representative": "claims",
+    "members": [
+     "claim",
+     "claims"
+    ],
+    "uses": 208
+   },
+   {
+    "representative": "legal_proceedings",
+    "members": [
+     "legal_proceeding",
+     "legal_proceedings"
+    ],
+    "uses": 151
+   }
+  ]
+ },
+ "aliases": [
+  {
+   "surface": "Domestic",
+   "label_id": "geography",
+   "uses": 316,
+   "companies": 8
+  },
+  {
+   "surface": "LCV",
+   "label_id": "product",
+   "uses": 269,
+   "companies": 1
+  },
+  {
+   "surface": "Solar",
+   "label_id": "segment",
+   "uses": 252,
+   "companies": 4
+  },
+  {
+   "surface": "ECB",
+   "label_id": "debt",
+   "uses": 246,
+   "companies": 2
+  },
+  {
+   "surface": "caro_remarks",
+   "label_id": "auditor",
+   "uses": 234,
+   "companies": 18
+  },
+  {
+   "surface": "guarantees",
+   "label_id": "liability",
+   "uses": 212,
+   "companies": 22
+  },
+  {
+   "surface": "intangibles",
+   "label_id": "asset",
+   "uses": 204,
+   "companies": 30
+  },
+  {
+   "surface": "msmed_dues",
+   "label_id": "payable",
+   "uses": 203,
+   "companies": 14
+  },
+  {
+   "surface": "General Insurance",
+   "label_id": "segment",
+   "uses": 193,
+   "companies": 1
+  },
+  {
+   "surface": "PVC Compounds",
+   "label_id": "product",
+   "uses": 186,
+   "companies": 1
+  },
+  {
+   "surface": "Occupancy %",
+   "label_id": "capacity_utilisation",
+   "uses": 144,
+   "companies": 2
+  },
+  {
+   "surface": "joint_operation",
+   "label_id": "jv",
+   "uses": 121,
+   "companies": 7
+  },
+  {
+   "surface": "markets",
+   "label_id": "geography",
+   "uses": 116,
+   "companies": 31
+  },
+  {
+   "surface": "community",
+   "label_id": "csr",
+   "uses": 106,
+   "companies": 17
+  },
+  {
+   "surface": "ownership",
+   "label_id": "shareholding",
+   "uses": 95,
+   "companies": 21
+  },
+  {
+   "surface": "Consumer",
+   "label_id": "customer",
+   "uses": 89,
+   "companies": 5
+  },
+  {
+   "surface": "human capital",
+   "label_id": "employee",
+   "uses": 78,
+   "companies": 11
+  }
+ ],
+ "buckets": [
+  {
+   "surface": "signal",
+   "bucket": "signal",
+   "uses": 39143,
+   "companies": 57
+  },
+  {
+   "surface": "market_data",
+   "bucket": "market_data",
+   "uses": 4156,
+   "companies": 54
+  },
+  {
+   "surface": "ratio",
+   "bucket": "ratio",
+   "uses": 4118,
+   "companies": 54
+  },
+  {
+   "surface": "operations",
+   "bucket": "section",
+   "uses": 2708,
+   "companies": 57
+  },
+  {
+   "surface": "operational",
+   "bucket": "section",
+   "uses": 1890,
+   "companies": 38
+  },
+  {
+   "surface": "Area Booked",
+   "bucket": "deck_line",
+   "uses": 1815,
+   "companies": 1
+  },
+  {
+   "surface": "Value of Area Booked",
+   "bucket": "deck_line",
+   "uses": 1325,
+   "companies": 1
+  },
+  {
+   "surface": "Saleable Area (Lakhs sq ft)",
+   "bucket": "deck_line",
+   "uses": 1232,
+   "companies": 1
+  },
+  {
+   "surface": "industry",
+   "bucket": "section",
+   "uses": 1229,
+   "companies": 43
+  },
+  {
+   "surface": "Equivalent Area Constructed*",
+   "bucket": "deck_line",
+   "uses": 1031,
+   "companies": 1
+  },
+  {
+   "surface": "Environmental",
+   "bucket": "section",
+   "uses": 816,
+   "companies": 13
+  },
+  {
+   "surface": "corporate",
+   "bucket": "section",
+   "uses": 761,
+   "companies": 47
+  },
+  {
+   "surface": "industry_data",
+   "bucket": "section",
+   "uses": 651,
+   "companies": 27
+  },
+  {
+   "surface": "Area Booked (Lakhs sq ft)",
+   "bucket": "table_header",
+   "uses": 621,
+   "companies": 1
+  },
+  {
+   "surface": "operational_metric",
+   "bucket": "ratio",
+   "uses": 612,
+   "companies": 27
+  },
+  {
+   "surface": "market",
+   "bucket": "market_data",
+   "uses": 593,
+   "companies": 40
+  },
+  {
+   "surface": "Total Outflows (C)",
+   "bucket": "deck_line",
+   "uses": 591,
+   "companies": 2
+  },
+  {
+   "surface": "ratios",
+   "bucket": "ratio",
+   "uses": 544,
+   "companies": 28
+  },
+  {
+   "surface": "Total Inflows (A)",
+   "bucket": "table_header",
+   "uses": 542,
+   "companies": 1
+  },
+  {
+   "surface": "Other Outflows",
+   "bucket": "table_header",
+   "uses": 536,
+   "companies": 1
+  },
+  {
+   "surface": "Unsold Area (Lakhs sq ft)",
+   "bucket": "table_header",
+   "uses": 536,
+   "companies": 1
+  },
+  {
+   "surface": "Other inflows",
+   "bucket": "table_header",
+   "uses": 531,
+   "companies": 1
+  },
+  {
+   "surface": "Leverage ratio",
+   "bucket": "ratio",
+   "uses": 517,
+   "companies": 2
+  },
+  {
+   "surface": "caro_remark",
+   "bucket": "section",
+   "uses": 513,
+   "companies": 31
+  },
+  {
+   "surface": "Year",
+   "bucket": "table_header",
+   "uses": 510,
+   "companies": 15
+  },
+  {
+   "surface": "performance",
+   "bucket": "section",
+   "uses": 506,
+   "companies": 36
+  },
+  {
+   "surface": "CARO",
+   "bucket": "section",
+   "uses": 496,
+   "companies": 35
+  },
+  {
+   "surface": "Cumulative Total Inflows (B)",
+   "bucket": "table_header",
+   "uses": 494,
+   "companies": 1
+  },
+  {
+   "surface": "Cumulative Total Outflows (D)",
+   "bucket": "table_header",
+   "uses": 494,
+   "companies": 1
+  },
+  {
+   "surface": "Equivalent Area Constructed",
+   "bucket": "table_header",
+   "uses": 473,
+   "companies": 1
+  },
+  {
+   "surface": "AHL (Area in Sq. Ft.)",
+   "bucket": "table_header",
+   "uses": 469,
+   "companies": 1
+  },
+  {
+   "surface": "social",
+   "bucket": "section",
+   "uses": 468,
+   "companies": 27
+  },
+  {
+   "surface": "stock_market_data",
+   "bucket": "section",
+   "uses": 468,
+   "companies": 3
+  },
+  {
+   "surface": "Cumulative mismatch (F = B-D)",
+   "bucket": "table_header",
+   "uses": 450,
+   "companies": 1
+  },
+  {
+   "surface": "Mismatch (E = A - C)",
+   "bucket": "table_header",
+   "uses": 433,
+   "companies": 1
+  },
+  {
+   "surface": "Cumulative mismatch as % (F/D)",
+   "bucket": "table_header",
+   "uses": 431,
+   "companies": 1
+  },
+  {
+   "surface": "statutory_group_info",
+   "bucket": "section",
+   "uses": 430,
+   "companies": 1
+  },
+  {
+   "surface": "struck_off_companies",
+   "bucket": "section",
+   "uses": 404,
+   "companies": 26
+  },
+  {
+   "surface": "Level 5",
+   "bucket": "table_header",
+   "uses": 395,
+   "companies": 1
+  },
+  {
+   "surface": "Total Value (INR Crores)",
+   "bucket": "table_header",
+   "uses": 390,
+   "companies": 1
+  },
+  {
+   "surface": "Unsold Value (INR Crores)",
+   "bucket": "table_header",
+   "uses": 390,
+   "companies": 1
+  },
+  {
+   "surface": "AOC-1",
+   "bucket": "table_header",
+   "uses": 387,
+   "companies": 5
+  },
+  {
+   "surface": "AHL",
+   "bucket": "entity",
+   "uses": 375,
+   "companies": 1
+  },
+  {
+   "surface": "Capital Adequacy",
+   "bucket": "ratio",
+   "uses": 374,
+   "companies": 2
+  },
+  {
+   "surface": "Company",
+   "bucket": "table_header",
+   "uses": 367,
+   "companies": 2
+  },
+  {
+   "surface": "DOMEX MULTI-PURPOSE DISINFECTANT SPRAY",
+   "bucket": "entity",
+   "uses": 341,
+   "companies": 1
+  },
+  {
+   "surface": "corporate_event",
+   "bucket": "section",
+   "uses": 310,
+   "companies": 48
+  },
+  {
+   "surface": "corporate_info",
+   "bucket": "section",
+   "uses": 303,
+   "companies": 41
+  },
+  {
+   "surface": "Particulars (INR Mn)",
+   "bucket": "table_header",
+   "uses": 295,
+   "companies": 2
+  },
+  {
+   "surface": "Cumulative gap upto 1 month",
+   "bucket": "table_header",
+   "uses": 291,
+   "companies": 1
+  },
+  {
+   "surface": "operational_metrics",
+   "bucket": "section",
+   "uses": 285,
+   "companies": 15
+  },
+  {
+   "surface": "aoc1",
+   "bucket": "section",
+   "uses": 277,
+   "companies": 3
+  },
+  {
+   "surface": "Sensitivity Analysis",
+   "bucket": "section",
+   "uses": 275,
+   "companies": 9
+  },
+  {
+   "surface": "Cumulative gap upto 12 month",
+   "bucket": "table_header",
+   "uses": 268,
+   "companies": 1
+  },
+  {
+   "surface": "Fines/Lumps/Pellets",
+   "bucket": "table_header",
+   "uses": 261,
+   "companies": 1
+  },
+  {
+   "surface": "macro_indicator",
+   "bucket": "market_data",
+   "uses": 255,
+   "companies": 14
+  },
+  {
+   "surface": "Industry Data",
+   "bucket": "section",
+   "uses": 250,
+   "companies": 4
+  },
+  {
+   "surface": "NBFC",
+   "bucket": "entity",
+   "uses": 250,
+   "companies": 2
+  },
+  {
+   "surface": "Operational ratios",
+   "bucket": "section",
+   "uses": 231,
+   "companies": 1
+  },
+  {
+   "surface": "Other, net",
+   "bucket": "table_header",
+   "uses": 220,
+   "companies": 1
+  },
+  {
+   "surface": "market data",
+   "bucket": "market_data",
+   "uses": 217,
+   "companies": 18
+  },
+  {
+   "surface": "Maturity Analysis",
+   "bucket": "table_header",
+   "uses": 212,
+   "companies": 5
+  },
+  {
+   "surface": "Area Booked (Lakhs Sq. ft.)",
+   "bucket": "table_header",
+   "uses": 212,
+   "companies": 1
+  },
+  {
+   "surface": "Scrip Code",
+   "bucket": "table_header",
+   "uses": 208,
+   "companies": 30
+  },
+  {
+   "surface": "RE 100",
+   "bucket": "entity",
+   "uses": 208,
+   "companies": 2
+  },
+  {
+   "surface": "Umang",
+   "bucket": "entity",
+   "uses": 202,
+   "companies": 1
+  },
+  {
+   "surface": "Dwarka",
+   "bucket": "entity",
+   "uses": 199,
+   "companies": 1
+  },
+  {
+   "surface": "Flats",
+   "bucket": "deck_line",
+   "uses": 197,
+   "companies": 1
+  },
+  {
+   "surface": "Tarang",
+   "bucket": "entity",
+   "uses": 195,
+   "companies": 1
+  },
+  {
+   "surface": "company_info",
+   "bucket": "section",
+   "uses": 194,
+   "companies": 33
+  },
+  {
+   "surface": "S&P Global India Manufacturing PMI",
+   "bucket": "market_data",
+   "uses": 193,
+   "companies": 1
+  },
+  {
+   "surface": "Nirmay",
+   "bucket": "entity",
+   "uses": 192,
+   "companies": 1
+  },
+  {
+   "surface": "finance",
+   "bucket": "section",
+   "uses": 187,
+   "companies": 16
+  },
+  {
+   "surface": "Shubham",
+   "bucket": "entity",
+   "uses": 187,
+   "companies": 1
+  },
+  {
+   "surface": "schedule_iii",
+   "bucket": "section",
+   "uses": 185,
+   "companies": 6
+  },
+  {
+   "surface": "Longs",
+   "bucket": "deck_line",
+   "uses": 184,
+   "companies": 1
+  },
+  {
+   "surface": "p_l",
+   "bucket": "table_header",
+   "uses": 181,
+   "companies": 3
+  },
+  {
+   "surface": "Tenor (Years)",
+   "bucket": "table_header",
+   "uses": 180,
+   "companies": 1
+  },
+  {
+   "surface": "Solvency Ratio",
+   "bucket": "ratio",
+   "uses": 178,
+   "companies": 1
+  },
+  {
+   "surface": "WHRS",
+   "bucket": "entity",
+   "uses": 177,
+   "companies": 1
+  },
+  {
+   "surface": "BRSR",
+   "bucket": "section",
+   "uses": 172,
+   "companies": 18
+  },
+  {
+   "surface": "group_structure",
+   "bucket": "section",
+   "uses": 170,
+   "companies": 24
+  },
+  {
+   "surface": "general",
+   "bucket": "section",
+   "uses": 169,
+   "companies": 35
+  },
+  {
+   "surface": "Ginger",
+   "bucket": "entity",
+   "uses": 169,
+   "companies": 1
+  },
+  {
+   "surface": "Total franchise",
+   "bucket": "deck_line",
+   "uses": 168,
+   "companies": 1
+  },
+  {
+   "surface": "key_ratio",
+   "bucket": "table_header",
+   "uses": 166,
+   "companies": 9
+  },
+  {
+   "surface": "Ratio",
+   "bucket": "table_header",
+   "uses": 166,
+   "companies": 10
+  },
+  {
+   "surface": "Adjustment to reconcile proportional consolidation",
+   "bucket": "deck_line",
+   "uses": 165,
+   "companies": 1
+  },
+  {
+   "surface": "human_resources",
+   "bucket": "section",
+   "uses": 163,
+   "companies": 32
+  },
+  {
+   "surface": "Jaipur",
+   "bucket": "entity",
+   "uses": 163,
+   "companies": 2
+  },
+  {
+   "surface": "AHL Total",
+   "bucket": "deck_line",
+   "uses": 162,
+   "companies": 1
+  },
+  {
+   "surface": "Traffic",
+   "bucket": "deck_line",
+   "uses": 162,
+   "companies": 1
+  },
+  {
+   "surface": "Operational",
+   "bucket": "section",
+   "uses": 161,
+   "companies": 5
+  },
+  {
+   "surface": "Ashiana Town",
+   "bucket": "deck_line",
+   "uses": 161,
+   "companies": 1
+  },
+  {
+   "surface": "Lifestyle retail stores",
+   "bucket": "deck_line",
+   "uses": 159,
+   "companies": 1
+  },
+  {
+   "surface": "Total Bajaj Finance presence",
+   "bucket": "deck_line",
+   "uses": 159,
+   "companies": 1
+  },
+  {
+   "surface": "Total (I + II)",
+   "bucket": "table_header",
+   "uses": 159,
+   "companies": 1
+  },
+  {
+   "surface": "stock_data",
+   "bucket": "market_data",
+   "uses": 158,
+   "companies": 5
+  },
+  {
+   "surface": "Bhiwadi",
+   "bucket": "entity",
+   "uses": 157,
+   "companies": 1
+  },
+  {
+   "surface": "Operations",
+   "bucket": "section",
+   "uses": 156,
+   "companies": 21
+  },
+  {
+   "surface": "Anmol",
+   "bucket": "deck_line",
+   "uses": 156,
+   "companies": 1
+  },
+  {
+   "surface": "maturity profile",
+   "bucket": "table_header",
+   "uses": 156,
+   "companies": 10
+  },
+  {
+   "surface": "Page number",
+   "bucket": "deck_line",
+   "uses": 152,
+   "companies": 32
+  },
+  {
+   "surface": "Overall active distribution network",
+   "bucket": "deck_line",
+   "uses": 152,
+   "companies": 1
+  },
+  {
+   "surface": "analytical_ratio",
+   "bucket": "ratio",
+   "uses": 151,
+   "companies": 4
+  },
+  {
+   "surface": "Surbhi",
+   "bucket": "deck_line",
+   "uses": 151,
+   "companies": 1
+  },
+  {
+   "surface": "Vrinda Gardens",
+   "bucket": "deck_line",
+   "uses": 150,
+   "companies": 1
+  },
+  {
+   "surface": "Footnote",
+   "bucket": "table_header",
+   "uses": 147,
+   "companies": 11
+  },
+  {
+   "surface": "Partnership Total",
+   "bucket": "table_header",
+   "uses": 145,
+   "companies": 1
+  },
+  {
+   "surface": "actuarial",
+   "bucket": "section",
+   "uses": 143,
+   "companies": 6
+  },
+  {
+   "surface": "Corporate",
+   "bucket": "table_header",
+   "uses": 143,
+   "companies": 4
+  },
+  {
+   "surface": "company_profile",
+   "bucket": "section",
+   "uses": 142,
+   "companies": 30
+  },
+  {
+   "surface": "Currency",
+   "bucket": "market_data",
+   "uses": 141,
+   "companies": 2
+  },
+  {
+   "surface": "Slide Number",
+   "bucket": "deck_line",
+   "uses": 140,
+   "companies": 33
+  },
+  {
+   "surface": "ratio_analysis",
+   "bucket": "section",
+   "uses": 135,
+   "companies": 6
+  },
+  {
+   "surface": "Slide number",
+   "bucket": "deck_line",
+   "uses": 134,
+   "companies": 28
+  },
+  {
+   "surface": "Fair Value Hierarchy",
+   "bucket": "table_header",
+   "uses": 132,
+   "companies": 7
+  },
+  {
+   "surface": "operational_data",
+   "bucket": "table_header",
+   "uses": 128,
+   "companies": 7
+  },
+  {
+   "surface": "operating_metric",
+   "bucket": "table_header",
+   "uses": 127,
+   "companies": 7
+  },
+  {
+   "surface": "reconciliation",
+   "bucket": "section",
+   "uses": 124,
+   "companies": 11
+  },
+  {
+   "surface": "plant_location",
+   "bucket": "table_header",
+   "uses": 122,
+   "companies": 16
+  },
+  {
+   "surface": "per_share_data",
+   "bucket": "table_header",
+   "uses": 121,
+   "companies": 6
+  },
+  {
+   "surface": "fair_value_measurement",
+   "bucket": "table_header",
+   "uses": 118,
+   "companies": 8
+  },
+  {
+   "surface": "Fair Value",
+   "bucket": "table_header",
+   "uses": 116,
+   "companies": 9
+  },
+  {
+   "surface": "sector",
+   "bucket": "table_header",
+   "uses": 107,
+   "companies": 8
+  },
+  {
+   "surface": "operational_performance",
+   "bucket": "section",
+   "uses": 101,
+   "companies": 10
+  },
+  {
+   "surface": "corporate_identity",
+   "bucket": "table_header",
+   "uses": 100,
+   "companies": 27
+  },
+  {
+   "surface": "Current Ratio",
+   "bucket": "ratio",
+   "uses": 98,
+   "companies": 6
+  },
+  {
+   "surface": "RoW",
+   "bucket": "deck_line",
+   "uses": 97,
+   "companies": 5
+  },
+  {
+   "surface": "Complaints",
+   "bucket": "table_header",
+   "uses": 97,
+   "companies": 16
+  },
+  {
+   "surface": "per_share",
+   "bucket": "unit",
+   "uses": 95,
+   "companies": 22
+  },
+  {
+   "surface": "milestone",
+   "bucket": "section",
+   "uses": 78,
+   "companies": 17
+  },
+  {
+   "surface": "investor_relations",
+   "bucket": "section",
+   "uses": 76,
+   "companies": 11
+  },
+  {
+   "surface": "plant_locations",
+   "bucket": "table_header",
+   "uses": 76,
+   "companies": 17
+  },
+  {
+   "surface": "Countries",
+   "bucket": "table_header",
+   "uses": 75,
+   "companies": 11
+  },
+  {
+   "surface": "note",
+   "bucket": "section",
+   "uses": 67,
+   "companies": 17
+  },
+  {
+   "surface": "event",
+   "bucket": "section",
+   "uses": 65,
+   "companies": 25
+  },
+  {
+   "surface": "Page Number",
+   "bucket": "table_header",
+   "uses": 64,
+   "companies": 26
+  },
+  {
+   "surface": "registrar",
+   "bucket": "section",
+   "uses": 47,
+   "companies": 31
+  }
+ ],
+ "meaningless": [
+  {
+   "surface": "Others",
+   "uses": 1839,
+   "companies": 40
+  },
+  {
+   "surface": "Total",
+   "uses": 1554,
+   "companies": 33
+  },
+  {
+   "surface": "200",
+   "uses": 1015,
+   "companies": 3
+  },
+  {
+   "surface": "17",
+   "uses": 863,
+   "companies": 25
+  },
+  {
+   "surface": "-",
+   "uses": 726,
+   "companies": 42
+  },
+  {
+   "surface": "Grand Total",
+   "uses": 619,
+   "companies": 6
+  },
+  {
+   "surface": "metric",
+   "uses": 604,
+   "companies": 7
+  },
+  {
+   "surface": "1",
+   "uses": 462,
+   "companies": 37
+  },
+  {
+   "surface": "3",
+   "uses": 430,
+   "companies": 41
+  },
+  {
+   "surface": "2",
+   "uses": 412,
+   "companies": 40
+  },
+  {
+   "surface": "TOTAL",
+   "uses": 351,
+   "companies": 9
+  },
+  {
+   "surface": "4",
+   "uses": 313,
+   "companies": 35
+  },
+  {
+   "surface": "01",
+   "uses": 285,
+   "companies": 28
+  },
+  {
+   "surface": "02",
+   "uses": 276,
+   "companies": 29
+  },
+  {
+   "surface": "03",
+   "uses": 268,
+   "companies": 30
+  },
+  {
+   "surface": "5",
+   "uses": 263,
+   "companies": 31
+  },
+  {
+   "surface": "other",
+   "uses": 205,
+   "companies": 34
+  },
+  {
+   "surface": "04",
+   "uses": 199,
+   "companies": 26
+  },
+  {
+   "surface": "2023",
+   "uses": 172,
+   "companies": 24
+  },
+  {
+   "surface": "6",
+   "uses": 165,
+   "companies": 26
+  },
+  {
+   "surface": "2021",
+   "uses": 164,
+   "companies": 20
+  },
+  {
+   "surface": "50",
+   "uses": 162,
+   "companies": 16
+  },
+  {
+   "surface": "2022",
+   "uses": 161,
+   "companies": 21
+  },
+  {
+   "surface": "Other",
+   "uses": 144,
+   "companies": 7
+  },
+  {
+   "surface": "assessment",
+   "uses": 121,
+   "companies": 24
+  },
+  {
+   "surface": "05",
+   "uses": 118,
+   "companies": 25
+  },
+  {
+   "surface": "2015",
+   "uses": 117,
+   "companies": 31
+  },
+  {
+   "surface": "2020",
+   "uses": 109,
+   "companies": 18
+  },
+  {
+   "surface": "7",
+   "uses": 107,
+   "companies": 21
+  },
+  {
+   "surface": "2024",
+   "uses": 106,
+   "companies": 20
+  },
+  {
+   "surface": "2019",
+   "uses": 104,
+   "companies": 14
+  },
+  {
+   "surface": "10",
+   "uses": 102,
+   "companies": 27
+  },
+  {
+   "surface": "2017",
+   "uses": 98,
+   "companies": 13
+  },
+  {
+   "surface": "8",
+   "uses": 94,
+   "companies": 22
+  },
+  {
+   "surface": "18",
+   "uses": 93,
+   "companies": 26
+  },
+  {
+   "surface": "20",
+   "uses": 92,
+   "companies": 27
+  },
+  {
+   "surface": "30",
+   "uses": 90,
+   "companies": 28
+  },
+  {
+   "surface": "2025",
+   "uses": 89,
+   "companies": 27
+  },
+  {
+   "surface": "2010",
+   "uses": 86,
+   "companies": 16
+  },
+  {
+   "surface": "2014",
+   "uses": 84,
+   "companies": 12
+  },
+  {
+   "surface": "12",
+   "uses": 81,
+   "companies": 24
+  },
+  {
+   "surface": "15",
+   "uses": 80,
+   "companies": 22
+  },
+  {
+   "surface": "28",
+   "uses": 80,
+   "companies": 23
+  },
+  {
+   "surface": "company",
+   "uses": 80,
+   "companies": 23
+  },
+  {
+   "surface": "2013",
+   "uses": 79,
+   "companies": 11
+  },
+  {
+   "surface": "19",
+   "uses": 77,
+   "companies": 23
+  },
+  {
+   "surface": "22",
+   "uses": 75,
+   "companies": 23
+  },
+  {
+   "surface": "2018",
+   "uses": 75,
+   "companies": 15
+  },
+  {
+   "surface": "9",
+   "uses": 72,
+   "companies": 21
+  },
+  {
+   "surface": "25",
+   "uses": 71,
+   "companies": 23
+  },
+  {
+   "surface": "06",
+   "uses": 70,
+   "companies": 18
+  },
+  {
+   "surface": "1993",
+   "uses": 68,
+   "companies": 8
+  },
+  {
+   "surface": "13",
+   "uses": 67,
+   "companies": 23
+  },
+  {
+   "surface": "21",
+   "uses": 67,
+   "companies": 20
+  },
+  {
+   "surface": "11",
+   "uses": 63,
+   "companies": 22
+  },
+  {
+   "surface": "14",
+   "uses": 61,
+   "companies": 22
+  },
+  {
+   "surface": "31",
+   "uses": 61,
+   "companies": 17
+  },
+  {
+   "surface": "100%",
+   "uses": 60,
+   "companies": 13
+  },
+  {
+   "surface": "26",
+   "uses": 59,
+   "companies": 18
+  },
+  {
+   "surface": "100",
+   "uses": 59,
+   "companies": 12
+  },
+  {
+   "surface": "16",
+   "uses": 58,
+   "companies": 26
+  },
+  {
+   "surface": "2016",
+   "uses": 58,
+   "companies": 10
+  },
+  {
+   "surface": "24",
+   "uses": 57,
+   "companies": 22
+  }
+ ],
+ "unanswered": [],
+ "marginal_curve": [
+  {
+   "n": 500,
+   "uses_pct": 88.65393502135129,
+   "added_pct": 11.674995497309126
+  },
+  {
+   "n": 1000,
+   "uses_pct": 90.7972158774519,
+   "added_pct": 13.818276353409734
+  },
+  {
+   "n": 2000,
+   "uses_pct": 92.7505850744197,
+   "added_pct": 15.771645550377537
+  },
+  {
+   "n": 5000,
+   "uses_pct": 95.01107359021712,
+   "added_pct": 18.03213406617496
+  },
+  {
+   "n": 10000,
+   "uses_pct": 96.5441916389299,
+   "added_pct": 19.56525211488774
+  },
+  {
+   "n": 20000,
+   "uses_pct": 97.85479138633859,
+   "added_pct": 20.87585186229642
+  }
+ ]
+}
