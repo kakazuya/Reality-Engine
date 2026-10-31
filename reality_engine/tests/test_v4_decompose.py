@@ -173,6 +173,29 @@ def test_no_date_declares_the_run_date_as_the_window(registry):
     assert ask.windows[0].basis == "as_of"
 
 
+def test_latest_quarter_window_is_open_ended(registry):
+    """"the latest quarter" is the most recent period known by as_of, not 91 days."""
+    ask = decompose("POWERGRID promoter pledge as a percentage of promoter holding in the "
+                    "latest quarter?", "2026-10-07", registry)
+    window = ask.windows[0].to_dict()
+    assert window["from"] is None and window["basis"] == "latest quarter"
+    # "as a percentage of" is a connector here, not the segment-share formula (MB0401).
+    assert all(p.formula != "f.share_of" for p in ask.parts)
+    # pledge is the measure, never a holder class: no part asks holder_class=pledge.
+    assert all(p.dim_values("holder_class") != ["pledge"] for p in ask.parts)
+
+
+def test_a_named_quarter_window_stays_closed(registry):
+    ask = decompose("What was the revenue in Q1 FY27?", "2026-10-07", registry)
+    assert ask.windows[0].basis == "quarter end"
+    assert ask.windows[0].from_ == "2026-06-30"
+
+
+def test_last_quarter_stays_a_named_quarter(registry):
+    ask = decompose("Promoter pledge in the last quarter?", "2026-10-07", registry)
+    assert ask.windows[0].basis == "quarter end"
+
+
 def test_a_named_year_cagr_opens_its_window(registry):
     """"3-year CAGR to 19 Oct 2026" reads three years of closes, not one day's."""
     ask = decompose("What was Power Grid's 3-year price CAGR to 19 October 2026, "

@@ -1949,7 +1949,6 @@
     "mf",
     "insurance",
     "retail",
-    "pledge",
     "fpi_limit"
    ],
    "source": "equity_intelligence.shareholding.<value>_pct",
