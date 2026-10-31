@@ -59,7 +59,7 @@ deterministic **PASS**. The 150 NID are now *tickets*, not answers (§H.5).
 
 ## 0. Why v4, in one paragraph
 
-The pilot gate is **27/2,681 strict = 1.0%**, and the failure reasons are almost all
+The pilot gate when v4 was designed was **27/2,681 strict = 1.0%**; the current gate is **361/2,681 = 13.5% contract strict, 0.00% read** (`GATE_V4_2026-10-31.md`, `TRUTH_READ_GRADE_2026-10-31.md`). The failure reasons for that design-time run are almost all
 *composition* failures: `GATE ask_match` 2,884, "sub-question N not addressed" 2,708,
 "unrelated rows" ~1,500, and only 383 blocked + 132 NOT IN DATA (`tasks/answer_bench/
 GATE_RESULTS_*_strict.jsonl`). The data is mostly there; what is missing is (a) one map from
@@ -1742,7 +1742,7 @@ Acceptance: one result per part for every mapped case, each carrying its `answer
 ISIN/source/`known_at`, or the estimate's method+inputs, or the proxy+assumption+confidence,
 or the four-gate NID wording with what was tried; `grade_v2` scores coverage against the Ask,
 counts only `measured|estimate|proxy` as answered (a typed NID is **not** an answer), and
-reproduces today's 1.0% on the old answers (a sanity anchor). Attacks: `ask_match` by
+reproduces the design-time 1.0% anchor (27/2,681; not the current gate) on the old answers (a sanity anchor). Attacks: `ask_match` by
 construction (every part carries its concept) and "unrelated rows" (no part → no row).
 Estimated share: **~35–45% of `ask_match` and most of the ~1,500 unrelated-row findings**.
 

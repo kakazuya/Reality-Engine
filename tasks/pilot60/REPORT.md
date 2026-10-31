@@ -1,5 +1,7 @@
 # Pilot-60 — stratified universe, whole-market T1, instantiated master bank
 
+> **Later result:** the 31 Oct gate is 361/2,681 = 13.5% contract strict and 0.00% read (`tasks/arch_v4/GATE_V4_2026-10-31.md`, `tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`). The answered shares below are from the earlier grader and stand as this report's record.
+
 - universe: 60 companies (10 large / 20 mid+small / 30 micro), 21 sectors; `UNIVERSE.csv`
 - store: `.tmp/pilot60/chunks_v3_pilot.db` (433 docs, 36494 chunks, build 431.8 s)
 - T1: `.tmp/pilot_all` (whole market, `build_t1 --universe all`; build time in `tasks/pilot60/T1_BUILD.json`)

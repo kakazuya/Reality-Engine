@@ -9,7 +9,10 @@ Observed in `tasks/answer_bench/GATE_RESULTS_v4_strict.jsonl`:
 3. **A stale value offered with no warning.** `MB0997#MS` answers capex as of 2026-10-19 with FY21 (period 2021-03-31). The answer must show its age plainly, or say the value is too old to use.
 4. **Impossible values.** `MB0974#MI` prints `f.share_of: 4,357.91 %`. `MB0525` prints `—` as a value on a 4,357-row series. A value that cannot be stated is not `measured`.
 
+5. **Close and open, high and low are on different bases.** `fact_view.sql` loads `price.close` from `company_state_daily.close`, which is `adj_close`, adjusted using actions that may come after the date. `price.open`, `price.high` and `price.low` are raw. POWERGRID on 2023-09-11 stores close 198.375, open 260.35, high 265.00; it traded at 264.50 (`reality-data` `price`). So a stated close before an action is not a traded price, as of a date before the action it uses later knowledge, and `near_high` mixes bases. `execute.py` `RAW_CLOSE` also labels such closes "raw close". Returns over adjusted closes are sound.
+
 ## Work
+0. For class 5: `company_state_daily` already holds a raw close (`raw_close` in `reality_engine/pilot/build_t1.py`; check the column it reaches). Propose the smallest correct fix and do it if it needs no store rebuild: a question about a level gets the traded close, a return gets the adjusted series, and every answer states which. If it needs a store build, write the exact steps and the affected row count for the controller, and fix the labels now. Never call an adjusted close raw.
 1. For each class, find the cause and count the affected rows on the gate results before fixing.
 2. Fix so that every result prints what it really is: operator, label, window and inputs. A change says it is a change, with its start and end values.
 3. A value that fails a basic sanity check (a share over 100% where the parts are of a whole, or an empty value) becomes a typed failure, not `measured`.
@@ -20,7 +23,7 @@ Observed in `tasks/answer_bench/GATE_RESULTS_v4_strict.jsonl`:
 - Do not change which rows are fetched, only how results are labelled and accepted.
 
 ## Acceptance checks
-- A test for each of the four classes, using the rows above.
+- A test for each of the five classes, using the rows above.
 - 20 changed rows by a committed seed, read back against the store with separate SQL.
 - PIT breaches stay 0.
 

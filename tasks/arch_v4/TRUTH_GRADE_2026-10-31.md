@@ -1,5 +1,7 @@
 # v4 truth grade — 2026-10-31
 
+> **Superseded as the authority:** the read grade of the same panel is **0/127 answered rows RIGHT, 0.00% [0.00, 0.40] of the bank** (`TRUTH_READ_GRADE_2026-10-31.md`). The 0.42% rule estimate below is kept for comparison only.
+
 Three numbers on the same 2,681-row bank with no check loosened. The contract number is the unchanged method (`tasks/answer_bench/grade_v2.py`); the shape number adds the named failures of `tasks/answer_bench/truth_grade.py`; the truth number is the truth panel, not the contract.
 
 | number | value | method |

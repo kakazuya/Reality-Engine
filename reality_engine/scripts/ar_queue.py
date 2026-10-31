@@ -11,7 +11,7 @@ Handbook: tasks/OPENCODE_AR_HANDBOOK.md.
   python -m reality_engine.scripts.ar_queue test-export --run t-mimo --model mimo-v2.6-flash-free
   python -m reality_engine.scripts.ar_queue test-score --run t-mimo
   python -m reality_engine.scripts.ar_queue status
-Hard reports (> 10% of numbers not found in the text; Claude Haiku helper agents re-read them, tasks/HARD_AR_HAIKU_SESSION.md):
+Hard reports (> 10% of numbers not found in the text; Claude Haiku helper agents re-read them, tasks/archive/HARD_AR_HAIKU_SESSION.md):
   python -m reality_engine.scripts.ar_queue diagnose --doc-ids hard          # cause per report -> ar_queue/hard_diagnosis.csv
   python -m reality_engine.scripts.ar_queue recheck --doc-ids hard --write    # re-run value_check with the current rules
   python -m reality_engine.scripts.ar_queue export-docs --run h01 --doc-ids 63537 --misses-only
@@ -436,7 +436,7 @@ def drive(runs, workers):
 
 
 # ---------------------------------------------------------------- hard reports: diagnose, re-check, Claude Haiku re-read
-# 2026-10-16 (tasks/HARD_AR_HAIKU_SESSION.md). A "hard" report has > 10% of its numbers not found in the source text.
+# 2026-10-16 (tasks/archive/HARD_AR_HAIKU_SESSION.md). A "hard" report has > 10% of its numbers not found in the source text.
 # diagnose sorts them by the state of the pages their misses sit on; recheck re-runs value_check (free: new font rules);
 # export-docs writes the pages for Claude Haiku helper agents (Claude Code Agent tool, model haiku), as text where the text
 # layer is clean and as page images where it is not; import-docs stores Haiku's answers as model claude-haiku-5-5 and
