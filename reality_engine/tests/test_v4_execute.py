@@ -155,7 +155,8 @@ def test_latest_quarter_reads_the_most_recent_period_known_by_as_of(db):
     assert result.answer_type == "measured"
     assert (result.value, result.period, result.known_at) == (1.5, "2026-06-30",
                                                              "2026-07-14")
-    assert "period 2026-06-30, filed 2026-07-14" in (result.assumption or "")
+    assert "period 2026-06-30, 99 days before 2026-10-07, filed 2026-07-14" in \
+        (result.assumption or "")
     assert "staleness limit 200 days" in (result.assumption or "")
 
 
@@ -565,6 +566,184 @@ def test_unknown_operator_and_atom_stay_typed(db):
         assert result.part_index == 0
 
 
+# --- what a result really is (false-label classes, 2026-10-31) --------------
+def _fact_store(rows) -> sqlite3.Connection:
+    """A fact store with the WP2a shape (``atom``, not ``atom_id``)."""
+    conn = sqlite3.connect(":memory:")
+    conn.executescript(
+        """
+        CREATE TABLE fact(entity_id TEXT, atom TEXT, dims TEXT, period_start TEXT,
+                          period_end TEXT, value REAL, unit TEXT, known_at TEXT,
+                          source_ref TEXT);
+        """)
+    conn.executemany("INSERT INTO fact VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    conn.commit()
+    return conn
+
+
+def test_a_change_is_printed_as_a_change_with_its_start_and_end():
+    """MB1033#L: the +359.1 close change was printed as "price.close: 359.1"."""
+    conn = _fact_store([
+        ("INE047A01021", "price.close", "basis=raw", "2025-09-24", "2025-09-24", 2807.4,
+         "INR", "2025-09-24", "market_state.company_state_daily"),
+        ("INE047A01021", "price.close", "basis=raw", "2026-09-24", "2026-09-24", 3166.5,
+         "INR", "2026-09-24", "market_state.company_state_daily"),
+        ("INE345A01011", "price.delivery_pct", "exchange=NSE", "2019-01-01", "2019-01-01",
+         32.9, "%", "2019-01-01", "market_state_b.mkt_nse_full_daily"),
+        ("INE345A01011", "price.delivery_pct", "exchange=NSE", "2026-09-24", "2026-09-24",
+         40.57, "%", "2026-09-24", "market_state_b.mkt_nse_full_daily"),
+    ])
+    window = {"from": "2025-09-24", "to": "2026-09-24"}
+    close = execute.execute(part(atom="price.close", operator="change"), "2026-09-24",
+                            conn, windows=[window], entity="INE047A01021")
+    weight = {"from": "2019-01-01", "to": "2026-09-24"}
+    delivery = execute.execute(part(atom="price.delivery_pct", operator="change"),
+                               "2026-09-24", conn, windows=[weight],
+                               entity="INE345A01011")
+    assert close.value == pytest.approx(359.1)
+    assert delivery.value == pytest.approx(7.67)
+    text = render.render(close)
+    assert "price.close change" in text
+    assert "from 2,807.40 on 2025-09-24 to 3,166.50 on 2026-09-24" in text
+    assert "price.close: 359.1" not in text
+    text = render.render(delivery)
+    assert "price.delivery_pct change" in text
+    assert "from 32.9 on 2019-01-01 to 40.57 on 2026-09-24" in text
+    assert "price.delivery_pct: 7.67" not in text
+
+
+def test_a_ratio_names_its_kind_and_only_the_inputs_it_used():
+    """MB0064#L / MB0004#L: a P/B cited the source of a debt ratio."""
+    conn = _fact_store([
+        ("INE752E01010", "price.mcap", "", "2026-10-19", "2026-10-19", 232840.521,
+         "INR_CRORE", "2026-10-19", "market_state.company_state_daily"),
+        ("INE752E01010", "fin.book_equity",
+         "basis=consolidated;period_kind=fy", "2026-03-31", "2026-03-31", 100494.02,
+         "INR_CRORE", "2026-05-15", "facts_pilot.company_metric_series"),
+        ("INE752E01010", "fin.total_debt",
+         "basis=consolidated;period_kind=fy", "2026-03-31", "2026-03-31", 148009.01,
+         "INR_CRORE", "2026-05-15",
+         "derived:facts_pilot.company_metric_series:borrowings_current+"
+         "borrowings_noncurrent"),
+    ])
+    result = execute.execute(
+        part(formula="f.ratio", dims={"ratio_kind": "pb"}), "2026-10-19", conn,
+        windows=[{"from": None, "to": "2026-10-19", "basis": "as_of"}],
+        entity="INE752E01010")
+    assert result.answer_type == "measured"
+    assert result.value == pytest.approx(232840.521 / 100494.02, rel=1e-6)
+    assert result.source_ref == "derived:f.ratio(pb):price.mcap+fin.book_equity"
+    assert [row["atom"] for row in result.inputs] == ["price.mcap", "fin.book_equity"]
+    assert result.numbers["ratio_kind"] == "pb"
+    assert result.period == "2026-03-31"      # the last input the arithmetic reads
+    text = render.render(result)
+    assert "f.ratio (pb)" in text and "price.mcap+fin.book_equity" in text
+    assert "borrowings" not in text
+
+
+def test_a_years_old_latest_is_a_typed_failure_not_a_current_value():
+    """MB0997#MS: FY21 capex was offered as the current capex on 2026-10-19."""
+    conn = _fact_store([
+        ("INE589A01014", "fin.capex", "basis=consolidated;period_kind=quarter",
+         "2021-03-31", "2021-03-31", 2318.79, "INR_CRORE", "2021-06-30",
+         "quarters.company_quarter_series#capex"),
+    ])
+    result = execute.execute(
+        part(atom="fin.capex"), "2026-10-19", conn,
+        windows=[{"from": None, "to": "2026-10-19", "basis": "as_of"}],
+        entity="INE589A01014")
+    assert result.answer_type == "not_in_data"
+    reason = result.nid_reason or ""
+    assert "2021-03-31" in reason and "2028 days" in reason and "400-day" in reason
+    text = render.render(result)
+    assert "NOT IN DATA" in text and "2,318.79" not in text
+
+
+def test_an_impossible_share_and_an_unstatable_list_are_typed_failures():
+    """MB0974#MI: f.share_of 4,357.91%; MB0525: "—" on a 4,357-value series."""
+    conn = _fact_store([
+        ("INE278R01034", "fin.segment_value",
+         "basis=consolidated;metric=revenue;segment=Food", "2025-03-31", "2025-03-31",
+         157.2899, "INR_CRORE", "2025-12-06", "facts_pilot.company_segment_pnl"),
+        ("INE278R01034", "fin.revenue", "basis=consolidated;period_kind=quarter",
+         "2025-09-30", "2025-09-30", 3.6093, "INR_CRORE", "2026-04-10",
+         "facts_pilot.company_metric_series"),
+    ])
+    share = execute.execute(
+        part(formula="f.share_of"), "2026-10-19", conn,
+        windows=[{"from": None, "to": "2026-10-19", "basis": "as_of"}],
+        entity="INE278R01034")
+    assert share.answer_type == "not_in_data"
+    assert "4,357.91%" in (share.nid_reason or "")
+    assert "cannot exceed 100%" in (share.nid_reason or "")
+    assert "P1 not_in_data" in render.render(share)
+
+    series = _fact_store([
+        ("wb_zinc", "macro.commodity_close", "commodity=wb_zinc", "2026-09-30",
+         "2026-09-30", 1000.0 + index, "USD", "2026-10-02",
+         "market_state_b.series_observation") for index in range(4357)])
+    distinct = execute.execute(
+        part(atom="macro.commodity_close", operator="list_distinct",
+             dims={"distinct": "value"}), "2026-10-07", series,
+        windows=[{"from": None, "to": "2026-10-07"}])
+    assert distinct.answer_type == "not_in_data"
+    assert "4,357 distinct value values" in (distinct.nid_reason or "")
+    text = render.render(distinct)
+    assert "NOT IN DATA" in text and "measured" not in text
+
+    small = _fact_store([
+        ("wb_zinc", "macro.commodity_close", "commodity=wb_zinc", "2026-09-30",
+         "2026-09-30", float(index + 1), "USD", "2026-10-02",
+         "market_state_b.series_observation") for index in range(3)])
+    stated = execute.execute(
+        part(atom="macro.commodity_close", operator="list_distinct",
+             dims={"distinct": "value"}), "2026-10-07", small,
+        windows=[{"from": None, "to": "2026-10-07"}])
+    assert stated.answer_type == "measured"
+    assert "3 distinct value" in render.render(stated)
+
+
+def _close_store(raw: bool) -> sqlite3.Connection:
+    """A 1:1 bonus on 2024-01-03 (1000 -> 500): raw closes or a build-adjusted panel."""
+    dims = "basis=raw" if raw else ""
+    rows = [("INE001", "price.close", dims, f"2024-01-0{day}", f"2024-01-0{day}", value,
+             "INR", f"2024-01-0{day}", "market_state.company_state_daily")
+            for day, value in zip(range(1, 6), (1000.0, 1000.0, 500.0, 500.0, 500.0))]
+    rows += [("INE001", "price.shares_out", "", f"2024-01-0{day}", f"2024-01-0{day}",
+              shares, "shares", f"2024-01-0{day}", "market_state.company_state_daily")
+             for day, shares in zip(range(1, 6), (100.0, 100.0, 200.0, 200.0, 200.0))]
+    rows += [("INE001", "price.mcap", "", f"2024-01-0{day}", f"2024-01-0{day}",
+              mcap, "INR_CRORE", f"2024-01-0{day}", "market_state.company_state_daily")
+             for day, mcap in zip(range(1, 6), (10.0, 10.0, 10.0, 10.0, 10.0))]
+    return _fact_store(rows)
+
+
+def test_a_level_is_the_traded_close_and_a_return_is_the_adjusted_series():
+    """POWERGRID 2023-09-11: a stated close before an action is not a traded price."""
+    raw = _close_store(raw=True)
+    level = execute.execute(part(atom="price.close"), "2024-01-05", raw,
+                            windows=[{"from": "2024-01-03", "to": "2024-01-03"}],
+                            entity="INE001")
+    assert level.answer_type == "measured" and level.value == 500.0
+    assert "raw close" in (level.assumption or "")
+    assert level.numbers.get("close_basis") == "raw"
+    assert "traded close" in render.render(level)
+
+    ret = execute.execute(part(atom="price.close", operator="pct_change"), "2024-01-05",
+                          raw, windows=[{"from": "2024-01-01", "to": "2024-01-05"}],
+                          entity="INE001")
+    assert ret.answer_type == "measured" and ret.value == pytest.approx(0.0, abs=1e-9)
+    assert "adjusted for split/bonus on 2024-01-03" in (ret.assumption or "")
+    assert ret.numbers.get("price_basis") == "adjusted"
+
+    old = _close_store(raw=False)       # a store built before fact_view.sql's raw_close
+    old_level = execute.execute(part(atom="price.close"), "2024-01-05", old,
+                                windows=[{"from": "2024-01-03", "to": "2024-01-03"}],
+                                entity="INE001")
+    note = old_level.assumption or ""
+    assert old_level.answer_type == "measured"
+    assert "adjusted close" in note and "not a traded price" in note
+    assert "raw close" not in note
 # --- the grader ------------------------------------------------------------
 ASK = {"as_of": "2026-10-31", "windows": [WINDOW],
        "entities": [{"isin": "INE001", "level": "stock"}],

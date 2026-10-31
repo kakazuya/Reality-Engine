@@ -443,8 +443,8 @@ def build_company_state(mcon: sqlite3.Connection, universe, log) -> dict:
                                                raw_close * shares DESC) AS rk
             FROM j
         )
-        SELECT isin, CAST(date AS VARCHAR) AS date, symbol, segment, exch, close, tv20,
-               shares, shares_source, pit_conf, mcap_cr, rk
+        SELECT isin, CAST(date AS VARCHAR) AS date, symbol, segment, exch, raw_close, close,
+               tv20, shares, shares_source, pit_conf, mcap_cr, rk
         FROM r {where}
     """).df()
     dcon.close()
@@ -482,7 +482,9 @@ def build_company_state(mcon: sqlite3.Connection, universe, log) -> dict:
                   "LARGE" if rk <= 100 else "MID" if rk <= 250 else
                   "SMALL" if rk <= 500 else "MICRO")
         rows.append((
-            r.isin, r.date, None if pd.isna(r.close) else float(r.close),
+            r.isin, r.date,
+            None if pd.isna(r.close) else float(r.close),
+            None if pd.isna(r.raw_close) else float(r.raw_close),
             None if pd.isna(r.mcap_cr) else float(r.mcap_cr),
             None if pd.isna(r.shares) else int(r.shares),
             None if pd.isna(r.shares) else r.shares_source,
@@ -492,9 +494,10 @@ def build_company_state(mcon: sqlite3.Connection, universe, log) -> dict:
             f"{r.date}T15:30:00",
         ))
     clear(mcon, "company_state_daily")
+    ensure_columns(mcon, "company_state_daily", [("raw_close", "REAL")])
     n = insert_rows(mcon, "company_state_daily",
-                    ["isin", "date", "close", "mcap_cr", "shares_out", "shares_source",
-                     "pit_conf", "mcap_bucket", "price_band", "is_fno",
+                    ["isin", "date", "close", "raw_close", "mcap_cr", "shares_out",
+                     "shares_source", "pit_conf", "mcap_bucket", "price_band", "is_fno",
                      "traded_value_20d_cr", "known_at"],
                     rows)
     log(f"company_state_daily: {n:,} rows, band resolved {band_hit:,}/{len(rows):,} "

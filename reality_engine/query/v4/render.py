@@ -58,9 +58,59 @@ def _assumed(result) -> str:
     return f"; assumption: {result.assumption}" if result.assumption else ""
 
 
+def _label(result) -> str:
+    """The measure's name, with the selector that changes what it means (a ratio's kind)."""
+    label = result.measure or result.formula or "result"
+    numbers = result.numbers or {}
+    if result.formula == "f.ratio":
+        kind = str((result.dims or {}).get("ratio_kind")
+                   or numbers.get("ratio_kind") or "")
+        if kind:
+            label += f" ({kind})"
+    elif result.formula == "f.margin":
+        kind = str((result.dims or {}).get("margin_kind")
+                   or numbers.get("margin_kind") or "")
+        if kind:
+            label += f" ({kind})"
+    return label
+
+
+def _window_text(result) -> str:
+    numbers = result.numbers or {}
+    window = result.window if isinstance(result.window, Mapping) else {}
+    lo = numbers.get("from") or window.get("from") or window.get("start")
+    hi = numbers.get("to") or window.get("to") or window.get("end")
+    if lo and hi:
+        return str(lo) if lo == hi else f"{lo}..{hi}"
+    return str(hi or lo or "")
+
+
+def _inputs_text(result) -> str:
+    """A derived value names the inputs it actually used, with their periods."""
+    inputs = result.inputs
+    if not result.formula or not isinstance(inputs, list) or not inputs:
+        return ""
+    shown = []
+    for item in inputs:
+        if not isinstance(item, Mapping):
+            continue
+        name = str(item.get("atom") or "")
+        if name.startswith("benchmark:"):
+            name = name[len("benchmark:"):]
+        shown.append(f"{name}={_number(item.get('value'))} at "
+                     f"{item.get('period') or '—'}")
+    return f"; inputs: {', '.join(shown)}" if shown else ""
+
+
+#: operators whose value is a difference, not a level: the block must say so and show
+#: the two ends (MB1033#L: a +359.1 close change printed as "price.close: 359.1").
+CHANGE_WORD = {"change": "change", "pct_change": "% change", "growth": "growth"}
+LEVEL_OPERATORS = ("value_at", "last_visible")
+
+
 def _measured(result) -> str:
     head = f"P{result.part_index + 1} measured — {_entity(result)}"
-    label = result.measure or result.formula or "result"
+    label = _label(result)
     if result.shape == "ranked_list" or (result.entities and not result.isin
                                          and result.operator in
                                          ("rank", "screen", "compare", "join_entity_set")):
@@ -71,7 +121,9 @@ def _measured(result) -> str:
                         f" ({row.get('period') or '—'}, {row.get('source_ref') or _source(result)},"
                         f" known {row.get('known_at') or _known(result)})")
         return (f"{head} {label}: {len(rows)} entity(ies) — " + "; ".join(rows)
-                + f"; known_at {_known(result)}")
+                + f"; known_at {_known(result)}"
+                + (f"; window {_window_text(result)}" if _window_text(result) else "")
+                + _inputs_text(result) + _assumed(result))
     if result.shape == "passage":
         quotes = []
         for row in result.values[:5]:
@@ -96,8 +148,10 @@ def _measured(result) -> str:
         return (f"{head} {label}: verdict {result.verdict}"
                 f"{f' (rule: {result.rule_used})' if result.rule_used else ''}"
                 f"{f'; numbers: {numbers}' if numbers else ''}; "
-                f"period {result.period or '—'}; source {_source(result)}; "
-                f"known_at {_known(result)}")
+                f"period {result.period or '—'}"
+                f"{f'; window {_window_text(result)}' if _window_text(result) else ''}; "
+                f"source {_source(result)}; "
+                f"known_at {_known(result)}{_assumed(result)}")
     if result.operator == "near_high":
         numbers = result.numbers or {}
         head_line = (
@@ -105,7 +159,8 @@ def _measured(result) -> str:
             f"{_number(numbers.get('threshold_pct'))}%, window "
             f"{numbers.get('window_from') or '—'}..{numbers.get('window_to') or '—'}, "
             f"{numbers.get('n_qualifying') or 0} of {numbers.get('n_sessions') or 0} "
-            f"sessions, basis {numbers.get('basis') or _source(result)}, exchange "
+            f"sessions, basis {numbers.get('basis') or _source(result)}, close basis "
+            f"{numbers.get('close_basis') or '—'}, exchange "
             f"{numbers.get('exchange') or '—'}")
         if numbers.get("forward_sessions"):
             head_line += (f"; forward {numbers.get('forward_sessions')} sessions: "
@@ -145,10 +200,38 @@ def _measured(result) -> str:
         last = result.values[-1].get("period") if result.values else "—"
         return (f"{head} {label}: {len(result.values)} points {first}..{last} "
                 f"[{points}]{suffix} {unit or ''}; source {_source(result)}; "
-                f"known_at {_known(result)}")
-    return (f"{head} {label}: {_number(result.value)} {result.unit or ''}"
-            f"; period {result.period or '—'}; source {_source(result)}; "
-            f"known_at {_known(result)}{_assumed(result)}")
+                f"known_at {_known(result)}{_assumed(result)}")
+    if result.operator == "list_distinct":
+        values = []
+        for row in result.values:
+            value = row.get("value")
+            values.append(_number(value) if isinstance(value, (int, float)) else str(value))
+        shown = "; ".join(values[:20])
+        more = f" … (+{len(values) - 20} more)" if len(values) > 20 else ""
+        key = (result.numbers or {}).get("distinct") or "value"
+        return (f"{head} {label}: {len(values)} distinct {key} — {shown}{more}; "
+                f"period {result.period or '—'}"
+                f"{f'; window {_window_text(result)}' if _window_text(result) else ''}; "
+                f"source {_source(result)}; known_at {_known(result)}{_assumed(result)}")
+    operator = str(result.operator or "value_at")
+    window = _window_text(result)
+    if operator in CHANGE_WORD:
+        numbers = result.numbers or {}
+        first, last = numbers.get("first"), numbers.get("last")
+        if first is not None and last is not None:
+            span = (f" (from {_number(first)} on {numbers.get('from') or '—'} to "
+                    f"{_number(last)} on {numbers.get('to') or '—'})")
+        else:
+            span = ""
+        return (f"{head} {label} {CHANGE_WORD[operator]}: {_number(result.value)} "
+                f"{result.unit or ''}{span}; window {window or '—'}; period "
+                f"{result.period or '—'}; source {_source(result)}; "
+                f"known_at {_known(result)}{_inputs_text(result)}{_assumed(result)}")
+    op_text = "" if operator in LEVEL_OPERATORS else f" ({operator})"
+    return (f"{head} {label}{op_text}: {_number(result.value)} {result.unit or ''}"
+            f"; period {result.period or '—'}"
+            f"{f'; window {window}' if window else ''}; source {_source(result)}; "
+            f"known_at {_known(result)}{_inputs_text(result)}{_assumed(result)}")
 
 
 def _estimate(result) -> str:

@@ -35,7 +35,7 @@ def _oi_path(out: Path) -> Path:
 SCHEMA = {
     "market_state": [
         "CREATE TABLE company_state_daily(isin TEXT, date TEXT, close REAL, mcap_cr REAL, "
-        "shares_out INTEGER, known_at TEXT)",
+        "shares_out INTEGER, known_at TEXT, raw_close REAL)",
         "CREATE TABLE price_band_daily(isin TEXT, date TEXT, band INTEGER, has_band INTEGER)",
         "CREATE TABLE company_ownership_pit(isin TEXT, quarter_end TEXT, known_at TEXT, "
         "promoter_pct REAL, pledge_pct REAL, fii_pct REAL, dii_pct REAL, mf_pct REAL, "
@@ -79,8 +79,8 @@ SCHEMA = {
 ROWS = {
     "market_state": [
         "INSERT INTO company_state_daily VALUES "
-        f"('{ISIN_A}','2024-06-28',101.5,70000.0,1000,'2024-06-28T15:30:00'),"
-        f"('{ISIN_B}','2024-06-28',52.0,9000.0,500,'2024-06-28T15:30:00')",
+        f"('{ISIN_A}','2024-06-28',101.5,70000.0,1000,'2024-06-28T15:30:00',100.0),"
+        f"('{ISIN_B}','2024-06-28',52.0,9000.0,500,'2024-06-28T15:30:00',51.0)",
         "INSERT INTO price_band_daily VALUES "
         f"('{ISIN_A}','2024-06-28',20,1),('{ISIN_B}','2024-06-28',NULL,0)",
         "INSERT INTO company_ownership_pit VALUES "
@@ -195,7 +195,10 @@ def test_market_atoms_carry_the_source_value_and_known_at(built):
     con = _con(built)
     try:
         close = {r["entity_id"]: r for r in _facts(con, "price.close")}
-        assert close[ISIN_A]["value"] == 101.5
+        # the TRADED close (raw_close), never the build's adjusted close (the source row
+        # holds 101.5 there): a level must not carry later capital actions.
+        assert close[ISIN_A]["value"] == 100.0
+        assert close[ISIN_A]["dims"] == "basis=raw"
         assert close[ISIN_A]["known_at"] == "2024-06-28T15:30:00"
         assert close[ISIN_A]["unit"] == "INR"
         # the bhavcopy is symbol-keyed; the pilot universe supplies the ISIN

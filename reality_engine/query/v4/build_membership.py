@@ -663,7 +663,9 @@ def _source_value(con: sqlite3.Connection, row: sqlite3.Row) -> tuple | None:
                            "atom=? AND dims=? AND period_end=?",
                            (isin, atom, row["dims"], end)).fetchone()
     if atom == "price.close":
-        return con.execute("SELECT close, known_at FROM market_state.company_state_daily "
+        # fact_view.sql loads the TRADED close (raw_close); company_state_daily.close is
+        # the build's adjusted series and is not what the fact row holds.
+        return con.execute("SELECT raw_close, known_at FROM market_state.company_state_daily "
                            "WHERE isin=? AND date=?", (isin, end)).fetchone()
     if atom == "price.mcap":
         return con.execute("SELECT mcap_cr, known_at FROM market_state.company_state_daily "

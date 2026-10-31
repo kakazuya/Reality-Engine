@@ -249,8 +249,16 @@ CREATE TABLE IF NOT EXISTS company_state_daily (
     date            TEXT NOT NULL,          -- trading session, YYYY-MM-DD
     close           REAL,
         -- SOURCE: px_daily.adj_close (7.3M rows, 100% adj) / daily_price_delivery.close
+        -- ADJUSTED: split/bonus/consolidation factors, including actions after the row's
+        -- date.  NOT the traded price: use raw_close for a level as of the date.
+    raw_close       REAL,
+        -- SOURCE: px_daily.close (the unadjusted traded close); NULL only where the
+        -- source close is NULL.  This is the level a date's price question asks for;
+        -- close above is for returns.
     mcap_cr         REAL,
-        -- SOURCE: close x shares_out / 1e7; shares from results_xbrl paid-up / face value
+        -- SOURCE: raw_close x shares_out / 1e7 (a raw price with the share count that
+        --         actually traded that day; an adjusted price would double-count a split)
+        --         shares from results_xbrl paid-up / face value
         --         cross-checked against shp_index (50,838 rows, 100% promoter fill)
     shares_out      INTEGER,
         -- SOURCE: results_xbrl.facts concept PaidUpValueOfEquityShareCapital /
