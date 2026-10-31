@@ -1028,6 +1028,14 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
                 if key in extra:
                     topic_dims = {key: extra[key]}
 
+    # ---- "total return" is a price return plus dividends: no dividend leg is held -----
+    # The basis lexicon folds "total return" into basis=adjusted, which hides the missing
+    # dividend leg.  Keep an explicit dim so the executor says dividends are not adjusted.
+    if re.search(r"\btotal[\s-]+returns?\b", text, re.I):
+        for part in parts:
+            if part.formula == "f.cagr" or part.atom == "price.close":
+                part.dims.setdefault("total_return", "yes")
+
     # ---- dedupe identical readings (a re-stated class must not double a part) ---------
     seen: set[tuple] = set()
     unique: list[Part] = []
