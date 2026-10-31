@@ -1,4 +1,4 @@
-# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-10-31 16:10 IST (Wolf)
+# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-11-01 03:10 IST (dsh HP worker)
 
 Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or the stores, then fix the wrong one.
 
@@ -28,6 +28,10 @@ The contract count measures answer shape, not truth, and fell because stale and 
 - `fact_v4_pilot_oi.db`: `macro.oi`. `v4.db`: claims and own estimates. `shp_xbrl_pilot.db`: parsed shareholding XBRL, copied into the core store by `build_membership --shp-xbrl-only`.
 - Blank `as_of` defaults to 2026-10-19, the last date all 60 names have a close (`run.py` `DEFAULT_AS_OF`). Shivam has not ruled on this yet.
 - Raw shareholding XBRL: `D:\RealityEngine\raw\nse_shp_xbrl_pilot`.
+
+## Compute layer (1 Nov 2026)
+- `reality_engine/query/v4/formulas.py` executes the one registry's 21 extraction formulas over the prototyped tables `balance_sheet_lines`, `cash_flow_lines`, `lender_metrics`, `tax_reconciliation`, `unit_volume` plus `market_lines` (valuation date) and `nsdl_fortnight_cells` (sector FII). Every registry row carries `inputs`, `period_rule` and a typed refusal; every answer returns its inputs with `source` and `known_at`, and a row known after `as_of` is refused, never dropped. Registry now **66 atoms / 20 dims / 29 formulas** (`tasks/arch_v4/QUERY_V4_DESIGN.md` §A.1–A.3).
+- 27 tests in `reality_engine/tests/test_v4_formulas.py`: one worked example per formula, look-ahead refusal, missing-input refusal, incomplete-month refusal, a PIT check over every computed answer, and a `mode=ro` fixture proving no store write. Run that file directly: the job's whole-directory pytest command fails collection on this HP Python (no pandas/pymupdf), not on these tests. **Not yet wired into `execute.py` or the decomposer lexicon**: the executor still reads the fact view and "net debt to EBITDA"/"interest cover" still map to `f.ratio`; the extraction executor is callable through `formulas.compute_formula` until the extraction tables land in the store and `_FORMULA_WORDS` is regenerated.
 
 ## Findings that change what to do
 - **Analyst agent test (free Beam + typed PIT tools): KILL.** 7/24 RIGHT (29.2%, Wilson 14.9–49.2) of rows not ILL_POSED and not CORRECT_NOT_IN_DATA; 7 PARTIAL, 10 WRONG, 11 ILL_POSED, 5 CORRECT_NOT_IN_DATA. All 40 answered (native tool calls) at 8.2 s and 19.7k input tokens per question; 0 PIT breaches. Main gaps: premise substitution (11), data gaps (10), no sort/aggregate/chart tools (6). `tasks/arch_v4/ANALYST_AGENT_TEST_2026-10-31.md`.

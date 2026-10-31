@@ -6,14 +6,14 @@ Bank: `tasks\master_bank\MASTER_BANK.jsonl` · 1073 cases · sha `64d2f46318127f
 
 | table | rows | what a row is |
 |---|---:|---|
-| atoms | 60 | one raw measure -> store, column, unit, grain |
-| dims | 19 | a qualifier that lives on an atom |
-| formulas | 13 | a derived measure as an expression over atoms |
-| operators | 26 | a closed-set parameterised result template |
+| atoms | 66 | one raw measure -> store, column, unit, grain |
+| dims | 20 | a qualifier that lives on an atom |
+| formulas | 29 | a derived measure as an expression over atoms |
+| operators | 27 | a closed-set parameterised result template |
 | lexicon | 2920 | surface phrase -> atom / formula / dim / operator / scope / period |
 | hand_check | 5 | mined entries a human must confirm |
 
-Atom coverage: **43 held**, **12 gap** (registry knows the measure, the store does not yet carry it), **5 absent** (declared NOT IN DATA with its reason).
+Atom coverage: **43 held**, **18 gap** (registry knows the measure, the store does not yet carry it), **5 absent** (declared NOT IN DATA with its reason).
 
 ## 2. Coverage over the 1,073 cases
 
@@ -174,6 +174,12 @@ A typed NID is a to-do, not an answer (v4.1 decision 3): every row below is tria
 | `fin.npa` | metric_key 'net_npa' is not in the held concept vocabulary |
 | `fin.credit_cost` | metric_key 'credit_cost' is not in the held concept vocabulary |
 | `corp.amount_per_share` | registry knows the measure; the store does not carry it yet (market_state.corporate_action_class.amount_per_share) |
+| `fin.tax_expense` | registry knows the measure; the store does not carry it yet (prototype: tax_reconciliation.item='tax_expense') |
+| `fin.pretax_profit` | registry knows the measure; the store does not carry it yet (prototype: tax_reconciliation.item='profit_before_tax') |
+| `fin.statutory_rate` | registry knows the measure; the store does not carry it yet (prototype: tax_reconciliation.item='statutory_rate') |
+| `fin.total_assets` | registry knows the measure; the store does not carry it yet (prototype: balance_sheet_lines.line_item='total_assets') |
+| `fin.tax_reconciliation_item` | registry knows the measure; the store does not carry it yet (prototype: tax_reconciliation item_kind deduction or addback) |
+| `macro.fii_sector_net` | registry knows the measure; the store does not carry it yet (prototype: nsdl_fortnight_cells.value) |
 | `fin.deposits` | registry knows the measure; the store does not carry it yet (metric_state.company_metric_series.value) |
 | `fin.unit_volume` | registry knows the measure; the store does not carry it yet (metric_state.company_operating_metrics.value) |
 | `price.free_float` | registry knows the measure; the store does not carry it yet (market_state.company_membership_pit.weight) |

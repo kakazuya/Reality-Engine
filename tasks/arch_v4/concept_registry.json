@@ -1664,6 +1664,143 @@
    ]
   },
   {
+   "atom_id": "fin.tax_expense",
+   "label": "tax expense",
+   "kind": "fundamental",
+   "store": "fact_view",
+   "table": "fact",
+   "column": "fin.tax_expense",
+   "source": "prototype: tax_reconciliation.item='tax_expense'",
+   "unit": "INR",
+   "grain": "FY",
+   "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
+   "pit": "known_at",
+   "coverage": "gap",
+   "coverage_note": "registry knows the measure; the store does not carry it yet (prototype: tax_reconciliation.item='tax_expense')",
+   "synonyms": [
+    "tax expense",
+    "current tax",
+    "deferred tax",
+    "tax charge",
+    "total tax expense",
+    "income tax expense"
+   ]
+  },
+  {
+   "atom_id": "fin.pretax_profit",
+   "label": "profit before tax",
+   "kind": "fundamental",
+   "store": "fact_view",
+   "table": "fact",
+   "column": "fin.pretax_profit",
+   "source": "prototype: tax_reconciliation.item='profit_before_tax'",
+   "unit": "INR",
+   "grain": "FY",
+   "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
+   "pit": "known_at",
+   "coverage": "gap",
+   "coverage_note": "registry knows the measure; the store does not carry it yet (prototype: tax_reconciliation.item='profit_before_tax')",
+   "synonyms": [
+    "profit before tax",
+    "pbt",
+    "pre-tax profit",
+    "income before tax",
+    "earnings before tax"
+   ]
+  },
+  {
+   "atom_id": "fin.statutory_rate",
+   "label": "statutory tax rate",
+   "kind": "fundamental",
+   "store": "fact_view",
+   "table": "fact",
+   "column": "fin.statutory_rate",
+   "source": "prototype: tax_reconciliation.item='statutory_rate'",
+   "unit": "%",
+   "grain": "FY",
+   "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
+   "pit": "known_at",
+   "coverage": "gap",
+   "coverage_note": "registry knows the measure; the store does not carry it yet (prototype: tax_reconciliation.item='statutory_rate')",
+   "synonyms": [
+    "statutory rate",
+    "statutory tax rate",
+    "corporate tax rate",
+    "applicable tax rate",
+    "tax rate"
+   ]
+  },
+  {
+   "atom_id": "fin.total_assets",
+   "label": "total assets",
+   "kind": "fundamental",
+   "store": "fact_view",
+   "table": "fact",
+   "column": "fin.total_assets",
+   "source": "prototype: balance_sheet_lines.line_item='total_assets'",
+   "unit": "INR",
+   "grain": "FY",
+   "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
+   "pit": "known_at",
+   "coverage": "gap",
+   "coverage_note": "registry knows the measure; the store does not carry it yet (prototype: balance_sheet_lines.line_item='total_assets')",
+   "synonyms": [
+    "total assets",
+    "assets",
+    "balance sheet size",
+    "asset base"
+   ]
+  },
+  {
+   "atom_id": "fin.tax_reconciliation_item",
+   "label": "tax reconciliation item",
+   "kind": "fundamental",
+   "store": "fact_view",
+   "table": "fact",
+   "column": "fin.tax_reconciliation_item",
+   "source": "prototype: tax_reconciliation item_kind deduction or addback",
+   "unit": "INR",
+   "grain": "FY",
+   "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
+   "pit": "known_at",
+   "coverage": "gap",
+   "coverage_note": "registry knows the measure; the store does not carry it yet (prototype: tax_reconciliation item_kind deduction or addback)",
+   "synonyms": [
+    "tax reconciliation",
+    "reconciling item",
+    "deduction",
+    "deductions",
+    "tax holiday",
+    "tax incentive",
+    "addback",
+    "disallowance"
+   ]
+  },
+  {
+   "atom_id": "macro.fii_sector_net",
+   "label": "FII sector net flow (NSDL fortnight)",
+   "kind": "macro",
+   "store": "fact_view",
+   "table": "fact",
+   "column": "macro.fii_sector_net",
+   "source": "prototype: nsdl_fortnight_cells.value",
+   "unit": "INR",
+   "grain": "span",
+   "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
+   "pit": "known_at",
+   "coverage": "gap",
+   "coverage_note": "registry knows the measure; the store does not carry it yet (prototype: nsdl_fortnight_cells.value)",
+   "synonyms": [
+    "fii sector flow",
+    "fpi sector flow",
+    "nsdl sector flow",
+    "sector fii",
+    "fii net flow",
+    "fortnight fii",
+    "sector fpi"
+   ]
+  },
+  {
    "atom_id": "fin.deposits",
    "label": "bank deposits",
    "kind": "fundamental",
@@ -1949,6 +2086,7 @@
     "mf",
     "insurance",
     "retail",
+    "pledge",
     "fpi_limit"
    ],
    "source": "equity_intelligence.shareholding.<value>_pct",
@@ -2140,6 +2278,13 @@
    "source": "metric_state.own_estimate.est_atom",
    "default": "the part's atom",
    "note": "the estimated measure; 'beat/miss' compares the realised atom against this estimate."
+  },
+  {
+   "dim_id": "sector",
+   "values": "open",
+   "source": "nsdl_fortnight_cells.sector",
+   "default": "all",
+   "note": "the NSDL sector label on a sector-level FII flow; the market-wide FII/DII flow is macro.flow."
   }
  ],
  "formulas": [
@@ -2163,9 +2308,59 @@
     "fin.book_equity",
     "price.mcap",
     "fin.pat",
-    "fin.ebitda"
+    "fin.ebitda",
+    "fin.interest_expense",
+    "fin.cash"
    ],
-   "unit": "x"
+   "unit": "x",
+   "inputs": [
+    {
+     "atom": "fin.total_debt",
+     "table": "balance_sheet_lines",
+     "key": "total_debt"
+    },
+    {
+     "atom": "fin.book_equity",
+     "table": "balance_sheet_lines",
+     "key": "book_equity"
+    },
+    {
+     "atom": "price.mcap",
+     "table": "market_lines",
+     "key": "mcap"
+    },
+    {
+     "atom": "fin.pat",
+     "table": "lender_metrics",
+     "key": "pat"
+    },
+    {
+     "atom": "fin.ebitda",
+     "table": "lender_metrics",
+     "key": "ebitda"
+    },
+    {
+     "atom": "fin.interest_expense",
+     "table": "lender_metrics",
+     "key": "interest_expense"
+    },
+    {
+     "atom": "fin.cash",
+     "table": "balance_sheet_lines",
+     "key": "cash"
+    }
+   ],
+   "period_rule": "selector",
+   "period_rules": {
+    "de": "same_period",
+    "icr": "same_period",
+    "roe": "average_balance",
+    "roce": "average_balance",
+    "pb": "market_at_date",
+    "pe": "market_at_date"
+   },
+   "refusal": "input_missing",
+   "executor": "extraction"
   },
   {
    "formula_id": "f.dso",
@@ -2175,7 +2370,22 @@
     "fin.receivables",
     "fin.revenue"
    ],
-   "unit": "days"
+   "unit": "days",
+   "inputs": [
+    {
+     "atom": "fin.receivables",
+     "table": "balance_sheet_lines",
+     "key": "receivables"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
   },
   {
    "formula_id": "f.working_capital_cycle",
@@ -2187,7 +2397,32 @@
     "fin.payables",
     "fin.revenue"
    ],
-   "unit": "days"
+   "unit": "days",
+   "inputs": [
+    {
+     "atom": "fin.receivables",
+     "table": "balance_sheet_lines",
+     "key": "receivables"
+    },
+    {
+     "atom": "fin.inventory",
+     "table": "balance_sheet_lines",
+     "key": "inventory"
+    },
+    {
+     "atom": "fin.payables",
+     "table": "balance_sheet_lines",
+     "key": "payables"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
   },
   {
    "formula_id": "f.share_of",
@@ -2198,7 +2433,23 @@
     "fin.revenue",
     "hold.pct"
    ],
-   "unit": "%"
+   "unit": "%",
+   "inputs": [
+    {
+     "atom": "fin.segment_value",
+     "table": "lender_metrics",
+     "key": "segment_value",
+     "dim": "segment"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
   },
   {
    "formula_id": "f.net",
@@ -2259,7 +2510,27 @@
     "fin.revenue",
     "fin.pat"
    ],
-   "unit": "%"
+   "unit": "%",
+   "inputs": [
+    {
+     "atom": "price.close",
+     "table": "market_lines",
+     "key": "close"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    },
+    {
+     "atom": "fin.pat",
+     "table": "lender_metrics",
+     "key": "pat"
+    }
+   ],
+   "period_rule": "cagr_pair",
+   "refusal": "input_missing",
+   "executor": "extraction"
   },
   {
    "formula_id": "f.excess_return",
@@ -2280,6 +2551,430 @@
     "fin.revenue"
    ],
    "unit": "INR"
+  },
+  {
+   "formula_id": "f.effective_tax_rate",
+   "label": "effective tax rate",
+   "expr": "tax_expense / profit_before_tax * 100",
+   "over": [
+    "fin.tax_expense",
+    "fin.pretax_profit"
+   ],
+   "unit": "%",
+   "inputs": [
+    {
+     "atom": "fin.tax_expense",
+     "table": "tax_reconciliation",
+     "key": "tax_expense"
+    },
+    {
+     "atom": "fin.pretax_profit",
+     "table": "tax_reconciliation",
+     "key": "profit_before_tax"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.tax_gap",
+   "label": "tax gap at the statutory rate",
+   "expr": "(profit_before_tax * statutory_rate / 100) - tax_expense, attributed to reconciling items",
+   "over": [
+    "fin.pretax_profit",
+    "fin.statutory_rate",
+    "fin.tax_expense",
+    "fin.tax_reconciliation_item"
+   ],
+   "unit": "INR",
+   "inputs": [
+    {
+     "atom": "fin.tax_expense",
+     "table": "tax_reconciliation",
+     "key": "tax_expense"
+    },
+    {
+     "atom": "fin.pretax_profit",
+     "table": "tax_reconciliation",
+     "key": "profit_before_tax"
+    },
+    {
+     "atom": "fin.statutory_rate",
+     "table": "tax_reconciliation",
+     "key": "statutory_rate"
+    },
+    {
+     "atom": "fin.tax_reconciliation_item",
+     "table": "tax_reconciliation",
+     "key": "*",
+     "kinds": [
+      "deduction",
+      "addback"
+     ]
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.cfo_to_profit",
+   "label": "operating cash flow to profit",
+   "expr": "cfo / pat",
+   "over": [
+    "fin.cfo",
+    "fin.pat"
+   ],
+   "unit": "x",
+   "inputs": [
+    {
+     "atom": "fin.cfo",
+     "table": "cash_flow_lines",
+     "key": "cfo"
+    },
+    {
+     "atom": "fin.pat",
+     "table": "lender_metrics",
+     "key": "pat"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.dio",
+   "label": "inventory days",
+   "expr": "inventory / revenue * 365",
+   "over": [
+    "fin.inventory",
+    "fin.revenue"
+   ],
+   "unit": "days",
+   "inputs": [
+    {
+     "atom": "fin.inventory",
+     "table": "balance_sheet_lines",
+     "key": "inventory"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.dpo",
+   "label": "payable days",
+   "expr": "payables / revenue * 365",
+   "over": [
+    "fin.payables",
+    "fin.revenue"
+   ],
+   "unit": "days",
+   "inputs": [
+    {
+     "atom": "fin.payables",
+     "table": "balance_sheet_lines",
+     "key": "payables"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.net_debt",
+   "label": "net debt",
+   "expr": "total_debt - cash",
+   "over": [
+    "fin.total_debt",
+    "fin.cash"
+   ],
+   "unit": "INR",
+   "inputs": [
+    {
+     "atom": "fin.total_debt",
+     "table": "balance_sheet_lines",
+     "key": "total_debt"
+    },
+    {
+     "atom": "fin.cash",
+     "table": "balance_sheet_lines",
+     "key": "cash"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.net_debt_to_ebitda",
+   "label": "net debt to EBITDA",
+   "expr": "(total_debt - cash) / ebitda",
+   "over": [
+    "fin.total_debt",
+    "fin.cash",
+    "fin.ebitda"
+   ],
+   "unit": "x",
+   "inputs": [
+    {
+     "atom": "fin.total_debt",
+     "table": "balance_sheet_lines",
+     "key": "total_debt"
+    },
+    {
+     "atom": "fin.cash",
+     "table": "balance_sheet_lines",
+     "key": "cash"
+    },
+    {
+     "atom": "fin.ebitda",
+     "table": "lender_metrics",
+     "key": "ebitda"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.capex_to_sales",
+   "label": "capex to sales",
+   "expr": "capex / revenue * 100",
+   "over": [
+    "fin.capex",
+    "fin.revenue"
+   ],
+   "unit": "%",
+   "inputs": [
+    {
+     "atom": "fin.capex",
+     "table": "cash_flow_lines",
+     "key": "capex"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.asset_turnover",
+   "label": "asset turnover",
+   "expr": "revenue / average(total_assets)",
+   "over": [
+    "fin.revenue",
+    "fin.total_assets"
+   ],
+   "unit": "x",
+   "inputs": [
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    },
+    {
+     "atom": "fin.total_assets",
+     "table": "balance_sheet_lines",
+     "key": "total_assets"
+    }
+   ],
+   "period_rule": "average_balance",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.order_book_to_revenue",
+   "label": "order book to revenue",
+   "expr": "order_book / revenue",
+   "over": [
+    "fin.order_book",
+    "fin.revenue"
+   ],
+   "unit": "x",
+   "inputs": [
+    {
+     "atom": "fin.order_book",
+     "table": "lender_metrics",
+     "key": "order_book"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.book_to_bill",
+   "label": "book-to-bill",
+   "expr": "order_intake / revenue",
+   "over": [
+    "fin.order_intake",
+    "fin.revenue"
+   ],
+   "unit": "x",
+   "inputs": [
+    {
+     "atom": "fin.order_intake",
+     "table": "lender_metrics",
+     "key": "order_intake"
+    },
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.sotp_gap",
+   "label": "sum-of-the-parts gap",
+   "expr": "sum(stated part value) - market cap",
+   "over": [
+    "fin.investments",
+    "price.mcap"
+   ],
+   "unit": "INR",
+   "inputs": [
+    {
+     "atom": "fin.investments",
+     "table": "balance_sheet_lines",
+     "key": "investments"
+    },
+    {
+     "atom": "price.mcap",
+     "table": "market_lines",
+     "key": "mcap"
+    }
+   ],
+   "period_rule": "market_at_date",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.revenue_per_unit",
+   "label": "revenue per unit volume",
+   "expr": "revenue / units_sold",
+   "over": [
+    "fin.revenue",
+    "fin.unit_volume"
+   ],
+   "unit": "INR/unit",
+   "inputs": [
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    },
+    {
+     "atom": "fin.unit_volume",
+     "table": "unit_volume",
+     "key": "volume"
+    }
+   ],
+   "period_rule": "same_period",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.change",
+   "label": "change at a named lag",
+   "expr": "(current - prior) / abs(prior) * 100",
+   "over": [
+    "fin.revenue",
+    "fin.pat",
+    "fin.cfo",
+    "price.close"
+   ],
+   "unit": "%",
+   "inputs": [
+    {
+     "atom": "fin.revenue",
+     "table": "lender_metrics",
+     "key": "revenue"
+    },
+    {
+     "atom": "fin.pat",
+     "table": "lender_metrics",
+     "key": "pat"
+    },
+    {
+     "atom": "fin.cfo",
+     "table": "cash_flow_lines",
+     "key": "cfo"
+    },
+    {
+     "atom": "price.close",
+     "table": "market_lines",
+     "key": "close"
+    }
+   ],
+   "period_rule": "growth_pair",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.nsdl_fortnight_net_flow",
+   "label": "FII sector net flow, fortnight",
+   "expr": "sum(fii net) over one NSDL fortnight cell",
+   "over": [
+    "macro.fii_sector_net"
+   ],
+   "unit": "INR",
+   "inputs": [
+    {
+     "atom": "macro.fii_sector_net",
+     "table": "nsdl_fortnight_cells",
+     "key": "fii_net",
+     "dim": "sector"
+    }
+   ],
+   "period_rule": "fortnight_cell",
+   "refusal": "input_missing",
+   "executor": "extraction"
+  },
+  {
+   "formula_id": "f.nsdl_month_net_flow",
+   "label": "FII sector net flow, month",
+   "expr": "sum(fii net) over the month's NSDL fortnight cells",
+   "over": [
+    "macro.fii_sector_net"
+   ],
+   "unit": "INR",
+   "inputs": [
+    {
+     "atom": "macro.fii_sector_net",
+     "table": "nsdl_fortnight_cells",
+     "key": "fii_net",
+     "dim": "sector"
+    }
+   ],
+   "period_rule": "month_cells",
+   "refusal": "input_missing",
+   "executor": "extraction"
   }
  ],
  "operators": [
