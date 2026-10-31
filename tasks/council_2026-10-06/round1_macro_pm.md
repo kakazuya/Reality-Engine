@@ -2,7 +2,7 @@
 
 Lens: where edge in Indian equities comes from. For every idea I ask: **who is on the other side of the trade, and why are they slow or forced?** If nobody can answer that, the pattern is probably luck or a data artefact.
 
-Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, §8), `tasks/PIT_LABEL_AUDIT_2026-09-29.md`, `tasks/FACTOR_SPINE_DESIGN_2026-09-29.md` §0, `tasks/strategy_tracker.md`, `tasks/desk_macro_psych_2026-09-25.md`, `tasks/tariff_event_card_2026-09-29.md`, `tasks/SESSION_CLOSEOUT_2026-10-05.md`, `FUNDAMENTAL_REALITY_ENGINE_OBJECTIVES.md`.
+Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, §8), `tasks/PIT_LABEL_AUDIT_2026-09-29.md`, `tasks/FACTOR_SPINE_DESIGN_2026-09-29.md` §0, `tasks/strategy_tracker.md`, `FUNDAMENTAL_REALITY_ENGINE_OBJECTIVES.md`; the 2026-09-25 desk macro note, the 2026-09-29 tariff card and the 2026-10-05 session closeout it also used are no longer in the repo.
 
 ---
 
@@ -102,7 +102,7 @@ Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, 
 ### Q13
 **Position:** The card must contain: mechanism; **who is on the other side and why they are slow or forced**; why it has not been arbitraged away, and the expected decay; signal definition and its point-in-time source; universe and liquidity floor; horizon; benchmark; primary test and pass bar; placebo and negative controls; minimum sample size; kill criteria; and an attempt ledger. The CRO freezes the card. Any change after seeing returns creates a new run that counts against the test budget.
 **Why:**
-- `tasks/tariff_event_card_2026-09-29.md` is already the right template. It was frozen before any returns were computed, has one primary hypothesis, a placebo, and an attempt ledger. Its weakness: the results were never written up in a task file (they exist only in script output). The card needs an "outcome" section.
+- The 2026-09-29 tariff event card (no longer in the repo) is already the right template. It was frozen before any returns were computed, has one primary hypothesis, a placebo, and an attempt ledger. Its weakness: the results were never written up in a task file (they exist only in script output). The card needs an "outcome" section.
 - The "other side" field is my main addition. It is the cheapest filter against stories invented after the fact.
 **Confidence:** high
 
@@ -172,7 +172,7 @@ Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, 
 **Confidence:** med
 
 ### Q22
-**Position:** Yes. `tasks/FRAMEWORK.md` should be the single authority file, plus one append-only `tasks/LOG.md` (dated entries of 10 lines or fewer) instead of new closeout files. The hypothesis registry should be its own file, because it changes on a different schedule.
+**Position:** Yes. `tasks/FRAMEWORK.md` should be the single authority file, plus one append-only log file (proposed then as tasks/LOG.md, never created) with dated entries of 10 lines or fewer instead of new closeout files. The hypothesis registry should be its own file, because it changes on a different schedule.
 **Why:** `CURRENT_PLAN`, many `SESSION_CLOSEOUT_*` files, the tracker and the desk docs already contradict each other in places. For example, the tracker still lists momentum-vs-reversal as "NEXT".
 **Confidence:** high
 

@@ -38,7 +38,7 @@ the manifest `dissem_ts`. 1,911 duplicate rows = 1,484 content-hash groups
 - Peak RAM: **318 MB** (`psutil.peak_wset`).
 - No text layer: **1/181 = 0.55%** (grade C + `needs_ocr=1`).
 - `known_at`: **0 mismatches / 20** first rows printed beside the manifest
-  (`tasks/pilot60/history_pilot/known_at_check.md`); the full build refuses to
+  (`tasks/pilot_t2/known_at_check.md`); the full build refuses to
   start when the pilot recorded a mismatch.
 
 ## Full run

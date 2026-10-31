@@ -8,9 +8,7 @@ credentials, or Codex's main model. No plugin was registered globally and no pai
 
 New:
 
-- `plugins/dsh-worker/.codex-plugin/plugin.json` — compatibility manifest (`dsh-worker`, skills, `.mcp.json`,
-  `requires_local_executor: true`)
-- `plugins/dsh-worker/.mcp.json` — stdio server launch with the pinned Python 3.14 interpreter, `${PLUGIN_ROOT}` paths, repo-root env
+- `plugins/dsh-worker/.mcp.json` — stdio server launch with the pinned Python 3.14 interpreter, `${PLUGIN_ROOT}` paths, repo-root env. The Codex `.codex-plugin/plugin.json` compatibility manifest described in this 2026-10-21 handoff is no longer in the repo; the plugin is now loaded from `.mcp.json` plus `skills/dsh-worker/SKILL.md`.
 - `plugins/dsh-worker/requirements.txt` — `mcp>=2.3,<3` runtime dependency
 - `plugins/dsh-worker/README.md` — runtime, install, heartbeat, shutdown, registration notes
 - `plugins/dsh-worker/runtime/.gitignore` — ignores all job records

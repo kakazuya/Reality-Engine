@@ -81,7 +81,7 @@ after 15:30 → next session (`after_close`). 'full' timing in the tables = news
 
 ## 6. Citations
 
-Verified earlier in this project (see `tasks/SESSION_CLOSEOUT_2026-09-29b.md`): Ball & Brown (1968); Bernard & Thomas (1989); Kothari & Warner (2007); Tetlock (2007, JF 62); Da, Engelberg & Gao (2011); Chordia, Roll & Subrahmanyam (2002, JFE 65); Hasbrouck (1995).
+Verified earlier in this project (session closeout of 2026-09-29, no longer in the repo): Ball & Brown (1968); Bernard & Thomas (1989); Kothari & Warner (2007); Tetlock (2007, JF 62); Da, Engelberg & Gao (2011); Chordia, Roll & Subrahmanyam (2002, JFE 65); Hasbrouck (1995).
 **Cited from memory in this report and not yet checked against the source — verify before relying on them:** Brown & Warner (1985, JFE); Barber & Lyon (1997, JFE); Boehmer, Musumeci & Poulsen (1991, JFE); Cameron, Gelbach & Miller (2011, JBES); Benjamini & Hochberg (1995, JRSS-B).
 
 ## 7. Update 2026-10-05 — negative-reaction puzzle, test 1 (matched non-announcers)

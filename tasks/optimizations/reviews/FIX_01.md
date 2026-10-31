@@ -6,7 +6,7 @@ Workspace: finished task-01 worktree `C:\Users\warri\Downloads\IDM-worktrees\202
 An independent review passed all acceptance checks with these defects. Fix all nine; nothing else.
 
 DEFECTS:
-1. `reality_engine/scripts/build_worker_context.py:36` — `DESCRIPTIONS_RELATIVE` points at `plugins/reality-data/server/catalog_descriptions.yaml`; the real file is `plugins/reality-data/catalog_descriptions.yaml`, so 0 of 224 curated descriptions/key-column sets load (patched path changes 67 data-map rows) — fix the path.
+1. `reality_engine/scripts/build_worker_context.py:36` — `DESCRIPTIONS_RELATIVE` points at plugins/reality-data/server/catalog_descriptions.yaml (wrong; the real file is `plugins/reality-data/catalog_descriptions.yaml`), so 0 of 224 curated descriptions/key-column sets load (patched path changes 67 data-map rows) — fix the path.
 2. `reality_engine/scripts/build_worker_context.py:616-619,704-710` — `_secret_marker` drops any line containing substring `sk-`; the legitimate decision line containing "task-notification" is lost (the "1 line(s) omitted" marker) — match `\bsk-[A-Za-z0-9_-]{8,}` and update the test's `assertNotIn("sk-")`.
 3. `reality_engine/tests/test_dsh_worker_stress.py:827` — `assertNotIn("?", brief)` now scans the whole delivered brief (header + pack path + task text); a legitimate brief with a question mark fails — assert on the `PROGRESS_NOTES_INSTRUCTION` suffix only.
 4. `reality_engine/scripts/build_worker_context.py:180-181` — repo-map `.py` counts use `rglob` without `SKIP_DIRS`, so ignored `plugins/dsh-worker/runtime/` test fixtures change output — prune SKIP_DIRS when counting.

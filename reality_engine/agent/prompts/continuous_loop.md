@@ -15,7 +15,7 @@ Write scope: this repository. Read-only outside it. Do not push anywhere.
 2. `reality_engine/data/logs/loop/STATE.md` — the previous pass' handoff. If it does not exist, this
    is the first run: your first job is to establish a baseline and write it.
 3. `.kilo/LANES.md` — file/table ownership. **Never edit a file owned by another lane.**
-4. `tasks/todo.md` and `tasks/next_wave_execution_plan.md` — the standing task list.
+4. `tasks/STATE.md` "Next" and `tasks/handoff/QUEUE_2026-10-31.md` — the standing task list.
 5. `git status --porcelain` and `git log --oneline -5` — what is in flight right now.
 
 ## 2. Work the harness (highest priority, mechanical, always do this first)
@@ -35,7 +35,7 @@ currently **not wired into any pipeline or CLI** — you are its operator.
 
 ## 3. Continue the open work
 
-Take the single highest-value open item from STATE.md "Next", else from `tasks/todo.md`. Work it to a
+Take the single highest-value open item from STATE.md "Next", else from the queue. Work it to a
 verifiable state — a run, an output you can inspect, a test that fails before and passes after. Prefer
 finishing over breadth.
 

@@ -1,14 +1,14 @@
 # Factor Spine Design — dated, point-in-time-correct factor series
 
-> **Status:** DESIGN. No source code written, no pipeline run, no live-DB write.
-> **Date:** 2026-09-29 · **Author:** design subagent · **Authority:** `tasks/CURRENT_PLAN_2026-09-27.md`
+> **Status:** DESIGN (2026-09-29). The read/write core and the loader half now exist in `reality_engine/processing/factor_spine.py` and `factor_loaders.py`; this file stays as the design record.
+> **Date:** 2026-09-29 · **Author:** design subagent · **Authority:** the 2026-09-27 current plan (no longer in the repo; live state in `tasks/STATE.md`)
 > **Scope:** the *first* step only — a factor spine that will *later* be joined to company returns and exposure magnitudes. The spine alone delivers **zero** company-level predictions (§3.4).
 >
-> **Repo rules this design is bound by** (`AGENTS.md`, `FUNDAMENTAL_REALITY_ENGINE_OBJECTIVES.md`, `tasks/strategies.md` §1):
+> **Repo rules this design is bound by** (`AGENTS.md`, `FUNDAMENTAL_REALITY_ENGINE_OBJECTIVES.md`, and the 2026-09-29 strategies note §1, no longer in the repo):
 > quarantine before inference reads · honest-NULL over synthesis · raw kept for audit · every claim carries provenance
 > (`symbol + fiscal + event_date + source_doc_id + chunk_span`).
 >
-> **The failure class this design exists to prevent** — `tasks/next_wave_plan_2026-09-23.md:176-182` (§2M):
+> **The failure class this design exists to prevent** — the 2026-09-23 next-wave plan §2M (lines 176-182 of that plan, no longer in the repo):
 > `composite_screener._lookup_moat_metrics(symbol, isin)` and `ensemble_ranker.get_ensemble_weights_for_context` take **no date/asof key**; moat and policy are single-snapshot. Backfilling past dates therefore stamps **today's** substrate onto the past — "a look-ahead machine." The mechanism is reproduced verbatim by `move_attributor._build_attribution` (`move_attributor.py:367-415`), which passes `date` only to the EOD predictors and reads ranker weights with context `{"stock_id": symbol}` (`move_attributor.py:385`).
 > **Every temporal decision in this document is a column in a `WHERE` clause, not a parameter threaded through a function signature.** That is the structural difference, and it is the whole point of §2.
 
@@ -689,7 +689,10 @@ raise ValueError if series_id not resolved
 warn + record in factor_load_run if as_of_date < period_end for a monthly/quarterly series
 ```
 
-**`reality_engine/scripts/run_factor_spine_load.py`** — follows `run_substrate_hygiene.py` / `run_peer_graph.py`: prints counts, prints a `PIT SELF-CHECK` block, prints `ALL CHECKS PASSED`, is idempotent, takes `--dry-run` and `--series <key>`.
+**Loader CLI** — a dedicated `run_factor_spine_load.py` was proposed here, in the style of
+`run_substrate_hygiene.py` / `run_peer_graph.py` (counts, a `PIT SELF-CHECK` block, `ALL CHECKS
+PASSED`, idempotent, `--dry-run` and `--series <key>`), but it was never built. The load half
+today is `reality_engine/processing/factor_loaders.py`, reached through the repository API.
 
 **`factor_load_run`** (audit; the "it tried and this is what happened" record):
 
