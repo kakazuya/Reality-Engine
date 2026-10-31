@@ -1,0 +1,22 @@
+{
+ "frozen_at_utc": "2026-10-31T00:36:32.549361+00:00",
+ "seed": 20261031,
+ "n": 40,
+ "sha256_questions_jsonl": "5801011c4cdce973478b6338fbdb76b1f7ccc494cb3f130684e01e8b6f772d51",
+ "mandated": [
+  "MB0337",
+  "MB0345",
+  "MB0355",
+  "MB0415",
+  "MB0540"
+ ],
+ "parents_total": 1073,
+ "instances_total": 2098,
+ "eligible_parents": 45,
+ "pilot_isins_in_chunks": 87,
+ "excluded_before_freeze": {},
+ "bank_sha256": "64d2f46318127f76c48ad189a92ba40f0be41ed014d44d89f01a1497c6a17e7f",
+ "instances_sha256": "19f5ee29528a2ac41a661a9fded497c94f2804cf8af851925b3a4f08862a10ee",
+ "retrieval_db": "C:\\RE\\data\\pilot\\pilot60\\chunks_v3_pilot.db",
+ "retrieval_db_bytes": 529612800
+}
