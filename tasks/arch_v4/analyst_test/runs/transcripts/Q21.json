@@ -1,0 +1,590 @@
+{
+ "qid": "Q21",
+ "mid": "MB0530#MS",
+ "parent_mid": "MB0530",
+ "symbol": "APLAPOLLO",
+ "entity_isin": "INE702C01027",
+ "question": "APLAPOLLO's Sanand phase 1 was late by about six months and commissioned in December 2025. Did the company meet its own revised date?",
+ "as_of": "2026-10-07",
+ "period": "FY26",
+ "category": "lookup",
+ "source_bank": "open300",
+ "status": "final",
+ "error": null,
+ "answer": "The held data does not contain any mention of a Sanand phase 1 project or its commissioning, so whether the company met its revised date cannot be verified from the available documents.",
+ "working": "Searched claims and document chunks for \"Sanand phase 1 commissioned\" and \"Sanand phase 1 revised\"; zero results mentioning Sanand. Only Raipur plant commissioning references found.",
+ "missing": "not in data — no Sanand project commissioning date or revised schedule appears in the retrieved claims/chunks.",
+ "not_in_data": true,
+ "n_tool_calls": 4,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "claim_search",
+   "args": {
+    "entity": "APLAPOLLO",
+    "terms": "Sanand phase 1 commissioned"
+   },
+   "ok": true
+  },
+  {
+   "call": 3,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "APLAPOLLO",
+    "query": "Sanand phase 1 commissioned December 2025"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "APLAPOLLO",
+    "query": "Sanand phase 1 revised"
+   },
+   "ok": true
+  },
+  {
+   "call": 7,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "APLAPOLLO",
+    "query": "Sanand"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 23796,
+  "completion_tokens": 366
+ },
+ "beam_secs": 7.52,
+ "total_secs": 7.52,
+ "number_check": {
+  "numbers": [
+   "1"
+  ],
+  "supported": [
+   "1"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-fb91b290-d79f-4ec9-bd0c-37adbca9412f",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"APLAPOLLO\", \"terms\": \"Sanand phase 1 commissioned\"}"
+     }
+    },
+    {
+     "id": "call-6e161271-773b-41aa-b5ea-924164f2c13d",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"APLAPOLLO\", \"query\": \"Sanand phase 1 commissioned December 2025\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 83,
+   "secs": 1.74,
+   "usage": {
+    "prompt_tokens": 1106,
+    "completion_tokens": 95,
+    "total_tokens": 1201,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 21
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 146,
+      "output": 95,
+      "reasoning": 21,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "APLAPOLLO",
+    "terms": "Sanand phase 1 commissioned"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-07",
+    "entity": "INE702C01027",
+    "rows": [
+     {
+      "claim_id": 43378,
+      "entity_id": "INE702C01027",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "december 2023 to early january 2024",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "we ended up commissioning it fully in the month of December and the last line just got commissioned in early Jan. So, obviously there is like 4 months, 5 months of delay in the commissioning of Raipur plant.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-02-01T16:58:10.29"
+     },
+     {
+      "claim_id": 43537,
+      "entity_id": "INE702C01027",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Our Raipur is fully commissioned and started. Only formalities of government and suggestions of department will be followed and our plant will be ramp up.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "analyst_pushback",
+      "known_at": "2023-02-06T16:44:35.497"
+     }
+    ],
+    "n_returned": 2,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "APLAPOLLO",
+    "query": "Sanand phase 1 commissioned December 2025"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-07",
+    "entity": "INE702C01027",
+    "rows": [
+     {
+      "chunk_id": 42980,
+      "doc_id": "sha256:f2528e0d0ec871b62c254bfdb024c68f81a6aa2dc641b0bf48ee3dcbc8c5306e",
+      "doc_type": "deck",
+      "header": "APLAPOLLO · INE702C01027 · Investor deck · - · APL Apollo’s · p29 · known 2024-10-29T14:25:30",
+      "section": "APL Apollo’s",
+      "speaker": null,
+      "known_at": "2024-10-29T14:25:30",
+      "event_date": "2024-10-29",
+      "fiscal_period": "",
+      "page_from": 29,
+      "page_to": 29,
+      "char_len": 903,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.871064884326895,
+      "body_excerpt": "2022 08 09 2023 08 12 2024 08 09 2025 Signed the SBTi commitment to be Net Zero by 2050 and reduce Scope 1 & 2 emissions by 25% by 2030, vs. FY22 Submission made for validation of Near- and Long-term targets by SBTi Validation to start in January 2025 GHG Inventory calculated for Scope 1, 2, 3 and set as baseline Scope 1 & 2 emissions by 25% by 2030; Net Zero by 2050 Dubai plant commissioned in Dec’23 Planned Initiatives: • RE installations in ABPL plant • RE expansions in New Raipur and Malur plants Production: 17,55,000 ton Revenue: INR 1,30,633 Mn Boundary of Scope 1 emissions expanded to include fuel such as propane and LPG Scope of Purchased goods and services expanded to include raw materials (Steel Coils) Production: 26,18,000 ton Revenue: INR 1,81,188 Mn Production: 22,80,000 ton Revenue: INR 1,61,660 Mn APL APOLLO TUBES New Raipur plant commissioned in Dec’22"
+     },
+     {
+      "chunk_id": 43853,
+      "doc_id": "sha256:b6ed04f870473138db4e77c389ed3962e4010c0833e1db967a14f20cf6816d22",
+      "doc_type": "deck",
+      "header": "APLAPOLLO · INE702C01027 · Investor deck · - · APL Apollo’s · p27 · known 2025-01-20T15:00:14",
+      "section": "APL Apollo’s",
+      "speaker": null,
+      "known_at": "2025-01-20T15:00:14",
+      "event_date": "2025-01-20",
+      "fiscal_period": "",
+      "page_from": 27,
+      "page_to": 27,
+      "char_len": 913,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.864834320983298,
+      "body_excerpt": "2022 08 09 2023 08 12 2024 08 09 2025 Signed the SBTi commitment to be Net Zero by 2050 and reduce Scope 1 & 2 emissions by 25% by 2030, vs. FY22 Submission made for validation of Near- and Long-term targets by SBTi Validation to start in January 2025 GHG Inventory calculated for Scope 1, 2, 3 and set as baseline Scope 1 & 2 emissions reduction by 25% by 2030; Net Zero by 2050 Dubai plant commissioned in Dec’23 Planned Initiatives: • RE installations in ABPL plant • RE expansions in New Raipur and Malur plants Production: 17,55,000 ton Revenue: INR 1,30,633 Mn Boundary of Scope 1 emissions expanded to include fuel such as propane and LPG Scope of Purchased goods and services expanded to include raw materials (Steel Coils) Production: 26,18,000 ton Revenue: INR 1,81,188 Mn Production: 22,80,000 ton Revenue: INR 1,61,660 Mn APL APOLLO TUBES New Raipur plant commissioned in Dec’22"
+     },
+     {
+      "chunk_id": 45385,
+      "doc_id": "sha256:bf280fab62f0d3800777909a2ef0585847575439a245a26ae3aee6965a5b47ee",
+      "doc_type": "deck",
+      "header": "APLAPOLLO · INE702C01027 · Investor deck · - · APL Apollo’s · p27 · known 2025-05-07T15:26:29",
+      "section": "APL Apollo’s",
+      "speaker": null,
+      "known_at": "2025-05-07T15:26:29",
+      "event_date": "2025-05-07",
+      "fiscal_period": "",
+      "page_from": 27,
+      "page_to": 27,
+      "char_len": 913,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.864834320983298,
+      "body_excerpt": "2022 08 09 2023 08 12 2024 08 09 2025 Signed the SBTi commitment to be Net Zero by 2050 and reduce Scope 1 & 2 emissions by 25% by 2030, vs. FY22 Submission made for validation of Near- and Long-term targets by SBTi Validation to start in January 2025 GHG Inventory calculated for Scope 1, 2, 3 and set as baseline Scope 1 & 2 emissions reduction by 25% by 2030; Net Zero by 2050 Dubai plant commissioned in Dec’23 Planned Initiatives: • RE installations in ABPL plant • RE expansions in New Raipur and Malur plants Production: 17,55,000 ton Revenue: INR 1,30,633 Mn Boundary of Scope 1 emissions expanded to include fuel such as propane and LPG Scope of Purchased goods and services expanded to include raw materials (Steel Coils) Production: 26,18,000 ton Revenue: INR 1,81,188 Mn Production: 22,80,000 ton Revenue: INR 1,61,660 Mn APL APOLLO TUBES New Raipur plant commissioned in Dec’22"
+     },
+     {
+      "chunk_id": 31887,
+      "doc_id": "sha256:d3d95f2c2fe5163cd8667994ea0aafb98c3d39dcd0c334350f0aa7e2203f27d8",
+      "doc_type": "concall",
+      "header": "APLAPOLLO · INE702C01027 · Concall transcript · - · Q&A · p11 · known 2024-11-04T12:50:00",
+      "section": "Q&A",
+      "speaker": "devvrat mohta",
+      "known_at": "2024-11-04T12:50:00",
+      "event_date": "2024-10-29",
+      "fiscal_period": "",
+      "page_from": 11,
+      "page_to": 11,
+      "char_len": 339,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -6.745945204315045,
+      "body_excerpt": "Devvrat Mohta: My question really was that if your mix shift towards taking away more market share from Patra, does that become adverse for margin going forward and really when you say margins are 4,000 to 5,000 in first phase and 5,000 to 6,000 in second phase really I mean what time period are we talking about phase one, phase two?"
+     },
+     {
+      "chunk_id": 46514,
+      "doc_id": "sha256:cbd2562743151ae19db4329720fb5955a0f68cb3e3b8009e845d3634ce3d8615",
+      "doc_type": "deck",
+      "header": "APLAPOLLO · INE702C01027 · Investor deck · - · APL Apollo’s · p27 · known 2025-07-24T15:12:37",
+      "section": "APL Apollo’s",
+      "speaker": null,
+      "known_at": "2025-07-24T15:12:37",
+      "event_date": "2025-07-24",
+      "fiscal_period": "",
+      "page_from": 27,
+      "page_to": 27,
+      "char_len": 1022,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.736552857994155,
+      "body_excerpt": "2022 08 09 12 2023 08 12 2024 08 09 2025 02 2026 Signed the SBTi commitment to be Net Zero by 2050 and reduce Scope 1 & 2 emissions by 25% by 2030, vs. FY22 Submission made for validation of Near- and Long-term targets by SBTi Validation to start in January 2025 GHG Inventory calculated for Scope 1, 2, 3 and set as baseline Scope 1 & 2 emissions reduction by 25% by 2030; Net Zero by 2050 Dubai plant commissioned in Dec’23 Planned Initiatives: • RE installations in ABPL plant • RE expansions in New Raipur and Malur plants Production: 17,55,000 ton Revenue: INR 1,30,633 Mn Boundary of Scope 1 emissions expanded to include fuel such as propane and LPG Scope of Purchased goods and services expanded to include raw materials (Steel Coils) Production: 26,18,000 ton Revenue: INR 1,81,188 Mn Production: 22,80,000 ton Revenue: INR 1,61,660 Mn APL APOLLO TUBES New Raipur plant commissioned in Dec’22 SBTI validation achieved on 27th February 2025 Production: 31,57,978 ton Revenue: INR 2,06,895 Mn"
+     },
+     {
+      "chunk_id": 47498,
+      "doc_id": "sha256:e26a845b083db7b69a3f8dda12cc01a220d925cc466be9465115625fe8098a45",
+      "doc_type": "deck",
+      "header": "APLAPOLLO · INE702C01027 · Investor deck · - · APL Apollo’s · p28 · known 2025-10-29T14:50:20",
+      "section": "APL Apollo’s",
+      "speaker": null,
+      "known_at": "2025-10-29T14:50:20",
+      "event_date": "2025-10-29",
+      "fiscal_period": "",
+      "page_from": 28,
+      "page_to": 28,
+      "char_len": 1022,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.736552857994155,
+      "body_excerpt": "2022 08 09 12 2023 08 12 2024 08 09 2025 02 2026 Signed the SBTi commitment to be Net Zero by 2050 and reduce Scope 1 & 2 emissions by 25% by 2030, vs. FY22 Submission made for validation of Near- and Long-term targets by SBTi Validation to start in January 2025 GHG Inventory calculated for Scope 1, 2, 3 and set as baseline Scope 1 & 2 emissions reduction by 25% by 2030; Net Zero by 2050 Dubai plant commissioned in Dec’23 Planned Initiatives: • RE installations in ABPL plant • RE expansions in New Raipur and Malur plants Production: 17,55,000 ton Revenue: INR 1,30,633 Mn Boundary of Scope 1 emissions expanded to include fuel such as propane and LPG Scope of Purchased goods and services expanded to include raw materials (Steel Coils) Production: 26,18,000 ton Revenue: INR 1,81,188 Mn Production: 22,80,000 ton Revenue: INR 1,61,660 Mn APL APOLLO TUBES New Raipur plant commissioned in Dec’22 SBTI validation achieved on 27th February 2025 Production: 31,57,978 ton Revenue: INR 2,06,895 Mn"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "Sanand",
+     "phase",
+     "commissioned",
+     "December",
+     "2025"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-6950d784-8961-44d3-be11-222c25e97fed",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"APLAPOLLO\", \"query\": \"Sanand phase 1 revised\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 60,
+   "secs": 1.55,
+   "usage": {
+    "prompt_tokens": 5131,
+    "completion_tokens": 50,
+    "total_tokens": 5181,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 20
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 4043,
+      "output": 50,
+      "reasoning": 20,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "APLAPOLLO",
+    "query": "Sanand phase 1 revised"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-07",
+    "entity": "INE702C01027",
+    "rows": [
+     {
+      "chunk_id": 31887,
+      "doc_id": "sha256:d3d95f2c2fe5163cd8667994ea0aafb98c3d39dcd0c334350f0aa7e2203f27d8",
+      "doc_type": "concall",
+      "header": "APLAPOLLO · INE702C01027 · Concall transcript · - · Q&A · p11 · known 2024-11-04T12:50:00",
+      "section": "Q&A",
+      "speaker": "devvrat mohta",
+      "known_at": "2024-11-04T12:50:00",
+      "event_date": "2024-10-29",
+      "fiscal_period": "",
+      "page_from": 11,
+      "page_to": 11,
+      "char_len": 339,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -6.745945204315045,
+      "body_excerpt": "Devvrat Mohta: My question really was that if your mix shift towards taking away more market share from Patra, does that become adverse for margin going forward and really when you say margins are 4,000 to 5,000 in first phase and 5,000 to 6,000 in second phase really I mean what time period are we talking about phase one, phase two?"
+     },
+     {
+      "chunk_id": 27285,
+      "doc_id": "sha256:f695fd2b500c3a50f85f923ed58bb4fa716a692b69be0d4d5a8f689db38e9643",
+      "doc_type": "annual_report",
+      "header": "APLAPOLLO · INE702C01027 · Annual report · FY26 · EXTRACT OF REVISED AUDITED CONSOLIDATED ANO STANDALONE FINANCIAL RESULTS FOR > THE QUARTER · p2 · known 2026-08-23T17:54:43",
+      "section": "EXTRACT OF REVISED AUDITED CONSOLIDATED ANO STANDALONE FINANCIAL RESULTS FOR > THE QUARTER AND YEAR ENDED 31 MARCH 2026",
+      "speaker": null,
+      "known_at": "2026-08-23T17:54:43",
+      "event_date": "2026-08-23",
+      "fiscal_period": "FY26",
+      "page_from": 2,
+      "page_to": 2,
+      "char_len": 350,
+      "title": "APLAPOLLO annual report 2026-03-31",
+      "score": -6.442771076825861,
+      "body_excerpt": "EXTRACT OF REVISED AUDITED CONSOLIDATED ANO STANDALONE FINANCIAL RESULTS FOR THE QUARTER AND YEAR ENDED 31 MARCH 2026 • Theremotee--<101ingpenod8'lil~tomFrldi~.Seiiltmbtr 11. 202', M o,,oo ... 111.{IST)RendscnSu-idl)'.Sepiwnber13.202611051)1)PM{JSijTht -~fl'llbtdisatilldtntrear.&r (' ,n m.llkln. excep1 lor share <tata oolelis olh&rw1M st;tted)"
+     },
+     {
+      "chunk_id": 38255,
+      "doc_id": "sha256:5a3fe4cd8ab388402212203893e67e6f72ea1efc42a4427519ecbb4733c6fa83",
+      "doc_type": "concall",
+      "header": "APLAPOLLO · INE702C01027 · Concall transcript · Q4FY26 · Q&A · p16 · known 2026-05-06T18:03:18",
+      "section": "Q&A",
+      "speaker": "rajesh ravi",
+      "known_at": "2026-05-06T18:03:18",
+      "event_date": "2026-05-04",
+      "fiscal_period": "Q4FY26",
+      "page_from": 16,
+      "page_to": 16,
+      "char_len": 2049,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -6.242267393585687,
+      "body_excerpt": "Rajesh Ravi: Raw material, okay. So HRC rather. So, you know, the HRC prices which is going up, would you have to mark up your inventories and would have that led to some inventory gain in Q4? Anubhav Gupta: So Rajesh, what happens is that since our overall inventory churn is less than 30 days and in India steel prices are revised once in a month, okay. So by the time next cycle comes up, we are already out of our previous cycle. Correct. So that's why the mark-to-market is not significant. It's like very, very minuscule. If my net inventory days are higher than 30 days, then there'll be mark-to-market in my balance sheet. Rajesh Ravi: Understood. Understood. So basically none of your numbers would have any padded up of inventory, so in case if steel prices were to again come back, you won't have any issues over this. Anubhav Gupta: That's right. That's right. It only happens when there is like significant drop in steel prices sometime like what we have seen, like there'll be like a time when steel price are revised twice in a month, okay, which—which happens once in a decade, okay. Then there could be like, you know, some gains or losses, okay, which would be significant. Otherwise, 11 out of 12 months steel prices are revised once in a month. So that doesn't hurt us. Rajesh Ravi: Agreed. Agreed. Yes. Great. That's all from my end. Thank you and all the best. Anubhav Gupta: Thanks. Moderator: Thank you. Ladies and gentlemen, that was the last question for today. I'll now han …"
+     },
+     {
+      "chunk_id": 27185,
+      "doc_id": "sha256:2f37761a8f30769e27b5cc5c66e78ac187ffc464e4eac6b0fc5b1e720b57e82a",
+      "doc_type": "annual_report",
+      "header": "APLAPOLLO · INE702C01027 · Annual report · FY26 · NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS · p357 · known 2026-08-21T17:07:34",
+      "section": "NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS",
+      "speaker": null,
+      "known_at": "2026-08-21T17:07:34",
+      "event_date": "2026-08-21",
+      "fiscal_period": "FY26",
+      "page_from": 357,
+      "page_to": 358,
+      "char_len": 4926,
+      "title": "APLAPOLLO annual report 2026-03-31",
+      "score": -5.6788376729115475,
+      "body_excerpt": "NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS for the year ended March 31, 2026 the end of each financial year and adjusted prospectively if appropriate. (q) Intangible assets Intangible assets are amortised over their estimated useful life on straight line method as follows: (a) Computer software - 3 to 6 years The estimated useful life of the intangible assets and the amortisation period are reviewed at the end of each financial year and the amortisation period is revised to reflect the changed pattern, if any. (r) Share-based payments (a) Equity-settled Stock Appreciation Rights (SARs) The Company operates an equity-settled Stock Appreciation Rights (\"SAR\") scheme for eligible employees in the Group. Under the scheme, employees are entitled to receive equity shares of the Company equivalent to the appreciation in the value of the Company's shares from the grant date to the exercise date, subject to satisfaction of prescribed vesting conditions. The fair value of SARs granted is determined at the grant date using an appropriate valuation model and is recognised as an employee benefits expense, with a corresponding credit to the Share option outstanding account. The fair value determined at the grant date is not subsequently remeasured. This treatment is consistent with the requirements for equity-settled share-based payment arrangements under Ind AS 102. The expense is recognised over the vesting period based on the Group’s best estimate of the number of SARs expected to v …"
+     },
+     {
+      "chunk_id": 29054,
+      "doc_id": "sha256:eb1ced56fd5f849723eaa2b8554cccc6161e64a823794509f635dc39a0310334",
+      "doc_type": "concall",
+      "header": "APLAPOLLO · INE702C01027 · Concall transcript · - · Transcript · p1 · known 2024-05-08T14:57:26",
+      "section": "Transcript",
+      "speaker": null,
+      "known_at": "2024-05-08T14:57:26",
+      "event_date": "2024-05-08",
+      "fiscal_period": "",
+      "page_from": 1,
+      "page_to": 1,
+      "char_len": 2436,
+      "title": "APL Apollo Tubes Limited has informed the Exchange about Schedule of meet",
+      "score": -5.441391378947608,
+      "body_excerpt": "8th May 2024 Electronic Filing National Stock Exchange of India Limited “Exchange Plaza” Bandra-Kurla Complex, Bandra (E), Mumbai-400051 NSE Symbol : APLAPOLLO Department of Corporate Services/Listing BSE Limited Phiroze Jeejeebhoy Tower, Dalal Street, Fort, Mumbai-400001 Scrip Code : 533758 Re: Revised schedule of Conference Call Q4FY24 Further to our intimation dated May 6, 2024, we hereby inform that the Conference Call to discuss Q4FY24 earnings with investors and analysts has been rescheduled to Monday, 13th May 2024, 12:30 PM IST. Details of the revised earnings conference call is enclosed herewith. Submitted for your kind information and necessary records. Thanking you Yours faithfully For APL Apollo Tubes Limited Deepak C S Company Secretary Membership No. F5060 Encl: a/a DEEPAK CHARUVIL SANKUNNI Digitally signed by DEEPAK CHARUVIL SANKUNNI Date: 2024.05.08 14:39:39 +05'30' Investor Conference Call Elara Securities (India) Private Limited is pleased to invite you to a Conference Call with APL Apollo Tubes represented by Mr. Sanjay Gupta, Chairman & Managing Director Mr. Deepak Goyal, Director (Operations) & Group Chief Financial Officer Mr. Anubhav Gupta, Chief Strategy Officer Subject: Conference call to discuss Q4FY24 Result Date: Monday, 13 May, 2024 Time: 12.30 PM IST 08.00 AM (UK) - 03.00 PM (Singapore, Hong Kong) 03.00 AM (East Coast, US) - 12.00 AM (West Coast, US) Diamond Pass Login: click here for Registration Dial in Numbers: Universal Numbers +91 22 6280 11 …"
+     },
+     {
+      "chunk_id": 31882,
+      "doc_id": "sha256:d3d95f2c2fe5163cd8667994ea0aafb98c3d39dcd0c334350f0aa7e2203f27d8",
+      "doc_type": "concall",
+      "header": "APLAPOLLO · INE702C01027 · Concall transcript · - · Q&A · p9 · known 2024-11-04T12:50:00",
+      "section": "Q&A",
+      "speaker": "anupam gupta",
+      "known_at": "2024-11-04T12:50:00",
+      "event_date": "2024-10-29",
+      "fiscal_period": "",
+      "page_from": 9,
+      "page_to": 9,
+      "char_len": 1195,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -5.235195625566604,
+      "body_excerpt": "Anupam Gupta: The question was on the EBITDA per ton number which you have put in the PPT of Rs. 5000 for FY27 targeted. But just do the math from your current number and assuming there no inventory losses and you have this Rs. 500 discount rolled back; thus it will be operating leverage, it will come through, ideally it should be Rs. 5,000 per ton in the next two quarters itself, in fourth quarter itself, in fact, assuming there is no further this thing, so are you assuming adverse mix incrementally? Because let's say you'll push out more of general structures, given that the competition there is much lesser or how are you looking at that number specifically? Anubhav Gupta: So, Anupam, if you heard Sanji, right, he said in first phase our target is Rs. 4,000 to Rs. 5,000 a ton EBITDA and in second Phase 5,000 to Rs. 6,000 per ton EBITDA, right. I mean right now the EBITDA per ton has been so low for the last 2-3 quarter. If we mention Rs. 6000 per ton on presentation, we just thought let's be a bit conservative in highlighting the number, but yes, you are right that the business has the ability to produce Rs. 6,000 per ton EBITDA which Sanjayji also highlighted."
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "Sanand",
+     "phase",
+     "revised"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-3a9f1872-79c2-4091-abf7-3e35670ec8f7",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"APLAPOLLO\", \"query\": \"Sanand\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 80,
+   "secs": 1.56,
+   "usage": {
+    "prompt_tokens": 8715,
+    "completion_tokens": 53,
+    "total_tokens": 8768,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 22
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 7755,
+      "output": 53,
+      "reasoning": 22,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "APLAPOLLO",
+    "query": "Sanand"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-07",
+    "entity": "INE702C01027",
+    "rows": [],
+    "n_returned": 0,
+    "query_terms": [
+     "Sanand"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-ae8d66d2-4510-4034-be65-8f849da35b50",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"The held data does not contain any mention of a Sanand phase 1 project or its commissioning, so whether the company met its revised date cannot be verified from the available documents.\", \"missing\": \"not in data — no Sanand project commissioning date or revised schedule appears in the retrieved claims/chunks.\", \"working\": \"Searched claims and document chunks for \\\"Sanand phase 1 commissioned\\\" and \\\"Sanand phase 1 revised\\\"; zero results mentioning Sanand. Only Raipur plant commissioning references found.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 154,
+   "secs": 2.18,
+   "usage": {
+    "prompt_tokens": 8844,
+    "completion_tokens": 168,
+    "total_tokens": 9012,
+    "prompt_tokens_details": {
+     "cached_tokens": 8704
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 45
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 140,
+      "output": 168,
+      "reasoning": 45,
+      "cache_read": 8704,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "The held data does not contain any mention of a Sanand phase 1 project or its commissioning, so whether the company met its revised date cannot be verified from the available documents.",
+    "missing": "not in data — no Sanand project commissioning date or revised schedule appears in the retrieved claims/chunks.",
+    "working": "Searched claims and document chunks for \"Sanand phase 1 commissioned\" and \"Sanand phase 1 revised\"; zero results mentioning Sanand. Only Raipur plant commissioning references found."
+   }
+  }
+ ]
+}

@@ -1,0 +1,380 @@
+{
+ "qid": "Q09",
+ "mid": "MB0259#L",
+ "parent_mid": "MB0259",
+ "symbol": "POWERGRID",
+ "entity_isin": "INE752E01010",
+ "question": "As of 31 July 2026, how many manufacturing facilities did Power Grid Corporation of India Limited (NSE: POWERGRID) report in its latest deck filed by that date?",
+ "as_of": "2026-07-31",
+ "period": "as of 31 July 2026",
+ "category": "lookup",
+ "source_bank": "variations300",
+ "status": "final",
+ "error": null,
+ "answer": "Not in data — the latest deck filed by 31 July 2026 (known 2026-02-02) does not state a count of manufacturing facilities.",
+ "working": "Searched deck chunks for \"manufacturing facilities\" and \"manufacturing\" as of 2026-07-31; results discuss manufacturing capacity as a project challenge and non-manufacturing award, not a facility count.",
+ "missing": "not in data: number of manufacturing facilities reported in POWERGRID's latest deck as of 31 July 2026.",
+ "not_in_data": true,
+ "n_tool_calls": 3,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "chunk_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "doc_types": "deck",
+    "entity": "POWERGRID",
+    "limit": "10.0",
+    "query": "manufacturing facilities"
+   },
+   "ok": true
+  },
+  {
+   "call": 3,
+   "tool": "claim_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "entity": "POWERGRID",
+    "limit": "10.0",
+    "terms": "manufacturing facilities"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "chunk_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "doc_types": "deck",
+    "entity": "POWERGRID",
+    "limit": "10.0",
+    "query": "manufacturing"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 3,
+ "usage": {
+  "prompt_tokens": 6934,
+  "completion_tokens": 459
+ },
+ "beam_secs": 6.13,
+ "total_secs": 6.13,
+ "number_check": {
+  "numbers": [
+   "31",
+   "2026",
+   "02"
+  ],
+  "supported": [
+   "31",
+   "2026",
+   "02"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-2fb2261b-b4a7-45e9-8ef3-11a65a6b8809",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"as_of\": \"2026-07-31\", \"doc_types\": \"deck\", \"entity\": \"POWERGRID\", \"limit\": \"10.0\", \"query\": \"manufacturing facilities\"}"
+     }
+    },
+    {
+     "id": "call-5060a7fc-8a7c-467e-a4da-c32aa9422f14",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"as_of\": \"2026-07-31\", \"entity\": \"POWERGRID\", \"limit\": \"10.0\", \"terms\": \"manufacturing facilities\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 336,
+   "secs": 2.04,
+   "usage": {
+    "prompt_tokens": 1115,
+    "completion_tokens": 179,
+    "total_tokens": 1294,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 70
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 155,
+      "output": 179,
+      "reasoning": 70,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "doc_types": "deck",
+    "entity": "POWERGRID",
+    "limit": "10.0",
+    "query": "manufacturing facilities"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-07-31",
+    "entity": "INE752E01010",
+    "rows": [
+     {
+      "chunk_id": 48874,
+      "doc_id": "sha256:cb68abaa1fe2807869a67ab05859806978e2cf39e03cc1e770ce260c692beb0d",
+      "doc_type": "deck",
+      "header": "POWERGRID · INE752E01010 · Investor deck · - · ESG, CSR & Accolades · p33 · known 2026-02-02T11:51:02",
+      "section": "ESG, CSR & Accolades",
+      "speaker": null,
+      "known_at": "2026-02-02T11:51:02",
+      "event_date": "2026-02-02",
+      "fiscal_period": "",
+      "page_from": 33,
+      "page_to": 34,
+      "char_len": 504,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -4.380246584039293,
+      "body_excerpt": "ESG, CSR & Accolades 32 ESG Milestones CSR Recent Accolades 33 50% of total power consumption met through renewable energy (Dec’25) ENERGY MANAGEMENT 33 Rooftop Solar installations across POWERGRID facilities Achieved through key initiatives Additional renewable power sourced from 85 MW Solar PV plant at Nagda Pan-India green energy initiatives, reflecting Company’s commitment to Sustainability Strengthens POWERGRID’s ESG roadmap and supports India’s clean energy transition Key ESG Milestone"
+     },
+     {
+      "chunk_id": 41852,
+      "doc_id": "sha256:51d5f7472df4b66548dd58501ec17f43b336756b129dfa944566074ad3a20c41",
+      "doc_type": "deck",
+      "header": "POWERGRID · INE752E01010 · Investor deck · - · Other POWERGRID Vishram Sadans · p30 · known 2024-07-29T18:35:50",
+      "section": "Other POWERGRID Vishram Sadans",
+      "speaker": null,
+      "known_at": "2024-07-29T18:35:50",
+      "event_date": "2024-07-29",
+      "fiscal_period": "",
+      "page_from": 30,
+      "page_to": 30,
+      "char_len": 290,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -3.925443493051254,
+      "body_excerpt": "Awards & Recognition 29 “Most efficient & Profitable Maharatna of the Year (non-manufacturing)” by Dalal Street Investment Journal Recognized as “Best Organizations for Women 2024” by Economic Times “Platts Global Energy Award 2023” in “Corporate Impact - Targeted Programme” category"
+     },
+     {
+      "chunk_id": 48873,
+      "doc_id": "sha256:cb68abaa1fe2807869a67ab05859806978e2cf39e03cc1e770ce260c692beb0d",
+      "doc_type": "deck",
+      "header": "POWERGRID · INE752E01010 · Investor deck · - · Financial Highlights –Q1FY21 (Standalone) · p32 · known 2026-02-02T11:51:02",
+      "section": "Financial Highlights –Q1FY21 (Standalone)",
+      "speaker": null,
+      "known_at": "2026-02-02T11:51:02",
+      "event_date": "2026-02-02",
+      "fiscal_period": "",
+      "page_from": 32,
+      "page_to": 32,
+      "char_len": 322,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -3.9118271132851694,
+      "body_excerpt": "Challenges in Project Implementation 31 Skilled Manpower availability Securing of land for construction of Substation Difficult terrain, extreme weather Right of Way (High population, industrial zones, and expensive land lead to disputes) Forest / Wildlife Clearances Supply Chain Constraints Manufacturing Capacity"
+     }
+    ],
+    "n_returned": 3,
+    "query_terms": [
+     "manufacturing",
+     "facilities"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "entity": "POWERGRID",
+    "limit": "10.0",
+    "terms": "manufacturing facilities"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-07-31",
+    "entity": "INE752E01010",
+    "rows": [],
+    "n_returned": 0,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-a88f69c6-b405-4431-909b-73dd904a6290",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"as_of\": \"2026-07-31\", \"doc_types\": \"deck\", \"entity\": \"POWERGRID\", \"limit\": \"10.0\", \"query\": \"manufacturing\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 99,
+   "secs": 1.57,
+   "usage": {
+    "prompt_tokens": 2484,
+    "completion_tokens": 83,
+    "total_tokens": 2567,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 28
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 1524,
+      "output": 83,
+      "reasoning": 28,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "doc_types": "deck",
+    "entity": "POWERGRID",
+    "limit": "10.0",
+    "query": "manufacturing"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-07-31",
+    "entity": "INE752E01010",
+    "rows": [
+     {
+      "chunk_id": 41852,
+      "doc_id": "sha256:51d5f7472df4b66548dd58501ec17f43b336756b129dfa944566074ad3a20c41",
+      "doc_type": "deck",
+      "header": "POWERGRID · INE752E01010 · Investor deck · - · Other POWERGRID Vishram Sadans · p30 · known 2024-07-29T18:35:50",
+      "section": "Other POWERGRID Vishram Sadans",
+      "speaker": null,
+      "known_at": "2024-07-29T18:35:50",
+      "event_date": "2024-07-29",
+      "fiscal_period": "",
+      "page_from": 30,
+      "page_to": 30,
+      "char_len": 290,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -3.925443493051254,
+      "body_excerpt": "Awards & Recognition 29 “Most efficient & Profitable Maharatna of the Year (non-manufacturing)” by Dalal Street Investment Journal Recognized as “Best Organizations for Women 2024” by Economic Times “Platts Global Energy Award 2023” in “Corporate Impact - Targeted Programme” category"
+     },
+     {
+      "chunk_id": 48873,
+      "doc_id": "sha256:cb68abaa1fe2807869a67ab05859806978e2cf39e03cc1e770ce260c692beb0d",
+      "doc_type": "deck",
+      "header": "POWERGRID · INE752E01010 · Investor deck · - · Financial Highlights –Q1FY21 (Standalone) · p32 · known 2026-02-02T11:51:02",
+      "section": "Financial Highlights –Q1FY21 (Standalone)",
+      "speaker": null,
+      "known_at": "2026-02-02T11:51:02",
+      "event_date": "2026-02-02",
+      "fiscal_period": "",
+      "page_from": 32,
+      "page_to": 32,
+      "char_len": 322,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -3.9118271132851694,
+      "body_excerpt": "Challenges in Project Implementation 31 Skilled Manpower availability Securing of land for construction of Substation Difficult terrain, extreme weather Right of Way (High population, industrial zones, and expensive land lead to disputes) Forest / Wildlife Clearances Supply Chain Constraints Manufacturing Capacity"
+     }
+    ],
+    "n_returned": 2,
+    "query_terms": [
+     "manufacturing"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b31b8d66-a939-4017-a57d-38f3a6e7cdd9",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"Not in data — the latest deck filed by 31 July 2026 (known 2026-02-02) does not state a count of manufacturing facilities.\", \"missing\": \"not in data: number of manufacturing facilities reported in POWERGRID's latest deck as of 31 July 2026.\", \"working\": \"Searched deck chunks for \\\"manufacturing facilities\\\" and \\\"manufacturing\\\" as of 2026-07-31; results discuss manufacturing capacity as a project challenge and non-manufacturing award, not a facility count.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 244,
+   "secs": 2.34,
+   "usage": {
+    "prompt_tokens": 3335,
+    "completion_tokens": 197,
+    "total_tokens": 3532,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 55
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2375,
+      "output": 197,
+      "reasoning": 55,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "submit",
+   "args": {
+    "answer": "Not in data — the latest deck filed by 31 July 2026 (known 2026-02-02) does not state a count of manufacturing facilities.",
+    "missing": "not in data: number of manufacturing facilities reported in POWERGRID's latest deck as of 31 July 2026.",
+    "working": "Searched deck chunks for \"manufacturing facilities\" and \"manufacturing\" as of 2026-07-31; results discuss manufacturing capacity as a project challenge and non-manufacturing award, not a facility count."
+   }
+  }
+ ]
+}

@@ -1,0 +1,45 @@
+{
+ "n": 40,
+ "statuses": {
+  "final": 40
+ },
+ "secs_total": 326.36,
+ "secs_mean": 8.16,
+ "secs_median": 7.74,
+ "secs_min": 3.4,
+ "secs_max": 14.12,
+ "tool_calls_total": 133,
+ "tool_calls_mean": 3.33,
+ "tool_calls_max": 6,
+ "usage_in_total": 789400,
+ "usage_out_total": 22937,
+ "usage_in_mean": 19735,
+ "usage_out_mean": 573.4,
+ "tool_error_codes": {
+  "bad_args": 2,
+  "unknown_entity": 1
+ },
+ "as_of_refused": 0,
+ "pit_breaches": 0,
+ "number_flagged_rows": 7,
+ "number_unsupported_rows": 3,
+ "flagged": [
+  "Q17",
+  "Q19",
+  "Q23",
+  "Q30",
+  "Q36",
+  "Q38",
+  "Q40"
+ ],
+ "unsupported": [
+  "Q23",
+  "Q30",
+  "Q38"
+ ],
+ "estimate_2681_secs": 21874.0,
+ "estimate_2681_hours": 6.08,
+ "estimate_2681_in_tokens": 52909535,
+ "estimate_2681_out_tokens": 1537352,
+ "judgement_rows": 11
+}

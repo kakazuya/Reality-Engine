@@ -1,0 +1,899 @@
+{
+ "qid": "Q19",
+ "mid": "MB0352#L",
+ "parent_mid": "MB0352",
+ "symbol": "SUNPHARMA",
+ "entity_isin": "INE044A01036",
+ "question": "SUNPHARMA says 4.5 GW of manufacturing capacity is fully operational. When does that capacity convert into revenue, and what gates it?",
+ "as_of": "2026-10-19",
+ "period": "FY27",
+ "category": "lookup",
+ "source_bank": "open300",
+ "status": "final",
+ "error": null,
+ "answer": "The held data does not contain any statement that SUNPHARMA has 4.5 GW of manufacturing capacity fully operational. The available material covers Sun Pharma's 40 global manufacturing sites, renewable-energy/captive power plants (hybrid wind+solar in Gujarat, solar in Madhya Pradesh/Maharashtra, windmills in Tamil Nadu), and fill-and-finish capacity questions, but no 4.5 GW manufacturing capacity figure. Therefore the premise of the question is not supported by the data.",
+ "working": "Searched claims (topic \"capacity_and_projects\") and document chunks for \"4.5 GW\", \"4.5 GW manufacturing capacity\", and related terms across concalls, annual reports and decks as of 2026-10-19; no matching capacity figure or revenue-conversion/gating discussion found.",
+ "missing": "not in data — any SUNPHARMA statement about 4.5 GW of manufacturing capacity being fully operational, and consequently its revenue conversion timing and gating factors.",
+ "not_in_data": true,
+ "n_tool_calls": 5,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "claim_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "terms": "4.5 GW manufacturing capacity"
+   },
+   "ok": true
+  },
+  {
+   "call": 3,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "4.5 GW capacity manufacturing operational"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "4.5 GW capacity"
+   },
+   "ok": true
+  },
+  {
+   "call": 7,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "4.5 GW"
+   },
+   "ok": false
+  },
+  {
+   "call": 9,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "4.5 GW manufacturing capacity fully operational"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 5,
+ "usage": {
+  "prompt_tokens": 38128,
+  "completion_tokens": 642
+ },
+ "beam_secs": 10.69,
+ "total_secs": 10.69,
+ "number_check": {
+  "numbers": [
+   "4.5",
+   "40"
+  ],
+  "supported": [
+   "40"
+  ],
+  "question_only": [
+   "4.5"
+  ],
+  "unsupported": [],
+  "flagged": [
+   "4.5"
+  ],
+  "ok": false,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b7533843-f560-4dfe-88b6-fe6eb0613862",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"terms\": \"4.5 GW manufacturing capacity\"}"
+     }
+    },
+    {
+     "id": "call-b39ffe30-dfa4-4164-8e0d-5441769dee6b",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"query\": \"4.5 GW capacity manufacturing operational\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 214,
+   "secs": 1.75,
+   "usage": {
+    "prompt_tokens": 1098,
+    "completion_tokens": 119,
+    "total_tokens": 1217,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 55
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 138,
+      "output": 119,
+      "reasoning": 55,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "terms": "4.5 GW manufacturing capacity"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE044A01036",
+    "rows": [
+     {
+      "claim_id": 554299,
+      "entity_id": "INE044A01036",
+      "topic": "acquisition",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "about six to nine month time",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Obviously this transaction is subject to approvals from Organon shareholders as well as the customary regulatory approvals and we expect this deal to close in about six to nine month time.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2026-05-05T23:24:59.653"
+     },
+     {
+      "claim_id": 554304,
+      "entity_id": "INE044A01036",
+      "topic": "delivery",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "short term",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "So we see a opportunity to bring some of these kind of products to market in the short term.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2026-05-05T23:24:59.653"
+     },
+     {
+      "claim_id": 554300,
+      "entity_id": "INE044A01036",
+      "topic": "management",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "our first priority would be to initiate the integration planning which includes setting up of a integration management office.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2026-05-05T23:24:59.653"
+     },
+     {
+      "claim_id": 554301,
+      "entity_id": "INE044A01036",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "So Organon provides us a scale platform for expansion in China and what is important is the current sales of Organon in China is more than $800 million",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2026-05-05T23:24:59.653"
+     },
+     {
+      "claim_id": 554302,
+      "entity_id": "INE044A01036",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "next two to three years",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "they have today six products in biosimilar, but this portfolio can be grown further.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2026-05-05T23:24:59.653"
+     },
+     {
+      "claim_id": 554303,
+      "entity_id": "INE044A01036",
+      "topic": "product",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "pre-closing registration and post-closin",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "We can start the process of registering the product and post close transaction you can commercialize the product using the commercial vehicle what we have we will get through Organon.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2026-05-05T23:24:59.653"
+     },
+     {
+      "claim_id": 554370,
+      "entity_id": "INE044A01036",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "judgment timing unclear; management said",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "So, we are awaiting the court judgment. And I really can’t put time to it, so we do not know, hopefully soon.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-04T18:02:27.2"
+     },
+     {
+      "claim_id": 554371,
+      "entity_id": "INE044A01036",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "trial and filing timeline depends on the",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "No. I think we’ve also indicated that the trial is managed by the principle from whom we have licensed the product, and they are a public company.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-04T18:02:27.2"
+     },
+     {
+      "claim_id": 554372,
+      "entity_id": "INE044A01036",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "moved to the first half of next year.",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "No, I think if you see our disclosure, what we’ve said is that it will move to the first half of next year.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-04T18:02:27.2"
+     },
+     {
+      "claim_id": 554373,
+      "entity_id": "INE044A01036",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "approval-dependent; management indicated",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "We will launch as soon as we get approval in the new indication. And like I said, for another product which was asked, it will be a matter of a few weeks and not a few months.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-04T18:02:27.2"
+     }
+    ],
+    "n_returned": 10,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "4.5 GW capacity manufacturing operational"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE044A01036",
+    "rows": [
+     {
+      "chunk_id": 62775,
+      "doc_id": "sha256:abc0664bb0f83fc60b54898aef71b5554ae95a8eeb7fbe8a3a854309bd84224b",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY25 · LEQSELVI and UNLOXCYT (cont.) · p24 · known 2025-07-04T17:50:19",
+      "section": "LEQSELVI and UNLOXCYT (cont.)",
+      "speaker": null,
+      "known_at": "2025-07-04T17:50:19",
+      "event_date": "2025-07-04",
+      "fiscal_period": "FY25",
+      "page_from": 24,
+      "page_to": 25,
+      "char_len": 5729,
+      "title": "SUNPHARMA annual report 2025-03-31",
+      "score": -8.000129179840913,
+      "body_excerpt": "… gy market in Mainland China 2019 Licensing agreement with CMS for tildrakizumab, Cequa and 8 generic products Greater China Access to Greater China market 2018 Acquired Pola Pharma in Japan Japan Access to Japanese dermatology market 2016 Acquired global rights for Cequa and Odomzo Global Enhances specialty pipeline 2016 Acquired Biosintez Russia Local manufacturing capability to enhance presence in Russian market 2016 Out-licensing agreement with Almirall for tildrakizumab Europe Access to European market for tildrakizumab 2016 Acquired 14 brands from Novartis Japan Entry into Japan 2015 Acquired InSite Vision Inc. US Strengthens branded ophthalmic portfolio in the US 2015 Sun Pharma-Ranbaxy merger Global Markets Strengthen position in the Global Generic Pharma Industry. #1 Pharma Company in India and strong positioning in emerging markets 2014 In-licensing agreement with Merck for tildrakizumab Global Markets Strengthening the specialty product pipeline 2014 Acquired Pharmalucence US Access to sterile injectable capacity in the US 2012 Acquired DUSA Pharma, Inc. US Access to specialty drug-device combination in dermatology segment 2010 Acquired Taro Pharmaceutical Industries Ltd. Israel Access to dermatology generics portfolio, manufacturing facilities at Israel & Canada 1997 Acquired Caraco US Entry into the US market Sun Pharmaceutical Industries Limited | Annual Report 2024-25 22 Statutory Reports Corporate Overview Financial Statements Management Discussion and Analysis"
+     },
+     {
+      "chunk_id": 78721,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · • STAFF TRAINING AND CAPACITY BUILDING: Ensured · p76 · known 2026-07-06T18:57:49",
+      "section": "• STAFF TRAINING AND CAPACITY BUILDING: Ensured",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 76,
+      "page_to": 76,
+      "char_len": 356,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -7.819203611858313,
+      "body_excerpt": "• STAFF TRAINING AND CAPACITY BUILDING: Ensured that medical and operational staff were trained by Tata Memorial Hospital to deliver treatment services and manage patient care effectively. • COUNSELLING AND PSYCHOSOCIAL SUPPORT: Delivered counselling and emotional support to patients and caregivers to help them cope with treatment- related stress."
+     },
+     {
+      "chunk_id": 78739,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · OECD-DAC RATING · p80 · known 2026-07-06T18:57:49",
+      "section": "OECD-DAC RATING",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 80,
+      "page_to": 82,
+      "char_len": 5964,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -7.66556762820143,
+      "body_excerpt": "… utilising alternate sources of energy \u0007The Company continues to implement a range of initiatives to reduce carbon emissions through the adoption of alternative and renewable energy sources: • A captive hybrid power plant (wind + solar) is operational in Gujarat to partially meet the electricity requirements of the Company’s manufacturing facilities. In addition, an additional hybrid (wind + solar) plant is currently under installation within the same state to further strengthen renewable energy capacity. • A captive solar power plant is operational in Madhya Pradesh, and an additional solar power plant has been commissioned in Maharashtra, contributing to partial fulfilment of power requirements. 79 Executive Summary of Impact Assessment Advancing Innovation Globally for Better Patient Care Statutory Reports Corporate Overview Financial Statements • Captive windmills are utilized in Tamil Nadu to support a portion of the Company’s energy requirements. Additionally, a group captive arrangement has been established to further enhance the sourcing of renewable energy within the state. • Rooftop solar installations are being leveraged across multiple sites to meet part of the electricity demand. Rooftop solar systems have been installed at Halol, Baska, Tandalja, Dadra, Gurgaon, Toansa, Mohali, Baddi, and Basma locations. • As part of the Company’s fuel substitution strategy, conventional boiler fuels such as furnace oil, high‑speed diesel (HSD), and natural gas (NG) have been re …"
+     },
+     {
+      "chunk_id": 92078,
+      "doc_id": "sha256:5aaf24140892620bb51e7d74921e63bd15dedfbc00aa8bc2096ed8e8abc240c9",
+      "doc_type": "concall",
+      "header": "SUNPHARMA · INE044A01036 · Concall transcript · - · Q&A · p8 · known 2025-08-06T16:55:57",
+      "section": "Q&A",
+      "speaker": "damayanti kerai",
+      "known_at": "2025-08-06T16:55:57",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 8,
+      "page_to": 8,
+      "char_len": 630,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -7.049663931600968,
+      "body_excerpt": "Damayanti Kerai: Okay. But you think the current capacity is good enough for you in case you need to onshore manufacturing and you have no immediate plan to add on here? Dilip Shanghvi: Yes, I think that would be the right assumption. Sun Pharma Q1 FY26 Earnings Call Transcript 06:30 pm July 31, 2025 Corporate Office : Sun House, 201 B/1, Western Express Highway, Goregaon (E), Mumbai - 400063 For further updates and specific queries, please visit www.sunpharma.com or feel free to contact Abhishek Sharma, +91 22 43242929, abhi.sharma@sunpharma.com, Gaurav Chugh, +91 22 43245373, gaurav.chugh@sunpharma.com,"
+     },
+     {
+      "chunk_id": 99207,
+      "doc_id": "sha256:398f7e179db2a63b5df06fe322b9063f9045f2d9dda72460b50e157301197e13",
+      "doc_type": "deck",
+      "header": "SUNPHARMA · INE044A01036 · Investor deck · - · Company history and key deals · p58 · known 2024-11-28T18:11:49",
+      "section": "Company history and key deals",
+      "speaker": null,
+      "known_at": "2024-11-28T18:11:49",
+      "event_date": "2024-11-28",
+      "fiscal_period": "",
+      "page_from": 58,
+      "page_to": 58,
+      "char_len": 1460,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.981946006592558,
+      "body_excerpt": "Year Deals Country Rationale 2019 Licensing agreement with CMS for tildrakizumab, Cequa & 8 generic products Greater China Access to Greater China market 2018 Acquired Pola Pharma in Japan Japan Access to Japanese dermatology market 2016 Acquired rights for Cequa & Odomzo Global Enhance specialty pipeline. Treatment of dry eye and locally acting Basal Cell Carcinoma respectively 2016 Acquired Biosintez Russia Local manufacturing capability to enhance presence in Russian market 2016 Out-licensing agreement with Almirall for tildrakizumab Europe Access to European market for tildrakizumab 2016 Acquired 14 brands from Novartis Japan Entry into Japan 2015 Sun Pharma – Ranbaxy Merger Global Markets Strengthen position in the Global generic Pharma industry, Creating largest Pharma company in India with strong positioning in Emerging Markets 2014 In-licensing agreement with Merck for tildrakizumab Global Markets Strengthen the specialty product pipeline. Treatment of plaque psoriasis 2014 Acquired Pharmalucence US Access to sterile injectable capacity in the US 2012 Acquired DUSA Pharma, Inc. US Access to specialty drug-device combination in dermatology segment 2010 Acquired Taro Pharmaceutical Industries Ltd. Israel Access to dermatology generic portfolio Manufacturing facilities at Israel & Canada 1997 Acquired Caraco US Entry into US Market Key deals & rationale © Sun Pharmaceutical Industries Limited. All Rights Reserved. 57"
+     },
+     {
+      "chunk_id": 100280,
+      "doc_id": "sha256:ccc507c674f7daac03e0ae55dc95d3a631f93a4c5b70eb93928ca9ef1c497897",
+      "doc_type": "deck",
+      "header": "SUNPHARMA · INE044A01036 · Investor deck · - · Company history and key deals · p58 · known 2025-03-04T17:02:48",
+      "section": "Company history and key deals",
+      "speaker": null,
+      "known_at": "2025-03-04T17:02:48",
+      "event_date": "2025-03-04",
+      "fiscal_period": "",
+      "page_from": 58,
+      "page_to": 58,
+      "char_len": 1460,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.981946006592558,
+      "body_excerpt": "Year Deals Country Rationale 2019 Licensing agreement with CMS for tildrakizumab, Cequa & 8 generic products Greater China Access to Greater China market 2018 Acquired Pola Pharma in Japan Japan Access to Japanese dermatology market 2016 Acquired rights for Cequa & Odomzo Global Enhance specialty pipeline. Treatment of dry eye and locally acting Basal Cell Carcinoma respectively 2016 Acquired Biosintez Russia Local manufacturing capability to enhance presence in Russian market 2016 Out-licensing agreement with Almirall for tildrakizumab Europe Access to European market for tildrakizumab 2016 Acquired 14 brands from Novartis Japan Entry into Japan 2015 Sun Pharma – Ranbaxy Merger Global Markets Strengthen position in the Global generic Pharma industry, Creating largest Pharma company in India with strong positioning in Emerging Markets 2014 In-licensing agreement with Merck for tildrakizumab Global Markets Strengthen the specialty product pipeline. Treatment of plaque psoriasis 2014 Acquired Pharmalucence US Access to sterile injectable capacity in the US 2012 Acquired DUSA Pharma, Inc. US Access to specialty drug-device combination in dermatology segment 2010 Acquired Taro Pharmaceutical Industries Ltd. Israel Access to dermatology generic portfolio Manufacturing facilities at Israel & Canada 1997 Acquired Caraco US Entry into US Market Key deals & rationale © Sun Pharmaceutical Industries Limited. All Rights Reserved. 57"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "capacity",
+     "manufacturing",
+     "operational"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-82a12753-dbd7-43c8-8700-79ad00e30584",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"query\": \"4.5 GW capacity\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 199,
+   "secs": 2.37,
+   "usage": {
+    "prompt_tokens": 6220,
+    "completion_tokens": 78,
+    "total_tokens": 6298,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 44
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 5132,
+      "output": 78,
+      "reasoning": 44,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "4.5 GW capacity"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE044A01036",
+    "rows": [
+     {
+      "chunk_id": 93895,
+      "doc_id": "sha256:f013b125403a51ce09fd295ea56fdab8b5d4d8afab9b44622389f3b5ac76f6c5",
+      "doc_type": "concall",
+      "header": "SUNPHARMA · INE044A01036 · Concall transcript · - · Q&A · p17 · known 2026-02-04T19:48:05",
+      "section": "Q&A",
+      "speaker": "kirti ganorkar",
+      "known_at": "2026-02-04T19:48:05",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 17,
+      "page_to": 17,
+      "char_len": 1303,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -4.574028572735432,
+      "body_excerpt": "Moderator: The next question is from Gautam from Leo Capital. Please go ahead. Gautam: Hi, sir. Thank you for the opportunity. Good evening. I wanted to know regarding GLP-1, do you have a fill-and-finish capacity, and if it is our own capacity or through a partnerships capacity? Kirti Ganorkar: I think I talked about launch in India, but we will not comment specifically on capacity and whether it is in-house or it is outsourced from a third-party. Gautam: All right. And you guys do not have any timelines or any intention outside India market, any emerging markets, or only India market will be added as of now? Kirti Ganorkar: As I said earlier, my comment was only on India market. Outside India market, we are not going to disclose what is our plan here. Gautam: All right. Thank you. Sun Pharma Q3 FY26 Earnings Call Transcript 06:30 pm Jan 31, 2026 Corporate Office : Sun House, 201 B/1, Western Express Highway, Goregaon (E), Mumbai - 400063 For further updates and specific queries, please visit www.sunpharma.com or feel free to contact Abhishek Sharma, +91 22 43242929, abhi.sharma@sunpharma.com, Gaurav Chugh, +91 22 43245373, gaurav.chugh@sunpharma.com, Moderator: Next question is from Tushar Manudhane from Motilal Oswal Financial Services. Please go ahead."
+     },
+     {
+      "chunk_id": 93176,
+      "doc_id": "sha256:f174da21ed7a5cd004ae4811e5624c3ad991fba94b57ab2df42935d93e609858",
+      "doc_type": "concall",
+      "header": "SUNPHARMA · INE044A01036 · Concall transcript · - · Q&A · p16 · known 2025-11-11T16:00:05",
+      "section": "Q&A",
+      "speaker": "anubhav sahu",
+      "known_at": "2025-11-11T16:00:05",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 16,
+      "page_to": 16,
+      "char_len": 704,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -4.213878692858019,
+      "body_excerpt": "Anubhav Sahu: My first question is on the sema opportunity. Basically I want to understand how calendar year '26 will look at as for this opportunity is concerned? Are we basically targeting Canada and India as the 2 geographies for the generic launch? And at the same time, I mean, just trying to understand what capacity we are looking at for ourselves for the GLP-1 drugs? I mean -- and how much we plan to do it in-house? Kirti Ganorkar: I think Canada, there are two questions already been asked. We are not giving any clarification on Canada. Coming to India, as I said earlier, we will launch once there is an LOE. Regarding capacity and where we manufacture, we are not disclosed as of yet."
+     },
+     {
+      "chunk_id": 78721,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · • STAFF TRAINING AND CAPACITY BUILDING: Ensured · p76 · known 2026-07-06T18:57:49",
+      "section": "• STAFF TRAINING AND CAPACITY BUILDING: Ensured",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 76,
+      "page_to": 76,
+      "char_len": 356,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -4.117747998417545,
+      "body_excerpt": "• STAFF TRAINING AND CAPACITY BUILDING: Ensured that medical and operational staff were trained by Tata Memorial Hospital to deliver treatment services and manage patient care effectively. • COUNSELLING AND PSYCHOSOCIAL SUPPORT: Delivered counselling and emotional support to patients and caregivers to help them cope with treatment- related stress."
+     },
+     {
+      "chunk_id": 78725,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · THE WAY FORWARD > • EXPANSION OF ACCOMMODATION CAPACITY: The · p77 · known 2026-07-06T18:57:49",
+      "section": "THE WAY FORWARD > • EXPANSION OF ACCOMMODATION CAPACITY: The",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 77,
+      "page_to": 77,
+      "char_len": 1002,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -3.685091268833187,
+      "body_excerpt": "THE WAY FORWARD • EXPANSION OF ACCOMMODATION CAPACITY: The facility could explore phased expansion of economy category rooms to address waiting periods and high demand. • STRENGTHENING ON-SITE MEDICAL SUPPORT: Additional medical staff (e.g., nurses/RMO) could be deployed to provide basic care services such as dressing and routine medical assistance. • ENHANCED PATIENT SUPPORT SERVICES: Counselling and psychosocial support services could be further strengthened to address anxiety among outstation patients. • FINANCIAL SUPPORT LINKAGES: The facility could facilitate linkages with financial aid mechanisms to support treatment related recurring expenses (e.g., consumables). • HUMAN RESOURCE AUGMENTATION: Additional operational staff could be engaged to manage increasing patient load and maintain service quality. • STRENGTHENING COORDINATION SYSTEMS: Coordination mechanisms with Tata Memorial Hospital could be further streamlined to improve scheduling and reduce delays."
+     },
+     {
+      "chunk_id": 92078,
+      "doc_id": "sha256:5aaf24140892620bb51e7d74921e63bd15dedfbc00aa8bc2096ed8e8abc240c9",
+      "doc_type": "concall",
+      "header": "SUNPHARMA · INE044A01036 · Concall transcript · - · Q&A · p8 · known 2025-08-06T16:55:57",
+      "section": "Q&A",
+      "speaker": "damayanti kerai",
+      "known_at": "2025-08-06T16:55:57",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 8,
+      "page_to": 8,
+      "char_len": 630,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.5120999663475208,
+      "body_excerpt": "Damayanti Kerai: Okay. But you think the current capacity is good enough for you in case you need to onshore manufacturing and you have no immediate plan to add on here? Dilip Shanghvi: Yes, I think that would be the right assumption. Sun Pharma Q1 FY26 Earnings Call Transcript 06:30 pm July 31, 2025 Corporate Office : Sun House, 201 B/1, Western Express Highway, Goregaon (E), Mumbai - 400063 For further updates and specific queries, please visit www.sunpharma.com or feel free to contact Abhishek Sharma, +91 22 43242929, abhi.sharma@sunpharma.com, Gaurav Chugh, +91 22 43245373, gaurav.chugh@sunpharma.com,"
+     },
+     {
+      "chunk_id": 95221,
+      "doc_id": "sha256:b3532e292070b8b66d920a05b2350f10bcaf1846c1237742dba1c9ecbdd6fc83",
+      "doc_type": "concall",
+      "header": "SUNPHARMA · INE044A01036 · Concall transcript · - · Q&A · p13 · known 2026-05-29T20:08:05",
+      "section": "Q&A",
+      "speaker": "tushar manudhane",
+      "known_at": "2026-05-29T20:08:05",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 13,
+      "page_to": 13,
+      "char_len": 847,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.2757598393369016,
+      "body_excerpt": "Tushar Manudhane: Yes, yes. I mean just conceptually, so I'm just trying to think through that while the compliance issue has sort of impacted our business for a pretty long period of time. But I just wanted to understand that is the generics outlook promising enough that we can look for a newer facility so that we have a compliance in place and hence, the growth prospects remain strong? Or are we sort of questioning the generics industry prospects? Dilip Shanghvi: No, we are not challenging -- I mean, changing our view on attractiveness of generic business. And the new facility is not only for compliance, I think it's also to ensure that we have new supply capacity as our volume continues to expand year after year. And as like what Aalok indicated, I think it's a facility being set up for supplying to major global geographies."
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "capacity"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-6451fc64-8770-4e29-b80c-644f60f8c21b",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"query\": \"4.5 GW\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 244,
+   "secs": 1.7,
+   "usage": {
+    "prompt_tokens": 9156,
+    "completion_tokens": 93,
+    "total_tokens": 9249,
+    "prompt_tokens_details": {
+     "cached_tokens": 6208
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 60
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2948,
+      "output": 93,
+      "reasoning": 60,
+      "cache_read": 6208,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "4.5 GW"
+   },
+   "result": {
+    "error": {
+     "code": "bad_args",
+     "message": "chunk_search query has no usable words"
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-9af8f8d4-ceaa-4e18-9826-cd87e75a4691",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"query\": \"4.5 GW manufacturing capacity fully operational\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 213,
+   "secs": 1.78,
+   "usage": {
+    "prompt_tokens": 9233,
+    "completion_tokens": 95,
+    "total_tokens": 9328,
+    "prompt_tokens_details": {
+     "cached_tokens": 9152
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 63
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 81,
+      "output": 95,
+      "reasoning": 63,
+      "cache_read": 9152,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "4.5 GW manufacturing capacity fully operational"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE044A01036",
+    "rows": [
+     {
+      "chunk_id": 62775,
+      "doc_id": "sha256:abc0664bb0f83fc60b54898aef71b5554ae95a8eeb7fbe8a3a854309bd84224b",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY25 · LEQSELVI and UNLOXCYT (cont.) · p24 · known 2025-07-04T17:50:19",
+      "section": "LEQSELVI and UNLOXCYT (cont.)",
+      "speaker": null,
+      "known_at": "2025-07-04T17:50:19",
+      "event_date": "2025-07-04",
+      "fiscal_period": "FY25",
+      "page_from": 24,
+      "page_to": 25,
+      "char_len": 5729,
+      "title": "SUNPHARMA annual report 2025-03-31",
+      "score": -8.000129179840913,
+      "body_excerpt": "… vance and impact across varied healthcare systems. To support this diverse portfolio, we draw on strong R&D capabilities, scaled-up manufacturing and an extensive commercial network. Our products span multiple dosage forms, including tablets, capsules, injectables, sprays, Largest Pharmaceutical company in India Leading Global Specialty generic company Largest Indian pharmaceutical companies in Emerging Markets 12th Largest generic pharmaceutical company in the US 100+ Countries reach 40 Global manufacturing sites across six continents 43,000+ Global employee base 50+ Employee nationalities ointments, creams and liquids, enabling us to serve diverse markets effectively. Our manufacturing infrastructure includes 40 facilities approved by leading global regulatory authorities. These are complemented by integrated R&D capabilities that encompass both early-stage novel research and generic development, backed by global clinical trial operations. Driving these efforts is a committed workforce of over 43,000 employees, representing more than 50 nationalities. Their expertise and dedication underpin our innovation, quality and operational excellence across the value chain. Guided by our purpose of Reaching People and Touching Lives Globally, we remain focused on expanding access to high-quality healthcare and creating long-term value through operational discipline, scientific progress and strategic growth. Strong Global Positioning4,5 Among the Growing with Purpose, Touching Lives G …"
+     },
+     {
+      "chunk_id": 78718,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · PROJECT BACKGROUND · p76 · known 2026-07-06T18:57:49",
+      "section": "PROJECT BACKGROUND",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 76,
+      "page_to": 76,
+      "char_len": 806,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -7.855189365541673,
+      "body_excerpt": "PROJECT BACKGROUND Recognizing the challenges faced by outstation cancer patients in accessing treatment and accommodation in Mumbai, Sun Pharmaceutical Industries Ltd. supported the Shantilal Sanghavi Foundation in establishing the “Cancer Sanatorium Institute” in Wadala, Mumbai, operational since March 1, 2025. Located in close proximity to Tata Memorial Hospital, the facility has supported 964 patients from 28 states by providing access to chemotherapy and radiotherapy services (49 beds), along with 128 fully occupied accommodation rooms equipped with essential amenities and transport support. By addressing accommodation and access- related challenges, the initiative has enabled outstation patients to stay closer to the treatment centre and better navigate their treatment journey."
+     },
+     {
+      "chunk_id": 78721,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · • STAFF TRAINING AND CAPACITY BUILDING: Ensured · p76 · known 2026-07-06T18:57:49",
+      "section": "• STAFF TRAINING AND CAPACITY BUILDING: Ensured",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 76,
+      "page_to": 76,
+      "char_len": 356,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -7.819203611858313,
+      "body_excerpt": "• STAFF TRAINING AND CAPACITY BUILDING: Ensured that medical and operational staff were trained by Tata Memorial Hospital to deliver treatment services and manage patient care effectively. • COUNSELLING AND PSYCHOSOCIAL SUPPORT: Delivered counselling and emotional support to patients and caregivers to help them cope with treatment- related stress."
+     },
+     {
+      "chunk_id": 78739,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · OECD-DAC RATING · p80 · known 2026-07-06T18:57:49",
+      "section": "OECD-DAC RATING",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 80,
+      "page_to": 82,
+      "char_len": 5964,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -7.66556762820143,
+      "body_excerpt": "… ms have been optimized through loss reduction measures, resulting in an improved steam to fuel ratio and lower overall energy consumption. 2. \u0007Steps taken by the Company for utilising alternate sources of energy \u0007The Company continues to implement a range of initiatives to reduce carbon emissions through the adoption of alternative and renewable energy sources: • A captive hybrid power plant (wind + solar) is operational in Gujarat to partially meet the electricity requirements of the Company’s manufacturing facilities. In addition, an additional hybrid (wind + solar) plant is currently under installation within the same state to further strengthen renewable energy capacity. • A captive solar power plant is operational in Madhya Pradesh, and an additional solar power plant has been commissioned in Maharashtra, contributing to partial fulfilment of power requirements. 79 Executive Summary of Impact Assessment Advancing Innovation Globally for Better Patient Care Statutory Reports Corporate Overview Financial Statements • Captive windmills are utilized in Tamil Nadu to support a portion of the Company’s energy requirements. Additionally, a group captive arrangement has been established to further enhance the sourcing of renewable energy within the state. • Rooftop solar installations are being leveraged across multiple sites to meet part of the electricity demand. Rooftop solar systems have been installed at Halol, Baska, Tandalja, Dadra, Gurgaon, Toansa, Mohali, Baddi, and Bas …"
+     },
+     {
+      "chunk_id": 92078,
+      "doc_id": "sha256:5aaf24140892620bb51e7d74921e63bd15dedfbc00aa8bc2096ed8e8abc240c9",
+      "doc_type": "concall",
+      "header": "SUNPHARMA · INE044A01036 · Concall transcript · - · Q&A · p8 · known 2025-08-06T16:55:57",
+      "section": "Q&A",
+      "speaker": "damayanti kerai",
+      "known_at": "2025-08-06T16:55:57",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 8,
+      "page_to": 8,
+      "char_len": 630,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -7.049663931600968,
+      "body_excerpt": "Damayanti Kerai: Okay. But you think the current capacity is good enough for you in case you need to onshore manufacturing and you have no immediate plan to add on here? Dilip Shanghvi: Yes, I think that would be the right assumption. Sun Pharma Q1 FY26 Earnings Call Transcript 06:30 pm July 31, 2025 Corporate Office : Sun House, 201 B/1, Western Express Highway, Goregaon (E), Mumbai - 400063 For further updates and specific queries, please visit www.sunpharma.com or feel free to contact Abhishek Sharma, +91 22 43242929, abhi.sharma@sunpharma.com, Gaurav Chugh, +91 22 43245373, gaurav.chugh@sunpharma.com,"
+     },
+     {
+      "chunk_id": 99207,
+      "doc_id": "sha256:398f7e179db2a63b5df06fe322b9063f9045f2d9dda72460b50e157301197e13",
+      "doc_type": "deck",
+      "header": "SUNPHARMA · INE044A01036 · Investor deck · - · Company history and key deals · p58 · known 2024-11-28T18:11:49",
+      "section": "Company history and key deals",
+      "speaker": null,
+      "known_at": "2024-11-28T18:11:49",
+      "event_date": "2024-11-28",
+      "fiscal_period": "",
+      "page_from": 58,
+      "page_to": 58,
+      "char_len": 1460,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.981946006592558,
+      "body_excerpt": "Year Deals Country Rationale 2019 Licensing agreement with CMS for tildrakizumab, Cequa & 8 generic products Greater China Access to Greater China market 2018 Acquired Pola Pharma in Japan Japan Access to Japanese dermatology market 2016 Acquired rights for Cequa & Odomzo Global Enhance specialty pipeline. Treatment of dry eye and locally acting Basal Cell Carcinoma respectively 2016 Acquired Biosintez Russia Local manufacturing capability to enhance presence in Russian market 2016 Out-licensing agreement with Almirall for tildrakizumab Europe Access to European market for tildrakizumab 2016 Acquired 14 brands from Novartis Japan Entry into Japan 2015 Sun Pharma – Ranbaxy Merger Global Markets Strengthen position in the Global generic Pharma industry, Creating largest Pharma company in India with strong positioning in Emerging Markets 2014 In-licensing agreement with Merck for tildrakizumab Global Markets Strengthen the specialty product pipeline. Treatment of plaque psoriasis 2014 Acquired Pharmalucence US Access to sterile injectable capacity in the US 2012 Acquired DUSA Pharma, Inc. US Access to specialty drug-device combination in dermatology segment 2010 Acquired Taro Pharmaceutical Industries Ltd. Israel Access to dermatology generic portfolio Manufacturing facilities at Israel & Canada 1997 Acquired Caraco US Entry into US Market Key deals & rationale © Sun Pharmaceutical Industries Limited. All Rights Reserved. 57"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "manufacturing",
+     "capacity",
+     "fully",
+     "operational"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 4,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-533130d6-94d1-4188-acea-d9aebc8db01c",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"The held data does not contain any statement that SUNPHARMA has 4.5 GW of manufacturing capacity fully operational. The available material covers Sun Pharma's 40 global manufacturing sites, renewable-energy/captive power plants (hybrid wind+solar in Gujarat, solar in Madhya Pradesh/Maharashtra, windmills in Tamil Nadu), and fill-and-finish capacity questions, but no 4.5 GW manufacturing capacity figure. Therefore the premise of the question is not supported by the data.\", \"missing\": \"not in data — any SUNPHARMA statement about 4.5 GW of manufacturing capacity being fully operational, and consequently its revenue conversion timing and gating factors.\", \"working\": \"Searched claims (topic \\\"capacity_and_projects\\\") and document chunks for \\\"4.5 GW\\\", \\\"4.5 GW manufacturing capacity\\\", and related terms across concalls, annual reports and decks as of 2026-10-19; no matching capacity figure or revenue-conversion/gating discussion found.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 77,
+   "secs": 2.66,
+   "usage": {
+    "prompt_tokens": 12421,
+    "completion_tokens": 257,
+    "total_tokens": 12678,
+    "prompt_tokens_details": {
+     "cached_tokens": 9216
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 26
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3205,
+      "output": 257,
+      "reasoning": 26,
+      "cache_read": 9216,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 4,
+   "role": "submit",
+   "args": {
+    "answer": "The held data does not contain any statement that SUNPHARMA has 4.5 GW of manufacturing capacity fully operational. The available material covers Sun Pharma's 40 global manufacturing sites, renewable-energy/captive power plants (hybrid wind+solar in Gujarat, solar in Madhya Pradesh/Maharashtra, windmills in Tamil Nadu), and fill-and-finish capacity questions, but no 4.5 GW manufacturing capacity figure. Therefore the premise of the question is not supported by the data.",
+    "missing": "not in data — any SUNPHARMA statement about 4.5 GW of manufacturing capacity being fully operational, and consequently its revenue conversion timing and gating factors.",
+    "working": "Searched claims (topic \"capacity_and_projects\") and document chunks for \"4.5 GW\", \"4.5 GW manufacturing capacity\", and related terms across concalls, annual reports and decks as of 2026-10-19; no matching capacity figure or revenue-conversion/gating discussion found."
+   }
+  }
+ ]
+}

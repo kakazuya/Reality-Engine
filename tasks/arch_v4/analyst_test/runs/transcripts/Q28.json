@@ -1,0 +1,832 @@
+{
+ "qid": "Q28",
+ "mid": "MB0967#L",
+ "parent_mid": "MB0967",
+ "symbol": "POWERGRID",
+ "entity_isin": "INE752E01010",
+ "question": "Power Grid Corporation of India Limited: how much of the balance sheet is CWIP and capitalised interest, and when does it start depreciating?",
+ "as_of": "2026-10-19",
+ "period": "FY22-FY26",
+ "category": "lookup",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "CWIP and capitalised interest as separate balance-sheet line items are not in the held fact store (no CWIP atom, no capitalised-interest atom). From the latest concall/deck references, CWIP was about ₹29,603 crore as of 31-Dec-2024 and ₹50,419 crore as of 30-Jun-2026 (within works in hand). Depreciation under the regulated tariff (RTM) regime starts on commissioning at 5.28% per year for the initial 12 years, then falls to about 1.1-1.3% per year for the remaining ~23 years.",
+ "working": "list_atoms shows no CWIP/capitalised-interest atom. chunk_search (POWERGRID, 'CWIP capitalised interest depreciation') returned concall/deck excerpts: CWIP ₹29,603 crore (31-Dec-2024), CWIP ₹50,419 crore (30-Jun-2026, deck); RTM depreciation 5.28% for initial 12 years then ~1.1-1.3% thereafter (concall Q&A, 2025-02-05 and 2025-08-01).",
+ "missing": "not in data: CWIP and capitalised interest atoms in the fact store; the CWIP figures are only from concall/deck excerpts.",
+ "not_in_data": true,
+ "n_tool_calls": 3,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "POWERGRID"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "POWERGRID",
+    "query": "CWIP capitalised interest depreciation"
+   },
+   "ok": true
+  },
+  {
+   "call": 6,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "POWERGRID",
+    "query": "capitalised interest depreciation start commission"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 21702,
+  "completion_tokens": 722
+ },
+ "beam_secs": 9.17,
+ "total_secs": 9.17,
+ "number_check": {
+  "numbers": [
+   "29603",
+   "31",
+   "2024",
+   "50419",
+   "30",
+   "2026",
+   "5.28",
+   "12",
+   "1.1",
+   "1.3",
+   "23"
+  ],
+  "supported": [
+   "29603",
+   "31",
+   "2024",
+   "50419",
+   "30",
+   "2026",
+   "5.28",
+   "12",
+   "1.1",
+   "1.3",
+   "23"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-967cfda2-f960-45e3-a6ff-909f7d7428a7",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"POWERGRID\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 44,
+   "secs": 1.62,
+   "usage": {
+    "prompt_tokens": 1101,
+    "completion_tokens": 32,
+    "total_tokens": 1133,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 17
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 141,
+      "output": 32,
+      "reasoning": 17,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "POWERGRID"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE752E01010",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 4,
+      "first_period": "2020-09-30",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 33,
+      "first_period": "2020-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=revenue;segment=Consultancy",
+       "basis=consolidated;metric=revenue;segment=Telecom"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 82,
+      "first_period": "2021-09-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 10,
+      "first_period": "2024-06-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 2,
+      "first_period": "2024-03-01",
+      "last_period": "2024-05-17",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1913,
+      "first_period": "2019-01-21",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1908,
+      "first_period": "2019-01-28",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 629,
+      "first_period": "2024-05-24",
+      "last_period": "2026-08-12",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=0;chunk=53053",
+       "doctype=announcement;page=0;chunk=53054"
+      ]
+     }
+    ],
+    "n_returned": 28,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-c95cc623-f824-493e-bf50-d9cf3e74810e",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"POWERGRID\", \"query\": \"CWIP capitalised interest depreciation\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 63,
+   "secs": 1.49,
+   "usage": {
+    "prompt_tokens": 3315,
+    "completion_tokens": 51,
+    "total_tokens": 3366,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2227,
+      "output": 51,
+      "reasoning": 24,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "POWERGRID",
+    "query": "CWIP capitalised interest depreciation"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE752E01010",
+    "rows": [
+     {
+      "chunk_id": 33332,
+      "doc_id": "sha256:d0aa372e70135fa11cbc3a9adaf889963bccd1d72a21821aa7e4c4e838a505c1",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · - · Opening remarks (cont.) · p5 · known 2025-02-12T11:25:19",
+      "section": "Opening remarks (cont.)",
+      "speaker": "mohit kumar",
+      "known_at": "2025-02-12T11:25:19",
+      "event_date": "2025-02-05",
+      "fiscal_period": "",
+      "page_from": 5,
+      "page_to": 5,
+      "char_len": 4013,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -8.920778271033608,
+      "body_excerpt": "… ancy services about ₹427 crores, telecom ₹722 crores. Other income, ₹1,352 crores. Total income, ₹34,869 crores and EBITDA ₹30,148 crores and profit after tax is ₹11,379 crores. On a standalone basis, for nine months, transmission charges, ₹30,092 crores; consultancy, ₹357 crores; other income, ₹3,394 crores and total income ₹33,843 crores. And on a standalone basis, profit after tax ₹11,017 crores. Other financial parameters, our gross fixed assets as on 31st December 2024 is ₹2,88,801 crores. CWIP, capital work-in-progress, ₹29,603 crores. Debt ₹1,29,288 crores. Net worth ₹91,620 crores. Earnings per share, ₹12.23 per share. Book value per share, ₹98.51. Debt-equity ratio 59:41 and return on net worth in nine months is 12.42%. The key financial parameters, the income for previous periods, ₹63 crores as against the last year in Q3, ₹237 crores. Interest on differential tariff is ₹102 crores as against ₹184 crores during Q3 quarter of '24. Interest from subsidiaries, ₹560 crores as against ₹371 crores last year. Incentive from transmission assets, ₹150 crores as against ₹151 crores. Dividend from JVs, ₹3 crores as against ₹1 crore. Dividend from subsidiaries, ₹423 crores as against ₹149 crores, and dividend from associates and others, ₹32 crores as against ₹20 crores. CSR expenses, ₹161 crores as against ₹23 crores last year. FERV, because of foreign exchange, ₹238 crores as against ₹77 crores last year. Equity in TBCB operations, ₹4,390 crores as against ₹3,763 crores. Equit …"
+     },
+     {
+      "chunk_id": 36472,
+      "doc_id": "sha256:e79cd680a3bc304f2e6518c3f13d5a5a85a65fd8817b7f038cd0d32a14f7028e",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · Q2FY26 · Q&A (cont.) · Q: Thanks for the opportunity. My first question is in relation to what is t · p16 · known 2025-11-12T17:33:05",
+      "section": "Q&A (cont.) · Q: Thanks for the opportunity. My first question is in relation to what is the bid pipeline at the moment for the next second half of the fisca",
+      "speaker": "moderator",
+      "known_at": "2025-11-12T17:33:05",
+      "event_date": "2025-11-04",
+      "fiscal_period": "Q2FY26",
+      "page_from": 16,
+      "page_to": 16,
+      "char_len": 2182,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -7.888717056875683,
+      "body_excerpt": "… estion. R.K. Tyagi: Actually, so far, we have been executing projects under RTM. And now we are executing projects under TBCB. So, there is a difference in financial modeling or revenue modeling of these two projects -- two types of projects. In RTM, we used to get about 17% revenue on any project. Breakup was that we will get about 15.5% return on equity, which is about 30%. So 15.5% into 30%, which will be about 4.65%. Then there will be 70% loan. So, there will be about, say, 7%, assuming 7% interest rate. So, there will be about 4.9% will be interest on loan. And depreciation for initial 12 years will be 5.28%. Then there will be O&M charges in the range of about 1.8% to 2%. And then interest on working capital may be about 0.2% to 0.3%. So, this makes about 17% or 17% plus of revenue against any project. After 12 years, because we have projects which have been commissioned in 2010, 2011, 2012, 2013, in that range, which are getting completed 12 years of age. So, after 12 years, 5.28% depreciation will reduce to about 1.2%, 1.3%, because by 12 years, most of the depreciation has been recovered. So only balance may be about 27% in 23 years. So, making it about 1.1% to 1.2% per year depreciation as against 5.28% depreciation in initial 12 years. So, there will be net difference of about 4% revenue reduction only because of this. Second point will be that interest on loan because after 12 years, we will be paying most of the loan. So, interest on loan component will also bec …"
+     },
+     {
+      "chunk_id": 40115,
+      "doc_id": "sha256:31247b93d98b8f62d9543ff93133002a535bd34d502a640be185f03781b26175",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · Q1FY27 · Opening remarks (cont.) · p5 · known 2026-08-14T18:51:19",
+      "section": "Opening remarks (cont.)",
+      "speaker": "vamsi rama mohan",
+      "known_at": "2026-08-14T18:51:19",
+      "event_date": "2026-08-07",
+      "fiscal_period": "Q1FY27",
+      "page_from": 5,
+      "page_to": 5,
+      "char_len": 4213,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -7.467089407224938,
+      "body_excerpt": "… nd the current quarter visibly indicates that the number of receivable days come down from 19.41 to about 12 days. The financial performance: On the consolidated front, which I will be focusing upon, the transmission charges, there's a 3% increase from Rs. 10,620 crore to Rs. 10,905 crore, and the total income from Rs. 11,444 crore to Rs. 11,697 crore. The PAT stands at about Rs. 3,598 crore compared to Rs. 3,631 crore of the previous quarter. And I would like to say over here that the total increase in the transmission charges, that's about Rs. 790 crore owing to the new assets which have been commissioned. You need to appreciate that we are under the regulatory tariff regime which the major of the assets continue to be there. So, the regulatory characteristics or the trajectory, I should say, has a revenue reduction in terms of the depreciation and interest, which are but natural in the regulated regime, about Rs. 330 crore, and Rs. 230 crore is owing to the interest because of the difference between the petitions filed and the orders issued by the regulator. So, this amounts to about Rs. 560 crore was the downside owing to the regulatory nature of revenue. While the transmission charges continue to boost forward and move forward, the regulatory characteristic of the assets class which we have owned has an impact on the financial figures over here. So while the effective PAT would have been plus Rs. 247 crore, but for the regulatory characteristic, it stands about minus Rs."
+     },
+     {
+      "chunk_id": 49648,
+      "doc_id": "sha256:4f67916331283a793f7ba968a8dddb7478b4567c86ce7ab87383653fa2328e3b",
+      "doc_type": "deck",
+      "header": "POWERGRID · INE752E01010 · Investor deck · - · Visible Execution Pipeline · p15 · known 2026-03-23T10:49:16",
+      "section": "Visible Execution Pipeline",
+      "speaker": null,
+      "known_at": "2026-03-23T10:49:16",
+      "event_date": "2026-03-23",
+      "fiscal_period": "",
+      "page_from": 15,
+      "page_to": 15,
+      "char_len": 654,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -7.338174585003102,
+      "body_excerpt": "Visible Execution Pipeline Works in Hand > ₹1,48,000 Cr. (CWIP: > ₹49,000 Cr.) At an assumed ~50% win rate on a ₹15 trillion opportunity, potential project wins could be ~₹7.5 trillion over the coming decades > ₹9,00,000 Cr.* Illustrative total execution pipeline over the long-term Actuals Illustrative long-term upside Strong near-term execution visibility Significant projects win potential Robust near-term execution visibility, complemented by substantial long-term upside 14 * Includes current Works in Hand along with illustrative long-term upside based on an assumed ~50% win rate on a ~ ₹15 trillion opportunity; actual outcomes may vary."
+     },
+     {
+      "chunk_id": 51547,
+      "doc_id": "sha256:53f0fa3fbebe2b7a5debf1ff370ad6a5058a24051667cd8d1acf8ca5626b3257",
+      "doc_type": "deck",
+      "header": "POWERGRID · INE752E01010 · Investor deck · - · O R D E R P I P E L I N E & O U T L O O K · p13 · known 2026-08-07T10:50:57",
+      "section": "O R D E R P I P E L I N E & O U T L O O K",
+      "speaker": null,
+      "known_at": "2026-08-07T10:50:57",
+      "event_date": "2026-08-07",
+      "fiscal_period": "",
+      "page_from": 13,
+      "page_to": 13,
+      "char_len": 421,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -7.191541185576181,
+      "body_excerpt": "O R D E R P I P E L I N E & O U T L O O K C O M P O S I T I O N [Including CWIP of ₹50,419 crore] All information as on 30-June-2026 12 ~ ₹1.75 lakh crore works in hand TBCB ₹1,46,315 Crore 83% RTM ₹25,168 Crore 14% Other Business Smart Metering · Data Centre · Cross-Border · Int’l · BESS ₹4,217 Crore 3% Total works in hand ₹1,75,700 Crore 100% [excludes Pang-Kaithal (₹22,942 Crore), Offshore projects (₹13,142 Crore)]"
+     },
+     {
+      "chunk_id": 40123,
+      "doc_id": "sha256:31247b93d98b8f62d9543ff93133002a535bd34d502a640be185f03781b26175",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · Q1FY27 · Opening remarks · p8 · known 2026-08-14T18:51:19",
+      "section": "Opening remarks",
+      "speaker": "management",
+      "known_at": "2026-08-14T18:51:19",
+      "event_date": "2026-08-07",
+      "fiscal_period": "Q1FY27",
+      "page_from": 8,
+      "page_to": 8,
+      "char_len": 604,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -7.139362893396335,
+      "body_excerpt": "Management: Yes sir, that also is having a marginal difference in depreciation and interest because it will not match what is the notional what has taken in the regulation. Because of that, there is a marginal impact, marginal impact. But by and large, the impact is because of the interest on differential between provisional and final. B. Vamsi Rama Mohan: Major impact is basically interest on the differential between the CERC's orders and also the write-back on account of one of the projects last year which has happened. So, that differential is actually what is visible on the financials."
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "CWIP",
+     "capitalised",
+     "interest",
+     "depreciation"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-0bb6b59b-ca4a-4f70-bd57-37ffed6530b0",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"POWERGRID\", \"query\": \"capitalised interest depreciation start commission\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 517,
+   "secs": 2.01,
+   "usage": {
+    "prompt_tokens": 6969,
+    "completion_tokens": 155,
+    "total_tokens": 7124,
+    "prompt_tokens_details": {
+     "cached_tokens": 3264
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 128
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3705,
+      "output": 155,
+      "reasoning": 128,
+      "cache_read": 3264,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "POWERGRID",
+    "query": "capitalised interest depreciation start commission"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE752E01010",
+    "rows": [
+     {
+      "chunk_id": 33343,
+      "doc_id": "sha256:d0aa372e70135fa11cbc3a9adaf889963bccd1d72a21821aa7e4c4e838a505c1",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · - · Q&A (cont.) · Q: Hi, thank you for taking my question. So, my first question is regarding  · p16 · known 2025-02-12T11:25:19",
+      "section": "Q&A (cont.) · Q: Hi, thank you for taking my question. So, my first question is regarding the Bhadla-Fatehpur HVDC line where bid was annulled. So, A, what w",
+      "speaker": "aman jain",
+      "known_at": "2025-02-12T11:25:19",
+      "event_date": "2025-02-05",
+      "fiscal_period": "",
+      "page_from": 16,
+      "page_to": 16,
+      "char_len": 1975,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -10.534441460666855,
+      "body_excerpt": "Aman Jain: Okay. Thank you. Got it. My second question is regarding revenue from operations declined 3% Y-o-Y. So, any reason for that? Ravisankar: See, the structure of the regulated tariff income means that it will decrease every year because of the interest on loan, which will be reducing based on the depreciation recovery. So, if I recover around ₹12,000 crores, ₹13,000 crores of a depreciation, to that extent, if you say a thumb rule like 7.5%, 8% at the interest, so naturally around ₹700 crores to ₹800 crores, ₹900 crores for transmission income is bound to come down every year. But the fact remains that the PAT will remain same because that is based on the return on equity. So, the transmission income of the regulated business is bound to come down. This is what the structure, the one-time expenditure will increase, whereas the interest on loan will come down, but the PAT will remain same. Page 16 of 23 So that is why the reason that it will come down. But when we commission new assets, it is again added. That is why it's not reducing to that extent. So, when I say that when the revenue is supposed to come down by like ₹800 crores, ₹900 crores in a year and if you compare for the nine months, maybe around ₹600 crores, ₹650 crores, it is bound to come down, but it is not coming down because we are adding more assets. Aman Jain: Got it. Thank you. Nidhi Shah: The next question is from the line of Satya. You may unmute your line. Since we have no response from Satya, we w …"
+     },
+     {
+      "chunk_id": 35373,
+      "doc_id": "sha256:8916489ca9e98f9423fdbc078c3cda3a00da8b99a8f6c691fc950bc078da10cb",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · - · Opening remarks · p12 · known 2025-08-08T12:39:22",
+      "section": "Opening remarks",
+      "speaker": "analyst",
+      "known_at": "2025-08-08T12:39:22",
+      "event_date": "2025-08-01",
+      "fiscal_period": "",
+      "page_from": 12,
+      "page_to": 12,
+      "char_len": 4029,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -10.323883440389714,
+      "body_excerpt": "… ss been stagnant in spite of adding almost 9,000 Crore on the capitalization plus. Any reason for the stagnancy? - Mr. R.K. Tyagi – Chairman & Managing Director - If you see that POWERGRID’s business model in RTM, because almost so far, our RTM projects are dominant and most of the revenue, maybe almost 90% of revenue comes from RTM projects. In RTM projects, the business model or revenue model is as per CERC, that initial 12 years, the depreciation will be 5.28% and after say 12 years, the depreciation is going to be say 1.8% or so. So, every year, some elements or some projects are completing 12 years, so our depreciation is reducing. Okay. So that is part of the tariff. If depreciation is reducing, our revenue is reducing. So, this is one reason. Page 13 of 22 - Second reason is our loan also period could be 10 years; period could be 12 years. So, after 12 years, the loan part is almost over. So, interest on loan and that component also reduces. The interest on loan is pass through and we get in terms of revenue. So that part is also reduced. So, like that, every year our revenue from RTM is getting reduced, which is getting compensated by revenue from the TBCB projects. If we commission more and more projects, then only our revenue will become more and more. Otherwise, if we are not able to commission more than ₹20,000 Crore projects in TBCB, our revenue model, it will be almost constant or sometimes it may reduce also. - Analyst: - Fair enough, sir. Thank you for this. -"
+     },
+     {
+      "chunk_id": 30729,
+      "doc_id": "sha256:e9afc972b48285b6375ca092dd989e34a722fa94a863cf7837a5e22c9857dc93",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · - · Opening remarks · p9 · known 2024-08-02T18:37:28",
+      "section": "Opening remarks",
+      "speaker": "moderator",
+      "known_at": "2024-08-02T18:37:28",
+      "event_date": "2024-07-29",
+      "fiscal_period": "",
+      "page_from": 9,
+      "page_to": 9,
+      "char_len": 512,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -8.531733689498461,
+      "body_excerpt": "Moderator: - Thank you, Sir. That was a very nice round-up of things that are happening at POWERGRID. We now open the session for questions and answers. A general reminder to kindly identify yourself and the company that you represent and then you could raise your hand. In the interest of time, we are going to not repeat the questions that have already been answered. Ya, we will start. - Mr. Sharad Chandra – Participant: - I can start? - Moderator: - Ya, you can. - Mr. Sharad Chandra –"
+     },
+     {
+      "chunk_id": 33352,
+      "doc_id": "sha256:d0aa372e70135fa11cbc3a9adaf889963bccd1d72a21821aa7e4c4e838a505c1",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · - · Q&A (cont.) · Q: Hi, thank you for taking my question. So, my first question is regarding  · p22 · known 2025-02-12T11:25:19",
+      "section": "Q&A (cont.) · Q: Hi, thank you for taking my question. So, my first question is regarding the Bhadla-Fatehpur HVDC line where bid was annulled. So, A, what w",
+      "speaker": "koundinya nimmagadda",
+      "known_at": "2025-02-12T11:25:19",
+      "event_date": "2025-02-05",
+      "fiscal_period": "",
+      "page_from": 22,
+      "page_to": 22,
+      "char_len": 2191,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -8.437210509258108,
+      "body_excerpt": "… vious years, like we have one-time CERC order impact and interest and differential the orders between the doco date and the order dates, these are all normally to some extent, it will contribute more to the bottom line, so which is lesser in the current year. That is also the reason that your PAT has come down compared to last year. Koundinya Nimmagadda: Sure. Lastly, if I may, how should we look at the dividend flow from here in view of the rising CapEx? To understand what the outlook is on this? If you can provide some colour? Ravisankar: Dividend, we have a policy that we will give the dividend, we will not keep the idle cash as well as we will, part of our CapEx also. So we will strike a balance between these two. And going forward, when we commission more and more projects, naturally, the revenue as well as PAT also will increase. So that also will add to maintain the dividend to some extent. It's not going to fall very steeply to like ₹2 or ₹3 something like that. It's not even permitted as per the DIPAM guidance also. Koundinya Nimmagadda: Sure, got it. Thank you very much and all the best. Nidhi Shah: We have our last question of the day from Mohit Pandey. You may unmute your mic and go ahead. Mohit Pandey: Just one question. So, for the Leh-Kaithal project, has the technology been decided whether it will be LCC or VSC? R.K. Tyagi: No. From the start itself that we are executing this project at VSC only, not LCC. Mohit Pandey: Understood, thank you. Thank you so much."
+     },
+     {
+      "chunk_id": 40142,
+      "doc_id": "sha256:31247b93d98b8f62d9543ff93133002a535bd34d502a640be185f03781b26175",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · Q1FY27 · Q&A (cont.) · Q: Thank you. We take the next question from the line of Bharanidhar. Please · p17 · known 2026-08-14T18:51:19",
+      "section": "Q&A (cont.) · Q: Thank you. We take the next question from the line of Bharanidhar. Please accept the prompt and announce your company name and go ahead with",
+      "speaker": "vamsi rama mohan",
+      "known_at": "2026-08-14T18:51:19",
+      "event_date": "2026-08-07",
+      "fiscal_period": "Q1FY27",
+      "page_from": 17,
+      "page_to": 17,
+      "char_len": 2179,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -8.279448543987277,
+      "body_excerpt": "Vamsi Rama Mohan: Okay. I should say the extent of the transmission charges of POWERGRID are not governed by the power flow. So, it is not that only power flows POWERGRID starts getting its revenue. So, meaning that it is quite safe that once we commission the asset, the revenue starts flowing. Whatever the mechanisms what the regulator has identified, so there are provisions where we continue to get our tariff. So, my tariff is not rupees per megawatt-hour, it is rupees per annum. So, be rest assured that the revenue is not linked to the generation. But having said that, definitely it is a cause of concern in case if the generator has not come on time, the load is not there on time. So, the picture we bifurcate two parts. One part is that the systems which are built under the regulatory tariff regime, that is the RTM mode, we need to go to the regulator and get the clearance for the deemed DOCO status. So, we have a good amount of revenues which will also flow as and when the regulator gives the orders. So that revenue also will start accruing now. So, it's to the extent of, what is that amount? Management: Rs. 300 crore. B. Vamsi Rama Mohan: Rs. 300 crore of revenue. So, these are these are regulatory, so as and when the regulatory regulator starts hearing these petitions, that revenue also will start accruing. And as far as TBCB goes, there is no such need to go to the regulator, and it is considered as deemed DOCO after a specified period, so the revenue starts flowing ov …"
+     },
+     {
+      "chunk_id": 32117,
+      "doc_id": "sha256:a9b091d1bdea6ab229317115aeb02fcbcb572814e6312c2d69e02367e74270dc",
+      "doc_type": "concall",
+      "header": "POWERGRID · INE752E01010 · Concall transcript · - · Opening remarks · p12 · known 2024-11-14T17:50:37",
+      "section": "Opening remarks",
+      "speaker": "corporation of india limited",
+      "known_at": "2024-11-14T17:50:37",
+      "event_date": "2024-11-08",
+      "fiscal_period": "",
+      "page_from": 12,
+      "page_to": 12,
+      "char_len": 3169,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -8.032115574467163,
+      "body_excerpt": "…  in days to come because if you commission in say September or August, so we will not get tariff in April, May or June, till it is commissioned. So there is incremental increase or there is Page 12 of 13 increase of tariff and profit but because of our depreciation, because we have our legacy assets under RTM where the depreciation is decreasing after 12yrs. from 5.28pc, it becomes about 2pc. Similarly our loan also, we keep paying our loan, principal amount, so our loan amount is reduced, then interest on loan has also reduced, so effectively our revenue will reduce for RTM projects. When we are adding revenue in TBCB projects, then it is almost getting compensated by the decrease in RTM projects. As far as profit is there, if you remember that as per the CERC tariff regulation for 24-29, as per the new CERC Regulation, our O&M charges have been reduced by almost 600 crore. So for half year, the effect is almost 300 crore. So effectively it is positive by say 1pc or 2pc but it is not in the same range where it should have been because there is a loss of about 300 crore which is a major contributor for our profit, not increasing say to 4-5pc. It is 1-2pc. - Mr. Shubhdeep Mitra - Nuvama: - Understood and lastly would you be able to tell us, what is the regulated equity number that we have for the RTM projects? - Mr. R.K. Tyagi – Chairman & Managing Director, Power Grid Corporation of India Limited: - Regulated? - Mr. Shubhdeep Mitra - Nuvama: - Equity… - Mr. R.K. Tyagi – Chair …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "capitalised",
+     "interest",
+     "depreciation",
+     "start",
+     "commission"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-ad2254f0-c16a-47c8-98ae-01383f4ecc11",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"CWIP and capitalised interest as separate balance-sheet line items are not in the held fact store (no CWIP atom, no capitalised-interest atom). From the latest concall/deck references, CWIP was about ₹29,603 crore as of 31-Dec-2024 and ₹50,419 crore as of 30-Jun-2026 (within works in hand). Depreciation under the regulated tariff (RTM) regime starts on commissioning at 5.28% per year for the initial 12 years, then falls to about 1.1-1.3% per year for the remaining ~23 years.\", \"missing\": \"not in data: CWIP and capitalised interest atoms in the fact store; the CWIP figures are only from concall/deck excerpts.\", \"working\": \"list_atoms shows no CWIP/capitalised-interest atom. chunk_search (POWERGRID, 'CWIP capitalised interest depreciation') returned concall/deck excerpts: CWIP ₹29,603 crore (31-Dec-2024), CWIP ₹50,419 crore (30-Jun-2026, deck); RTM depreciation 5.28% for initial 12 years then ~1.1-1.3% thereafter (concall Q&A, 2025-02-05 and 2025-08-01).\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 654,
+   "secs": 3.64,
+   "usage": {
+    "prompt_tokens": 10317,
+    "completion_tokens": 484,
+    "total_tokens": 10801,
+    "prompt_tokens_details": {
+     "cached_tokens": 6912
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 154
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3405,
+      "output": 484,
+      "reasoning": 154,
+      "cache_read": 6912,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "CWIP and capitalised interest as separate balance-sheet line items are not in the held fact store (no CWIP atom, no capitalised-interest atom). From the latest concall/deck references, CWIP was about ₹29,603 crore as of 31-Dec-2024 and ₹50,419 crore as of 30-Jun-2026 (within works in hand). Depreciation under the regulated tariff (RTM) regime starts on commissioning at 5.28% per year for the initial 12 years, then falls to about 1.1-1.3% per year for the remaining ~23 years.",
+    "missing": "not in data: CWIP and capitalised interest atoms in the fact store; the CWIP figures are only from concall/deck excerpts.",
+    "working": "list_atoms shows no CWIP/capitalised-interest atom. chunk_search (POWERGRID, 'CWIP capitalised interest depreciation') returned concall/deck excerpts: CWIP ₹29,603 crore (31-Dec-2024), CWIP ₹50,419 crore (30-Jun-2026, deck); RTM depreciation 5.28% for initial 12 years then ~1.1-1.3% thereafter (concall Q&A, 2025-02-05 and 2025-08-01)."
+   }
+  }
+ ]
+}

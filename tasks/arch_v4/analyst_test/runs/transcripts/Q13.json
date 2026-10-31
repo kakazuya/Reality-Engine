@@ -1,0 +1,883 @@
+{
+ "qid": "Q13",
+ "mid": "MB0299#L",
+ "parent_mid": "MB0299",
+ "symbol": "GRASIM",
+ "entity_isin": "INE047A01021",
+ "question": "As of 31 July 2026, what had Grasim Industries Limited (NSE: GRASIM) said about its capacity expansion timeline by that date?",
+ "as_of": "2026-07-31",
+ "period": "as of 31 July 2026",
+ "category": "lookup",
+ "source_bank": "variations300",
+ "status": "final",
+ "error": null,
+ "answer": "As of 31 July 2026, the most recent Grasim communication in data (Q4FY26 investor deck, known 20 May 2026) outlined FY26 standalone capex of ₹2,263 Cr with capacity expansion items: Cellulosic Fibres capacity expansion (including debottlenecking) ₹424 Cr planned (₹397 Cr spent), Chemicals capacity expansion — Caustic Soda 1,505→1,530 KTPA (₹10 Cr planned) and Chlorine Derivatives 1,058→1,137 KTPA (₹158 Cr planned), Specialty Chemicals Epoxy Polymers 246 KTPA (₹18 Cr planned), and Birla Opus decorative paints ₹643 Cr planned (₹550 Cr spent). No newer post-Q4FY26 capacity-expansion timeline statement exists in the held data.",
+ "working": "Q4FY26 deck (known 2026-05-20) p39 standalone capex plan; Q2FY26 deck showed Caustic Soda 1,505→1,530 KTPA and Chlorine Derivatives 1,058→1,137 KTPA; Q1FY26 deck showed Chlorine Derivatives 1,047→1,126 KTPA. Nov 2024 concall claims include grey cement 162.4 MTPA by FY25 and Kharagpur plant Q4FY25.",
+ "missing": "not in data: any capacity-expansion timeline statement dated after 20 May 2026 (Q4FY26 deck) up to 31 Jul 2026; no later concall/deck/AR in store.",
+ "not_in_data": true,
+ "n_tool_calls": 3,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "as_of": "2026-07-31",
+    "entity": "GRASIM"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "claim_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "entity": "GRASIM",
+    "terms": "capacity expansion timeline"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "chunk_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "entity": "GRASIM",
+    "query": "capacity expansion timeline"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 3,
+ "usage": {
+  "prompt_tokens": 13486,
+  "completion_tokens": 734
+ },
+ "beam_secs": 7.65,
+ "total_secs": 7.65,
+ "number_check": {
+  "numbers": [
+   "31",
+   "2026",
+   "20",
+   "2263",
+   "424",
+   "397",
+   "1505",
+   "1530",
+   "10",
+   "1058",
+   "1137",
+   "158",
+   "246",
+   "18",
+   "643",
+   "550"
+  ],
+  "supported": [
+   "31",
+   "2026",
+   "20",
+   "2263",
+   "424",
+   "397",
+   "1505",
+   "1530",
+   "10",
+   "1058",
+   "1137",
+   "158",
+   "246",
+   "18",
+   "643",
+   "550"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-153b9525-289a-4aa0-831a-46d91e454beb",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"as_of\": \"2026-07-31\", \"entity\": \"GRASIM\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 178,
+   "secs": 1.76,
+   "usage": {
+    "prompt_tokens": 1112,
+    "completion_tokens": 79,
+    "total_tokens": 1191,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 47
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 24,
+      "output": 79,
+      "reasoning": 47,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "as_of": "2026-07-31",
+    "entity": "GRASIM"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-07-31",
+    "entity": "INE047A01021",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capacity_utilisation",
+      "rows": 1,
+      "first_period": "2026-03-31",
+      "last_period": "2026-03-31",
+      "units": "%",
+      "dims_sample": [
+       "product=cement"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 20,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 20,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 20,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 20,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 20,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 73,
+      "first_period": "2021-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=ebitda;segment=Building Materials",
+       "basis=consolidated;metric=ebitda;segment=Cellulosic Fibres"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 154,
+      "first_period": "2019-01-01",
+      "last_period": "2024-08-26",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 78,
+      "first_period": "2021-09-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 9,
+      "first_period": "2024-06-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 2,
+      "first_period": "2024-03-01",
+      "last_period": "2024-05-17",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1873,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1872,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1872,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1872,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1872,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1873,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1872,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1859,
+      "first_period": "2019-01-21",
+      "last_period": "2026-07-31",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1873,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1854,
+      "first_period": "2019-01-28",
+      "last_period": "2026-07-31",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1872,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1872,
+      "first_period": "2019-01-01",
+      "last_period": "2026-07-31",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1768,
+      "first_period": "2024-05-22",
+      "last_period": "2026-05-20",
+      "units": "text",
+      "dims_sample": [
+       "doctype=annual_report;page=100;chunk=2248",
+       "doctype=annual_report;page=101;chunk=12037"
+      ]
+     }
+    ],
+    "n_returned": 29,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-f693593e-b2fd-43f3-bda5-8388d90fa9c1",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"as_of\": \"2026-07-31\", \"entity\": \"GRASIM\", \"terms\": \"capacity expansion timeline\"}"
+     }
+    },
+    {
+     "id": "call-294be988-c61c-46e7-9694-ea80143520ac",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"as_of\": \"2026-07-31\", \"entity\": \"GRASIM\", \"query\": \"capacity expansion timeline\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 93,
+   "secs": 1.59,
+   "usage": {
+    "prompt_tokens": 3393,
+    "completion_tokens": 109,
+    "total_tokens": 3502,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2433,
+      "output": 109,
+      "reasoning": 24,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "entity": "GRASIM",
+    "terms": "capacity expansion timeline"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-07-31",
+    "entity": "INE047A01021",
+    "rows": [
+     {
+      "claim_id": 226503,
+      "entity_id": "INE047A01021",
+      "topic": "acquisition",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "And of course, this does not include the Kesoram and India Cement capacity as the acquisition process is underway, awaiting regulatory approvals.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226546,
+      "entity_id": "INE047A01021",
+      "topic": "acquisition",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "And of course, this does not include the Kesoram and India Cement capacity as the acquisition process is underway, awaiting regulatory approvals.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "one_offs_and_surprises",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226504,
+      "entity_id": "INE047A01021",
+      "topic": "merger",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "expected to be completed in the next 6 m",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "The amalgamation scheme now awaits approval from NCLT Ahmedabad and is expected to be completed in the next 6 months.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226505,
+      "entity_id": "INE047A01021",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": "crores",
+      "horizon": "FY25",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "the Board has approved additional capex for current financial year of ₹138 crores, of which ₹118 crores is for the capacity increase at pulp plant at Harihar and ₹20 crores is for normal modernization at textile plants.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capex",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226560,
+      "entity_id": "INE047A01021",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "And of course, this does not include the Kesoram and India Cement capacity as the acquisition process is underway, awaiting regulatory approvals.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "risks_and_headwinds",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226498,
+      "entity_id": "INE047A01021",
+      "topic": "segment",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "FY25",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "The company has added grey cement capacity of 9.9 million tons till October '24 in the current financial year and plans to further add 6.3 million tons, taking the total grey cement capacity to 162.4 million tons per annum by FY '25.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226499,
+      "entity_id": "INE047A01021",
+      "topic": "segment",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "Q4FY25",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "The utilization levels are ramping up month-on-month at three plants commissioned in Q1, namely Ludhiana, Panipat and Cheyyar. We have also started trial runs at 2 more plants at Chamarajanagar in Karnataka and Mahad in Maharashtra.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226500,
+      "entity_id": "INE047A01021",
+      "topic": "segment",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "Q4FY25",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Our sixth plant at Kharagpur in West Bengal is expected to go live in Q4 FY '25.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226501,
+      "entity_id": "INE047A01021",
+      "topic": "segment",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "ech project commissioning in the next fi",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "we are already running an ECH project, which will get commissioned in the next financial year. So that makes us more or less 80% integrated already as far as the ECH is concerned.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-19T20:05:08.43"
+     },
+     {
+      "claim_id": 226502,
+      "entity_id": "INE047A01021",
+      "topic": "segment",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "FY25",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "With the projects under implementation, renewable capacity is expected to reach 2 gigawatts in the current financial year.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2024-11-19T20:05:08.43"
+     }
+    ],
+    "n_returned": 10,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "as_of": "2026-07-31",
+    "entity": "GRASIM",
+    "query": "capacity expansion timeline"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-07-31",
+    "entity": "INE047A01021",
+    "rows": [
+     {
+      "chunk_id": 49193,
+      "doc_id": "sha256:0709a9dea1749f2e8da7517e2ac23e09b0d36a6ee4231007f75e974fc8c57139",
+      "doc_type": "deck",
+      "header": "GRASIM · INE047A01021 · Investor deck · - · Earnings Presentation | Q3FY26 · p39 · known 2026-02-10T18:39:49",
+      "section": "Earnings Presentation | Q3FY26",
+      "speaker": null,
+      "known_at": "2026-02-10T18:39:49",
+      "event_date": "2026-02-10",
+      "fiscal_period": "",
+      "page_from": 39,
+      "page_to": 39,
+      "char_len": 710,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -10.009320267142265,
+      "body_excerpt": "Grasim Industries Limited | Q3FY26 38 Standalone Capex Plan Annexure Particulars (₹ crore) Capex Spent 9MFY26 Planned Capex FY26 Cellulosic Fibres 370 839 Capacity Expansion (including debottlenecking) 152 424 Modernisation and Maintenance Capex 218 415 Chemicals (A + B + C) 471 668 (A) Capacity Expansion: Chlor-Alkali & Chlorine Derivatives 130 168 Caustic Soda 4 10 Chlorine Derivatives 126 158 (B) Capacity Expansion: Specialty Chemicals Epoxy Polymers & Curing Agents 6 18 (C) Modernisation and Maintenance Capex 335 482 New High Growth Businesses 445 653 Birla Opus (Decorative Paints) 440 643 Birla Pivot (B2B E-Commerce) 5 10 Other Businesses Textiles, Insulators & Others 24 103 Total 1,310 2,263"
+     },
+     {
+      "chunk_id": 50336,
+      "doc_id": "sha256:79ab74b4ebe3f3afdb87bd5407ca31430d87eb986a83318b45da7cdbd7b9246a",
+      "doc_type": "deck",
+      "header": "GRASIM · INE047A01021 · Investor deck · - · Earnings Presentation | Q4FY26 · p39 · known 2026-05-20T14:55:04",
+      "section": "Earnings Presentation | Q4FY26",
+      "speaker": null,
+      "known_at": "2026-05-20T14:55:04",
+      "event_date": "2026-05-20",
+      "fiscal_period": "",
+      "page_from": 39,
+      "page_to": 39,
+      "char_len": 709,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -10.009320267142265,
+      "body_excerpt": "Grasim Industries Limited | Q4FY26 38 Standalone Capex Plan Annexure Particulars (₹ crore) Planned Capex FY26 Capex Spent FY26 Cellulosic Fibres 839 729 Capacity Expansion (including debottlenecking) 424 397 Modernisation and Maintenance Capex 415 332 Chemicals (A + B + C) 668 636 (A) Capacity Expansion: Chlor-Alkali & Chlorine Derivatives 168 154 Caustic Soda 10 5 Chlorine Derivatives 158 149 (B) Capacity Expansion: Specialty Chemicals Epoxy Polymers & Curing Agents 18 11 (C) Modernisation and Maintenance Capex 482 471 New High Growth Businesses 653 555 Birla Opus (Decorative Paints) 643 550 Birla Pivot (B2B E-Commerce) 10 5 Other Businesses Textiles, Insulators & Others 103 60 Total 2,263 1,980"
+     },
+     {
+      "chunk_id": 47673,
+      "doc_id": "sha256:ad5a29b3d4df337e57620e21eabc4f2828810babfd173b18496f9fc2750e817b",
+      "doc_type": "deck",
+      "header": "GRASIM · INE047A01021 · Investor deck · - · Earnings Presentation | Q2FY26 · p39 · known 2025-11-05T14:07:52",
+      "section": "Earnings Presentation | Q2FY26",
+      "speaker": null,
+      "known_at": "2025-11-05T14:07:52",
+      "event_date": "2025-11-05",
+      "fiscal_period": "",
+      "page_from": 39,
+      "page_to": 39,
+      "char_len": 842,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.838862086467982,
+      "body_excerpt": "Grasim Industries Limited | Q2FY26 38 Standalone Capex Plan Particulars (₹ crore) Capex Spent H1FY26 Planned Capex FY26 Cellulosic Fibres 192 839 Capacity Expansion (including debottlenecking) 56 447 Modernisation and Maintenance Capex 136 392 Chemicals (A + B + C) 359 668 (A) Capacity Expansion: Chlor-Alkali & Chlorine Derivatives 98 169 Caustic Soda: (1,505 KTPA >> 1,530 KTPA) 3 10 Chlorine Derivatives: (1,058 KTPA >> 1,137 KTPA) 95 158 (B) Capacity Expansion: Specialty Chemicals Epoxy Polymers & Curing Agents 3 18 (C) Modernisation and Maintenance Capex 259 481 New High Growth Businesses 379 653 Birla Opus (Decorative Paints)^ 375 643 Birla Pivot (B2B E-Commerce) 4 10 Other Businesses Textiles, Insulators & Others 12 103 Total 941 2,263 ^Cumulative Capex for Paints business stood at ₹9,727 crores till 30th Sep 2025 Annexure"
+     },
+     {
+      "chunk_id": 46818,
+      "doc_id": "sha256:7bf2ffa6997d8e324c9a2eadc5d492194a4521a8c25d55ae5562e63deb3c8054",
+      "doc_type": "deck",
+      "header": "GRASIM · INE047A01021 · Investor deck · - · Earnings Presentation | Q1FY26 · p38 · known 2025-08-08T14:23:53",
+      "section": "Earnings Presentation | Q1FY26",
+      "speaker": null,
+      "known_at": "2025-08-08T14:23:53",
+      "event_date": "2025-08-08",
+      "fiscal_period": "",
+      "page_from": 38,
+      "page_to": 38,
+      "char_len": 852,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.825475900780196,
+      "body_excerpt": "Grasim Industries Limited | Q1FY26 37 Standalone Capex Plan Particulars (₹ crore) Capex Spent Q1FY26 Planned Capex FY26 Cellulosic Fibres 85 839 Capacity Expansion (including debottlenecking) 11 447 Modernisation and Maintenance Capex 75 392 Chemicals (A + B + C) 183 668 (A) Capacity Expansion: Chlor-Alkali & Chlorine Derivatives 55 169 Caustic Soda: (1,505 KTPA >> 1,530 KTPA) 1 10 Chlorine Derivatives: (1,047 KTPA >> 1,126 KTPA) 54 158 (B) Capacity Expansion: Specialty Chemicals Epoxy Polymers & Curing Agents: (246 KTPA) 1 18 (C) Modernisation and Maintenance Capex 127 481 New High Growth Businesses 204 653 Birla Opus (Decorative Paints)^ 203 643 Birla Pivot (B2B E-Commerce) 1 10 Other Businesses Textiles, Insulators & Others 7 103 Total 480 2,263 ^Cumulative Capex for Paints business stood at ₹9,555 crores till 30th June 2025 Annexure"
+     },
+     {
+      "chunk_id": 45867,
+      "doc_id": "sha256:4a3a08ba1f0cc7a0c821fb097be7db9bf11072da5609daad6ce7d358ea4df335",
+      "doc_type": "deck",
+      "header": "GRASIM · INE047A01021 · Investor deck · - · APPENDIX · p37 · known 2025-05-22T20:12:52",
+      "section": "APPENDIX",
+      "speaker": null,
+      "known_at": "2025-05-22T20:12:52",
+      "event_date": "2025-05-22",
+      "fiscal_period": "",
+      "page_from": 37,
+      "page_to": 37,
+      "char_len": 854,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.81212609053938,
+      "body_excerpt": "36 CAPEX PLAN - STANDALONE ^Cumulative Capex for Paints business stood at ₹9,352 Cr. till 31st March 2025. Cellulosic Fibres Business 828 453 Capacity Expansion (including debottlenecking) 218 87 Modernisation and Maintenance Capex 610 366 Chemicals Business (A+B+C) 800 700 (A) Capacity Expansion - Chlor-Alkali & Chlorine Derivatives 267 245 Caustic Soda: (1,359 KTPA --> 1,530 KTPA) 36 28 Chlorine Derivatives: (1,029 KTPA --> 1,168 KTPA) 231 218 (B) Capacity Expansion - Speciality Chemicals Epoxy Polymers & Curing Agents: (123 KTPA --> 246 KTPA) (C) Modernisation and Maintenance Capex 497 431 New High Growth Businesses 2,997 2,303 Birla Opus (Decorative Paints)^ 2,976 2,288 Birla Pivot (B2B E-commerce) 21 15 Other Businesses Textiles, Insulators & Others Total 4,693 3,513 Particulars (₹ Cr.) 68 57 Planned Capex FY25 Capex Spent FY25 36 23"
+     },
+     {
+      "chunk_id": 45899,
+      "doc_id": "sha256:d78da3284b5e144813e3293c364a53fec40d380802336aa8c6e3380b50bb7c17",
+      "doc_type": "deck",
+      "header": "GRASIM · INE047A01021 · Investor deck · - · APPENDIX · p37 · known 2025-05-22T22:43:59",
+      "section": "APPENDIX",
+      "speaker": null,
+      "known_at": "2025-05-22T22:43:59",
+      "event_date": "2025-05-22",
+      "fiscal_period": "",
+      "page_from": 37,
+      "page_to": 37,
+      "char_len": 854,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.81212609053938,
+      "body_excerpt": "36 CAPEX PLAN - STANDALONE ^Cumulative Capex for Paints business stood at ₹9,352 Cr. till 31st March 2025. Cellulosic Fibres Business 828 453 Capacity Expansion (including debottlenecking) 218 87 Modernisation and Maintenance Capex 610 366 Chemicals Business (A+B+C) 800 700 (A) Capacity Expansion - Chlor-Alkali & Chlorine Derivatives 267 245 Caustic Soda: (1,359 KTPA --> 1,530 KTPA) 36 28 Chlorine Derivatives: (1,029 KTPA --> 1,168 KTPA) 231 218 (B) Capacity Expansion - Speciality Chemicals Epoxy Polymers & Curing Agents: (123 KTPA --> 246 KTPA) (C) Modernisation and Maintenance Capex 497 431 New High Growth Businesses 2,997 2,303 Birla Opus (Decorative Paints)^ 2,976 2,288 Birla Pivot (B2B E-commerce) 21 15 Other Businesses Textiles, Insulators & Others Total 4,693 3,513 Particulars (₹ Cr.) 68 57 Planned Capex FY25 Capex Spent FY25 36 23"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "capacity",
+     "expansion",
+     "timeline"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-9f460893-3447-423e-8b54-7e2a3712f278",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"As of 31 July 2026, the most recent Grasim communication in data (Q4FY26 investor deck, known 20 May 2026) outlined FY26 standalone capex of ₹2,263 Cr with capacity expansion items: Cellulosic Fibres capacity expansion (including debottlenecking) ₹424 Cr planned (₹397 Cr spent), Chemicals capacity expansion — Caustic Soda 1,505→1,530 KTPA (₹10 Cr planned) and Chlorine Derivatives 1,058→1,137 KTPA (₹158 Cr planned), Specialty Chemicals Epoxy Polymers 246 KTPA (₹18 Cr planned), and Birla Opus decorative paints ₹643 Cr planned (₹550 Cr spent). No newer post-Q4FY26 capacity-expansion timeline statement exists in the held data.\", \"missing\": \"not in data: any capacity-expansion timeline statement dated after 20 May 2026 (Q4FY26 deck) up to 31 Jul 2026; no later concall/deck/AR in store.\", \"working\": \"Q4FY26 deck (known 2026-05-20) p39 standalone capex plan; Q2FY26 deck showed Caustic Soda 1,505→1,530 KTPA and Chlorine Derivatives 1,058→1,137 KTPA; Q1FY26 deck showed Chlorine Derivatives 1,047→1,126 KTPA. Nov 2024 concall claims include grey cement 162.4 MTPA by FY25 and Kharagpur plant Q4FY25.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 415,
+   "secs": 4.14,
+   "usage": {
+    "prompt_tokens": 8981,
+    "completion_tokens": 546,
+    "total_tokens": 9527,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 115
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 7893,
+      "output": 546,
+      "reasoning": 115,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "submit",
+   "args": {
+    "answer": "As of 31 July 2026, the most recent Grasim communication in data (Q4FY26 investor deck, known 20 May 2026) outlined FY26 standalone capex of ₹2,263 Cr with capacity expansion items: Cellulosic Fibres capacity expansion (including debottlenecking) ₹424 Cr planned (₹397 Cr spent), Chemicals capacity expansion — Caustic Soda 1,505→1,530 KTPA (₹10 Cr planned) and Chlorine Derivatives 1,058→1,137 KTPA (₹158 Cr planned), Specialty Chemicals Epoxy Polymers 246 KTPA (₹18 Cr planned), and Birla Opus decorative paints ₹643 Cr planned (₹550 Cr spent). No newer post-Q4FY26 capacity-expansion timeline statement exists in the held data.",
+    "missing": "not in data: any capacity-expansion timeline statement dated after 20 May 2026 (Q4FY26 deck) up to 31 Jul 2026; no later concall/deck/AR in store.",
+    "working": "Q4FY26 deck (known 2026-05-20) p39 standalone capex plan; Q2FY26 deck showed Caustic Soda 1,505→1,530 KTPA and Chlorine Derivatives 1,058→1,137 KTPA; Q1FY26 deck showed Chlorine Derivatives 1,047→1,126 KTPA. Nov 2024 concall claims include grey cement 162.4 MTPA by FY25 and Kharagpur plant Q4FY25."
+   }
+  }
+ ]
+}

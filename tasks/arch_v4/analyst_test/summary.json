@@ -1,0 +1,27 @@
+{
+ "n": 40,
+ "counts": {
+  "CORRECT_NOT_IN_DATA": 5,
+  "WRONG": 10,
+  "RIGHT": 7,
+  "ILL_POSED": 11,
+  "PARTIAL": 7
+ },
+ "causes": {
+  "data_gap": 10,
+  "reasoning": 5,
+  "none": 7,
+  "premise": 11,
+  "arithmetic": 1,
+  "tool_gap": 6
+ },
+ "denominator": 24,
+ "right": 7,
+ "right_rate": 0.2917,
+ "wilson95": [
+  0.1491,
+  0.4917
+ ],
+ "rule": "kill if RIGHT < 50% of rows not ILL_POSED and not CORRECT_NOT_IN_DATA",
+ "verdict": "KILL"
+}

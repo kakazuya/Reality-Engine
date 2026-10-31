@@ -1,0 +1,1165 @@
+{
+ "qid": "Q34",
+ "mid": "MB1017#MI",
+ "parent_mid": "MB1017",
+ "symbol": "UFBL",
+ "entity_isin": "INE382M01027",
+ "question": "UFBL: the air-conditioner business is seasonal and concentrated. What does that do to quarterly revenue and working capital?",
+ "as_of": "2026-10-19",
+ "period": "FY24-FY26",
+ "category": "explanation",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "UFBL (United Foodbrands/Barbeque-Nation Hospitality) is a restaurant/casual-dining company, not an air-conditioner manufacturer, so there is no \"air-conditioner business\" whose seasonality affects its quarterly revenue or working capital. The seasonal effects seen in the data relate to restaurant demand (e.g., Q1 summer holidays better than Q4, where February has fewer days and March demand drops due to exams), not AC product seasonality.",
+ "working": "Chunk search over UFBL annual reports/concalls/decks returned only restaurant/HVAC-environment references and restaurant seasonality comments (Q1 better due to summer holidays; Q4 weaker Feb/March), with no air-conditioner product business.",
+ "missing": "not in data — no air-conditioner business exists for UFBL; premise contradicted by the data (company is a restaurant hospitality business).",
+ "not_in_data": true,
+ "n_tool_calls": 5,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "UFBL",
+    "as_of": "2026-10-19"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "UFBL",
+    "query": "air conditioner seasonal quarterly revenue working capital"
+   },
+   "ok": true
+  },
+  {
+   "call": 6,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "UFBL",
+    "query": "air conditioner seasonality AC business quarterly"
+   },
+   "ok": true
+  },
+  {
+   "call": 8,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "UFBL",
+    "query": "air conditioner AC manufacturing cooling"
+   },
+   "ok": true
+  },
+  {
+   "call": 10,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "UFBL",
+    "query": "air conditioner business"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 6,
+ "usage": {
+  "prompt_tokens": 51295,
+  "completion_tokens": 619
+ },
+ "beam_secs": 12.34,
+ "total_secs": 12.34,
+ "number_check": {
+  "numbers": [],
+  "supported": [],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-d69c33fe-cb3d-4ccf-bd5f-3b0cccc9160f",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"UFBL\", \"as_of\": \"2026-10-19\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 224,
+   "secs": 1.36,
+   "usage": {
+    "prompt_tokens": 1094,
+    "completion_tokens": 81,
+    "total_tokens": 1175,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 50
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 134,
+      "output": 81,
+      "reasoning": 50,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "UFBL",
+    "as_of": "2026-10-19"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE382M01027",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 2,
+      "first_period": "2021-03-31",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 54,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 54,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 54,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 54,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 54,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 7,
+      "first_period": "2021-08-20",
+      "last_period": "2022-02-18",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 72,
+      "first_period": "2021-09-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 9,
+      "first_period": "2024-06-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 1361,
+      "first_period": "2021-04-08",
+      "last_period": "2026-10-19",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1369,
+      "first_period": "2021-04-07",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 204,
+      "first_period": "2025-10-13",
+      "last_period": "2026-08-11",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 204,
+      "first_period": "2025-10-13",
+      "last_period": "2026-08-11",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 251,
+      "first_period": "2025-10-13",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 251,
+      "first_period": "2025-10-13",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1369,
+      "first_period": "2021-04-07",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 251,
+      "first_period": "2025-10-13",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1355,
+      "first_period": "2021-04-29",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1369,
+      "first_period": "2021-04-07",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1350,
+      "first_period": "2021-05-06",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 251,
+      "first_period": "2025-10-13",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 251,
+      "first_period": "2025-10-13",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1388,
+      "first_period": "",
+      "last_period": "2026-08-19",
+      "units": "text",
+      "dims_sample": [
+       "doctype=annual_report;page=100;chunk=68146",
+       "doctype=annual_report;page=100;chunk=68147"
+      ]
+     }
+    ],
+    "n_returned": 28,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-7349cfdc-925d-43bf-9175-2dc698e8b75e",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"UFBL\", \"query\": \"air conditioner seasonal quarterly revenue working capital\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 43,
+   "secs": 1.59,
+   "usage": {
+    "prompt_tokens": 3287,
+    "completion_tokens": 44,
+    "total_tokens": 3331,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 16
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2327,
+      "output": 44,
+      "reasoning": 16,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "UFBL",
+    "query": "air conditioner seasonal quarterly revenue working capital"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE382M01027",
+    "rows": [
+     {
+      "chunk_id": 68335,
+      "doc_id": "sha256:31d1e54a83fbfbb532a393934ab4e91698e96b958defd06f4188d720639bc603",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY25 · BARBEQUE-NATION HOSPITALITY LIMITED · p219 · known 2025-08-13T18:17:09",
+      "section": "BARBEQUE-NATION HOSPITALITY LIMITED",
+      "speaker": null,
+      "known_at": "2025-08-13T18:17:09",
+      "event_date": "2025-08-13",
+      "fiscal_period": "FY25",
+      "page_from": 219,
+      "page_to": 219,
+      "char_len": 2488,
+      "title": "UFBL annual report 2025-03-31",
+      "score": -11.300535677649586,
+      "body_excerpt": "BARBEQUE-NATION HOSPITALITY LIMITED Notes to the Consolidated Financial Statements (Contd.) For the year ended March 31, 2025 Corporate Identity Number (CIN): L55101KA2006PLC07303 (All amounts in Indian Rupees Millions, unless otherwise stated) - Term Loans 2 and 3: The loans are repayable in 20 equal quarterly instalments of Rs. 10.00 million each commencing (after 12 months of moratorium period from the date of first disbursement) through June 30, 2024 to March 31, 2029 and carries interest rate of Repo rate + 2%. - Term Loan 4: The loan is repayable in 20 equal quarterly instalments of Rs. 5.00 million commencing (after 12 months of moratorium period from the date of first disbursement) through March 31, 2026 to December 31, 2030 and carries interest rate of Repo rate + 2%. - Term Loan 5: The loan is repayable in 20 equal quarterly instalments of Rs. 7.50 million commencing (after 12 months of moratorium period from the date of first disbursement) through March 31, 2026 to December 31, 2030 and carries interest rate of Repo rate + 2%. - Term Loan 6: The loan is repayable in 66 equal monthly instalments of Rs. 2.27 million commencing through June 30, 2025 to November 30, 2030 and carries interest rate of Repo rate + 2% (ii) Working capital loan from banks: - Working capital loans are secured by way of hypothecation of moveable fixed assets (excluding vehicles), security deposits and current assets of the Company. - The loans are repayable on demand and carries interest rate …"
+     },
+     {
+      "chunk_id": 81929,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 · p163 · known 2026-08-19T15:42:48",
+      "section": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 163,
+      "page_to": 163,
+      "char_len": 3538,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -11.13566678487462,
+      "body_excerpt": "… 00 million each commencing (after 12 months of moratorium period from the date of first disbursement) through June 30, 2024 to March 31, 2029 and carries interest rate of Repo rate + 2%. - Term Loan 3: The loan is repayable in 20 equal quarterly instalments of ` 5.00 million commencing (after 12 months of moratorium period from the date of first disbursement) through March 31, 2026 to December 31, 2030 and carries interest rate of Repo rate + 2%. - Term Loan 4: The loan is repayable in 20 equal quarterly instalments of ` 7.50 million commencing (after 12 months of moratorium period from the date of first disbursement) through March 31, 2026 to December 31, 2030 and carries interest rate of Repo rate + 2%. - Term Loan 5: The loan is repayable in 20 equal quarterly instalments of ` 7.50 million commencing (after 12 months of moratorium period from the date of first disbursement) through April 30, 2027 to January 31, 2032 and carries interest rate of Repo rate + 2.75%. (ii) Term loans from financial institution: - The loan is repayable in 10 quarterly instalments of ` 25.00 million commencing (after 6 months of moratorium period from the date of first disbursement) through April 01, 2026 to September 01, 2028 and carries interest rate of 10.25%. (iii) Working capital loan from banks: - Working capital loans are secured by way of hypothecation of moveable fixed assets (excluding vehicles), security deposits and current assets of the Company. - The loans are repayable on demand an …"
+     },
+     {
+      "chunk_id": 68214,
+      "doc_id": "sha256:31d1e54a83fbfbb532a393934ab4e91698e96b958defd06f4188d720639bc603",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY25 · 19 BORROWINGS · p145 · known 2025-08-13T18:17:09",
+      "section": "19 BORROWINGS",
+      "speaker": null,
+      "known_at": "2025-08-13T18:17:09",
+      "event_date": "2025-08-13",
+      "fiscal_period": "FY25",
+      "page_from": 145,
+      "page_to": 146,
+      "char_len": 3356,
+      "title": "UFBL annual report 2025-03-31",
+      "score": -11.065347577809234,
+      "body_excerpt": "…  bank: • Term loans are secured by way of hypothecation of moveable fixed assets (excluding vehicles), security deposits and current assets of the Company. • Term Loan 1: The loan is repayable in 48 equal monthly instalments of ` 3.09 million each commencing (after 12 months of moratorium period from the date of first disbursement) through December 31, 2021 to November 30, 2025 and carries interest rate of 10.45% linked to one year MCLR. • Term Loans 2 and 3: The loans are repayable in 20 equal quarterly instalments of ` 10.00 million each commencing (after 12 months of moratorium period from the date of first disbursement) through June 30, 2024 to March 31, 2029 and carries interest rate of Repo rate + 2%. • Term Loan 4: The loan is repayable in 20 equal quarterly instalments of ` 5.00 million commencing (after 12 months of moratorium period from the date of first disbursement) through March 31, 2026 to December 31, 2030 and carries interest rate of Repo rate + 2%. • Term Loan 5: The loan is repayable in 20 equal quarterly instalments of ` 7.50 million commencing (after 12 months of moratorium period from the date of first disbursement) through March 31, 2026 to December 31, 2030 and carries interest rate of Repo rate + 2%. (ii) Working capital loan from banks: • Working capital loans are secured by way of hypothecation of moveable fixed assets (excluding vehicles), security deposits and current assets of the Company. - The loans are repayable on demand and carries interest  …"
+     },
+     {
+      "chunk_id": 82068,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 · p241 · known 2026-08-19T15:42:48",
+      "section": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 241,
+      "page_to": 241,
+      "char_len": 4491,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -10.690385595506157,
+      "body_excerpt": "… 50 million commencing (after 12 months of moratorium period from the date of first disbursement) through April 30, 2027 to January 31, 2032 and carries interest rate of Repo rate + 2.75%. - Term Loan 6: The loan is repayable in 66 equal monthly instalments of ` 2.27 million commencing (after 6 months of moratorium period from the date of first disbursement) through June 30, 2025 to November 30, 2030 and carries interest rate of Repo rate + 2.50%. - Term Loan 7: The loan is repayable in 16 equal quarterly instalments of ` 5.88 million commencing (after 12 months of moratorium period from the date of first disbursement) through September 30, 2026 to September 30, 2030 and carries interest rate of 8.40%. (ii) Term loans from financial institution: - The loan is repayable in 10 quarterly instalments of ` 25.00 million commencing (after 6 months of moratorium period from the date of first disbursement) through April 01, 2026 to September 01, 2028 and carries interest rate of 10.25%. (iii) Working capital loan from banks: - Working capital loans are secured by way of hypothecation of moveable fixed assets (excluding vehicles), security deposits and current assets of the respective companies within the Group. - The loans are repayable on demand and carries interest rate of 7.50% - 8.35%. (iv) Vehicle loans: - Vehicle loans are secured by way of hypothecation of underlying vehicles. - The loans are repayable in 24 to 39 equated monthly instalments from the date of respective loans av …"
+     },
+     {
+      "chunk_id": 68257,
+      "doc_id": "sha256:31d1e54a83fbfbb532a393934ab4e91698e96b958defd06f4188d720639bc603",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY25 · BARBEQUE-NATION HOSPITALITY LIMITED · p171 · known 2025-08-13T18:17:09",
+      "section": "BARBEQUE-NATION HOSPITALITY LIMITED",
+      "speaker": null,
+      "known_at": "2025-08-13T18:17:09",
+      "event_date": "2025-08-13",
+      "fiscal_period": "FY25",
+      "page_from": 171,
+      "page_to": 172,
+      "char_len": 1608,
+      "title": "UFBL annual report 2025-03-31",
+      "score": -7.7152074091978164,
+      "body_excerpt": "BARBEQUE-NATION HOSPITALITY LIMITED Notes to the Standalone Financial Statements (Contd.) For the year ended March 31, 2025 Corporate Identity Number (CIN): L55101KA2006PLC07303 (All amounts in Indian Rupees Millions, unless otherwise stated) Particulars Numerator Denominator March 31, 2025 March 31, 2024 % change Reason for variance Trade Receivable Turnover ratio Net sales Average trade receivables 176.50 302.20 -41.59% Change is primarily on account of decrease in revenue during the year. Trade Payable Turnover ratio Net purchases + Other expenses + Staff welfare expenses Average trade payables 6.69 6.90 -2.94% - Net Capital Turnover ratio Net sales Working capital = Current assets – Current liabilities (8.46) (9.93) -14.84% - Net Profit ratio Net profit after tax Net sales (0.04) (0.03) 42.69% Change is primarily on account of increase in losses during the year. Return on Capital Employed Earnings before interest and taxes Capital employed = Tangible net worth + Total debt + Deferred tax liabilities 0.02 0.03 -18.48% Return on Investment Interest (Finance income) Investment NA NA - - Barbeque-Nation Hospitality Limited | Annual Report 2024-25 185 185 BARBEQUE-NATION HOSPITALITY LIMITED Notes to the Standalone Financial Statements (Contd.) For the year ended March 31, 2025 Corporate Identity Number (CIN): L55101KA2006PLC07303 (All amounts in Indian Rupees Millions, unless otherwise stated) 45 DISCLOSURE AS PER REGULATION 34(3) READ WITH PART A OF SCHEDULE V OF THE SEBI (LI …"
+     },
+     {
+      "chunk_id": 100948,
+      "doc_id": "sha256:efae8de766bb1611a88fbcddeb267ce6c06a92d28bb736de1e502de6f23f1200",
+      "doc_type": "deck",
+      "header": "UFBL · INE382M01027 · Investor deck · - · Consolidated Financial Performance – Quarterly Trend · p9 · known 2025-05-22T14:56:03",
+      "section": "Consolidated Financial Performance – Quarterly Trend",
+      "speaker": null,
+      "known_at": "2025-05-22T14:56:03",
+      "event_date": "2025-05-22",
+      "fiscal_period": "",
+      "page_from": 9,
+      "page_to": 9,
+      "char_len": 982,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -7.585525760074199,
+      "body_excerpt": "Consolidated Financial Performance – Quarterly Trend 08 217 219 222 226 230 Q4 FY24 Q1 FY25 Q2 FY25 Q3 FY25 Q4 FY25 2,981 3,057 3,057 3,289 2,928 Q4 FY24 Q1 FY25 Q2 FY25 Q3 FY25 Q4 FY25 Network (#) and Annualized Revenue/Outlet (₹ Mn) Revenue from Operations (₹ Mn) Gross Profit (₹ Mn) and Margin (%) Pre IND-AS Restaurant Operating Margin (₹ Mn) 55 55 56 60 53 Annualized Revenue/Outlet (₹ Mn) 2,053 2,081 2,081 2,244 2,006 Q4 FY24 Q1 FY25 Q2 FY25 Q3 FY25 Q4 FY25 429 421 380 543 368 Q4 FY24 Q1 FY25 Q2 FY25 Q3 FY25 Q4 FY25 68.9% 68.1% 68.1% 68.2% 68.5% Gross Margin (%) 14.4% 13.8% 12.4% 16.5% 12.6% ROM (%) 1.4% (7.4)% (2.5)% (2.0)% (2.0)% SSSG (%)  Y-o-Y revenue lower by 1.8% primarily due to decline in India business  Consolidated SSSG% of (2.0)%; Marginal improvement in SSSG trend  Maintained strong gross margins  Pre IND-AS Restaurant operating margin of 12.6% Consolidated Barbeque Nation India Barbeque Nation International Premium CDR"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "air",
+     "conditioner",
+     "seasonal",
+     "quarterly",
+     "revenue",
+     "working",
+     "capital"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-6fdf8230-1d67-431f-9b03-9a7cecc21364",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"UFBL\", \"query\": \"air conditioner seasonality AC business quarterly\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 202,
+   "secs": 1.49,
+   "usage": {
+    "prompt_tokens": 6930,
+    "completion_tokens": 73,
+    "total_tokens": 7003,
+    "prompt_tokens_details": {
+     "cached_tokens": 3264
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 43
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3666,
+      "output": 73,
+      "reasoning": 43,
+      "cache_read": 3264,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "UFBL",
+    "query": "air conditioner seasonality AC business quarterly"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE382M01027",
+    "rows": [
+     {
+      "chunk_id": 88198,
+      "doc_id": "sha256:cb98ab1c8549fddef56496f8fa848808ce05f687356cd9665958dfeb10865bf4",
+      "doc_type": "concall",
+      "header": "UFBL · INE382M01027 · Concall transcript · - · Q&A · p8 · known 2024-08-07T16:11:54",
+      "section": "Q&A",
+      "speaker": "resha mehta",
+      "known_at": "2024-08-07T16:11:54",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 8,
+      "page_to": 8,
+      "char_len": 624,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -8.705165625711588,
+      "body_excerpt": "Resha Mehta: Right. And is there any seasonality that's been between Q4 and Q1? Rahul Agrawal: Yes, Q1 normally is better because of summer holidays in most of the places. So family demands go up. Quarter 4, you get the benefit of first weeks of January, but February, number of days are lesser, that impacts a lot. And March demand from families normally 4, 2021 8 | Barbeque Nation Barbeque-Nation Hospitality Limited Earnings Conference Call Transcript Q1FY2025 drops because of kid's exams. Generally, historically pre-COVID our quarter 1 versus quarter 4, quarter 1 has been marginally better."
+     },
+     {
+      "chunk_id": 87460,
+      "doc_id": "sha256:655386b427aabc1724cb03d550a48564709108cdb81d27f20fa0700ea8de5ca3",
+      "doc_type": "concall",
+      "header": "UFBL · INE382M01027 · Concall transcript · - · Q&A · p14 · known 2024-05-29T20:20:34",
+      "section": "Q&A",
+      "speaker": "mahesh atal",
+      "known_at": "2024-05-29T20:20:34",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 14,
+      "page_to": 14,
+      "char_len": 774,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -8.413480509965511,
+      "body_excerpt": "Mahesh Atal: Restaurants, how much would be like having -- how much are loss-making and how much are profit making currently? Rahul Agrawal: No, we don't give that number. That changes with seasonality. How they behave during quarter 3 versus quarter 4 is very different. Moderator: The next question comes from the line of Nirav Seksaria, an Individual Investor, please go ahead. Nirav Seksaria: Could you also specify the amount of alcohol contribution to the revenue in Barbeque Nation? Barbeque-Nation Hospitality Limited Earnings Transcript Q4 and Full Year FY2024 14 | Barbeque Nation Rahul Agrawal: It's around 4% to 5%. That's just alcohol. It doesn't include other beverages. Other beverages and alcohol put together would be around 9%."
+     },
+     {
+      "chunk_id": 81782,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 · p67 · known 2026-08-19T15:42:48",
+      "section": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 67,
+      "page_to": 68,
+      "char_len": 3112,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -8.167749487059682,
+      "body_excerpt": "… risk and hedging activities: Your Company is exposed to the risk of price fluctuations in few raw materials/commodities being used by the Company to prepare food items which are served at the restaurants. However, there is a limited price risk attached to these as there is no significant dependency on any single commodity. Further, the Company is mitigating the risks of price volatility by proactively entering into yearly/quarterly/ monthly contracts with suppliers depending upon volatility and seasonality of the base commodity. The Company has a framework and governance mechanism in place to ensure that its interests are protected from market volatility in terms of price and availability. As per the Company’s Policy for Determination of Materiality of Events and Information, the Company does not have material exposure to any commodity and accordingly, no hedging activities for the same are carried out. Therefore, the disclosures as required under the SEBI Circular No. SEBI/HO/CFD/CMD1/CIR/P/2018/0000000141 dated November 15, 2018 are not applicable to the Company. m) Restaurants/Outlet locations: As on March 31, 2026, the Company had 207 restaurants in India. The location of each restaurant is available at www.unitedfoodbrands.in/brands and also at www.barbequenation.com. n) Address for correspondence: (i) For Shareholders: Ms. Nagamani C Y Company Secretary & Compliance Officer United Foodbrands Limited “Saket Callipolis”, Unit No. 601 & 602, 6th Floor, Doddakannalli Villag …"
+     },
+     {
+      "chunk_id": 101107,
+      "doc_id": "sha256:f01a77d0c4dbc0625525b1a13039babebc648e628b239bd0dba2b77bf6293c5c",
+      "doc_type": "deck",
+      "header": "UFBL · INE382M01027 · Investor deck · - · Premium dining experience at Salt · p21 · known 2025-05-27T17:50:47",
+      "section": "Premium dining experience at Salt",
+      "speaker": null,
+      "known_at": "2025-05-27T17:50:47",
+      "event_date": "2025-05-27",
+      "fiscal_period": "",
+      "page_from": 21,
+      "page_to": 21,
+      "char_len": 1411,
+      "title": "Corporate Presentation-FY2025",
+      "score": -6.849209918747977,
+      "body_excerpt": "Our commitment to environmental stewardship, social responsibility and ethical governance practices 020 • Board Independence: 6 of the total 8 board members are non-executive; 3 directors including Chairman of the board are independent directors • Corporate Governance: Strong corporate governance practices along with well defined policies and practices • Employee Centric: Ranked 14th in India’s Best Companies to Work For, 2024 by Great Place to Work • Employee welfare : ‘Breaking Barriers - Safalta ki Aur’ – initiative to upskill disadvantaged team members with hands on training for concierge management • Diversity: Initiatives like ‘Her Power’ , ‘Apki Saheli’ to empower women in restaurant operations and bring diversity at workplace. ~12% female workforce in FY25 compared to less than 5% in FY23 • Tree plantation: Conducted sapling plantation drive to create awareness about importance of plants in combating pollution and climate change • Air: Using environment friendly solutions such as air scrubbers to clean air before discharging in the environment • Energy: IOT based electricity management to ensure efficient power usage • Food: Procurement of seafood and meat from organizations which are certified for BAP/ HACCP and other quality and sustainability certifications Diversified portfolio Scalability and expansion Operational excellence Guest centric approach Sustainable growth"
+     },
+     {
+      "chunk_id": 81796,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · ENVIRONMENT & CONSERVATION · p76 · known 2026-08-19T15:42:48",
+      "section": "ENVIRONMENT & CONSERVATION",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 76,
+      "page_to": 76,
+      "char_len": 832,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -6.73203870350563,
+      "body_excerpt": "ENVIRONMENT & CONSERVATION Reducing our environmental footprint and improving operational efficiency remain key priorities across our restaurant network. We continue to focus on lowering energy consumption through IoT-based energy management systems, deployment of Variable Frequency Device (VFD) panels and adoption of energy-efficient technologies across outlets. In addition, we continue to strengthen our environmental infrastructure through air scrubbers, smoke eliminators, grease traps, waste management and recycling initiatives aimed at improving air quality, wastewater treatment and overall resource efficiency. Our efforts also include reducing single-use plastics, promoting biodegradable and food-safe cleaning solutions, and implementing structured waste reduction and circularity initiatives across operations."
+     },
+     {
+      "chunk_id": 81815,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 · p87 · known 2026-08-19T15:42:48",
+      "section": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 87,
+      "page_to": 88,
+      "char_len": 3233,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -6.171234498265299,
+      "body_excerpt": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 For the financial year 2025-26, the following eco-friendly measures have been incorporated in all new restaurants opened during the year with a capex of ` 1.73 Crores. • Smoke eliminators have been installed to reduce CO level inside the outlets in addition to air scrubbers that cleans the air before releasing it in the environment. • Grease traps in conjunction with ETP/STPs ensures efficient and effective wastewater treatment before discharging. • IOT Based Electricity management: Use of Variable Frequency Device (VFD) panels that automatically detects power requirements and adjust all equipment operations to save power. 2. a. Does the entity have procedures in place for sustainable sourcing? (Yes/No) Yes b. If yes, what percentage of inputs were sourced sustainably? Deeply rooted in our core values of responsible business, our commitment to sustainable sourcing serves as the foundation for our environmental and social objectives. We actively refine our procurement practices by minimizing the use of artificial additives and prioritizing high-standard certifications for our proteins, such as BAP and HACCP. By diversifying our supply chain to include Micro, Small, and Medium Enterprises (MSMEs) and Self-Help Groups (SHGs), we foster a more inclusive and resilient ecosystem of like- minded partners. Currently, our efforts have yielded significant measurable results across our primary food categories, our prawn supply meeting BA …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "air",
+     "conditioner",
+     "seasonality",
+     "business",
+     "quarterly"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-047d3daf-9847-4e0d-a076-47110c3e2476",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"UFBL\", \"query\": \"air conditioner AC manufacturing cooling\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 233,
+   "secs": 1.64,
+   "usage": {
+    "prompt_tokens": 10122,
+    "completion_tokens": 82,
+    "total_tokens": 10204,
+    "prompt_tokens_details": {
+     "cached_tokens": 6912
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 56
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3210,
+      "output": 82,
+      "reasoning": 56,
+      "cache_read": 6912,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "UFBL",
+    "query": "air conditioner AC manufacturing cooling"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE382M01027",
+    "rows": [
+     {
+      "chunk_id": 101107,
+      "doc_id": "sha256:f01a77d0c4dbc0625525b1a13039babebc648e628b239bd0dba2b77bf6293c5c",
+      "doc_type": "deck",
+      "header": "UFBL · INE382M01027 · Investor deck · - · Premium dining experience at Salt · p21 · known 2025-05-27T17:50:47",
+      "section": "Premium dining experience at Salt",
+      "speaker": null,
+      "known_at": "2025-05-27T17:50:47",
+      "event_date": "2025-05-27",
+      "fiscal_period": "",
+      "page_from": 21,
+      "page_to": 21,
+      "char_len": 1411,
+      "title": "Corporate Presentation-FY2025",
+      "score": -6.849209918747977,
+      "body_excerpt": "Our commitment to environmental stewardship, social responsibility and ethical governance practices 020 • Board Independence: 6 of the total 8 board members are non-executive; 3 directors including Chairman of the board are independent directors • Corporate Governance: Strong corporate governance practices along with well defined policies and practices • Employee Centric: Ranked 14th in India’s Best Companies to Work For, 2024 by Great Place to Work • Employee welfare : ‘Breaking Barriers - Safalta ki Aur’ – initiative to upskill disadvantaged team members with hands on training for concierge management • Diversity: Initiatives like ‘Her Power’ , ‘Apki Saheli’ to empower women in restaurant operations and bring diversity at workplace. ~12% female workforce in FY25 compared to less than 5% in FY23 • Tree plantation: Conducted sapling plantation drive to create awareness about importance of plants in combating pollution and climate change • Air: Using environment friendly solutions such as air scrubbers to clean air before discharging in the environment • Energy: IOT based electricity management to ensure efficient power usage • Food: Procurement of seafood and meat from organizations which are certified for BAP/ HACCP and other quality and sustainability certifications Diversified portfolio Scalability and expansion Operational excellence Guest centric approach Sustainable growth"
+     },
+     {
+      "chunk_id": 81796,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · ENVIRONMENT & CONSERVATION · p76 · known 2026-08-19T15:42:48",
+      "section": "ENVIRONMENT & CONSERVATION",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 76,
+      "page_to": 76,
+      "char_len": 832,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -6.73203870350563,
+      "body_excerpt": "ENVIRONMENT & CONSERVATION Reducing our environmental footprint and improving operational efficiency remain key priorities across our restaurant network. We continue to focus on lowering energy consumption through IoT-based energy management systems, deployment of Variable Frequency Device (VFD) panels and adoption of energy-efficient technologies across outlets. In addition, we continue to strengthen our environmental infrastructure through air scrubbers, smoke eliminators, grease traps, waste management and recycling initiatives aimed at improving air quality, wastewater treatment and overall resource efficiency. Our efforts also include reducing single-use plastics, promoting biodegradable and food-safe cleaning solutions, and implementing structured waste reduction and circularity initiatives across operations."
+     },
+     {
+      "chunk_id": 90235,
+      "doc_id": "sha256:42782592f03cfdbe8c29e5c85e8cd060e51ffaafe05bcbe1e0e82f2f192b87cc",
+      "doc_type": "concall",
+      "header": "UFBL · INE382M01027 · Concall transcript · - · Q&A · p19 · known 2025-02-10T18:35:30",
+      "section": "Q&A",
+      "speaker": "resha mehta",
+      "known_at": "2025-02-10T18:35:30",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 19,
+      "page_to": 19,
+      "char_len": 1527,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -6.090600449586909,
+      "body_excerpt": "Resha Mehta: Right. And would you say that the competition, the supply side has really intensified in the casual dining space, because we see a similar trend and intensifying competition also in the QSR space. So, here, would you say that in the casual dining space, there has been much more intensified competition, or has it now like kind of started cooling off over the last, let's say, a couple of weeks or quarters? Rahul Agrawal: No, it had intensified a lot after the revenge consumption pace that we saw in FY '23. We saw a lot of supply coming in FY24 and FY25. And now, the demand environment has been tough for pretty much everybody in the food services industry. A lot of smaller CDR players also are feeling the heat. And at least from the market perspective, some of the sites that we found to be very non-doable from the rental perspective are getting to the realm of something that we should consider for our own brands. To that extent, I think, there has been some green 4, 2021 19 | Barbeque-Nation Hospitality Limited Barbeque-Nation Hospitality Limited Earnings Call Transcript Q3FY2025 shoots on reduction on the overall rentals in some of these places. We hope that the new supply pace growth is not as strong as we have seen in the last two years. Moderator: Thank you. Sir, the line for the current participant has been dropped from the queue. So, we will move on to the next question. The next question comes from Vivek Kumar from Bestpals LLP. Please go ahead."
+     },
+     {
+      "chunk_id": 81831,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · 0.10 KL/Guest > 0.12 KL/Guest · p101 · known 2026-08-19T15:42:48",
+      "section": "0.10 KL/Guest > 0.12 KL/Guest",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 101,
+      "page_to": 102,
+      "char_len": 1763,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -5.696584452840007,
+      "body_excerpt": "… intensity figures for FY24-25 have also been revised. Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency. 4. Provide the following details related to water discharged: Water discharge is done in the municipal sewerage systems and currently we are not measuring water discharge quantity. Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency. 5. Has the entity implemented a mechanism for Zero Liquid Discharge? If yes, provide details of its coverage and implementation: Not Applicable 6. Please provide details of air emissions (other than GHG emissions) by the entity, in the following format: Parameter Please specify Unit FY 2025-26 FY 2024-25 NOx mg/Nm3 21.9 21.9 Sox mg/Nm3 36.9 36.9 Particulate matter (PM) mg/Nm3 42 42 Persistent organic pollutants (POP) - - - Volatile organic compounds (VOC) - - - Hazardous air pollutants (HAP) - - - Others – please specify - - - Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency. 109"
+     },
+     {
+      "chunk_id": 81815,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 · p87 · known 2026-08-19T15:42:48",
+      "section": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 87,
+      "page_to": 88,
+      "char_len": 3233,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -4.94766406197988,
+      "body_excerpt": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 For the financial year 2025-26, the following eco-friendly measures have been incorporated in all new restaurants opened during the year with a capex of ` 1.73 Crores. • Smoke eliminators have been installed to reduce CO level inside the outlets in addition to air scrubbers that cleans the air before releasing it in the environment. • Grease traps in conjunction with ETP/STPs ensures efficient and effective wastewater treatment before discharging. • IOT Based Electricity management: Use of Variable Frequency Device (VFD) panels that automatically detects power requirements and adjust all equipment operations to save power. 2. a. Does the entity have procedures in place for sustainable sourcing? (Yes/No) Yes b. If yes, what percentage of inputs were sourced sustainably? Deeply rooted in our core values of responsible business, our commitment to sustainable sourcing serves as the foundation for our environmental and social objectives. We actively refine our procurement practices by minimizing the use of artificial additives and prioritizing high-standard certifications for our proteins, such as BAP and HACCP. By diversifying our supply chain to include Micro, Small, and Medium Enterprises (MSMEs) and Self-Help Groups (SHGs), we foster a more inclusive and resilient ecosystem of like- minded partners. Currently, our efforts have yielded significant measurable results across our primary food categories, our prawn supply meeting BA …"
+     },
+     {
+      "chunk_id": 68138,
+      "doc_id": "sha256:31d1e54a83fbfbb532a393934ab4e91698e96b958defd06f4188d720639bc603",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY25 · 0.12 KL/Guest > 0.11 KL/Guest · p89 · known 2025-08-13T18:17:09",
+      "section": "0.12 KL/Guest > 0.11 KL/Guest",
+      "speaker": null,
+      "known_at": "2025-08-13T18:17:09",
+      "event_date": "2025-08-13",
+      "fiscal_period": "FY25",
+      "page_from": 89,
+      "page_to": 90,
+      "char_len": 3196,
+      "title": "UFBL annual report 2025-03-31",
+      "score": -4.7657633480642945,
+      "body_excerpt": "… discharge quantity. Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency. 5. Has the entity implemented a mechanism for Zero Liquid Discharge? If yes, provide details of its coverage and implementation. Not Applicable Barbeque-Nation Hospitality Limited | Annual Report 2024-25 103 6. Please provide details of air emissions (other than GHG emissions) by the entity, in the following format: Parameter Please specify unit FY 2024-25 FY 2023-24 NOx mg/Nm3 21.9 21.9 Sox mg/Nm3 36.9 36.9 Particulate matter (PM) mg/Nm3 42 42 Persistent organic pollutants (POP) - - - Volatile organic compounds (VOC) - - - Hazardous air pollutants (HAP) - - - Others – please Specify - - - Note: Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency 7. Provide details of greenhouse gas emissions (Scope 1 and Scope 2 emissions) & its intensity, in the following format: Parameter Unit FY 2024-25 FY 2023-24 Total Scope 1 emissions (Break-up of the GHG into CO₂, CH₄, N₂O, HFCs, PFCs, SF₆, NF₃, if available) Metric tonnes of CO₂ equivalent 6,950* 5,027* Total Scope 2 emissions (Break-up of the GHG into CO₂, CH₄, N₂O, HFCs, PFCs, SF₆, NF₃,  …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "air",
+     "conditioner",
+     "manufacturing",
+     "cooling"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 4,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-87b920cc-9434-484b-888a-3430e88e8b66",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"UFBL\", \"query\": \"air conditioner business\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 264,
+   "secs": 2.07,
+   "usage": {
+    "prompt_tokens": 13342,
+    "completion_tokens": 89,
+    "total_tokens": 13431,
+    "prompt_tokens_details": {
+     "cached_tokens": 10112
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 65
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3230,
+      "output": 89,
+      "reasoning": 65,
+      "cache_read": 10112,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 4,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "UFBL",
+    "query": "air conditioner business"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE382M01027",
+    "rows": [
+     {
+      "chunk_id": 101107,
+      "doc_id": "sha256:f01a77d0c4dbc0625525b1a13039babebc648e628b239bd0dba2b77bf6293c5c",
+      "doc_type": "deck",
+      "header": "UFBL · INE382M01027 · Investor deck · - · Premium dining experience at Salt · p21 · known 2025-05-27T17:50:47",
+      "section": "Premium dining experience at Salt",
+      "speaker": null,
+      "known_at": "2025-05-27T17:50:47",
+      "event_date": "2025-05-27",
+      "fiscal_period": "",
+      "page_from": 21,
+      "page_to": 21,
+      "char_len": 1411,
+      "title": "Corporate Presentation-FY2025",
+      "score": -6.849209918747977,
+      "body_excerpt": "Our commitment to environmental stewardship, social responsibility and ethical governance practices 020 • Board Independence: 6 of the total 8 board members are non-executive; 3 directors including Chairman of the board are independent directors • Corporate Governance: Strong corporate governance practices along with well defined policies and practices • Employee Centric: Ranked 14th in India’s Best Companies to Work For, 2024 by Great Place to Work • Employee welfare : ‘Breaking Barriers - Safalta ki Aur’ – initiative to upskill disadvantaged team members with hands on training for concierge management • Diversity: Initiatives like ‘Her Power’ , ‘Apki Saheli’ to empower women in restaurant operations and bring diversity at workplace. ~12% female workforce in FY25 compared to less than 5% in FY23 • Tree plantation: Conducted sapling plantation drive to create awareness about importance of plants in combating pollution and climate change • Air: Using environment friendly solutions such as air scrubbers to clean air before discharging in the environment • Energy: IOT based electricity management to ensure efficient power usage • Food: Procurement of seafood and meat from organizations which are certified for BAP/ HACCP and other quality and sustainability certifications Diversified portfolio Scalability and expansion Operational excellence Guest centric approach Sustainable growth"
+     },
+     {
+      "chunk_id": 81796,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · ENVIRONMENT & CONSERVATION · p76 · known 2026-08-19T15:42:48",
+      "section": "ENVIRONMENT & CONSERVATION",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 76,
+      "page_to": 76,
+      "char_len": 832,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -6.73203870350563,
+      "body_excerpt": "ENVIRONMENT & CONSERVATION Reducing our environmental footprint and improving operational efficiency remain key priorities across our restaurant network. We continue to focus on lowering energy consumption through IoT-based energy management systems, deployment of Variable Frequency Device (VFD) panels and adoption of energy-efficient technologies across outlets. In addition, we continue to strengthen our environmental infrastructure through air scrubbers, smoke eliminators, grease traps, waste management and recycling initiatives aimed at improving air quality, wastewater treatment and overall resource efficiency. Our efforts also include reducing single-use plastics, promoting biodegradable and food-safe cleaning solutions, and implementing structured waste reduction and circularity initiatives across operations."
+     },
+     {
+      "chunk_id": 81815,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 · p87 · known 2026-08-19T15:42:48",
+      "section": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 87,
+      "page_to": 88,
+      "char_len": 3233,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -6.171234498265299,
+      "body_excerpt": "UNITED FOODBRANDS LIMITED | ANNUAL REPORT 2025-26 For the financial year 2025-26, the following eco-friendly measures have been incorporated in all new restaurants opened during the year with a capex of ` 1.73 Crores. • Smoke eliminators have been installed to reduce CO level inside the outlets in addition to air scrubbers that cleans the air before releasing it in the environment. • Grease traps in conjunction with ETP/STPs ensures efficient and effective wastewater treatment before discharging. • IOT Based Electricity management: Use of Variable Frequency Device (VFD) panels that automatically detects power requirements and adjust all equipment operations to save power. 2. a. Does the entity have procedures in place for sustainable sourcing? (Yes/No) Yes b. If yes, what percentage of inputs were sourced sustainably? Deeply rooted in our core values of responsible business, our commitment to sustainable sourcing serves as the foundation for our environmental and social objectives. We actively refine our procurement practices by minimizing the use of artificial additives and prioritizing high-standard certifications for our proteins, such as BAP and HACCP. By diversifying our supply chain to include Micro, Small, and Medium Enterprises (MSMEs) and Self-Help Groups (SHGs), we foster a more inclusive and resilient ecosystem of like- minded partners. Currently, our efforts have yielded significant measurable results across our primary food categories, our prawn supply meeting BA …"
+     },
+     {
+      "chunk_id": 81831,
+      "doc_id": "sha256:80cc2ce2a2db1319ce677ba7faf2b51b86dda2af758bb1b20bc1c488c5db0d02",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY26 · 0.10 KL/Guest > 0.12 KL/Guest · p101 · known 2026-08-19T15:42:48",
+      "section": "0.10 KL/Guest > 0.12 KL/Guest",
+      "speaker": null,
+      "known_at": "2026-08-19T15:42:48",
+      "event_date": "2026-08-19",
+      "fiscal_period": "FY26",
+      "page_from": 101,
+      "page_to": 102,
+      "char_len": 1763,
+      "title": "UFBL annual report 2026-03-31",
+      "score": -5.696584452840007,
+      "body_excerpt": "… intensity figures for FY24-25 have also been revised. Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency. 4. Provide the following details related to water discharged: Water discharge is done in the municipal sewerage systems and currently we are not measuring water discharge quantity. Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency. 5. Has the entity implemented a mechanism for Zero Liquid Discharge? If yes, provide details of its coverage and implementation: Not Applicable 6. Please provide details of air emissions (other than GHG emissions) by the entity, in the following format: Parameter Please specify Unit FY 2025-26 FY 2024-25 NOx mg/Nm3 21.9 21.9 Sox mg/Nm3 36.9 36.9 Particulate matter (PM) mg/Nm3 42 42 Persistent organic pollutants (POP) - - - Volatile organic compounds (VOC) - - - Hazardous air pollutants (HAP) - - - Others – please specify - - - Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency. 109"
+     },
+     {
+      "chunk_id": 68124,
+      "doc_id": "sha256:31d1e54a83fbfbb532a393934ab4e91698e96b958defd06f4188d720639bc603",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY25 · //STATUTORY REPORTS · p74 · known 2025-08-13T18:17:09",
+      "section": "//STATUTORY REPORTS",
+      "speaker": null,
+      "known_at": "2025-08-13T18:17:09",
+      "event_date": "2025-08-13",
+      "fiscal_period": "FY25",
+      "page_from": 74,
+      "page_to": 76,
+      "char_len": 3932,
+      "title": "UFBL annual report 2025-03-31",
+      "score": -5.3941453901945495,
+      "body_excerpt": "… nd processes to total R&D and capex investments made by the entity, respectively. Current Financial Year 2024-25 Previous Financial Year 2023-24 Details of Improvements in environmental and social impacts R & D Not Applicable - Capex - - For the financial year 2024-25, the following eco-friendly measures have been incorporated in all new restaurants opened during the year with a capex of ` 74,94,087 • Smoke eliminators have been installed to reduce CO level inside the restaurants in addition to air scrubbers that cleans the air before releasing it in the environment. • Grease traps in conjunction with ETP/STPs ensures efficient and effective wastewater treatment before discharging. • IOT Based Electricity management: Use of Variable Frequency Device (VFD) panels that automatically detects power requirements and adjust all equipment operations to save power. 2. a. Does the entity have procedures in place for sustainable sourcing? (Yes/No) Yes b. If yes, what percentage of inputs were sourced sustainably? Sustainable sourcing is fundamental to our values, underpinning our commitment to responsible business practices. We are actively involved in sustainable sourcing initiatives to advance our sustainability objectives. Our endeavors encompass minimizing dependence on ingredients with artificial additives and improving procurement practices for seafood and meat, focusing on suppliers certified with rigorous standards such as BAP/ HACCP. Acknowledging the importance of sustainable …"
+     },
+     {
+      "chunk_id": 68138,
+      "doc_id": "sha256:31d1e54a83fbfbb532a393934ab4e91698e96b958defd06f4188d720639bc603",
+      "doc_type": "annual_report",
+      "header": "UFBL · INE382M01027 · Annual report · FY25 · 0.12 KL/Guest > 0.11 KL/Guest · p89 · known 2025-08-13T18:17:09",
+      "section": "0.12 KL/Guest > 0.11 KL/Guest",
+      "speaker": null,
+      "known_at": "2025-08-13T18:17:09",
+      "event_date": "2025-08-13",
+      "fiscal_period": "FY25",
+      "page_from": 89,
+      "page_to": 90,
+      "char_len": 3196,
+      "title": "UFBL annual report 2025-03-31",
+      "score": -4.7657633480642945,
+      "body_excerpt": "… discharge quantity. Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency. 5. Has the entity implemented a mechanism for Zero Liquid Discharge? If yes, provide details of its coverage and implementation. Not Applicable Barbeque-Nation Hospitality Limited | Annual Report 2024-25 103 6. Please provide details of air emissions (other than GHG emissions) by the entity, in the following format: Parameter Please specify unit FY 2024-25 FY 2023-24 NOx mg/Nm3 21.9 21.9 Sox mg/Nm3 36.9 36.9 Particulate matter (PM) mg/Nm3 42 42 Persistent organic pollutants (POP) - - - Volatile organic compounds (VOC) - - - Hazardous air pollutants (HAP) - - - Others – please Specify - - - Note: Indicate if any independent assessment/evaluation/assurance has been carried out by an external agency? (Y/N) If yes, name of the external agency. N – No. independent assessment/evaluation/assurance has been carried out by an external agency 7. Provide details of greenhouse gas emissions (Scope 1 and Scope 2 emissions) & its intensity, in the following format: Parameter Unit FY 2024-25 FY 2023-24 Total Scope 1 emissions (Break-up of the GHG into CO₂, CH₄, N₂O, HFCs, PFCs, SF₆, NF₃, if available) Metric tonnes of CO₂ equivalent 6,950* 5,027* Total Scope 2 emissions (Break-up of the GHG into CO₂, CH₄, N₂O, HFCs, PFCs, SF₆, NF₃,  …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "air",
+     "conditioner",
+     "business"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 5,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-2336548f-5ece-430b-9f5c-fcb368df6e43",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"UFBL (United Foodbrands/Barbeque-Nation Hospitality) is a restaurant/casual-dining company, not an air-conditioner manufacturer, so there is no \\\"air-conditioner business\\\" whose seasonality affects its quarterly revenue or working capital. The seasonal effects seen in the data relate to restaurant demand (e.g., Q1 summer holidays better than Q4, where February has fewer days and March demand drops due to exams), not AC product seasonality.\", \"missing\": \"not in data — no air-conditioner business exists for UFBL; premise contradicted by the data (company is a restaurant hospitality business).\", \"working\": \"Chunk search over UFBL annual reports/concalls/decks returned only restaurant/HVAC-environment references and restaurant seasonality comments (Q1 better due to summer holidays; Q4 weaker Feb/March), with no air-conditioner product business.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 214,
+   "secs": 3.29,
+   "usage": {
+    "prompt_tokens": 16520,
+    "completion_tokens": 250,
+    "total_tokens": 16770,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 50
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 15432,
+      "output": 250,
+      "reasoning": 50,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 5,
+   "role": "submit",
+   "args": {
+    "answer": "UFBL (United Foodbrands/Barbeque-Nation Hospitality) is a restaurant/casual-dining company, not an air-conditioner manufacturer, so there is no \"air-conditioner business\" whose seasonality affects its quarterly revenue or working capital. The seasonal effects seen in the data relate to restaurant demand (e.g., Q1 summer holidays better than Q4, where February has fewer days and March demand drops due to exams), not AC product seasonality.",
+    "missing": "not in data — no air-conditioner business exists for UFBL; premise contradicted by the data (company is a restaurant hospitality business).",
+    "working": "Chunk search over UFBL annual reports/concalls/decks returned only restaurant/HVAC-environment references and restaurant seasonality comments (Q1 better due to summer holidays; Q4 weaker Feb/March), with no air-conditioner product business."
+   }
+  }
+ ]
+}

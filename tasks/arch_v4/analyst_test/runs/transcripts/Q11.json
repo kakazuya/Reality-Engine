@@ -1,0 +1,739 @@
+{
+ "qid": "Q11",
+ "mid": "MB0280#MI",
+ "parent_mid": "MB0280",
+ "symbol": "DDEVPLSTIK",
+ "entity_isin": "INE0HR601026",
+ "question": "What are Ddev Plastiks Industries Limited (NSE: DDEVPLSTIK)'s exact share count and promoter holding now, after its corporate action? If the post-action count is not held, answer NOT IN DATA.",
+ "as_of": "2026-10-19",
+ "period": "latest",
+ "category": "lookup",
+ "source_bank": "variations300",
+ "status": "final",
+ "error": null,
+ "answer": "Share count: 103,477,000 shares (as of 2026-10-19). Promoter holding: 75.0% (as of 2026-09-30).",
+ "working": "price.shares_out latest = 103477000 shares (2026-10-19); hold.pct holder_class=promoter latest = 75.0% (2026-09-30).",
+ "missing": "none",
+ "not_in_data": false,
+ "n_tool_calls": 3,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "as_of": "2026-10-19",
+    "entity": "DDEVPLSTIK"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.shares_out",
+    "as_of": "2026-10-19",
+    "limit": 5
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "fact_query",
+   "args": {
+    "atom": "hold.pct",
+    "as_of": "2026-10-19",
+    "limit": 10
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 3,
+ "usage": {
+  "prompt_tokens": 9730,
+  "completion_tokens": 359
+ },
+ "beam_secs": 4.9,
+ "total_secs": 4.9,
+ "number_check": {
+  "numbers": [
+   "103477000",
+   "2026",
+   "10",
+   "19",
+   "75.0",
+   "09",
+   "30"
+  ],
+  "supported": [
+   "103477000",
+   "2026",
+   "10",
+   "19",
+   "75.0",
+   "09",
+   "30"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-1fc91b63-6b3e-4fdb-aec8-d4ed73a939e9",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"as_of\": \"2026-10-19\", \"entity\": \"DDEVPLSTIK\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 56,
+   "secs": 1.31,
+   "usage": {
+    "prompt_tokens": 1115,
+    "completion_tokens": 56,
+    "total_tokens": 1171,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 155,
+      "output": 56,
+      "reasoning": 24,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "as_of": "2026-10-19",
+    "entity": "DDEVPLSTIK"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE0HR601026",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 3,
+      "first_period": "2025-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 3,
+      "first_period": "2025-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 11,
+      "first_period": "2024-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=fy",
+       "basis=standalone;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 11,
+      "first_period": "2024-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=standalone;period_kind=fy",
+       "basis=standalone;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 11,
+      "first_period": "2024-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=fy",
+       "basis=standalone;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 3,
+      "first_period": "2025-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 11,
+      "first_period": "2024-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=fy",
+       "basis=standalone;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 3,
+      "first_period": "2025-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 11,
+      "first_period": "2024-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=fy",
+       "basis=standalone;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 1,
+      "first_period": "2026-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=segment_assets;segment=North region"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 3,
+      "first_period": "2025-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 1,
+      "first_period": "2026-02-06",
+      "last_period": "2026-02-06",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 40,
+      "first_period": "2024-12-31",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 8,
+      "first_period": "2024-12-31",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 434,
+      "first_period": "2025-01-15",
+      "last_period": "2026-10-19",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1043,
+      "first_period": "2022-07-26",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 434,
+      "first_period": "2025-01-15",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 434,
+      "first_period": "2025-01-15",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 434,
+      "first_period": "2025-01-15",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 434,
+      "first_period": "2025-01-15",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1043,
+      "first_period": "2022-07-26",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 434,
+      "first_period": "2025-01-15",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1029,
+      "first_period": "2022-08-17",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1043,
+      "first_period": "2022-07-26",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1024,
+      "first_period": "2022-08-24",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 434,
+      "first_period": "2025-01-15",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 434,
+      "first_period": "2025-01-15",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1859,
+      "first_period": "",
+      "last_period": "2026-08-11",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=1;chunk=106765",
+       "doctype=announcement;page=1;chunk=106766"
+      ]
+     }
+    ],
+    "n_returned": 28,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-5d1ed568-d33b-4903-b224-fcdc7b6d1820",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"price.shares_out\", \"as_of\": \"2026-10-19\", \"limit\": 5}"
+     }
+    },
+    {
+     "id": "call-9f24d655-4f63-43e6-90b7-2912443e585c",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"hold.pct\", \"as_of\": \"2026-10-19\", \"limit\": 10}"
+     }
+    }
+   ],
+   "reasoning_chars": 101,
+   "secs": 1.83,
+   "usage": {
+    "prompt_tokens": 3216,
+    "completion_tokens": 112,
+    "total_tokens": 3328,
+    "prompt_tokens_details": {
+     "cached_tokens": 3200
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 29
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 16,
+      "output": 112,
+      "reasoning": 29,
+      "cache_read": 3200,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.shares_out",
+    "as_of": "2026-10-19",
+    "limit": 5
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-10-19",
+    "entity": "INE0HR601026",
+    "atom": "price.shares_out",
+    "rows": [
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "price.shares_out",
+      "dims": "",
+      "period_start": "2026-10-19",
+      "period_end": "2026-10-19",
+      "value": 103477000,
+      "unit": "shares",
+      "known_at": "2026-10-19T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "price.shares_out",
+      "dims": "",
+      "period_start": "2026-10-16",
+      "period_end": "2026-10-16",
+      "value": 103477000,
+      "unit": "shares",
+      "known_at": "2026-10-16T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "price.shares_out",
+      "dims": "",
+      "period_start": "2026-10-15",
+      "period_end": "2026-10-15",
+      "value": 103477000,
+      "unit": "shares",
+      "known_at": "2026-10-15T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "price.shares_out",
+      "dims": "",
+      "period_start": "2026-10-14",
+      "period_end": "2026-10-14",
+      "value": 103477000,
+      "unit": "shares",
+      "known_at": "2026-10-14T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "price.shares_out",
+      "dims": "",
+      "period_start": "2026-10-13",
+      "period_end": "2026-10-13",
+      "value": 103477000,
+      "unit": "shares",
+      "known_at": "2026-10-13T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     }
+    ],
+    "n_returned": 5,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "hold.pct",
+    "as_of": "2026-10-19",
+    "limit": 10
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-10-19",
+    "entity": "INE0HR601026",
+    "atom": "hold.pct",
+    "rows": [
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=dii",
+      "period_start": "2026-09-30",
+      "period_end": "2026-09-30",
+      "value": 0.06,
+      "unit": "%",
+      "known_at": "2026-10-10T16:13:43",
+      "source_ref": "shp_xbrl:SHP_1735423_10102026041336_WEB.xml"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=fii",
+      "period_start": "2026-09-30",
+      "period_end": "2026-09-30",
+      "value": 1.56,
+      "unit": "%",
+      "known_at": "2026-10-10T16:13:43",
+      "source_ref": "shp_xbrl:SHP_1735423_10102026041336_WEB.xml"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=promoter",
+      "period_start": "2026-09-30",
+      "period_end": "2026-09-30",
+      "value": 75.0,
+      "unit": "%",
+      "known_at": "2026-10-10T21:43:43",
+      "source_ref": "market_state.company_ownership_pit"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=public",
+      "period_start": "2026-09-30",
+      "period_end": "2026-09-30",
+      "value": 25.0,
+      "unit": "%",
+      "known_at": "2026-10-10T21:43:43",
+      "source_ref": "market_state.company_ownership_pit"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=dii",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 0.09,
+      "unit": "%",
+      "known_at": "2026-07-20T22:36:34",
+      "source_ref": "shp_xbrl:SHP_1697642_20072026103629_WEB.xml"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=fii",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 1.46,
+      "unit": "%",
+      "known_at": "2026-07-20T22:36:34",
+      "source_ref": "shp_xbrl:SHP_1697642_20072026103629_WEB.xml"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=promoter",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 75.0,
+      "unit": "%",
+      "known_at": "2026-07-21T04:06:34",
+      "source_ref": "market_state.company_ownership_pit"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=public",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 25.0,
+      "unit": "%",
+      "known_at": "2026-07-21T04:06:34",
+      "source_ref": "market_state.company_ownership_pit"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=dii",
+      "period_start": "2026-03-31",
+      "period_end": "2026-03-31",
+      "value": 0.64,
+      "unit": "%",
+      "known_at": "2026-04-16T16:52:11",
+      "source_ref": "shp_xbrl:SHP_1652332_16042026045206_WEB.xml"
+     },
+     {
+      "entity_id": "INE0HR601026",
+      "atom": "hold.pct",
+      "dims": "holder_class=fii",
+      "period_start": "2026-03-31",
+      "period_end": "2026-03-31",
+      "value": 0.9,
+      "unit": "%",
+      "known_at": "2026-04-16T16:52:11",
+      "source_ref": "shp_xbrl:SHP_1652332_16042026045206_WEB.xml"
+     }
+    ],
+    "n_returned": 10,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-ac2d4c8e-ff23-47af-a677-7b1e21ad6e7f",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"Share count: 103,477,000 shares (as of 2026-10-19). Promoter holding: 75.0% (as of 2026-09-30).\", \"missing\": \"none\", \"working\": \"price.shares_out latest = 103477000 shares (2026-10-19); hold.pct holder_class=promoter latest = 75.0% (2026-09-30).\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 100,
+   "secs": 1.69,
+   "usage": {
+    "prompt_tokens": 5399,
+    "completion_tokens": 191,
+    "total_tokens": 5590,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 53
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 4439,
+      "output": 191,
+      "reasoning": 53,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "submit",
+   "args": {
+    "answer": "Share count: 103,477,000 shares (as of 2026-10-19). Promoter holding: 75.0% (as of 2026-09-30).",
+    "missing": "none",
+    "working": "price.shares_out latest = 103477000 shares (2026-10-19); hold.pct holder_class=promoter latest = 75.0% (2026-09-30)."
+   }
+  }
+ ]
+}

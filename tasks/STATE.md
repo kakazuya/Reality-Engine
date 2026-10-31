@@ -1,4 +1,4 @@
-# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-10-31 14:00 IST (Wolf)
+# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-10-31 15:20 IST (HP analyst-test worker)
 
 Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or the stores, then fix the wrong one.
 
@@ -27,6 +27,7 @@ The contract count measures answer shape, not truth. Largest cause: 66 of 127 an
 - Raw shareholding XBRL: `D:\RealityEngine\raw\nse_shp_xbrl_pilot`.
 
 ## Findings that change what to do
+- **Analyst agent test (free Beam + typed PIT tools): KILL.** 7/24 RIGHT (29.2%, Wilson 14.9–49.2) of rows not ILL_POSED and not CORRECT_NOT_IN_DATA; 7 PARTIAL, 10 WRONG, 11 ILL_POSED, 5 CORRECT_NOT_IN_DATA. All 40 answered (native tool calls) at 8.2 s and 19.7k input tokens per question; 0 PIT breaches. Main gaps: premise substitution (11), data gaps (10), no sort/aggregate/chart tools (6). `tasks/arch_v4/ANALYST_AGENT_TEST_2026-10-31.md`.
 - Reader test: 13/40 RIGHT (32.5%), killed by its fixed rule; 13 more correctly said not stated, mostly missing documents, and 4 were WRONG. `tasks/arch_v4/READER_TEST_2026-10-31.md`.
 - Rubric scoring is not usable (8 of 40 agreement). Premise audit: 219 of 2,098 instances provably false. `tasks/pilot60/PREMISE_AUDIT_2026-10-31.jsonl`.
 - near_high operator: 4 right, 1 partial, 1 wrong of 6. `tasks/arch_v4/STUDY_OPERATOR_TEST_2026-10-31.md`.

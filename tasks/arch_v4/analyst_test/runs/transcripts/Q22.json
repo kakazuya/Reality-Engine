@@ -1,0 +1,568 @@
+{
+ "qid": "Q22",
+ "mid": "MB0565#L",
+ "parent_mid": "MB0565",
+ "symbol": "SUNPHARMA",
+ "entity_isin": "INE044A01036",
+ "question": "Sun Pharmaceutical Industries Limited's ISRF JV needs capital. What is the committed amount, and who funds it?",
+ "as_of": "2026-10-07",
+ "period": "FY27",
+ "category": "lookup",
+ "source_bank": "open300",
+ "status": "final",
+ "error": null,
+ "answer": "not in data — ISRF JV details not found in available documents.",
+ "working": "Searched claims and chunks for 'ISRF JV capital', 'ISRF JV funding', 'ISRF' — no matches. The annual reports list JVs/associates but ISRF is not named.",
+ "missing": "not in data: no mention of ISRF JV or its committed capital/funding in the held documents.",
+ "not_in_data": true,
+ "n_tool_calls": 4,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "claim_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "terms": "ISRF JV capital"
+   },
+   "ok": true
+  },
+  {
+   "call": 3,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "ISRF JV capital committed"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "ISRF joint venture funding"
+   },
+   "ok": true
+  },
+  {
+   "call": 7,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "ISRF"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 19566,
+  "completion_tokens": 299
+ },
+ "beam_secs": 7.5,
+ "total_secs": 7.5,
+ "number_check": {
+  "numbers": [],
+  "supported": [],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-88c2ff68-c952-4a4b-ab78-72f8ced38223",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"terms\": \"ISRF JV capital\"}"
+     }
+    },
+    {
+     "id": "call-96a85170-5d5c-4c5a-9f8b-28df29adc282",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"query\": \"ISRF JV capital committed\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 101,
+   "secs": 2.05,
+   "usage": {
+    "prompt_tokens": 1090,
+    "completion_tokens": 84,
+    "total_tokens": 1174,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 130,
+      "output": 84,
+      "reasoning": 24,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "terms": "ISRF JV capital"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-07",
+    "entity": "INE044A01036",
+    "rows": [
+     {
+      "claim_id": 554883,
+      "entity_id": "INE044A01036",
+      "topic": "working_capital",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "The positive for us is that because of COVID we created a strategic inventory for many products, and that is the reason why you see our working capital is a little bit higher.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "balance_sheet_and_cash",
+      "known_at": "2021-11-11T15:11:41.47"
+     }
+    ],
+    "n_returned": 1,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "ISRF JV capital committed"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-07",
+    "entity": "INE044A01036",
+    "rows": [
+     {
+      "chunk_id": 63040,
+      "doc_id": "sha256:abc0664bb0f83fc60b54898aef71b5554ae95a8eeb7fbe8a3a854309bd84224b",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY25 · NOTE: 40 COMMITMENTS · p272 · known 2025-07-04T17:50:19",
+      "section": "NOTE: 40 COMMITMENTS",
+      "speaker": null,
+      "known_at": "2025-07-04T17:50:19",
+      "event_date": "2025-07-04",
+      "fiscal_period": "FY25",
+      "page_from": 272,
+      "page_to": 272,
+      "char_len": 510,
+      "title": "SUNPHARMA annual report 2025-03-31",
+      "score": -6.805599014420804,
+      "body_excerpt": "NOTE: 40 COMMITMENTS ` in Million As at March 31, 2025 As at March 31, 2024 i) Estimated amount of contracts remaining to be executed on capital account (net of advances)* 24,279.1 11,708.7 ii) Investment related commitments ** 40,847.4 5,310.6 iii) Letters of credit for imports 736.8 744.8 * The Group is committed to pay milestone payments on certain contracts, however, obligation to pay is contingent upon fulfilment of contractual obligation by parties to the contract. ** Refer Note 80"
+     },
+     {
+      "chunk_id": 78971,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · NOTE: 40 COMMITMENTS · p289 · known 2026-07-06T18:57:49",
+      "section": "NOTE: 40 COMMITMENTS",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 289,
+      "page_to": 290,
+      "char_len": 802,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -6.414103565212484,
+      "body_excerpt": "NOTE: 40 COMMITMENTS ₹ in Million As at March 31, 2026 As at March 31, 2025 i) Estimated amount of contracts remaining to be executed on capital account (net of advances) * 34,898.4 24,279.1 ii) Investment related commitments** 4,427.6 40,847.4 iii) Letters of credit for imports 369.2 736.8 * The Group is committed to pay milestone payments on certain contracts, however, obligation to pay is contingent upon fulfilment of contractual obligation by parties to the contract. **Previous year amount included commitment on account of acquisition of Checkpoint Therapeutics Inc. 287 Advancing Innovation Globally for Better Patient Care Notes to the Consolidated Financial Statements for the year ended March 31, 2026 Statutory Reports Corporate Overview Financial Statements Consolidated"
+     },
+     {
+      "chunk_id": 89146,
+      "doc_id": "sha256:cbbf54ae4f744d8883e726765e8550bb99777a94397166765289008f5ffe1468",
+      "doc_type": "concall",
+      "header": "SUNPHARMA · INE044A01036 · Concall transcript · Q2FY25 · Q&A · p21 · known 2024-11-04T18:02:27",
+      "section": "Q&A",
+      "speaker": "anubhav agarwal",
+      "known_at": "2024-11-04T18:02:27",
+      "event_date": "",
+      "fiscal_period": "Q2FY25",
+      "page_from": 21,
+      "page_to": 21,
+      "char_len": 575,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -4.5597265799719695,
+      "body_excerpt": "Anubhav Agarwal: And how about Ophthalmology? So, we have dry eye drug, but what about the other areas in the Ophthalmology? Dilip Shanghvi: No, I think we continue to look at opportunities which can enhance our basket in Ophthalmology, and we are very disciplined about our acquisition approaches that we don’t get emotionally committed to any product. So, unless and until it makes business sense, we don’t approve this. We have not, unfortunately, been able to identify something which is both exciting and something that we think will help us create long-term value."
+     },
+     {
+      "chunk_id": 78712,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · ABOUT SUN PHARMA · p75 · known 2026-07-06T18:57:49",
+      "section": "ABOUT SUN PHARMA",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 75,
+      "page_to": 75,
+      "char_len": 761,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -4.509743410754886,
+      "body_excerpt": "ABOUT SUN PHARMA Sun Pharmaceutical Industries Ltd. is one of the world’s leading pharmaceutical companies, committed to delivering high-quality, affordable medicines to patients in over 100 countries. Alongside its core business, Sun Pharma places a strong emphasis on social responsibility, integrating community development into its broader vision. Guided by its mission to leverage its people, expertise, and networks to serve societal needs, the company strives to catalyse inclusive and sustainable development by balancing economic, environmental, and social goals. Its CSR efforts are focused on supporting underserved and underprivileged communities, with priority areas including healthcare, education, safe drinking water, and sanitation."
+     },
+     {
+      "chunk_id": 78727,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · ABOUT SUN PHARMA · p78 · known 2026-07-06T18:57:49",
+      "section": "ABOUT SUN PHARMA",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 78,
+      "page_to": 78,
+      "char_len": 769,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -4.509743410754886,
+      "body_excerpt": "ABOUT SUN PHARMA Sun Pharmaceutical Industries Ltd. is one of the world’s leading pharmaceutical companies, committed to delivering high-quality, affordable medicines to patients in over 100 countries. Alongside its core business, Sun Pharmaceutical places a strong emphasis on social responsibility, integrating community development into its broader vision. Guided by its mission to leverage its people, expertise, and networks to serve societal needs, the company strives to catalyse inclusive and sustainable development by balancing economic, environmental, and social goals. Its CSR efforts are focused on supporting underserved and underprivileged communities, with priority areas including healthcare, education, safe drinking water, and sanitation."
+     },
+     {
+      "chunk_id": 97317,
+      "doc_id": "sha256:88c8fd99817f4ae72e906f5574633049892754e8b890a62e62b11663925a3011",
+      "doc_type": "deck",
+      "header": "SUNPHARMA · INE044A01036 · Investor deck · - · Company history and key deals · p60 · known 2024-07-10T16:41:23",
+      "section": "Company history and key deals",
+      "speaker": null,
+      "known_at": "2024-07-10T16:41:23",
+      "event_date": "2024-07-10",
+      "fiscal_period": "",
+      "page_from": 60,
+      "page_to": 60,
+      "char_len": 785,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -4.509743410754886,
+      "body_excerpt": "Sun Pharma - focus areas • Unwavering focus on sustainability, built on a legacy rooted in caring for people, communities and the planet. • Committed to governance, community upliftment, access to affordable healthcare & environment conservation Sustainability • Focus on developing complex products across multiple dosage forms • Invest to further build the specialty pipeline R&D • Ensuring 24x7 compliance to cGMP • Continuously enhance systems, processes, human capabilities to ensure compliance with global regulatory standards Regulatory/ Quality • Target high-single digit consolidated topline growth for FY25 • Focus on sustainable and profitable growth • Focus on improving overall return ratios Financial © Sun Pharmaceutical Industries Limited. All Rights Reserved. 59"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "ISRF",
+     "capital",
+     "committed"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-68d548c4-c9fe-4576-bb7b-46a6f24c9538",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"query\": \"ISRF joint venture funding\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 25,
+   "secs": 1.47,
+   "usage": {
+    "prompt_tokens": 4115,
+    "completion_tokens": 40,
+    "total_tokens": 4155,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 6
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3027,
+      "output": 40,
+      "reasoning": 6,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "ISRF joint venture funding"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-07",
+    "entity": "INE044A01036",
+    "rows": [
+     {
+      "chunk_id": 62984,
+      "doc_id": "sha256:abc0664bb0f83fc60b54898aef71b5554ae95a8eeb7fbe8a3a854309bd84224b",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY25 · Notes to the Consolidated Financial Statements · p233 · known 2025-07-04T17:50:19",
+      "section": "Notes to the Consolidated Financial Statements",
+      "speaker": null,
+      "known_at": "2025-07-04T17:50:19",
+      "event_date": "2025-07-04",
+      "fiscal_period": "FY25",
+      "page_from": 233,
+      "page_to": 233,
+      "char_len": 5957,
+      "title": "SUNPHARMA annual report 2025-03-31",
+      "score": -11.602846439535849,
+      "body_excerpt": "… ing amount of the assets (including goodwill) and liabilities of the subsidiary and any non-controlling interests. All amounts previously recognised in other comprehensive income in relation to that subsidiary are accounted for as if the Group had directly disposed off the related assets or liabilities of the subsidiary (i.e. reclassified to the statement of profit and loss or transferred to another category of equity as specified / permitted by applicable Ind AS). \u0007Investment in Associates and Joint Ventures \u0007Associates are those entities over which the Group has significant influence. Significant influence is the power to participate in the financial and operating policy decisions of the entities but is not control or joint control of those policies. \u0007A joint venture is a joint arrangement whereby the parties that have joint control of the arrangement have rights to the net assets of the joint arrangement. Joint control is the contractually agreed sharing of control of an arrangement, which exists only when decisions about the relevant activities require unanimous consent of the parties sharing control. \u0007The results and assets and liabilities of associates or joint ventures are incorporated in these consolidated financial statements using the equity method of accounting, except when the investment, or a portion thereof, is classified as held for sale, in which case it is accounted for in accordance with Ind AS 105. Under the equity method, an investment in an associate or a …"
+     },
+     {
+      "chunk_id": 78914,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · Notes to the Consolidated Financial Statements · p250 · known 2026-07-06T18:57:49",
+      "section": "Notes to the Consolidated Financial Statements",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 250,
+      "page_to": 251,
+      "char_len": 5671,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -11.517141853536202,
+      "body_excerpt": "… rying amount of the assets (including goodwill) and liabilities of the subsidiary and any non-controlling interests. All amounts previously recognised in other comprehensive income in relation to that subsidiary are accounted for as if the Group had directly disposed off the related assets or liabilities of the subsidiary (i.e. reclassified to the statement of profit and loss or transferred to another category of equity as specified/ permitted by applicable Ind AS). Investment in Associates and Joint Ventures \u0007Associates are those entities over which the Group has significant influence. Significant influence is the power to participate in the financial and operating policy decisions of the entities but is not control or joint control of those policies. \u0007A joint venture is a joint arrangement whereby the parties that have joint control of the arrangement have rights to the net assets of the joint arrangement. Joint control is the contractually agreed sharing of control of an arrangement, which exists only when decisions about the relevant activities require unanimous consent of the parties sharing control. \u0007The results and assets and liabilities of associates or joint ventures are incorporated in these consolidated financial statements using the equity method of accounting, except when the investment, or a portion thereof, is classified as held for sale, in which case it is accounted for in accordance with Ind AS 105. Under the equity method, an investment in an associate or a …"
+     },
+     {
+      "chunk_id": 78897,
+      "doc_id": "sha256:86edd0b8062c90066a407f4c59263a054090695d0a4cdfe65de8aaf14e785571",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY26 · Ind AS- 24 - \" RELATED PARTY DISCLOSURES\" (cont.) · p233 · known 2026-07-06T18:57:49",
+      "section": "Ind AS- 24 - \" RELATED PARTY DISCLOSURES\" (cont.)",
+      "speaker": null,
+      "known_at": "2026-07-06T18:57:49",
+      "event_date": "2026-07-06",
+      "fiscal_period": "FY26",
+      "page_from": 233,
+      "page_to": 233,
+      "char_len": 5298,
+      "title": "SUNPHARMA annual report 2026-03-31",
+      "score": -10.419738355291562,
+      "body_excerpt": "230 Sun Pharmaceutical Industries Limited | Annual Report 2025-26 Key audit matters How our audit addressed the key audit matter Identification and disclosures of related parties (as described in Note 57 of the consolidated Ind AS financial statements) The Group has related party transactions which include, amongst others, sale and purchase of goods/services to its associates, joint venture and other related parties and lending, investment and borrowing to its associates and joint venture. Identification and disclosure of related parties was a significant area of focus and hence is considered a Key Audit Matter. Our audit procedures and procedures performed by component auditors amongst others included the following: • Evaluated the design and tested the operating effectiveness of controls over identification and disclosure of related party transactions. • Obtained a list of related parties from the Group’s management and traced the related parties to declarations given by directors, where applicable, and to note 57 of the consolidated Ind AS financial statements. • Read minutes of the meetings of the Board of Directors and Audit Committee. • Read declarations of related party transactions given to the Board of Directors and Audit Committee. • Verified the disclosures in the consolidated Ind AS financial statements for compliance with Ind AS 24. Other Information The Holding Company’s Board of Directors is responsible for the other information. The other information comprises …"
+     },
+     {
+      "chunk_id": 63068,
+      "doc_id": "sha256:abc0664bb0f83fc60b54898aef71b5554ae95a8eeb7fbe8a3a854309bd84224b",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY25 · Notes to the Consolidated Financial Statements · p293 · known 2025-07-04T17:50:19",
+      "section": "Notes to the Consolidated Financial Statements",
+      "speaker": null,
+      "known_at": "2025-07-04T17:50:19",
+      "event_date": "2025-07-04",
+      "fiscal_period": "FY25",
+      "page_from": 293,
+      "page_to": 293,
+      "char_len": 3042,
+      "title": "SUNPHARMA annual report 2025-03-31",
+      "score": -10.127421745582096,
+      "body_excerpt": "… er sources or kind of funds) by the Company to or in any other person(s) or entity(ies), including foreign entities (“Intermediaries”), with the understanding, whether recorded in writing or otherwise, that the Intermediary shall, whether, directly or indirectly lend or invest in other persons or entities identified in any manner whatsoever by or on behalf of the Company (“Ultimate Beneficiaries”) or provide any guarantee, security or the like on behalf of the Ultimate Beneficiaries. However, the Company, as a part of its treasury operations, invests / advances loans to fund the operations of its subsidiaries / associates / joint venture which have further utilised these funds for their general corporate purposes / working capital, etc. within the consolidated group of the Company and in the ordinary course of business. These transactions are done on an arms length basis following a due approval process. \u0007Further, no funds have been received by the Company from any person(s) or entity(ies), including foreign entities (“Funding Parties”), with the understanding, whether recorded in writing or otherwise, that the Company shall, whether, directly or indirectly, lend or invest in other persons or entities identified in any manner whatsoever by or on behalf of the Funding Party (“Ultimate Beneficiaries”) or provide any guarantee, security or the like on behalf of the Ultimate Beneficiaries. NOTE: 66 DETAILS OF LONG-TERM BORROWINGS AND CURRENT MATURITIES OF LONG-TERM DEBT [INCLUDED"
+     },
+     {
+      "chunk_id": 107189,
+      "doc_id": "sha256:beff92582f69928433485d232fe6138347d35d7af4339669bac650138cd118e7",
+      "doc_type": "results_notes",
+      "header": "SUNPHARMA · INE044A01036 · Results notes · Q1FY27 · SR BC & COLLP · p9 · known 2026-07-31T14:28:56",
+      "section": "SR BC & COLLP",
+      "speaker": null,
+      "known_at": "2026-07-31T14:28:56",
+      "event_date": "2026-07-31",
+      "fiscal_period": "Q1FY27",
+      "page_from": 9,
+      "page_to": 10,
+      "char_len": 4057,
+      "title": "Unaudited Standalone And Consolidated Financial Results For Q1 Of FY 2026-27",
+      "score": -9.979915407790575,
+      "body_excerpt": "… tonic Il l LLC 81 Vivaldis Health and Foods Private Limited 82 Sun Pharma Community Health Care Society 83 Sun Pharma Science Foundation 84 Sun Pharmaceut icals North Africa SA (formerly known as Kemipharm) 85 Sun Pharma Luxembourg S.A (formerly known as Valstar S.A.) 86 Checkpoint Therapeuti cs, Inc. 87 Sun Pharma (Hainan) Company Limited [Date of Incorporation July 16, 2025] 88 Foundation for Disease Elimination and Control of India 89 Sun Pharma America, INC. [Incorporated on April 23, 2026] Joint Venture 1 Artes Biotechnology GmbH Associates 1 Medinstill LLC 2 Trumpcard Advisors and Finvest LLP 3 Tarsier Pharma Ltd. 4 WRS Bio products Pty Ltd. 5 Remidio Innovative Solutions Private Limited 6 Agatsa Software Private Limited 7 Ezerx Health Tech Private Limited 8 Surgimatix, Inc 9 Indian Foundation for Quality Management 10 Haystackanalytics Private Limited 11 Pharmazz Inc. Note: Number of subsidiaries reported under para 6 of the auditor's review report have been reported on a consolidated basis for certain subsidiaries having step-down subsidiaries, joint venture and associates. Sun Pharmaceutical Industries Limited Registered Office: Sun Pharma Advanced Research Centre, Tandalja, Vadodara - 390012. Corporate Office: Sun House, CTS No. 201 B/1, Western Express Highway, Goregaon (E), Mumbai - 400063 Tel.: +91 22 4324 4324. CIN: L24230GJ1993PLC019050, Website: www.sunpharma.com Statement of Unaudited Consolidated Financial Results for the Quarter ended June 30, 2026 Particul …"
+     },
+     {
+      "chunk_id": 62963,
+      "doc_id": "sha256:abc0664bb0f83fc60b54898aef71b5554ae95a8eeb7fbe8a3a854309bd84224b",
+      "doc_type": "annual_report",
+      "header": "SUNPHARMA · INE044A01036 · Annual report · FY25 · Ind AS- 24 - “RELATED PARTY DISCLOSURES” (cont.) · p216 · known 2025-07-04T17:50:19",
+      "section": "Ind AS- 24 - “RELATED PARTY DISCLOSURES” (cont.)",
+      "speaker": null,
+      "known_at": "2025-07-04T17:50:19",
+      "event_date": "2025-07-04",
+      "fiscal_period": "FY25",
+      "page_from": 216,
+      "page_to": 217,
+      "char_len": 5848,
+      "title": "SUNPHARMA annual report 2025-03-31",
+      "score": -9.649577496578546,
+      "body_excerpt": "… anagement for the Consolidated Ind AS Financial Statements The Holding Company’s Board of Directors is responsible for the preparation and presentation of these consolidated Ind AS financial statements in terms of the requirements of the Act that give a true and fair view of the consolidated financial position, consolidated financial performance including other comprehensive income, consolidated cash flows and consolidated statement of changes in equity of the Group including its associates and joint venture in accordance with the accounting principles generally accepted in India, including the Indian Accounting Standards (Ind AS) specified under section 133 of the Act read with the Companies (Indian Accounting Standards) Rules, 2015, as amended. The respective Board of Directors of the companies included in the Group and of its associates and joint venture are responsible for maintenance of adequate accounting records in accordance with the provisions of the Act for safeguarding of the assets of the Group and of its associates and joint venture and for preventing and detecting frauds and other irregularities; selection and application of appropriate accounting policies; making judgments and estimates that are reasonable and prudent; and the design, implementation and maintenance of adequate internal financial controls, that were operating effectively for ensuring the accuracy and completeness of the accounting records, relevant to the preparation and presentation of the cons …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "ISRF",
+     "joint",
+     "venture",
+     "funding"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-cb9c5ef0-1d79-41ff-9ace-55c98386300a",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"SUNPHARMA\", \"query\": \"ISRF\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 95,
+   "secs": 1.74,
+   "usage": {
+    "prompt_tokens": 7116,
+    "completion_tokens": 56,
+    "total_tokens": 7172,
+    "prompt_tokens_details": {
+     "cached_tokens": 4096
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 25
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3020,
+      "output": 56,
+      "reasoning": 25,
+      "cache_read": 4096,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "SUNPHARMA",
+    "query": "ISRF"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-07",
+    "entity": "INE044A01036",
+    "rows": [],
+    "n_returned": 0,
+    "query_terms": [
+     "ISRF"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-48733fd5-33f5-464a-bc32-36edc8e363be",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"not in data — ISRF JV details not found in available documents.\", \"missing\": \"not in data: no mention of ISRF JV or its committed capital/funding in the held documents.\", \"working\": \"Searched claims and chunks for 'ISRF JV capital', 'ISRF JV funding', 'ISRF' — no matches. The annual reports list JVs/associates but ISRF is not named.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 35,
+   "secs": 1.9,
+   "usage": {
+    "prompt_tokens": 7245,
+    "completion_tokens": 119,
+    "total_tokens": 7364,
+    "prompt_tokens_details": {
+     "cached_tokens": 7104
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 16
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 141,
+      "output": 119,
+      "reasoning": 16,
+      "cache_read": 7104,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "not in data — ISRF JV details not found in available documents.",
+    "missing": "not in data: no mention of ISRF JV or its committed capital/funding in the held documents.",
+    "working": "Searched claims and chunks for 'ISRF JV capital', 'ISRF JV funding', 'ISRF' — no matches. The annual reports list JVs/associates but ISRF is not named."
+   }
+  }
+ ]
+}
