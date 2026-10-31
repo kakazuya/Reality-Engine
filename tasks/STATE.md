@@ -38,7 +38,7 @@ The contract count measures answer shape, not truth, and fell because stale and 
 - Rubric scoring is not usable (8 of 40 agreement). Premise audit: 219 of 2,098 instances provably false. `tasks/pilot60/PREMISE_AUDIT_2026-10-31.jsonl`.
 - near_high operator: 4 right, 1 partial, 1 wrong of 6. `tasks/arch_v4/STUDY_OPERATOR_TEST_2026-10-31.md`.
 - Scope: 945 of 1,073 parents name a stock outside the pilot, 450 names. `tasks/arch_v4/SCOPE_OPTIONS_2026-10-31.md`. Shivam has said no re-scope.
-- OCR: Windows.Media.Ocr on the HP CPU, 186.7 pages/min, number recall 0.964. Running the 1,073 files is Shivam's call.
+- OCR: on the MSI, RapidOCR CPU beats Windows.Media.Ocr on financial-table pages (number recall 0.916 vs 0.818, precision 0.910 vs 0.852; same 110 table + 40 prose pages) and still fails the 0.95/0.98 gate. 4,922 of 13,169 pages in the scanned-guess PDFs need OCR (37.4%): 6.8 h at 12.1 pages/min on RapidOCR, 33 min on Windows OCR. The HP's 186.7 pages/min / 0.964 recall is an ARM result on 20 pages. `tasks/efficiency/HP_ACCEL_BENCH_2026-10-31.md` §12. Running them is Shivam's call.
 
 ## Never
 Copy keys into files or print them. Send `Manual Dumps/` to the HP or any model, or put amounts in the repo or decision log. Loosen a grader to raise a score. Push without Shivam's OK. Spend DeepInfra or use paid models without his OK. Change the bank's instances, labels or scope without his ruling.
