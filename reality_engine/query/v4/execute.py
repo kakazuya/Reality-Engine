@@ -273,19 +273,108 @@ SELECTOR_DIMS = {"entity_id", "isin", "est_atom", "rule", "rule_id", "margin_kin
                  "ratio_kind", "limit", "n", "agg", "threshold", "direction", "distinct",
                  "max_hops", "event_date", "date", "driver", "atoms", "part_atom",
                  "output_atom", "input_atom", "benchmark", "benchmark_isin", "atom_b",
-                 "other_atom", "set_kind", "set_value", "cross"}
+                 "other_atom", "set_kind", "set_value", "cross", "lag", "lookback",
+                 "doctype", "event_kind", "page"}
+#: dims a row may simply not carry (a daily price row has no period_kind): a named value
+#: then filters only the rows that do carry it, and never rejects a whole atom.
+SOFT_DIMS = {"period_kind"}
+CONSOLIDATION = ("consolidated", "standalone")
+#: a window this short reads the quarterly reading of a period_kind-carrying atom.
+SHORT_WINDOW_DAYS = 120
+
+
+def row_dims(row: Mapping[str, Any]) -> dict[str, str]:
+    """The row's dims, with the fact view's consolidation exposed under its real dim name.
+
+    ``fact_view.sql`` writes ``basis=consolidated;period_kind=quarter`` for fundamentals;
+    §A.2's dims are ``consolidation`` and ``basis`` (raw|adjusted).  Adapting at the
+    reader keeps both vocabularies usable without a rebuild of the read-only store.
+    """
+    got = parse_dims(row.get("dims"))
+    basis = got.pop("basis", None)
+    if basis in CONSOLIDATION:
+        got.setdefault("consolidation", basis)
+    elif basis:
+        got["basis"] = basis
+    return got
+
+
+def _window_grain(lo: str | None, hi: str | None) -> str:
+    """The period_kind a window implies: a quarter-wide window reads the quarter row."""
+    if lo and hi:
+        from datetime import date
+        try:
+            if (date.fromisoformat(hi) - date.fromisoformat(lo)).days <= SHORT_WINDOW_DAYS:
+                return "quarter"
+        except ValueError:
+            pass
+    return "fy"
+
+
+def _apply_defaults(rows: Sequence[Mapping[str, Any]], want: Mapping[str, Any],
+                    registry: Mapping[str, Any], lo: str | None,
+                    hi: str | None) -> list[Mapping[str, Any]]:
+    """§A.2: a dim the question did not name takes the registry's declared default reading.
+
+    Only a dim the rows actually carry is applied, and only when more than one reading is
+    present: an atom that does not use the dim is left alone.
+    """
+    defaults = {str(row.get("dim_id")): row.get("default")
+                for row in registry.get("dims") or [] if row.get("default") is not None}
+    defaults["period_kind"] = _window_grain(lo, hi)
+    out = list(rows)
+    for dim, default in defaults.items():
+        if dim in want or default in (None, ""):
+            continue
+        values = {str(row_dims(row).get(dim, "")).lower() for row in out}
+        values.discard("")
+        if len(values) > 1 and str(default).lower() in values:
+            out = [row for row in out
+                   if str(row_dims(row).get(dim, "")).lower() == str(default).lower()]
+    return out
+
+
+def _unnamed_split(rows: Sequence[Mapping[str, Any]],
+                   want: Mapping[str, Any]) -> list[str]:
+    """Dims the rows split on that the ask never named: one value would be a guess."""
+    keys: set[str] = set()
+    for row in rows:
+        keys.update(row_dims(row).keys())
+    out = []
+    for key in sorted(keys - set(want) - SELECTOR_DIMS - SPECIAL_DIMS):
+        values = {str(row_dims(row).get(key)) for row in rows}
+        values.discard("None")
+        if len(values) > 1:
+            out.append(f"{key} ({len(values)} readings: "
+                       f"{', '.join(sorted(values)[:4])})")
+    return out
 
 
 def _dim_match(row: Mapping[str, Any], want: Mapping[str, Any]) -> bool:
-    got = parse_dims(row.get("dims"))
+    got = row_dims(row)
     for key, value in want.items():
         if key in SELECTOR_DIMS:
             continue
         if str(value).lower() in SPECIAL_DIMS:
             continue
-        if str(got.get(key, "")).lower() != str(value).lower():
+        carried = str(got.get(key, "")).lower()
+        if not carried and key in SOFT_DIMS:
+            continue
+        if carried != str(value).lower():
             return False
     return True
+
+
+def _apply_soft(rows: Sequence[Mapping[str, Any]],
+                want: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """A named soft dim filters the rows that carry it; rows without it stay (§A.2)."""
+    out = list(rows)
+    for dim in SOFT_DIMS & set(want):
+        wanted = str(want[dim]).lower()
+        out = [row for row in out
+               if not row_dims(row).get(dim)
+               or str(row_dims(row).get(dim)).lower() == wanted]
+    return out
 
 
 def _window_bounds(window: Any, windows: Sequence[Any] | None) -> tuple[str | None, str | None]:
@@ -304,16 +393,41 @@ def _window_dict(lo: str | None, hi: str | None) -> dict[str, Any]:
     return {"from": lo, "to": hi}
 
 
-FACT_SQL = ("SELECT entity_id, atom_id, dims, period_start, period_end, value, unit, "
-            "known_at, source_ref FROM fact")
+FACT_COLUMNS = ("SELECT entity_id, {atom}, dims, period_start, period_end, value, unit, "
+                "known_at, source_ref FROM fact")
+
+
+def fact_atom_column(conn: Any) -> str:
+    """The measure column of the fact view: ``atom_id`` per §B.1, ``atom`` in WP2a's build.
+
+    The design names ``atom_id``; ``fact_view.sql`` wrote ``atom``.  Probe the schema
+    per fetch (a prepared statement on a WITHOUT ROWID table costs nothing) so both
+    shapes work and neither is silently renamed.
+    """
+    try:
+        conn.execute("SELECT atom_id FROM fact LIMIT 0").fetchall()
+        return "atom_id"
+    except Exception:  # noqa: BLE001 - the column's absence is data about the store
+        return "atom"
 
 
 def fetch_fact(conn: Any, atom: str, as_of: str, lo: str | None = None,
                hi: str | None = None, entity: str | None = None,
                entities: Sequence[str] | None = None,
                only_values: bool = True) -> list[dict[str, Any]] | None:
-    """PIT-filtered fact rows for one atom; None when the view is absent."""
-    sql = (FACT_SQL + " WHERE atom_id = ? AND substr(known_at, 1, 10) <= ?")
+    """PIT-filtered fact rows for one atom; None when the view is absent.
+
+    ``known_at`` is cut at ``as_of`` in SQL, never in Python (§B.1: a value is usable
+    only from its ``known_at``).  The fetch is bounded when no single entity pins it:
+
+    ponytail: a cross-entity fetch with no window reads the latest 5,000 rows in
+    index order (atom, period_end) — the whole ``macro.oi`` atom is 6.9M rows.  Add a
+    window-derived bound (or a covering index on (atom, period_end, entity_id)) when a
+    screen legitimately needs the full history of a market-wide atom.
+    """
+    column = fact_atom_column(conn)
+    sql = (FACT_COLUMNS.format(atom=column)
+           + f" WHERE {column} = ? AND substr(known_at, 1, 10) <= ?")
     params: list[Any] = [atom, as_of]
     if only_values:
         sql += " AND value IS NOT NULL"
@@ -330,8 +444,15 @@ def fetch_fact(conn: Any, atom: str, as_of: str, lo: str | None = None,
         placeholders = ",".join("?" for _ in entities)
         sql += f" AND entity_id IN ({placeholders})"
         params.extend(entities)
-    sql += " ORDER BY COALESCE(period_end, period_start), known_at"
-    return db_rows(conn, sql, params)
+    descending = not entity and not (lo or hi)
+    if descending:
+        sql += " ORDER BY period_end DESC, known_at DESC LIMIT 5000"
+    elif not entity:
+        sql += " ORDER BY COALESCE(period_end, period_start), known_at LIMIT 20000"
+    else:
+        sql += " ORDER BY COALESCE(period_end, period_start), known_at"
+    rows = db_rows(conn, sql, params)
+    return list(reversed(rows)) if (rows and descending) else rows
 
 
 def _one_latest(rows: Sequence[Mapping[str, Any]] | None) -> Mapping[str, Any] | None:
@@ -362,7 +483,7 @@ def _series(rows: Sequence[Mapping[str, Any]], dims: Mapping[str, Any]) -> list[
         for row in rows:
             values.append({"period": _day(row.get("period_end") or row.get("period_start")),
                            "value": _num(row.get("value")), "unit": row.get("unit"),
-                           "dims": parse_dims(row.get("dims")),
+                           "dims": row_dims(row),
                            "known_at": _day(row.get("known_at")),
                            "source_ref": row.get("source_ref"),
                            "entity_id": row.get("entity_id")})
@@ -473,6 +594,23 @@ def _execute_estimate(conn: Any, part: Part, as_of: str, lo: str | None,
                            "est_atom": est_atom})
 
 
+def _width_days(lo: str, hi: str) -> int:
+    from datetime import date
+    try:
+        return (date.fromisoformat(hi) - date.fromisoformat(lo)).days
+    except ValueError:
+        return 10 ** 6
+
+
+def _topic_stem(topic: str) -> str:
+    """The claim store's topic vocabulary is singular ("product", not "products")."""
+    text = str(topic).strip().lower()
+    for suffix, stem in (("ies", "y"), ("es", ""), ("s", "")):
+        if text.endswith(suffix) and len(text) > len(suffix) + 2:
+            return text[: -len(suffix)] + stem
+    return text
+
+
 def _execute_claim(conn: Any, part: Part, as_of: str, entity: str | None,
                    window: dict[str, Any]) -> Result:
     if conn is None:
@@ -482,30 +620,60 @@ def _execute_claim(conn: Any, part: Part, as_of: str, entity: str | None,
     topic = part.dims.get("topic")
     doctype = part.dims.get("doctype")
     page = part.dims.get("page")
-    sql = ("SELECT quote, topic, direction, magnitude, unit, horizon, certainty, "
-           "doctype, page_no, doc_id, known_at FROM claim "
-           "WHERE substr(known_at, 1, 10) <= ?")
+    base = ("SELECT quote, topic, direction, magnitude, unit, horizon, certainty, "
+            "doctype, page_no, doc_id, known_at FROM claim "
+            "WHERE substr(known_at, 1, 10) <= ?")
     params: list[Any] = [as_of]
     if entity:
-        sql += " AND entity_id = ?"
+        base += " AND entity_id = ?"
         params.append(entity)
-    if topic and str(topic).lower() not in ("all", "any"):
-        sql += " AND topic = ?"
-        params.append(str(topic))
     if doctype and str(doctype).lower() not in ("any", "all"):
-        sql += " AND lower(doctype) = ?"
+        base += " AND lower(doctype) = ?"
         params.append(str(doctype).lower())
     if page is not None:
-        sql += " AND page_no = ?"
+        base += " AND page_no = ?"
         params.append(int(page))
-    sql += " ORDER BY known_at DESC LIMIT 20"
-    rows = db_rows(conn, sql, params)
-    if rows is None:
-        return _nid(part, window, "the claim table is not built in this store",
-                    [_tried("claim", "table absent", None, as_of),
-                     _tried("chunks_v3", "not read by this executor", None, as_of)],
-                    "WP2b build_claim.py (§B.3) for the claim table and "
-                    "chunks_v3.chunk for raw passages")
+    # The claim's known_at is its document's filing date.  A named date or a month-wide
+    # window ("the 22 May 2026 deck", "the Aug-2026 concall") therefore bounds it; a
+    # period range does not (a Q1 document may be filed in July).
+    lo, hi = window.get("from"), window.get("to")
+    if lo and hi and (lo == hi or _width_days(lo, hi) <= 62):
+        base += " AND substr(known_at, 1, 10) >= ?"
+        params.append(lo)
+        base += " AND substr(known_at, 1, 10) <= ?"
+        params.append(hi)
+    # An exact topic first; then its singular stem ("products" -> "product") because the
+    # question's wording and the claim build's vocabulary need not agree on plurality.
+    clauses: list[tuple[str, list[Any]]] = [("", [])]
+    if topic and str(topic).lower() not in ("all", "any"):
+        clauses = [(" AND topic = ?", [str(topic)])]
+        stem = _topic_stem(str(topic))
+        if stem != str(topic).lower():
+            clauses.append((" AND lower(topic) LIKE ?", [stem + "%"]))
+    else:
+        # A claim part with no topic or page is the decomposer's fallback for a measure
+        # it could not express: the latest claims are not an answer to a named ask.
+        topic = None
+        if page is None and not doctype:
+            return _nid(part, window,
+                        "the claim part names no topic, page or document type; the latest "
+                        "claims are not an answer to a named measure",
+                        [_tried("claim", f"entity={entity}, topic=None, doctype={doctype}",
+                                0, as_of)],
+                        "the decomposer must emit dims.topic (or page) for a narrative ask "
+                        "(§A.1 claim.claim)")
+    rows: list[dict[str, Any]] | None = []
+    for clause, extra in clauses:
+        rows = db_rows(conn, base + clause + " ORDER BY known_at DESC LIMIT 20",
+                       params + extra)
+        if rows is None:
+            return _nid(part, window, "the claim table is not built in this store",
+                        [_tried("claim", "table absent", None, as_of),
+                         _tried("chunks_v3", "not read by this executor", None, as_of)],
+                        "WP2b build_claim.py (§B.3) for the claim table and "
+                        "chunks_v3.chunk for raw passages")
+        if rows:
+            break
     if not rows:
         return _nid(part, window,
                     f"no claim for {entity or 'the asked entity'}"
@@ -1238,6 +1406,21 @@ def _execute_formula(conn: Any, part: Part, as_of: str, lo: str | None, hi: str 
         return _nid(part, window, f"formula {fid} declares no input atoms",
                     [_tried("registry", f"formula {fid} over=[]", 0, as_of)],
                     "the registry formula row needs its `over` atoms")
+    if not entity:
+        # A formula is one company's arithmetic: with no resolved entity every input
+        # would come from whichever company's row sorted last (§A.2, §C.2).
+        owners: set[str] = set()
+        for atom in atoms:
+            for row in (fetch_fact(conn, atom, as_of, lo, hi) or []):
+                if _dim_match(row, part.dims):
+                    owners.add(str(row.get("entity_id")))
+        if len(owners) > 1:
+            return _nid(part, window,
+                        f"the ask names no single entity and {len(owners)} entities carry "
+                        f"the inputs of {fid} at {as_of}",
+                        [_tried("fact", f"formula {fid}, entity=None, window={lo}..{hi}",
+                                len(owners), as_of)],
+                        "resolve the entity PIT (§C.2) before executing a formula part")
     values: dict[str, float] = {}
     series: dict[str, list[dict[str, Any]]] = {}
     used: list[dict[str, Any]] = []
@@ -1481,8 +1664,18 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
     """
     p = as_part(part, part_index)
     lo, hi = _window_bounds(p.window, windows)
-    window = _window_dict(lo, hi)
     reg = _registry(registry)
+    if lo and hi and lo == hi and not _passage_like(p):
+        grain = _grain_of(p, reg)
+        opening = _period_start(_window_basis(p.window, windows), hi)
+        if grain == "day" and opening:
+            # "the Q1 high": a quarter-end reading over a day-grain series is the quarter.
+            lo = opening
+        elif grain and grain != "day":
+            # A one-day window is the document/event date for a quarterly or FY reading: it
+            # bounds the value's date (known_at is cut at as_of), not its period_end.
+            lo = None
+    window = _window_dict(lo, hi)
     entity = p.entity or entity or (p.entities[0] if p.entities else None)
     entity_set = list(entities or p.entities or [])
     try:
@@ -1500,6 +1693,42 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
     if result.answer_type == "not_in_data" and proxy:
         result = _proxy(p, window, proxy, result.tried, result.nid_reason)
     return result
+
+
+def _window_basis(window: Any, windows: Sequence[Any] | None) -> str:
+    if isinstance(window, int) and windows and 0 <= window < len(windows):
+        window = windows[window]
+    return str(window.get("basis") or "") if isinstance(window, Mapping) else ""
+
+
+def _period_start(basis: str, end: str) -> str | None:
+    """The opening date a "quarter end"/"fiscal year end" reading closes."""
+    from datetime import date
+    try:
+        day = date.fromisoformat(end)
+    except ValueError:
+        return None
+    if basis == "quarter end":
+        month = day.month - ((day.month - 1) % 3)
+        return date(day.year, month, 1).isoformat()
+    if basis in ("fiscal year end", "year end"):
+        start_year = day.year if day.month >= 4 else day.year - 1
+        return date(start_year, 4, 1).isoformat()
+    return None
+
+
+def _grain_of(part: Part, registry: Mapping[str, Any]) -> str:
+    """The grain of the part's atom (or of every formula input when they agree)."""
+    atoms = [str(part.atom)] if part.atom else [
+        str(atom) for atom in (_formula_row(registry, part.formula).get("over") or [])]
+    grains = {str(_atom_row(registry, atom).get("grain") or "") for atom in atoms}
+    return grains.pop() if len(grains) == 1 else ""
+
+
+def _passage_like(part: Part) -> bool:
+    return (part.operator in ("walk", "rule") or part.judgement
+            or part.atom in ("claim.claim", "text.passage", "own.estimate")
+            or part.shape in ("passage", "path", "estimate"))
 
 
 def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | None,
@@ -1521,6 +1750,10 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
                     [_tried("registry", "empty part", 0, as_of)],
                     "the decomposer must emit one measure per part (§C.1)")
     registry_atom = _atom_row(registry, atom)
+    if str(registry_atom.get("entity_key") or "").startswith("series_code"):
+        # A macro series is keyed by its series code, not by a company ISIN: a question
+        # that names a company still reads the series (its company link is a later hop).
+        entity = None
     if atom.startswith("absent.") or (registry_atom.get("coverage") == "absent"):
         return _nid(p, window,
                     registry_atom.get("coverage_note") or "nothing publishes this measure",
@@ -1537,6 +1770,28 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
                     [_tried("fact", "view absent", None, as_of)],
                     "WP2a fact_view.sql (§H.2)")
     rows = [row for row in rows if _dim_match(row, p.dims)]
+    rows = _apply_soft(rows, p.dims)
+    rows = _apply_defaults(rows, p.dims, registry, lo, hi)
+    split = _unnamed_split(rows, p.dims) if p.operator in SCALAR_ONE else []
+    if split:
+        # A one-value ask over several readings of a dim it never named would answer
+        # with whichever reading sorted last: refuse to pick one silently (§A.2).
+        return _nid(p, window,
+                    f"the ask names no {split[0]}; the unit of the answer is ambiguous",
+                    [_tried("fact", f"atom={atom}, dims={split}, window={lo}..{hi}",
+                            len(rows), as_of)],
+                    f"name the reading ({split[0]}) or ask for the series (§A.2 default)")
+    if entity is None and p.operator in SCALAR_ONE:
+        owners = {str(row.get("entity_id")) for row in rows}
+        if len(owners) > 1:
+            # A one-value operator over many entities would answer with whichever row
+            # sorted last: a silent wrong company.  Say the entity is unresolved.
+            return _nid(p, window,
+                        f"the ask names no single entity and {len(owners)} entities carry "
+                        f"{atom} at {as_of}",
+                        [_tried("fact", f"atom={atom}, entity=None, window={lo}..{hi}",
+                                len(rows), as_of)],
+                        "resolve the entity PIT (§C.2) before executing a one-value part")
     if not rows:
         why = f"no {atom} row for {entity or 'the asked entity'}"
         if lo or hi:

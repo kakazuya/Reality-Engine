@@ -1,0 +1,271 @@
+{
+ "cases": 61,
+ "kept": 21,
+ "lost": [
+  {
+   "mid": "MB0008",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names ZENTEC, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0023",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names GANECOS, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0024",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names CHEMCON, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0028",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names PFC, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0030",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names COCHINSHIP, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0037",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names BHARTIARTL, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0104",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names AASTHA, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0248",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names BHEL, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0251",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names IRISDOREME, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0253",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names ARIS, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0255",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names PFOCUS, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0261",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names POEL, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0262",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names FLUOROCHEM, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0284",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names REFEX, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0286",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names DCMSHRIRAM, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0304",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names IPRINGLTD, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0307",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names JIOFIN, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0308",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names DMART, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0309",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names GMRP&UI, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0310",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names METROPOLIS, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0322",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names ASHOKLEY, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0323",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names ABREL, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0572",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names POLICYBZR, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0588",
+   "reason": "the ask has no part (the decomposer emitted none)",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0592",
+   "reason": "the ask has no part (the decomposer emitted none)",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0593",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names JUBLFOOD, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0979",
+   "reason": "part 1 is NOT IN DATA: the ask names no commodity",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB1044",
+   "reason": "part 1 is NOT IN DATA: entity not resolved: the case names HAL, not one of the 60 pilot ISINs",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0003#MS",
+   "reason": "part 2 is NOT IN DATA: the ask names no segment",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0104#L",
+   "reason": "part 1 is NOT IN DATA: formula f.cagr cannot be computed: _years; missing: price.close, fin.revenue,",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0104#MS",
+   "reason": "part 1 is NOT IN DATA: formula f.cagr cannot be computed: _years; missing: price.close, fin.revenue,",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0104#MI",
+   "reason": "part 1 is NOT IN DATA: formula f.cagr cannot be computed: _years; missing: price.close, fin.revenue,",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0239#L",
+   "reason": "part 1 is NOT IN DATA: no price.delivery_qty row for INE271C01023 in 2026-03-31..2026-09-16 after PI",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0253#L",
+   "reason": "part 1 is NOT IN DATA: no claim for INE318A01026 on topic facilities at 2026-10-19",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0281#MS",
+   "reason": "part 1 is NOT IN DATA: no claim for INE702C01027 at 2026-10-19",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0310#MI",
+   "reason": "part 1 is NOT IN DATA: no price.high row for INE345A01011 in 2026-01-01..2026-09-30 after PIT at 202",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0382#L",
+   "reason": "part 1 is NOT IN DATA: no claim for INE296A01032 on topic auditor at",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0574#L",
+   "reason": "part 1 is NOT IN DATA: no flows.net_inr row for INE323A01026 in 2026-10-23..2026-10-23 after PIT at ",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB0979#L",
+   "reason": "part 1 is NOT IN DATA: the ask names no commodity",
+   "was": "ANSWERED by the old engine"
+  },
+  {
+   "mid": "MB1035#L",
+   "reason": "part 1 is NOT IN DATA: no price.sma row for INE296A01032 in \u2026..2026-09-24 after PIT at 2026-09-24",
+   "was": "ANSWERED by the old engine"
+  }
+ ],
+ "kept_mids": [
+  "MB0127",
+  "MB0008#L",
+  "MB0008#MS",
+  "MB0008#MI",
+  "MB0028#L",
+  "MB0028#MS",
+  "MB0028#MI",
+  "MB0304#L",
+  "MB0304#MS",
+  "MB0304#MI",
+  "MB0309#L",
+  "MB0309#MS",
+  "MB0309#MI",
+  "MB0586#L",
+  "MB0586#MS",
+  "MB0901#MS",
+  "MB1044#L",
+  "MB1044#MS",
+  "MB1044#MI",
+  "MB1046#L",
+  "MB1046#MS"
+ ],
+ "lost_mids": [
+  "MB0008",
+  "MB0023",
+  "MB0024",
+  "MB0028",
+  "MB0030",
+  "MB0037",
+  "MB0104",
+  "MB0248",
+  "MB0251",
+  "MB0253",
+  "MB0255",
+  "MB0261",
+  "MB0262",
+  "MB0284",
+  "MB0286",
+  "MB0304",
+  "MB0307",
+  "MB0308",
+  "MB0309",
+  "MB0310",
+  "MB0322",
+  "MB0323",
+  "MB0572",
+  "MB0588",
+  "MB0592",
+  "MB0593",
+  "MB0979",
+  "MB1044",
+  "MB0003#MS",
+  "MB0104#L",
+  "MB0104#MS",
+  "MB0104#MI",
+  "MB0239#L",
+  "MB0253#L",
+  "MB0281#MS",
+  "MB0310#MI",
+  "MB0382#L",
+  "MB0574#L",
+  "MB0979#L",
+  "MB1035#L"
+ ]
+}

@@ -82,11 +82,11 @@ _ATOMS = [
     ("price.delivery_pct", "delivery percent", "market", "%", "day", "held",
      "equity_intelligence.daily_price_delivery.delivery_pct",
      "delivery percent|delivery percentage|delivery pct|delivery %|delivery|delivery ratio|delivery spike"),
-    ("price.traded_value", "traded value", "market", "INR", "day", "held",
+    ("price.traded_value", "traded value", "market", "INR_LAKH", "day", "held",
      "equity_intelligence.daily_price_delivery.turnover_lacs",
      "traded value|value traded|turnover value|turnover|amount traded|liquidity|adtv|"
      "trading volume|value of trading|cash market volume"),
-    ("price.mcap", "market cap", "market", "INR", "day", "held",
+    ("price.mcap", "market cap", "market", "INR_CRORE", "day", "held",
      "market_state.company_state_daily.mcap_cr",
      "market cap|market capitalisation|market capitalization|mcap|cap|size|market value"),
     ("price.shares_out", "shares outstanding", "market", "shares", "quarter", "held",
@@ -113,7 +113,7 @@ _ATOMS = [
      "geographic split|geo split|business split|annual premium equivalent|premium income|fee income|"
      "commission paid|commission income|arpob|revenue per bed"),
     ("fin.ebitda", "EBITDA", "fundamental", "INR", "quarter", "held",
-     "metric_state.company_metric_series.value(metric_key=ebitda)",
+     "derived: metric_state.company_metric_series pbt + finance_costs + depreciation",
      "ebitda|operating profit|operating profit before tax|opbdt|pbdit|ebit"),
     ("fin.pat", "profit after tax", "fundamental", "INR", "quarter", "held",
      "metric_state.company_metric_series.value(metric_key=pat)",
@@ -182,11 +182,11 @@ _ATOMS = [
      "capacity utilisation|capacity utilization|utilisation|utilization|plant utilisation|cu|"
      "load factor|plant load factor|capacity utilization improvement"),
     ("fin.order_book", "order book", "fundamental", "INR", "quarter", "held",
-     "metric_state.order_book_contract.value_cr(aggregate)",
+     "metric_state.order_intake.order_book_cr",
      "order book|orderbook|backlog|pending orders|unexecuted order book|book to bill|book|order value|"
      "book-to-bill|order book cover|order book to revenue|revenue visibility"),
     ("fin.order_intake", "order intake", "fundamental", "INR", "quarter", "held",
-     "metric_state.order_intake.value_cr",
+     "metric_state.order_intake.intake_cr",
      "order intake|new orders|order inflow|orders won|fresh orders|order wins|order announced|bagged|"
      "bid|bids|bidding|tender win|order-win|order win"),
     ("fin.segment_value", "segment P&L value", "fundamental", "INR", "FY", "held",
@@ -859,6 +859,17 @@ def mine_ngrams(questions: list[str], max_n: int = 3) -> Counter:
 # --------------------------------------------------------------------------- #
 # the registry
 # --------------------------------------------------------------------------- #
+#: WP2a's fact view keys these atoms by a series code, not by an exchange-resolved
+#: ISIN: the pilot's macro series are the World Bank commodity vintage and the dated
+#: observation panel (fact_view.sql), and the F&O open interest is under the
+#: underlying's own ISIN.
+_ENTITY_KEYS = {
+    "macro.commodity_close": "series_code (WB commodity series; dims.commodity carries the label)",
+    "macro.series": "series_code (WB/observation panel; dims.dim_id carries the series)",
+    "macro.oi": "underlying ISIN (F&O bhavcopy; not exchange-resolved)",
+}
+
+
 def build_atoms(metric_vocab: dict[str, list[str]], column_phrases: dict[str, str]) -> list[dict]:
     held_keys = set()
     for src in ("metric_series", "xbrl_concept", "concall_metric", "segment_pnl"):
@@ -870,7 +881,9 @@ def build_atoms(metric_vocab: dict[str, list[str]], column_phrases: dict[str, st
         if cov == "held":
             # verify the atom against the held vocabulary where it names a metric key
             m = re.search(r"metric_key=([a-z0-9_]+)", source)
-            if m:
+            if source.startswith("derived:"):
+                note = "derived in the fact view: " + source.split(":", 1)[1].strip()
+            elif m:
                 key = norm(m.group(1).replace("_", " "))
                 if key not in held_keys:
                     cov, note = "gap", f"metric_key '{m.group(1)}' is not in the held concept vocabulary"
@@ -889,7 +902,7 @@ def build_atoms(metric_vocab: dict[str, list[str]], column_phrases: dict[str, st
             "atom_id": aid, "label": label, "kind": kind,
             "store": "fact_view", "table": "fact", "column": aid,
             "source": source, "unit": unit, "grain": grain,
-            "entity_key": "entity_id (ISIN-keyed, exchange-resolved)",
+            "entity_key": _ENTITY_KEYS.get(aid, "entity_id (ISIN-keyed, exchange-resolved)"),
             "pit": "known_at", "coverage": cov, "coverage_note": note,
             "synonyms": [s.strip() for s in syn.split("|") if s.strip()],
         })
