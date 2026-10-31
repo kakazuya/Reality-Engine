@@ -1,0 +1,680 @@
+{
+ "qid": "Q31",
+ "mid": "MB0984#MS",
+ "parent_mid": "MB0984",
+ "symbol": "ANANDRATHI",
+ "entity_isin": "INE463V01026",
+ "question": "If the RBI cuts rates, what happens to Anand Rathi Wealth Limited's NIM first and loan growth second, and how long is the lag?",
+ "as_of": "2026-10-19",
+ "period": "rate cycle",
+ "category": "explanation",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "Anand Rathi Wealth Limited is a wealth-management (asset management/distribution) company, not a bank or NBFC, so NIM and loan growth are not measures it reports; the data store has no NIM or loan-growth series for this entity. Therefore the premise of the question does not apply.",
+ "working": "list_atoms shows no NIM/loan-growth atoms (fin.revenue, fin.pat, hold.pct, price.* only). claim_search for NIM/loan growth/rate cut returned no relevant management commentary.",
+ "missing": "not in data: NIM and loan growth series for Anand Rathi Wealth Limited; rate-cycle sensitivity discussion not found in available claims.",
+ "not_in_data": true,
+ "n_tool_calls": 2,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "ANANDRATHI"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "claim_search",
+   "args": {
+    "entity": "ANANDRATHI",
+    "terms": "NIM loan growth rate cut"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 3,
+ "usage": {
+  "prompt_tokens": 9339,
+  "completion_tokens": 314
+ },
+ "beam_secs": 5.71,
+ "total_secs": 5.71,
+ "number_check": {
+  "numbers": [],
+  "supported": [],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-c6931d83-7d2d-43b2-be83-58274e2ccfc4",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"ANANDRATHI\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 147,
+   "secs": 1.4,
+   "usage": {
+    "prompt_tokens": 1101,
+    "completion_tokens": 56,
+    "total_tokens": 1157,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 39
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 141,
+      "output": 56,
+      "reasoning": 39,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "ANANDRATHI"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE463V01026",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 18,
+      "first_period": "2022-09-30",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 18,
+      "first_period": "2022-09-30",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 50,
+      "first_period": "2021-12-31",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 50,
+      "first_period": "2021-12-31",
+      "last_period": "2026-09-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 50,
+      "first_period": "2021-12-31",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 18,
+      "first_period": "2022-09-30",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 50,
+      "first_period": "2021-12-31",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 18,
+      "first_period": "2022-09-30",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 50,
+      "first_period": "2021-12-31",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 18,
+      "first_period": "2022-09-30",
+      "last_period": "2026-09-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 7,
+      "first_period": "2021-12-24",
+      "last_period": "2022-03-15",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 94,
+      "first_period": "2021-12-09",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 12,
+      "first_period": "2024-06-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 1180,
+      "first_period": "2021-12-14",
+      "last_period": "2026-09-28",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1199,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1198,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1198,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1198,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1198,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1199,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1198,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1185,
+      "first_period": "2022-01-03",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1199,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1180,
+      "first_period": "2022-01-10",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1198,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1198,
+      "first_period": "2021-12-14",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1607,
+      "first_period": "",
+      "last_period": "2026-10-09",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=0;chunk=106338",
+       "doctype=announcement;page=10;chunk=106332"
+      ]
+     }
+    ],
+    "n_returned": 27,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-317a9ef6-17f1-4c80-8ae8-efa3eddced1b",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"ANANDRATHI\", \"terms\": \"NIM loan growth rate cut\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 99,
+   "secs": 1.73,
+   "usage": {
+    "prompt_tokens": 3194,
+    "completion_tokens": 59,
+    "total_tokens": 3253,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 29
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2234,
+      "output": 59,
+      "reasoning": 29,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "ANANDRATHI",
+    "terms": "NIM loan growth rate cut"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE463V01026",
+    "rows": [
+     {
+      "claim_id": 34239,
+      "entity_id": "INE463V01026",
+      "topic": "churn",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 0.09,
+      "unit": "%",
+      "horizon": "Q1FY27",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Client attrition rate in terms of AUM lost for Q1 FY27 was 0.09%.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2026-07-15T11:21:13.073"
+     },
+     {
+      "claim_id": 34231,
+      "entity_id": "INE463V01026",
+      "topic": "growth",
+      "direction": "neutral",
+      "direction_raw": "new",
+      "magnitude": 20.0,
+      "unit": "%",
+      "horizon": "next 3-5 years",
+      "certainty": "expected",
+      "guidance_vs_fact": "guidance",
+      "quote": "can you grow this business for 3, 4, 5 years at 20%, 25%? In our judgment, yes",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "guidance",
+      "known_at": "2026-07-15T11:21:13.073"
+     },
+     {
+      "claim_id": 34243,
+      "entity_id": "INE463V01026",
+      "topic": "pat",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 116.0,
+      "unit": "INR crores",
+      "horizon": "Q1FY27",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Profit after tax stood at INR116 crores showing a 24% Y-o-Y growth compared to INR94 crores in Q1 FY26.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2026-07-15T11:21:13.073"
+     },
+     {
+      "claim_id": 34254,
+      "entity_id": "INE463V01026",
+      "topic": "pat",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Excluding fair value gains on investments, ESOP expenses, and related tax effects, our consolidated total revenue for the Q1 FY27 stood at INR336 crores compared to INR284 crores for Q1 FY26, registering an 18% Y-o-Y growth.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "margin_and_cost_commentary",
+      "known_at": "2026-07-15T11:21:13.073"
+     },
+     {
+      "claim_id": 34242,
+      "entity_id": "INE463V01026",
+      "topic": "revenue",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 336.0,
+      "unit": "INR crores",
+      "horizon": "Q1FY27",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "our consolidated total revenue for the Q1 FY27 stood at INR336 crores compared to INR284 crores for Q1 FY26, registering an 18% Y-o-Y growth.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2026-07-15T11:21:13.073"
+     },
+     {
+      "claim_id": 34298,
+      "entity_id": "INE463V01026",
+      "topic": "churn",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 0.54,
+      "unit": "%",
+      "horizon": "FY26",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Client attrition rate in terms of AUM lost for FY '26 is 0.54% for the full year.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2026-04-14T13:43:50.053"
+     },
+     {
+      "claim_id": 34287,
+      "entity_id": "INE463V01026",
+      "topic": "esop",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 92.0,
+      "unit": "INR crores",
+      "horizon": "Q4FY26",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Profit after tax stood at INR 92 crores depicting a 25% Y-o-Y growth",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2026-04-14T13:43:50.053"
+     },
+     {
+      "claim_id": 34280,
+      "entity_id": "INE463V01026",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "registered an AUM growth of 22% year-on-year to INR 2,218 crores",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "demand_commentary",
+      "known_at": "2026-04-14T13:43:50.053"
+     },
+     {
+      "claim_id": 34299,
+      "entity_id": "INE463V01026",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 2218.0,
+      "unit": "INR crores",
+      "horizon": "FY26",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "registered an AUM growth of 22% year-on-year to INR 2,218 crores",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2026-04-14T13:43:50.053"
+     },
+     {
+      "claim_id": 34291,
+      "entity_id": "INE463V01026",
+      "topic": "pat",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 397.0,
+      "unit": "INR crores",
+      "horizon": "FY26",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "PAT was shown at INR 397 crores, depicting a growth of 32%.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2026-04-14T13:43:50.053"
+     }
+    ],
+    "n_returned": 10,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-d81e52bc-685b-45dd-a092-ac2f861b0831",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"Anand Rathi Wealth Limited is a wealth-management (asset management/distribution) company, not a bank or NBFC, so NIM and loan growth are not measures it reports; the data store has no NIM or loan-growth series for this entity. Therefore the premise of the question does not apply.\", \"missing\": \"not in data: NIM and loan growth series for Anand Rathi Wealth Limited; rate-cycle sensitivity discussion not found in available claims.\", \"working\": \"list_atoms shows no NIM/loan-growth atoms (fin.revenue, fin.pat, hold.pct, price.* only). claim_search for NIM/loan growth/rate cut returned no relevant management commentary.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 134,
+   "secs": 2.45,
+   "usage": {
+    "prompt_tokens": 5044,
+    "completion_tokens": 199,
+    "total_tokens": 5243,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 39
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 4084,
+      "output": 199,
+      "reasoning": 39,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "submit",
+   "args": {
+    "answer": "Anand Rathi Wealth Limited is a wealth-management (asset management/distribution) company, not a bank or NBFC, so NIM and loan growth are not measures it reports; the data store has no NIM or loan-growth series for this entity. Therefore the premise of the question does not apply.",
+    "missing": "not in data: NIM and loan growth series for Anand Rathi Wealth Limited; rate-cycle sensitivity discussion not found in available claims.",
+    "working": "list_atoms shows no NIM/loan-growth atoms (fin.revenue, fin.pat, hold.pct, price.* only). claim_search for NIM/loan growth/rate cut returned no relevant management commentary."
+   }
+  }
+ ]
+}

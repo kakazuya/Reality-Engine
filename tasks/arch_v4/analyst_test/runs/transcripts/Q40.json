@@ -1,0 +1,1862 @@
+{
+ "qid": "Q40",
+ "mid": "MB1070#MI",
+ "parent_mid": "MB1070",
+ "symbol": "AURUM",
+ "entity_isin": "INE898S01029",
+ "question": "Aurum PropTech Limited's delivery % jumped above 60% for two days. What was the volume, and did the price hold the move?",
+ "as_of": "2026-09-24",
+ "period": "2026",
+ "category": "lookup",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "The two most recent NSE sessions with delivery % above 60% were 2026-09-22 (70.70%) and 2026-09-24 (61.04%). Delivery volumes were 75,026 shares (Sep 22) and 41,158 shares (Sep 24). Price did not hold the move: close went from 222.04 (Sep 22) to 220.22 (Sep 24), slightly below the Sep 22 close.",
+ "working": "price.delivery_pct rows: 2026-09-22=70.70%, 2026-09-24=61.04%. price.delivery_qty rows: 2026-09-22=75026 shares, 2026-09-24=41158 shares. price.close rows: 2026-09-22=222.04 INR, 2026-09-24=220.22 INR.",
+ "missing": "not in data: whether \"two days\" refers to a specific consecutive pair; several other sessions in the period also exceeded 60% delivery.",
+ "not_in_data": true,
+ "n_tool_calls": 4,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "AURUM",
+    "as_of": "2026-09-24"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.delivery_pct",
+    "as_of": "2026-09-24",
+    "limit": 50
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.delivery_qty",
+    "as_of": "2026-09-24",
+    "limit": 50
+   },
+   "ok": true
+  },
+  {
+   "call": 7,
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.close",
+    "period_from": "2026-09-14",
+    "period_to": "2026-09-24"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 30965,
+  "completion_tokens": 1417
+ },
+ "beam_secs": 10.24,
+ "total_secs": 10.24,
+ "number_check": {
+  "numbers": [
+   "60",
+   "2026",
+   "09",
+   "22",
+   "70.70",
+   "24",
+   "61.04",
+   "75026",
+   "41158",
+   "222.04",
+   "220.22"
+  ],
+  "supported": [
+   "2026",
+   "09",
+   "22",
+   "70.70",
+   "24",
+   "61.04",
+   "75026",
+   "41158",
+   "222.04",
+   "220.22"
+  ],
+  "question_only": [
+   "60"
+  ],
+  "unsupported": [],
+  "flagged": [
+   "60"
+  ],
+  "ok": false,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-68958b95-2f29-4eaa-a7ab-5796b612652d",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"AURUM\", \"as_of\": \"2026-09-24\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 84,
+   "secs": 1.4,
+   "usage": {
+    "prompt_tokens": 1101,
+    "completion_tokens": 55,
+    "total_tokens": 1156,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 141,
+      "output": 55,
+      "reasoning": 24,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "AURUM",
+    "as_of": "2026-09-24"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-09-24",
+    "entity": "INE898S01029",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 2,
+      "first_period": "2021-03-31",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 67,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 67,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 67,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 67,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 67,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 26,
+      "first_period": "2021-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=revenue;segment=Capital",
+       "basis=consolidated;metric=revenue;segment=Distribution"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 98,
+      "first_period": "2019-05-27",
+      "last_period": "2026-09-22",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 88,
+      "first_period": "2021-06-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 11,
+      "first_period": "2024-06-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 1660,
+      "first_period": "2019-12-30",
+      "last_period": "2026-09-24",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1911,
+      "first_period": "2019-01-01",
+      "last_period": "2026-09-24",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 976,
+      "first_period": "2021-10-22",
+      "last_period": "2026-09-24",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 976,
+      "first_period": "2021-10-22",
+      "last_period": "2026-09-24",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1217,
+      "first_period": "2021-10-22",
+      "last_period": "2026-09-24",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1217,
+      "first_period": "2021-10-22",
+      "last_period": "2026-09-24",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1911,
+      "first_period": "2019-01-01",
+      "last_period": "2026-09-24",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1217,
+      "first_period": "2021-10-22",
+      "last_period": "2026-09-24",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1897,
+      "first_period": "2019-01-21",
+      "last_period": "2026-09-24",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1911,
+      "first_period": "2019-01-01",
+      "last_period": "2026-09-24",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1892,
+      "first_period": "2019-01-28",
+      "last_period": "2026-09-24",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1217,
+      "first_period": "2021-10-22",
+      "last_period": "2026-09-24",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1217,
+      "first_period": "2021-10-22",
+      "last_period": "2026-09-24",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1117,
+      "first_period": "2024-04-29",
+      "last_period": "2026-08-14",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=1;chunk=106985",
+       "doctype=annual_report;page=100;chunk=71682"
+      ]
+     }
+    ],
+    "n_returned": 29,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-0293d39b-7ea1-4c2a-a7a0-ffd0fdd53e84",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"price.delivery_pct\", \"as_of\": \"2026-09-24\", \"limit\": 50}"
+     }
+    },
+    {
+     "id": "call-2a2c78f2-acfe-4736-b60e-47ab608efe40",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"price.delivery_qty\", \"as_of\": \"2026-09-24\", \"limit\": 50}"
+     }
+    }
+   ],
+   "reasoning_chars": 52,
+   "secs": 1.67,
+   "usage": {
+    "prompt_tokens": 3403,
+    "completion_tokens": 109,
+    "total_tokens": 3512,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 26
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2443,
+      "output": 109,
+      "reasoning": 26,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.delivery_pct",
+    "as_of": "2026-09-24",
+    "limit": 50
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-09-24",
+    "entity": "INE898S01029",
+    "atom": "price.delivery_pct",
+    "rows": [
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-24",
+      "period_end": "2026-09-24",
+      "value": 61.04,
+      "unit": "%",
+      "known_at": "2026-09-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-23",
+      "period_end": "2026-09-23",
+      "value": 49.12,
+      "unit": "%",
+      "known_at": "2026-09-23T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-22",
+      "period_end": "2026-09-22",
+      "value": 70.7,
+      "unit": "%",
+      "known_at": "2026-09-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-21",
+      "period_end": "2026-09-21",
+      "value": 25.37,
+      "unit": "%",
+      "known_at": "2026-09-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-18",
+      "period_end": "2026-09-18",
+      "value": 86.05,
+      "unit": "%",
+      "known_at": "2026-09-18T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-17",
+      "period_end": "2026-09-17",
+      "value": 76.23,
+      "unit": "%",
+      "known_at": "2026-09-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-16",
+      "period_end": "2026-09-16",
+      "value": 61.77,
+      "unit": "%",
+      "known_at": "2026-09-16T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-15",
+      "period_end": "2026-09-15",
+      "value": 66.32,
+      "unit": "%",
+      "known_at": "2026-09-15T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-11",
+      "period_end": "2026-09-11",
+      "value": 71.41,
+      "unit": "%",
+      "known_at": "2026-09-11T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-10",
+      "period_end": "2026-09-10",
+      "value": 67.53,
+      "unit": "%",
+      "known_at": "2026-09-10T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-09",
+      "period_end": "2026-09-09",
+      "value": 49.87,
+      "unit": "%",
+      "known_at": "2026-09-09T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-08",
+      "period_end": "2026-09-08",
+      "value": 60.35,
+      "unit": "%",
+      "known_at": "2026-09-08T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-07",
+      "period_end": "2026-09-07",
+      "value": 70.96,
+      "unit": "%",
+      "known_at": "2026-09-07T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-04",
+      "period_end": "2026-09-04",
+      "value": 68.03,
+      "unit": "%",
+      "known_at": "2026-09-04T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-03",
+      "period_end": "2026-09-03",
+      "value": 49.71,
+      "unit": "%",
+      "known_at": "2026-09-03T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-02",
+      "period_end": "2026-09-02",
+      "value": 51.5,
+      "unit": "%",
+      "known_at": "2026-09-02T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-01",
+      "period_end": "2026-09-01",
+      "value": 54.64,
+      "unit": "%",
+      "known_at": "2026-09-01T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-31",
+      "period_end": "2026-08-31",
+      "value": 39.55,
+      "unit": "%",
+      "known_at": "2026-08-31T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-28",
+      "period_end": "2026-08-28",
+      "value": 66.41,
+      "unit": "%",
+      "known_at": "2026-08-28T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-27",
+      "period_end": "2026-08-27",
+      "value": 49.92,
+      "unit": "%",
+      "known_at": "2026-08-27T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-26",
+      "period_end": "2026-08-26",
+      "value": 61.69,
+      "unit": "%",
+      "known_at": "2026-08-26T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-25",
+      "period_end": "2026-08-25",
+      "value": 67.84,
+      "unit": "%",
+      "known_at": "2026-08-25T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-24",
+      "period_end": "2026-08-24",
+      "value": 52.25,
+      "unit": "%",
+      "known_at": "2026-08-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-21",
+      "period_end": "2026-08-21",
+      "value": 58.52,
+      "unit": "%",
+      "known_at": "2026-08-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-20",
+      "period_end": "2026-08-20",
+      "value": 69.58,
+      "unit": "%",
+      "known_at": "2026-08-20T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-19",
+      "period_end": "2026-08-19",
+      "value": 56.58,
+      "unit": "%",
+      "known_at": "2026-08-19T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-18",
+      "period_end": "2026-08-18",
+      "value": 58.33,
+      "unit": "%",
+      "known_at": "2026-08-18T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-17",
+      "period_end": "2026-08-17",
+      "value": 55.62,
+      "unit": "%",
+      "known_at": "2026-08-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-14",
+      "period_end": "2026-08-14",
+      "value": 25.23,
+      "unit": "%",
+      "known_at": "2026-08-14T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-13",
+      "period_end": "2026-08-13",
+      "value": 54.91,
+      "unit": "%",
+      "known_at": "2026-08-13T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-12",
+      "period_end": "2026-08-12",
+      "value": 48.22,
+      "unit": "%",
+      "known_at": "2026-08-12T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-11",
+      "period_end": "2026-08-11",
+      "value": 52.5,
+      "unit": "%",
+      "known_at": "2026-08-11T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-10",
+      "period_end": "2026-08-10",
+      "value": 63.39,
+      "unit": "%",
+      "known_at": "2026-08-10T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-07",
+      "period_end": "2026-08-07",
+      "value": 59.18,
+      "unit": "%",
+      "known_at": "2026-08-07T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-06",
+      "period_end": "2026-08-06",
+      "value": 34.47,
+      "unit": "%",
+      "known_at": "2026-08-06T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-05",
+      "period_end": "2026-08-05",
+      "value": 45.43,
+      "unit": "%",
+      "known_at": "2026-08-05T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-04",
+      "period_end": "2026-08-04",
+      "value": 18.72,
+      "unit": "%",
+      "known_at": "2026-08-04T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-03",
+      "period_end": "2026-08-03",
+      "value": 60.19,
+      "unit": "%",
+      "known_at": "2026-08-03T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-31",
+      "period_end": "2026-07-31",
+      "value": 64.79,
+      "unit": "%",
+      "known_at": "2026-07-31T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-30",
+      "period_end": "2026-07-30",
+      "value": 53.43,
+      "unit": "%",
+      "known_at": "2026-07-30T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-29",
+      "period_end": "2026-07-29",
+      "value": 55.83,
+      "unit": "%",
+      "known_at": "2026-07-29T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-28",
+      "period_end": "2026-07-28",
+      "value": 19.71,
+      "unit": "%",
+      "known_at": "2026-07-28T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-27",
+      "period_end": "2026-07-27",
+      "value": 48.88,
+      "unit": "%",
+      "known_at": "2026-07-27T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-24",
+      "period_end": "2026-07-24",
+      "value": 52.48,
+      "unit": "%",
+      "known_at": "2026-07-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-23",
+      "period_end": "2026-07-23",
+      "value": 45.34,
+      "unit": "%",
+      "known_at": "2026-07-23T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-22",
+      "period_end": "2026-07-22",
+      "value": 42.98,
+      "unit": "%",
+      "known_at": "2026-07-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-21",
+      "period_end": "2026-07-21",
+      "value": 43.21,
+      "unit": "%",
+      "known_at": "2026-07-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-20",
+      "period_end": "2026-07-20",
+      "value": 14.61,
+      "unit": "%",
+      "known_at": "2026-07-20T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-17",
+      "period_end": "2026-07-17",
+      "value": 42.35,
+      "unit": "%",
+      "known_at": "2026-07-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_pct",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-16",
+      "period_end": "2026-07-16",
+      "value": 29.96,
+      "unit": "%",
+      "known_at": "2026-07-16T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     }
+    ],
+    "n_returned": 50,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.delivery_qty",
+    "as_of": "2026-09-24",
+    "limit": 50
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-09-24",
+    "entity": "INE898S01029",
+    "atom": "price.delivery_qty",
+    "rows": [
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-24",
+      "period_end": "2026-09-24",
+      "value": 41158,
+      "unit": "shares",
+      "known_at": "2026-09-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-23",
+      "period_end": "2026-09-23",
+      "value": 35870,
+      "unit": "shares",
+      "known_at": "2026-09-23T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-22",
+      "period_end": "2026-09-22",
+      "value": 75026,
+      "unit": "shares",
+      "known_at": "2026-09-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-21",
+      "period_end": "2026-09-21",
+      "value": 41304,
+      "unit": "shares",
+      "known_at": "2026-09-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-18",
+      "period_end": "2026-09-18",
+      "value": 128769,
+      "unit": "shares",
+      "known_at": "2026-09-18T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-17",
+      "period_end": "2026-09-17",
+      "value": 51136,
+      "unit": "shares",
+      "known_at": "2026-09-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-16",
+      "period_end": "2026-09-16",
+      "value": 55526,
+      "unit": "shares",
+      "known_at": "2026-09-16T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-15",
+      "period_end": "2026-09-15",
+      "value": 80737,
+      "unit": "shares",
+      "known_at": "2026-09-15T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-11",
+      "period_end": "2026-09-11",
+      "value": 43270,
+      "unit": "shares",
+      "known_at": "2026-09-11T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-10",
+      "period_end": "2026-09-10",
+      "value": 44196,
+      "unit": "shares",
+      "known_at": "2026-09-10T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-09",
+      "period_end": "2026-09-09",
+      "value": 69960,
+      "unit": "shares",
+      "known_at": "2026-09-09T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-08",
+      "period_end": "2026-09-08",
+      "value": 34166,
+      "unit": "shares",
+      "known_at": "2026-09-08T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-07",
+      "period_end": "2026-09-07",
+      "value": 32413,
+      "unit": "shares",
+      "known_at": "2026-09-07T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-04",
+      "period_end": "2026-09-04",
+      "value": 60375,
+      "unit": "shares",
+      "known_at": "2026-09-04T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-03",
+      "period_end": "2026-09-03",
+      "value": 22431,
+      "unit": "shares",
+      "known_at": "2026-09-03T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-02",
+      "period_end": "2026-09-02",
+      "value": 92619,
+      "unit": "shares",
+      "known_at": "2026-09-02T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-09-01",
+      "period_end": "2026-09-01",
+      "value": 65758,
+      "unit": "shares",
+      "known_at": "2026-09-01T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-31",
+      "period_end": "2026-08-31",
+      "value": 40680,
+      "unit": "shares",
+      "known_at": "2026-08-31T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-28",
+      "period_end": "2026-08-28",
+      "value": 71236,
+      "unit": "shares",
+      "known_at": "2026-08-28T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-27",
+      "period_end": "2026-08-27",
+      "value": 56292,
+      "unit": "shares",
+      "known_at": "2026-08-27T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-26",
+      "period_end": "2026-08-26",
+      "value": 77515,
+      "unit": "shares",
+      "known_at": "2026-08-26T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-25",
+      "period_end": "2026-08-25",
+      "value": 95349,
+      "unit": "shares",
+      "known_at": "2026-08-25T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-24",
+      "period_end": "2026-08-24",
+      "value": 132406,
+      "unit": "shares",
+      "known_at": "2026-08-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-21",
+      "period_end": "2026-08-21",
+      "value": 48294,
+      "unit": "shares",
+      "known_at": "2026-08-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-20",
+      "period_end": "2026-08-20",
+      "value": 42193,
+      "unit": "shares",
+      "known_at": "2026-08-20T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-19",
+      "period_end": "2026-08-19",
+      "value": 48826,
+      "unit": "shares",
+      "known_at": "2026-08-19T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-18",
+      "period_end": "2026-08-18",
+      "value": 45463,
+      "unit": "shares",
+      "known_at": "2026-08-18T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-17",
+      "period_end": "2026-08-17",
+      "value": 64380,
+      "unit": "shares",
+      "known_at": "2026-08-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-14",
+      "period_end": "2026-08-14",
+      "value": 79106,
+      "unit": "shares",
+      "known_at": "2026-08-14T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-13",
+      "period_end": "2026-08-13",
+      "value": 69878,
+      "unit": "shares",
+      "known_at": "2026-08-13T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-12",
+      "period_end": "2026-08-12",
+      "value": 40864,
+      "unit": "shares",
+      "known_at": "2026-08-12T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-11",
+      "period_end": "2026-08-11",
+      "value": 63959,
+      "unit": "shares",
+      "known_at": "2026-08-11T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-10",
+      "period_end": "2026-08-10",
+      "value": 229545,
+      "unit": "shares",
+      "known_at": "2026-08-10T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-07",
+      "period_end": "2026-08-07",
+      "value": 138552,
+      "unit": "shares",
+      "known_at": "2026-08-07T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-06",
+      "period_end": "2026-08-06",
+      "value": 68152,
+      "unit": "shares",
+      "known_at": "2026-08-06T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-05",
+      "period_end": "2026-08-05",
+      "value": 120899,
+      "unit": "shares",
+      "known_at": "2026-08-05T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-04",
+      "period_end": "2026-08-04",
+      "value": 257461,
+      "unit": "shares",
+      "known_at": "2026-08-04T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-08-03",
+      "period_end": "2026-08-03",
+      "value": 99537,
+      "unit": "shares",
+      "known_at": "2026-08-03T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-31",
+      "period_end": "2026-07-31",
+      "value": 88368,
+      "unit": "shares",
+      "known_at": "2026-07-31T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-30",
+      "period_end": "2026-07-30",
+      "value": 58567,
+      "unit": "shares",
+      "known_at": "2026-07-30T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-29",
+      "period_end": "2026-07-29",
+      "value": 78362,
+      "unit": "shares",
+      "known_at": "2026-07-29T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-28",
+      "period_end": "2026-07-28",
+      "value": 118707,
+      "unit": "shares",
+      "known_at": "2026-07-28T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-27",
+      "period_end": "2026-07-27",
+      "value": 79512,
+      "unit": "shares",
+      "known_at": "2026-07-27T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-24",
+      "period_end": "2026-07-24",
+      "value": 60096,
+      "unit": "shares",
+      "known_at": "2026-07-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-23",
+      "period_end": "2026-07-23",
+      "value": 84233,
+      "unit": "shares",
+      "known_at": "2026-07-23T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-22",
+      "period_end": "2026-07-22",
+      "value": 69795,
+      "unit": "shares",
+      "known_at": "2026-07-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-21",
+      "period_end": "2026-07-21",
+      "value": 133437,
+      "unit": "shares",
+      "known_at": "2026-07-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-20",
+      "period_end": "2026-07-20",
+      "value": 319150,
+      "unit": "shares",
+      "known_at": "2026-07-20T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-17",
+      "period_end": "2026-07-17",
+      "value": 140792,
+      "unit": "shares",
+      "known_at": "2026-07-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.delivery_qty",
+      "dims": "exchange=NSE",
+      "period_start": "2026-07-16",
+      "period_end": "2026-07-16",
+      "value": 469036,
+      "unit": "shares",
+      "known_at": "2026-07-16T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     }
+    ],
+    "n_returned": 50,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-2654521d-961d-4eed-8388-ed82781399ba",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"price.close\", \"period_from\": \"2026-09-14\", \"period_to\": \"2026-09-24\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 823,
+   "secs": 3.13,
+   "usage": {
+    "prompt_tokens": 12699,
+    "completion_tokens": 514,
+    "total_tokens": 13213,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 466
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 11739,
+      "output": 514,
+      "reasoning": 466,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.close",
+    "period_from": "2026-09-14",
+    "period_to": "2026-09-24"
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-09-24",
+    "entity": "INE898S01029",
+    "atom": "price.close",
+    "rows": [
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-24",
+      "period_end": "2026-09-24",
+      "value": 220.22,
+      "unit": "INR",
+      "known_at": "2026-09-24T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-23",
+      "period_end": "2026-09-23",
+      "value": 223.19,
+      "unit": "INR",
+      "known_at": "2026-09-23T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-22",
+      "period_end": "2026-09-22",
+      "value": 222.04,
+      "unit": "INR",
+      "known_at": "2026-09-22T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-21",
+      "period_end": "2026-09-21",
+      "value": 218.9,
+      "unit": "INR",
+      "known_at": "2026-09-21T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-18",
+      "period_end": "2026-09-18",
+      "value": 219.78,
+      "unit": "INR",
+      "known_at": "2026-09-18T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-17",
+      "period_end": "2026-09-17",
+      "value": 221.11,
+      "unit": "INR",
+      "known_at": "2026-09-17T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-16",
+      "period_end": "2026-09-16",
+      "value": 219.81,
+      "unit": "INR",
+      "known_at": "2026-09-16T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE898S01029",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-15",
+      "period_end": "2026-09-15",
+      "value": 221.36,
+      "unit": "INR",
+      "known_at": "2026-09-15T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     }
+    ],
+    "n_returned": 8,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-eaae99d2-591d-4375-a50b-57acd40035d8",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"The two most recent NSE sessions with delivery % above 60% were 2026-09-22 (70.70%) and 2026-09-24 (61.04%). Delivery volumes were 75,026 shares (Sep 22) and 41,158 shares (Sep 24). Price did not hold the move: close went from 222.04 (Sep 22) to 220.22 (Sep 24), slightly below the Sep 22 close.\", \"missing\": \"not in data: whether \\\"two days\\\" refers to a specific consecutive pair; several other sessions in the period also exceeded 60% delivery.\", \"working\": \"price.delivery_pct rows: 2026-09-22=70.70%, 2026-09-24=61.04%. price.delivery_qty rows: 2026-09-22=75026 shares, 2026-09-24=41158 shares. price.close rows: 2026-09-22=222.04 INR, 2026-09-24=220.22 INR.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 1069,
+   "secs": 3.81,
+   "usage": {
+    "prompt_tokens": 13762,
+    "completion_tokens": 739,
+    "total_tokens": 14501,
+    "prompt_tokens_details": {
+     "cached_tokens": 12672
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 424
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 1090,
+      "output": 739,
+      "reasoning": 424,
+      "cache_read": 12672,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "The two most recent NSE sessions with delivery % above 60% were 2026-09-22 (70.70%) and 2026-09-24 (61.04%). Delivery volumes were 75,026 shares (Sep 22) and 41,158 shares (Sep 24). Price did not hold the move: close went from 222.04 (Sep 22) to 220.22 (Sep 24), slightly below the Sep 22 close.",
+    "missing": "not in data: whether \"two days\" refers to a specific consecutive pair; several other sessions in the period also exceeded 60% delivery.",
+    "working": "price.delivery_pct rows: 2026-09-22=70.70%, 2026-09-24=61.04%. price.delivery_qty rows: 2026-09-22=75026 shares, 2026-09-24=41158 shares. price.close rows: 2026-09-22=222.04 INR, 2026-09-24=220.22 INR."
+   }
+  }
+ ]
+}

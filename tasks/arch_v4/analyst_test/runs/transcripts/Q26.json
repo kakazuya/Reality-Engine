@@ -1,0 +1,815 @@
+{
+ "qid": "Q26",
+ "mid": "MB0886#MI",
+ "parent_mid": "MB0886",
+ "symbol": "HEGAM",
+ "entity_isin": "INE545A01024",
+ "question": "HEG Advanced Materials Limited: was the listing-day move justified by the order book disclosed in the prospectus, or was it mostly scarcity?",
+ "as_of": "2026-10-19",
+ "period": "listing",
+ "category": "explanation",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "The held data does not contain the prospectus order book or listing-day subscription/scarcity details needed to judge whether the listing-day move (close 440.58 on 2021-10-27) was justified by the disclosed order book or was mostly scarcity.",
+ "working": "price.close first row: 2021-10-27 = 440.58 INR. No prospectus/order-book atom or chunk found via claim_search/chunk_search.",
+ "missing": "not in data: prospectus order book / listing subscription and scarcity details; only price.close (listing day 2021-10-27 = 440.58) and general annual-report text are available.",
+ "not_in_data": true,
+ "n_tool_calls": 4,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "HEGAM"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "claim_search",
+   "args": {
+    "entity": "HEGAM",
+    "terms": "listing prospectus order book"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "HEGAM",
+    "query": "listing day prospectus order book scarcity"
+   },
+   "ok": true
+  },
+  {
+   "call": 7,
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.close",
+    "entity": "HEGAM",
+    "limit": 5,
+    "order": "asc"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 19386,
+  "completion_tokens": 441
+ },
+ "beam_secs": 7.99,
+ "total_secs": 7.99,
+ "number_check": {
+  "numbers": [
+   "440.58",
+   "2021",
+   "10",
+   "27"
+  ],
+  "supported": [
+   "440.58",
+   "2021",
+   "10",
+   "27"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-e7f40027-5a49-4f91-8285-271f27edccce",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"HEGAM\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 47,
+   "secs": 1.29,
+   "usage": {
+    "prompt_tokens": 1094,
+    "completion_tokens": 33,
+    "total_tokens": 1127,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 17
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 134,
+      "output": 33,
+      "reasoning": 17,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "HEGAM"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE545A01024",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 4,
+      "first_period": "2020-09-30",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 46,
+      "first_period": "2019-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=capex;segment=Graphite",
+       "basis=consolidated;metric=capex;segment=Power"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 28,
+      "first_period": "2019-03-29",
+      "last_period": "2026-08-12",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 88,
+      "first_period": "2021-09-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 11,
+      "first_period": "2024-06-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 1224,
+      "first_period": "2021-10-27",
+      "last_period": "2026-10-19",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1230,
+      "first_period": "2021-10-27",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 19,
+      "first_period": "2026-09-22",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 19,
+      "first_period": "2026-09-22",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 19,
+      "first_period": "2026-09-22",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 19,
+      "first_period": "2026-09-22",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1230,
+      "first_period": "2021-10-27",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 19,
+      "first_period": "2026-09-22",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1216,
+      "first_period": "2021-11-17",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1230,
+      "first_period": "2021-10-27",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1211,
+      "first_period": "2021-11-25",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 19,
+      "first_period": "2026-09-22",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 19,
+      "first_period": "2026-09-22",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 845,
+      "first_period": "2024-06-28",
+      "last_period": "2026-06-25",
+      "units": "text",
+      "dims_sample": [
+       "doctype=annual_report;page=100;chunk=64109",
+       "doctype=annual_report;page=100;chunk=64110"
+      ]
+     }
+    ],
+    "n_returned": 29,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-545d3bc6-ff2a-468d-b1df-a285283d548e",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"HEGAM\", \"terms\": \"listing prospectus order book\"}"
+     }
+    },
+    {
+     "id": "call-16d98e53-f55c-4497-8f78-664578e02e98",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"HEGAM\", \"query\": \"listing day prospectus order book scarcity\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 52,
+   "secs": 1.52,
+   "usage": {
+    "prompt_tokens": 3372,
+    "completion_tokens": 76,
+    "total_tokens": 3448,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 17
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2284,
+      "output": 76,
+      "reasoning": 17,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "HEGAM",
+    "terms": "listing prospectus order book"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE545A01024",
+    "rows": [],
+    "n_returned": 0,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "HEGAM",
+    "query": "listing day prospectus order book scarcity"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE545A01024",
+    "rows": [
+     {
+      "chunk_id": 54408,
+      "doc_id": "sha256:03f8de16c0388fe4b7850d5ca94b053aeffbc23e669f25f3c518470c725b0d12",
+      "doc_type": "annual_report",
+      "header": "HEG · INE545A01024 · Annual report · FY24 · 6. SHAREHOLDERS INFORMATIONS · p25 · known 2024-06-28T18:29:20",
+      "section": "6. SHAREHOLDERS INFORMATIONS",
+      "speaker": null,
+      "known_at": "2024-06-28T18:29:20",
+      "event_date": "2024-06-28",
+      "fiscal_period": "FY24",
+      "page_from": 25,
+      "page_to": 26,
+      "char_len": 1924,
+      "title": "HEG annual report 2024-03-31",
+      "score": -7.142526664758744,
+      "body_excerpt": "… quarter. c) Date of Book Closures : From Thursday the 24th September, 2026 to Wednesday the 30th September, 2026 both days inclusive. [23] @ Siddheswari Garments Limited d) Registrar and Share Transfer Agents:- Mis. S.K. Info Solutions (P) Ltd D/42, Katju Nagar, Ground Floor, Kolkata — 700 032 Phone: (033) 2219-4815 / 6797 e) Share Transfer System :- Share transfer is given effect within a maximum period of 30 (thirty) days from the date of receipt, subject to documents being valid and complete in all respects. Pursuantto the Regulation 40 of the Listing Regulations, the Board has delegated the authority for approving transfer/ transmission/ transposition of securities of the Company to the Stakeholders’ Relationship Committee/ Registrar and Share Transfer Agent. In terms of Regulation 40(1) of the Listing Regulations, as amended, securities can be transferred only in dematerialized form w.e.f. April 1, 2020, except in case of request received for transmission or transposition of securities. Members holding shares in physical form are requested to consider converting their holding to dematerialized form. Transfers of equity shares in electronic form are effected through the depositories with no involvement of the Company. f) Shareholdings Pattern of the Company as at 31St March, 2026 CATEGORY NO. OF SHARES % INDIAN PROMOTERS 1600 0.05 PERSONS ACTING IN CONCERT INSTITUTIONAL INVESTORS 1798010 54.32 OTHER BODIES CORPORATE NRI'S/OCB's 6507 0.20 RESIDENT INDIVIDUALS 1503783 45.43"
+     },
+     {
+      "chunk_id": 54404,
+      "doc_id": "sha256:03f8de16c0388fe4b7850d5ca94b053aeffbc23e669f25f3c518470c725b0d12",
+      "doc_type": "annual_report",
+      "header": "HEG · INE545A01024 · Annual report · FY24 · BOARD OF DIRECTORS > 2S OaORWNS · p23 · known 2024-06-28T18:29:20",
+      "section": "BOARD OF DIRECTORS > 2S OaORWNS",
+      "speaker": null,
+      "known_at": "2024-06-28T18:29:20",
+      "event_date": "2024-06-28",
+      "fiscal_period": "FY24",
+      "page_from": 23,
+      "page_to": 24,
+      "char_len": 2916,
+      "title": "HEG annual report 2024-03-31",
+      "score": -7.031835276978871,
+      "body_excerpt": "BOARD OF DIRECTORS 2S OaORWNS a) The Board of Director is comprised of 3 (three) Independent Non-Executive Directors having no business or other relationship with the company that could hinder their independent judgment and one executive Director and one non-executive, non Independent woman Director. The day to day management of the company is overviewed by the Board of Directors. The particulars of Directors are as under :- Name of Director Category No. of other No. of Committee Directorship Membership Mr. Abhishek Poddar Non-Executive, Non Independent 4 1 Mrs. Riti Poddar Non Executive, Non Independent 2 2 Mr. Sanjay Kr. Shah Whole time Executive Director 3 2 & CFO Mr. Uma Nath Singh Non-Executive, Independent 1 4 Mr. Rakesh Kumar Agarwal Non-Executive, Independent 1 1 Mr. Satya Narayan Chaudhury Non-Executive, Independent 1 2 b) Board Procedure : The functions, responsibilities and accountability of the Board of Directors are clearly defined in addition to its primary role of monitoring and supervision of the Company’s corporate activities. The general functions of the Board includes, inter-alia. (i) To direct and guide activities towards attaining Corporate Goals as above. (ii) Approving appointments, monitoring Industrial relations, laying broad policy decisions, and management of Human Resources. [21] @ Siddheswari Garments Limited C) (iii) Formulation of Strategic business plans and monitoring implementation thereof and to review the same continuously. (iv) Reviewing a …"
+     },
+     {
+      "chunk_id": 78355,
+      "doc_id": "sha256:9911755d038ee71331ed4ed71548738710f1224d91784b8f13da797fcbdc23e6",
+      "doc_type": "annual_report",
+      "header": "HEG · INE545A01024 · Annual report · FY26 · 084 » HEG LIMITED · p45 · known 2026-06-25T16:26:19",
+      "section": "084 » HEG LIMITED",
+      "speaker": null,
+      "known_at": "2026-06-25T16:26:19",
+      "event_date": "2026-06-25",
+      "fiscal_period": "FY26",
+      "page_from": 45,
+      "page_to": 46,
+      "char_len": 5789,
+      "title": "HEG annual report 2026-03-31",
+      "score": -6.850899162566227,
+      "body_excerpt": "… iii. Management Letters/ Letters of Internal Control Weaknesses issued by the Statutory Auditors; iv. Internal Audit Reports relating to internal control weaknesses; and v. The appointment, removal and terms of remuneration of the Chief Internal Auditors shall be subject to review by the Audit Committee. vi statement of deviations: a. quarterly statement of deviation(s) including report of monitoring agency, if applicable, submitted to stock exchange(s) in terms of Regulation 32(1) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015. b. annual statement of funds utilised for purposes other than those stated in the offer document/ prospectus/ notice in terms of Regulation 32(7) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015. 25. The Internal Auditors may report directly to the Audit Committee; 26. The Audit Committee of the Company shall also review the financial statements, in particular, the investments made by the unlisted subsidiary; 27. All related party transactions shall require approval of the Audit Committee and the Committee may make omnibus approval for related party transactions proposed to be entered into by the Company on yearly basis; 28. The Audit Committee shall, after obtaining approval of the Board of Directors, specify the criteria for making the omnibus approval; 29. The Audit Committee shall review, at least on a quarterly basis, the details of related party transactions entered into by the Comp …"
+     },
+     {
+      "chunk_id": 64033,
+      "doc_id": "sha256:ffb7e7af2de91b192a3cc9c8672b4723ea12ba22cd040492cee7f75fac59e923",
+      "doc_type": "annual_report",
+      "header": "HEG · INE545A01024 · Annual report · FY25 · ICAI UDIN: 25516834BMMNCZ2122 (cont.) · p49 · known 2025-07-10T11:29:43",
+      "section": "ICAI UDIN: 25516834BMMNCZ2122 (cont.)",
+      "speaker": null,
+      "known_at": "2025-07-10T11:29:43",
+      "event_date": "2025-07-10",
+      "fiscal_period": "FY25",
+      "page_from": 49,
+      "page_to": 49,
+      "char_len": 3979,
+      "title": "HEG annual report 2025-03-31",
+      "score": -6.3339889461210355,
+      "body_excerpt": "… hed as an Annexure at page no. 98 of this report. (XXII) Shareholders’ Information a) Annual General Meeting (AGM): Date, Time & Venue Wednesday, 20th August, 2025 at 12:30 pm (IST) through Video Conferencing / Other Audio Visual Means facility (Deemed Venue for Meeting: Registered Office at Mandideep (Near Bhopal), Distt. Raisen – 462046, Madhya Pradesh). b) Financial Year Financial Year: 1st April, 2024 – 31st March, 2025. c) (i) Date of Book Closure Thursday, 14th August, 2025 to Wednesday, 20th August, 2025 (both days inclusive) (ii) Record Date for Dividend: Wednesday, 13th August, 2025 d) Dividend payment date: The Final Dividend, if declared will be paid within 30 days from the date of AGM. The same is subject to TDS. You may visit www.hegltd.com for details. e) Listing of Shares on Stock Exchanges 1. BSE Limited BSE- Corporate Office Phiroze Jeejeebhoy Towers Dalal Street, Mumbai- 400001 Phones: (022) 22721233/4, (022) 66545695 (Hunting) Fax: (022) 22721919 2. National Stock Exchange of India Limited NSE – Corporate Office Exchange Plaza, C-1, Block G, Bandra Kurla Complex, Bandra (E), Mumbai – 400 051 Phones: (022) 26598100 – 8114 Fax No: (022) 26598120 f) Payment of Listing Fees Annual Listing fees as applicable have been duly paid. g) Stock Code / ISIN Equity Shares : BSE: 509631 NSE : HEG ISIN : INE545A01024 h) Whether S&P BSE 500 Index Yes i) (a) Market Price Data: Monthly High-Low values (in D) at NSE & BSE and comparison with BSE Sensex and Nifty: Month NSE BSE"
+     },
+     {
+      "chunk_id": 54462,
+      "doc_id": "sha256:03f8de16c0388fe4b7850d5ca94b053aeffbc23e669f25f3c518470c725b0d12",
+      "doc_type": "annual_report",
+      "header": "HEG · INE545A01024 · Annual report · FY24 · PROXY FORM · p74 · known 2024-06-28T18:29:20",
+      "section": "PROXY FORM",
+      "speaker": null,
+      "known_at": "2024-06-28T18:29:20",
+      "event_date": "2024-06-28",
+      "fiscal_period": "FY24",
+      "page_from": 74,
+      "page_to": 75,
+      "char_len": 1808,
+      "title": "HEG annual report 2024-03-31",
+      "score": -6.2242731509666775,
+      "body_excerpt": "PROXY FORM DP ID No. of Shares : Client ID lAWWe being the member(s) Of 2000... ccecceeeecceteeeeetseteeeee shares of the above named Company hereby appoint: 1. Name: Address : E-mail Id : Signature or failing him; 2. Name: Address : E-mail Id : Signature or failing him; 3. Name: Address : E-mail Id : Signature or failing him; As my/our proxy to attend and vote for me/us on my /our behalf at the 32nd ANNUAL GENERAL MEETING of the Company, to be held on Wednesday 30th September 2026 at 10.00 AM. at 9 India Exchange Place, Kolkata-700001 and at any adjournment thereof in respect of such resolutions are indicated below : Resolution RESOLUTION Vote No. For Against Ordinary Business 1. Adoption of Accounts for the year ended 31.03.2026. 2. Re-appoint Mr Abhishek Poddar (DIN 00119347) who retires by rotation. 3. Re-appoint of Statutory Auditor M/s N Dokania & Associates, (chartered accountants, FRN 014403C). Special Business 4. Re-appoint of Mr Satyanarayan Chaudhury, (DIN 09302633). 5. Re-appoint of Mr Rakesh Kr Aagrwal, (DIN 09302571). 6. Appointment of Mr Mukesh Agarwal, (DIN 06726721). Signed this ...........eseeseceeeeeeeeeeeeeeeee day Of «0... 2026. Signature of Shareholder .........cceccccecceseeeeeeceeeeeceeeeseeeeeeeeseeeees Signature Of Proxy ......ccccceccesseececeseeeceeeeseeeeeeeeseeeeeeee Note : 1. The Proxy in order to be effective should be duly stamped, completed and signed and must be deposited at the Registered Office of the Company not less than 48 hours before  …"
+     },
+     {
+      "chunk_id": 78354,
+      "doc_id": "sha256:9911755d038ee71331ed4ed71548738710f1224d91784b8f13da797fcbdc23e6",
+      "doc_type": "annual_report",
+      "header": "HEG · INE545A01024 · Annual report · FY26 · 082 » HEG LIMITED (cont.) · p44 · known 2026-06-25T16:26:19",
+      "section": "082 » HEG LIMITED (cont.)",
+      "speaker": null,
+      "known_at": "2026-06-25T16:26:19",
+      "event_date": "2026-06-25",
+      "fiscal_period": "FY26",
+      "page_from": 44,
+      "page_to": 45,
+      "char_len": 4173,
+      "title": "HEG annual report 2026-03-31",
+      "score": -6.22181755733676,
+      "body_excerpt": "… erence to: a) Matters required to be included in the Director’s Responsibility Statement to be included in the Board’s Report in terms of clause (c) of Sub-Section 3 of Section 134 of the Companies Act, 2013. b) Changes, if any, in accounting policies and practices and reasons for the same. c) Major accounting entries involving estimates based on the exercise of judgement by management. d) Significant adjustments made in the financial statements arising out of audit findings. e) Compliance with listing and other legal requirements relating to financial statements. f) Disclosure of any related party transactions. g) Modified opinion(s) in the draft Audit Report. 8. Reviewing, with the management, the quarterly financial statements before submission to the Board for approval; 9. Reviewing, with the management, the statement of uses / application of funds raised through an issue (public issue, rights issue, preferential issue, etc.), the statement of funds utilized for purposes other than those stated in the offer document / prospectus / notice and the report submitted by the monitoring agency monitoring the utilisation of proceeds of a public issue or rights issue, and making appropriate recommendations to the board to take up steps in this matter; 10. Reviewing and monitoring the auditor’s independence and performance, and effectiveness of audit process; 11. Approval or any subsequent modification of transaction of the Company with related party; 12. Scrutiny of inter-corporat …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "listing",
+     "day",
+     "prospectus",
+     "order",
+     "book",
+     "scarcity"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-75b136c2-8bfb-4020-a877-11e7beb813f0",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"price.close\", \"entity\": \"HEGAM\", \"limit\": 5, \"order\": \"asc\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 201,
+   "secs": 1.92,
+   "usage": {
+    "prompt_tokens": 7080,
+    "completion_tokens": 84,
+    "total_tokens": 7164,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 48
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 6120,
+      "output": 84,
+      "reasoning": 48,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.close",
+    "entity": "HEGAM",
+    "limit": 5,
+    "order": "asc"
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-10-19",
+    "entity": "INE545A01024",
+    "atom": "price.close",
+    "rows": [
+     {
+      "entity_id": "INE545A01024",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2021-10-27",
+      "period_end": "2021-10-27",
+      "value": 440.58000000000004,
+      "unit": "INR",
+      "known_at": "2021-10-27T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE545A01024",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2021-10-28",
+      "period_end": "2021-10-28",
+      "value": 421.71000000000004,
+      "unit": "INR",
+      "known_at": "2021-10-28T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE545A01024",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2021-10-29",
+      "period_end": "2021-10-29",
+      "value": 411.58000000000004,
+      "unit": "INR",
+      "known_at": "2021-10-29T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE545A01024",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2021-11-01",
+      "period_end": "2021-11-01",
+      "value": 410.18000000000006,
+      "unit": "INR",
+      "known_at": "2021-11-01T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE545A01024",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2021-11-02",
+      "period_end": "2021-11-02",
+      "value": 402.6,
+      "unit": "INR",
+      "known_at": "2021-11-02T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     }
+    ],
+    "n_returned": 5,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-7b9b8738-d04c-4937-b5a8-468acf58fe88",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"The held data does not contain the prospectus order book or listing-day subscription/scarcity details needed to judge whether the listing-day move (close 440.58 on 2021-10-27) was justified by the disclosed order book or was mostly scarcity.\", \"missing\": \"not in data: prospectus order book / listing subscription and scarcity details; only price.close (listing day 2021-10-27 = 440.58) and general annual-report text are available.\", \"working\": \"price.close first row: 2021-10-27 = 440.58 INR. No prospectus/order-book atom or chunk found via claim_search/chunk_search.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 258,
+   "secs": 2.98,
+   "usage": {
+    "prompt_tokens": 7840,
+    "completion_tokens": 248,
+    "total_tokens": 8088,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 71
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 6880,
+      "output": 248,
+      "reasoning": 71,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "The held data does not contain the prospectus order book or listing-day subscription/scarcity details needed to judge whether the listing-day move (close 440.58 on 2021-10-27) was justified by the disclosed order book or was mostly scarcity.",
+    "missing": "not in data: prospectus order book / listing subscription and scarcity details; only price.close (listing day 2021-10-27 = 440.58) and general annual-report text are available.",
+    "working": "price.close first row: 2021-10-27 = 440.58 INR. No prospectus/order-book atom or chunk found via claim_search/chunk_search."
+   }
+  }
+ ]
+}

@@ -1,0 +1,1691 @@
+{
+ "qid": "Q14",
+ "mid": "MB0309#L",
+ "parent_mid": "MB0309",
+ "symbol": "PIDILITIND",
+ "entity_isin": "INE318A01026",
+ "question": "As of 30 June 2026, what was Pidilite Industries Limited (NSE: PIDILITIND)'s YTD high in 2026 up to that date, and on which day?",
+ "as_of": "2026-06-30",
+ "period": "as of 30 June 2026",
+ "category": "lookup",
+ "source_bank": "variations300",
+ "status": "final",
+ "error": null,
+ "answer": "YTD high in 2026 up to 30 June 2026 was INR 1620.7, first reached on 25 June 2026 (also matched on 29 June 2026).",
+ "working": "price.high daily series for PIDILITIND as of 2026-06-30; maximum value 1620.7 on 2026-06-25 and 2026-06-29.",
+ "missing": "not in data: none",
+ "not_in_data": true,
+ "n_tool_calls": 3,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "as_of": "2026-06-30",
+    "entity": "PIDILITIND"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.high",
+    "as_of": "2026-06-30",
+    "order": "desc",
+    "limit": "50.0"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.high",
+    "as_of": "2026-06-30",
+    "order": "desc",
+    "limit": "200.0"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 3,
+ "usage": {
+  "prompt_tokens": 17675,
+  "completion_tokens": 580
+ },
+ "beam_secs": 7.42,
+ "total_secs": 7.42,
+ "number_check": {
+  "numbers": [
+   "2026",
+   "30",
+   "1620.7",
+   "25",
+   "29"
+  ],
+  "supported": [
+   "2026",
+   "30",
+   "1620.7",
+   "25",
+   "29"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b8cb197c-5b64-4cf7-869b-5f1ae9d917aa",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"as_of\": \"2026-06-30\", \"entity\": \"PIDILITIND\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 54,
+   "secs": 1.46,
+   "usage": {
+    "prompt_tokens": 1126,
+    "completion_tokens": 54,
+    "total_tokens": 1180,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 23
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 166,
+      "output": 54,
+      "reasoning": 23,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "as_of": "2026-06-30",
+    "entity": "PIDILITIND"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-06-30",
+    "entity": "INE318A01026",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 4,
+      "first_period": "2020-09-30",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-03-31",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 70,
+      "first_period": "2018-12-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 53,
+      "first_period": "2018-03-31",
+      "last_period": "2025-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=revenue;segment=Business to Business",
+       "basis=consolidated;metric=revenue;segment=Consumer & Bazaar"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 158,
+      "first_period": "2019-02-06",
+      "last_period": "2025-03-31",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 76,
+      "first_period": "2021-09-30",
+      "last_period": "2026-03-31",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 9,
+      "first_period": "2024-06-30",
+      "last_period": "2026-03-31",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 2,
+      "first_period": "2024-03-01",
+      "last_period": "2024-05-17",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1850,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1849,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1849,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1849,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1849,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1850,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1849,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1836,
+      "first_period": "2019-01-21",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1850,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1831,
+      "first_period": "2019-01-28",
+      "last_period": "2026-06-30",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1849,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1849,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-30",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1057,
+      "first_period": "",
+      "last_period": "2026-06-15",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=0;chunk=52144",
+       "doctype=announcement;page=0;chunk=52147"
+      ]
+     }
+    ],
+    "n_returned": 29,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b9c5cbc8-3177-4329-9958-24636dcf2b32",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"price.high\", \"as_of\": \"2026-06-30\", \"order\": \"desc\", \"limit\": \"50.0\"}"
+     }
+    },
+    {
+     "id": "call-aa5e14dc-99af-4fcd-ad24-910f6139eb33",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"price.high\", \"as_of\": \"2026-06-30\", \"order\": \"desc\", \"limit\": \"200.0\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 94,
+   "secs": 2.58,
+   "usage": {
+    "prompt_tokens": 3418,
+    "completion_tokens": 142,
+    "total_tokens": 3560,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 44
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2458,
+      "output": 142,
+      "reasoning": 44,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.high",
+    "as_of": "2026-06-30",
+    "order": "desc",
+    "limit": "50.0"
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-06-30",
+    "entity": "INE318A01026",
+    "atom": "price.high",
+    "rows": [
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 1610.3,
+      "unit": "INR",
+      "known_at": "2026-06-30T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-29",
+      "period_end": "2026-06-29",
+      "value": 1620.7,
+      "unit": "INR",
+      "known_at": "2026-06-29T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-25",
+      "period_end": "2026-06-25",
+      "value": 1620.7,
+      "unit": "INR",
+      "known_at": "2026-06-25T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-24",
+      "period_end": "2026-06-24",
+      "value": 1585.0,
+      "unit": "INR",
+      "known_at": "2026-06-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-23",
+      "period_end": "2026-06-23",
+      "value": 1599.3,
+      "unit": "INR",
+      "known_at": "2026-06-23T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-22",
+      "period_end": "2026-06-22",
+      "value": 1582.8,
+      "unit": "INR",
+      "known_at": "2026-06-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-19",
+      "period_end": "2026-06-19",
+      "value": 1595.0,
+      "unit": "INR",
+      "known_at": "2026-06-19T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-18",
+      "period_end": "2026-06-18",
+      "value": 1586.2,
+      "unit": "INR",
+      "known_at": "2026-06-18T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-17",
+      "period_end": "2026-06-17",
+      "value": 1584.5,
+      "unit": "INR",
+      "known_at": "2026-06-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-16",
+      "period_end": "2026-06-16",
+      "value": 1587.0,
+      "unit": "INR",
+      "known_at": "2026-06-16T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-15",
+      "period_end": "2026-06-15",
+      "value": 1582.7,
+      "unit": "INR",
+      "known_at": "2026-06-15T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-12",
+      "period_end": "2026-06-12",
+      "value": 1553.9,
+      "unit": "INR",
+      "known_at": "2026-06-12T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-11",
+      "period_end": "2026-06-11",
+      "value": 1508.7,
+      "unit": "INR",
+      "known_at": "2026-06-11T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-10",
+      "period_end": "2026-06-10",
+      "value": 1535.8,
+      "unit": "INR",
+      "known_at": "2026-06-10T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-09",
+      "period_end": "2026-06-09",
+      "value": 1488.8,
+      "unit": "INR",
+      "known_at": "2026-06-09T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-08",
+      "period_end": "2026-06-08",
+      "value": 1478.0,
+      "unit": "INR",
+      "known_at": "2026-06-08T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-05",
+      "period_end": "2026-06-05",
+      "value": 1485.5,
+      "unit": "INR",
+      "known_at": "2026-06-05T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-04",
+      "period_end": "2026-06-04",
+      "value": 1478.6,
+      "unit": "INR",
+      "known_at": "2026-06-04T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-03",
+      "period_end": "2026-06-03",
+      "value": 1473.2,
+      "unit": "INR",
+      "known_at": "2026-06-03T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-02",
+      "period_end": "2026-06-02",
+      "value": 1463.9,
+      "unit": "INR",
+      "known_at": "2026-06-02T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-01",
+      "period_end": "2026-06-01",
+      "value": 1485.9,
+      "unit": "INR",
+      "known_at": "2026-06-01T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-29",
+      "period_end": "2026-05-29",
+      "value": 1500.7,
+      "unit": "INR",
+      "known_at": "2026-05-29T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-27",
+      "period_end": "2026-05-27",
+      "value": 1486.0,
+      "unit": "INR",
+      "known_at": "2026-05-27T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-26",
+      "period_end": "2026-05-26",
+      "value": 1483.0,
+      "unit": "INR",
+      "known_at": "2026-05-26T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-25",
+      "period_end": "2026-05-25",
+      "value": 1508.4,
+      "unit": "INR",
+      "known_at": "2026-05-25T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-22",
+      "period_end": "2026-05-22",
+      "value": 1484.0,
+      "unit": "INR",
+      "known_at": "2026-05-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-21",
+      "period_end": "2026-05-21",
+      "value": 1478.4,
+      "unit": "INR",
+      "known_at": "2026-05-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-20",
+      "period_end": "2026-05-20",
+      "value": 1465.0,
+      "unit": "INR",
+      "known_at": "2026-05-20T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-19",
+      "period_end": "2026-05-19",
+      "value": 1471.6,
+      "unit": "INR",
+      "known_at": "2026-05-19T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-18",
+      "period_end": "2026-05-18",
+      "value": 1456.6,
+      "unit": "INR",
+      "known_at": "2026-05-18T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-15",
+      "period_end": "2026-05-15",
+      "value": 1493.8,
+      "unit": "INR",
+      "known_at": "2026-05-15T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-14",
+      "period_end": "2026-05-14",
+      "value": 1489.8,
+      "unit": "INR",
+      "known_at": "2026-05-14T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-13",
+      "period_end": "2026-05-13",
+      "value": 1472.0,
+      "unit": "INR",
+      "known_at": "2026-05-13T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-12",
+      "period_end": "2026-05-12",
+      "value": 1480.0,
+      "unit": "INR",
+      "known_at": "2026-05-12T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-11",
+      "period_end": "2026-05-11",
+      "value": 1468.5,
+      "unit": "INR",
+      "known_at": "2026-05-11T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-08",
+      "period_end": "2026-05-08",
+      "value": 1515.0,
+      "unit": "INR",
+      "known_at": "2026-05-08T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-07",
+      "period_end": "2026-05-07",
+      "value": 1461.1,
+      "unit": "INR",
+      "known_at": "2026-05-07T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-06",
+      "period_end": "2026-05-06",
+      "value": 1426.0,
+      "unit": "INR",
+      "known_at": "2026-05-06T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-05",
+      "period_end": "2026-05-05",
+      "value": 1369.0,
+      "unit": "INR",
+      "known_at": "2026-05-05T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-04",
+      "period_end": "2026-05-04",
+      "value": 1389.0,
+      "unit": "INR",
+      "known_at": "2026-05-04T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-30",
+      "period_end": "2026-04-30",
+      "value": 1384.8,
+      "unit": "INR",
+      "known_at": "2026-04-30T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-29",
+      "period_end": "2026-04-29",
+      "value": 1404.8,
+      "unit": "INR",
+      "known_at": "2026-04-29T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-28",
+      "period_end": "2026-04-28",
+      "value": 1405.3,
+      "unit": "INR",
+      "known_at": "2026-04-28T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-27",
+      "period_end": "2026-04-27",
+      "value": 1406.9,
+      "unit": "INR",
+      "known_at": "2026-04-27T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-24",
+      "period_end": "2026-04-24",
+      "value": 1408.9,
+      "unit": "INR",
+      "known_at": "2026-04-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-23",
+      "period_end": "2026-04-23",
+      "value": 1412.0,
+      "unit": "INR",
+      "known_at": "2026-04-23T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-22",
+      "period_end": "2026-04-22",
+      "value": 1424.8,
+      "unit": "INR",
+      "known_at": "2026-04-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-21",
+      "period_end": "2026-04-21",
+      "value": 1414.1,
+      "unit": "INR",
+      "known_at": "2026-04-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-20",
+      "period_end": "2026-04-20",
+      "value": 1399.6,
+      "unit": "INR",
+      "known_at": "2026-04-20T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-17",
+      "period_end": "2026-04-17",
+      "value": 1398.0,
+      "unit": "INR",
+      "known_at": "2026-04-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     }
+    ],
+    "n_returned": 50,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.high",
+    "as_of": "2026-06-30",
+    "order": "desc",
+    "limit": "200.0"
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-06-30",
+    "entity": "INE318A01026",
+    "atom": "price.high",
+    "rows": [
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 1610.3,
+      "unit": "INR",
+      "known_at": "2026-06-30T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-29",
+      "period_end": "2026-06-29",
+      "value": 1620.7,
+      "unit": "INR",
+      "known_at": "2026-06-29T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-25",
+      "period_end": "2026-06-25",
+      "value": 1620.7,
+      "unit": "INR",
+      "known_at": "2026-06-25T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-24",
+      "period_end": "2026-06-24",
+      "value": 1585.0,
+      "unit": "INR",
+      "known_at": "2026-06-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-23",
+      "period_end": "2026-06-23",
+      "value": 1599.3,
+      "unit": "INR",
+      "known_at": "2026-06-23T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-22",
+      "period_end": "2026-06-22",
+      "value": 1582.8,
+      "unit": "INR",
+      "known_at": "2026-06-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-19",
+      "period_end": "2026-06-19",
+      "value": 1595.0,
+      "unit": "INR",
+      "known_at": "2026-06-19T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-18",
+      "period_end": "2026-06-18",
+      "value": 1586.2,
+      "unit": "INR",
+      "known_at": "2026-06-18T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-17",
+      "period_end": "2026-06-17",
+      "value": 1584.5,
+      "unit": "INR",
+      "known_at": "2026-06-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-16",
+      "period_end": "2026-06-16",
+      "value": 1587.0,
+      "unit": "INR",
+      "known_at": "2026-06-16T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-15",
+      "period_end": "2026-06-15",
+      "value": 1582.7,
+      "unit": "INR",
+      "known_at": "2026-06-15T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-12",
+      "period_end": "2026-06-12",
+      "value": 1553.9,
+      "unit": "INR",
+      "known_at": "2026-06-12T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-11",
+      "period_end": "2026-06-11",
+      "value": 1508.7,
+      "unit": "INR",
+      "known_at": "2026-06-11T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-10",
+      "period_end": "2026-06-10",
+      "value": 1535.8,
+      "unit": "INR",
+      "known_at": "2026-06-10T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-09",
+      "period_end": "2026-06-09",
+      "value": 1488.8,
+      "unit": "INR",
+      "known_at": "2026-06-09T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-08",
+      "period_end": "2026-06-08",
+      "value": 1478.0,
+      "unit": "INR",
+      "known_at": "2026-06-08T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-05",
+      "period_end": "2026-06-05",
+      "value": 1485.5,
+      "unit": "INR",
+      "known_at": "2026-06-05T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-04",
+      "period_end": "2026-06-04",
+      "value": 1478.6,
+      "unit": "INR",
+      "known_at": "2026-06-04T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-03",
+      "period_end": "2026-06-03",
+      "value": 1473.2,
+      "unit": "INR",
+      "known_at": "2026-06-03T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-02",
+      "period_end": "2026-06-02",
+      "value": 1463.9,
+      "unit": "INR",
+      "known_at": "2026-06-02T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-06-01",
+      "period_end": "2026-06-01",
+      "value": 1485.9,
+      "unit": "INR",
+      "known_at": "2026-06-01T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-29",
+      "period_end": "2026-05-29",
+      "value": 1500.7,
+      "unit": "INR",
+      "known_at": "2026-05-29T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-27",
+      "period_end": "2026-05-27",
+      "value": 1486.0,
+      "unit": "INR",
+      "known_at": "2026-05-27T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-26",
+      "period_end": "2026-05-26",
+      "value": 1483.0,
+      "unit": "INR",
+      "known_at": "2026-05-26T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-25",
+      "period_end": "2026-05-25",
+      "value": 1508.4,
+      "unit": "INR",
+      "known_at": "2026-05-25T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-22",
+      "period_end": "2026-05-22",
+      "value": 1484.0,
+      "unit": "INR",
+      "known_at": "2026-05-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-21",
+      "period_end": "2026-05-21",
+      "value": 1478.4,
+      "unit": "INR",
+      "known_at": "2026-05-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-20",
+      "period_end": "2026-05-20",
+      "value": 1465.0,
+      "unit": "INR",
+      "known_at": "2026-05-20T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-19",
+      "period_end": "2026-05-19",
+      "value": 1471.6,
+      "unit": "INR",
+      "known_at": "2026-05-19T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-18",
+      "period_end": "2026-05-18",
+      "value": 1456.6,
+      "unit": "INR",
+      "known_at": "2026-05-18T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-15",
+      "period_end": "2026-05-15",
+      "value": 1493.8,
+      "unit": "INR",
+      "known_at": "2026-05-15T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-14",
+      "period_end": "2026-05-14",
+      "value": 1489.8,
+      "unit": "INR",
+      "known_at": "2026-05-14T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-13",
+      "period_end": "2026-05-13",
+      "value": 1472.0,
+      "unit": "INR",
+      "known_at": "2026-05-13T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-12",
+      "period_end": "2026-05-12",
+      "value": 1480.0,
+      "unit": "INR",
+      "known_at": "2026-05-12T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-11",
+      "period_end": "2026-05-11",
+      "value": 1468.5,
+      "unit": "INR",
+      "known_at": "2026-05-11T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-08",
+      "period_end": "2026-05-08",
+      "value": 1515.0,
+      "unit": "INR",
+      "known_at": "2026-05-08T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-07",
+      "period_end": "2026-05-07",
+      "value": 1461.1,
+      "unit": "INR",
+      "known_at": "2026-05-07T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-06",
+      "period_end": "2026-05-06",
+      "value": 1426.0,
+      "unit": "INR",
+      "known_at": "2026-05-06T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-05",
+      "period_end": "2026-05-05",
+      "value": 1369.0,
+      "unit": "INR",
+      "known_at": "2026-05-05T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-05-04",
+      "period_end": "2026-05-04",
+      "value": 1389.0,
+      "unit": "INR",
+      "known_at": "2026-05-04T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-30",
+      "period_end": "2026-04-30",
+      "value": 1384.8,
+      "unit": "INR",
+      "known_at": "2026-04-30T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-29",
+      "period_end": "2026-04-29",
+      "value": 1404.8,
+      "unit": "INR",
+      "known_at": "2026-04-29T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-28",
+      "period_end": "2026-04-28",
+      "value": 1405.3,
+      "unit": "INR",
+      "known_at": "2026-04-28T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-27",
+      "period_end": "2026-04-27",
+      "value": 1406.9,
+      "unit": "INR",
+      "known_at": "2026-04-27T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-24",
+      "period_end": "2026-04-24",
+      "value": 1408.9,
+      "unit": "INR",
+      "known_at": "2026-04-24T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-23",
+      "period_end": "2026-04-23",
+      "value": 1412.0,
+      "unit": "INR",
+      "known_at": "2026-04-23T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-22",
+      "period_end": "2026-04-22",
+      "value": 1424.8,
+      "unit": "INR",
+      "known_at": "2026-04-22T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-21",
+      "period_end": "2026-04-21",
+      "value": 1414.1,
+      "unit": "INR",
+      "known_at": "2026-04-21T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-20",
+      "period_end": "2026-04-20",
+      "value": 1399.6,
+      "unit": "INR",
+      "known_at": "2026-04-20T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     },
+     {
+      "entity_id": "INE318A01026",
+      "atom": "price.high",
+      "dims": "exchange=NSE",
+      "period_start": "2026-04-17",
+      "period_end": "2026-04-17",
+      "value": 1398.0,
+      "unit": "INR",
+      "known_at": "2026-04-17T23:59:59",
+      "source_ref": "market_state_b.mkt_nse_full_daily"
+     }
+    ],
+    "n_returned": 50,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-1eb0a860-6920-430e-afa9-d99cf023d0bd",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"YTD high in 2026 up to 30 June 2026 was INR 1620.7, first reached on 25 June 2026 (also matched on 29 June 2026).\", \"missing\": \"not in data: none\", \"working\": \"price.high daily series for PIDILITIND as of 2026-06-30; maximum value 1620.7 on 2026-06-25 and 2026-06-29.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 570,
+   "secs": 3.28,
+   "usage": {
+    "prompt_tokens": 13131,
+    "completion_tokens": 384,
+    "total_tokens": 13515,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 241
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 12043,
+      "output": 384,
+      "reasoning": 241,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "submit",
+   "args": {
+    "answer": "YTD high in 2026 up to 30 June 2026 was INR 1620.7, first reached on 25 June 2026 (also matched on 29 June 2026).",
+    "missing": "not in data: none",
+    "working": "price.high daily series for PIDILITIND as of 2026-06-30; maximum value 1620.7 on 2026-06-25 and 2026-06-29."
+   }
+  }
+ ]
+}

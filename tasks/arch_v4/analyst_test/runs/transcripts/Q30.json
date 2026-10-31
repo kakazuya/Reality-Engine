@@ -1,0 +1,857 @@
+{
+ "qid": "Q30",
+ "mid": "MB0978#MS",
+ "parent_mid": "MB0978",
+ "symbol": "INDHOTEL",
+ "entity_isin": "INE053A01029",
+ "question": "The Indian Hotels Company Limited: what does a new store earn at maturity, and how long is the payback at the current capex per store?",
+ "as_of": "2026-10-19",
+ "period": "FY24-FY26",
+ "category": "explanation",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "The held data does not state a single, standardized \"new store at maturity\" earnings figure or a \"payback at current capex per store\" for IHCL. Available guidance is project-specific: e.g., Ekta Nagar greenfield assets expected payback \"definitely not exceed 7 years, possibly 4-5 years,\" and Taj Ganges' new 100-room wing turned PBT-positive in its first quarter with 40% EBITDA margin. Routine capex is guided at ~INR 500-600 crores/year and total CAPEX ~INR 1,000-1,200 crores/year (including new/renovation/expansion), but no per-store capex or maturity-EBITDA is given.",
+ "working": "claim_search/chunk_search results: Ekta Nagar payback 4-7 years (concall 2025-05-12); Taj Ganges 100-room wing PBT-positive first quarter, 40% EBITDA margin (concall 2026-07-27); routine capex INR500-600 cr/yr; total CAPEX INR1,000-1,200 cr/yr (concall 2026-02-19, 2025-05-12). No per-store capex or maturity earnings figure found.",
+ "missing": "not in data: a standardized \"new store at maturity\" earnings metric and \"payback at current capex per store\" for IHCL; only project-specific payback anecdotes exist.",
+ "not_in_data": true,
+ "n_tool_calls": 4,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "claim_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "terms": "store maturity earn payback capex"
+   },
+   "ok": true
+  },
+  {
+   "call": 3,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "new store maturity earn payback capex per store"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "new store at maturity EBITDA payback years"
+   },
+   "ok": true
+  },
+  {
+   "call": 7,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "at maturity EBITDA store capex per store"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 28135,
+  "completion_tokens": 730
+ },
+ "beam_secs": 9.28,
+ "total_secs": 9.28,
+ "number_check": {
+  "numbers": [
+   "7",
+   "4",
+   "5",
+   "100",
+   "40",
+   "500",
+   "600",
+   "1000",
+   "1200"
+  ],
+  "supported": [
+   "7",
+   "4",
+   "5",
+   "100",
+   "40",
+   "600",
+   "1000",
+   "1200"
+  ],
+  "question_only": [],
+  "unsupported": [
+   "500"
+  ],
+  "flagged": [
+   "500"
+  ],
+  "ok": false,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-8d79e97b-a550-49dc-bf4f-63f799e6a4e8",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"INDHOTEL\", \"terms\": \"store maturity earn payback capex\"}"
+     }
+    },
+    {
+     "id": "call-168d18a8-d0b2-4b7d-80cf-a0898d331ce3",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"INDHOTEL\", \"query\": \"new store maturity earn payback capex per store\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 232,
+   "secs": 1.78,
+   "usage": {
+    "prompt_tokens": 1103,
+    "completion_tokens": 126,
+    "total_tokens": 1229,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 60
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 143,
+      "output": 126,
+      "reasoning": 60,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "terms": "store maturity earn payback capex"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE053A01029",
+    "rows": [
+     {
+      "claim_id": 279677,
+      "entity_id": "INE053A01029",
+      "topic": "cash",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "We will use the cash. We'll keep always a strategic reserve, and we will keep using the cash for projects which have a very fast payback period.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "balance_sheet_and_cash",
+      "known_at": "2026-07-27T10:39:20.087"
+     },
+     {
+      "claim_id": 279701,
+      "entity_id": "INE053A01029",
+      "topic": "growth",
+      "direction": "neutral",
+      "direction_raw": "maintained",
+      "magnitude": null,
+      "unit": "%",
+      "horizon": "year ahead",
+      "certainty": "stated",
+      "guidance_vs_fact": "guidance",
+      "quote": "As we look ahead, we remain confident of delivering what we have promised and guided for, which is double-digit revenue growth with sustained margins, strong cash generation and improved quality of earnings.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "guidance",
+      "known_at": "2026-07-27T10:39:20.087"
+     },
+     {
+      "claim_id": 279688,
+      "entity_id": "INE053A01029",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 17.0,
+      "unit": "million",
+      "horizon": "last 4 months",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "International segment, we were a bit not fortunate in the last 4 months. We were -- we've spent GBP 17 million in London to do a new lobby in St. James, a new bar, a new cigar lounge, whiskey lounge, doubling of the chambers.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capex",
+      "known_at": "2026-07-27T10:39:20.087"
+     },
+     {
+      "claim_id": 279689,
+      "entity_id": "INE053A01029",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": "INR crore",
+      "horizon": "going forward",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "So if every year, you're spending INR500 crores, INR600 crores on your routine capex going forward",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capex",
+      "known_at": "2026-07-27T10:39:20.087"
+     },
+     {
+      "claim_id": 279690,
+      "entity_id": "INE053A01029",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": "INR crore",
+      "horizon": "going forward",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "So if every year, you're spending INR500 crores, INR600 crores on your routine capex going forward",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capex",
+      "known_at": "2026-07-27T10:39:20.087"
+     },
+     {
+      "claim_id": 279824,
+      "entity_id": "INE053A01029",
+      "topic": "capex",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 1000.0,
+      "unit": "INR crores",
+      "horizon": "this year",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "We are planning to spend approximately, we have guided on that before also, approximately INR 1,000 crores in CAPEX, which includes routine and new, and also renovation or expansion.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2026-02-19T12:54:33.24"
+     },
+     {
+      "claim_id": 279792,
+      "entity_id": "INE053A01029",
+      "topic": "growth",
+      "direction": "neutral",
+      "direction_raw": "maintained",
+      "magnitude": null,
+      "unit": "%",
+      "horizon": "fy’26 and fy’27",
+      "certainty": "stated",
+      "guidance_vs_fact": "guidance",
+      "quote": "Collectively these levers give us confidence in delivering double digit revenue growth in FY’26 and FY’27 with improving quality of earnings and sustained margin strength.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "guidance",
+      "known_at": "2026-02-19T12:54:33.24"
+     },
+     {
+      "claim_id": 279766,
+      "entity_id": "INE053A01029",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "it's not actually CAPEX per room kind of a metric here because it's also how many wellness slots you sort of put in, how many treatment rooms you put in and what kind of medical facilities you put in.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "analyst_pushback",
+      "known_at": "2026-02-19T12:54:33.24"
+     },
+     {
+      "claim_id": 279784,
+      "entity_id": "INE053A01029",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 1000.0,
+      "unit": "INR crores",
+      "horizon": "this year",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "We are planning to spend approximately, we have guided on that before also, approximately INR 1,000 crores in CAPEX, which includes routine and new, and also renovation or expansion.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capex",
+      "known_at": "2026-02-19T12:54:33.24"
+     },
+     {
+      "claim_id": 279902,
+      "entity_id": "INE053A01029",
+      "topic": "capex",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 1200.0,
+      "unit": "INR crores",
+      "horizon": "FY26",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "So overall, we have guided towards INR 1,200 crores plus CAPEX for the year, and we feel comfortable about that.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2025-05-12T12:47:02.397"
+     }
+    ],
+    "n_returned": 10,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "new store maturity earn payback capex per store"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE053A01029",
+    "rows": [
+     {
+      "chunk_id": 96504,
+      "doc_id": "sha256:1d3fe3307e20c35bbc30ceb40dd41786eea322c427ca0cf7ec66fe2ecc1e19b0",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · MARKET LEADERSHIP Commanding Industry Premium · p7 · known 2024-04-24T18:49:39",
+      "section": "MARKET LEADERSHIP Commanding Industry Premium",
+      "speaker": null,
+      "known_at": "2024-04-24T18:49:39",
+      "event_date": "2024-04-24",
+      "fiscal_period": "",
+      "page_from": 7,
+      "page_to": 7,
+      "char_len": 465,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -15.474945610753855,
+      "body_excerpt": "6 MARKET LEADERSHIP Commanding Industry Premium Source: CoSTAR *Data for Domestic Hotels Incl. Ginger *Calculated on Same Store Basis IHCL Domestic Hotels – FY 2023-24 RevPAR 4 65% 74% 43% 146% 30% 44% 57% 31% 34% 50% 0% 20% 40% 60% 80% 100% 120% 140% 160% 0 2,000 4,000 6,000 8,000 10,000 12,000 14,000 16,000 18,000 20,000 ALL INDIA Goa Mumbai Rajasthan Delhi & NCR Bengaluru Hyderabad Chennai Kolkata Kerala Industry IHCL Domestic (Same Store) Premium"
+     },
+     {
+      "chunk_id": 100582,
+      "doc_id": "sha256:c730342ec36d5ec2909fa444db61a71605f8ad050dd3a6b202070087454670f6",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · IHCL WELL-PLACED TO SHAPE THE FUTURE · p22 · known 2025-05-05T18:18:07",
+      "section": "IHCL WELL-PLACED TO SHAPE THE FUTURE",
+      "speaker": null,
+      "known_at": "2025-05-05T18:18:07",
+      "event_date": "2025-05-05",
+      "fiscal_period": "",
+      "page_from": 22,
+      "page_to": 22,
+      "char_len": 736,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -15.374548907492828,
+      "body_excerpt": "21 IHCL WELL-PLACED TO SHAPE THE FUTURE The India Growth Story › India relatively Resilient to Trade/Tariff wars › Strong Focus on Infrastructure Development MACRO- ECONOMIC Strong Demand, Immense Growth Potential › Upcycle continues with Demand outpacing Supply › Foreign Tourist arrivals Future upside potential HOSPITALITY INDUSTRY FY26 : WE CONTINUE TO BE CONFIDENT OF DOUBLE DIGIT REVENUE GROWTH TajSATS : new kitchen at Jewar airport Not Like for like growth 30+ new hotels 3 new hotels on Balance sheet Continued momentum of new business Ginger, Qmin, amã, Tree of Life Same store performance Capture growing MICE segment 70+ wedding dates Heads of State visits Leverage Scale & Brandscape Focus on TRevPAR growth"
+     },
+     {
+      "chunk_id": 96529,
+      "doc_id": "sha256:1d3fe3307e20c35bbc30ceb40dd41786eea322c427ca0cf7ec66fe2ecc1e19b0",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · DETAILS ON · p36 · known 2024-04-24T18:49:39",
+      "section": "DETAILS ON",
+      "speaker": null,
+      "known_at": "2024-04-24T18:49:39",
+      "event_date": "2024-04-24",
+      "fiscal_period": "",
+      "page_from": 36,
+      "page_to": 36,
+      "char_len": 289,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -13.550905755370941,
+      "body_excerpt": "35 RE-IMAGINED GINGER Lean Luxe Leading to Profitable Growth ₹ 25 Cr Rev. Mumbai Airport (Nov-Mar) 80% Occ.; ₹6,700 ARR ₹ 486 Cr Rev. Brand Topline ↑ 34% YoY 50%+ EBITDAR Margins* Profitable Business Model 2/3rds Portfolio Now Lean Luxe *Margin for Lean Luxe Hotels on Same Store Basis"
+     },
+     {
+      "chunk_id": 99056,
+      "doc_id": "sha256:7ce1a4a96dbc48b1205792f55736259aa5e90ca874fb76ff214261d4670947ac",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · FINANCIAL IMPLICATIONS · p42 · known 2024-11-19T16:17:25",
+      "section": "FINANCIAL IMPLICATIONS",
+      "speaker": null,
+      "known_at": "2024-11-19T16:17:25",
+      "event_date": "2024-11-19",
+      "fiscal_period": "",
+      "page_from": 42,
+      "page_to": 42,
+      "char_len": 494,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -12.806081688313927,
+      "body_excerpt": "41 6,300 11,000 YTD Oct Growth 8% - 5,000 10,000 15,000 20,000 25,000 FY17 FY18 FY19 FY20 FY21 FY22 FY23 FY24 FY25 FY30 ₹ / Night Growth Momentum to Continue Growth for existing assets driven by Asset Management interventions & Sector Growth Like for Like RevPAR growth of High single digit Numbers rounded off to nearest hundreds CAGR 8% LIKE FOR LIKE (LFL) REVPAR CAGR MOMENTUM TO CONTINUE TRADITIONAL BUSINESS 1 Data for Traditional Business - IHCL Consol. Domestic same store basis"
+     },
+     {
+      "chunk_id": 99386,
+      "doc_id": "sha256:7212f8978e24da5c5e92a17c504809e43ee0cfe994fcf097e2093ae12645ba84",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · YTD Oct · p20 · known 2024-12-12T17:01:19",
+      "section": "YTD Oct",
+      "speaker": null,
+      "known_at": "2024-12-12T17:01:19",
+      "event_date": "2024-12-12",
+      "fiscal_period": "",
+      "page_from": 20,
+      "page_to": 20,
+      "char_len": 494,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -12.806081688313927,
+      "body_excerpt": "19 6,300 11,000 YTD Oct Growth 8% - 5,000 10,000 15,000 20,000 25,000 FY17 FY18 FY19 FY20 FY21 FY22 FY23 FY24 FY25 FY30 ₹ / Night Growth Momentum to Continue Growth for existing assets driven by Asset Management interventions & Sector Growth Like for Like RevPAR growth of High single digit Numbers rounded off to nearest hundreds CAGR 8% LIKE FOR LIKE (LFL) REVPAR CAGR MOMENTUM TO CONTINUE TRADITIONAL BUSINESS 1 Data for Traditional Business - IHCL Consol. Domestic same store basis"
+     },
+     {
+      "chunk_id": 97413,
+      "doc_id": "sha256:03ae088728670beeba107fdf551403e6c506f693574cf41eec80f4a388d07776",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · GLOBAL CONFERENCE CALL Q1 FY25 · p6 · known 2024-07-19T18:08:55",
+      "section": "GLOBAL CONFERENCE CALL Q1 FY25",
+      "speaker": null,
+      "known_at": "2024-07-19T18:08:55",
+      "event_date": "2024-07-19",
+      "fiscal_period": "",
+      "page_from": 6,
+      "page_to": 6,
+      "char_len": 650,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -12.385604010652742,
+      "body_excerpt": "5 OUTPERFORMING INDUSTRY Commanding RevPAR Premium 4,300 6,900 Industry IHCL Industry Average ARR (₹) OCCUPANCY RevPAR (₹) Industry- Leading Metrics (YTD May FY25) Business Activity impacted by Elections/Code of Conduct Base effect – 15 lesser auspicious wedding dates ~25% lower Wedding Revenue (for IHCL Enterprise) Impact of Heatwave across the country *IHCL Like for Like Data for Enterprise Domestic Hotels (YTD May) Source: CoSTAR Numbers reported for YTD May FY25 rounded off to the nearest 100 60% Premium 38% Premium 9% Points Premium 7,100 9,900 Industry IHCL 61% 70% Industry IHCL IHCL Domestic (Same Store) Short Term Headwinds in Q1"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "new",
+     "store",
+     "maturity",
+     "earn",
+     "payback",
+     "capex",
+     "store"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-36775d1a-79d3-4682-ae8c-5477252a1c6a",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"INDHOTEL\", \"query\": \"new store at maturity EBITDA payback years\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 111,
+   "secs": 1.56,
+   "usage": {
+    "prompt_tokens": 5832,
+    "completion_tokens": 61,
+    "total_tokens": 5893,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 28
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 4744,
+      "output": 61,
+      "reasoning": 28,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "new store at maturity EBITDA payback years"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE053A01029",
+    "rows": [
+     {
+      "chunk_id": 95562,
+      "doc_id": "sha256:92a700c1f5fcb325d8fc30d6588e5a9f56ae83aa77ceaa664a3f1eed6f02310b",
+      "doc_type": "concall",
+      "header": "INDHOTEL · INE053A01029 · Concall transcript · Q1FY27 · Opening remarks · p3 · known 2026-07-27T10:39:20",
+      "section": "Opening remarks",
+      "speaker": "puneet chhatwal",
+      "known_at": "2026-07-27T10:39:20",
+      "event_date": "2026-07-21",
+      "fiscal_period": "Q1FY27",
+      "page_from": 3,
+      "page_to": 3,
+      "char_len": 5597,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -12.311434919597891,
+      "body_excerpt": "… despite an additional impact of approximately INR15 crores relating to the ramp-up of our new asset in Frankfurt, which obviously includes preopening costs also and commissioning of the new TajSATS kitchen in Noida outside of Delhi or Delhi-NCR. Number four, asset management continues to drive growth for us. Our asset management strategy continues to be a key driver and value creator. During the last financial year, we completed major upgrades across several marquee hotels, including Taj Palace New Delhi, the President in Mumbai, the Taj West End in Bengaluru and Taj Fort Aguada in Goa with over 300 rooms renovated. These investments are now translating into stronger pricing power and improved operating performance across key markets. Given that a significant part of these renovations were undertaken in the first half of last year, we expect this momentum to continue in Q2. Another good example is Taj Ganges in Banaras, where the new 100-room wing commissioned in March 2026 turned PBT positive in its very first quarter of operations. The expansion helped drive a 44% year-on-year growth in revenue while delivering an EBITDA margin of 40% in Q1. This underscores our ability to deploy capital in a disciplined manner, unlock value from our existing assets and generate strong returns with a relatively short payback period. Moving on to number five is our portfolio growth. We continue to deliver industry-leading portfolio expansion with 20 hotels signed and 11 hotels opened in Q1 o …"
+     },
+     {
+      "chunk_id": 90852,
+      "doc_id": "sha256:51ce240ae6d444f0b2d4a97dd0e48fac81589b90c150fffdc78c2a8f73c466da",
+      "doc_type": "concall",
+      "header": "INDHOTEL · INE053A01029 · Concall transcript · - · Q&A (cont.) · Q: Good evening, everyone, and thank you for taking my question. And congrat · p7 · known 2025-05-12T12:47:02",
+      "section": "Q&A (cont.) · Q: Good evening, everyone, and thank you for taking my question. And congratulations to the team on a great ending to an exceptional year, and ",
+      "speaker": "puneet chhatwal",
+      "known_at": "2025-05-12T12:47:02",
+      "event_date": "2025-05-05",
+      "fiscal_period": "",
+      "page_from": 7,
+      "page_to": 7,
+      "char_len": 1637,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -11.442212009561068,
+      "body_excerpt": "Puneet Chhatwal: I would just like to add, see, there is no 1 size fits all. The greenfield opportunities in Tier-2, Tier-3 cities or new markets are quite interesting. For example, we are going to open this year greenfield in Ekta Nagar Vivanta and a Ginger, both together. Now that opportunity is very interesting because of so many visitors going to Statute of Unity every day, but also how that Ekta Nagar is going to evolve based on the entire infrastructure development program that the government has put in place and the importance that the government has given there. From our point of view that land came at a very compelling proposition and to build straightforward greenfield assets was at a very reasonable cost. So we expect very quick payback of projects like this, which will definitely not exceed 7 years. If we are lucky, it could be in 4 to 5 years' time. And such projects, we will always pursue in the ethos of Tata Group in terms of both nation building, but they are also very important in deploying our own capital and we will keep increasing our return on capital employed. Karan Khanna: This is helpful. Thanks. My second question, in Slide #26 of the investor presentation, we can see that the share of bookings from your own website has increased by 100 bps to 15% in FY '25. Could you highlight the savings that accrue to you from change in this mix? And what aspiration or plans that you have to increase this share going ahead? And if you can also quantify what cost ef …"
+     },
+     {
+      "chunk_id": 100582,
+      "doc_id": "sha256:c730342ec36d5ec2909fa444db61a71605f8ad050dd3a6b202070087454670f6",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · IHCL WELL-PLACED TO SHAPE THE FUTURE · p22 · known 2025-05-05T18:18:07",
+      "section": "IHCL WELL-PLACED TO SHAPE THE FUTURE",
+      "speaker": null,
+      "known_at": "2025-05-05T18:18:07",
+      "event_date": "2025-05-05",
+      "fiscal_period": "",
+      "page_from": 22,
+      "page_to": 22,
+      "char_len": 736,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.258251226473888,
+      "body_excerpt": "21 IHCL WELL-PLACED TO SHAPE THE FUTURE The India Growth Story › India relatively Resilient to Trade/Tariff wars › Strong Focus on Infrastructure Development MACRO- ECONOMIC Strong Demand, Immense Growth Potential › Upcycle continues with Demand outpacing Supply › Foreign Tourist arrivals Future upside potential HOSPITALITY INDUSTRY FY26 : WE CONTINUE TO BE CONFIDENT OF DOUBLE DIGIT REVENUE GROWTH TajSATS : new kitchen at Jewar airport Not Like for like growth 30+ new hotels 3 new hotels on Balance sheet Continued momentum of new business Ginger, Qmin, amã, Tree of Life Same store performance Capture growing MICE segment 70+ wedding dates Heads of State visits Leverage Scale & Brandscape Focus on TRevPAR growth"
+     },
+     {
+      "chunk_id": 61436,
+      "doc_id": "sha256:6063f6e390398bd6a7da2a623e7aafc03231b4ffc7b81dd17cfe419992e08e0e",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY25 · TWELVE CONSECUTIVE QUARTERS OF RECORD PERFORMANCE · p4 · known 2025-06-13T12:35:22",
+      "section": "TWELVE CONSECUTIVE QUARTERS OF RECORD PERFORMANCE",
+      "speaker": null,
+      "known_at": "2025-06-13T12:35:22",
+      "event_date": "2025-06-13",
+      "fiscal_period": "FY25",
+      "page_from": 4,
+      "page_to": 4,
+      "char_len": 1038,
+      "title": "INDHOTEL annual report 2025-03-31",
+      "score": -9.163514142331323,
+      "body_excerpt": "TWELVE CONSECUTIVE QUARTERS OF RECORD PERFORMANCE The Indian Hotels Company Limited (IHCL) remains steadfast in its commitment of being the most valued, responsible and profitable hospitality eco-system in South Asia. We are proud to share that the targets set under our Strategy ‘Ahvaan 2025’ were achieved well ahead of schedule. Building on this momentum, we have unveiled ‘Accelerate 2030’ — our new strategic roadmap—during a year that also marked twelve consecutive quarters and three full years of record financial performance. Under our comprehensive strategy Accelerate 2030, IHCL will continue to lead the industry by setting new benchmarks through strategic portfolio expansion, scaling new businesses, continuous innovation, and responsible progress on our sustainability initiatives. S8,565 crores Consolidated Revenue S14,800 crores* Enterprise Revenue S1,603 crores Consolidated PAT (Before exceptional item) S1,14,131 crores Market Capitalisation# S3,000 crores Consolidated EBITDA 35% Consolidated EBITDA Margin"
+     },
+     {
+      "chunk_id": 96507,
+      "doc_id": "sha256:1d3fe3307e20c35bbc30ceb40dd41786eea322c427ca0cf7ec66fe2ecc1e19b0",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · Short to Medium term · p12 · known 2024-04-24T18:49:39",
+      "section": "Short to Medium term",
+      "speaker": null,
+      "known_at": "2024-04-24T18:49:39",
+      "event_date": "2024-04-24",
+      "fiscal_period": "",
+      "page_from": 12,
+      "page_to": 12,
+      "char_len": 514,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -8.92342906432047,
+      "body_excerpt": "11 FY18 FY24 Short to Medium term 8% 5,950 FY18 FY24 Short to Medium term 3,750 3% 3% 8% 1,800 600 UNIQUE MIX Capital Heavy to Drive Operating Leverage EBITDA ₹/ CRORES New Hotels Existing Hotels REVENUE ₹/ CRORES ~10% CAGR 21% CAGR Operating Leverage to drive Margins 6 8% CAGR * From 2019 / 20 onwards, numbers are basis Post-IND AS figures. % denotes share of New hotels Short to medium term indicates expected share in a period of 2-4 years Asset management initiatives & strategically adding new hotels"
+     },
+     {
+      "chunk_id": 86796,
+      "doc_id": "sha256:a2b746077a99ce7fbd970a682b0566f98a5db031eb7ccffef5b09fd5d62d2edf",
+      "doc_type": "concall",
+      "header": "INDHOTEL · INE053A01029 · Concall transcript · - · Q&A · p13 · known 2024-04-30T16:25:43",
+      "section": "Q&A",
+      "speaker": "bharat sheth",
+      "known_at": "2024-04-30T16:25:43",
+      "event_date": "2024-04-24",
+      "fiscal_period": "",
+      "page_from": 13,
+      "page_to": 13,
+      "char_len": 1767,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -8.916662069066016,
+      "body_excerpt": "… oduct, again these are on the asset-light model? Puneet Chhatwal: Yes. At the moment, the 15 that we have highlighted, they are all on asset light. Moderator: The next question is from the line of Bharat Sheth from Quest Investment. Bharat Sheth: Congratulations, Puneet and team. Sir my question is on -- first on this IT spend. So if they have to really look at ROI or so is it for creating more business or also including cost savings. So if you can give a little more color and how do we see its payback time? Giridhar Sanjeevi: So IT spend, as you see, what we've outlined, there are 2, 3 big areas. Basically, the ERP software, which is really the heart of the financial software. We're upgrading it to a much -- the most modern software, which is for S/4HANA RISE, and we expect it to actually give us a lot of productivity gains, once it is fully rolled out across the portfolio. And these could be things like implementing a shared service and getting cost savings as we scale up. Finally we're also doing a PMS upgrade, which is basically moving on a very modern -- upgrading from current PMS which we have on to a -- on cloud PMS. Again, this will go hand-in-hand with the ERP upgrade. And I think the benefit of this you will see over the next 2, 3, 4 years because this is not something which is -- you see the benefit immediately because it's a thing about productivity and savings, which will throw into the P&L over a period of time. And I think as an organization, we've been leaders …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "new",
+     "store",
+     "maturity",
+     "EBITDA",
+     "payback",
+     "years"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-a4331d13-4830-410c-a7d5-3243c3a7eb9a",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"INDHOTEL\", \"query\": \"at maturity EBITDA store capex per store\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 273,
+   "secs": 1.79,
+   "usage": {
+    "prompt_tokens": 9165,
+    "completion_tokens": 103,
+    "total_tokens": 9268,
+    "prompt_tokens_details": {
+     "cached_tokens": 5824
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 65
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3341,
+      "output": 103,
+      "reasoning": 65,
+      "cache_read": 5824,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "at maturity EBITDA store capex per store"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE053A01029",
+    "rows": [
+     {
+      "chunk_id": 96504,
+      "doc_id": "sha256:1d3fe3307e20c35bbc30ceb40dd41786eea322c427ca0cf7ec66fe2ecc1e19b0",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · MARKET LEADERSHIP Commanding Industry Premium · p7 · known 2024-04-24T18:49:39",
+      "section": "MARKET LEADERSHIP Commanding Industry Premium",
+      "speaker": null,
+      "known_at": "2024-04-24T18:49:39",
+      "event_date": "2024-04-24",
+      "fiscal_period": "",
+      "page_from": 7,
+      "page_to": 7,
+      "char_len": 465,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -15.474945610753855,
+      "body_excerpt": "6 MARKET LEADERSHIP Commanding Industry Premium Source: CoSTAR *Data for Domestic Hotels Incl. Ginger *Calculated on Same Store Basis IHCL Domestic Hotels – FY 2023-24 RevPAR 4 65% 74% 43% 146% 30% 44% 57% 31% 34% 50% 0% 20% 40% 60% 80% 100% 120% 140% 160% 0 2,000 4,000 6,000 8,000 10,000 12,000 14,000 16,000 18,000 20,000 ALL INDIA Goa Mumbai Rajasthan Delhi & NCR Bengaluru Hyderabad Chennai Kolkata Kerala Industry IHCL Domestic (Same Store) Premium"
+     },
+     {
+      "chunk_id": 96529,
+      "doc_id": "sha256:1d3fe3307e20c35bbc30ceb40dd41786eea322c427ca0cf7ec66fe2ecc1e19b0",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · DETAILS ON · p36 · known 2024-04-24T18:49:39",
+      "section": "DETAILS ON",
+      "speaker": null,
+      "known_at": "2024-04-24T18:49:39",
+      "event_date": "2024-04-24",
+      "fiscal_period": "",
+      "page_from": 36,
+      "page_to": 36,
+      "char_len": 289,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -13.550905755370941,
+      "body_excerpt": "35 RE-IMAGINED GINGER Lean Luxe Leading to Profitable Growth ₹ 25 Cr Rev. Mumbai Airport (Nov-Mar) 80% Occ.; ₹6,700 ARR ₹ 486 Cr Rev. Brand Topline ↑ 34% YoY 50%+ EBITDAR Margins* Profitable Business Model 2/3rds Portfolio Now Lean Luxe *Margin for Lean Luxe Hotels on Same Store Basis"
+     },
+     {
+      "chunk_id": 99056,
+      "doc_id": "sha256:7ce1a4a96dbc48b1205792f55736259aa5e90ca874fb76ff214261d4670947ac",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · FINANCIAL IMPLICATIONS · p42 · known 2024-11-19T16:17:25",
+      "section": "FINANCIAL IMPLICATIONS",
+      "speaker": null,
+      "known_at": "2024-11-19T16:17:25",
+      "event_date": "2024-11-19",
+      "fiscal_period": "",
+      "page_from": 42,
+      "page_to": 42,
+      "char_len": 494,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -12.806081688313927,
+      "body_excerpt": "41 6,300 11,000 YTD Oct Growth 8% - 5,000 10,000 15,000 20,000 25,000 FY17 FY18 FY19 FY20 FY21 FY22 FY23 FY24 FY25 FY30 ₹ / Night Growth Momentum to Continue Growth for existing assets driven by Asset Management interventions & Sector Growth Like for Like RevPAR growth of High single digit Numbers rounded off to nearest hundreds CAGR 8% LIKE FOR LIKE (LFL) REVPAR CAGR MOMENTUM TO CONTINUE TRADITIONAL BUSINESS 1 Data for Traditional Business - IHCL Consol. Domestic same store basis"
+     },
+     {
+      "chunk_id": 99386,
+      "doc_id": "sha256:7212f8978e24da5c5e92a17c504809e43ee0cfe994fcf097e2093ae12645ba84",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · YTD Oct · p20 · known 2024-12-12T17:01:19",
+      "section": "YTD Oct",
+      "speaker": null,
+      "known_at": "2024-12-12T17:01:19",
+      "event_date": "2024-12-12",
+      "fiscal_period": "",
+      "page_from": 20,
+      "page_to": 20,
+      "char_len": 494,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -12.806081688313927,
+      "body_excerpt": "19 6,300 11,000 YTD Oct Growth 8% - 5,000 10,000 15,000 20,000 25,000 FY17 FY18 FY19 FY20 FY21 FY22 FY23 FY24 FY25 FY30 ₹ / Night Growth Momentum to Continue Growth for existing assets driven by Asset Management interventions & Sector Growth Like for Like RevPAR growth of High single digit Numbers rounded off to nearest hundreds CAGR 8% LIKE FOR LIKE (LFL) REVPAR CAGR MOMENTUM TO CONTINUE TRADITIONAL BUSINESS 1 Data for Traditional Business - IHCL Consol. Domestic same store basis"
+     },
+     {
+      "chunk_id": 97413,
+      "doc_id": "sha256:03ae088728670beeba107fdf551403e6c506f693574cf41eec80f4a388d07776",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · GLOBAL CONFERENCE CALL Q1 FY25 · p6 · known 2024-07-19T18:08:55",
+      "section": "GLOBAL CONFERENCE CALL Q1 FY25",
+      "speaker": null,
+      "known_at": "2024-07-19T18:08:55",
+      "event_date": "2024-07-19",
+      "fiscal_period": "",
+      "page_from": 6,
+      "page_to": 6,
+      "char_len": 650,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -12.385604010652742,
+      "body_excerpt": "5 OUTPERFORMING INDUSTRY Commanding RevPAR Premium 4,300 6,900 Industry IHCL Industry Average ARR (₹) OCCUPANCY RevPAR (₹) Industry- Leading Metrics (YTD May FY25) Business Activity impacted by Elections/Code of Conduct Base effect – 15 lesser auspicious wedding dates ~25% lower Wedding Revenue (for IHCL Enterprise) Impact of Heatwave across the country *IHCL Like for Like Data for Enterprise Domestic Hotels (YTD May) Source: CoSTAR Numbers reported for YTD May FY25 rounded off to the nearest 100 60% Premium 38% Premium 9% Points Premium 7,100 9,900 Industry IHCL 61% 70% Industry IHCL IHCL Domestic (Same Store) Short Term Headwinds in Q1"
+     },
+     {
+      "chunk_id": 97427,
+      "doc_id": "sha256:03ae088728670beeba107fdf551403e6c506f693574cf41eec80f4a388d07776",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · FINANCIAL · p26 · known 2024-07-19T18:08:55",
+      "section": "FINANCIAL",
+      "speaker": null,
+      "known_at": "2024-07-19T18:08:55",
+      "event_date": "2024-07-19",
+      "fiscal_period": "",
+      "page_from": 26,
+      "page_to": 26,
+      "char_len": 704,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -12.25151437940136,
+      "body_excerpt": "25 OPERATIONAL EFFICIENCIES Driving Margin Expansion Raw Material Costs as % of F & B Revenue Payroll Costs as % of Operating Revenue Other Expenditure* as % of Operating Revenue 22.0% 21.4% Q1FY24 Q1FY25 26.2% 25.1% Q1FY24 Q1FY25 29.2% 29.7% Q1FY24 Q1FY25 Cost Saving & Operational Efficiencies through: • High Yielding F&B Business driving down Raw Material Cost% • Power Cost management on back of efficiency • Saving in Store & Supplies expenses • Saving in Sales & Marketing expenses Data for IHCL Consol. Operating Margin expansion by 100 bps Power Costs as % of Operating Revenue 5.4% 5.3% Q1FY24 Q1FY25 License Fees as % of Operating Revenue 3.3% 3.6% Q1FY24 Q1FY25 *excluding License fees"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "maturity",
+     "EBITDA",
+     "store",
+     "capex",
+     "store"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-62c20b29-6f34-4abd-a117-15b313a0933e",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"The held data does not state a single, standardized \\\"new store at maturity\\\" earnings figure or a \\\"payback at current capex per store\\\" for IHCL. Available guidance is project-specific: e.g., Ekta Nagar greenfield assets expected payback \\\"definitely not exceed 7 years, possibly 4-5 years,\\\" and Taj Ganges' new 100-room wing turned PBT-positive in its first quarter with 40% EBITDA margin. Routine capex is guided at ~INR 500-600 crores/year and total CAPEX ~INR 1,000-1,200 crores/year (including new/renovation/expansion), but no per-store capex or maturity-EBITDA is given.\", \"missing\": \"not in data: a standardized \\\"new store at maturity\\\" earnings metric and \\\"payback at current capex per store\\\" for IHCL; only project-specific payback anecdotes exist.\", \"working\": \"claim_search/chunk_search results: Ekta Nagar payback 4-7 years (concall 2025-05-12); Taj Ganges 100-room wing PBT-positive first quarter, 40% EBITDA margin (concall 2026-07-27); routine capex INR500-600 cr/yr; total CAPEX INR1,000-1,200 cr/yr (concall 2026-02-19, 2025-05-12). No per-store capex or maturity earnings figure found.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 282,
+   "secs": 3.55,
+   "usage": {
+    "prompt_tokens": 12035,
+    "completion_tokens": 440,
+    "total_tokens": 12475,
+    "prompt_tokens_details": {
+     "cached_tokens": 9152
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 69
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2883,
+      "output": 440,
+      "reasoning": 69,
+      "cache_read": 9152,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "The held data does not state a single, standardized \"new store at maturity\" earnings figure or a \"payback at current capex per store\" for IHCL. Available guidance is project-specific: e.g., Ekta Nagar greenfield assets expected payback \"definitely not exceed 7 years, possibly 4-5 years,\" and Taj Ganges' new 100-room wing turned PBT-positive in its first quarter with 40% EBITDA margin. Routine capex is guided at ~INR 500-600 crores/year and total CAPEX ~INR 1,000-1,200 crores/year (including new/renovation/expansion), but no per-store capex or maturity-EBITDA is given.",
+    "missing": "not in data: a standardized \"new store at maturity\" earnings metric and \"payback at current capex per store\" for IHCL; only project-specific payback anecdotes exist.",
+    "working": "claim_search/chunk_search results: Ekta Nagar payback 4-7 years (concall 2025-05-12); Taj Ganges 100-room wing PBT-positive first quarter, 40% EBITDA margin (concall 2026-07-27); routine capex INR500-600 cr/yr; total CAPEX INR1,000-1,200 cr/yr (concall 2026-02-19, 2025-05-12). No per-store capex or maturity earnings figure found."
+   }
+  }
+ ]
+}

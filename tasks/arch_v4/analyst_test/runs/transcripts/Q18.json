@@ -1,0 +1,484 @@
+{
+ "qid": "Q18",
+ "mid": "MB0347#MS",
+ "parent_mid": "MB0347",
+ "symbol": "KALYANKJIL",
+ "entity_isin": "INE303R01014",
+ "question": "KALYANKJIL's operating margin compressed because the mobile-PLI benefit expired. When does management expect the margin to normalise, and on what?",
+ "as_of": "2026-10-19",
+ "period": "FY27",
+ "category": "lookup",
+ "source_bank": "open300",
+ "status": "final",
+ "error": null,
+ "answer": "The data does not contain any reference to a \"mobile-PLI benefit\" expiry. What management (Ramesh Kalyanaraman, Q1FY27 concall, Aug 2026) does say is that margin dilution of ~0.2%–0.3% from old-gold exchange should be negated by cash-for-gold (buying at a discount to spot), and that for the full year FY27 they expect to maintain PBT margins of the previous year. So normalisation is expected over the full FY27 on the back of cash-for-gold gaining momentum.",
+ "working": "Q1FY27 concall chunk 96004: \"for the full year, I don't think there will be an impact... maintain the PBT margins of the previous year.\" Chunk 96025: cash for gold \"should negate the dilution of margin... margin going forward will not be impacted.\" Claim 313983: PBT margin guidance, FY27 horizon, \"maintained\".",
+ "missing": "not in data: any mention of a \"mobile-PLI benefit\" expiry; the cause of margin compression cited in the question is not supported by the held data.",
+ "not_in_data": true,
+ "n_tool_calls": 2,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "claim_search",
+   "args": {
+    "entity": "KALYANKJIL",
+    "terms": "margin normalise mobile PLI"
+   },
+   "ok": true
+  },
+  {
+   "call": 3,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KALYANKJIL",
+    "query": "margin normalise mobile PLI benefit expired"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 2,
+ "usage": {
+  "prompt_tokens": 7544,
+  "completion_tokens": 520
+ },
+ "beam_secs": 5.53,
+ "total_secs": 5.53,
+ "number_check": {
+  "numbers": [
+   "2026",
+   "0.2",
+   "0.3"
+  ],
+  "supported": [
+   "2026",
+   "0.2",
+   "0.3"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-f875cfcc-a691-4881-958f-3b558872ea73",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"KALYANKJIL\", \"terms\": \"margin normalise mobile PLI\"}"
+     }
+    },
+    {
+     "id": "call-da904c06-4ce2-4979-ba4c-41fd860e3058",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"KALYANKJIL\", \"query\": \"margin normalise mobile PLI benefit expired\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 99,
+   "secs": 1.78,
+   "usage": {
+    "prompt_tokens": 1106,
+    "completion_tokens": 98,
+    "total_tokens": 1204,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 27
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 146,
+      "output": 98,
+      "reasoning": 27,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "KALYANKJIL",
+    "terms": "margin normalise mobile PLI"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE303R01014",
+    "rows": [
+     {
+      "claim_id": 314005,
+      "entity_id": "INE303R01014",
+      "topic": "cash",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "cash for gold is a new product, which is really catching up now. And we think that is actually margin accretive also because we buy at a discount to the spot price.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "margin_and_cost_commentary",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 314006,
+      "entity_id": "INE303R01014",
+      "topic": "employee",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "and that's also there around 0.2% -0.3% in Q1.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "margin_and_cost_commentary",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 313955,
+      "entity_id": "INE303R01014",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "So to answer your question, for the full year, I don't think there will be an impact. Even on a conservative basis, I think we'll be able to maintain the PBT margins of the previous year.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "analyst_pushback",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 313960,
+      "entity_id": "INE303R01014",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Actually, we don't see a lot of our franchise partners our franchise model are basically taken up by partners who are in franchisee business already and/or automobile industry or something.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "analyst_pushback",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 314004,
+      "entity_id": "INE303R01014",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "exchange itself is margin dilutive by around 0.2% -0.3%.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "margin_and_cost_commentary",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 314007,
+      "entity_id": "INE303R01014",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "But yes, operating leverage will negate all these kind of things.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "margin_and_cost_commentary",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 314023,
+      "entity_id": "INE303R01014",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "exchange itself is margin dilutive by around 0.2% -0.3%.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "risks_and_headwinds",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 313983,
+      "entity_id": "INE303R01014",
+      "topic": "pbt",
+      "direction": "neutral",
+      "direction_raw": "maintained",
+      "magnitude": null,
+      "unit": "%",
+      "horizon": "FY27",
+      "certainty": "stated",
+      "guidance_vs_fact": "guidance",
+      "quote": "Even on a conservative basis, I think we'll be able to maintain the PBT margins of the previous year.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "guidance",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 314003,
+      "entity_id": "INE303R01014",
+      "topic": "pbt",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Then the PBT margins are around what, 5.1%, which was at around 5.5%-5.6% before",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "margin_and_cost_commentary",
+      "known_at": "2026-08-08T09:59:45.51"
+     },
+     {
+      "claim_id": 314008,
+      "entity_id": "INE303R01014",
+      "topic": "pbt",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Even on a conservative basis, I think we'll be able to maintain the PBT margins of the previous year.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "margin_and_cost_commentary",
+      "known_at": "2026-08-08T09:59:45.51"
+     }
+    ],
+    "n_returned": 10,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KALYANKJIL",
+    "query": "margin normalise mobile PLI benefit expired"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE303R01014",
+    "rows": [
+     {
+      "chunk_id": 96025,
+      "doc_id": "sha256:a7aae1f0ceef33838352251874823e2a423618108b8c4185d8473ec85389e672",
+      "doc_type": "concall",
+      "header": "KALYANKJIL · INE303R01014 · Concall transcript · Q1FY27 · Q&A · p13 · known 2026-08-08T09:59:45",
+      "section": "Q&A",
+      "speaker": "ashish kanodia",
+      "known_at": "2026-08-08T09:59:45",
+      "event_date": "",
+      "fiscal_period": "Q1FY27",
+      "page_from": 13,
+      "page_to": 13,
+      "char_len": 870,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -10.093272941889605,
+      "body_excerpt": "Ashish Kanodia: Sure, sir. And second, I think you called out that while old gold exchange is margin dilutive, cash for gold it gives you some margin benefit. I just wanted to understand like what is the benefit we are getting from cash for gold? And secondly, I think when you're paying the customer cash, like if someone is bringing in old gold and if you're paying in cash, it will not form part of your revenue, at least that's what my understanding is. But from a margin point of view, how does it benefit? Ramesh Kalyanaraman: Yes. So, when we buy gold from a customer for cash, we buy at a discount to the spot. Exchange, we actually buy at the board rate itself. So once gold for cash gains momentum, that should negate the dilution of margin, which happens because of exchange, which is why I mentioned that margin going forward will not be impacted."
+     },
+     {
+      "chunk_id": 94096,
+      "doc_id": "sha256:0ee664d24c7c3527cf90fe78fe4b9c4c4360aa100b26cb2dfdd95214bcc981f8",
+      "doc_type": "concall",
+      "header": "KALYANKJIL · INE303R01014 · Concall transcript · Q3FY26 · Q&A · p11 · known 2026-02-10T11:23:43",
+      "section": "Q&A",
+      "speaker": "awais bakshi",
+      "known_at": "2026-02-10T11:23:43",
+      "event_date": "",
+      "fiscal_period": "Q3FY26",
+      "page_from": 11,
+      "page_to": 11,
+      "char_len": 486,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -9.843093290139942,
+      "body_excerpt": "Awais Bakshi: And the hedging policy continues to remain, like it was in the past quarter? Ramesh Kalyanaraman: Yes, yes. So gold, we do not take any margin benefit or what you call. Awais Bakshi: Right, sir. Right. Ramesh Kalyanaraman: We are fully protected. But yes, one more area, where the margin driver, of course not significant is some margin benefit due to the surge in silver and platinum prices in the last quarter, when compared to Q3 of last year. Not significant."
+     },
+     {
+      "chunk_id": 94744,
+      "doc_id": "sha256:8fe0ae75256f26dfcf778375da3dc689a7e51b8db020c7a917eb6ca597dd9cf3",
+      "doc_type": "concall",
+      "header": "KALYANKJIL · INE303R01014 · Concall transcript · Q4FY26 · Q&A · p9 · known 2026-05-11T12:20:11",
+      "section": "Q&A",
+      "speaker": "ashish kanodia",
+      "known_at": "2026-05-11T12:20:11",
+      "event_date": "",
+      "fiscal_period": "Q4FY26",
+      "page_from": 9,
+      "page_to": 9,
+      "char_len": 1348,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -9.341783170909707,
+      "body_excerpt": "Ashish Kanodia: Sure. And maybe just on the gross margin, I think someone asked and I will just kind of refill that question. See, when we look at the India gross margin, right, now we know that because of the franchisee model, normally, we should see a Y-o-Y decline on gross margin. And I'm talking on Y-o-Y because quarter-on-quarter, we will have seasonality, right? So when I look at Q2FY26, and I'm adjusting the base for custom duty, etcQ2FY26 had a gross margin decline of 100 basis points. But inQ3FY26, the gross margin was broadly same on a Y- o-Y basis. And the discussion was that you have tried paying the vendors a bit early, which was giving you some benefit. And at least in our mind, it was that because you have just started in maybe Q3FY26 or so, it should continue for 12 months, so we should see that benefit coming in. But when we look at the Q4FY26 gross margin, it has gone back to the normal level where we were seeing 100 basis point decline because of the franchisee model. So has there been any change in the vendor payment or is there anything which is changing this direction? Ramesh Kalyanaraman: No,. So if you remember well, the pilot project, we started partially in Q4 of last year. So that is already embedded in the gross margin of the last quarter. So maybe that's why you see this change."
+     },
+     {
+      "chunk_id": 96004,
+      "doc_id": "sha256:a7aae1f0ceef33838352251874823e2a423618108b8c4185d8473ec85389e672",
+      "doc_type": "concall",
+      "header": "KALYANKJIL · INE303R01014 · Concall transcript · Q1FY27 · Q&A · p6 · known 2026-08-08T09:59:45",
+      "section": "Q&A",
+      "speaker": "ashish kanodia",
+      "known_at": "2026-08-08T09:59:45",
+      "event_date": "",
+      "fiscal_period": "Q1FY27",
+      "page_from": 6,
+      "page_to": 6,
+      "char_len": 1458,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -9.337666506829555,
+      "body_excerpt": "Ashish Kanodia: Got it. And then just going forward, when we think of the margins, at least on a PBT level, we should expect this 0.2% - 0.3% margin dilution to kind of continue because at least for the next two - three quarters, the old gold exchange levels will remain high and you will not have the benefit that maybe there will be some benefit of the inventory gain in 2Q as well. But for the next two, three quarters, this 0.2% - 0.3% margin dilution on the old gold exchange, will that continue? Ramesh Kalyanaraman: No. So here, Ashish, what we should do is like, don't look at the short term because short term, yes, our focus will still be on recirculating gold. But again, what we are doing on the recirculation gold is that we are not only promoting customers to exchange, but also, we are promoting cash for gold. The cash for gold is really catching up, and it should ideally negate the margin dilution, which happens due to the exchange. And of course, anyways, we have the one-time benefit from the customs duty, which we used in the previous quarter to negate the margin dilution. So to answer your question, for the full year, I don't think there will be an impact. Even on a conservative basis, I think we'll be able to maintain the PBT margins of the previous year. Ashish Kanodia: Sure sir. Got it thank you. Moderator: Thank you. The next question is from the line of Vivek Gautam from GS Investment. Please proceed."
+     },
+     {
+      "chunk_id": 104389,
+      "doc_id": "sha256:0b73344bf7e99b5a5b26c354393b48175c01adfa5f7ea093d3222f2cf9ad1a39",
+      "doc_type": "deck",
+      "header": "KALYANKJIL · INE303R01014 · Investor deck · - · PERFORMANCE REVIEW · p47 · known 2026-05-08T16:33:31",
+      "section": "PERFORMANCE REVIEW",
+      "speaker": null,
+      "known_at": "2026-05-08T16:33:31",
+      "event_date": "2026-05-08",
+      "fiscal_period": "",
+      "page_from": 47,
+      "page_to": 47,
+      "char_len": 907,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -8.595010283608726,
+      "body_excerpt": "KALYAN JEWELLERS INDIA LIMITED 46 Consolidated Performance Consolidated Income Statement Particulars (₹ Mn) FY26 FY25 YoY Revenue 3,57,429 2,50,451 43% Gross Profit 47,043 32,843 43% Gross Profit Margin % 13.2% 13.1% Total Opex 22,131 17,671 25% Advertisement & Promotion 5,811 4,734 23% Other Opex 16,320 12,937 26% EBIDTA 24,912 15,172 64% EBIDTA Margin % 7.0% 6.1% Depreciation 4,229 3,427 23% EBIT 20,683 11,745 76% EBIT Margin % 5.8% 4.7% Finance Cost 4,329 3,595 20% Other Income 2,080 1,446 44% Profit before exceptional items and tax 18,435 9,596 92% Profit before exceptional items and tax % 5.2% 3.8% Exceptional items 1 415 - 0% PBT 18,020 9,596 88% PBT Margin % 5.0% 3.8% PAT 13,504 7,142 89% PAT Margin% 3.8% 2.9% Note: 1. One-time exceptional impact recognised in the current period due to changes in employee benefit provisions arising from the New Labour Codes"
+     },
+     {
+      "chunk_id": 104388,
+      "doc_id": "sha256:0b73344bf7e99b5a5b26c354393b48175c01adfa5f7ea093d3222f2cf9ad1a39",
+      "doc_type": "deck",
+      "header": "KALYANKJIL · INE303R01014 · Investor deck · - · PERFORMANCE REVIEW · p46 · known 2026-05-08T16:33:31",
+      "section": "PERFORMANCE REVIEW",
+      "speaker": null,
+      "known_at": "2026-05-08T16:33:31",
+      "event_date": "2026-05-08",
+      "fiscal_period": "",
+      "page_from": 46,
+      "page_to": 46,
+      "char_len": 909,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -8.587928650758105,
+      "body_excerpt": "KALYAN JEWELLERS INDIA LIMITED 45 Standalone India Performance Standalone Income Statement Particulars (₹ Mn) FY26 FY25 YoY Revenue 3,10,271 2,16,386 43% Gross Profit 39,453 27,571 43% Gross Profit Margin % 12.7% 12.7% Total Opex 18,210 14,776 23% Advertisement & Promotion 4,526 3,955 14% Other Opex 13,684 10,821 26% EBIDTA 21,242 12,795 66% EBIDTA Margin % 6.8% 5.9% Depreciation 2,963 2,461 20% EBIT 18,279 10,334 77% EBIT Margin % 5.9% 4.8% Finance Cost 2,894 2,497 16% Other Income 2,354 1,485 58% Profit before exceptional items and tax 17,739 9,323 90% Profit before exceptional items and tax % 5.7% 4.3% Exceptional items 1 415 - 0% PBT 17,324 9,323 86% PBT Margin % 5.6% 4.3% PAT 12,851 6,887 87% PAT Margin% 4.1% 3.2% Note: 1. One-time exceptional impact recognised in the current period due to changes in employee benefit provisions arising from the New Labour Codes"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "margin",
+     "normalise",
+     "mobile",
+     "PLI",
+     "benefit",
+     "expired"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-29494ffe-73a9-44cb-ac1f-19f251168464",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"The data does not contain any reference to a \\\"mobile-PLI benefit\\\" expiry. What management (Ramesh Kalyanaraman, Q1FY27 concall, Aug 2026) does say is that margin dilution of ~0.2%–0.3% from old-gold exchange should be negated by cash-for-gold (buying at a discount to spot), and that for the full year FY27 they expect to maintain PBT margins of the previous year. So normalisation is expected over the full FY27 on the back of cash-for-gold gaining momentum.\", \"missing\": \"not in data: any mention of a \\\"mobile-PLI benefit\\\" expiry; the cause of margin compression cited in the question is not supported by the held data.\", \"working\": \"Q1FY27 concall chunk 96004: \\\"for the full year, I don't think there will be an impact... maintain the PBT margins of the previous year.\\\" Chunk 96025: cash for gold \\\"should negate the dilution of margin... margin going forward will not be impacted.\\\" Claim 313983: PBT margin guidance, FY27 horizon, \\\"maintained\\\".\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 619,
+   "secs": 3.59,
+   "usage": {
+    "prompt_tokens": 6438,
+    "completion_tokens": 422,
+    "total_tokens": 6860,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 143
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 5478,
+      "output": 422,
+      "reasoning": 143,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "submit",
+   "args": {
+    "answer": "The data does not contain any reference to a \"mobile-PLI benefit\" expiry. What management (Ramesh Kalyanaraman, Q1FY27 concall, Aug 2026) does say is that margin dilution of ~0.2%–0.3% from old-gold exchange should be negated by cash-for-gold (buying at a discount to spot), and that for the full year FY27 they expect to maintain PBT margins of the previous year. So normalisation is expected over the full FY27 on the back of cash-for-gold gaining momentum.",
+    "missing": "not in data: any mention of a \"mobile-PLI benefit\" expiry; the cause of margin compression cited in the question is not supported by the held data.",
+    "working": "Q1FY27 concall chunk 96004: \"for the full year, I don't think there will be an impact... maintain the PBT margins of the previous year.\" Chunk 96025: cash for gold \"should negate the dilution of margin... margin going forward will not be impacted.\" Claim 313983: PBT margin guidance, FY27 horizon, \"maintained\"."
+   }
+  }
+ ]
+}

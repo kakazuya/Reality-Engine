@@ -1,0 +1,943 @@
+{
+ "qid": "Q29",
+ "mid": "MB0976#MS",
+ "parent_mid": "MB0976",
+ "symbol": "INDHOTEL",
+ "entity_isin": "INE053A01029",
+ "question": "INDHOTEL: what does the BPC segment earn per order after fulfilment, and is the fashion segment diluting it?",
+ "as_of": "2026-10-19",
+ "period": "FY25-FY26",
+ "category": "explanation",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "The data does not contain a \"BPC segment\" or a \"fashion segment\" for Indian Hotels. IHCL's reported operating segments are \"Hotel Services\" and \"Air and Institutional Catering\" (only, per Note 46 of the annual report). There is no \"per order after fulfilment\" metric in the held data for any segment. Hence the question's framing does not match the company's disclosed segment structure.",
+ "working": "list_atoms showed fin.segment_value with segments 'Air and Institutional Catering' and 'Hotel Services' only; chunk_search for 'BPC segment fashion' and 'per order fulfilment' returned no relevant segment-level per-order metric.",
+ "missing": "not in data - no BPC segment, no fashion segment, and no per-order/fulfilment earnings metric exist for INDHOTEL; only Hotel Services and Air and Institutional Catering segments are reported.",
+ "not_in_data": true,
+ "n_tool_calls": 4,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "INDHOTEL"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "fact_query",
+   "args": {
+    "atom": "fin.segment_value",
+    "entity": "INDHOTEL"
+   },
+   "ok": true
+  },
+  {
+   "call": 6,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "BPC segment fashion"
+   },
+   "ok": true
+  },
+  {
+   "call": 8,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "per order fulfilment"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 5,
+ "usage": {
+  "prompt_tokens": 27966,
+  "completion_tokens": 607
+ },
+ "beam_secs": 10.84,
+ "total_secs": 10.84,
+ "number_check": {
+  "numbers": [
+   "46"
+  ],
+  "supported": [
+   "46"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-52750810-d78c-4f28-afa5-1f5231063c62",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"INDHOTEL\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 136,
+   "secs": 1.83,
+   "usage": {
+    "prompt_tokens": 1100,
+    "completion_tokens": 50,
+    "total_tokens": 1150,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 31
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 140,
+      "output": 50,
+      "reasoning": 31,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "INDHOTEL"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE053A01029",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 4,
+      "first_period": "2020-09-30",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 72,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 72,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 72,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 72,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 72,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 5,
+      "first_period": "2025-03-31",
+      "last_period": "2025-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=revenue;segment=Air and Institutional Catering",
+       "basis=consolidated;metric=revenue;segment=Hotel Services"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 4,
+      "first_period": "2020-03-18",
+      "last_period": "2023-12-19",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 76,
+      "first_period": "2021-09-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 9,
+      "first_period": "2024-06-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 369,
+      "first_period": "2019-12-30",
+      "last_period": "2024-05-17",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1913,
+      "first_period": "2019-01-21",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1908,
+      "first_period": "2019-01-28",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1743,
+      "first_period": "",
+      "last_period": "2026-08-24",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=0;chunk=106484",
+       "doctype=announcement;page=1;chunk=106370"
+      ]
+     }
+    ],
+    "n_returned": 29,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-29368c25-3820-4cdc-b1ee-1b61508f8a7a",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"fin.segment_value\", \"entity\": \"INDHOTEL\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 292,
+   "secs": 2.26,
+   "usage": {
+    "prompt_tokens": 3377,
+    "completion_tokens": 96,
+    "total_tokens": 3473,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 95
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2289,
+      "output": 96,
+      "reasoning": 95,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "fin.segment_value",
+    "entity": "INDHOTEL"
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-10-19",
+    "entity": "INE053A01029",
+    "atom": "fin.segment_value",
+    "rows": [
+     {
+      "entity_id": "INE053A01029",
+      "atom": "fin.segment_value",
+      "dims": "basis=consolidated;metric=revenue;segment=Air and Institutional Catering",
+      "period_start": "2025-03-31",
+      "period_end": "2025-03-31",
+      "value": 716.41,
+      "unit": "INR_CRORE",
+      "known_at": "2025-06-13T18:05:22",
+      "source_ref": "facts_pilot.company_segment_pnl"
+     },
+     {
+      "entity_id": "INE053A01029",
+      "atom": "fin.segment_value",
+      "dims": "basis=consolidated;metric=revenue;segment=Hotel Services",
+      "period_start": "2025-03-31",
+      "period_end": "2025-03-31",
+      "value": 7623.24,
+      "unit": "INR_CRORE",
+      "known_at": "2025-06-13T18:05:22",
+      "source_ref": "facts_pilot.company_segment_pnl"
+     },
+     {
+      "entity_id": "INE053A01029",
+      "atom": "fin.segment_value",
+      "dims": "basis=consolidated;metric=segment_assets;segment=Air and Institutional Catering",
+      "period_start": "2025-03-31",
+      "period_end": "2025-03-31",
+      "value": 1418.89,
+      "unit": "INR_CRORE",
+      "known_at": "2025-06-13T18:05:22",
+      "source_ref": "facts_pilot.company_segment_pnl"
+     },
+     {
+      "entity_id": "INE053A01029",
+      "atom": "fin.segment_value",
+      "dims": "basis=consolidated;metric=segment_assets;segment=Hotel Services",
+      "period_start": "2025-03-31",
+      "period_end": "2025-03-31",
+      "value": 16285.04,
+      "unit": "INR_CRORE",
+      "known_at": "2025-06-13T18:05:22",
+      "source_ref": "facts_pilot.company_segment_pnl"
+     },
+     {
+      "entity_id": "INE053A01029",
+      "atom": "fin.segment_value",
+      "dims": "basis=consolidated;metric=segment_liabilities;segment=Hotel Services",
+      "period_start": "2025-03-31",
+      "period_end": "2025-03-31",
+      "value": 4890.21,
+      "unit": "INR_CRORE",
+      "known_at": "2025-06-13T18:05:22",
+      "source_ref": "facts_pilot.company_segment_pnl"
+     }
+    ],
+    "n_returned": 5,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-0496749f-36f2-4b7e-96d1-6965edcc6e3f",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"INDHOTEL\", \"query\": \"BPC segment fashion\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 158,
+   "secs": 1.64,
+   "usage": {
+    "prompt_tokens": 4201,
+    "completion_tokens": 72,
+    "total_tokens": 4273,
+    "prompt_tokens_details": {
+     "cached_tokens": 3328
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 45
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 873,
+      "output": 72,
+      "reasoning": 45,
+      "cache_read": 3328,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "BPC segment fashion"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE053A01029",
+    "rows": [
+     {
+      "chunk_id": 89264,
+      "doc_id": "sha256:e6691a641dc28ea0f0dbbd733d9a362cba2fe2550d380035ba67a31170e225f7",
+      "doc_type": "concall",
+      "header": "INDHOTEL · INE053A01029 · Concall transcript · - · Q&A · p17 · known 2024-11-13T12:19:38",
+      "section": "Q&A",
+      "speaker": "rahul jain",
+      "known_at": "2024-11-13T12:19:38",
+      "event_date": "2024-11-07",
+      "fiscal_period": "",
+      "page_from": 17,
+      "page_to": 17,
+      "char_len": 778,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -6.679267911419498,
+      "body_excerpt": "Rahul Jain: Good evening, sir. Just wanted to get a broad understanding on how the Ginger Santacruz performance has fared. And how do you see it performing in the next H2? Puneet Chhatwal: Ginger Santacruz has been performing in an outstanding fashion. We expect, definitely, north of 85% occupancy for the year and a rate that we have guided of 6,500, with a decent amount of food and beverage and also meeting room business. So all in all, we are very pleased for very first year of operation for it to do that. It's also a part of our presentation on slide 11 that already in the first half, it has done a revenue of INR44 crores and an EBITDA margin, 55%. So in the first half, as we say, is the weaker half, so you can extrapolate what it could be for the year."
+     },
+     {
+      "chunk_id": 61824,
+      "doc_id": "sha256:6063f6e390398bd6a7da2a623e7aafc03231b4ffc7b81dd17cfe419992e08e0e",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY25 · Note 46: Segment Information · p185 · known 2025-06-13T12:35:22",
+      "section": "Note 46: Segment Information",
+      "speaker": null,
+      "known_at": "2025-06-13T12:35:22",
+      "event_date": "2025-06-13",
+      "fiscal_period": "FY25",
+      "page_from": 185,
+      "page_to": 185,
+      "char_len": 4218,
+      "title": "INDHOTEL annual report 2025-03-31",
+      "score": -5.498957650704631,
+      "body_excerpt": "Note 46: Segment Information (a) General Information: \u0007Operating segments are reported in a manner consistent with the internal reporting provided to the chief operating decision-maker. The Managing Director and Chief Executive Officer of the Company who is responsible for allocating resources and assessing performance of the operating segments, has been identified as the chief operating decision- maker. \u0007The Group identifies the operating segments based on the internal reporting reviewed by the Chief Operating Decision Maker (CODM). (b) Change in Operating Segments: \u0007During the current financial year, the Company completed a business combination that resulted in Taj SATS Air Catering Limited transitioning from a joint venture company to a subsidiary company (refer note 31 on Business combination). Taj SATS Air Catering Limited is engaged in the business of in-flight catering services and institutional catering. Consequence to this business combination, the Group has identified following two distinct operating segments: i) \u0007Hotel Services: This segment includes revenue and expenses related to providing accommodation, food and beverage services, other hospitality-related services including operating and management fees where the hotels are not owned or leased by the Group. ii) \u0007Air and Institutional Catering: This segment includes revenue and expenses related to the preparation and delivery of in-flight meals and catering services to airlines and institutions. \u0007The segments ar …"
+     },
+     {
+      "chunk_id": 53623,
+      "doc_id": "sha256:58e23dc5f478be1481e9743893f9eb9bd6f24da49437865892a32754d1b7010c",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY24 · NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.) · p324 · known 2024-05-23T15:00:31",
+      "section": "NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.)",
+      "speaker": null,
+      "known_at": "2024-05-23T15:00:31",
+      "event_date": "2024-05-23",
+      "fiscal_period": "FY24",
+      "page_from": 324,
+      "page_to": 325,
+      "char_len": 2279,
+      "title": "INDHOTEL annual report 2024-03-31",
+      "score": -5.490272895797117,
+      "body_excerpt": "NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.) for the year ended March 31, 2026 Note 46. Segment Information (contd.) (c) Segment Financial Information: Disclosure for the year ended March 31, 2026 :- i) Segment Revenue (₹ crores) For the year ended March 31, 2026 Hotel Services Air and Institutional Catering Inter-segment Total Revenue from operation - external 8,484.46 1,204.76 - 9,689.22 Inter Segment 2.17 5.36 (7.53) - Segment Revenue 8,486.63 1,210.12 (7.53) 9,689.22 ii) Segment Results (₹ crores) For the year ended March 31, 2026 Hotel Services Air and Institutional Catering Total Segment Profit/Loss before interest, depreciation and tax 3,181.83 295.03 3,476.86 Depreciation and amortisation (557.90) (47.26) (605.16) Profit before interest, exceptional item & tax 2,623.93 247.77 2,871.70 Finance Costs (204.72) (16.63) (221.35) Profit before tax, exceptional item and share of associates and joint ventures and tax 2,419.21 231.14 2,650.35 Exceptional items (expense) /income 275.51 Profit/ (Loss) before share of associates and joint ventures and tax 2,925.86 Add: Share of profit / (loss) of joint ventures and associates 52.11 Profit before tax 2,977.97 Tax expense (730.72) Profit for the year 2,247.25 iii) Other Information (₹ crores) March 31, 2026 Segment assets Segment liabilities Additions to non-current assets*^ Hotel Services 18,719.40 4,945.28 1,836.61 Air and Institutional Catering 1,577.58 412.38 92.26 Segment Total 20,296.98 5,357.66 1,928.87 Unallocated As …"
+     },
+     {
+      "chunk_id": 53624,
+      "doc_id": "sha256:58e23dc5f478be1481e9743893f9eb9bd6f24da49437865892a32754d1b7010c",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY24 · NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.) · p325 · known 2024-05-23T15:00:31",
+      "section": "NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.)",
+      "speaker": null,
+      "known_at": "2024-05-23T15:00:31",
+      "event_date": "2024-05-23",
+      "fiscal_period": "FY24",
+      "page_from": 325,
+      "page_to": 326,
+      "char_len": 2129,
+      "title": "INDHOTEL annual report 2024-03-31",
+      "score": -5.465775604135301,
+      "body_excerpt": "NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.) for the year ended March 31, 2026 Disclosure for the year ended March 31, 2025 :- i) Segment Revenue (₹ crores) For the year ended March 31, 2025 Hotel Services Air and Institutional Catering Inter-segment elimination Total Revenue from operation - external 7,622.06 712.48 - 8,334.54 Inter Segment 1.18 3.93 (5.11) - Segment Revenue 7,623.24 716.41 (5.11) 8,334.54 ii) Segment Results (₹ crores) For the year ended March 31, 2025 Hotel Services Air and Institutional Catering Total Segment Profit/Loss before interest, depreciation and tax 2,814.96 184.83 2,999.79 Depreciation and amortisation (496.56) (21.60) (518.16) Profit before interest, exceptional item & tax 2,318.40 163.23 2,481.63 Finance Costs (200.52) (7.86) (208.38) Profit before tax, exceptional item and share of associates and joint ventures and tax 2,117.88 155.37 2,273.25 Exceptional items (expense) /income 304.80 Profit/ (Loss) before share of associates and joint ventures and tax 2,578.05 Add: Share of profit / (loss) of joint ventures and associates 76.84 Profit before tax 2,654.89 Tax expense (616.80) Profit for the year 2,038.09 iii) Other Information (₹ crores) March 31, 2025 Segment assets Segment liabilities Additions to non-current assets* Hotel Services 16,285.04 4,890.21 1,611.92 Air and Institutional Catering 1,418.89 398.11 272.33 Segment Total 17,703.93 5,288.32 1,884.25 Unallocated Assets / Liabilities - - - Total 17,703.93 5,288.32 1,884.25 iv) Geo …"
+     },
+     {
+      "chunk_id": 90878,
+      "doc_id": "sha256:51ce240ae6d444f0b2d4a97dd0e48fac81589b90c150fffdc78c2a8f73c466da",
+      "doc_type": "concall",
+      "header": "INDHOTEL · INE053A01029 · Concall transcript · - · Q&A · p18 · known 2025-05-12T12:47:02",
+      "section": "Q&A",
+      "speaker": "abhay khaitan",
+      "known_at": "2025-05-12T12:47:02",
+      "event_date": "2025-05-05",
+      "fiscal_period": "",
+      "page_from": 18,
+      "page_to": 18,
+      "char_len": 1684,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -5.355254717086166,
+      "body_excerpt": "Abhay Khaitan: Thank you for the opportunity. So my question is specifically on Ginger brand. So in the slides, we can see that they have seen a RevPAR growth of 8% for FY '25. Now with new initiatives of Ginger, and positioning it as a Lean Luxe model now, would it be fair to expect ARR growth for this segment to be higher compared to other brands? Or do you think it is still some time away? Ankur Dalwani: So see, Ginger is actually very well positioned in the mid-scale segment. This is a segment which is relatively more price sensitive as compared to, let's say, the luxury and the upscale segment. The Indian Hotels Company Limited May 5, 2025 Page 18 of 20 And actually getting a 10% and an 8% growth rates on RevPAR is actually very commendable for this segment, because relatively, the growth rate in this segment is lower compared to the overall hotel segment industry, especially the luxury end of the market. And also what will happen in case of Ginger is that there is a completion of the Lean Lux program, which will actually get done in this year, which means almost the entire inventory will be fully renovated in terms of getting it to a lean lux position, which will help us in pushing the ARRs through. And this is actually a great segment or the brand is very well positioned to target not only consumers, but also corporate, where the price sensitivity is a little bit more, but there is a strong preference for them to come under the Ginger brand, because then they become pa …"
+     },
+     {
+      "chunk_id": 100583,
+      "doc_id": "sha256:c730342ec36d5ec2909fa444db61a71605f8ad050dd3a6b202070087454670f6",
+      "doc_type": "deck",
+      "header": "INDHOTEL · INE053A01029 · Investor deck · - · HOTEL SEGMENT · p23 · known 2025-05-05T18:18:07",
+      "section": "HOTEL SEGMENT",
+      "speaker": null,
+      "known_at": "2025-05-05T18:18:07",
+      "event_date": "2025-05-05",
+      "fiscal_period": "",
+      "page_from": 23,
+      "page_to": 24,
+      "char_len": 559,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -5.34672485208855,
+      "body_excerpt": "22 HOTEL SEGMENT 23 HOTEL SEGMENT Q4 FY25 Revenue ₹ 2,206 Cr Op. Revenue ₹ 2,147 Cr EBITDA ₹ 848 Cr Op. EBITDA ₹ 789 Cr EBITDA Margin 38.5% PBT ₹ 666 Cr PBT Margin 30.2% ↑ 13% ↑ 20% ↑ 2.3pp ↑25% ↑ 2.8pp YoY CHG STEADY PERFORMANCE HOTEL SEGMENT PBT excludes exceptional items Delivering on our commitment of Double Digit revenue growth ↑ 20% ↑ 13% HOTEL SEGMENT FY25 Revenue ₹ 7,841 Cr Op. Revenue ₹ 7,618 Cr EBITDA ₹ 2,815 Cr Op. EBITDA ₹ 2,592 Cr EBITDA Margin 35.9% PBT ₹ 2,118 Cr PBT Margin 27.0% ↑ 20% ↑ 2.2pp ↑27% ↑ 3.1pp YoY CHG ↑ 20% ↑ 13% ↑ 13%"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "BPC",
+     "segment",
+     "fashion"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b95880f5-db2f-4e20-9824-6e369ca88730",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"INDHOTEL\", \"query\": \"per order fulfilment\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 360,
+   "secs": 1.81,
+   "usage": {
+    "prompt_tokens": 7990,
+    "completion_tokens": 125,
+    "total_tokens": 8115,
+    "prompt_tokens_details": {
+     "cached_tokens": 4160
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 98
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3830,
+      "output": 125,
+      "reasoning": 98,
+      "cache_read": 4160,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "INDHOTEL",
+    "query": "per order fulfilment"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE053A01029",
+    "rows": [
+     {
+      "chunk_id": 53594,
+      "doc_id": "sha256:58e23dc5f478be1481e9743893f9eb9bd6f24da49437865892a32754d1b7010c",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY24 · NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.) · p296 · known 2024-05-23T15:00:31",
+      "section": "NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.)",
+      "speaker": null,
+      "known_at": "2024-05-23T15:00:31",
+      "event_date": "2024-05-23",
+      "fiscal_period": "FY24",
+      "page_from": 296,
+      "page_to": 297,
+      "char_len": 4073,
+      "title": "INDHOTEL annual report 2024-03-31",
+      "score": -7.556033833346541,
+      "body_excerpt": "… terminate the agreement and exit the hotel on account of non-fulfilment of contractual obligations by the Lessor. The Group filed a suit against the Lessor to claim ₹ 9.37 crores, being the amount invested in the hotel, along with interest. The Lessor initiated arbitration proceedings against the Group and filed a counterclaim for rent amounting to ₹ 43.70 crores (after adjusting the security deposit of ₹ 0.29 core) for the alleged unexpired lease period. The Group had initially obtained a stay order from the Hon’ble Supreme Court against the arbitration proceedings; however, the same was subsequently vacated, and the arbitration proceedings continued. The arbitrator ruled that since the ATL was unregistered, the arbitration proceedings were non-maintainable and that both claims were untenable. The Lessor has filed an appeal before the Hon’ble Delhi High Court against the arbitrator’s order; however, based on the legal opinion received, the Group believes that the appeal is not maintainable. (c) Other claims against the Group not acknowledged as debt: (i) Legal and statutory matters ₹ 4.98 crores (March 31, 2025 - ₹ 4.98 crores) (ii) \u0007Management is generally unable to reasonably estimate a range of possible loss for proceedings or disputes other than those included in the estimate above, including where: a) \u0007plaintiffs / parties have not claimed an amount of money damages, unless management can otherwise determine an appropriate amount; b) the proceedings are in early stages; …"
+     },
+     {
+      "chunk_id": 53479,
+      "doc_id": "sha256:58e23dc5f478be1481e9743893f9eb9bd6f24da49437865892a32754d1b7010c",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY24 · NOTES TO STANDALONE FINANCIAL STATEMENTS (CONTD.) · p206 · known 2024-05-23T15:00:31",
+      "section": "NOTES TO STANDALONE FINANCIAL STATEMENTS (CONTD.)",
+      "speaker": null,
+      "known_at": "2024-05-23T15:00:31",
+      "event_date": "2024-05-23",
+      "fiscal_period": "FY24",
+      "page_from": 206,
+      "page_to": 206,
+      "char_len": 2442,
+      "title": "INDHOTEL annual report 2024-03-31",
+      "score": -7.445841375050622,
+      "body_excerpt": "…  ₹ 10 each at ₹ 7,091 per share aggregating to ₹ 81.18 crores. \u0007Pursuant to the above, ANK and Pride have become direct subsidiaries of RCL and step‑down subsidiaries of IHCL. ANK and Pride, the Companies are engaged in midscale hotel operations and management business, portfolio details provided below: Entity Operational Pipeline Total ANK Hotels Private Limited 67 52 119 Pride Hospitality Private Limited 14 14 28 (c) Signing of definitive agreement to acquire Brij Hospitality Private Limited (Brij) \u0007On January 15, 2026, the Company has signed definitive agreements to acquire 51% stake, together with its step-down subsidiaries namely ANK Hotels Private Limited (“ANK”) and Pride Hospitality Private Limited (“Pride”), in Brij Hospitality Private Limited, which operates and manages hotel assets under the umbrella of ‘Brij’ brand to be completed after fulfilment of the condition precedents. \u0007Subsequent to the balance sheet date, the acquisition of 51% of the share capital (on a fully diluted basis) in Brij was completed on April 21, 2026 consequent to the fulfilment of certain conditions precedent for a total investment of up to ₹222 crores (IHCL ~₹ 127 crores, ANK ~₹ 34 crores and Pride ~₹ 61 crores). The acquisition comprises of purchase from existing shareholders of Brij as well as primary investment in Brij through a combination of Compulsorily Convertible Preference Shares and partly paid-up equity shares. Consequent to the acquisition, Brij has become a subsidiary of IHCL."
+     },
+     {
+      "chunk_id": 53589,
+      "doc_id": "sha256:58e23dc5f478be1481e9743893f9eb9bd6f24da49437865892a32754d1b7010c",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY24 · NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.) · p291 · known 2024-05-23T15:00:31",
+      "section": "NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.)",
+      "speaker": null,
+      "known_at": "2024-05-23T15:00:31",
+      "event_date": "2024-05-23",
+      "fiscal_period": "FY24",
+      "page_from": 291,
+      "page_to": 292,
+      "char_len": 4596,
+      "title": "INDHOTEL annual report 2024-03-31",
+      "score": -5.959186451357557,
+      "body_excerpt": "… as fully repaid the borrowing of ₹ 170.57 crores on January 20,2026. c) Signing of definitive agreement to acquire Brij Hospitality Private Limited (Brij) \u0007On January 15, 2026, the Company has signed definitive agreements to acquire 51% stake, together with its subsidiaries namely ANK Hotels Private Limited (“ANK”) and Pride Hospitality Private Limited (“Pride”), in Brij Hospitality Private Limited, which operates and manages hotel assets under the umbrella of ‘Brij’ brand to be completed after fulfilment of the condition precedents. \u0007Subsequent to the balance sheet date, the acquisition of 51% of the share capital (on a fully diluted basis) in Brij was completed on April 21, 2026 consequent to the fulfilment of certain conditions precedent for a total investment of up to ₹ 222 crores (IHCL ~₹ 127 crores, ANK ~₹ 34 crores and Pride ~₹ 61 crores). The acquisition comprises of purchase from existing shareholders of Brij as well as primary investment in Brij through a combination of Compulsorily Convertible Preference Shares and partly paid-up equity shares. Consequent to the acquisition, Brij has become a subsidiary of the Company. Note 32. Divestment of its stake in Taj GVK Hotels & Resorts Limited The Group has divested its entire equity interest of 1,60,00,400 equity shares, representing 25.52% of the share capital of Taj GVK Hotels & Resorts Limited (TajGVK), a joint venture, pursuant to the execution of a Sale and Purchase Agreement dated December 19, 2025. The shares were …"
+     },
+     {
+      "chunk_id": 61801,
+      "doc_id": "sha256:6063f6e390398bd6a7da2a623e7aafc03231b4ffc7b81dd17cfe419992e08e0e",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY25 · Note 35: Contingent Liabilities (to the extent not provided for) and contingent  · p171 · known 2025-06-13T12:35:22",
+      "section": "Note 35: Contingent Liabilities (to the extent not provided for) and contingent ",
+      "speaker": null,
+      "known_at": "2025-06-13T12:35:22",
+      "event_date": "2025-06-13",
+      "fiscal_period": "FY25",
+      "page_from": 171,
+      "page_to": 171,
+      "char_len": 4670,
+      "title": "INDHOTEL annual report 2025-03-31",
+      "score": -5.403337456573502,
+      "body_excerpt": "… t of the above. (ii) \u0007In respect of Income Tax matters, the Group has ongoing disputes with Income Tax Authorities relating to treatment of certain items/ adjustments carried out by the Department. The Group’s appeals are pending before various Appellate Authorities. Most of these disallowances/ adjustments have been raised by the income tax authorities consistently in most of the years. Most of the issues raised by the department are repetitive in nature. As the Group expects to have favorable order and sustain its position at higher appellate level, the above disclosure does not include tax claim of H483.61 crores (Previous year H494.37 crores). (iii) The above figures exclude interest demands of H55.48 crores (Previous year H73.79 crores). (b) On account of lease agreements: (i) \u0007In respect of a plot of land, on which the Company has constructed a hotel, the lessor had made a claim during financial year (“FY”) 2006-07 for the period September 1, 2006 to March 31, 2007, which exceeded the amount payable as per the lessor’s own proposal by H13.97 crores. The said proposal of the lessor had been accepted by the Company in FY 2001-02, without prejudice to its rights under the lease deed that it had originally entered with the lessor. The claim of the lessor is also inconsistent with the decision of the Honorable Supreme Court of India (“SC”) in 2004 which decided on the quantification of lease rent up to FY 2011-12. From FY 2006-07, the lessor has been raising excessive claims …"
+     },
+     {
+      "chunk_id": 61458,
+      "doc_id": "sha256:6063f6e390398bd6a7da2a623e7aafc03231b4ffc7b81dd17cfe419992e08e0e",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY25 · ACCELERATE 2030 STRATEGY · p13 · known 2025-06-13T12:35:22",
+      "section": "ACCELERATE 2030 STRATEGY",
+      "speaker": null,
+      "known_at": "2025-06-13T12:35:22",
+      "event_date": "2025-06-13",
+      "fiscal_period": "FY25",
+      "page_from": 13,
+      "page_to": 14,
+      "char_len": 3691,
+      "title": "INDHOTEL annual report 2025-03-31",
+      "score": -4.815913099040913,
+      "body_excerpt": "… guest experience and leveraging technology for seamless interactions. Leveraging Technology to Redefine Customer Experience IHCL embraces technology as a powerful enabler of operational excellence and superior customer experiences. By integrating advanced technologies, it enhances both internal processes and guest interactions, ensuring seamless service and operational efficiency. » Robotics with AI » Point of Sale and Google Integration » Unifying Guest Entertainment Technology » Guest Service Fulfilment Solution » Dynamic Business Insights with I-LEAP » Streamlining HR Interactions with Gen AI » Digital Channels » Tata Neu Loyalty Platform Brand Standards As part of IHCL’s transformation into a House of Brands, the Brand Standards Quality Assurance (BSQA) is a multi-faceted process that strengthens the implementation of Brand Standards through execution excellence. Led by the Brand Custodian and supported by 60 cross-functional Brand Champions, BSQA fosters alignment with documented brand manuals, 650+ standards checklists and a 100-point scoring model. The transparent, collaborative process enhances guest experience delivery, supports hotel leadership and links BSQA scores with NPS — ensuring quality adherence and operational consistency at every guest touchpoint. Excellence in Food and Beverage IHCL is committed to scaling up existing brands and nuturing new Food and Beverage (F&B) concepts and enhancing customer experiences by creating unique dining opportunities through …"
+     },
+     {
+      "chunk_id": 53427,
+      "doc_id": "sha256:58e23dc5f478be1481e9743893f9eb9bd6f24da49437865892a32754d1b7010c",
+      "doc_type": "annual_report",
+      "header": "INDHOTEL · INE053A01029 · Annual report · FY24 · ANNEXURE A (CONTD.) · p165 · known 2024-05-23T15:00:31",
+      "section": "ANNEXURE A (CONTD.)",
+      "speaker": null,
+      "known_at": "2024-05-23T15:00:31",
+      "event_date": "2024-05-23",
+      "fiscal_period": "FY24",
+      "page_from": 165,
+      "page_to": 166,
+      "char_len": 3939,
+      "title": "INDHOTEL annual report 2024-03-31",
+      "score": -4.409078416554355,
+      "body_excerpt": "… d 31 March 2026 The Indian Hotels Company Limited 226 (f) \u0007According to the information and explanations given to us and procedures performed by us, we report that the Company has not raised loans during the year on the pledge of securities held in its subsidiaries, joint ventures or associate companies (as defined under the Act). (x) (a) \u0007The Company has not raised any moneys by way of initial public offer or further public offer (including debt instruments). Accordingly, clause 3(x)(a) of the Order is not applicable. (b) \u0007According to the information and explanations given to us and on the basis of our examination of the records of the Company, the Company has not made any preferential allotment or private placement of shares or fully or partly convertible debentures during the year. Accordingly, clause 3(x)(b) of the Order is not applicable. (xi) (a) \u0007During the course of our examination of the books and records of the Company and according to the information and explanations given to us, no fraud by the Company or on the Company has been noticed or reported during the year. (b) \u0007According to the information and explanations given to us, no report under sub-section (12) of Section 143 of the Act has been filed by the auditors in Form ADT-4 as prescribed under Rule 13 of the Companies (Audit and Auditors) Rules, 2014 with the Central Government. (c) \u0007We have taken into consideration the whistle blower complaints received by the Company during the year while determining the  …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "order",
+     "fulfilment"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 4,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-a83ecd13-fff9-4431-a422-13921c9c71a1",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"The data does not contain a \\\"BPC segment\\\" or a \\\"fashion segment\\\" for Indian Hotels. IHCL's reported operating segments are \\\"Hotel Services\\\" and \\\"Air and Institutional Catering\\\" (only, per Note 46 of the annual report). There is no \\\"per order after fulfilment\\\" metric in the held data for any segment. Hence the question's framing does not match the company's disclosed segment structure.\", \"missing\": \"not in data - no BPC segment, no fashion segment, and no per-order/fulfilment earnings metric exist for INDHOTEL; only Hotel Services and Air and Institutional Catering segments are reported.\", \"working\": \"list_atoms showed fin.segment_value with segments 'Air and Institutional Catering' and 'Hotel Services' only; chunk_search for 'BPC segment fashion' and 'per order fulfilment' returned no relevant segment-level per-order metric.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 249,
+   "secs": 3.01,
+   "usage": {
+    "prompt_tokens": 11298,
+    "completion_tokens": 264,
+    "total_tokens": 11562,
+    "prompt_tokens_details": {
+     "cached_tokens": 7936
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 61
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3362,
+      "output": 264,
+      "reasoning": 61,
+      "cache_read": 7936,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 4,
+   "role": "submit",
+   "args": {
+    "answer": "The data does not contain a \"BPC segment\" or a \"fashion segment\" for Indian Hotels. IHCL's reported operating segments are \"Hotel Services\" and \"Air and Institutional Catering\" (only, per Note 46 of the annual report). There is no \"per order after fulfilment\" metric in the held data for any segment. Hence the question's framing does not match the company's disclosed segment structure.",
+    "missing": "not in data - no BPC segment, no fashion segment, and no per-order/fulfilment earnings metric exist for INDHOTEL; only Hotel Services and Air and Institutional Catering segments are reported.",
+    "working": "list_atoms showed fin.segment_value with segments 'Air and Institutional Catering' and 'Hotel Services' only; chunk_search for 'BPC segment fashion' and 'per order fulfilment' returned no relevant segment-level per-order metric."
+   }
+  }
+ ]
+}

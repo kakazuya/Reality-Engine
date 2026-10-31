@@ -1,0 +1,578 @@
+{
+ "qid": "Q06",
+ "mid": "MB0175#MI",
+ "parent_mid": "MB0175",
+ "symbol": "WPIL",
+ "entity_isin": "INE765D01022",
+ "question": "WPIL Limited (NSE: WPIL) par Customs tariff rationalization - remove 7 tariff rates (1 February 2025) ka kitna asar pada, aur agle 12 mahine mein tariff news se correlation negative hua ya nahi? Rolling correlation ke saath batao.",
+ "as_of": "2026-10-19",
+ "period": "2025-01-31",
+ "category": "lookup",
+ "source_bank": "variations300",
+ "status": "final",
+ "error": null,
+ "answer": "The held data does not quantify any impact of India's customs tariff rationalization (removal of 7 tariff rates, 1 Feb 2025) on WPIL Limited, nor does it contain any rolling correlation between tariff-related news and WPIL's stock/returns over the following 12 months. WPIL's disclosures discuss tariffs only as a generic global macro/geopolitical risk, not as a measured, company-specific impact.",
+ "working": "list_atoms (WPIL) shows no tariff/impact atom; chunk_search for \"customs tariff rationalization remove 7 tariff rates\" returned only generic tariff macro commentary (AR FY25/FY26 business environment/future outlook) and a concall mention of North America \"tariff and stuff\"; claim_search for \"tariff customs rationalization\" returned 0 claims. No price-vs-tariff-news series available.",
+ "missing": "not in data: quantified impact of customs tariff rationalization (remove 7 tariff rates, 1 Feb 2025) on WPIL; rolling correlation between tariff news and WPIL returns over the subsequent 12 months.",
+ "not_in_data": true,
+ "n_tool_calls": 3,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "WPIL"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "WPIL",
+    "query": "customs tariff rationalization remove 7 tariff rates"
+   },
+   "ok": true
+  },
+  {
+   "call": 6,
+   "tool": "claim_search",
+   "args": {
+    "entity": "WPIL",
+    "terms": "tariff customs rationalization"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 14496,
+  "completion_tokens": 482
+ },
+ "beam_secs": 8.05,
+ "total_secs": 8.05,
+ "number_check": {
+  "numbers": [
+   "7",
+   "1",
+   "2025",
+   "12"
+  ],
+  "supported": [
+   "7",
+   "1",
+   "2025",
+   "12"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-7ce06732-5785-4da1-b1a8-a30f36e10fed",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"WPIL\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 265,
+   "secs": 1.67,
+   "usage": {
+    "prompt_tokens": 1138,
+    "completion_tokens": 80,
+    "total_tokens": 1218,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 67
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 178,
+      "output": 80,
+      "reasoning": 67,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "WPIL"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE765D01022",
+    "rows": [
+     {
+      "atom": "fin.order_book",
+      "rows": 1,
+      "first_period": "2026-07-24",
+      "last_period": "2026-07-24",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 16,
+      "first_period": "2022-03-31",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=revenue;segment=Project",
+       "basis=consolidated;metric=revenue;segment=Pumps and Accessories"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 127,
+      "first_period": "2026-04-17",
+      "last_period": "2026-10-19",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 561,
+      "first_period": "2024-07-12",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 126,
+      "first_period": "2026-04-20",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 126,
+      "first_period": "2026-04-20",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 126,
+      "first_period": "2026-04-20",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 126,
+      "first_period": "2026-04-20",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 561,
+      "first_period": "2024-07-12",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 126,
+      "first_period": "2026-04-20",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 547,
+      "first_period": "2024-08-02",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 561,
+      "first_period": "2024-07-12",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 542,
+      "first_period": "2024-08-09",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 126,
+      "first_period": "2026-04-20",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 126,
+      "first_period": "2026-04-20",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1360,
+      "first_period": "",
+      "last_period": "2026-07-24",
+      "units": "text",
+      "dims_sample": [
+       "doctype=annual_report;page=100;chunk=64996",
+       "doctype=annual_report;page=101;chunk=80003"
+      ]
+     }
+    ],
+    "n_returned": 16,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-2a455e0a-8b88-42e1-af33-dcd2a5f5e12b",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"WPIL\", \"query\": \"customs tariff rationalization remove 7 tariff rates\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 85,
+   "secs": 1.59,
+   "usage": {
+    "prompt_tokens": 2319,
+    "completion_tokens": 54,
+    "total_tokens": 2373,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 1359,
+      "output": 54,
+      "reasoning": 24,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "WPIL",
+    "query": "customs tariff rationalization remove 7 tariff rates"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE765D01022",
+    "rows": [
+     {
+      "chunk_id": 91163,
+      "doc_id": "sha256:535b58a9e94fd6a5188a57ae66726b9fe75a3590f4fd6aca8856d5d9396070ff",
+      "doc_type": "concall",
+      "header": "WPIL · INE765D01022 · Concall transcript · Q4FY25 · Q&A (cont.) · Q: Thank you. We have our next question from the line of Shekhar an Individu · p10 · known 2025-05-26T16:48:40",
+      "section": "Q&A (cont.) · Q: Thank you. We have our next question from the line of Shekhar an Individual Investor. Please go ahead. Shekhar: Am I audible, sir?",
+      "speaker": "prakash agarwal",
+      "known_at": "2025-05-26T16:48:40",
+      "event_date": "",
+      "fiscal_period": "Q4FY25",
+      "page_from": 10,
+      "page_to": 10,
+      "char_len": 1243,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -10.187248835163288,
+      "body_excerpt": "Prakash Agarwal: Yes we are focusing on all sectors and the order book, as I've said, through starting after the first quarter, that order book is something which is a major focus for us, and we should see a pickup. We have enough orders for this year. And how the order book improves will decide the growth in the second half. Shekhar: Got it. One more, sir. One more sir, one thing. We were actually in talks with other acquisitions. So is there any material update in that, sir, like in North America or something like that? Prakash Agarwal: We are working on them. And hopefully, we'll have more successes this year. Last year was a good year, and this year, we'll have more successes. Shekhar: Which geography are we eyeing sir? Is it Europe or are we trying to go for North America to? Because North America, because of all this tariff and stuff, are we seeing any production being WPIL Limited May 23, 2025 Page 10 of 13 moved into North America or any infrastructure projects being coming up. So are there any opportunity in North American market sir? Prakash Agarwal: There are opportunities in Europe and North America are our two focus areas. Shekhar: Okay. Thank you, sir. That’s it from my side."
+     },
+     {
+      "chunk_id": 64909,
+      "doc_id": "sha256:e60f74386a8e095b39b965c19c9515adfbbcd92ae9efc8d1299304e17ca09cde",
+      "doc_type": "annual_report",
+      "header": "WPIL · INE765D01022 · Annual report · FY25 · D. FUTURE OUTLOOK · p23 · known 2025-07-15T13:32:43",
+      "section": "D. FUTURE OUTLOOK",
+      "speaker": null,
+      "known_at": "2025-07-15T13:32:43",
+      "event_date": "2025-07-15",
+      "fiscal_period": "FY25",
+      "page_from": 23,
+      "page_to": 23,
+      "char_len": 1659,
+      "title": "WPIL annual report 2025-03-31",
+      "score": -9.94241777232206,
+      "body_excerpt": "D. FUTURE OUTLOOK The business environment appears challenging with a rise in geo political tensions and conflicts which negatively impact global trade. Furthermore, the move away from globalisation leading to a tariff based global economy will dent the flow in global trade further and lead to inflationary spikes and recessionary pressures. Global GDP growth assumptions have already been tempered down. However, water scarcity and a growing population represent a big challenge for present water infrastructure and hence the demand is expected to keep growing. Similarly, to address the UN standard of living health goals, sewage and drainage infrastructure needs to be greatly enhanced. Your company has been focussed on developing solutions in fluid handling by enhancing its range of products and services. Simultaneously, enhancing its global reach to diversify its business model. We should be well placed to take advantage of these opportunities. The Company is actively focussing on further enhancing its global reach and looking at establishing operations in newer geographies and creating new growth drivers. The Company being one of the leaders in the pump industry foresees good growth in both domestic and international operations with improved outlook across businesses. All divisions are well equipped to deal with their growing order book and provide good quality and delivery of products to continue to enhance market share. The Company feels it has achieved a good balance between …"
+     },
+     {
+      "chunk_id": 79915,
+      "doc_id": "sha256:7a3744e0c5851da63d89f8d1b6d96c43ade89dfb91239a6ec8a7555d21b387d3",
+      "doc_type": "annual_report",
+      "header": "WPIL · INE765D01022 · Annual report · FY26 · D. FUTURE OUTLOOK · p22 · known 2026-07-14T15:29:34",
+      "section": "D. FUTURE OUTLOOK",
+      "speaker": null,
+      "known_at": "2026-07-14T15:29:34",
+      "event_date": "2026-07-14",
+      "fiscal_period": "FY26",
+      "page_from": 22,
+      "page_to": 23,
+      "char_len": 1667,
+      "title": "WPIL annual report 2026-03-31",
+      "score": -9.917328924587625,
+      "body_excerpt": "D. FUTURE OUTLOOK The business environment appears challenging with a rise in geo political tensions and conflicts which negatively impact global trade. Furthermore, the move away from globalisation leading to a tariff based global economy will dent the flow in global trade further and lead to inflationary spikes and recessionary pressures. Global GDP growth assumptions have already been tempered down. However, water scarcity and a growing population represent a big challenge for present water infrastructure and hence the demand is expected to keep growing. Similarly, to address the UN standard of living health goals sewage and drainage infrastructure needs to be greatly enhanced. Your company has been focussed on developing solutions in fluid handling by enhancing its range of products and services. Simultaneously, enhancing its global reach to diversify its business model. We should be well placed to take advantage of these opportunities. 20 WPIL The Company is actively focussing on further enhancing its global reach and looking at establishing operations in newer geographies and creating new growth drivers. The Company being one of the leaders in the pump industry foresees good growth in both domestic and international operations with improved outlook across businesses. All divisions are well equipped to deal with their growing order book and provide good quality and delivery of products to continue to enhance market share. The Company feels it has achieved a good balance  …"
+     },
+     {
+      "chunk_id": 64901,
+      "doc_id": "sha256:e60f74386a8e095b39b965c19c9515adfbbcd92ae9efc8d1299304e17ca09cde",
+      "doc_type": "annual_report",
+      "header": "WPIL · INE765D01022 · Annual report · FY25 · BUSINESS ENVIRONMENT · p20 · known 2025-07-15T13:32:43",
+      "section": "BUSINESS ENVIRONMENT",
+      "speaker": null,
+      "known_at": "2025-07-15T13:32:43",
+      "event_date": "2025-07-15",
+      "fiscal_period": "FY25",
+      "page_from": 20,
+      "page_to": 21,
+      "char_len": 1817,
+      "title": "WPIL annual report 2025-03-31",
+      "score": -9.697100627987083,
+      "body_excerpt": "… ures have stabilized Rupees and by 2027, India is projected to become the third largest economy globally following United States and China. With the gradual improvement of Economic scenario during the year, there has been an increase in investments across various sectors of the economy and new opportunities are emerging in the capital goods sector. With an expanding order book and growing competencies, the performance of the Company across all its businesses sustained growth. The Company has been consolidating and growing it products portfolio and constantly expanding into new markets to achieve its growth objectives with a long term vision to be a leader in manufacturer of pumps and pumping solutions and turnkey execution of water management contracts. Overall, financial year 2024-25 was another stellar year despite headwinds. The Company achieved improvement across key operational while relentlessly focusing on its core values. 18 WPIL The Global Economy faced turbulence in 2025 amidst tense geopolitical scenario and recessionary pressure. Global growth is projected to remain moderate in 2025 with inflation remaining static in most countries. Key near term risks include high geo political tensions and its impact on global trade. This risk is further escalated with the shift to tariff based regimes and away from globalization. The company is focused on its vision of maintaining balance across its businesses and geographies to derisk itself from policy and other global risks."
+     },
+     {
+      "chunk_id": 95608,
+      "doc_id": "sha256:c009fcc286eb8f1863b30410d47e3e3c117d8b31655c2325af196b07aa2fb515",
+      "doc_type": "concall",
+      "header": "WPIL · INE765D01022 · Concall transcript · - · Q&A · p6 · known 2026-07-27T18:05:09",
+      "section": "Q&A",
+      "speaker": "saket kapoor",
+      "known_at": "2026-07-27T18:05:09",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 6,
+      "page_to": 6,
+      "char_len": 772,
+      "title": "Announcement under Regulation 30 (LODR)-Earnings Call Transcript",
+      "score": -7.314684523871496,
+      "body_excerpt": "Saket Kapoor: Okay. Sir, can you quantify what is the slow-moving order book for the project business in the domestic market? I think it's pertaining, I think, to the Jal Jeevan scheme both for center and state? Prakash Agarwal: No, it is only the Jal Jeevan projects, which are -- we are primarily exposed there right now, that those are slow moving. And that is states but supported by center. It's a joint effort. So hopefully, that will get resolved and invoicing can pick up in the second half of the year. Saket Kapoor: I'm just trying to quantify out of the total order book in the project business of INR4,240 crores... Prakash Agarwal: Most of the order book, if you remove -- so the total order book is INR1,400 crores, most of it is from Jal Jeevan."
+     },
+     {
+      "chunk_id": 65194,
+      "doc_id": "sha256:e60f74386a8e095b39b965c19c9515adfbbcd92ae9efc8d1299304e17ca09cde",
+      "doc_type": "annual_report",
+      "header": "WPIL · INE765D01022 · Annual report · FY25 · 50.2 Interest rate risk : · p262 · known 2025-07-15T13:32:43",
+      "section": "50.2 Interest rate risk :",
+      "speaker": null,
+      "known_at": "2025-07-15T13:32:43",
+      "event_date": "2025-07-15",
+      "fiscal_period": "FY25",
+      "page_from": 262,
+      "page_to": 262,
+      "char_len": 562,
+      "title": "WPIL annual report 2025-03-31",
+      "score": -5.061402712236565,
+      "body_excerpt": "50.2 Interest rate risk : The Group's exposure to the risk of changes in market interest rates relate primarily to the Group's debt. Interest rate sensitivity : The following table demonstrates the sensitivity to a reasonable possible change in interest rates. With all other variables held constant, the Group's profit before tax is affected through the impact of floating rate as follows : (Rs. in Lacs) Particulars Increase/decrease Effect on profit in basis points before tax+/- 31st March, 2025 50 basis points 161.48 31st March, 2024 50 basis points 108.19"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "customs",
+     "tariff",
+     "rationalization",
+     "remove",
+     "tariff",
+     "rates"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-1dbc639a-da4d-4baa-8aea-83089f072614",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"WPIL\", \"terms\": \"tariff customs rationalization\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 153,
+   "secs": 1.8,
+   "usage": {
+    "prompt_tokens": 5461,
+    "completion_tokens": 63,
+    "total_tokens": 5524,
+    "prompt_tokens_details": {
+     "cached_tokens": 2304
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 33
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3157,
+      "output": 63,
+      "reasoning": 33,
+      "cache_read": 2304,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "WPIL",
+    "terms": "tariff customs rationalization"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE765D01022",
+    "rows": [],
+    "n_returned": 0,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-25bfcf8b-558d-468b-ba11-4405a783710c",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"The held data does not quantify any impact of India's customs tariff rationalization (removal of 7 tariff rates, 1 Feb 2025) on WPIL Limited, nor does it contain any rolling correlation between tariff-related news and WPIL's stock/returns over the following 12 months. WPIL's disclosures discuss tariffs only as a generic global macro/geopolitical risk, not as a measured, company-specific impact.\", \"missing\": \"not in data: quantified impact of customs tariff rationalization (remove 7 tariff rates, 1 Feb 2025) on WPIL; rolling correlation between tariff news and WPIL returns over the subsequent 12 months.\", \"working\": \"list_atoms (WPIL) shows no tariff/impact atom; chunk_search for \\\"customs tariff rationalization remove 7 tariff rates\\\" returned only generic tariff macro commentary (AR FY25/FY26 business environment/future outlook) and a concall mention of North America \\\"tariff and stuff\\\"; claim_search for \\\"tariff customs rationalization\\\" returned 0 claims. No price-vs-tariff-news series available.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 122,
+   "secs": 2.87,
+   "usage": {
+    "prompt_tokens": 5578,
+    "completion_tokens": 285,
+    "total_tokens": 5863,
+    "prompt_tokens_details": {
+     "cached_tokens": 5440
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 33
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 138,
+      "output": 285,
+      "reasoning": 33,
+      "cache_read": 5440,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "The held data does not quantify any impact of India's customs tariff rationalization (removal of 7 tariff rates, 1 Feb 2025) on WPIL Limited, nor does it contain any rolling correlation between tariff-related news and WPIL's stock/returns over the following 12 months. WPIL's disclosures discuss tariffs only as a generic global macro/geopolitical risk, not as a measured, company-specific impact.",
+    "missing": "not in data: quantified impact of customs tariff rationalization (remove 7 tariff rates, 1 Feb 2025) on WPIL; rolling correlation between tariff news and WPIL returns over the subsequent 12 months.",
+    "working": "list_atoms (WPIL) shows no tariff/impact atom; chunk_search for \"customs tariff rationalization remove 7 tariff rates\" returned only generic tariff macro commentary (AR FY25/FY26 business environment/future outlook) and a concall mention of North America \"tariff and stuff\"; claim_search for \"tariff customs rationalization\" returned 0 claims. No price-vs-tariff-news series available."
+   }
+  }
+ ]
+}

@@ -1,0 +1,543 @@
+{
+ "qid": "Q05",
+ "mid": "MB0124#MI",
+ "parent_mid": "MB0124",
+ "symbol": "KHADIM",
+ "entity_isin": "INE834I01025",
+ "question": "Khadim India Ltd public shareholding Sep 2026",
+ "as_of": "2026-10-19",
+ "period": "Sep 2026",
+ "category": "lookup",
+ "source_bank": "variations300",
+ "status": "final",
+ "error": null,
+ "answer": "40.11%",
+ "working": "hold.pct with dims holder_class=public, period 2026-09-30 = 40.11% (known_at 2026-10-16).",
+ "missing": "none",
+ "not_in_data": false,
+ "n_tool_calls": 2,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "KHADIM"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "fact_query",
+   "args": {
+    "atom": "hold.pct",
+    "dims": "holder_class=public",
+    "entity": "KHADIM",
+    "period_from": "2026-09-01",
+    "period_to": "2026-09-30"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 3,
+ "usage": {
+  "prompt_tokens": 7917,
+  "completion_tokens": 236
+ },
+ "beam_secs": 4.85,
+ "total_secs": 4.85,
+ "number_check": {
+  "numbers": [
+   "40.11"
+  ],
+  "supported": [
+   "40.11"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-422d770c-3944-40b9-bf02-d0d77b663667",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"KHADIM\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 127,
+   "secs": 1.53,
+   "usage": {
+    "prompt_tokens": 1086,
+    "completion_tokens": 55,
+    "total_tokens": 1141,
+    "prompt_tokens_details": {
+     "cached_tokens": 1024
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 39
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 62,
+      "output": 55,
+      "reasoning": 39,
+      "cache_read": 1024,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "KHADIM"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE834I01025",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 15,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 4,
+      "first_period": "2020-09-30",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 15,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 66,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 66,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 66,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 15,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 66,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 15,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 66,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 15,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 37,
+      "first_period": "2019-02-14",
+      "last_period": "2026-10-01",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 70,
+      "first_period": "2021-09-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 10,
+      "first_period": "2024-06-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 1677,
+      "first_period": "2019-12-30",
+      "last_period": "2026-10-19",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1731,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-17",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1731,
+      "first_period": "2019-01-01",
+      "last_period": "2026-06-17",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1913,
+      "first_period": "2019-01-21",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1908,
+      "first_period": "2019-01-28",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1151,
+      "first_period": "",
+      "last_period": "2026-09-15",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=0;chunk=52151",
+       "doctype=announcement;page=0;chunk=52156"
+      ]
+     }
+    ],
+    "n_returned": 28,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-997072be-f417-4bcf-8e7b-ca98556ae2c7",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"hold.pct\", \"dims\": \"holder_class=public\", \"entity\": \"KHADIM\", \"period_from\": \"2026-09-01\", \"period_to\": \"2026-09-30\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 51,
+   "secs": 1.55,
+   "usage": {
+    "prompt_tokens": 3267,
+    "completion_tokens": 89,
+    "total_tokens": 3356,
+    "prompt_tokens_details": {
+     "cached_tokens": 3264
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 18
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3,
+      "output": 89,
+      "reasoning": 18,
+      "cache_read": 3264,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "hold.pct",
+    "dims": "holder_class=public",
+    "entity": "KHADIM",
+    "period_from": "2026-09-01",
+    "period_to": "2026-09-30"
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-10-19",
+    "entity": "INE834I01025",
+    "atom": "hold.pct",
+    "rows": [
+     {
+      "entity_id": "INE834I01025",
+      "atom": "hold.pct",
+      "dims": "holder_class=public",
+      "period_start": "2026-09-30",
+      "period_end": "2026-09-30",
+      "value": 40.11,
+      "unit": "%",
+      "known_at": "2026-10-16T19:44:53",
+      "source_ref": "market_state.company_ownership_pit"
+     }
+    ],
+    "n_returned": 1,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-825df593-4764-45f6-ac3d-bfd162ef45f3",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"40.11%\", \"missing\": \"none\", \"working\": \"hold.pct with dims holder_class=public, period 2026-09-30 = 40.11% (known_at 2026-10-16).\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 15,
+   "secs": 1.72,
+   "usage": {
+    "prompt_tokens": 3564,
+    "completion_tokens": 92,
+    "total_tokens": 3656,
+    "prompt_tokens_details": {
+     "cached_tokens": 3520
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 15
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 44,
+      "output": 92,
+      "reasoning": 15,
+      "cache_read": 3520,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "submit",
+   "args": {
+    "answer": "40.11%",
+    "missing": "none",
+    "working": "hold.pct with dims holder_class=public, period 2026-09-30 = 40.11% (known_at 2026-10-16)."
+   }
+  }
+ ]
+}

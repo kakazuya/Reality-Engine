@@ -1,0 +1,1407 @@
+{
+ "qid": "Q27",
+ "mid": "MB0917#L",
+ "parent_mid": "MB0917",
+ "symbol": "HINDALCO",
+ "entity_isin": "INE038A01020",
+ "question": "Hindalco Industries Limited: did the order inflow announcements or the institutional flows better explain the last two quarters of returns?",
+ "as_of": "2026-10-19",
+ "period": "Q4FY26-Q2FY27",
+ "category": "explanation",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "Neither. No order-inflow announcements are present in the held data for Hindalco (claim/chunk searches for \"order inflow\" returned only generic order-book/project mentions, not order-inflow announcements), so that candidate cannot be tested. Institutional flows are available and show DII holding fell from 24.23% (Sep-2025) to 19.95% (Jun-2026) while FII rose from 32.10% to 35.60%, but the data does not establish a causal link to the last two quarters' returns. Hence only the institutional-flow side is observable, and even that is descriptive, not explanatory.",
+ "working": "hold.pct DII: 24.23% (2025-09-30) -> 19.95% (2026-06-30); FII: 32.10% -> 35.60%. claim_search/chunk_search for \"order inflow\" returned no order-inflow announcement facts.",
+ "missing": "not in data: order inflow announcements for HINDALCO in the period (none found in announcements/concalls/decks).",
+ "not_in_data": true,
+ "n_tool_calls": 5,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "HINDALCO"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "claim_search",
+   "args": {
+    "entity": "HINDALCO",
+    "terms": "order inflow"
+   },
+   "ok": true
+  },
+  {
+   "call": 5,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "HINDALCO",
+    "query": "order inflow"
+   },
+   "ok": true
+  },
+  {
+   "call": 7,
+   "tool": "fact_query",
+   "args": {
+    "atom": "hold.pct",
+    "entity": "HINDALCO"
+   },
+   "ok": true
+  },
+  {
+   "call": 8,
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.close",
+    "entity": "HINDALCO",
+    "period_from": "2026-01-01",
+    "period_to": "2026-10-19"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 26826,
+  "completion_tokens": 664
+ },
+ "beam_secs": 9.71,
+ "total_secs": 9.71,
+ "number_check": {
+  "numbers": [
+   "24.23",
+   "2025",
+   "19.95",
+   "2026",
+   "32.10",
+   "35.60"
+  ],
+  "supported": [
+   "24.23",
+   "2025",
+   "19.95",
+   "2026",
+   "32.10",
+   "35.60"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b0e8c504-2768-4298-b4d5-8c6bb432797f",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"HINDALCO\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 80,
+   "secs": 1.54,
+   "usage": {
+    "prompt_tokens": 1101,
+    "completion_tokens": 41,
+    "total_tokens": 1142,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 141,
+      "output": 41,
+      "reasoning": 24,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "HINDALCO"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE038A01020",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 4,
+      "first_period": "2020-09-30",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 71,
+      "first_period": "2018-12-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 84,
+      "first_period": "2018-03-31",
+      "last_period": "2025-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=ebitda;segment=Aluminium",
+       "basis=consolidated;metric=ebitda;segment=Aluminium (including Utkal)"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 46,
+      "first_period": "2019-04-02",
+      "last_period": "2021-10-04",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 76,
+      "first_period": "2021-09-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 9,
+      "first_period": "2024-06-30",
+      "last_period": "2026-06-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 2,
+      "first_period": "2024-03-01",
+      "last_period": "2024-05-17",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1913,
+      "first_period": "2019-01-21",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1908,
+      "first_period": "2019-01-28",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1581,
+      "first_period": "",
+      "last_period": "2026-08-07",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=0;chunk=53056",
+       "doctype=announcement;page=0;chunk=53057"
+      ]
+     }
+    ],
+    "n_returned": 29,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-22f8979b-38b8-40a8-95e8-28328d1701e8",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"HINDALCO\", \"terms\": \"order inflow\"}"
+     }
+    },
+    {
+     "id": "call-c7097e8b-1095-4a09-953c-de4b9a7c34a7",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"HINDALCO\", \"query\": \"order inflow\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 166,
+   "secs": 1.69,
+   "usage": {
+    "prompt_tokens": 3383,
+    "completion_tokens": 95,
+    "total_tokens": 3478,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 40
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2295,
+      "output": 95,
+      "reasoning": 40,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "HINDALCO",
+    "terms": "order inflow"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE038A01020",
+    "rows": [
+     {
+      "claim_id": 254214,
+      "entity_id": "INE038A01020",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "our cumulative cash flow impact has been of the order of 1.4 billion net of all recoveries, which is 300 million so far",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "balance_sheet_and_cash",
+      "known_at": "2026-08-13T11:22:31.19"
+     },
+     {
+      "claim_id": 254611,
+      "entity_id": "INE038A01020",
+      "topic": "volume",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 500.0,
+      "unit": "Kt",
+      "horizon": "current",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "in the order of 500 Kt",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2025-11-13T18:46:07.383"
+     },
+     {
+      "claim_id": 254734,
+      "entity_id": "INE038A01020",
+      "topic": "cost",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "we now estimate the total project capital cost will be in the order of $5 billion",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "one_offs_and_surprises",
+      "known_at": "2025-11-06T12:24:23.92"
+     },
+     {
+      "claim_id": 254672,
+      "entity_id": "INE038A01020",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 5.0,
+      "unit": "USD billion",
+      "horizon": "total project",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "we now estimate the total project capital cost will be in the order of $5 billion",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capex",
+      "known_at": "2025-11-06T12:24:23.92"
+     },
+     {
+      "claim_id": 254749,
+      "entity_id": "INE038A01020",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "we now estimate the total project capital cost will be in the order of $5 billion",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "risks_and_headwinds",
+      "known_at": "2025-11-06T12:24:23.92"
+     },
+     {
+      "claim_id": 254765,
+      "entity_id": "INE038A01020",
+      "topic": "expansion",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "FY28",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "The aluminum 180-pot expansion, we are now starting to place orders and we will move fast ahead.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2025-08-18T18:53:05.433"
+     },
+     {
+      "claim_id": 254787,
+      "entity_id": "INE038A01020",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Aerospace demand remains strong with persistent orders and multiyear OEM backlogs continuing to support sectoral growth.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "demand_commentary",
+      "known_at": "2025-08-18T18:53:05.433"
+     },
+     {
+      "claim_id": 254840,
+      "entity_id": "INE038A01020",
+      "topic": "volume",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": 90.0,
+      "unit": "Kt",
+      "horizon": "annual",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "from Canada, it is of the order of about 90 kilotons annual.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "key_numbers",
+      "known_at": "2025-08-18T18:53:05.433"
+     },
+     {
+      "claim_id": 254903,
+      "entity_id": "INE038A01020",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": "not stated",
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "the copper recycling plant also land broken, all major equipment orders put, engineering more or less complete",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "capacity_and_projects",
+      "known_at": "2025-05-26T11:53:57.187"
+     },
+     {
+      "claim_id": 255049,
+      "entity_id": "INE038A01020",
+      "topic": "other",
+      "direction": "neutral",
+      "direction_raw": null,
+      "magnitude": null,
+      "unit": null,
+      "horizon": null,
+      "certainty": null,
+      "guidance_vs_fact": "fact",
+      "quote": "Aerospace remains strong with high orders despite OEM supply chain constraints impacting the production of new aircraft.",
+      "page_no": null,
+      "doctype": "concall",
+      "list_name": "demand_commentary",
+      "known_at": "2025-02-19T17:25:18.01"
+     }
+    ],
+    "n_returned": 10,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "HINDALCO",
+    "query": "order inflow"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE038A01020",
+    "rows": [
+     {
+      "chunk_id": 47778,
+      "doc_id": "sha256:17daf2f2be5e48bdd97bff59b747eaf6657e9d3c259cf810269e09cc855b34e5",
+      "doc_type": "deck",
+      "header": "HINDALCO · INE038A01020 · Investor deck · - · Quarterly · p20 · known 2025-11-07T13:53:26",
+      "section": "Quarterly",
+      "speaker": null,
+      "known_at": "2025-11-07T13:53:26",
+      "event_date": "2025-11-07",
+      "fiscal_period": "",
+      "page_from": 20,
+      "page_to": 20,
+      "char_len": 875,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -7.055662135759342,
+      "body_excerpt": "35,338 -8,762 11,330 274 1,110 2,125 41,415 Net Debt 31st Mar'25 Inflow from Operations Capex Investments Dividend Payout Others Net Debt 30th Sep'25 Increase Decrease Total Disciplined Capital Allocation (₹ Crore) Hindalco Q2 FY26 – Earnings Presentation Consolidated Performance * 1.19 1.33 1.06 1.02 1.23 Sep-24 Dec-24 Mar-25 Jun-25 Sep-25 Net Debt/EBITDA (Consolidated) 16% 17% 20% 19% 20% Sep-24 Dec-24 Mar-25 Jun-25 Sep-25 ROCE** (Consolidated) • Healthy cash generation of ₹8,762 crore in H1 FY26 (↑45% YoY) • Capex deployment of ₹11,330 crore (↑23% YoY) • Net debt increase aligned with long-term value creation strategy * Others primarily includes non-cash currency translation difference **ROCE is EBIT excl Treasury Income divided by Average Capital Employed (Net Worth + Gross Debt + Net DTL – CWIP - Treasury Investments – Investment in Group Companies) 19"
+     },
+     {
+      "chunk_id": 50436,
+      "doc_id": "sha256:a707229164e981b91df11435bdfb242d49fe48e24b27e939d64c22ed9b4d9626",
+      "doc_type": "deck",
+      "header": "HINDALCO · INE038A01020 · Investor deck · - · Quarterly · p23 · known 2026-05-22T17:49:16",
+      "section": "Quarterly",
+      "speaker": null,
+      "known_at": "2026-05-22T17:49:16",
+      "event_date": "2026-05-22",
+      "fiscal_period": "",
+      "page_from": 23,
+      "page_to": 23,
+      "char_len": 1287,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.459470316997756,
+      "body_excerpt": "-21,858 12,909 31,619 1,110 35,332 5,729 64,841 Net Debt 31st Mar'25 Net Inflow from Operations Oswego fire impact (net of recoveries) Capex Dividend Payout Others Net Debt 31st Mar'26 20% 19% 20% 19% 20% Mar-25 Jun-25 Sep-25 Dec-25 Mar-26 ROCE# (Consolidated) Disciplined Capital Allocation (₹ Crores) Hindalco Q4 FY26 – Earnings Presentation Consolidated Performance ^Oswego fire impact includes repair costs, operational downtime, costs to serve customers (and associated tariffs), and other recovery costs offset by insurance recoveries amounting to ₹9,360 crore ($1,060 mn) and estimated working capital timing impact of ₹3,550 crore ($402 mn). *Includes acquisition costs of Bandha mine **Others primarily includes non-cash currency translation difference #ROCE is EBIT before exceptional items excl Treasury Income divided by Average Capital Employed (Net Worth + Gross Debt + Net DTL – CWIP - Treasury Investments – Investment in Group Companies) 1.06 1.02 1.23 1.73 1.83 Mar-25 Jun-25 Sep-25 Dec-25 Mar-26 Net Debt/EBITDA (Consolidated) • Healthy Cash flow from operations at ₹21,858 crore (↑ 11% YoY) • Capex of ₹31,619 crore (↑47% YoY) to drive strategic growth projects increases Net Debt to EBITDA to 1.83x in line with capital allocation framework ** * 22 ^"
+     },
+     {
+      "chunk_id": 49226,
+      "doc_id": "sha256:70d4b23f6e77f91c17e600d514202f6cc55a25a20606d036154f4ba441a8f6ac",
+      "doc_type": "deck",
+      "header": "HINDALCO · INE038A01020 · Investor deck · - · News Release · p2 · known 2026-02-11T17:50:07",
+      "section": "News Release",
+      "speaker": null,
+      "known_at": "2026-02-11T17:50:07",
+      "event_date": "2026-02-11",
+      "fiscal_period": "",
+      "page_from": 2,
+      "page_to": 2,
+      "char_len": 3735,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -4.348259142907449,
+      "body_excerpt": "… gher average aluminum prices, partially offset by an 11% decrease in total rolled product shipments to 809 kilotonnes. Lower shipments to the automotive, beverage packaging and specialties markets were primarily driven by an estimated 72 kilotonne negative shipment impact related to the Oswego production disruption, partially offset by higher aerospace shipments. Net income attributable to our common shareholder was a loss of $160 million in the third quarter of fiscal year 2026, compared to a net income of $110 million in the prior year period. The decrease was due primarily to the Oswego production disruption and $327 million in pre-tax net losses related to the Oswego fires, as well as unrealized losses on derivatives in the current year compared to gains in the prior year, partially offset by favorable metal price lag resulting from rising average local market aluminum premiums. Adjusted EBITDA decreased 5% year-over-year to $348 million in the third quarter of fiscal year 2026, impacted by an estimated negative $54 million resulting from production interruptions at Oswego and $34 million from tariffs. Partially offsetting these factors were lower aluminum scrap input prices, higher product pricing and savings from our cost efficiency actions. Net cash used in operating activities was an outflow of $90 million in the first nine months of fiscal year 2026, compared to a net cash inflow $263 million in the prior year period, largely related to impacts from the Oswego fires."
+     },
+     {
+      "chunk_id": 51491,
+      "doc_id": "sha256:93e2a70ebcf29278504edb0301bd18fc11c3c242a1dd571fd3d1144097c7174a",
+      "doc_type": "deck",
+      "header": "HINDALCO · INE038A01020 · Investor deck · - · News Release · p2 · known 2026-08-05T16:58:06",
+      "section": "News Release",
+      "speaker": null,
+      "known_at": "2026-08-05T16:58:06",
+      "event_date": "2026-08-05",
+      "fiscal_period": "",
+      "page_from": 2,
+      "page_to": 2,
+      "char_len": 3765,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -4.237312369323698,
+      "body_excerpt": "… prices and cost efficiencies, which were partially offset by higher net tariffs. The estimated impact from the Oswego fires in Adjusted EBITDA is an $18 million benefit, as the favorable timing of insurance proceeds more than offset the estimated negative impact of production interruptions in the quarter. Net income attributable to our common shareholder, excluding special items, increased 128% year-over-year to $265 million. Net cash used in operating activities was an outflow of $455 million in the first quarter of fiscal year 2027, compared to a net cash inflow of $105 million in the prior year period, largely related to higher working capital from rising aluminum prices and impacts from the Oswego fires, net of insurance recoveries. Adjusted free cash flow was an outflow of $1.1 billion in the current year period, compared to the prior year period outflow of $295 million. The reduction in adjusted free cash flow is mainly driven by lower operating cash flow, as well as higher capital expenditures related to the Company's U.S. greenfield rolling and recycling plant in Bay Minette, Alabama, which has begun the commissioning process. The Company had a net leverage ratio (Adjusted Net Debt / trailing twelve months (TTM) Adjusted EBITDA) of 4.5x at the end of the first quarter of fiscal year 2027. Total liquidity stood at $2.1 billion as of June 30, 2026, consisting of $1.1 billion in cash and cash equivalents and $1.0 billion in availability under committed credit facilities."
+     },
+     {
+      "chunk_id": 42242,
+      "doc_id": "sha256:07d32ddd4288cc6e0cada11913e75a1957817c2ac8727805ec4bf89026eccbdf",
+      "doc_type": "deck",
+      "header": "HINDALCO · INE038A01020 · Investor deck · - · • US market remains strong for · p17 · known 2024-08-13T14:17:37",
+      "section": "• US market remains strong for",
+      "speaker": null,
+      "known_at": "2024-08-13T14:17:37",
+      "event_date": "2024-08-13",
+      "fiscal_period": "",
+      "page_from": 17,
+      "page_to": 17,
+      "char_len": 979,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -4.164251218716428,
+      "body_excerpt": "• US market remains strong for beverage cans • Positive Outlook in Europe and South America • Demand broadly remains stable, even amidst challenging macros • Favorable mix in vehicle sales (trucks, SUVs) with higher share of aluminum Global FRP Demand is estimated to grow by ~4% ex-China in CY24. • Improving order book in Building & Construction in North America, but muted demand in Europe due to continued economic headwinds • EV battery demand slowdown • Demand remains strong with high order backlog driven by fleet replacement and route expansion • OEM production rates limited by supply chain constraints CAGR 7% (CY23-28) Growth Rate @Global GDP% CAGR 5% (CY23-30) Automobile CAGR 4% - CY23-31 (Ex China) Beverage Packaging Specialty Aerospace Industry demand Aluminium Flat Rolled Products Economy & Industry Updates Aluminum FRP Industry India FRP market in FY25 is estimated to grow by ~7 to 8%, led by growth in packaging, auto, and construction 16"
+     },
+     {
+      "chunk_id": 42058,
+      "doc_id": "sha256:57e6667d1cd8b9509aa77f3fe2309039ba41466eda1bbe4b4ea28a00fc23fdce",
+      "doc_type": "deck",
+      "header": "HINDALCO · INE038A01020 · Investor deck · - · Capital · p24 · known 2024-08-07T17:11:51",
+      "section": "Capital",
+      "speaker": null,
+      "known_at": "2024-08-07T17:11:51",
+      "event_date": "2024-08-07",
+      "fiscal_period": "",
+      "page_from": 24,
+      "page_to": 24,
+      "char_len": 1273,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -4.04164096073105,
+      "body_excerpt": "Global aluminum FRP demand projected to grow 4% in 2024 vs 2023 (2) Notes: 1. Can CRU Aluminum Beverage Can Sheet Market Outlook 2023 (excluding China), 2023-2031; Automotive Management Estimates 2023 – 2028; Aerospace Management Estimates 2023 – 2030 2. 2024 global (excluding China) growth rate per CRU Rolled Products Market Outlook; long-term global demand CAGR by end market are management estimates Long-term demand growth rate (1) Near-term market trends • North American market remains strong • Improving demand outlook in Europe and South America • Demand broadly remains stable, even amidst challenging macro • Implications from Sierre flooding still under assessment • Favorable vehicle mix in vehicle sales (trucks, SUVs) that use higher share of aluminum • Demand remains solid with high order backlog driven by fleet replacement and route expansion • OEM production rates limited by supply chain constraints • Improving Building & Construction order book in N America, but muted in Europe driven by continued economic headwinds • EV battery demand slowdown ~4% ~7% ~5% GDP+ AUTOMOTIVE BEVERAGE PACKAGING AEROSPACE SPECIALTY (57% of FY24 Shipments) (21% FY24 Shipments) (3% FY24 Shipments) (19% FY24 Shipments) 14 End Market Trends Novelis Q1FY25 Earnings"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "order",
+     "inflow"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-cf730b15-6ad1-4dcb-abf6-54e5ace9618c",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"hold.pct\", \"entity\": \"HINDALCO\"}"
+     }
+    },
+    {
+     "id": "call-20c576f6-86ea-4bbb-88a5-a53c9d357b3d",
+     "type": "function",
+     "function": {
+      "name": "fact_query",
+      "arguments": "{\"atom\": \"price.close\", \"entity\": \"HINDALCO\", \"period_from\": \"2026-01-01\", \"period_to\": \"2026-10-19\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 327,
+   "secs": 2.05,
+   "usage": {
+    "prompt_tokens": 8530,
+    "completion_tokens": 169,
+    "total_tokens": 8699,
+    "prompt_tokens_details": {
+     "cached_tokens": 3328
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 83
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 5202,
+      "output": 169,
+      "reasoning": 83,
+      "cache_read": 3328,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "hold.pct",
+    "entity": "HINDALCO"
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-10-19",
+    "entity": "INE038A01020",
+    "atom": "hold.pct",
+    "rows": [
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=dii",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 19.95,
+      "unit": "%",
+      "known_at": "2026-07-10T17:58:39",
+      "source_ref": "shp_xbrl:SHP_1690624_10072026055831_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=fii",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 35.6,
+      "unit": "%",
+      "known_at": "2026-07-10T17:58:39",
+      "source_ref": "shp_xbrl:SHP_1690624_10072026055831_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=insurance",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 6.82,
+      "unit": "%",
+      "known_at": "2026-07-10T17:58:39",
+      "source_ref": "shp_xbrl:SHP_1690624_10072026055831_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=mf",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 10.05,
+      "unit": "%",
+      "known_at": "2026-07-10T17:58:39",
+      "source_ref": "shp_xbrl:SHP_1690624_10072026055831_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=promoter",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 34.66,
+      "unit": "%",
+      "known_at": "2026-07-10T17:58:39",
+      "source_ref": "equity_intelligence.shp_index#symbol_isin_history"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=public",
+      "period_start": "2026-06-30",
+      "period_end": "2026-06-30",
+      "value": 64.87,
+      "unit": "%",
+      "known_at": "2026-07-10T17:58:39",
+      "source_ref": "equity_intelligence.shp_index#symbol_isin_history"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=dii",
+      "period_start": "2026-03-31",
+      "period_end": "2026-03-31",
+      "value": 21.47,
+      "unit": "%",
+      "known_at": "2026-04-17T14:10:56",
+      "source_ref": "shp_xbrl:SHP_1653017_17042026021047_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=fii",
+      "period_start": "2026-03-31",
+      "period_end": "2026-03-31",
+      "value": 34.13,
+      "unit": "%",
+      "known_at": "2026-04-17T14:10:56",
+      "source_ref": "shp_xbrl:SHP_1653017_17042026021047_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=insurance",
+      "period_start": "2026-03-31",
+      "period_end": "2026-03-31",
+      "value": 7.22,
+      "unit": "%",
+      "known_at": "2026-04-17T14:10:56",
+      "source_ref": "shp_xbrl:SHP_1653017_17042026021047_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=mf",
+      "period_start": "2026-03-31",
+      "period_end": "2026-03-31",
+      "value": 11.37,
+      "unit": "%",
+      "known_at": "2026-04-17T14:10:56",
+      "source_ref": "shp_xbrl:SHP_1653017_17042026021047_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=promoter",
+      "period_start": "2026-03-31",
+      "period_end": "2026-03-31",
+      "value": 34.64,
+      "unit": "%",
+      "known_at": "2026-04-17T14:10:56",
+      "source_ref": "equity_intelligence.shp_index#symbol_isin_history"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=public",
+      "period_start": "2026-03-31",
+      "period_end": "2026-03-31",
+      "value": 64.87,
+      "unit": "%",
+      "known_at": "2026-04-17T14:10:56",
+      "source_ref": "equity_intelligence.shp_index#symbol_isin_history"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=dii",
+      "period_start": "2025-12-31",
+      "period_end": "2025-12-31",
+      "value": 23.29,
+      "unit": "%",
+      "known_at": "2026-01-21T14:47:24",
+      "source_ref": "shp_xbrl:SHP_1606865_21012026024716_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=fii",
+      "period_start": "2025-12-31",
+      "period_end": "2025-12-31",
+      "value": 32.33,
+      "unit": "%",
+      "known_at": "2026-01-21T14:47:24",
+      "source_ref": "shp_xbrl:SHP_1606865_21012026024716_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=insurance",
+      "period_start": "2025-12-31",
+      "period_end": "2025-12-31",
+      "value": 7.34,
+      "unit": "%",
+      "known_at": "2026-01-21T14:47:24",
+      "source_ref": "shp_xbrl:SHP_1606865_21012026024716_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=mf",
+      "period_start": "2025-12-31",
+      "period_end": "2025-12-31",
+      "value": 13.27,
+      "unit": "%",
+      "known_at": "2026-01-21T14:47:24",
+      "source_ref": "shp_xbrl:SHP_1606865_21012026024716_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=promoter",
+      "period_start": "2025-12-31",
+      "period_end": "2025-12-31",
+      "value": 34.64,
+      "unit": "%",
+      "known_at": "2026-01-21T14:47:24",
+      "source_ref": "equity_intelligence.shp_index#symbol_isin_history"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=public",
+      "period_start": "2025-12-31",
+      "period_end": "2025-12-31",
+      "value": 64.85,
+      "unit": "%",
+      "known_at": "2026-01-21T14:47:24",
+      "source_ref": "equity_intelligence.shp_index#symbol_isin_history"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=dii",
+      "period_start": "2025-09-30",
+      "period_end": "2025-09-30",
+      "value": 24.23,
+      "unit": "%",
+      "known_at": "2025-10-22T09:31:02",
+      "source_ref": "shp_xbrl:SHP_1555145_22102025093053_WEB.xml"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "hold.pct",
+      "dims": "holder_class=fii",
+      "period_start": "2025-09-30",
+      "period_end": "2025-09-30",
+      "value": 32.1,
+      "unit": "%",
+      "known_at": "2025-10-22T09:31:02",
+      "source_ref": "shp_xbrl:SHP_1555145_22102025093053_WEB.xml"
+     }
+    ],
+    "n_returned": 20,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "fact_query",
+   "args": {
+    "atom": "price.close",
+    "entity": "HINDALCO",
+    "period_from": "2026-01-01",
+    "period_to": "2026-10-19"
+   },
+   "result": {
+    "tool": "fact_query",
+    "as_of": "2026-10-19",
+    "entity": "INE038A01020",
+    "atom": "price.close",
+    "rows": [
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-19",
+      "period_end": "2026-10-19",
+      "value": 900.45,
+      "unit": "INR",
+      "known_at": "2026-10-19T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-16",
+      "period_end": "2026-10-16",
+      "value": 908.0,
+      "unit": "INR",
+      "known_at": "2026-10-16T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-15",
+      "period_end": "2026-10-15",
+      "value": 893.85,
+      "unit": "INR",
+      "known_at": "2026-10-15T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-14",
+      "period_end": "2026-10-14",
+      "value": 882.5,
+      "unit": "INR",
+      "known_at": "2026-10-14T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-13",
+      "period_end": "2026-10-13",
+      "value": 902.25,
+      "unit": "INR",
+      "known_at": "2026-10-13T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-12",
+      "period_end": "2026-10-12",
+      "value": 882.5,
+      "unit": "INR",
+      "known_at": "2026-10-12T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-09",
+      "period_end": "2026-10-09",
+      "value": 900.35,
+      "unit": "INR",
+      "known_at": "2026-10-09T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-08",
+      "period_end": "2026-10-08",
+      "value": 890.15,
+      "unit": "INR",
+      "known_at": "2026-10-08T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-07",
+      "period_end": "2026-10-07",
+      "value": 910.85,
+      "unit": "INR",
+      "known_at": "2026-10-07T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-06",
+      "period_end": "2026-10-06",
+      "value": 940.5,
+      "unit": "INR",
+      "known_at": "2026-10-06T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-05",
+      "period_end": "2026-10-05",
+      "value": 938.4,
+      "unit": "INR",
+      "known_at": "2026-10-05T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-10-01",
+      "period_end": "2026-10-01",
+      "value": 941.85,
+      "unit": "INR",
+      "known_at": "2026-10-01T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-30",
+      "period_end": "2026-09-30",
+      "value": 941.8,
+      "unit": "INR",
+      "known_at": "2026-09-30T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-29",
+      "period_end": "2026-09-29",
+      "value": 955.2,
+      "unit": "INR",
+      "known_at": "2026-09-29T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-28",
+      "period_end": "2026-09-28",
+      "value": 955.9,
+      "unit": "INR",
+      "known_at": "2026-09-28T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-25",
+      "period_end": "2026-09-25",
+      "value": 977.0,
+      "unit": "INR",
+      "known_at": "2026-09-25T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-24",
+      "period_end": "2026-09-24",
+      "value": 982.0,
+      "unit": "INR",
+      "known_at": "2026-09-24T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-23",
+      "period_end": "2026-09-23",
+      "value": 1003.8,
+      "unit": "INR",
+      "known_at": "2026-09-23T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-22",
+      "period_end": "2026-09-22",
+      "value": 973.0,
+      "unit": "INR",
+      "known_at": "2026-09-22T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     },
+     {
+      "entity_id": "INE038A01020",
+      "atom": "price.close",
+      "dims": "",
+      "period_start": "2026-09-21",
+      "period_end": "2026-09-21",
+      "value": 981.2,
+      "unit": "INR",
+      "known_at": "2026-09-21T15:30:00",
+      "source_ref": "market_state.company_state_daily"
+     }
+    ],
+    "n_returned": 20,
+    "note": "all rows have known_at <= as_of; period_end is the fact date, known_at is when it became public"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-e1c6f38a-7b77-47b5-94d0-9de70203ed49",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"Neither. No order-inflow announcements are present in the held data for Hindalco (claim/chunk searches for \\\"order inflow\\\" returned only generic order-book/project mentions, not order-inflow announcements), so that candidate cannot be tested. Institutional flows are available and show DII holding fell from 24.23% (Sep-2025) to 19.95% (Jun-2026) while FII rose from 32.10% to 35.60%, but the data does not establish a causal link to the last two quarters' returns. Hence only the institutional-flow side is observable, and even that is descriptive, not explanatory.\", \"missing\": \"not in data: order inflow announcements for HINDALCO in the period (none found in announcements/concalls/decks).\", \"working\": \"hold.pct DII: 24.23% (2025-09-30) -> 19.95% (2026-06-30); FII: 32.10% -> 35.60%. claim_search/chunk_search for \\\"order inflow\\\" returned no order-inflow announcement facts.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 380,
+   "secs": 4.16,
+   "usage": {
+    "prompt_tokens": 13812,
+    "completion_tokens": 359,
+    "total_tokens": 14171,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 81
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 12852,
+      "output": 359,
+      "reasoning": 81,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "Neither. No order-inflow announcements are present in the held data for Hindalco (claim/chunk searches for \"order inflow\" returned only generic order-book/project mentions, not order-inflow announcements), so that candidate cannot be tested. Institutional flows are available and show DII holding fell from 24.23% (Sep-2025) to 19.95% (Jun-2026) while FII rose from 32.10% to 35.60%, but the data does not establish a causal link to the last two quarters' returns. Hence only the institutional-flow side is observable, and even that is descriptive, not explanatory.",
+    "missing": "not in data: order inflow announcements for HINDALCO in the period (none found in announcements/concalls/decks).",
+    "working": "hold.pct DII: 24.23% (2025-09-30) -> 19.95% (2026-06-30); FII: 32.10% -> 35.60%. claim_search/chunk_search for \"order inflow\" returned no order-inflow announcement facts."
+   }
+  }
+ ]
+}

@@ -1,0 +1,902 @@
+{
+ "qid": "Q32",
+ "mid": "MB0998#MS",
+ "parent_mid": "MB0998",
+ "symbol": "KEC",
+ "entity_isin": "INE389H01022",
+ "question": "KEC Infrastructure: how much of the leverage sits at the holdco, and what did asset monetisation actually repay?",
+ "as_of": "2026-10-19",
+ "period": "FY23-FY26",
+ "category": "lookup",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "Not in data: the store holds consolidated/standalone debt for KEC International but no holdco-specific leverage split, and no figure for what asset monetisation repaid. Available data shows net debt levels and leverage ratios (e.g., Net Debt/EBITDA improved from 6.3x in Sep'23 to 4.2x in Mar'24 and 3.0x in Mar'25) but not holdco vs opco break-up or asset-sale repayment amounts.",
+ "working": "Chunk search on \"holdco leverage asset monetisation repay\" and \"holdco debt repayment asset sale\" returned no holdco-specific leverage or asset-sale repayment figures; only consolidated net debt/leverage ratios in investor decks.",
+ "missing": "not in data — holdco-level leverage split and asset monetisation repayment amount are not in the fact store or documents.",
+ "not_in_data": true,
+ "n_tool_calls": 4,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "KEC",
+    "as_of": "2026-10-19"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "claim_search",
+   "args": {
+    "entity": "KEC",
+    "terms": "holdco leverage asset monetisation"
+   },
+   "ok": true
+  },
+  {
+   "call": 6,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KEC",
+    "query": "holdco leverage asset monetisation repay"
+   },
+   "ok": true
+  },
+  {
+   "call": 8,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KEC",
+    "query": "holdco debt repayment asset sale"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 5,
+ "usage": {
+  "prompt_tokens": 25752,
+  "completion_tokens": 552
+ },
+ "beam_secs": 10.11,
+ "total_secs": 10.11,
+ "number_check": {
+  "numbers": [
+   "6.3",
+   "23",
+   "4.2",
+   "24",
+   "3.0",
+   "25"
+  ],
+  "supported": [
+   "6.3",
+   "23",
+   "4.2",
+   "24",
+   "3.0",
+   "25"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-31882865-e5a5-42b1-a52e-bc443d3265c0",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"KEC\", \"as_of\": \"2026-10-19\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 75,
+   "secs": 1.39,
+   "usage": {
+    "prompt_tokens": 1094,
+    "completion_tokens": 54,
+    "total_tokens": 1148,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 23
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 134,
+      "output": 54,
+      "reasoning": 23,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "KEC",
+    "as_of": "2026-10-19"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE389H01022",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.order_intake",
+      "rows": 3,
+      "first_period": "2026-05-25",
+      "last_period": "2026-08-10",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 11,
+      "first_period": "2025-03-31",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=revenue;segment=Cables",
+       "basis=consolidated;metric=revenue;segment=EPC"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 35,
+      "first_period": "2019-02-05",
+      "last_period": "2022-06-17",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 88,
+      "first_period": "2021-09-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 11,
+      "first_period": "2024-06-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 1677,
+      "first_period": "2019-12-30",
+      "last_period": "2026-10-19",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1913,
+      "first_period": "2019-01-21",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1908,
+      "first_period": "2019-01-28",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1108,
+      "first_period": "",
+      "last_period": "2026-08-19",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=1;chunk=53183",
+       "doctype=announcement;page=1;chunk=53253"
+      ]
+     }
+    ],
+    "n_returned": 29,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-c54a3b7a-5e03-4d91-b1a8-617cba8cbe56",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"KEC\", \"terms\": \"holdco leverage asset monetisation\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 111,
+   "secs": 1.41,
+   "usage": {
+    "prompt_tokens": 3354,
+    "completion_tokens": 55,
+    "total_tokens": 3409,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 28
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2394,
+      "output": 55,
+      "reasoning": 28,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "KEC",
+    "terms": "holdco leverage asset monetisation"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE389H01022",
+    "rows": [],
+    "n_returned": 0,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-0324f503-e9fc-40f4-97d1-5fcaaea888fd",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"KEC\", \"query\": \"holdco leverage asset monetisation repay\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 21,
+   "secs": 1.45,
+   "usage": {
+    "prompt_tokens": 3472,
+    "completion_tokens": 40,
+    "total_tokens": 3512,
+    "prompt_tokens_details": {
+     "cached_tokens": 3328
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 12
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 144,
+      "output": 40,
+      "reasoning": 12,
+      "cache_read": 3328,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KEC",
+    "query": "holdco leverage asset monetisation repay"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE389H01022",
+    "rows": [
+     {
+      "chunk_id": 2780,
+      "doc_id": "sha256:3313b7b40a1d5a33850ec6e4ad9b88a74af88a1eb7caa2a8e2a857a1d3b8676c",
+      "doc_type": "annual_report",
+      "header": "KEC · INE389H01022 · Annual report · FY24 · KIRLOSKAR ELECTRIC COMPANY LIMITED · p46 · known 2024-07-31T18:33:42",
+      "section": "KIRLOSKAR ELECTRIC COMPANY LIMITED",
+      "speaker": null,
+      "known_at": "2024-07-31T18:33:42",
+      "event_date": "2024-07-31",
+      "fiscal_period": "FY24",
+      "page_from": 46,
+      "page_to": 47,
+      "char_len": 1159,
+      "title": "KEC annual report 2024-03-31",
+      "score": -13.813230050150523,
+      "body_excerpt": "KIRLOSKAR ELECTRIC COMPANY LIMITED The Company has been generating operational profits over the past three financial years, though debt servicing continues to depend on a combination of operating cash flows and planned asset monetisation. The company continues to face challenges to meet its working capital requirements. based on the resources available and projected sales, the Company expects to reduce the negative net worth by the end of financial year 2026-27, without factoring in the monetisation of non-core assets. Disclosure of Accounting Treatment: The financial statements of the Company have been prepared in accordance with IND-AS, as prescribed under Section 133 of the Act read with Rule 3 of the Companies (Indian Accounting Standards) Rules, 2015, and subsequent amendments thereto. The detailed disclosure of accounting treatment is also provided in the notes to the financial statements, which form part of this Annual Report. Annexure IV 1. DISCLOSURE IN BOARD'S REPORT AS PER THE PROVISIONS OF SECTION 197 OF THE COMPANIES ACT, 2013 READ WITH RULE 5(1) OF THE COMPANIES (APPOINTMENT AND REMUNERATION OF MANAGERIAL PERSONNEL)"
+     },
+     {
+      "chunk_id": 41470,
+      "doc_id": "sha256:407c138073e8c75d395dd897612490532b71d1e1cc5b872cd067d7a11469be69",
+      "doc_type": "deck",
+      "header": "KEC · INE389H01022 · Investor deck · - · Breakthrough in New Segments · p17 · known 2024-06-06T20:50:13",
+      "section": "Breakthrough in New Segments",
+      "speaker": null,
+      "known_at": "2024-06-06T20:50:13",
+      "event_date": "2024-06-06",
+      "fiscal_period": "",
+      "page_from": 17,
+      "page_to": 17,
+      "char_len": 785,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.989678699597931,
+      "body_excerpt": "Strengthening Balance Sheet 13,742 17,282 19,914 4,765 4,985 5,090 Mar'22 Mar'23 Mar'24 Revenue vs Net Debt Comparison (₹ Crore) 1.3 1.3 1.6 1.2 5.3 6.0 6.3 4.2 Mar'22 Mar'23 Sep'23 Mar'24 Net Debt/ Equity Net Debt/ EBITDA Improving Leverage Ratios (Times) • In the last two years, Revenue has grown by ~1.4 times, however Net Debt level has been maintained at similar level • Significant Improvement in Leverage Ratios over last few quarters: o Net Debt to EBITDA has improved to 4.2 times in Mar’24 from peak level of 6.3 times in Sep’23 o Net Debt to Equity has improved to 1.2 times in Mar’24 from peak level of 1.6 times in Sep’23 • We expect the Leverage ratios to improve further with our targeted Revenue/ Profitability growth in FY25 with Debt remaining at the current levels"
+     },
+     {
+      "chunk_id": 46144,
+      "doc_id": "sha256:8eac146d98a3257d3485a155c616e042a3fbe7a0bebe530e8b98f07094cd3aa0",
+      "doc_type": "deck",
+      "header": "KEC · INE389H01022 · Investor deck · - · Strengthening Balance Sheet · p16 · known 2025-06-02T19:39:26",
+      "section": "Strengthening Balance Sheet",
+      "speaker": null,
+      "known_at": "2025-06-02T19:39:26",
+      "event_date": "2025-06-02",
+      "fiscal_period": "",
+      "page_from": 16,
+      "page_to": 16,
+      "char_len": 470,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.7637032555531995,
+      "body_excerpt": "Strengthening Balance Sheet 13,742 17,282 19,114 21,847 4,765 4,985 5,090 4,558 Mar'22 Mar'23 Mar'24 Mar'25 Revenue vs Net Debt Comparison (₹ Crore) 1.3 1.3 1.2 0.9 5.3 6.0 4.2 3.0 Mar'22 Mar'23 Mar'24 Mar'25 Net Debt/ Equity Net Debt/ EBITDA Improving Leverage Ratios (Times) • Net Debt level has been reduced, despite Revenue growth of ~1.6 times in last 3 years • Further improvement expected in leverage ratios with our targeted Revenue/ Profitability growth in FY26"
+     },
+     {
+      "chunk_id": 10679,
+      "doc_id": "sha256:64cbe63313adf160caf3d3e3b45c1988d60e19f68a41f58c99d03fd96ac768e3",
+      "doc_type": "annual_report",
+      "header": "KEC · INE389H01022 · Annual report · FY25 · CIVIL BUSINESS · p60 · known 2025-07-17T17:23:26",
+      "section": "CIVIL BUSINESS",
+      "speaker": null,
+      "known_at": "2025-07-17T17:23:26",
+      "event_date": "2025-07-17",
+      "fiscal_period": "FY25",
+      "page_from": 60,
+      "page_to": 60,
+      "char_len": 3789,
+      "title": "KEC annual report 2025-03-31",
+      "score": -5.661084513694195,
+      "body_excerpt": "… Positioned for signiﬁcant growth, the business boasts an unexecuted order book of over ` 8,600 Crore and beneﬁt from favourable market tailwinds. India’s robust economic growth continues to fuel infrastructure investments, with the Government allocating ` 11.21 lakh Crore for CAPEX in the Union Budget 2025 and reinforcing its commitment to the Viksit Bharat 2047 vision. Several ambitious projects and key policy enablers such as the National Infrastructure Pipeline, PM Gati Shakti Plan, National Monetisation Pipeline (NMP) 2.0 and updated Public-Private Partnership (PPP) guidelines are set to accelerate project deliveries across critical infrastructure sectors and unlock new funding channels. As per ICRA, the Indian construction sector is poised to grow by 10% in FY26. This growth is driven by robust investments across urban infrastructure, transport infrastructure, industrial, real estate both residential and commercial and social infrastructure. The rising demand for metros, logistics hubs, industrial parks, housing, affordable as well as premium, IT parks, GCCs, data centre, hospitals, educational institutes, community spaces, etc. creates a diversiﬁed project pipeline, offering EPC players opportunities to expand their footprint and contribute signiﬁcantly to the country’s infrastructure growth story. The Indian real estate segment, comprising housing, retail, hospitality and commercial, has been playing a pivotal role in India’s growth journey. As per India Brand Equity F …"
+     },
+     {
+      "chunk_id": 50528,
+      "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+      "doc_type": "deck",
+      "header": "KEC · INE389H01022 · Investor deck · - · Balance Sheet and Leverage Overview · p15 · known 2026-05-25T21:45:26",
+      "section": "Balance Sheet and Leverage Overview",
+      "speaker": null,
+      "known_at": "2026-05-25T21:45:26",
+      "event_date": "2026-05-25",
+      "fiscal_period": "",
+      "page_from": 15,
+      "page_to": 15,
+      "char_len": 799,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -5.603065497536798,
+      "body_excerpt": "Balance Sheet and Leverage Overview • Net Worth surpasses Rs. 6,000 Cr, Return on Net Worth at 10% - Expanded by more than 500 bps in last 3 years • Collections spillover of ~Rs. 450 Cr realized in first week of Apr’26 • Factors contributing to higher debt: o Elevated inventory due to delayed dispatches in Dubai (Middle East disruptions) o Strategic inventory build-up amid steel price volatility o Muted collections in Water business o Higher working capital linked to revenue growth • Debt levels expected to normalise further by Q2 FY27 Net Worth (₹ Crore) Revenue vs Debt Comparison (₹ Crore) Return on Net Worth (%) 17,282 19,114 21,847 23,506 4,985 5,090 4,558 6,722 Mar'23 Mar'24 Mar'25 Mar'26 3,771 4,096 5,347 6,209 Mar'23 Mar'24 Mar'25 Mar'26 5% 8% 10% 10% Mar'23 Mar'24 Mar'25 Mar'26"
+     },
+     {
+      "chunk_id": 41468,
+      "doc_id": "sha256:407c138073e8c75d395dd897612490532b71d1e1cc5b872cd067d7a11469be69",
+      "doc_type": "deck",
+      "header": "KEC · INE389H01022 · Investor deck · - · Breakthrough in New Segments · p14 · known 2024-06-06T20:50:13",
+      "section": "Breakthrough in New Segments",
+      "speaker": null,
+      "known_at": "2024-06-06T20:50:13",
+      "event_date": "2024-06-06",
+      "fiscal_period": "",
+      "page_from": 14,
+      "page_to": 15,
+      "char_len": 802,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -5.19540639134325,
+      "body_excerpt": "13 Substation project at Saudi Arabia Financial Performance 2 Performance Snapshot FY24 Revenue 01 ●Highest ever Revenues of Rs. 19,114 Cr, robust growth of 15% YoY ●Healthy execution in T&D, both in India and International and Civil businesses Profitability 02 ●Substantial growth of 46% YoY with EBITDA margins expanding by 130 bps to 6.1% vis-à- vis 4.8% last year ●PBT increased by 2.6 times and PAT doubled Order Intake 03 ●Secured orders of Rs 18,102 Cr. and L1 as on date of ~Rs. 9,000 Cr ●Selective approach considering working capital & margin profile of various businesses Leverage 04 ●Significant improvements in our working capital and balance sheet ●Reduction in Net debt & Acceptances by Rs. 1,250 Cr in the last two quarters, stands at Rs. 5,090 Cr 03 04"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "holdco",
+     "leverage",
+     "asset",
+     "monetisation",
+     "repay"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-ab699fd7-5e0a-46fe-ae4c-398387b0cd7b",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"KEC\", \"query\": \"holdco debt repayment asset sale\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 437,
+   "secs": 1.86,
+   "usage": {
+    "prompt_tokens": 6854,
+    "completion_tokens": 122,
+    "total_tokens": 6976,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 95
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 5894,
+      "output": 122,
+      "reasoning": 95,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KEC",
+    "query": "holdco debt repayment asset sale"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE389H01022",
+    "rows": [
+     {
+      "chunk_id": 11104,
+      "doc_id": "sha256:64cbe63313adf160caf3d3e3b45c1988d60e19f68a41f58c99d03fd96ac768e3",
+      "doc_type": "annual_report",
+      "header": "KEC · INE389H01022 · Annual report · FY25 · CORPORATE OVERVIEW > STATUTORY REPORTS > FINANCIAL STATEMENTS · p205 · known 2025-07-17T17:23:26",
+      "section": "CORPORATE OVERVIEW > STATUTORY REPORTS > FINANCIAL STATEMENTS",
+      "speaker": null,
+      "known_at": "2025-07-17T17:23:26",
+      "event_date": "2025-07-17",
+      "fiscal_period": "FY25",
+      "page_from": 205,
+      "page_to": 205,
+      "char_len": 2316,
+      "title": "KEC annual report 2025-03-31",
+      "score": -13.522422607935951,
+      "body_excerpt": "CORPORATE OVERVIEW STATUTORY REPORTS FINANCIAL STATEMENTS 405 KEC International Limited Integrated Annual Report 2024-25 Notes forming part of the Financial Statements as at and for the year ended March 31, 2025 Standalone Sr. No. Particulars Numerator Denominator a) Current Ratio Current assets Current liabilities b) Debt Equity Ratio Non-current borrowings + current borrowings + Non-current lease liabilities + Current lease liabilities + Interest accrued but not due on borrowings Total equity c) Debt Service Coverage Ratio Proﬁt after taxes + depreciation and amortizations + interest + loss on sale of ﬁxed assets Finance cost + repayment of debt and lease liability d) Return on equity ratio (%) Proﬁt for the period Average shareholders’ equity e) Inventory Turnover Ratio (No. of Days) Average inventory Cost of material consumed + changes in inventories of ﬁnished goods, work- in-progress + erection and construction material consumed + stores consumed f) Trade Receivable Turnover Ratio (No. of Days) Average trade receivable Total revenue from operations g) Trade Payable Turnover Ratio (No. of Days) Average trade payables Cost of material consumed + changes in inventories of ﬁnished goods, work-in-progress + erection and sub- contracting expenses h) Net Capital Turnover Ratio Total revenue from operations Working capital i) Net Proﬁt Margin (%) Proﬁt for the year Total revenue from operations j) Return on Capital Employed (%) Earning before interest and taxes Tangible net wor …"
+     },
+     {
+      "chunk_id": 107774,
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "doc_type": "results_notes",
+      "header": "KEC · INE389H01022 · Results notes · Q1FY27 · 14 Other Equity > 15 Basic / Diluted Earnings Per Share (in Rupees) attributable to owners · p13 · known 2026-08-10T19:03:18",
+      "section": "14 Other Equity > 15 Basic / Diluted Earnings Per Share (in Rupees) attributable to owners",
+      "speaker": null,
+      "known_at": "2026-08-10T19:03:18",
+      "event_date": "2026-08-10",
+      "fiscal_period": "Q1FY27",
+      "page_from": 13,
+      "page_to": 14,
+      "char_len": 4463,
+      "title": "Unaudited Consolidated And Standalone Financial Results Of The Company For The Quarter Ended June 30, 2026",
+      "score": -11.246945799555004,
+      "body_excerpt": "… ded Year ended No. Particulars June 30, March 31, June 30, March 31, 2026 2026 2025 2026 (Unaudited) (Refer note 6) (Unaudited) (Audited) a) Debt Equity Ratio 0.83 0.84 0.71 0.84 b) Debt Service Coverage Ratio 0.96 1.81 1.33 1.60 c) Interest Service Coverage Ratio 1.29 2.11 1.57 1.87 d) Current Ratio 1.20 1.20 1.18 1.20 e) Long term debt to working capital Ratio 0.18 0.17 0.11 0.17 f) Bad debts to Account receivable Ratio\" 0.01 0.07 - 0.02 2) Current liability Ratio 0.97 0.97 0.98 0.97 h) Total debts to Total assets Ratio 0.21 0.21 0.19 0.21 i) Debtors Turnover Ratio (No. of Days) 117 96 103 96 j) Inventory Turnover Ratio (No. of Days) 37 22 25 23 k) Operating Margin excluding exceptional item(%) 4.00 5.19 4.89 5.53 I) Net Profit Margin(%) 0.01 4.69 0.91 2.25 m) Capital Redemption Reserve (Rs. in Crore) 14.28 14.28 14.28 14.28 n) Net Worth (Rs. in Crore) 5,317.77 5,317.24 5,072.40 5,317.24 o) Net Profit after Tax (Rs. in Crore) 0.52 246.57 36.83 428.09 p) Basic Earnings per Share (Rs.) (Not annualised except for the year 0.02 9.26 1.38 16.08 ended March) A Ratios for the quarter have been annualised. Formula used for calculation of ratios in Note 3 is as under: i) Debt Equity Ratio= Total Debt (Short-Term Debt+Long-Term Debt+ Interest Accrued but not due+ Lease Liability)/ Total Equity. ii) Debt Service Coverage Ratio= [(Profit After Tax+ Exceptional item+ Depreciation and amortisations+ Interest+ Loss on sale of Fixed assets)/ (Finance Cost+ Repayment long term borrowings &  …"
+     },
+     {
+      "chunk_id": 107764,
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "doc_type": "results_notes",
+      "header": "KEC · INE389H01022 · Results notes · Q1FY27 · 14 Other Equity > 15 Basic/ Diluted Earnings Per Share (in Rupees) attributable to owners  · p6 · known 2026-08-10T19:03:18",
+      "section": "14 Other Equity > 15 Basic/ Diluted Earnings Per Share (in Rupees) attributable to owners (face",
+      "speaker": null,
+      "known_at": "2026-08-10T19:03:18",
+      "event_date": "2026-08-10",
+      "fiscal_period": "Q1FY27",
+      "page_from": 6,
+      "page_to": 7,
+      "char_len": 5053,
+      "title": "Unaudited Consolidated And Standalone Financial Results Of The Company For The Quarter Ended June 30, 2026",
+      "score": -10.999904963392499,
+      "body_excerpt": "… s Quarter ended Year ended No. June 30, March 31, June 30, March 31, 2026 2026 2025 2026 (Unaudited) (Refer note 7) (Unaudited) (Audited) a Debt Eauitv Ratio 0.88 0.87 0.79 0.87 b Debt Service Covera2e Ratio 0.86 1.56 1.32 1.56 c) Interest Service Covera2e Ratio 1.77 2.43 2.13 2.15 dl Current Ratio 1.23 1.23 1.20 1.23 el Lon2 term debt to workin2 capital Ratio 0.27 0.27 0.22 0.27 f Bad debts to Account receivable Ratio A 0.01 0.05 0.00 0.02 \" Current liabilitv Ratio 0.95 0.95 0.96 0.95 hl Total debts to Total assets Ratio 0.22 0.21 0.19 0.21 il Debtors Turnover Ratio /No. of Davs l 109 93 98 91 il Inventory Turnover Ratio (No. of Days] 56 37 41 36 kl Operatin2 Mar2in excludin2 exceptional item (% l 5.79 7.01 6.97 7.06 ll Net Profit Mar.,in /%1 1.45 3.02 2.48 2.58 ml Capital Redemption Reserve /Rs. in Crorel 14.28 14.28 14.28 14.28 nl Net Worth /Rs. in Crorel 5 754.67 5 682.05 5.347.46 5 682.05 ol Net Profit after Tax (Rs. in Crorel 72.62 192.79 124.60 605.59 ) Basic Earnings per Share (Rs.) (Not annualised except for the year P ended March] 2.73 7.24 4.68 22.75 A Ratios for the quarter have been annualised. Formula used for calculation of ratios in Note 3 is as under: i) Debt Equity Ratio= Total Debt (Short-Term Debt+Long-Term Debt+ Interest Accrued but not due+ Lease Liability)/ Total Equity. ii) Debt Service Coverage Ratio= [(Profit After Tax+ Exceptional item+ Depreciation and amortisations+ Interest+ Loss on sale of Fixed assets)/ (Finance Cost+ Repayment long term borrow …"
+     },
+     {
+      "chunk_id": 10868,
+      "doc_id": "sha256:64cbe63313adf160caf3d3e3b45c1988d60e19f68a41f58c99d03fd96ac768e3",
+      "doc_type": "annual_report",
+      "header": "KEC · INE389H01022 · Annual report · FY25 · NOTE 25 -BORROWINGS · p128 · known 2025-07-17T17:23:26",
+      "section": "NOTE 25 -BORROWINGS",
+      "speaker": null,
+      "known_at": "2025-07-17T17:23:26",
+      "event_date": "2025-07-17",
+      "fiscal_period": "FY25",
+      "page_from": 128,
+      "page_to": 128,
+      "char_len": 3878,
+      "title": "KEC annual report 2025-03-31",
+      "score": -10.784094714302709,
+      "body_excerpt": "NOTE 25 -BORROWINGS ` in Crore Particulars As at March 31, 2025 As at March 31, 2024 Non-Current: Measured at amortised cost, I Term loans From banks Secured [Refer Note 25.1 (a)] 46.00 16.85 Less : Current maturities of long-term debt {(Refer Note 30.3(b)} (2.70) (16.85) 43.30 - Unsecured [Refer Note 25.1 (b)] 432.56 310.64 Less : Current maturities of long-term debt {(Refer Note 30.3(b)} (117.40) (74.63) 315.16 236.01 II From Financial Institutions Secured [(Refer Note 25.1 (c)] - 200.00 Less : Current maturities of long-term debt (200.00) - - 358.46 236.01 Note 25.1 Term loans (a) From banks: Secured (i) ` Nil (As at March 31, 2024: ` 33.70 crore) External Commercial Borrowing loan secured by ﬁrst and exclusive charge over construction Equipments both present and future at all projects site relating to Transmission, Railway and Civil business in India. Repayment terms are three equal yearly installments starting from August, 2023. Interest rate is 3M LIBOR + 160 bps. The Company has made prepayment of ECB last tranche in November 2024. (ii) ` 46.00 crore (As at March 31, 2024: ` Nil) secured by First Pari-passu charge on movable ﬁxed assets of Vadodara Unit of KEC Asian Cables Ltd, present and future with Fixed Asset Coverage Ratio (FACR) of 1.2Sx and Second pari-passu charge on the current assets of the company, present and future. Repayment would start from February 1, 2026 and will be paid in equal installments every three months upto May 1, 2030. Interest rate is Exter …"
+     },
+     {
+      "chunk_id": 10693,
+      "doc_id": "sha256:64cbe63313adf160caf3d3e3b45c1988d60e19f68a41f58c99d03fd96ac768e3",
+      "doc_type": "annual_report",
+      "header": "KEC · INE389H01022 · Annual report · FY25 · KEY FINANCIAL RATIOS · p65 · known 2025-07-17T17:23:26",
+      "section": "KEY FINANCIAL RATIOS",
+      "speaker": null,
+      "known_at": "2025-07-17T17:23:26",
+      "event_date": "2025-07-17",
+      "fiscal_period": "FY25",
+      "page_from": 65,
+      "page_to": 65,
+      "char_len": 1745,
+      "title": "KEC annual report 2025-03-31",
+      "score": -10.206526920876392,
+      "body_excerpt": "KEY FINANCIAL RATIOS Key Financial Ratios (1) 2024-25 2023-24 Change (%) Debtors Turnover Ratio (No. of Days) 81.0 83.1 -3% Inventory Turnover Ratio (No. of Days) 33.3 37.5 -11% Interest Service Coverage Ratio 2.1 1.8 17% Current Ratio 1.2 1.1 9% Debt Equity Ratio 0.7 1.0 -24% Operating Proﬁt Margin % * 7.0% 6.1% 15% Net Proﬁt Margin % 2.6% 1.7% 50% Return on Net Worth % 12.1% 8.8% 37% *Operating proﬁt for FY25 includes an amount of ` 24 Crore, received towards an arbitration award in Q1 FY25 • Net Proﬁt Margin and Return on Net Worth have improved due to an increase in proﬁts during the year. • There were no other signiﬁcant changes (25% or more) in any of the above key ﬁnancial ratios. [1] Assessment of key ratios has been derived at as follows: • Debtors Turnover Ratio= (Average Account Receivable/Total Revenue from operations) x No. of Days. • Inventory Turnover Ratio= [Average Inventory/ (Cost of material consumed + Changes in inventories of ﬁnished goods, work-in-progress+ Erection and construction material consumed + Stores consumed)] x No. of Days. • Interest Service Coverage Ratio = (Proﬁt After Tax + Depreciation and amortisations + Interest + Loss on sale of Fixed assets) / Finance Cost. • Current Ratio = Current asset / Current liability. • Debt Equity Ratio = Total Debt (Short-Term Debt + Long-Term Debt + Interest Accrued but not due + Lease Liability) / Total Equity • Operating Proﬁt Margin % = (Proﬁt before Depreciation and Amortisation, ﬁnance costs, Tax less  …"
+     },
+     {
+      "chunk_id": 11039,
+      "doc_id": "sha256:64cbe63313adf160caf3d3e3b45c1988d60e19f68a41f58c99d03fd96ac768e3",
+      "doc_type": "annual_report",
+      "header": "KEC · INE389H01022 · Annual report · FY25 · NOTE 24 -BORROWINGS · p181 · known 2025-07-17T17:23:26",
+      "section": "NOTE 24 -BORROWINGS",
+      "speaker": null,
+      "known_at": "2025-07-17T17:23:26",
+      "event_date": "2025-07-17",
+      "fiscal_period": "FY25",
+      "page_from": 181,
+      "page_to": 181,
+      "char_len": 2253,
+      "title": "KEC annual report 2025-03-31",
+      "score": -9.851150058916055,
+      "body_excerpt": "NOTE 24 -BORROWINGS ` in Crore Particulars As at March 31, 2025 As at March 31, 2024 Non-current: Measured at amortised cost : I Term loans* From banks Secured [Refer Note 24 (a)] - 33.70 Less : Current maturities of long-term debt (Refer Note 29.3) - (33.70) - - Unsecured 195.00 - Less : Current maturities of long-term debt (Refer Note 29.3) (40.00) - 155.00 - II From Financial Institutions Secured [Refer Note 24 (b)] - 200.00 Less : Current maturities of long-term debt - (200.00) - - 155.00 - (a) *Term loans from banks : Secured : ` Nil (As at March 31, 2024: ` 33.70 crore) External Commercial Borrowing loan secured by ﬁrst and exclusive charge over construction Equipments both present and future at all projects site relating to its Transsmission, Railway and Civil business in India. Repayment terms are three equal yearly installments starting from August, 2023. Interest rate is 3M LIBOR + 160 bps. The Company has made prepayment of ECB last tranche in November 2024. From Banks: unsecured: ` 195 crore (As at March 31, 2024: ` Nil crore) unsecured Term loan availed during the year. Loan repayment is in 3 years from disbursement date. The variable interest rate is MCLR-1Y+ Spread p.a. (b) From Financial Instituitions Secured: ` Nil (As at March 31, 2024: ` 200 crore) secured by security stated against Note 29.1 (i) The loan is repaid during the year. The interest rates were in the ranges from 8.46% to 8.87% p.a. (c) As at March 31, 2025, the total borrowing of the Company sto …"
+     }
+    ],
+    "n_returned": 6,
+    "query_terms": [
+     "holdco",
+     "debt",
+     "repayment",
+     "asset",
+     "sale"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 4,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b364084c-34bd-48c4-abb9-e00d5467481b",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"Not in data: the store holds consolidated/standalone debt for KEC International but no holdco-specific leverage split, and no figure for what asset monetisation repaid. Available data shows net debt levels and leverage ratios (e.g., Net Debt/EBITDA improved from 6.3x in Sep'23 to 4.2x in Mar'24 and 3.0x in Mar'25) but not holdco vs opco break-up or asset-sale repayment amounts.\", \"missing\": \"not in data — holdco-level leverage split and asset monetisation repayment amount are not in the fact store or documents.\", \"working\": \"Chunk search on \\\"holdco leverage asset monetisation repay\\\" and \\\"holdco debt repayment asset sale\\\" returned no holdco-specific leverage or asset-sale repayment figures; only consolidated net debt/leverage ratios in investor decks.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 374,
+   "secs": 3.58,
+   "usage": {
+    "prompt_tokens": 10978,
+    "completion_tokens": 281,
+    "total_tokens": 11259,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 84
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 10018,
+      "output": 281,
+      "reasoning": 84,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 4,
+   "role": "submit",
+   "args": {
+    "answer": "Not in data: the store holds consolidated/standalone debt for KEC International but no holdco-specific leverage split, and no figure for what asset monetisation repaid. Available data shows net debt levels and leverage ratios (e.g., Net Debt/EBITDA improved from 6.3x in Sep'23 to 4.2x in Mar'24 and 3.0x in Mar'25) but not holdco vs opco break-up or asset-sale repayment amounts.",
+    "missing": "not in data — holdco-level leverage split and asset monetisation repayment amount are not in the fact store or documents.",
+    "working": "Chunk search on \"holdco leverage asset monetisation repay\" and \"holdco debt repayment asset sale\" returned no holdco-specific leverage or asset-sale repayment figures; only consolidated net debt/leverage ratios in investor decks."
+   }
+  }
+ ]
+}

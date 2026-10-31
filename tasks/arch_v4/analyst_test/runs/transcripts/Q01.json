@@ -1,0 +1,1238 @@
+{
+ "qid": "Q01",
+ "mid": "MB0050#MI",
+ "parent_mid": "MB0050",
+ "symbol": "ASHIANA",
+ "entity_isin": "INE365D01021",
+ "question": "What did Ashiana Housing Limited (NSE: ASHIANA)'s latest annual report disclose about a change in control? If no annual report is held for it, answer NOT IN DATA and name the store checked.",
+ "as_of": "2026-10-19",
+ "period": "FY2025",
+ "category": "lookup",
+ "source_bank": "variations300",
+ "status": "final",
+ "error": null,
+ "answer": "Not in data. The FY25 annual report of Ashiana Housing Limited (known 2025-09-02, fiscal_period FY25) does not disclose any change in control; searches for \"change in control\" and \"control\" in the annual report only returned internal control/accounting control content.",
+ "working": "Searched claim_search (topic annual_report, terms \"change in control\") → 0 rows. Searched chunk_search annual_report for \"control\" → only internal control/accounting consolidation content; no change-in-control disclosure. Annual report FY25 present (doc_id sha256:b767..., known 2025-09-02).",
+ "missing": "not in data: no disclosure of a change in control in the FY25 annual report (store checked: document chunks / annual_report and claim_search for entity ASHIANA/INE365D01021).",
+ "not_in_data": true,
+ "n_tool_calls": 6,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "claim_search",
+   "args": {
+    "entity": "ASHIANA",
+    "terms": "change in control",
+    "topic": "annual_report"
+   },
+   "ok": true
+  },
+  {
+   "call": 3,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "ASHIANA",
+    "doc_types": "[\"annual_report\"]",
+    "limit": "10.0"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "ASHIANA"
+   },
+   "ok": true
+  },
+  {
+   "call": 6,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "ASHIANA",
+    "doc_types": "[\"annual_report\"]",
+    "limit": "10.0"
+   },
+   "ok": true
+  },
+  {
+   "call": 7,
+   "tool": "claim_search",
+   "args": {
+    "entity": "ASHIANA",
+    "terms": "change in control",
+    "topic": "annual_report"
+   },
+   "ok": true
+  },
+  {
+   "call": 9,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "ASHIANA",
+    "limit": "10.0",
+    "query": "control"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 34816,
+  "completion_tokens": 540
+ },
+ "beam_secs": 9.63,
+ "total_secs": 9.63,
+ "number_check": {
+  "numbers": [
+   "2025",
+   "09",
+   "02"
+  ],
+  "supported": [
+   "2025",
+   "09",
+   "02"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-e70aa106-5048-4654-bc31-7e4cc3114670",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"ASHIANA\", \"terms\": \"change in control\", \"topic\": \"annual_report\"}"
+     }
+    },
+    {
+     "id": "call-e352249e-caa2-453d-8cda-b22745073e95",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"ASHIANA\", \"doc_types\": \"[\\\"annual_report\\\"]\", \"limit\": \"10.0\"}"
+     }
+    },
+    {
+     "id": "call-18cd4ccd-dbb4-4261-8281-dd857261aeb0",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"ASHIANA\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 96,
+   "secs": 1.98,
+   "usage": {
+    "prompt_tokens": 1114,
+    "completion_tokens": 114,
+    "total_tokens": 1228,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 24
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 26,
+      "output": 114,
+      "reasoning": 24,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "ASHIANA",
+    "terms": "change in control",
+    "topic": "annual_report"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE365D01021",
+    "rows": [],
+    "n_returned": 0,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "ASHIANA",
+    "doc_types": "[\"annual_report\"]",
+    "limit": "10.0"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE365D01021",
+    "rows": [
+     {
+      "chunk_id": 72291,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · CIN: L70109WB1986PLC040864 · p1 · known 2025-09-02T19:44:25",
+      "section": "CIN: L70109WB1986PLC040864",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 1,
+      "page_to": 2,
+      "char_len": 1685,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -26.459578976312837,
+      "body_excerpt": "… 40864 Regd. Office: 5F Everest, 46/C Chowringhee Road, Kolkata – 700 071 011-42654265, Email: investorrelations@ashianahousing.com Website: www.ashianahousing.com Dated: 02nd September 2025 Sub: Submission of Notice of the 39th Annual General Meeting along with Annual Report of the Company for the Financial Year 2024-25 Dear Sir, The 39th Annual General Meeting (AGM) of the Company will be held on Thursday 25th September 2025 at 11:30 A.M. through Video Conferencing (VC)/ Other Audio-Visual Means (OAVM). Pursuant to Regulation 34(1) and 53(2) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015 (“SEBI Listing Regulations”), we are submitting herewith the Annual Report of the Company along with the Notice of AGM for the Financial Year 2024-25 which is being sent through electronic mode to the members of the Company. The Annual Report and Notice of AGM is also uploaded on the Company’s website www.ashianahousing.com. You are requested to take this information on your record. Thanking you, For Ashiana Housing Ltd. Nitin Sharma (Company Secretary & Company Secretary) Mem No: 21191 To The Secretary BSE Ltd. Phiroze Jeejeebhoy Towers Dalal Street, Mumbai - 400 001 Security Code No.: 523716 To The Secretary National Stock Exchange of India Ltd. Exchange Plaza, Plot no. C/1, G Block Bandra-Kurla Complex, Bandra (E) Mumbai - 400 051 NSE Symbol: ASHIANA NITIN SHARMA Digitally signed by NITIN SHARMA Date: 2025.09.02 19:29:26 +05'30' [1] Ashiana Housing Limited"
+     },
+     {
+      "chunk_id": 57474,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · FORM AOC-1 · p145 · known 2024-09-03T23:18:24",
+      "section": "FORM AOC-1",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 145,
+      "page_to": 145,
+      "char_len": 1662,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -26.07280079631349,
+      "body_excerpt": "… ining Salient Features of the Financial Statement of Subsidiaries/ Associate Companies/ Joint Ventures Part A (In H Lakhs, except stated otherwise) Subsidiaries Particulars Ashiana Maintenance Services LLP. Topwell Projects Consultants Ltd. Latest Developers Advisory Ltd. Ashiana Amar Developers Nitya Care Homes (P) Limited Date on which subsidiary is acquired 22nd December 2016 31st January 2012 31st January 2012 27th February 2007 09th November 2025 Reporting period if different from holding company's reporting period N.A. N.A. N.A. N.A. N.A. Share Capital (122.92) 5.00 5.00 4.45 1.00 Reserves and Surplus 0.00 1.99 (10.35) 0 1,263.83 Total Assets 11,918.80 7.42 4.94 5.26 1,493.77 Total Liabilities 12,041.73 0.42 10.29 0.81 19.21 Investments 3,722.83 0.46 0.00 0.00 0.00 Turnover (Includes other Income) 9,045.33 0.36 0.16 0.00 1.96 Profit/ Loss before taxation (68.64) (0.85) (1.06) (0.51) (46.30) Total Tax Expenses/Tax Adjustments 42.74 0.00 0.00 0.00 11.77 Profit after taxation (25.90) (0.85) (1.06) (0.51) (34.52) Proposed dividend 0.00 0.00 0.00 0.00 0.00 % age of Shareholding 100%* 100% 100% 100%** 100% Notes: 1. There is/are no subsidiaries which is/are yet to commence operations. 2. There is/are no subsidiaries which have been liquidated or sold during the year. * 0.3% held by Topwell Projects Consultants Limited, a wholly owned subsidiary of Ashiana Housing Limited. ** 5% share held by Ashiana Maintenance Services LLP, wholly owned subsidiary of Ashiana Housing Limited."
+     },
+     {
+      "chunk_id": 57420,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · FUTURE PROJECTS · p74 · known 2024-09-03T23:18:24",
+      "section": "FUTURE PROJECTS",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 74,
+      "page_to": 74,
+      "char_len": 1835,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -25.864100562563838,
+      "body_excerpt": "… ow: Location Project Phase Economic Interest Saleable Area (Lakhs Sq. ft.) Bhiwadi Ashiana Advik 4 and 5 100% Ownership 5.77 Jaipur Ashiana OMA All 73% Revenue Share 10.90 Jaipur ONE44 Plaza 77.40% Revenue Share 0.04 Gurugram Ashiana Aaroham 3 100% Ownership 3.88 Pune Ashiana Malhar 5 65% Revenue Share 2.62 Pune Ashiana Amodh 4 80% Revenue Share 2.01 Chennai Ashiana Vatsalya 3,4 and 5 100% Ownership 7.97 Chennai Ashiana Swarang* 4 50% of the Profits 1.28 Neemrana Ashiana Aangan 2 100% Ownership 4.37 Total 38.84 Notes: 1. *Ashiana Swarang is acquired by Kairav Developers Ltd. (a joint venture company with equal economic interest of Ashiana Housing Ltd. and Arihant Foundations.) In some of the projects, saleable area has been updated as per latest/revised phasing plan. 2. Phase-5 of Lavasa, Pune having saleable area od 0.84 Lakhs sq. ft. excluded from above. LAND BANK: A summary of the land available for development is as under: Location Land / Project Name Estimated Area (Acres) Estimated Saleable Area (Lakhs sq. ft.) Proposed Development Chennai Ashiana Aaranya (MWC Chennai) 22.71 15.00 Senior Living Pune Wavrale, Raigad (Maharashtra) 8.83 4.50 Senior Living Pune Tattvam, Panvel (Maharashtra) 7.00 7.00 Senior Living Total 38.54 26.50 Note: Milakpur Land, with estimated area 40.63 Acres and potential Saleable area 31 Lakhs sq. ft., is under acquisition and company’s writ petition is pending before the Hon’ble High Court of Rajasthan against aquisition. Annual Report 2025-26 80"
+     },
+     {
+      "chunk_id": 72336,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · FUTURE PROJECTS · p58 · known 2025-09-02T19:44:25",
+      "section": "FUTURE PROJECTS",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 58,
+      "page_to": 60,
+      "char_len": 2476,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -25.171064734395383,
+      "body_excerpt": "… i Ashiana Vatsalya 2,3,4 and 5 100% Ownership 10.00 Chennai Ashiana Swarang* 2,3 and 4 50% of the Profits 3.78 Neemrana Ashiana Aangan 2 100% Ownership 4.37 Pune Ashiana Malhar 4 and 5 65% Revenue Share 3.94 Pune Ashiana Amodh 3,4 and 5 80% Revenue Share 3.06 Lavasa (Pune) Utsav Lavasa 5 100% Ownership 0.84 Total 38.02 Location Land / Project Name Estimated Area (Acres) Estimated Saleable Area (Lakhs sq. ft.) Proposed Development Bhiwadi Milakpur* 40.63 31.00 Premium Homes/ Senior Living Jaipur Ashiana Oma*** 11.24 11.00 Premium Homes/ Senior Living Gurugram Ashiana Aaroham Sec 80, HSIIDC Land 10.80 10.30 Kid Centric Homes Jamshedpur Ashiana Amaya (Mouza Land, Jharkhand) 3.86 4.30 Premium Homes Total 66.53 56.60 *Ashiana Swarang is acquired by Kairav Developers Ltd. (a joint venture company with equal economic interest of Ashiana Housing Ltd. and Arihant Foundations.) *In some of the projects, saleable area has been updated as per latest/revised phasing plan. LAND BANK: A summary of the land available for development is as under: Note: * Milakpur Land is under acquisition and company’s writ petition is pending before the Hon’ble High Court of Rajasthan against acquisition. ** We have exited the ‘Ashiana Maitri/Nitya’ Project in Kolkata. *** The land parcel at Jaisinghpura has been christened as ‘Ashiana Oma’. Annual Report 2024-25 70 Status of RERA Registration Location RERA Registration Applied & Received for projects Total Saleable Area (Lakhs Sq. ft.) Jaipur 4 9.38 Gurugra …"
+     },
+     {
+      "chunk_id": 57625,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · 19. ASSETS SECURED FOR BORROWINGS · p284 · known 2024-09-03T23:18:24",
+      "section": "19. ASSETS SECURED FOR BORROWINGS",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 284,
+      "page_to": 285,
+      "char_len": 2833,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -25.036269727468877,
+      "body_excerpt": "19. ASSETS SECURED FOR BORROWINGS The carrying amounts of assets secured for current and non current borrowings is given in the following table: Annual Report 2025-26 290 Consolidated Notes to the Accounts (H in Lakhs) Summarised Balance Sheet Ashiana Manglam Builders Megha Colonizers As At 31.03.2026 As At 31.03.2025 As At 31.03.2026 As At 31.03.2025 Non Current Assets - - - - Current Assets - - - - Cash and Cash Equivalents 119.77 167.37 4.63 6.01 Others assets 167.92 159.34 466.32 469.19 Total Assets 287.69 326.71 470.95 475.20 Non Current Liabilities Current Liabilities Advance from customers 81.72 81.72 - - Trade Payables 0.57 0.19 12.28 4.04 Others 55.77 59.18 (5.50) 29.81 Total Liabilities 138.06 141.09 6.78 33.85 Net Assets 149.63 185.62 464.17 441.35 (H in Lakhs) Name of the Subidiaries Country of Incorporation/ Formation Business Activity Percentage of voting power/ Profit sharing as at 31st March, 2026 Percentage of voting power/ Profit sharing as at 31st March, 2025 Nitya Care Homes Private Limited India Real Estate Support Operations 100% 100% Ashiana Maintenance Services LLP India Real Estate Support Operations 100%** 100%** Latest Developers Advisory Ltd India Real Estate Developers 100% 100% Topwell Projects Consultants Ltd. India Real Estate Developers 100% 100% Ashiana Amar Developers India Real Estate Developers 100%* 100%* (H in Lakhs) Name of the Joint Ventures Country of Incorporation/ Formation Business Activity Percentage of voting power/ Profit sharin …"
+     },
+     {
+      "chunk_id": 57380,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · CIN: L70109WB1986PLC040864 · p1 · known 2024-09-03T23:18:24",
+      "section": "CIN: L70109WB1986PLC040864",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 1,
+      "page_to": 1,
+      "char_len": 1604,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -25.026482418003507,
+      "body_excerpt": "Ashiana Housing Ltd. 304, Southern Park, Saket District Centre, Saket, New Delhi – 110 017 CIN: L70109WB1986PLC040864 Regd. Office: 5F Everest, 46/C Chowringhee Road, Kolkata – 700 071 011-42654265, Email: investorrelations@ashianahousing.com Website: www.ashianahousing.com Dated: 07th September 2026 Sub: Submission of Notice of the 40th Annual General Meeting along with Annual Report of the Company for the Financial Year 2025-26 Dear Sir, The 40th Annual General Meeting (AGM) of the Company will be held on Tuesday 29th September 2026 at 11:30 A.M. through Video Conferencing (VC)/ Other Audio-Visual Means (OAVM). Pursuant to Regulation 34(1) and 53(2) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015 (SEBI Listing Regulations”), we are submitting herewith the Annual Report of the Company along with the Notice of AGM for the Financial Year 2025-26 which is being sent through electronic mode to the members of the Company. The Annual Report and Notice of AGM is also uploaded on the Company’s website www.ashianahousing.com. You are requested to take this information on your record. Thanking you, For Ashiana Housing Ltd. Nitin Sharma (Company Secretary & Company Secretary) Mem No: 21191 To The Secretary BSE Ltd. Phiroze Jeejeebhoy Towers Dalal Street, Mumbai - 400 001 Security Code No.: 523716 To The Secretary National Stock Exchange of India Ltd. Exchange Plaza, Plot no. C/1, G Block Bandra-Kurla Complex, Bandra (E) Mumbai - 400 051 NSE Symbol: ASHIA …"
+     },
+     {
+      "chunk_id": 57475,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · ANNEXURE VIII · p145 · known 2024-09-03T23:18:24",
+      "section": "ANNEXURE VIII",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 145,
+      "page_to": 147,
+      "char_len": 3813,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -24.987253376900316,
+      "body_excerpt": "ANNEXURE VIII 151 CORPORATE OVERVIEW GOVERNANCE OVERVIEW PERFORMANCE OVERVIEW FUNCTIONAL OVERVIEW STATUTORY REPORTS FINANCIAL STATEMENTS Part B Statement pursuant to Section 129 (3) of the Companies Act, 2013 related to Associate Companies and Joint Ventures H (in Lakhs except stated otherwise) *Joint Ventures Sl. No. Name of Associates or Joint Venture Kairav Developers Limited Vista Housing Ashiana Greenwood Developers Megha Colonizers Ashiana Manglam Builders 1 Latest audited Balance Sheet Date 31.03.2026 31.03.2026 31.03.2026 31.03.2026 31.03.2026 2 Date on which the Associate or Joint venture was acquired 03.01.2020 08.01.2014 08.09.2009 10.03.2010 17.12.2012 3 Share of Associates or Joint ventures held by the company on the year end (in %) 50% 50% 50% 50% 50% a) Number 25,000 N.A. N.A. N.A. N.A. b) Amount of investment in Associates or Joint Venture 2.50 221.89 23.03 255.69 47.56 c) Extent of Holding (in %) 50% 50% 50% 50% 50% 4 Description of how there is significant influence Due to 50% voting power N.A. N.A. N.A. N.A. 5 Reason why the associate/ Joint venture is not consolidated N.A. N.A. N.A. N.A. N.A. 6 Networth attributable to shareholding as per latest audited Balance Sheet 50% N.A. N.A. N.A. N.A. 7 Profit/ Loss for the year a) Considered in consolidation NIL (3.00) 6.04 (12.20) (17.99) b) Not Considered in consolidation (25.95) (3.00) 6.04 (12.20) (17.99) Annual Report 2025-26 152 The Members Ashiana Housing Limited 5F, Everest, 46/C, Chowringhee Road, Kolkata,  …"
+     },
+     {
+      "chunk_id": 57492,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · BSE SENSEX (cont.) · p165 · known 2024-09-03T23:18:24",
+      "section": "BSE SENSEX (cont.)",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 165,
+      "page_to": 165,
+      "char_len": 3234,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -24.748612625300513,
+      "body_excerpt": "The Audit is carried out every quarter, and the report thereon is submitted to the Stock Exchanges. The report, inter alia, confirms that the number of shares issued, listed on the Stock exchanges and that held in demat and physical mode are in agreement with each other. n) Subsidiary Monitoring Mechanism: The minutes of Board meetings of the subsidiary companies are placed before the meeting of Board of Directors of the Company. No Independent Director of the company is on the Board of the Subsidiary Company in terms of the compliance requirements of the Regulation 24(1) of the Listing Regulations. The additional details w.r.t. the subsidiary companies are as under: (i) Latest Developers Advisory Ltd. (ii) Topwell Projects Consultants Ltd. (iii) Nitya Care Homes (P) Ltd. Further, Kairav Developers Ltd. is a joint venture company of Ashiana Housing Ltd. and Arihant Foundations and Housing Ltd. o) Office Locations Registered Office: Head Office and Share Dept.: 5F, Everest Unit No. 4 and 5, 3rd Floor, Plot No. D-2 46/C, Chowringhee Road Saket District Center, Saket Kolkata-700 071 New Delhi - 110 017 Ashiana Housing Limited – Branch/Site Offices: i) Jamshedpur, Jharkhand: 123, 1st Street, Tata Kandra Main Road, Adityapur, Jamshedpur, Jharkhand – 831013 ii) Jaipur, Rajasthan: 401, 3rd Floor, Apex Mall, Lal Kothi, Tonk Road, Jaipur, Rajasthan – 302015 iii) Gurugram, Haryana: Ashiana Amarah, Near Village Hayatpur, Sector–93, Gurugram – 122505 iv) Pune, Maharashtra: Ashiana Malhar …"
+     },
+     {
+      "chunk_id": 72443,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · 3.6 FINANCIAL ASSETS > 3.6.1 INVESTMENT IN SUBSIDIARIES/JOINT VENTURES · p172 · known 2025-09-02T19:44:25",
+      "section": "3.6 FINANCIAL ASSETS > 3.6.1 INVESTMENT IN SUBSIDIARIES/JOINT VENTURES",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 172,
+      "page_to": 173,
+      "char_len": 1324,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -24.54902450579072,
+      "body_excerpt": "3.6 FINANCIAL ASSETS 3.6.1 INVESTMENT IN SUBSIDIARIES/JOINT VENTURES 183 CORPORATE OVERVIEW GOVERNANCE OVERVIEW PERFORMANCE OVERVIEW FUNCTIONAL OVERVIEW STATUTORY REPORTS FINANCIAL STATERMENTS Standalone Notes to the Accounts The particulars of partnership firms on the basis of audited Balance Sheet as at 31.03.2025, are given below :- a) Ashiana Amar Developers Name of Partners Share Capital (J in lakhs) Ashiana Housing Ltd. 95.00% 2.25 Ashiana Maintenance Services LLP 5.00% 2.72 Name of Partners Share Capital (J in lakhs) Shubhlabh Buildhome Private Ltd 50.00% 66.98 Ashiana Housing Ltd. 50.00% 859.80 Name of Partners Share Capital (J in lakhs) N.K. Gupta 7.50% 33.10 Vinod Goyal 7.75% 34.20 Ram Babu Agarwal 3.75% 16.55 Ajay Gupta 7.50% 33.10 Ritesh Agarwal 16.50% 72.82 Manglam Build Developers Ltd. 3.00% 13.24 Rajendra Agarwal 4.00% 17.65 Ashiana Housing Ltd. 50.00% 220.67 Name of Partners Share Capital (J in lakhs) Ashiana Housing Ltd. 50.00% 65.55 Ram Babu Agarwal 25.00% 101.33 Manglam Build Developers Ltd. 25.00% 18.73 Name of Partners Share Capital (J in lakhs) Ashiana Housing Ltd. 50.00% 196.93 Manglam Build Developers Ltd. 37.50% 41.84 Ram Babu Agarwal 12.50% 155.08 b) Ashiana Greenwood Developers c) Megha Colonizers d) Ashiana Manglam Builders e) Vista Housing"
+     },
+     {
+      "chunk_id": 72441,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · 3.5 LEASED ASSETS · p171 · known 2025-09-02T19:44:25",
+      "section": "3.5 LEASED ASSETS",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 171,
+      "page_to": 172,
+      "char_len": 1944,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -23.49284722491184,
+      "body_excerpt": "… LEASED ASSETS The changes in the carrying value of leased assets for the year ended Mar 31, 2025 were as follows : Annual Report 2024-25 182 Standalone Notes to the Accounts The changes in the carrying value of leased assets for the year ended March 31, 2024 were as follows : H in Lakhs Particulars As at 31st March 2025 As at 31st March 2024 Non-Current Investment in Subsidiaries/Joint Ventures Investment in Equity Instruments (fully paid-up) (unquoted): i. Subsidiaries: 50,000 equity shares of Latest Developers Advisory Ltd. (F.V. H 10) 5.01 5.01 50,000 equity shares of Topwell Projects Consultants Ltd. (F.V. H 10) 5.01 5.01 10,000 (PY NIL) equity shares of Nitya Care Homes Pvt Ltd. (F.V. H 10) 1.00 - ii. Joint Ventures : 25,000 equity shares of Kairav Developers Ltd. (F.V. H 10) 2.50 2.50 Investment in Capital of Limited Liability Partnership (Unquoted) i. Subsidiaries: Ashiana Maintenance Services LLP (160.91) 70.04 (147.40) 82.55 Add: Fair Value of Investment in Joint Venture by way of gurantee 82.08 - Total Non-Current Investment in Subsidiaries/Joint Ventures (65.32) 82.55 Current Investment in Subsidiaries/Joint Ventures Investment in Fully Paid-Up Optionally Convertible Debentures (unquoted): Joint venture: 1080 debentures of Kairav Developers Ltd. (F.V. H 100000)- Series 2022 1,080.00 1,080.00 90 debentures of Kairav Developers Ltd. (F.V. H 100000)- Series 2023 90.00 90.00 Investment in Capital of Partnership Firms (Unquoted) i. Subsidiaries Ashiana Amar Developers 2 …"
+     }
+    ],
+    "n_returned": 10,
+    "query_terms": [
+     "Ashiana",
+     "Housing",
+     "Limited",
+     "NSE",
+     "ASHIANA",
+     "latest",
+     "annual",
+     "report",
+     "disclose",
+     "change",
+     "control",
+     "annual"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of [result truncated for the model]"
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "ASHIANA"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-19",
+    "entity": "INE365D01021",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 22,
+      "first_period": "2022-09-30",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 27,
+      "first_period": "2020-06-25",
+      "last_period": "2026-10-01",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 77,
+      "first_period": "2021-09-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 10,
+      "first_period": "2024-06-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 1677,
+      "first_period": "2019-12-30",
+      "last_period": "2026-10-19",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1913,
+      "first_period": "2019-01-21",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1927,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1908,
+      "first_period": "2019-01-28",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1926,
+      "first_period": "2019-01-01",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1419,
+      "first_period": "2024-05-24",
+      "last_period": "2026-08-19",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=0;chunk=106155",
+       "doctype=announcement;page=0;chunk=106215"
+      ]
+     }
+    ],
+    "n_returned": 27,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-9cd12052-fdbd-4f20-9156-0cf90586654b",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"ASHIANA\", \"doc_types\": \"[\\\"annual_report\\\"]\", \"limit\": \"10.0\"}"
+     }
+    },
+    {
+     "id": "call-ed74c502-ac96-4f36-8182-35db1bba48a7",
+     "type": "function",
+     "function": {
+      "name": "claim_search",
+      "arguments": "{\"entity\": \"ASHIANA\", \"terms\": \"change in control\", \"topic\": \"annual_report\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 101,
+   "secs": 1.84,
+   "usage": {
+    "prompt_tokens": 7459,
+    "completion_tokens": 100,
+    "total_tokens": 7559,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 29
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 6371,
+      "output": 100,
+      "reasoning": 29,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "ASHIANA",
+    "doc_types": "[\"annual_report\"]",
+    "limit": "10.0"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE365D01021",
+    "rows": [
+     {
+      "chunk_id": 72291,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · CIN: L70109WB1986PLC040864 · p1 · known 2025-09-02T19:44:25",
+      "section": "CIN: L70109WB1986PLC040864",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 1,
+      "page_to": 2,
+      "char_len": 1685,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -26.459578976312837,
+      "body_excerpt": "… 40864 Regd. Office: 5F Everest, 46/C Chowringhee Road, Kolkata – 700 071 011-42654265, Email: investorrelations@ashianahousing.com Website: www.ashianahousing.com Dated: 02nd September 2025 Sub: Submission of Notice of the 39th Annual General Meeting along with Annual Report of the Company for the Financial Year 2024-25 Dear Sir, The 39th Annual General Meeting (AGM) of the Company will be held on Thursday 25th September 2025 at 11:30 A.M. through Video Conferencing (VC)/ Other Audio-Visual Means (OAVM). Pursuant to Regulation 34(1) and 53(2) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015 (“SEBI Listing Regulations”), we are submitting herewith the Annual Report of the Company along with the Notice of AGM for the Financial Year 2024-25 which is being sent through electronic mode to the members of the Company. The Annual Report and Notice of AGM is also uploaded on the Company’s website www.ashianahousing.com. You are requested to take this information on your record. Thanking you, For Ashiana Housing Ltd. Nitin Sharma (Company Secretary & Company Secretary) Mem No: 21191 To The Secretary BSE Ltd. Phiroze Jeejeebhoy Towers Dalal Street, Mumbai - 400 001 Security Code No.: 523716 To The Secretary National Stock Exchange of India Ltd. Exchange Plaza, Plot no. C/1, G Block Bandra-Kurla Complex, Bandra (E) Mumbai - 400 051 NSE Symbol: ASHIANA NITIN SHARMA Digitally signed by NITIN SHARMA Date: 2025.09.02 19:29:26 +05'30' [1] Ashiana Housing Limited"
+     },
+     {
+      "chunk_id": 57474,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · FORM AOC-1 · p145 · known 2024-09-03T23:18:24",
+      "section": "FORM AOC-1",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 145,
+      "page_to": 145,
+      "char_len": 1662,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -26.07280079631349,
+      "body_excerpt": "… ining Salient Features of the Financial Statement of Subsidiaries/ Associate Companies/ Joint Ventures Part A (In H Lakhs, except stated otherwise) Subsidiaries Particulars Ashiana Maintenance Services LLP. Topwell Projects Consultants Ltd. Latest Developers Advisory Ltd. Ashiana Amar Developers Nitya Care Homes (P) Limited Date on which subsidiary is acquired 22nd December 2016 31st January 2012 31st January 2012 27th February 2007 09th November 2025 Reporting period if different from holding company's reporting period N.A. N.A. N.A. N.A. N.A. Share Capital (122.92) 5.00 5.00 4.45 1.00 Reserves and Surplus 0.00 1.99 (10.35) 0 1,263.83 Total Assets 11,918.80 7.42 4.94 5.26 1,493.77 Total Liabilities 12,041.73 0.42 10.29 0.81 19.21 Investments 3,722.83 0.46 0.00 0.00 0.00 Turnover (Includes other Income) 9,045.33 0.36 0.16 0.00 1.96 Profit/ Loss before taxation (68.64) (0.85) (1.06) (0.51) (46.30) Total Tax Expenses/Tax Adjustments 42.74 0.00 0.00 0.00 11.77 Profit after taxation (25.90) (0.85) (1.06) (0.51) (34.52) Proposed dividend 0.00 0.00 0.00 0.00 0.00 % age of Shareholding 100%* 100% 100% 100%** 100% Notes: 1. There is/are no subsidiaries which is/are yet to commence operations. 2. There is/are no subsidiaries which have been liquidated or sold during the year. * 0.3% held by Topwell Projects Consultants Limited, a wholly owned subsidiary of Ashiana Housing Limited. ** 5% share held by Ashiana Maintenance Services LLP, wholly owned subsidiary of Ashiana Housing Limited."
+     },
+     {
+      "chunk_id": 57420,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · FUTURE PROJECTS · p74 · known 2024-09-03T23:18:24",
+      "section": "FUTURE PROJECTS",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 74,
+      "page_to": 74,
+      "char_len": 1835,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -25.864100562563838,
+      "body_excerpt": "… ow: Location Project Phase Economic Interest Saleable Area (Lakhs Sq. ft.) Bhiwadi Ashiana Advik 4 and 5 100% Ownership 5.77 Jaipur Ashiana OMA All 73% Revenue Share 10.90 Jaipur ONE44 Plaza 77.40% Revenue Share 0.04 Gurugram Ashiana Aaroham 3 100% Ownership 3.88 Pune Ashiana Malhar 5 65% Revenue Share 2.62 Pune Ashiana Amodh 4 80% Revenue Share 2.01 Chennai Ashiana Vatsalya 3,4 and 5 100% Ownership 7.97 Chennai Ashiana Swarang* 4 50% of the Profits 1.28 Neemrana Ashiana Aangan 2 100% Ownership 4.37 Total 38.84 Notes: 1. *Ashiana Swarang is acquired by Kairav Developers Ltd. (a joint venture company with equal economic interest of Ashiana Housing Ltd. and Arihant Foundations.) In some of the projects, saleable area has been updated as per latest/revised phasing plan. 2. Phase-5 of Lavasa, Pune having saleable area od 0.84 Lakhs sq. ft. excluded from above. LAND BANK: A summary of the land available for development is as under: Location Land / Project Name Estimated Area (Acres) Estimated Saleable Area (Lakhs sq. ft.) Proposed Development Chennai Ashiana Aaranya (MWC Chennai) 22.71 15.00 Senior Living Pune Wavrale, Raigad (Maharashtra) 8.83 4.50 Senior Living Pune Tattvam, Panvel (Maharashtra) 7.00 7.00 Senior Living Total 38.54 26.50 Note: Milakpur Land, with estimated area 40.63 Acres and potential Saleable area 31 Lakhs sq. ft., is under acquisition and company’s writ petition is pending before the Hon’ble High Court of Rajasthan against aquisition. Annual Report 2025-26 80"
+     },
+     {
+      "chunk_id": 72336,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · FUTURE PROJECTS · p58 · known 2025-09-02T19:44:25",
+      "section": "FUTURE PROJECTS",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 58,
+      "page_to": 60,
+      "char_len": 2476,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -25.171064734395383,
+      "body_excerpt": "… i Ashiana Vatsalya 2,3,4 and 5 100% Ownership 10.00 Chennai Ashiana Swarang* 2,3 and 4 50% of the Profits 3.78 Neemrana Ashiana Aangan 2 100% Ownership 4.37 Pune Ashiana Malhar 4 and 5 65% Revenue Share 3.94 Pune Ashiana Amodh 3,4 and 5 80% Revenue Share 3.06 Lavasa (Pune) Utsav Lavasa 5 100% Ownership 0.84 Total 38.02 Location Land / Project Name Estimated Area (Acres) Estimated Saleable Area (Lakhs sq. ft.) Proposed Development Bhiwadi Milakpur* 40.63 31.00 Premium Homes/ Senior Living Jaipur Ashiana Oma*** 11.24 11.00 Premium Homes/ Senior Living Gurugram Ashiana Aaroham Sec 80, HSIIDC Land 10.80 10.30 Kid Centric Homes Jamshedpur Ashiana Amaya (Mouza Land, Jharkhand) 3.86 4.30 Premium Homes Total 66.53 56.60 *Ashiana Swarang is acquired by Kairav Developers Ltd. (a joint venture company with equal economic interest of Ashiana Housing Ltd. and Arihant Foundations.) *In some of the projects, saleable area has been updated as per latest/revised phasing plan. LAND BANK: A summary of the land available for development is as under: Note: * Milakpur Land is under acquisition and company’s writ petition is pending before the Hon’ble High Court of Rajasthan against acquisition. ** We have exited the ‘Ashiana Maitri/Nitya’ Project in Kolkata. *** The land parcel at Jaisinghpura has been christened as ‘Ashiana Oma’. Annual Report 2024-25 70 Status of RERA Registration Location RERA Registration Applied & Received for projects Total Saleable Area (Lakhs Sq. ft.) Jaipur 4 9.38 Gurugra …"
+     },
+     {
+      "chunk_id": 57625,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · 19. ASSETS SECURED FOR BORROWINGS · p284 · known 2024-09-03T23:18:24",
+      "section": "19. ASSETS SECURED FOR BORROWINGS",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 284,
+      "page_to": 285,
+      "char_len": 2833,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -25.036269727468877,
+      "body_excerpt": "19. ASSETS SECURED FOR BORROWINGS The carrying amounts of assets secured for current and non current borrowings is given in the following table: Annual Report 2025-26 290 Consolidated Notes to the Accounts (H in Lakhs) Summarised Balance Sheet Ashiana Manglam Builders Megha Colonizers As At 31.03.2026 As At 31.03.2025 As At 31.03.2026 As At 31.03.2025 Non Current Assets - - - - Current Assets - - - - Cash and Cash Equivalents 119.77 167.37 4.63 6.01 Others assets 167.92 159.34 466.32 469.19 Total Assets 287.69 326.71 470.95 475.20 Non Current Liabilities Current Liabilities Advance from customers 81.72 81.72 - - Trade Payables 0.57 0.19 12.28 4.04 Others 55.77 59.18 (5.50) 29.81 Total Liabilities 138.06 141.09 6.78 33.85 Net Assets 149.63 185.62 464.17 441.35 (H in Lakhs) Name of the Subidiaries Country of Incorporation/ Formation Business Activity Percentage of voting power/ Profit sharing as at 31st March, 2026 Percentage of voting power/ Profit sharing as at 31st March, 2025 Nitya Care Homes Private Limited India Real Estate Support Operations 100% 100% Ashiana Maintenance Services LLP India Real Estate Support Operations 100%** 100%** Latest Developers Advisory Ltd India Real Estate Developers 100% 100% Topwell Projects Consultants Ltd. India Real Estate Developers 100% 100% Ashiana Amar Developers India Real Estate Developers 100%* 100%* (H in Lakhs) Name of the Joint Ventures Country of Incorporation/ Formation Business Activity Percentage of voting power/ Profit sharin …"
+     },
+     {
+      "chunk_id": 57380,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · CIN: L70109WB1986PLC040864 · p1 · known 2024-09-03T23:18:24",
+      "section": "CIN: L70109WB1986PLC040864",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 1,
+      "page_to": 1,
+      "char_len": 1604,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -25.026482418003507,
+      "body_excerpt": "Ashiana Housing Ltd. 304, Southern Park, Saket District Centre, Saket, New Delhi – 110 017 CIN: L70109WB1986PLC040864 Regd. Office: 5F Everest, 46/C Chowringhee Road, Kolkata – 700 071 011-42654265, Email: investorrelations@ashianahousing.com Website: www.ashianahousing.com Dated: 07th September 2026 Sub: Submission of Notice of the 40th Annual General Meeting along with Annual Report of the Company for the Financial Year 2025-26 Dear Sir, The 40th Annual General Meeting (AGM) of the Company will be held on Tuesday 29th September 2026 at 11:30 A.M. through Video Conferencing (VC)/ Other Audio-Visual Means (OAVM). Pursuant to Regulation 34(1) and 53(2) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015 (SEBI Listing Regulations”), we are submitting herewith the Annual Report of the Company along with the Notice of AGM for the Financial Year 2025-26 which is being sent through electronic mode to the members of the Company. The Annual Report and Notice of AGM is also uploaded on the Company’s website www.ashianahousing.com. You are requested to take this information on your record. Thanking you, For Ashiana Housing Ltd. Nitin Sharma (Company Secretary & Company Secretary) Mem No: 21191 To The Secretary BSE Ltd. Phiroze Jeejeebhoy Towers Dalal Street, Mumbai - 400 001 Security Code No.: 523716 To The Secretary National Stock Exchange of India Ltd. Exchange Plaza, Plot no. C/1, G Block Bandra-Kurla Complex, Bandra (E) Mumbai - 400 051 NSE Symbol: ASHIA …"
+     },
+     {
+      "chunk_id": 57475,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · ANNEXURE VIII · p145 · known 2024-09-03T23:18:24",
+      "section": "ANNEXURE VIII",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 145,
+      "page_to": 147,
+      "char_len": 3813,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -24.987253376900316,
+      "body_excerpt": "ANNEXURE VIII 151 CORPORATE OVERVIEW GOVERNANCE OVERVIEW PERFORMANCE OVERVIEW FUNCTIONAL OVERVIEW STATUTORY REPORTS FINANCIAL STATEMENTS Part B Statement pursuant to Section 129 (3) of the Companies Act, 2013 related to Associate Companies and Joint Ventures H (in Lakhs except stated otherwise) *Joint Ventures Sl. No. Name of Associates or Joint Venture Kairav Developers Limited Vista Housing Ashiana Greenwood Developers Megha Colonizers Ashiana Manglam Builders 1 Latest audited Balance Sheet Date 31.03.2026 31.03.2026 31.03.2026 31.03.2026 31.03.2026 2 Date on which the Associate or Joint venture was acquired 03.01.2020 08.01.2014 08.09.2009 10.03.2010 17.12.2012 3 Share of Associates or Joint ventures held by the company on the year end (in %) 50% 50% 50% 50% 50% a) Number 25,000 N.A. N.A. N.A. N.A. b) Amount of investment in Associates or Joint Venture 2.50 221.89 23.03 255.69 47.56 c) Extent of Holding (in %) 50% 50% 50% 50% 50% 4 Description of how there is significant influence Due to 50% voting power N.A. N.A. N.A. N.A. 5 Reason why the associate/ Joint venture is not consolidated N.A. N.A. N.A. N.A. N.A. 6 Networth attributable to shareholding as per latest audited Balance Sheet 50% N.A. N.A. N.A. N.A. 7 Profit/ Loss for the year a) Considered in consolidation NIL (3.00) 6.04 (12.20) (17.99) b) Not Considered in consolidation (25.95) (3.00) 6.04 (12.20) (17.99) Annual Report 2025-26 152 The Members Ashiana Housing Limited 5F, Everest, 46/C, Chowringhee Road, Kolkata,  …"
+     },
+     {
+      "chunk_id": 57492,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · BSE SENSEX (cont.) · p165 · known 2024-09-03T23:18:24",
+      "section": "BSE SENSEX (cont.)",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 165,
+      "page_to": 165,
+      "char_len": 3234,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -24.748612625300513,
+      "body_excerpt": "The Audit is carried out every quarter, and the report thereon is submitted to the Stock Exchanges. The report, inter alia, confirms that the number of shares issued, listed on the Stock exchanges and that held in demat and physical mode are in agreement with each other. n) Subsidiary Monitoring Mechanism: The minutes of Board meetings of the subsidiary companies are placed before the meeting of Board of Directors of the Company. No Independent Director of the company is on the Board of the Subsidiary Company in terms of the compliance requirements of the Regulation 24(1) of the Listing Regulations. The additional details w.r.t. the subsidiary companies are as under: (i) Latest Developers Advisory Ltd. (ii) Topwell Projects Consultants Ltd. (iii) Nitya Care Homes (P) Ltd. Further, Kairav Developers Ltd. is a joint venture company of Ashiana Housing Ltd. and Arihant Foundations and Housing Ltd. o) Office Locations Registered Office: Head Office and Share Dept.: 5F, Everest Unit No. 4 and 5, 3rd Floor, Plot No. D-2 46/C, Chowringhee Road Saket District Center, Saket Kolkata-700 071 New Delhi - 110 017 Ashiana Housing Limited – Branch/Site Offices: i) Jamshedpur, Jharkhand: 123, 1st Street, Tata Kandra Main Road, Adityapur, Jamshedpur, Jharkhand – 831013 ii) Jaipur, Rajasthan: 401, 3rd Floor, Apex Mall, Lal Kothi, Tonk Road, Jaipur, Rajasthan – 302015 iii) Gurugram, Haryana: Ashiana Amarah, Near Village Hayatpur, Sector–93, Gurugram – 122505 iv) Pune, Maharashtra: Ashiana Malhar …"
+     },
+     {
+      "chunk_id": 72443,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · 3.6 FINANCIAL ASSETS > 3.6.1 INVESTMENT IN SUBSIDIARIES/JOINT VENTURES · p172 · known 2025-09-02T19:44:25",
+      "section": "3.6 FINANCIAL ASSETS > 3.6.1 INVESTMENT IN SUBSIDIARIES/JOINT VENTURES",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 172,
+      "page_to": 173,
+      "char_len": 1324,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -24.54902450579072,
+      "body_excerpt": "3.6 FINANCIAL ASSETS 3.6.1 INVESTMENT IN SUBSIDIARIES/JOINT VENTURES 183 CORPORATE OVERVIEW GOVERNANCE OVERVIEW PERFORMANCE OVERVIEW FUNCTIONAL OVERVIEW STATUTORY REPORTS FINANCIAL STATERMENTS Standalone Notes to the Accounts The particulars of partnership firms on the basis of audited Balance Sheet as at 31.03.2025, are given below :- a) Ashiana Amar Developers Name of Partners Share Capital (J in lakhs) Ashiana Housing Ltd. 95.00% 2.25 Ashiana Maintenance Services LLP 5.00% 2.72 Name of Partners Share Capital (J in lakhs) Shubhlabh Buildhome Private Ltd 50.00% 66.98 Ashiana Housing Ltd. 50.00% 859.80 Name of Partners Share Capital (J in lakhs) N.K. Gupta 7.50% 33.10 Vinod Goyal 7.75% 34.20 Ram Babu Agarwal 3.75% 16.55 Ajay Gupta 7.50% 33.10 Ritesh Agarwal 16.50% 72.82 Manglam Build Developers Ltd. 3.00% 13.24 Rajendra Agarwal 4.00% 17.65 Ashiana Housing Ltd. 50.00% 220.67 Name of Partners Share Capital (J in lakhs) Ashiana Housing Ltd. 50.00% 65.55 Ram Babu Agarwal 25.00% 101.33 Manglam Build Developers Ltd. 25.00% 18.73 Name of Partners Share Capital (J in lakhs) Ashiana Housing Ltd. 50.00% 196.93 Manglam Build Developers Ltd. 37.50% 41.84 Ram Babu Agarwal 12.50% 155.08 b) Ashiana Greenwood Developers c) Megha Colonizers d) Ashiana Manglam Builders e) Vista Housing"
+     },
+     {
+      "chunk_id": 72441,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · 3.5 LEASED ASSETS · p171 · known 2025-09-02T19:44:25",
+      "section": "3.5 LEASED ASSETS",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 171,
+      "page_to": 172,
+      "char_len": 1944,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -23.49284722491184,
+      "body_excerpt": "… LEASED ASSETS The changes in the carrying value of leased assets for the year ended Mar 31, 2025 were as follows : Annual Report 2024-25 182 Standalone Notes to the Accounts The changes in the carrying value of leased assets for the year ended March 31, 2024 were as follows : H in Lakhs Particulars As at 31st March 2025 As at 31st March 2024 Non-Current Investment in Subsidiaries/Joint Ventures Investment in Equity Instruments (fully paid-up) (unquoted): i. Subsidiaries: 50,000 equity shares of Latest Developers Advisory Ltd. (F.V. H 10) 5.01 5.01 50,000 equity shares of Topwell Projects Consultants Ltd. (F.V. H 10) 5.01 5.01 10,000 (PY NIL) equity shares of Nitya Care Homes Pvt Ltd. (F.V. H 10) 1.00 - ii. Joint Ventures : 25,000 equity shares of Kairav Developers Ltd. (F.V. H 10) 2.50 2.50 Investment in Capital of Limited Liability Partnership (Unquoted) i. Subsidiaries: Ashiana Maintenance Services LLP (160.91) 70.04 (147.40) 82.55 Add: Fair Value of Investment in Joint Venture by way of gurantee 82.08 - Total Non-Current Investment in Subsidiaries/Joint Ventures (65.32) 82.55 Current Investment in Subsidiaries/Joint Ventures Investment in Fully Paid-Up Optionally Convertible Debentures (unquoted): Joint venture: 1080 debentures of Kairav Developers Ltd. (F.V. H 100000)- Series 2022 1,080.00 1,080.00 90 debentures of Kairav Developers Ltd. (F.V. H 100000)- Series 2023 90.00 90.00 Investment in Capital of Partnership Firms (Unquoted) i. Subsidiaries Ashiana Amar Developers 2 …"
+     }
+    ],
+    "n_returned": 10,
+    "query_terms": [
+     "Ashiana",
+     "Housing",
+     "Limited",
+     "NSE",
+     "ASHIANA",
+     "latest",
+     "annual",
+     "report",
+     "disclose",
+     "change",
+     "control",
+     "annual"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of [result truncated for the model]"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "claim_search",
+   "args": {
+    "entity": "ASHIANA",
+    "terms": "change in control",
+    "topic": "annual_report"
+   },
+   "result": {
+    "tool": "claim_search",
+    "as_of": "2026-10-19",
+    "entity": "INE365D01021",
+    "rows": [],
+    "n_returned": 0,
+    "note": "claims are extracted statements, not audited facts"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-66abbcf9-d589-4e1a-8598-4e5990a95866",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"ASHIANA\", \"limit\": \"10.0\", \"query\": \"control\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 188,
+   "secs": 2.12,
+   "usage": {
+    "prompt_tokens": 11716,
+    "completion_tokens": 73,
+    "total_tokens": 11789,
+    "completion_tokens_details": {
+     "reasoning_tokens": 41
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 11716,
+      "output": 73,
+      "reasoning": 41,
+      "cache_read": 0,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "ASHIANA",
+    "limit": "10.0",
+    "query": "control"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE365D01021",
+    "rows": [
+     {
+      "chunk_id": 57430,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · INTERNAL CONTROL · p84 · known 2024-09-03T23:18:24",
+      "section": "INTERNAL CONTROL",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 84,
+      "page_to": 85,
+      "char_len": 3581,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -4.6511715861053995,
+      "body_excerpt": "INTERNAL CONTROL The internal control system of the company is wider in scope which includes internal controls on financial reporting and operational controls. The Company has an adequate system of internal controls, commensurate with the size and nature of its business. The Company remains committed to strengthening its internal control framework and governance practices through continuous monitoring, process automation, adoption of best practices, and enhancement of risk management capabilities. As part of the Internal Financial Control, the Company is maintaining function wise policies and procedures called Standard Operating Procedures (SOP). The SOP ensure that business of the company is conducted orderly and efficiently, policies and procedures are adhered to, assets are safeguarded, frauds and errors are detected, if there are any, accounting records are accurate, and financial information is prepared accurately and timely. Controls are already in place which ensure timely compliances with all regulatory and statutory requirements. These controls help in strengthening and improving the processes in the organisation. Internal controls cover all fields across all financial and operating functions ranging from procurement of land to smooth execution of projects in time. Intent of the internal controls is to have control framework beyond financial reporting. Periodic reviews are conducted to evaluate the design and operating effectiveness of these controls and to identify  …"
+     },
+     {
+      "chunk_id": 72347,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · INTERNAL CONTROL · p67 · known 2025-09-02T19:44:25",
+      "section": "INTERNAL CONTROL",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 67,
+      "page_to": 68,
+      "char_len": 3068,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -4.645010076693931,
+      "body_excerpt": "INTERNAL CONTROL The internal control system of the company is wider in scope which includes internal controls on financial reporting and operational controls. The Company has an adequate system of internal controls, commensurate with the size and nature of its business. As part of the Internal Financial Control, the Company is maintaining function wise policies and procedures called Standard Operating Procedures (SOP). The SOP ensure that business of the company is conducted orderly and efficiently, policies and procedures are adhered to, assets are safeguarded, frauds and errors are detected, if there are any, accounting records are accurate and financial information is prepared timely. Controls are already in place in the system which ensures timely compliances with all regulatory and statutory requirements. These controls helps in strengthening and improving the processes in the organisation. Internal controls cover all fields across all financial and operating functions ranging from procurement of land to smooth execution of projects in time. Intent of the internal controls is to have control framework beyond financial reporting. Accordingly, independent audit firms appointed by the Company conduct periodical audits encompassing various functions, at various projects, branches and Head Office to ensure adequacy of internal control systems, adherence to management policies and compliance with the applicable laws and regulations. Their scope of work also includes internal  …"
+     },
+     {
+      "chunk_id": 72484,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · UDIN- 25529082BMIZZM6138 (cont.) · p206 · known 2025-09-02T19:44:25",
+      "section": "UDIN- 25529082BMIZZM6138 (cont.)",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 206,
+      "page_to": 206,
+      "char_len": 2217,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -4.26026001744842,
+      "body_excerpt": "A company's internal financial control over financial reporting includes those policies and procedures that (1) pertain to the maintenance of records that, in reasonable detail, accurately and fairly reflect the transactions and dispositions of the assets of the company; (2) provide reasonable assurance that transactions are recorded as necessary to permit preparation of financial statements in accordance with generally accepted accounting principles, and that receipts and expenditures of the company are being made only in accordance with authorisations of management and directors of the company; and (3) provide reasonable assurance regarding prevention or timely detection of unauthorised acquisition, use, or disposition of the company's assets that could have a material effect on the financial statements. Inherent Limitations of Internal Financial Controls over Financial Reporting Because of the inherent limitations of internal financial controls over financial reporting, including the possibility of collusion or improper management override of controls, material misstatements due to error or fraud may occur and not be detected. Also, projections of any evaluation of the internal financial controls over financial reporting to future periods are subject to the risk that the internal financial control over financial reporting may become inadequate because of changes in conditions, or that the degree of compliance with the policies or procedures may deteriorate. Opinion In our  …"
+     },
+     {
+      "chunk_id": 57572,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · UDIN: 26529082WXECMY4250 (cont.) · p239 · known 2024-09-03T23:18:24",
+      "section": "UDIN: 26529082WXECMY4250 (cont.)",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 239,
+      "page_to": 239,
+      "char_len": 2220,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -4.2581871152523085,
+      "body_excerpt": "A company's internal financial control over financial reporting includes those policies and procedures that (1) pertain to the maintenance of records that, in reasonable detail, accurately and fairly reflect the transactions and dispositions of the assets of the company; (2) provide reasonable assurance that transactions are recorded as necessary to permit preparation of financial statements in accordance with generally accepted accounting principles, and that receipts and expenditures of the company are being made only in accordance with authorisations of management and directors of the company; and (3) provide reasonable assurance regarding prevention or timely detection of unauthorised acquisition, use, or disposition of the company's assets that could have a material effect on the financial statements. Inherent Limitations of Internal Financial Controls over Financial Reporting Because of the inherent limitations of internal financial controls over financial reporting, including the possibility of collusion or improper management override of controls, material misstatements due to error or fraud may occur and not be detected. Also, projections of any evaluation of the internal financial controls over financial reporting to future periods are subject to the risk that the internal financial control over financial reporting may become inadequate because of changes in conditions, or that the degree of compliance with the policies or procedures may deteriorate. Opinion In our  …"
+     },
+     {
+      "chunk_id": 57580,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · 2.2 Basis of Consolidation · p245 · known 2024-09-03T23:18:24",
+      "section": "2.2 Basis of Consolidation",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 245,
+      "page_to": 245,
+      "char_len": 1720,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -4.099692988222743,
+      "body_excerpt": "2.2 Basis of Consolidation i. ASHIANA HOUSING LIMITED consolidates entities which it owns or controls. The consolidated Financial Statements comprises of Financial Statements of the company, its subsidiaries and jointly controlled partnerships as disclosed in Note 20. Control exists when the parent has power over the entity, is exposed, or has rights, to variable returns from its involvement with the entity and has the ability to affect those returns by using its power over the entity. Power is demonstrated through existing rights that give the ability to direct relevant activities, those which significantly affect the entity's returns. Subsidiaries are consolidated from the date control commences until the date control ceases. ii. The Consolidated Financial Statements are presented, to the extent possible, in the same format as that adopted by the parent for standalone Financial Statements. iii. The Financial Statements of the Group are consolidated on a line-by-line basis and Intra Group balances and transactions, including unrealized gain/(loss) from such transactions, are eliminated upon consolidation. iv. These Consolidated Financial Statements are prepared by applying uniform Accounting Policies in use at the group. Non-controlling Interest which represent part of the net Profit or loss and Net Assets of subsidiaries that are not, directly or indirectly, owned or controlled by the company, are excluded. v. The amounts shown in respect of reserve comprise the amount of t …"
+     },
+     {
+      "chunk_id": 72492,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · 2.2 Basis of Consolidation · p212 · known 2025-09-02T19:44:25",
+      "section": "2.2 Basis of Consolidation",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 212,
+      "page_to": 212,
+      "char_len": 1720,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -4.099692988222743,
+      "body_excerpt": "2.2 Basis of Consolidation i. ASHIANA HOUSING LIMITED consolidates entities which it owns or controls. The consolidated Financial Statements comprises of Financial Statements of the company, its subsidiaries and jointly controlled partnerships as disclosed in Note 20. Control exists when the parent has power over the entity, is exposed, or has rights, to variable returns from its involvement with the entity and has the ability to affect those returns by using its power over the entity. Power is demonstrated through existing rights that give the ability to direct relevant activities, those which significantly affect the entity's returns. Subsidiaries are consolidated from the date control commences until the date control ceases. ii. The Consolidated Financial Statements are presented, to the extent possible, in the same format as that adopted by the parent for standalone Financial Statements. iii. The Financial Statements of the Group are consolidated on a line-by-line basis and Intra Group balances and transactions, including unrealized gain/(loss) from such transactions, are eliminated upon consolidation. iv. These Consolidated Financial Statements are prepared by applying uniform Accounting Policies in use at the group. Non-controlling Interest which represent part of the net Profit or loss and Net Assets of subsidiaries that are not, directly or indirectly, owned or controlled by the company, are excluded. v. The amounts shown in respect of reserve comprise the amount of t …"
+     },
+     {
+      "chunk_id": 57510,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · UDIN: F006628H001212580 (cont.) · p185 · known 2024-09-03T23:18:24",
+      "section": "UDIN: F006628H001212580 (cont.)",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 185,
+      "page_to": 186,
+      "char_len": 4103,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -3.899356333003521,
+      "body_excerpt": "Meaning of Internal Financial Controls over Financial Reporting A company's internal financial control over financial reporting is a process designed to provide reasonable assurance regarding the reliability of financial reporting and the preparation of financial statements for external purposes in accordance with generally accepted accounting principles. A company's internal financial control over financial reporting includes those policies and procedures that (1) pertain to the maintenance of records that, in reasonable detail, accurately and fairly reflect the transactions and dispositions of the assets of the company; (2) provide reasonable assurance that transactions are recorded as necessary to permit preparation of financial statements in accordance with generally accepted accounting principles, and that receipts and expenditures of the company are being made only in accordance with authorisations of management and directors of the company; and (3) provide reasonable assurance regarding prevention or timely detection of unauthorised acquisition, use, or disposition of the company's assets that could have a material effect on the financial statements. Inherent Limitations of Internal Financial Controls Over Financial Reporting Because of the inherent limitations of internal financial controls over financial reporting, including the possibility of collusion or improper management override of controls, material misstatements due to error or fraud may occur and not be dete …"
+     },
+     {
+      "chunk_id": 72499,
+      "doc_id": "sha256:b76730d00ec2647160adf9fa89e29521968bdd72935b589ac67007579e954f5a",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY25 · 2.6 Material Accounting Policies (cont.) · p216 · known 2025-09-02T19:44:25",
+      "section": "2.6 Material Accounting Policies (cont.)",
+      "speaker": null,
+      "known_at": "2025-09-02T19:44:25",
+      "event_date": "2025-09-02",
+      "fiscal_period": "FY25",
+      "page_from": 216,
+      "page_to": 218,
+      "char_len": 5893,
+      "title": "ASHIANA annual report 2025-03-31",
+      "score": -3.8387762857805066,
+      "body_excerpt": "…  states in which the group operates, it is required to develop certain units for Economically Weaker Section (EWS) and Lower Income Group (LIG) people along with the development of the main group housing project. EWS/LIG units in the balance sheet comprise of amounts deployed by the group towards land, development and/or purchase of EWS/LIG units, as reduced by amounts received from the allottees and unrealised cost from such units. (i) Revenue Recognition Revenue is recognised upon transfer of control of promised product or services to customer in an amount that reflects the consideration the company expects to receive in exchange for those product or service, regardless of when the payment is received. Revenue is measured at the Transaction price, excluding amounts collected on behalf of the third parties. The specific recognition criteria for the various types of the group’s activities are described below: Real estate projects In accordance with the principles of Ind AS 115, revenue in respect of real estate project is recognised on satisfaction of Performance obligation at a point in time by transferring a promised good or services (i.e. an asset) to a customer and the customer obtains control of that asset. To determine the point in time at which a customer obtains control of a promised asset and the entity satisfies a performance obligation, the company considers following indicators of the transfer of control to customers: (a) the group has a present right to payment f …"
+     },
+     {
+      "chunk_id": 57587,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · 2.6 Material Accounting Policies (cont.) · p249 · known 2024-09-03T23:18:24",
+      "section": "2.6 Material Accounting Policies (cont.)",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 249,
+      "page_to": 251,
+      "char_len": 5917,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -3.836532463887227,
+      "body_excerpt": "… lopment of the main group housing project. EWS/LIG units in the balance sheet comprise of amounts deployed by the group towards land, development 255 CORPORATE OVERVIEW GOVERNANCE OVERVIEW PERFORMANCE OVERVIEW FUNCTIONAL OVERVIEW STATUTORY REPORTS FINANCIAL STATEMENTS Consolidated Notes to the Financial Statements and/or purchase of EWS/LIG units, as reduced by amounts received from the allottees and unrealised cost from such units. (i) Revenue Recognition Revenue is recognised upon transfer of control of promised product or services to customer in an amount that reflects the consideration the company expects to receive in exchange for those product or service, regardless of when the payment is received. Revenue is measured at the Transaction price, excluding amounts collected on behalf of the third parties. The specific recognition criteria for the various types of the group’s activities are described below: Real estate projects In accordance with the principles of Ind AS 115, revenue in respect of real estate project is recognised on satisfaction of Performance obligation at a point in time by transferring a promised good or services (i.e. an asset) to a customer and the customer obtains control of that asset. To determine the point in time at which a customer obtains control of a promised asset and the entity satisfies a performance obligation, the company considers following indicators of the transfer of control to customers: (a) the group has a present right to payment f …"
+     },
+     {
+      "chunk_id": 57571,
+      "doc_id": "sha256:da9bdff00d4754cc447875a41a9da92aa091132376a2f80ab0b8424d327a5dc5",
+      "doc_type": "annual_report",
+      "header": "ASHIANA · INE365D01021 · Annual report · FY24 · UDIN: 26529082WXECMY4250 · p238 · known 2024-09-03T23:18:24",
+      "section": "UDIN: 26529082WXECMY4250",
+      "speaker": null,
+      "known_at": "2024-09-03T23:18:24",
+      "event_date": "2024-09-03",
+      "fiscal_period": "FY24",
+      "page_from": 238,
+      "page_to": 239,
+      "char_len": 3968,
+      "title": "ASHIANA annual report 2024-03-31",
+      "score": -3.784894617294006,
+      "body_excerpt": "UDIN: 26529082WXECMY4250 Company and its subsidiaries included in the consolidated financial statements of the Company, to which reporting under CARO is applicable, we report that there are no qualifications or adverse remarks in these CARO reports . Annual Report 2025-26 244 Annexure - A to the Auditors’ Report Report on the Internal Financial Controls under Clause (i) of Sub-section 3 of Section 143 of the Companies Act, 2013 (“the Act”) We have audited the internal financial controls over financial reporting of Ashiana Housing Limited (“the Holding Company”) and its subsidiaries and joint ventures as of 31 March 2026 in conjunction with our audit of the Consolidated financial statements of the Group for the year ended on that date. Management’s Responsibility for Internal Financial Controls The Holding Company’s management is responsible for establishing and maintaining internal financial controls based on the internal control over financial reporting criteria established by the Group considering the essential components of internal control stated in the Guidance Note on Audit of Internal Financial Controls over Financial Reporting issued by the Institute of Chartered Accountants of India (‘ICAI’). These responsibilities include the design, implementation and maintenance of adequate internal financial controls that were operating effectively for ensuring the orderly and efficient conduct of its business, including adherence to group’s policies, the safeguarding of its asse …"
+     }
+    ],
+    "n_returned": 10,
+    "query_terms": [
+     "control"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of [result truncated for the model]"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-ba9b7fcd-3d96-43c3-a3fc-019b82851038",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"Not in data. The FY25 annual report of Ashiana Housing Limited (known 2025-09-02, fiscal_period FY25) does not disclose any change in control; searches for \\\"change in control\\\" and \\\"control\\\" in the annual report only returned internal control/accounting control content.\", \"missing\": \"not in data: no disclosure of a change in control in the FY25 annual report (store checked: document chunks / annual_report and claim_search for entity ASHIANA/INE365D01021).\", \"working\": \"Searched claim_search (topic annual_report, terms \\\"change in control\\\") → 0 rows. Searched chunk_search annual_report for \\\"control\\\" → only internal control/accounting consolidation content; no change-in-control disclosure. Annual report FY25 present (doc_id sha256:b767..., known 2025-09-02).\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 128,
+   "secs": 2.82,
+   "usage": {
+    "prompt_tokens": 14527,
+    "completion_tokens": 253,
+    "total_tokens": 14780,
+    "prompt_tokens_details": {
+     "cached_tokens": 7424
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 35
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 7103,
+      "output": 253,
+      "reasoning": 35,
+      "cache_read": 7424,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "Not in data. The FY25 annual report of Ashiana Housing Limited (known 2025-09-02, fiscal_period FY25) does not disclose any change in control; searches for \"change in control\" and \"control\" in the annual report only returned internal control/accounting control content.",
+    "missing": "not in data: no disclosure of a change in control in the FY25 annual report (store checked: document chunks / annual_report and claim_search for entity ASHIANA/INE365D01021).",
+    "working": "Searched claim_search (topic annual_report, terms \"change in control\") → 0 rows. Searched chunk_search annual_report for \"control\" → only internal control/accounting consolidation content; no change-in-control disclosure. Annual report FY25 present (doc_id sha256:b767..., known 2025-09-02)."
+   }
+  }
+ ]
+}

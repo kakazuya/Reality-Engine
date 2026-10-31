@@ -1,0 +1,905 @@
+{
+ "qid": "Q23",
+ "mid": "MB0618#MS",
+ "parent_mid": "MB0618",
+ "symbol": "KALYANKJIL",
+ "entity_isin": "INE303R01014",
+ "question": "What is KALYANKJIL's CEO paid, and how has that changed in three years?",
+ "as_of": "2026-10-27",
+ "period": "FY24-FY26",
+ "category": "lookup",
+ "source_bank": "open300",
+ "status": "final",
+ "error": null,
+ "answer": "KALYANKJIL's CEO/Managing Director is Mr. T.S. Kalyanaraman. Per the annual reports: FY25 (AR FY25) total remuneration ₹112.76 million (basic salary ₹112.76M, no perquisites/commission/ESOP/incentive) plus AED 402,000 from Kalyan Jewellers FZE. The prior year figure (FY24-era AR, labelled \"FY 2025-26\") shows ₹111.74 million total. So over the period the pay stayed essentially flat (~₹111.7–112.8M), a marginal increase of ~0.9%. FY26 executive-director remuneration detail is not separately broken out in the held data (only aggregate FY2025-26 wages/median figures).",
+ "working": "FY25 AR (known 2025-08-14): 'Details of remuneration paid to the Executive Directors for the FY25' → Mr. T.S. Kalyanaraman Managing Director Total 112.76 (₹ million). FY24 AR (known 2024-07-24): Executive Directors 'financial year 2025-26' → Total 111.74 (₹ million). AED 402,000 subsidiary pay noted in FY25 AR.",
+ "missing": "FY26-specific CEO remuneration breakdown not separately stated in held annual report chunks (only aggregate FY2025-26 wages/median figures available).",
+ "not_in_data": false,
+ "n_tool_calls": 3,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "KALYANKJIL",
+    "as_of": "2026-10-27"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KALYANKJIL",
+    "query": "CEO remuneration salary compensation",
+    "limit": "8.0"
+   },
+   "ok": true
+  },
+  {
+   "call": 6,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KALYANKJIL",
+    "query": "Details of remuneration paid Executive Directors financial year",
+    "limit": "8.0"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 4,
+ "usage": {
+  "prompt_tokens": 22001,
+  "completion_tokens": 1211
+ },
+ "beam_secs": 12.5,
+ "total_secs": 12.5,
+ "number_check": {
+  "numbers": [
+   "112.76",
+   "402000",
+   "2025",
+   "26",
+   "111.74",
+   "111.7",
+   "112.8",
+   "0.9"
+  ],
+  "supported": [
+   "112.76",
+   "402000",
+   "2025",
+   "26",
+   "111.74"
+  ],
+  "question_only": [],
+  "unsupported": [
+   "111.7",
+   "112.8",
+   "0.9"
+  ],
+  "flagged": [
+   "111.7",
+   "112.8",
+   "0.9"
+  ],
+  "ok": false,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-a50f7b91-513a-4fe4-86ae-3c45a87d7293",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"KALYANKJIL\", \"as_of\": \"2026-10-27\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 66,
+   "secs": 1.52,
+   "usage": {
+    "prompt_tokens": 1098,
+    "completion_tokens": 61,
+    "total_tokens": 1159,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 27
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 138,
+      "output": 61,
+      "reasoning": 27,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "KALYANKJIL",
+    "as_of": "2026-10-27"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2026-10-27",
+    "entity": "INE303R01014",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 1,
+      "first_period": "2021-03-31",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 53,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 53,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 53,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 53,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 53,
+      "first_period": "2021-03-31",
+      "last_period": "2026-06-30",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=fy",
+       "basis=consolidated;period_kind=half"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 16,
+      "first_period": "2022-09-30",
+      "last_period": "2026-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 18,
+      "first_period": "2021-06-01",
+      "last_period": "2026-02-13",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 82,
+      "first_period": "2021-09-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=dii",
+       "holder_class=fii"
+      ]
+     },
+     {
+      "atom": "hold.pledge_pct",
+      "rows": 10,
+      "first_period": "2024-06-30",
+      "last_period": "2026-09-30",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 901,
+      "first_period": "2021-03-26",
+      "last_period": "2024-11-27",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1375,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1374,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1374,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1374,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1374,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1375,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1374,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1361,
+      "first_period": "2021-04-20",
+      "last_period": "2026-10-19",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1375,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1356,
+      "first_period": "2021-04-28",
+      "last_period": "2026-10-19",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1374,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1374,
+      "first_period": "2021-03-26",
+      "last_period": "2026-10-19",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 1488,
+      "first_period": "",
+      "last_period": "2026-08-04",
+      "units": "text",
+      "dims_sample": [
+       "doctype=announcement;page=0;chunk=106340",
+       "doctype=annual_report;page=100;chunk=55837"
+      ]
+     }
+    ],
+    "n_returned": 28,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-5496098b-84a6-457a-a090-8a1f5a460157",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"KALYANKJIL\", \"query\": \"CEO remuneration salary compensation\", \"limit\": \"8.0\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 65,
+   "secs": 1.68,
+   "usage": {
+    "prompt_tokens": 3286,
+    "completion_tokens": 60,
+    "total_tokens": 3346,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 21
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2326,
+      "output": 60,
+      "reasoning": 21,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KALYANKJIL",
+    "query": "CEO remuneration salary compensation",
+    "limit": "8.0"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-27",
+    "entity": "INE303R01014",
+    "rows": [
+     {
+      "chunk_id": 68469,
+      "doc_id": "sha256:f9854bc0bf25fbf1f63cc258ff8c321b2b0dd8b1886d16db3bf35a975bd1a5fb",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY25 · REMUNERATION POLICY · p33 · known 2025-08-14T11:47:36",
+      "section": "REMUNERATION POLICY",
+      "speaker": null,
+      "known_at": "2025-08-14T11:47:36",
+      "event_date": "2025-08-14",
+      "fiscal_period": "FY25",
+      "page_from": 33,
+      "page_to": 33,
+      "char_len": 893,
+      "title": "KALYANKJIL annual report 2025-03-31",
+      "score": -11.472523335547633,
+      "body_excerpt": "REMUNERATION POLICY The Company has, on the recommendation of the Nomination & Remuneration Committee, framed and adopted a Nomination and Remuneration Policy in terms of the Section 178 of the Act. The policy, inter alia, lays down the principles relating to appointment, cessation, remuneration and evaluation of directors, key managerial personnel and senior management personnel of the Company. The Nomination & Remuneration Policy of the Company is available on the website of the Company at https://www. kalyanjewellers.net/images/investors-new/pdf/ corporate-governance/policies/Nomination%20 &%20Remuneration%20Policy.pdf NON-EXECUTIVE DIRECTORS’ COMPENSATION AND DISCLOSURES: None of the Independent/Non-Executive Directors have any pecuniary relationship or transactions with the Company which in the Judgement of the Board may affect the independence of the Directors."
+     },
+     {
+      "chunk_id": 55751,
+      "doc_id": "sha256:be59585e51cf844db3431439ea218636ecf36de275f1f59ef097a3c1ede096e3",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY24 · CEO/CFO CERTIFICATION · p64 · known 2024-07-24T11:31:33",
+      "section": "CEO/CFO CERTIFICATION",
+      "speaker": null,
+      "known_at": "2024-07-24T11:31:33",
+      "event_date": "2024-07-24",
+      "fiscal_period": "FY24",
+      "page_from": 64,
+      "page_to": 64,
+      "char_len": 4600,
+      "title": "KALYANKJIL annual report 2024-03-31",
+      "score": -9.814069381228979,
+      "body_excerpt": "… se in the median remuneration of employees in the financial year 2025-2026: 10% iii. The number of permanent employees on the rolls of the Company as on 31 March 2026: 14668 iv. \u0007Average percentile increase already made in the salaries of employees other than the managerial personnel in the last financial year and its comparison with the percentile increase in the managerial remuneration and justification thereof and point out if there are any exceptional circumstances for increase in the managerial remuneration: The percentage increase in the salaries of employees other than Managerial Personnel in Financial Year 2025-2026 was 10%. The increments given to employees are based on their potential, performance, and contribution, which are benchmarked against applicable Industry norms. v. \u0007Affirmation that the remuneration is as per the remuneration policy of the company: It is affirmed that the remuneration paid is as per the Remuneration Policy, applicable for Directors, Key Managerial Personnel and other employees, adopted by the Company. Notes –The remuneration excludes the ESOP benefits given For and on behalf of the Board of Directors T.S. Kalyanaraman T.K. Seetharam T.K. Ramesh Place: Thrissur Managing Director Whole-Time Director Whole-Time Director Date: 08 May 2026 DIN: 01021928 DIN: 01021898 DIN: 01021868 Annexure – 11 DECLARATION BY THE MANAGING DIRECTOR/CEO UNDER THE SECURITIES AND EXCHANGE BOARD OF INDIA (LISTING OBLIGATIONS AND DISCLOSURE REQUIREMENTS) REGULATIONS,"
+     },
+     {
+      "chunk_id": 68532,
+      "doc_id": "sha256:f9854bc0bf25fbf1f63cc258ff8c321b2b0dd8b1886d16db3bf35a975bd1a5fb",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY25 · SECTION C: PRINCIPLE WISE PERFORMANCE DISCLOSURE (cont.) · p57 · known 2025-08-14T11:47:36",
+      "section": "SECTION C: PRINCIPLE WISE PERFORMANCE DISCLOSURE (cont.)",
+      "speaker": null,
+      "known_at": "2025-08-14T11:47:36",
+      "event_date": "2025-08-14",
+      "fiscal_period": "FY25",
+      "page_from": 57,
+      "page_to": 58,
+      "char_len": 5971,
+      "title": "KALYANKJIL annual report 2025-03-31",
+      "score": -9.15032942179116,
+      "body_excerpt": "… ployees and workers Category FY 2024-25 FY 2023-24 Total (A) Equal to Minimum Wage More than Minimum Wage Total (D) Equal to Minimum Wage More than Minimum Wage No. (B) % (B /A) No. (C) % (C /A) No. (E) % (E /D) No. (F) % (F /D) Employees Permanent Male 10,031 0 0% 10,031 100% 9,032 0 0% 9,032 100% Female 2,503 0 0% 2,503 100% 2,145 0 0% 2,145 100% Total 12,534 0 0% 12,534 100% 11,177 0 0% 11,177 100% Other than Permanent* Male NA NA NA NA NA NA NA NA NA NA Female NA NA NA NA NA NA NA NA NA NA Total NA NA NA NA NA NA NA NA NA NA Workers** Permanent Male NA NA NA NA NA NA NA NA NA NA Female NA NA NA NA NA NA NA NA NA NA Total NA NA NA NA NA NA NA NA NA NA Other than Permanent Male NA NA NA NA NA NA NA NA NA NA Female NA NA NA NA NA NA NA NA NA NA Total NA NA NA NA NA NA NA NA NA NA *The Company does not have any staff in the “Other than Permanent” category **The Company does not have any staff in the ‘’Workers’’ category. 3. Details of remuneration/salary/wages a. Median remuneration / wages: Particular Male Female Number Median remuneration/ salary/ wages of respective category Number Median remuneration/ salary/ wages of respective category Board of Directors (BOD)* 9** 12,12,00,000 0 0 Key Managerial Personnel 3 1,89,60,000 0 0 Employees other than BOD and KMP 10,031 3,56,441 2,503 2,04,064 Workers*** 0 0 0 0 \u0007*The remuneration of the Board of Directors (BOD) includes the remuneration paid to Executive Directors but excludes commission and/or sitting fees paid to directors."
+     },
+     {
+      "chunk_id": 55742,
+      "doc_id": "sha256:be59585e51cf844db3431439ea218636ecf36de275f1f59ef097a3c1ede096e3",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY24 · SECTION C: PRINCIPLE WISE PERFORMANCE DISCLOSURE (cont.) · p56 · known 2024-07-24T11:31:33",
+      "section": "SECTION C: PRINCIPLE WISE PERFORMANCE DISCLOSURE (cont.)",
+      "speaker": null,
+      "known_at": "2024-07-24T11:31:33",
+      "event_date": "2024-07-24",
+      "fiscal_period": "FY24",
+      "page_from": 56,
+      "page_to": 57,
+      "char_len": 5877,
+      "title": "KALYANKJIL annual report 2024-03-31",
+      "score": -9.133917112637402,
+      "body_excerpt": "…  NA NA NA NA Female NA NA NA NA NA NA NA NA NA NA Total NA NA NA NA NA NA NA NA NA NA Workers** Permanent Male NA NA NA NA NA NA NA NA NA NA Female NA NA NA NA NA NA NA NA NA NA Total NA NA NA NA NA NA NA NA NA NA Other than Permanent Male NA NA NA NA NA NA NA NA NA NA Female NA NA NA NA NA NA NA NA NA NA Total NA NA NA NA NA NA NA NA NA NA *The Company does not have any staff in the “Other than Permanent” category **The Company does not have any staff in the ‘’Workers’’ category. 3. Details of remuneration/salary/wages a. Median remuneration/wages: Particular Male Female Number Median remuneration/ salary/wages of respective category Number Median remuneration/ salary/wages of respective category Board of Directors (BOD)* 9 11,17,41,648 1 0 Key Managerial Personnel** 3 2,00,72,484 0 0 Employees other than BOD and KMP 11,617 3,88,778 3,051 2,25,098 Workers*** NA NA NA NA *The remuneration of the Board of Directors (BOD) includes the remuneration paid to Executive Directors but excludes commission and/ or sitting fees paid to directors. Non-Executive and Independent Directors are excluded, as they do not receive any remuneration. **Count excludes Executive Directors ***The Company does not have any staff in the “Workers” category b. Gross wages paid to females as % of total wages paid by the entity, in the following format: Particulars FY 2025-26 FY 2024-25 Gross wages paid to females as % of total wages* 13.97% 12.89% *Total wages excludes full & final settlements 4. \u0007Do you  …"
+     },
+     {
+      "chunk_id": 55710,
+      "doc_id": "sha256:be59585e51cf844db3431439ea218636ecf36de275f1f59ef097a3c1ede096e3",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY24 · COMMITTEES OF THE BOARD (cont.) · p40 · known 2024-07-24T11:31:33",
+      "section": "COMMITTEES OF THE BOARD (cont.)",
+      "speaker": null,
+      "known_at": "2024-07-24T11:31:33",
+      "event_date": "2024-07-24",
+      "fiscal_period": "FY24",
+      "page_from": 40,
+      "page_to": 40,
+      "char_len": 3204,
+      "title": "KALYANKJIL annual report 2024-03-31",
+      "score": -8.63822101808934,
+      "body_excerpt": "… l Non-Executive Independent Director 0.2 9 Ms. Radhika Ramani Non-Executive Independent Director 0.2 Apart from this the Non-Executive Independent Directors will also be paid with a Commission post approval of the shareholders of the Company in the following manner Mr. Vinod Rai ₹ 2.5 million, Mr. ADM Chavali ₹ 0.5 million, Mr. CR Rajagopal ₹ 0.5 million, Ms. Radhika Ramani ₹ 0.5 million, Mr. Anil Nair ₹ 0.5 million, Mr. T. S. Anantharaman ₹ 0.5 million, Mr. Salil Nair ₹ 0.5 million. Details of remuneration paid to the Executive Directors for the financial year 2025-26 are as follows: The remuneration paid/payable to the Executive Directors are in accordance with the approval of the Board and shareholders and as per the Remuneration Policy of the Company. Particulars Details of remuneration (₹ in million)* Mr. T.S. Kalyanaraman Managing Director Mr. T.K. Seetharam Whole-time Director Mr. T.K. Ramesh Whole-time Director Basic Salary 111.74 111.74 111.74 Perquisites and others Nil Nil Nil Commission Nil Nil Nil ESOP Nil Nil Nil Incentive Nil Nil Nil Total 111.74 111.74 111.74 *Mr. TS Kalyanaraman, Managing Director, Mr. TK Seetharam and Mr. TK Ramesh Executive Directors have also received a yearly aggregate remuneration of AED 268000 from Kalyan Jewellers FZE, the wholly owned subsidiary of the Company in Middle east. Service Contracts, Severance Fees and Notice Period The tenure of the office of Managing Director and Whole Time Directors is 5 (five) years from respective dates …"
+     },
+     {
+      "chunk_id": 55654,
+      "doc_id": "sha256:be59585e51cf844db3431439ea218636ecf36de275f1f59ef097a3c1ede096e3",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY24 · BOARD DEMOGRAPHICS · p26 · known 2024-07-24T11:31:33",
+      "section": "BOARD DEMOGRAPHICS",
+      "speaker": null,
+      "known_at": "2024-07-24T11:31:33",
+      "event_date": "2024-07-24",
+      "fiscal_period": "FY24",
+      "page_from": 26,
+      "page_to": 27,
+      "char_len": 3068,
+      "title": "KALYANKJIL annual report 2024-03-31",
+      "score": -7.714942895314091,
+      "body_excerpt": "…  Saraf Non-Executive Director Ms. Radhika Ramani Independent Director Mr. C.R. Rajagopal Independent Director Mr. T.K. Ramesh Whole-time Director • Former Comptroller and Auditor General of India • Recipient of the Padma Bhushan, India’s third-highest civilian honour • Former Chief Executive Officer of Shoppers Stop • ~ 28 years of experience in the retail industry • Former Chairman of The Catholic Syrian Bank • Several years of experience in banking, teaching management and accounting • Former CEO & Managing Partner of Law & Kenneth Saatchi & Saatchi • ~22 years of experience in the field of advertising • MBA from Bharathiar University, Coimbatore • ~ 27 years in the jewellery industry • ~ 27 years with Kalyan • ~ 50 years of retail experience, of which ~ 33 years are in the jewellery industry • Associated with Kalyan since its inception • Managing Director at Warburg Pincus India • Over 20 years of experience in investing and capital markets • Currently serves as Global Head of Growth Operations at Dentsu, UK • Former Managing Partner (South) at Motivator (part of GroupM Network) • ~25 years of experience in media and communications • Chartered Accountant and Former Partner at Deloitte, Haskins and Sells LLP • ~35 years of experience in finance, private equity, M&A and reorganisations • Master’s degree in Commerce from Karnataka State University • ~ 25 years in the jewellery industry • ~ 25 years with Kalyan A - Audit Committee N - Nomination and Remuneration Committee C -  …"
+     },
+     {
+      "chunk_id": 68496,
+      "doc_id": "sha256:f9854bc0bf25fbf1f63cc258ff8c321b2b0dd8b1886d16db3bf35a975bd1a5fb",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY25 · COMMITTEES OF THE BOARD (cont.) · p41 · known 2025-08-14T11:47:36",
+      "section": "COMMITTEES OF THE BOARD (cont.)",
+      "speaker": null,
+      "known_at": "2025-08-14T11:47:36",
+      "event_date": "2025-08-14",
+      "fiscal_period": "FY25",
+      "page_from": 41,
+      "page_to": 42,
+      "char_len": 4830,
+      "title": "KALYANKJIL annual report 2025-03-31",
+      "score": -7.191484350125979,
+      "body_excerpt": "… haraman Non-Executive Independent Director 0.6 6 Mr. Salil Nair Non-Executive Director 0.5 7 Mr. Anish Saraf Non-Executive Director Nil Apart from this the Non-Executive Independent Directors will also be paid with a Commission post approval of the shareholders of the Company in the following manner Mr. Vinod Rai 2.4 million, Mr. A. D. M. Chavalii 0.4 million, Ms. Kishori Udeshi 0.4 million, Mr. Anil Nair 0.4 million, Mr. T. S. Anantharaman 0.4 million and Mr. Salil Nair 0.4 million. Details of remuneration paid to the Executive Directors for the FY25 are as follows: The remuneration paid/payable to the Executive Directors are in accordance with the approval of the Board and shareholders and as per the Remuneration Policy of the Company. Particulars Details of remuneration (In Million)* Mr. T.S. Kalyanaraman Managing Director Mr. T.K. Seetharam Whole-time Director Mr. T.K. Ramesh Whole-time Director Basic Salary 112.76 112.76 112.76 Perquisites and others Nil Nil Nil Commission Nil Nil Nil ESOP Nil Nil Nil Incentive Nil Nil Nil Total 112.76 112.76 112.76 *Mr. T. S. Kalyanaraman, Managing Director, Mr. T. K. Seetharam and Mr. T. K. Ramesh Executive Directors have also received a yearly aggregate remuneration of AED 402,000 each from Kalyan Jewellers FZE, the wholly-owned subsidiary of the Company in Middle east. Service Contracts, Severance Fees and Notice Period The tenure of the office of Managing Director and Whole Time Directors is 5 (five) years from respective dates of t …"
+     },
+     {
+      "chunk_id": 68580,
+      "doc_id": "sha256:f9854bc0bf25fbf1f63cc258ff8c321b2b0dd8b1886d16db3bf35a975bd1a5fb",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY25 · 31 March 2025 were approved and authorised for (cont.) · p78 · known 2025-08-14T11:47:36",
+      "section": "31 March 2025 were approved and authorised for (cont.)",
+      "speaker": null,
+      "known_at": "2025-08-14T11:47:36",
+      "event_date": "2025-08-14",
+      "fiscal_period": "FY25",
+      "page_from": 78,
+      "page_to": 79,
+      "char_len": 4112,
+      "title": "KALYANKJIL annual report 2025-03-31",
+      "score": -6.548069036276029,
+      "body_excerpt": "… perating cycle as 12 months for the purpose of classification of its assets and liabilities as current and non-current. (xxvi) Dividend payments \u0007Dividend distributions payable to equity shareholders are debited directly to equity, net of any related income tax benefit. It is included in other liabilities when the dividends have been approved in a general meeting but not distributed prior to the reporting date. (xxvii) Employee stock option plan \u0007The Company operates equity-settled share- based remuneration plans for its employees. None of the Company’s plans are cash-settled. \u0007All goods and services received in exchange for the grant of any share-based payment are measured at their fair values. \u0007Where employees are rewarded using share- based payments, the fair value of employees’ services is determined indirectly by reference to the fair value of the equity instruments granted. This fair value is determined with the assistance of an external valuer at the grant date and excludes the impact of non-market vesting conditions (for example profitability and sales growth targets and performance conditions). \u0007Non-market vesting conditions are included in assumptions about the number of options that are expected to become exercisable. Estimates are subsequently revised if there is any indication the number of share options expected to vest differs from previous estimates. Any adjustment to cumulative share-based compensation resulting from a revision is recognised in the current pe …"
+     }
+    ],
+    "n_returned": 8,
+    "query_terms": [
+     "CEO",
+     "remuneration",
+     "salary",
+     "compensation"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-f7c4dd22-0808-4bbf-aecf-671a5917e5e9",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"KALYANKJIL\", \"query\": \"Details of remuneration paid Executive Directors financial year\", \"limit\": \"8.0\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 164,
+   "secs": 1.84,
+   "usage": {
+    "prompt_tokens": 6999,
+    "completion_tokens": 102,
+    "total_tokens": 7101,
+    "prompt_tokens_details": {
+     "cached_tokens": 3264
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 57
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3735,
+      "output": 102,
+      "reasoning": 57,
+      "cache_read": 3264,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "KALYANKJIL",
+    "query": "Details of remuneration paid Executive Directors financial year",
+    "limit": "8.0"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-27",
+    "entity": "INE303R01014",
+    "rows": [
+     {
+      "chunk_id": 55710,
+      "doc_id": "sha256:be59585e51cf844db3431439ea218636ecf36de275f1f59ef097a3c1ede096e3",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY24 · COMMITTEES OF THE BOARD (cont.) · p40 · known 2024-07-24T11:31:33",
+      "section": "COMMITTEES OF THE BOARD (cont.)",
+      "speaker": null,
+      "known_at": "2024-07-24T11:31:33",
+      "event_date": "2024-07-24",
+      "fiscal_period": "FY24",
+      "page_from": 40,
+      "page_to": 40,
+      "char_len": 3204,
+      "title": "KALYANKJIL annual report 2024-03-31",
+      "score": -20.015542610741214,
+      "body_excerpt": "The criteria for making payments to Non- Executive Directors are uploaded on the website of the Company and are accessible at https://www. kalyanjewellers.net/images/investors-new/pdf/ corporate-governance/policies/Nomination%20&%20 Remuneration%20Policy.pdf Details of remuneration paid/payable to the Non- Executive Directors for the financial year 2025-26 are as follows: Sl. No. Name Designation Total Sitting Fees FY 2025-26 ₹ in million 1 Mr. Vinod Rai Chairman & Non-Executive Independent Director 0.5 2 Mr. ADM Chavali Non-Executive Independent Director 0.5 3 Ms. Kishori Udeshi Non-Executive Independent Director 0.3 4 Mr. Anil Nair Non-Executive Independent Director 0.4 5 Mr. T. S. Anantharaman Non-Executive Independent Director 0.5 6 Mr. Salil Nair Non-Executive Director 0.4 7 Mr. Anish Saraf Non-Executive Director Nil 8 Mr. CR Rajagopal Non-Executive Independent Director 0.2 9 Ms. Radhika Ramani Non-Executive Independent Director 0.2 Apart from this the Non-Executive Independent Directors will also be paid with a Commission post approval of the shareholders of the Company in the following manner Mr. Vinod Rai ₹ 2.5 million, Mr. ADM Chavali ₹ 0.5 million, Mr. CR Rajagopal ₹ 0.5 million, Ms. Radhika Ramani ₹ 0.5 million, Mr. Anil Nair ₹ 0.5 million, Mr. T. S. Anantharaman ₹ 0.5 million, Mr. Salil Nair ₹ 0.5 million. Details of remuneration paid to the Executive Directors for the financial year 2025-26 are as follows: The remuneration paid/payable to the Executive Directors  …"
+     },
+     {
+      "chunk_id": 68496,
+      "doc_id": "sha256:f9854bc0bf25fbf1f63cc258ff8c321b2b0dd8b1886d16db3bf35a975bd1a5fb",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY25 · COMMITTEES OF THE BOARD (cont.) · p41 · known 2025-08-14T11:47:36",
+      "section": "COMMITTEES OF THE BOARD (cont.)",
+      "speaker": null,
+      "known_at": "2025-08-14T11:47:36",
+      "event_date": "2025-08-14",
+      "fiscal_period": "FY25",
+      "page_from": 41,
+      "page_to": 42,
+      "char_len": 4830,
+      "title": "KALYANKJIL annual report 2025-03-31",
+      "score": -17.378292709788504,
+      "body_excerpt": "… T. S. Anantharaman Non-Executive Independent Director 0.6 6 Mr. Salil Nair Non-Executive Director 0.5 7 Mr. Anish Saraf Non-Executive Director Nil Apart from this the Non-Executive Independent Directors will also be paid with a Commission post approval of the shareholders of the Company in the following manner Mr. Vinod Rai 2.4 million, Mr. A. D. M. Chavalii 0.4 million, Ms. Kishori Udeshi 0.4 million, Mr. Anil Nair 0.4 million, Mr. T. S. Anantharaman 0.4 million and Mr. Salil Nair 0.4 million. Details of remuneration paid to the Executive Directors for the FY25 are as follows: The remuneration paid/payable to the Executive Directors are in accordance with the approval of the Board and shareholders and as per the Remuneration Policy of the Company. Particulars Details of remuneration (In Million)* Mr. T.S. Kalyanaraman Managing Director Mr. T.K. Seetharam Whole-time Director Mr. T.K. Ramesh Whole-time Director Basic Salary 112.76 112.76 112.76 Perquisites and others Nil Nil Nil Commission Nil Nil Nil ESOP Nil Nil Nil Incentive Nil Nil Nil Total 112.76 112.76 112.76 *Mr. T. S. Kalyanaraman, Managing Director, Mr. T. K. Seetharam and Mr. T. K. Ramesh Executive Directors have also received a yearly aggregate remuneration of AED 402,000 each from Kalyan Jewellers FZE, the wholly-owned subsidiary of the Company in Middle east. Service Contracts, Severance Fees and Notice Period The tenure of the office of Managing Director and Whole Time Directors is 5 (five) years from respective …"
+     },
+     {
+      "chunk_id": 55943,
+      "doc_id": "sha256:be59585e51cf844db3431439ea218636ecf36de275f1f59ef097a3c1ede096e3",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY24 · ACS No. 32820 > ANNEXURE -A > DETAILS OF DIRECTORS SEEKING APPOINTMENT, RE-APPOINTMENT AND · p142 · known 2024-07-24T11:31:33",
+      "section": "ACS No. 32820 > ANNEXURE -A > DETAILS OF DIRECTORS SEEKING APPOINTMENT, RE-APPOINTMENT AND FIXATION OF > REMUNERATION AT THE 18TH ANNUAL GENERAL MEETING PURSUANT TO REGULATION 36(3) > OF THE SECURITIES AND EXCHANGE BOARD OF INDIA (LISTING OBLIGATIONS AND DISCLOSUR > REQUIREMENTS) REGULATIONS, 2015 AND SECRETARIAL STANDARD ON GENERAL MEETINGS",
+      "speaker": null,
+      "known_at": "2024-07-24T11:31:33",
+      "event_date": "2024-07-24",
+      "fiscal_period": "FY24",
+      "page_from": 142,
+      "page_to": 143,
+      "char_len": 4460,
+      "title": "KALYANKJIL annual report 2024-03-31",
+      "score": -16.865584051522873,
+      "body_excerpt": "… any and has been on the Board of Kalyan Jewellers India Ltd., since 2020. He has completed his master’s degree in science at Meerut University. He has approximately 25 years of experience in the retail industry. He has previously acted as Chief Executive Officer of Shoppers Stop Limited 8 Shareholding in the Company 12,500 equity shares 9 Number of Meetings of the Board attended during the year 2025-2026 Five (5) Board Meetings. 10 Terms and Conditions of Appointment or Reappointment along with details of Remuneration sought to be paid and the Remuneration last drawn Re-appointed as Non-Executive Director for a period of five years from 29 May 2025 to 28 May 2030. The remuneration details are given in the Corporate Governance Report of the Company. 11 Directorships held in other Companies Ekaashri Silver Creations Private Limited RSB Retail India Limited KJG Brands Private Limited 12 Listed entity from which Director has resigned in last three years Not Applicable 13 Memberships/Chairmanships of committees of other Companies (includes only Audit Committee and Stakeholders Relationship Committee) Not Applicable 14 Relationship with other Directors/KMP Mr. Salil Nair is not related to any Director and Key Managerial Personnel 280 281 Notice Sl. No Name of the Director Mr. T K Seetharam 1 Director Identification Number (DIN) 01021898 2 Date of Birth & Age 20.10.1975 and 51 Years 3 Date of First Appointment on Board 29-01-2009 4 Date of Last Reappointment as Director 20 June 2024 …"
+     },
+     {
+      "chunk_id": 55742,
+      "doc_id": "sha256:be59585e51cf844db3431439ea218636ecf36de275f1f59ef097a3c1ede096e3",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY24 · SECTION C: PRINCIPLE WISE PERFORMANCE DISCLOSURE (cont.) · p56 · known 2024-07-24T11:31:33",
+      "section": "SECTION C: PRINCIPLE WISE PERFORMANCE DISCLOSURE (cont.)",
+      "speaker": null,
+      "known_at": "2024-07-24T11:31:33",
+      "event_date": "2024-07-24",
+      "fiscal_period": "FY24",
+      "page_from": 56,
+      "page_to": 57,
+      "char_len": 5877,
+      "title": "KALYANKJIL annual report 2024-03-31",
+      "score": -15.943124056445345,
+      "body_excerpt": "… al Personnel** 3 2,00,72,484 0 0 Employees other than BOD and KMP 11,617 3,88,778 3,051 2,25,098 Workers*** NA NA NA NA *The remuneration of the Board of Directors (BOD) includes the remuneration paid to Executive Directors but excludes commission and/ or sitting fees paid to directors. Non-Executive and Independent Directors are excluded, as they do not receive any remuneration. **Count excludes Executive Directors ***The Company does not have any staff in the “Workers” category b. Gross wages paid to females as % of total wages paid by the entity, in the following format: Particulars FY 2025-26 FY 2024-25 Gross wages paid to females as % of total wages* 13.97% 12.89% *Total wages excludes full & final settlements 4. \u0007Do you have a focal point (Individual/Committee) responsible for addressing human rights impacts or issues caused or contributed to by the business? Yes 5. Describe the internal mechanisms in place to redress grievances related to human rights issues. \u0007We have formed an internal committee in each of our locations. In case of any grievances, employees can report to the committee via email and by mobile numbers published on the notice board. 108 109 Kalyan Jewellers India Limited // Annual Report 2025-26 Corporate Overview // Statutory Reports // Financial Statements 6. Number of Complaints on the following made by employees and workers: Particulars FY 2025-26 FY 2024-25 Filed during the year Pending resolution at the end of year Remarks Filed during the year Pen …"
+     },
+     {
+      "chunk_id": 68497,
+      "doc_id": "sha256:f9854bc0bf25fbf1f63cc258ff8c321b2b0dd8b1886d16db3bf35a975bd1a5fb",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY25 · COMMITTEES OF THE BOARD (cont.) · p42 · known 2025-08-14T11:47:36",
+      "section": "COMMITTEES OF THE BOARD (cont.)",
+      "speaker": null,
+      "known_at": "2025-08-14T11:47:36",
+      "event_date": "2025-08-14",
+      "fiscal_period": "FY25",
+      "page_from": 42,
+      "page_to": 43,
+      "char_len": 3971,
+      "title": "KALYANKJIL annual report 2025-03-31",
+      "score": -15.870439806397682,
+      "body_excerpt": "… receding three years are tabulated below. Financial Year Date Time Location 2021-22 September 22, 2022 11.30 a. m Meeting held through Video Conferencing (“VC”)/other Audio-Visual Means (“OAVM”) 2022-23 August 12, 2023 11.30 a. m Meeting held through Video Conferencing (“VC”)/other Audio-Visual Means (“OAVM”) 2023-24 August 17, 2024 11.30 a. m Meeting held through Video Conferencing (“VC”)/other Audio-Visual Means (“OAVM”) The Extra Ordinary General Meetings held during the year 2024-25 is: NIL Details of Special Resolutions passed in the previous three Annual General Meetings. The following table illustrates the various special resolutions passed in the previous three Annual General Meeting of the Company. Date of Annual General Meeting Details of Special Resolutions passed if any August 17, 2024 • \u0007Consider payment of Remuneration to Mr. Vinod Rai (DIN: 00041867), Chairman (Non - Executive) & Independent Director of the Company for the FY25, which may exceed 50% of the total annual remuneration payable to all the Non–Executive Directors of the Company August 12, 2023 • \u0007Reappointment of Mr. T. S. Anantharaman (DIN: 00480136) as an Independent Director for a second term of three (3) years. • \u0007Payment of Remuneration to the Non - Executive Directors of the Company. • \u0007Consider payment of Remuneration to Mr. Vinod Rai (DIN -00041867), Chairman (Non - Executive) & Independent Director of the Company for the Financial Year 2023-24, which may exceed 50% of the total annual remune …"
+     },
+     {
+      "chunk_id": 68543,
+      "doc_id": "sha256:f9854bc0bf25fbf1f63cc258ff8c321b2b0dd8b1886d16db3bf35a975bd1a5fb",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY25 · INFORMATION REQUIRED UNDER SECTION 197 OF THE ACT READ WITH RULE 5(1) OF THE · p65 · known 2025-08-14T11:47:36",
+      "section": "INFORMATION REQUIRED UNDER SECTION 197 OF THE ACT READ WITH RULE 5(1) OF THE",
+      "speaker": null,
+      "known_at": "2025-08-14T11:47:36",
+      "event_date": "2025-08-14",
+      "fiscal_period": "FY25",
+      "page_from": 65,
+      "page_to": 65,
+      "char_len": 2459,
+      "title": "KALYANKJIL annual report 2025-03-31",
+      "score": -14.519124478648527,
+      "body_excerpt": "… Time Director 378 Nil TK Ramesh Whole Time Director 378 Nil Salil Nair Non-Executive Director 3 - Vinod Rai Independent Director 10 NA ADM Chavali Independent Director 3 - TS Anantharaman Independent Director 3 - Kishori Udeshi Independent Director 3 - Anil S Nair Independent Director 3 - Anish Saraf Non-Executive Director Nil NA Sanjay Raghuraman Chief Executive Officer - 10% V Swaminathan Chief Financial Officer - 10% Jishnu RG Company Secretary - 10% ii. The percentage increase in the median remuneration of employees in the financial year 2024-2025: 10% iii. The number of permanent employees on the rolls of the Company as on March 31, 2025: 12,534 iv. \u0007Average percentile increase already made in the salaries of employees other than the managerial personnel in the last financial year and its comparison with the percentile increase in the managerial remuneration and justification thereof and point out if there are any exceptional circumstances for increase in the managerial remuneration: The percentage increase in the salaries of employees other than Managerial Personnel in Financial Year 2024-2025 was 10%. The increments given to employees are based on their potential, performance, and contribution, which are benchmarked against applicable Industry norms. v. \u0007Affirmation that the remuneration is as per the remuneration policy of the company: It is affirmed that the remuneration paid is as per the Remuneration Policy, applicable for Directors, Key Managerial Personnel and ot …"
+     },
+     {
+      "chunk_id": 68726,
+      "doc_id": "sha256:f9854bc0bf25fbf1f63cc258ff8c321b2b0dd8b1886d16db3bf35a975bd1a5fb",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY25 · KALYAN JEWELLERS INDIA LIMITED > CIN – L36911KL2009PLC024641 · p136 · known 2025-08-14T11:47:36",
+      "section": "KALYAN JEWELLERS INDIA LIMITED > CIN – L36911KL2009PLC024641",
+      "speaker": null,
+      "known_at": "2025-08-14T11:47:36",
+      "event_date": "2025-08-14",
+      "fiscal_period": "FY25",
+      "page_from": 136,
+      "page_to": 136,
+      "char_len": 2781,
+      "title": "KALYANKJIL annual report 2025-03-31",
+      "score": -14.259715010234158,
+      "body_excerpt": "… ndependent Director of the Company for the Financial Year 2025-26, which may exceed 50% of the total annual remuneration payable to all the Non – Executive Directors of the Company \u0007To consider and if thought fit, to pass, the following resolution as a Special Resolution \u0007“RESOLVED THAT in accordance with the Regulation 17(6)(ca) of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, and other applicable provisions, if any, of the Companies Act, 2013 and the rules framed thereunder, as amended and basis the recommendation of the Nomination and Remuneration Committee and as approved by the Board of Directors of the Company, consent of the Members of the Company be and is hereby accorded for payment of remuneration to Mr. Vinod Rai (DIN: 00041867), Chairman (Non - Executive) & Independent Director of the Company for the Financial Year 2025-26, which may exceed 50% of the total annual remuneration that may be payable to all the Non - Executive Directors of the Company for the Financial Year 2025-26, details of which are set out in the Explanatory Statement annexed to the Notice. \u0007RESOLVED FURTHER THAT the Board of Directors, Key Managerial Personnel and any other person authorized by the Board of Directors of the Company be and are hereby severally authorized to do all such acts, deeds, matters and things as may be deemed necessary to give effect to this resolution.” (By Order of the Board) for Kalyan Jewellers India Limited Jishnu R G Company Secretary"
+     },
+     {
+      "chunk_id": 55944,
+      "doc_id": "sha256:be59585e51cf844db3431439ea218636ecf36de275f1f59ef097a3c1ede096e3",
+      "doc_type": "annual_report",
+      "header": "KALYANKJIL · INE303R01014 · Annual report · FY24 · 23 May 1948, Age 77 years · p143 · known 2024-07-24T11:31:33",
+      "section": "23 May 1948, Age 77 years",
+      "speaker": null,
+      "known_at": "2024-07-24T11:31:33",
+      "event_date": "2024-07-24",
+      "fiscal_period": "FY24",
+      "page_from": 143,
+      "page_to": 145,
+      "char_len": 3058,
+      "title": "KALYANKJIL annual report 2024-03-31",
+      "score": -14.156284219653303,
+      "body_excerpt": "…  on the boards of a range of financial institutions, including ICICI Bank, the State Bank of India and the Life Insurance Corporation of India, and is a distinguished visiting research fellow at the Institute of South Asian Studies, National University of Singapore. 8 Shareholding in the Company Nil Sl. No Name of the Director Vinod Rai 9 Number of Meetings of the Board attended during the year 2025-2026 Five (5) Board Meetings. 10 Terms and Conditions of Appointment or Reappointment along with details of Remuneration sought to be paid and the Remuneration last drawn Mr. Vinod Rai was reappointed as Chairman and Non-Executive Independent Director for a period of three years from 01 July 2025 to 30 June 2028 and not liable to retire by rotation. He shall be paid sitting fees and reimbursement of expenses for attending the meetings of the Board and its Committees, as well as Commission on profit as approved by the shareholders. The remuneration last drawn (FY-2025-26) was Rupees 2.5 million. The details are also shown in the Corporate Governance Report of the Company. The Remuneration sought to be paid is as per existing approved terms of appointment. 11 Directorships held in other Companies a. Marcellus Asset Management Private Limited b. Modulus Alternatives Investment Managers Limited d. Artemis Medicare Services Limited 12 Listed entity from which Director has resigned in last three years Nil 13 Memberships/Chairmanships of committees of other Companies (includes only Audit …"
+     }
+    ],
+    "n_returned": 8,
+    "query_terms": [
+     "Details",
+     "remuneration",
+     "paid",
+     "Executive",
+     "Directors",
+     "financial",
+     "year"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-a8568f37-fcfd-44c8-a519-617adc6c5d01",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"KALYANKJIL's CEO/Managing Director is Mr. T.S. Kalyanaraman. Per the annual reports: FY25 (AR FY25) total remuneration ₹112.76 million (basic salary ₹112.76M, no perquisites/commission/ESOP/incentive) plus AED 402,000 from Kalyan Jewellers FZE. The prior year figure (FY24-era AR, labelled \\\"FY 2025-26\\\") shows ₹111.74 million total. So over the period the pay stayed essentially flat (~₹111.7–112.8M), a marginal increase of ~0.9%. FY26 executive-director remuneration detail is not separately broken out in the held data (only aggregate FY2025-26 wages/median figures).\", \"missing\": \"FY26-specific CEO remuneration breakdown not separately stated in held annual report chunks (only aggregate FY2025-26 wages/median figures available).\", \"working\": \"FY25 AR (known 2025-08-14): 'Details of remuneration paid to the Executive Directors for the FY25' → Mr. T.S. Kalyanaraman Managing Director Total 112.76 (₹ million). FY24 AR (known 2024-07-24): Executive Directors 'financial year 2025-26' → Total 111.74 (₹ million). AED 402,000 subsidiary pay noted in FY25 AR.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 1744,
+   "secs": 6.92,
+   "usage": {
+    "prompt_tokens": 10618,
+    "completion_tokens": 988,
+    "total_tokens": 11606,
+    "prompt_tokens_details": {
+     "cached_tokens": 6976
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 611
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3642,
+      "output": 988,
+      "reasoning": 611,
+      "cache_read": 6976,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "submit",
+   "args": {
+    "answer": "KALYANKJIL's CEO/Managing Director is Mr. T.S. Kalyanaraman. Per the annual reports: FY25 (AR FY25) total remuneration ₹112.76 million (basic salary ₹112.76M, no perquisites/commission/ESOP/incentive) plus AED 402,000 from Kalyan Jewellers FZE. The prior year figure (FY24-era AR, labelled \"FY 2025-26\") shows ₹111.74 million total. So over the period the pay stayed essentially flat (~₹111.7–112.8M), a marginal increase of ~0.9%. FY26 executive-director remuneration detail is not separately broken out in the held data (only aggregate FY2025-26 wages/median figures).",
+    "missing": "FY26-specific CEO remuneration breakdown not separately stated in held annual report chunks (only aggregate FY2025-26 wages/median figures available).",
+    "working": "FY25 AR (known 2025-08-14): 'Details of remuneration paid to the Executive Directors for the FY25' → Mr. T.S. Kalyanaraman Managing Director Total 112.76 (₹ million). FY24 AR (known 2024-07-24): Executive Directors 'financial year 2025-26' → Total 111.74 (₹ million). AED 402,000 subsidiary pay noted in FY25 AR."
+   }
+  }
+ ]
+}

@@ -1,0 +1,539 @@
+{
+ "qid": "Q20",
+ "mid": "MB0443#MS",
+ "parent_mid": "MB0443",
+ "symbol": "SAIL",
+ "entity_isin": "INE114A01011",
+ "question": "SAIL fell 20.02% on 4 June 2024 and Nifty Metal fell 10.63%. What share of the stock move is explained by the sector?",
+ "as_of": "2024-06-04",
+ "period": "2024-06-04",
+ "category": "explanation",
+ "source_bank": "open300",
+ "status": "final",
+ "error": null,
+ "answer": "53.10% of SAIL's 20.02% fall on 4 June 2024 is explained by the sector (Nifty Metal's 10.63% decline).",
+ "working": "10.63 / 20.02 = 0.530969 (calculator).",
+ "missing": "not in data - only the two stated percentage moves are given; no residual (idiosyncratic) decomposition beyond the simple ratio is available.",
+ "not_in_data": true,
+ "n_tool_calls": 2,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "SAIL",
+    "as_of": "2024-06-04"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "calculator",
+   "args": {
+    "expression": "10.63/20.02"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 3,
+ "usage": {
+  "prompt_tokens": 7928,
+  "completion_tokens": 405
+ },
+ "beam_secs": 6.06,
+ "total_secs": 6.06,
+ "number_check": {
+  "numbers": [
+   "53.10",
+   "20.02",
+   "4",
+   "2024",
+   "10.63"
+  ],
+  "supported": [
+   "20.02",
+   "4",
+   "2024",
+   "10.63"
+  ],
+  "question_only": [],
+  "unsupported": [
+   "53.10"
+  ],
+  "flagged": [
+   "53.10"
+  ],
+  "ok": false,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [
+  {
+   "tool": "calculator",
+   "expression": "10.63/20.02",
+   "value": 0.530969030969031
+  }
+ ],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-bb69216d-57eb-48b2-8067-a246822e89c6",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"SAIL\", \"as_of\": \"2024-06-04\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 261,
+   "secs": 2.31,
+   "usage": {
+    "prompt_tokens": 1118,
+    "completion_tokens": 113,
+    "total_tokens": 1231,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 79
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 158,
+      "output": 113,
+      "reasoning": 79,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "SAIL",
+    "as_of": "2024-06-04"
+   },
+   "result": {
+    "tool": "list_atoms",
+    "as_of": "2024-06-04",
+    "entity": "INE114A01011",
+    "rows": [
+     {
+      "atom": "fin.book_equity",
+      "rows": 8,
+      "first_period": "2022-09-30",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.capex",
+      "rows": 4,
+      "first_period": "2020-09-30",
+      "last_period": "2021-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=quarter;derived=reported",
+       "basis=standalone;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.cash",
+      "rows": 8,
+      "first_period": "2022-09-30",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.ebitda",
+      "rows": 40,
+      "first_period": "2019-03-31",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=half",
+       "basis=consolidated;period_kind=quarter;derived=components"
+      ]
+     },
+     {
+      "atom": "fin.eps",
+      "rows": 40,
+      "first_period": "2019-03-31",
+      "last_period": "2024-03-31",
+      "units": "INR_PER_SHARE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=half",
+       "basis=consolidated;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.interest_expense",
+      "rows": 40,
+      "first_period": "2019-03-31",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=half",
+       "basis=consolidated;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.inventory",
+      "rows": 8,
+      "first_period": "2022-09-30",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.pat",
+      "rows": 40,
+      "first_period": "2019-03-31",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=half",
+       "basis=consolidated;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.payables",
+      "rows": 8,
+      "first_period": "2022-09-30",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "fin.revenue",
+      "rows": 40,
+      "first_period": "2019-03-31",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=half",
+       "basis=consolidated;period_kind=quarter;derived=reported"
+      ]
+     },
+     {
+      "atom": "fin.segment_value",
+      "rows": 19,
+      "first_period": "2022-03-31",
+      "last_period": "2023-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;metric=revenue;segment=ASP Inter",
+       "basis=consolidated;metric=revenue;segment=BSL Inter"
+      ]
+     },
+     {
+      "atom": "fin.total_debt",
+      "rows": 8,
+      "first_period": "2022-09-30",
+      "last_period": "2024-03-31",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       "basis=consolidated;period_kind=instant",
+       "basis=standalone;period_kind=instant"
+      ]
+     },
+     {
+      "atom": "flows.net_inr",
+      "rows": 1,
+      "first_period": "2021-01-19",
+      "last_period": "2021-01-19",
+      "units": "INR",
+      "dims_sample": [
+       "flow_kind=insider"
+      ]
+     },
+     {
+      "atom": "hold.pct",
+      "rows": 22,
+      "first_period": "2021-09-30",
+      "last_period": "2024-03-31",
+      "units": "%",
+      "dims_sample": [
+       "holder_class=promoter",
+       "holder_class=public"
+      ]
+     },
+     {
+      "atom": "price.band",
+      "rows": 2,
+      "first_period": "2024-03-01",
+      "last_period": "2024-05-17",
+      "units": "band",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.close",
+      "rows": 1340,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.delivery_pct",
+      "rows": 1339,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "%",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.delivery_qty",
+      "rows": 1339,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.high",
+      "rows": 1339,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.low",
+      "rows": 1339,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.mcap",
+      "rows": 1340,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "INR_CRORE",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.open",
+      "rows": 1339,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "INR",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.rsi",
+      "rows": 1326,
+      "first_period": "2019-01-21",
+      "last_period": "2024-06-04",
+      "units": "%",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.shares_out",
+      "rows": 1340,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "shares",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.sma",
+      "rows": 1321,
+      "first_period": "2019-01-28",
+      "last_period": "2024-06-04",
+      "units": "INR",
+      "dims_sample": [
+       ""
+      ]
+     },
+     {
+      "atom": "price.traded_value",
+      "rows": 1339,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "INR_LAKH",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "price.volume",
+      "rows": 1339,
+      "first_period": "2019-01-01",
+      "last_period": "2024-06-04",
+      "units": "shares",
+      "dims_sample": [
+       "exchange=NSE"
+      ]
+     },
+     {
+      "atom": "text.passage",
+      "rows": 33,
+      "first_period": "",
+      "last_period": "2024-05-21",
+      "units": "text",
+      "dims_sample": [
+       "doctype=concall;page=11;chunk=87426",
+       "doctype=concall;page=13;chunk=87427"
+      ]
+     }
+    ],
+    "n_returned": 28,
+    "note": "all atoms this entity has at or before as_of; use fact_query with one atom"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-5f5bc497-cd1d-45ca-9ff9-1620d8731025",
+     "type": "function",
+     "function": {
+      "name": "calculator",
+      "arguments": "{\"expression\": \"10.63/20.02\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 192,
+   "secs": 1.73,
+   "usage": {
+    "prompt_tokens": 3358,
+    "completion_tokens": 92,
+    "total_tokens": 3450,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 67
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 2398,
+      "output": 92,
+      "reasoning": 67,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "calculator",
+   "args": {
+    "expression": "10.63/20.02"
+   },
+   "result": {
+    "tool": "calculator",
+    "expression": "10.63/20.02",
+    "value": 0.530969030969031
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-319645ad-477d-44ff-94c4-71078d400924",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"53.10% of SAIL's 20.02% fall on 4 June 2024 is explained by the sector (Nifty Metal's 10.63% decline).\", \"missing\": \"not in data - only the two stated percentage moves are given; no residual (idiosyncratic) decomposition beyond the simple ratio is available.\", \"working\": \"10.63 / 20.02 = 0.530969 (calculator).\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 162,
+   "secs": 1.92,
+   "usage": {
+    "prompt_tokens": 3452,
+    "completion_tokens": 200,
+    "total_tokens": 3652,
+    "prompt_tokens_details": {
+     "cached_tokens": 3328
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 70
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 124,
+      "output": 200,
+      "reasoning": 70,
+      "cache_read": 3328,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "submit",
+   "args": {
+    "answer": "53.10% of SAIL's 20.02% fall on 4 June 2024 is explained by the sector (Nifty Metal's 10.63% decline).",
+    "missing": "not in data - only the two stated percentage moves are given; no residual (idiosyncratic) decomposition beyond the simple ratio is available.",
+    "working": "10.63 / 20.02 = 0.530969 (calculator)."
+   }
+  }
+ ]
+}

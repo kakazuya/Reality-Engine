@@ -1,0 +1,981 @@
+{
+ "qid": "Q12",
+ "mid": "MB0284#L",
+ "parent_mid": "MB0284",
+ "symbol": "BOSCHLTD",
+ "entity_isin": "INE323A01026",
+ "question": "BOSCHLTD deck page 31 2026-07-29",
+ "as_of": "2026-10-19",
+ "period": "29 Jul 2026",
+ "category": "lookup",
+ "source_bank": "variations300",
+ "status": "final",
+ "error": null,
+ "answer": "not in data: no investor deck dated 2026-07-29 for Bosch Limited is available in the store.",
+ "working": "Searched deck chunks for BOSCHLTD with date filter 2026-07-29 and query \"page 31\"/\"investor presentation\"; no rows returned for that date. Available decks include 2026-08-10 (page 2-3 excerpt shown).",
+ "missing": "not in data — a deck dated 2026-07-29 (the question references \"BOSCHLTD deck page 31 2026-07-29\"); the nearest deck available is dated 2026-08-10.",
+ "not_in_data": true,
+ "n_tool_calls": 6,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "chunk_search",
+   "args": {
+    "date_from": "2026-07-29",
+    "date_to": "2026-07-29",
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "6.0",
+    "query": "page 31"
+   },
+   "ok": true
+  },
+  {
+   "call": 4,
+   "tool": "chunk_search",
+   "args": {
+    "entity": "BOSCHLTD",
+    "limit": "10.0",
+    "query": "page 31"
+   },
+   "ok": true
+  },
+  {
+   "call": 6,
+   "tool": "chunk_search",
+   "args": {
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "10.0",
+    "query": "Bosch Limited"
+   },
+   "ok": true
+  },
+  {
+   "call": 8,
+   "tool": "chunk_search",
+   "args": {
+    "date_from": "2026-07-29",
+    "date_to": "2026-07-29",
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "10.0",
+    "query": "page 31"
+   },
+   "ok": true
+  },
+  {
+   "call": 10,
+   "tool": "chunk_search",
+   "args": {
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "10.0",
+    "query": "31"
+   },
+   "ok": false
+  },
+  {
+   "call": 12,
+   "tool": "chunk_search",
+   "args": {
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "5.0",
+    "query": "investor presentation"
+   },
+   "ok": true
+  }
+ ],
+ "n_beam_calls": 7,
+ "usage": {
+  "prompt_tokens": 44965,
+  "completion_tokens": 862
+ },
+ "beam_secs": 14.12,
+ "total_secs": 14.12,
+ "number_check": {
+  "numbers": [
+   "2026",
+   "07",
+   "29"
+  ],
+  "supported": [
+   "2026",
+   "07",
+   "29"
+  ],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-d26d51a5-ecc4-4098-8261-4d5e0fdf0281",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"date_from\": \"2026-07-29\", \"date_to\": \"2026-07-29\", \"doc_types\": \"deck\", \"entity\": \"BOSCHLTD\", \"limit\": \"6.0\", \"query\": \"page 31\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 142,
+   "secs": 1.63,
+   "usage": {
+    "prompt_tokens": 1095,
+    "completion_tokens": 122,
+    "total_tokens": 1217,
+    "prompt_tokens_details": {
+     "cached_tokens": 1088
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 49
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 7,
+      "output": 122,
+      "reasoning": 49,
+      "cache_read": 1088,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "date_from": "2026-07-29",
+    "date_to": "2026-07-29",
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "6.0",
+    "query": "page 31"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE323A01026",
+    "rows": [],
+    "n_returned": 0,
+    "query_terms": [
+     "page"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-11752f83-5220-444c-a13c-62a77604f3f3",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"entity\": \"BOSCHLTD\", \"limit\": \"10.0\", \"query\": \"page 31\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 46,
+   "secs": 1.61,
+   "usage": {
+    "prompt_tokens": 1272,
+    "completion_tokens": 55,
+    "total_tokens": 1327,
+    "prompt_tokens_details": {
+     "cached_tokens": 1152
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 18
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 120,
+      "output": 55,
+      "reasoning": 18,
+      "cache_read": 1152,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "entity": "BOSCHLTD",
+    "limit": "10.0",
+    "query": "page 31"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE323A01026",
+    "rows": [
+     {
+      "chunk_id": 55108,
+      "doc_id": "sha256:39ba05d9e676f4d76442a2c9450d9c78dab6d9009ead5a0c648eb6d7074d43c9",
+      "doc_type": "annual_report",
+      "header": "BOSCHLTD · INE323A01026 · Annual report · FY24 · STATUTORY REPORTS > FINANCIAL STATEMENTS · p106 · known 2024-07-10T15:39:40",
+      "section": "STATUTORY REPORTS > FINANCIAL STATEMENTS",
+      "speaker": null,
+      "known_at": "2024-07-10T15:39:40",
+      "event_date": "2024-07-10",
+      "fiscal_period": "FY24",
+      "page_from": 106,
+      "page_to": 106,
+      "char_len": 5223,
+      "title": "BOSCHLTD annual report 2024-03-31",
+      "score": -3.5345800749665552,
+      "body_excerpt": "STATUTORY REPORTS FINANCIAL STATEMENTS Type of shareholders Login Method 4) Alternatively, the user can directly access e-Voting page by providing Demat Account Number and PAN No. from a e-Voting link available on www. cdslindia. com home page. The system will authenticate the user by sending OTP on registered Mobile & Email as recorded in the Demat Account. After successful authentication, user will be able to see the e-Voting option where the evoting is in progress and able to directly access the system of all e-Voting Service Providers. Individual Shareholders holding securities in demat mode with NSDL 1) If you are already registered for NSDL IDeAS facility, please visit the e-Services website of NSDL. Open web browser by typing the following URL: https:// eservices.nsdl.com either on a Personal Computer or on a mobile. Once the home page of e-Services is launched, click on the “Beneficial Owner” icon under “Login” which is available under ‘IDeAS’ Section. A new screen will open. You will have to enter your User ID and Password. After successful authentication, you will be able to see e-Voting services. Click on “Access to e-Voting” under e-Voting services and you will be able to see e-Voting page. Click on company name or e-Voting service provider name and you will be re- directed to e-Voting service provider website for casting your vote during the remote e-Voting period. 2) If the user is not registered for IDeAS e-Services, option to register is available at https://e …"
+     },
+     {
+      "chunk_id": 88285,
+      "doc_id": "sha256:0aa7bc51c80da668e1c017c509ea54d507e4fecc2699b2dd3675a599fedd71ef",
+      "doc_type": "concall",
+      "header": "BOSCHLTD · INE323A01026 · Concall transcript · - · Opening remarks · p2 · known 2024-08-12T11:35:01",
+      "section": "Opening remarks",
+      "speaker": "management",
+      "known_at": "2024-08-12T11:35:01",
+      "event_date": "",
+      "fiscal_period": "",
+      "page_from": 2,
+      "page_to": 2,
+      "char_len": 291,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.509000072402159,
+      "body_excerpt": "Page 1 of 14 “Bosch Limited Q1 FY '24/'25 Post Results Conference Call” August 08, 2024 MANAGEMENT: MR. GURUPRASAD MUDLAPUR – MANAGING DIRECTOR AND CHIEF TECHNOLOGY OFFICER – BOSCH LIMITED MS. KARIN GILGES – CHIEF FINANCIAL OFFICER – BOSCH LIMITED"
+     },
+     {
+      "chunk_id": 96157,
+      "doc_id": "sha256:71541c48a68c95b9a3776433915971513a48b84aa7e5d2bb17992b0f916541b9",
+      "doc_type": "concall",
+      "header": "BOSCHLTD · INE323A01026 · Concall transcript · - · Opening remarks · p2 · known 2026-08-13T17:26:28",
+      "section": "Opening remarks",
+      "speaker": "moderator",
+      "known_at": "2026-08-13T17:26:28",
+      "event_date": "2026-08-11",
+      "fiscal_period": "",
+      "page_from": 2,
+      "page_to": 2,
+      "char_len": 305,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.509000072402159,
+      "body_excerpt": "MANAGEMENT: MR. GURUPRASAD MUDLAPUR – MANAGING DIRECTOR AND CHIEF TECHNOLOGY OFFICER – BOSCH LIMITED MR. TILLMANN OLSEN – CHIEF FINANCIAL OFFICER – BOSCH LIMITED MODERATOR: MR. ANNAMALAI JAYARAJ – 360 ONE CAPITAL MARKET . Bosch Limited August 11, 2026 Page 2 of 12"
+     },
+     {
+      "chunk_id": 94122,
+      "doc_id": "sha256:f562bb34d1e5a4d4a7c51f1a455f8210b396b738c5eada049b6abaf5e7f93a3b",
+      "doc_type": "concall",
+      "header": "BOSCHLTD · INE323A01026 · Concall transcript · - · Q&A · p10 · known 2026-02-11T18:25:02",
+      "section": "Q&A",
+      "speaker": "nikhil rao",
+      "known_at": "2026-02-11T18:25:02",
+      "event_date": "2026-02-09",
+      "fiscal_period": "",
+      "page_from": 10,
+      "page_to": 10,
+      "char_len": 315,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.4251067019550057,
+      "body_excerpt": "Nikhil Rao: Which component, you said? Guruprasad Mudlapur: E-axles. E-axles is by far, value-wise, it's the largest value component which goes into an electric vehicle, apart from, of course, batteries and other things, which the OEMs make themselves. Bosch Limited February 09, 2026 Page 10 of 14"
+     },
+     {
+      "chunk_id": 63501,
+      "doc_id": "sha256:36c2942b23f18d425a65781f30532d107bf96feffedc3251ea9035db56b06abd",
+      "doc_type": "annual_report",
+      "header": "BOSCHLTD · INE323A01026 · Annual report · FY25 · ANNUAL REPORT 2024-25 (cont.) · p138 · known 2025-07-08T15:05:06",
+      "section": "ANNUAL REPORT 2024-25 (cont.)",
+      "speaker": null,
+      "known_at": "2025-07-08T15:05:06",
+      "event_date": "2025-07-08",
+      "fiscal_period": "FY25",
+      "page_from": 138,
+      "page_to": 138,
+      "char_len": 3769,
+      "title": "BOSCHLTD annual report 2025-03-31",
+      "score": -3.3991182368722948,
+      "body_excerpt": "Type of shareholders Login Method Individual Shareholders holding securities in demat mode with NSDL 1) If you are already registered for NSDL IDeAS facility, please visit the e-Services website of NSDL. Open web browser by typing the following URL: https:// eservices.nsdl.com either on a Personal Computer or on a mobile. Once the home page of e-Services is launched, click on the “Beneficial Owner” icon under “Login” which is available under ‘IDeAS’ Section. A new screen will open. You will have to enter your User ID and Password. After successful authentication, you will be able to see E-voting services. Click on “Access to E-voting” under E-voting services and you will be able to see E-voting page. Click on company name or E-voting service provider name and you will be re-directed to E-voting service provider website for casting your vote during the remote E-voting period. 2) If the user is not registered for IDeAS e-Services, option to register is available at https://eservices.nsdl.com. Select “Register Online for IDeAS “Portal or click at https://eservices.nsdl.com/SecureWeb/IdeasDirectReg. jsp 3) Visit the E-voting website of NSDL. Open web browser by typing the following URL: https://www.evoting.nsdl.com/ either on a Personal Computer or on a mobile. Once the home page of E-voting system is launched, click on the icon “Login” which is available under ‘Shareholder/Member’ Section. A new screen will open. You will have to enter your User ID (i.e., your sixteen-digit dema …"
+     },
+     {
+      "chunk_id": 90016,
+      "doc_id": "sha256:1ebd1f3b6942e8ad15d6842a3f41b7340caeb982759cb11f754b90b69ba04ab4",
+      "doc_type": "concall",
+      "header": "BOSCHLTD · INE323A01026 · Concall transcript · - · Opening remarks · p1 · known 2025-01-31T11:01:21",
+      "section": "Opening remarks",
+      "speaker": "managing director",
+      "known_at": "2025-01-31T11:01:21",
+      "event_date": "2025-01-28",
+      "fiscal_period": "",
+      "page_from": 1,
+      "page_to": 1,
+      "char_len": 1863,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.3828307490933716,
+      "body_excerpt": "… Bangalore-560030 Karnataka, India Tel +91 80 67523878 www.bosch.in CIN: L85110KA1951PLC000761 Secretarial.corp@in.bosch.com January 31, 2025 Dear Sir/Madam, Sub: Compliance under Regulation 30 and 46(2)(oa) of Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) regulations, 2015- Disclosure of Transcript of the Investors’ Concall Pursuant to Regulation 30 of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015, Please find attached herewith the transcript of the investors’ call with Investors/Analysts held on January 28, 2025. This is for your Information and records. [[ Yours faithfully, for Bosch Limited, V Srinivasan Company Secretary & Compliance Officer Corporate Relationship Department BSE Limited 1st Floor, New Trading Ring Rotunda Building Phiroze Jeejeebhoy Towers Dalal Street, Fort Mumbai – 400 001 The Manager Listing Department National Stock Exchange of India Ltd. Exchange Plaza, C-1, Block G Bandra-Kurla Complex Bandra (E) Mumbai – 400 051 Venkatara man Srinivasan Digitally signed by Venkataraman Srinivasan Date: 2025.01.31 10:49:24 +05'30' Page 1 of 12 “Bosch Limited 3Q FY24-25 Post Results Conference Call” January 28, 2025 MANAGEMENT: MR. GURUPRASAD MUDLAPUR – MANAGING DIRECTOR & CHIEF TECHNOLOGY OFFICER, BOSCH LIMITED MS. KARIN GILGES – CHIEF FINANCIAL OFFICER, BOSCH LIMITED MODERATOR: MR. ANNAMALAI JAYARAJ – B&K SECURITIES Bosch Limited January 28, 2025 Page 2 of 12"
+     },
+     {
+      "chunk_id": 87525,
+      "doc_id": "sha256:c4ec654fe3735f833ace7d2eb6c6e2a6d8350905f5b8ebf02ed700dfb375310e",
+      "doc_type": "concall",
+      "header": "BOSCHLTD · INE323A01026 · Concall transcript · Q4FY23 · Q&A (cont.) · Q: Thanks for the detailed presentation, sir. We will now begin the question · p8 · known 2024-05-31T15:03:33",
+      "section": "Q&A (cont.) · Q: Thanks for the detailed presentation, sir. We will now begin the question-and-answer session. I'll now take the questions from the chat box,",
+      "speaker": "annamalai jayaraj",
+      "known_at": "2024-05-31T15:03:33",
+      "event_date": "2024-05-27",
+      "fiscal_period": "Q4FY23",
+      "page_from": 8,
+      "page_to": 8,
+      "char_len": 238,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.378944420452514,
+      "body_excerpt": "and stable proven process for this hive off. And as already mentioned, this was then the basis when we start to effective of 1st of July, we go ahead with the transfer of the business. Bosch Limited May 27, 2024 Page 8 of 16"
+     },
+     {
+      "chunk_id": 89406,
+      "doc_id": "sha256:8cca583ca58cadff389a753debd9ef385e268f6a3a33e55bab2fcb6ecf87e709",
+      "doc_type": "concall",
+      "header": "BOSCHLTD · INE323A01026 · Concall transcript · - · Opening remarks · p1 · known 2024-11-20T17:09:41",
+      "section": "Opening remarks",
+      "speaker": "managing director",
+      "known_at": "2024-11-20T17:09:41",
+      "event_date": "2024-11-12",
+      "fiscal_period": "",
+      "page_from": 1,
+      "page_to": 1,
+      "char_len": 1888,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.377134738583004,
+      "body_excerpt": "… ngalore-560030 Karnataka, India Tel +91 80 67523878 www.bosch.in CIN: L85110KA1951PLC000761 Secretarial.corp@in.bosch.com November 20, 2024 Dear Sir/Madam, Sub: Compliance under Regulation 30 and 46(2)(oa) of Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) regulations, 2015- Disclosure of Transcript of the Investors’ Concall Pursuant to Regulation 30 of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015, Please find attached herewith the transcript of the investors’ call with Investors/Analysts held on November 12, 2024. This is for your Information and records. [[ Yours faithfully, for Bosch Limited, Guruprasad Mudlapur Managing Director DIN: 07598798 Corporate Relationship Department BSE Limited 1st Floor, New Trading Ring Rotunda Building Phiroze Jeejeebhoy Towers Dalal Street, Fort Mumbai – 400 001 The Manager Listing Department National Stock Exchange of India Ltd. Exchange Plaza, C-1, Block G Bandra-Kurla Complex Bandra (E) Mumbai – 400 051 GURUPRAS AD MUDLAPUR Digitally signed by GURUPRASAD MUDLAPUR Date: 2024.11.20 17:03:58 +05'30' Page 1 of 9 “Bosch Limited 2Q FY '24-'25 Post-Results Conference Call” November 12, 2024 MANAGEMENT: MR. GURUPRASAD MUDLAPUR – MANAGING DIRECTOR AND CHIEF TECHNOLOGY OFFICER – BOSCH LIMITED MS. KARIN GILGES – CHIEF FINANCIAL OFFICER – BOSCH LIMITED MODERATOR: MR. ANNAMALAI JAYARAJ – B&K SECURITIES. Bosch Limited November 12, 2024 Page 2 of 9"
+     },
+     {
+      "chunk_id": 94110,
+      "doc_id": "sha256:f562bb34d1e5a4d4a7c51f1a455f8210b396b738c5eada049b6abaf5e7f93a3b",
+      "doc_type": "concall",
+      "header": "BOSCHLTD · INE323A01026 · Concall transcript · - · Opening remarks · p1 · known 2026-02-11T18:25:02",
+      "section": "Opening remarks",
+      "speaker": "managing director",
+      "known_at": "2026-02-11T18:25:02",
+      "event_date": "2026-02-09",
+      "fiscal_period": "",
+      "page_from": 1,
+      "page_to": 1,
+      "char_len": 1884,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.377134738583004,
+      "body_excerpt": "… 60030 Karnataka, India Tel +91 80 67523878 www.bosch.in CIN: L85110KA1951PLC000761 Secretarial.corp@in.bosch.com February 11, 2026 Dear Sir/Madam, Sub: Compliance under Regulation 30 and 46(2)(oa) of Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) regulations, 2015- Disclosure of Transcript of the Investors’ Concall Pursuant to Regulation 30 of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015, Please find attached herewith the transcript of the investors’ call with Investors/Analysts held on February 09, 2026. This is for your Information and records. [[ Yours faithfully, for Bosch Limited, V Srinivasan Company Secretary & Compliance Officer Corporate Relationship Department BSE Limited 1st Floor, New Trading Ring Rotunda Building Phiroze Jeejeebhoy Towers Dalal Street, Fort Mumbai – 400 001 The Manager Listing Department National Stock Exchange of India Ltd. Exchange Plaza, C-1, Block G Bandra-Kurla Complex Bandra (E) Mumbai – 400 051 Venkatarama n Srinivasan Digitally signed by Venkataraman Srinivasan Date: 2026.02.11 18:19:26 +05'30' Page 1 of 14 “Bosch Limited 3Q FY '25-'26 Post Results Conference Call” February 09, 2026 MANAGEMENT: MR. GURUPRASAD MUDLAPUR – MANAGING DIRECTOR AND CHIEF TECHNOLOGY OFFICER – BOSCH LIMITED MS. KARIN GILGES – CHIEF FINANCIAL OFFICER – BOSCH LIMITED MODERATOR: MR. ANNAMALAI JAYARAJ – B&K SECURITIES Bosch Limited February 09, 2026 Page 2 of 14"
+     },
+     {
+      "chunk_id": 91449,
+      "doc_id": "sha256:c691651929ae68f3d6bb3a8ee19e0a95d5dd4f87dd5eff5418934cd331f6ed45",
+      "doc_type": "concall",
+      "header": "BOSCHLTD · INE323A01026 · Concall transcript · - · Opening remarks · p1 · known 2025-06-02T14:53:59",
+      "section": "Opening remarks",
+      "speaker": "managing director",
+      "known_at": "2025-06-02T14:53:59",
+      "event_date": "2025-05-29",
+      "fiscal_period": "",
+      "page_from": 1,
+      "page_to": 1,
+      "char_len": 1881,
+      "title": "CONCALL_TRANSCRIPT",
+      "score": -3.3742939204839466,
+      "body_excerpt": "… odi Bangalore-560030 Karnataka, India Tel +91 80 67523878 www.bosch.in CIN: L85110KA1951PLC000761 Secretarial.corp@in.bosch.com June 02, 2025 Dear Sir/Madam, Sub: Compliance under Regulation 30 and 46(2)(oa) of Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) regulations, 2015- Disclosure of Transcript of the Investors’ Concall Pursuant to Regulation 30 of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015, please find attached herewith the transcript of the investors’ call with Investors/Analysts held on May 29, 2025. This is for your Information and records. [[ Yours faithfully, for Bosch Limited, V Srinivasan Company Secretary & Compliance Officer Corporate Relationship Department BSE Limited 1st Floor, New Trading Ring Rotunda Building Phiroze Jeejeebhoy Towers Dalal Street, Fort Mumbai – 400 001 The Manager Listing Department National Stock Exchange of India Ltd. Exchange Plaza, C-1, Block G Bandra-Kurla Complex Bandra (E) Mumbai – 400 051 Venkatara man Srinivasan Digitally signed by Venkataraman Srinivasan Date: 2025.06.02 14:35:16 +05'30' Page 1 of 9 “Bosch Limited 4Q FY '25 & FY '25 Post-Results Conference Call” May 29, 2025 MANAGEMENT: MR. GURUPRASAD MUDLAPUR – MANAGING DIRECTOR AND CHIEF TECHNOLOGY OFFICER – BOSCH LIMITED MS. KARIN GILGES – CHIEF FINANCIAL OFFICER – BOSCH LIMITED MODERATOR: MR. ANNAMALAI JAYARAJ – B&K SECURITIES. Bosch Limited May 29, 2025 Page 2 of 9"
+     }
+    ],
+    "n_returned": 10,
+    "query_terms": [
+     "page"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 2,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-f314a2dc-6555-43ae-9fe7-ddf09c31b824",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"doc_types\": \"deck\", \"entity\": \"BOSCHLTD\", \"limit\": \"10.0\", \"query\": \"Bosch Limited\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 135,
+   "secs": 1.81,
+   "usage": {
+    "prompt_tokens": 5155,
+    "completion_tokens": 103,
+    "total_tokens": 5258,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 61
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 4195,
+      "output": 103,
+      "reasoning": 61,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 2,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "10.0",
+    "query": "Bosch Limited"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE323A01026",
+    "rows": [
+     {
+      "chunk_id": 104036,
+      "doc_id": "sha256:33f43818c76d1282311817bd7703a804f568068d506d40a2f606d1f7f89ca16f",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · 5. Any · p10 · known 2026-04-08T16:51:06",
+      "section": "5. Any",
+      "speaker": null,
+      "known_at": "2026-04-08T16:51:06",
+      "event_date": "2026-04-08",
+      "fiscal_period": "",
+      "page_from": 10,
+      "page_to": 10,
+      "char_len": 3205,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -10.160902217937663,
+      "body_excerpt": "Page 2 of 3 Post acquisition, Bosch Chassis Systems India Private Limited will continue to operate as an independent entity with its governance being driven by Bosch Limited. “In India, we expect the mobility landscape to evolve radically by 2030 and beyond with sustainable, safe and exciting technologies. To foster a customer- first mindset and pivot from supplying individual components to delivering future- ready platform solutions, it is imperative to unite our forces and adopt an integrated approach. This transaction empowers Bosch Limited to drive growth with a wider portfolio and combined offerings across the mobility tech stack.” says Sandeep Nelamangala, Joint Managing Director, Bosch Limited, and President, Bosch Mobility India. This portfolio realignment creates and enhances long-term value for Bosch Limited, reinforcing the company’s vision to be the preferred mobility partner for its customers across vehicle systems, software, and hardware, while being the leading technology provider for all mobility solutions. The boards of the Bosch Group, Bosch Limited, and Bosch Chassis Systems India Private Limited have approved these transactions. It is now subject to approval from Bosch Limited shareholders. Post this approval, Bosch Chassis Systems India Private Limited will become a 100 percent subsidiary of Bosch Limited. Contact person for press inquiries: Ms. Somdatta Sen Phone : +91 9833596410 Somdatta.sen@in.bosch.com About Bosch in India In India, Bosch is a leading …"
+     },
+     {
+      "chunk_id": 104035,
+      "doc_id": "sha256:33f43818c76d1282311817bd7703a804f568068d506d40a2f606d1f7f89ca16f",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · 5. Any · p8 · known 2026-04-08T16:51:06",
+      "section": "5. Any",
+      "speaker": null,
+      "known_at": "2026-04-08T16:51:06",
+      "event_date": "2026-04-08",
+      "fiscal_period": "",
+      "page_from": 8,
+      "page_to": 9,
+      "char_len": 2365,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.992781571079146,
+      "body_excerpt": "5. Any cancellation or termination of proposal for issuance of securities including reasons thereof. Not Applicable Bosch Limited Hosur Road, Adugodi Bangalore - 560030 Somdatta Sen E-mail: somdatta.sen@in.bosch.com Phone : +91 9833596410 Corporate Communications/India www.boschindia.com April 8, 2026 Corp/C/CGR-IN CIN: L85110KA1951PLC000761 Press release Bosch Limited enhances its portfolio in India; acquires Bosch Chassis Systems India Private Limited ▶ Bosch Limited adds Vehicle Motion business to its portfolio in India ▶ Stronger integration of local mobility solutions to better meet customer demands Bengaluru, India – Bosch Limited, the flagship company of the Bosch Group in India intends to significantly enhance its portfolio by acquiring the Vehicle Motion business. The company plans to acquire 100 percent of Bosch Chassis Systems India Private Limited, through a cash deal and issuance of equity shares on a preferential basis. This development positions Bosch Limited with a more comprehensive mobility portfolio, enabling it to better cater to the evolving demands of India’s automotive sector. The transaction will strengthen Bosch Limited’s capabilities enabling it to further invest in critical domains like safety and braking over and above its strong footprint in power solutions. Bosch Chassis Systems India Private Limited represents the business of Bosch’s Vehicle Motion division in India and is one of the market leaders in automotive safety systems. Its offerings inc …"
+     },
+     {
+      "chunk_id": 104037,
+      "doc_id": "sha256:33f43818c76d1282311817bd7703a804f568068d506d40a2f606d1f7f89ca16f",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · 5. Any · p11 · known 2026-04-08T16:51:06",
+      "section": "5. Any",
+      "speaker": null,
+      "known_at": "2026-04-08T16:51:06",
+      "event_date": "2026-04-08",
+      "fiscal_period": "",
+      "page_from": 11,
+      "page_to": 12,
+      "char_len": 2861,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.963919541811835,
+      "body_excerpt": "… ification across regions and industries strengthens its innovativeness and robustness. Bosch uses its proven expertise in sensor technology, software, and services to offer customers cross-domain solutions from a single source. It also applies its expertise in connectivity and artificial intelligence in order to develop and manufacture user-friendly, sustainable products. With technology that is “Invented for life,” Bosch wants to help improve quality of life and conserve natural resources. The Bosch Group comprises Robert Bosch GmbH and its roughly 490 subsidiary and regional companies in over 60 countries. Including sales and service partners, Bosch’s global manufacturing, engineering, and sales network covers nearly every country in the world. Bosch’s innovative strength is key to the company’s further development. At 136 locations across the globe, Bosch employs some 82,000 associates in research and development. The company was set up in Stuttgart in 1886 by Robert Bosch (1861-1942) as “Workshop for Precision Mechanics and Electrical Engineering.” The special ownership structure of Robert Bosch GmbH guarantees the entrepreneurial freedom of the Bosch Group, making it possible for the company to plan over the long term and to undertake significant upfront investments in the safeguarding of its future. Ninety-four percent of the share capital of Robert Bosch GmbH is held by Robert Bosch Stiftung GmbH, a limited liability company with a charitable purpose. The remaining sha …"
+     },
+     {
+      "chunk_id": 103045,
+      "doc_id": "sha256:ddd13ce11cdbd35a2a2af02a2279a442f6d984912ba3422ab03ceb475965c0f1",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · Internal | SO/OPM33-IN | 2024-08-27 · p4 · known 2025-11-14T19:28:19",
+      "section": "Internal | SO/OPM33-IN | 2024-08-27",
+      "speaker": null,
+      "known_at": "2025-11-14T19:28:19",
+      "event_date": "2025-11-14",
+      "fiscal_period": "",
+      "page_from": 4,
+      "page_to": 4,
+      "char_len": 477,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.72629769735429,
+      "body_excerpt": "Internal | SO/OPM33-IN | 2024-08-27 © Bosch Global Software Technologies Private Limited 2024. All rights reserved, also regarding any disposal, exploitation, reproduction, editing, distribution, as well as in the event of applications for industrial property rights. Bosch Limited | Annual Investors Meet 3 Karin Gilges Guruprasad Mudlapur Chief Financial Officer, Bosch Limited Managing Director and Chief Technology Officer, Bosch Limited and President, Bosch Group India"
+     },
+     {
+      "chunk_id": 98079,
+      "doc_id": "sha256:0d77f3f08c1a3b34daa67569489b6b2fd65710064edacfd54883ea36e791a11d",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · Internal | SO/OPM33-IN | 2024-08-27 · p3 · known 2024-09-05T17:13:51",
+      "section": "Internal | SO/OPM33-IN | 2024-08-27",
+      "speaker": null,
+      "known_at": "2024-09-05T17:13:51",
+      "event_date": "2024-09-05",
+      "fiscal_period": "",
+      "page_from": 3,
+      "page_to": 3,
+      "char_len": 484,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.721863524110717,
+      "body_excerpt": "Internal | SO/OPM33-IN | 2024-08-27 © Bosch Global Software Technologies Private Limited 2024. All rights reserved, also regarding any disposal, exploitation, reproduction, editing, distribution, as well as in the event of applications for industrial property rights. Bosch Limited | Annual Investors Meet 2024 Karin Gilges Guruprasad Mudlapur Chief Financial Officer (CFO) Bosch Limited Managing Director and Chief Technology Officer, Bosch Limited and President, Bosch Group India"
+     },
+     {
+      "chunk_id": 104695,
+      "doc_id": "sha256:1c5f980206a9effa4bc867396f015a430e0e1748dd08e66b5542ddfca372280c",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · Internal | SO/OPM33-IN | 2024-08-27 · p21 · known 2026-05-26T15:19:49",
+      "section": "Internal | SO/OPM33-IN | 2024-08-27",
+      "speaker": null,
+      "known_at": "2026-05-26T15:19:49",
+      "event_date": "2026-05-26",
+      "fiscal_period": "",
+      "page_from": 21,
+      "page_to": 21,
+      "char_len": 2398,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.646338070575418,
+      "body_excerpt": "Internal | SO/OPM33-IN | 2024-08-27 © Bosch Global Software Technologies Private Limited 2024. All rights reserved, also regarding any disposal, exploitation, reproduction, editing, distribution, as well as in the event of applications for industrial property rights. ICE systems RBIC Acquisition H2 TMM SW/C/S Joint Venture with TATA Autocomp Vehicle Motion business added to the portfolio – Transition from supplying individual components to delivering future-ready platform solutions Value creation – RBIC’s Motion Portfolio: ESP/ABS, braking solutions, Sensors and Actuators related to Braking – RBIN’s Energy Portfolio: Engine Management Systems (EMS), ICE Injectors and Pumps, Sensors and Actuators related to EMS. Expanded Portfolio Joint Venture accelerating future growth in e-mobility Joint Venture with TSF Group Scope Expertise Products – JV with 50:50 partnership between Bosch and TSF Group companies (represented by Brakes India Private Limited and Wheels India Limited) – JV to design and develop electronically controlled smart actuators for air / pneumatic systems – JV to sub-contract Bosch / TSF for manufacturing and sale (exports) of JV products – JV shall be global responsible entity for JV products – Bosch and TSF Group to license background IP to JV (1) Electronic Air Processing Module; (2) High Voltage Air Compressor; (3) Electronic Air Suspension Axle Module; (4) Electronic Air Parking Brake Module Joint venture to drive growth in commercial vehicle segment by unlock …"
+     },
+     {
+      "chunk_id": 100183,
+      "doc_id": "sha256:fa1559ebe179f7c1488c418c02943f3d15ff5c893f4dab781ed300c4289f83dc",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · © Bosch Limited 2025. All rights reserved, also regarding any disposal, exploita · p3 · known 2025-02-17T14:37:13",
+      "section": "© Bosch Limited 2025. All rights reserved, also regarding any disposal, exploita",
+      "speaker": null,
+      "known_at": "2025-02-17T14:37:13",
+      "event_date": "2025-02-17",
+      "fiscal_period": "",
+      "page_from": 3,
+      "page_to": 3,
+      "char_len": 362,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.645427392460757,
+      "body_excerpt": "© Bosch Limited 2025. All rights reserved, also regarding any disposal, exploitation, reproduction, editing, distribution, as well as in the event of applications for industrial property rights. Bosch Limited | Kotak’s Annual Investor Conference Guruprasad Mudlapur Managing Director and Chief Technology Officer, Bosch Limited and President, Bosch Group India"
+     },
+     {
+      "chunk_id": 98081,
+      "doc_id": "sha256:0d77f3f08c1a3b34daa67569489b6b2fd65710064edacfd54883ea36e791a11d",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · Internal | SO/OPM33-IN | 2024-08-27 · p5 · known 2024-09-05T17:13:51",
+      "section": "Internal | SO/OPM33-IN | 2024-08-27",
+      "speaker": null,
+      "known_at": "2024-09-05T17:13:51",
+      "event_date": "2024-09-05",
+      "fiscal_period": "",
+      "page_from": 5,
+      "page_to": 5,
+      "char_len": 578,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.638479941278229,
+      "body_excerpt": "Internal | SO/OPM33-IN | 2024-08-27 © Bosch Global Software Technologies Private Limited 2024. All rights reserved, also regarding any disposal, exploitation, reproduction, editing, distribution, as well as in the event of applications for industrial property rights. Bosch Limited | Annual Investors Meet 2024 Macroeconomic Overview Market Prognosis Bosch Global Business Update Emerging mobility trends in India Bosch India Overview Mobility Tech Stack Bosch Limited Business Update Key Technology Update 01 06 02 07 03 08 04 09 05 10 Agenda Localization Megatrends"
+     },
+     {
+      "chunk_id": 104032,
+      "doc_id": "sha256:33f43818c76d1282311817bd7703a804f568068d506d40a2f606d1f7f89ca16f",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · Currently, diverse businesses are housed under · p5 · known 2026-04-08T16:51:06",
+      "section": "Currently, diverse businesses are housed under",
+      "speaker": null,
+      "known_at": "2026-04-08T16:51:06",
+      "event_date": "2026-04-08",
+      "fiscal_period": "",
+      "page_from": 5,
+      "page_to": 5,
+      "char_len": 2349,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.638231331842572,
+      "body_excerpt": "Currently, diverse businesses are housed under different entities of the Bosch Group. While the power solutions business is in Bosch Limited, the safety & braking portfolio including active, passive safety & actuation are under the Target Company. Hence the portfolios are completely complimentary without any overlap, thus enabling the Company to expand its offerings. The mechanical engineering excellence of Bosch Limited represents a strong overlap of capabilities between the two businesses. This realignment of portfolio creates and enhances long term value for Bosch Limited, reinforcing the Company’s vision to be the preferred mobility partner for its customers across vehicle systems, software, and hardware while being the leading technology provider for all mobility solutions. The acquisition will enable Bosch Ltd to transition from selling individual mechanical components to providing an enhanced range of solutions to OEMs significantly strengthening our competitive advantage and creating long-term shareholder value. 5. Brief details of any governmental or regulatory approvals required for the acquisition. Nil 6. Indicative time period for completion of the acquisition. On or before July 7, 2026 7. Consideration -whether cash consideration or share swap or any other form and details of the same. Both cash consideration and Share swap The proposed transaction approved by the Board of Directors of Bosch Limited entails the acquisition of 100% equity shares of RBIC from its s …"
+     },
+     {
+      "chunk_id": 104049,
+      "doc_id": "sha256:33f43818c76d1282311817bd7703a804f568068d506d40a2f606d1f7f89ca16f",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · Transaction Rationale · p26 · known 2026-04-08T16:51:06",
+      "section": "Transaction Rationale",
+      "speaker": null,
+      "known_at": "2026-04-08T16:51:06",
+      "event_date": "2026-04-08",
+      "fiscal_period": "",
+      "page_from": 26,
+      "page_to": 26,
+      "char_len": 836,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -9.573115161369238,
+      "body_excerpt": "2026-04-08 © Bosch Limited 2026. All rights reserved, also regarding any disposal, exploitation, reproduction, editing, distribution, as well as in the event of applications for industrial property rights. An accretive transaction and strong fit with Bosch Ltd.’s strategic trajectory 14 Accretion in FY25 EPS (INR) 683 720 Bosch Ltd. Bosch Ltd. + RBIC (Proforma) Committed to create value for Bosch Ltd.’s shareholders in future Sustainable growth Superior margins Efficient use of Bosch Ltd. balance sheet RBIC’s financial strength Enhances cash generation profile, enabling additional potential acquisitions in the future Committed to a transparent dividend distribution of 55-85% of PAT Expanded product offerings with portfolio consolidation Recent announcement of JV with Tata AutoComp Note: FY ending March; PAT: Profit After Tax"
+     }
+    ],
+    "n_returned": 10,
+    "query_terms": [
+     "Bosch",
+     "Limited"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 3,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-a7c83ea4-02e5-413c-a0fc-0d5aef883caa",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"date_from\": \"2026-07-29\", \"date_to\": \"2026-07-29\", \"doc_types\": \"deck\", \"entity\": \"BOSCHLTD\", \"limit\": \"10.0\", \"query\": \"page 31\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 137,
+   "secs": 2.37,
+   "usage": {
+    "prompt_tokens": 8410,
+    "completion_tokens": 136,
+    "total_tokens": 8546,
+    "prompt_tokens_details": {
+     "cached_tokens": 1216
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 60
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 7194,
+      "output": 136,
+      "reasoning": 60,
+      "cache_read": 1216,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 3,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "date_from": "2026-07-29",
+    "date_to": "2026-07-29",
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "10.0",
+    "query": "page 31"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE323A01026",
+    "rows": [],
+    "n_returned": 0,
+    "query_terms": [
+     "page"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 4,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b06c6b4b-ef7c-4d88-9c39-b6ec7ab36afa",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"doc_types\": \"deck\", \"entity\": \"BOSCHLTD\", \"limit\": \"10.0\", \"query\": \"31\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 230,
+   "secs": 2.03,
+   "usage": {
+    "prompt_tokens": 8588,
+    "completion_tokens": 133,
+    "total_tokens": 8721,
+    "prompt_tokens_details": {
+     "cached_tokens": 8384
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 93
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 204,
+      "output": 133,
+      "reasoning": 93,
+      "cache_read": 8384,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 4,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "10.0",
+    "query": "31"
+   },
+   "result": {
+    "error": {
+     "code": "bad_args",
+     "message": "chunk_search query has no usable words"
+    }
+   }
+  },
+  {
+   "turn": 5,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-4cfcefa7-0491-4560-87a9-cc1fc43d76dc",
+     "type": "function",
+     "function": {
+      "name": "chunk_search",
+      "arguments": "{\"doc_types\": \"deck\", \"entity\": \"BOSCHLTD\", \"limit\": \"5.0\", \"query\": \"investor presentation\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 52,
+   "secs": 1.56,
+   "usage": {
+    "prompt_tokens": 8679,
+    "completion_tokens": 70,
+    "total_tokens": 8749,
+    "prompt_tokens_details": {
+     "cached_tokens": 8576
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 28
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 103,
+      "output": 70,
+      "reasoning": 28,
+      "cache_read": 8576,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 5,
+   "role": "tool",
+   "tool": "chunk_search",
+   "args": {
+    "doc_types": "deck",
+    "entity": "BOSCHLTD",
+    "limit": "5.0",
+    "query": "investor presentation"
+   },
+   "result": {
+    "tool": "chunk_search",
+    "as_of": "2026-10-19",
+    "entity": "INE323A01026",
+    "rows": [
+     {
+      "chunk_id": 101742,
+      "doc_id": "sha256:6402b2bcc205ed8be762a2ff03d52503910a42228b786c9ff978d2bb8cc70295",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · Registered Office: Bosch Limited, Hosur Road, Bangalore-560030, Karnataka, India · p1 · known 2025-08-04T19:57:42",
+      "section": "Registered Office: Bosch Limited, Hosur Road, Bangalore-560030, Karnataka, India",
+      "speaker": null,
+      "known_at": "2025-08-04T19:57:42",
+      "event_date": "2025-08-04",
+      "fiscal_period": "",
+      "page_from": 1,
+      "page_to": 2,
+      "char_len": 1655,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.590988770666508,
+      "body_excerpt": "… ed Office: Bosch Limited, Hosur Road, Bangalore-560030, Karnataka, India Managing Director: Guruprasad Mudlapur, Joint Managing Director: Sandeep N Bosch Limited Post Box No:3000 Hosur Road, Adugodi Bangalore-560030 Karnataka, India Tel +91 80 67523878 www.bosch.in L85110KA1951PLC000761 Secretarial.corp@in.bosch.com August 4, 2025 Dear Sir/Madam, Sub: Intimation under Regulation 30 of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015- Investor Presentation Pursuant to Regulation 30 of the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations, 2015 and in continuation of our earlier letter dated July 23, 2025, intimating the schedule of Investor Concall for Q1 FY 2025-26 on August 5, 2025, we enclose herewith the Investor Presentation to be made at the Investor Concall. This is for your information and records. Yours faithfully, for Bosch Limited, V. Srinivasan Company Secretary & Compliance Officer Corporate Relationship Department BSE Limited 1st Floor, New Trading Ring Rotunda Building Phiroze Jeejeebhoy Towers Dalal Street, Fort Mumbai – 400 001 Scrip code:500530 The Manager Listing Department National Stock Exchange of India Ltd. Exchange Plaza, C-1, Block G Bandra-Kurla Complex Bandra (E) Mumbai – 400 051 Scrip code: BOSCHLTD Venkatara man Srinivasan Digitally signed by Venkataraman Srinivasan Date: 2025.08.04 19:49:26 +05'30' BOSCH LIMITED INVESTOR PRESENTATION Qu …"
+     },
+     {
+      "chunk_id": 99683,
+      "doc_id": "sha256:030d85cd62861eb442df33c4ce699880b6f00ce0ef7e8245e667d7cdc3a82f48",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · © Bosch Limited 2025. All rights reserved, also regarding any disposal, exploita (cont.) · p2 · known 2025-01-28T16:45:53",
+      "section": "© Bosch Limited 2025. All rights reserved, also regarding any disposal, exploita (cont.)",
+      "speaker": null,
+      "known_at": "2025-01-28T16:45:53",
+      "event_date": "2025-01-28",
+      "fiscal_period": "",
+      "page_from": 2,
+      "page_to": 3,
+      "char_len": 3889,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.217931919769519,
+      "body_excerpt": "… epresentation, if given or made, should not be relied upon as having been authorized by or on behalf of the Bosch Limited. This presentation is strictly confidential and may not be copied or disseminated, reproduced, re-circulated, re-distributed, published or advertised in any media, website or otherwise, in whole or in part, and in any manner or for any purpose. Any unauthorized use, disclosure or public dissemination of information contained herein is prohibited. No person is authorized to give any information or to make any representation not contained in or inconsistent with this presentation and if given or made, such information or representation must not be relied upon as having been authorized by any person. Failure to comply with this restriction may constitute a violation of the applicable securities laws. The distribution of this presentation in certain jurisdictions may be restricted by law. Accordingly, any persons in possession of this presentation should inform themselves about and observe any such restrictions. By reviewing this presentation, you agree to be bound by the foregoing limitations. By accessing this presentation, you accept that this disclaimer and any claims arising out of the use of the information from this presentation shall be governed by the laws of India and only the courts in Bangalore, India and no other courts, shall have jurisdiction over the same.” BOSCH LIMITED INVESTOR PRESENTATION Quarterly Results December 31, 2024 January 28, 2025"
+     },
+     {
+      "chunk_id": 101111,
+      "doc_id": "sha256:16618191e60365f6c244669736626936167ac3777cca880b4eadd856b202c11c",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · © Bosch Limited 2025. All rights reserved, also regarding any disposal, exploita (cont.) · p2 · known 2025-05-28T11:32:12",
+      "section": "© Bosch Limited 2025. All rights reserved, also regarding any disposal, exploita (cont.)",
+      "speaker": null,
+      "known_at": "2025-05-28T11:32:12",
+      "event_date": "2025-05-28",
+      "fiscal_period": "",
+      "page_from": 2,
+      "page_to": 3,
+      "char_len": 3882,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.217931919769519,
+      "body_excerpt": "… on or representation, if given or made, should not be relied upon as having been authorized by or on behalf of the Bosch Limited. This presentation is strictly confidential and may not be copied or disseminated, reproduced, re-circulated, re-distributed, published or advertised in any media, website or otherwise, in whole or in part, and in any manner or for any purpose. Any unauthorized use, disclosure or public dissemination of information contained herein is prohibited. No person is authorized to give any information or to make any representation not contained in or inconsistent with this presentation and if given or made, such information or representation must not be relied upon as having been authorized by any person. Failure to comply with this restriction may constitute a violation of the applicable securities laws. The distribution of this presentation in certain jurisdictions may be restricted by law. Accordingly, any persons in possession of this presentation should inform themselves about and observe any such restrictions. By reviewing this presentation, you agree to be bound by the foregoing limitations. By accessing this presentation, you accept that this disclaimer and any claims arising out of the use of the information from this presentation shall be governed by the laws of India and only the courts in Bangalore, India and no other courts, shall have jurisdiction over the same.” BOSCH LIMITED INVESTOR PRESENTATION Quarterly Results March 31, 2025 May 29, 2025"
+     },
+     {
+      "chunk_id": 103560,
+      "doc_id": "sha256:b12bafd56501e020ab8998f30d751651a2fc26bd08414a8052d29791a3d630bc",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · © Bosch Limited 2026. All rights reserved, also regarding any disposal, exploita (cont.) · p2 · known 2026-02-06T19:23:25",
+      "section": "© Bosch Limited 2026. All rights reserved, also regarding any disposal, exploita (cont.)",
+      "speaker": null,
+      "known_at": "2026-02-06T19:23:25",
+      "event_date": "2026-02-06",
+      "fiscal_period": "",
+      "page_from": 2,
+      "page_to": 3,
+      "char_len": 3890,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.217931919769519,
+      "body_excerpt": "… presentation, if given or made, should not be relied upon as having been authorized by or on behalf of the Bosch Limited. This presentation is strictly confidential and may not be copied or disseminated, reproduced, re-circulated, re-distributed, published or advertised in any media, website or otherwise, in whole or in part, and in any manner or for any purpose. Any unauthorized use, disclosure or public dissemination of information contained herein is prohibited. No person is authorized to give any information or to make any representation not contained in or inconsistent with this presentation and if given or made, such information or representation must not be relied upon as having been authorized by any person. Failure to comply with this restriction may constitute a violation of the applicable securities laws. The distribution of this presentation in certain jurisdictions may be restricted by law. Accordingly, any persons in possession of this presentation should inform themselves about and observe any such restrictions. By reviewing this presentation, you agree to be bound by the foregoing limitations. By accessing this presentation, you accept that this disclaimer and any claims arising out of the use of the information from this presentation shall be governed by the laws of India and only the courts in Bangalore, India and no other courts, shall have jurisdiction over the same.” BOSCH LIMITED INVESTOR PRESENTATION Quarterly Results December 30, 2025 February 09, 2026"
+     },
+     {
+      "chunk_id": 105518,
+      "doc_id": "sha256:e09f6ecda5e12bae9fbda222aa78d2db6f2b4bef0d21c5d94b9bd61eec643379",
+      "doc_type": "deck",
+      "header": "BOSCHLTD · INE323A01026 · Investor deck · - · © Bosch Limited 2026. All rights reserved, also regarding any disposal, exploita (cont.) · p2 · known 2026-08-10T18:49:29",
+      "section": "© Bosch Limited 2026. All rights reserved, also regarding any disposal, exploita (cont.)",
+      "speaker": null,
+      "known_at": "2026-08-10T18:49:29",
+      "event_date": "2026-08-10",
+      "fiscal_period": "",
+      "page_from": 2,
+      "page_to": 3,
+      "char_len": 3884,
+      "title": "Announcement under Regulation 30 (LODR)-Investor Presentation",
+      "score": -6.217931919769519,
+      "body_excerpt": "…  or representation, if given or made, should not be relied upon as having been authorized by or on behalf of the Bosch Limited. This presentation is strictly confidential and may not be copied or disseminated, reproduced, re-circulated, re-distributed, published or advertised in any media, website or otherwise, in whole or in part, and in any manner or for any purpose. Any unauthorized use, disclosure or public dissemination of information contained herein is prohibited. No person is authorized to give any information or to make any representation not contained in or inconsistent with this presentation and if given or made, such information or representation must not be relied upon as having been authorized by any person. Failure to comply with this restriction may constitute a violation of the applicable securities laws. The distribution of this presentation in certain jurisdictions may be restricted by law. Accordingly, any persons in possession of this presentation should inform themselves about and observe any such restrictions. By reviewing this presentation, you agree to be bound by the foregoing limitations. By accessing this presentation, you accept that this disclaimer and any claims arising out of the use of the information from this presentation shall be governed by the laws of India and only the courts in Bangalore, India and no other courts, shall have jurisdiction over the same.” BOSCH LIMITED INVESTOR PRESENTATION Quarterly Results June 30, 2026 August 11, 2026"
+     }
+    ],
+    "n_returned": 5,
+    "query_terms": [
+     "investor",
+     "presentation"
+    ],
+    "note": "excerpt is a window of the chunk; known_at <= as_of"
+   }
+  },
+  {
+   "turn": 6,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-b3869bbb-1f30-4926-ae45-1cea91c54bee",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"not in data: no investor deck dated 2026-07-29 for Bosch Limited is available in the store.\", \"missing\": \"not in data — a deck dated 2026-07-29 (the question references \\\"BOSCHLTD deck page 31 2026-07-29\\\"); the nearest deck available is dated 2026-08-10.\", \"working\": \"Searched deck chunks for BOSCHLTD with date filter 2026-07-29 and query \\\"page 31\\\"/\\\"investor presentation\\\"; no rows returned for that date. Available decks include 2026-08-10 (page 2-3 excerpt shown).\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 102,
+   "secs": 2.49,
+   "usage": {
+    "prompt_tokens": 11766,
+    "completion_tokens": 243,
+    "total_tokens": 12009,
+    "prompt_tokens_details": {
+     "cached_tokens": 8640
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 59
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 3126,
+      "output": 243,
+      "reasoning": 59,
+      "cache_read": 8640,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 6,
+   "role": "submit",
+   "args": {
+    "answer": "not in data: no investor deck dated 2026-07-29 for Bosch Limited is available in the store.",
+    "missing": "not in data — a deck dated 2026-07-29 (the question references \"BOSCHLTD deck page 31 2026-07-29\"); the nearest deck available is dated 2026-08-10.",
+    "working": "Searched deck chunks for BOSCHLTD with date filter 2026-07-29 and query \"page 31\"/\"investor presentation\"; no rows returned for that date. Available decks include 2026-08-10 (page 2-3 excerpt shown)."
+   }
+  }
+ ]
+}

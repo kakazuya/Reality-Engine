@@ -1,0 +1,156 @@
+{
+ "qid": "Q39",
+ "mid": "MB1060#MI",
+ "parent_mid": "MB1060",
+ "symbol": "",
+ "entity_isin": "INE562X01013",
+ "question": "UNIVASTU futures are at a premium to spot into expiry. Is the basis widening, and what has that meant for the stock after expiry?",
+ "as_of": "2026-09-24",
+ "period": "2026-09 expiry",
+ "category": "lookup",
+ "source_bank": "reddit200",
+ "status": "final",
+ "error": null,
+ "answer": "UNIVASTU is not present in the pilot dataset, so no futures basis, spot, or post-expiry stock data is available.",
+ "working": "list_atoms(entity='UNIVASTU') returned 'unknown_entity'; pilot symbols do not include UNIVASTU.",
+ "missing": "not in data — entity 'UNIVASTU' (ISIN INE562X01013) is not a pilot symbol; futures basis widening and post-expiry stock impact cannot be assessed from the held data.",
+ "not_in_data": true,
+ "n_tool_calls": 1,
+ "tool_trace": [
+  {
+   "call": 2,
+   "tool": "list_atoms",
+   "args": {
+    "entity": "UNIVASTU"
+   },
+   "ok": false
+  }
+ ],
+ "n_beam_calls": 2,
+ "usage": {
+  "prompt_tokens": 2502,
+  "completion_tokens": 190
+ },
+ "beam_secs": 3.4,
+ "total_secs": 3.4,
+ "number_check": {
+  "numbers": [],
+  "supported": [],
+  "question_only": [],
+  "unsupported": [],
+  "flagged": [],
+  "ok": true,
+  "note": "flagged = not found in any tool result or calculator result (question_only are restated premises, not new claims)"
+ },
+ "pit_breach": [],
+ "calc_calls": [],
+ "transcript": [
+  {
+   "turn": 0,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-94d5ea42-5829-4875-8329-31ea63121f0a",
+     "type": "function",
+     "function": {
+      "name": "list_atoms",
+      "arguments": "{\"entity\": \"UNIVASTU\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 75,
+   "secs": 1.48,
+   "usage": {
+    "prompt_tokens": 1100,
+    "completion_tokens": 41,
+    "total_tokens": 1141,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 23
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 140,
+      "output": 41,
+      "reasoning": 23,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 0,
+   "role": "tool",
+   "tool": "list_atoms",
+   "args": {
+    "entity": "UNIVASTU"
+   },
+   "result": {
+    "error": {
+     "code": "unknown_entity",
+     "message": "entity 'UNIVASTU' is not a pilot symbol/ISIN. Pilot symbols: AGVENTURES, ALKEM, ANANDRATHI, ANURAS, APLAPOLLO, ASAHISONG, ASHIANA, ASHOKA, ATGL, AURUM, BAJFINANCE, BIGBLOC, BMW, BOSCHLTD, DALBHARAT, DDEVPLSTIK, DLF, DOLLAR, EDELWEISS, ESAFSFB, GMRAIRPORT, GRASIM, HEGAM, HINDALCO, HINDOILEXP, HINDPETRO, HINDUNILVR, HMVL, IDEA, INDHOTEL, JUBLINGREA, KALYANKJIL, KEC, KHADIM, NLCINDIA, PIDILITIND, POWERGRID, PRESTIGE, SAIL, SPECIALITY, STLTECH, SUNPHARMA, TATAELXSI, TEJASNET, TMPV, UBL, UFBL, UFLEX, URAVIDEF, WELSPUNLIV, WPIL"
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call-70d57d8f-d977-4823-a7c3-33ad32fc6e9d",
+     "type": "function",
+     "function": {
+      "name": "submit_answer",
+      "arguments": "{\"answer\": \"UNIVASTU is not present in the pilot dataset, so no futures basis, spot, or post-expiry stock data is available.\", \"missing\": \"not in data — entity 'UNIVASTU' (ISIN INE562X01013) is not a pilot symbol; futures basis widening and post-expiry stock impact cannot be assessed from the held data.\", \"working\": \"list_atoms(entity='UNIVASTU') returned 'unknown_entity'; pilot symbols do not include UNIVASTU.\"}"
+     }
+    }
+   ],
+   "reasoning_chars": 52,
+   "secs": 1.84,
+   "usage": {
+    "prompt_tokens": 1402,
+    "completion_tokens": 149,
+    "total_tokens": 1551,
+    "prompt_tokens_details": {
+     "cached_tokens": 960
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 22
+    },
+    "cost": 0,
+    "opencode": {
+     "billing_source": "go",
+     "list_cost": 0,
+     "allowance": 0,
+     "tokens": {
+      "input": 442,
+      "output": 149,
+      "reasoning": 22,
+      "cache_read": 960,
+      "cache_write_5m": 0,
+      "cache_write_1h": 0
+     }
+    }
+   }
+  },
+  {
+   "turn": 1,
+   "role": "submit",
+   "args": {
+    "answer": "UNIVASTU is not present in the pilot dataset, so no futures basis, spot, or post-expiry stock data is available.",
+    "missing": "not in data — entity 'UNIVASTU' (ISIN INE562X01013) is not a pilot symbol; futures basis widening and post-expiry stock impact cannot be assessed from the held data.",
+    "working": "list_atoms(entity='UNIVASTU') returned 'unknown_entity'; pilot symbols do not include UNIVASTU."
+   }
+  }
+ ]
+}
