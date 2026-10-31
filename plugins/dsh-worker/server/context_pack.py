@@ -37,7 +37,8 @@ Budget: reach your first useful edit within <= 25 tool calls. Read the pack once
 The pack is generated, so the repo wins if they disagree; note the drift in your report.
 Brief contract (when you write briefs): {template}
 Final report format: 1) what changed (files, one line each) 2) how verified (commands + exact pass counts)
-3) anything the controller must install/run outside the sandbox 4) open problems 5) tool calls before first edit / total.
+3) anything the controller must install/run outside the sandbox 4) open problems 5) tool calls before first edit / total
+6) Docs updated: every doc changed for this work, and each stale copy fixed or removed.
 """
 
 

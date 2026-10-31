@@ -49,6 +49,7 @@ python -m unittest discover -s reality_engine/tests -p "test_*.py"
 3. Anything the controller must install/run outside the worker sandbox.
 4. Open problems.
 5. Tool calls before first edit / total.
+6. Docs updated: every doc changed for this work, and each stale copy fixed or removed. A branch without this is not merged.
 
 ## Out of scope
 *What the worker must not do, even if it looks related. Naming it prevents scope creep.*

@@ -36,6 +36,8 @@ DATA_ROOT = Path(
 CACHE_RELATIVE = Path("plugins") / "reality-data" / "server" / "catalog_cache.json"
 DESCRIPTIONS_RELATIVE = Path("plugins") / "reality-data" / "catalog_descriptions.yaml"
 STATE_RELATIVE = Path("tasks") / "STATE.md"
+STATE_MAX_CHARS = 8000
+DECISION_LOG = Path(r"D:\RealityEngine\plans\DECISION_LOG.md")
 MAX_TOKENS = 20_000
 
 DB_ORDER = [
@@ -669,32 +671,25 @@ def _secret_marker(text: str) -> bool:
 
 
 def _recent_section(root: Path, data_root: Path) -> str:
-    lines = ["## 7. Recent decisions", ""]
-    decisions = data_root / "hotline" / "decisions.md"
-    entries: list[str] = []
-    if decisions.is_file():
-        for line in decisions.read_text(encoding="utf-8", errors="replace").splitlines():
-            stripped = line.strip()
-            if stripped.startswith("- "):
-                entries.append(_clip(stripped, 240))
-    if entries:
-        lines += ["Last 30 one-line entries from `reality_engine/data/hotline/decisions.md`:", ""]
-        lines += entries[-30:]
-    else:
-        lines.append("`reality_engine/data/hotline/decisions.md` not found or empty.")
+    lines = ["## 7. Current state and recent decisions", ""]
     state = root / STATE_RELATIVE
     if state.is_file():
-        text = state.read_text(encoding="utf-8", errors="replace")
-        sections = re.split(r"(?m)^## ", text)
-        tail = [section for section in sections[1:] if section.strip()][-2:]
-        if tail:
-            lines += ["", "Last two `## ` sections of `tasks/STATE.md` (truncated):", ""]
-            for section in tail:
-                heading, _, body = section.partition("\n")
-                body = _safe(body.strip())
-                if len(body) > 2200:
-                    body = body[:2200].rstrip() + "\n… (truncated; read tasks/STATE.md)"
-                lines += [f"### {heading.strip()}", "", body, ""]
+        body = _safe(state.read_text(encoding="utf-8", errors="replace").strip())
+        body = re.sub(r"(?m)^#{1,2} ", "### ", body)
+        if len(body) > STATE_MAX_CHARS:
+            body = body[:STATE_MAX_CHARS].rstrip() + "\n… (truncated; read tasks/STATE.md)"
+        lines += ["`tasks/STATE.md`, the live state:", "", body, ""]
+    entries: list[str] = []
+    if DECISION_LOG.is_file():
+        for line in DECISION_LOG.read_text(encoding="utf-8", errors="replace").splitlines():
+            stripped = line.strip()
+            if stripped.startswith("- "):
+                entries.append(_clip(_safe(stripped), 240))
+    if entries:
+        lines += [f"Last 15 entries of `{DECISION_LOG}`:", ""]
+        lines += entries[-15:]
+    else:
+        lines.append(f"`{DECISION_LOG}` not found or empty.")
     return "\n".join(lines).rstrip()
 
 

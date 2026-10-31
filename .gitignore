@@ -129,6 +129,7 @@ reality_engine/data/*.pre_*
 reality_engine/data/ingestion_queue.lock
 data_pack_*/
 archive/
+!tasks/archive/
 *.xz
 *.parquet
 audit_data.*

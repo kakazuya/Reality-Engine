@@ -113,6 +113,17 @@ PROGRESS_NOTES_INSTRUCTION = (
     "variable): what's done, what's next, blockers. Do not stop or wait after "
     "writing it."
 )
+# Appended to every worker brief, MSI and HP (Shivam, 2026-10-31: strict rule).
+DOCS_INSTRUCTION = (
+    "Standing documentation rule (Shivam, strict): any work you touch goes into "
+    "the documentation in the same change. Update every doc that describes what "
+    "you changed: numbers, status, commands, paths. Search for the old value or "
+    "name and fix or remove each stale copy; do not leave an old copy beside a "
+    "new one. Add the current fact to the matching section of tasks/STATE.md. "
+    "Never take a number or status from a doc without checking it against the "
+    "repo or the stores; if a doc is wrong, fix it and say so. End your final "
+    "report with 'Docs updated:' listing each file, or the branch is not merged."
+)
 # Appended to every worker brief (Shivam, 2026-10-30: all dsh workers use
 # code-intel, the read tools and the reality-data tools).  The headless dsh
 # profile loads both MCP servers; run_deepseek_harness points code-intel at the
@@ -1325,7 +1336,7 @@ class Manager:
             # Standing instruction, not a question: the worker must never stop
             # or answer it, only append a progress line.
             text = (f"{text.rstrip()}\n\n{CODE_INTEL_INSTRUCTION}\n\n"
-                    f"{PROGRESS_NOTES_INSTRUCTION}\n")
+                    f"{PROGRESS_NOTES_INSTRUCTION}\n\n{DOCS_INSTRUCTION}\n")
             atomic_write_text(job_dir / "brief.md", text)
             baseline = (
                 gitutil.snapshot(

@@ -347,10 +347,11 @@ def mcp_patch(home: str, paths: dict[str, str]) -> str:
 
 
 def _standing_instructions() -> str:
-    """The same two standing blocks the dsh-worker appends to every MSI brief."""
+    """The same standing blocks the dsh-worker appends to every MSI brief."""
     sys.path.insert(0, str(REPO / "plugins" / "dsh-worker" / "server"))
     import core  # noqa: PLC0415 - local plugin module, path inserted above
-    return f"{core.CODE_INTEL_INSTRUCTION}\n\n{core.PROGRESS_NOTES_INSTRUCTION}\n"
+    return (f"{core.CODE_INTEL_INSTRUCTION}\n\n{core.PROGRESS_NOTES_INSTRUCTION}\n\n"
+            f"{core.DOCS_INSTRUCTION}\n")
 
 
 def compose_brief(text: str, *, job_id: str, paths: dict[str, str],
