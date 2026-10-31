@@ -2674,6 +2674,19 @@
    "shape": "one sentence + the numbers behind it",
    "template": "fit over the window: slope, number of turns, share of periods up",
    "default_atom": "price.close"
+  },
+  {
+   "op_id": "near_high",
+   "label": "sessions within N% of their then-current 52-week high, and what followed",
+   "params": [
+    "atom",
+    "dims",
+    "window",
+    "forward"
+   ],
+   "shape": "one count or share + the qualifying sessions and their full forward-return distribution",
+   "template": "for each session d: h52(d)=MAX(basis rows dated d-364d..d); dist=(h52-close)/h52*100; count or share of sessions with dist<=threshold; forward return per qualifying session, endpoint <= as_of",
+   "default_atom": "price.high"
   }
  ],
  "lexicon": [

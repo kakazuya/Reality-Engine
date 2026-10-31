@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import statistics
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
@@ -1259,6 +1260,197 @@ def _op_event_window_return(part, values, ctx):
                            "end": end})
 
 
+def _shift_day(day: str, days: int) -> str | None:
+    from datetime import date, timedelta
+    try:
+        return (date.fromisoformat(day[:10]) + timedelta(days=days)).isoformat()
+    except ValueError:
+        return None
+
+
+def _daily_series(rows: Sequence[Mapping[str, Any]] | None,
+                  prefer: str | None = None) -> dict[str, float]:
+    """``{session: value}`` from fact rows; rows are date-ordered, so the last one wins.
+
+    ``prefer`` names the dim reading to take when a session has several rows (the store's
+    ``price.high`` carries NSE and BSE): NSE wins, BSE is the fallback.  Without a tie,
+    the later ``known_at`` wins as the row order already puts it last.
+    """
+    out: dict[str, float] = {}
+    rank_of: dict[str, int] = {}
+    for row in rows or []:
+        day = _day(row.get("period_end") or row.get("period_start"))
+        number = _num(row.get("value"))
+        if not day or number is None:
+            continue
+        rank = 0 if prefer and prefer in str(row.get("dims") or "") else 1
+        if day not in out or rank <= rank_of[day]:
+            out[day] = number
+            rank_of[day] = rank
+    return out
+
+
+def _execute_near_high(conn: Any, part: Part, as_of: str, lo: str | None, hi: str | None,
+                       entity: str | None, window: dict[str, Any]) -> Result:
+    """Sessions within N% of their *then-current* 52-week high, and what followed.
+
+    The high for session ``d`` is the maximum of the basis series over the rows dated
+    ``d - lookback`` .. ``d`` only: a later row can never change an earlier session, and
+    the ``known_at`` cut at ``as_of`` is done in SQL.  The answer is either the count or
+    the share of the window's sessions, plus every qualifying session and their forward
+    returns — losers included, and an incomplete forward window counted separately and
+    named, never dropped.  Raw basis: the store holds no adjusted series, so a share-count
+    change (split/bonus) inside the 52-week trail is named in the answer, never compared
+    across silently.  A demerger does not change ``price.shares_out`` and is therefore not
+    detectable from this store; that is the known gap this cheap test found.
+    """
+    threshold = _num(part.dims.get("threshold"))
+    if threshold is None:
+        raise _Missing("near_high part names no threshold (dims.threshold)",
+                       "the decomposer must emit the 'within N%' threshold")
+    lookback = int(_num(part.dims.get("lookback_days")) or 364)
+    kind = str(part.dims.get("measure") or "share").lower()
+    forward = int(_num(part.dims.get("forward")) or 0)
+    prior_only = bool(part.dims.get("prior_only"))
+    if conn is None:
+        raise _Missing("no database connection was supplied",
+                       "pass the pilot store connection")
+    if not entity:
+        raise _Missing("the ask names no single entity for the study",
+                       "resolve the named company PIT (§C.2) before a study part")
+    if not hi:
+        raise _Missing("the ask names no window for the study",
+                       "the decomposer must emit the study window")
+    if not lo:
+        lo = _shift_day(hi, -lookback) or hi
+    trail_start = _shift_day(lo, -lookback) or lo
+    high_rows = fetch_fact(conn, "price.high", as_of, trail_start, as_of, entity)
+    close_rows = fetch_fact(conn, "price.close", as_of, trail_start, as_of, entity)
+    highs = _daily_series(high_rows, "NSE")
+    closes = _daily_series(close_rows)
+    if not closes:
+        raise _Empty()
+    sessions = [day for day in sorted(closes) if lo <= day <= hi]
+    if not sessions:
+        raise _Empty()
+    need_from = _shift_day(sessions[0], -lookback) or sessions[0]
+    basis, series, basis_note = "price.high", highs, ""
+    if not highs or min(highs) > need_from:
+        earliest = min(highs) if highs else "absent entirely"
+        series, basis = closes, "price.close"
+        basis_note = (f"the NSE intraday-high series has no row before {need_from} "
+                      f"(its earliest is {earliest}), so the 52-week high is the max of "
+                      f"raw closes")
+        if min(closes) > need_from:
+            raise _Missing(
+                f"{entity} has no {lookback} days of daily prices before {sessions[0]} "
+                f"(a 52-week study needs the full trail): the store's close series "
+                f"starts {min(closes)}",
+                f"hold {lookback} days of daily sessions before the study window")
+    sdates = sorted(series)
+    svals = [series[day] for day in sdates]
+    # "prior sessions" are the sessions strictly before the as_of session; when as_of is
+    # not itself a session, the last trading session is a prior one and stays in.
+    evaluated = [day for day in sessions if day < hi] if prior_only else sessions
+    if not evaluated:
+        raise _Missing("the study window holds no session before the reference session",
+                       "widen the window so it holds at least two sessions")
+    qualifying: list[dict[str, Any]] = []
+    skipped = 0
+    for day in evaluated:
+        left = bisect_left(sdates, _shift_day(day, -lookback) or day)
+        right = bisect_right(sdates, day)
+        close = closes.get(day)
+        if right <= left or close is None:
+            skipped += 1
+            continue
+        high_52w = max(svals[left:right])
+        if not high_52w:
+            skipped += 1
+            continue
+        distance = 100.0 * (high_52w - close) / high_52w
+        if distance <= threshold + 1e-9:
+            qualifying.append({"period": day, "close": round(close, 4),
+                               "high_52w": round(high_52w, 4),
+                               "distance_pct": round(distance, 4),
+                               "forward_pct": None, "forward_end": None,
+                               "forward_status": ""})
+    forward_stats: dict[str, Any] = {}
+    if forward and qualifying:
+        order = sorted(closes)
+        positions = {day: index for index, day in enumerate(order)}
+        complete: list[float] = []
+        incomplete: list[str] = []
+        for row in qualifying:
+            index = positions[row["period"]] + forward
+            base = closes[row["period"]]
+            if index < len(order) and base:
+                end_day = order[index]
+                row["forward_pct"] = round(100.0 * (closes[end_day] - base) / base, 4)
+                row["forward_end"] = end_day
+                row["forward_status"] = "complete"
+                complete.append(row["forward_pct"])
+            else:
+                row["forward_status"] = f"incomplete: no session +{forward} on or before {as_of}"
+                incomplete.append(row["period"])
+        forward_stats = {"forward_sessions": forward,
+                         "forward_complete": len(complete),
+                         "forward_incomplete": len(incomplete),
+                         "incomplete_sessions": incomplete,
+                         "winners": sum(1 for value in complete if value > 0),
+                         "losers": sum(1 for value in complete if value < 0),
+                         "flat": sum(1 for value in complete if value == 0)}
+        if complete:
+            forward_stats.update({"mean_pct": round(statistics.fmean(complete), 4),
+                                  "median_pct": round(statistics.median(complete), 4),
+                                  "min_pct": min(complete), "max_pct": max(complete)})
+    shares = _daily_series(fetch_fact(conn, "price.shares_out", as_of, trail_start, hi, entity))
+    share_days = sorted(shares)
+    actions = [{"date": later, "shares_from": shares[earlier],
+                "shares_to": shares[later],
+                "ratio": round(shares[later] / shares[earlier], 6)}
+               for earlier, later in zip(share_days, share_days[1:])
+               if shares[earlier] and abs(shares[later] / shares[earlier] - 1.0) > 0.002]
+    share_of = round(100.0 * len(qualifying) / len(evaluated), 4)
+    value, unit = ((len(qualifying), "sessions") if kind != "share"
+                   else (share_of, "%"))
+    exchange = ("NSE-first high (BSE fallback)" if basis == "price.high"
+                else "NSE-first close (BSE fallback)")
+    high_kind = "intraday high" if basis == "price.high" else "close"
+    assumed = (f"raw basis (no split/bonus/dividend adjustment in this store); 52-week "
+               f"high = the highest {high_kind} in the {lookback} days ending on each "
+               f"session, from rows dated on or before it; window {lo}..{hi} "
+               f"({len(sessions)} sessions"
+               f"{', the latest excluded: a prior-session count' if prior_only else ''})"
+               f"; threshold within {threshold:g}% of that high; exchange {exchange}"
+               + (f"; {basis_note}" if basis_note else "")
+               + (f"; forward return = {forward} sessions from each qualifying close"
+                  + (" (declared default: the ask says only what followed)"
+                     if part.dims.get("forward_default") else "")
+                  if forward else ""))
+    if actions:
+        assumed += ("; corporate action inside the 52-week trail (rows used for the "
+                    "high), named: "
+                    + ", ".join(f"{row['date']} shares {row['shares_from']:,.0f} -> "
+                                f"{row['shares_to']:,.0f}" for row in actions)
+                    + " (raw prices across it are not adjusted)")
+    else:
+        assumed += "; no share-count change (split/bonus) inside the 52-week trail"
+    known = max([(_day(row.get("known_at")) or "") for row in
+                 (high_rows or []) + (close_rows or [])] or [""]) or as_of
+    numbers = {"threshold_pct": threshold, "window_from": lo, "window_to": hi,
+               "lookback_days": lookback, "basis": basis, "exchange": exchange,
+               "n_sessions": len(evaluated), "n_qualifying": len(qualifying),
+               "share_pct": share_of, "skipped_no_trail": skipped,
+               "corporate_actions": actions or "none"}
+    numbers.update(forward_stats)
+    return Result(part_index=part.index, atom=part.atom, formula=part.formula,
+                  dims=part.dims, window=window, operator=part.operator,
+                  shape="scalar", answer_type="measured", value=value, unit=unit,
+                  values=qualifying, period=hi, isin=entity, source_ref=basis,
+                  known_at=known, assumption=assumed, numbers=numbers)
+
+
 #: one-value operators: with dims value "each" they must show every reading.
 SCALAR_ONE = {"value_at", "first_visible", "last_visible", "max_with_date",
               "min_with_date"}
@@ -1800,6 +1992,8 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
         return _execute_estimate(conn, p, as_of, lo, hi, entity, window)
     if p.atom in ("claim.claim", "text.passage") or p.shape == "passage":
         return _execute_claim(conn, p, as_of, entity, window)
+    if p.operator == "near_high":
+        return _execute_near_high(conn, p, as_of, lo, hi, entity, window)
     if p.formula:
         return _execute_formula(conn, p, as_of, lo, hi, entity, window, registry)
     atom = str(p.atom or "")
