@@ -101,6 +101,14 @@ class ClassifyTests(Case):
         self.assertEqual(ph.fiscal_year("2023-07-10T10:00:00", "material_filing"), 2024)
 
 
+class UniverseTests(Case):
+    def test_custom_universe_file(self):
+        path = self.tmp / "universe.csv"
+        path.write_text("isin,symbol\nINE000000001,AAA\nINE000000002,BBB\n", encoding="utf-8")
+        rows = ph.load_universe(path)
+        self.assertEqual([r["symbol"] for r in rows], ["AAA", "BBB"])
+
+
 class DownloadTests(Case):
     def test_pdf_ok(self):
         row = self.meta()

@@ -1,5 +1,11 @@
 # Pilot-60 document history coverage (2019-01-01 .. 2024-03-31 filing window)
 
+> 2026-11-01 note: the manifest now also holds APOLLOHOSP, KIMS and OLAELEC
+> (`tasks/pilot60/UNIVERSE_ADD3.csv`). Their per-FY matrices are in
+> `DOC_COVERAGE_ADD3_HISTORY_2026-11-01.md` and `DOC_COVERAGE_ADD3_FY25PLUS_2026-11-01.md`.
+> The 60-name cells below are unchanged, but the manifest-wide status totals are
+> no longer the whole manifest — use the ADD3 matrices for the 63-name total.
+
 Generated 2026-10-31T02:28:26 from `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\pilot\pilot60_history_manifest.db`.
 
 FY = the fiscal year the filing belongs to (FY ends in March). Annual reports use the
