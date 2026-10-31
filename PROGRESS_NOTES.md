@@ -1,0 +1,4 @@
+# Progress notes - premise audit and Shivam sheets (31 Oct 2026)
+
+- 31 Oct 2026 ~T+2h - premise audit module written (`reality_engine/pilot/premise_audit.py`), 15 offline tests pass; full audit run: 2,098 rows, 219 false, 1 holds (SAIL#MS), 1,878 cannot_check. Price premises: 57 rows, 54 contradicted, 2 not stored. Identical-to-parent: exactly 180 of 1,551, 117 of them naming the parent. Next: Sheet A polish, Sheet B (20 set questions over the 60), scope options sizing.
+- 31 Oct 2026 ~T+3h - Sheet A generated (30 flagged rows, seed 20261031, 3 per reason + seeded fill from false rows). Sheet B written (20 set/ranking/theme parents, seed 20261031): 7 usable scoped answers, 2 proxies, 11 with no 60-name answer. SCOPE_OPTIONS written: 945 of 1,073 parents name ≥1 outside company, 450 distinct ISINs, 12.6k docs / ~1.05M pages, ~7-10 h single-threaded chunking, 4-6 GB. No blockers. Remaining: final report.
