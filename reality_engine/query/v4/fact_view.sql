@@ -28,6 +28,7 @@
 --
 -- atom -> pilot source (the full-scale source is the registry's `source` field):
 --   price.close / mcap / shares_out  market_state.company_state_daily
+--                                    (close = raw_close, the TRADED close; see below)
 --   price.open .. traded_value       market_state_b.mkt_nse_full_daily (NSE, symbol->ISIN)
 --   price.band                       market_state.price_band_daily
 --   fin.revenue .. interest_expense  facts_pilot.company_metric_series (by metric_key)
@@ -64,13 +65,19 @@ CREATE TABLE fact(
 
 -- ---------------------------------------------------------------------------
 -- market: price.close / mcap / shares_out  (T1 panel: NSE close, BSE fallback)
+-- price.close is the TRADED close: company_state_daily.raw_close (build_t1.py).
+-- company_state_daily.close is px_daily.adj_close, adjusted for capital actions that
+-- may come AFTER the date; loading it here would put later knowledge into a level as
+-- of the date and mix bases with price.open/high/low.  A return is computed over the
+-- adjusted series at query time (execute.price_basis), never by storing it as the
+-- close.  The basis is declared in dims so a reader can name it.
 -- ---------------------------------------------------------------------------
 INSERT INTO fact
-SELECT s.isin, 'price.close', '', s.date, s.date, s.close, 'INR', s.known_at,
+SELECT s.isin, 'price.close', 'basis=raw', s.date, s.date, s.raw_close, 'INR', s.known_at,
        'market_state.company_state_daily'
 FROM market_state.company_state_daily s
 JOIN pilot_universe u ON u.isin = s.isin
-WHERE s.close IS NOT NULL;
+WHERE s.raw_close IS NOT NULL;
 
 INSERT INTO fact
 SELECT s.isin, 'price.mcap', '', s.date, s.date, s.mcap_cr, 'INR_CRORE', s.known_at,

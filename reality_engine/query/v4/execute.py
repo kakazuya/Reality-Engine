@@ -934,6 +934,17 @@ def _delta(part, values, ctx) -> tuple[float | None, dict[str, Any], dict[str, A
     numbered = [row for row in values if _num(row.get("value")) is not None]
     if len(numbered) < 2:
         raise _Empty()
+    # A difference over rows of different entities is not a change: a macro series atom
+    # read for a company mixes every underlying (MB0634: 2.33 in 2007 to 4,021 in 2026
+    # spanning zinc and coal), and a cross-entity close range compares two companies.
+    owners = {str(row.get("entity_id")) for row in numbered if row.get("entity_id")}
+    if len(owners) > 1:
+        shown = sorted(owners)
+        raise _Missing(
+            f"a {part.operator} over {len(owners)} entities would compare "
+            f"{shown[0]} with {shown[-1]} as if they were one series",
+            f"resolve one entity/series before a {part.operator} (the ask names "
+            f"{ctx.get('entity') or 'none'})")
     first, last = numbered[0], numbered[-1]
     return (_num(last.get("value")) - _num(first.get("value"))), first, last
 
@@ -1056,6 +1067,11 @@ def _op_exists(part, values, ctx):
                   numbers={"rows_after_pit": len(values)})
 
 
+#: a list answer must state its items; a series with thousands of distinct values is
+#: not a list, and printing one "—" as the value is not a measurement (MB0525).
+LIST_DISTINCT_MAX = 50
+
+
 def _op_list_distinct(part, values, ctx):
     key = str(part.dims.get("distinct") or "value")
     if key in ("entity", "entities", "entity_id"):
@@ -1067,6 +1083,15 @@ def _op_list_distinct(part, values, ctx):
     else:
         items = sorted({_num(row.get("value")) for row in values
                         if _num(row.get("value")) is not None})
+        if len(items) > LIST_DISTINCT_MAX:
+            raise _Missing(
+                f"list_distinct collected {len(items):,} distinct {key} values over "
+                f"{len(values):,} rows: that is a series, not a value that can be stated "
+                f"in one answer",
+                "ask for the series (operator series) or name a single period/entity so "
+                "the distinct set is bounded")
+    if not items:
+        raise _Empty()
     latest = _latest(values) or {}
     return Result(part_index=part.index, atom=part.atom, formula=part.formula,
                   dims=part.dims, window=ctx["window"], operator=part.operator,
@@ -1378,13 +1403,23 @@ def _execute_near_high(conn: Any, part: Part, as_of: str, lo: str | None, hi: st
     if not sessions:
         raise _Empty()
     need_from = _shift_day(sessions[0], -lookback) or sessions[0]
+    store_close_basis = close_basis(conn, close_rows)
+    adjusted_closes = store_close_basis == "adjusted"
     basis, series, basis_note = "price.high", highs, ""
-    if not highs or min(highs) > need_from:
+    if adjusted_closes and highs:
+        # price.high is a raw intraday high and the stored close is the build's adjusted
+        # series: dividing one by the other mixes bases (POWERGRID 2023-09-11: close
+        # 198.375 vs a 265.00 high).  One basis per study: the adjusted close.
+        series, basis = closes, "price.close"
+        basis_note = ("the stored close is the adjusted series while price.high is raw; "
+                      "the study uses one basis (the adjusted close) and its 52-week high "
+                      "is the highest adjusted close")
+    elif not highs or min(highs) > need_from:
         earliest = min(highs) if highs else "absent entirely"
         series, basis = closes, "price.close"
         basis_note = (f"the NSE intraday-high series has no row before {need_from} "
                       f"(its earliest is {earliest}), so the 52-week high is the max of "
-                      f"raw closes")
+                      f"{RAW_CLOSE if store_close_basis == 'raw' else 'stored'} closes")
         if min(closes) > need_from:
             raise _Missing(
                 f"{entity} has no {lookback} days of daily prices before {sessions[0]} "
@@ -1461,7 +1496,15 @@ def _execute_near_high(conn: Any, part: Part, as_of: str, lo: str | None, hi: st
     exchange = ("NSE-first high (BSE fallback)" if basis == "price.high"
                 else "NSE-first close (BSE fallback)")
     high_kind = "intraday high" if basis == "price.high" else "close"
-    assumed = (f"raw basis (no split/bonus/dividend adjustment in this store); 52-week "
+    if adjusted_closes:
+        basis_text = (f"basis: {ADJUSTED_CLOSE}; it is not a traded price: an action "
+                      f"after the date is already reflected")
+    elif store_close_basis == "raw":
+        basis_text = f"basis: {RAW_CLOSE} (price.close); splits/bonuses are not adjusted"
+    else:
+        basis_text = ("basis: not stated by the store; the close is not labelled raw and "
+                      "no adjustment is assumed")
+    assumed = (f"{basis_text}; 52-week "
                f"high = the highest {high_kind} in the {lookback} days ending on each "
                f"session, from rows dated on or before it; window {lo}..{hi} "
                f"({len(sessions)} sessions"
@@ -1473,17 +1516,22 @@ def _execute_near_high(conn: Any, part: Part, as_of: str, lo: str | None, hi: st
                      if part.dims.get("forward_default") else "")
                   if forward else ""))
     if actions:
-        assumed += ("; corporate action inside the 52-week trail (rows used for the "
-                    "high), named: "
-                    + ", ".join(f"{row['date']} shares {row['shares_from']:,.0f} -> "
-                                f"{row['shares_to']:,.0f}" for row in actions)
-                    + " (raw prices across it are not adjusted)")
+        assumed += (("; corporate action inside the 52-week trail (already applied to "
+                     "the adjusted closes), named: ")
+                    if adjusted_closes else
+                    ("; corporate action inside the 52-week trail (rows used for the "
+                     "high), named: "))
+        assumed += (", ".join(f"{row['date']} shares {row['shares_from']:,.0f} -> "
+                              f"{row['shares_to']:,.0f}" for row in actions))
+        if not adjusted_closes:
+            assumed += " (raw prices across it are not adjusted)"
     else:
         assumed += "; no share-count change (split/bonus) inside the 52-week trail"
     known = max([(_day(row.get("known_at")) or "") for row in
                  (high_rows or []) + (close_rows or [])] or [""]) or as_of
     numbers = {"threshold_pct": threshold, "window_from": lo, "window_to": hi,
                "lookback_days": lookback, "basis": basis, "exchange": exchange,
+               "close_basis": store_close_basis or "unstated",
                "n_sessions": len(evaluated), "n_qualifying": len(qualifying),
                "share_pct": share_of, "skipped_no_trail": skipped,
                "corporate_actions": actions or "none"}
@@ -1633,6 +1681,47 @@ FORMULA_UNIT = {"f.margin": "%", "f.dso": "days", "f.working_capital_cycle": "da
                 "f.excess_return": "%"}
 
 
+def _ratio_inputs(dims: Mapping[str, Any]) -> list[str]:
+    """The two atoms the requested ratio actually divides (never the whole `over`)."""
+    kind = str(dims.get("ratio_kind") or "de")
+    try:
+        return {"de": ["fin.total_debt", "fin.book_equity"],
+                "pb": ["price.mcap", "fin.book_equity"],
+                "pe": ["price.mcap", "fin.pat"],
+                "icr": ["fin.ebitda", "fin.interest_expense"]}[kind]
+    except KeyError:
+        raise KeyError(f"ratio_kind {kind} needs a peer/EV store this executor does not "
+                       f"read") from None
+
+
+#: The atoms each formula body reads, in the order it reads them.  A derived value
+#: must name the inputs it really used: the registry's ``over`` is the union over
+#: every selector, not the inputs of one answer (MB0064#L: a P/B must not cite the
+#: debt source).  A missing entry here is a typing bug, not a fallback.
+FORMULA_INPUTS = {
+    "f.margin": lambda d: ["fin.ebitda" if str(d.get("margin_kind") or "ebitda") == "ebitda"
+                           else "fin.pat", "fin.revenue"],
+    "f.ratio": _ratio_inputs,
+    "f.dso": lambda d: ["fin.receivables", "fin.revenue"],
+    "f.working_capital_cycle": lambda d: ["fin.receivables", "fin.inventory",
+                                          "fin.payables", "fin.revenue"],
+    "f.share_of": lambda d: [str(d.get("part_atom") or "fin.segment_value"), "fin.revenue"],
+    "f.net": lambda d: [str(atom) for atom in (d.get("atoms") or [])],
+    "f.per_rupee_revenue": lambda d: ["fin.capex", "fin.revenue"],
+    "f.book_value_per_share": lambda d: ["fin.book_equity", "price.shares_out"],
+    "f.gap_pct": lambda d: ["price.open", "price.close"],
+    "f.drawdown": lambda d: ["price.close"],
+    "f.cagr": lambda d: ["price.close"],
+    "f.excess_return": lambda d: ["price.close"],
+    "f.spread": lambda d: [str(d.get("output_atom") or ""), str(d.get("input_atom") or "")],
+}
+
+
+def formula_inputs(fid: str, dims: Mapping[str, Any]) -> list[str]:
+    """The atoms a formula answer used; a selector the formula cannot run raises."""
+    return [atom for atom in FORMULA_INPUTS[fid](dims) if atom]
+
+
 FORMULA_EXTRA_ATOMS = {"f.ratio": ["fin.interest_expense"], "f.cagr": [], "f.excess_return": []}
 
 
@@ -1640,15 +1729,78 @@ FORMULA_EXTRA_ATOMS = {"f.ratio": ["fin.interest_expense"], "f.cagr": [], "f.exc
 # price basis: a close is not always raw, and a split inside a window is not a return
 # ---------------------------------------------------------------------------
 RAW_CLOSE = "raw close"
-#: fact_view.sql builds price.close from market_state.company_state_daily.close, which
-#: build_t1.py fills from px_daily.adj_close: split/bonus/consolidation-adjusted, and
-#: NOT dividend-adjusted (the total-return series is a different column).
+#: fact_view.sql must build price.close from market_state.company_state_daily.raw_close:
+#: the traded close.  build_t1.py keeps the split/bonus/consolidation-adjusted series in
+#: company_state_daily.close (from px_daily.adj_close, NOT dividend-adjusted); a build
+#: that still loads that column says so in the answer instead of calling it raw.
 ADJUSTED_CLOSE = "adjusted close (split/bonus/consolidation-adjusted at build)"
+#: The basis a close row declares in its dims (fact_view.sql writes basis=raw for
+#: price.close).  A store built before that dim carries none and is classified by the
+#: panel below, conservatively.
+CLOSE_BASIS_DIM = "basis"
 #: A one-session fall this large is action-shaped (a bonus/split/consolidation or a
 #: corporate restructuring); a smaller move is ordinary price risk.
 SPLIT_JUMP_PCT = 30.0
 #: the share-count factors a bonus/split writes: 1:3, 1:2, 1:1, 2:1, a 5:1 split, …
 CLEAN_SHARE_RATIOS = (1.25, 4 / 3, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 20.0)
+
+
+def _atom_held(conn: Any, atom: str) -> bool:
+    """True when the fact store carries at least one row of ``atom``."""
+    if conn is None:
+        return False
+    try:
+        column = fact_atom_column(conn)
+        return conn.execute(f"SELECT 1 FROM fact WHERE {column} = ? LIMIT 1",
+                            (atom,)).fetchone() is not None
+    except Exception:  # noqa: BLE001 - an unreadable store is not evidence of a row
+        return False
+
+
+def _close_reading(row: Mapping[str, Any]) -> str:
+    return str(row_dims(row).get(CLOSE_BASIS_DIM) or "").lower()
+
+
+def close_basis(conn: Any, rows: Sequence[Mapping[str, Any]] | None) -> str:
+    """How this store's ``price.close`` is adjusted: ``raw``, ``adjusted`` or ``""``.
+
+    A row's own ``basis`` dim wins: fact_view.sql writes ``basis=raw`` for
+    price.close and the build re-reads ``company_state_daily.raw_close``.  A store
+    built before that dim carries none; a T1 panel there is ``build_t1.py``'s
+    ``px_daily.adj_close`` series, so it is classified adjusted, never raw.  A store
+    with neither a dim nor a T1 panel states no basis and is never called raw.
+    """
+    readings = {_close_reading(row) for row in rows or [] if _close_reading(row)}
+    if len(readings) == 1:
+        return readings.pop()
+    if readings:
+        return ""                     # a mixed series cannot be named one basis
+    if _atom_held(conn, "price.shares_out") and _atom_held(conn, "price.mcap"):
+        return "adjusted"
+    return ""
+
+
+def _close_basis_note(basis: str) -> str:
+    """The sentence a close level or return carries about its own basis."""
+    if basis == "raw":
+        return (f"{RAW_CLOSE}: price.close is the traded close, not adjusted for "
+                f"corporate actions after the date")
+    if basis == "adjusted":
+        return (f"{ADJUSTED_CLOSE}; it is not a traded price: an action after the date "
+                f"is already reflected, which a level as of that date must not use")
+    return ("close basis not stated by the store; the close is not labelled raw and must "
+            "not be read as a traded price")
+
+
+def _with_close_basis(result: Result, conn: Any, rows: Sequence[Mapping[str, Any]]) -> Result:
+    """Name a price.close level's basis (a level never passes as a returned number)."""
+    if result.answer_type != "measured":
+        return result
+    basis = close_basis(conn, rows)
+    result.numbers = dict(result.numbers or {}, close_basis=basis or "unstated")
+    if not result.assumption:
+        result.assumption = _close_basis_note(basis)
+    return result
 
 
 @dataclass
@@ -1771,12 +1923,11 @@ def price_basis(conn: Any, as_of: str, lo: str | None, hi: str | None,
                 total_return: bool = False) -> PriceBasis | None:
     """The close series for a return, its basis, and any action it cannot settle.
 
-    The v4 pilot's ``price.close`` is ``market_state.company_state_daily.close``,
-    which ``build_t1.py`` fills from ``px_daily.adj_close``: splits, bonuses and
-    consolidations are already applied and dividends are not.  A store that also
-    carries the T1 ``price.mcap``/``price.shares_out`` rows is that panel and is
-    therefore on the adjusted basis.  A bare close series (tests, older builds) is
-    raw until a held step proves otherwise.
+    ``price.close`` is the store's close series; fact_view.sql loads it from
+    ``company_state_daily.raw_close`` and states ``basis=raw``, so a return is the one
+    place the adjustment belongs.  A store built before that dim is the T1 panel whose
+    price.close was ``px_daily.adj_close`` (splits, bonuses and consolidations applied,
+    dividends not); it is named adjusted, never raw.  A row's own ``basis`` dim wins.
 
     ``price.shares_out`` is the held corporate-action evidence: a persisting step
     (x2, x5, …) is the ratio and its date is the ex-date.  A close that breaks by
@@ -1792,6 +1943,8 @@ def price_basis(conn: Any, as_of: str, lo: str | None, hi: str | None,
     if close_rows is None:
         return None
     close_rows = _close_readings(close_rows, want_adjusted)
+    stated = {_close_reading(row) for row in close_rows if _close_reading(row)}
+    explicit = len(stated) == 1      # every chosen row states the same basis
     source = {_day(row.get("period_end")): row for row in close_rows
               if _day(row.get("period_end"))}
     prices = sorted((day, _num(row.get("value"))) for day, row in source.items()
@@ -1843,10 +1996,13 @@ def price_basis(conn: Any, as_of: str, lo: str | None, hi: str | None,
                       for day, value in series]
             applied = True
 
-    # A T1 panel is adjusted at build time; a bare close series is raw.  A held raw
-    # break means the build missed that action, and it has just been adjusted here.
+    # Evidence order: the row's own basis dim, a held step that did NOT break the
+    # close (build-adjusted), a raw break adjusted here, then the T1 panel fallback
+    # for a store that predates the basis dim.
     has_panel = bool(shares) and bool(mcaps)
-    adjusted = has_panel or applied or any(not step.get("raw_break") for step in actions)
+    already_adjusted = any(step.get("raw_break") is False for step in actions)
+    adjusted = ((explicit and stated == {"adjusted"}) or already_adjusted or applied
+                or (not explicit and has_panel and not actions))
     notes: list[str] = []
     if actions:
         named = "; ".join(
@@ -1855,10 +2011,13 @@ def price_basis(conn: Any, as_of: str, lo: str | None, hi: str | None,
         notes.append(f"basis: adjusted close; adjusted for {named}")
     elif adjusted:
         notes.append(f"basis: {ADJUSTED_CLOSE}")
+        if not explicit:
+            notes.append("the store's price.close carries no basis dim for this window "
+                         "and the panel's close is build_t1.py's adjusted series")
         notes.append("no split/bonus in the window, so raw equals adjusted for "
                      "splits and bonuses")
     else:
-        notes.append(f"basis: {RAW_CLOSE}")
+        notes.append(f"basis: {RAW_CLOSE} (price.close)")
         if want_adjusted:
             notes.append("no split/bonus in the window, so raw equals adjusted for "
                          "splits and bonuses")
@@ -2038,12 +2197,17 @@ def _execute_formula(conn: Any, part: Part, as_of: str, lo: str | None, hi: str 
         bench_return = _period_return(bench)
         if bench_return is not None:
             values["_benchmark_return"] = bench_return
+            used.append({"atom": f"benchmark:{benchmark}", "value": bench_return,
+                         "period": _day((_latest(bench) or {}).get("period")),
+                         "known_at": _day((_latest(bench) or {}).get("known_at")),
+                         "source_ref": (_latest(bench) or {}).get("source_ref")})
     capex = _numeric_series(series.get("fin.capex") or [])
     revenue = _numeric_series(series.get("fin.revenue") or [])
     if len(capex) >= 2 and len(revenue) >= 2:
         values["_delta_capex"] = capex[-1][1] - capex[0][1]
         values["_delta_revenue"] = revenue[-1][1] - revenue[0][1]
     try:
+        used_atoms = formula_inputs(fid, part.dims)
         number = fn(values, part.dims)
     except KeyError as exc:
         need = str(exc).strip("'\"")
@@ -2067,18 +2231,49 @@ def _execute_formula(conn: Any, part: Part, as_of: str, lo: str | None, hi: str 
         return _nid(part, window, f"formula {fid} produced a non-numeric value",
                     [_tried("fact", f"atom {atom}", 1, as_of) for atom in atoms],
                     "check the formula's declared inputs")
-    primary = [row for row in used if row["atom"] == atoms[0]]
+    # A share of a whole cannot exceed the whole: a segment table and a revenue series
+    # on different periods or units do produce one (MB0974#MI: 4,357.91%), and that is
+    # a data mismatch, not a ratio.
+    if fid == "f.share_of" and number > 100.0 + 1e-9:
+        part_row = next((row for row in used if row["atom"] == used_atoms[0]), {})
+        whole_row = next((row for row in used if row["atom"] == used_atoms[-1]), {})
+        return _nid(part, window,
+                    f"f.share_of computed {number:,.2f}%: the part "
+                    f"({used_atoms[0]} {part_row.get('value')} at {part_row.get('period')}) "
+                    f"is not a part of the whole ({used_atoms[-1]} "
+                    f"{whole_row.get('value')} at {whole_row.get('period')}): a share of a "
+                    f"whole cannot exceed 100%, so the inputs do not form one whole",
+                    [_tried("fact", f"atom {atom}", 1, as_of) for atom in used_atoms],
+                    f"hold {used_atoms[0]} and {used_atoms[-1]} for the same period and "
+                    f"unit before taking a share")
+    # Only the inputs this answer used, in the order the formula reads them (so the
+    # answer's period is the last input the arithmetic actually touches).
+    order = {atom: index for index, atom in enumerate(used_atoms)}
+    used = sorted((row for row in used
+                   if row["atom"] in used_atoms or str(row["atom"]).startswith("benchmark:")),
+                  key=lambda row: order.get(row["atom"], len(order)))
+    primary = [row for row in used if row["atom"] in used_atoms]
     known = max((row.get("known_at") or "") for row in used)
+    selector = ""
+    if fid == "f.ratio":
+        selector = f"({part.dims.get('ratio_kind') or 'de'})"
+    elif fid == "f.margin":
+        selector = f"({part.dims.get('margin_kind') or 'ebitda'})"
     result = Result(part_index=part.index, atom=part.atom, formula=part.formula,
                     dims=part.dims, window=window, operator=part.operator,
                     shape=part.shape, answer_type="measured", value=round(number, 6),
                     unit=FORMULA_UNIT.get(fid) or spec.get("unit"),
                     period=(primary[-1]["period"] if primary else used[-1]["period"]),
-                    isin=entity, source_ref=(primary[-1]["source_ref"] if primary
-                                             else used[-1]["source_ref"]),
+                    isin=entity,
+                    source_ref=f"derived:{fid}{selector}:{'+'.join(used_atoms)}",
                     known_at=known, inputs=used,
                     numbers={"formula": fid, "expr": spec.get("expr"),
+                             "inputs_used": used_atoms,
                              "missing_inputs": missing})
+    if fid == "f.ratio":
+        result.numbers["ratio_kind"] = str(part.dims.get("ratio_kind") or "de")
+    elif fid == "f.margin":
+        result.numbers["margin_kind"] = str(part.dims.get("margin_kind") or "ebitda")
     return _with_price_basis(result, basis) if basis is not None else result
 
 
@@ -2101,10 +2296,24 @@ def _rule_gap_type(conn, part, as_of, lo, hi, entity):
     opn = _num(open_row.get("value"))
     if not prev or opn is None:
         raise _Empty()
+    # A gap divides a raw open by a previous close.  When the store's close is the
+    # build's adjusted series, the two are on different bases; if a held action has
+    # already moved the adjusted close, the gap would be false and is refused.
+    basis = close_basis(conn, closes)
+    if basis == "adjusted":
+        trail = price_basis(conn, as_of, None, day, entity)
+        if trail is not None and trail.actions:
+            raise _Missing(
+                f"the previous close ({prev}) is the {ADJUSTED_CLOSE} and the open "
+                f"({opn}) is raw: {len(trail.actions)} held action(s) already adjusted "
+                f"the close, so the gap ratio {opn / prev:g} mixes two bases",
+                "compare the raw open with a raw previous close: rebuild the fact view "
+                "from company_state_daily.raw_close (fact_view.sql)")
     ratio = opn / prev
     verdict = "gap up" if ratio > 1.01 else "gap down" if ratio < 0.99 else "flat"
     return (verdict, {"open": opn, "prev_close": prev, "ratio": round(ratio, 6),
-                      "date": day, "thresholds": "1.01 / 0.99"},
+                      "date": day, "thresholds": "1.01 / 0.99",
+                      "prev_close_basis": basis or "unstated"},
             "gap up if open > prev_close*1.01; gap down if < *0.99; else flat",
             day, prev, open_row.get("source_ref"))
 
@@ -2310,11 +2519,27 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
                 f"hold a {p.measure} row for this entity within {limit} days of {cut} "
                 f"({klass} staleness limit)")
         else:
+            age_text = f", {age} days before {cut}" if age is not None else ""
             assumed.append(
-                f"latest {p.measure} known by {cut}: period {result.period}, filed "
-                f"{result.known_at or '—'}; {klass} staleness limit {limit} days")
-    if assumed and not result.assumption:
-        result.assumption = "; ".join(assumed)
+                f"latest {p.measure} known by {cut}: period {result.period}{age_text}, "
+                f"filed {result.known_at or '—'}; {klass} staleness limit {limit} days")
+    if (result.answer_type == "measured" and result.value is None
+            and result.verdict is None and result.operator != "list_distinct"
+            and not result.entities
+            and result.shape not in ("series", "ranked_list", "passage", "path",
+                                     "estimate")):
+        # A value that cannot be stated is not a measurement: print a typed failure,
+        # never "—" under a measured block (MB0525).
+        result = _nid(
+            p, window,
+            f"{p.measure or p.operator} produced no value that can be stated: the "
+            f"operator returned rows but no scalar for this window",
+            [_tried("fact", f"atom={p.atom}, formula={p.formula}, window={lo}..{hi}", 0,
+                    as_of)],
+            "narrow the ask to one value (entity/period) or ask for the series")
+    if assumed:
+        result.assumption = "; ".join([part for part in [result.assumption, *assumed]
+                                       if part])
     if result.answer_type == "not_in_data" and proxy:
         result = _proxy(p, window, proxy, result.tried, result.nid_reason)
     return result
@@ -2483,11 +2708,15 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
         # "each" is a multi-reading dim (§A.2): never pick one reading silently.
         result = _op_series(p, values, ctx)
         result.numbers = dict(result.numbers or {}, each_readings=True)
-        return result
+        return _with_close_basis(result, conn, values) if atom == "price.close" else result
     result = op(p, values, ctx)
     if result.answer_type == "measured" and result.unit is None:
         result.unit = registry_atom.get("unit")
-    return _with_price_basis(result, basis) if basis is not None else result
+    if basis is not None:
+        return _with_price_basis(result, basis)
+    if atom == "price.close":
+        return _with_close_basis(result, conn, values)
+    return result
 
 
 def _empty_result(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | None,

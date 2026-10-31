@@ -119,12 +119,16 @@ No DB, JSONL or master-bank/instance/grader file was changed or generated.
    includes one holiday session (2026-01-01); a trading-day filter would make HINDALCO
    21/178, APLAPOLLO 13/178, HEGAM 30/178. The operator counts store rows as sessions and
    says so only through the window, not as a caveat.
-3. **Raw basis and adjustment.** The pilot store has no adjusted series. For PIDILITIND
-   the 1:1 bonus is named but the 0% share is not usable as an economic statement; an
-   adjusted or ratio-adjusted basis (with the ratio stated) is the honest next step.
+3. **Basis and adjustment.** The pilot store's `price.close` is the build's adjusted
+   series while `price.open/high/low` are raw; `fact_view.sql` now loads
+   `company_state_daily.raw_close` (the traded close) and states `basis=raw`, so a
+   rebuilt store gives levels the traded price (controller step in
+   `GATE_V4_LABELS_2026-10-31.md`). Until that rebuild the operator names the close
+   adjusted and never raw, and it uses one basis for the high and the close; a split
+   inside the trail is named and, on an adjusted close, already applied.
 4. **`price.high` coverage is uneven.** HEGAM has 19 intraday-high rows (from 2026-09-22),
-   so the answer falls back to raw closes; the fallback and the earliest high date are
-   stated in the assumption, but "within 2% of the 52-week high" is then a close-high
+   so the answer falls back to closes; the fallback and the earliest high date are
+   stated in the assumption, and "within 2% of the 52-week high" is then a close-high
    proxy.
 
 ## Reproduce
