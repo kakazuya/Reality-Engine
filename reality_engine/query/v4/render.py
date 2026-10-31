@@ -98,6 +98,39 @@ def _measured(result) -> str:
                 f"{f'; numbers: {numbers}' if numbers else ''}; "
                 f"period {result.period or '—'}; source {_source(result)}; "
                 f"known_at {_known(result)}")
+    if result.operator == "near_high":
+        numbers = result.numbers or {}
+        head_line = (
+            f"{head} {label}: {_number(result.value)} {result.unit or ''} — threshold "
+            f"{_number(numbers.get('threshold_pct'))}%, window "
+            f"{numbers.get('window_from') or '—'}..{numbers.get('window_to') or '—'}, "
+            f"{numbers.get('n_qualifying') or 0} of {numbers.get('n_sessions') or 0} "
+            f"sessions, basis {numbers.get('basis') or _source(result)}, exchange "
+            f"{numbers.get('exchange') or '—'}")
+        if numbers.get("forward_sessions"):
+            head_line += (f"; forward {numbers.get('forward_sessions')} sessions: "
+                          f"complete {numbers.get('forward_complete')}, incomplete "
+                          f"{numbers.get('forward_incomplete')}, winners "
+                          f"{numbers.get('winners')}, losers {numbers.get('losers')}, "
+                          f"flat {numbers.get('flat')}")
+            if "mean_pct" in numbers:
+                head_line += (f", mean {_number(numbers.get('mean_pct'))}%, median "
+                              f"{_number(numbers.get('median_pct'))}%, min "
+                              f"{_number(numbers.get('min_pct'))}%, max "
+                              f"{_number(numbers.get('max_pct'))}%")
+        sessions = []
+        for row in result.values:
+            text = (f"{row.get('period')} close {_number(row.get('close'))} "
+                    f"high52 {_number(row.get('high_52w'))} dist "
+                    f"{_number(row.get('distance_pct'))}%")
+            if row.get("forward_pct") is not None:
+                text += (f" fwd {row.get('forward_end')} "
+                         f"{_number(row.get('forward_pct'))}%")
+            elif row.get("forward_status"):
+                text += f" fwd {row.get('forward_status')}"
+            sessions.append(text)
+        return (head_line + (f"; sessions: {'; '.join(sessions)}" if sessions else "")
+                + f"; source {_source(result)}; known_at {_known(result)}{_assumed(result)}")
     if result.shape == "series":
         unit = result.unit or (result.values[0].get("unit") if result.values else None)
         shown = result.values

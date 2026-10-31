@@ -257,6 +257,148 @@ def test_estimate_without_method_is_not_covered(db):
     assert status["covered"] is False and "method" in status["reason"]
 
 
+# --- the near-high study operator (§D.1, one operator for a distribution) ---
+STUDY_WINDOW = {"from": "2026-01-01", "to": "2026-01-10"}
+STUDY_AS_OF = "2026-01-10"
+#: Ten sessions whose high rises to a spike on the last day.  A then-current high for an
+#: early session is <= 103; today's high (210) would reject every early session, so the
+#: count alone tells the two apart.
+STUDY_SERIES = [
+    ("2026-01-01", 100.0, 100.0),
+    ("2026-01-02", 102.0, 101.0),
+    ("2026-01-03", 101.0, 95.0),
+    ("2026-01-04", 100.0, 99.0),
+    ("2026-01-05", 103.0, 102.0),
+    ("2026-01-06", 104.0, 101.0),
+    ("2026-01-07", 105.0, 104.5),
+    ("2026-01-08", 106.0, 105.0),
+    ("2026-01-09", 107.0, 106.0),
+    ("2026-01-10", 210.0, 200.0),
+]
+#: A low tail before the window so every session has the full 5-day trail (then-current
+#: high); it never wins a max because it is far below the window's prices.
+STUDY_WARMUP = [(f"2025-12-{day:02d}", 50.0, 49.0) for day in range(27, 32)]
+
+
+def study_db(extra_rows=(), shares=()) -> sqlite3.Connection:
+    conn = sqlite3.connect(":memory:")
+    conn.executescript(
+        """
+        CREATE TABLE fact(entity_id TEXT, atom TEXT, dims TEXT, period_start TEXT,
+                          period_end TEXT, value REAL, unit TEXT, known_at TEXT,
+                          source_ref TEXT);
+        """)
+    rows = []
+    for day, high, close in STUDY_WARMUP + STUDY_SERIES:
+        rows.append(("INE9", "price.high", "exchange=NSE", day, day, high, "INR",
+                     day + "T23:59:59", "bhavcopy"))
+        rows.append(("INE9", "price.close", "basis=raw", day, day, close, "INR", day,
+                     "px_nse"))
+    rows.extend(shares)
+    rows.extend(extra_rows)
+    conn.executemany("INSERT INTO fact VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    conn.commit()
+    return conn
+
+
+def study_part(**kw) -> dict:
+    dims = {"threshold": 3.0, "lookback_days": 5, "measure": "count"}
+    dims.update(kw.pop("dims", {}))
+    base = {"atom": "price.high", "dims": dims, "window": 0,
+            "operator": "near_high", "shape": "scalar"}
+    base.update(kw)
+    return base
+
+
+def study(conn, **kw):
+    window = kw.pop("window", STUDY_WINDOW)
+    return execute.execute(study_part(**kw), STUDY_AS_OF, conn,
+                           windows=[window], entity="INE9")
+
+
+def test_near_high_is_then_current_not_todays_high_and_counts_losers():
+    conn = study_db()
+    result = study(conn, dims={"forward": 1})
+    assert result.answer_type == "measured" and result.value == 8
+    assert [row["period"] for row in result.values] == [
+        "2026-01-01", "2026-01-02", "2026-01-04", "2026-01-05", "2026-01-06",
+        "2026-01-07", "2026-01-08", "2026-01-09"]
+    # today's high (210) for every session would leave nobody within 3% of it
+    assert result.numbers["n_sessions"] == 10
+    assert result.numbers["winners"] == 6 and result.numbers["losers"] == 2
+    losers = [row for row in result.values if row["forward_pct"] < 0]
+    assert [row["period"] for row in losers] == ["2026-01-02", "2026-01-05"]
+    assert "losers 2" in render.render(result)
+    # the high behind each row is the max of its own trail, never the full series
+    assert result.values[0]["high_52w"] == 100.0
+    assert result.values[2]["high_52w"] == 102.0
+
+
+def test_near_high_never_sees_a_row_after_as_of():
+    clean = study(study_db(), dims={"forward": 1})
+    later = study(study_db(extra_rows=[
+        # a high inside the trail but published after as_of: the known_at cut hides it
+        ("INE9", "price.high", "exchange=NSE", "2026-01-02", "2026-01-02", 1000.0,
+         "INR", "2027-01-01", "bhavcopy"),
+        # a row dated after as_of: the window cut hides it even with an early known_at
+        ("INE9", "price.high", "exchange=NSE", "2026-01-11", "2026-01-11", 1000.0,
+         "INR", "2026-01-11", "bhavcopy"),
+        # a later revision of the last session: not visible at as_of, so cannot move it
+        ("INE9", "price.close", "basis=raw", "2026-01-10", "2026-01-10", 1.0,
+         "INR", "2026-12-31", "px_nse"),
+    ]), dims={"forward": 1})
+    assert later.value == clean.value == 8
+    assert later.values == clean.values
+    assert max(row["period"] for row in later.values) <= STUDY_AS_OF
+    assert all(row["forward_end"] <= STUDY_AS_OF for row in later.values)
+
+
+def test_near_high_incomplete_forward_window_is_counted_and_named():
+    conn = study_db()
+    result = study(conn, dims={"threshold": 5.0, "forward": 1})
+    assert result.value == 9
+    assert result.numbers["forward_incomplete"] == 1
+    assert result.numbers["incomplete_sessions"] == ["2026-01-10"]
+    assert result.values[-1]["forward_status"].startswith("incomplete")
+    assert "incomplete 1" in render.render(result)
+
+
+def test_near_high_without_a_full_trail_is_a_typed_nid():
+    conn = sqlite3.connect(":memory:")
+    conn.executescript(
+        """
+        CREATE TABLE fact(entity_id TEXT, atom TEXT, dims TEXT, period_start TEXT,
+                          period_end TEXT, value REAL, unit TEXT, known_at TEXT,
+                          source_ref TEXT);
+        """)
+    rows = []
+    for day, high, close in STUDY_SERIES[:3]:
+        rows.append(("INE9", "price.high", "exchange=NSE", day, day, high, "INR", day,
+                     "bhavcopy"))
+        rows.append(("INE9", "price.close", "basis=raw", day, day, close, "INR", day,
+                     "px_nse"))
+    conn.executemany("INSERT INTO fact VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    result = execute.execute(
+        study_part(), STUDY_AS_OF, conn,
+        windows=[{"from": "2026-01-01", "to": "2026-01-03"}], entity="INE9")
+    assert result.answer_type == "not_in_data"
+    reason = result.nid_reason or ""
+    assert "no 5 days of daily prices" in reason
+    assert "starts 2026-01-01" in reason
+
+
+def test_near_high_names_a_corporate_action_in_its_trail():
+    shares = [("INE9", "price.shares_out", "", "2026-01-01", "2026-01-01", 100.0,
+               "shares", "2026-01-01", "px_nse"),
+              ("INE9", "price.shares_out", "", "2026-01-03", "2026-01-03", 200.0,
+               "shares", "2026-01-03", "px_nse")]
+    result = study(study_db(shares=shares))
+    assumption = result.assumption or ""
+    assert result.numbers["corporate_actions"]
+    assert "2026-01-03" in assumption and "shares 100 -> 200" in assumption
+    assert "raw prices across it are not adjusted" in assumption
+
+
 # --- rank, claim, walk, formula, rule --------------------------------------
 def test_ranked_list_orders_entities(db):
     result = run(db, part(atom="price.close", operator="rank",

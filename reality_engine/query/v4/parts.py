@@ -58,6 +58,7 @@ OPERATORS = (
     "span_days",
     "list_distinct",
     "describe_series",
+    "near_high",
 )
 
 # §C.1 shapes, plus "estimate" for the `own.estimate` atom (§A.8).

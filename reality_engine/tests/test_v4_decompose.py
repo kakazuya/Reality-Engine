@@ -190,3 +190,33 @@ def test_clause_split_keeps_a_company_name_whole():
 def test_clause_split_keeps_a_capitalised_measure_after_and():
     assert "CFO/PAT improve with it" in [c.strip() for c in split_clauses(
         "Did DSO and CFO/PAT improve with it", frozenset({"dso", "cfo", "pat"}))]
+
+
+# --------------------------------------------------------------------------- #
+# the near-high study: one typed part, never a spot value (idea 5)
+# --------------------------------------------------------------------------- #
+def test_near_high_study_is_one_typed_part(registry):
+    ask = decompose_case(_case("MB1044"), registry)
+    assert ask.status == "mapped" and len(ask.parts) == 1
+    part = ask.parts[0]
+    assert (part.atom, part.operator, part.shape) == ("price.high", "near_high", "scalar")
+    assert part.dims["threshold"] == 2.0 and part.dims["measure"] == "count"
+    assert part.dims["prior_only"] is True
+    assert part.dims["forward"] == 10 and part.dims["forward_default"] is True
+    assert ask.windows[0].to_dict() == {"from": "2026-01-01", "to": "2026-09-24",
+                                        "basis": "YTD"}
+
+
+def test_near_high_share_is_the_last_year(registry):
+    ask = decompose_case(_case("MB1047"), registry)
+    assert len(ask.parts) == 1 and ask.parts[0].operator == "near_high"
+    assert ask.parts[0].dims["measure"] == "share"
+    assert "forward" not in ask.parts[0].dims
+    assert ask.windows[0].to_dict() == {"from": "2025-09-25", "to": "2026-09-24",
+                                        "basis": "52 weeks"}
+
+
+def test_near_high_does_not_hijack_a_comparative_ask(registry):
+    ask = decompose("BEL versus HAL: which is within 10% of its 52-week high?",
+                    "2026-09-24", registry)
+    assert all(part.operator != "near_high" for part in ask.parts)

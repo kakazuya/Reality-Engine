@@ -436,6 +436,61 @@ def _years_before(day: str, years: int) -> str | None:
         return first.replace(year=first.year - years, day=28).isoformat()
 
 
+#: A judgement/study ask collapses into one measured part over the sessions ("How many prior
+#: sessions this year were this close", "what share … within 5% of the then-current 52-week
+#: high") and never into a spot value.  A comparative version of the phrase ("BEL versus HAL,
+#: which has spent more … within 10% of its 52-week high") is a different ask and keeps the
+#: ordinary path.
+_NEAR_HIGH = re.compile(
+    r"within\s+([\d.]+)\s*%\s+of\b[^.]{0,60}?\b(?:52[-\s]?week|yearly)\s+high", re.I)
+_NEAR_HIGH_COMPARE = re.compile(r"\b(?:versus|vs\.?|which|compare|better|worse)\b", re.I)
+_NEAR_HIGH_FORWARD = re.compile(
+    r"\b(?:next|forward|following)\s+(\d{1,3})\s*(?:day|session|trading)", re.I)
+#: The declared forward horizon when the ask says only "what followed?" (the bank's own
+#: rubric: "compute forward 10-day returns").  It is stated in the answer, never silent.
+NEAR_HIGH_FORWARD_DEFAULT = 10
+
+
+def _days_before(day: str, days: int) -> str | None:
+    from datetime import date, timedelta
+    try:
+        return (date.fromisoformat(day[:10]) - timedelta(days=days)).isoformat()
+    except ValueError:
+        return None
+
+
+def _near_high_study(text: str, as_of: str) -> tuple[Part, Window] | None:
+    """The near-high study as one typed part and its window, or None (§A.4 one operator)."""
+    match = _NEAR_HIGH.search(text)
+    if not match or _NEAR_HIGH_COMPARE.search(text) or _days_before(as_of, 0) is None:
+        return None
+    day = as_of[:10]
+    forward = 0
+    horizon = _NEAR_HIGH_FORWARD.search(text)
+    if horizon:
+        forward = int(horizon.group(1))
+    elif re.search(r"\bwhat\s+followed\b|\bthen\s+what\b", text, re.I):
+        forward = NEAR_HIGH_FORWARD_DEFAULT
+    if re.search(r"\bthis\s+year\b", text, re.I):
+        lo, basis = f"{day[:4]}-01-01", "YTD"
+    else:
+        lo, basis = _days_before(day, 364), "52 weeks"
+    if not lo:
+        return None
+    dims: dict[str, Any] = {"threshold": float(match.group(1)), "lookback_days": 364,
+                            "measure": "share" if re.search(
+                                r"\b(?:share|proportion|fraction)\b", text, re.I) else "count"}
+    if re.search(r"\bprior\b", text, re.I):
+        dims["prior_only"] = True
+    if forward:
+        dims["forward"] = forward
+        if horizon is None:
+            dims["forward_default"] = True
+    part = Part(atom="price.high", dims=dims, window=0, operator="near_high",
+                shape="scalar", clause=text)
+    return part, Window(from_=lo, to=day, basis=basis)
+
+
 def _entity(text: str, reg: Registry, scope_level: str | None) -> Entity:
     """The entity the question names, text only (the executor resolves it PIT, §C.2)."""
     m = _ISIN_RE.search(text)
@@ -808,6 +863,13 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
     if re.search(r"\badjust\w*", body, re.I) and not _CORP_ASK.search(body):
         body = _CORP_BASIS.sub("adjusted", body)   # before the split: "dividends aur splits adjust"
     amount_ask = bool(_AMOUNT_ASK.search(body))
+    study = _near_high_study(text, as_of)
+    if study is not None:
+        # One study, one part, one window: the ask is a distribution over sessions, not a
+        # spot value.  The executor answers it PIT from the held daily rows.
+        part, window = study
+        return Ask(parts=[part], entities=[_entity(text, reg, None)], as_of=as_of or "",
+                   windows=[window], status="mapped", question=text)
     residues: list[str] = []
     parts: list[Part] = []
     inherited: str | None = None      # the measure a dim-only clause attaches to
