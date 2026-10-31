@@ -14,7 +14,11 @@ STATE = "tasks/STATE.md"
 CODE_SUFFIXES = (".py", ".sql")
 #: briefs say what to do, not what is true, so they do not count as documentation
 NOT_DOCS = ("tasks/dsh_tasks/", "tasks/archive/")
-HOOK = '#!/bin/sh\nexec python "$(git rev-parse --show-toplevel)/reality_engine/scripts/doc_gate.py"\n'
+#: a worker worktree may predate this file, so the hook only calls it on main
+HOOK = """#!/bin/sh
+[ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
+exec python "$(git rev-parse --show-toplevel)/reality_engine/scripts/doc_gate.py"
+"""
 
 
 def check(staged: list[str], *, branch: str, merging: bool) -> str | None:
