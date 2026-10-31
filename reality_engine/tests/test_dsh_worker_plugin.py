@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import unittest
+from unittest import mock
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -2524,6 +2525,10 @@ class WorkerContextBuilderTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.out = tasks / "worker_context"
+        log = mock.patch.object(build_worker_context, "DECISION_LOG",
+                                self.data / "hotline" / "decisions.md")
+        log.start()
+        self.addCleanup(log.stop)
 
     def _build(self, hour: int = 12):
         return build_worker_context.build(
