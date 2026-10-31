@@ -197,3 +197,20 @@ def test_case_entity_outside_the_pilot_is_a_typed_nid(store, resolver):
     assert row["entity"] is None and row["case_answered"] is False
     assert "not one of the 1 pilot ISIN" in row["entity_how"]
     assert all(result["answer_type"] == "not_in_data" for result in row["results"])
+
+
+def test_stores_route_macro_oi_to_the_side_file(tmp_path):
+    import sqlite3
+
+    from reality_engine.query.v4.run import Stores
+
+    for name, value in (("fact_v4_pilot.db", "core"), ("fact_v4_pilot_oi.db", "side"), ("v4.db", "v4")):
+        con = sqlite3.connect(tmp_path / name)
+        con.execute("CREATE TABLE fact(atom TEXT, value TEXT)")
+        con.execute("INSERT INTO fact VALUES ('x', ?)", (value,))
+        con.commit()
+        con.close()
+    with Stores(tmp_path) as stores:
+        assert stores.oi is not None
+        assert stores.execute("SELECT value FROM fact WHERE ?<>''", ("macro.oi",)).fetchone()[0] == "side"
+        assert stores.execute("SELECT value FROM fact WHERE ?<>''", ("fin.pat",)).fetchone()[0] == "core"

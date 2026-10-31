@@ -40,8 +40,9 @@ V4_ROOT = Path(os.environ.get("REALITY_V4_PILOT") or (DATA / "pilot" / "v4"))
 UNIVERSE_CSV = REPO / "tasks" / "pilot60" / "UNIVERSE.csv"
 
 #: tables that live in v4.db (WP2b), not in the WP2a fact store.
-V4_TABLES = ("claim", "own_estimate", "own_estimate_band", "edge", "hypothesis",
-             "attention", "reaction_lag")
+V4_TABLES = ("claim", "own_estimate", "own_estimate_band", "own_estimate_band_prev", "edge",
+             "hypothesis", "attention", "reaction_lag")
+OI_ATOM = "macro.oi"
 _V4_TABLE = re.compile(r"\b(?:from|join)\s+(?:%s)\b" % "|".join(V4_TABLES), re.I)
 #: one-value operators read one entity; these read a set.
 CROSS_ENTITY = {"rank", "screen", "compare", "join_entity_set", "count", "exists",
@@ -63,16 +64,27 @@ class Stores:
         root = Path(root or V4_ROOT)
         self.fact = sqlite3.connect(_uri(root / "fact_v4_pilot.db"), uri=True)
         self.v4 = sqlite3.connect(_uri(root / "v4.db"), uri=True)
+        #: macro.oi lives in its own side file (fact_oi.sql), same table shape as fact.
+        oi_path = root / "fact_v4_pilot_oi.db"
+        self.oi = sqlite3.connect(_uri(oi_path), uri=True) if oi_path.is_file() else None
         self.closed = False
 
     def execute(self, sql: str, params: Any = ()):
-        target = self.v4 if _V4_TABLE.search(sql) else self.fact
-        return target.execute(sql, tuple(params))
+        params = tuple(params)
+        if _V4_TABLE.search(sql):
+            target = self.v4
+        elif self.oi is not None and (OI_ATOM in sql or OI_ATOM in params):
+            target = self.oi
+        else:
+            target = self.fact
+        return target.execute(sql, params)
 
     def close(self) -> None:
         if not self.closed:
             self.fact.close()
             self.v4.close()
+            if self.oi is not None:
+                self.oi.close()
             self.closed = True
 
     def __enter__(self) -> "Stores":
