@@ -203,6 +203,29 @@ def test_label_for_is_deterministic_and_specific():
     assert build_vocab.label_for(build_vocab.words_of("signal ratio")) == ("other", "other")
 
 
+def test_short_ratio_surfaces_label_after_the_mapper_fix():
+    """ROE/ROCE/ROCE % normalise to one token; the old declared layer missed them."""
+    assert build_vocab.map_surface("ROE") == "roe"
+    assert build_vocab.map_surface("ROCE") == "roce"
+    assert build_vocab.map_surface("ROCE %") == "roce"
+    assert build_vocab.map_surface("ROA") == "roa"
+    assert build_vocab.map_surface("RONW") == "ronw"
+    # a statement name must not steal a specific line from its own topic
+    assert build_vocab.map_surface("Consolidated P&L – Depreciation") == "depreciation"
+    assert build_vocab.map_surface("Consolidated P&L – EBITDA") == "ebitda"
+
+
+def test_spelling_variants_merge_before_labelling():
+    """`p&l`/`p_and_l`/`pnl` and `balance sheet`/`balance_sheet` are one phrase."""
+    base = build_vocab.words_of("profit and loss")
+    for variant in ("p&l", "P&L", "p_and_l", "pnl", "p/l"):
+        assert build_vocab.words_of(variant) == base
+    assert base <= build_vocab.words_of("consolidated_p_and_l")
+    assert build_vocab.map_surface("p&l") == "financials"
+    assert (build_vocab.map_surface("balance sheet")
+            == build_vocab.map_surface("balance_sheet") == "financials")
+
+
 def test_source_drift_fails_the_build_instead_of_rescaling(sources, tmp_path):
     report = build_vocab.build(None, sources, strict=True, isins=[ISIN, ISIN2])
     assert report["ok"] is False

@@ -80,6 +80,14 @@ TOPICS: dict[str, tuple[str, str, str]] = {
     "ebitda": ("financial_performance", "ebitda opbida", "EBITDA"),
     "ebitda_margin": ("financial_performance", "margin", "margin (any level: gross/EBITDA/net)"),
     "eps": ("financial_performance", "eps", "earnings per share"),
+    # Short ratio surfaces (ROE, ROCE, ROCE %) normalise to one token and were
+    # therefore unmapped: no declared synonym held the acronym, and `%` is a stop
+    # token.  Declaring the acronym and its phrase form is the deterministic fix
+    # (hand-check: 935 ROE, 869 ROCE and 37 `ROCE %` occurrences in the pilot store).
+    "roe": ("financial_performance", "roe", "return on equity"),
+    "roce": ("financial_performance", "roce", "return on capital employed"),
+    "roa": ("financial_performance", "roa", "return on assets"),
+    "ronw": ("financial_performance", "ronw", "return on net worth"),
     "growth": ("financial_performance", "growth cagr yoy qoq", "growth of a metric"),
     "income": ("financial_performance", "income", "income of any kind"),
     "loss": ("financial_performance", "loss", "a loss"),
@@ -240,6 +248,13 @@ PHRASE_TOPICS: list[tuple[tuple[str, ...], str]] = [
     (("net", "margin"), "ebitda_margin"),
     (("unit", "volume"), "volume"),
     (("earnings", "per", "share"), "eps"),
+    # Long spellings of the short return ratios, so the fix is not acronym-only.
+    # `return capital` alone is deliberately absent: "capital returns" (a
+    # distribution) normalises to the same two tokens and must not become ROCE.
+    (("return", "equity"), "roe"),
+    (("return", "capital", "employed"), "roce"),
+    (("return", "asset"), "roa"),
+    (("return", "worth"), "ronw"),
     # balance-sheet lines whose qualifier word ("financial") would otherwise win
     (("financial", "asset"), "asset"),
     (("financial", "liability"), "liability"),
@@ -293,9 +308,34 @@ def singular(t: str) -> str:
     return t
 
 
+# Declared spelling variants that must reach the same normalised token set.
+# Applied before punctuation is expanded, because `p&l`, `p_and_l` and `p/l` are
+# only recognisable in their raw form (`&` -> "and" and `_` -> space would leave
+# the bare letters `p`, `l`).  This is a merge of spellings, not a guess at a
+# label: the merged words still go through the declared phrase/token layer.
+SPELLING_VARIANTS: tuple[tuple[re.Pattern[str], str], ...] = (
+    # Alnum lookarounds, not `\b`: the variants occur inside extractor keys such
+    # as `consolidated_p_and_l`, where `_` is a word character and `\b` fails.
+    (re.compile(r"(?<![a-z0-9])p\s*&\s*l(?![a-z0-9])"), "profit and loss"),
+    (re.compile(r"(?<![a-z0-9])p\s+and\s+l(?![a-z0-9])"), "profit and loss"),
+    (re.compile(r"(?<![a-z0-9])p_and_l(?![a-z0-9])"), "profit and loss"),
+    (re.compile(r"(?<![a-z0-9])p\s*/\s*l(?![a-z0-9])"), "profit and loss"),
+    (re.compile(r"(?<![a-z0-9])pnl(?![a-z0-9])"), "profit and loss"),
+    (re.compile(r"(?<![a-z0-9])balancesheet(?![a-z0-9])"), "balance sheet"),
+    (re.compile(r"(?<![a-z0-9])balance[-_]sheet(?![a-z0-9])"), "balance sheet"),
+)
+# A footnote marker glued to a ratio is not part of the ratio: ROCE1 / ROE2 /
+# ROCE4 are the same surface as ROCE.  Kept separate because the replacement is
+# a backreference, not a literal phrase.
+FOOTNOTE_RATIO = re.compile(r"(?<![a-z0-9])(roe|roce|roa|ronw)\d+(?![a-z0-9])", re.I)
+
+
 def words_of(phrase: str, ent_tokens: frozenset[str] = frozenset()) -> frozenset[str]:
     """The declared normalisation: the reproducibility contract of VOCAB_PASS1."""
     s = " " + phrase.lower() + " "
+    for pattern, replacement in SPELLING_VARIANTS:
+        s = pattern.sub(" " + replacement + " ", s)
+    s = FOOTNOTE_RATIO.sub(lambda m: m.group(1).lower(), s)
     s = (s.replace("&", " and ").replace("%", " pct ").replace("/", " ")
           .replace("_", " ").replace("-", " "))
     for long, short in _ALIASES_LONGEST_FIRST:
@@ -330,6 +370,19 @@ PHRASE_MATCH = sorted(
     ((tuple(singular(t) for t in toks), tid) for toks, tid in PHRASE_TOPICS),
     key=lambda p: -len(p[0]),
 )
+# A statement heading (`p&l`, `balance sheet`) is only the statement when no
+# specific topic is named beside it.  `Consolidated P&L - Depreciation` must stay
+# `depreciation`, not collapse into `financials`; `P&L extract` has no topic token
+# and does become `financials`.
+STATEMENT_TOPICS: tuple[tuple[frozenset[str], str, frozenset[str]], ...] = (
+    # "loss versus prior profit" is a comparison, not the statement: block the
+    # statement reading when a comparison/qualifier word rides along.
+    (frozenset({"profit", "loss"}), "financials",
+     frozenset({"versus", "vs", "prior", "previous", "growth", "improvement",
+                "decline", "increase", "decrease", "drop", "rise", "fall"})),
+    (frozenset({"balance", "sheet"}), "financials", frozenset()),
+)
+TOPIC_TOKENS = frozenset(TOKEN_TO_TOPIC)
 
 
 def label_for(words: frozenset[str], weight: dict[str, float] | None = None) -> tuple[str, str]:
@@ -339,6 +392,10 @@ def label_for(words: frozenset[str], weight: dict[str, float] | None = None) -> 
     that covers the fewest corpus occurrences (VOCAB_PASS1 §2's "pick the head,
     not the first broad word it sees").
     """
+    for statement, tid, blockers in STATEMENT_TOPICS:
+        extra = words - statement
+        if statement <= words and not (extra & TOPIC_TOKENS) and not (extra & blockers):
+            return tid, "phrase"
     for toks, tid in PHRASE_MATCH:
         if set(toks) <= words:
             return tid, "phrase"
