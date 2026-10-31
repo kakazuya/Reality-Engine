@@ -54,6 +54,10 @@ def _dims_text(row: Mapping[str, Any], result) -> str:
             if extra else "")
 
 
+def _assumed(result) -> str:
+    return f"; assumption: {result.assumption}" if result.assumption else ""
+
+
 def _measured(result) -> str:
     head = f"P{result.part_index + 1} measured — {_entity(result)}"
     label = result.measure or result.formula or "result"
@@ -111,7 +115,7 @@ def _measured(result) -> str:
                 f"known_at {_known(result)}")
     return (f"{head} {label}: {_number(result.value)} {result.unit or ''}"
             f"; period {result.period or '—'}; source {_source(result)}; "
-            f"known_at {_known(result)}")
+            f"known_at {_known(result)}{_assumed(result)}")
 
 
 def _estimate(result) -> str:
@@ -190,7 +194,7 @@ def render(result: Any) -> str:
 
 
 def render_run(results: Iterable[Any], *, question: str | None = None,
-               as_of: str | None = None) -> str:
+               as_of: str | None = None, assumption: str | None = None) -> str:
     """The whole answer: the contract counters, then one block per part in order."""
     rows = sorted((as_result(result) for result in results),
                   key=lambda item: item.part_index)
@@ -200,6 +204,8 @@ def render_run(results: Iterable[Any], *, question: str | None = None,
         header.append(f"Question: {question}")
     if as_of:
         header.append(f"As of: {as_of}")
+    if assumption:
+        header.append(f"Assumption: {assumption}")
     header.append(
         f"Parts: {counts['parts']} · real_answered: {counts['real_answered']} · "
         f"proxy_answered: {counts['proxy_answered']} · "

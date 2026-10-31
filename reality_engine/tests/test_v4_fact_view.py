@@ -138,10 +138,11 @@ ROWS = {
 }
 
 
-def _make_fixture() -> Path:
-    """Write the five pilot DBs and the universe CSV under ``.tmp``."""
-    shutil.rmtree(FIXTURE, ignore_errors=True)
-    pilot = FIXTURE / "pilot" / "pilot60"
+def _make_fixture(root: Path | None = None) -> Path:
+    """Write the five pilot DBs and the universe CSV under ``root`` (default FIXTURE)."""
+    root = Path(root or FIXTURE)
+    shutil.rmtree(root, ignore_errors=True)
+    pilot = root / "pilot" / "pilot60"
     pilot.mkdir(parents=True, exist_ok=True)
     for alias, name in bm.STORES.items():
         con = sqlite3.connect(pilot / name)
@@ -151,7 +152,7 @@ def _make_fixture() -> Path:
             con.execute(sql)
         con.commit()
         con.close()
-    (FIXTURE / "UNIVERSE.csv").write_text(
+    (root / "UNIVERSE.csv").write_text(
         "isin,symbol\n" f"{ISIN_A},AAA\n" f"{ISIN_B},BBB\n", encoding="utf-8")
     return pilot
 
@@ -256,6 +257,45 @@ def test_ownership_narrative_and_macro_atoms(built):
             oi.close()
     finally:
         con.close()
+
+
+def test_holdings_join_through_isin_history():
+    """A shareholding filing under an older ISIN reaches the pilot ISIN by its symbol."""
+    root = ROOT / ".tmp" / f"v4holding_{os.getpid()}"
+    try:
+        _make_fixture(root)
+        con = sqlite3.connect(root / "equity_intelligence.db")
+        con.executescript(
+            """
+            CREATE TABLE shp_index(isin TEXT, symbol TEXT, quarter_end TEXT, broadcast_at TEXT,
+                                   submission_date TEXT, promoter_pct REAL, public_pct REAL,
+                                   fii_pct REAL, dii_pct REAL, mf_pct REAL, pledge_pct REAL,
+                                   revised TEXT);
+            CREATE TABLE symbol_isin_history(exchange TEXT, symbol TEXT, isin TEXT,
+                                             first_date TEXT, last_date TEXT, trading_days INT);
+            INSERT INTO shp_index VALUES ('INE000B09999', 'BBB', '2024-06-30',
+                '2024-07-11T10:00:00', NULL, 60.0, 40.0, NULL, NULL, NULL, NULL, NULL);
+            INSERT INTO symbol_isin_history VALUES
+                ('NSE', 'BBB', 'INE000B01002', '2019-01-01', '2026-10-19', 1800);
+            """)
+        con.commit()
+        con.close()
+        out = root / "fact_hold.db"
+        bm.build(out, root=root, universe_csv=root / "UNIVERSE.csv")
+        db = sqlite3.connect(str(out))
+        try:
+            rows = db.execute(
+                "SELECT dims, value, known_at, source_ref FROM fact "
+                "WHERE entity_id=? AND atom='hold.pct' ORDER BY dims", (ISIN_B,)).fetchall()
+        finally:
+            db.close()
+        assert rows == [
+            ("holder_class=promoter", 60.0, "2024-07-11T10:00:00",
+             "equity_intelligence.shp_index#symbol_isin_history"),
+            ("holder_class=public", 40.0, "2024-07-11T10:00:00",
+             "equity_intelligence.shp_index#symbol_isin_history")]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def test_one_row_per_entity_atom_dims_period(built):
@@ -365,6 +405,7 @@ def test_pilot_handcheck_when_the_build_exists(built):
         if oi_db.is_file():
             con.execute("ATTACH DATABASE ? AS oi",
                         (f"file:{oi_db.as_posix()}?mode=ro&immutable=1",))
+        bm.attach_identity(con)
         bm.seed_universe(con, bm.read_universe())
         cov = bm.coverage(con)
         assert cov["membership"]["entities"] >= 1888

@@ -39,6 +39,11 @@ DATA = Path(os.environ.get("REALITY_DATA_ROOT") or (REPO / "reality_engine" / "d
 V4_ROOT = Path(os.environ.get("REALITY_V4_PILOT") or (DATA / "pilot" / "v4"))
 UNIVERSE_CSV = REPO / "tasks" / "pilot60" / "UNIVERSE.csv"
 
+#: A blank ``as_of`` defaults to this declared snapshot date and the answer says so.
+#: It is the store's latest complete market session: all 60 names carry a close on
+#: 2026-10-19; later dates hold one name only.  Shivam's review changes this line.
+DEFAULT_AS_OF = "2026-10-19"
+
 #: tables that live in v4.db (WP2b), not in the WP2a fact store.
 V4_TABLES = ("claim", "own_estimate", "own_estimate_band", "own_estimate_band_prev", "edge",
              "hypothesis", "attention", "reaction_lag")
@@ -319,6 +324,10 @@ def run_case(case: Mapping[str, Any], stores: Stores | None = None,
     """One master-bank case -> the typed Ask, one Result per part, and the answer text."""
     started = time.perf_counter()
     ask = decompose_case(dict(case), decon or load_registry())
+    assumed = ""
+    if not str(ask.as_of or "").strip():
+        ask.as_of = DEFAULT_AS_OF
+        assumed = f"as_of was blank; assumed the declared snapshot date {DEFAULT_AS_OF}"
     resolver = resolver or Resolver(universe(), identities(), universe_isins())
     by_case = resolver.from_case(case)
     isin, found, how = by_case if by_case else resolver.resolve(ask)
@@ -347,11 +356,13 @@ def run_case(case: Mapping[str, Any], stores: Stores | None = None,
                 entity=None if cross else isin, entities=found if cross else None,
                 registry=registry if registry is not None else execute_registry(),
                 part_index=index))
-    text = render.render_run(results, question=ask.question, as_of=ask.as_of)
+    text = render.render_run(results, question=ask.question, as_of=ask.as_of,
+                             assumption=assumed or None)
     row = {
         "mid": str(case.get("mid") or ""),
         "question": ask.question,
         "as_of": ask.as_of,
+        "assumed_as_of": assumed or None,
         "ask": ask.to_dict(),
         "entity": isin,
         "entity_how": how,
