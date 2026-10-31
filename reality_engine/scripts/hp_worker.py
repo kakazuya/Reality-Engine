@@ -493,7 +493,9 @@ def sync_dbs(names: list[str]) -> list[str]:
         if not src.is_file():
             raise SystemExit(f"db not found: {src}")
         staged = stage_db(src)
-        remote = f"{ROOT}\\data\\{name}"
+        remote = f"{ROOT}\\data\\{name}".replace("/", "\\")
+        hp_run.ps("$ErrorActionPreference='Stop'\n"
+                  f"New-Item -ItemType Directory -Force -Path (Split-Path -Parent '{remote}') | Out-Null")
         meta = remote + ".meta.json"
         stored: dict = {}
         try:
