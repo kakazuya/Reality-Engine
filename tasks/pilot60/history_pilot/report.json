@@ -1,0 +1,158 @@
+{
+ "db": ".tmp\\pilot60\\chunks_v3_history_pilot.db",
+ "db_bytes": 62644224,
+ "docs": 181,
+ "chunks": 13531,
+ "tags": 34627,
+ "outcomes": {
+  "chunked": 180,
+  "needs_ocr": 1,
+  "duplicate": 19,
+  "failed": 0,
+  "total": 200
+ },
+ "by_doc_type": {
+  "announcement": 39,
+  "annual_report": 33,
+  "concall": 42,
+  "deck": 41,
+  "results_notes": 26
+ },
+ "by_bucket": {
+  "annual_report": 35,
+  "concall_audio_link": 9,
+  "concall_transcript": 33,
+  "investor_presentation": 42,
+  "material_filing": 41,
+  "quarterly_results": 39,
+  "results_press_release": 1
+ },
+ "failed_by_reason": {},
+ "fts": [
+  {
+   "term": "order book",
+   "query": "\"order book\"",
+   "hits": 48,
+   "ms": 2.0,
+   "top_chunk_ids": [
+    511,
+    513,
+    527
+   ]
+  },
+  {
+   "term": "capacity expansion",
+   "query": "\"capacity expansion\"",
+   "hits": 38,
+   "ms": 0.3,
+   "top_chunk_ids": [
+    528,
+    540,
+    1200
+   ]
+  },
+  {
+   "term": "margin",
+   "query": "margin",
+   "hits": 433,
+   "ms": 0.1,
+   "top_chunk_ids": [
+    10,
+    59,
+    60
+   ]
+  },
+  {
+   "term": "guidance",
+   "query": "guidance",
+   "hits": 337,
+   "ms": 0.1,
+   "top_chunk_ids": [
+    22,
+    157,
+    161
+   ]
+  },
+  {
+   "term": "promoter",
+   "query": "promoter",
+   "hits": 248,
+   "ms": 0.2,
+   "top_chunk_ids": [
+    29,
+    49,
+    50
+   ]
+  },
+  {
+   "term": "dividend",
+   "query": "dividend",
+   "hits": 1007,
+   "ms": 0.2,
+   "top_chunk_ids": [
+    6,
+    47,
+    49
+   ]
+  },
+  {
+   "term": "capex",
+   "query": "capex",
+   "hits": 148,
+   "ms": 0.1,
+   "top_chunk_ids": [
+    63,
+    64,
+    67
+   ]
+  },
+  {
+   "term": "debt",
+   "query": "debt",
+   "hits": 886,
+   "ms": 0.2,
+   "top_chunk_ids": [
+    10,
+    54,
+    61
+   ]
+  },
+  {
+   "term": "revenue",
+   "query": "revenue",
+   "hits": 1350,
+   "ms": 0.2,
+   "top_chunk_ids": [
+    8,
+    21,
+    23
+   ]
+  },
+  {
+   "term": "risk",
+   "query": "risk",
+   "hits": 1451,
+   "ms": 0.2,
+   "top_chunk_ids": [
+    24,
+    56,
+    67
+   ]
+  }
+ ],
+ "audit": {
+  "checked": 30,
+  "passed": 30,
+  "page_failures": 0,
+  "known_at_failures": 0,
+  "errors": 0
+ },
+ "generated_at": "2026-10-31T05:34:41",
+ "held_outcomes": {
+  "chunked": 180,
+  "needs_ocr": 1,
+  "duplicate": 19,
+  "failed": 0,
+  "total": 200
+ }
+}
