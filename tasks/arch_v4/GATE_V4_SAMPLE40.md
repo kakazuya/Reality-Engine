@@ -25,7 +25,7 @@ different question is answered, or it is about another company).
 | 1 | MB0558#L | HUL 1:2 bonus: what does it do to the EPS series, how should a chart treat it | fin.eps 45.25 (FY26 consolidated, real row) + close 2,079.4 on the ex-date | PARTIAL — the EPS is right; the restatement and the chart adjustment the ask is about are not answered |
 | 2 | MB0913#L | Bosch lock-in expiry: did supply hit the price, what must delivery show next | close 45,195 + delivery 44.01% on 2026-10-19 (both real) | WRONG — two levels, no "did it hit" and no next-step; a spot pair is not the ask |
 | 3 | MB0903#L | Ola Electric listing: did the band widen, how did delivery change when it did | Bosch (case-isin INE323A01026) band 5.0 from 2024-05-17 + delivery change 13.9pp | WRONG — the question text names Ola Electric; the case substituted Bosch and an Ola-listing question has no Bosch answer |
-| 4 | MB0966#L | Vodafone Idea spectrum liabilities: accounting, do assumptions flatter the loss | interest expense 21,495 cr + PAT **+34,552 cr** (FY26) | WRONG — the question asks about accounting treatment, and the stored PAT is itself impossible (Vi is loss-making; the store row is a sign/concept error) |
+| 4 | MB0966#L | Vodafone Idea spectrum liabilities: accounting, do assumptions flatter the loss | interest expense 21,495 cr + PAT **+34,552 cr** (FY26) | WRONG — the question asks how the liabilities are accounted for and whether the assumptions flatter the loss; a single FY PAT is not that answer. The stored +34,552 cr is a **real** row, not a store defect: the filing's own total comprehensive income for FY26 is 34,564 cr (`results_notes`, known 2026-08-10), so no "PAT cannot be positive" sanity rule follows |
 | 5 | MB0444#L | Bosch fell 9.65% on 28 Jul, filed 15:11: what is the correct event window | the same close 41,310 twice, labelled `period_kind=day` and `period_kind=event` | WRONG — the answer is a rule (15:30 boundary), and the two parts are the same number |
 | 6 | MB0950#L | Pidilite moat: price or volume doing the work | close 1,482.6 + volume growth 116.49% | WRONG — no price-vs-volume split; 116% volume growth is not cross-checked |
 | 7 | MB0280#L | POWERGRID exact share count and promoter holding after the corporate action | shares 9,300,600,000 (2026-10-19) + promoter 51.34% (2026-09-30, known 10-15) | **RIGHT** — both numbers are stored, post-action, and the holder row is the latest PIT-visible one |
@@ -68,16 +68,16 @@ different question is answered, or it is about another company).
 | verdict | rows | share of the 40 | share of all 221 strict-ANSWERED |
 |---|---|---|---|
 | RIGHT | 3 | 7.5% | ~7.5% |
-| PARTIAL | 7 | 17.5% | ~17.5% |
-| WRONG | 30 | 75.0% | ~75.0% |
+| PARTIAL | 8 | 20.0% | ~20.0% |
+| WRONG | 29 | 72.5% | ~72.5% |
 
 Wilson 95% lower bound on the RIGHT rate with 3 of 40: **2.6%** (upper 19.9%).
 
 ## What this means (said plainly, not hidden)
 
 **The 8.2% strict figure is not 8.2% correct.** Of 40 randomly drawn strict-ANSWERED
-rows, 3 answer the question (7.5%); 7 carry the right number for one reading of the
-ask (17.5%); 30 are contract-complete but answer a different question (75%).
+rows, 3 answer the question (7.5%); 8 carry the right number for one reading of the
+ask (20.0%); 29 are contract-complete but answer a different question (72.5%).
 
 Three distinct causes, each owned by a different piece:
 
@@ -91,9 +91,12 @@ Three distinct causes, each owned by a different piece:
    case-entity resolution is right for the bank's definition of the instance; the
    instance itself is ill-posed. The fix is in `instantiate.py` (rewrite the text) or
    in the bank (mark the substituted predicate unanswerable).
-3. **The store carries wrong or unusable rows** (#4 PAT sign for a loss-making bank;
-   #33/#34 wrong entity on a `list_distinct` ask; #35 a June shareholding row offered
-   for a September ask): these are WP2a build defects and belong to the store owner.
+3. **The store carries wrong or unusable rows** (#33/#34 wrong entity on a
+   `list_distinct` ask; #35 a June shareholding row offered for a September ask):
+   these are WP2a build defects and belong to the store owner. Row #4 is **not** in
+   this class: its +34,552 cr matches the filing's own FY26 total comprehensive
+   income (34,564 cr, `results_notes`, known 2026-08-10). It is a wrong *answer* to an
+   accounting question, not a wrong row.
 
 Only 3 of the 40 are right, so **a 30% strict target is not reachable by tuning the
 contract checks**: the same run at 30% strict with this precision profile would still
