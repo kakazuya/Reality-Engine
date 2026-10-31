@@ -14,8 +14,10 @@ that is the only launch that was measured to survive the ssh session closing (se
 ``tasks/efficiency/HP_ACCEL_BENCH_2026-10-31.md``); ``--method wmi`` and ``--method start``
 are kept for the comparison.
 
-Env: ``HP_RUN_HOST`` (default zen7s@100.78.87.112), ``HP_RUN_ROOT`` (default C:\\RE),
-``HP_RUN_SSH`` / ``HP_RUN_SCP`` (defaults ``ssh`` / ``scp``).
+Env: ``HP_RUN_HOST`` (default ``zen7s@192.168.1.42``, the LAN address; it falls
+back to Tailscale ``zen7s@100.78.87.112`` when the LAN ssh is refused),
+``HP_RUN_ROOT`` (default C:\\RE), ``HP_RUN_SSH`` / ``HP_RUN_SCP`` (defaults
+``ssh`` / ``scp``).
 """
 from __future__ import annotations
 
@@ -27,7 +29,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-HOST = os.environ.get("HP_RUN_HOST", "zen7s@100.78.87.112")
+HOST = os.environ.get("HP_RUN_HOST", "zen7s@192.168.1.42")
+FALLBACK_HOST = os.environ.get("HP_RUN_HOST_FALLBACK", "zen7s@100.78.87.112")
 ROOT = os.environ.get("HP_RUN_ROOT", r"C:\RE")
 SSH = os.environ.get("HP_RUN_SSH", "ssh")
 SCP = os.environ.get("HP_RUN_SCP", "scp")
@@ -48,23 +51,41 @@ def _ps_argv(script: str) -> list[str]:
     return ["powershell", "-NoProfile", "-EncodedCommand", enc]
 
 
-def _ssh(argv: list[str], input_bytes: bytes | None = None) -> subprocess.CompletedProcess:
-    """Run one remote command. Tests replace this; it is the only network call in the CLI."""
+def _run_ssh(host: str, argv: list[str], input_bytes: bytes | None,
+             timeout: int) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [SSH, "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", HOST, *argv],
+        [SSH, "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", host, *argv],
         input=input_bytes,
         capture_output=True,
-        timeout=600,
+        timeout=timeout,
     )
+
+
+def _ssh(argv: list[str], input_bytes: bytes | None = None,
+         timeout: int = 600) -> subprocess.CompletedProcess:
+    """Run one remote command. Tests replace this; it is the only network call in the CLI.
+
+    The default LAN address is retried once on the Tailscale address when ssh
+    refuses the connection (exit 255): the 2026-10-31 bench saw Tailscale flap
+    while the LAN stayed up, so the reverse must not strand every job either.
+    ``timeout`` bounds the call for pollers that must never hang a read path.
+    """
+    r = _run_ssh(HOST, argv, input_bytes, timeout)
+    if r.returncode == 255 and HOST != FALLBACK_HOST:
+        r2 = _run_ssh(FALLBACK_HOST, argv, input_bytes, timeout)
+        if r2.returncode != 255:
+            globals()["HOST"] = FALLBACK_HOST
+            return r2
+    return r
 
 
 def _scp(argv: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run([SCP, "-q", *argv], capture_output=True, timeout=3600)
 
 
-def ps(script: str) -> str:
+def ps(script: str, timeout: int = 600) -> str:
     """Run a PowerShell snippet on the HP and return stdout (raises on a non-zero ssh)."""
-    r = _ssh(_ps_argv(script))
+    r = _ssh(_ps_argv(script), timeout=timeout)
     if r.returncode != 0:
         raise SystemExit(
             f"remote PowerShell failed (ssh {r.returncode}):\n"

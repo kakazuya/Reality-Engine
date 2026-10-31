@@ -1,0 +1,123 @@
+{
+  "account": "1",
+  "awaiting_input": false,
+  "control": {
+    "endpoint_file": "C:\\RE\\jobs\\bench5-a\\result.md.control.json",
+    "host": "127.0.0.1",
+    "listener_closed": true,
+    "port": 55898,
+    "schema": "dsh-heartbeat-control/1",
+    "session_id": "session-dd7a8399-0b4e-4c17-a33f-fd2406506dbb"
+  },
+  "counters": {
+    "stdout_events": 13,
+    "worker_activity": 6
+  },
+  "cwd": "C:\\RE\\repo",
+  "dsh_conversation_id": "session-dd7a8399-0b4e-4c17-a33f-fd2406506dbb",
+  "duration_seconds": 9.684,
+  "ended_at": "2026-10-31T00:08:43+00:00",
+  "exit_code": 0,
+  "failure": null,
+  "failure_detail": null,
+  "final_event": true,
+  "followup_wait_seconds": 0,
+  "heartbeat": {
+    "activity_count": 6,
+    "awaiting_deadline": null,
+    "awaiting_input": false,
+    "awaiting_since": null,
+    "consecutive_unanswered": 0,
+    "current_idle_seconds": 0.767,
+    "enabled": true,
+    "events": [
+      {
+        "at": "2026-10-31T00:08:39+00:00",
+        "detail": {
+          "tool": "read"
+        },
+        "kind": "tool_call"
+      },
+      {
+        "at": "2026-10-31T00:08:39+00:00",
+        "detail": {
+          "ok": null,
+          "tool": "unknown"
+        },
+        "kind": "tool_result"
+      },
+      {
+        "at": "2026-10-31T00:08:39+00:00",
+        "detail": {
+          "phase": "step_end"
+        },
+        "kind": "step_output"
+      },
+      {
+        "at": "2026-10-31T00:08:42+00:00",
+        "detail": {
+          "chars": 20
+        },
+        "kind": "text"
+      },
+      {
+        "at": "2026-10-31T00:08:42+00:00",
+        "detail": {
+          "phase": "step_end"
+        },
+        "kind": "step_output"
+      },
+      {
+        "at": "2026-10-31T00:08:42+00:00",
+        "detail": {
+          "chars": 20
+        },
+        "kind": "final"
+      }
+    ],
+    "hard_timeout_seconds": 600,
+    "idle_seconds": 900.0,
+    "last_activity_at": "2026-10-31T00:08:42+00:00",
+    "last_activity_detail": {
+      "chars": 20
+    },
+    "last_activity_kind": "final",
+    "last_status_detail": {
+      "phase": "turn_end",
+      "reason": {
+        "kind": "completed"
+      }
+    },
+    "last_status_phase": "turn_end",
+    "max_unanswered": 2,
+    "pings": [],
+    "response_window_seconds": 900.0,
+    "turn_end_reason": {
+      "kind": "completed"
+    }
+  },
+  "host": "127.0.0.1",
+  "interim_result": false,
+  "model": "deepseek-v4.1-flash",
+  "outputs": {
+    "control_file": "C:\\RE\\jobs\\bench5-a\\result.md.control.json",
+    "events_file": "C:\\RE\\jobs\\bench5-a\\result.md.events.jsonl",
+    "log_file": "C:\\RE\\jobs\\bench5-a\\result.md.log",
+    "out_file": "C:\\RE\\jobs\\bench5-a\\result.md",
+    "status_file": "C:\\RE\\jobs\\bench5-a\\status.json"
+  },
+  "partial": false,
+  "permission": "read-only",
+  "pid": 16892,
+  "provider_routing_note": "x-opencode-session header; separate from the dsh conversation id",
+  "provider_routing_session_id": "4da45d3a-bdc0-553b-b03f-d5c78021328a",
+  "reasoning_effort": "max",
+  "result_kind": "final",
+  "run_id": "dsh-20261031T053833-83a8fc07",
+  "schema": "dsh-heartbeat-status/1",
+  "started_at": "2026-10-31T00:08:33+00:00",
+  "started_epoch": 1793405313.9607785,
+  "state": "completed",
+  "stderr_tail": "",
+  "updated_at": "2026-10-31T00:08:43+00:00"
+}

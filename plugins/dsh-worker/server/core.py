@@ -1035,6 +1035,9 @@ class Manager:
         base: str | None = None,
         test_cmd: str | None = None,
         progress_interval_seconds: int = DEFAULT_PROGRESS_INTERVAL_SECONDS,
+        host: str = "msi",
+        dbs: list[str] | None = None,
+        account: str | None = None,
     ) -> dict[str, Any]:
         if not isinstance(use_worktree, bool):
             raise PluginError("worktree_flag_invalid", "use_worktree must be true or false")
@@ -1067,6 +1070,22 @@ class Manager:
                 "peak_hours_imminent",
                 f"a DeepSeek peak window starts within {PEAK_START_MARGIN_SECONDS}s; "
                 "the launcher would refuse this run. Start after the window ends.",
+            )
+        if host not in ("msi", "hp"):
+            raise PluginError("host_invalid", "host must be 'msi' (default) or 'hp'")
+        if host == "hp":
+            # HP jobs keep their own launcher, peak refusal and lease-like hard
+            # stop (hp_worker.start); none of the MSI worktree/lock machinery
+            # applies because the checkout lives on the other laptop.
+            hp_text, _ = self._read_brief(brief, task_file)
+            return self._start_hp_worker(
+                hp_text,
+                permission=permission,
+                test_cmd=test_cmd,
+                hard_timeout_seconds=hard_timeout_seconds,
+                dbs=dbs,
+                account=account,
+                brief_first_line=_first_line(hp_text),
             )
         if use_worktree:
             # The worktree derives its own workspace; the repository root is
@@ -1812,8 +1831,321 @@ class Manager:
             return status
         return lost
 
+    # ---------------------------------------------------------- HP workers
+    def _hp_module(self) -> Any:
+        """The HP launcher/record module, imported lazily from this checkout."""
+        root = str(self.config.repo_root)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from reality_engine.scripts import hp_worker  # noqa: PLC0415 - lazy, tests stub it
+
+        return hp_worker
+
+    def _hp_status(self, job_id: str, job: dict[str, Any], job_dir: Path) -> dict[str, Any]:
+        """Status of an HP job from its local cache; never touches the network.
+
+        ``hp_worker poll`` is the only writer of that cache and every ssh call it
+        makes is bounded, so a laptop that is off leaves the last record here
+        with ``hp.reachable = false`` instead of hanging a controller read.
+        """
+        status = self._read_status(job_dir)
+        phase = str(status.get("phase") or "starting")
+        final = phase in FINAL_PHASES or phase == "orphaned"
+        running = phase in ACTIVE_PHASES and not final
+        hp_record = dict(job.get("hp") or {})
+        hp_state = dict(status.get("hp") or {})
+        paths = dict(job.get("paths") or self._job_paths(job_id))
+        result_path = Path(str(paths.get("result") or (job_dir / "result.md")))
+        try:
+            result_bytes = result_path.stat().st_size
+        except OSError:
+            result_bytes = 0
+        started_at = status.get("started_at") or job.get("created_at")
+        hard_timeout = (job.get("limits") or {}).get("hard_timeout_seconds")
+        elapsed = status.get("elapsed_seconds")
+        if elapsed is None:
+            parsed = parse_iso(started_at)
+            elapsed = (utc_now() - parsed).total_seconds() if parsed else None
+        remaining = None
+        deadline = None
+        if isinstance(hard_timeout, (int, float)) and hard_timeout > 0:
+            remaining = max(0.0, float(hard_timeout) - float(elapsed or 0))
+            parsed = parse_iso(started_at)
+            if parsed:
+                deadline = (parsed + timedelta(seconds=hard_timeout)).isoformat()
+        warnings = list(status.get("warnings") or [])
+        cache_age = None
+        parsed = parse_iso(status.get("updated_at"))
+        if parsed:
+            cache_age = (utc_now() - parsed).total_seconds()
+        stale = bool(running and cache_age is not None and cache_age > 120)
+        if stale:
+            warnings.append(
+                "HP status cache is stale; the poller may have stopped (rerun "
+                "hp_worker poll)"
+            )
+        progress_view = dict(status.get("progress") or {})
+        progress_view.setdefault("summary", status.get("summary"))
+        if hp_state.get("reachable") is False:
+            last_seen = str(hp_state.get("last_seen") or "")
+            label = last_seen
+            last_seen_at = parse_iso(last_seen)
+            if last_seen_at:
+                label = last_seen_at.astimezone().strftime("%H:%M")
+            unreachable = f"HP unreachable, last seen {label or 'unknown'}"
+            if not warnings or warnings[-1] != unreachable:
+                warnings.append(unreachable)
+            if "unreachable" not in str(progress_view.get("summary") or ""):
+                progress_view["summary"] = unreachable
+        progress_view["done"] = final
+        progress_view["succeeded"] = phase == "finished"
+        progress_view["controller_lease_remaining_seconds"] = remaining
+        progress_view.setdefault("events", {})
+        failure = None
+        if phase in {"failed", "lost"}:
+            failure = {
+                "likely_cause": status.get("error") or status.get("summary")
+                or "the HP worker stopped before writing a final status",
+                "detail": warnings[-1] if warnings else None,
+            }
+        return {
+            "ok": True,
+            "job_id": job_id,
+            "host": "hp",
+            "phase": phase,
+            "running": running,
+            "final": final,
+            "failed": phase in {"failed", "lost"},
+            "stale": stale,
+            "started_at": started_at,
+            "updated_at": status.get("updated_at"),
+            "finished_at": status.get("finished_at"),
+            "last_activity_at": status.get("worker_activity_at") or status.get("updated_at"),
+            "stale_after_seconds": None,
+            "awaiting_input": False,
+            "awaiting_since": None,
+            "awaiting_deadline": None,
+            "process": {
+                "hp": True,
+                "pid": hp_state.get("pid"),
+                "reachable": hp_state.get("reachable"),
+                "pid_alone_is_not_progress": True,
+            },
+            "exit_code": status.get("exit_code"),
+            "outcome": status.get("outcome"),
+            "error": status.get("error"),
+            "workspace": job.get("workspace"),
+            "permission": job.get("permission"),
+            "permission_requested": job.get("permission_requested"),
+            "write_scope": job.get("write_scope") or "workspace",
+            "writes": job.get("writes") or [],
+            "write_roots": [],
+            "approved_by": None,
+            "confirm_repo_root_write": False,
+            "resource_locks": job.get("resource_locks") or [],
+            "tmp_dir": None,
+            "tmp_reparse_point": False,
+            "tool_calls_before_first_edit": progress_view.get(
+                "tool_calls_before_first_edit"
+            ),
+            "orientation_seconds": None,
+            "first_edit_at": None,
+            "worker_commits": [],
+            "detached": [],
+            "model": job.get("model"),
+            "effort": job.get("effort"),
+            "account": job.get("account"),
+            "host_address": hp_record.get("host"),
+            "session": {
+                "provider_session": None,
+                "conversation_id": status.get("conversation_id"),
+                "conversation_id_known": bool(status.get("conversation_id")),
+                "distinct_identities": True,
+            },
+            "owner_session": job.get("owner_session"),
+            "last_steerer": None,
+            "steering": {},
+            "worktree": {"enabled": False, "branch": None, "base": None, "path": None},
+            "heartbeat": {
+                "present": False,
+                "mode": "hp_poller",
+                "hp": hp_state,
+                "control_available": False,
+                "control_unavailable_reason": "hp_worker",
+            },
+            "controller_lease": (
+                {
+                    "lease_seconds": hard_timeout,
+                    "deadline": deadline,
+                    "remaining_seconds": remaining,
+                    "expired": remaining == 0,
+                }
+                if hard_timeout
+                else None
+            ),
+            "controller_lease_error": None,
+            "controller_lease_expired": bool(remaining == 0),
+            "result_ready": final and result_bytes > 0,
+            "result_final": phase == "finished" and result_bytes > 0,
+            "result_bytes": result_bytes,
+            "result_is_streaming": running and result_bytes > 0,
+            "failure_reason": failure,
+            "progress": progress_view,
+            "result_kind": "final" if final else "live",
+            "interim": False,
+            "partial": False,
+            "paths": paths,
+            "limits": job.get("limits"),
+            "hp": {**hp_state, "host_address": hp_record.get("host")},
+            "warnings": warnings,
+            "server_shutdown": SERVER_SHUTDOWN_SEMANTICS,
+        }
+
+    def _start_hp_worker(self, text: str, *, permission: str,
+                         test_cmd: str | None, hard_timeout_seconds: int | None,
+                         dbs: list[str] | None, account: str | None,
+                         brief_first_line: str) -> dict[str, Any]:
+        """Route a start to ``hp_worker.start`` and return the MCP envelope."""
+        if permission not in PERMISSIONS:
+            raise PluginError(
+                "permission_invalid", f"permission must be one of {PERMISSIONS}"
+            )
+        if test_cmd is not None and (
+            not isinstance(test_cmd, str)
+            or not test_cmd.strip()
+            or len(test_cmd) > MAX_TEST_CMD_CHARS
+        ):
+            raise PluginError(
+                "test_cmd_invalid",
+                f"test_cmd must be a non-empty command of at most {MAX_TEST_CMD_CHARS} chars",
+            )
+        if hard_timeout_seconds is not None and (
+            not isinstance(hard_timeout_seconds, int) or hard_timeout_seconds <= 0
+        ):
+            raise PluginError(
+                "timeout_invalid", "hard_timeout_seconds must be a positive integer"
+            )
+        names: list[str] = []
+        if dbs is not None:
+            if not isinstance(dbs, list) or len(dbs) > 8:
+                raise PluginError(
+                    "dbs_invalid", "dbs must be a list of at most 8 DB file names"
+                )
+            for name in dbs:
+                if (
+                    not isinstance(name, str)
+                    or not name.strip()
+                    or "\\" in name
+                    or "/" in name
+                    or name.strip() in (".", "..")
+                ):
+                    raise PluginError(
+                        "dbs_invalid",
+                        "dbs entries must be DB file names under REALITY_DATA_ROOT",
+                    )
+                names.append(name.strip())
+        if account is not None and str(account) not in ("1", "2"):
+            raise PluginError("account_invalid", "account must be '1' or '2'")
+        brief_dir = self.config.runtime_dir / "hp" / "briefs"
+        brief_dir.mkdir(parents=True, exist_ok=True)
+        brief_path = brief_dir / f"{iso().replace(':', '')}.md"
+        brief_path.write_text(text, encoding="utf-8")
+        try:
+            module = self._hp_module()
+            job_id = module.start(
+                brief_path,
+                names,
+                test_cmd,
+                "HEAD",
+                permission,
+                hard_timeout_seconds,
+                None,
+                False,
+                account=account,
+            )
+        except SystemExit as exc:
+            raise PluginError("hp_start_failed", str(exc) or "hp_worker start failed") from exc
+        finally:
+            try:
+                brief_path.unlink()
+            except OSError:
+                pass
+        paths = module.record_paths(job_id)
+        return {
+            "ok": True,
+            "host": "hp",
+            "job_id": job_id,
+            "phase": "starting",
+            "async": True,
+            "brief_first_line": brief_first_line,
+            "summary": f"HP worker {job_id} starting",
+            "paths": paths,
+        }
+
+    def _cancel_hp_worker(self, job_id: str, job: dict[str, Any], job_dir: Path,
+                          reason: str) -> dict[str, Any]:
+        status = self._read_status(job_dir)
+        if status.get("phase") in FINAL_PHASES:
+            return {
+                "ok": True,
+                "job_id": job_id,
+                "host": "hp",
+                "phase": status.get("phase"),
+                "already_final": True,
+                "cancelled": status.get("phase") == "cancelled",
+            }
+        module = self._hp_module()
+        try:
+            detail = module.cancel(job_id)
+            module.poll_once(job_id)
+        except SystemExit as exc:
+            raise PluginError("hp_unreachable", f"the HP did not answer: {exc}") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise PluginError(
+                "hp_unreachable", "the HP did not answer within the poll timeout"
+            ) from exc
+        current = self._read_status(job_dir)
+        if current.get("phase") != "finished":
+            # The kill usually makes the remote wrapper stop without writing an
+            # exit code, so a poll racing this call records `lost`; the requested
+            # cancel still owns the final label.
+            current.update(
+                {
+                    "phase": "cancelled",
+                    "outcome": "cancelled",
+                    "finished_at": iso(),
+                    "updated_at": iso(),
+                    "summary": f"cancelled: {str(reason)[:180]}",
+                    "progress": {
+                        **(current.get("progress") or {}),
+                        "done": True,
+                        "succeeded": False,
+                        "summary": f"cancelled: {str(reason)[:180]}",
+                    },
+                }
+            )
+            atomic_write_json_locked(
+                job_dir / "status.json", current, self._job_lock(job_dir)
+            )
+            phase = "cancelled"
+        else:
+            phase = "finished"
+        self._steer(job_dir, "cancel", f"reason={reason}")
+        return {
+            "ok": True,
+            "job_id": job_id,
+            "host": "hp",
+            "phase": phase,
+            "cancelled": phase == "cancelled",
+            "forced": not detail.get("already_final"),
+            "pid": detail.get("pid"),
+            "detail": detail.get("detail"),
+        }
+
     def get_status(self, job_id: str) -> dict[str, Any]:
         job, job_dir = self._load_job(job_id)
+        if job.get("host") == "hp":
+            return self._hp_status(job_id, job, job_dir)
         status = self._read_status(job_dir)
         heartbeat_live, heartbeat_error = heartbeat.read_heartbeat(job_dir)
         heartbeat_record = dict(job.get("heartbeat") or status.get("heartbeat") or {})
@@ -1972,6 +2304,7 @@ class Manager:
         return {
             "ok": True,
             "job_id": job_id,
+            "host": job.get("host") or "msi",
             "phase": phase,
             "running": running,
             "final": final,
@@ -2421,6 +2754,7 @@ class Manager:
         return {
             "ok": True,
             "job_id": job_id,
+            "host": status.get("host") or job.get("host") or "msi",
             "phase": status["phase"],
             "final": status["final"],
             "interim": status.get("interim", False),
@@ -2706,6 +3040,8 @@ class Manager:
                 "job_id": job_id,
             }
         job, job_dir = self._load_job(job_id)
+        if job.get("host") == "hp":
+            return self._cancel_hp_worker(job_id, job, job_dir, reason)
         status = self.get_status(job_id)
         self._steer(job_dir, "cancel", f"reason={reason}")
         if status["final"]:
@@ -2881,6 +3217,7 @@ class Manager:
             jobs.append(
                 {
                     "job_id": job["job_id"],
+                    "host": job.get("host") or "msi",
                     "phase": job["phase"],
                     "running": job["running"],
                     "stale": job["stale"],
