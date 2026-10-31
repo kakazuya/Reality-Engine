@@ -444,3 +444,83 @@ PDFs), `C:\RE\ocr_pages` (20 rendered pages), `C:\RE\ocr_check` (rows JSONL),
   covers the check; a worker asked to run pytest itself will fail and should be told.
 - OCR: 0.93–0.95 on clean pages, not 0.95+ everywhere; the remaining loss is logos,
   all-caps letterheads, ruled tables and text-layer reading order, not recognition.
+
+## 11. Worker throughput — 1, 3 and 5 concurrent HP workers (2026-10-31, follow-up)
+
+**Answer: the limit is local cold start, not the provider and not memory.** Five workers
+added on top of four already running finished in 8.0–9.7 s against 8.8 s for one — no
+slowdown. The earlier "six workers, 4.5× slower" was a *tail* (the slowest job), made of a
+58 s cold start plus one 60 s provider stall; the work phase stayed ~10 s in every job.
+Recommend **5 concurrent short workers**, or **6** for jobs whose work outlives startup.
+
+### 11.1 What was run
+
+05:38–05:40 IST, OpenCode Go **account 1**, `deepseek-v4.1-flash` at max effort. One shared,
+warm `C:\RE\repo` checkout (no per-job upload), one fixed brief: read
+`reality_engine/config.py` and answer with the first ALL_CAPS constant and its line number.
+Wave N launched N harness workers within ~2 s of each other; free RAM, process RSS and CPU
+were sampled 1.3 s after the launch. **Another worker's four HP jobs were running
+throughout** (`other_running_jobs = 4` in every sample), so the box was carrying 5, 7 and 9
+dsh workers — a deliberately conservative, real-load test.
+
+| workers added | others running | free RAM MB | per-worker wall, s | max | mean | startup | model wait | local | finished/h, wave | per worker/h |
+|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 4 | 3,804 | 8.8 | 8.8 | 8.8 | 5.0 | 3.0 | 0.8 | 409 | 409 |
+| 3 | 4 | 3,457 | 9.1, 9.6, 10.0 | 10.0 | 9.6 | 5.7 | 3.3 | 0.6 | 1,129 | 376 |
+| 5 | 4 | 2,623 | 9.7, 8.8, 8.0, 8.0, 8.8 | 9.7 | 8.7 | 4.8 | 2.8 | 1.1 | 2,078 | 415 |
+
+All nine jobs exited 0 and returned the same correct answer (`PROJECT_ROOT line 10`).
+Split comes from each job's heartbeat events: the gap ending at a model-produced event
+(thinking/text/step_output/tool_call/final) is provider time; the first such gap also
+contains dsh cold start and is charged to `startup`; tool execution and teardown are
+`local`. Raw: `tasks/efficiency/hp_bench_results.json`, per-job status in
+`tasks/efficiency/hp_bench_raw/`, driver `tasks/efficiency/hp_bench_run.py`.
+
+- **Provider — not the limit at 5.** Model wait is flat: 3.0 s (1 worker), 3.3 s (3), 2.8 s
+  (5). No queueing appeared even with nine dsh workers on the box.
+- **Memory — not the limit.** Measured free RAM fell 3.8 → 2.6 GB, all processes together
+  4.8–6.1 GB RSS, no OOM, no swap; every job still finished inside 10 s.
+- **Local — the limit.** Even warm, startup (dsh boot + harness import) is 55–65% of each
+  job's wall time and is per worker. Adding workers does not increase it on the shared
+  warm checkout, but a cold checkout does (below).
+
+### 11.2 Why the earlier six-worker run felt 4.5× slower
+
+That run (04:31–04:34, **account 2**, a fresh 129 MiB `git archive` + `git init` per job and
+both MCP servers in each worker) gave 17.1, 21.2, 68.1, 28.5, 76.9 and 20.8 s. Replaying
+their heartbeat events: the *work phase* is ~10 s in every job. The spread is **(a) cold
+start, 7–58 s** (job `hp-20261031T043114-b81e3c` took 58 s to its first model event; others
+7–16 s) and **(b) one provider stall**: `hp-20261031T043117-d5be16` has a 60 s gap between
+two model steps (23:02:40 → 23:03:40) while every other step is 5 s.
+
+So the honest ratios are: mean 38.8 s = **2.3×** the fastest 17.1 s job; max 76.9 s =
+**4.5×** — and that max is one cold start plus one provider stall, not a concurrency
+penalty. The 13–26% CPU reading was sampled after the cold-start burst; startup is where
+the CPU goes, which is why CPU looked idle while walls stretched.
+
+### 11.3 Recommended operating point
+
+- **5 concurrent short HP workers** is the measured point: 2,078 finished tasks/h on this
+  task shape, and per-worker rate (415/h) is unchanged from one worker (409/h).
+- **6** for jobs whose work outlives startup (the capacity section above measured 6–8 safe
+  on RAM/CPU); the only measured penalty of 6 is the extra cold start.
+- To make 6–8 pay for short jobs, fix startup rather than add workers: cache the per-commit
+  archive on the HP (already in §10.8) and keep one warm checkout instead of a fresh
+  `git init` per job — the warm-checkout bench needed no more wall time at 5 than at 1.
+
+Caveats: four concurrent jobs from another worker share the box (real load, unknown mix);
+`cpu_pct` is an instantaneous `Win32_Processor` sample and read 100 in every wave, so it is
+not used as a load measure; free RAM is one sample per wave at t ≈ 1.3 s.
+
+### 11.4 Driver
+
+```powershell
+python tasks/efficiency/hp_bench_run.py bench --waves 1,3,5
+python tasks/efficiency/hp_bench_run.py mcp-check   # real start/status/result/cancel
+```
+
+The first attempt wrote empty answers: `hp_run`'s wrapper starts in the job dir, so the
+harness could not import `reality_engine` (fix: `set PYTHONPATH=C:\RE\repo`), and a `cd`
+inside the command sent `exit.txt` to the repo root, where the wave poller never saw the
+job finish. Both fixed in the driver; a wave now reports `problems` if a job has no clean
+answer.

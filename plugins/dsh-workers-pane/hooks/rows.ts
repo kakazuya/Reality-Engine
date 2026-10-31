@@ -500,11 +500,19 @@ export function rowOf(
       ? extras.spark
       : sparkFromEvents(events, now)
 
+  // HP jobs publish their host and title in status.json (the pane reads
+  // job.json only for unreadable records, so the status record must carry it).
+  const host = firstString(statusRecord?.['host'], jobRecord?.['host'])
+  const statusTitle = firstString(statusRecord?.['title'])
+  const title =
+    statusTitle === null ? titleOf(id, jobRecord, brief) : clip(statusTitle, 120)
+
   return {
     id,
     shortId: id.slice(-8),
-    title: titleOf(id, jobRecord, brief),
+    title: host === 'hp' ? `HP · ${title}` : title,
     kind: meta.kind,
+    host,
     phase: meta.phase,
     rawPhase: meta.rawPhase,
     outcome: meta.outcome,

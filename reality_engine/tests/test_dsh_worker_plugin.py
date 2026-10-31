@@ -1127,7 +1127,7 @@ class PluginTests(unittest.TestCase):
             listing = await self._call(session, "list_workers", {})
             self.assertLessEqual(len(listing["jobs"]), 5)
             row = next(item for item in listing["jobs"] if item["job_id"] == job_id)
-            self.assertEqual(set(row), {"job_id", "phase", "line"})
+            self.assertEqual(set(row), {"job_id", "host", "phase", "line"})
 
         self._run(self._with_session(scenario))
 
@@ -2233,6 +2233,167 @@ class PluginTests(unittest.TestCase):
         # JavaScript counts UTF-16 code units; astral characters must not slip
         # past a 4000-character Python len() check and get truncated.
         self.assertIsNotNone(heartbeat.message_length_error("\U0001f600" * 2001))
+
+    # ------------------------------------------------------------------ HP
+    def _write_hp_record(self, job_id: str = "hp-20261031T000000-abc123",
+                         phase: str = "running", result: str | None = None,
+                         summary: str = "HP worker running", reachable: bool = False,
+                         outcome: str | None = None,
+                         exit_code: int | None = None) -> str:
+        """One cached HP job record, laid out exactly as hp_worker.start writes it."""
+        jobs_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / job_id
+        jobs_dir.mkdir(parents=True, exist_ok=True)
+        now = "2026-10-31T10:00:00+05:30"
+        final = phase in ("finished", "failed", "cancelled", "lost")
+        paths = {
+            "job_dir": str(jobs_dir),
+            "job_record": str(jobs_dir / "job.json"),
+            "status": str(jobs_dir / "status.json"),
+            "brief": str(jobs_dir / "brief.md"),
+            "result": str(jobs_dir / "result.md"),
+            "events": str(jobs_dir / "result.md.events.jsonl"),
+            "launcher_log": str(jobs_dir / "result.md.log"),
+        }
+        job = {
+            "schema": 1, "job_id": job_id, "host": "hp", "kind": "worker",
+            "created_at": now, "workspace": "C:\\RE\\jobs\\" + job_id + "\\repo",
+            "permission": "workspace-write", "model": "deepseek-v4.1-flash",
+            "account": "1", "limits": {"hard_timeout_seconds": 1800},
+            "hp": {"host": "zen7s@192.168.1.42"}, "paths": paths,
+        }
+        status = {
+            "schema": 1, "job_id": job_id, "host": "hp", "kind": "worker",
+            "title": "Bench: one-line repo fact", "phase": phase,
+            "started_at": now, "updated_at": now, "worker_activity_at": now,
+            "finished_at": now if final else None,
+            "outcome": outcome, "exit_code": exit_code,
+            # The shared cleanup cancels every record it does not own; mark this
+            # one as owned by the test process so the HP cancel path stays offline.
+            "supervisor_pid": os.getpid(),
+            "hp": {"reachable": reachable, "last_seen": now, "checked_at": now,
+                   "last_error": None, "host_address": "zen7s@192.168.1.42",
+                   "hard_timeout_seconds": 1800, "pid": 4242},
+            "progress": {"summary": summary, "done": final},
+            "warnings": [],
+        }
+        (jobs_dir / "job.json").write_text(json.dumps(job), encoding="utf-8")
+        (jobs_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+        (jobs_dir / "brief.md").write_text("# Task\n\nbench\n", encoding="utf-8")
+        if result is not None:
+            (jobs_dir / "result.md").write_text(result, encoding="utf-8")
+        return job_id
+
+    def test_hp_unreachable_status_and_list_are_local_and_fast(self):
+        job_id = self._write_hp_record(summary="HP unreachable, last seen 09:58",
+                                       reachable=False)
+        started = time.monotonic()
+        status = self._manager_instance().get_status(job_id)
+        listed = self._manager_instance().list_workers(limit=50)
+        elapsed = time.monotonic() - started
+        self.assertLess(elapsed, 3.0, "HP reads must never wait on the network")
+        self.assertEqual(status["host"], "hp")
+        self.assertEqual(status["phase"], "running")
+        self.assertFalse(status["hp"]["reachable"])
+        self.assertIn("HP unreachable, last seen", status["progress"]["summary"])
+        self.assertIn("HP unreachable, last seen", status["warnings"][-1])
+        row = next(r for r in listed["jobs"] if r["job_id"] == job_id)
+        self.assertEqual(row["host"], "hp")
+        self.assertEqual(row["summary"], "HP unreachable, last seen 09:58")
+
+    def test_hp_result_contract_and_host(self):
+        job_id = self._write_hp_record(phase="finished", result="HP final answer\n",
+                                       summary="finished", outcome="ok", exit_code=0)
+        result = self._manager_instance().worker_result(job_id)
+        self.assertEqual(result["host"], "hp")
+        self.assertEqual(result["content"].strip(), "HP final answer")
+        self.assertEqual(result["outcome"], "ok")
+        self.assertEqual(result["exit_code"], 0)
+
+    def test_hp_job_visible_through_mcp_tools(self):
+        job_id = self._write_hp_record(phase="finished", result="answer\n",
+                                       summary="finished", outcome="ok", exit_code=0)
+
+        async def scenario(session):
+            listed = await self._call(session, "list_workers", {"limit": 50})
+            status = await self._call(session, "worker_status", {"job_id": job_id})
+            result = await self._call(session, "worker_result", {"job_id": job_id})
+            refused = await self._call(session, "cancel_worker", {"job_id": job_id})
+            return listed, status, result, refused
+
+        listed, status, result, refused = self._run(self._with_session(scenario))
+        row = next(r for r in listed["jobs"] if r["job_id"] == job_id)
+        self.assertEqual(row["host"], "hp")
+        self.assertEqual(status["host"], "hp")
+        self.assertEqual(status["phase"], "finished")
+        self.assertEqual(result["host"], "hp")
+        self.assertEqual(result["content"].strip(), "answer")
+        self.assertEqual(refused["error"]["code"], "confirmation_required")
+
+    def test_hp_start_routes_to_the_hp_launcher(self):
+        manager = self._manager_instance()
+        calls: dict = {}
+
+        class FakeHp:
+            @staticmethod
+            def start(brief, dbs, test_cmd, commit, permission, timeout,
+                      max_output_tokens, peak_ok, account=None):
+                calls.update({
+                    "brief": Path(brief).read_text(encoding="utf-8"),
+                    "dbs": dbs, "test_cmd": test_cmd, "commit": commit,
+                    "permission": permission, "timeout": timeout,
+                    "peak_ok": peak_ok, "account": account,
+                })
+                return "hp-20261031T000000-abc123"
+
+            @staticmethod
+            def record_paths(job_id):
+                return {"dir": str(self.root / "runtime" / "jobs" / job_id)}
+
+        manager._hp_module = lambda: FakeHp
+        result = manager.start_worker(brief="# Task\n", host="hp", permission="read-only",
+                                      test_cmd="python -m pytest -q", dbs=["pilot.db"],
+                                      hard_timeout_seconds=900)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["host"], "hp")
+        self.assertEqual(result["job_id"], "hp-20261031T000000-abc123")
+        self.assertIsNone(calls["account"])
+        self.assertEqual(calls["dbs"], ["pilot.db"])
+        self.assertEqual(calls["timeout"], 900)
+        self.assertFalse(calls["peak_ok"])
+        self.assertIn("# Task", calls["brief"])
+
+    def test_hp_start_refuses_peak_hours(self):
+        env = dict(self.env)
+        env["DSH_WORKER_FAKE_NOW"] = PEAK
+        manager = core.Manager(core.load_config(env))
+        with self.assertRaises(core.PluginError) as ctx:
+            manager.start_worker(brief="# Task\n", host="hp")
+        self.assertEqual(ctx.exception.code, "peak_hours")
+
+    def test_hp_cancel_requires_confirm_and_calls_the_hp_launcher(self):
+        job_id = self._write_hp_record(phase="running")
+        manager = self._manager_instance()
+        calls: list[tuple[str, str]] = []
+
+        class FakeHp:
+            @staticmethod
+            def cancel(name):
+                calls.append(("cancel", name))
+                return {"already_final": False, "pid": 4242, "detail": "killed"}
+
+            @staticmethod
+            def poll_once(name):
+                calls.append(("poll", name))
+                return {}
+
+        manager._hp_module = lambda: FakeHp
+        refused = manager.cancel_worker(job_id)
+        self.assertEqual(refused["error"]["code"], "confirmation_required")
+        self.assertEqual(calls, [])
+        done = manager.cancel_worker(job_id, confirm=True, reason="test")
+        self.assertTrue(done["cancelled"])
+        self.assertEqual(calls, [("cancel", job_id), ("poll", job_id)])
+        self.assertEqual(manager.get_status(job_id)["phase"], "cancelled")
 
 
 class WorkerContextBuilderTests(unittest.TestCase):

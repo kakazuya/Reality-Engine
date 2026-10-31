@@ -92,6 +92,7 @@ test('a running row carries its title, live metrics, lease, session and activity
   expect(row.kind).toBe('worker')
   expect(row.shortId).toBe('aaaaaaaa')
   expect(row.title).toBe('Fix the resource watchdog')
+  expect(row.host).toBeNull()
   expect(row.idleMs).toBe(5 * 60_000)
   expect(row.elapsedMs).toBe(20 * 60_000)
   expect(row.leaseMs).toBe(100 * 60_000)
@@ -237,7 +238,19 @@ test('finished rows show outcome, duration and branch, never last activity', () 
   expect(lost.phase).toBe('failed')
 })
 
-test('data jobs are titled by name and carry exit code and duration', () => {
+test('an HP job carries the host label and its cached title', () => {
+  const status = {
+    ...(statusOf(RUNNING_ID) as Record<string, unknown>),
+    host: 'hp',
+    title: 'Bench: one-line repo fact',
+  }
+  const row = rowOf(RUNNING_ID, status, null, null, null, NOW)
+  expect(row.host).toBe('hp')
+  expect(row.title).toBe('HP · Bench: one-line repo fact')
+  expect(row.phase).toBe('running')
+})
+
+test('a data job is titled by name and carries exit code and duration', () => {
   const running = rowFor(DATA_RUNNING_ID)
   expect(running.kind).toBe('data_job')
   expect(running.title).toBe('insider_trades')

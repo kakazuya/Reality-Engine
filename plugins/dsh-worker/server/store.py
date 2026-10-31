@@ -19,7 +19,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-JOB_ID_RE = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{8}$")
+JOB_ID_RE = re.compile(
+    r"^\d{8}T\d{6}Z-[0-9a-f]{8}$"          # local dsh-worker job
+    r"|^hp-\d{8}T\d{6}-[0-9a-f]{6}$"       # HP worker job (hp_worker.new_job_id)
+)
 # The lock file names are data, not just names: the main checkout keeps the
 # historical ``repository-mutation.json`` (so a worker started before the
 # per-worktree upgrade still contends with a new one), and every other

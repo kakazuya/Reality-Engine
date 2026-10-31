@@ -55,6 +55,8 @@ export type WorkerRow = {
   shortId: string
   title: string
   kind: WorkerKind
+  /** 'msi' for the local fleet, 'hp' for the OmniBook; null when unlabelled. */
+  host: string | null
   phase: WorkerPhase
   rawPhase: string
   outcome: WorkerOutcome | null

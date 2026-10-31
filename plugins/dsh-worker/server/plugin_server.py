@@ -112,6 +112,7 @@ def _compact_status(status: dict[str, Any]) -> dict[str, Any]:
     return {
         "ok": status.get("ok", True),
         "job_id": status.get("job_id"),
+        "host": status.get("host") or "msi",
         "phase": status.get("phase"),
         "done": progress_view.get("done", status.get("final")),
         "succeeded": progress_view.get("succeeded"),
@@ -119,6 +120,15 @@ def _compact_status(status: dict[str, Any]) -> dict[str, Any]:
         "tool_calls": events.get("tool_calls"),
         "tool_calls_before_first_edit": progress_view.get("tool_calls_before_first_edit"),
         "lease_seconds_left": progress_view.get("controller_lease_remaining_seconds"),
+        "hp": (
+            {
+                "reachable": (status.get("hp") or {}).get("reachable"),
+                "last_seen": (status.get("hp") or {}).get("last_seen"),
+                "host_address": (status.get("hp") or {}).get("host_address"),
+            }
+            if status.get("host") == "hp"
+            else None
+        ),
         "failure_reason": reason,
     }
 
@@ -130,6 +140,7 @@ def _compact_result(result: dict[str, Any]) -> dict[str, Any]:
     return {
         "ok": True,
         "job_id": result.get("job_id"),
+        "host": result.get("host") or "msi",
         "outcome": result.get("outcome"),
         "exit_code": result.get("exit_code"),
         "content": result.get("content"),
@@ -151,6 +162,7 @@ def _compact_jobs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
             "job_id": row.get("job_id"),
+            "host": row.get("host") or "msi",
             "phase": row.get("phase"),
             "line": row.get("digest_summary") or row.get("summary"),
         }
@@ -198,7 +210,12 @@ def _compact_jobs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "repo_root_write_requires_confirmation otherwise): such a worker can "
         "rewrite code that later runs unsandboxed (the context-pack builder, "
         "supervisor.py, .git/config, other jobs' records). Read-only and worktree "
-        "workers are unaffected."
+        "workers are unaffected. host='hp' routes the start to hp_worker.py on "
+        "the HP OmniBook (Go account 1 by default; account overrides it) and "
+        "ignores workspace/use_worktree/write_scope: the HP checkout is C:\\RE. "
+        "HP jobs get the same peak-hour refusal and a lease-like hard stop "
+        "(hard_timeout_seconds defaults to 1800). dbs names the DB files to "
+        "mirror read-only to the HP for this job."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -228,6 +245,9 @@ def start_worker(
     base: str | None = None,
     test_cmd: str | None = None,
     progress_interval_seconds: int = DEFAULT_PROGRESS_INTERVAL_SECONDS,
+    host: str = "msi",
+    dbs: list[str] | None = None,
+    account: str | None = None,
 ) -> dict[str, Any]:
     return _safe(
         lambda: _get_manager().start_worker(
@@ -254,6 +274,9 @@ def start_worker(
             base=base,
             test_cmd=test_cmd,
             progress_interval_seconds=progress_interval_seconds,
+            host=host,
+            dbs=dbs,
+            account=account,
         )
     )
 
