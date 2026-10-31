@@ -51,6 +51,11 @@ def _ps_argv(script: str) -> list[str]:
     return ["powershell", "-NoProfile", "-EncodedCommand", enc]
 
 
+#: The detached poller has no console, so without this every ssh it starts opens a
+#: new terminal window on the desktop.
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+
+
 def _run_ssh(host: str, argv: list[str], input_bytes: bytes | None,
              timeout: int) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -58,6 +63,7 @@ def _run_ssh(host: str, argv: list[str], input_bytes: bytes | None,
         input=input_bytes,
         capture_output=True,
         timeout=timeout,
+        creationflags=NO_WINDOW,
     )
 
 
@@ -80,7 +86,8 @@ def _ssh(argv: list[str], input_bytes: bytes | None = None,
 
 
 def _scp(argv: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run([SCP, "-q", *argv], capture_output=True, timeout=3600)
+    return subprocess.run([SCP, "-q", *argv], capture_output=True, timeout=3600,
+                          creationflags=NO_WINDOW)
 
 
 def ps(script: str, timeout: int = 600) -> str:
