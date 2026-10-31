@@ -11,7 +11,7 @@ from reality_engine.scripts import hp_run
 
 
 def fake_ssh(recorder, stdout="", code=0):
-    def _f(argv, input_bytes=None):
+    def _f(argv, input_bytes=None, timeout=600):
         recorder.append((argv, input_bytes))
         return subprocess.CompletedProcess(argv, code, stdout.encode(), b"")
     return _f
