@@ -179,8 +179,9 @@ _AND_CAPITAL = re.compile(r"\s+(?:and|or|plus)\s+([A-Za-z0-9/&%\-]+)")
 _PUNCT = re.compile(r"[^a-z0-9%]+")
 _WS = re.compile(r"\s+")
 
-#: "M & B Engineering (NSE: MBEL)" names the listing venue, not an exchange reading.
-_TICKER_ANNOTATION = re.compile(r"\b(?:NSE|BSE)\s*:\s*[A-Z][A-Z0-9&\-]*")
+#: "M & B Engineering (NSE: MBEL)" names the listing venue, not an exchange reading; a
+#: BSE code has the same role ("BSE: 532810").
+_TICKER_ANNOTATION = re.compile(r"\b(?:NSE|BSE)\s*:\s*(?:[A-Z][A-Z0-9&\-]*|\d{5,6})\b")
 #: A possessive head ("Tata Steel's", "Coal India's") is an entity name; its words
 #: ("steel", "coal", "bank") must not be read as commodity/flow measures.  A colon head is
 #: *not* masked: "Bank NIM:" and "Defence pack:" name the measure/scope itself.
@@ -925,6 +926,11 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
 
     # ---- window (§C.2): the existing parser, on the question text only ----------------
     d0, d1, basis = period_bounds({"question": text, "as_of": as_of or "", "period": ""})
+    if basis == "as_of":
+        # "as of X" is a cut-off, not a one-day range: the latest visible value at X.
+        # (period_bounds returns (as_of, as_of) for it; a one-day window would hide
+        # every quarterly row, since a period_end never lands on the run date.)
+        d0 = None
     windows = [Window(from_=d0, to=d1, basis=basis)]
 
     # ---- status ---------------------------------------------------------------------

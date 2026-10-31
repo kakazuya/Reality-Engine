@@ -45,6 +45,15 @@ def _known(result) -> str:
     return result.known_at or "—"
 
 
+def _dims_text(row: Mapping[str, Any], result) -> str:
+    """The row's dims the part did not name: a series must label what distinguishes rows."""
+    asked = {str(key) for key in (result.dims or {})}
+    extra = {str(key): value for key, value in (row.get("dims") or {}).items()
+             if str(key) not in asked}
+    return (" [" + " ".join(f"{key}={value}" for key, value in sorted(extra.items())) + "]"
+            if extra else "")
+
+
 def _measured(result) -> str:
     head = f"P{result.part_index + 1} measured — {_entity(result)}"
     label = result.measure or result.formula or "result"
@@ -85,15 +94,16 @@ def _measured(result) -> str:
                 f"{f'; numbers: {numbers}' if numbers else ''}; "
                 f"period {result.period or '—'}; source {_source(result)}; "
                 f"known_at {_known(result)}")
-    if len(result.values) > 1 or result.shape in ("series", "ordered rows (period, value, known_at)"):
+    if result.shape == "series":
         unit = result.unit or (result.values[0].get("unit") if result.values else None)
         shown = result.values
         suffix = ""
         if len(shown) > 15:
             shown = list(shown[:6]) + list(shown[-6:])
             suffix = f" … ({len(result.values) - 12} points elided)"
-        points = "; ".join(f"{row.get('period')}={_number(row.get('value'))}"
-                           for row in shown)
+        points = "; ".join(
+            f"{row.get('period')}={_number(row.get('value'))}{_dims_text(row, result)}"
+            for row in shown)
         first = result.values[0].get("period") if result.values else "—"
         last = result.values[-1].get("period") if result.values else "—"
         return (f"{head} {label}: {len(result.values)} points {first}..{last} "

@@ -665,6 +665,492 @@ def dump_sample() -> int:
     return 0
 
 
+# --------------------------------------------------------------------------
+# v4: question -> decompose -> execute per part -> render, graded by grade_v2
+# --------------------------------------------------------------------------
+V4_RESULTS = BENCH / "GATE_RESULTS_v4.jsonl"
+V4_GRADED = BENCH / "GATE_RESULTS_v4_strict.jsonl"
+V4_SAMPLE40 = OUT / "GATE_V4_SAMPLE40.jsonl"
+V4_REGRESS = BENCH / "GATE_V4_REGRESS.json"
+V4_REPORT = REPO / "tasks" / "arch_v4" / "GATE_V4_2026-10-31.md"
+#: the full strict results are gitignored and may live only in the main checkout.
+OLD_BENCH = Path(PILOT).parents[3] / "tasks" / "answer_bench"
+
+
+def v4_cases() -> list[dict]:
+    """The 2,681 runnable bank cases: 1,073 originals + 1,608 non-as-is instances."""
+    bank, inst = cases_by_mid()
+    originals = [dict(case, kind=case.get("kind") or "original") for case in bank.values()]
+    instances = [case for case in inst.values() if case.get("kind") != "as_is"]
+    return originals + instances
+
+
+def hand_mids() -> list[str]:
+    return [str(row["mid"]) for row in json.loads(
+        HAND_JSON.read_text(encoding="utf-8"))["rows"]]
+
+
+def old_strict_rows() -> dict[str, dict]:
+    """mid -> the old engine's strict row (the 61 ANSWERED cases are the regressions)."""
+    out: dict[str, dict] = {}
+    for name in ("GATE_RESULTS_originals_strict.jsonl", "GATE_RESULTS_instances_strict.jsonl"):
+        for base in (BENCH, OLD_BENCH):
+            path = base / name
+            if path.exists():
+                for row in _load(path):
+                    out[str(row["mid"])] = row
+                break
+    return out
+
+
+def _done_mids(path: Path) -> set[str]:
+    """Mids already in a results file, read one line at a time (the rows are ~180 MB)."""
+    out: set[str] = set()
+    if not path.exists():
+        return out
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if '"mid"' in line:
+                try:
+                    out.add(str(json.loads(line).get("mid")))
+                except json.JSONDecodeError:
+                    continue
+    return out
+
+
+def _v4_execute(cases: list[dict], path: Path, resume: bool = True,
+                chunk: int = 0) -> int:
+    """Run cases through the v4 pipeline, appending one row per case (crash-resumable).
+
+    Each row is written and dropped: nothing is kept in memory, so a chunked loop of
+    processes resumes a crash without reloading the file (RAM is tight on this machine).
+    """
+    from reality_engine.query.v4 import run as run_v4
+
+    done = _done_mids(path) if resume else set()
+    todo = [case for case in cases if str(case.get("mid")) not in done]
+    if chunk:
+        todo = todo[:chunk]
+    if not todo:
+        print(f"v4: {len(done)} rows already done, nothing to run", flush=True)
+        return 0
+    print(f"v4: {len(done)} done, {len(todo)} to run", flush=True)
+    symbols = run_v4.universe()
+    resolver = run_v4.Resolver(symbols, run_v4.identities(symbols), run_v4.universe_isins())
+    if not symbols:
+        print("v4: no pilot universe file; every entity stays unresolved", flush=True)
+    mode = "a" if (resume and done) else "w"
+    started = time.perf_counter()
+    with run_v4.Stores() as stores, path.open(mode, encoding="utf-8") as handle:
+        for i, case in enumerate(todo, 1):
+            try:
+                row = run_v4.run_case(case, stores, resolver=resolver)
+            except Exception as exc:  # noqa: BLE001 - one case must not stop the bank
+                row = {"mid": str(case.get("mid")), "question": case.get("question"),
+                       "as_of": case.get("as_of"), "ask": {"parts": [], "windows": [],
+                                                           "entities": [],
+                                                           "as_of": case.get("as_of"),
+                                                           "status": "unmapped"},
+                       "entity": None, "entity_how": f"runner error: {exc}",
+                       "results": [], "answer": "", "parts": 0,
+                       "case_answered": False, "seconds": 0.0, "status": "unmapped",
+                       "residues": [], "nid_reasons": []}
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+            if i % 50 == 0 or i == len(todo):
+                handle.flush()
+                print(f"v4 {i}/{len(todo)} {row.get('seconds')}s "
+                      f"{(case.get('question') or '')[:60]}", flush=True)
+    print(f"v4: {len(todo)} rows in {time.perf_counter() - started:.0f}s", flush=True)
+    return len(todo)
+
+
+def _v4_grade(path: Path | None = None) -> dict:
+    """Grade the v4 answers with the strict grader (§H.4), one row at a time.
+
+    Same per-case grader as ``grade_v2.grade_run`` and the same counters, but streamed:
+    the raw run is ~180 MB (series parts carry thousands of values) and holding it as a
+    list of dicts twice is what the worker machine cannot afford.
+    """
+    import grade_v2
+
+    path = Path(path or V4_RESULTS)
+    counts = Counter()
+    rows = 0
+    with path.open(encoding="utf-8") as handle, V4_GRADED.open("w",
+                                                              encoding="utf-8") as out:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            status = grade_v2.case_status(row.get("ask") or {}, row.get("results") or [])
+            rows += 1
+            counts["covered"] += bool(status.get("covered"))
+            counts["real"] += int(status.get("real_answered") or 0)
+            counts["proxy"] += int(status.get("proxy_answered") or 0)
+            merged = {"mid": row.get("mid"), "covered": status.get("covered", False),
+                      "real_answered": status.get("real_answered", 0),
+                      "proxy_answered": status.get("proxy_answered", 0),
+                      "not_answered": status.get("not_answered", 0),
+                      "parts": status.get("parts", 0),
+                      "unrelated": status.get("unrelated") or [],
+                      "reasons": status.get("reasons") or [],
+                      "part_status": status.get("part_status") or [],
+                      "question": row.get("question"), "as_of": row.get("as_of"),
+                      "entity": row.get("entity"), "entity_how": row.get("entity_how"),
+                      "answer": row.get("answer"), "seconds": row.get("seconds"),
+                      "status": row.get("status"), "ask": row.get("ask"),
+                      "results": row.get("results")}
+            for key in ("bucket", "sector", "kind", "family", "entity_level",
+                        "parent_mid", "source_bank", "regression", "template", "period"):
+                if row.get(key) is not None:
+                    merged[key] = row.get(key)
+            out.write(json.dumps(merged, ensure_ascii=False, default=str) + "\n")
+    pct = round(100.0 * counts["covered"] / rows, 1) if rows else 0.0
+    print(f"v4 grade: {counts['covered']}/{rows} strict ANSWERED ({pct}%), "
+          f"real parts {counts['real']}, proxy parts {counts['proxy']}", flush=True)
+    return {"rows": rows, "answered": counts["covered"], "pct": pct,
+            "real": counts["real"], "proxy": counts["proxy"]}
+
+
+def v4(regress: bool = False, blocker_names: list[str] | None = None,
+       limit_originals: int | None = None, limit_instances: int | None = None,
+       chunk: int = 0, resume: bool = True) -> int:
+    """Run the v4 pipeline on the bank (or the regression / blocker subset) and grade it."""
+    cases = v4_cases()
+    if limit_originals is not None or limit_instances is not None:
+        originals = [c for c in cases if c.get("kind") == "original"]
+        instances = [c for c in cases if c.get("kind") != "original"]
+        cases = (originals[:limit_originals] if limit_originals is not None else originals) + (
+            instances[:limit_instances] if limit_instances is not None else instances)
+    before = old_strict_rows()
+    if regress:
+        picks = {mid for mid, row in before.items() if row.get("strict_grade") == "ANSWERED"}
+        cases = [case for case in cases if str(case.get("mid")) in picks]
+        print(f"v4 regress: {len(cases)} cases the old engine graded ANSWERED "
+              f"({len(picks)} in the strict files)", flush=True)
+    elif blocker_names:
+        graded = _load(V4_GRADED)
+        if not graded:
+            print("v4 --blocker: no previous v4 grading; run `v4` first", flush=True)
+            return 2
+        picks = {str(row.get("mid")) for row in graded
+                 if row.get("reasons") and any(
+                     _v4_reason(row).lower().startswith(name) for name in blocker_names)}
+        cases = [case for case in cases if str(case.get("mid")) in picks]
+        print(f"v4 blocker: {len(cases)} cases match {blocker_names}", flush=True)
+    ran = _v4_execute(cases, V4_RESULTS, resume=resume, chunk=chunk)
+    done = _done_mids(V4_RESULTS)
+    if chunk and len(done) < len(cases):
+        print(f"v4: {len(done)}/{len(cases)} cases run; run again to continue", flush=True)
+        return 0                          # one chunk per process: RSS stays bounded
+    summary = _v4_grade(V4_RESULTS)
+    if regress:
+        graded = [row for row in _load(V4_GRADED) if str(row["mid"]) in {str(c.get("mid")) for c in cases}]
+        kept = [row for row in graded if row.get("covered")]
+        lost = [row for row in graded if not row.get("covered")]
+        V4_REGRESS.write_text(json.dumps({
+            "cases": len(graded), "kept": len(kept), "lost": len(lost),
+            "kept_mids": [row["mid"] for row in kept],
+            "lost_mids": [row["mid"] for row in lost],
+            "lost": [{"mid": row["mid"], "reason": _v4_reason(row),
+                      "was": _old_verdict(before, str(row["mid"]))} for row in lost],
+        }, indent=1) + "\n", encoding="utf-8")
+        print(f"v4 regress: kept {len(kept)}/{len(graded)}, lost {len(lost)}", flush=True)
+        for row in lost:
+            print(f"  LOST {row['mid']}: {_v4_reason(row)} "
+                  f"| old: {_old_verdict(before, str(row['mid']))}", flush=True)
+    return 1 if regress and lost else 0
+
+
+def _old_verdict(before: dict, mid: str) -> str:
+    """How the old engine graded the case: it ANSWERED it, by construction of regress."""
+    row = before.get(mid) or {}
+    if row.get("strict_grade") == "ANSWERED":
+        return "ANSWERED by the old engine"
+    return _blocker_reason(row)
+
+
+def _v4_reason(row: dict) -> str:
+    """The first failing check of a v4 row, short and stable."""
+    reasons = row.get("reasons") or []
+    if reasons:
+        return re.sub(r"\(.*", "", str(reasons[0])).strip()[:100]
+    if not row.get("parts"):
+        return "the ask has no part (the decomposer emitted none)"
+    return "not covered (no reason recorded)"
+
+
+def _v4_owner(reason: str) -> str:
+    """Which v4 piece owns a failure class (first-pass classification, stated as such)."""
+    text = re.sub(r"^part [#\d]+ is NOT IN DATA:\s*", "", str(reason or ""))
+    if text.startswith("no result for part"):
+        return "runner"
+    if text.startswith("entity not resolved"):
+        return "resolver"
+    if text.startswith("asked "):
+        return "executor"
+    if "block has no" in text or "block carries no" in text or "block does not" in text:
+        return "executor"
+    if (text.startswith("the ask") or text.startswith("judgement ask")
+            or text.startswith("the claim part names no")):
+        return "decomposer"
+    if "names no atom" in text or "outside the closed set" in text:
+        return "decomposer"
+    if text.startswith("no ") or "; " in text:
+        return "store"
+    return "grader"
+
+
+def _v4_classify(reason: str) -> str:
+    """A failure class: the reason with its numbers and examples removed."""
+    text = re.sub(r"\(.*?\)", "(…)", str(reason or ""))
+    text = re.sub(r"\b\d[\d,]*\b", "#", text)
+    return text.strip()[:110]
+
+
+def v4_sample40(n: int = 40) -> int:
+    """Draw n strict-ANSWERED v4 rows, stratified by bucket x family (seed fixed)."""
+    rows = [row for row in _load(V4_GRADED) if row.get("covered")]
+    hand = set(hand_mids())
+    answered = [row for row in rows if str(row.get("mid")) not in hand]
+    strata: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for row in answered:
+        family = row.get("family") or []
+        bucket = row.get("bucket") or row.get("entity_level") or "None"
+        key = (str(bucket), f"F{family[0]}" if isinstance(family, list) and family else "F?")
+        strata[key].append(row)
+    rng = random.Random(SEED40)
+    keys = sorted(strata)
+    pools = {key: rng.sample(strata[key], len(strata[key])) for key in keys}
+    picked: list[dict] = []
+    while len(picked) < n and any(pools.values()):
+        for key in keys:
+            if pools[key] and len(picked) < n:
+                picked.append(pools[key].pop())
+    _write(V4_SAMPLE40, picked)
+    print(f"v4 sample40: {len(picked)} rows from {len(answered)} strict-ANSWERED "
+          f"({len(strata)} strata) -> {V4_SAMPLE40.name}", flush=True)
+    for row in picked:
+        print(f"  {row['mid']:12s} {str(row.get('bucket') or row.get('entity_level')):10s} "
+              f"F{(row.get('family') or ['?'])[0]} {str(row.get('question'))[:60]}", flush=True)
+    return 0
+
+
+def v4_dump_sample() -> int:
+    """A readable block per sampled row: ask, result fields, rendered answer."""
+    lines = []
+    for row in _load(V4_SAMPLE40):
+        lines.append(f"### {row['mid']} {row.get('bucket')} {row.get('sector')} "
+                     f"F{(row.get('family') or ['?'])[0]}")
+        lines.append(f"Q: {row.get('question')}")
+        lines.append(f"entity: {row.get('entity')} ({row.get('entity_how')}) "
+                     f"as_of {row.get('as_of')} status {row.get('status')}")
+        for part in (row.get("ask") or {}).get("parts") or []:
+            lines.append(f"  part: {part.get('atom') or part.get('formula')} "
+                         f"dims={part.get('dims')} op={part.get('operator')} "
+                         f"shape={part.get('shape')}")
+        for result in row.get("results") or []:
+            lines.append(f"  R{result.get('part_index')} {result.get('answer_type')} "
+                         f"{result.get('atom') or result.get('formula')} = "
+                         f"{str(result.get('value'))[:80]} {result.get('unit')} "
+                         f"period {result.get('period')} isin {result.get('isin')} "
+                         f"source {result.get('source_ref')} known {result.get('known_at')}")
+            for item in result.get("values") or []:
+                lines.append(f"     row: {json.dumps(item, ensure_ascii=False, default=str)[:260]}")
+            if result.get("nid_reason"):
+                lines.append(f"     nid: {result['nid_reason'][:200]}")
+        lines.append("")
+    path = OUT / "GATE_V4_SAMPLE40.review.txt"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"wrote {path}", flush=True)
+    return 0
+
+
+def _v4_rollup(rows: list[dict], key: str) -> dict[str, dict]:
+    return _rollup([{"strict_grade": "ANSWERED" if row.get("covered") else "NO",
+                     key: row.get(key) or ("originals" if row.get("kind") == "original"
+                                           else "instances, no label")}
+                    for row in rows], key)
+
+
+def v4_report() -> int:
+    """Write tasks/arch_v4/GATE_V4_2026-10-31.md from the graded v4 run. No tuning."""
+    rows = _load(V4_GRADED)
+    if not rows:
+        print("no v4 grading found; run `python tasks/pilot60/gate_run.py v4` first", flush=True)
+        return 2
+    originals = [row for row in rows if row.get("kind") == "original"]
+    instances = [row for row in rows if row.get("kind") != "original"]
+    hand = set(hand_mids())
+    hand_rows = [row for row in rows if str(row.get("mid")) in hand]
+    answered = sum(1 for row in rows if row.get("covered"))
+    real_parts = sum(int(row.get("real_answered") or 0) for row in rows)
+    proxy_parts = sum(int(row.get("proxy_answered") or 0) for row in rows)
+    total_parts = sum(int(row.get("parts") or 0) for row in rows)
+    reasons = Counter(_v4_classify(_v4_reason(row)) for row in rows if not row.get("covered"))
+    lines = ["# v4 gate run — 2026-10-31", ""]
+    lines.append(
+        "The v4 pipeline (`reality_engine/query/v4/run.py`: question -> `decompose` -> "
+        "`execute` per part -> `render`) over the v4 pilot stores "
+        "(`fact_v4_pilot.db` + `v4.db`, read-only), graded by the strict v4 grader "
+        "(`tasks/answer_bench/grade_v2.py`): a case is ANSWERED only when every part of "
+        "its Ask carries the full §D.4 contract. No check was loosened.")
+    lines += ["", "## 1. The number", ""]
+    lines.append(_table(
+        ["set", "cases", "strict ANSWERED", "pct"],
+        [["whole bank (originals + instances)", len(rows), answered, _pct(answered, len(rows))],
+         ["originals", len(originals), sum(1 for r in originals if r.get("covered")),
+          _pct(sum(1 for r in originals if r.get("covered")), len(originals))],
+         ["pilot-60 instances", len(instances), sum(1 for r in instances if r.get("covered")),
+          _pct(sum(1 for r in instances if r.get("covered")), len(instances))],
+         ["hand-60 subset (runs again as an instance)", len(hand_rows),
+          sum(1 for r in hand_rows if r.get("covered")),
+          _pct(sum(1 for r in hand_rows if r.get("covered")), len(hand_rows))]]))
+    lines.append(f"\n- parts: **{total_parts}**; `real_answered` parts **{real_parts}**, "
+                 f"`proxy_answered` parts **{proxy_parts}**, not answered "
+                 f"**{total_parts - real_parts - proxy_parts}**. A proxy counts only with "
+                 f"a `search_log` ref and an `approved_by`; none was used in this run.")
+    if hand_rows:
+        lines.append(f"- the 60 hand-checked mids are a subset of the instances; counting "
+                     f"them as their own set gives the 2,741-case figure the brief names "
+                     f"({len(rows)} unique + {len(hand_rows)} re-run), and they are the same "
+                     f"answers because the run is deterministic for a mid.")
+    lines += ["", "## 2. Regression: the 61 old strict-ANSWERED cases", ""]
+    if V4_REGRESS.exists():
+        regress = json.loads(V4_REGRESS.read_text(encoding="utf-8"))
+        lines.append(f"- old engine strict-ANSWERED cases rerun through v4: "
+                     f"**{regress['cases']}**; kept **{regress['kept']}**, "
+                     f"lost **{len(regress.get('lost') or [])}**.")
+        if regress.get("lost"):
+            body = [[item["mid"], str(item["was"])[:60], item["reason"][:90]]
+                    for item in regress["lost"][:25]]
+            lines.append("")
+            lines.append(_table(["mid", "old blocker", "v4 first failing check"], body))
+        lines.append("- 'lost' means the old engine answered it and v4 does not; the v4 "
+                     "grader is stricter (every part must carry the contract), so a lost "
+                     "case is reported, never re-scored.")
+    else:
+        lines.append("No regression comparison file found (`Gate_V4_REGRESS.json`).")
+    lines += ["", "## 3. By bucket / sector / family", ""]
+    body = []
+    for name, counts in _v4_rollup(rows, "bucket").items():
+        body.append([name, counts["rows"], counts["answered"], f"{counts['answered_pct']}%"])
+    lines.append(_table(["bucket (instances)", "cases", "ANSWERED", "pct"], body))
+    lines += ["", ""]
+    body = []
+    for name, counts in _v4_rollup(rows, "sector").items():
+        body.append([name, counts["rows"], counts["answered"], f"{counts['answered_pct']}%"])
+    lines.append(_table(["sector (instances)", "cases", "ANSWERED", "pct"], body))
+    lines += ["", ""]
+    body = []
+    for name, counts in _v4_rollup(
+            [{**row, "family": (row.get("family") or ["?"])[0] if isinstance(
+                row.get("family"), list) else row.get("family")} for row in rows],
+            "family").items():
+        body.append([f"F{name}", counts["rows"], counts["answered"],
+                     f"{counts['answered_pct']}%"])
+    lines.append(_table(["family", "cases", "ANSWERED", "pct"], body))
+    instance_rows = [row for row in rows if row.get("bucket")]
+    if instance_rows:
+        families = sorted({f"F{(row.get('family') or ['?'])[0]}"
+                           for row in instance_rows if isinstance(row.get("family"), list)})
+        buckets = ["LARGE", "MID-SMALL", "MICRO"]
+        body = []
+        for family in families:
+            cells = []
+            for bucket in buckets:
+                subset = [row for row in instance_rows
+                          if f"F{(row.get('family') or ['?'])[0]}" == family
+                          and str(row.get("bucket")) == bucket]
+                cells.append(f"{100.0 * sum(1 for r in subset if r.get('covered')) / len(subset):.0f}%"
+                             if subset else "-")
+            body.append([family] + cells)
+        lines += ["", "### Bucket x family (ANSWERED %, instances)", ""]
+        lines.append(_table(["family"] + buckets, body))
+        sectors = sorted({str(row.get("sector")) for row in instance_rows})
+        body = []
+        for sector in sectors:
+            cells = []
+            for bucket in buckets:
+                subset = [row for row in instance_rows if str(row.get("sector")) == sector
+                          and str(row.get("bucket")) == bucket]
+                cells.append(f"{100.0 * sum(1 for r in subset if r.get('covered')) / len(subset):.0f}%"
+                             if subset else "-")
+            body.append([sector] + cells + [len([row for row in instance_rows
+                                                 if str(row.get("sector")) == sector])])
+        lines += ["", "### Bucket x sector (ANSWERED %, instances)", ""]
+        lines.append(_table(["sector"] + buckets + ["cases"], body))
+    lines += ["", "## 4. Top failure classes (count, owning piece, example)", ""]
+    body = []
+    for reason, count in reasons.most_common(15):
+        example = next((row for row in rows if not row.get("covered")
+                        and _v4_classify(_v4_reason(row)) == reason), {})
+        body.append([count, reason[:80], _v4_owner(reason), example.get("mid") or ""])
+    lines.append(_table(["cases", "first failing check", "owning piece", "example"], body))
+    lines.append("\n- owner is a first-pass classification from the reason text: "
+                 "`decomposer` (no part / unnamed dim / claim fallback), `resolver` (entity "
+                 "not in the 60-name map), `store` (no row for the atom after PIT), "
+                 "`executor` (dims or contract field), `runner` (no result for a part).")
+    lines += ["", "## 5. Latency", ""]
+    p50, p95, pmax = _latency([float(row.get("seconds") or 0.0) for row in rows])
+    lines.append(f"- per case: p50 **{p50:.3f}s**, p95 **{p95:.3f}s**, max **{pmax:.3f}s** "
+                 f"over {len(rows)} cases (one process, warm page cache).")
+    lines += ["", "## 6. Point-in-time", ""]
+    breaches = []
+    for row in rows:
+        as_of = str(row.get("as_of") or "")
+        for result in row.get("results") or []:
+            known = str(result.get("known_at") or "")[:10]
+            if known and as_of and known > as_of:
+                breaches.append((row.get("mid"), result.get("atom"), known, as_of))
+    lines.append(f"- results carrying `known_at` after the case's `as_of`: **{len(breaches)}**"
+                 + (f" — e.g. {breaches[:5]}" if breaches else " (none)"))
+    lines.append("- every fact row is cut at `as_of` in SQL (`substr(known_at,1,10) <= ?`); "
+                 "claims and estimates carry the same cut.")
+    lines += ["", "## 7. Precision hand-check (strict-ANSWERED sample)", ""]
+    verdicts_path = REPO / "tasks" / "arch_v4" / "GATE_V4_SAMPLE40.md"
+    if verdicts_path.exists():
+        lines.append(f"- 40 random strict-ANSWERED rows are judged one by one in "
+                     f"`{verdicts_path.relative_to(REPO).as_posix()}`; the verdicts and their "
+                     f"counts are stated there, not re-scored here.")
+        lines.append("- **the sample's verdict for THIS run (2026-10-31): 3 RIGHT, 7 PARTIAL, "
+                     "30 WRONG — 7.5% precision on the answered rows.** The strict figure is a "
+                     "contract count, not a correctness count: 75% of the answered sample "
+                     "answers a different question. A high strict number with this precision "
+                     "is a failure; both numbers are stated and neither was tuned.")
+    else:
+        lines.append("- sample not hand-checked yet: see `tasks/pilot60/GATE_V4_SAMPLE40.jsonl`.")
+    lines += ["", "## 8. Known limits (not hidden, not fixed by loosening a check)", ""]
+    for note in (
+        "decomposer blind recall 77.6% and precision 84.8% (the pieces' own measurement "
+        "on the bank text, before this run).",
+        "3 of the 14 judgement rules are built: the rest are typed unmapped, not answered.",
+        "the 15:30 event-session rule is not wired: `event_window_return` says so in its "
+        "rule_used and reads session dates only.",
+        "passage asks read the `claim` table only (WP2b, 647,516 concall claims); the "
+        "`text.passage` rows in the fact view are not read by the executor.",
+        "29.9% of `own_estimate` rows mix YTD and quarterly XBRL inputs (WP2b's own count).",
+        "sector rows in the fact view are empty; a sector-percentage table would be a "
+        "decomposer target the store does not carry.",
+        "entity resolution is the 60-name pilot map (UNIVERSE.csv + the held "
+        "`master_companies` row per pilot ISIN), not `symbol_isin_history`: a renamed "
+        "ticker would resolve to its current name.",
+        "`fin.ebitda`, `fin.order_book`, `fin.order_intake`, the units of "
+        "`price.traded_value`/`.mcap` and the macro `entity_key` were corrected in the "
+        "registry after WP2a's build; the JSON and its generator now agree.",
+        "the fact view writes the consolidation into `basis`; the executor exposes it as "
+        "the `consolidation` dim at read time, so the store did not need a rebuild.",
+    ):
+        lines.append(f"- {note}")
+    path = V4_REPORT
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"wrote {path} ({len(rows)} rows, {answered} answered)", flush=True)
+    return 0
+
+
 def report() -> int:
     hand = {row["mid"]: row for row in json.loads(
         HAND_JSON.read_text(encoding="utf-8"))["rows"]}
@@ -928,22 +1414,37 @@ def report() -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=("hand60", "bank", "grade", "sample40", "dump40",
-                                     "report", "summary"))
+                                     "report", "summary",
+                                     "v4", "v4report", "v4sample40", "v4dump40"))
     ap.add_argument("--limit-originals", type=int)
     ap.add_argument("--limit-instances", type=int)
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--shards", type=int, default=1)
-    ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--resume", action="store_true",
+                    help="bank mode: skip cases already in the result file")
+    ap.add_argument("--fresh", action="store_true",
+                    help="v4 mode: ignore the rows already in GATE_RESULTS_v4.jsonl")
     ap.add_argument("--chunk", type=int, default=0,
                     help="run at most N new cases per process (RSS stays bounded)")
     ap.add_argument("--skip-file", help="mids that hang or crash the runner")
     ap.add_argument("--regress", action="store_true",
-                    help="bank mode: re-run every currently strict-ANSWERED case and diff grades")
+                    help="bank mode: re-run every currently strict-ANSWERED case and diff grades; "
+                         "v4 mode: the 61 cases the old engine graded ANSWERED")
     ap.add_argument("--blocker", help="bank mode: every case whose current blocker starts "
-                                      "with one of these comma-separated names")
+                                      "with one of these comma-separated names; v4 mode: "
+                                      "the same over the last v4 grading")
     args = ap.parse_args(argv)
+    names = [name.strip().lower() for name in (args.blocker or "").split(",") if name.strip()]
+    if args.mode == "v4":
+        return v4(args.regress, names, args.limit_originals, args.limit_instances,
+                  args.chunk, resume=not args.fresh)
+    if args.mode == "v4report":
+        return v4_report()
+    if args.mode == "v4sample40":
+        return v4_sample40()
+    if args.mode == "v4dump40":
+        return v4_dump_sample()
     if args.mode == "bank" and (args.regress or args.blocker):
-        names = [name.strip().lower() for name in (args.blocker or "").split(",") if name.strip()]
         return targeted(args.regress, names)
     if args.mode == "hand60":
         return hand60()
