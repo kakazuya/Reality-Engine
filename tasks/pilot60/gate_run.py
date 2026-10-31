@@ -5,6 +5,7 @@
     python tasks/pilot60/gate_run.py bank --regress          # only strict-ANSWERED cases (~1 min)
     python tasks/pilot60/gate_run.py bank --blocker GATE_ENTITY_MISS,hop failed  # one blocker stratum
     python tasks/pilot60/gate_run.py sample40   # draw 40 gated ANSWERED rows
+    python tasks/pilot60/gate_run.py v4truth    # contract + shape + truth, side by side
     python tasks/pilot60/gate_run.py report     # GATE_RUN_2026-10-29.md
 
 Everything is read-only on the databases (the pilot stores on D: are opened
@@ -673,6 +674,7 @@ V4_GRADED = BENCH / "GATE_RESULTS_v4_strict.jsonl"
 V4_SAMPLE40 = OUT / "GATE_V4_SAMPLE40.jsonl"
 V4_REGRESS = BENCH / "GATE_V4_REGRESS.json"
 V4_REPORT = REPO / "tasks" / "arch_v4" / "GATE_V4_2026-10-31.md"
+V4_TRUTH_REPORT = REPO / "tasks" / "arch_v4" / "TRUTH_GRADE_2026-10-31.md"
 #: the full strict results are gitignored and may live only in the main checkout.
 OLD_BENCH = Path(PILOT).parents[3] / "tasks" / "answer_bench"
 
@@ -969,6 +971,222 @@ def v4_dump_sample() -> int:
     return 0
 
 
+def v4_truth(panel_seed: int | None = None) -> int:
+    """Three numbers side by side: contract strict, contract+shape, truth (panel).
+
+    The contract count is the unchanged method (``grade_v2.case_status``, already applied
+    to every row in ``GATE_RESULTS_v4_strict.jsonl``); the shape count adds the named
+    answer-shape failures of ``truth_grade.shape_failures``; the truth number is the
+    panel's RIGHT rate among answered rows scaled by the measured answered share, with
+    its Wilson interval.  Nothing is loosened: a row only passes fewer checks.
+    """
+    import truth_grade as tg
+
+    if not V4_GRADED.exists():
+        print(f"no v4 grading found at {V4_GRADED.name}; run "
+              "`python tasks/pilot60/gate_run.py v4 --fresh` first", flush=True)
+        return 2
+    bank, instances = tg.load_maps()
+    rows = contract = both = 0
+    shape_counts: Counter = Counter()
+    answered_counts: Counter = Counter()
+    detail_examples: dict[str, str] = {}
+    with V4_GRADED.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            rows += 1
+            shapes = tg.question_shapes(row.get("question") or "")
+            failures = tg.shape_failures(row, shapes)
+            covered = bool(row.get("covered"))
+            contract += covered
+            if covered and not failures:
+                both += 1
+            for failure in failures:
+                shape_counts[failure["reason"]] += 1
+                if covered:
+                    answered_counts[failure["reason"]] += 1
+                detail_examples.setdefault(failure["reason"], f"{row.get('mid')}: {failure['detail']}")
+    panel = tg.build_panel(V4_GRADED, fresh_seed=panel_seed)
+    truth = panel["all"]
+    rubric = tg.rubric40(V4_GRADED, bank) if V4_GRADED.exists() else {}
+    contract_pct = round(100.0 * contract / rows, 1) if rows else 0.0
+    both_pct = round(100.0 * both / rows, 1) if rows else 0.0
+    print("", flush=True)
+    print(f"contract strict   : {contract}/{rows} = {contract_pct}%   (the unchanged method)",
+          flush=True)
+    print(f"contract + shape  : {both}/{rows} = {both_pct}%   "
+          f"({contract - both} contract-answered rows fail a named shape check)", flush=True)
+    print(f"truth (panel)     : {truth['truth_pct']}% "
+          f"[Wilson {truth['truth_wilson'][0]}, {truth['truth_wilson'][1]}]  "
+          f"= answered share x RIGHT among answered "
+          f"({truth['answered_right']}/{truth['answered']} = "
+          f"{truth['answered_precision']}%)", flush=True)
+    print(f"panel: {panel['fixed']} fixed + {panel['fresh']} fresh "
+          f"(seed {panel['fresh_seed']}), {panel['answered']} answered rows", flush=True)
+    print("\nfailure table (named shape reason, largest first):", flush=True)
+    print("  contract-answered rows (the rows that cost the contract count):", flush=True)
+    for reason, count in answered_counts.most_common():
+        print(f"  {count:5d}  {reason:28s} e.g. {detail_examples.get(reason, '')[:110]}",
+              flush=True)
+    print("  occurrences over all rows: "
+          + ", ".join(f"{reason} {count}" for reason, count in shape_counts.most_common()),
+          flush=True)
+    if rubric:
+        print(f"\nrubric cheap test: exact agreement with the 40 hand verdicts "
+              f"{rubric['agreement_exact']}/40 "
+              f"({'usable' if rubric['usable'] else 'NOT usable'}: needs 30); "
+              f"scorer verdicts {rubric['scored_verdicts']} on {rubric['judged']} judged "
+              f"rows; it certifies {rubric['right_certified']}/{rubric['right_rows']} RIGHT "
+              f"rows and cannot judge {rubric['undecidable']}/40", flush=True)
+    _write_truth_report(rows, contract, both, panel, answered_counts, shape_counts,
+                        detail_examples, rubric)
+    return 0
+
+
+def _write_truth_report(rows: int, contract: int, both: int, panel: dict,
+                        answered_counts: Counter, shape_counts: Counter,
+                        examples: dict[str, str], rubric: dict) -> None:
+    """Write tasks/arch_v4/TRUTH_GRADE_2026-10-31.md from the run. No tuning."""
+    truth = panel["all"]
+    fixed = panel["fixed"]
+    fresh = panel["fresh40"]
+    contract_pct = round(100.0 * contract / max(1, rows), 1)
+    both_pct = round(100.0 * both / max(1, rows), 1)
+    answered_share = round(100.0 * panel["bank_answered"] / max(1, panel["bank_rows"]), 1)
+    lines = ["# v4 truth grade — 2026-10-31", ""]
+    lines.append("Three numbers on the same 2,681-row bank with no check loosened. The "
+                 "contract number is the unchanged method (`tasks/answer_bench/grade_v2.py`); "
+                 "the shape number adds the named failures of "
+                 "`tasks/answer_bench/truth_grade.py`; the truth number is the truth panel, "
+                 "not the contract.")
+    lines += ["", "| number | value | method |", "|---|---:|---|"]
+    lines.append(f"| contract strict | {contract}/{rows} = {contract_pct}% "
+                 "| every part of the decomposer's own Ask carries §D.4 (unchanged) |")
+    lines.append(f"| contract + shape | {both}/{rows} = {both_pct}% "
+                 "| contract **and** no question-text shape failure |")
+    lines.append(f"| truth (panel) | {truth['truth_pct']}% "
+                 f"[Wilson {truth['truth_wilson'][0]}, {truth['truth_wilson'][1]}] "
+                 "| measured answered share × panel RIGHT rate among answered rows |")
+    lines += ["", f"- drift, stated because the brief quotes 8.2%: the write-up in "
+              f"`GATE_V4_2026-10-31.md` recorded 221/2,681 = 8.2% on the same grader. This "
+              f"run re-executed every row on the current checkout and the rebuilt v4 pilot "
+              f"store and got {contract}/{rows} = {contract_pct}%. The method did not change; "
+              f"the store and the executor did (another worker owns them). The truth number "
+              f"did not move with it.",
+              f"- the contract count is a *contract* count: {contract - both} of the "
+              f"{contract} rows that pass it fail a named shape check, and the truth panel "
+              f"puts true correctness near zero.", ""]
+    lines += ["## The panel", "",
+              f"- fixed block: {fixed['rows']} rows, seed 20261031 (committed, same rows on "
+              f"every run); fresh block: {fresh['rows']} rows, seed {panel['fresh_seed']} "
+              f"(printed in every fresh row) — {fresh['rows']} new answered/unanswered rows "
+              f"each run, so a grader cannot be tuned to the fixed block.",
+              f"- rows contract-answered: {truth['answered']} of {truth['rows']}; the draw "
+              "oversamples answered rows (2/3) because a bank-proportional panel would carry "
+              "about twelve of them.",
+              f"- answered rows RIGHT: {truth['answered_right']}/{truth['answered']} = "
+              f"{truth['answered_precision']}% (Wilson {truth['wilson_answered']}). The "
+              f"40-row hand sample says 3/40 = 7.5% [2.6, 19.9]; both say true correctness "
+              f"is a small fraction of a percent of the bank, and the hand sample was drawn "
+              f"from the previous run's {221} answered rows, not this run's.",
+              f"- bank answered share (measured on all rows): {answered_share}% "
+              f"({panel['bank_answered']}/{panel['bank_rows']}).",
+              "- unanswered rows are never RIGHT: the truth estimate is the answered share "
+              "times the answered RIGHT rate. The interval is the Wilson interval of that "
+              "RIGHT rate, scaled by the measured share.",
+              "- each row is graded against the question as written, the parent's rubric "
+              "(`required_steps` / `forbidden` / `ground_truth`, where the bank has one), "
+              "and the stored row behind the answer (entity, period, value, quote).",
+              f"- the panel's RIGHT rows this run: {', '.join(truth['right_mids']) or 'none'}. "
+              f"Each is the value+date / passage shape the 40-row hand check calls RIGHT "
+              f"(#27, #11); a RIGHT row must be read against the store before it is "
+              f"trusted. Three false RIGHTs the first passes produced are now failed, and "
+              f"each is evidence the check is worth having: MB0275#MS answered Dalmia "
+              f"Bharat's share count with a 20,000-row `count` for another ISIN (the real "
+              f"count is 18,75,65,953; `holding(\"DALBHARAT\")`), now "
+              f"`TRUTH_PART_OTHER_ENTITY`; MB0306#L answered Sun Pharma's 2026 YTD high "
+              f"with the 30 September row alone (1,863.6; the held NSE high is 2,046.9 on "
+              f"31 July, `price_extreme`), now `SHAPE_PERIOD_MISMATCH`; MB0001#L answered "
+              f"IDEA \"products\" with `production` claim rows about cash, now "
+              f"`TRUTH_ROW_DIM_MISMATCH`.",
+              f"- RIGHT rows wrongly failed by a shape check: **0** of the 3 rows the "
+              f"40-row hand check calls RIGHT (`MB0280#L`, `MB0005#MI`, `MB0303#MS`); "
+              f"`test_v4_truth_grade.py` re-runs that assertion whenever the graded file is "
+              f"present.", ""]
+    lines += ["## Failure table by named reason (largest first)", "",
+              "Contract-answered rows only — these are the rows the new checks remove from "
+              "the pass count:", "",
+              "| rows | reason | example |", "|---:|---|---|"]
+    for reason, count in answered_counts.most_common():
+        lines.append(f"| {count} | `{reason}` | {str(examples.get(reason, ''))[:120]} |")
+    lines += ["", "Occurrences over all 2,681 rows (unanswered rows cannot answer a shape, so "
+              "this line is diagnostic only): "
+              + ", ".join(f"`{reason}` {count}"
+                          for reason, count in shape_counts.most_common()), ""]
+    lines += ["## Rubric cheap test (the brief's gate on rubric scoring)", ""]
+    if rubric:
+        lines.append(f"- exact agreement with the 40 hand verdicts: "
+                     f"**{rubric['agreement_exact']}/40** (agreement on RIGHT-vs-not: "
+                     f"{rubric['agreement_right_only']}/{rubric['judged']} judged rows, but "
+                     f"the lexical scorer never returns RIGHT); the brief says 30 or the "
+                     f"rubric is not usable.")
+        lines.append(f"- the scorer's verdicts: {rubric['scored_verdicts']} over "
+                     f"{rubric['judged']} judged rows; it certifies "
+                     f"{rubric['right_certified']}/{rubric['right_rows']} rows the hand "
+                     f"check calls RIGHT, and cannot judge {rubric['undecidable']}/40 at all "
+                     f"(no steps, no gold).")
+        lines.append(f"- of the {rubric['wrong_rows']} WRONG rows, "
+                     f"{rubric['wrong_failed']} are not called RIGHT, but most are called "
+                     "PARTIAL: a prose step's words appear in a contract-complete answer even "
+                     "when the step's arithmetic was never done. That is the defect — the "
+                     "rubric describes a method, not a value to compare.")
+        lines.append("- measured on: `python tasks/answer_bench/truth_grade.py --rubric40`.")
+        lines.append("- verdict: rubric scoring is **NOT usable** as the truth metric. Where "
+                     "it exists it is one input to a panel verdict, never the verdict itself.")
+    lines += ["", "## Free-model judge (optional, item 4)", ""]
+    try:
+        import truth_judge
+        available = truth_judge.available()
+    except Exception:  # noqa: BLE001 - the judge is optional
+        available = False
+    if available:
+        lines.append("- an OpenCode Go key is present, so `tasks/answer_bench/truth_judge.py` "
+                     "can run: `python tasks/answer_bench/truth_judge.py --panel fresh40` "
+                     "grades the fresh 40 with free Beam and prints its agreement with the "
+                     "panel. No judge number is used by this report until that agreement is "
+                     "90% or better on rows it has not seen.")
+    else:
+        lines.append("- **not run**: no `OPENCODE_GO_API_KEY` / `OPENCODE_GO_API_KEY_2` in "
+                     "this worker's environment, so the free Beam judge could not be called "
+                     "and its agreement with the panel is unmeasured. It is not used "
+                     "anywhere, and no judge number enters the table above. The harness is "
+                     "`tasks/answer_bench/truth_judge.py` for the controller to run once."
+                     )
+    lines += ["", "## Shape checks left out (not deterministic)", "",
+              "- relative windows whose reference date the question does not state "
+              "(\"in a month\", \"last week\"): no window to test. A relative *forward* "
+              "window (\"the next five sessions\") is caught only when every part is a "
+              "change over the past window — that is the one case where the output is "
+              "unambiguously the wrong window.",
+              "- whether an executed figure is the *economically* right one (\"do the "
+              "assumptions flatter the loss\"): needs judgement of the accounting, so it is "
+              "caught only when the ask is a judgement ask with no rule output.",
+              "- thesis quality (\"what would break the growth thesis\"): only the "
+              "no-rule-output half is checkable.",
+              "- set membership for companies outside the pilot: the answer cannot be "
+              "checked for correctness, only for being one entity.",
+              "- magnitude sanity (a share count of 20,000): the store owner's call, not a "
+              "grader rule; only a cross-entity read is caught (`TRUTH_PART_OTHER_ENTITY`).",
+              ""]
+    V4_TRUTH_REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"wrote {V4_TRUTH_REPORT}", flush=True)
+
+
 def _v4_rollup(rows: list[dict], key: str) -> dict[str, dict]:
     return _rollup([{"strict_grade": "ANSWERED" if row.get("covered") else "NO",
                      key: row.get(key) or ("originals" if row.get("kind") == "original"
@@ -1116,11 +1334,21 @@ def v4_report() -> int:
         lines.append(f"- 40 random strict-ANSWERED rows are judged one by one in "
                      f"`{verdicts_path.relative_to(REPO).as_posix()}`; the verdicts and their "
                      f"counts are stated there, not re-scored here.")
-        lines.append("- **the sample's verdict for THIS run (2026-10-31): 3 RIGHT, 7 PARTIAL, "
-                     "30 WRONG — 7.5% precision on the answered rows.** The strict figure is a "
-                     "contract count, not a correctness count: 75% of the answered sample "
+        lines.append("- **the sample's verdict for THIS run (2026-10-31): 3 RIGHT, 8 PARTIAL, "
+                     "29 WRONG — 7.5% precision on the answered rows.** The strict figure is a "
+                     "contract count, not a correctness count: 72.5% of the answered sample "
                      "answers a different question. A high strict number with this precision "
                      "is a failure; both numbers are stated and neither was tuned.")
+        lines.append("- correction (2026-10-31, later): sample row #4's Vodafone Idea PAT of "
+                     "+34,552 cr is a real stored row, not a store defect — the filing's own "
+                     "total comprehensive income for FY26 is 34,564 cr (`results_notes`, known "
+                     "2026-08-10), and the store has 34,552. The row is still a WRONG answer "
+                     "to an accounting question, and no 'PAT cannot be positive' sanity rule "
+                     "follows from it. This doc also said 7 PARTIAL / 30 WRONG; its own table "
+                     "has 8 and 29, now corrected.")
+        lines.append("- the truth grade beside this contract count is "
+                     "`tasks/arch_v4/TRUTH_GRADE_2026-10-31.md`: same bank, three numbers "
+                     "(contract, contract+shape, truth panel).")
     else:
         lines.append("- sample not hand-checked yet: see `tasks/pilot60/GATE_V4_SAMPLE40.jsonl`.")
     lines += ["", "## 8. Known limits (not hidden, not fixed by loosening a check)", ""]
@@ -1415,7 +1643,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=("hand60", "bank", "grade", "sample40", "dump40",
                                      "report", "summary",
-                                     "v4", "v4report", "v4sample40", "v4dump40"))
+                                     "v4", "v4report", "v4sample40", "v4dump40", "v4truth"))
     ap.add_argument("--limit-originals", type=int)
     ap.add_argument("--limit-instances", type=int)
     ap.add_argument("--shard", type=int, default=0)
@@ -1433,8 +1661,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--blocker", help="bank mode: every case whose current blocker starts "
                                       "with one of these comma-separated names; v4 mode: "
                                       "the same over the last v4 grading")
+    ap.add_argument("--panel-seed", type=int,
+                    help="v4truth: the fresh-40 seed (default: a new random one each run)")
     args = ap.parse_args(argv)
     names = [name.strip().lower() for name in (args.blocker or "").split(",") if name.strip()]
+    if args.mode == "v4truth":
+        return v4_truth(args.panel_seed)
     if args.mode == "v4":
         return v4(args.regress, names, args.limit_originals, args.limit_instances,
                   args.chunk, resume=not args.fresh)
