@@ -61,6 +61,8 @@ HOLDINGS_SQL = Path(__file__).with_name("fact_view_holdings_isin.sql")
 #: the held identity store: shp_index filings + the symbol -> ISIN history that maps a
 #: pre-split shareholding ISIN back to the pilot ISIN (fact_view_holdings_isin.sql).
 IDENTITY_DB = "equity_intelligence.db"
+#: the parsed shareholding XBRL store, beside the fact DB (scripts/fetch_shp_xbrl_pilot.py).
+SHP_XBRL_DB = "shp_xbrl_pilot.db"
 
 #: attach alias -> pilot file (the aliases fact_view.sql reads)
 STORES = {
@@ -475,6 +477,8 @@ def build(out: Path | str, root: Path | str | None = None,
         augment_price_indicators(con)
         if attach_identity(con, root):
             build_holdings_isin(con)
+        if attach_shp_xbrl(con, out.parent / SHP_XBRL_DB):
+            build_shp_xbrl(con)
         build_membership(con)
         write_atom_status(con, len(universe), side)
         con.commit()
@@ -503,6 +507,53 @@ def apply_holdings(out: Path | str, root: Path | str | None = None,
             raise FileNotFoundError(f"{IDENTITY_DB} missing under {Path(root or DEFAULT_ROOT)}")
         seed_universe(con, read_universe(universe_csv))
         rows = build_holdings_isin(con)
+        con.commit()
+        return rows
+    finally:
+        con.close()
+
+
+def attach_shp_xbrl(con: sqlite3.Connection, path: Path | str) -> bool:
+    """Attach the parsed shareholding XBRL store read-only; False when it is not there."""
+    path = Path(path)
+    if not path.is_file():
+        return False
+    con.execute("ATTACH DATABASE ? AS shp_xbrl", (_uri(path),))
+    return True
+
+
+def build_shp_xbrl(con: sqlite3.Connection) -> int:
+    """Copy FII, DII, MF, insurance and pledge rows from the attached XBRL store.
+
+    Rerunnable: earlier copies are replaced.  Promoter and public stay with shp_index.
+    """
+    con.execute("DELETE FROM fact WHERE source_ref LIKE 'shp_xbrl:%'")
+    con.execute(
+        "INSERT INTO fact (entity_id, atom, dims, period_start, period_end, value, unit, "
+        "known_at, source_ref) SELECT entity_id, atom, dims, period_start, period_end, value, "
+        "unit, known_at, source_ref FROM shp_xbrl.fact")
+    return con.execute("SELECT COUNT(*) FROM fact WHERE source_ref LIKE 'shp_xbrl:%'").fetchone()[0]
+
+
+def apply_shp_xbrl(out: Path | str, shp_db: Path | str) -> int:
+    """Install the XBRL rows on an existing fact DB and refresh those atoms' status."""
+    con = sqlite3.connect(str(out), uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        if not attach_shp_xbrl(con, shp_db):
+            raise FileNotFoundError(f"{shp_db} does not exist")
+        rows = build_shp_xbrl(con)
+        con.commit()
+        con.execute("DETACH DATABASE shp_xbrl")
+        for atom in ("hold.pct", "hold.pledge_pct"):
+            count, entities = con.execute(
+                "SELECT COUNT(*), COUNT(DISTINCT entity_id) FROM fact WHERE atom=?",
+                (atom,)).fetchone()
+            con.execute(
+                "UPDATE atom_status SET status='filled', rows=?, entities=?, isin_entities=?, "
+                "isin_coverage_pct=?, source=?, note=? WHERE atom_id=?",
+                (count, entities, entities, round(100.0 * entities / 60, 1),
+                 "shp_index + pilot shareholding XBRL", "see fetch_shp_xbrl_pilot", atom))
         con.commit()
         return rows
     finally:
@@ -605,6 +656,12 @@ def _source_value(con: sqlite3.Connection, row: sqlite3.Row) -> tuple | None:
     """(value, known_at) re-read from the source table, for the hand check."""
     atom, isin, end = row["atom"], row["entity_id"], row["period_end"]
     d = _dims(row)
+    if str(row["source_ref"]).startswith("shp_xbrl:"):
+        if "shp_xbrl" not in attached(con):
+            return None
+        return con.execute("SELECT value, known_at FROM shp_xbrl.fact WHERE entity_id=? AND "
+                           "atom=? AND dims=? AND period_end=?",
+                           (isin, atom, row["dims"], end)).fetchone()
     if atom == "price.close":
         return con.execute("SELECT close, known_at FROM market_state.company_state_daily "
                            "WHERE isin=? AND date=?", (isin, end)).fetchone()
@@ -840,6 +897,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--bench-n", type=int, default=200)
     ap.add_argument("--report", action="store_true",
                     help="report/check the existing --out instead of rebuilding it")
+    ap.add_argument("--shp-xbrl-only", action="store_true",
+                    help="install the shareholding XBRL rows on the existing --out DB and exit")
     ap.add_argument("--holdings-only", action="store_true",
                     help="apply the holdings-ISIN step to the existing --out DB and exit")
     args = ap.parse_args(argv)
@@ -850,6 +909,10 @@ def main(argv: list[str] | None = None) -> int:
     oi_out = Path(args.oi_out) if args.oi_out else out.parent / (out.stem + "_oi.db")
     ei = Path(args.ei) if args.ei else root / "equity_intelligence.db"
     macro = Path(args.macro) if args.macro else root / "pilot" / "macro_all.db"
+    if args.shp_xbrl_only:
+        rows = apply_shp_xbrl(args.out, Path(args.out).parent / SHP_XBRL_DB)
+        print(f"shareholding XBRL step: {rows:,} rows")
+        return 0
     if args.holdings_only:
         rows = apply_holdings(args.out, args.root, args.universe)
         print(f"holdings step: {rows:,} rows carry the shp_index#symbol_isin_history source")
@@ -876,6 +939,7 @@ def main(argv: list[str] | None = None) -> int:
             con.execute("ATTACH DATABASE ? AS oi", (_uri(oi_out),))
         seed_universe(con, read_universe(args.universe))
         attach_identity(con, args.root)
+        attach_shp_xbrl(con, out.parent / SHP_XBRL_DB)
         cov = coverage(con)
         built = f" in {elapsed:.1f}s" if elapsed is not None else ""
         print(f"{out}{built}  ({out.stat().st_size / 1e6:.0f} MB)")

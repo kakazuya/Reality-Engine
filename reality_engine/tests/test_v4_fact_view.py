@@ -298,6 +298,37 @@ def test_holdings_join_through_isin_history():
         shutil.rmtree(root, ignore_errors=True)
 
 
+def test_shp_xbrl_install_is_rerunnable_and_keeps_filing_time():
+    root = ROOT / ".tmp" / f"v4shpxbrl_{os.getpid()}"
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        cols = ("entity_id TEXT, atom TEXT, dims TEXT, period_start TEXT, period_end TEXT, "
+                "value REAL, unit TEXT, known_at TEXT, source_ref TEXT")
+        side = sqlite3.connect(root / "shp.db")
+        side.execute(f"CREATE TABLE fact({cols})")
+        side.execute("INSERT INTO fact VALUES ('I1', 'hold.pledge_pct', 'holder_class=promoter', "
+                     "'2026-06-30', '2026-06-30', 0.0, '%', '2026-07-10T17:00:00', 'shp_xbrl:a.xml')")
+        side.commit()
+        side.close()
+        out = root / "fact.db"
+        con = sqlite3.connect(out)
+        con.execute(f"CREATE TABLE fact({cols})")
+        con.execute("CREATE TABLE atom_status(atom_id TEXT, status TEXT, rows INT, entities INT, "
+                    "isin_entities INT, isin_coverage_pct REAL, store TEXT, source TEXT, note TEXT)")
+        con.execute("INSERT INTO atom_status (atom_id, status) VALUES ('hold.pledge_pct', 'empty')")
+        con.commit()
+        con.close()
+        assert bm.apply_shp_xbrl(out, root / "shp.db") == 1
+        assert bm.apply_shp_xbrl(out, root / "shp.db") == 1
+        con = sqlite3.connect(out)
+        assert con.execute("SELECT value, known_at FROM fact").fetchall() == [
+            (0.0, "2026-07-10T17:00:00")]
+        assert con.execute("SELECT status, rows FROM atom_status").fetchone() == ("filled", 1)
+        con.close()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def test_one_row_per_entity_atom_dims_period(built):
     con = _con(built)
     try:
