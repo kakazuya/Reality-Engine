@@ -22,6 +22,13 @@ PIT: an estimate for a target quarter is built only from rows whose ``known_at``
 strictly before the target's own filing time, and ``known_at = as_of`` = the latest
 input publication.  :func:`replay_check` proves no estimate reads anything later
 than its ``as_of``; a re-estimate never rewrites a row (PK includes ``as_of``).
+
+WP2c (31 Oct 2026): the input series is now the true single-quarter series from
+``build_quarters.py`` (OneD reported, or FourD minus the prior-quarter YTD), not the
+pilot store's date-inferred quarter rows that mixed annual/YTD values into the
+quarter column.  Both series are walked forward on the same rule so the report can
+print the band width and the scale-mixed share **before and after** the fix; the
+stored ``own_estimate``/``own_estimate_band`` are the after-fix ones.
 """
 from __future__ import annotations
 
@@ -39,6 +46,7 @@ from reality_engine.query.v4.build_vocab import pilot_isins
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
+QUARTERS_DB = Path(".tmp") / "quarters_pilot60.db"
 
 # Beat/miss atoms the estimate layer serves (§A.8). The series keys are the
 # pilot store's own metric_key words.
@@ -70,9 +78,21 @@ CREATE TABLE IF NOT EXISTS own_estimate(
   abs_pct_err REAL,
   band_pct REAL,
   reading TEXT,
+  series_source TEXT,
   PRIMARY KEY (isin, est_atom, period_end, as_of));
 CREATE INDEX IF NOT EXISTS ix_own_est_atom ON own_estimate(est_atom, period_end);
 CREATE TABLE IF NOT EXISTS own_estimate_band(
+  est_atom TEXT NOT NULL,
+  mcap_bucket TEXT NOT NULL,
+  n_obs INTEGER NOT NULL,
+  mape REAL NOT NULL,
+  p75_abs_pct REAL NOT NULL,
+  band_pct REAL NOT NULL,
+  fallback TEXT,
+  measured_from TEXT NOT NULL,
+  as_of TEXT NOT NULL,
+  PRIMARY KEY (est_atom, mcap_bucket, as_of));
+CREATE TABLE IF NOT EXISTS own_estimate_band_prev(
   est_atom TEXT NOT NULL,
   mcap_bucket TEXT NOT NULL,
   n_obs INTEGER NOT NULL,
@@ -154,22 +174,9 @@ def _rows(history: list[dict]) -> list[list]:
     return [[r["period_end"], r["value"], r["known_at"], r.get("doc_id")] for r in history]
 
 
-def load_series(data_root: Path, isins: list[str]) -> dict[tuple[str, str], list[dict]]:
+def _series_from_rows(rows) -> dict[tuple[str, str], list[dict]]:
     """(isin, atom) -> quarter rows, first publication per period, consolidated preferred."""
-    q = ",".join("?" * len(isins))
-    keys = tuple(ATOMS)
-    con = connect_ro(data_root / "pilot" / "pilot60" / "facts_pilot.db", timeout_s=180,
-                     immutable=True)
-    try:
-        rows = list(con.execute(
-            f"SELECT isin, metric_key, period_end, basis, value, known_at, doc_id, unit "
-            f"FROM company_metric_series WHERE isin IN ({q}) "
-            f"AND metric_key IN ({','.join('?' * len(keys))}) AND period_kind='quarter' "
-            f"AND value IS NOT NULL AND known_at IS NOT NULL "
-            f"ORDER BY isin, metric_key, period_end, known_at", (*isins, *keys)) or [])
-    finally:
-        con.close()
-    by: dict[tuple[str, str], dict[str, list[dict]]] = {}
+    by: dict[tuple[str, str], dict[str, dict[str, dict]]] = {}
     for isin, key, period_end, basis, value, known_at, doc_id, unit in rows:
         atom = ATOMS[key]
         by.setdefault((isin, atom), {}).setdefault(basis or "unknown", {}).setdefault(
@@ -185,6 +192,41 @@ def load_series(data_root: Path, isins: list[str]) -> dict[tuple[str, str], list
         if series:
             out[k] = series
     return out
+
+
+def load_series(data_root: Path, isins: list[str]) -> dict[tuple[str, str], list[dict]]:
+    """Raw pilot series (before the quarter fix): the walk-forward "before" numbers."""
+    q = ",".join("?" * len(isins))
+    keys = tuple(ATOMS)
+    con = connect_ro(data_root / "pilot" / "pilot60" / "facts_pilot.db", timeout_s=180,
+                     immutable=True)
+    try:
+        rows = list(con.execute(
+            f"SELECT isin, metric_key, period_end, basis, value, known_at, doc_id, unit "
+            f"FROM company_metric_series WHERE isin IN ({q}) "
+            f"AND metric_key IN ({','.join('?' * len(keys))}) AND period_kind='quarter' "
+            f"AND value IS NOT NULL AND known_at IS NOT NULL "
+            f"ORDER BY isin, metric_key, period_end, known_at", (*isins, *keys)) or [])
+    finally:
+        con.close()
+    return _series_from_rows(rows)
+
+
+def load_series_clean(quarters_db: Path, isins: list[str]) -> dict[tuple[str, str], list[dict]]:
+    """True single-quarter series from build_quarters (OneD / YTD difference)."""
+    q = ",".join("?" * len(isins))
+    keys = tuple(ATOMS)
+    con = connect_ro(Path(quarters_db), timeout_s=180, immutable=True)
+    try:
+        rows = list(con.execute(
+            f"SELECT isin, metric_key, period_end, basis, value, known_at, doc_id, unit "
+            f"FROM company_quarter_series WHERE isin IN ({q}) "
+            f"AND metric_key IN ({','.join('?' * len(keys))}) "
+            f"AND value IS NOT NULL AND known_at IS NOT NULL "
+            f"ORDER BY isin, metric_key, period_end, known_at", (*isins, *keys)) or [])
+    finally:
+        con.close()
+    return _series_from_rows(rows)
 
 
 def load_buckets(data_root: Path, isins: list[str]) -> dict[str, str]:
@@ -235,7 +277,8 @@ def walk_forward(series: list[dict], isin: str, atom: str) -> list[dict]:
     return out
 
 
-def bands(errors: dict[tuple[str, str], list[float]], as_of: str) -> dict[tuple[str, str], dict]:
+def bands(errors: dict[tuple[str, str], list[float]], as_of: str,
+          source: str = "pilot60.company_metric_series") -> dict[tuple[str, str], dict]:
     """(atom, bucket) -> the measured band row, with the declared fallback ladder."""
     pooled_atom: dict[str, list[float]] = {}
     pooled_all: list[float] = []
@@ -260,18 +303,16 @@ def bands(errors: dict[tuple[str, str], list[float]], as_of: str) -> dict[tuple[
             "p75_abs_pct": round(p75, 4),
             "band_pct": round(max(p75, BAND_PCT_FLOOR), 4),
             "fallback": fallback,
-            "measured_from": ("walk-forward of the trend rule on the pilot quarterly series "
-                              f"(pilot60.company_metric_series, {n_obs} scored in-bucket, "
+            "measured_from": ("walk-forward of the trend rule on the true single-quarter "
+                              f"series ({source}, {n_obs} scored in-bucket, "
                               f"{len(src)} scored in the band src)"),
             "as_of": as_of,
         }
     return out
 
 
-def build(out: Path, data_root: Path, *, isins: list[str] | None = None) -> dict:
-    isins = list(isins) if isins is not None else pilot_isins()
-    series = load_series(data_root, isins)
-    buckets = load_buckets(data_root, isins)
+def _walk_series(series: dict, buckets: dict[str, str]) -> tuple[list[dict], dict]:
+    """Run the walk-forward rule over one (isin, atom) series map."""
     estimates: list[dict] = []
     errors: dict[tuple[str, str], list[float]] = {}
     for (isin, atom), rows in sorted(series.items()):
@@ -280,10 +321,66 @@ def build(out: Path, data_root: Path, *, isins: list[str] | None = None) -> dict
             estimates.append(e)
             if e["abs_pct_err"] is not None:
                 errors.setdefault((atom, bucket), []).append(e["abs_pct_err"])
-    as_of = date.today().isoformat()
-    band_rows = bands(errors, as_of)
-    scale_mixed = 0
+    return estimates, errors
+
+
+def _large_miss(estimates: list[dict]) -> int:
+    """Pairs whose realised/estimate ratio is beyond 3x: a large forecast miss.
+
+    Not a scale-mix test on a clean series (a microcap PAT can legitimately move 3x),
+    so it is reported as a forecast-error count; the period mix is the explicit
+    ``period_mix`` evidence from ``build_quarters``.
+    """
+    n = 0
     for e in estimates:
+        ratio = (e["realised"] / e["value"]) if (e["value"] and e["realised"]) else None
+        if ratio is not None and (ratio > 3.0 or ratio < 1.0 / 3.0):
+            n += 1
+    return n
+
+
+def load_period_mix(quarters_db: Path) -> dict:
+    """The defect count before the fix and the derivation mix after it."""
+    con = connect_ro(Path(quarters_db), timeout_s=60, immutable=True)
+    try:
+        rows = list(con.execute(
+            "SELECT metric_key, rows, matches_oned, matches_fourd, neither, no_context "
+            "FROM pilot_quarter_mix") or [])
+        after = dict(con.execute(
+            "SELECT derived, COUNT(*) FROM company_quarter_series "
+            "WHERE metric_key IN ('revenue', 'pat', 'eps') GROUP BY 1") or [])
+    finally:
+        con.close()
+    total = sum(r[1] for r in rows)
+    ytd = sum(r[3] for r in rows)
+    return {
+        "before": {"pilot_quarter_rows": total, "ytd_in_quarter": ytd,
+                   "ytd_in_quarter_pct": round(100.0 * ytd / max(1, total), 2),
+                   "per_metric": [{"metric_key": r[0], "rows": r[1], "matches_oned": r[2],
+                                   "matches_fourd": r[3], "neither": r[4],
+                                   "no_context": r[5]} for r in rows]},
+        "after": {"reported_oned": after.get("reported", 0),
+                  "ytd_difference": after.get("ytd_difference", 0),
+                  "ytd_in_quarter": 0},
+    }
+
+
+def build(out: Path, data_root: Path, *, isins: list[str] | None = None,
+          quarters_db: Path | str | None = None) -> dict:
+    isins = list(isins) if isins is not None else pilot_isins()
+    quarters_db = Path(quarters_db) if quarters_db else None
+    raw = load_series(data_root, isins)
+    clean = load_series_clean(quarters_db, isins) if quarters_db and quarters_db.is_file() else raw
+    source = ("quarters_pilot60.company_quarter_series" if clean is not raw
+              else "pilot60.company_metric_series")
+    buckets = load_buckets(data_root, isins)
+    estimates, errors = _walk_series(clean, buckets)
+    raw_estimates, raw_errors = _walk_series(raw, buckets)
+    as_of = date.today().isoformat()
+    band_rows = bands(errors, as_of, source)
+    band_rows_prev = bands(raw_errors, as_of, "pilot60.company_metric_series (raw quarters)")
+    for e in estimates:
+        e["series_source"] = source
         b = band_rows.get((e["est_atom"], buckets.get(e["isin"], "unknown")))
         if b and e["abs_pct_err"] is not None:
             e["band_pct"] = b["band_pct"]
@@ -292,27 +389,27 @@ def build(out: Path, data_root: Path, *, isins: list[str] | None = None) -> dict
                 e["reading"] = "in-line"
             else:
                 e["reading"] = "beat" if diff > 0 else "miss"
-        ratio = (e["realised"] / e["value"]) if (e["value"] and e["realised"]) else None
-        if ratio is not None and (ratio > 3.0 or ratio < 1.0 / 3.0):
-            scale_mixed += 1
     out.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(out)
     try:
         con.executescript(SCHEMA)
         con.execute("DELETE FROM own_estimate")
         con.execute("DELETE FROM own_estimate_band")
+        con.execute("DELETE FROM own_estimate_band_prev")
         con.executemany(
             "INSERT OR IGNORE INTO own_estimate (isin, est_atom, period_end, value, unit, "
             "method, inputs_json, n_obs, confidence, known_at, as_of, basis, realised, "
-            "realised_known_at, abs_pct_err, band_pct, reading) VALUES "
+            "realised_known_at, abs_pct_err, band_pct, reading, series_source) VALUES "
             "(:isin,:est_atom,:period_end,:value,:unit,:method,:inputs_json,:n_obs,"
             ":confidence,:known_at,:as_of,:basis,:realised,:realised_known_at,"
-            ":abs_pct_err,:band_pct,:reading)", estimates)
-        con.executemany(
-            "INSERT OR REPLACE INTO own_estimate_band (est_atom, mcap_bucket, n_obs, mape, "
+            ":abs_pct_err,:band_pct,:reading,:series_source)", estimates)
+        insert_band = (
+            "INSERT OR REPLACE INTO own_estimate_band%s (est_atom, mcap_bucket, n_obs, mape, "
             "p75_abs_pct, band_pct, fallback, measured_from, as_of) VALUES "
             "(:est_atom,:mcap_bucket,:n_obs,:mape,:p75_abs_pct,:band_pct,:fallback,"
-            ":measured_from,:as_of)", list(band_rows.values()))
+            ":measured_from,:as_of)")
+        con.executemany(insert_band % "", list(band_rows.values()))
+        con.executemany(insert_band % "_prev", list(band_rows_prev.values()))
         con.commit()
         readings = dict(con.execute(
             "SELECT reading, count(*) FROM own_estimate WHERE reading IS NOT NULL "
@@ -324,22 +421,51 @@ def build(out: Path, data_root: Path, *, isins: list[str] | None = None) -> dict
         names = [r[1] for r in con.execute("PRAGMA table_info(own_estimate)")]
     finally:
         con.close()
+    compare = []
+    for key in sorted(set(band_rows) | set(band_rows_prev)):
+        after, before = band_rows.get(key, {}), band_rows_prev.get(key, {})
+        compare.append({
+            "est_atom": key[0], "mcap_bucket": key[1],
+            "n_obs_before": before.get("n_obs"), "n_obs_after": after.get("n_obs"),
+            "p75_before": before.get("p75_abs_pct"), "p75_after": after.get("p75_abs_pct"),
+            "band_before": before.get("band_pct"), "band_after": after.get("band_pct"),
+        })
+    after_bands = sorted(v["band_pct"] for v in band_rows.values())
+    before_bands = sorted(v["band_pct"] for v in band_rows_prev.values())
+
+    def _median(values):
+        return round(percentile(values, 50), 4) if values else None
+
     return {
         "out": str(out),
+        "quarters_db": str(quarters_db) if quarters_db else None,
+        "series_source": source,
         "estimates": len(estimates),
+        "estimates_before": len(raw_estimates),
         "per_atom": per_atom,
         "per_unit": per_unit,
         "readings": readings,
         "bands": [band_rows[k] for k in sorted(band_rows)],
         "band_rows": len(band_rows),
         "columns": names,
-        "atoms_with_series": len(series),
-        # Data-defect indicator, not a fix: the pilot store's quarterly series mixes
-        # single-quarter and year-to-date (cumulative) values, so this share of pairs
-        # compares an annual number with a quarterly one. The pivot is the upstream
-        # fix; the band below measures the estimator on the series as held.
-        "scale_mixed_pairs": scale_mixed,
-        "scale_mixed_pct": round(100.0 * scale_mixed / max(1, len(estimates)), 2),
+        "atoms_with_series": len(clean),
+        "series_rows": {"after": sum(len(v) for v in clean.values()),
+                        "before": sum(len(v) for v in raw.values())},
+        "band_width_pct": {
+            "before_median": _median(before_bands), "after_median": _median(after_bands),
+            "before_max": before_bands[-1] if before_bands else None,
+            "after_max": after_bands[-1] if after_bands else None,
+            "per_atom_bucket": compare,
+        },
+        # Forecast-error count (not a scale test): see _large_miss.  The period mix
+        # itself is the explicit period_mix evidence below.
+        "large_miss_pairs": _large_miss(estimates),
+        "large_miss_pct": round(100.0 * _large_miss(estimates) / max(1, len(estimates)), 2),
+        "large_miss_before_pairs": _large_miss(raw_estimates),
+        "large_miss_before_pct": round(
+            100.0 * _large_miss(raw_estimates) / max(1, len(raw_estimates)), 2),
+        "period_mix": (load_period_mix(quarters_db)
+                       if quarters_db and quarters_db.is_file() else None),
         "replay": replay_check(out),
     }
 
@@ -398,12 +524,14 @@ def main(argv=None) -> int:
                     default=Path(os.environ.get("REALITY_DATA_ROOT", ROOT / "reality_engine" / "data")))
     ap.add_argument("--replay-check", type=Path, default=None,
                     help="run only the PIT replay check against this database")
+    ap.add_argument("--quarters", type=Path, default=QUARTERS_DB,
+                    help="true single-quarter store (build_quarters.py)")
     args = ap.parse_args(argv)
     if args.replay_check:
         result = replay_check(args.replay_check)
         print(json.dumps(result, indent=1))
         return 0 if result["ok"] else 1
-    report = build(args.out, args.data_root)
+    report = build(args.out, args.data_root, quarters_db=args.quarters)
     print(json.dumps(report, indent=1))
     return 0 if report["replay"]["ok"] else 1
 
