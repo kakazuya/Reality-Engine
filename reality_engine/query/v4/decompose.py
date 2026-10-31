@@ -649,6 +649,15 @@ def _owner_of(dims: dict[str, list[str]]) -> str | None:
 
 #: A sentence boundary splits clauses: one ask per sentence ("mix has risen. Did DSO improve").
 _SENTENCE_SPLIT = re.compile(r"(?<=[a-z0-9%])\.\s+(?=[A-Z0-9])")
+#: The f.share_of surfaces that name the measure itself, not the "as a percentage of"
+#: connector ("segment revenue as a share of total revenue" still asks the formula).
+_SHARE_OF_NAMED = re.compile(
+    r"\b(?:share\s+of\s+(?:the\s+)?(?:total|cost)|cost\s+share)\b", re.I)
+
+
+def _percent_atom(reg: Registry, atom_id: str) -> bool:
+    """True when the atom's own value already is a percentage."""
+    return str((reg.atoms.get(atom_id) or {}).get("unit") or "").strip() == "%"
 
 
 def _measures(clause: str, hits: list[dict], reg: Registry,
@@ -668,6 +677,15 @@ def _measures(clause: str, hits: list[dict], reg: Registry,
         atoms = [a for a in atoms
                  if not (a["id"] == "price.close" and a["surface"] in _GENERIC_PRICE)]
     formulas = [h for h in hits if h["kind"] == "formula"]
+    # "as a percentage of" is a ratio CONNECTOR, not always the segment-share measure.  When
+    # the clause names a percentage atom of its own ("promoter pledge as a percentage of
+    # promoter holding"), that atom is the answer; f.share_of's default pair
+    # (fin.segment_value / fin.revenue) would be arithmetic over two other measures (MB0401).
+    # A formula the clause really names ("share of total", "cost share") still wins.
+    if not _SHARE_OF_NAMED.search(clause):
+        formulas = [f for f in formulas
+                    if f["id"] != "f.share_of"
+                    or not any(_percent_atom(reg, h["id"]) for h in atoms)]
     topics = [h for h in hits if h["kind"] == "claim_topic"]
     rules = [h for h in hits if h["kind"] == "rule"]
     scopes = [h for h in hits if h["kind"] == "entity_set"]
@@ -831,6 +849,32 @@ _RATIO_SLASH = ((re.compile(r"\bp\s*/\s*b\b", re.I), " pb ratio "),
                 (re.compile(r"\bnet\s+debt\s*(?:/|to)\s*ebitda\b", re.I), " de ratio "),
                 (re.compile(r"\bdebt\s*to\s*ebitda\b", re.I), " de ratio "),
                 (re.compile(r"\bev\s*/\s*ebit(?:da)?\b", re.I), " ev ebitda "))
+
+
+#: §C.2 latest reading: "latest", "current", "most recent" and a bare measure ask for the
+#: most recent period KNOWN by as_of, not the last N days of period_end.  Quarterly data
+#: arrives weeks after its period ends, so "the latest quarter" normally sits before any
+#: 91-day lookback (MB0401: 2026-06-30, filed 2026-07-14, asked as of 2026-10-07).
+#: a span the text named with a number ("latest 5 years", "two quarters") is a window
+_NAMED_SPAN = re.compile(
+    r"\b\d{1,3}\s*[- ]?\s*(?:year|yr|quarter|month|week|day)s?\b|"
+    r"\b(?:two|three|four|five|six|eight|ten|twelve)\s+(?:year|quarter|month|week|day)s?\b",
+    re.I)
+#: operators that read one value; a change/growth ask needs the span, never the open window
+_LATEST_OPS = {"value_at", "last_visible"}
+
+
+def _latest_reading(parts: list[Part], text: str, basis: str) -> bool:
+    """True when the ask wants the most recent period known by ``as_of``, not a span."""
+    if not parts or any(p.operator not in _LATEST_OPS for p in parts):
+        return False
+    if re.search(r"\b(?:last|previous|prior)\s+quarter\b", text, re.I):
+        return False       # an explicitly closed quarter is a dated period; kept strict
+    if _NAMED_SPAN.search(text) and not re.search(r"\blatest\s+quarter\b", text, re.I):
+        return False       # "latest 5 years" is a window, not a point reading
+    if basis in ("as_of", "none"):
+        return True        # a bare measure: the latest value at the run date
+    return basis == "lookback quarter"
 
 
 def _prepare(clause: str, reg: Registry) -> str:
@@ -1013,6 +1057,11 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
         opening = _years_before(d1, int(years.group(1))) if years else None
         if opening:
             d0 = opening
+    if _latest_reading(parts, text, basis):
+        # The most recent period KNOWN by as_of, never the last 91 days of period_end.
+        d0 = None
+        if basis == "lookback quarter":
+            basis = "latest quarter"
     windows = [Window(from_=d0, to=d1, basis=basis)]
 
     # ---- status ---------------------------------------------------------------------

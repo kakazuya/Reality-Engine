@@ -284,8 +284,46 @@ SOFT_DIMS = {"period_kind"}
 #: Every other dim the atom's rows do not carry is ignored, never rejected (MB0032#L).
 UNSERVED_DIM_VALUES = {("exchange", "BSE")}
 CONSOLIDATION = ("consolidated", "standalone")
+#: fact-view dims with no §A.2 declaration of their own: the reported figure is the
+#: reading, the ``ytd_difference`` row is a derived cumulative difference of the same
+#: quantity (results XBRL reports the YTD figure and the build differences it back).
+FACT_VIEW_DEFAULTS = {"derived": "reported"}
 #: a window this short reads the quarterly reading of a period_kind-carrying atom.
 SHORT_WINDOW_DAYS = 120
+#: §D.2 latest readings: a part whose window is open on the left reads the most recent
+#: period KNOWN by as_of.  These limits are the most the newest held row may lag the asked
+#: date before it stops being offered as "latest", in days per atom class, measured from
+#: the held filing lags in the v4 pilot store (2026-10-31): fin p50 42 / p90 66 / p99 485,
+#: hold 18 / 98 / 333, daily price 0.  Two filing cycles plus grace: a missed quarter is a
+#: typed NID, a years-old row is never "latest".
+LATEST_LIMIT_DAYS = {"hold": 200, "fin": 400, "price": 10, "flows": 100,
+                     "macro": 400, "text": 400}
+DEFAULT_LATEST_LIMIT_DAYS = 400
+#: the window bases that ask the latest value known by ``as_of`` (window open on the left)
+LATEST_BASES = ("as_of", "none", "latest", "latest quarter")
+#: bases that NAME the period a row must end in: no fallback to an older period
+PERIOD_END_BASES = ("quarter end", "fiscal year end", "year end")
+
+
+def latest_limit(measure: str, registry: Mapping[str, Any]) -> tuple[int, str]:
+    """(days, class) a "latest" reading of this measure may lag as_of (formula -> input)."""
+    atom = str(measure or "")
+    if atom.startswith("f."):
+        over = _formula_row(registry, atom).get("over") or []
+        atom = str(over[0]) if over else atom
+    klass = atom.split(".", 1)[0]
+    return LATEST_LIMIT_DAYS.get(klass, DEFAULT_LATEST_LIMIT_DAYS), klass
+
+
+def _age_days(period: str | None, asked: str | None) -> int | None:
+    """Days from ``period`` to ``asked``; None when either is not a date."""
+    if not period or not asked:
+        return None
+    from datetime import date
+    try:
+        return (date.fromisoformat(asked) - date.fromisoformat(period)).days
+    except ValueError:
+        return None
 
 
 def row_dims(row: Mapping[str, Any]) -> dict[str, str]:
@@ -304,8 +342,13 @@ def row_dims(row: Mapping[str, Any]) -> dict[str, str]:
     return got
 
 
-def _window_grain(lo: str | None, hi: str | None) -> str:
-    """The period_kind a window implies: a quarter-wide window reads the quarter row."""
+def _window_grain(lo: str | None, hi: str | None, basis: str = "",
+                  grain: str = "") -> str:
+    """The period_kind a window implies: a latest reading takes the atom's own grain."""
+    if basis in LATEST_BASES and lo is None:
+        # "latest revenue" is the atom's own reading (quarterly for fin.revenue, FY for
+        # fin.book_equity), never "whatever period end happened to sort last".
+        return grain if grain in ("quarter", "fy", "half") else "fy"
     if lo and hi:
         from datetime import date
         try:
@@ -318,7 +361,7 @@ def _window_grain(lo: str | None, hi: str | None) -> str:
 
 def _apply_defaults(rows: Sequence[Mapping[str, Any]], want: Mapping[str, Any],
                     registry: Mapping[str, Any], lo: str | None,
-                    hi: str | None) -> list[Mapping[str, Any]]:
+                    hi: str | None, basis: str = "", grain: str = "") -> list[Mapping[str, Any]]:
     """§A.2: a dim the question did not name takes the registry's declared default reading.
 
     Only a dim the rows actually carry is applied, and only when more than one reading is
@@ -326,7 +369,8 @@ def _apply_defaults(rows: Sequence[Mapping[str, Any]], want: Mapping[str, Any],
     """
     defaults = {str(row.get("dim_id")): row.get("default")
                 for row in registry.get("dims") or [] if row.get("default") is not None}
-    defaults["period_kind"] = _window_grain(lo, hi)
+    defaults = {**FACT_VIEW_DEFAULTS, **defaults}
+    defaults["period_kind"] = _window_grain(lo, hi, basis, grain)
     out = list(rows)
     for dim, default in defaults.items():
         if dim in want or default in (None, ""):
@@ -1896,6 +1940,7 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
     """
     p = as_part(part, part_index)
     lo, hi = _window_bounds(p.window, windows)
+    basis = _window_basis(p.window, windows)
     reg = _registry(registry)
     assumed: list[str] = []
     grain = "" if _passage_like(p) else _grain_of(p, reg)
@@ -1907,8 +1952,13 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
             assumed.append(f"{hi} is not a trading session; used the last session {session}")
             lo = hi = session
     if lo and hi and lo == hi and not _passage_like(p):
-        opening = _period_start(_window_basis(p.window, windows), hi)
-        if grain == "day" and opening:
+        opening = _period_start(basis, hi)
+        if basis in PERIOD_END_BASES:
+            # "Q1FY27"/"FY26": the named date IS the period's end, so the reading is that
+            # period only.  An older period is a different period, never a fallback: a
+            # named period with no row stays a typed NID.
+            lo = opening or hi
+        elif grain == "day" and opening:
             # "the Q1 high": a quarter-end reading over a day-grain series is the quarter.
             lo = opening
         elif grain and grain != "day":
@@ -1927,7 +1977,8 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
     entity = p.entity or entity or (p.entities[0] if p.entities else None)
     entity_set = list(entities or p.entities or [])
     try:
-        result = _dispatch(p, as_of, conn, window, lo, hi, entity, entity_set, reg)
+        result = _dispatch(p, as_of, conn, window, lo, hi, entity, entity_set, reg,
+                           basis=basis)
     except _Empty:
         result = _empty_result(p, as_of, conn, window, lo, hi, entity, reg)
     except _Missing as exc:
@@ -1938,6 +1989,27 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
         result = _nid(p, window, f"executor error: {type(exc).__name__}: {exc}",
                       [_tried("executor", p.measure or "?", None, as_of)],
                       "fix the executor for this part")
+    if (result.answer_type == "measured" and basis in LATEST_BASES and lo is None
+            and p.operator in ("value_at", "last_visible") and not _passage_like(p)):
+        cut = hi or as_of   # an open window's right edge is the run date
+        limit, klass = latest_limit(p.measure, reg)
+        age = _age_days(result.period, cut)
+        if age is not None and age > limit:
+            # A years-old row is not "latest": say what the newest row is, how old, and
+            # the limit it broke.  (Measured filing lags set the limits; see
+            # LATEST_LIMIT_DAYS.)
+            result = _nid(
+                p, window,
+                f"the latest {p.measure} is {result.period}, {age} days before {cut}: past "
+                f"the {limit}-day {klass} staleness limit for a latest reading",
+                [_tried("fact", f"{p.measure}, latest row {result.period} ({age} days "
+                                f"before {cut}); limit {limit}", 1, as_of)],
+                f"hold a {p.measure} row for this entity within {limit} days of {cut} "
+                f"({klass} staleness limit)")
+        else:
+            assumed.append(
+                f"latest {p.measure} known by {cut}: period {result.period}, filed "
+                f"{result.known_at or '—'}; {klass} staleness limit {limit} days")
     if assumed and not result.assumption:
         result.assumption = "; ".join(assumed)
     if result.answer_type == "not_in_data" and proxy:
@@ -1983,7 +2055,7 @@ def _passage_like(part: Part) -> bool:
 
 def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | None,
               hi: str | None, entity: str | None, entities: Sequence[str],
-              registry: Mapping[str, Any]) -> Result:
+              registry: Mapping[str, Any], basis: str = "") -> Result:
     if p.operator == "walk":
         return _execute_walk(conn, p, as_of, entity, window, entities)
     if p.operator == "rule" or p.judgement:
@@ -2034,7 +2106,8 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
                     f"hold a {dim}-keyed {atom} source (§H.2 fact view)")
     rows = [row for row in rows if _dim_match(row, p.dims, carried)]
     rows = _apply_soft(rows, p.dims)
-    rows = _apply_defaults(rows, p.dims, registry, lo, hi)
+    rows = _apply_defaults(rows, p.dims, registry, lo, hi, basis,
+                           _grain_of(p, registry))
     split = _unnamed_split(rows, p.dims) if p.operator in SCALAR_ONE else []
     if split:
         # A one-value ask over several readings of a dim it never named would answer

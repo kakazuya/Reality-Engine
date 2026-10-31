@@ -111,11 +111,15 @@ def test_question_to_answer_over_both_stores(store, resolver):
 def test_pit_cuts_at_the_run_date(store, resolver):
     row = run.run_case(case("What is the revenue of Test Co Limited in Q2 FY27?"),
                        store, resolver)
-    values = [result["value"] for result in row["results"]
-              if result.get("atom") == "fin.revenue"]
-    assert values and values[0] == 100.0          # the 2026-11-05 row is not visible
+    results = [result for result in row["results"]
+               if result.get("atom") == "fin.revenue"]
+    # The only Q2 row is known 2026-11-05, after as_of, so it is invisible; a named
+    # period never falls back to an older period's row (2026-06-30 is a different quarter).
+    assert results and results[0]["answer_type"] == "not_in_data"
+    assert "2026-07-01..2026-09-30" in (results[0].get("nid_reason") or "")
     assert all(str(result.get("known_at") or "") <= "2026-10-30"
                for result in row["results"])
+    assert all(result.get("value") != 120.0 for result in row["results"])
 
 
 def test_default_consolidation_reading_is_not_guessed(store, resolver):

@@ -80,6 +80,10 @@ def db() -> sqlite3.Connection:
          30.0, "%", "2026-07-30", "shp_index"),
         ("INE001", "hold.pct", "holder_class=public", "2026-09-30", "2026-09-30",
          36.0, "%", "2026-10-30", "shp_index"),
+        ("INE001", "hold.pledge_pct", "holder_class=promoter", "2026-06-30", "2026-06-30",
+         1.5, "%", "2026-07-14", "shp_index"),
+        ("INE001", "hold.pledge_pct", "holder_class=promoter", "2026-09-30", "2026-09-30",
+         2.0, "%", "2026-10-15", "shp_index"),
         ("INE002", "price.close", "basis=raw", "2026-10-01", "2026-10-01", 50.0,
          "INR", "2026-10-02", "px_nse"),
         ("INE003", "price.close", "basis=raw", "2026-10-01", "2026-10-01", 70.0,
@@ -139,6 +143,38 @@ def test_pit_cut_hides_later_rows(db):
     early = run(db, part(atom="fin.revenue", dims={"exchange": "NSE"}),
                 as_of="2026-09-30")
     assert early.value == 100.0 and early.period == "2026-06-30"
+
+
+# --- latest readings: the most recent period KNOWN by as_of (§D.2) ----------
+def test_latest_quarter_reads_the_most_recent_period_known_by_as_of(db):
+    """"the latest quarter" as of 2026-10-07 is 2026-06-30 (filed 2026-07-14), not the
+    2026-09-30 row known 2026-10-15 and not an empty 91-day period_end window."""
+    latest = {"from": None, "to": "2026-10-07", "basis": "latest quarter"}
+    result = run(db, part(atom="hold.pledge_pct", dims={"holder_class": "promoter"}),
+                 as_of="2026-10-07", window=latest)
+    assert result.answer_type == "measured"
+    assert (result.value, result.period, result.known_at) == (1.5, "2026-06-30",
+                                                             "2026-07-14")
+    assert "period 2026-06-30, filed 2026-07-14" in (result.assumption or "")
+    assert "staleness limit 200 days" in (result.assumption or "")
+
+
+def test_a_latest_reading_older_than_its_limit_is_not_offered(db):
+    """A years-old row is never "latest": the limit is stated, the part stays NID."""
+    latest = {"from": None, "to": "2027-06-01", "basis": "latest"}
+    result = run(db, part(atom="hold.pledge_pct", dims={"holder_class": "promoter"}),
+                 as_of="2027-06-01", window=latest)
+    assert result.answer_type == "not_in_data"
+    assert "staleness limit" in (result.nid_reason or "")
+    assert "2026-09-30" in (result.nid_reason or "")
+
+
+def test_a_named_period_with_no_row_stays_typed_nid(db):
+    window = {"from": "2026-10-01", "to": "2026-12-31", "basis": "quarter end"}
+    result = run(db, part(atom="fin.revenue", dims={"exchange": "NSE"}),
+                 as_of="2026-10-31", window=window)
+    assert result.answer_type == "not_in_data"
+    assert "2026-10-01..2026-12-31" in (result.nid_reason or "")
 
 
 def test_dims_filter_sum_and_each_readings(db):
