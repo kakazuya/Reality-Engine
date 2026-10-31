@@ -444,3 +444,184 @@ PDFs), `C:\RE\ocr_pages` (20 rendered pages), `C:\RE\ocr_check` (rows JSONL),
   covers the check; a worker asked to run pytest itself will fail and should be told.
 - OCR: 0.93–0.95 on clean pages, not 0.95+ everywhere; the remaining loss is logos,
   all-caps letterheads, ruled tables and text-layer reading order, not recognition.
+
+## 11. Snapdragon OCR engines — Windows AI, Qualcomm EasyOCR, baseline (2026-10-31)
+
+**Measured answer: neither hardware-specific engine beats the current pipeline; the
+best deployable change is Windows' own `Windows.Media.Ocr`, which is CPU-only but
+4× faster and much better on figures.** The Windows App SDK `TextRecognizer` is the
+API Microsoft intends for this NPU, but on this build it is gated: an unpackaged
+process gets `E_ACCESSDENIED` at `GetReadyState()` before any image is touched, and a
+loose MSIX with `systemAIModels` could not be made to start. Qualcomm's AI Hub
+EasyOCR *does* run on the NPU (both graphs) under `onnxruntime-qnn`, but its
+pre-exported detector/recogniser pair, decoded with the numpy CRAFT post-processing
+available here, scores 0.291 and runs at 1.5 pages/min — 30× slower than the
+baseline and 4× worse.
+
+Host: HP OmniBook, Snapdragon X X1-26-100 (Hexagon NPU), Windows 11 26H2 build
+26300.9818, Python 3.14.7 ARM64, `onnxruntime` 1.31.1 + `onnxruntime-qnn` 2.7.0,
+`pypdfium2` 5.14.0. Same 20 text-layer pages and 20 scanned pages as §10.5/§10.6.
+The other HP worker (`hp-…3e6065`) was running throughout, so page rates are a
+little below the §10 numbers; accuracy does not depend on load.
+
+### 11.1 Results
+
+Text-layer pages: truth = the PDF text layer, `acc` = case-folded character
+accuracy after whitespace normalisation (the §10 metric), `order-free` = the same
+edit distance after sorting both sides' words (bag of words, so a table read
+column-by-column is not punished twice), `numbers` = exact-number recall after comma
+normalisation. 17 letters, 2 statutory annexures, 1 presentation page.
+
+| engine | device | pages/min | chars acc | order-free | number recall | letters (17) | tables (2) | slide (1) |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| **RapidOCR ONNX, QNN HTP** (current) | **NPU** | **43.9** | **0.6669** | 0.6241 | 0.7544 | 0.6585 | **0.5950** | 0.9536 |
+| **Windows.Media.Ocr** | CPU | **186.7** | **0.6703** | **0.8782** | **0.9640** | **0.6802** | 0.4217 | **0.9983** |
+| Windows.Media.Ocr, lines sorted by bbox | CPU | 186.7 | 0.7072 | 0.8782 | 0.9640 | — | — | — |
+| Qualcomm AI Hub EasyOCR | NPU+CPU | 1.49 | 0.2910 | 0.2809 | 0.3601 | 0.2907 | 0.2811 | 0.3162 |
+| Windows AI `TextRecognizer` | (NPU) | — | — | — | — | — | — | — |
+
+Scanned pages: no text layer, so scored on the ten pages with hand-read key numbers
+from §10.6 (key-number recall) and on output volume:
+
+| engine | device | pages/min | key-number recall | rotated page recovered | OCR chars |
+|---|---|---:|---:|---|---:|
+| RapidOCR ONNX, QNN HTP | NPU | 38.6 | 0.486 | **yes** (1/20, GMR page) | 41,666 |
+| Windows.Media.Ocr | CPU | **171.6** | **0.625** | no (garbage on the GMR page) | 39,538 |
+| Qualcomm AI Hub EasyOCR | NPU+CPU | — | — | — | not run (1.5 ppm ⇒ 2.2 h for 20 pages) |
+
+NPU confirmation is the loaded backend DLL, because this box exposes no NPU
+performance counter: the QNN runs load `QnnHtp.dll`, `QnnHtpPrepare.dll`,
+`QnnHtpV73Stub.dll` (V73 is the X1's Hexagon) and `onnxruntime_providers_qnn.dll`;
+`Windows.Media.Ocr` loads none of them and spends ~0.22 CPU-s per 0.32 wall-s,
+i.e. the classic CPU OCR. The QNN sessions also run with
+`session.disable_cpu_ep_fallback=1`, so a graph that did not compile on HTP would
+fail rather than silently fall back.
+
+### 11.2 Windows App SDK `TextRecognizer` — present but gated
+
+The API is **not** in `Microsoft.Windows.AI.Text` on this build (that winmd has
+`LanguageModel`, `TextRewriter`, `TextSummarizer`, `TextToTableConverter`). It is
+`Microsoft.Windows.AI.Imaging.TextRecognizer` in the installed Windows App SDK 1.8
+runtime (`8000.836.2153.0`): `GetReadyState` / `EnsureReadyAsync` / `CreateAsync`,
+`RecognizeTextFromImageAsync(ImageBuffer)`, returning `RecognizedText` with
+`Lines` and `TextAngle`; `ImageBuffer.CreateForSoftwareBitmap` is the input path.
+
+A C# helper (built with .NET 8.0.427 against `Microsoft.WindowsAppSDK`
+1.8.260921001, `Microsoft.Windows.AI.Imaging.Projection.dll`) starts, resolves the
+types and then gets, before any image:
+
+```
+ready_state: System.UnauthorizedAccessException: Access is denied.
+   at ABI.Microsoft.Windows.AI.Imaging.ITextRecognizerStaticsMethods.GetReadyState(...)
+```
+
+That is E_ACCESSDENIED from the AI capability check (`AICapabilities.dll`,
+`WindowsUdk.AI.PlatformCapabilities`), not a missing model. Four launch shapes were
+tried:
+
+1. **Unpackaged exe** (the brief's question): `Package.Current` invalid, then
+   `E_ACCESSDENIED` at `GetReadyState`. **It does not run from an unpackaged app.**
+2. **Loose MSIX, developer mode**, `runFullTrust` + `systemAIModels`,
+   `uap10:RuntimeBehavior="win32App"`, execution alias: registration succeeds
+   (`RETextRecBench 1.0.0.3`), but direct launch still has no identity, the alias
+   exits `0x80070032` before `Main`, and Explorer activation creates a process and
+   AppContainer that are destroyed within the same second without reaching `Main`.
+3. `Invoke-CommandInDesktopPackage`: no process.
+4. Same helper on the shell: no process.
+
+So no image was ever recognised, no NPU evidence exists, and the engine is **not
+scored**. The honest conclusion is that Windows AI OCR needs a properly signed
+packaged app with package identity and the `systemAIModels` capability; the loose
+MSIX route used here is not enough on 26H2. The unpackaged answer is definitive:
+E_ACCESSDENIED.
+
+### 11.3 Qualcomm AI Hub EasyOCR — runs on the NPU, loses on speed and accuracy
+
+Asset: `easyocr-onnx-float.zip` v0.65.0 from
+`qaihub-public-assets.s3…/qai-hub-models/models/easyocr/releases/v0.65.0/`, 87 MB,
+**no account or sign-up needed**. The matching `qualcomm/EasyOCR` model card on
+Hugging Face is **Apache-2.0**; the weights derive from EasyOCR (Apache-2.0) and the
+AI Hub tooling is BSD-3-Clause. Detector: CRAFT, 20.8M parameters (79.2 MB), input
+608×800 RGB, ImageNet normalisation, output is (text score, link score) at
+half resolution. Recogniser: EasyOCR `english_g2` VGG + 2×BiLSTM, 3.84M parameters
+(14.4 MB), input 64×800 grayscale, 199 CTC steps over 96 characters + blank.
+
+Both ONNX graphs compiled on QNN HTP (`session.disable_cpu_ep_fallback=1`,
+`QnnHtpV73Stub.dll` loaded). The LSTM recogniser also compiles on HTP, but CPU was
+faster, so the scored run is detector-HTP + recogniser-CPU. Result: **1.49
+pages/min, 0.291 char / 0.281 order-free / 0.360 number recall**, worse than the
+baseline on every page type. Per page it spends 17–66 s in ~40–165 recogniser calls.
+
+Two caveats, both measured rather than assumed:
+
+- **The missing CRAFT post-processing.** EasyOCR's intended decode needs
+  `cv2.minAreaRect` and `pyclipper` expansion. `pip install opencv-python-headless`
+  on this Python 3.14 ARM64 reports "from versions: none" — there is no win_arm64
+  wheel — so the run used the bench's axis-aligned connected-component boxes
+  (threshold 0.3, 1.4× expansion, row-band splitting), which merge/split words.
+- **The recogniser is not better even with identical boxes.** Feeding both
+  recognisers the *same* RapidOCR det960 boxes: EasyOCR 0.521 vs RapidOCR 0.784
+  (ASHIANA Form C), 0.190 vs 0.375 (JUBLINGREA), 0.084 vs 0.046 (STLTECH slide).
+  So the 0.291 end-to-end is not only box geometry: the AI Hub recogniser is weaker
+  on this corpus than RapidOCR's rec32.
+
+For the 1,073-file job EasyOCR is therefore a non-starter on time alone: at
+1.49 pages/min, ~13,300 pages would take **~150 hours**.
+
+### 11.4 Recommendation for the 1,073 scanned files
+
+Use **`Windows.Media.Ocr` as the first pass**, not the NPU pipeline:
+
+- **Time:** 171–187 pages/min measured ⇒ 13,300 pages in **~1.2–1.3 h**; allow
+  **~1.5 h** once the 90°/270° retry is added. The current NPU baseline is
+  38.6–43.9 pages/min ⇒ **5.0–5.7 h**. EasyOCR: ~150 h, rejected.
+- **Accuracy:** on the pages with truth, 0.670 plain / **0.878 order-free** /
+  **0.964 exact-number recall** (baseline: 0.667 / 0.624 / 0.754). On the scanned
+  key numbers, 0.625 vs the baseline's 0.486. It is the only engine whose figure
+  recall is usable for filings, which is the point of the exercise.
+- **Two fixes are mandatory, both already in `hp_ocr_check.py`:** retry 90°/270°
+  when a page yields <40 characters (MediaOcr produced garbage on the rotated GMR
+  page, where the baseline recovers it), and sort the returned lines by their
+  bounding boxes (+3.7 points of plain accuracy on the truth set).
+- **Keep the NPU path for two cases:** tabular/annexure pages, where the baseline
+  is better (0.595 vs 0.422), and any page still under 40 characters after the
+  rotation retry. A per-page route on layout is cheaper than making one engine do
+  both.
+
+Expected for the 1,073 files: ~1.5 h, ~0.67 plain / ~0.88 order-free character
+accuracy on text-bearing pages, number recall ~0.96 on clean pages and ~0.62 on
+scans — i.e. better figures than today, in a quarter of the time, on the CPU that
+is otherwise idle while the NPU pipeline post-processes in numpy.
+
+The NPU is not the bottleneck in the current pipeline: the baseline uses 0.27 CPU-s
+per page at 43.9 pages/min, while MediaOcr uses 0.22 CPU-s at 186.7 pages/min.
+Replacing numpy post-processing (or the per-line QNN call overhead) would do more
+for the NPU path than changing models.
+
+### 11.5 Commands used
+
+```powershell
+# benchmark harness (new): scores any engine on the same pages/metrics
+python -m reality_engine.scripts.hp_ocr_bench --engine qnn  --mode textlayer --models C:\RE\models_fixed --out C:\RE\bench\out
+python -m reality_engine.scripts.hp_ocr_bench --engine media --mode textlayer --out C:\RE\bench\out
+python -m reality_engine.scripts.hp_ocr_bench --engine easyocr --mode textlayer --out C:\RE\bench\out --det-provider qnn-htp --rec-provider cpu
+python -m reality_engine.scripts.hp_ocr_bench --engine qnn  --mode scanned --list C:\RE\pages30.txt --base C:\RE\raw\pilot60_history --keys C:\RE\bench\scanned_keys.json --limit 20 --out C:\RE\bench\out
+python -m reality_engine.scripts.hp_ocr_bench --engine media --mode scanned --list C:\RE\pages30.txt --base C:\RE\raw\pilot60_history --keys C:\RE\bench\scanned_keys.json --limit 20 --out C:\RE\bench\out
+
+# Windows App SDK TextRecognizer helper (source in the job dir, not committed)
+dotnet publish -c Release -o pkg            # Microsoft.WindowsAppSDK 1.8.260921001
+Add-AppxPackage -Register pkg\AppxManifest.xml        # loose MSIX, systemAIModels
+```
+
+### 11.6 Still open
+
+- `TextRecognizer` needs a signed MSIX (or a Store identity) before it will answer;
+  the capability gate, not the NPU, is what blocked it. A signed build is the next
+  experiment, and it should also expose whether the API reports an NPU device.
+- EasyOCR's real accuracy needs `cv2`/`pyclipper` CRAFT decoding. Neither has a
+  win_arm64 cp314 wheel today; an x64-emulated Python or a small C++ box decoder
+  would be needed. Given 1.49 pages/min, even a large accuracy gain does not change
+  the 1,073-file recommendation.
+- The scanned-page score still rests on 10 hand-read number sets. A text-layer
+  truth for scanned pages would make the comparison exact.
+
