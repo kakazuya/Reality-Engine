@@ -1205,6 +1205,10 @@ CONCEPT_MAP = {
     "Inventories": ("inventory", 1, 1e-7, None),
     "TradePayablesCurrent": ("payables", 1, 1e-7, None),
     "TradePayables": ("payables", 1, 1e-7, None),
+    # the investment cash-flow line: the period capex the registry names (§A.1);
+    # capex_project (extract60) is project announcements, a different atom
+    "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities":
+        ("capex", 1, 1e-7, None),
     "CostOfMaterialsConsumed": ("cogs", 1, 1e-7, None),
     "CashAndCashEquivalents": ("cash", 1, 1e-7, None),
     "PaidUpValueOfEquityShareCapital": ("paid_up_capital", 1, 1e-7, None),

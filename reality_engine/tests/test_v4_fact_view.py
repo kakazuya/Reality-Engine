@@ -20,11 +20,17 @@ from pathlib import Path
 import pytest
 
 from reality_engine.query.v4 import build_membership as bm
+from reality_engine.query.v4 import build_quarters as bq
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / ".tmp" / f"v4fact_{os.getpid()}"
 ISIN_A = "INE000A01001"
 ISIN_B = "INE000B01002"
+
+
+def _oi_path(out: Path) -> Path:
+    """The macro.oi side file build() writes next to the core store."""
+    return out.parent / (out.stem + "_oi.db")
 
 SCHEMA = {
     "market_state": [
@@ -238,19 +244,18 @@ def test_ownership_narrative_and_macro_atoms(built):
         assert text["source_ref"] == "chunks_v3.chunk#7"
         assert _facts(con, "macro.commodity_close")[0]["entity_id"] == "wb_copper"
         assert _facts(con, "macro.series")[0]["value"] == 9500.0
-        oi = _facts(con, "macro.oi")[0]
-        assert oi["dims"] == "expiry=2024-07-25;option_type=FUT;strike=100.0"
-        assert props_one(con, oi) == ["macro.oi"]            # unique key holds
+        # macro.oi lives in the side file, not the core store (§F.6 size split)
+        assert _facts(con, "macro.oi") == []
+        oi = sqlite3.connect(str(_oi_path(FIXTURE / "fact.db")))
+        try:
+            oi_oi = oi.execute("SELECT * FROM fact WHERE atom='macro.oi'").fetchall()
+            assert len(oi_oi) == 1
+            assert oi_oi[0][2] == "expiry=2024-07-25;option_type=FUT;strike=100.0"
+            assert oi_oi[0][5] == 5000.0
+        finally:
+            oi.close()
     finally:
         con.close()
-
-
-def props_one(con: sqlite3.Connection, row: sqlite3.Row) -> list[str]:
-    """Atoms whose full key matches this row (must be exactly one)."""
-    return [r[0] for r in con.execute(
-        "SELECT atom FROM fact WHERE entity_id=? AND atom=? AND dims=? AND period_start=? "
-        "AND period_end=?", (row["entity_id"], row["atom"], row["dims"], row["period_start"],
-                             row["period_end"]))]
 
 
 def test_one_row_per_entity_atom_dims_period(built):
@@ -350,15 +355,28 @@ def test_pilot_handcheck_when_the_build_exists(built):
     pilot_db = ROOT / ".tmp" / "fact_v4_pilot.db"
     if not pilot_db.is_file():
         pytest.skip("pilot build absent (run build_membership)")
+    data = Path(os.environ.get("REALITY_DATA_ROOT") or (ROOT / "reality_engine" / "data"))
     con = sqlite3.connect(str(pilot_db), uri=True)
     con.row_factory = sqlite3.Row
     try:
-        bm.attach(con)
+        bm.attach(con, quarters=ROOT / ".tmp" / "quarters_pilot60.db",
+                  ei=data / "equity_intelligence.db", macro=data / "pilot" / "macro_all.db")
+        oi_db = _oi_path(pilot_db)
+        if oi_db.is_file():
+            con.execute("ATTACH DATABASE ? AS oi",
+                        (f"file:{oi_db.as_posix()}?mode=ro&immutable=1",))
         bm.seed_universe(con, bm.read_universe())
         cov = bm.coverage(con)
         assert cov["membership"]["entities"] >= 1888
         assert cov["membership"]["index_sets"] >= 124
         assert cov["missing"] == [] or set(cov["missing"]) <= bm.EMPTY_OK
+        assert len(cov["atom_status"]) == 43
+        assert {r["atom_id"] for r in cov["atom_status"]} == set(bm.HELD_ATOMS)
+        by = {r["atom_id"]: r for r in cov["atom_status"]}
+        assert by["price.open"]["isin_entities"] == 60        # 9 blank + 2 renamed resolved
+        assert by["price.rsi"]["isin_entities"] == 60
+        assert con.execute("SELECT COUNT(*) FROM fact WHERE atom='price.open' "
+                           "AND dims='exchange=BSE'").fetchone()[0] > 0
         rows = bm.handcheck(con)
         assert len(rows) >= 30
         assert all(r["ok"] for r in rows), [r for r in rows if not r["ok"]]
@@ -366,5 +384,131 @@ def test_pilot_handcheck_when_the_build_exists(built):
         print(f"\npilot lookup n={timing['n']} median {timing['median_ms']:.2f} ms "
               f"p90 {timing['p90_ms']:.2f} ms")
         assert timing["median_ms"] < 50.0
+    finally:
+        con.close()
+
+
+# ------------------------------------------------------- quarters / WP2c additions
+def test_seed_universe_resolves_blank_and_renamed_symbols():
+    """A blank CSV symbol and a renamed one both come from the registry; a live symbol stays."""
+    tmp = ROOT / ".tmp" / f"v4seed_{os.getpid()}"      # .tmp: tempfile DACL is unusable here
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
+    try:
+        ei, bhav = tmp / "ei.db", tmp / "b.db"
+        con = sqlite3.connect(str(ei))
+        con.execute("CREATE TABLE security_master(isin TEXT, nse_symbol TEXT)")
+        con.executemany("INSERT INTO security_master VALUES (?,?)",
+                        [(ISIN_A, "NEWSYM"), (ISIN_B, "KEEPSYM")])
+        con.commit()
+        con.close()
+        con = sqlite3.connect(str(bhav))
+        con.execute("CREATE TABLE mkt_nse_full_daily(date TEXT, symbol TEXT)")
+        con.execute("INSERT INTO mkt_nse_full_daily VALUES ('2024-06-28','KEEPSYM')")
+        con.commit()
+        con.close()
+        mem = sqlite3.connect(":memory:", uri=True)
+        mem.execute("ATTACH DATABASE ? AS ei", (f"file:{ei.as_posix()}?mode=ro",))
+        mem.execute("ATTACH DATABASE ? AS market_state_b",
+                    (f"file:{bhav.as_posix()}?mode=ro",))
+        bm.seed_universe(mem, [(ISIN_A, ""), (ISIN_B, "OLDSYM"), ("INE000C01003", "LIVE")])
+        got = dict(mem.execute("SELECT isin, symbol FROM pilot_universe"))
+        assert got == {ISIN_A: "NEWSYM", ISIN_B: "KEEPSYM", "INE000C01003": "LIVE"}
+        mem.close()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+CRORE = 1e7
+
+
+def _filing(file: str, period_end: str, period_start: str, known: str) -> dict:
+    return {"file": file, "isin": ISIN_A, "period_end": period_end,
+            "period_start": period_start, "consolidated": "Consolidated", "known_at": known}
+
+
+def _fact(file: str, context: str, value_cr: float, start: str, end: str) -> dict:
+    return {"file": file, "concept": "RevenueFromOperations", "context": context,
+            "period_start": start, "period_end": end, "value": value_cr * CRORE}
+
+
+def test_quarter_derivation_reported_and_ytd_difference():
+    """OneD is the quarter; Q2-Q4 without OneD is FourD minus the prior-quarter YTD."""
+    filings = [
+        _filing("f1", "2025-06-30", "2025-04-01", "2025-07-15T18:00:00"),
+        _filing("f2", "2025-09-30", "2025-07-01", "2025-10-15T18:00:00"),
+        _filing("f3", "2025-12-31", "2025-10-01", "2026-01-15T18:00:00"),
+        _filing("f4", "2026-03-31", "2026-01-01", "2026-04-15T18:00:00"),
+    ]
+    # FourD dates are the quarter's dates: the defect, and context must win over them
+    facts = [
+        _fact("f1", "OneD", 100, "2025-04-01", "2025-06-30"),
+        _fact("f2", "OneD", 120, "2025-07-01", "2025-09-30"),
+        _fact("f2", "FourD", 220, "2025-07-01", "2025-09-30"),
+        _fact("f3", "FourD", 300, "2025-10-01", "2025-12-31"),
+        _fact("f4", "FourD", 400, "2026-01-01", "2026-03-31"),
+    ]
+    rows, counts, checks = bq.derive_quarters(filings, facts)
+    got = {(r["period_end"], r["derived"]): r["value"] for r in rows}
+    assert got == {("2025-06-30", "reported"): pytest.approx(100.0),
+                   ("2025-09-30", "reported"): pytest.approx(120.0),
+                   ("2025-12-31", "ytd_difference"): pytest.approx(80.0),
+                   ("2026-03-31", "ytd_difference"): pytest.approx(100.0)}
+    assert all(r["derived"] in ("reported", "ytd_q1", "ytd_difference") for r in rows)
+    # known_at is the filing's own stamp, never the period end
+    assert {r["period_end"]: r["known_at"] for r in rows}["2025-12-31"] == "2026-01-15T18:00:00"
+    # the YTD difference is checked against the filing's own quarter column (Q2)
+    assert checks and all(c["ok"] for c in checks)
+    assert counts["ytd_difference"] == 2
+
+
+def test_quarter_derivation_never_invents_a_missing_or_restated_quarter():
+    filings = [
+        _filing("f1", "2025-06-30", "2025-04-01", "2025-07-15T18:00:00"),
+        _filing("f2a", "2025-09-30", "2025-07-01", "2025-10-15T18:00:00"),
+        _filing("f2b", "2025-09-30", "2025-07-01", "2025-10-20T18:00:00"),
+        _filing("f3", "2025-12-31", "2025-10-01", "2026-01-15T18:00:00"),
+        _filing("f7", "2026-12-31", "2026-10-01", "2027-01-15T18:00:00"),  # no Sep YTD
+    ]
+    facts = [
+        _fact("f1", "OneD", 100, "2025-04-01", "2025-06-30"),
+        _fact("f2a", "FourD", 220, "2025-07-01", "2025-09-30"),
+        _fact("f2b", "FourD", 230, "2025-07-01", "2025-09-30"),   # restatement
+        _fact("f3", "FourD", 300, "2025-10-01", "2025-12-31"),
+        _fact("f7", "FourD", 500, "2026-10-01", "2026-12-31"),
+    ]
+    rows, counts, _checks = bq.derive_quarters(filings, facts)
+    periods = [r["period_end"] for r in rows]
+    assert "2025-06-30" in periods                    # the reported quarter stands
+    assert "2025-12-31" not in periods                # restated prior YTD -> empty
+    assert counts.get("restated_prior_ytd", 0) >= 1
+    assert counts.get("missing_prior_ytd", 0) >= 1    # f7 has no Sep YTD
+
+
+def test_price_series_uses_trailing_windows_only():
+    closes = [float(i) for i in range(1, 26)]
+    sma, rsi = bm.price_series(closes)
+    assert sma[:19] == [None] * 19
+    assert sma[19] == pytest.approx(sum(closes[:20]) / 20.0)
+    assert rsi[:14] == [None] * 14
+    assert rsi[14] == pytest.approx(100.0)            # rising: no losses
+    short_sma, short_rsi = bm.price_series(closes[:20])
+    assert short_sma == sma[:20] and short_rsi == rsi[:20]   # appending never rewrites
+
+
+def test_atom_status_has_all_43_held_atoms(built):
+    con = _con(built)
+    try:
+        con.execute("ATTACH DATABASE ? AS oi",
+                    (f"file:{_oi_path(built).as_posix()}?mode=ro&immutable=1",))
+        rows = bm.atom_status(con)
+        assert len(rows) == 43
+        assert {r["atom_id"] for r in rows} == set(bm.HELD_ATOMS)
+        by = {r["atom_id"]: r for r in rows}
+        assert by["macro.oi"]["status"] == "filled" and by["macro.oi"]["store"] == "oi"
+        assert by["claim.claim"]["status"] == "not_built"
+        assert all(r["status"] in ("filled", "empty", "not_built") for r in rows)
+        assert all(0.0 <= r["isin_coverage_pct"] <= 100.0 for r in rows)
+        assert con.execute("SELECT COUNT(*) FROM atom_status").fetchone()[0] == 43
     finally:
         con.close()

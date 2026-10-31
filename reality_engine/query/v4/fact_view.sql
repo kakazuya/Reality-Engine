@@ -39,10 +39,11 @@
 --   hold.pct / hold.pledge_pct       market_state.company_ownership_pit
 --   flows.net_inr                    market_state.event_leakage_window (empty here)
 --   text.passage                     chunks_v3.chunk
---   macro.commodity_close            market_state_b.commodity_price_daily
+--   macro.commodity_close            market_state_b.series_observation (kind='commodity')
 --   macro.series                     market_state_b.series_observation
---   macro.oi                         market_state_b.fno_oi_daily
--- The 10 held atoms with no pilot source are declared in build_membership.NOT_BUILT.
+-- The atoms whose source is outside the five pilot files (results_xbrl.db,
+-- equity_intelligence.db, pilot/macro_all.db) are added by fact_view_extras.sql;
+-- `macro.oi` is written to the attached side file by fact_oi.sql, not here.
 -- =============================================================================
 
 DROP TABLE IF EXISTS fact;
@@ -311,10 +312,11 @@ WHERE c.body IS NOT NULL AND c.isin IS NOT NULL;
 -- an ISIN (the registry's boilerplate entity_key does not fit macro atoms).
 -- ---------------------------------------------------------------------------
 INSERT INTO fact
-SELECT d.series_code, 'macro.commodity_close', 'commodity=' || COALESCE(d.commodity, ''),
-       d.date, d.date, d.close, d.unit, d.known_at, 'market_state_b.commodity_price_daily'
-FROM market_state_b.commodity_price_daily d
-WHERE d.close IS NOT NULL;
+SELECT d.series_code, 'macro.commodity_close', 'commodity=' || COALESCE(d.dim_id, ''),
+       d.period_start, COALESCE(d.period_end, d.period_start), d.value, d.unit, d.known_at,
+       'market_state_b.series_observation'
+FROM market_state_b.series_observation d
+WHERE d.kind = 'commodity' AND d.value IS NOT NULL;
 
 INSERT INTO fact
 SELECT o.series_code, 'macro.series',
@@ -324,16 +326,9 @@ SELECT o.series_code, 'macro.series',
 FROM market_state_b.series_observation o
 WHERE o.value IS NOT NULL;
 
-INSERT INTO fact
-SELECT f.isin, 'macro.oi',
-       'expiry=' || COALESCE(f.expiry, '') ||
-       ';option_type=' || COALESCE(f.option_type, '') ||
-       ';strike=' || COALESCE(CAST(f.strike AS TEXT), ''),
-       f.date, f.date, f.oi, 'contracts', f.date || 'T23:59:59',
-       'market_state_b.fno_oi_daily'
-FROM market_state_b.fno_oi_daily f
-WHERE f.oi IS NOT NULL AND f.isin IS NOT NULL
-  AND f.isin IN (SELECT isin FROM pilot_universe);
+-- macro.oi lives in the separate attached side file (fact_oi.sql): 16.2 M contract
+-- rows are ~2 GB of what would otherwise be a 2.3 GB core store.  Readers attach the
+-- side file as ``oi`` and read ``fact`` UNION ALL ``oi.fact``.
 
 DROP TABLE IF EXISTS _map;
 
