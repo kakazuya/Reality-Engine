@@ -66,6 +66,12 @@ def db() -> sqlite3.Connection:
          "INR", "2026-01-03", "px_nse"),
         ("INE001", "price.open", "basis=raw", "2026-01-03", "2026-01-03", 95.0,
          "INR", "2026-01-03", "px_nse"),
+        ("INE001", "price.high", "exchange=NSE", "2026-01-02", "2026-01-02", 130.0,
+         "INR", "2026-01-02T23:59:59", "bhavcopy"),
+        ("INE001", "price.high", "exchange=NSE", "2026-01-03", "2026-01-03", 91.0,
+         "INR", "2026-01-03T23:59:59", "bhavcopy"),
+        ("INE001", "price.close", "basis=raw", "2023-01-03", "2023-01-03", 100.0,
+         "INR", "2023-01-03", "px_nse"),
         ("INE001", "hold.pct", "holder_class=promoter", "2026-06-30", "2026-06-30",
          55.0, "%", "2026-07-30", "shp_index"),
         ("INE001", "hold.pct", "holder_class=promoter", "2026-09-30", "2026-09-30",
@@ -159,6 +165,47 @@ def test_series_renderer_prints_period_value_source_and_known_at(db):
     assert "points" in text and "2026-01-01=100" in text
     assert "source px_nse" in text and "known_at 2026-01-03" in text
     assert render.answer_contract([result])["real_answered"] == 1
+
+
+# --- dims the atom does not carry, YTD, sessions, CAGR ----------------------
+def test_dim_the_atom_does_not_carry_is_ignored(db):
+    """An exchange label ("its NSE close") does not reject a close with no exchange dim."""
+    result = run(db, part(atom="price.close", dims={"exchange": "NSE"}),
+                 window={"from": "2026-01-03", "to": "2026-01-03"})
+    assert result.answer_type == "measured" and result.value == 90.0
+    assert result.period == "2026-01-03"
+
+
+def test_explicit_bse_on_an_unserved_atom_stays_nid(db):
+    """The store's close is NSE-first: a real "on BSE" ask must not answer it."""
+    result = run(db, part(atom="price.close", dims={"exchange": "BSE"}),
+                 window={"from": "2026-01-03", "to": "2026-01-03"})
+    assert result.answer_type == "not_in_data"
+    assert "exchange=BSE" in (result.nid_reason or "")
+
+
+def test_ytd_high_is_a_max_with_date_over_the_year(db):
+    result = run(db, part(atom="price.high", dims={"lag": "ytd"}),
+                 window={"from": "2026-01-03", "to": "2026-01-03"})
+    assert result.operator == "max_with_date"
+    assert (result.value, result.period) == (130.0, "2026-01-02")
+    assert "YTD window 2026-01-01..2026-01-03" in (result.assumption or "")
+
+
+def test_named_date_with_no_session_snaps_and_says_so(db):
+    result = run(db, part(atom="price.close"),
+                 window={"from": "2026-01-04", "to": "2026-01-04"})
+    assert (result.value, result.period) == (90.0, "2026-01-03")
+    assert "not a trading session" in (result.assumption or "")
+
+
+def test_cagr_reads_price_closes_over_the_named_years(db):
+    result = run(db, part(formula="f.cagr", dims={"basis": "raw"}),
+                 window={"from": "2023-01-03", "to": "2026-01-03"})
+    years = max(1096 / 365.25, 1.0 / 365.0)      # 2023-01-03 -> 2026-01-03 (2024 is leap)
+    assert result.answer_type == "measured"
+    assert result.value == pytest.approx(100.0 * ((90.0 / 100.0) ** (1.0 / years) - 1.0),
+                                        rel=1e-6)
 
 
 # --- estimate / proxy / NID ------------------------------------------------

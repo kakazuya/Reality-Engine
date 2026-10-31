@@ -173,6 +173,15 @@ def test_no_date_declares_the_run_date_as_the_window(registry):
     assert ask.windows[0].basis == "as_of"
 
 
+def test_a_named_year_cagr_opens_its_window(registry):
+    """"3-year CAGR to 19 Oct 2026" reads three years of closes, not one day's."""
+    ask = decompose("What was Power Grid's 3-year price CAGR to 19 October 2026, "
+                    "using split- and dividend-adjusted closes?", "2026-10-19", registry)
+    assert "f.cagr" in ask.measures
+    window = ask.windows[0].to_dict()
+    assert (window["from"], window["to"]) == ("2023-10-19", "2026-10-19")
+
+
 def test_clause_split_keeps_a_company_name_whole():
     assert split_clauses("CG Power and Industrial Solutions close") == [
         "CG Power and Industrial Solutions close"]

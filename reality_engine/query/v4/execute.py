@@ -278,6 +278,10 @@ SELECTOR_DIMS = {"entity_id", "isin", "est_atom", "rule", "rule_id", "margin_kin
 #: dims a row may simply not carry (a daily price row has no period_kind): a named value
 #: then filters only the rows that do carry it, and never rejects a whole atom.
 SOFT_DIMS = {"period_kind"}
+#: an explicit reading the atom cannot serve: the row is not exchange-keyed (price.close is
+#: the NSE-first panel), so answering "on BSE" would pass one exchange off as the other.
+#: Every other dim the atom's rows do not carry is ignored, never rejected (MB0032#L).
+UNSERVED_DIM_VALUES = {("exchange", "BSE")}
 CONSOLIDATION = ("consolidated", "standalone")
 #: a window this short reads the quarterly reading of a period_kind-carrying atom.
 SHORT_WINDOW_DAYS = 120
@@ -350,19 +354,41 @@ def _unnamed_split(rows: Sequence[Mapping[str, Any]],
     return out
 
 
-def _dim_match(row: Mapping[str, Any], want: Mapping[str, Any]) -> bool:
+def _dim_match(row: Mapping[str, Any], want: Mapping[str, Any],
+               carried: set[str] | None = None) -> bool:
+    """True when the row satisfies every named dim the atom's rows actually carry."""
     got = row_dims(row)
     for key, value in want.items():
         if key in SELECTOR_DIMS:
             continue
         if str(value).lower() in SPECIAL_DIMS:
             continue
-        carried = str(got.get(key, "")).lower()
-        if not carried and key in SOFT_DIMS:
+        if carried is not None and key not in carried:
             continue
-        if carried != str(value).lower():
+        carried_value = str(got.get(key, "")).lower()
+        if not carried_value and key in SOFT_DIMS:
+            continue
+        if carried_value != str(value).lower():
             return False
     return True
+
+
+def carried_dims(rows: Sequence[Mapping[str, Any]]) -> set[str]:
+    """The dims the fetched rows actually carry (a daily close carries none)."""
+    keys: set[str] = set()
+    for row in rows:
+        keys.update(row_dims(row))
+    return keys
+
+
+def _unserved(want: Mapping[str, Any], carried: set[str]) -> tuple[str, Any] | None:
+    """The first named dim reading the atom's rows cannot serve and must not fake."""
+    for key, value in want.items():
+        if key in SELECTOR_DIMS or key in carried:
+            continue
+        if (key, str(value).upper()) in UNSERVED_DIM_VALUES:
+            return key, value
+    return None
 
 
 def _apply_soft(rows: Sequence[Mapping[str, Any]],
@@ -1037,8 +1063,9 @@ def _op_rank(part, values, ctx):
     if not rows:
         raise _Empty()
     ranked = []
+    carried = carried_dims(rows)
     for position, row in enumerate(rows, 1):
-        if not _dim_match(row, part.dims):
+        if not _dim_match(row, part.dims, carried):
             continue
         ranked.append({"rank": position, "entity_id": row.get("entity_id"),
                        "value": _num(row.get("value")), "unit": row.get("unit"),
@@ -1431,7 +1458,8 @@ def _execute_formula(conn: Any, part: Part, as_of: str, lo: str | None, hi: str 
             return _nid(part, window, "the fact view is absent",
                         [_tried("fact", f"atom {atom}", None, as_of)],
                         "WP2a fact_view.sql (§H.2)")
-        rows = [row for row in rows if _dim_match(row, part.dims)]
+        carried = carried_dims(rows)
+        rows = [row for row in rows if _dim_match(row, part.dims, carried)]
         series[atom] = rows
         latest = _one_latest(rows)
         if latest is None:
@@ -1653,6 +1681,18 @@ def _execute_rule(conn: Any, part: Part, as_of: str, lo: str | None, hi: str | N
 # ---------------------------------------------------------------------------
 # the one entry point
 # ---------------------------------------------------------------------------
+def _last_session(conn: Any, day: str) -> str | None:
+    """The last trading session on or before ``day``, from the store's session atoms."""
+    if conn is None:
+        return None
+    column = fact_atom_column(conn)
+    rows = db_rows(conn,
+                   f"SELECT MAX(period_end) AS session FROM fact "
+                   f"WHERE {column} IN ('price.high', 'price.open', 'price.close') "
+                   f"AND substr(period_end, 1, 10) <= ?", (day,))
+    return _day(rows[0].get("session")) if rows and rows[0].get("session") else None
+
+
 def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] | None = None,
             entity: str | None = None, entities: Sequence[str] | None = None,
             registry: Any = None, proxy: Mapping[str, Any] | None = None,
@@ -1665,8 +1705,16 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
     p = as_part(part, part_index)
     lo, hi = _window_bounds(p.window, windows)
     reg = _registry(registry)
+    assumed: list[str] = []
+    grain = "" if _passage_like(p) else _grain_of(p, reg)
+    if grain == "day" and lo and hi and lo == hi and conn is not None:
+        # A named date with no session (a Sunday, a holiday) snaps to the last session
+        # that actually traded, and the answer says which one (§D.2).
+        session = _last_session(conn, hi)
+        if session and session != hi:
+            assumed.append(f"{hi} is not a trading session; used the last session {session}")
+            lo = hi = session
     if lo and hi and lo == hi and not _passage_like(p):
-        grain = _grain_of(p, reg)
         opening = _period_start(_window_basis(p.window, windows), hi)
         if grain == "day" and opening:
             # "the Q1 high": a quarter-end reading over a day-grain series is the quarter.
@@ -1675,6 +1723,14 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
             # A one-day window is the document/event date for a quarterly or FY reading: it
             # bounds the value's date (known_at is cut at as_of), not its period_end.
             lo = None
+    if str(p.dims.get("lag") or "").lower() == "ytd" and hi and not _passage_like(p):
+        # "YTD high": the year of the asked date to that date, never the whole history.
+        lo = f"{hi[:4]}-01-01"
+        assumed.append(f"YTD window {lo}..{hi}")
+        if p.atom == "price.high" and p.operator in ("value_at", "last_visible"):
+            p.operator = "max_with_date"
+        elif p.atom == "price.low" and p.operator in ("value_at", "last_visible"):
+            p.operator = "min_with_date"
     window = _window_dict(lo, hi)
     entity = p.entity or entity or (p.entities[0] if p.entities else None)
     entity_set = list(entities or p.entities or [])
@@ -1690,6 +1746,8 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
         result = _nid(p, window, f"executor error: {type(exc).__name__}: {exc}",
                       [_tried("executor", p.measure or "?", None, as_of)],
                       "fix the executor for this part")
+    if assumed and not result.assumption:
+        result.assumption = "; ".join(assumed)
     if result.answer_type == "not_in_data" and proxy:
         result = _proxy(p, window, proxy, result.tried, result.nid_reason)
     return result
@@ -1769,7 +1827,18 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
         return _nid(p, window, "the fact view is not built in this store",
                     [_tried("fact", "view absent", None, as_of)],
                     "WP2a fact_view.sql (§H.2)")
-    rows = [row for row in rows if _dim_match(row, p.dims)]
+    carried = carried_dims(rows)
+    unserved = _unserved(p.dims, carried)
+    if unserved:
+        dim, value = unserved
+        return _nid(p, window,
+                    f"the ask names {dim}={value}, but the {atom} rows are not "
+                    f"{dim}-keyed in this store; answering would pass a different "
+                    f"{dim} off as the asked one",
+                    [_tried("fact", f"atom={atom}, {dim}={value}, window={lo}..{hi}",
+                            len(rows), as_of)],
+                    f"hold a {dim}-keyed {atom} source (§H.2 fact view)")
+    rows = [row for row in rows if _dim_match(row, p.dims, carried)]
     rows = _apply_soft(rows, p.dims)
     rows = _apply_defaults(rows, p.dims, registry, lo, hi)
     split = _unnamed_split(rows, p.dims) if p.operator in SCALAR_ONE else []

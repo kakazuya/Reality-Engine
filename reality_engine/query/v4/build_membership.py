@@ -34,6 +34,10 @@ DEFAULT_ROOT = Path(os.environ.get("REALITY_DATA_ROOT") or REPO / "reality_engin
 PILOT_DIR = Path("pilot") / "pilot60"
 UNIVERSE_CSV = REPO / "tasks" / "pilot60" / "UNIVERSE.csv"
 SQL_FILE = Path(__file__).with_name("fact_view.sql")
+HOLDINGS_SQL = Path(__file__).with_name("fact_view_holdings_isin.sql")
+#: the held identity store: shp_index filings + the symbol -> ISIN history that maps a
+#: pre-split shareholding ISIN back to the pilot ISIN (fact_view_holdings_isin.sql).
+IDENTITY_DB = "equity_intelligence.db"
 
 #: attach alias -> pilot file (the aliases fact_view.sql reads)
 STORES = {
@@ -121,6 +125,23 @@ def seed_universe(con: sqlite3.Connection, rows: list[tuple[str, str]]) -> int:
     return len(rows)
 
 
+def attach_identity(con: sqlite3.Connection, root: Path | str | None = None) -> bool:
+    """Attach the held identity store read-only; False when this root does not have it."""
+    path = Path(root or DEFAULT_ROOT) / IDENTITY_DB
+    if not path.is_file():
+        return False
+    con.execute("ATTACH DATABASE ? AS equity_intelligence", (_uri(path),))
+    return True
+
+
+def build_holdings_isin(con: sqlite3.Connection) -> int:
+    """Copy the shareholding filings whose ISIN predates the pilot ISIN (see the SQL)."""
+    con.executescript(HOLDINGS_SQL.read_text(encoding="utf-8"))
+    return con.execute(
+        "SELECT COUNT(*) FROM fact WHERE atom = 'hold.pct' "
+        "AND source_ref LIKE 'equity_intelligence.shp_index%'").fetchone()[0]
+
+
 def build_fact(con: sqlite3.Connection, sql_path: Path | str | None = None) -> int:
     con.executescript(Path(sql_path or SQL_FILE).read_text(encoding="utf-8"))
     return con.execute("SELECT COUNT(*) FROM fact").fetchone()[0]
@@ -200,11 +221,39 @@ def build(out: Path | str, root: Path | str | None = None,
         attach(con, root)
         seed_universe(con, read_universe(universe_csv))
         build_fact(con)
+        if attach_identity(con, root):
+            build_holdings_isin(con)
         build_membership(con)
         con.commit()
     finally:
         con.close()
     return out
+
+
+def apply_holdings(out: Path | str, root: Path | str | None = None,
+                   universe_csv: Path | str | None = None) -> int:
+    """Install the holdings-ISIN step on an existing fact DB (the reviewer's path).
+
+    Additive: only rows whose key is absent are inserted, so every atom the installed
+    build already carries stays untouched.  Usage::
+
+        python -m reality_engine.query.v4.build_membership \
+            --holdings-only --out .tmp/fact_v4_pilot.db
+    """
+    out = Path(out)
+    if not out.is_file():
+        raise FileNotFoundError(f"{out} does not exist")
+    con = sqlite3.connect(str(out), uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        if not attach_identity(con, root):
+            raise FileNotFoundError(f"{IDENTITY_DB} missing under {Path(root or DEFAULT_ROOT)}")
+        seed_universe(con, read_universe(universe_csv))
+        rows = build_holdings_isin(con)
+        con.commit()
+        return rows
+    finally:
+        con.close()
 
 
 # ----------------------------------------------------------------------- coverage
@@ -248,7 +297,7 @@ _BHAV_COL = {"price.open": "open", "price.high": "high", "price.low": "low",
              "price.delivery_pct": "delivery_pct", "price.traded_value": "turnover_lacs"}
 
 
-def _source_value(con: sqlite3.Connection, row: sqlite3.Row) -> tuple:
+def _source_value(con: sqlite3.Connection, row: sqlite3.Row) -> tuple | None:
     """(value, known_at) re-read from the source table, for the hand check."""
     atom, isin, end = row["atom"], row["entity_id"], row["period_end"]
     d = _dims(row)
@@ -307,8 +356,23 @@ def _source_value(con: sqlite3.Connection, row: sqlite3.Row) -> tuple:
                            "WHERE isin=? AND period_end=?", (isin, end)).fetchone()
     if atom == "hold.pct":
         col = _HOLDER_COL[d.get("holder_class", "")]
-        return con.execute(f"SELECT {col}, known_at FROM market_state.company_ownership_pit "
-                           "WHERE isin=? AND quarter_end=?", (isin, end)).fetchone()
+        got = con.execute(f"SELECT {col}, known_at FROM market_state.company_ownership_pit "
+                          "WHERE isin=? AND quarter_end=?", (isin, end)).fetchone()
+        if got is None or got[0] is None:
+            # a pre-split ISIN: re-read the filing through the symbol -> ISIN history
+            try:
+                got = con.execute(
+                    f"SELECT s.{col}, COALESCE(s.broadcast_at, s.submission_date) "
+                    "FROM equity_intelligence.shp_index s "
+                    "JOIN equity_intelligence.symbol_isin_history h "
+                    "ON h.exchange = 'NSE' AND upper(h.symbol) = upper(s.symbol) "
+                    "JOIN pilot_universe u ON u.isin = h.isin "
+                    "WHERE u.isin = ? AND s.quarter_end = ? "
+                    "ORDER BY COALESCE(s.broadcast_at, s.submission_date) DESC LIMIT 1",
+                    (isin, end)).fetchone()
+            except sqlite3.OperationalError:      # identity store not attached (fixture)
+                pass
+        return got
     if atom == "hold.pledge_pct":
         return con.execute("SELECT pledge_pct, known_at FROM market_state.company_ownership_pit "
                            "WHERE isin=? AND quarter_end=?", (isin, end)).fetchone()
@@ -330,7 +394,7 @@ def _source_value(con: sqlite3.Connection, row: sqlite3.Row) -> tuple:
             "AND date=? AND expiry=? AND strike=? AND option_type=?",
             (isin, end, d.get("expiry", ""), float(d.get("strike") or 0),
              d.get("option_type", ""))).fetchone()
-    return None, None
+    return None          # a source this checker does not read (another builder's atom)
 
 
 def _same(a, b) -> bool:
@@ -364,7 +428,16 @@ def handcheck(con: sqlite3.Connection, per_atom: int = 1) -> list[dict]:
                               (entity, atom)).fetchone()
             if row is None:
                 continue
-            src_value, src_known = _source_value(con, row)
+            src = _source_value(con, row)
+            if src is None:
+                # a row another builder wrote (a derived quarter, a flow table this
+                # checker does not read): report it unchecked rather than crash
+                out.append({"atom": atom, "entity": row["entity_id"], "period": row["period_end"],
+                            "value": row["value"], "unit": row["unit"],
+                            "known_at": row["known_at"], "source_ref": row["source_ref"],
+                            "source_value": None, "source_known_at": None, "ok": None})
+                continue
+            src_value, src_known = src
             out.append({"atom": atom, "entity": row["entity_id"], "period": row["period_end"],
                         "value": row["value"], "unit": row["unit"],
                         "known_at": row["known_at"], "source_ref": row["source_ref"],
@@ -413,8 +486,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--bench-n", type=int, default=200)
     ap.add_argument("--report", action="store_true",
                     help="report/check the existing --out instead of rebuilding it")
+    ap.add_argument("--holdings-only", action="store_true",
+                    help="apply the holdings-ISIN step to the existing --out DB and exit")
     args = ap.parse_args(argv)
 
+    if args.holdings_only:
+        rows = apply_holdings(args.out, args.root, args.universe)
+        print(f"holdings step: {rows:,} rows carry the shp_index#symbol_isin_history source")
+        return 0
     if args.report:
         out, elapsed = Path(args.out), None
         if not out.is_file():
@@ -429,6 +508,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         attach(con, args.root)
         seed_universe(con, read_universe(args.universe))
+        attach_identity(con, args.root)
         cov = coverage(con)
         built = f" in {elapsed:.1f}s" if elapsed is not None else ""
         print(f"{out}{built}  ({out.stat().st_size / 1e6:.0f} MB)")
@@ -446,10 +526,13 @@ def main(argv: list[str] | None = None) -> int:
               f"{m['entities']:,} ISINs, {m['index_sets']} index sets, "
               f"pit_known=0 on {m['pit_known_0']:,}, sector rows {m['sector_rows']}")
         rows = handcheck(con)
-        bad = [r for r in rows if not r["ok"]]
-        print(f"\nhand check: {len(rows) - len(bad)}/{len(rows)} rows match their source")
+        bad = [r for r in rows if r["ok"] is False]
+        checked = sum(1 for r in rows if r["ok"])
+        print(f"\nhand check: {checked}/{sum(1 for r in rows if r['ok'] is not None)} rows match "
+              f"their source ({len(rows) - checked - len(bad)} unchecked)")
         for r in rows:
-            print(f"  {'ok ' if r['ok'] else 'BAD'} {r['atom']:<24} {r['entity']} {r['period']} "
+            mark = "ok " if r["ok"] else ("BAD" if r["ok"] is False else "n/a")
+            print(f"  {mark} {r['atom']:<24} {r['entity']} {r['period']} "
                   f"value={r['value']!r} known_at={r['known_at']}")
         timing = bench(con, args.bench_n)
         print(f"\nlookup: n={timing['n']} median {timing['median_ms']:.2f} ms, "

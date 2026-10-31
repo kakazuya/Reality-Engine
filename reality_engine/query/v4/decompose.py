@@ -423,6 +423,19 @@ def _shape_for(op: str, concept: str) -> str:
     return "scalar"
 
 
+def _years_before(day: str, years: int) -> str | None:
+    """``day`` minus ``years`` calendar years (29 Feb falls back to 28 Feb)."""
+    from datetime import date
+    try:
+        first = date.fromisoformat(day[:10])
+    except ValueError:
+        return None
+    try:
+        return first.replace(year=first.year - years).isoformat()
+    except ValueError:
+        return first.replace(year=first.year - years, day=28).isoformat()
+
+
 def _entity(text: str, reg: Registry, scope_level: str | None) -> Entity:
     """The entity the question names, text only (the executor resolves it PIT, §C.2)."""
     m = _ISIN_RE.search(text)
@@ -931,6 +944,13 @@ def decompose(question: str, as_of: str = "", registry: Registry | None = None) 
         # (period_bounds returns (as_of, as_of) for it; a one-day window would hide
         # every quarterly row, since a period_end never lands on the run date.)
         d0 = None
+    if d1 and (d0 is None or d0 == d1) and any(p.formula == "f.cagr" for p in parts):
+        # "N-year CAGR": the window opens N years before the named/as-of date; a one-day
+        # window leaves one close and no start price, so f.cagr cannot be computed (§A.3).
+        years = re.search(r"\b(\d{1,2})\s*[- ]?\s*years?\b", text, re.I)
+        opening = _years_before(d1, int(years.group(1))) if years else None
+        if opening:
+            d0 = opening
     windows = [Window(from_=d0, to=d1, basis=basis)]
 
     # ---- status ---------------------------------------------------------------------

@@ -174,6 +174,18 @@ def test_one_day_window_keeps_a_daily_close(store, resolver):
     assert result["value"] == 250.0 and result["period"] == "2026-10-15"
 
 
+def test_blank_as_of_defaults_to_the_declared_snapshot(store, resolver):
+    """A blank as_of is the declared snapshot date, stated as an assumption (MB0345)."""
+    row = run.run_case({"mid": "T5", "as_of": None,
+                        "question": "What is the revenue of Test Co Limited in Q1 FY27?"},
+                       store, resolver)
+    assert row["as_of"] == run.DEFAULT_AS_OF
+    assert row["assumed_as_of"] and "blank" in row["assumed_as_of"]
+    assert f"Assumption: as_of was blank; assumed the declared snapshot date " \
+           f"{run.DEFAULT_AS_OF}" in row["answer"]
+    assert row["case_answered"] is True
+
+
 def test_no_store_returns_nid_not_a_crash(resolver):
     row = run.run_case(case("Test Co Limited revenue"), None, resolver)
     assert row["results"] and all(result["answer_type"] == "not_in_data"
