@@ -274,7 +274,7 @@ SELECTOR_DIMS = {"entity_id", "isin", "est_atom", "rule", "rule_id", "margin_kin
                  "max_hops", "event_date", "date", "driver", "atoms", "part_atom",
                  "output_atom", "input_atom", "benchmark", "benchmark_isin", "atom_b",
                  "other_atom", "set_kind", "set_value", "cross", "lag", "lookback",
-                 "doctype", "event_kind", "page"}
+                 "doctype", "event_kind", "page", "total_return"}
 #: dims a row may simply not carry (a daily price row has no period_kind): a named value
 #: then filters only the rows that do carry it, and never rejects a whole atom.
 SOFT_DIMS = {"period_kind"}
@@ -1400,6 +1400,268 @@ FORMULA_UNIT = {"f.margin": "%", "f.dso": "days", "f.working_capital_cycle": "da
 FORMULA_EXTRA_ATOMS = {"f.ratio": ["fin.interest_expense"], "f.cagr": [], "f.excess_return": []}
 
 
+# ---------------------------------------------------------------------------
+# price basis: a close is not always raw, and a split inside a window is not a return
+# ---------------------------------------------------------------------------
+RAW_CLOSE = "raw close"
+#: fact_view.sql builds price.close from market_state.company_state_daily.close, which
+#: build_t1.py fills from px_daily.adj_close: split/bonus/consolidation-adjusted, and
+#: NOT dividend-adjusted (the total-return series is a different column).
+ADJUSTED_CLOSE = "adjusted close (split/bonus/consolidation-adjusted at build)"
+#: A one-session fall this large is action-shaped (a bonus/split/consolidation or a
+#: corporate restructuring); a smaller move is ordinary price risk.
+SPLIT_JUMP_PCT = 30.0
+#: the share-count factors a bonus/split writes: 1:3, 1:2, 1:1, 2:1, a 5:1 split, …
+CLEAN_SHARE_RATIOS = (1.25, 4 / 3, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 20.0)
+
+
+@dataclass
+class PriceBasis:
+    """The close series a return is computed from, and what that series is."""
+
+    series: list[tuple[str, float]]
+    rows: list[dict[str, Any]]
+    actions: list[dict[str, Any]]
+    unresolved: list[dict[str, Any]]
+    adjusted: bool
+    note: str
+
+
+def _days_between(left: str | None, right: str | None) -> int:
+    from datetime import date
+    try:
+        return (date.fromisoformat(str(right)) - date.fromisoformat(str(left))).days
+    except (TypeError, ValueError):
+        return 10 ** 6
+
+
+def _clean_share_ratio(ratio: float) -> bool:
+    # A split/bonus writes an exact factor (2, 4/3, 5, …).  A 1.5% "near 4/3" is a
+    # preferential allotment, not a 1:3 bonus, so the tolerance is tight.
+    for clean in CLEAN_SHARE_RATIOS:
+        if abs(ratio / clean - 1.0) <= 0.005 or abs(ratio * clean - 1.0) <= 0.005:
+            return True
+    return False
+
+
+def _share_steps(shares: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Held capital steps from ``price.shares_out``: ex-date, share ratio, known_at.
+
+    The count alone cannot say "bonus" from "split": a 1:1 bonus and a 2:1 split are
+    both a share-count x2.  The kind is therefore left as a share-count action, and
+    the ratio (the number the arithmetic needs) is the held evidence.  A step that
+    reverts within 450 days is a data/unit flip, not a capital action.
+    """
+    rows = sorted((_day(row.get("period_end")), _num(row.get("value")),
+                   _day(row.get("known_at"))) for row in shares or [])
+    out: list[dict[str, Any]] = []
+    for index, (d0, n0, _) in enumerate(rows[:-1]):
+        d1, n1, known = rows[index + 1]
+        if not d0 or not d1 or not n0 or not n1 or n0 <= 0 or n1 <= 0:
+            continue
+        ratio = n1 / n0
+        if 1 / 1.2 < ratio < 1.2 or ratio > 50 or ratio < 1 / 50:
+            continue
+        tail = [number for _, number, _ in rows[index + 2:index + 5]]
+        if tail and not all(number and abs(number / n1 - 1.0) <= 0.02 for number in tail):
+            continue                      # does not persist: a flip, not a step
+        round_trip = any(number and abs(number / n0 - 1.0) <= 0.05
+                         for d2, number, _ in rows[index + 2:]
+                         if 0 <= _days_between(d1, d2) <= 450)
+        if round_trip:
+            continue                      # x2 then back to x1: a unit/source flip
+        # A step that returns to a count held in the last 450 days is undoing an earlier
+        # flip, not a second bonus on top of it.
+        recent = [number for d_prev, number, _ in rows[:index]
+                  if number and 0 <= _days_between(d_prev, d1) <= 450]
+        if any(abs(number / n1 - 1.0) <= 0.05 for number in recent):
+            continue
+        out.append({"ex_date": d1, "ratio": round(ratio, 6), "known_at": known,
+                    "clean": _clean_share_ratio(ratio),
+                    "kind": "split/bonus" if ratio > 1 else "consolidation"})
+    return out
+
+
+def _close_break(prices: Sequence[tuple[str, float]], ex_date: str) -> float | None:
+    """The close ratio across ``ex_date``: ≈1 when the series is already adjusted."""
+    before = [value for day, value in prices if day < ex_date]
+    after = [value for day, value in prices if day >= ex_date]
+    if not before or not after or not before[-1]:
+        return None
+    return after[0] / before[-1]
+
+
+def _price_rows(basis: PriceBasis, entity: str | None) -> list[dict[str, Any]]:
+    """The basis series in the fact-row shape the operators already read."""
+    source = {_day(row.get("period_end")): row for row in basis.rows}
+    out = []
+    for day, value in basis.series:
+        row = source.get(day) or {}
+        out.append({"entity_id": entity, "atom": "price.close", "period_start": day,
+                    "period_end": day, "value": value, "unit": "INR",
+                    "dims": {}, "known_at": _day(row.get("known_at")),
+                    "source_ref": row.get("source_ref") or "price.close"})
+    return out
+
+
+def _close_readings(rows: Sequence[Mapping[str, Any]],
+                    want_adjusted: bool) -> list[Mapping[str, Any]]:
+    """The close rows of the asked basis; a bare row (no basis dim) serves either.
+
+    The v4 pilot's price.close rows carry no basis dim (there is one panel); a test
+    store may carry both ``basis=raw`` and ``basis=adjusted`` rows for one day, and
+    mixing them would invent a jump.  The requested reading is preferred; with fewer
+    than two of them, the plain rows are used; never both readings on one day.
+    """
+    wanted = "adjusted" if want_adjusted else "raw"
+
+    def reading(row: Mapping[str, Any]) -> str:
+        return str(row_dims(row).get("basis") or "").lower()
+
+    preferred = [row for row in rows if reading(row) == wanted]
+    if len(preferred) >= 2:
+        return preferred
+    plain = [row for row in rows if not reading(row)]
+    if len(plain) >= 2:
+        return plain
+    other = [row for row in rows if reading(row) and reading(row) != wanted]
+    if len(other) >= 2:
+        return other            # the other reading is the held one; adjust it here
+    return preferred or list(rows)
+
+
+def price_basis(conn: Any, as_of: str, lo: str | None, hi: str | None,
+                entity: str | None, *, want_adjusted: bool = False,
+                total_return: bool = False) -> PriceBasis | None:
+    """The close series for a return, its basis, and any action it cannot settle.
+
+    The v4 pilot's ``price.close`` is ``market_state.company_state_daily.close``,
+    which ``build_t1.py`` fills from ``px_daily.adj_close``: splits, bonuses and
+    consolidations are already applied and dividends are not.  A store that also
+    carries the T1 ``price.mcap``/``price.shares_out`` rows is that panel and is
+    therefore on the adjusted basis.  A bare close series (tests, older builds) is
+    raw until a held step proves otherwise.
+
+    ``price.shares_out`` is the held corporate-action evidence: a persisting step
+    (x2, x5, …) is the ratio and its date is the ex-date.  A close that breaks by
+    1/ratio across that date is raw and is adjusted here at query time; a close
+    that does not break is already adjusted.  A large fall with no held step is an
+    action we cannot settle, so the caller returns a typed NID naming it.
+
+    No row is read after ``as_of``: the step's own ``known_at`` gates it.
+    """
+    if conn is None or not entity:
+        return None
+    close_rows = fetch_fact(conn, "price.close", as_of, lo, hi, entity)
+    if close_rows is None:
+        return None
+    close_rows = _close_readings(close_rows, want_adjusted)
+    source = {_day(row.get("period_end")): row for row in close_rows
+              if _day(row.get("period_end"))}
+    prices = sorted((day, _num(row.get("value"))) for day, row in source.items()
+                    if _num(row.get("value")) is not None)
+    prices = [(day, number) for day, number in prices if day and number is not None]
+    if len(prices) < 2:
+        return None
+    shares = fetch_fact(conn, "price.shares_out", as_of, None, hi, entity) or []
+    mcaps = fetch_fact(conn, "price.mcap", as_of, None, hi, entity) or []
+
+    first, last = prices[0][0], prices[-1][0]
+    actions: list[dict[str, Any]] = []
+    for step in _share_steps(shares):
+        if step["known_at"] and step["known_at"] > as_of:
+            continue
+        if not ((lo or first) < step["ex_date"] <= (hi or last)):
+            continue                      # an action before the window is in both ends
+        step = dict(step)
+        step["close_ratio"] = _close_break(prices, step["ex_date"])
+        ratio, brk = step["ratio"], step["close_ratio"]
+        if brk is not None and abs(brk * ratio - 1.0) <= 0.12:
+            step["raw_break"] = True      # the stored close still carries the break
+        elif (step["clean"] and ratio > 1
+              and (brk is None or abs(brk - 1.0) <= 0.20)):
+            step["raw_break"] = False     # already adjusted, and the factor is a clean one
+        else:
+            # A ratio below 1 with no price lift is a share-count/unit correction; a
+            # 1.3x-1.7x "near 4/3" step with no break is an issue/rights, not a split.
+            continue
+        actions.append(step)
+
+    unresolved: list[dict[str, Any]] = []
+    for (_, p0), (d1, p1) in zip(prices, prices[1:]):
+        if not p0 or not p1 or d1 <= (lo or first):
+            continue
+        change = 100.0 * (p1 / p0 - 1.0)
+        if change > -SPLIT_JUMP_PCT:
+            continue
+        explained = any(0 <= _days_between(d1, step["ex_date"]) <= 7 for step in actions)
+        if not explained:
+            unresolved.append({"date": d1, "change_pct": round(change, 2)})
+
+    series = list(prices)
+    applied = False
+    for step in sorted(actions, key=lambda item: item["ex_date"]):
+        if step.get("raw_break"):
+            factor = 1.0 / step["ratio"]
+            series = [(day, value * factor if day < step["ex_date"] else value)
+                      for day, value in series]
+            applied = True
+
+    # A T1 panel is adjusted at build time; a bare close series is raw.  A held raw
+    # break means the build missed that action, and it has just been adjusted here.
+    has_panel = bool(shares) and bool(mcaps)
+    adjusted = has_panel or applied or any(not step.get("raw_break") for step in actions)
+    notes: list[str] = []
+    if actions:
+        named = "; ".join(
+            f"{step['kind']} on {step['ex_date']}, ratio {step['ratio']:g} "
+            f"(share count x{step['ratio']:g})" for step in actions)
+        notes.append(f"basis: adjusted close; adjusted for {named}")
+    elif adjusted:
+        notes.append(f"basis: {ADJUSTED_CLOSE}")
+        notes.append("no split/bonus in the window, so raw equals adjusted for "
+                     "splits and bonuses")
+    else:
+        notes.append(f"basis: {RAW_CLOSE}")
+        if want_adjusted:
+            notes.append("no split/bonus in the window, so raw equals adjusted for "
+                         "splits and bonuses")
+    notes.append("dividends are not adjusted")
+    if total_return:
+        notes[-1] = "dividends are not adjusted: this is a price return, not a total return"
+    return PriceBasis(series=series, rows=[dict(row) for row in source.values()],
+                      actions=actions, unresolved=unresolved, adjusted=adjusted,
+                      note="; ".join(notes))
+
+
+def _price_nid(part: Part, window: dict[str, Any], basis: PriceBasis, as_of: str,
+               entity: str | None = None) -> Result:
+    jump = basis.unresolved[0]
+    why = (f"an unidentified corporate action on {jump['date']} (close "
+           f"{jump['change_pct']:+.2f}%) has no held split/bonus ratio, so a return "
+           f"across it would be false")
+    if basis.actions:
+        held = "; ".join(f"{step['kind']} on {step['ex_date']}, ratio {step['ratio']:g}"
+                         for step in basis.actions)
+        why += f" (the window's held action is adjusted: {held})"
+    return _nid(part, window, why,
+                [_tried("fact", f"price.close, entity={entity or part.entity or 'asked'}, "
+                                f"window={window.get('from')}..{window.get('to')}",
+                        len(basis.series), as_of),
+                 _tried("fact", "price.shares_out: no persisting step at "
+                                f"{jump['date']}, so no ratio is held", 0, as_of)],
+                "hold the corporate action (kind, ratio, ex-date) in "
+                "corporate_action_class and re-run; do not guess the ratio")
+
+
+def _with_price_basis(result: Result, basis: PriceBasis) -> Result:
+    result.assumption = basis.note
+    result.numbers = dict(result.numbers or {}, price_basis=("adjusted" if basis.adjusted
+                                                             else "raw"),
+                          price_actions=basis.actions)
+    return result
+
+
 def _numeric_series(rows: Iterable[Mapping[str, Any]]) -> list[tuple[str, float]]:
     out: list[tuple[str, float]] = []
     for row in rows:
@@ -1438,8 +1700,13 @@ def _execute_formula(conn: Any, part: Part, as_of: str, lo: str | None, hi: str 
         # would come from whichever company's row sorted last (§A.2, §C.2).
         owners: set[str] = set()
         for atom in atoms:
-            for row in (fetch_fact(conn, atom, as_of, lo, hi) or []):
-                if _dim_match(row, part.dims):
+            found = fetch_fact(conn, atom, as_of, lo, hi) or []
+            carried_here = carried_dims(found)
+            # The close's basis is a request to the price layer, never a row filter.
+            wanted = ({key: value for key, value in part.dims.items() if key != "basis"}
+                      if atom == "price.close" else part.dims)
+            for row in found:
+                if _dim_match(row, wanted, carried_here):
                     owners.add(str(row.get("entity_id")))
         if len(owners) > 1:
             return _nid(part, window,
@@ -1448,11 +1715,34 @@ def _execute_formula(conn: Any, part: Part, as_of: str, lo: str | None, hi: str 
                         [_tried("fact", f"formula {fid}, entity=None, window={lo}..{hi}",
                                 len(owners), as_of)],
                         "resolve the entity PIT (§C.2) before executing a formula part")
-    values: dict[str, float] = {}
+        if len(owners) == 1:
+            # Every input row comes from one entity: its ISIN is the formula's owner, and
+            # the answer can carry it (a one-entity fixture has no resolver).
+            entity = next(iter(owners))
+    basis: PriceBasis | None = None
+    if "price.close" in atoms and entity and conn is not None:
+        basis = price_basis(
+            conn, as_of, lo, hi, entity,
+            want_adjusted=str(part.dims.get("basis") or "").lower() == "adjusted",
+            total_return=str(part.dims.get("total_return") or "").lower()
+            in ("yes", "true", "1"))
+        if basis is not None and basis.unresolved:
+            return _price_nid(part, window, basis, as_of, entity)
+    values: dict[str, Any] = {}
     series: dict[str, list[dict[str, Any]]] = {}
     used: list[dict[str, Any]] = []
     missing: list[str] = []
     for atom in atoms:
+        if atom == "price.close" and basis is not None:
+            rows = _price_rows(basis, entity)
+            series[atom] = rows
+            latest = rows[-1]
+            values[atom] = _num(latest.get("value"))
+            used.append({"atom": atom, "value": values[atom],
+                         "period": latest.get("period_end"),
+                         "known_at": _day(latest.get("known_at")),
+                         "source_ref": latest.get("source_ref")})
+            continue
         rows = fetch_fact(conn, atom, as_of, lo, hi, entity) if conn is not None else None
         if rows is None:
             return _nid(part, window, "the fact view is absent",
@@ -1494,6 +1784,18 @@ def _execute_formula(conn: Any, part: Part, as_of: str, lo: str | None, hi: str 
         earlier = [number for day, number in closes if day < opens[-1][0]]
         if earlier:
             values["_prev_close"] = earlier[-1]
+    if fid == "f.gap_pct" and basis is not None and opens:
+        # The gap compares a raw open with a close that is adjusted for capital
+        # actions: on the ex-date itself the two are on different bases.
+        if any(step["ex_date"] == opens[-1][0] for step in basis.actions):
+            return _nid(part, window,
+                        f"the open on {opens[-1][0]} is an ex-date for a held "
+                        f"{basis.actions[0]['kind']} (ratio "
+                        f"{basis.actions[0]['ratio']:g}); a gap against the adjusted "
+                        f"previous close would be false",
+                        [_tried("fact", f"price.open/price.close on {opens[-1][0]}", 1,
+                                as_of)],
+                        "compare the raw open with a raw previous close on the ex-date")
     benchmark = part.dims.get("benchmark_isin") or part.dims.get("benchmark")
     if benchmark and conn is not None:
         bench = fetch_fact(conn, "macro.index_close", as_of, lo, hi, str(benchmark)) or []
@@ -1531,16 +1833,17 @@ def _execute_formula(conn: Any, part: Part, as_of: str, lo: str | None, hi: str 
                     "check the formula's declared inputs")
     primary = [row for row in used if row["atom"] == atoms[0]]
     known = max((row.get("known_at") or "") for row in used)
-    return Result(part_index=part.index, atom=part.atom, formula=part.formula,
-                  dims=part.dims, window=window, operator=part.operator,
-                  shape=part.shape, answer_type="measured", value=round(number, 6),
-                  unit=FORMULA_UNIT.get(fid) or spec.get("unit"),
-                  period=(primary[-1]["period"] if primary else used[-1]["period"]),
-                  isin=entity, source_ref=(primary[-1]["source_ref"] if primary
-                                           else used[-1]["source_ref"]),
-                  known_at=known, inputs=used,
-                  numbers={"formula": fid, "expr": spec.get("expr"),
-                           "missing_inputs": missing})
+    result = Result(part_index=part.index, atom=part.atom, formula=part.formula,
+                    dims=part.dims, window=window, operator=part.operator,
+                    shape=part.shape, answer_type="measured", value=round(number, 6),
+                    unit=FORMULA_UNIT.get(fid) or spec.get("unit"),
+                    period=(primary[-1]["period"] if primary else used[-1]["period"]),
+                    isin=entity, source_ref=(primary[-1]["source_ref"] if primary
+                                             else used[-1]["source_ref"]),
+                    known_at=known, inputs=used,
+                    numbers={"formula": fid, "expr": spec.get("expr"),
+                             "missing_inputs": missing})
+    return _with_price_basis(result, basis) if basis is not None else result
 
 
 # ---------------------------------------------------------------------------
@@ -1861,6 +2164,8 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
                         [_tried("fact", f"atom={atom}, entity=None, window={lo}..{hi}",
                                 len(rows), as_of)],
                         "resolve the entity PIT (§C.2) before executing a one-value part")
+        if len(owners) == 1:
+            entity = next(iter(owners))
     if not rows:
         why = f"no {atom} row for {entity or 'the asked entity'}"
         if lo or hi:
@@ -1874,6 +2179,31 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
                     registry_atom.get("source") or
                     f"hold {atom} for this entity (§H.2 fact view)")
     values = _series(rows, p.dims)
+    basis: PriceBasis | None = None
+    if (atom == "price.close"
+            and p.operator in ("change", "pct_change", "growth")):
+        owner = entity
+        owners = {str(row.get("entity_id")) for row in rows if row.get("entity_id")}
+        if owner is None:
+            if len(owners) > 1:
+                return _nid(p, window,
+                            f"the ask names no single entity and {len(owners)} entities "
+                            f"carry {atom} at {as_of}; a return across them would be false",
+                            [_tried("fact", f"atom={atom}, entity=None, window={lo}..{hi}",
+                                    len(rows), as_of)],
+                            "resolve the entity PIT (§C.2) before a window return")
+            owner = next(iter(owners), None)
+        if owner:
+            basis = price_basis(
+                conn, as_of, lo, hi, owner,
+                want_adjusted=str(p.dims.get("basis") or "").lower() == "adjusted",
+                total_return=str(p.dims.get("total_return") or "").lower()
+                in ("yes", "true", "1"))
+            if basis is not None and basis.unresolved:
+                return _price_nid(p, window, basis, as_of, owner)
+            if basis is not None:
+                rows = _price_rows(basis, owner)
+                values = _series(rows, p.dims)
     op = OPERATORS.get(str(p.operator or "value_at"))
     if op is None:
         return _nid(p, window, f"operator {p.operator} is outside the closed set (§A.4)",
@@ -1890,7 +2220,7 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
     result = op(p, values, ctx)
     if result.answer_type == "measured" and result.unit is None:
         result.unit = registry_atom.get("unit")
-    return result
+    return _with_price_basis(result, basis) if basis is not None else result
 
 
 def _empty_result(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | None,

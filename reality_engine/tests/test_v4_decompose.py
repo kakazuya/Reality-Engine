@@ -182,6 +182,16 @@ def test_a_named_year_cagr_opens_its_window(registry):
     assert (window["from"], window["to"]) == ("2023-10-19", "2026-10-19")
 
 
+def test_total_return_marks_the_dividend_leg(registry):
+    """"total return" is a price return plus dividends: the executor must say so."""
+    ask = decompose("What was ITC's 5-year total return to 19 October 2026?",
+                    "2026-10-19", registry)
+    price_parts = [part for part in ask.parts
+                   if part.formula == "f.cagr" or part.atom == "price.close"]
+    assert price_parts
+    assert all(part.dims.get("total_return") == "yes" for part in price_parts)
+
+
 def test_clause_split_keeps_a_company_name_whole():
     assert split_clauses("CG Power and Industrial Solutions close") == [
         "CG Power and Industrial Solutions close"]

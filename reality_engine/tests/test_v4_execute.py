@@ -206,6 +206,78 @@ def test_cagr_reads_price_closes_over_the_named_years(db):
     assert result.answer_type == "measured"
     assert result.value == pytest.approx(100.0 * ((90.0 / 100.0) ** (1.0 / years) - 1.0),
                                         rel=1e-6)
+    assert "basis: raw close" in (result.assumption or "")
+
+
+def _insert(db, rows):
+    db.executemany("INSERT INTO fact VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    db.commit()
+
+
+def _bonus_rows(close_before=1000.0, close_after=500.0, adjusted=False):
+    """A 1:1 bonus on 2024-01-03: 100 shares -> 200, 1000 -> 500 per share."""
+    closes = [close_before, close_before, close_after, close_after, close_after]
+    if adjusted:
+        closes = [1000.0] * 5
+    rows = [("INE001", "price.close", "", f"2024-01-0{day}", f"2024-01-0{day}", value,
+             "INR", f"2024-01-0{day}", "px_nse")
+            for day, value in zip(range(1, 6), closes)]
+    rows += [("INE001", "price.shares_out", "", f"2024-01-0{day}", f"2024-01-0{day}",
+              shares, "shares", f"2024-01-0{day}", "market_state.company_state_daily")
+             for day, shares in zip(range(1, 6), (100.0, 100.0, 200.0, 200.0, 200.0))]
+    return rows
+
+
+def test_held_bonus_is_adjusted_and_named(db):
+    """A raw 1:1 bonus is a 0% return after adjustment, never a -50% return."""
+    _insert(db, _bonus_rows())
+    result = run(db, part(formula="f.cagr", dims={"basis": "adjusted"}),
+                 window={"from": "2023-12-01", "to": "2024-12-31"})
+    assert result.answer_type == "measured"
+    assert result.value == pytest.approx(0.0, abs=1e-9)
+    note = result.assumption or ""
+    assert "adjusted for split/bonus on 2024-01-03" in note
+    assert "ratio 2" in note
+    assert result.numbers.get("price_actions")
+
+
+def test_adjusted_series_with_a_continuous_action_is_not_double_adjusted(db):
+    """A build-adjusted close already carries the bonus: it must not be halved again."""
+    _insert(db, _bonus_rows(adjusted=True))
+    result = run(db, part(formula="f.cagr", dims={"basis": "adjusted"}),
+                 window={"from": "2023-12-01", "to": "2024-12-31"})
+    assert result.answer_type == "measured"
+    assert result.value == pytest.approx(0.0, abs=1e-9)
+    assert "adjusted for split/bonus on 2024-01-03" in (result.assumption or "")
+
+
+def test_unexplained_jump_is_a_typed_nid(db):
+    """A -50% close with no held ratio may be a bonus: never report it as a return."""
+    _insert(db, [("INE001", "price.close", "", f"2024-01-0{day}", f"2024-01-0{day}",
+                  value, "INR", f"2024-01-0{day}", "px_nse")
+                 for day, value in zip(range(1, 5), (1000.0, 1000.0, 500.0, 500.0))])
+    result = run(db, part(formula="f.cagr", dims={}),
+                 window={"from": "2023-12-01", "to": "2024-12-31"})
+    assert result.answer_type == "not_in_data"
+    reason = result.nid_reason or ""
+    assert "2024-01-03" in reason and "no held split/bonus ratio" in reason
+    assert "ratio" in (result.to_close or "")
+
+
+def test_change_over_a_price_window_states_its_basis(db):
+    result = run(db, part(atom="price.close", operator="pct_change"),
+                 window={"from": "2026-01-01", "to": "2026-01-03"})
+    assert result.answer_type == "measured"
+    assert result.value == pytest.approx(-10.0, rel=1e-6)
+    assert "basis: raw close" in (result.assumption or "")
+
+
+def test_total_return_says_dividends_are_not_adjusted(db):
+    result = run(db, part(formula="f.cagr",
+                          dims={"basis": "adjusted", "total_return": "yes"}),
+                 window={"from": "2023-01-03", "to": "2026-01-02"})
+    assert "not a total return" in (result.assumption or "")
+    assert "dividends are not adjusted" in (result.assumption or "")
 
 
 # --- estimate / proxy / NID ------------------------------------------------
