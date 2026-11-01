@@ -1362,11 +1362,10 @@ def cmd_dryrun(samples: int = 10) -> dict:
                                              key=lambda kv: (-kv[1], kv[0]))),
            "sample_rejects": pending[:samples],
            "recall_estimate": estimate,
-           # T-034: per company and doc type, the pages thin before the OCR overlay,
-           # the pages it filled, the pages still thin, and its text-token change.
+           # T-034: thin OCR rows applied and unmatched, layer-check pages and
+           # the numbers that differ in each direction, bad rows, token change.
            "ocr_overlay": {
                "path": ocr.get("path"), "present": bool(ocr.get("present")),
-               "threshold_chars": ocr.get("threshold_chars"),
                "pages": dict(ocr.get("pages") or {}),
                "per_company_doc_type": ocr.get("per_company_doc_type") or {},
                "input_token_delta": ocr.get("input_token_delta", 0)}}

@@ -3,7 +3,8 @@
     python -m pytest reality_engine/tests/test_ocr_overlay.py -q
 
 Fixture only: a tiny ``chunks_v3`` store (doc/chunk/chunk_tag) and a gzipped
-``ocr_pages.jsonl`` in the HP job's shape.  No live database is read and no
+``ocr_pages.jsonl`` in the HP job's shape (``thin_pages.py`` writes ``why``,
+``existing_chars`` and ``existing_text``).  No live database is read and no
 model is called.
 """
 from __future__ import annotations
@@ -26,36 +27,32 @@ DOC = {"doc_id": f"sha256:{SHA}", "sha256": SHA, "doc_type": "deck",
        "known_at": "2025-11-04T18:00:00", "fiscal_period": "Q2FY26",
        "page_count": 2, "raw_path": None}
 
-#: A thin text layer on an image-backed deck page.
-THIN_BODY = "Installed capacity utilisation was 78% during the quarter."
-#: What the OCR job reads on that page (> THIN_PAGE_CHARS).
-OCR_TEXT = (
-    "Installed capacity utilisation was 78% during the quarter. The company added 12 "
-    "new stores, taking the total to 4,212 stores across India. Consolidated revenue "
-    "for the quarter was Rs 3,50,000 crore, up 26% year on year. Management said demand "
-    "stayed broad based across products and geographies, and that the new stores are "
-    "ramping in line with the plan. The company reiterated its guidance for the year "
-    "and said it sees no change in competitive intensity across its markets."
-)
-#: A page with a good text layer that agrees with the OCR on its numbers.
-GOOD_BODY = (
-    "Installed capacity utilisation was 82% in the quarter and demand stayed broad "
-    "based across products. The company said consolidated revenue for the quarter was "
-    "Rs 1,000 crore, up 26% year on year, with growth coming from both existing and new "
-    "customers. Management added that the pipeline remains healthy and that it expects "
-    "the second half to be similar to the first, with no major change in the operating "
+#: Page 12 of the deck: an image-backed slide with almost no text layer.
+THIN_BODY = "This slide is a chart; its labels sit in the image."
+#: Page 13 of the same deck: a full text page, not thin.
+FULL_BODY = (
+    "Consolidated revenue for the quarter was Rs 1,000 crore, up 26% year on "
+    "year, with growth coming from both existing and new customers. Management "
+    "added that the pipeline remains healthy and that it expects the second "
+    "half to be similar to the first, with no major change in the operating "
     "environment or in the competitive intensity it faces across its markets."
 )
-GOOD_OCR_TEXT = (
-    "Capacity utilisation of 82% was reported. Revenue came in at Rs 1,000 crore, a "
-    "rise of 26% year on year. Demand was broad based across products and the company "
-    "expects the second half to be similar to the first. The competitive environment "
-    "did not change materially during the quarter."
+#: One chunk covers both pages; only page 12 has a thin text layer.
+MULTI_BODY = f"{THIN_BODY}\n\n{FULL_BODY}"
+FULL_QUOTE = "Consolidated revenue for the quarter was Rs 1,000 crore"
+#: What the OCR job reads on page 12 (no number from the full page's text).
+OCR_TEXT = (
+    "Installed capacity utilisation was 78% during the quarter. The company "
+    "added 12 new stores, taking the total to 4,212 stores across India. "
+    "Management said demand stayed broad based across products and "
+    "geographies, and that the new stores are ramping in line with the plan. "
+    "The company reiterated its guidance for the year and said it sees no "
+    "change in competitive intensity across its markets."
 )
-#: A good page whose hidden text layer prints a number the OCR row does not.
-DISAGREE_BODY = ("Revenue for the quarter was Rs 1,000 crore, up 26% year on year. " * 8)
-DISAGREE_OCR_TEXT = ("Revenue for the quarter was Rs 1,200 crore, up 26% year on year. "
-                     "Demand was broad based during the quarter.")
+#: OCR text for a layer-check page that misses the text layer's 1,000.
+OCR_MISSING_PAGE_NUMBER = "Revenue rose 26% year on year; demand was broad based."
+#: OCR text that prints a number the text layer does not have.
+OCR_EXTRA_NUMBER = "Revenue was Rs 1,000 crore and 1,200 new stores were added."
 
 STORE_DDL = """
 CREATE TABLE doc (
@@ -69,12 +66,17 @@ CREATE TABLE chunk_tag (chunk_id INTEGER, tag TEXT);
 """
 
 
-def ocr_row(page: int, text: str, low_conf: list[str] | None = None) -> dict:
-    """One row in the HP job's shape (OCRPAGES_SCHEMA)."""
-    return {"isin": DOC["isin"], "symbol": "BAJFINANCE", "doc_type": "deck",
-            "doc_date": "2025-11-04", "file_name": "q2fy26_deck.pdf", "sha256": SHA,
-            "page": page, "text": text, "mean_confidence": 0.93,
-            "low_conf_numbers": low_conf or []}
+def ocr_row(page: int, text: str, why: str | None = None, existing_chars: int = 0,
+            existing_text: str = "", low_conf: list[str] | None = None) -> dict:
+    """One row in the HP job's shape (``thin_pages.py`` output)."""
+    row = {"isin": DOC["isin"], "symbol": "BAJFINANCE", "doc_type": "deck",
+           "doc_date": "2025-11-04", "file_name": "q2fy26_deck.pdf", "sha256": SHA,
+           "page": page, "text": text, "mean_confidence": 0.93,
+           "existing_chars": existing_chars, "existing_text": existing_text,
+           "low_conf_numbers": low_conf or []}
+    if why is not None:
+        row["why"] = why
+    return row
 
 
 class OverlayTest(unittest.TestCase):
@@ -93,18 +95,18 @@ class OverlayTest(unittest.TestCase):
             except OSError:
                 pass
 
-    def store(self, pages: list[tuple[int, str]], **doc_over: object) -> Path:
+    def store(self, pages: list[tuple[int, int, str]], **doc_over: object) -> Path:
         path = self.tmp / f"{self.token}_chunks_v3.db"
         doc = {**DOC, **doc_over}
         con = sqlite3.connect(path)
         con.executescript(STORE_DDL)
         con.execute("INSERT INTO doc VALUES (:doc_id,:sha256,:doc_type,:isin,:symbol_at_time,"
                     ":title,:event_date,:known_at,:fiscal_period,:page_count,:raw_path)", doc)
-        for chunk_id, (page, body) in enumerate(pages, 1):
+        for chunk_id, (page_from, page_to, body) in enumerate(pages, 1):
             con.execute("INSERT INTO chunk (chunk_id,doc_id,section,body,page_from,page_to,"
                         "unit_kind,fiscal_period,known_at) VALUES (?,?,?,?,?,?,?,?,?)",
-                        (chunk_id, doc["doc_id"], "key slide", body, page, page, "page",
-                         doc["fiscal_period"], doc["known_at"]))
+                        (chunk_id, doc["doc_id"], "key slide", body, page_from, page_to,
+                         "page", doc["fiscal_period"], doc["known_at"]))
         con.commit()
         con.close()
         return path
@@ -120,103 +122,131 @@ class OverlayTest(unittest.TestCase):
         with unittest.mock.patch.dict(os.environ, {"REALITY_OCR_OVERLAY": str(overlay)}):
             return x.load_store(store)
 
-    # acceptance 1: a thin page gets the OCR text
-    def test_thin_page_gets_ocr_text(self):
-        store = self.store([(12, THIN_BODY)])
-        overlay = self.overlay([ocr_row(12, OCR_TEXT, low_conf=["3,50,000"])])
+    # acceptance 1+2: a thin page inside a two-page chunk is added as its own
+    # chunk; the original body is never edited.
+    def test_thin_page_in_multi_page_chunk_is_added_not_replaced(self):
+        store = self.store([(12, 13, MULTI_BODY)])
+        overlay = self.overlay([ocr_row(12, OCR_TEXT, why="thin",
+                                        existing_chars=len(THIN_BODY),
+                                        low_conf=["3,50,000"])])
+        docs, chunks = self.load(store, overlay)
+        self.assertEqual(len(chunks), 2)
+        original = next(chunk for chunk in chunks if chunk["chunk_id"] == 1)
+        self.assertEqual(original["body"], MULTI_BODY)
+        self.assertEqual(original["text_source"], "chunk")
+        ocr = next(chunk for chunk in chunks if chunk["text_source"] == "ocr")
+        self.assertEqual(ocr["chunk_id"], f"ocr:{DOC['doc_id']}:12")
+        self.assertEqual(ocr["body"], OCR_TEXT)
+        self.assertEqual((ocr["page_from"], ocr["page_to"]), (12, 12))
+        self.assertEqual(ocr["doc_id"], DOC["doc_id"])
+        self.assertEqual(ocr["low_conf_numbers"], ["3,50,000"])
+        self.assertEqual(x.OCR_STATS["pages"]["thin_applied"], 1)
+
+    # acceptance 5: the OCR passage reaches the reader, in page order, and a
+    # quote found only there validates as source ocr.
+    def test_ocr_page_reaches_reader_in_page_order_and_quote_is_ocr(self):
+        store = self.store([(12, 13, MULTI_BODY), (20, 20, FULL_BODY)])
+        overlay = self.overlay([ocr_row(12, OCR_TEXT, why="thin",
+                                        existing_chars=len(THIN_BODY))])
+        docs, chunks = self.load(store, overlay)
+        passages = x.select_passages(x.SPECS["company_capacity_utilisation"],
+                                     docs[DOC["doc_id"]], chunks)
+        ocr = [passage for passage in passages if passage["text_source"] == "ocr"]
+        self.assertEqual(len(ocr), 1)
+        self.assertEqual(ocr[0]["section"], "ocr")
+        self.assertEqual(ocr[0]["tags"], set())
+        pages = [passage["page_from"] for passage in passages if passage.get("dense")]
+        self.assertEqual(pages, sorted(pages))
+        self.assertIn(12, pages)
+        row = {"product": "stores", "period_end": "2025-09-30", "capacity": None,
+               "capacity_unit": None, "utilisation_pct": 78, "production": None,
+               "page": 12,
+               "quote": "Installed capacity utilisation was 78% during the quarter"}
+        clean, reason = x.validate("company_capacity_utilisation", row,
+                                   docs[DOC["doc_id"]], passages)
+        self.assertIsNone(reason)
+        assert clean is not None
+        self.assertEqual(clean["page"], 12)
+        self.assertEqual(clean["source"], "ocr")
+
+    # acceptance 5: a quote found only in the original multi-page chunk stays
+    # chunks_v3, even though an OCR chunk covers the same page.
+    def test_quote_from_full_page_keeps_chunks_v3(self):
+        store = self.store([(12, 13, MULTI_BODY)])
+        overlay = self.overlay([ocr_row(12, OCR_TEXT, why="thin",
+                                        existing_chars=len(THIN_BODY))])
+        docs, chunks = self.load(store, overlay)
+        # validate's own passages argument is where it looks: the original
+        # multi-page chunk carries the quote, the OCR chunk on page 12 does not.
+        passages = chunks
+        row = {"metric": "revenue", "period_end": "2025-09-30",
+               "value": 1000, "unit": "inr_cr", "page": 13, "quote": FULL_QUOTE}
+        clean, reason = x.validate("company_operating_metrics", row,
+                                   docs[DOC["doc_id"]], passages)
+        self.assertIsNone(reason)
+        assert clean is not None
+        self.assertIn(clean["page"], (12, 13))   # the chunk's own page_from
+        self.assertEqual(clean["source"], "chunks_v3")
+
+    # acceptance 3+4: a layer-check row never changes the reader's text; a
+    # number the OCR missed is logged from the row's own existing_text.
+    def test_layer_check_missed_number_leaves_text_unchanged(self):
+        store = self.store([(12, 13, MULTI_BODY)])
+        overlay = self.overlay([ocr_row(13, OCR_MISSING_PAGE_NUMBER, why="layer_check",
+                                        existing_chars=len(FULL_BODY),
+                                        existing_text=FULL_BODY)])
         docs, chunks = self.load(store, overlay)
         self.assertEqual(len(chunks), 1)
-        chunk = chunks[0]
-        self.assertEqual(chunk["body"], OCR_TEXT)
-        self.assertEqual(chunk["text_source"], "ocr")
-        self.assertEqual(chunk["page_from"], 12)
-        self.assertEqual(chunk["doc_id"], DOC["doc_id"])
-        self.assertEqual(chunk["low_conf_numbers"], ["3,50,000"])
-        self.assertEqual(x.OCR_STATS["pages"]["filled"], 1)
-        self.assertEqual(x.OCR_STATS["pages"]["still_thin"], 0)
-
-    # acceptance 2: a page with good text keeps it
-    def test_good_page_keeps_its_text(self):
-        store = self.store([(7, GOOD_BODY)])
-        overlay = self.overlay([ocr_row(7, GOOD_OCR_TEXT)])
-        docs, chunks = self.load(store, overlay)
-        self.assertEqual(chunks[0]["body"], GOOD_BODY)
+        self.assertEqual(chunks[0]["body"], MULTI_BODY)
         self.assertEqual(chunks[0]["text_source"], "chunk")
-        self.assertEqual(x.OCR_STATS["pages"]["filled"], 0)
-        self.assertEqual(x.OCR_STATS["pages"]["disagreements"], 0)
+        self.assertEqual(x.OCR_STATS["pages"]["layer_check_pages"], 1)
+        logged = x.OCR_STATS["per_doc"][DOC["doc_id"]]["numbers_only_in_text"]
+        self.assertEqual(logged, [{"page": 13, "numbers": ["1000"]}])
+        self.assertEqual(x.OCR_STATS["per_doc"][DOC["doc_id"]]["numbers_only_in_ocr"], [])
+        passages = x.select_passages(x.SPECS["company_capacity_utilisation"],
+                                     docs[DOC["doc_id"]], chunks)
+        self.assertFalse(any(p["text_source"] == "ocr" for p in passages))
 
-    # acceptance 3: a missing overlay file changes nothing
+    # acceptance 4: a number only OCR has is logged too.
+    def test_layer_check_extra_ocr_number_is_logged(self):
+        store = self.store([(7, 7, "Revenue was Rs 1,000 crore for the quarter.")])
+        overlay = self.overlay([ocr_row(7, OCR_EXTRA_NUMBER, why="layer_check",
+                                        existing_text="Revenue was Rs 1,000 crore for "
+                                                      "the quarter.")])
+        docs, chunks = self.load(store, overlay)
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(x.OCR_STATS["pages"]["layer_check_pages"], 1)
+        self.assertEqual(x.OCR_STATS["pages"]["numbers_only_in_text"], 0)
+        logged = x.OCR_STATS["per_doc"][DOC["doc_id"]]["numbers_only_in_ocr"]
+        self.assertEqual(logged, [{"page": 7, "numbers": ["1200"]}])
+
+    # acceptance 4: a row with no why is counted and not applied.
+    def test_row_without_why_is_counted_and_not_applied(self):
+        store = self.store([(7, 7, THIN_BODY)])
+        overlay = self.overlay([ocr_row(7, OCR_TEXT, why=None,
+                                        existing_chars=len(THIN_BODY))])
+        docs, chunks = self.load(store, overlay)
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(chunks[0]["body"], THIN_BODY)
+        self.assertEqual(x.OCR_STATS["pages"]["bad_rows"], 1)
+        self.assertEqual(x.OCR_STATS["per_doc"][DOC["doc_id"]]["bad_rows"], 1)
+
+    # acceptance 6: a missing overlay file changes nothing.
     def test_missing_overlay_file_changes_nothing(self):
-        store = self.store([(3, THIN_BODY)])
+        store = self.store([(3, 3, THIN_BODY)])
         docs, chunks = self.load(store, self.tmp / f"{self.token}_absent.jsonl.gz")
         self.assertEqual(chunks[0]["body"], THIN_BODY)
         self.assertEqual(chunks[0]["text_source"], "chunk")
         self.assertFalse(x.OCR_STATS["present"])
         self.assertEqual(x.OCR_STATS["pages"], {})
-        self.assertEqual(chunks[0]["page_from"], 3)
 
-    # acceptance 4: a page with no OCR row stays as is and is counted
-    def test_page_with_no_ocr_row_stays_and_is_counted(self):
-        other = "Management commentary was not captured in the text layer."
-        store = self.store([(1, THIN_BODY), (2, other)])
-        overlay = self.overlay([ocr_row(1, OCR_TEXT)])
-        docs, chunks = self.load(store, overlay)
-        by_page = {chunk["page_from"]: chunk for chunk in chunks}
-        self.assertEqual(by_page[2]["body"], other)
-        self.assertEqual(by_page[2]["text_source"], "chunk")
-        self.assertEqual(x.OCR_STATS["pages"]["thin_before"], 2)
-        self.assertEqual(x.OCR_STATS["pages"]["filled"], 1)
-        self.assertEqual(x.OCR_STATS["pages"]["unmatched"], 1)
-        self.assertEqual(x.OCR_STATS["pages"]["still_thin"], 1)
-        self.assertEqual(x.OCR_STATS["per_doc"][DOC["doc_id"]]["unmatched"], 1)
-
-    # acceptance 5: a quote taken from OCR text passes the quote check
-    def test_quote_from_ocr_text_passes_the_quote_check(self):
-        store = self.store([(12, THIN_BODY)])
-        overlay = self.overlay([ocr_row(12, OCR_TEXT)])
-        docs, chunks = self.load(store, overlay)
-        row = {"product": "stores", "period_end": "2025-09-30", "capacity": None,
-               "capacity_unit": None, "utilisation_pct": 78, "production": None,
-               "page": 12,
-               "quote": "Installed capacity utilisation was 78% during the quarter"}
-        clean, reason = x.validate("company_capacity_utilisation", row, docs[DOC["doc_id"]],
-                                   chunks)
-        self.assertIsNone(reason)
-        assert clean is not None
-        self.assertEqual(clean["page"], 12)
-        self.assertEqual(clean["doc_id"], DOC["doc_id"])
-        self.assertEqual(clean["source"], "ocr")
-
-    # acceptance 6: the source of each passage is recorded
-    def test_source_of_each_passage_is_recorded(self):
-        store = self.store([(1, THIN_BODY), (2, GOOD_BODY)])
-        overlay = self.overlay([ocr_row(1, OCR_TEXT), ocr_row(2, GOOD_OCR_TEXT)])
-        docs, chunks = self.load(store, overlay)
-        passages = x.select_passages(x.SPECS["company_capacity_utilisation"],
-                                     docs[DOC["doc_id"]], chunks)
-        sources = {passage["page_from"]: passage["text_source"] for passage in passages}
-        self.assertEqual(sources, {1: "ocr", 2: "chunk"})
-
-    # work item 2: the hidden text layer is wrong on its numbers, OCR wins
-    def test_number_disagreement_gives_the_page_to_ocr(self):
-        self.assertGreater(len(DISAGREE_BODY), x.THIN_PAGE_CHARS)
-        store = self.store([(5, DISAGREE_BODY)])
-        overlay = self.overlay([ocr_row(5, DISAGREE_OCR_TEXT)])
-        docs, chunks = self.load(store, overlay)
-        self.assertEqual(chunks[0]["body"], DISAGREE_OCR_TEXT)
-        self.assertEqual(chunks[0]["text_source"], "ocr")
-        self.assertEqual(x.OCR_STATS["pages"]["disagreements"], 1)
-        logged = x.OCR_STATS["per_doc"][DOC["doc_id"]]
-        self.assertEqual(logged["disagreement_pages"][0]["page"], 5)
-        self.assertEqual(logged["disagreement_pages"][0]["text_layer_numbers"], ["1000"])
-
-    # work item 1: the overlay joins the document by sha256, not by symbol
-    def test_unmatched_sha_changes_nothing(self):
-        store = self.store([(1, THIN_BODY)], sha256="b" * 64)
-        overlay = self.overlay([ocr_row(1, OCR_TEXT)])   # row carries SHA = "a" * 64
+    def test_thin_row_unmatched_to_a_document_is_counted(self):
+        store = self.store([(1, 1, THIN_BODY)], sha256="b" * 64)
+        overlay = self.overlay([ocr_row(1, OCR_TEXT, why="thin",
+                                        existing_chars=len(THIN_BODY))])
         docs, chunks = self.load(store, overlay)
         self.assertEqual(chunks[0]["body"], THIN_BODY)
-        self.assertEqual(chunks[0]["text_source"], "chunk")
+        self.assertEqual(x.OCR_STATS["pages"]["thin_unmatched"], 1)
         self.assertFalse(x.OCR_STATS["per_doc"])
 
 

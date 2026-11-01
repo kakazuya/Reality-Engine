@@ -84,16 +84,13 @@ DENSE_MIN_NUMBERS, DENSE_PER_100_WORDS = 20, 30.0
 READER_INPUT_LIMIT_TOKENS = 100_000
 READER_INPUT_LIMIT_CHARS = READER_INPUT_LIMIT_TOKENS * 4
 #: T-034 page OCR overlay: the HP job's per-page OCR text for thin deck pages.
-#: Optional at run time (a missing file changes nothing); the reader sees the OCR
-#: text instead of the near-empty text layer only on a matched page.
-#: A page thinner than this many characters is read from OCR.  Measured on the
-#: three companies' deck chunks in chunks_v3 (2026-11-02): 1,727 chunks, p10 397,
-#: p25 588, median 918 chars per page; 400 targets the thinnest tenth (the
-#: image-backed pages) and leaves every ordinary text page alone.  The env knob
-#: exists because OCR quality is per-deck, not a fact of the pipeline.
-THIN_PAGE_CHARS = int(os.environ.get("REALITY_OCR_THIN_CHARS", "400"))
-#: Statistics of the last ``load_store`` call (pages thin/filled/still thin,
-#: per-document number disagreements, low-confidence tokens, token change).
+#: Optional at run time (a missing file changes nothing).  Each row carries its
+#: own ``why`` from ``thin_pages.py``: ``"thin"`` (the PDF page has under 400
+#: characters of text layer) adds the OCR text as a new one-page chunk;
+#: ``"layer_check"`` only compares numbers and never changes what extraction reads.
+OCR_REASONS = ("thin", "layer_check")
+#: Statistics of the last ``load_store`` call (thin rows applied/unmatched,
+#: layer-check pages and the numbers that differ, bad rows, token change).
 OCR_STATS: dict = {}
 #: proto3 scope: only these ISINs, only documents first known on/after SINCE.
 SCOPE_ISINS = tuple(x.strip() for x in os.environ.get("REALITY_EXTRACT_ISINS", "").split(",")
@@ -719,31 +716,32 @@ def load_ocr_pages(path: Path) -> dict[str, dict[int, dict]]:
 
 def _ocr_group(stats: dict, key: str) -> dict:
     return stats["per_company_doc_type"].setdefault(key, {
-        "docs": 0, "pages": 0, "thin_before": 0, "filled": 0, "still_thin": 0,
-        "unmatched": 0, "disagreements": 0, "tokens_before": 0, "tokens_after": 0,
-        "input_token_delta": 0})
+        "docs": 0, "thin_applied": 0, "layer_check_pages": 0,
+        "numbers_only_in_text": 0, "numbers_only_in_ocr": 0, "bad_rows": 0,
+        "tokens_before": 0, "tokens_after": 0, "input_token_delta": 0})
 
 
 def apply_ocr_overlay(docs: dict[str, dict], chunks: list[dict],
                       path: Path | None = None) -> dict:
-    """T-034: read a thin page, and a page whose numbers the text layer gets wrong, as OCR.
+    """T-034: add each thin page's OCR text as its own one-page chunk.
 
-    The overlay rows join to a document by ``sha256``.  A page thinner than
-    ``THIN_PAGE_CHARS`` is read from the OCR text; a page with good existing text
-    keeps it unless the text layer prints numbers the OCR row does not (a hidden
-    text layer on an image-backed page can be wrong) — then the OCR text wins and
-    the disagreement is counted and logged per document.  ``low_conf_numbers``
-    rides on every applied passage.  A replaced chunk keeps its real page numbers
-    and doc_id, so ``validate`` finds the OCR quote in the passage it checks.
-    A page with no OCR row stays as it is and is counted.
+    Rows join a document by ``sha256`` and carry ``why``, ``existing_chars`` and
+    ``existing_text`` from that PDF page (written by ``thin_pages.py``;
+    ``why="thin"`` means the page has under 400 characters of text layer).  A
+    thin row is always applied as a new chunk ``ocr:{doc_id}:{page}`` with the
+    real page and doc_id; no existing chunk body is edited, single-page or
+    multi-page.  A ``layer_check`` row never changes what extraction reads: its
+    ``existing_text`` numbers are compared with the OCR text in both directions
+    and the differences are logged per document.  A row without a valid ``why``
+    is counted as a bad row and not applied.  A missing overlay file returns
+    ``present: False`` with the chunks untouched.
 
     Returns the run's statistics (``load_store`` assigns them to ``OCR_STATS``).
-    A missing overlay file returns ``present: False`` with the chunks untouched.
     """
     overlay = ocr_overlay_path() if path is None else path
     stats: dict = {"path": str(overlay) if overlay else None, "present": False,
-                   "threshold_chars": THIN_PAGE_CHARS, "pages": Counter(),
-                   "per_company_doc_type": {}, "per_doc": {}, "input_token_delta": 0}
+                   "pages": Counter(), "per_company_doc_type": {}, "per_doc": {},
+                   "input_token_delta": 0}
     if overlay is None or not Path(overlay).is_file():
         return stats
     page_rows = load_ocr_pages(Path(overlay))
@@ -753,118 +751,83 @@ def apply_ocr_overlay(docs: dict[str, dict], chunks: list[dict],
     chunks_by_doc: dict[str, list[dict]] = defaultdict(list)
     for chunk in chunks:
         chunks_by_doc[chunk["doc_id"]].append(chunk)
+    known = {_sha256(doc.get("sha256")) for doc in docs.values()}
     for doc_id, doc in docs.items():
-        rows = page_rows.get(_sha256(doc.get("sha256")))
+        sha = _sha256(doc.get("sha256"))
+        rows = page_rows.get(sha)
         if not rows:
             continue
         own = chunks_by_doc.get(doc_id) or []
         group = _ocr_group(stats, f"{doc.get('symbol_at_time') or doc.get('isin') or doc_id}|"
                                   f"{doc.get('doc_type') or ''}")
         doc_stat = {"symbol": doc.get("symbol_at_time"), "doc_type": doc.get("doc_type"),
-                    "sha256": doc.get("sha256"), "thin_before": 0, "filled": 0,
-                    "still_thin": 0, "unmatched": 0, "disagreements": 0,
-                    "disagreement_pages": [], "low_conf_numbers": []}
+                    "sha256": doc.get("sha256"), "thin_applied": 0,
+                    "layer_check_pages": 0, "numbers_only_in_text": [],
+                    "numbers_only_in_ocr": [], "bad_rows": 0, "low_conf_numbers": []}
         chars_before = sum(len(chunk.get("body") or "") for chunk in own)
         chars_delta = 0
-        covered: dict[int, dict] = {}
-        spans: dict[int, int] = {}
-        for chunk in own:
-            start = as_page(chunk.get("page_from"))
-            end = as_page(chunk.get("page_to")) or start
-            if not start:
+        seen = {chunk["chunk_id"] for chunk in own}
+        for page in sorted(rows):
+            row = rows[page]
+            why = row.get("why")
+            if why not in OCR_REASONS:
+                doc_stat["bad_rows"] += 1
                 continue
-            span = max(1, (end or start) - start + 1)
-            spans[id(chunk)] = span
-            for page in range(start, start + span):
-                covered[page] = chunk
-        replace: dict[int, list[int]] = defaultdict(list)   # id(chunk) -> OCR pages
-        filled_pages: set[int] = set()
-        thin_pages: set[int] = set()
-        for page in sorted(set(covered) | set(rows)):
-            chunk = covered.get(page)
-            text = (chunk.get("body") or "") if chunk else ""
-            span = spans.get(id(chunk), 1) if chunk else 1
-            thin = len(text) < THIN_PAGE_CHARS * span
-            ocr = rows.get(page)
-            if thin:
-                doc_stat["thin_before"] += 1
-                thin_pages.add(page)
-                if not ocr:
-                    doc_stat["unmatched"] += 1
-                    continue
-                if chunk is not None:
-                    replace[id(chunk)].append(page)
-                filled_pages.add(page)
+            text = str(row.get("text") or "").strip()
+            if why == "layer_check":
+                have = _page_numbers(str(row.get("existing_text") or ""))
+                got = _page_numbers(text)
+                only_text, only_ocr = sorted(have - got), sorted(got - have)
+                doc_stat["layer_check_pages"] += 1
+                if only_text:
+                    doc_stat["numbers_only_in_text"].append(
+                        {"page": page, "numbers": only_text})
+                if only_ocr:
+                    doc_stat["numbers_only_in_ocr"].append(
+                        {"page": page, "numbers": only_ocr})
                 continue
-            if not ocr:
+            chunk_id = f"ocr:{doc_id}:{page}"
+            if not text or chunk_id in seen:
                 continue
-            # ponytail: a multi-page chunk cannot be split page by page, so the
-            # number check and the OCR override only apply to a one-page chunk; a
-            # multi-page chunk keeps its text.  Upgrade: page-accurate chunking.
-            if chunk is None or span > 1:
-                continue
-            missing = _page_numbers(text) - _page_numbers(str(ocr.get("text") or ""))
-            if not missing:
-                continue
-            doc_stat["disagreements"] += 1
-            doc_stat["disagreement_pages"].append(
-                {"page": page, "text_layer_numbers": sorted(missing),
-                 "ocr_numbers": sorted(_page_numbers(str(ocr.get("text") or "")))})
-            replace[id(chunk)].append(page)
-        for chunk in own:
-            picked = sorted(replace.get(id(chunk)) or [])
-            if not picked:
-                continue
-            body = "\n\n".join(str(rows[page].get("text") or "").strip() for page in picked)
-            if not body:
-                continue
-            chars_delta += len(body) - len(chunk.get("body") or "")
-            chunk["body"] = body
-            chunk["text_source"] = "ocr"
-            chunk["low_conf_numbers"] = [token for page in picked
-                                         for token in (rows[page].get("low_conf_numbers") or [])]
-            for page in picked:
-                if page in filled_pages:
-                    doc_stat["filled"] += 1
-                tokens = rows[page].get("low_conf_numbers") or []
-                if tokens:
-                    doc_stat["low_conf_numbers"].append({"page": page, "tokens": tokens})
-        for page in sorted(set(rows) - set(covered)):
-            text = str(rows[page].get("text") or "").strip()
-            if not text:
-                continue
-            chunks.append({"chunk_id": f"ocr:{doc_id}:{page}", "doc_id": doc_id,
-                           "section": "ocr", "body": text, "page_from": page, "page_to": page,
+            chunks.append({"chunk_id": chunk_id, "doc_id": doc_id, "section": "ocr",
+                           "body": text, "page_from": page, "page_to": page,
                            "unit_kind": "page", "fiscal_period": doc.get("fiscal_period"),
                            "known_at": doc.get("known_at"), "tags": set(),
                            "text_source": "ocr",
-                           "low_conf_numbers": list(rows[page].get("low_conf_numbers") or [])})
+                           "low_conf_numbers": list(row.get("low_conf_numbers") or [])})
+            seen.add(chunk_id)
             chars_delta += len(text)
-            doc_stat["filled"] += 1
-            tokens = rows[page].get("low_conf_numbers") or []
+            doc_stat["thin_applied"] += 1
+            tokens = row.get("low_conf_numbers") or []
             if tokens:
                 doc_stat["low_conf_numbers"].append({"page": page, "tokens": tokens})
-        # A thin page with no applied OCR row stays thin; a filled page is still
-        # thin only when its OCR text is itself shorter than the threshold.
-        doc_stat["still_thin"] = sum(
-            1 for page in thin_pages
-            if page not in filled_pages
-            or len(str(rows[page].get("text") or "")) < THIN_PAGE_CHARS)
         tokens_before = round(chars_before / 4)
-        tokens_after = max(0, round((chars_before + chars_delta) / 4))
+        tokens_after = round((chars_before + chars_delta) / 4)
         doc_stat.update({"tokens_before": tokens_before, "tokens_after": tokens_after,
                          "input_token_delta": tokens_after - tokens_before})
         group["docs"] += 1
-        group["pages"] += len(set(covered) | set(rows))
-        for key in ("thin_before", "filled", "still_thin", "unmatched", "disagreements"):
+        for key in ("thin_applied", "layer_check_pages", "bad_rows"):
             group[key] += doc_stat[key]
+            stats["pages"][key] += doc_stat[key]
+        for key in ("numbers_only_in_text", "numbers_only_in_ocr"):
+            count = sum(len(item["numbers"]) for item in doc_stat[key])
+            group[key] += count
+            stats["pages"][key] += count
         group["tokens_before"] += tokens_before
         group["tokens_after"] += tokens_after
         group["input_token_delta"] += tokens_after - tokens_before
-        for key in ("thin_before", "filled", "still_thin", "unmatched", "disagreements"):
-            stats["pages"][key] += doc_stat[key]
         stats["input_token_delta"] += tokens_after - tokens_before
         stats["per_doc"][doc_id] = doc_stat
+    # A thin row whose document is not in this store is never applied; count it.
+    for sha, rows in page_rows.items():
+        if sha in known:
+            continue
+        for row in rows.values():
+            why = row.get("why")
+            if why == "thin":
+                stats["pages"]["thin_unmatched"] += 1
+            elif why not in OCR_REASONS:
+                stats["pages"]["bad_rows"] += 1
     return stats
 
 
@@ -907,15 +870,21 @@ def is_number_dense(chunk: dict) -> bool:
     return numbers >= DENSE_MIN_NUMBERS and per_100 >= DENSE_PER_100_WORDS
 
 
+def is_whole_page(chunk: dict) -> bool:
+    """A page the reader gets whole: number-dense, or a T-034 thin-page OCR chunk."""
+    return chunk.get("text_source") == "ocr" or is_number_dense(chunk)
+
+
 def select_passages(spec: dict, doc: dict, chunks: list[dict]) -> list[dict]:
     """Deterministic passage pick: doc type, section/tag, keyword set, number density.
 
-    ``chunks`` are the doc's own chunks.  Every number-dense chunk is returned
-    whole (marked ``dense``), regardless of the keyword/rank filter, because the
-    picker missed most numbers on such pages; the rest must hit at least one
-    keyword and, when the table needs a number, carry one.  Ranked by (tag hits +
-    section hit) then number count, then page order, so the ordinary part is a
-    bounded, reproducible subset and the selector is auditable.
+    ``chunks`` are the doc's own chunks.  Every whole page (a number-dense chunk,
+    or a T-034 OCR chunk added for a thin page) is returned whole (marked
+    ``dense``), regardless of the keyword/rank filter, because the picker missed
+    most numbers on such pages; the rest must hit at least one keyword and, when
+    the table needs a number, carry one.  Ranked by (tag hits + section hit) then
+    number count, then page order, so the ordinary part is a bounded, reproducible
+    subset and the selector is auditable.
     """
     if doc["doc_type"] not in spec["docs"]:
         return []
@@ -926,7 +895,7 @@ def select_passages(spec: dict, doc: dict, chunks: list[dict]) -> list[dict]:
     picked, dense = [], []
     for chunk in chunks:
         body = chunk["body"] or ""
-        if is_number_dense(chunk):
+        if is_whole_page(chunk):
             dense.append({**chunk, "dense": True})
             continue
         matches = list(term.finditer(body))
@@ -947,6 +916,7 @@ def select_passages(spec: dict, doc: dict, chunks: list[dict]) -> list[dict]:
         picked.append(((near, hits, len(matches), -(chunk.get("page_from") or 0)), chunk))
     picked.sort(key=lambda item: item[0], reverse=True)
     ranked = [item[1] for item in picked[:spec.get("max_passages") or MAX_PASSAGES]]
+    dense.sort(key=lambda chunk: chunk.get("page_from") or 0)
     seen = {chunk["chunk_id"] for chunk in dense}
     return dense + [chunk for chunk in ranked if chunk["chunk_id"] not in seen]
 
@@ -1061,7 +1031,7 @@ def whole_page_estimate(docs: dict, chunks_by_doc: dict[str, list[dict]],
     per: dict[str, dict] = {}
     totals: Counter = Counter()
     dense_chunks = [chunk for doc_id, chunk_list in chunks_by_doc.items() if doc_id in docs
-                    for chunk in chunk_list if is_number_dense(chunk)]
+                    for chunk in chunk_list if is_whole_page(chunk)]
     dense_chars = sum(len(chunk.get("body") or "") for chunk in dense_chunks)
     corpus = {"chunks": sum(len(chunks_by_doc.get(doc_id) or []) for doc_id in docs),
               "dense_chunks": len(dense_chunks), "dense_chars": dense_chars,
@@ -1816,9 +1786,13 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
     db.parent.mkdir(parents=True, exist_ok=True)
     docs, chunks = load_store(store)
     if OCR_STATS.get("present"):
-        print(f"  ocr overlay: {OCR_STATS['pages'].get('filled', 0)} pages filled, "
-              f"{OCR_STATS['pages'].get('still_thin', 0)} still thin, "
-              f"{OCR_STATS['pages'].get('disagreements', 0)} number disagreements, "
+        pages = OCR_STATS["pages"]
+        print(f"  ocr overlay: {pages.get('thin_applied', 0)} thin rows applied, "
+              f"{pages.get('thin_unmatched', 0)} thin rows unmatched, "
+              f"{pages.get('layer_check_pages', 0)} layer-check pages, "
+              f"{pages.get('numbers_only_in_text', 0)} numbers only in text layer, "
+              f"{pages.get('numbers_only_in_ocr', 0)} numbers only in OCR, "
+              f"{pages.get('bad_rows', 0)} bad rows, "
               f"{OCR_STATS['input_token_delta']:+d} input tokens", flush=True)
     known_at_stats = reconcile_known_at(docs)
     docs = {doc_id: doc for doc_id, doc in docs.items() if in_scope(doc)}

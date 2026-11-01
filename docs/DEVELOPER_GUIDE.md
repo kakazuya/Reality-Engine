@@ -232,32 +232,43 @@ quote prints the number but not the word that says what it is.
 
 The HP job writes one row per page to `tasks/pilot60/proto3_text/ocr_pages.jsonl.gz`
 (`isin`, `symbol`, `doc_type`, `doc_date`, `file_name`, `sha256`, `page`, `text`,
-`mean_confidence`, `low_conf_numbers`). The file is optional at run time: `extract60.load_store`
-joins its rows to `doc` by `sha256`, and a missing file changes nothing. `REALITY_OCR_OVERLAY`
-overrides the path; an empty value disables the overlay.
+`mean_confidence`, `low_conf_numbers`, plus `why`, `existing_chars` and `existing_text`
+from `tasks/pilot60/proto3_text/thin_pages.py`). The file is optional at run time:
+`extract60.load_store` joins its rows to `doc` by `sha256`, and a missing file changes
+nothing. `REALITY_OCR_OVERLAY` overrides the path; an empty value disables the overlay.
 
-- A page whose existing text is shorter than `THIN_PAGE_CHARS (400)` is read from the OCR text
-  instead. Measured on the three companies' deck chunks in `chunks_v3` (2026-11-02): 1,727
-  chunks, p10 397, p25 588, median 918 chars per page — 400 targets the thinnest tenth (the
-  image-backed pages) and leaves ordinary text pages alone. `REALITY_OCR_THIN_CHARS` overrides
-  the threshold per deck.
-- A page with good existing text keeps it, unless the text layer prints numbers the OCR row does
-  not; then the OCR text wins (`validate` sets the row's `source = 'ocr'` where the table has a
-  source column) and the disagreement is counted and logged per document in
-  `OCR_STATS["per_doc"][doc_id]["disagreement_pages"]`. A multi-page chunk cannot be split page
-  by page, so that override applies to one-page chunks only.
-- Every chunk carries `text_source` (`chunk` or `ocr`) and an OCR'd chunk carries
-  `low_conf_numbers`; a passage inherits both. An OCR'd chunk keeps its real page numbers and
-  `doc_id`, so `validate` finds the OCR quote in the passage it checks. A page with no OCR row
-  stays as it is and is counted (`OCR_STATS["pages"]["unmatched"]`).
-- `build` prints the overlay summary and stores `OCR_STATS` in `extract_run.notes`; `proto3
-  dryrun` reports `ocr_overlay` per company and doc type — pages thin before, filled by OCR,
-  still thin, unmatched, number disagreements, and the text-token change — in
+- `why="thin"` means that PDF page has under 400 characters of text layer (measured on the
+  three companies' 2,107 deck pages, 2026-11-02: every one of the 352 pages under 200
+  characters sits inside a multi-page chunk, so thinness is a page property, not a chunk
+  length). Such a row is always applied: `load_store` adds a one-page chunk
+  `ocr:{doc_id}:{page}` with `section="ocr"`, `text_source="ocr"`, the real page and
+  `doc_id`, and `low_conf_numbers`. An existing chunk's body is never replaced or
+  edited, single-page or multi-page.
+- `why="layer_check"` never changes what extraction reads; the numbers in the row's
+  `existing_text` and in its OCR text are compared in both directions and logged per
+  document in `OCR_STATS["per_doc"][doc_id]["numbers_only_in_text"]` /
+  `["numbers_only_in_ocr"]`. Reading `existing_text` from the row means the check works
+  for pages inside multi-page chunks too.
+- A row without a valid `why` is counted in `OCR_STATS["pages"]["bad_rows"]` and not
+  applied; a thin row whose `sha256` matches no document is counted in
+  `["thin_unmatched"]`. `THIN_PAGE_CHARS` / `REALITY_OCR_THIN_CHARS` are gone —
+  `thin_pages.py` decides thinness.
+- Every chunk carries `text_source` (`chunk` or `ocr`). The selector sends every whole
+  page whole — a number-dense chunk or a T-034 OCR chunk — in page order, so an added OCR
+  chunk reaches the reader even with empty `tags` and `section="ocr"`. `validate` sets
+  `source = 'ocr'` when the matched passage is the OCR chunk, and keeps `chunks_v3` when
+  the quote is found only in the original chunk (including a multi-page chunk covering
+  the same page).
+- `build` prints the overlay summary and stores `OCR_STATS` in `extract_run.notes`;
+  `proto3 dryrun` reports the same figures in `ocr_overlay` per company and doc type —
+  thin rows applied and unmatched, layer-check pages compared, numbers only in the text
+  layer, numbers only in OCR, bad rows, and the input-token change — in
   `.tmp/proto3/dryrun.json` and on stdout.
 
 ```bash
-# Page OCR overlay fixtures: thin page, good page, missing file, unmatched page,
-# OCR quote, passage source, number disagreement (8 passed)
+# Page OCR overlay fixtures: thin page inside a two-page chunk, reader selection and
+# page order, OCR and chunks_v3 quote sources, layer-check numbers both ways, a row
+# without why, a missing file, a thin row unmatched to a document (8 passed)
 python -m pytest reality_engine/tests/test_ocr_overlay.py -q
 ```
 
