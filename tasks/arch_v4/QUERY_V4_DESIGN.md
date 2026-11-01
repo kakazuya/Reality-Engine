@@ -1986,3 +1986,15 @@ Companion artifacts in this directory, each produced by its own worker:
 | `bench_gpu.py` + `bench_gpu.md` | done (v4.2) — the CPU/GPU comparison behind §F.8 |
 | `bench_screen.py` + `bench_screen.md` | done (v4.2) — the CPU timings and the false-discovery null, §F.7 |
 | `PILOT_BACKTEST.md` | **not started** — built by the backtest worker on §E.5 once its verdict rule is approved |
+
+# Appendix: files added 29-31 Oct, documented 1 Nov (first doc sweep)
+
+- `reality_engine/pilot/premise_audit.py`: Rule-check the instance premises against the held stores.
+- `reality_engine/query/v4/build_quarters.py`: v4 WP2c — true single-quarter XBRL series from the OneD/FourD contexts (§A.8, §B.1).
+- `reality_engine/query/v4/fact_oi.sql`: fact_oi.sql - the F&O open-interest side file (QUERY_V4_DESIGN §B.1, §F.6).
+- `reality_engine/query/v4/fact_view_extras.sql`: fact_view_extras.sql - the v4 atoms whose source is outside the five pilot files
+- `reality_engine/query/v4/fact_view_holdings_isin.sql`: fact_view_holdings_isin.sql - hold.pct for the pilot names whose shareholding
+- `reality_engine/scripts/fetch_shp_xbrl_pilot.py`: Pilot-60 shareholding XBRL -> the ownership atoms v4 is missing (§A.1, §A.2).
+- `tasks/arch_v4/reader_test/build_report.py`: Render tasks/arch_v4/READER_TEST_2026-10-31.md from the frozen questions, results and grades.
+- `tasks/pilot60/install_traded_close.py`: Rebuild the pilot stores so price.close is the traded close, check them, install, re-run the gate.
+- `tasks/pilot60/latest_handcheck.py`: Hand-grade 20 newly answered v4 "latest" rows, reading each value back independently.

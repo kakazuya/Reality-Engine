@@ -219,3 +219,16 @@ tasks/pilot60/RESULTS_INSTANCES*
 
 # direct API token ledger
 tasks/ledgers/spend.jsonl
+
+# Local tool folders and outputs that do not belong in git (1 Nov 2026)
+.claude/
+.codex-remote-attachments/
+tmp_*.py
+tasks/backtests/*.gz
+tasks/backtests/H0*_*.csv
+tasks/backtests/H0*_*.json
+tasks/codex_tasks/*.events.jsonl
+tasks/codex_tasks/*.log
+tasks/codex_tasks/*.status.json
+tasks/codex_tasks/*.control.json
+*.bak-*

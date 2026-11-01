@@ -11,7 +11,7 @@ The remote shell is cmd.exe, which mangles inline quoting, so nothing is quoted 
 every PowerShell snippet is base64 ``-EncodedCommand``-ed and every job body is written
 once as ``run.cmd``.  A job is detached through Task Scheduler running as SYSTEM, because
 that is the only launch that was measured to survive the ssh session closing (see
-``tasks/efficiency/HP_ACCEL_BENCH_2026-10-31.md``); ``--method wmi`` and ``--method start``
+``machines/HP_ACCEL_BENCH_2026-10-31.md``); ``--method wmi`` and ``--method start``
 are kept for the comparison.
 
 Env: ``HP_RUN_HOST`` (default ``zen7s@192.168.1.42``, the LAN address; it falls

@@ -24,4 +24,24 @@ started before the fixes when comparing dsh rates (`--exclude-jobs`).
 | 8 | Repeat test failures | pytest live 31 Oct 00:15; rest in round 2 | Tests/compile 234 of 819 failed | Failure rate | Small |
 | 9 | Shell reads to read/grep tools | Round 1 merge | 3,517 calls; shell 42% of calls | Shell share of calls | Small |
 
+## Interim count, 1 Nov 01:12 IST (final count due that night)
+
+Window: 31 Oct 00:30 to 1 Nov 01:12, 235 Claude steps and 3,325 dsh steps. The 3 workers started before the fixes are still included. Report: `tasks/efficiency/TOOL_USAGE_2026-11-01.md`.
+
+| # | Fix | Baseline | Window | Half of promise met? |
+|---|---|---|---|---|
+| 1 | Restart at 150k | 290k cached per step | 240k (-17%) | No, needs -20% to -25% |
+| 2 | Workers write long code | Claude edits 33.8% of re-sent volume | 44.6% (worse) | No. Claude hand-wrote the bank rules by Shivam's order |
+| 3 | Short worker status | 794 tokens per control call | 666 (-16%) | No, about 2% of quota against a promised 10% |
+| 4 | `sql` over inline Python (dsh) | Inline 59%, 20% failed | Inline 67%, 27% failed; `sql` 0 failed | No (worse) |
+| 5 | Batch read-only calls | 23.3% of steps batchable | 27.2% (worse) | No |
+| 6 | No sleeping in loops | 395 s per worker-hour | 1.3 s | **Yes** |
+| 7 | LSP and context pack | 0.74 LSP per job; 18 calls before first edit; 13.9% reads | 2.66; 28; 17.8% | No: LSP is used, but no saving shows |
+| 8 | Repeat test failures | 28.6% failed | 31.9% | No |
+| 9 | Shell reads to tools | 41.9% shell | 34.6% | Yes, small |
+
+Claude cost per step rose from $0.088 to $0.130 (API-rate estimate) because output per step rose from 630 to 2,368 tokens and cache writes from 2,563 to 7,306. Steps differ by task, and restarts add cache writes, so this needs the final count before it is called a loss.
+
+Metric labels: the report's inline DB row is Claude-only (15 calls, too small). The dsh figures above come from its class tables, and they are the ones comparable to this tracker's baseline.
+
 **Verdict rule on 1 Nov:** a fix is worth keeping if its metric moved by at least half of what was promised and the work it took was less than what it saved. Small samples get called small samples. Worker tasks differ by day, so compare rates, not totals.
