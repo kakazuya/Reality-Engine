@@ -377,6 +377,46 @@ prototype's two rows for eight questions). Check: `reality_engine/tests/test_pro
 
 A disputed number (T-040) is not loaded unless `proto3 recheck` settled on the number the row stored; the load prints how many it kept out.
 
+### K. Worker review log: calls, tokens, time and Claude's review (T-043)
+
+`reality_engine/scripts/worker_review.py` measures every dsh job and every Claude session
+from records only — no model call, no network, and nothing written outside `--out`, so it
+is safe to rerun:
+
+```bash
+# Workers, Claude, Reviews and Trends sheets; the workbook is generated, never committed
+python -m reality_engine.scripts.worker_review build --out tasks/efficiency/WORKER_REVIEW_LOG.xlsx
+# The last 5 reviews' prompt / permission / scope changes, for writing the next brief
+python -m reality_engine.scripts.worker_review last --n 5
+```
+
+The **Workers** sheet takes one row per `plugins/dsh-worker/runtime/jobs/*/` from
+`result.md.events.jsonl`, `progress.jsonl`, `status.json`, `job.json` and `brief.md`: tool
+calls measured from the event stream (and before the first edit, shown beside the status
+record's own count), the brief's `Budget:` total and before-first-edit budget with the
+over-budget flags, the worker's own reported total and its gap against the measured count,
+the tool mix, failed results and repeated reads, the last progress row's input / cache-read
+/ output tokens and model steps, and the commit's changed files and added/removed lines.
+When no record reports reasoning tokens, the estimate is `thinking_chars / 4` in
+`thinking_tokens_est` (so the column name says estimate) and
+`output_tokens_excl_thinking_est` splits it out. `job_type` is filled from a review row
+only and stays blank otherwise.
+
+The **Claude** sheet walks `~/.claude/projects/` and `~/.claude-neo/projects/` (the same
+junction, read once) for this repo's project directories, reusing
+`tool_usage_report.read_claude` so usage is counted once per message id; it adds the tool
+mix, the account from a launcher title such as `neo-Info_Diffusion_Model`, and Claude's own
+code edits. The **Reviews** sheet shows `tasks/efficiency/worker_reviews.jsonl` as written,
+joined by id (a session review id `session-<uuid>` matches the transcript's bare uuid), and
+says `review due` where a job or session has no review. **Trends** gives medians of calls,
+calls before the first edit, output tokens, minutes, tokens per changed line and the share
+over budget, by day and by job type.
+
+First build (2026-11-02): 283 jobs, 37 Claude session transcripts, 6 reviews; job
+`20261101T210210Z-521b20a9` measured 164 tool calls, 30 before its first edit (both sources
+agree), budget 90 and 20, 99,063 output tokens and 101 model steps. Test file:
+`reality_engine/tests/test_worker_review.py` (8 tests).
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):
