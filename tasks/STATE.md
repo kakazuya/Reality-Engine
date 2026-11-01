@@ -1,10 +1,10 @@
 # STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-02 (Wolf)
 
 ## Now
-**Workspace fix first, by Shivam's order: `tasks/WORKSPACE_FIX_2026-11-01.md`.** OCR, extraction and database design wait until its step 4 passes.
+**Pilot test on BAJFINANCE, HINDALCO and KEC, by Shivam's order of 2 Nov.** Workspace tickets no longer block it. The last prototype failed: 0 of 40 sampled answers right, 78% of numbers missed: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`.
 
 ## Next action
-Tickets live in `tasks/TASKS.md`, and the session card shows what is open and waiting on Shivam. Next: T-002 hook blocks, because later checks rely on them; then T-001 worker budgets, T-003 merge gate, T-014 question map. Start from a fresh session: the running dsh-worker server still has the old start gate, and only a restart enforces `Ticket:`.
+Apply that grade's five changes, rerun the same 3 companies, and grade the same questions by reading. Tickets in `tasks/TASKS.md`, section Schema and question map.
 
 ## Running
 Nothing.

@@ -3,7 +3,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 
 ## Order and scope
 - Golden order: raw data, banks, schema, pilot, re-run at 95% answered plus checklist, and only then the full run. No full run before that.
-- Workspace fix comes before database design: `tasks/WORKSPACE_FIX_2026-11-01.md`. Prototype on 2-3 companies before any wider run.
+- Pilot test resumes (Shivam, 2 Nov): the workspace issues are settled, and open workspace tickets no longer block it. Prototype on 2-3 companies before any wider run.
 - Scope is query AND compute. A number the filings do not state is a formula to define. Empty store means not extracted: never report it as a gap or "not held" without checking `tasks/DATA_INVENTORY.md` and raw text.
 - Bank rulings bind; diff any bank rebuild against the frozen 1,901-question bank. Do not change bank, labels or scope without his ruling. Questions use pilot stocks only.
 - Pilot tests: a question with no date uses `as_of` 2026-10-19; live answers use the latest data. Report only the hand-read score, never the format score. The free-model reader is dropped for now: return retrieved passages with exact quotes (Shivam, 2 Nov).

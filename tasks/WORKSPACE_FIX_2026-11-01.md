@@ -1,6 +1,6 @@
 # Workspace fix, approved by Shivam 1 Nov 2026
 
-The workspace gets fixed before database design. OCR and extraction wait until step 4 passes. Estimate 1.5 days. Keep it lean: nothing is added here unless it stops a failure we have already had.
+The workspace was to be fixed before database design. **Shivam, 2 Nov: the issues are settled and the pilot test resumes; steps left here are tickets in `tasks/TASKS.md` and block nothing.** Estimate 1.5 days. Keep it lean: nothing is added here unless it stops a failure we have already had.
 
 ## Two files
 - **Question map:** one row per bank question: measure, formula, store, pass or fail. Only a check script flips the result. It is also the backlog and the schema design table.
