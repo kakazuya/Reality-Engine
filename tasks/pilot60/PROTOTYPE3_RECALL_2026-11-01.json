@@ -1,0 +1,1691 @@
+{
+ "docs": 25,
+ "baseline_rows": 117,
+ "missed": 91,
+ "per_doc": [
+  {
+   "isin": "INE296A01032",
+   "symbol": "BAJFINANCE",
+   "doc_type": "annual_report",
+   "doc_id": "sha256:5535038a06d803a1ead68bb1e2e1677569c06d013046c1bcbbcf8abc7944434f",
+   "pages_read": 1,
+   "baseline_rows": 0,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE296A01032",
+   "symbol": "BAJFINANCE",
+   "doc_type": "concall",
+   "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+   "pages_read": 3,
+   "baseline_rows": 14,
+   "missed": 13,
+   "misses": [
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "loan losses and provisions grew by 9%. Annualized number came in at 1.91%.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "credit_cost_pct",
+      "value": 1.91,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "Cost of funds came in at 7.45%.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "cost_of_funds",
+      "value": 7.45,
+      "unit": "pct",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "Active distribution, 241,000 is where we are present in.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "active_distribution",
+      "value": 241000.0,
+      "unit": "count",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "Deposits contributed 17% of consolidated borrowing as of December '25.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "deposits_share_of_consolidated_borrowing",
+      "value": 17.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "net interest income grew by 21%.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "nii_growth",
+      "value": 21.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "NTI grew by 19%.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "nti_growth",
+      "value": 19.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "Opex to NTI continued to improve, came in at 32.8%.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "opex_to_nti",
+      "value": 32.8,
+      "unit": "pct",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "Full-time employees stood at 69,000",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "full_time_employees",
+      "value": 69000.0,
+      "unit": "count",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "Fixed-term contract folks stood at 78,000.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "fixed_term_contract",
+      "value": 78000.0,
+      "unit": "count",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "Year-on-year basis, loan losses and provisions grew by 9%.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "loan_losses_provisions_growth",
+      "value": 9.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "ROA came in at 4.6% at a core level",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "roa",
+      "value": 4.6,
+      "unit": "pct",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "ROE came in at 19.6% and capital adequacy came in at 21.45%.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "roe",
+      "value": 19.6,
+      "unit": "pct",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-02-07T15:07:37",
+      "doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64",
+      "quote": "we generated 100,000 new offers on which we did not have information earlier.",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "ai_new_offers",
+      "value": 100000.0,
+      "unit": "count",
+      "source_doc_id": "sha256:38b727e9eadf30596cdadc3744bc059195bc2b23ff9a4c71e1dc3108706b4b64"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE296A01032",
+   "symbol": "BAJFINANCE",
+   "doc_type": "concall",
+   "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+   "pages_read": 3,
+   "baseline_rows": 15,
+   "missed": 9,
+   "misses": [
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "Provision coverage is at 60%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "provision_coverage_pct",
+      "value": 60.0,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "improving to 1.54% versus same time during the same period, 1.87%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "credit_cost_pct",
+      "value": 1.54,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "Profit growth was strong at 28% and ROE crossed 20%",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "profit_growth",
+      "value": 28.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "ROA came in at 4.7% and ROE at 20.4%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "roe",
+      "value": 20.4,
+      "unit": "pct",
+      "source_doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "ROA came in at 4.7% and ROE at 20.4%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "roa",
+      "value": 4.7,
+      "unit": "pct",
+      "source_doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "Business is now 4% of AUM.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "gold_loan_share_of_aum",
+      "value": 4.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "It's now 15% of the balance sheet.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "deposit_book_share_of_balance_sheet",
+      "value": 15.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "loan loss to AUF for the current quarter would have been 1.31%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "loan_loss_to_auf_ex_provision",
+      "value": 1.31,
+      "unit": "pct",
+      "source_doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-08-04T18:11:11",
+      "doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7",
+      "quote": "New Stage 2 and Stage 3 contribution was 1.87% from 1.94% in the previous quarter.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "new_stage2_stage3_contribution",
+      "value": 1.87,
+      "unit": "pct",
+      "source_doc_id": "sha256:9b8d209b48dd6eb3c3f08ffa494f48e71ddafdffa3b0f0be68416b41cd4b5fd7"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE296A01032",
+   "symbol": "BAJFINANCE",
+   "doc_type": "deck",
+   "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+   "pages_read": 6,
+   "baseline_rows": 18,
+   "missed": 12,
+   "misses": [
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Total 5,84,624 6,196 2,453 60% 1.24% 0.96% 1.06% 0.60% 0.39% 0.42%",
+      "page": 56,
+      "source": "chunks_v3",
+      "period_end": "2026-09-30",
+      "metric": "provision_coverage_pct",
+      "value": 60.0,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Gross NPA 0.00% 0.05% 0.08% 0.35% 0.31% 0.22% 0.27% 0.29% 0.27%",
+      "page": 27,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "gnpa_pct",
+      "value": 0.27,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Net NPA 0.00% 0.04% 0.05% 0.22% 0.14% 0.08% 0.10% 0.11% 0.11%",
+      "page": 27,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "nnpa_pct",
+      "value": 0.11,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "CRAR 45.12% 25.81% 25.15% 21.33% 19.71% 22.97% 21.28% 28.24% 22.46%",
+      "page": 27,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "capital_adequacy_pct",
+      "value": 22.46,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Loan loss to avg. loan assets 0.22% 0.24% 0.55% 0.80% 0.45% 0.21% 0.06% 0.07% 0.17%",
+      "page": 27,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "credit_cost_pct",
+      "value": 0.17,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Opex to NTI 74.6% 63.1% 32.9% 27.7% 29.2% 25.8% 24.2% 20.9% 19.7%",
+      "page": 27,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "opex to nti",
+      "value": 19.7,
+      "unit": "pct",
+      "source_doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Return on average assets 0.6% 1.1% 1.9% 1.5% 1.8% 2.3% 2.4% 2.4% 2.3%",
+      "page": 27,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "return on average assets",
+      "value": 2.3,
+      "unit": "pct",
+      "source_doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Return on average equity 1.1% 4.2% 9.1% 7.8% 11.1% 14.6% 15.2% 13.4% 12.1%",
+      "page": 27,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "return on average equity",
+      "value": 12.1,
+      "unit": "pct",
+      "source_doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94"
+     }
+    },
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Loan loss to avg. AUF 3.51% 4.80% 6.56% 3.19% 1.31% 1.08% 1.18% 1.35% 1.41% 1.54% 1.40% 1.47% 2.98% 4.03% 2.31% 0.96% 1.33% 1.93% 2.09%",
+      "page": 26,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "credit_cost_pct",
+      "value": 2.09,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Opex to NTI 58.3% 50.9% 45.9% 45.5% 47.9% 45.2% 46.5% 45.3% 43.3% 41.7% 40.5% 35.6% 33.8% 31.0% 36.1% 36.5% 34.8% 33.9% 33.3%",
+      "page": 26,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "opex to nti",
+      "value": 33.3,
+      "unit": "pct",
+      "source_doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Return on assets 0.7% 1.4% 2.8% 4.4% 4.2% 4.1% 3.6% 3.3% 3.5% 3.7% 3.7% 4.2% 4.1% 3.1% 4.2% 5.3% 5.1% 4.6% 4.3%",
+      "page": 26,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "return on assets",
+      "value": 4.3,
+      "unit": "pct",
+      "source_doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-10-19T17:27:30",
+      "doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94",
+      "quote": "Return on equity 2.0% 3.2% 8.0% 19.7% 24.0% 21.9% 19.5% 20.4% 20.9% 21.6% 20.1% 22.5% 20.2% 12.8% 17.4% 23.5% 22.1% 19.2% 18.1%",
+      "page": 26,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "return on equity",
+      "value": 18.1,
+      "unit": "pct",
+      "source_doc_id": "sha256:40722430396106b1a34e1ca6f84d8c873cf4e15a2650a96afedc5be169841e94"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE296A01032",
+   "symbol": "BAJFINANCE",
+   "doc_type": "concall",
+   "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+   "pages_read": 2,
+   "baseline_rows": 12,
+   "missed": 10,
+   "misses": [
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "came in at 175 basis points or 1.75% as against 1.97% in same period last year",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "credit_cost_pct",
+      "value": 1.75,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "In Q4, AUM grew by 22.4% and PAT grew by 26.7%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "aum_growth",
+      "value": 22.4,
+      "unit": "pct",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "In Q4, AUM grew by 22.4% and PAT grew by 26.7%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "pat_growth",
+      "value": 26.7,
+      "unit": "pct",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "Cost of funds improved by 4 basis points in Q4 and came in at 7.41%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "cost_of_funds",
+      "value": 7.41,
+      "unit": "pct",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "It contributed to 16% of consolidated borrowings.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "deposit_share_of_consolidated_borrowings",
+      "value": 16.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "Opex to NTI, going back to the earlier point that I made, came in at 33.8% in Q4 as against 33.6%.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "opex_to_nti",
+      "value": 33.8,
+      "unit": "pct",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "Full-time employees stood at 71,613 employees.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "employee_count",
+      "value": 71613.0,
+      "unit": "count",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "The business now contributes to 3.5% overall AUM.",
+      "page": 3,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "gold_loan_share_of_aum",
+      "value": 3.5,
+      "unit": "pct",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "That's why it grew by 6% in full year where the company grew by 22.5%.",
+      "page": 5,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "msme_growth",
+      "value": 6.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-05-04T19:15:02",
+      "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+      "quote": "That's why it grew by 6% in full year where the company grew by 22.5%.",
+      "page": 5,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "company_growth",
+      "value": 22.5,
+      "unit": "pct",
+      "source_doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE296A01032",
+   "symbol": "BAJFINANCE",
+   "doc_type": "deck",
+   "doc_id": "sha256:0ad80c00b39d6ba036b6fc6356f3626497994eba470af52d958e151680b9044f",
+   "pages_read": 5,
+   "baseline_rows": 3,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE296A01032",
+   "symbol": "BAJFINANCE",
+   "doc_type": "results_notes",
+   "doc_id": "sha256:b29d9a1ec022d76969c3410d33fbc17295c522b2fe4d55bdbb70568257386f0d",
+   "pages_read": 2,
+   "baseline_rows": 0,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE296A01032",
+   "symbol": "BAJFINANCE",
+   "doc_type": "deck",
+   "doc_id": "sha256:c6bba06190fefaa0e07dd13a2a02db9b05c2ad2cc96f5779b8378685f5052086",
+   "pages_read": 6,
+   "baseline_rows": 8,
+   "missed": 3,
+   "misses": [
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-04-29T17:30:47",
+      "doc_id": "sha256:c6bba06190fefaa0e07dd13a2a02db9b05c2ad2cc96f5779b8378685f5052086",
+      "quote": "Gross NPA 0.00% 0.05% 0.08% 0.35% 0.31% 0.22% 0.27% 0.29% 0.27%",
+      "page": 37,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "gnpa_pct",
+      "value": 0.27,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-04-29T17:30:47",
+      "doc_id": "sha256:c6bba06190fefaa0e07dd13a2a02db9b05c2ad2cc96f5779b8378685f5052086",
+      "quote": "Net NPA 0.00% 0.04% 0.05% 0.22% 0.14% 0.08% 0.10% 0.11% 0.11%",
+      "page": 37,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "nnpa_pct",
+      "value": 0.11,
+      "unit": "pct"
+     }
+    },
+    {
+     "table": "lender_metrics",
+     "row": {
+      "isin": "INE296A01032",
+      "known_at": "2026-04-29T17:30:47",
+      "doc_id": "sha256:c6bba06190fefaa0e07dd13a2a02db9b05c2ad2cc96f5779b8378685f5052086",
+      "quote": "CRAR 45.12% 25.81% 25.15% 21.33% 19.71% 22.97% 21.28% 28.24% 22.46%",
+      "page": 37,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "capital_adequacy_pct",
+      "value": 22.46,
+      "unit": "pct"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE038A01020",
+   "symbol": "HINDALCO",
+   "doc_type": "annual_report",
+   "doc_id": "sha256:f6aa640276f7fdfd721092e41e707409cd74bd8bf5b6c6d5a165b92b3a024b3d",
+   "pages_read": 2,
+   "baseline_rows": 0,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE038A01020",
+   "symbol": "HINDALCO",
+   "doc_type": "concall",
+   "doc_id": "sha256:ac3a8eaa74742c2a2a50d070d7740c8ae0264e757dbf93c53d39f6261e089746",
+   "pages_read": 3,
+   "baseline_rows": 3,
+   "missed": 3,
+   "misses": [
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-26T12:33:29",
+      "doc_id": "sha256:ac3a8eaa74742c2a2a50d070d7740c8ae0264e757dbf93c53d39f6261e089746",
+      "quote": "quarterly shipments were up 18% year-on-year at 124 KT.",
+      "page": 6,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "indian downstream aluminium shipments",
+      "quantity": 124.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-26T12:33:29",
+      "doc_id": "sha256:ac3a8eaa74742c2a2a50d070d7740c8ae0264e757dbf93c53d39f6261e089746",
+      "quote": "our overall metal shipments were at 128 KT, down 5%",
+      "page": 6,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "copper overall metal shipments",
+      "quantity": 128.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-26T12:33:29",
+      "doc_id": "sha256:ac3a8eaa74742c2a2a50d070d7740c8ae0264e757dbf93c53d39f6261e089746",
+      "quote": "of which CCR volumes were at 91 KT, up 11% year-on-year with market recovery this quarter.",
+      "page": 7,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "copper ccr volumes",
+      "quantity": 91.0,
+      "unit": "kt"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE038A01020",
+   "symbol": "HINDALCO",
+   "doc_type": "deck",
+   "doc_id": "sha256:93e2a70ebcf29278504edb0301bd18fc11c3c242a1dd571fd3d1144097c7174a",
+   "pages_read": 5,
+   "baseline_rows": 2,
+   "missed": 2,
+   "misses": [
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-05T16:58:06",
+      "doc_id": "sha256:93e2a70ebcf29278504edb0301bd18fc11c3c242a1dd571fd3d1144097c7174a",
+      "quote": "Rolled product shipments (in kt) (denominator) 916 963",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "product": "rolled product shipments",
+      "quantity": 916.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-05T16:58:06",
+      "doc_id": "sha256:93e2a70ebcf29278504edb0301bd18fc11c3c242a1dd571fd3d1144097c7174a",
+      "quote": "Rolled product shipments (in kt) (denominator) 916 963",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2025-06-30",
+      "product": "rolled product shipments",
+      "quantity": 963.0,
+      "unit": "kt"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE038A01020",
+   "symbol": "HINDALCO",
+   "doc_type": "concall",
+   "doc_id": "sha256:ab8c435da199e1e2e22cd39bd9c1b22694b14dd4e68b665fbc3a58ab85310bd3",
+   "pages_read": 2,
+   "baseline_rows": 5,
+   "missed": 5,
+   "misses": [
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-02-18T12:42:51",
+      "doc_id": "sha256:ab8c435da199e1e2e22cd39bd9c1b22694b14dd4e68b665fbc3a58ab85310bd3",
+      "quote": "EBITDA margins were at 45% and continued to be among the best in the global industry.",
+      "page": 5,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "metric": "india upstream aluminum ebitda margin",
+      "value": 45.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:ab8c435da199e1e2e22cd39bd9c1b22694b14dd4e68b665fbc3a58ab85310bd3"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-02-18T12:42:51",
+      "doc_id": "sha256:ab8c435da199e1e2e22cd39bd9c1b22694b14dd4e68b665fbc3a58ab85310bd3",
+      "quote": "quarterly shipments were up 9% year-on-year at 108 Kt.",
+      "page": 5,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "product": "indian downstream aluminum shipments",
+      "quantity": 108.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-02-18T12:42:51",
+      "doc_id": "sha256:ab8c435da199e1e2e22cd39bd9c1b22694b14dd4e68b665fbc3a58ab85310bd3",
+      "quote": "our overall metal shipments were up at 122 Kt, up 1% year-on-year",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "product": "copper metal shipments",
+      "quantity": 122.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-02-18T12:42:51",
+      "doc_id": "sha256:ab8c435da199e1e2e22cd39bd9c1b22694b14dd4e68b665fbc3a58ab85310bd3",
+      "quote": "CCR volumes were at 82 Kt, down 14% year-on-year",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "product": "ccr volumes",
+      "quantity": 82.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-02-18T12:42:51",
+      "doc_id": "sha256:ab8c435da199e1e2e22cd39bd9c1b22694b14dd4e68b665fbc3a58ab85310bd3",
+      "quote": "Novelis' recorded shipments of 881 Kt, after adjusting for 72 Kt lower shipments due to Oswego fires",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2025-12-31",
+      "product": "novelis shipments",
+      "quantity": 881.0,
+      "unit": "kt"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE038A01020",
+   "symbol": "HINDALCO",
+   "doc_type": "concall",
+   "doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5",
+   "pages_read": 2,
+   "baseline_rows": 6,
+   "missed": 6,
+   "misses": [
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-13T11:22:31",
+      "doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5",
+      "quote": "we have 470 megawatts of renewable energy capacity",
+      "page": 5,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "renewable_energy_capacity_mw",
+      "value": 470.0,
+      "unit": "mw",
+      "source_doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-13T11:22:31",
+      "doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5",
+      "quote": "35 megawatts of pump storage tie-ups under our round-the-clock",
+      "page": 5,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "pump_storage_rtc_tieups_mw",
+      "value": 35.0,
+      "unit": "mw",
+      "source_doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-13T11:22:31",
+      "doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5",
+      "quote": "quarterly shipments were up 3% year-on-year at 104 Kt",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "product": "indian downstream aluminium shipments",
+      "quantity": 104.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-13T11:22:31",
+      "doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5",
+      "quote": "our overall metal shipments were at 105 Kt",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "product": "india copper metal shipments",
+      "quantity": 105.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-13T11:22:31",
+      "doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5",
+      "quote": "The CCR volumes were at 96 KT",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "product": "ccr volumes",
+      "quantity": 96.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-13T11:22:31",
+      "doc_id": "sha256:be66fe4ded3ac640ec4f7621adadac1a3c016773004acc7e6316c91410ea6ee5",
+      "quote": "shipments of 916 KT, reflecting a decline of 5% year-on-year over 963 KT shipments",
+      "page": 8,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "product": "novelis shipments",
+      "quantity": 916.0,
+      "unit": "kt"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "annual_report",
+   "doc_id": "sha256:3313b7b40a1d5a33850ec6e4ad9b88a74af88a1eb7caa2a8e2a857a1d3b8676c",
+   "pages_read": 3,
+   "baseline_rows": 0,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "annual_report",
+   "doc_id": "sha256:64cbe63313adf160caf3d3e3b45c1988d60e19f68a41f58c99d03fd96ac768e3",
+   "pages_read": 3,
+   "baseline_rows": 0,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "concall",
+   "doc_id": "sha256:15884ecf51e6534e77dabfb01f6d04e0f3e2916e04829e44144b2393039df2be",
+   "pages_read": 1,
+   "baseline_rows": 0,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "concall",
+   "doc_id": "sha256:c98448413b60a6a2973da33496f4811c29ba2bbaefeb5876175e2354de3cf9cc",
+   "pages_read": 1,
+   "baseline_rows": 0,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "concall",
+   "doc_id": "sha256:9e8a2bdebeac4d58d5fc50c9b9127e31922f68c624c8947b200b3becc17bc289",
+   "pages_read": 1,
+   "baseline_rows": 0,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE038A01020",
+   "symbol": "HINDALCO",
+   "doc_type": "deck",
+   "doc_id": "sha256:78d4da5732f1e30200a8cbb70c9f510ca38f954571faf83d00b3e8fd331fab85",
+   "pages_read": 7,
+   "baseline_rows": 5,
+   "missed": 5,
+   "misses": [
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-07T14:50:19",
+      "doc_id": "sha256:78d4da5732f1e30200a8cbb70c9f510ca38f954571faf83d00b3e8fd331fab85",
+      "quote": "Shipments Kt 963 916",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "product": "novelis",
+      "quantity": 916.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-07T14:50:19",
+      "doc_id": "sha256:78d4da5732f1e30200a8cbb70c9f510ca38f954571faf83d00b3e8fd331fab85",
+      "quote": "Shipments Kt 325 335",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "product": "aluminium upstream",
+      "quantity": 335.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-07T14:50:19",
+      "doc_id": "sha256:78d4da5732f1e30200a8cbb70c9f510ca38f954571faf83d00b3e8fd331fab85",
+      "quote": "Sales of Aluminium Downstream stood at 104 KT, up 3%",
+      "page": 4,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "product": "aluminium downstream",
+      "quantity": 104.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "balance_sheet_lines",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-07T14:50:19",
+      "doc_id": "sha256:78d4da5732f1e30200a8cbb70c9f510ca38f954571faf83d00b3e8fd331fab85",
+      "quote": "Gross Debt 63,330 72,670 85,639 96,659 103,515",
+      "page": 24,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "basis": "consolidated",
+      "line_item": "borrowings",
+      "value_cr": 103515.0
+     }
+    },
+    {
+     "table": "balance_sheet_lines",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-08-07T14:50:19",
+      "doc_id": "sha256:78d4da5732f1e30200a8cbb70c9f510ca38f954571faf83d00b3e8fd331fab85",
+      "quote": "Treasury Balance 29,074 31,255 26,178 31,818 26,020",
+      "page": 24,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "basis": "consolidated",
+      "line_item": "cash_and_equivalents",
+      "value_cr": 26020.0
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE038A01020",
+   "symbol": "HINDALCO",
+   "doc_type": "results_notes",
+   "doc_id": "sha256:aa99b42c1d4e860b51d82fee5514c8479bddd3144ddd8f223ecbfce9470120f3",
+   "pages_read": 3,
+   "baseline_rows": 2,
+   "missed": 0,
+   "misses": []
+  },
+  {
+   "isin": "INE038A01020",
+   "symbol": "HINDALCO",
+   "doc_type": "deck",
+   "doc_id": "sha256:a707229164e981b91df11435bdfb242d49fe48e24b27e939d64c22ed9b4d9626",
+   "pages_read": 7,
+   "baseline_rows": 6,
+   "missed": 6,
+   "misses": [
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-22T17:49:16",
+      "doc_id": "sha256:a707229164e981b91df11435bdfb242d49fe48e24b27e939d64c22ed9b4d9626",
+      "quote": "Shipments (KT) \u2191 2% backed by strong domestic demand 332 345 339 1,327 1,350 Q4 FY25 Q3 FY26 Q4 FY26 FY25 FY26",
+      "page": 26,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "aluminium upstream shipments",
+      "quantity": 339.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-22T17:49:16",
+      "doc_id": "sha256:a707229164e981b91df11435bdfb242d49fe48e24b27e939d64c22ed9b4d9626",
+      "quote": "Shipments (KT) \u2191 18%, in line with growth in demand 105 108 124 403 446 Q4 FY25 Q3 FY26 Q4 FY26 FY25 FY26",
+      "page": 27,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "aluminium downstream shipments",
+      "quantity": 124.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-22T17:49:16",
+      "doc_id": "sha256:a707229164e981b91df11435bdfb242d49fe48e24b27e939d64c22ed9b4d9626",
+      "quote": "330 337 331 1,323 1,336 Q4 FY25 Q3 FY26 Q4 FY26 FY25 FY26",
+      "page": 39,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "aluminium upstream production",
+      "quantity": 331.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-22T17:49:16",
+      "doc_id": "sha256:a707229164e981b91df11435bdfb242d49fe48e24b27e939d64c22ed9b4d9626",
+      "quote": "105 115 123 411 458 Q4 FY25 Q3 FY26 Q4 FY26 FY25 FY26",
+      "page": 39,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "aluminium downstream production",
+      "quantity": 123.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-22T17:49:16",
+      "doc_id": "sha256:a707229164e981b91df11435bdfb242d49fe48e24b27e939d64c22ed9b4d9626",
+      "quote": "111 103 107 402 420 Q4 FY25 Q3 FY26 Q4 FY26 FY25 FY26",
+      "page": 39,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "copper rods production",
+      "quantity": 107.0,
+      "unit": "kt"
+     }
+    },
+    {
+     "table": "unit_volume",
+     "row": {
+      "isin": "INE038A01020",
+      "known_at": "2026-05-22T17:49:16",
+      "doc_id": "sha256:a707229164e981b91df11435bdfb242d49fe48e24b27e939d64c22ed9b4d9626",
+      "quote": "114 112 99 472 467 Q4 FY25 Q3 FY26 Q4 FY26 FY25 FY26",
+      "page": 39,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "product": "copper cathode production",
+      "quantity": 99.0,
+      "unit": "kt"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "deck",
+   "doc_id": "sha256:cb0b44e7feba2e3fa6f36ee670e09aa6ea68933cb68e53586d1ca839b09a6ad0",
+   "pages_read": 12,
+   "baseline_rows": 2,
+   "missed": 2,
+   "misses": [
+    {
+     "table": "order_intake",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T18:52:29",
+      "doc_id": "sha256:cb0b44e7feba2e3fa6f36ee670e09aa6ea68933cb68e53586d1ca839b09a6ad0",
+      "quote": "Order Intake Rs 6,303 Cr.",
+      "page": 20,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "intake_cr": 6303.0,
+      "order_book_cr": null,
+      "book_to_bill": null,
+      "source_doc_id": "sha256:cb0b44e7feba2e3fa6f36ee670e09aa6ea68933cb68e53586d1ca839b09a6ad0"
+     }
+    },
+    {
+     "table": "order_intake",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T18:52:29",
+      "doc_id": "sha256:cb0b44e7feba2e3fa6f36ee670e09aa6ea68933cb68e53586d1ca839b09a6ad0",
+      "quote": "Order Book Rs 37,697 Cr.",
+      "page": 20,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "intake_cr": null,
+      "order_book_cr": 37697.0,
+      "book_to_bill": null,
+      "source_doc_id": "sha256:cb0b44e7feba2e3fa6f36ee670e09aa6ea68933cb68e53586d1ca839b09a6ad0"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "results_notes",
+   "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+   "pages_read": 2,
+   "baseline_rows": 7,
+   "missed": 7,
+   "misses": [
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T19:03:18",
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "quote": "il Debtors Turnover Ratio /No. of Davs l 109",
+      "page": 6,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "debtors turnover ratio",
+      "value": 109.0,
+      "unit": "days",
+      "source_doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T19:03:18",
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "quote": "il Inventory Turnover Ratio (No. of Days] 56",
+      "page": 6,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "inventory turnover ratio",
+      "value": 56.0,
+      "unit": "days",
+      "source_doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T19:03:18",
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "quote": "kl Operatin2 Mar2in excludin2 exceptional item (% l 5.79",
+      "page": 6,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "operating margin excluding exceptional item",
+      "value": 5.79,
+      "unit": "pct",
+      "source_doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T19:03:18",
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "quote": "ll Net Profit Mar.,in /%1 1.45",
+      "page": 6,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "net profit margin",
+      "value": 1.45,
+      "unit": "pct",
+      "source_doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T19:03:18",
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "quote": "i) Debtors Turnover Ratio (No. of Days) 117",
+      "page": 13,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "debtors turnover ratio",
+      "value": 117.0,
+      "unit": "days",
+      "source_doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T19:03:18",
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "quote": "j) Inventory Turnover Ratio (No. of Days) 37",
+      "page": 13,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "inventory turnover ratio",
+      "value": 37.0,
+      "unit": "days",
+      "source_doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-08-10T19:03:18",
+      "doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962",
+      "quote": "k) Operating Margin excluding exceptional item(%) 4.00",
+      "page": 13,
+      "source": "chunks_v3",
+      "period_end": "2026-06-30",
+      "metric": "operating margin excluding exceptional item",
+      "value": 4.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:483823e363b701d28b8d5d3d567695482ec330abdd454c7802884b5645c40962"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "deck",
+   "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+   "pages_read": 12,
+   "baseline_rows": 7,
+   "missed": 6,
+   "misses": [
+    {
+     "table": "order_intake",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-05-25T21:45:26",
+      "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+      "quote": "30,553 29,644 33,398 36,267 FY23 FY24 FY25 FY26",
+      "page": 14,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "intake_cr": null,
+      "order_book_cr": 36267.0,
+      "book_to_bill": null,
+      "source_doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e"
+     }
+    },
+    {
+     "table": "order_intake",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-05-25T21:45:26",
+      "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+      "quote": "Robust Order Book & L1 of over Rs. 40,000 Cr",
+      "page": 14,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "intake_cr": null,
+      "order_book_cr": 40000.0,
+      "book_to_bill": null,
+      "source_doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e"
+     }
+    },
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-05-25T21:45:26",
+      "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+      "quote": "Net Worth surpasses Rs. 6,000 Cr, Return on Net Worth at 10% - Expanded by more than 500 bps in last 3 years",
+      "page": 15,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "return on net worth",
+      "value": 10.0,
+      "unit": "pct",
+      "source_doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e"
+     }
+    },
+    {
+     "table": "order_intake",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-05-25T21:45:26",
+      "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+      "quote": "Robust order inflows of ~Rs. 17,700 Cr",
+      "page": 6,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "intake_cr": 17700.0,
+      "order_book_cr": null,
+      "book_to_bill": null,
+      "source_doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e"
+     }
+    },
+    {
+     "table": "order_intake",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-05-25T21:45:26",
+      "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+      "quote": "Secured robust order intake of over Rs. 5,000 Cr, growth of more than 2x",
+      "page": 7,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "intake_cr": 5000.0,
+      "order_book_cr": null,
+      "book_to_bill": null,
+      "source_doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e"
+     }
+    },
+    {
+     "table": "order_intake",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-05-25T21:45:26",
+      "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+      "quote": "Robust and diversified order book & L1 of over Rs. 10,000 Cr",
+      "page": 7,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "intake_cr": null,
+      "order_book_cr": 10000.0,
+      "book_to_bill": null,
+      "source_doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e"
+     }
+    }
+   ]
+  },
+  {
+   "isin": "INE389H01022",
+   "symbol": "KEC",
+   "doc_type": "deck",
+   "doc_id": "sha256:3a1d241f4e13dbd1b921c256bc8b567d50e4fd13b871d25a80eca6fa2410351f",
+   "pages_read": 9,
+   "baseline_rows": 2,
+   "missed": 2,
+   "misses": [
+    {
+     "table": "company_operating_metrics",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-05-16T22:39:30",
+      "doc_id": "sha256:3a1d241f4e13dbd1b921c256bc8b567d50e4fd13b871d25a80eca6fa2410351f",
+      "quote": "Net Working Capital (NWC) stands at 137 days as on 31 Mar\u201926 vis-\u00e0-vis 135 days as on 31 Dec\u201925",
+      "page": 21,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "metric": "net working capital days (31 mar 2026)",
+      "value": 137.0,
+      "unit": "days",
+      "source_doc_id": "sha256:3a1d241f4e13dbd1b921c256bc8b567d50e4fd13b871d25a80eca6fa2410351f"
+     }
+    },
+    {
+     "table": "order_intake",
+     "row": {
+      "isin": "INE389H01022",
+      "known_at": "2026-05-16T22:39:30",
+      "doc_id": "sha256:3a1d241f4e13dbd1b921c256bc8b567d50e4fd13b871d25a80eca6fa2410351f",
+      "quote": "Rs 36,267 Cr.",
+      "page": 22,
+      "source": "chunks_v3",
+      "period_end": "2026-03-31",
+      "intake_cr": null,
+      "order_book_cr": 36267.0,
+      "book_to_bill": null,
+      "source_doc_id": "sha256:3a1d241f4e13dbd1b921c256bc8b567d50e4fd13b871d25a80eca6fa2410351f"
+     }
+    }
+   ]
+  }
+ ]
+}

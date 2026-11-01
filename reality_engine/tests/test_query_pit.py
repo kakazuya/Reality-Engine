@@ -13,10 +13,32 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "plugins" / "reality-data" / "server"))
+SERVER = REPO / "plugins" / "reality-data" / "server"
+sys.path.insert(0, str(SERVER))
+
+# Both plugins ship a top-level ``core.py``.  Alphabetical collection imports the
+# dsh-worker ``core`` first, so a bare ``import core`` here silently binds the wrong
+# module (DataError missing).  Load the reality-data core under its own name and hand
+# it to ``lookups_docs`` only for the duration of that import, then restore the
+# previous module so later test modules see what they expected.
+import importlib.util  # noqa: E402
+
+_previous_core = sys.modules.get("core")
+if not (_previous_core and Path(getattr(_previous_core, "__file__", "")).resolve().parent
+        == SERVER):
+    _spec = importlib.util.spec_from_file_location("reality_data_core", SERVER / "core.py")
+    _reality_core = importlib.util.module_from_spec(_spec)
+    sys.modules["reality_data_core"] = _reality_core
+    _spec.loader.exec_module(_reality_core)
+    sys.modules["core"] = _reality_core
 
 import core  # noqa: E402
 import lookups_docs  # noqa: E402
+
+if _previous_core is not None and _previous_core is not sys.modules.get("core"):
+    sys.modules["core"] = _previous_core
+elif _previous_core is None:
+    sys.modules.pop("core", None)
 
 AS_OF = "2026-06-30"
 LATE = "2026-10-24"
