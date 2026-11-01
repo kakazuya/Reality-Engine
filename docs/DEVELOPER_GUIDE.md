@@ -184,7 +184,7 @@ Both scripts print an `ALL CHECKS PASSED` block and are idempotent. Read peers b
 `peer_graph.neighbours(conn, "TITAGARH")` — every row carries similarity, coverage, shared
 families, the anchor's baseline (so `lift` is interpretable) and the features that drove the match.
 
-### I. Pilot extraction: write contracts and whole-page recall (T-016)
+### I. Pilot extraction: write contracts, whole-page recall (T-016) and page OCR (T-034)
 
 The pilot-60 extraction stores 16 measure tables (`reality_engine.pilot.extract60.TABLES`).
 Code: `reality_engine/contracts.py` (the contracts), `reality_engine/pilot/extract60.py` (selection,
@@ -227,6 +227,39 @@ python -m reality_engine.pilot.proto3 dryrun
 `company_price_revision` 2/6, `company_segment_pnl` 25/72 and `rating_action` 7/16, and no
 table is over 90%. The biggest reject class is `measure_term_absent`: a chart-axis or table-cell
 quote prints the number but not the word that says what it is.
+
+#### Page OCR overlay for thin deck pages (T-034)
+
+The HP job writes one row per page to `tasks/pilot60/proto3_text/ocr_pages.jsonl.gz`
+(`isin`, `symbol`, `doc_type`, `doc_date`, `file_name`, `sha256`, `page`, `text`,
+`mean_confidence`, `low_conf_numbers`). The file is optional at run time: `extract60.load_store`
+joins its rows to `doc` by `sha256`, and a missing file changes nothing. `REALITY_OCR_OVERLAY`
+overrides the path; an empty value disables the overlay.
+
+- A page whose existing text is shorter than `THIN_PAGE_CHARS (400)` is read from the OCR text
+  instead. Measured on the three companies' deck chunks in `chunks_v3` (2026-11-02): 1,727
+  chunks, p10 397, p25 588, median 918 chars per page — 400 targets the thinnest tenth (the
+  image-backed pages) and leaves ordinary text pages alone. `REALITY_OCR_THIN_CHARS` overrides
+  the threshold per deck.
+- A page with good existing text keeps it, unless the text layer prints numbers the OCR row does
+  not; then the OCR text wins (`validate` sets the row's `source = 'ocr'` where the table has a
+  source column) and the disagreement is counted and logged per document in
+  `OCR_STATS["per_doc"][doc_id]["disagreement_pages"]`. A multi-page chunk cannot be split page
+  by page, so that override applies to one-page chunks only.
+- Every chunk carries `text_source` (`chunk` or `ocr`) and an OCR'd chunk carries
+  `low_conf_numbers`; a passage inherits both. An OCR'd chunk keeps its real page numbers and
+  `doc_id`, so `validate` finds the OCR quote in the passage it checks. A page with no OCR row
+  stays as it is and is counted (`OCR_STATS["pages"]["unmatched"]`).
+- `build` prints the overlay summary and stores `OCR_STATS` in `extract_run.notes`; `proto3
+  dryrun` reports `ocr_overlay` per company and doc type — pages thin before, filled by OCR,
+  still thin, unmatched, number disagreements, and the text-token change — in
+  `.tmp/proto3/dryrun.json` and on stdout.
+
+```bash
+# Page OCR overlay fixtures: thin page, good page, missing file, unmatched page,
+# OCR quote, passage source, number disagreement (8 passed)
+python -m pytest reality_engine/tests/test_ocr_overlay.py -q
+```
 
 ## 3. Ticket tracker
 
