@@ -3,7 +3,9 @@
 HP OmniBook 5, Windows 11 on ARM64, Snapdragon X with 8 cores, 16 GB. Shivam may be using it, and access was agreed through Monday morning, 2 Nov 2026.
 
 ## Headless rule (Shivam, 1 Nov 2026)
-**No work may come onto this laptop's screen or take focus.** Prefer session 0, meaning SSH or a non-interactive task. An API that needs the interactive session gets a `WinExe` program launched hidden. Fix and proof: job `hp-20261101T172002-15e0f2`. No interactive job runs until that fix is reviewed.
+**No work may come onto this laptop's screen or take focus.** Prefer session 0, meaning SSH or a non-interactive task. An API that needs the interactive session gets a `WinExe` program launched hidden. Fix: job `hp-20261101T172002-15e0f2`. Proof on an unlocked desktop passed on 1 Nov: `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md` section 14.7.
+
+Screensaver and lock: it locks after 180 idle seconds, and a playing video did not stop that at 18:15. To read the lock over SSH, use `WTSQuerySessionInformationW` class 25 for the console session: the `SessionFlags` Int32 at byte offset 16 is 0 locked, 1 unlocked. `LockApp.exe` runs either way, so it proves nothing.
 
 ## Access
 - `ssh zen7s@100.78.87.112` (Tailscale, `sumit-hp`) or `zen7s@192.168.1.42` (LAN), using key `~/.ssh/id_ed25519`.

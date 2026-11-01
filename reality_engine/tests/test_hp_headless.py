@@ -20,6 +20,7 @@ What they enforce:
 from __future__ import annotations
 
 import ast
+import json
 import re
 import struct
 import xml.etree.ElementTree as ET
@@ -244,3 +245,19 @@ def test_driver_reads_the_subsystem_of_a_real_exe():
             assert pe_subsystem(candidate) in (2, 3)
             return
     pytest.skip("no system executable to read")
+
+
+def test_summarise_sees_processes_named_with_exe(tmp_path):
+    """The session table records ``conhost.exe``; the check once compared bare names and never fired."""
+    from reality_engine.tools.textrec.probe.summarise import summarise
+
+    table = {"kind": "start", "processes": [
+        {"pid": 1, "ppid": 9, "process": "textrec.exe"},
+        {"pid": 2, "ppid": 1, "process": "conhost.exe"},
+    ]}
+    log = tmp_path / "probe.jsonl"
+    log.write_text(json.dumps(table) + chr(10), encoding="utf-8")
+    result = summarise(log)
+    assert result["conhost_pids_seen"] == [2]
+    assert [entry["pid"] for entry in result["watched_children_of_textrec"]] == [2]
+    assert result["pass"] is False

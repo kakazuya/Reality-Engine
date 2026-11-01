@@ -39,7 +39,7 @@ reports the task's `LastTaskResult` plus the tail of `status.log`.
 | `experimental/textrec20.csproj` | separate build on Windows App SDK 2.0.0-experimental7, defines `TEXTREG_OPTIONS` to exercise `TextRecognizerOptions`, `OutputType=WinExe` |
 | `pkg/AppxManifest.xml` | 1.8 package manifest (identity, `runFullTrust`, `systemAIModels`, execution alias) |
 | `probe/probe.csproj`, `probe/HeadlessProbe.cs` | windowless evidence probe (`WinExe`, session 1): foreground window and every `WS_VISIBLE` top-level window owned by `textrec`/`conhost`/`cmd`/`powershell`/`pwsh`/`python`, plus the session process table, every 100 ms |
-| `probe/summarise.py` | turns a probe log into the acceptance counts (samples, max gap, watched windows, focus changes, conhost/children) |
+| `probe/summarise.py` | turns a probe log into the acceptance counts (samples, max gap, watched windows, focus changes, conhost/children); process names are matched without their `.exe`, so `conhost.exe` cannot slip through |
 
 No binaries, certificates or keys live in the repo.  Build output, the signing
 certificate and the test MSIX stay outside it.  Rebuild steps (plus the
