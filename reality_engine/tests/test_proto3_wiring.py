@@ -155,6 +155,26 @@ def _one(ledger: SimpleNamespace, atom: str, as_of: str = AS_OF):
                            registry=ledger.registry)
 
 
+# --- 0. a disputed number stays out unless a re-read settled on the stored number --
+@pytest.mark.parametrize("resolved, loads", [(None, False), ("9.9", False), ("3.5", True)])
+def test_a_disputed_number_is_not_loaded(stores, resolved, loads):
+    con = _connect(stores.extract)
+    con.execute("CREATE TABLE number_check(table_name TEXT, row_pk TEXT, printed_token TEXT, "
+                "status TEXT, resolved_value TEXT)")
+    pk = f"isin={BAJ}|period_end=2026-06-30|metric=nim_pct"
+    con.execute("INSERT INTO number_check VALUES ('lender_metrics', ?, '3.5', 'disputed', ?)",
+                (pk, resolved))
+    con.commit()
+    con.close()
+    fact = _fact_db(stores.root / uuid.uuid4().hex[:8])
+    stats = load_fact.load(stores.extract, fact)
+    con = _connect(fact)
+    values = [row["value"] for row in con.execute("SELECT value FROM fact WHERE atom = 'fin.nim'")]
+    con.close()
+    assert (3.5 in values) is loads, values
+    assert stats["number_disputed"] == (0 if loads else 1)
+
+
 # --- 1. the contracts gate the load -----------------------------------------
 def test_a_contract_failing_row_is_not_loaded(stores):
     # the 90% NIM is refused by contracts.check (value_above_range), the 3.5% one passes

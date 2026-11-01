@@ -250,5 +250,25 @@ class OverlayTest(unittest.TestCase):
         self.assertFalse(x.OCR_STATS["per_doc"])
 
 
+    # T-040 whole-page rule: an OCR chunk needs 2+ distinct numbers to go whole.
+    def test_ocr_chunk_with_one_number_is_not_whole_page(self):
+        one = {"text_source": "ocr", "body": "Management commentary with 7 new hires."}
+        two = {"text_source": "ocr", "body": "Revenue 1,240 crore and EBIT 210 crore."}
+        self.assertFalse(x.is_whole_page(one))
+        self.assertTrue(x.is_whole_page(two))
+
+    # T-040: the one-number page takes the ordinary keyword path and is not sent.
+    def test_one_number_ocr_page_is_not_sent_whole(self):
+        store = self.store([(12, 12, THIN_BODY)])
+        overlay = self.overlay([ocr_row(12, "Management commentary with 7 new hires.",
+                                        why="thin", existing_chars=len(THIN_BODY))])
+        docs, chunks = self.load(store, overlay)
+        self.assertEqual(len(chunks), 2)
+        spec = {"docs": ("deck",), "sections": (), "tags": (), "max_passages": 4,
+                "terms": "revenue|margin|EBIT", "needs_number": True}
+        passages = x.select_passages(spec, docs[DOC["doc_id"]], chunks)
+        self.assertNotIn("ocr", {chunk.get("section") for chunk in passages})
+
+
 if __name__ == "__main__":
     unittest.main()

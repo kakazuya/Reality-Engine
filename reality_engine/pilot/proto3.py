@@ -15,10 +15,13 @@ compares the held Haiku deck facts, DeepSeek and CPU OCR on the same slides.
     python -m reality_engine.pilot.proto3 bank      # answers for the bank rows
     python -m reality_engine.pilot.proto3 report    # tasks/pilot60/PROTOTYPE3_REPORT_...
     python -m reality_engine.pilot.proto3 dryrun    # contracts vs stored rows + recall cost
+    python -m reality_engine.pilot.proto3 recheck   # disputed numbers re-read on a 600-DPI crop
 
 Read-only on every input; writes only ``reality_engine/data/extract_proto3.db``
 (Arm A/B), ``tasks/pilot60/PROTOTYPE3_*`` outputs and ``.tmp/proto3`` scratch.
-``dryrun`` is the exception: it only reads (no model call, no store write).
+``dryrun`` is the exception: it only reads (no model call, no store write).  ``recheck``
+writes only the ``number_check`` table of a copy under ``.tmp`` (never a measure row, no
+model call, no network, no GPU).
 """
 from __future__ import annotations
 
@@ -54,25 +57,9 @@ SCOPE_FIX = OUT / f"PROTOTYPE3_SCOPE_{DATE}.json"
 DB = REPO / "reality_engine" / "data" / "extract_proto3.db"
 DB_A = REPO / "reality_engine" / "data" / "extract_proto3_arm_a.db"
 
-#: primary key columns per extraction table (Arm A membership is decided on these).
-PKS = {
-    "company_segment_pnl": ("isin", "segment", "period_end", "metric", "basis"),
-    "company_operating_metrics": ("isin", "period_end", "metric"),
-    "company_cost_structure": ("isin", "period_end", "basis", "input_key"),
-    "company_debt_mix": ("isin", "period_end", "bucket"),
-    "company_capacity_utilisation": ("isin", "period_end", "product"),
-    "capex_project": ("isin", "project", "announced_on"),
-    "order_intake": ("isin", "period_end"),
-    "order_book_contract": ("isin", "contract_id"),
-    "company_price_revision": ("isin", "announced_on", "product", "source_doc_id"),
-    "rating_action": ("isin", "action_date", "agency", "instrument"),
-    "supply_link": ("src_isin", "dst_isin", "relation"),
-    "balance_sheet_lines": ("isin", "period_end", "basis", "line_item"),
-    "cash_flow_lines": ("isin", "period_end", "basis", "line_item"),
-    "tax_reconciliation": ("isin", "period_end", "basis", "item"),
-    "lender_metrics": ("isin", "period_end", "metric"),
-    "unit_volume": ("isin", "period_end", "product"),
-}
+#: primary key columns per extraction table (Arm A membership is decided on these; the
+#: T-040 number check keys its rows on the same key).
+PKS = x.PKS
 VALUE_COLUMNS = ("value", "value_cr", "amount_cr", "quantity", "intake_cr", "order_book_cr",
                  "capex_cr", "revision_pct", "utilisation_pct", "capacity", "total_equity")
 DOC_TYPES = ("annual_report", "concall", "deck", "results_notes")
@@ -1304,7 +1291,157 @@ def _report_markdown(m: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+# --------------------------------------------------------------------------- number check
+CROP_DPI, PAGE_DPI, CROP_MARGIN_PT = 600, 400, 12.0
+
+
+def recheck_db() -> Path:
+    """The extract DB ``recheck`` may edit: only a copy of it under ``.tmp``.
+
+    The live stores under ``REALITY_DATA_ROOT`` and ``reality_engine/data`` are read-only
+    for a worker, so the command refuses to guess: build or copy under ``.tmp``.
+    """
+    scratch = REPO / ".tmp"
+    for given in (os.environ.get("REALITY_RECHECK_DB"), os.environ.get("REALITY_EXTRACT_DB")):
+        if given and Path(given).is_relative_to(scratch):
+            return Path(given)
+    db = x.OUT_DIR / "extract_pilot60.db"
+    if db.is_file():
+        return db
+    raise SystemExit("recheck edits number_check, so it only writes a copy: put the "
+                     f"extract DB at {db} or set REALITY_RECHECK_DB")
+
+
+def read_page_text(pdf: Path, page: int, token: str | None) -> str:
+    """Free CPU OCR of the token's crop at 600 DPI; the whole page at 400 if unlocated."""
+    import fitz                                                   # PyMuPDF
+    engine = _ocr_engine()                                        # RapidOCR, MSI CPU, no GPU
+    with fitz.open(pdf) as doc:
+        source = doc[page - 1]
+        rects = source.search_for(token) if token else []
+        if rects:
+            found = rects[0]
+            clip = fitz.Rect(found.x0 - CROP_MARGIN_PT, found.y0 - CROP_MARGIN_PT,
+                             found.x1 + CROP_MARGIN_PT, found.y1 + CROP_MARGIN_PT)
+            png = source.get_pixmap(clip=clip, dpi=CROP_DPI)
+        else:
+            png = source.get_pixmap(dpi=PAGE_DPI)
+    SCRATCH.mkdir(parents=True, exist_ok=True)
+    shot = SCRATCH / f"recheck_{abs(hash((str(pdf), page))) % 10 ** 9}.png"
+    png.save(str(shot))
+    try:
+        return _ocr_text(engine, shot)
+    finally:
+        shot.unlink(missing_ok=True)
+
+
+def resolve_dispute(check: dict, reread: str) -> str | None:
+    """The candidate the re-read exactly equals, or None (both or neither: disputed).
+
+    The two candidates are the token the quote printed and the other source's reading of
+    the same number.  Equality is on ``extract60._page_numbers`` tokens, so "1,000" and
+    "1000" are one reading.  Nothing here edits a measure row.
+    """
+    seen = x._page_numbers(reread)
+    hits: dict[str, str] = {}
+    for column in ("printed_token", "other_token"):
+        printed = str(check.get(column) or "")
+        token = next(iter(x._page_numbers(printed)), "")
+        if token and token in seen:
+            hits[token] = printed
+    return next(iter(hits.values())) if len(hits) == 1 else None
+
+
+def cmd_recheck(db: Path | None = None, docs: dict | None = None,
+                read_page=None) -> dict:
+    """Re-read every disputed number from an enlarged crop; resolve only exact matches.
+
+    No model call, no network, no GPU: the existing RapidOCR engine on the CPU.  A row
+    stays disputed unless the crop (or, when the token cannot be located, the whole page)
+    reads back exactly one of its two candidates.
+    """
+    db = Path(db) if db else recheck_db()
+    if not db.is_file():
+        raise SystemExit(f"{db} is missing: build it with extract60 build --no-model first")
+    docs = _scope_docs()[0] if docs is None else docs
+    read_page = read_page or read_page_text
+    con = sqlite3.connect(str(db))
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA busy_timeout = 30000")
+    try:
+        checks = [dict(row) for row in con.execute("SELECT * FROM number_check")]
+        by_status = Counter(row["status"] for row in checks)
+        out = {"db": str(db), "rows": len(checks),
+               "by_status": {status: by_status.get(status, 0) for status in x.NUMBER_STATUSES},
+               "resolved": 0, "won": Counter(), "left_disputed": Counter()}
+        for check in checks:
+            if check["status"] != "disputed":
+                continue
+            doc = docs.get(check.get("doc_id") or "") or {}
+            pdf = Path(doc.get("raw_path") or "")
+            page = check.get("page")
+            if not page or not pdf.is_file():
+                out["left_disputed"]["no_page" if not page else "no_pdf"] += 1
+                continue
+            try:
+                reread = read_page(pdf, int(page), check.get("printed_token"))
+            except Exception as exc:                              # noqa: BLE001
+                out["left_disputed"][f"read_failed:{type(exc).__name__}"] += 1
+                continue
+            resolved = resolve_dispute(check, reread)
+            if resolved is None:
+                out["left_disputed"]["no_exact_match"] += 1
+                continue
+            con.execute("UPDATE number_check SET resolved_value = ?, "
+                        "resolved_by = 'rapidocr_crop' WHERE table_name = ? AND row_pk = ?",
+                        (resolved, check["table_name"], check["row_pk"]))
+            out["resolved"] += 1
+            source = "ocr" if (check.get("quote_source") or "") == "ocr" else "text_layer"
+            won = source if resolved == str(check.get("printed_token") or "") else (
+                "text_layer" if source == "ocr" else "ocr")
+            out["won"][won] += 1
+        con.commit()
+        out["won"] = dict(out["won"])
+        out["left_disputed"] = dict(out["left_disputed"])
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        (SCRATCH / "recheck.json").write_text(json.dumps(out, indent=1, default=str),
+                                              encoding="utf-8")
+        return out
+    finally:
+        con.close()
+
+
 # --------------------------------------------------------------------------- dry run
+def _number_check_rows(con) -> list[dict] | None:
+    """Every T-040 verdict, or None when the DB predates the table."""
+    try:
+        return [dict(row) for row in con.execute("SELECT * FROM number_check")]
+    except sqlite3.OperationalError:
+        return None
+
+
+def _number_check_report(rows: list[dict] | None, docs: dict) -> dict:
+    """T-040: verdicts per company and doc type, and unchecked split by reason."""
+    if rows is None:
+        return {"present": False}
+    per: dict[str, Counter] = defaultdict(Counter)
+    reasons: Counter = Counter()
+    for row in rows:
+        doc = docs.get(row.get("doc_id") or "") or {}
+        isin = str(doc.get("isin") or "")
+        symbol = SYMBOLS.get(isin, isin or "unknown")
+        per[f"{symbol}|{str(doc.get('doc_type') or 'unknown')}"][row["status"]] += 1
+        if row["status"] == "unchecked":
+            reasons[row.get("reason") or "unknown"] += 1
+    return {"present": True, "rows": len(rows),
+            "by_company_doc_type": {
+                key: {status: counts.get(status, 0) for status in x.NUMBER_STATUSES}
+                for key, counts in sorted(per.items())},
+            "totals": {status: sum(counts.get(status, 0) for counts in per.values())
+                       for status in x.NUMBER_STATUSES},
+            "unchecked_reasons": dict(reasons.most_common())}
+
+
 def cmd_dryrun(samples: int = 10) -> dict:
     """Read-only: re-check the stored rows against the contracts, then cost recall.
 
@@ -1325,6 +1462,7 @@ def cmd_dryrun(samples: int = 10) -> dict:
     per: dict[str, dict] = {}
     rejects_by_measure: Counter = Counter()
     pending: list[dict] = []
+    number_rows: list[dict] | None = None
     try:
         for table in x.TABLES:
             kept, rejected = 0, Counter()
@@ -1350,6 +1488,7 @@ def cmd_dryrun(samples: int = 10) -> dict:
                           "rejected_percent": round(
                               100.0 * n_rejected / max(1, kept + n_rejected), 1),
                           "reasons": dict(rejected.most_common(5))}
+        number_rows = _number_check_rows(con)
     finally:
         con.close()
     docs, chunks = _scope_docs()
@@ -1368,7 +1507,10 @@ def cmd_dryrun(samples: int = 10) -> dict:
                "path": ocr.get("path"), "present": bool(ocr.get("present")),
                "pages": dict(ocr.get("pages") or {}),
                "per_company_doc_type": ocr.get("per_company_doc_type") or {},
-               "input_token_delta": ocr.get("input_token_delta", 0)}}
+               "input_token_delta": ocr.get("input_token_delta", 0)},
+           # T-040: every written number's verdict, per company and doc type, with the
+           # unchecked ones split by why they could not be read twice.
+           "number_check": _number_check_report(number_rows, docs)}
     (SCRATCH / "dryrun.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
     return out
 
@@ -1377,7 +1519,8 @@ def cmd_dryrun(samples: int = 10) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("command", choices=["docs", "scope", "accuracy", "recall", "arm-c",
-                                            "effort", "bank", "report", "dryrun", "all"])
+                                            "effort", "bank", "report", "dryrun", "recheck",
+                                            "all"])
     parser.add_argument("--n", type=int, default=30)
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args(argv)
@@ -1398,6 +1541,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(cmd_bank(), indent=1))
     if args.command in ("report", "all"):
         print(json.dumps(cmd_report(), indent=1))
+    if args.command in ("recheck", "all"):
+        print(json.dumps(cmd_recheck(), indent=1))
     if args.command in ("dryrun", "all"):
         out = cmd_dryrun()
         for table, row in out["per_table"].items():
@@ -1405,7 +1550,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"({row['rejected_percent']}%)", flush=True)
         print(json.dumps({k: out[k] for k in ("db", "read_only", "totals",
                                               "rejects_by_measure", "sample_rejects",
-                                              "recall_estimate", "ocr_overlay")}, indent=1))
+                                              "recall_estimate", "ocr_overlay",
+                                              "number_check")}, indent=1))
     return 0
 
 

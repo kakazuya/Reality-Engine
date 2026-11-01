@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from reality_engine.contracts import VOLUME_UNITS, check
+from reality_engine.pilot.extract60 import _page_numbers, row_pk
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -129,13 +130,26 @@ def _row_value(row: Mapping[str, Any], column: str) -> float | None:
         return None
 
 
+def _disputed(src: sqlite3.Connection) -> set[tuple[str, str]]:
+    """Rows T-040 keeps out: disputed, unless a re-read settled on the number the row stored."""
+    try:
+        rows = src.execute("SELECT table_name, row_pk, printed_token, resolved_value "
+                           "FROM number_check WHERE status = 'disputed'").fetchall()
+    except sqlite3.Error:
+        return set()                      # an extract store built before the number check
+    return {(row["table_name"], row["row_pk"]) for row in rows
+            if not row["resolved_value"]
+            or _page_numbers(str(row["resolved_value"])) != _page_numbers(str(row["printed_token"]))}
+
+
 def load(extract_db: str | Path, fact_db: str | Path) -> dict[str, Any]:
     """Load every contract-passing mapped row; return the counts the run reports."""
     src = sqlite3.connect("file:" + Path(extract_db).resolve().as_posix() + "?mode=ro", uri=True)
     src.row_factory = sqlite3.Row
     dst = sqlite3.connect(str(fact_db))
     dst.executescript(PROVENANCE_DDL)
-    loaded = existing = failed = 0
+    loaded = existing = failed = number_disputed = 0
+    disputed = _disputed(src)
     reasons: Counter = Counter()
     unmapped: Counter = Counter()
     atoms: Counter = Counter()
@@ -155,6 +169,9 @@ def load(extract_db: str | Path, fact_db: str | Path) -> dict[str, Any]:
                 atom = _atom(table, column, row, key)
                 if atom is None:
                     unmapped[(table, str(key or column))] += 1
+                    continue
+                if (table, row_pk(table, row)) in disputed:
+                    number_disputed += 1
                     continue
                 probe = dict(row)
                 for other in columns:
@@ -192,6 +209,7 @@ def load(extract_db: str | Path, fact_db: str | Path) -> dict[str, Any]:
     dst.close()
     src.close()
     return {"loaded": loaded, "existing": existing, "contract_failed": failed,
+            "number_disputed": number_disputed,
             "contract_reasons": dict(reasons), "unmapped": dict(unmapped),
             "atoms": dict(atoms)}
 
@@ -199,7 +217,8 @@ def load(extract_db: str | Path, fact_db: str | Path) -> dict[str, Any]:
 def report(stats: Mapping[str, Any]) -> list[str]:
     """The run's lines: what loaded, what a contract refused, what has no mapping."""
     lines = [f"loaded {stats['loaded']} rows; already in the store {stats['existing']}",
-             f"contract-failing rows not loaded {stats['contract_failed']}"]
+             f"contract-failing rows not loaded {stats['contract_failed']}",
+             f"disputed numbers not loaded {stats['number_disputed']}"]
     for reason, count in sorted(stats["contract_reasons"].items(), key=lambda kv: -kv[1]):
         lines.append(f"  {count:4d}  {reason}")
     lines.append(f"measures with no mapping (not loaded) "
