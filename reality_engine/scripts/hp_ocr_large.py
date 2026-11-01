@@ -359,8 +359,11 @@ def wait_done(out: Path, timeout: float, task: str = TASK) -> dict:
             except (json.JSONDecodeError, OSError):
                 time.sleep(0.5)
                 continue
-            if payload.get("error"):
-                raise RuntimeError(f"helper failed: {payload['error']}")
+            error = str(payload.get("error") or "")
+            # A failed image has its own error row, and run_entries re-runs those rows.
+            # Raising here killed a 4,167-page run over one image on 2 Nov.
+            if error and not re.match(r"\d+ of \d+ images failed", error):
+                raise RuntimeError(f"helper failed: {error}")
             return payload
         time.sleep(1.0)
     raise TimeoutError(f"no {done} after {timeout:.0f}s" + _task_diagnosis(task))
